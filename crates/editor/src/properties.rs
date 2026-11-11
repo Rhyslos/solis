@@ -521,8 +521,9 @@ fn quiet_button(ui: &mut Ui, text: RichText, name: &str, hover: &str) -> egui::R
 /// A component's header: its icon and name (and, for game code, the file
 /// it's written in), then on the right its ⋯ menu (copy, paste, reset,
 /// remove) and a way to read more: **?** opens its manual page, or
-/// **Open in Ledger ↗** the game code it's written in. Returns what was
-/// asked for.
+/// **Open in Ledger ↗** the game code it's written in (**Show in folder ↗**
+/// for code that isn't Lust, which is never opened in another program).
+/// Returns what was asked for.
 fn component_header(
     ui: &mut Ui,
     name: &str,
@@ -579,10 +580,20 @@ fn component_header(
             menu.response
                 .on_hover_text("Copy, paste or reset its values, or remove it");
             if let Some(file) = file {
-                let words = if file.ends_with(".lst") {
-                    "Open in Ledger ↗"
+                // Only Lust opens in another program; a Lua or Rust file is
+                // shown in its folder (the Library's rule), and the button
+                // says which.
+                let opens = crate::library::LibraryKind::Code.opens_in_its_program(file);
+                let (words, hint) = if opens {
+                    (
+                        "Open in Ledger ↗",
+                        format!("Opens {file}, where {name} is written, in its program"),
+                    )
                 } else {
-                    "Open ↗"
+                    (
+                        "Show in folder ↗",
+                        format!("Shows {file}, where {name} is written, in its folder"),
+                    )
                 };
                 let open = quiet_button(
                     ui,
@@ -590,7 +601,7 @@ fn component_header(
                         .color(ui.visuals().hyperlink_color)
                         .size(12.0),
                     &format!("Open {name}'s code"),
-                    &format!("Opens {file}, where {name} is written, in its program"),
+                    &hint,
                 );
                 if open.clicked() {
                     picked = Some(HeaderAction::OpenCode);

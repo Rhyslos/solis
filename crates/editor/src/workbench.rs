@@ -104,9 +104,15 @@ pub enum WorkbenchAction {
     /// Open this area file (a double-click in the Library); the app reads
     /// it and calls [`Workbench::open_area`].
     OpenAreaFile(std::path::PathBuf),
-    /// Open this file or folder in the system's own program or file
-    /// browser.
+    /// Open this file of the project's assets in the program the computer
+    /// has for it, or show this folder of them in the file browser. The
+    /// app opens a file only if its kind is one that's safe to
+    /// ([`LibraryKind::opens_in_its_program`](crate::LibraryKind::opens_in_its_program)),
+    /// showing its folder if not, and refuses a path outside the assets.
     OpenExternally(std::path::PathBuf),
+    /// Show this folder, one the user chose on this computer (an export's),
+    /// in the file browser. Never opens a file.
+    ShowFolder(std::path::PathBuf),
     /// Rename or move a file or folder inside the project's assets, with
     /// its sidecar.
     MoveFile {
@@ -295,6 +301,9 @@ pub struct Workbench {
     pub(crate) export_window: Option<crate::export_dialog::ExportWindow>,
     /// How the open project was last exported, to start from.
     pub(crate) last_export: Option<crate::export_dialog::Playtest>,
+    /// Where the open project was last exported on this computer, if the
+    /// app remembers.
+    pub(crate) last_export_folder: Option<std::path::PathBuf>,
     /// The Documents folder, for exports to go in by default.
     pub(crate) documents: Option<std::path::PathBuf>,
     /// How updating is going, as the app last said.
@@ -574,6 +583,7 @@ impl Workbench {
             settings_window: None,
             export_window: None,
             last_export: None,
+            last_export_folder: None,
             documents: None,
             update: Default::default(),
             release_notes: None,
@@ -750,6 +760,7 @@ impl Workbench {
             self.forget_preview = true;
             self.export_window = None;
             self.last_export = None;
+            self.last_export_folder = None;
             self.unsaved_prompt = None;
             self.library_state = Default::default();
             if let Some(p) = &project {

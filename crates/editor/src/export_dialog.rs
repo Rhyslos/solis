@@ -1,11 +1,18 @@
 //! File > Export for playtesting… ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
 //! the window asking for the game's name, the area it starts in, the
 //! folder and the window, and [`Playtest`], what an exported game reads to
-//! know them (and what the editor remembers for next time).
+//! know them (and what a project remembers for next time).
+//!
+//! Nothing here looks at the disk. A project's files come from other
+//! people, and so may the folder remembered from last time if the saved
+//! settings were changed: looking inside a folder on another computer
+//! makes Windows sign in to it, so the folder is only ever text here, and
+//! the app looks at it once Export is pressed (a test checks this file
+//! for calls that would).
 
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui::Ui;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 /// The first line of a playtest file.
 const HEADER: &str = "playtest 1";
@@ -13,6 +20,8 @@ const HEADER: &str = "playtest 1";
 pub const MAX_NAME: usize = 64;
 /// The biggest playtest file read.
 pub const MAX_PLAYTEST_BYTES: u64 = 16 << 10;
+/// The longest remembered folder kept.
+pub const MAX_FOLDER: usize = 1024;
 
 /// An exported game: its name, the area it starts in, and its window as
 /// it first opens (players change it in the game's own menu, or with
@@ -28,8 +37,6 @@ pub struct Playtest {
     pub fullscreen: bool,
     /// Its window's size in pixels, when it isn't fullscreen.
     pub size: [u32; 2],
-    /// Where the editor last exported it (remembered, not exported).
-    pub folder: Option<PathBuf>,
 }
 
 impl Default for Playtest {
@@ -39,7 +46,6 @@ impl Default for Playtest {
             area: String::new(),
             fullscreen: false,
             size: [1280, 720],
-            folder: None,
         }
     }
 }
@@ -92,10 +98,29 @@ pub fn usable_area(area: &str) -> bool {
             .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
+/// Whether `folder` may be remembered as where a game was last exported:
+/// a whole path on one of this computer's own drives. Not a folder on
+/// another computer (`\\server\share`, however its slashes lean) or a
+/// device, not a path that goes up (`..`), and nothing too long or with
+/// control characters in. Decided from the text alone.
+pub fn local_folder(folder: &Path) -> bool {
+    let Some(text) = folder.to_str() else {
+        return false;
+    };
+    let slash = |c: Option<char>| matches!(c, Some('/' | '\\'));
+    let mut start = text.chars();
+    let elsewhere = slash(start.next()) && slash(start.next());
+    !elsewhere
+        && text.len() <= MAX_FOLDER
+        && !text.chars().any(char::is_control)
+        && folder.is_absolute()
+        && !folder.components().any(|c| c == Component::ParentDir)
+}
+
 impl Playtest {
     /// As written in a playtest file.
     pub fn text(&self) -> String {
-        let mut text = format!(
+        format!(
             "{HEADER}\nname {}\narea {}\nwindow {} {} {}\n",
             game_name(&self.name),
             self.area,
@@ -106,19 +131,14 @@ impl Playtest {
             },
             self.size[0],
             self.size[1],
-        );
-        if let Some(folder) = &self.folder
-            && let Some(folder) = folder.to_str()
-            && !folder.contains('\n')
-        {
-            text.push_str(&format!("folder {folder}\n"));
-        }
-        text
+        )
     }
 
     /// Reads a playtest file. Anything odd is put right (a name made
     /// usable, a window size kept within what Solis opens); only a file
-    /// that isn't one, or names no usable area, is refused.
+    /// that isn't one, or names no usable area, is refused. Nothing in it
+    /// is a folder on this computer: a `folder` line, which a project's
+    /// own copy held before, is passed over like any line not known.
     pub fn parse(text: &str) -> Result<Self, String> {
         let mut lines = text.lines();
         if lines.next().map(str::trim) != Some(HEADER) {
@@ -140,7 +160,6 @@ impl Playtest {
                             .resolution;
                     }
                 }
-                "folder" if !value.trim().is_empty() => found.folder = Some(value.into()),
                 _ => {}
             }
         }
@@ -160,23 +179,6 @@ pub fn default_folder(documents: &Path, name: &str, date: &str) -> PathBuf {
         .join(format!("{name} playtest {date}"))
 }
 
-/// `folder`, or, when it's there with files in already (an export earlier
-/// the same day), the first of `folder (2)`, `folder (3)`… that isn't.
-pub fn unused(folder: PathBuf) -> PathBuf {
-    let used = |f: &Path| std::fs::read_dir(f).is_ok_and(|mut e| e.next().is_some());
-    if !used(&folder) {
-        return folder;
-    }
-    let name = folder
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    (2..1000)
-        .map(|n| folder.with_file_name(format!("{name} ({n})")))
-        .find(|f| !used(f))
-        .unwrap_or(folder)
-}
-
 /// The date and time now, as logs write it: `2026-11-06 19:30:05`.
 pub fn now_for_logs() -> String {
     chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
@@ -189,6 +191,13 @@ pub struct ExportRequest {
     pub playtest: Playtest,
     /// The folder it goes in (made; it must be empty if it's there).
     pub folder: PathBuf,
+    /// Whether the window filled the folder in itself (its dated
+    /// suggestion, or where the last export went) and it wasn't changed.
+    /// Such a folder with files in already (an export earlier the same
+    /// day) isn't refused: the export goes in the first of `folder (2)`,
+    /// `folder (3)`… without any. The app finds that out, on the
+    /// export's own thread, since the window never looks at the disk.
+    pub suggested: bool,
 }
 
 /// File > Export for playtesting…, while it's open.
@@ -196,6 +205,9 @@ pub struct ExportRequest {
 pub(crate) struct ExportWindow {
     playtest: Playtest,
     folder: String,
+    /// The folder as the window filled it in itself: while `folder` still
+    /// says this, the export may go beside it ([`ExportRequest::suggested`]).
+    suggested: String,
     /// What happened to the last export: where it went, or why it didn't.
     done: Option<Result<PathBuf, String>>,
     /// Exporting now.
@@ -212,6 +224,14 @@ impl Workbench {
     /// the project), for the window to start from.
     pub fn set_last_export(&mut self, last: Option<Playtest>) {
         self.last_export = last;
+    }
+
+    /// Remembers where the project was last exported on this computer,
+    /// for the window to suggest a folder beside it. The app keeps it in
+    /// its own saved settings, never in the project. Anything but a whole
+    /// path on this computer's own drives ([`local_folder`]) is dropped.
+    pub fn set_last_export_folder(&mut self, folder: Option<PathBuf>) {
+        self.last_export_folder = folder.filter(|f| local_folder(f));
     }
 
     /// The Documents folder, for exports to go in by default.
@@ -247,7 +267,9 @@ impl Workbench {
                 .unwrap_or_default();
         }
         let date = chrono::Local::now().format("%Y-%m-%d").to_string();
-        let folder = match (&playtest.folder, &self.documents) {
+        // Only named here, never looked at: whether it's there, or has
+        // files in, is the app's to find out once Export is pressed.
+        let folder = match (&self.last_export_folder, &self.documents) {
             // A new dated folder beside the last, so old builds stay.
             (Some(last), _) if last.parent().is_some() => last
                 .parent()
@@ -260,10 +282,11 @@ impl Workbench {
                 .map(|p| default_folder(p, &playtest.name, &date))
                 .unwrap_or_default(),
         };
-        let folder = unused(folder);
+        let folder = folder.display().to_string();
         self.export_window = Some(ExportWindow {
             playtest,
-            folder: folder.display().to_string(),
+            suggested: folder.clone(),
+            folder,
             done: None,
             busy: false,
         });
@@ -306,9 +329,11 @@ impl Workbench {
         }
         if let Some(window) = &mut self.export_window {
             window.busy = false;
-            // Exporting again goes in a folder of its own.
+            // Exporting again goes in a folder of its own, beside this
+            // one.
             if let Ok(folder) = &outcome {
-                window.folder = unused(folder.clone()).display().to_string();
+                window.folder = folder.display().to_string();
+                window.suggested = window.folder.clone();
             }
             window.done = Some(outcome);
         }
@@ -391,7 +416,8 @@ fn contents(
             ui.horizontal(|ui| {
                 ui.add(egui::TextEdit::singleline(&mut window.folder).desired_width(280.0))
                     .on_hover_text(
-                        "Made for the export; a folder that has files in already isn't used",
+                        "Made for the export. A folder that has files in already isn't used: \
+                         the suggested one gets a number, (2), and one you chose is refused",
                     );
                 if ui.button("…").on_hover_text("Choose the folder").clicked() {
                     actions.push(WorkbenchAction::ChooseExportFolder);
@@ -462,7 +488,7 @@ fn contents(
             ui.horizontal(|ui| {
                 ui.label(format!("Exported to {}.", folder.display()));
                 if ui.button("Open folder").clicked() {
-                    actions.push(WorkbenchAction::OpenExternally(folder.clone()));
+                    actions.push(WorkbenchAction::ShowFolder(folder.clone()));
                 }
             });
         }
@@ -499,13 +525,12 @@ fn contents(
             };
             if export.clicked() {
                 window.playtest.name = game_name(&window.playtest.name);
-                let folder = PathBuf::from(window.folder.trim());
-                window.playtest.folder = Some(folder.clone());
                 window.busy = true;
                 window.done = None;
                 actions.push(WorkbenchAction::ExportPlaytest(ExportRequest {
                     playtest: window.playtest.clone(),
-                    folder,
+                    folder: PathBuf::from(window.folder.trim()),
+                    suggested: window.folder == window.suggested,
                 }));
             }
             let done = window.done.as_ref().is_some_and(Result::is_ok);

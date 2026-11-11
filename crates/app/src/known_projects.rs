@@ -1,11 +1,13 @@
 //! Every project Solis knows, for the launcher ([decision
 //! 0086](../../../docs/decisions/0086-the-launcher.md)): where each is,
-//! whether it's pinned, and when it was last opened. Kept between runs;
+//! whether it's pinned, when it was last opened, and where on this
+//! computer it was last exported for playtesting. Kept between runs;
 //! the list as it was before the launcher (eight recent folders) is read
 //! once into it. Nothing here touches a project's files: removing one from
 //! the list only forgets it.
 
 use editor::KnownProject;
+use editor::export_dialog::local_folder;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -27,6 +29,12 @@ pub struct Known {
     /// Its name when last read, shown while its folder can't be found.
     #[serde(default)]
     pub name: Option<String>,
+    /// The folder it was last exported to for playtesting, if it was.
+    /// Kept here, in the program's own settings, and never in the
+    /// project: a project from someone else mustn't say where on this
+    /// computer (or on which other computer) its export goes.
+    #[serde(default)]
+    pub exported_to: Option<PathBuf>,
 }
 
 /// The list, most recently opened first.
@@ -45,7 +53,8 @@ pub fn now() -> u64 {
 impl KnownProjects {
     /// The list as saved, or, the first time, the recent projects saved
     /// before the launcher (newest first). Empty folders and repeats are
-    /// dropped.
+    /// dropped, and so is an export folder that isn't a whole path on
+    /// this computer's own drives (saved settings can be changed too).
     pub fn from_saved(saved: Option<Vec<Known>>, older_recent: Vec<PathBuf>) -> Self {
         let list = saved.unwrap_or_else(|| {
             older_recent
@@ -55,14 +64,16 @@ impl KnownProjects {
                     pinned: false,
                     last_opened: None,
                     name: None,
+                    exported_to: None,
                 })
                 .collect()
         });
         let mut known = Self::default();
-        for entry in list {
+        for mut entry in list {
             if entry.root.as_os_str().is_empty() || known.find(&entry.root).is_some() {
                 continue;
             }
+            entry.exported_to = entry.exported_to.filter(|f| local_folder(f));
             known.list.push(entry);
         }
         known.trim();
@@ -79,22 +90,38 @@ impl KnownProjects {
     }
 
     /// Notes that the project in `root` (called `name`) was opened at
-    /// `when`: it goes to the top, keeping its pin.
+    /// `when`: it goes to the top, keeping its pin and where it was last
+    /// exported.
     pub fn opened(&mut self, root: &Path, name: &str, when: u64) {
-        let pinned = match self.find(root) {
-            Some(at) => self.list.remove(at).pinned,
-            None => false,
-        };
+        let before = self.find(root).map(|at| self.list.remove(at));
         self.list.insert(
             0,
             Known {
                 root: root.to_path_buf(),
-                pinned,
+                pinned: before.as_ref().is_some_and(|k| k.pinned),
                 last_opened: Some(when),
                 name: Some(name.to_string()),
+                exported_to: before.and_then(|k| k.exported_to),
             },
         );
         self.trim();
+    }
+
+    /// Notes that the project in `root` was exported for playtesting to
+    /// `folder`, so the next export is suggested beside it. Only a whole
+    /// path on this computer's own drives is kept: an export to a folder
+    /// on another computer works, but isn't suggested again.
+    pub fn exported(&mut self, root: &Path, folder: &Path) {
+        if let Some(at) = self.find(root) {
+            self.list[at].exported_to = local_folder(folder).then(|| folder.to_path_buf());
+        }
+    }
+
+    /// Where the project in `root` was last exported for playtesting on
+    /// this computer, if it was.
+    pub fn exported_to(&self, root: &Path) -> Option<&Path> {
+        let known = &self.list[self.find(root)?];
+        known.exported_to.as_deref()
     }
 
     /// Pins or unpins the project in `root`.
@@ -115,6 +142,7 @@ impl KnownProjects {
             pinned: false,
             last_opened: None,
             name: None,
+            exported_to: None,
         });
         true
     }
@@ -311,6 +339,7 @@ mod tests {
             pinned: false,
             last_opened: Some(1),
             name: None,
+            exported_to: None,
         }
     }
 

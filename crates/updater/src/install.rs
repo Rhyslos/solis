@@ -1,6 +1,7 @@
 //! This copy of the program: its build number, whether the installer put
 //! it here, where updates are downloaded, and starting an installer.
 
+use crate::check::Copy;
 use std::path::{Path, PathBuf};
 
 /// The file the installer leaves beside the program, so the program knows
@@ -58,7 +59,11 @@ pub fn installer_arguments(relaunch: bool) -> Vec<&'static str> {
 
 /// Starts the downloaded installer at `installer` and returns at once; the
 /// program should close straight after, so the installer can replace it.
-pub fn start_installer(installer: &Path, relaunch: bool) -> Result<(), String> {
+/// Nothing is started for a `copy` that may not update itself
+/// ([`Copy::may_update`]): the installer runs without a window, so it
+/// would put a second copy on the computer with nothing said.
+pub fn start_installer(copy: &Copy, installer: &Path, relaunch: bool) -> Result<(), String> {
+    copy.may_update()?;
     if !installer.is_file() {
         return Err(format!("the update at {} is gone", installer.display()));
     }

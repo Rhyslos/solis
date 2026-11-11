@@ -3,6 +3,7 @@
 
 use crate::area_file::{AreaFiles, Purpose};
 use crate::branding;
+use crate::external::{External, Handed, open_externally};
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, FolderFor, Importer};
 use crate::project::Projects;
@@ -286,7 +287,7 @@ impl App {
             queued: VecDeque::new(),
             title: String::new(),
             messages: crate::logger::install(),
-            updates: crate::updates::Updates::new(pending, skipped),
+            updates: crate::updates::Updates::new(pending, skipped, copy.clone()),
             text_files: crate::text_files::TextFiles::default(),
             tidying: Default::default(),
             startup: playtest.is_none().then_some(startup),
@@ -501,6 +502,11 @@ impl App {
                 self.workbench.set_project(Some(opened.info));
                 self.workbench
                     .set_last_export(crate::playtest::last_export(root));
+                // Where it went is this computer's knowledge, never the
+                // project's own file's.
+                let exported_to = self.projects.known().exported_to(root);
+                self.workbench
+                    .set_last_export_folder(exported_to.map(Path::to_path_buf));
                 // Its input actions (decision 0037).
                 let (bindings, note) = crate::play_files::load_bindings(root);
                 self.workbench.set_bindings(bindings);
@@ -1017,7 +1023,7 @@ impl App {
                     self.list_projects();
                 }
                 WorkbenchAction::ShowProject(root) => {
-                    if let Err(why) = open_externally(&root) {
+                    if let Err(why) = open_externally(External::Folder(&root)) {
                         self.workbench
                             .launcher_notice(format!("Couldn't show {}: {why}.", root.display()));
                     }
@@ -1370,10 +1376,35 @@ impl App {
                     }
                 }
                 WorkbenchAction::OpenExternally(path) => {
-                    if let Err(why) = open_externally(&path) {
-                        self.workbench.log(
+                    let assets = self.projects.db().map(|db| db.project().assets());
+                    let want = External::InProject {
+                        path: &path,
+                        assets: assets.as_deref(),
+                    };
+                    match open_externally(want) {
+                        // A file was asked for, and the rule showed its
+                        // folder instead.
+                        Ok(Handed::Shown(folder)) if folder != path => self.workbench.log(
+                            LogLevel::Info,
+                            format!(
+                                "Showing {} in its folder: {} doesn't open this kind of file \
+                                 in another program.",
+                                file_name(&path),
+                                branding::APP_NAME
+                            ),
+                        ),
+                        Ok(_) => {}
+                        Err(why) => self.workbench.log(
                             LogLevel::Error,
                             format!("Couldn't open {}: {why}.", file_name(&path)),
+                        ),
+                    }
+                }
+                WorkbenchAction::ShowFolder(folder) => {
+                    if let Err(why) = open_externally(External::Folder(&folder)) {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't show {}: {why}.", folder.display()),
                         );
                     }
                 }
@@ -1892,7 +1923,7 @@ impl App {
                 log::warn!("couldn't open the download page: {why}");
             }
             startup.answer(answer, |release| {
-                crate::updates::start_download(&ctx, release)
+                crate::updates::start_download(&ctx, crate::updates::this_copy(), release)
             });
         }
         let doing = startup.doing();
@@ -2371,26 +2402,6 @@ fn explain_panic(payload: &(dyn std::any::Any + Send)) -> String {
     }
 }
 
-/// Opens a file in the program the computer chooses for it, or shows a
-/// folder. A folder goes straight to Explorer on Windows, so it can never
-/// be taken for a program to run (if it vanished and a file of a similar
-/// name took its place, say).
-fn open_externally(path: &std::path::Path) -> std::io::Result<()> {
-    let meta = std::fs::metadata(path)?;
-    if meta.is_dir() {
-        #[cfg(windows)]
-        {
-            return std::process::Command::new("explorer.exe")
-                .arg(path)
-                .spawn()
-                .map(|_| ());
-        }
-    } else if !meta.is_file() {
-        return Err(std::io::Error::other("it isn't a file or a folder"));
-    }
-    opener::open(path).map_err(std::io::Error::other)
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -2436,6 +2447,7 @@ mod tests {
     }
 
     use super::*;
+    use eframe::Storage as _;
 
     #[test]
     fn the_same_folder_is_recognised_however_its_written() {
@@ -2486,5 +2498,134 @@ mod tests {
             assert_eq!(saved_editor_size(&storage), FIRST_SIZE, "{odd:?}");
         }
         const { assert!(LAUNCHER_SIZE[0] >= MIN_SIZE[0] && LAUNCHER_SIZE[1] >= MIN_SIZE[1]) };
+    }
+
+    /// The known projects as the settings in `storage` hold them.
+    fn saved_known(storage: &Memory) -> crate::known_projects::KnownProjects {
+        crate::known_projects::KnownProjects::from_saved(
+            eframe::get_value(storage, KNOWN_PROJECTS_KEY),
+            Vec::new(),
+        )
+    }
+
+    /// A whole path on this computer, as each system writes one.
+    fn local(path: &str) -> PathBuf {
+        if cfg!(windows) {
+            PathBuf::from(format!("C:{}", path.replace('/', "\\")))
+        } else {
+            PathBuf::from(path)
+        }
+    }
+
+    /// SEC-04: where a game was last exported is kept in the program's
+    /// own settings, for each project, and comes back as saved.
+    #[test]
+    fn where_each_project_was_exported_comes_back_from_the_settings() {
+        let (farm, town) = (local("/projects/farm"), local("/projects/town"));
+        let out = local("/home/me/Documents/Farm exports/Farm playtest 2026-11-06");
+        let mut known = crate::known_projects::KnownProjects::default();
+        known.opened(&town, "Town", 1);
+        known.opened(&farm, "Farm", 2);
+        assert_eq!(known.exported_to(&farm), None, "never exported");
+        known.exported(&farm, &out);
+        known.exported(&local("/projects/unknown"), &out);
+        let mut storage = Memory::default();
+        eframe::set_value(&mut storage, KNOWN_PROJECTS_KEY, &known.saved());
+        let mut back = saved_known(&storage);
+        assert_eq!(back, known);
+        assert_eq!(back.exported_to(&farm), Some(out.as_path()));
+        assert_eq!(back.exported_to(&town), None, "each project its own");
+        assert_eq!(back.exported_to(&local("/projects/unknown")), None);
+        // Opened again, pinned, moved: still remembered. Forgotten: gone.
+        back.opened(&farm, "Farm", 3);
+        back.pin(&farm, true);
+        let moved = local("/projects/moved");
+        back.relocate(&farm, &moved);
+        assert_eq!(back.exported_to(&moved), Some(out.as_path()));
+        back.forget(&moved);
+        assert_eq!(back.exported_to(&moved), None);
+        // An export to another computer's folder isn't kept for next time.
+        back.exported(&town, &out);
+        back.exported(&town, Path::new(r"\\server.example\share\Town playtest"));
+        assert_eq!(back.exported_to(&town), None);
+        // Settings saved before this was kept there read as never exported.
+        storage.set_string(
+            KNOWN_PROJECTS_KEY,
+            r#"[(root:"/projects/farm",pinned:true,last_opened:Some(5),name:Some("Farm"))]"#
+                .to_string(),
+        );
+        let older = saved_known(&storage);
+        assert_eq!(older.saved().len(), 1);
+        assert!(older.saved()[0].pinned);
+        assert_eq!(older.exported_to(Path::new("/projects/farm")), None);
+    }
+
+    /// Saved settings changed by hand (or by something else) never bring
+    /// back a folder on another computer, or one that goes up.
+    #[test]
+    fn a_changed_settings_file_never_names_another_computer_s_folder() {
+        let mut storage = Memory::default();
+        for bad in [
+            r"\\\\server.example\\share\\x",
+            "//server.example/share/x",
+            r"\\\\?\\C:\\x",
+            "relative/x",
+            "/home/me/../../x",
+            "",
+        ] {
+            storage.set_string(
+                KNOWN_PROJECTS_KEY,
+                format!(r#"[(root:"/projects/farm",exported_to:Some("{bad}"))]"#),
+            );
+            let known = saved_known(&storage);
+            assert_eq!(known.saved().len(), 1, "{bad}");
+            assert_eq!(
+                known.exported_to(Path::new("/projects/farm")),
+                None,
+                "{bad}"
+            );
+        }
+    }
+
+    /// A small fuzz: the saved list cut short and changed in many ways
+    /// never panics, and any export folder that reads is one of this
+    /// computer's own.
+    #[test]
+    fn damaged_saved_projects_never_crash() {
+        let mut known = crate::known_projects::KnownProjects::default();
+        known.opened(&local("/projects/town"), "Town", 1);
+        known.opened(&local("/projects/farm"), "Farm", 2);
+        known.exported(&local("/projects/farm"), &local("/home/me/Farm exports/x"));
+        let mut storage = Memory::default();
+        eframe::set_value(&mut storage, KNOWN_PROJECTS_KEY, &known.saved());
+        let text = storage.get_string(KNOWN_PROJECTS_KEY).unwrap();
+        let bytes = text.as_bytes();
+        let mut seed = 0x5EED_0404u64;
+        let mut read = 0;
+        for _ in 0..5_000 {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            let mut broken = bytes.to_vec();
+            if seed & 3 == 0 {
+                broken.truncate(1 + (seed >> 2) as usize % bytes.len());
+            }
+            for turn in 0..1 + (seed >> 62) {
+                let at = (seed >> (10 + 9 * turn)) as usize % broken.len();
+                broken[at] = b"\\/.\":,()[]?N \n"[(seed >> (44 + 4 * turn)) as usize % 14];
+            }
+            storage.set_string(
+                KNOWN_PROJECTS_KEY,
+                String::from_utf8_lossy(&broken).into_owned(),
+            );
+            let known = saved_known(&storage);
+            for entry in known.saved() {
+                read += 1;
+                if let Some(folder) = &entry.exported_to {
+                    assert!(editor::export_dialog::local_folder(folder), "{folder:?}");
+                }
+            }
+        }
+        assert!(read > 0, "some damaged lists still read");
     }
 }

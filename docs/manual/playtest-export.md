@@ -12,7 +12,7 @@ It's a **playtest** build, made in seconds, because the game's Lust and Lua code
 
 1. Open your project, and save the area your game starts in.
 2. Choose **File > Export for playtesting…** (or search for it).
-3. Check the settings (see the table below). They start from your project's name and the open area, and next time from what you chose last.
+3. Check the settings (see the table below). They start from your project's name and the open area, and next time from what you chose last. The name, area and window are remembered with the project. The folder is remembered by Solis on this computer, so a project you got from someone else never decides where its export goes.
 4. Click **Export**. The window and the [Console](console.md) say where it went. Click **Open folder** to see it.
 5. Zip that folder (in Windows Explorer, right-click it, then **Send to > Compressed (zipped) folder**) and send the zip.
 
@@ -41,7 +41,7 @@ Your friend unzips it (all of it, somewhere they can write, such as their Docume
 |---|---|
 | Game's name | The program's name (`Farm.exe`), the window's title, and the player's saves folder (`Saved Games/Farm`). Characters Windows can't use in file names are taken out. Keep it the same between builds, so saves carry over. |
 | Starts in | The area the game opens in. |
-| Into the folder | Where the export goes. Each export gets a new dated folder, so older builds stay. A folder that already has files in it isn't used, and nor is one inside your project. Click **…** to choose. |
+| Into the folder | Where the export goes. Solis suggests a new dated folder each time, beside your last export (in Documents the first time), so older builds stay. A folder that already has files in it isn't used, and nor is one inside your project. If the suggested folder has files in already (a second export the same day), the export goes in a numbered folder beside it, ending `(2)`, then `(3)`; the window and the Console say which. A folder you typed or chose with **…** is used exactly as given, or refused. Solis doesn't look inside any folder until you click **Export**. |
 | Window | **Windowed** or **Fullscreen**, and the window's size, when the game first starts. After that, the player's own choice (in your game's menu, or with Alt+Enter) is kept. |
 
 ## Shortcuts
@@ -55,7 +55,9 @@ In an exported game, every key is the game's, Esc included.
 ## Tips and common problems
 
 - **Problem:** the game says "The game can't start: its code has mistakes." **Why:** the exported code doesn't compile. **Fix:** fix the mistakes in the Problems panel, then export again.
-- **Problem:** "already has files in it". **Why:** exports never mix with, or replace, anything. **Fix:** choose a new folder, or empty that one.
+- **Problem:** "already has files in it". **Why:** exports never mix with, or replace, anything, and a folder you chose yourself is never swapped for another. **Fix:** choose a new folder, or empty that one.
+- **Problem:** after updating Solis, the window suggests a folder in Documents again, not beside your last export. **Why:** where a game went used to be written in the project's own folder. A project can come from someone else, so that file could point your export at a folder of their choosing, even one on another computer. Solis now remembers it itself, on this computer, and no longer reads it from the project. **Fix:** choose your folder once more; it's remembered from then on.
+- **Problem:** you exported to a folder on another computer (`\\server\share\…`), and next time the window suggests Documents. **Why:** only a folder on this computer's own drives is suggested again, so opening the window never reaches for another computer. **Fix:** type or choose the network folder each time.
 - **Problem:** the game says "The game's files can't be read", or "The game stopped". **Why:** the `game` folder is missing or damaged, or it's somewhere the game can't write (the first start writes a cache into `game/`). **Fix:** unzip the whole export again, somewhere like Documents. The message names the log with more.
 - **Problem:** the export is big. **Why:** it holds the program and everything in the project's assets, used or not. **Fix:** move files the game doesn't use out of the assets.
 - **Problem:** Windows warns about the program when your friend opens it. **Why:** it isn't signed, as programs from big companies are. **Fix:** they choose **More info > Run anyway**. Send builds only to people who trust you.

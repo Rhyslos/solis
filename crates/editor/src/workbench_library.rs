@@ -222,19 +222,12 @@ impl Workbench {
                 if !self.screen_doc.as_ref().is_some_and(|d| d.path == path)
                     && self.open_screen(&path, None) => {}
             LibraryRequest::Open(kind, path) => {
-                // Only kinds whose program is known to just show or edit
-                // them open in it (a picture viewer, a text editor for
-                // Lust); anything else, such as a file called
-                // "brick.png.exe" or a .lua file another program might
-                // run, is shown in its folder instead, never opened.
-                let opens = match kind {
-                    // Text files only ever show text: a .md opens in
-                    // the computer's Markdown program (Ledger), never runs.
-                    LibraryKind::Texture | LibraryKind::Text => true,
-                    LibraryKind::Code => path.to_lowercase().ends_with(".lst"),
-                    _ => false,
-                };
-                if opens {
+                // Which files open in another program is one rule, kept
+                // in `LibraryKind::opens_in_its_program`; anything else is
+                // shown in its folder instead, never opened. It's asked
+                // here to say what will happen; the app asks it again
+                // before it hands anything over.
+                if kind.opens_in_its_program(&path) {
                     actions.push(WorkbenchAction::OpenExternally(full(&path)));
                     // Said once a session: which program opens Lust is the
                     // computer's choice, and it should be an editor.
@@ -354,10 +347,17 @@ impl Workbench {
     /// its folder there, and shows it in Properties if it's a sound or
     /// sound event (the app calls this after making a new sound event).
     pub fn show_in_library(&mut self, path: &str) {
+        self.pick_in_library(path);
+        self.sound_shown = Some((path.to_owned(), self.document.selection.clone()));
+    }
+
+    /// Picks the file at `path` (inside the assets) in the Library and
+    /// opens its folder there, with the Library's own search cleared so
+    /// the file is in view.
+    pub(crate) fn pick_in_library(&mut self, path: &str) {
         self.library_state.folder = path.rsplit_once('/').map_or("", |(f, _)| f).to_owned();
         self.library_state.search.clear();
         self.library_state.selected = Some(path.to_owned());
-        self.sound_shown = Some((path.to_owned(), self.document.selection.clone()));
     }
 
     /// The project's sprite sheets as the app has read them (Phase 9, D2).
@@ -587,7 +587,7 @@ impl Workbench {
 /// Whether `path` is a plain path inside a folder: parts separated by `/`
 /// (or a backslash), none empty, `.` or `..`, and no drive (`:`), so joined to a
 /// folder it stays inside it on every system.
-pub(crate) fn plain_relative(path: &str) -> bool {
+pub fn plain_relative(path: &str) -> bool {
     !path.is_empty()
         && !path.contains(':')
         && path

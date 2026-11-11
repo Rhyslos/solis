@@ -171,3 +171,165 @@ fn workspaces_can_be_switched_from_the_search() {
         "the one in use isn't offered"
     );
 }
+
+const ASSETS: &str = "/projects/farm/assets";
+
+/// A project with a file of each kind the search lists.
+fn with_files() -> Workbench {
+    use crate::library::{LibraryItem, LibraryKind as K, ProjectInfo};
+    let mut w = fresh();
+    w.set_project(Some(ProjectInfo {
+        name: "Farm".into(),
+        root: "/projects/farm".into(),
+        assets: ASSETS.into(),
+    }));
+    w.set_folders(vec![
+        "ai".into(),
+        "maps".into(),
+        "notes".into(),
+        "props".into(),
+        "sprites".into(),
+    ]);
+    w.set_library(
+        [
+            ("props/ship.glb", K::Model),
+            ("props/tower.solassembly", K::Assembly),
+            ("sprites/hero.aseprite", K::SpriteSheet),
+            ("maps/farm.tilemap.lst", K::TileMap),
+            ("props/brick.png", K::Texture),
+            ("ai/sparks.lua", K::Code),
+            ("main.lst", K::Code),
+            ("notes/plan.md", K::Text),
+            ("props/brick.png.exe", K::Other),
+            ("step.wav", K::Sound),
+        ]
+        .into_iter()
+        .map(|(path, kind)| LibraryItem {
+            id: Some(reflect::AssetId::random()),
+            kind,
+            name: crate::sprite_sheets::name_of(path),
+            path: path.into(),
+            thumbnail: None,
+        })
+        .collect(),
+    );
+    w
+}
+
+/// What choosing the file at `path` in the search asks the app for.
+fn choose(w: &mut Workbench, path: &str) -> Vec<WorkbenchAction> {
+    let item = w
+        .search_items()
+        .into_iter()
+        .find(|i| matches!(&i.target, SearchTarget::File(_, p) if p == path))
+        .unwrap_or_else(|| panic!("{path} isn't listed"));
+    let mut actions = Vec::new();
+    w.do_search(item.target, &egui::Context::default(), &mut actions);
+    actions
+}
+
+#[test]
+fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_nothing() {
+    // SEC-05: a model, assembly, sprite sheet, tile map or picture chosen
+    // in the search was handed, file and all, to whatever program the
+    // computer has for it, where it was meant to be shown in the Library.
+    for (path, folder) in [
+        ("props/ship.glb", "props"),
+        ("props/tower.solassembly", "props"),
+        ("sprites/hero.aseprite", "sprites"),
+        ("maps/farm.tilemap.lst", "maps"),
+        ("props/brick.png", "props"),
+    ] {
+        let mut w = with_files();
+        // Whatever the Library was showing, the file is found there.
+        w.library_state.folder = "notes".into();
+        w.library_state.search = "plan".into();
+        w.library_state.filter = crate::library::Filter::Sounds;
+        w.set_library_pinned(false);
+        let actions = choose(&mut w, path);
+        assert_eq!(actions, [], "{path}: nothing is asked of the app");
+        assert_eq!(w.library_state.selected.as_deref(), Some(path));
+        assert_eq!(w.library_state.folder, folder, "{path}: its folder is open");
+        assert!(w.library_state.search.is_empty(), "{path}");
+        assert_eq!(
+            w.library_state.filter,
+            crate::library::Filter::All,
+            "{path}: no chip hides it"
+        );
+        assert!(w.drawer_open, "{path}: the Library comes up");
+    }
+}
+
+#[test]
+fn a_file_chosen_to_place_shows_in_properties_as_a_click_in_the_library_would() {
+    // A sprite sheet and a tile map have a page in Properties; a model has
+    // none, and mustn't be taken for a sound.
+    let mut w = with_files();
+    choose(&mut w, "sprites/hero.aseprite");
+    assert_eq!(
+        w.sound_shown.as_ref().map(|(path, _)| path.as_str()),
+        Some("sprites/hero.aseprite")
+    );
+    choose(&mut w, "maps/farm.tilemap.lst");
+    assert_eq!(
+        w.sound_shown.as_ref().map(|(path, _)| path.as_str()),
+        Some("maps/farm.tilemap.lst")
+    );
+    let mut w = with_files();
+    choose(&mut w, "props/ship.glb");
+    assert_eq!(w.sound_shown, None);
+    // A chip that shows the file is left as it is.
+    w.library_state.filter = crate::library::Filter::Models;
+    choose(&mut w, "props/tower.solassembly");
+    assert_eq!(w.library_state.filter, crate::library::Filter::Models);
+}
+
+#[test]
+fn choosing_any_other_file_opens_it_only_if_its_kind_may_open_in_another_program() {
+    // The same rule as a double-click in the Library: Lust and text open,
+    // a .lua file, a sound and a file that isn't what it seems show their
+    // folder.
+    let full = |inside: &str| WorkbenchAction::OpenExternally(format!("{ASSETS}/{inside}").into());
+    for (path, asked) in [
+        ("main.lst", full("main.lst")),
+        ("notes/plan.md", full("notes/plan.md")),
+        ("ai/sparks.lua", full("ai")),
+        ("props/brick.png.exe", full("props")),
+        ("step.wav", WorkbenchAction::OpenExternally(ASSETS.into())),
+    ] {
+        let mut w = with_files();
+        assert_eq!(choose(&mut w, path), [asked], "{path}");
+    }
+}
+
+#[test]
+fn enter_on_a_model_in_the_search_shows_it_in_the_library_and_opens_nothing() {
+    let mut w = with_files();
+    w.library_state.folder = "notes".into();
+    // Another tab is in front of the Library, which is pinned.
+    crate::layout::bring_to_front(&mut w.dock, Panel::Console);
+    let mut h = harness(w);
+    h.run();
+    h.key_press(egui::Key::Space);
+    h.run();
+    h.run();
+    h.get_by_label("Search").type_text("ship");
+    h.run();
+    h.key_press(egui::Key::Enter);
+    h.run();
+    h.run();
+    assert!(!h.state().0.search.open);
+    assert!(
+        !h.state().1.actions.iter().any(|a| matches!(
+            a,
+            WorkbenchAction::OpenExternally(_) | WorkbenchAction::ShowFolder(_)
+        )),
+        "{:?}",
+        h.state().1.actions
+    );
+    let w = &h.state().0;
+    assert_eq!(w.library_state.selected.as_deref(), Some("props/ship.glb"));
+    assert_eq!(w.library_state.folder, "props");
+    // Its tab came to the front, with the file in view.
+    let _ = h.get_by_label("ship");
+}

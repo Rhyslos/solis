@@ -151,6 +151,28 @@ impl LibraryKind {
             Self::SpriteClips | Self::Animator | Self::Tileset | Self::Atlas
         )
     }
+
+    /// Whether a file of this kind at `path` may be opened in the program
+    /// the computer has for it. A project can come from anyone, so only
+    /// kinds whose program just shows or edits them do (a picture viewer,
+    /// a text editor for notes, data and Lust). Anything else, such as a
+    /// file called "brick.png.exe" or a `.lua` file a program on the
+    /// computer might run outside the sandbox, is shown in its folder
+    /// instead, never opened.
+    ///
+    /// This is the only copy of the rule. The editor asks it to say what
+    /// will happen; the app asks it again, about the kind the file's own
+    /// name gives, at the one place anything is handed to another program,
+    /// so no way of asking can skip it.
+    pub fn opens_in_its_program(self, path: &str) -> bool {
+        match self {
+            // Text files only ever show text: a .md opens in the
+            // computer's Markdown program (Ledger), never runs.
+            Self::Texture | Self::Text => true,
+            Self::Code => path.to_lowercase().ends_with(".lst"),
+            _ => false,
+        }
+    }
 }
 
 /// The Library's filter chips (decision 0085): every file, or one group

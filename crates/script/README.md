@@ -33,7 +33,7 @@ Game code ([decision 0028](../../docs/decisions/0028-lust-runs-as-luau-while-edi
 - Crash on any code, however damaged: a panic inside the compiler is caught and reported as a mistake (fuzz-tested).
 - Read files beyond its limits, or follow links to folders (they could loop).
 - Let game code reach files, programs or the network (Luau has none of these).
-- Run game code with no deadline, or let it change what other game code relies on (the libraries, `solis`, another file's globals).
+- Run game code with no deadline, or let it change what other game code relies on (the libraries, `solis`, another file's globals, or the globals of a function that isn't its own: there is no `getfenv` or `setfenv`). Solis's own Lua is all made before any game code runs (`Luau::new`), never later from globals game code might have reached.
 - Let game code's text escape its memory limit without a cap (said lines, events, error messages, a screen's view).
 
 ## Depends on

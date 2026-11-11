@@ -2,6 +2,16 @@
 //! watcher on its assets folder, and the list of projects Solis knows
 //! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md),
 //! [decision 0086](../../../docs/decisions/0086-the-launcher.md)).
+//!
+//! It also saves the files the editors make and change. Every saver is
+//! told where by a path inside the assets, and finds the file through one
+//! function (`Projects::place`), which takes only a plain path there, of
+//! the saver's own kind: a path can't make one write outside the assets
+//! folder, or over another kind of file. The Library's file changes (a
+//! move, a delete, a new folder or sound event) keep to the same rule
+//! (`plain_inside`). Only [`Projects::open`] and [`Projects::bring_in`]
+//! take a path from anywhere on the computer: the user chose it there, in
+//! the system's own window or by dropping a file.
 
 use asset_db::{AssetDb, Change, FileKind, Listing, Project, Watcher};
 use editor::{LibraryItem, LibraryKind, ProjectInfo};
@@ -204,23 +214,7 @@ impl Projects {
             .iter()
             .map(|f| LibraryItem {
                 id: f.id,
-                kind: match f.kind {
-                    FileKind::Model => LibraryKind::Model,
-                    FileKind::Assembly => LibraryKind::Assembly,
-                    FileKind::Area => LibraryKind::Area,
-                    FileKind::Texture => LibraryKind::Texture,
-                    FileKind::Code => LibraryKind::Code,
-                    FileKind::Sound => LibraryKind::Sound,
-                    FileKind::SoundEvent => LibraryKind::SoundEvent,
-                    FileKind::SpriteSheet => LibraryKind::SpriteSheet,
-                    FileKind::SpriteClips => LibraryKind::SpriteClips,
-                    FileKind::Animator => LibraryKind::Animator,
-                    FileKind::Tileset => LibraryKind::Tileset,
-                    FileKind::TileMap => LibraryKind::TileMap,
-                    FileKind::Atlas => LibraryKind::Atlas,
-                    FileKind::Text => LibraryKind::Text,
-                    FileKind::Other => LibraryKind::Other,
-                },
+                kind: library_kind(f.kind),
                 // Files Solis doesn't know keep their whole name, so
                 // "brick.png.exe" never passes for "brick.png".
                 name: if matches!(f.kind, FileKind::Other | FileKind::Text) {
@@ -239,26 +233,39 @@ impl Projects {
     }
 
     /// Renames or moves a file or folder inside the assets, with its
-    /// sidecar.
+    /// sidecar. `from` is a plain path there (`plain_inside`), and `to`
+    /// a name in a folder there (`named_inside`).
     pub fn move_path(&self, from: &Path, to: &Path) -> Result<(), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
+        if !plain_inside(from) {
+            return Err(outside(from));
+        }
+        if !named_inside(to) {
+            return Err(outside(to));
+        }
         db.move_path(from, to).map_err(|e| e.to_string())
     }
 
-    /// Makes a new folder inside `parent` (inside the assets).
+    /// Makes a new folder inside `parent` (inside the assets; empty for
+    /// the assets folder itself).
     pub fn new_folder(&self, parent: &Path) -> Result<PathBuf, String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
+        if !assets_or_inside(parent) {
+            return Err(outside(parent));
+        }
         db.new_folder(parent).map_err(|e| e.to_string())
     }
 
-    /// Makes a new sound event in `folder` (inside the assets) holding
-    /// `text`, named "New sound event" (with a number if that's taken), and
-    /// gives it its ID at once. Returns where it is, inside the assets.
+    /// Makes a new sound event in `folder` (inside the assets; empty for
+    /// the assets folder itself) holding `text`, named "New sound event"
+    /// (with a number if that's taken), and gives it its ID at once.
+    /// Returns where it is, inside the assets.
     pub fn new_sound_event(&mut self, folder: &Path, text: &str) -> Result<PathBuf, String> {
         let db = self.db.as_mut().ok_or("no project is open")?;
         let assets = db.project().assets();
         let dir = assets.join(folder);
-        if !dir.is_dir() {
+        // The path is checked before the disk is asked about it.
+        if !assets_or_inside(folder) || !dir.is_dir() {
             return Err(format!("{} isn't a folder in the assets", folder.display()));
         }
         let ext = asset_db::SOUND_EVENT_EXTENSION;
@@ -280,153 +287,127 @@ impl Projects {
         Ok(folder.join(name))
     }
 
-    /// Saves a sound event's file (inside the assets). Only `.solsound`
-    /// files are written, so a bad path can't overwrite anything else.
-    pub fn save_sound_event(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+    /// Where the file at `path` (inside the assets) is on disk, for saving
+    /// `what` ("a clips file"). Every saver finds its file here, so none can
+    /// write outside the assets folder or over a file of another kind:
+    /// `path` must be a plain path inside the assets ([`plain_inside`])
+    /// whose name `is_kind` takes for that kind.
+    fn place(
+        &self,
+        path: &Path,
+        what: &str,
+        is_kind: impl FnOnce(&Path) -> bool,
+    ) -> Result<(&AssetDb, PathBuf), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
-        let is_event = path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case(asset_db::SOUND_EVENT_EXTENSION));
-        if !is_event || path.is_absolute() {
-            return Err("it isn't a sound event file in the assets".to_owned());
+        if !plain_inside(path) || !is_kind(path) {
+            return Err(format!("it isn't {what} in the assets"));
         }
-        let file = db.project().assets().join(path);
+        Ok((db, db.project().assets().join(path)))
+    }
+
+    /// Saves `text` as the file of `kind` at `path` (inside the assets). A
+    /// file there in an older format is copied to the backups first
+    /// (Phase 8, C1); gives back where it was kept, if it was.
+    fn save_versioned(
+        &self,
+        path: &Path,
+        text: &str,
+        kind: &Saved<'_>,
+    ) -> Result<Option<PathBuf>, String> {
+        let (db, file) = self.place(path, kind.what, kind.is)?;
         if !file.is_file() {
-            return Err("the file isn't there any more".to_owned());
+            if !kind.made_when_missing {
+                return Err("the file isn't there any more".to_owned());
+            }
+            folder_is_there(&file)?;
+            return asset_db::write_atomically(&file, text.as_bytes())
+                .map(|()| None)
+                .map_err(|e| e.to_string());
         }
-        // An older event is copied to the backups first (Phase 8, C1).
         crate::upgrades::save(
             db.project().root(),
             &file,
             text,
-            &sound::event::FORMAT,
-            |text| {
+            kind.format,
+            kind.read_back,
+        )
+    }
+
+    /// Saves a sound event's file (`.solsound`, inside the assets). Only
+    /// one that's there already: events are made by [`Self::new_sound_event`].
+    /// Gives back where an older one was kept, if it was.
+    pub fn save_sound_event(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+        let kind = Saved {
+            what: "a sound event file",
+            is: |path| ends_in(path, &[asset_db::SOUND_EVENT_EXTENSION]),
+            format: &sound::event::FORMAT,
+            made_when_missing: false,
+            read_back: |text| {
                 sound::event::read(text)
                     .map(|read| sound::event::write(&read.event))
                     .map_err(|e| e.to_string())
             },
-        )
+        };
+        self.save_versioned(path, text, &kind)
     }
 
     /// Saves a sprite's clips file (`.solframes`, inside the assets),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_frames(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let is_frames = animation::frames_file::is_frames_file(path);
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        if !is_frames || !plain {
-            return Err("it isn't a clips file in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
-        if !file.is_file() {
-            if let Some(folder) = file.parent()
-                && !folder.is_dir()
-            {
-                return Err("its folder isn't there any more".to_owned());
-            }
-            return asset_db::write_atomically(&file, text.as_bytes())
-                .map(|()| None)
-                .map_err(|e| e.to_string());
-        }
-        crate::upgrades::save(
-            db.project().root(),
-            &file,
-            text,
-            &animation::frames_file::FORMAT,
-            |text| {
+        let kind = Saved {
+            what: "a clips file",
+            is: animation::frames_file::is_frames_file,
+            format: &animation::frames_file::FORMAT,
+            made_when_missing: true,
+            read_back: |text| {
                 animation::frames_file::read(text)
                     .map(|read| animation::frames_file::write(&read.file))
                     .map_err(|e| e.to_string())
             },
-        )
+        };
+        self.save_versioned(path, text, &kind)
     }
 
     /// Saves an animator file (`.solanim`, inside the assets, Phase 9, D3b),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_animator(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let is_animator = animation::animator_file::is_animator_file(path);
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        if !is_animator || !plain {
-            return Err("it isn't an animator file in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
-        if !file.is_file() {
-            if let Some(folder) = file.parent()
-                && !folder.is_dir()
-            {
-                return Err("its folder isn't there any more".to_owned());
-            }
-            return asset_db::write_atomically(&file, text.as_bytes())
-                .map(|()| None)
-                .map_err(|e| e.to_string());
-        }
-        crate::upgrades::save(
-            db.project().root(),
-            &file,
-            text,
-            &animation::animator_file::FORMAT,
-            |text| {
+        let kind = Saved {
+            what: "an animator file",
+            is: animation::animator_file::is_animator_file,
+            format: &animation::animator_file::FORMAT,
+            made_when_missing: true,
+            read_back: |text| {
                 animation::animator_file::read(text)
                     .map(|read| animation::animator_file::write(&read.file))
                     .map_err(|e| e.to_string())
             },
-        )
+        };
+        self.save_versioned(path, text, &kind)
     }
 
     /// Saves a new picture (a PNG, Phase 9, D5: a tileset template) at
     /// `path` inside the assets. Never replaces a file already there.
     pub fn save_picture(&self, path: &Path, bytes: &[u8]) -> Result<(), String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let png = path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("png"));
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        if !png || !plain {
-            return Err("it isn't a picture in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
+        let (_, file) = self.place(path, "a picture", |path| ends_in(path, &["png"]))?;
         if file.exists() {
             return Err("a file is already there".to_owned());
         }
-        if let Some(folder) = file.parent()
-            && !folder.is_dir()
-        {
-            return Err("its folder isn't there any more".to_owned());
-        }
+        folder_is_there(&file)?;
         asset_db::write_atomically(&file, bytes).map_err(|e| e.to_string())
     }
 
     /// Makes a new text file inside the assets (E1): a Lust code file
     /// (`.lst`) or an area (`.solarea`). Never replaces a file.
     pub fn save_new_text(&self, path: &Path, text: &str) -> Result<(), String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let allowed = path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("lst") || e.eq_ignore_ascii_case("solarea"));
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        if !allowed || !plain {
-            return Err("it isn't a code file or an area in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
+        let (_, file) = self.place(path, "a code file or an area", |path| {
+            ends_in(path, &["lst", "solarea"])
+        })?;
         if file.exists() {
             return Err("a file is already there".to_owned());
         }
-        if let Some(folder) = file.parent()
-            && !folder.is_dir()
-        {
-            return Err("its folder isn't there any more".to_owned());
-        }
+        folder_is_there(&file)?;
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
@@ -434,19 +415,10 @@ impl Projects {
     /// crops; decision 0089), making it if it isn't there. Version 1 is
     /// the only one, so there's no older one to keep.
     pub fn save_atlas(&self, path: &Path, text: &str) -> Result<(), String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        if !reflect::data_files::is(path, animation::atlas::KIND) || !plain {
-            return Err("it isn't an atlas file in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
-        if let Some(folder) = file.parent()
-            && !folder.is_dir()
-        {
-            return Err("its folder isn't there any more".to_owned());
-        }
+        let (_, file) = self.place(path, "an atlas file", |path| {
+            reflect::data_files::is(path, animation::atlas::KIND)
+        })?;
+        folder_is_there(&file)?;
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
@@ -454,17 +426,7 @@ impl Projects {
     /// the UI editor's canvas (decision 0089). Only a `.lst` file that's
     /// there already: the canvas changes screens, it never makes files.
     pub fn save_screen(&self, path: &Path, text: &str) -> Result<(), String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        let lust = path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("lst"));
-        if !plain || !lust {
-            return Err("it isn't a Lust file in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
+        let (_, file) = self.place(path, "a Lust file", |path| ends_in(path, &["lst"]))?;
         if !file.is_file() {
             return Err("it isn't there any more".to_owned());
         }
@@ -478,77 +440,44 @@ impl Projects {
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_tileset(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let is_animator = tiles::tileset::is_tileset_file(path);
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        if !is_animator || !plain {
-            return Err("it isn't a tileset in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
-        if !file.is_file() {
-            if let Some(folder) = file.parent()
-                && !folder.is_dir()
-            {
-                return Err("its folder isn't there any more".to_owned());
-            }
-            return asset_db::write_atomically(&file, text.as_bytes())
-                .map(|()| None)
-                .map_err(|e| e.to_string());
-        }
-        crate::upgrades::save(
-            db.project().root(),
-            &file,
-            text,
-            &tiles::tileset::FORMAT,
-            |text| {
+        let kind = Saved {
+            what: "a tileset",
+            is: tiles::tileset::is_tileset_file,
+            format: &tiles::tileset::FORMAT,
+            made_when_missing: true,
+            read_back: |text| {
                 tiles::tileset::read(text)
                     .map(|read| tiles::tileset::write(&read.tileset))
                     .map_err(|e| e.to_string())
             },
-        )
+        };
+        self.save_versioned(path, text, &kind)
     }
 
     /// Saves a tile map file (`.tilemap.lst`, inside the assets, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_tile_map(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
-        let db = self.db.as_ref().ok_or("no project is open")?;
-        let is_animator = tiles::map_file::is_map_file(path);
-        let plain = path
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)));
-        if !is_animator || !plain {
-            return Err("it isn't a tile map in the assets".to_owned());
-        }
-        let file = db.project().assets().join(path);
-        if !file.is_file() {
-            if let Some(folder) = file.parent()
-                && !folder.is_dir()
-            {
-                return Err("its folder isn't there any more".to_owned());
-            }
-            return asset_db::write_atomically(&file, text.as_bytes())
-                .map(|()| None)
-                .map_err(|e| e.to_string());
-        }
-        crate::upgrades::save(
-            db.project().root(),
-            &file,
-            text,
-            &tiles::map_file::FORMAT,
-            |text| {
+        let kind = Saved {
+            what: "a tile map",
+            is: tiles::map_file::is_map_file,
+            format: &tiles::map_file::FORMAT,
+            made_when_missing: true,
+            read_back: |text| {
                 tiles::map_file::read(text)
                     .map(|read| tiles::map_file::write(&read.map))
                     .map_err(|e| e.to_string())
             },
-        )
+        };
+        self.save_versioned(path, text, &kind)
     }
 
     /// Moves a file or folder (inside the assets) to the Recycle Bin.
     pub fn delete(&self, path: &Path) -> Result<(), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
+        if !plain_inside(path) {
+            return Err(outside(path));
+        }
         db.delete_to_trash(path).map_err(|e| e.to_string())
     }
 
@@ -575,6 +504,100 @@ impl Projects {
     }
 }
 
+/// A kind of file with a format version, as an editor saves it
+/// (`Projects::save_versioned`).
+struct Saved<'a> {
+    /// What it's called when a path isn't one ("a clips file").
+    what: &'a str,
+    /// Whether a path's name says it's one.
+    is: fn(&Path) -> bool,
+    /// Its format, which tells an older file from a current one.
+    format: &'a dyn reflect::upgrade::Versioned,
+    /// Whether saving makes the file when it isn't there. Where it
+    /// doesn't, a file that has gone is a mistake.
+    made_when_missing: bool,
+    /// Reads the text and writes it again, to check nothing is lost
+    /// (`upgrades::save`).
+    read_back: fn(&str) -> Result<String, String>,
+}
+
+/// Whether `path` is a plain path inside the assets: names only, with no
+/// `..`, root or drive, so joined to the assets folder it stays inside it
+/// on every system (`editor::plain_relative`). The one rule for a path a
+/// file is saved at or handed to another program by; a path that isn't
+/// text isn't one.
+pub(crate) fn plain_inside(path: &Path) -> bool {
+    path.to_str().is_some_and(editor::plain_relative)
+}
+
+/// Whether `path` is the assets folder itself (an empty path) or a plain
+/// path inside it ([`plain_inside`]): the rule where a folder is named.
+pub(crate) fn assets_or_inside(path: &Path) -> bool {
+    path.as_os_str().is_empty() || plain_inside(path)
+}
+
+/// Whether `to` is somewhere inside the assets to move a file or folder
+/// to: a name, in the assets folder itself or in a plain path inside it
+/// ([`plain_inside`]). Whether the name can be a file's is `asset_db`'s
+/// to say: its rule for a new name is stricter than this one (no `:` or
+/// slash of either kind either), and explains itself to whoever typed
+/// the name; a name that isn't new is `from`'s, which this rule passed.
+fn named_inside(to: &Path) -> bool {
+    let Some(to) = to.to_str() else {
+        return false;
+    };
+    let (folder, name) = match to.rsplit_once(['/', '\\']) {
+        Some((folder, name)) => (Some(folder), name),
+        None => (None, to),
+    };
+    folder.is_none_or(editor::plain_relative) && !matches!(name, "" | "." | "..")
+}
+
+/// The mistake a path that fails the rule is, in `asset_db`'s words for
+/// the same.
+fn outside(path: &Path) -> String {
+    format!(
+        "{} isn't inside the project's assets folder",
+        path.display()
+    )
+}
+
+/// Whether `path`'s name ends in one of `extensions`, in capitals or not.
+fn ends_in(path: &Path, extensions: &[&str]) -> bool {
+    path.extension()
+        .is_some_and(|e| extensions.iter().any(|x| e.eq_ignore_ascii_case(x)))
+}
+
+/// A mistake if the folder `file` is to be made in isn't there.
+fn folder_is_there(file: &Path) -> Result<(), String> {
+    match file.parent() {
+        Some(folder) if !folder.is_dir() => Err("its folder isn't there any more".to_owned()),
+        _ => Ok(()),
+    }
+}
+
+/// The Library's kind for a file of `kind` (what its name's ending says it
+/// is).
+pub fn library_kind(kind: FileKind) -> LibraryKind {
+    match kind {
+        FileKind::Model => LibraryKind::Model,
+        FileKind::Assembly => LibraryKind::Assembly,
+        FileKind::Area => LibraryKind::Area,
+        FileKind::Texture => LibraryKind::Texture,
+        FileKind::Code => LibraryKind::Code,
+        FileKind::Sound => LibraryKind::Sound,
+        FileKind::SoundEvent => LibraryKind::SoundEvent,
+        FileKind::SpriteSheet => LibraryKind::SpriteSheet,
+        FileKind::SpriteClips => LibraryKind::SpriteClips,
+        FileKind::Animator => LibraryKind::Animator,
+        FileKind::Tileset => LibraryKind::Tileset,
+        FileKind::TileMap => LibraryKind::TileMap,
+        FileKind::Atlas => LibraryKind::Atlas,
+        FileKind::Text => LibraryKind::Text,
+        FileKind::Other => LibraryKind::Other,
+    }
+}
+
 /// A path inside the assets with `/` between folders, as the Library shows
 /// it on every system.
 pub fn slashed(path: &Path) -> String {
@@ -583,6 +606,10 @@ pub fn slashed(path: &Path) -> String {
         .collect::<Vec<_>>()
         .join("/")
 }
+
+#[cfg(test)]
+#[path = "project_saving_tests.rs"]
+mod saving_tests;
 
 #[cfg(test)]
 mod tests {

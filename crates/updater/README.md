@@ -12,15 +12,16 @@ Find out whether a newer build has been published, download its installer, make 
 - `Source`: where to ask (the repository, the installer's name, the User-Agent). Its `latest` and `download` go through ureq over HTTPS checked by the system's certificates, with time and size limits. A download streams into a `.part` file while its SHA-256 is worked out, and is kept only if it matches.
 - `this_build`: the build number stamped in through `BUILD_NUMBER` when GitHub built this copy (none otherwise). `is_installed`: whether the installer's `installed.txt` sits beside the program. `updates_folder`: where downloads go.
 - `run` and `start`: one check, deciding from this copy (`Copy`) and what the `Remote` says. It never downloads, and ends in a `Status`: up to date, a newer build available (with what GitHub says of it), built from source, or failed (in plain words). `start` runs it on a thread and reports each step on a channel.
-- `download` and `start_download`: downloading a release the person chose (Update now), ending ready (with the installer) or failed (decision 0045).
+- `Copy::may_update`: whether this copy may update itself: only one the installer put there. A copy run from a build's zip has a build number, so a check finds newer builds for it (and the program can say so), but it never downloads or installs one.
+- `download` and `start_download`: downloading a release the person chose (Update now) into this copy's updates folder, ending ready (with the installer) or failed (decision 0045). They take the `Copy` and fail at once, asking GitHub nothing, when it may not update itself.
 - `should_offer`: whether to ask about a build when starting: not the one skipped with Skip this version (asking always does).
-- `start_installer`: runs the installer quietly (`installer_arguments`), and with `/RELAUNCH=1` after Restart to update.
+- `start_installer`: runs the installer quietly (`installer_arguments`), and with `/RELAUNCH=1` after Restart to update. It takes the `Copy` too, and starts nothing for one that may not update itself.
 
 ## Must never
 
 - Run on the window's thread: every check goes through `start`.
 - Install anything it hasn't checked against its published SHA-256, or download from anywhere but the repository's releases.
-- Update a copy that wasn't installed by the installer, or one built from source.
+- Update a copy that wasn't installed by the installer, or one built from source. `download`, `start_download` and `start_installer` refuse the first themselves (`Copy::may_update`), so no caller can leave the check out; a copy built from source has no build number, so a check never finds it a newer build.
 - Send anything about the user: only the request, with a User-Agent naming the program.
 - Panic on any answer from the network.
 
@@ -30,4 +31,4 @@ ureq (with rustls, ring and rustls-platform-verifier), sha2, serde and serde_jso
 
 ## Status
 
-Decision 0043: checks, downloads, checksums, and starting the installer. Tests cover reading releases and checksums (with random and damaged answers), every way a check can end (with a stand-in for GitHub), and two tests against the real GitHub: one asks for the newest build, the other downloads its installer and checks it against its published SHA-256, never starting it. Those two need the internet, so `cargo test` and pull requests leave them out (`#[ignore]`). The weekly deep checks run them by name, on Windows, and a failure there opens an issue ([`deep-checks.yml`](../../.github/workflows/deep-checks.yml), the `updater` job); by hand they are `cargo test -p updater -- --ignored`. A test added to that list must only download and compare.
+Decision 0043: checks, downloads, checksums, and starting the installer. Tests cover reading releases and checksums (with random and damaged answers), every way a check can end (with a stand-in for GitHub), a copy that wasn't installed being refused a download and an installer, and two tests against the real GitHub: one asks for the newest build, the other downloads its installer and checks it against its published SHA-256, never starting it. Those two need the internet, so `cargo test` and pull requests leave them out (`#[ignore]`). The weekly deep checks run them by name, on Windows, and a failure there opens an issue ([`deep-checks.yml`](../../.github/workflows/deep-checks.yml), the `updater` job); by hand they are `cargo test -p updater -- --ignored`. A test added to that list must only download and compare.

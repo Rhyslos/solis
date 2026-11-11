@@ -5,7 +5,7 @@
 //! game. The player's saves, settings and a crash log go in their own
 //! Saved Games folder, never beside the program.
 
-use editor::export_dialog::Playtest;
+use editor::export_dialog::{ExportRequest, Playtest};
 use script::settings::{PlayerSettings, Setting};
 use std::path::{Path, PathBuf};
 
@@ -96,6 +96,41 @@ pub struct Exported {
     pub bytes: u64,
 }
 
+/// `folder`, or, when it's there with files in already (an export earlier
+/// the same day), the first of `folder (2)`, `folder (3)`… that isn't.
+pub fn unused(folder: PathBuf) -> PathBuf {
+    let used = |f: &Path| std::fs::read_dir(f).is_ok_and(|mut e| e.next().is_some());
+    if !used(&folder) {
+        return folder;
+    }
+    let name = folder
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    (2..1000)
+        .map(|n| folder.with_file_name(format!("{name} ({n})")))
+        .find(|f| !used(f))
+        .unwrap_or(folder)
+}
+
+/// The folder `request` is exported to: the one it names, or, when the
+/// window suggested that one itself and it has files in already, the
+/// first numbered one beside it without any ([`unused`]). A folder the
+/// person typed or chose is never swapped for another: [`export`]
+/// refuses it if it has files in.
+///
+/// This is the first look at the folder anywhere, and it happens only
+/// once Export is pressed, on the export's own thread: the window names
+/// a folder without looking, since one on another computer makes Windows
+/// sign in there, and can take its time.
+pub fn folder_for(request: &ExportRequest) -> PathBuf {
+    if request.suggested {
+        unused(request.folder.clone())
+    } else {
+        request.folder.clone()
+    }
+}
+
 /// Exports the project in `root` to `folder` as `playtest`, with
 /// `program` (this program) renamed after the game. The folder is made;
 /// one that's there must be empty, so an export never mixes with or
@@ -181,11 +216,7 @@ fn fill(
     let to = folder.join(program_name(&playtest.name));
     made.bytes +=
         std::fs::copy(program, &to).map_err(|e| format!("couldn't copy the program: {e}"))?;
-    let shipped = Playtest {
-        folder: None,
-        ..playtest.clone()
-    };
-    asset_db::write_atomically(&folder.join(PLAYTEST_FILE), shipped.text().as_bytes())
+    asset_db::write_atomically(&folder.join(PLAYTEST_FILE), playtest.text().as_bytes())
         .map_err(|e| format!("couldn't write {PLAYTEST_FILE}: {e}"))?;
     Ok(made)
 }
@@ -262,7 +293,12 @@ fn copy_tree(from: &Path, to: &Path, top: bool, made: &mut Exported) -> Result<(
 /// folder, which isn't shared in Git.
 const LAST_EXPORT: &str = "last export.txt";
 
-/// How the project in `root` was last exported, if it was.
+/// How the project in `root` was last exported, if it was: the game's
+/// name, the area it starts in and its window, each put right as it's
+/// read ([`Playtest::parse`]). The file comes with the project, perhaps
+/// from someone else, so it never says where on this computer to export:
+/// that is kept in the program's own settings
+/// ([`crate::known_projects::KnownProjects::exported_to`]).
 pub fn last_export(root: &Path) -> Option<Playtest> {
     let path = root.join(asset_db::CACHE_FOLDER).join(LAST_EXPORT);
     let bytes = asset_db::read_limited(&path, editor::export_dialog::MAX_PLAYTEST_BYTES).ok()?;

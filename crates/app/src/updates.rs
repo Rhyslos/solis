@@ -6,7 +6,9 @@
 //! there's a newer build, Update now downloads it while you work, and the
 //! installer runs when the window closes (opening Solis again after
 //! Restart to update). A check the splash couldn't wait for finishes
-//! here, quietly.
+//! here, quietly. A copy that wasn't installed (one run from a build's
+//! zip) is only told a newer build is out, and where to get it: the
+//! `updater` crate itself refuses to download or install for it.
 
 use crate::branding;
 use editor::{LogLevel, UpdateNotice, UpdateOffer, Workbench};
@@ -54,12 +56,15 @@ pub fn start_check(ctx: &eframe::egui::Context) -> Receiver<Status> {
     updater::start(source(), this_copy(), move || ctx.request_repaint())
 }
 
-/// Starts downloading `release`, waking the window when it moves on.
-pub fn start_download(ctx: &eframe::egui::Context, release: Release) -> Receiver<Status> {
+/// Starts downloading `release` for `copy`, waking the window when it
+/// moves on.
+pub fn start_download(
+    ctx: &eframe::egui::Context,
+    copy: updater::Copy,
+    release: Release,
+) -> Receiver<Status> {
     let ctx = ctx.clone();
-    updater::start_download(source(), release, this_copy().folder, move || {
-        ctx.request_repaint()
-    })
+    updater::start_download(source(), copy, release, move || ctx.request_repaint())
 }
 
 /// The window's side of updating, once the editor is open.
@@ -69,7 +74,10 @@ pub struct Updates {
     /// Whether the check under way was asked for (Help > Check for
     /// updates): its answer is shown, and a newer build asked about.
     asked: bool,
-    /// The newer build last found, for Update now.
+    /// This copy: its build, and whether it was installed.
+    copy: updater::Copy,
+    /// The newer build last found, for Update now: none for a copy that
+    /// wasn't installed, which is never offered it.
     offered: Option<Release>,
     /// The build skipped with Skip this version, if any (saved).
     skipped: Option<u64>,
@@ -81,12 +89,13 @@ pub struct Updates {
 }
 
 impl Updates {
-    /// Nothing checked yet; `skipped` as saved; a downloaded build goes in
-    /// `pending`.
-    pub fn new(pending: PendingSlot, skipped: Option<u64>) -> Self {
+    /// Nothing checked yet, for `copy`; `skipped` as saved; a downloaded
+    /// build goes in `pending`.
+    pub fn new(pending: PendingSlot, skipped: Option<u64>, copy: updater::Copy) -> Self {
         Self {
             working: None,
             asked: false,
+            copy,
             offered: None,
             skipped,
             skip_unsaved: false,
@@ -167,7 +176,7 @@ impl Updates {
             && self.working.is_none()
         {
             workbench.set_update(UpdateNotice::Downloading(release.build));
-            self.working = Some(start_download(ctx, release));
+            self.working = Some(start_download(ctx, self.copy.clone(), release));
         }
     }
 
@@ -193,28 +202,45 @@ impl Updates {
                     notes: release.notes.clone(),
                     published: release.published.clone(),
                 }));
-                let copy = this_copy();
+                let installed = self.copy.may_update().is_ok();
                 let said = if self.asked {
                     workbench.offer_update(UpdateOffer {
                         latest: build,
-                        current: copy.build,
-                        installed: copy.installed,
+                        current: self.copy.build,
+                        installed,
                     });
                     None
                 } else if !updater::should_offer(build, self.skipped, false) {
                     // Skipped: no bar for it in the launcher.
                     workbench.hide_update_bar(build);
                     None
-                } else {
+                } else if installed {
                     Some((
                         LogLevel::Info,
                         format!(
                             "Build {build} of {name} is out: Update now in the launcher gets it."
                         ),
                     ))
+                } else {
+                    Some((
+                        LogLevel::Info,
+                        format!(
+                            "Build {build} of {name} is out, but this copy wasn't installed with \
+                             the installer, so it doesn't update itself: the installer is at {}.",
+                            releases_page()
+                        ),
+                    ))
                 };
-                self.offered = Some(release);
-                (UpdateNotice::Available(build), said)
+                // A copy that wasn't installed is told, never offered
+                // Update now: updating it would install a second copy
+                // elsewhere and leave this one as old as before.
+                if installed {
+                    self.offered = Some(release);
+                    (UpdateNotice::Available(build), said)
+                } else {
+                    self.offered = None;
+                    (UpdateNotice::NotInstalled(build), said)
+                }
             }
             Status::Ready { build, installer } => {
                 if let Ok(mut pending) = self.pending.lock() {
@@ -276,7 +302,7 @@ pub fn install_pending(pending: &PendingSlot) {
     let Some(pending) = pending.lock().ok().and_then(|mut p| p.take()) else {
         return;
     };
-    if let Err(why) = updater::start_installer(&pending.installer, pending.relaunch) {
+    if let Err(why) = updater::start_installer(&this_copy(), &pending.installer, pending.relaunch) {
         log::warn!("{why}");
     }
 }
@@ -289,8 +315,22 @@ mod tests {
         Workbench::new(crate::app_info(), None)
     }
 
+    /// A copy at build 10, installed or run from a build's zip.
+    fn copy(installed: bool) -> updater::Copy {
+        updater::Copy {
+            build: Some(10),
+            installed,
+            folder: PathBuf::from("updates"),
+        }
+    }
+
     fn updates() -> Updates {
-        Updates::new(Arc::new(Mutex::new(None)), None)
+        Updates::new(Arc::new(Mutex::new(None)), None, copy(true))
+    }
+
+    /// As a copy run from a build's zip sees it.
+    fn zip_updates() -> Updates {
+        Updates::new(Arc::new(Mutex::new(None)), None, copy(false))
     }
 
     fn release(build: u64) -> Release {
@@ -347,10 +387,68 @@ mod tests {
         u.follow(&mut w, Status::Available(release(12)));
         assert!(w.log_lines().last().unwrap().text.contains("Build 12"));
         let mut w = workbench();
-        let mut u = Updates::new(Arc::new(Mutex::new(None)), Some(12));
+        let mut u = Updates::new(Arc::new(Mutex::new(None)), Some(12), copy(true));
         u.follow(&mut w, Status::Available(release(12)));
         assert!(w.log_lines().is_empty(), "skipped: not even a line");
         assert_eq!(w.update(), &UpdateNotice::Available(12), "Help still says");
+    }
+
+    /// SEC-06: a copy run from a build's zip was shown Update now like an
+    /// installed one, downloaded the installer and ran it on closing.
+    #[test]
+    fn a_copy_that_wasn_t_installed_is_told_and_never_offered_update_now() {
+        let mut w = workbench();
+        let mut u = zip_updates();
+        u.follow(&mut w, Status::Available(release(12)));
+        assert_eq!(w.update(), &UpdateNotice::NotInstalled(12));
+        let said = &w.log_lines().last().unwrap().text;
+        assert!(said.contains("Build 12"), "{said}");
+        assert!(said.contains("wasn't installed"), "{said}");
+        assert!(said.contains(&releases_page()), "{said}");
+        assert!(!said.contains("Update now"), "{said}");
+
+        // Update now, should anything ever ask: nothing downloads, and
+        // nothing waits for the window to close.
+        u.download(&mut w, &eframe::egui::Context::default());
+        assert!(u.working.is_none(), "no download started");
+        assert!(u.offered.is_none());
+        assert_eq!(w.update(), &UpdateNotice::NotInstalled(12));
+        u.frame(&mut w);
+        assert!(u.pending.lock().unwrap().is_none(), "nothing to install");
+    }
+
+    #[test]
+    fn asking_from_a_copy_that_wasn_t_installed_points_at_the_download_page() {
+        let mut w = workbench();
+        let mut u = zip_updates();
+        u.asked = true;
+        u.follow(&mut w, Status::Available(release(12)));
+        assert_eq!(w.update(), &UpdateNotice::NotInstalled(12));
+        assert!(u.offered.is_none());
+        assert!(
+            w.log_lines().is_empty(),
+            "asked in a window, not the Console"
+        );
+        // Skipped builds say nothing, as for an installed copy.
+        let mut w = workbench();
+        let mut u = Updates::new(Arc::new(Mutex::new(None)), Some(12), copy(false));
+        u.follow(&mut w, Status::Available(release(12)));
+        assert!(w.log_lines().is_empty());
+        assert_eq!(w.update(), &UpdateNotice::NotInstalled(12));
+    }
+
+    /// The download itself refuses such a copy, whoever starts it: it
+    /// ends failed without asking GitHub (the address here goes nowhere).
+    #[test]
+    fn a_download_started_for_a_copy_that_wasn_t_installed_fails_at_once() {
+        let ctx = eframe::egui::Context::default();
+        let steps: Vec<Status> = start_download(&ctx, copy(false), release(12))
+            .iter()
+            .collect();
+        let [Status::Failed(why)] = steps.as_slice() else {
+            panic!("{steps:?}");
+        };
+        assert!(why.contains("wasn't installed"), "{why}");
     }
 
     #[test]

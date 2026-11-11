@@ -25,7 +25,7 @@ The project lead's choice (2026-11-06): **Solis, renamed (Recommended)**, and th
   - **Into the folder:** by default `Documents/<Game> exports/<Game> playtest <date>`, a new dated folder each time so old builds stay. A folder that has files in it already is never used, and nor is one inside the project.
   - **Window:** windowed or fullscreen, and its size, as the game first opens.
   
-  The project remembers these for next time (in its own `.solis` folder, not shared in Git).
+  The project remembers these for next time (in its own `.solis` folder, not shared in Git). The folder is the exception (changed 2026-11-11, by the security review's finding SEC-04): where a game went is remembered by Solis itself, in its saved settings on this computer, for each project. A project can come from someone else, and its own file naming the folder let it point the export at a folder of its choosing, on another computer even. The window also never looks inside a folder before Export is pressed.
 - **What the folder holds:**
   - `<Game>.exe`: this program, renamed;
   - `playtest.txt`: the game's name, the area it starts in, and its first window;

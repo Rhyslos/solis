@@ -374,7 +374,9 @@ impl App {
         };
         let (sender, receiver) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
-            let outcome = playtest::export(&root, &program, &request.playtest, &request.folder);
+            // The first look at the folder, now that Export is pressed.
+            let folder = playtest::folder_for(&request);
+            let outcome = playtest::export(&root, &program, &request.playtest, &folder);
             if outcome.is_ok() {
                 let _ = playtest::remember_export(&root, &request.playtest);
             }
@@ -400,13 +402,19 @@ impl App {
         self.exporting = None;
         let (root, playtest, outcome) = outcome;
         // Remembered by the project it was exported from, if that's still
-        // the open one (on disk, it's remembered either way).
+        // the open one (on disk, it's remembered either way). Where it
+        // went is this computer's to remember, in the program's settings.
         let same = self
             .projects
             .root()
             .is_some_and(|open| super::same_folder(open, &root));
-        if outcome.is_ok() && same {
-            self.workbench.set_last_export(Some(playtest));
+        if let Ok(made) = &outcome {
+            self.projects.known_mut().exported(&root, &made.folder);
+            if same {
+                self.workbench.set_last_export(Some(playtest));
+                self.workbench
+                    .set_last_export_folder(Some(made.folder.clone()));
+            }
         }
         if let Ok(made) = &outcome {
             self.workbench.log(
