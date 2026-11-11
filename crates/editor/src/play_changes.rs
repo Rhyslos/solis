@@ -9,11 +9,16 @@
 //! edits are kept, never what the game did: their edits are undo steps
 //! and the game's aren't (`Document::edit_by_game`), so Stop makes the
 //! steps again on the area from before Play (`Document::follow`).
+//!
+//! Nothing leaves the area while the question waits: quitting, closing
+//! the window, another area or project (`Workbench::request`) and a file
+//! changed on disk wait for the answer and go on after it, and the
+//! question is asked over the launcher too.
 
 use crate::document::Document;
 use crate::play::PlayState;
 use crate::theme;
-use crate::workbench::Workbench;
+use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
 use egui::{Color32, RichText, Ui};
 use reflect::AssetId;
@@ -37,6 +42,13 @@ pub(crate) struct PlayChanges {
     assemblies: BTreeMap<AssetId, Arc<AreaFile>>,
     /// What was done, oldest first.
     pub(crate) labels: Vec<String>,
+    /// The area as its file holds it now, if the file changed on disk
+    /// while playing or since: offered once the question is answered,
+    /// since Keep puts another area in the open one's place.
+    pub(crate) reload: Option<area::Area>,
+    /// What waits for the answer: something that leaves the area (a quit,
+    /// another area or project), asked for again once it's given.
+    pub(crate) then: Option<WorkbenchAction>,
 }
 
 /// The colour while playing: the Play button's blue, lighter.
@@ -131,6 +143,8 @@ impl Workbench {
             document: Box::new(kept),
             assemblies: assemblies.clone(),
             labels,
+            reload: None,
+            then: None,
         });
         true
     }
@@ -158,6 +172,7 @@ impl Workbench {
                     count(changes.labels.len(), "change")
                 ),
             );
+            self.answered(changes.reload, changes.then);
         }
     }
 
@@ -171,6 +186,22 @@ impl Workbench {
                     count(changes.labels.len(), "change")
                 ),
             );
+            self.answered(changes.reload, changes.then);
+        }
+    }
+
+    /// Keep or Undo all was chosen: what waited for it goes on. A file
+    /// changed on disk is offered (`reload`), and what was leaving the
+    /// area (`then`) is asked for again, so it asks about unsaved changes
+    /// as it would have; the app gets it with the next actions.
+    fn answered(&mut self, reload: Option<area::Area>, then: Option<WorkbenchAction>) {
+        if let Some(area) = reload {
+            self.offer_reload(area);
+        }
+        if let Some(action) = then {
+            let mut actions = Vec::new();
+            self.request(action, &mut actions);
+            self.open.outbox.append(&mut actions);
         }
     }
 
@@ -255,3 +286,7 @@ fn blend(a: Color32, b: Color32, t: f32) -> Color32 {
 #[cfg(test)]
 #[path = "play_changes_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "play_changes_leaving_tests.rs"]
+mod leaving_tests;

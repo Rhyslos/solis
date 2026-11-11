@@ -588,18 +588,25 @@ impl Workbench {
     /// Starts a new, unsaved area (File > New area). Doesn't ask about
     /// unsaved changes: asking comes before the action.
     pub fn new_area(&mut self) {
-        self.replace_document(Document::default());
-        self.open.pending_reload = None;
+        self.leave_for(Document::default());
     }
 
     /// Shows `area`, read from `file`, in place of the open one.
     pub fn open_area(&mut self, area: area::Area, file: std::path::PathBuf) {
-        self.replace_document(Document::opened(area, file));
-        self.open.pending_reload = None;
+        self.leave_for(Document::opened(area, file));
         self.log(
             LogLevel::Info,
             format!("Opened {}.", self.open.document.name()),
         );
+    }
+
+    /// Leaves the open area for `document`. The questions about the old
+    /// one go with it: answering them would put it back over the new one.
+    /// Asking comes before this ([`Self::request`]).
+    fn leave_for(&mut self, document: Document) {
+        self.replace_document(document);
+        self.open.pending_reload = None;
+        self.open.play_changes = None;
     }
 
     /// Uses `document` in place of the open one, keeping the components
@@ -658,6 +665,12 @@ impl Workbench {
         if let Some(playing) = &mut self.open.playing {
             // The game's copy isn't the file's; offered again after Stop.
             playing.reload = Some(area);
+            return;
+        }
+        if let Some(changes) = &mut self.open.play_changes {
+            // Keep would put the area from before this change over it:
+            // offered again once Keep or Undo all is answered.
+            changes.reload = Some(area);
             return;
         }
         if self.open.document.is_dirty() {
@@ -858,6 +871,9 @@ impl Workbench {
         self.viewport.preview_hour = self.preview_hour(ui.ctx());
         // The launcher, while it's up, is all there is.
         if self.launcher(ui, &mut actions) {
+            // Asked over the launcher too: a game stopped by going to it
+            // never leaves its question unseen behind it.
+            self.play_changes_window(ui);
             self.prompts(ui, &mut actions);
             self.about(ui);
             self.update_question(ui.ctx(), &mut actions);
@@ -1273,6 +1289,8 @@ impl Workbench {
         }
         self.about(ui);
         self.play_changes_window(ui);
+        // What waited for Keep or Undo all (a quit, say) goes on now.
+        actions.append(&mut self.open.outbox);
         self.play_edge(ui.ctx());
         self.input_actions_window(ui.ctx());
         self.settings(ui.ctx(), &mut actions);
@@ -1583,35 +1601,37 @@ impl Workbench {
         }
     }
 
-    /// Asks for `action`, first asking about unsaved changes if it would
-    /// lose them (a new or another area, another project, quitting).
+    /// Asks for `action`. This is the one check before the open area is
+    /// left ([`leaves_the_area`]: another area or project in its place, or
+    /// the editor closed): first Keep or Undo all, if edits made while
+    /// playing wait for it, then the question about unsaved changes. The
+    /// action waits for each answer, so nothing is lost without a word.
     pub(crate) fn request(&mut self, action: WorkbenchAction, actions: &mut Vec<WorkbenchAction>) {
         if self.open.playing.is_some() && crate::play::waits_for_stop(&action) {
             // Refused, with a word in the Console, at the end of the frame.
             actions.push(action);
             return;
         }
-        if self.open.playing.is_some() && action == WorkbenchAction::Quit {
-            self.stop();
-        }
-        let loses_changes = matches!(
-            action,
-            WorkbenchAction::NewArea
-                | WorkbenchAction::OpenArea
-                | WorkbenchAction::OpenAreaFile(_)
-                | WorkbenchAction::OpenProject
-                | WorkbenchAction::NewProject
-                | WorkbenchAction::OpenRecent(_)
-                | WorkbenchAction::Quit
-        );
-        if loses_changes && self.open.document.is_dirty() {
-            self.open.unsaved_prompt = Some(action);
-        } else {
-            if action == WorkbenchAction::Quit {
-                self.may_close = true;
+        if leaves_the_area(&action) {
+            // Only quitting gets here while playing. The game stops
+            // first, which asks about the edits made meanwhile.
+            if self.open.playing.is_some() {
+                self.stop();
             }
-            actions.push(action);
+            if let Some(changes) = &mut self.open.play_changes {
+                // Asked for again once Keep or Undo all is chosen.
+                changes.then = Some(action);
+                return;
+            }
+            if self.open.document.is_dirty() {
+                self.open.unsaved_prompt = Some(action);
+                return;
+            }
         }
+        if action == WorkbenchAction::Quit {
+            self.may_close = true;
+        }
+        actions.push(action);
     }
 
     /// The app called off a queued quit (the save before it was cancelled
@@ -1620,9 +1640,19 @@ impl Workbench {
         self.may_close = false;
     }
 
-    /// Whether the window may close now. If the area has unsaved changes,
-    /// asks first (and the app should cancel this close).
+    /// Whether the window may close now. If edits made while playing wait
+    /// for Keep or Undo all, or the area has unsaved changes, asks first
+    /// (and the app should cancel this close).
     pub fn close_requested(&mut self) -> bool {
+        // Edits made while playing are asked about at Stop, so the game
+        // stops for the question, and the close waits for its answer.
+        if self.edited_while_playing() {
+            self.stop();
+        }
+        if let Some(changes) = &mut self.open.play_changes {
+            changes.then = Some(WorkbenchAction::Quit);
+            return false;
+        }
         // While playing, the area that matters is the one from before Play.
         let dirty = match &self.open.playing {
             Some(playing) => playing.before.is_dirty(),
@@ -1672,13 +1702,20 @@ impl Workbench {
                 if self.open.playing.is_some() {
                     self.stop();
                 }
-                if save {
-                    actions.push(WorkbenchAction::SaveArea);
+                if let Some(changes) = &mut self.open.play_changes {
+                    // Edits made while this question was up (the game
+                    // played on): Keep or Undo all comes first, and this
+                    // is asked again after, about the area as it is then.
+                    changes.then = Some(waiting);
+                } else {
+                    if save {
+                        actions.push(WorkbenchAction::SaveArea);
+                    }
+                    if waiting == WorkbenchAction::Quit {
+                        self.may_close = true;
+                    }
+                    actions.push(waiting);
                 }
-                if waiting == WorkbenchAction::Quit {
-                    self.may_close = true;
-                }
-                actions.push(waiting);
             }
         }
         // Asked after the game stops: loading it now would only be undone.
@@ -1772,6 +1809,26 @@ impl Workbench {
             });
         self.about_open = open;
     }
+}
+
+/// Whether `action` leaves the open area: puts another area or project
+/// in its place, or closes the editor. [`Workbench::request`] asks about
+/// what would be lost before any of these goes ahead.
+pub(crate) fn leaves_the_area(action: &WorkbenchAction) -> bool {
+    matches!(
+        action,
+        WorkbenchAction::NewArea
+            | WorkbenchAction::OpenArea
+            | WorkbenchAction::OpenAreaFile(_)
+            | WorkbenchAction::OpenProject
+            | WorkbenchAction::NewProject
+            | WorkbenchAction::OpenRecent(_)
+            | WorkbenchAction::MakeSampleGame
+            | WorkbenchAction::MakeUiSample
+            | WorkbenchAction::MakeBenchmark
+            | WorkbenchAction::MakePlayground
+            | WorkbenchAction::Quit
+    )
 }
 
 /// The sound events clip events can play, by name: each by its path

@@ -24,7 +24,7 @@ The game looks through the **first camera** in the Area panel's list. With no ca
    - **Keep** makes your changes again on the area as it was before Play, and each can still be undone with Ctrl + Z.
    - **Undo all** leaves the area as it was before Play.
 
-   Why ask? Other engines quietly throw away everything changed while playing, and people lose work that way. Solis asks instead. The question waits for an answer; until then, Play and the editor's keys wait too.
+   Why ask? Other engines quietly throw away everything changed while playing, and people lose work that way. Solis asks instead. The question waits for an answer; until then, Play and the editor's keys wait too. So does anything that would leave the area: quitting, closing the window, a new or another area, and another project go ahead only once you've answered, so your changes can't slip away unasked. If you close the editor's window to go back to the [launcher](launcher.md) while the game plays, the question is asked there.
 
 **Only your own edits are kept, never what the game did.** After **Keep**, the area is exactly the area as it was when you pressed Play, plus the changes in the list. Entities the game spawned are gone, entities it removed are back, and every value and place it changed is as it was. That holds after loading a [save game](save-games.md) while playing too: your edits are made on your area, not on the save's. Solis can tell the two apart because each edit of yours is an undo step and nothing the game does is one. What that means when the two meet:
 - **A value you set that the game also changes** (a counter, where a cart stands) is kept as *you* set it, not as the game left it.
@@ -40,9 +40,9 @@ You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md
 
 **Smooth on any screen:** the game itself always runs 60 [ticks](concepts.md#game-code) a second, so it plays the same on every computer. A screen can show more frames than that (120 or 144 a second): between two ticks, the Game panel draws everything part way from where it was at the last tick to where it is now, so movement looks smooth instead of stepping. What you see is up to a sixtieth of a second behind the game, which no one can notice. While paused, it shows exactly where things are.
 
-**What waits until you stop:** saving, opening another area or project, new areas, and making or changing assemblies. If you try, the Console says *Stop playing first*: saving now would save the game's changes, which Stop is about to undo. Closing Solis while playing stops first, then asks about unsaved changes as usual.
+**What waits until you stop:** saving, opening another area or project, new areas, and making or changing assemblies. If you try, the Console says *Stop playing first*: saving now would save the game's changes, which Stop is about to undo. Quitting or closing Solis while playing stops the game first. If you changed the area while it played, **Keep** or **Undo all** is asked before anything closes; then Solis asks about unsaved changes as usual (after **Keep**, the changes you kept are unsaved, so it asks about them).
 
-**Changes from outside while playing:** if an assembly's file changes (a Git pull, or Notepad), the game shows it at once, and its copies are updated again after Stop. That isn't one of your changes, so Stop doesn't ask about it, and the area you **Keep** has the updated copies too. If the area's own file changes on disk, Solis waits until Stop to offer it.
+**Changes from outside while playing:** if an assembly's file changes (a Git pull, or Notepad), the game shows it at once, and its copies are updated again after Stop. That isn't one of your changes, so Stop doesn't ask about it, and the area you **Keep** has the updated copies too. If the area's own file changes on disk, Solis waits until Stop, and until you've answered **Keep** or **Undo all**, to offer it.
 
 ## Settings
 | Setting | What it does |

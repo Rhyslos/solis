@@ -420,7 +420,7 @@ impl Workbench {
                 )
                 .clicked()
             {
-                actions.push(WorkbenchAction::MakeSampleGame);
+                self.request(WorkbenchAction::MakeSampleGame, actions);
                 ui.close();
             }
             if ui
@@ -433,7 +433,7 @@ impl Workbench {
                 )
                 .clicked()
             {
-                actions.push(WorkbenchAction::MakeUiSample);
+                self.request(WorkbenchAction::MakeUiSample, actions);
                 ui.close();
             }
             if ui
@@ -445,7 +445,7 @@ impl Workbench {
                 )
                 .clicked()
             {
-                actions.push(WorkbenchAction::MakeBenchmark);
+                self.request(WorkbenchAction::MakeBenchmark, actions);
                 ui.close();
             }
             if ui
@@ -458,7 +458,7 @@ impl Workbench {
                 )
                 .clicked()
             {
-                actions.push(WorkbenchAction::MakePlayground);
+                self.request(WorkbenchAction::MakePlayground, actions);
                 ui.close();
             }
             ui.separator();

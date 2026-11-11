@@ -13,7 +13,7 @@ The file is plain text, written so that two people changing different things in 
 3. **Open:** **Ctrl + O** (or **File > Open area…**). The models it uses are read from the project, from the cache, so it opens quickly.
 4. **New:** **Ctrl + N** starts a fresh area with a sun and an environment.
 
-The tab at the top shows the area's name, with a **•** while it has changes that aren't saved. Solis asks before anything would lose them: a new or another area, another project, or closing. **Save**, **Don't save** or **Cancel**.
+The tab at the top shows the area's name, with a **•** while it has changes that aren't saved. Solis asks before anything would lose them: a new or another area, another project (the Help menu's sample projects too), or closing. **Save**, **Don't save** or **Cancel**.
 
 **Changed on disk:** if the file changes while it's open (a Git pull, or an edit in a text editor), Solis loads the new version as one step you can undo with Ctrl + Z. If you have unsaved changes too, it asks: **Keep mine** or **Load the file**.
 

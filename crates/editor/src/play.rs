@@ -7,7 +7,7 @@
 //! Stop throws the world away and puts the copy back, so everything is
 //! exactly as it was before Play; the edits the user made meanwhile wait
 //! for Keep or Undo all (`play_changes.rs`). Saving and opening wait
-//! until then.
+//! until then, and quitting stops the game and waits for that answer.
 
 use crate::console::LogLevel;
 use crate::document::Document;
@@ -1174,14 +1174,27 @@ impl Workbench {
         found.map(|(id, i)| (id, i.name.clone()))
     }
 
+    /// Whether the user changed the area since Play was pressed: Stop
+    /// would ask Keep or Undo all.
+    pub(crate) fn edited_while_playing(&self) -> bool {
+        self.open.playing.as_ref().is_some_and(|playing| {
+            self.open.document.history().state() != playing.before.history().state()
+        })
+    }
+
     /// Takes out of `actions` what must wait until the game stops, saying
-    /// so in the Console. Quitting stops the game first.
+    /// so in the Console. Quitting stops the game first, and waits for
+    /// Keep or Undo all if the area was edited meanwhile.
     pub(crate) fn hold_while_playing(&mut self, actions: &mut Vec<WorkbenchAction>) {
         if self.open.playing.is_none() {
             return;
         }
         if actions.contains(&WorkbenchAction::Quit) {
             self.stop();
+            if let Some(changes) = &mut self.open.play_changes {
+                actions.retain(|a| *a != WorkbenchAction::Quit);
+                changes.then = Some(WorkbenchAction::Quit);
+            }
             return;
         }
         let before = actions.len();

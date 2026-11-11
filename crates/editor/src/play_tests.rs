@@ -160,9 +160,25 @@ fn quitting_while_playing_stops_first() {
     w.request(WorkbenchAction::Quit, &mut actions);
     assert_eq!(w.play_state(), PlayState::Editing);
     assert_eq!(position(&w, crate_id), Vec3::ZERO);
-    // The crate was placed and not saved, so the question about saving
-    // is asked about the area as it was before Play.
-    assert!(w.open.unsaved_prompt.is_some() || actions == [WorkbenchAction::Quit]);
+    // The move made while playing is asked about first (Keep or Undo
+    // all): nothing closes, and one question is asked at a time.
+    assert_eq!(actions, []);
+    assert!(w.play_changes().is_some());
+    assert!(w.open.unsaved_prompt.is_none());
+    // Undo all: the area is as it was before Play, where the crate was
+    // placed and not saved, so the question about saving comes next.
+    w.undo_play_changes();
+    assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
+    assert!(w.open.outbox.is_empty(), "still not closed");
+    // With nothing changed while playing and nothing unsaved, Quit stops
+    // the game and closes.
+    let (mut w, _) = with_a_crate();
+    w.open.document.mark_saved("harbour.solarea".into());
+    w.play();
+    let mut actions = Vec::new();
+    w.request(WorkbenchAction::Quit, &mut actions);
+    assert_eq!(w.play_state(), PlayState::Editing);
+    assert_eq!(actions, [WorkbenchAction::Quit]);
     // Closing the window with unsaved changes asks first, and the game
     // plays on meanwhile (Cancel leaves it running); with nothing unsaved,
     // it stops and closes.

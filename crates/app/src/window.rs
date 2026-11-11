@@ -2082,8 +2082,11 @@ impl eframe::App for App {
             self.import(&path);
         }
         // A project or area chosen in a window opened before Play waits
-        // until the game stops, so it never replaces the game's copy.
-        let editing = self.workbench.play_state() == editor::PlayState::Editing;
+        // until the game stops, so it never replaces the game's copy, and
+        // until Keep or Undo all is answered, so the edits made while
+        // playing never go with the area unasked.
+        let editing = self.workbench.play_state() == editor::PlayState::Editing
+            && self.workbench.play_changes().is_none();
         if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
             match purpose {
                 FolderFor::SampleGame => self.make_sample_game(&folder),
