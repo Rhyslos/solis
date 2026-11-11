@@ -187,7 +187,12 @@ pub fn icon(ui: &mut Ui, icon: Icon, name: &str) -> Response {
 
 /// Words that are a link: the link's blue, lighter under the pointer.
 pub fn link(ui: &mut Ui, label: &str) -> Response {
-    let font = text::ui();
+    link_at(ui, label, text::ui())
+}
+
+/// A link in `font`, where the words around it aren't interface text's
+/// size.
+pub fn link_at(ui: &mut Ui, label: &str, font: egui::FontId) -> Response {
     let width = width_of(ui, label, font.clone());
     let height = ui.text_style_height(&egui::TextStyle::Body);
     let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::click());

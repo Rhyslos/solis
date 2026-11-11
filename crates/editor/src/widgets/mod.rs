@@ -85,12 +85,34 @@ pub(crate) fn words(
         .text(at, anchor, text, font, colour)
 }
 
+/// `text` in one line from the left of `rect`, ending in "…" where it
+/// doesn't fit.
+pub(crate) fn cut_off(ui: &Ui, rect: Rect, text: &str, font: FontId, colour: Color32) {
+    let mut job = egui::text::LayoutJob::single_section(
+        text.to_owned(),
+        egui::TextFormat {
+            font_id: font,
+            color: colour,
+            ..Default::default()
+        },
+    );
+    job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width());
+    let galley = ui.painter().layout_job(job);
+    let at = egui::pos2(rect.left(), rect.center().y - galley.size().y / 2.0);
+    ui.painter().galley(at, galley, colour);
+}
+
 /// How wide `text` is in `font`.
 pub(crate) fn width_of(ui: &Ui, text: &str, font: FontId) -> f32 {
     ui.painter()
         .layout_no_wrap(text.to_owned(), font, Color32::PLACEHOLDER)
         .size()
         .x
+}
+
+/// How tall a line of `font` is.
+pub(crate) fn line_height(ui: &Ui, font: &FontId) -> f32 {
+    ui.ctx().fonts_mut(|fonts| fonts.row_height(font))
 }
 
 /// Which way the arrow keys ask to go, while `response` holds the

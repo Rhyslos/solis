@@ -558,12 +558,31 @@ fn what_isn_t_built_isn_t_shown() {
     ] {
         assert!(h.query_by_label(label).is_none(), "{label}");
     }
-    // A layout saved with the Layers tab loses it.
-    let mut saved = crate::layout::standard();
-    saved.push_to_focused_leaf(crate::panel::Panel::Layers);
-    let restored = crate::layout::restore(Some(saved));
-    assert!(restored.find_tab(&crate::panel::Panel::Layers).is_none());
+}
+
+/// There was once a Layers panel, kept out of sight until it was built.
+/// It is gone (unfinished parts are drawn one way only now), so a layout
+/// saved by a build that had it names a panel this build doesn't know:
+/// it can't be read, and the editor opens in the standard arrangement.
+#[test]
+fn a_layout_saved_with_the_layers_panel_still_opens_the_editor() {
+    use crate::panel::Panel;
+    let saved = ron::to_string(&crate::layout::standard()).unwrap();
+    assert!(saved.contains("Hints"), "{saved}");
+    let with_layers = saved.replacen("Hints", "Layers", 1);
+    // Read as the app reads its settings: what doesn't read is nothing.
+    let read: Option<egui_dock::DockState<Panel>> = ron::from_str(&with_layers).ok();
+    assert!(read.is_none());
+    let restored = crate::layout::restore(read);
     assert!(crate::layout::is_complete(&restored));
+    let mut h = harness(Workbench::new(info(), None));
+    h.state_mut().0.dock = restored;
+    h.run();
+    for panel in Panel::ALL {
+        assert!(h.state().0.dock.find_tab(&panel).is_some(), "{panel:?}");
+    }
+    // And the same text with every panel it knows does read.
+    assert!(ron::from_str::<egui_dock::DockState<Panel>>(&saved).is_ok());
 }
 
 #[test]

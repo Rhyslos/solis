@@ -201,6 +201,32 @@ pub const PROJECT_CARD_MIN_W: f32 = 240.0;
 /// A project card's thumbnail: its height.
 pub const PROJECT_THUMB_H: f32 = 140.0;
 
+/// The mark on a part that isn't built yet: a hollow square, this wide.
+pub const UNBUILT_MARK: f32 = 5.0;
+/// The gap between an unbuilt part's words and its mark.
+pub const UNBUILT_MARK_GAP: f32 = 6.0;
+/// How far below the middle of its words' line the mark's own middle
+/// is: it sits just above the line the letters stand on.
+pub const UNBUILT_MARK_DROP: f32 = 1.5;
+/// How far the mark is from the top and the right of an unbuilt button.
+pub const UNBUILT_CORNER: f32 = 4.0;
+/// An unbuilt page's card: its width.
+pub const UNBUILT_CARD_W: f32 = 400.0;
+/// An unbuilt page's card: its padding at the top, the sides, the foot.
+pub const UNBUILT_CARD_PAD: [f32; 3] = [28.0, 28.0, 24.0];
+/// An unbuilt page's card: its icon.
+pub const UNBUILT_PAGE_ICON: f32 = 28.0;
+/// A File page's sub-tab: its height.
+pub const SUB_TAB_H: f32 = 30.0;
+/// A File page's sub-tab: its padding at each side.
+pub const SUB_TAB_PAD: f32 = 2.0;
+/// The gap between a File page's sub-tabs.
+pub const SUB_TAB_GAP: f32 = 18.0;
+/// An item of the File page's menu: its padding at each side.
+pub const FILE_MENU_ITEM_PAD: f32 = 14.0;
+/// An item of the File page's menu: the gap between its icon and name.
+pub const FILE_MENU_ITEM_GAP: f32 = 10.0;
+
 /// A menu's or drop-down list's padding. Solis's own.
 pub const MENU_PAD: f32 = 4.0;
 /// The height of a row in a menu or a drop-down list. Solis's own.

@@ -267,7 +267,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
             .view_problem
             .clone()
             .unwrap_or_else(|| "Reading the screen…".into());
-        crate::panels::placeholder(ui, &why);
+        crate::panels::empty_note(ui, &why);
         return;
     };
     // The view as drawn: hidden pieces see-through.

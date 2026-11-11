@@ -6,7 +6,7 @@
 use crate::document::Document;
 use crate::inspector::{self, FieldChange};
 use crate::models::ModelInfo;
-use crate::panels::placeholder;
+use crate::panels::empty_note;
 use crate::theme;
 use egui::{RichText, Ui};
 use reflect::{AssetId, EntityId, Value};
@@ -221,7 +221,7 @@ pub(crate) fn properties(
         .primary()
         .and_then(|id| document.area().get(id).map(|e| (id, e)))
     else {
-        placeholder(
+        empty_note(
             ui,
             "Nothing selected. Pick something in the viewport or the Area panel.",
         );

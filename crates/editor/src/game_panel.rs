@@ -245,11 +245,11 @@ pub(crate) fn game_panel(
     let Some(scene) = scene else {
         if playing {
             // The first frame after Play, before the panel was in front.
-            crate::panels::placeholder(ui, "Starting…");
+            crate::panels::empty_note(ui, "Starting…");
             ui.ctx().request_repaint();
             return GamePanelOut::default();
         }
-        crate::panels::placeholder(
+        crate::panels::empty_note(
             ui,
             "Press Play (at the top) to run the area here. The game looks through the first \
              camera in the area: Entity > Add camera adds one where you're looking from.",

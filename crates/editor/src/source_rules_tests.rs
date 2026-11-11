@@ -9,6 +9,12 @@
 //! - **No gap in the middle of a sentence.** A message broken over two
 //!   lines of code without its `\` keeps the next line's indentation, and
 //!   shows it as a run of spaces.
+//! - **Unfinished parts are drawn one way** ([decision 0101](../../../docs/decisions/0101-unfinished-parts-as-placeholders.md)):
+//!   only `unbuilt.rs` and its folder may say that something isn't built
+//!   or will come later; an unfinished part's id is named only where it
+//!   is handed to an `unbuilt::` function or put in a list as
+//!   `Unbuilt(..)`; and a control switched off for good must say why, so
+//!   a dead button can't stand in for a placeholder.
 
 use std::path::{Path, PathBuf};
 
@@ -295,4 +301,235 @@ fn the_gap_rule_catches_a_lost_line_break_and_nothing_else() {
     ] {
         assert!(!gap_in_a_sentence(&fine), "{fine}");
     }
+}
+
+/// Whether a file is the mechanism for unfinished parts itself, which
+/// may say what no other file may.
+fn is_the_mechanism(path: &Path) -> bool {
+    path.components()
+        .any(|part| part.as_os_str().to_string_lossy().starts_with("unbuilt"))
+}
+
+/// Whether a file holds tests (which name parts and quote messages).
+fn is_tests(path: &Path) -> bool {
+    let name = name_of(path);
+    name.ends_with("tests.rs") || name == "test_support.rs" || name == "sheet.rs"
+}
+
+/// The ways code might tell the user that something isn't there yet. Any
+/// of them in a string, outside the mechanism, is a placeholder drawn by
+/// hand.
+const SAYS_UNBUILT: [&str; 6] = [
+    "not built",
+    "n't built",
+    "n\u{2019}t built",
+    "arrives in",
+    "coming in",
+    "coming later",
+];
+
+/// The phrases of [`SAYS_UNBUILT`] that `code` (a file without its
+/// comments) says: each found as words of its own, not as letters inside
+/// a longer word ("becoming invisible" doesn't say "coming in").
+fn says_unbuilt(code: &str) -> Vec<&'static str> {
+    let lower = code.to_lowercase();
+    SAYS_UNBUILT
+        .into_iter()
+        .filter(|phrase| {
+            lower.match_indices(phrase).any(|(at, _)| {
+                // "n't built" follows the letters of "is" or "are".
+                let starts_a_word = !lower[..at].ends_with(|c: char| c.is_alphabetic());
+                starts_a_word || phrase.starts_with("n'") || phrase.starts_with("n\u{2019}")
+            })
+        })
+        .collect()
+}
+
+#[test]
+fn nothing_outside_the_mechanism_says_that_something_is_not_built() {
+    let mut wrong = Vec::new();
+    for (path, text) in sources_of(&["editor", "app"]) {
+        if is_the_mechanism(&path) || is_tests(&path) {
+            continue;
+        }
+        for phrase in says_unbuilt(&code_of(&text)) {
+            wrong.push(format!("{} says \"{phrase}\"", path.display()));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "Something the editor can't do yet is drawn by crate::unbuilt (a line in \
+         unbuilt/table.rs, then one of its functions), never written out by hand:\n{}",
+        wrong.join("\n")
+    );
+}
+
+#[test]
+fn the_not_built_rule_reads_strings_and_leaves_comments_alone() {
+    // The sentence the Layers panel used to show.
+    assert_eq!(
+        says_unbuilt("ui.label(\"Layers aren't built yet\")"),
+        ["n't built"]
+    );
+    assert_eq!(says_unbuilt("ui.label(\"Not built yet\")"), ["not built"]);
+    assert_eq!(says_unbuilt("\"Baking isn't built\""), ["n't built"]);
+    assert_eq!(says_unbuilt("\"Coming later\""), ["coming later"]);
+    assert_eq!(says_unbuilt("\"Arrives in Shared 7\""), ["arrives in"]);
+    // Comments are not what the user reads.
+    let file = "let a = 1; // not built yet\n/// Coming later, perhaps.\nlet b = 2;\n";
+    assert!(says_unbuilt(&code_of(file)).is_empty());
+    // Ordinary words that hold a phrase's letters apart aren't caught.
+    assert!(says_unbuilt("\"Becoming invisible\"").is_empty());
+}
+
+/// The places in `code` where an unfinished part's id is named some
+/// other way than being handed to an `unbuilt::` function or put in a
+/// list as `Unbuilt(..)`: each as the text around it.
+fn ids_named_loosely(code: &str) -> Vec<String> {
+    let mut loose = Vec::new();
+    let name = "UnbuiltId::";
+    let mut from = 0;
+    while let Some(found) = code[from..].find(name) {
+        let at = from + found;
+        from = at + name.len();
+        let before = &code[..at];
+        // The statement so far: from the last `;` (or the file's start).
+        let statement = &before[before.rfind(';').map_or(0, |i| i + 1)..];
+        let in_a_list = statement.trim_end().ends_with("Unbuilt(");
+        // Inside the brackets of a call to one of the mechanism's own
+        // functions: the bracket opened after its name isn't closed yet.
+        let handed_over = statement.rfind("unbuilt::").is_some_and(|call| {
+            let mut depth = 0_i32;
+            let mut opened = false;
+            for c in statement[call..].chars() {
+                match c {
+                    '(' => {
+                        depth += 1;
+                        opened = true;
+                    }
+                    ')' => depth -= 1,
+                    _ => {}
+                }
+                if opened && depth == 0 {
+                    return false;
+                }
+            }
+            opened
+        });
+        if !in_a_list && !handed_over {
+            let end = (at + 40).min(code.len());
+            let start = at.saturating_sub(40);
+            let around: String = code
+                .char_indices()
+                .filter(|(i, _)| (start..end).contains(i))
+                .map(|(_, c)| if c == '\n' { ' ' } else { c })
+                .collect();
+            loose.push(around.trim().to_owned());
+        }
+    }
+    loose
+}
+
+#[test]
+fn an_unfinished_part_is_named_only_where_it_is_drawn_or_listed() {
+    let mut wrong = Vec::new();
+    for (path, text) in sources_of(&["editor", "app"]) {
+        if is_the_mechanism(&path) || is_tests(&path) {
+            continue;
+        }
+        for around in ids_named_loosely(&code_of(&text)) {
+            wrong.push(format!("{}: ...{around}...", path.display()));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "An unfinished part's id goes to an unbuilt:: function, or into a list as \
+         Entry::Unbuilt(..) that unbuilt::filter goes over; nothing else may hold one, so \
+         deleting its line from the table finds every place that drew it:\n{}",
+        wrong.join("\n")
+    );
+}
+
+#[test]
+fn the_id_rule_allows_drawing_and_listing_and_nothing_else() {
+    for fine in [
+        "unbuilt::ribbon_big(ui, UnbuiltId::HomeLightingBake, Icon::Sun);",
+        "let r = crate::unbuilt::setting_row(\n    ui,\n    UnbuiltId::PrefsCodeSplit,\n);",
+        "vec![Built(a), Unbuilt(UnbuiltId::ShellTabVfx), Unbuilt(\n  UnbuiltId::ShellTabShading)]",
+        "let rows = [Entry::Unbuilt(UnbuiltId::PrefsCodeSplit)];",
+        "if unbuilt::tab(ui, pick(UnbuiltId::ShellTabVfx)).clicked() {}",
+    ] {
+        assert!(ids_named_loosely(fine).is_empty(), "{fine}");
+    }
+    for loose in [
+        "let id = UnbuiltId::HomeLightingBake;",
+        "if id == UnbuiltId::ShellTabVfx { ui.label(\"soon\"); }",
+        "draw_grey_button(ui, UnbuiltId::HomeLightingBake);",
+        "unbuilt::tab(ui, a); other(UnbuiltId::ShellTabVfx);",
+        "unbuilt::tab(ui, a)\n    .on_hover_text(name(UnbuiltId::ShellTabVfx));",
+    ] {
+        assert_eq!(ids_named_loosely(loose).len(), 1, "{loose}");
+    }
+}
+
+/// The controls in `code` that are switched off for good with nothing
+/// said about why: `add_enabled(false, ..)` whose statement gives no
+/// reason for hover.
+fn dead_controls(code: &str) -> usize {
+    ["add_enabled(false", "add_enabled_ui(false"]
+        .iter()
+        .flat_map(|dead| code.split(dead).skip(1))
+        .filter(|after| {
+            let statement = after.split(';').next().unwrap_or_default();
+            !statement.contains("on_disabled_hover_text(")
+        })
+        .count()
+}
+
+#[test]
+fn a_control_switched_off_for_good_says_why() {
+    let mut wrong = Vec::new();
+    for (path, text) in sources_of(&["editor", "app"]) {
+        if is_tests(&path) {
+            continue;
+        }
+        let dead = dead_controls(&code_of(&text));
+        if dead > 0 {
+            wrong.push(format!("{}: {dead}", path.display()));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "A control that can never be used is either an unfinished part (crate::unbuilt) or \
+         gives its reason with on_disabled_hover_text in the same statement:\n{}",
+        wrong.join("\n")
+    );
+}
+
+#[test]
+fn the_dead_control_rule_asks_for_a_reason_in_the_same_statement() {
+    assert_eq!(
+        dead_controls("ui.add_enabled(false, Button::new(\"Bake\"));"),
+        1
+    );
+    assert_eq!(
+        dead_controls(
+            "ui.add_enabled(false, Button::new(\"Save\"))\n    .on_disabled_hover_text(why);"
+        ),
+        0
+    );
+    // A reason given to some later control doesn't count.
+    assert_eq!(
+        dead_controls(
+            "ui.add_enabled(false, a);\nui.add_enabled(can, b).on_disabled_hover_text(why);"
+        ),
+        1
+    );
+    assert_eq!(dead_controls("ui.add_enabled_ui(false, |ui| rows(ui));"), 1);
+    // Switched off by a condition is another matter: it can be used at
+    // other times.
+    assert_eq!(
+        dead_controls("ui.add_enabled(can_save, Button::new(\"Save\"));"),
+        0
+    );
 }

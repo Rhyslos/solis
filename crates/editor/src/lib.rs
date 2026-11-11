@@ -89,6 +89,7 @@ mod tileset_view;
 pub mod tokens;
 mod top_bar;
 pub mod transforming;
+pub mod unbuilt;
 pub mod updates;
 pub mod viewport;
 mod viewport_tools;

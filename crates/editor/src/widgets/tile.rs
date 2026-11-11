@@ -85,7 +85,7 @@ pub fn tile(
     } else {
         tokens::text_tile()
     };
-    cut_off(ui, name, said.name, text::tile_name(), ink);
+    super::cut_off(ui, name, said.name, text::tile_name(), ink);
     let kind = Rect::from_min_size(
         pos2(inside.left(), name.bottom() + size::GAP),
         vec2(inside.width(), KIND_H),
@@ -110,20 +110,4 @@ pub fn tile(
     );
     focus_ring(ui, &response, rect, size::radius::CARD);
     response
-}
-
-/// `text` in one line inside `rect`, ending in "…" where it doesn't fit.
-fn cut_off(ui: &Ui, rect: Rect, text: &str, font: egui::FontId, colour: Color32) {
-    let mut job = egui::text::LayoutJob::single_section(
-        text.to_owned(),
-        egui::TextFormat {
-            font_id: font,
-            color: colour,
-            ..Default::default()
-        },
-    );
-    job.wrap = egui::text::TextWrapping::truncate_at_width(rect.width());
-    let galley = ui.painter().layout_job(job);
-    let at = pos2(rect.left(), rect.center().y - galley.size().y / 2.0);
-    ui.painter().galley(at, galley, colour);
 }
