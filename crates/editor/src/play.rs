@@ -61,6 +61,9 @@ pub(crate) struct Playing {
     told_too_many: bool,
     /// Whether the Console was told there were too many physics bodies.
     told_too_many_bodies: bool,
+    /// Whether the Console was told 2D physics stopped and was started
+    /// again (said once a play, however often it happens).
+    told_flat_broke: bool,
     /// Assembly names game code spawned of which no copy could be made
     /// (none by that name, or one that can't be copied), each said once.
     told_unmade: std::collections::HashSet<String>,
@@ -91,6 +94,24 @@ pub(crate) struct Playing {
     /// How the last playback ended: matched on every tick (their count),
     /// or stopped matching by this tick (Phase 8, C4: a project's check).
     pub(crate) replayed: Option<Result<usize, usize>>,
+}
+
+/// What the Console says when 2D physics stopped on something and the
+/// world started it again, naming the character whose move it stopped on
+/// when that's known.
+fn flat_broke_note(world: &world::World, broke: world::FlatBroke) -> String {
+    let on = broke
+        .on
+        .and_then(|id| world.get::<world::Name>(id))
+        .map(|name| format!(" (moving \"{}\")", name.0))
+        .unwrap_or_default();
+    format!(
+        "2D physics stopped on something it couldn't work out{on}, and was started again from \
+         the entities and tile maps as they are now, so the game carries on. If it keeps \
+         stopping, it's started again at most once a second and 2D characters stand still in \
+         between: look for a Collider2D or a tile map whose size or place is far out of the \
+         ordinary. (Said once.)"
+    )
 }
 
 /// The most ticks one recording keeps: an hour at 60 a second.
@@ -246,6 +267,7 @@ impl Workbench {
             view,
             told_too_many: false,
             told_too_many_bodies: false,
+            told_flat_broke: false,
             told_unmade: Default::default(),
             told_too_many_spawns: false,
             pending,
@@ -514,6 +536,15 @@ impl Workbench {
                     .map(|&id| (id, changes.moved.contains(&id))),
             );
         }
+        // A field set by hand takes the area's value even where that's
+        // what the area held all along and game code had set its own
+        // meanwhile: for Solis's own components here, as for game code's
+        // below. Everything else game code set on the entity stays.
+        for ((id, component), fields) in &changes.set {
+            for field in fields {
+                playing.world.set_by_hand(*id, component, field);
+            }
+        }
         let mut said = Vec::new();
         let mut failures = Vec::new();
         let mut dropped_sounds = 0usize;
@@ -563,6 +594,7 @@ impl Workbench {
             playing.pending.extend(edits);
         }
         let mut pause = None;
+        let mut flat_broke = None;
         let ran = if playing.paused {
             // Step: one tick, then paused again.
             u64::from(std::mem::take(&mut playing.step))
@@ -738,6 +770,14 @@ impl Workbench {
                      game has no physics now. Fix its size or place, then Stop and play again."
                         .to_string(),
                 );
+            }
+            // 2D physics stopped too, and the world started it again: the
+            // game carries on, and the Console says why once a play.
+            if let Some(broke) = playing.world.take_flat_broke()
+                && !playing.told_flat_broke
+            {
+                playing.told_flat_broke = true;
+                flat_broke = Some(flat_broke_note(&playing.world, broke));
             }
             if slow.is_none() && stepping.elapsed() > PHYSICS_LIMIT {
                 slow = Some(format!(
@@ -988,6 +1028,9 @@ impl Workbench {
                     crate::models::grouped(world::MAX_PROJECTILES)
                 ),
             );
+        }
+        if let Some(note) = flat_broke {
+            self.log(LogLevel::Warning, note);
         }
         if bodies_refused {
             self.log(

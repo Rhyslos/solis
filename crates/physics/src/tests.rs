@@ -1060,3 +1060,36 @@ fn no_scale_centre_or_size_hands_rapier_a_number_out_of_range() {
     }
     assert_eq!(tried, 8 * 2 * 8 * 8);
 }
+
+/// A step Rapier fails never crashes Solis: physics empties and says so
+/// once (3D and 2D share the guard that remembers it).
+#[test]
+fn a_step_that_fails_empties_physics_and_says_so_once() {
+    let mut physics = with_floor();
+    let (body, collider) = crate_spec();
+    physics.add(
+        id(2),
+        (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider,
+    );
+    run(&mut physics, 3);
+    assert!(!physics.take_broke());
+    physics.fail_next();
+    run(&mut physics, 1);
+    assert!(physics.state().is_empty(), "emptied");
+    assert!(physics.take_broke());
+    assert!(!physics.take_broke(), "said once");
+    // Built again, it steps as before.
+    physics.add(
+        id(2),
+        (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider,
+    );
+    run(&mut physics, 30);
+    assert!(physics.state().pose(id(2)).unwrap().0.z < 5.0, "falling");
+    assert!(!physics.take_broke());
+}

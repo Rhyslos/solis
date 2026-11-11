@@ -25,6 +25,21 @@ pub struct Native {
     pub about: &'static str,
 }
 
+/// Every owner a native in [`NATIVES`] has, each once, in order of
+/// their names: the engine objects and `entity` (not `""`, a method
+/// that's nobody's). Lua's `solis` groups the natives under these
+/// (`solis.World:say`, `solis.entity.moveTo`).
+pub(crate) fn owners() -> Vec<&'static str> {
+    let mut owners: Vec<&str> = NATIVES
+        .iter()
+        .map(|native| native.owner)
+        .filter(|owner| !owner.is_empty())
+        .collect();
+    owners.sort_unstable();
+    owners.dedup();
+    owners
+}
+
 impl Native {
     /// Its body's key in `LUST_NATIVES`, as Lust's Lua calls it: the name,
     /// `entity_<name>` for an entity's method, `<Object>_<name>` for an

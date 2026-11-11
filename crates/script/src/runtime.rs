@@ -367,7 +367,7 @@ impl Runtime {
         let running = &mut self.running;
         let old_classes = &self.lua_classes;
         let old_lust = self.lust.as_ref();
-        let in_place = luau.clock.within(LOAD_LIMIT, || {
+        let in_place = luau.clock.within(luau.clock.limits().load, || {
             let lent = lust.as_ref().map(|p| &p.env);
             with_natives(luau, lent, host, Some(&luau.discard), |_| {
                 swap_lust(luau, old_lust, lust.as_ref(), running, &mut swapped)?;
@@ -500,7 +500,10 @@ impl Runtime {
 
     /// [`Runtime::sync`] for many components at once, with the natives
     /// lent once and all the game code it runs (new components' starts)
-    /// sharing [`LOAD_LIMIT`]. Gives back the failures.
+    /// sharing [`LOAD_LIMIT`]. Gives back the failures. An event a start
+    /// sends goes nowhere, as one the code's own start sends does
+    /// ([`Runtime::load`], [`Runtime::swap`]): one rule wherever game
+    /// code starts.
     pub fn sync_many<'a>(
         &mut self,
         components: impl IntoIterator<Item = (EntityId, &'a str, &'a ComponentData)>,
@@ -535,8 +538,12 @@ impl Runtime {
         let mut failures = Vec::new();
         let lust_env = self.lust.as_ref().map(|p| &p.env);
         let luau = &self.luau;
-        let lent = luau.clock.within(LOAD_LIMIT, || {
-            with_natives(luau, lust_env, host, Some(&self.send), |lent| {
+        let lent = luau.clock.within(luau.clock.limits().load, || {
+            // A start's sends are dropped. Kept, they would wait in the
+            // queue for the next tick, which hands whatever waits there
+            // to the first component it runs: another sender, and another
+            // order, on every number of shards.
+            with_natives(luau, lust_env, host, Some(&luau.discard), |lent| {
                 for (entity, name, data, set) in components {
                     // What a new component's start changes lands in order.
                     lent.borrow_mut().at(&crate::ticking::Order {
@@ -726,7 +733,13 @@ impl Runtime {
     /// Starts a tick in phases: all of its game code shares
     /// [`TICK_LIMIT`].
     pub(crate) fn start_tick(&self) {
-        self.luau.clock.start(TICK_LIMIT);
+        self.luau.clock.start(self.luau.clock.limits().tick);
+    }
+
+    /// Gives this runtime's game code other time limits (see
+    /// [`crate::luau::Limits`]).
+    pub(crate) fn set_limits(&self, limits: crate::luau::Limits) {
+        self.luau.clock.set_limits(limits);
     }
 
     /// Ends a tick in phases; whether it ran past its budget (the rest of
@@ -819,7 +832,7 @@ impl Runtime {
         };
         let files = compile_files(&self.luau, &code.lua, &code.bytecode.lua).map_err(failed)?;
         let luau = &self.luau;
-        let (lust, classes) = luau.clock.within(LOAD_LIMIT, || {
+        let (lust, classes) = luau.clock.within(luau.clock.limits().load, || {
             let lust = match lust_code {
                 Some((chunk, compiled)) => {
                     Some(lust_program::prepare(luau, host, chunk, compiled)?)
@@ -1025,6 +1038,10 @@ mod hostile_tests;
 #[cfg(test)]
 #[path = "runtime_seams_tests.rs"]
 mod seams_tests;
+
+#[cfg(test)]
+#[path = "runtime_reach_tests.rs"]
+mod reach_tests;
 
 #[cfg(test)]
 #[path = "runtime_speed_tests.rs"]

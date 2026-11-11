@@ -35,6 +35,8 @@ The game looks through the **first camera** in the Area panel's list. With no ca
 - **Undoing, while playing, a change made before Play** is a change too: the list says *Undid a change made before Play*, and Keep leaves it undone (Ctrl + Y makes it again).
 - A change you made while playing and undid again with Ctrl + Z is simply gone: after Stop, Ctrl + Y can't bring it back.
 
+**An edit while the game runs changes only what you edit.** The field you set takes your value at once, even if the game had changed it. Everything else on that entity stays as the game has it: the [screen](screens.md) it shows, a sound game code switched off, the clip its sprite plays and which way it's flipped, its animator, its tile map, where it stands and how it moves. So you can tune a lamp on the entity that shows the health bar without the health bar vanishing, and adding or deleting another entity doesn't put anything back either.
+
 You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md).
 
 **Playing with the keys, mouse and gamepad:** click the Game panel to give the game the mouse and keys (the pointer disappears, and the editor's own keys are off); press **Esc** to give them back. A gamepad works whenever the game plays. The **Play** menu also records a play's input and plays it back exactly (see [Input](input.md)), and **Load a save…** plays from a [save game](save-games.md).

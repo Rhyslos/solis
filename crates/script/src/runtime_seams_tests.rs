@@ -72,6 +72,86 @@ fn the_code_s_start_can_send_and_call_natives_and_its_components_know_where_they
     assert_eq!(compiled.places["Spinner"].0, "parts/spin.lua");
 }
 
+/// The review, BUG-48: one rule wherever game code starts. What the
+/// code's own start sends, and what a field's starting value sends (when
+/// its component is first made, and when new code gives a running one a
+/// new field), goes nowhere. A component made while the game ran used to
+/// be the exception: its event waited for the next tick, and was put
+/// down to whichever component updated first.
+#[test]
+fn what_a_start_sends_goes_nowhere_however_the_component_started() {
+    /// Finds the bell, so a start's `send` has somewhere to go.
+    struct Finds(EntityId);
+    impl Host for Finds {
+        fn say(&mut self, _words: &str) {}
+        fn time(&self) -> f64 {
+            0.0
+        }
+        fn find(&self, name: &str) -> Option<EntityId> {
+            (name == "Bell").then_some(self.0)
+        }
+        fn position(&self, _which: EntityId) -> Option<glam::Vec3> {
+            None
+        }
+        fn move_to(&mut self, _which: EntityId, _place: glam::Vec3) {}
+        fn rotation(&self, _which: EntityId) -> Option<glam::Quat> {
+            None
+        }
+        fn turn_to(&mut self, _which: EntityId, _facing: glam::Quat) {}
+        fn name(&self, _which: EntityId) -> Option<String> {
+            None
+        }
+    }
+    // The bell counts what it hears; a ringer rings once as it starts,
+    // and (from the second tick) once every update.
+    let v1 = "fetch \"solis/world\":World;\n\n\
+        event Rang(int times);\n\
+        method int ring(int times) {\n\
+            send Rang(times) to World:find(\"Bell\");\n\
+            return times;\n\
+        }\n\
+        send Rang(1000) to World:find(\"Bell\");\n\
+        component Ringer {\n    has {\n        int rang = ring(100);\n        int ticks = 0;\n    }\n\
+        \x20   method update(float dt) {\n        ticks = ticks + 1;\n\
+        \x20       is ticks > 1? then {\n            send Rang(1) to World:find(\"Bell\");\n        }\n    }\n}\n\
+        component Bell {\n    has {\n        int heard = 0;\n    }\n\
+        \x20   on Rang(int times) {\n        heard = heard + times;\n    }\n}\n\
+        pass Ringer, Bell;\nend\n";
+    let v2 = v1.replace(
+        "int ticks = 0;",
+        "int ticks = 0;\n        int again = ring(10);",
+    );
+    let (bell, ringer) = (id(9), id(1));
+    let mut host = Finds(bell);
+    let mut runtime = Runtime::new().unwrap();
+    let heard = |runtime: &mut Runtime, host: &mut Finds| {
+        let failures = runtime.tick(0.1, host).failures;
+        assert!(failures.is_empty(), "{failures:?}");
+        runtime.values(bell, "Bell").unwrap().get("heard").cloned()
+    };
+    // The code's own start, as the game loads.
+    runtime
+        .load(&compiled(v1, &[]).unwrap(), &mut host)
+        .unwrap();
+    runtime
+        .sync(bell, "Bell", &ComponentData::default(), &mut host)
+        .unwrap();
+    assert_eq!(heard(&mut runtime, &mut host), Some(Value::Int(0)));
+    // A component made while the game runs: its starting value rings.
+    runtime
+        .sync(ringer, "Ringer", &ComponentData::default(), &mut host)
+        .unwrap();
+    assert_eq!(heard(&mut runtime, &mut host), Some(Value::Int(0)));
+    // What it sends once it runs arrives, as its own.
+    assert_eq!(heard(&mut runtime, &mut host), Some(Value::Int(1)));
+    // New code gives the running ringer a field whose starting value
+    // rings; only its update's ring arrives.
+    runtime
+        .swap(&compiled(&v2, &[]).unwrap(), &mut host)
+        .unwrap();
+    assert_eq!(heard(&mut runtime, &mut host), Some(Value::Int(2)));
+}
+
 #[test]
 fn an_event_sent_with_the_wrong_values_is_the_sender_s_mistake() {
     let main = "event Hit(entity by, float damage);\n\

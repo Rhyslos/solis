@@ -65,6 +65,13 @@ const NAMES: &[(&str, &str)] = &[
     ),
 ];
 
+/// The groups `solis` reaches the natives through (`solis.World:say`).
+/// They aren't names `solis` holds itself (its metatable hands them out),
+/// so they're listed apart: a new engine object is within Lua's reach as
+/// soon as a native has it as its owner, and is put on this list by hand,
+/// like any other name game code is given.
+const GROUPS: &str = "Animators Audio Input Maps Physics Saves Screens Window World entity";
+
 /// The names `table` holds itself, in order, with spaces between.
 fn names(table: &Table) -> String {
     let mut names: Vec<String> = table
@@ -100,6 +107,46 @@ fn game_code_sees_only_the_names_on_the_list() {
     );
     // A file's own globals start with only these two.
     assert_eq!(names(&luau.env().unwrap()), "_G vector");
+}
+
+#[test]
+fn solis_offers_the_engine_s_objects_and_nothing_else() {
+    assert_eq!(
+        crate::describe::owners().join(" "),
+        GROUPS,
+        "the engine's objects changed: game code reaches each through `solis`, so decide \
+         whether it may, then update GROUPS"
+    );
+    let luau = Luau::new().unwrap();
+    let ask = |text: &str| {
+        luau.lua
+            .load(text)
+            .set_environment(luau.env().unwrap())
+            .eval::<String>()
+            .unwrap()
+    };
+    // Each is there (read-only, as the vandals' test in luau.rs checks),
+    // whether or not the game is running.
+    for group in GROUPS.split(' ') {
+        assert_eq!(ask(&format!("return type(solis.{group})")), "table");
+    }
+    // Anything else is refused by name; the natives themselves only
+    // while the game runs.
+    for (other, said) in [
+        ("solis.Files", "solis.Files isn't something Solis offers"),
+        ("solis.world", "solis.world isn't something Solis offers"),
+        ("solis.send_event", "solis.send_event isn't something"),
+        ("solis.Window.quit", "solis.Window.quit isn't something"),
+    ] {
+        let refused = ask(&format!(
+            "local ok, why = pcall(function() return {other} end)\n\
+             return tostring(ok) .. \" \" .. tostring(why)"
+        ));
+        assert!(
+            refused.starts_with("false") && refused.contains(said),
+            "{other}: {refused}"
+        );
+    }
 }
 
 #[test]

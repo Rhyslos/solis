@@ -487,6 +487,7 @@ impl GameWorld for PlayWorld<'_> {
         let places_of_maps = self.map_places();
         WorldView {
             time: self.time,
+            tick: self.world.clock().ticks,
             index: Arc::clone(&self.cache.index),
             places: Arc::new(places),
             frame_time: self.frame_time,

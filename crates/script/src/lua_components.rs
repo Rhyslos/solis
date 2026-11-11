@@ -31,6 +31,7 @@
 use crate::code::CodeProblem;
 use crate::convert::{empty, from_lua, kind_of, label, to_lua};
 use crate::luau::{Luau, capped};
+use crate::native_values::KEPT;
 use crate::runtime::Swapped;
 use crate::ticking::{Instance, RunningMap};
 use mlua::{Lua, Table, Value as LuaValue};
@@ -56,7 +57,10 @@ pub(crate) struct LuaClass {
 }
 
 /// A Lua error's place and message, from its text (`spinner.lua:5:
-/// attempt to …`): the file it names, or `file` if it names none.
+/// attempt to …`): the file it names, or `file` if it names none. An
+/// error raised outside the game's Lua (by a native, or by `error` told
+/// to leave the place out) names no place itself, so it's the first line
+/// of the game's Lua among the calls that led to it.
 pub(crate) fn lua_problem(file: &str, err: &mlua::Error) -> CodeProblem {
     let mut problem = lua_problem_whole(file, err);
     problem.message = capped(&problem.message, MAX_MESSAGE_BYTES);
@@ -73,38 +77,58 @@ fn lua_problem_whole(file: &str, err: &mlua::Error) -> CodeProblem {
     for prefix in ["runtime error: ", "syntax error: ", "callback error: "] {
         first = first.strip_prefix(prefix).unwrap_or(first);
     }
-    let found = first.match_indices(':').find_map(|(i, _)| {
-        let rest = &first[i + 1..];
-        let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
-        let message = rest[digits.len()..].strip_prefix(": ")?;
-        let line = digits.parse::<u32>().ok()?;
-        Some((first[..i].to_string(), line, message.to_string()))
-    });
-    match found {
-        Some((path, line, message)) => CodeProblem {
-            // The error's text is game code's to write (`error(msg, 0)`):
-            // only a plain path inside the project is taken from it.
-            file: if path.ends_with(".lua")
-                && !path.contains(':')
-                && path
-                    .split(['/', '\\'])
-                    .all(|part| !part.is_empty() && part != "." && part != "..")
-            {
-                path
-            } else {
-                file.to_string()
-            },
-            line,
-            column: 0,
-            message,
+    let placed = place(first);
+    // The calls that led to the error follow its first line, innermost
+    // first, each `spinner.lua:5: in function …`.
+    let called_from = || {
+        text.lines()
+            .skip(1)
+            .filter_map(|line| place(line.trim()))
+            .find(|(path, _, _)| in_project(path))
+    };
+    let (file, line, message) = match placed {
+        // The error's text is game code's to write (`error(msg, 0)`):
+        // only a plain path inside the project is taken from it.
+        Some((path, line, message)) if in_project(path) => (path, line, message),
+        Some((_, line, message)) => (file, line, message),
+        None => match called_from() {
+            Some((path, line, _)) => (path, line, first),
+            None => (file, 0, first),
         },
-        None => CodeProblem {
-            file: file.to_string(),
-            line: 0,
-            column: 0,
-            message: first.to_string(),
+    };
+    // The library's own words for a native kept past the moment it was
+    // lent for, asked of the library so they're the ones it uses.
+    let kept = mlua::Error::CallbackDestructed.to_string();
+    CodeProblem {
+        file: file.to_string(),
+        line,
+        column: 0,
+        message: if message.contains(&kept) {
+            KEPT.to_string()
+        } else {
+            message.to_string()
         },
     }
+}
+
+/// The place a line of an error starts with, and what follows it:
+/// `spinner.lua:5: attempt to …` is `spinner.lua`, 5 and the rest.
+fn place(line: &str) -> Option<(&str, u32, &str)> {
+    line.match_indices(':').find_map(|(i, _)| {
+        let rest = &line[i + 1..];
+        let digits = rest.len() - rest.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        let after = rest[digits..].strip_prefix(": ")?;
+        Some((&line[..i], rest[..digits].parse().ok()?, after))
+    })
+}
+
+/// Whether `path` is a plain path to a Lua file inside the project.
+fn in_project(path: &str) -> bool {
+    path.ends_with(".lua")
+        && !path.contains(':')
+        && path
+            .split(['/', '\\'])
+            .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
 /// The Lua files, compiled, each with globals of its own (not run yet).
@@ -418,6 +442,16 @@ mod tests {
                 .load(format!(
                     "error({:?}, 0)",
                     format!("{named}:1: double-click me")
+                ))
+                .exec()
+                .unwrap_err();
+            let problem = lua_problem("mine.lua", &err);
+            assert_eq!(problem.file, "mine.lua", "{named}");
+            // Nor can a line written like one of the calls that led to it.
+            let err = lua
+                .load(format!(
+                    "error({:?}, 0)",
+                    format!("double-click me\n\t{named}:1: in function 'x'")
                 ))
                 .exec()
                 .unwrap_err();

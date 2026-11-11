@@ -2,7 +2,7 @@
 //! on the first shard, with their values copied to the others; changed
 //! only in their own update; kept by name across new code.
 
-use super::tests::{TestWorld, compiled, id};
+use super::tests::{TestWorld, compiled, id, unhurried};
 use super::*;
 use reflect::Value;
 
@@ -61,7 +61,7 @@ fn run_clock(
     let names: Vec<String> = (0..=lamps).map(|n| format!("L{n}")).collect();
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let mut world = TestWorld::with(&names);
-    let mut game = Game::new(shards).unwrap();
+    let mut game = unhurried(shards);
     game.load(&compiled(CLOCK), &mut world).unwrap();
     let empty = ComponentData::default();
     let mut components: Vec<(EntityId, &str, &ComponentData)> =
@@ -148,7 +148,7 @@ fn an_object_whose_update_fails_stops_alone_and_says_so_once() {
         }\n\
         pass Broken, Counter;\nend\n";
     let mut world = TestWorld::with(&["A"]);
-    let mut game = Game::new(2).unwrap();
+    let mut game = unhurried(2);
     game.load(&compiled(code), &mut world).unwrap();
     let first = game.tick(1.0 / 60.0, &mut world).failures;
     assert_eq!(first.len(), 1, "{first:?}");
@@ -167,7 +167,7 @@ fn an_object_whose_update_fails_stops_alone_and_says_so_once() {
 #[test]
 fn objects_take_saved_values_that_fit_and_say_which_don_t() {
     let mut world = TestWorld::with(&["A", "B", "C"]);
-    let mut game = Game::new(3).unwrap();
+    let mut game = unhurried(3);
     game.load(&compiled(CLOCK), &mut world).unwrap();
     let empty = ComponentData::default();
     let lamps: Vec<(EntityId, &str, &ComponentData)> =
@@ -198,7 +198,7 @@ fn objects_take_saved_values_that_fit_and_say_which_don_t() {
 #[test]
 fn new_code_keeps_each_object_s_values_by_name() {
     let mut world = TestWorld::with(&["A"]);
-    let mut game = Game::new(2).unwrap();
+    let mut game = unhurried(2);
     game.load(&compiled(CLOCK), &mut world).unwrap();
     for _ in 0..5 {
         game.tick(1.0 / 60.0, &mut world);

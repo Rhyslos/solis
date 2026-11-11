@@ -207,28 +207,6 @@ impl World {
         sums.sort_unstable_by_key(|(id, _)| *id);
         sums
     }
-
-    /// Each entity's map, to keep over a rebuild.
-    pub(crate) fn map_states(&self) -> Vec<(EntityId, MapState)> {
-        self.ecs
-            .query::<(&Id, &MapState)>()
-            .iter()
-            .map(|(id, s)| (id.0, s.clone()))
-            .collect()
-    }
-
-    /// Puts back maps kept over a rebuild or an update, on entities that
-    /// still have a TileMap.
-    pub(crate) fn keep_maps(&mut self, states: Vec<(EntityId, MapState)>) {
-        for (id, state) in states {
-            if let Some(&entity) = self.by_id.get(&id)
-                && self.ecs.satisfies::<&TileMapComponent>(entity)
-            {
-                let _ = self.ecs.insert_one(entity, state);
-            }
-        }
-        self.start_maps();
-    }
 }
 
 #[cfg(test)]

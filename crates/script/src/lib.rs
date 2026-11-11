@@ -3,6 +3,7 @@
 //! run in Luau while the game plays.
 
 pub mod animator_code;
+mod check_turns;
 pub mod code;
 mod convert;
 pub mod describe;
@@ -16,6 +17,7 @@ mod lua_components;
 pub mod luau;
 mod lust_program;
 pub mod map_code;
+mod native_values;
 mod objects;
 pub mod project_names;
 pub mod runtime;
@@ -25,7 +27,10 @@ pub mod settings;
 mod syncing;
 mod ticking;
 
-pub use code::{Bytecode, Code, CodeProblem, Compiled, check, compile, gather, renamed_uses};
+pub use code::{
+    Bytecode, Code, CodeProblem, Compiled, NotStarted, check, check_unfinished, compile, gather,
+    renamed_uses, try_compile,
+};
 pub use events::Event;
 pub use game::{Change, Game, GameWorld, ViewIndex, WorldView};
 pub use host::{AnimatorValue, Host, MapPlace, NoHost, Shot, SoundAt};

@@ -1286,6 +1286,129 @@ fn spawned_entities_get_the_same_ids_every_time() {
     assert_eq!(ids(), ids());
 }
 
+/// A hive that stops the game's time at the end of its third tick
+/// (`setGameSpeed(0)`, how a game pauses itself), and every tick rolls a
+/// number and spawns a drone.
+const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+    component Hive {\n\
+        has {\n\
+            int ticks = 0;\n\
+            float rolled = 0;\n\
+            entity made = nothing;\n\
+        }\n\
+        method update(float dt) {\n\
+            ticks = ticks + 1;\n\
+            is ticks == 3? then {\n\
+                World:setGameSpeed(0);\n\
+            }\n\
+            rolled = World:random();\n\
+            made = World:spawn(Assembly.Drones.Drone, [0, 0, 1]);\n\
+        }\n\
+    }\n\
+    component Drone {\n\
+        has {\n\
+            int age = 0;\n\
+        }\n\
+    }\n\
+    pass Hive, Drone;\nend\n";
+
+/// The review, BUG-47: random numbers and spawned entities were made from
+/// the game's time, which stands still at game speed 0 while game code
+/// goes on running. A paused game rolled one number over and over, and
+/// its second spawn asked for an entity already there.
+#[test]
+fn random_numbers_and_spawns_carry_on_while_the_game_s_speed_is_0_and_after_a_load() {
+    let hive_id = EntityId(reflect::Id::from_raw(77).unwrap());
+    let playing = || {
+        let mut w = with_drones(PAUSING_HIVE);
+        w.open.project = Some(crate::library::ProjectInfo {
+            name: "Hives".into(),
+            root: std::env::temp_dir(),
+            assets: std::env::temp_dir(),
+        });
+        let mut hive = EntityData::new("Hive");
+        hive.components
+            .insert("Hive".into(), reflect::ComponentData::default());
+        w.open
+            .document
+            .edit(
+                "Add",
+                vec![area::Edit::Spawn {
+                    entities: vec![(hive_id, hive)],
+                }],
+                None,
+                None,
+            )
+            .unwrap();
+        w.open.fixed_seed = Some(11);
+        w.play();
+        w
+    };
+    // Runs up to tick `until`, giving what the hive rolled (the number's
+    // exact bits) and spawned on each tick.
+    let run_to = |w: &mut Workbench, until: u64| {
+        let mut rolled = Vec::new();
+        while w.world().unwrap().clock().ticks < until {
+            let before = w.world().unwrap().clock().ticks;
+            w.run_game((world::TICK + 1e-9) as f32);
+            if w.world().unwrap().clock().ticks == before {
+                continue;
+            }
+            assert_eq!(w.world().unwrap().clock().ticks, before + 1, "a tick a go");
+            let game = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
+            let hive = game.values(hive_id, "Hive").unwrap();
+            match (hive.get("rolled"), hive.get("made")) {
+                (Some(Value::Float(number)), Some(Value::Entity(Some(made)))) => {
+                    rolled.push((number.to_bits(), *made));
+                }
+                other => panic!("the hive rolled and made {other:?}"),
+            }
+        }
+        rolled
+    };
+    let drones = |w: &Workbench| {
+        let area = w.open.document.area();
+        area.iter().filter(|(_, e)| e.name == "drone").count()
+    };
+    let all_differ = |rolled: &[(u64, EntityId)]| {
+        let numbers: std::collections::HashSet<u64> = rolled.iter().map(|r| r.0).collect();
+        let made: std::collections::HashSet<EntityId> = rolled.iter().map(|r| r.1).collect();
+        numbers.len() == rolled.len() && made.len() == rolled.len()
+    };
+
+    let mut w = playing();
+    let mut rolled = run_to(&mut w, 8);
+    assert_eq!(rolled.len(), 8);
+    // Time stood still from the fourth tick on, and the game went on.
+    assert_eq!(w.world().unwrap().speed(), 0.0);
+    let stood_at = w.world().unwrap().clock().time;
+    assert!((stood_at - 3.0 * world::TICK).abs() < 1e-9, "{stood_at}");
+    assert!(all_differ(&rolled), "{rolled:?}");
+    assert_eq!(drones(&w), 8, "every spawn was made");
+
+    // A save, then four more ticks; loaded, the same four ticks again.
+    let saved = w.save_of_game().unwrap().write().unwrap();
+    let went_on = run_to(&mut w, 12);
+    assert_eq!(drones(&w), 12);
+    w.load_game(&saved, "quick");
+    assert_eq!(w.world().unwrap().clock().ticks, 8);
+    assert_eq!(drones(&w), 8);
+    assert_eq!(run_to(&mut w, 12), went_on, "the loaded game carries on");
+    assert_eq!(w.world().unwrap().clock().time, stood_at, "still paused");
+    rolled.extend(went_on);
+    assert!(all_differ(&rolled), "{rolled:?}");
+    assert!(
+        !w.log_lines()
+            .iter()
+            .any(|l| l.level == crate::console::LogLevel::Error),
+        "{:?}",
+        w.log_lines().last().map(|l| &l.text)
+    );
+
+    // The same game again comes out the same.
+    assert_eq!(run_to(&mut playing(), 12), rolled);
+}
+
 #[test]
 fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
     let mut w = with_drones(

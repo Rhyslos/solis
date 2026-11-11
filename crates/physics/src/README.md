@@ -5,6 +5,7 @@ The game's physics (decision 0036): the Rapier library in its strict mode, so th
 | File | What it does | Main items |
 | --- | --- | --- |
 | `lib.rs` | Everything: the physics world, adding and removing bodies and colliders, stepping it once per tick, characters moving with steps and slopes, and reading back where everything is. Start here. | `Physics`, `Body`, `BodyKind`, `Shape`, `ColliderSpec`, `CharacterSpec`, `CharacterState`, `BodyState`, `Hit`, `State` |
+| `guard.rs` | Rapier's work, guarded: a panic in it never crashes Solis. 3D and 2D physics each run Rapier's changes through a `Guard`, which remembers that one failed until asked (`take_broke`), and can be made to fail on purpose for tests (`fail_next`). | `Guard` |
 | `tests.rs` | Tests: bodies fall and stack, the same every run, and nothing that isn't a number gets in. | |
 
 **Read next:** the crate's [README](../README.md). The physics components themselves (what's saved in an area) are in [`area/src/builtin/physics.rs`](../../area/src/builtin/physics.rs).

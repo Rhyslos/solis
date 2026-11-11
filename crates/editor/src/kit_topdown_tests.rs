@@ -412,3 +412,54 @@ fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
         w.log_lines()
     );
 }
+
+/// 2D physics stopping mid-game (Rapier failing on something) used to
+/// leave every 2D character standing still for the rest of the play,
+/// with nothing said (the full review). It's started again: the farmer
+/// walks on and still stops at the fence, the game isn't paused, and the
+/// Console says why once, however often it happens.
+#[test]
+fn when_2d_physics_stops_it_s_started_again_and_the_console_says_so_once() {
+    use crate::play::PlayState;
+    let said = |w: &Workbench| {
+        w.log_lines()
+            .iter()
+            .filter(|line| line.text.starts_with("2D physics stopped"))
+            .count()
+    };
+    let fail = |w: &mut Workbench| {
+        let playing = w.open.playing.as_mut().unwrap();
+        playing.world.fail_flat_next();
+    };
+    let mut w = farm(&[]);
+    w.play();
+    ticks(&mut w, 5);
+    walk(&mut w, &["D"], 30);
+    assert_eq!(said(&w), 0);
+    fail(&mut w);
+    let went = walk(&mut w, &["D"], 1);
+    assert!(
+        went.x > 0.05,
+        "the tick's walk was made all the same: {went}"
+    );
+    assert_eq!(said(&w), 1);
+    assert_eq!(w.play_state(), PlayState::Playing, "the game carries on");
+    // Again the tick after: the farmer stands still until it's started
+    // again (within a second), then walks on to the fence. Nothing more
+    // is said.
+    fail(&mut w);
+    let went = walk(&mut w, &["D"], 1);
+    assert_eq!(went, Vec3::ZERO, "standing still");
+    walk(&mut w, &["D"], 200);
+    let x = at(&w).x;
+    assert!(x < 6.0 - 0.25 && x > 6.0 - 0.25 - 0.02, "{x}");
+    assert_eq!(said(&w), 1, "said once a play");
+    assert_eq!(w.play_state(), PlayState::Playing);
+    // The next play says it again.
+    w.stop();
+    w.play();
+    ticks(&mut w, 5);
+    fail(&mut w);
+    walk(&mut w, &["D"], 2);
+    assert_eq!(said(&w), 2);
+}

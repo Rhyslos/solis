@@ -19,7 +19,7 @@ pub type Animators = HashMap<AssetId, Arc<Machine>>;
 
 /// One entity's animator at work: the animator it runs (to notice it
 /// changed) and its place in it. Kept beside the entity's components, and
-/// over edits while playing.
+/// over edits while playing (see `game_set`).
 #[derive(Debug, Clone)]
 pub(crate) struct Running {
     of: Arc<Machine>,
@@ -342,27 +342,6 @@ impl World {
             .collect();
         states.sort_unstable_by_key(|(id, ..)| *id);
         states
-    }
-
-    /// Each entity's run, by ID, to keep over a rebuild.
-    pub(crate) fn runs(&self) -> Vec<(EntityId, Running)> {
-        self.ecs
-            .query::<(&Id, &Running)>()
-            .iter()
-            .map(|(id, r)| (id.0, r.clone()))
-            .collect()
-    }
-
-    /// Puts back runs kept over a rebuild or an update, on entities that
-    /// still have an Animator.
-    pub(crate) fn keep_runs(&mut self, runs: Vec<(EntityId, Running)>) {
-        for (id, running) in runs {
-            if let Some(&entity) = self.by_id.get(&id)
-                && self.ecs.satisfies::<&Animator>(entity)
-            {
-                let _ = self.ecs.insert_one(entity, running);
-            }
-        }
     }
 }
 

@@ -15,6 +15,7 @@ pub(super) struct TestWorld {
     entities: Vec<(EntityId, String, Mat4)>,
     pub(super) said: Vec<String>,
     time: f64,
+    tick: u64,
     shots: Vec<crate::Shot>,
     seed: u64,
     sounds: Vec<Change>,
@@ -38,6 +39,14 @@ impl TestWorld {
         }
     }
 
+    /// Sets the clock as a tick begins: its number, and the game's time
+    /// (which goes on by less than a tick's length, or not at all, when
+    /// the game's speed isn't 1).
+    pub(super) fn set_clock(&mut self, tick: u64, time: f64) {
+        self.tick = tick;
+        self.time = time;
+    }
+
     fn x(&self, n: u64) -> f32 {
         self.entities
             .iter()
@@ -58,6 +67,7 @@ impl GameWorld for TestWorld {
             .collect();
         WorldView {
             time: self.time,
+            tick: self.tick,
             index: Arc::new(ViewIndex::new(&entities)),
             places: Arc::new(self.entities.iter().map(|(_, _, m)| *m).collect()),
             frame_time: 1.0 / 60.0,
@@ -108,6 +118,21 @@ impl GameWorld for TestWorld {
     }
 }
 
+/// A game on `shards` shards whose time limits a busy machine can't
+/// reach. A game's limits are kept on the real clock: when the machine
+/// keeps a test's threads off the processor for a quarter of a second in
+/// the middle of a tick, the tick is cut short (the rest of its updates
+/// don't run, and `Ticked::pause` says so). A test that compares that run
+/// with another then sees two games that came out differently, though
+/// nothing was wrong (the checksum test did, GitHub issue 177). The code
+/// these tests run is compiled unhurried too ([`compiled`]): compiling
+/// starts the code once on its own, under the same limits.
+pub(super) fn unhurried(shards: usize) -> Game {
+    let mut game = Game::new(shards).unwrap();
+    game.set_limits(crate::luau::Limits::unhurried());
+    game
+}
+
 pub(super) fn compiled(main: &str) -> Arc<Compiled> {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
@@ -125,7 +150,7 @@ pub(super) fn compiled(main: &str) -> Arc<Compiled> {
         lua: Vec::new(),
         notes: Vec::new(),
     };
-    match crate::compile(&code) {
+    match crate::code::compile_within(&code, crate::luau::Limits::unhurried()) {
         Ok(Some(c)) => Arc::new(c),
         Ok(None) => panic!("no code"),
         Err(problems) => panic!("{}", problems[0]),
@@ -171,7 +196,7 @@ fn run_busy(shards: usize, count: u64, ticks: usize) -> (TestWorld, Vec<Failure>
     names.push("Eye".into());
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let mut world = TestWorld::with(&names);
-    let mut game = Game::new(shards).unwrap();
+    let mut game = unhurried(shards);
     assert_eq!(game.shards(), shards);
     let code = compiled(BUSY);
     game.load(&code, &mut world).unwrap();
@@ -190,7 +215,7 @@ fn run_busy(shards: usize, count: u64, ticks: usize) -> (TestWorld, Vec<Failure>
     assert!(game.sync_many(components, &mut world).is_empty());
     let mut failures = Vec::new();
     for t in 0..ticks {
-        world.time = t as f64 / 60.0;
+        world.set_clock(t as u64, t as f64 / 60.0);
         failures.extend(game.tick(1.0 / 60.0, &mut world).failures);
     }
     let heard = (1..=count)
@@ -246,7 +271,7 @@ fn game_code_sees_the_start_of_the_tick_but_its_own_changes_at_once() {
         pass Mover, Reader;\nend\n";
     for shards in [1, 3] {
         let mut world = TestWorld::with(&["M", "R"]);
-        let mut game = Game::new(shards).unwrap();
+        let mut game = unhurried(shards);
         game.load(&compiled(SEEING), &mut world).unwrap();
         let empty = ComponentData::default();
         game.sync_many(
@@ -288,7 +313,7 @@ fn two_components_moving_one_entity_the_last_in_the_order_wins() {
         }\n\
         pass Alpha, Beta;\nend\n";
     let mut world = TestWorld::with(&["Box"]);
-    let mut game = Game::new(2).unwrap();
+    let mut game = unhurried(2);
     game.load(&compiled(TWO), &mut world).unwrap();
     let empty = ComponentData::default();
     game.sync_many(
@@ -302,7 +327,7 @@ fn two_components_moving_one_entity_the_last_in_the_order_wins() {
 #[test]
 fn swapping_values_and_stopping_reach_every_shard() {
     let mut world = TestWorld::with(&["W1", "W2", "W3", "Eye"]);
-    let mut game = Game::new(3).unwrap();
+    let mut game = unhurried(3);
     game.load(&compiled(BUSY), &mut world).unwrap();
     let empty = ComponentData::default();
     let all = [
@@ -351,7 +376,7 @@ fn shots_fired_land_in_order_on_any_number_of_shards() {
         let names: Vec<String> = (1..=12).map(|n| format!("G{n}")).collect();
         let names: Vec<&str> = names.iter().map(String::as_str).collect();
         let mut world = TestWorld::with(&names);
-        let mut game = Game::new(shards).unwrap();
+        let mut game = unhurried(shards);
         game.load(&compiled(GUNS), &mut world).unwrap();
         let data: Vec<ComponentData> = (1..=12)
             .map(|n| {
@@ -396,12 +421,12 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
         let names: Vec<String> = (1..=9).map(|n| format!("H{n}")).collect();
         let names: Vec<&str> = names.iter().map(String::as_str).collect();
         let mut world = SpawnWorld(TestWorld::with(&names), Vec::new());
-        let mut game = Game::new(shards).unwrap();
+        let mut game = unhurried(shards);
         game.load(&compiled(HIVES), &mut world).unwrap();
         let empty = ComponentData::default();
         game.sync_many((1..=9u64).map(|n| (id(n), "Hive", &empty)), &mut world);
-        for t in 0..2 {
-            world.0.time = f64::from(t) / 60.0;
+        for t in 0..2_u32 {
+            world.0.set_clock(u64::from(t), f64::from(t) / 60.0);
             assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
         }
         world.1
@@ -432,7 +457,7 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
 }
 
 /// A test world keeping the spawns and despawns game code asks for.
-struct SpawnWorld(TestWorld, Vec<Change>);
+pub(super) struct SpawnWorld(pub(super) TestWorld, pub(super) Vec<Change>);
 
 impl GameWorld for SpawnWorld {
     fn view(&mut self) -> WorldView {
@@ -503,7 +528,7 @@ fn spawns_in_different_rounds_of_events_make_different_entities() {
         }\n\
         pass Echo;\nend\n";
     let mut world = SpawnWorld(TestWorld::with(&["E"]), Vec::new());
-    let mut game = Game::new(1).unwrap();
+    let mut game = unhurried(1);
     game.load(&compiled(ECHO), &mut world).unwrap();
     let empty = ComponentData::default();
     game.sync_many([(id(1), "Echo", &empty)], &mut world);
@@ -534,7 +559,7 @@ fn failing_starts_are_told_in_the_order_asked_on_any_number_of_shards() {
     let order: Vec<u64> = vec![9, 2, 7, 4, 11, 1, 6, 3, 10, 5, 8, 12];
     for shards in [1, 3, 4] {
         let mut world = TestWorld::with(&["e"; 12]);
-        let mut game = Game::new(shards).unwrap();
+        let mut game = unhurried(shards);
         game.add_rust(broken.clone());
         let empty = ComponentData::default();
         let failures = game.sync_many(order.iter().map(|&n| (id(n), "Bad", &empty)), &mut world);
@@ -600,8 +625,10 @@ fn roll_and_sum(shards: usize, seed: u64, ticks: usize) -> (Vec<String>, Vec<u64
         lua: vec![("die.lua".into(), LUA_DIE.to_string())],
         notes: Vec::new(),
     };
-    let code = Arc::new(crate::compile(&code).unwrap().unwrap());
-    let mut game = Game::new(shards).unwrap();
+    let limits = crate::luau::Limits::unhurried();
+    let code = crate::code::compile_within(&code, limits).unwrap();
+    let code = Arc::new(code.unwrap());
+    let mut game = unhurried(shards);
     game.load(&code, &mut world).unwrap();
     let empty = ComponentData::default();
     let mut components: Vec<(EntityId, &str, &ComponentData)> =
@@ -610,9 +637,11 @@ fn roll_and_sum(shards: usize, seed: u64, ticks: usize) -> (Vec<String>, Vec<u64
     assert!(game.sync_many(components, &mut world).is_empty());
     let mut sums = Vec::new();
     for t in 0..ticks {
-        world.time = t as f64 / 60.0;
+        world.set_clock(t as u64, t as f64 / 60.0);
         let ticked = game.tick(1.0 / 60.0, &mut world);
         assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+        // A tick cut short must say so here, not show as other sums.
+        assert_eq!(ticked.pause, None);
         sums.push(game.checksum());
     }
     (world.said, sums)
@@ -691,7 +720,7 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
         pass Speaker, Hush;\nend\n";
     let run = |shards| {
         let mut world = TestWorld::with(&["S1", "S2", "S3", "Q"]);
-        let mut game = Game::new(shards).unwrap();
+        let mut game = unhurried(shards);
         game.load(&compiled(SPEAKERS), &mut world).unwrap();
         let none = ComponentData::default();
         game.sync_many(
@@ -749,7 +778,7 @@ fn a_flood_of_sounds_is_capped() {
         }\n\
         pass Loud;\nend\n";
     let mut world = TestWorld::with(&["L"]);
-    let mut game = Game::new(1).unwrap();
+    let mut game = unhurried(1);
     game.load(&compiled(LOUD), &mut world).unwrap();
     game.sync_many([(id(1), "Loud", &ComponentData::default())], &mut world);
     assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
@@ -781,7 +810,7 @@ fn fields_set_by_hand_reach_their_component_on_any_number_of_shards() {
         let names: Vec<String> = (1..=9).map(|n| format!("C{n}")).collect();
         let names: Vec<&str> = names.iter().map(String::as_str).collect();
         let mut world = TestWorld::with(&names);
-        let mut game = Game::new(shards).unwrap();
+        let mut game = unhurried(shards);
         game.load(&compiled(COUNTER), &mut world).unwrap();
         let mut area = ComponentData::default();
         area.set("count", Value::Int(0));
@@ -819,6 +848,81 @@ fn fields_set_by_hand_reach_their_component_on_any_number_of_shards() {
     }
 }
 
+/// The review, BUG-48: what a component sends while it starts (a field's
+/// starting value calling a method that sends) goes nowhere, as what the
+/// code's own start sends does. It used to wait for the next tick, where
+/// each shard put it down to whichever of its components updated first,
+/// so the bell below heard the ringers in another order on every number
+/// of shards.
+#[test]
+fn what_a_starting_component_sends_goes_nowhere_on_any_number_of_shards() {
+    const RINGERS: &str = "fetch \"solis/world\":World;\n\n\
+        event Rang(float number);\n\
+        method float ring() {\n\
+            float number = World:random();\n\
+            send Rang(number) to World:find(\"Bell\");\n\
+            return number;\n\
+        }\n\
+        component Ringer {\n\
+            has {\n\
+                float rang = ring();\n\
+            }\n\
+        }\n\
+        component Bell {\n\
+            has {\n\
+                int heard = 0;\n\
+                float mix = 0;\n\
+            }\n\
+            on Rang(float number) {\n\
+                heard = heard + 1;\n\
+                mix = mix / 2 + number + World:random();\n\
+                World:say(\"rang \" + number.text());\n\
+            }\n\
+        }\n\
+        pass Ringer, Bell;\nend\n";
+    const RINGERS_PLAYING: u64 = 12;
+    let run = |shards: usize| {
+        let mut names: Vec<String> = (1..=RINGERS_PLAYING).map(|n| format!("R{n}")).collect();
+        names.push("Bell".into());
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let mut world = TestWorld::with(&names);
+        let mut game = unhurried(shards);
+        assert_eq!(game.shards(), shards);
+        game.load(&compiled(RINGERS), &mut world).unwrap();
+        let empty = ComponentData::default();
+        let bell = id(RINGERS_PLAYING + 1);
+        let mut components: Vec<(EntityId, &str, &ComponentData)> = (1..=RINGERS_PLAYING)
+            .map(|n| (id(n), "Ringer", &empty))
+            .collect();
+        components.push((bell, "Bell", &empty));
+        assert!(game.sync_many(components, &mut world).is_empty());
+        let mut sums = Vec::new();
+        for t in 1..=3_u64 {
+            world.set_clock(t, t as f64 / 60.0);
+            let ticked = game.tick(1.0 / 60.0, &mut world);
+            assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+            sums.push(game.checksum());
+        }
+        // Every ringer started: each rolled a number of its own.
+        let rang: std::collections::HashSet<u64> = (1..=RINGERS_PLAYING)
+            .map(
+                |n| match game.values(id(n), "Ringer").unwrap().get("rang") {
+                    Some(Value::Float(number)) => number.to_bits(),
+                    other => panic!("R{n} rang {other:?}"),
+                },
+            )
+            .collect();
+        assert_eq!(rang.len(), RINGERS_PLAYING as usize);
+        (world.said, sums, game.values(bell, "Bell").unwrap())
+    };
+    let one = run(1);
+    for shards in [2, 4] {
+        assert_eq!(run(shards), one, "on {shards} shards");
+    }
+    assert_eq!(one.2.get("heard"), Some(&Value::Int(0)), "{:?}", one.0);
+    assert!(one.0.is_empty(), "{:?}", one.0);
+}
+
 #[test]
 fn set_bus_volume_lands_within_zero_to_one() {
     const OPTIONS: &str = "fetch \"solis/project\":Bus;\nfetch \"solis/sound\":Audio;\n\n\
@@ -831,7 +935,7 @@ fn set_bus_volume_lands_within_zero_to_one() {
         }\n\
         pass Options;\nend\n";
     let mut world = TestWorld::with(&["O"]);
-    let mut game = Game::new(1).unwrap();
+    let mut game = unhurried(1);
     game.load(&compiled(OPTIONS), &mut world).unwrap();
     game.sync_many([(id(1), "Options", &ComponentData::default())], &mut world);
     assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
@@ -858,7 +962,7 @@ fn set_sound_playing_lands_for_entities_only() {
         }\n\
         pass Switch;\nend\n";
     let mut world = TestWorld::with(&["R"]);
-    let mut game = Game::new(1).unwrap();
+    let mut game = unhurried(1);
     game.load(&compiled(RADIO), &mut world).unwrap();
     game.sync_many([(id(1), "Switch", &ComponentData::default())], &mut world);
     assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());

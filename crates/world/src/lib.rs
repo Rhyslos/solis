@@ -13,12 +13,13 @@
 
 pub mod animators;
 pub mod flat_physics;
+mod game_set;
 pub mod projectiles;
 pub mod sprites;
 pub mod tile_maps;
 
 pub use animators::Animators;
-pub use flat_physics::SolidSets;
+pub use flat_physics::{FlatBroke, RESTART_WAIT, SolidSets};
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
 pub use tile_maps::MapFiles;
@@ -145,9 +146,6 @@ pub struct World {
     /// Hours game code moved the day on by (`World:setTimeOfDay`,
     /// decision 0092); 0 as it starts.
     day_shift: f64,
-    /// The Screens game code showed or hid, kept when the world is built
-    /// again.
-    game_screens: reflect::IdMap<ComponentData>,
     /// Bodies and colliders (decision 0036): every entity with a
     /// `RigidBody`, a `Collider` or a `CharacterBody`.
     physics: physics::Physics,
@@ -191,6 +189,8 @@ pub struct World {
     solid_sets: std::sync::Arc<SolidSets>,
     /// What each map's walls were last built from.
     walls_built: HashMap<EntityId, flat_physics::WallsBuilt>,
+    /// How 2D physics is kept going after Rapier fails in it.
+    flat_recovery: flat_physics::FlatRecovery,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -276,7 +276,6 @@ impl World {
             seed: 0,
             speed: 1.0,
             day_shift: 0.0,
-            game_screens: reflect::IdMap::default(),
             physics: physics::Physics::new(),
             physics_moved: Vec::new(),
             physics_asked: Vec::new(),
@@ -294,6 +293,7 @@ impl World {
             pixels: area::pixels::PixelSettings::default(),
             solid_sets: std::sync::Arc::default(),
             walls_built: HashMap::new(),
+            flat_recovery: flat_physics::FlatRecovery::default(),
         };
         world.index();
         world.place_everything();
@@ -362,36 +362,35 @@ impl World {
         let seed = self.seed;
         let speed = self.speed;
         let day_shift = self.day_shift;
-        let game_screens = std::mem::take(&mut self.game_screens);
-        let playbacks = self.playbacks();
+        // What the game made of each entity, put back on it once it's
+        // made again (see `game_set`).
+        let carried = self.carry_all();
         let clip_sets = std::sync::Arc::clone(&self.clip_sets);
         let animators = std::sync::Arc::clone(&self.animators);
-        let runs = self.runs();
         let saved_values = std::mem::take(&mut self.saved_values);
         let map_files = std::sync::Arc::clone(&self.map_files);
-        let maps = self.map_states();
         let saved_maps = std::mem::take(&mut self.saved_maps);
         // How each body was moving carries on: speed, spin, sleep, and a
         // character's finding.
         let states = self.physics.state().body_states();
         let asked = std::mem::take(&mut self.physics_asked);
+        let flat_recovery = self.flat_recovery;
         *self = Self::from_area_without_physics(area);
+        self.flat_recovery = flat_recovery;
         self.clock = clock;
         self.projectiles = projectiles;
         self.seed = seed;
         self.speed = speed;
         self.day_shift = day_shift;
-        for (id, data) in game_screens {
-            self.put_screen(id, data);
-        }
         self.clip_sets = clip_sets;
         self.animators = animators;
         self.saved_values = saved_values;
         self.map_files = map_files;
         self.saved_maps = saved_maps;
-        self.keep_playbacks(playbacks);
-        self.keep_runs(runs);
-        self.keep_maps(maps);
+        for carried in carried {
+            self.put_back(carried);
+        }
+        self.start_maps();
         self.physics_asked = asked;
         for (id, from, at) in kept {
             self.set_transform(id, at);
@@ -582,24 +581,9 @@ impl World {
                 self.game_moved.remove(&id);
             }
             let before = self.physics_parts(entity);
-            // The game's playback of its Sprite, kept unless the edit
-            // changed the area's.
-            let playback = self
-                .ecs
-                .query_one_mut::<(&Sprite, &sprites::SpriteStart)>(entity)
-                .ok()
-                .map(|(s, start)| (id, start.0.clone(), sprites::Playback::of(s)));
-            // And its animator's run.
-            let run = self
-                .ecs
-                .remove_one::<animators::Running>(entity)
-                .ok()
-                .map(|r| (id, r));
-            let map = self
-                .ecs
-                .remove_one::<tile_maps::MapState>(entity)
-                .ok()
-                .map(|m| (id, m));
+            // What the game made of it, put back on it once it's made
+            // again (see `game_set`).
+            let carried = self.carry(entity);
             let _ = self.ecs.despawn(entity);
             let fresh = self
                 .ecs
@@ -609,17 +593,17 @@ impl World {
             }
             self.by_id.insert(id, fresh);
             self.order[at].0 = fresh;
-            if let Some(kept) = playback {
-                self.keep_playbacks(vec![kept]);
+            if let Some(carried) = carried {
+                self.put_back(carried);
             }
-            self.keep_runs(run.into_iter().collect());
-            self.keep_maps(map.into_iter().collect());
             // Only what physics knows of it changed: its body is built
             // again (an edit to another component leaves it alone).
             if self.physics_parts(fresh) != before {
                 rejoin.push(id);
             }
         }
+        // An entity given a TileMap, or another file's, starts its map.
+        self.start_maps();
         // A name may have changed.
         self.index();
         self.place_everything();
@@ -756,25 +740,9 @@ impl World {
         if wanted.screen.is_empty() || now.as_ref() == Some(&wanted) {
             return;
         }
-        self.put_screen(id, wanted.to_data());
-    }
-
-    /// Puts a Screen's values on an entity, as game code left it (and
-    /// keeps it so over a rebuild). Nothing for an entity not there.
-    fn put_screen(&mut self, id: EntityId, data: ComponentData) {
-        use area::builtin::Screen;
-        use reflect::Component;
-        let Some(&entity) = self.by_id.get(&id) else {
-            return;
-        };
-        self.game_screens.insert(id, data.clone());
-        if let Ok(mut values) = self.ecs.get::<&mut Values>(entity) {
-            values.0.insert(Screen::NAME.to_string(), data);
-        } else {
-            let mut values = Values::default();
-            values.0.insert(Screen::NAME.to_string(), data);
-            let _ = self.ecs.insert_one(entity, values);
-        }
+        // Kept over edits while playing like the rest game code sets on
+        // an entity (see `game_set`).
+        game_set::put_screen(&mut self.ecs, entity, &wanted.screen, wanted.shown);
         // The Screen is among the values the structure's sum holds.
         self.structure = std::sync::OnceLock::new();
         self.touched = true;
@@ -1482,9 +1450,9 @@ impl World {
         let mut moved = std::mem::take(&mut self.physics_moved);
         let mut seen = reflect::IdSet::default();
         moved.retain(|id| seen.insert(*id));
+        let asked = std::mem::take(&mut self.physics_asked);
         // 2D physics first (decision 0071): its own world beside 3D's.
-        let walks: Vec<(EntityId, glam::Vec2)> = self
-            .physics_asked
+        let walks: Vec<(EntityId, glam::Vec2)> = asked
             .iter()
             .filter_map(|ask| match ask {
                 PhysicsAsk::Flat(id, wanted) => Some((*id, *wanted)),
@@ -1492,12 +1460,28 @@ impl World {
             })
             .collect();
         self.step_flat(&moved, &walks);
+        let stepped = self.step_bodies(&moved, asked);
+        // The one way out, whichever physics moved something and however
+        // far the 3D step got: those under what moved follow it now, so
+        // nothing is drawn or summed a tick behind what carries it. A
+        // dynamic body under something stays physics' to move only when
+        // 3D physics stepped.
+        self.after_physics = stepped;
+        self.settle();
+        self.after_physics = false;
+    }
+
+    /// 3D physics' part of [`Self::step_physics`]: bodies go where game
+    /// code `moved` their entities, what it `asked` for is made, physics
+    /// steps, and the entities it moved follow their bodies (those under
+    /// them wait for the caller to settle). Returns whether physics
+    /// stepped: not with nothing in it, nor while the game is paused.
+    fn step_bodies(&mut self, moved: &[EntityId], asked: Vec<PhysicsAsk>) -> bool {
         if self.physics.state().is_empty() {
-            self.physics_asked.clear();
-            return;
+            return false;
         }
         self.touched = true;
-        for id in moved {
+        for &id in moved {
             if let Some(global) = self.global(id) {
                 let (_, rotation, position) = global.to_scale_rotation_translation();
                 self.physics.set_pose(id, position, rotation);
@@ -1506,7 +1490,7 @@ impl World {
         // Pushes and velocities in the order asked, then characters' moves
         // in the order asked (worked out on every core at once).
         let mut characters = Vec::new();
-        for ask in std::mem::take(&mut self.physics_asked) {
+        for ask in asked {
             match ask {
                 PhysicsAsk::Push(id, impulse) => self.physics.push(id, impulse),
                 PhysicsAsk::Velocity(id, velocity) => self.physics.set_velocity(id, velocity),
@@ -1518,8 +1502,7 @@ impl World {
         // code's own moves above still land).
         let dt = self.tick_time() as f32;
         if dt <= 0.0 {
-            self.settle();
-            return;
+            return false;
         }
         if !characters.is_empty() {
             self.physics.move_characters(&characters, dt);
@@ -1541,9 +1524,7 @@ impl World {
             });
         }
         self.following = false;
-        self.after_physics = true;
-        self.settle();
-        self.after_physics = false;
+        true
     }
 
     /// Sets the clock to `ticks` run, at game time `time` (a save game
@@ -1625,6 +1606,8 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
     let mut builder = hecs::EntityBuilder::new();
     builder.add(Id(id)).add(Name(data.name.clone()));
     let mut values = Values::default();
+    // What the area gives of the things game code sets (see `game_set`).
+    let mut start = game_set::GameSet::default();
     for (name, component) in &data.components {
         match name.as_str() {
             Transform::NAME => {
@@ -1655,7 +1638,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
                 builder.add(Camera::from_data(component).sanitized());
             }
             AudioSource::NAME => {
-                builder.add(AudioSource::from_data(component));
+                let source = AudioSource::from_data(component);
+                start.read_source(&source);
+                builder.add(source);
             }
             ReverbZone::NAME => {
                 builder.add(ReverbZone::from_data(component));
@@ -1668,22 +1653,30 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             Sprite::NAME => {
                 let sprite = Sprite::from_data(component);
-                builder.add(sprites::SpriteStart(sprites::Playback::of(&sprite)));
+                start.read_sprite(&sprite);
                 builder.add(sprite);
             }
             Animator::NAME => {
-                builder.add(Animator::from_data(component));
+                let animator = Animator::from_data(component);
+                start.read_animator(&animator);
+                builder.add(animator);
             }
             area::builtin::TileMap::NAME => {
                 builder.add(area::builtin::TileMap::from_data(component));
             }
             _ => {
+                if name == area::builtin::Screen::NAME {
+                    start.read_screen(component);
+                }
                 values.0.insert(name.clone(), component.clone());
             }
         }
     }
     if !values.0.is_empty() {
         builder.add(values);
+    }
+    if !start.is_empty() {
+        builder.add(game_set::Start(start));
     }
     if let Some(p) = data.parent {
         builder.add(Parent(p));

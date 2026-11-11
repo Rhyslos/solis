@@ -13,7 +13,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `import_cache` | An import cache entry (`.solis/cache/*.solbin`) |
 | `sidecar` | A `.solmeta` sidecar |
 | `project_file` | `project.solis` |
-| `game_code` | A Lust file and a Lua file (split by a 0x01 byte), checked, loaded and run for a tick |
+| `game_code` | A Lust file and a Lua file (split by a 0x01 byte), checked, loaded and run for a tick; a check that never finishes is a failure |
 | `update_answer` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte); a release read only ever points at the repository's own downloads |
 | `sound_event` | A sound event file (`.solsound`); an event read is within its limits, writes back to itself, and every pick is one of its takes |
 | `mixer` | The project's buses (`mixer.solmix`); buses read make a sound tree within the limits, write back to themselves, and give levels and ducking that are numbers |

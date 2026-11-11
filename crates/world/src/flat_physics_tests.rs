@@ -194,3 +194,292 @@ fn a_despawned_collider_and_map_leave_2d_physics_with_them() {
     let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 80);
     assert!(at.x > 11.0, "on past the fence: {at}");
 }
+
+/// Where something carried sits from its carrier: half a metre right, a
+/// metre up and a layer above.
+fn carried() -> Transform {
+    Transform {
+        position: Vec3::new(0.5, 1.0, 0.3),
+        ..Transform::default()
+    }
+}
+
+/// `data` under `carrier`, at [`carried`].
+fn carry(area: &mut Area, carrier: EntityId, name: &str) -> EntityId {
+    let mut data = EntityData::new(name).with(&carried());
+    data.parent = Some(carrier);
+    area.spawn(data)
+}
+
+/// A world with, if `flat`, a 2D character carrying a lantern, and, if
+/// `bodies`, a crate 3D physics drops with a label on it and a 3D
+/// character carrying a torch: each pair as (carrier, carried).
+fn carriers(flat: bool, bodies: bool) -> (World, Vec<(EntityId, EntityId)>) {
+    use area::builtin::{CharacterBody, Collider, RigidBody};
+    let mut area = Area::new();
+    let mut pairs = Vec::new();
+    if flat {
+        let walker = area.spawn(
+            EntityData::new("Walker")
+                .with(&Transform {
+                    position: Vec3::new(2.5, -5.5, 0.2),
+                    ..Transform::default()
+                })
+                .with(&Collider2D {
+                    character: true,
+                    ..Collider2D::default()
+                }),
+        );
+        pairs.push((walker, carry(&mut area, walker, "Lantern")));
+    }
+    if bodies {
+        let falling = area.spawn(
+            EntityData::new("Crate")
+                .with(&Transform {
+                    position: Vec3::new(20.0, 0.0, 10.0),
+                    ..Transform::default()
+                })
+                .with(&RigidBody::default())
+                .with(&Collider::default()),
+        );
+        pairs.push((falling, carry(&mut area, falling, "Label")));
+        let hero = area.spawn(
+            EntityData::new("Hero")
+                .with(&Transform {
+                    position: Vec3::new(-20.0, 0.0, 0.0),
+                    ..Transform::default()
+                })
+                .with(&CharacterBody::default()),
+        );
+        pairs.push((hero, carry(&mut area, hero, "Torch")));
+    }
+    (World::from_area(&area), pairs)
+}
+
+/// One tick: every carrier that walks is asked to, and physics steps.
+/// Returns where each carrier was before.
+fn carry_on(world: &mut World, pairs: &[(EntityId, EntityId)]) -> Vec<glam::Mat4> {
+    let before = pairs
+        .iter()
+        .map(|(carrier, _)| world.global(*carrier).unwrap())
+        .collect();
+    for (carrier, _) in pairs {
+        world.move_character(*carrier, Vec3::new(0.1, 0.05, 0.0));
+    }
+    world.step_physics();
+    before
+}
+
+/// Everything carried is exactly at its carrier's place and its own
+/// offset, the checksum is of a world with nothing left to settle, and
+/// what drawing between ticks moves from is where it is.
+fn all_carried_are_with_their_carriers(world: &mut World, pairs: &[(EntityId, EntityId)]) {
+    for &(carrier, held) in pairs {
+        let expected = world.global(carrier).unwrap() * carried().matrix();
+        assert_eq!(world.global(held), Some(expected));
+    }
+    let sum = world.checksum();
+    world.settle();
+    assert_eq!(world.checksum(), sum, "nothing was left to settle");
+    world.remember();
+    for &(carrier, held) in pairs {
+        let expected = world.global(carrier).unwrap() * carried().matrix();
+        assert_eq!(world.global_between(held, 0.0), Some(expected));
+    }
+}
+
+/// The physics step used to return early in a world with no 3D bodies,
+/// before those under a walked 2D character had followed it: a camera or
+/// a held item was drawn and summed a tick behind (the full review).
+#[test]
+fn what_a_2d_character_carries_is_with_it_on_the_same_tick_in_a_2d_only_world() {
+    let (mut world, pairs) = carriers(true, false);
+    assert!(world.physics().state().is_empty(), "no 3D bodies at all");
+    for _ in 0..5 {
+        let before = carry_on(&mut world, &pairs);
+        assert_ne!(world.global(pairs[0].0).unwrap(), before[0], "it walked");
+        all_carried_are_with_their_carriers(&mut world, &pairs);
+    }
+    // Paused (the game's speed 0), a walk asked for still lands, and
+    // what's carried still goes with it.
+    world.set_speed(0.0);
+    let before = carry_on(&mut world, &pairs);
+    assert_ne!(world.global(pairs[0].0).unwrap(), before[0]);
+    all_carried_are_with_their_carriers(&mut world, &pairs);
+}
+
+#[test]
+fn what_3d_physics_moves_carries_what_s_under_it_on_the_same_tick_in_a_3d_only_world() {
+    let (mut world, pairs) = carriers(false, true);
+    assert!(world.flat().state().is_empty(), "no 2D physics at all");
+    for _ in 0..5 {
+        let before = carry_on(&mut world, &pairs);
+        for (i, (carrier, _)) in pairs.iter().enumerate() {
+            // The crate fell (physics moved it) and the hero walked.
+            assert_ne!(world.global(*carrier).unwrap(), before[i]);
+        }
+        all_carried_are_with_their_carriers(&mut world, &pairs);
+    }
+}
+
+#[test]
+fn in_a_world_with_both_everything_carried_is_with_its_carrier_on_the_same_tick() {
+    let (mut world, pairs) = carriers(true, true);
+    for _ in 0..5 {
+        let before = carry_on(&mut world, &pairs);
+        for (i, (carrier, _)) in pairs.iter().enumerate() {
+            assert_ne!(world.global(*carrier).unwrap(), before[i]);
+        }
+        all_carried_are_with_their_carriers(&mut world, &pairs);
+    }
+    // Paused, 3D physics stands still; the 2D walk still lands.
+    world.set_speed(0.0);
+    let before = carry_on(&mut world, &pairs);
+    assert_ne!(world.global(pairs[0].0).unwrap(), before[0]);
+    assert_eq!(world.global(pairs[1].0).unwrap(), before[1], "the crate");
+    all_carried_are_with_their_carriers(&mut world, &pairs);
+}
+
+/// Rapier failing in 2D physics used to empty it for the rest of the
+/// play, with nothing said: every 2D character stood still (the full
+/// review). Now the world starts it again, makes the tick's walks again
+/// and says so, so the game carries on exactly as one where nothing
+/// broke.
+#[test]
+fn after_a_break_2d_physics_is_started_again_and_the_game_carries_on() {
+    let step = Vec3::new(0.1, 0.0, 0.0);
+    let (mut world, _, farmer) = farm();
+    let (mut twin, _, twin_farmer) = farm();
+    walk(&mut world, farmer, step, 10);
+    walk(&mut twin, twin_farmer, step, 10);
+    assert_eq!(world.take_flat_broke(), None, "nothing broke yet");
+    world.fail_flat_next();
+    for tick in 0..120 {
+        let at = walk(&mut world, farmer, step, 1);
+        let same = walk(&mut twin, twin_farmer, step, 1);
+        assert_eq!(at, same, "tick {tick}: nothing of the walk was lost");
+    }
+    assert!(world.flat().state().is_character(farmer), "back in");
+    assert_eq!(world.flat().state().wall_count(), 1, "the fence too");
+    let at = world.global(farmer).unwrap().w_axis;
+    assert!(at.x < 10.0 - 0.25 && at.x > 10.0 - 0.25 - 0.02, "{at}");
+    // Said once. Walking every tick, more than the walk had changed
+    // (every character's last move is cleared), so no move is named.
+    assert_eq!(world.take_flat_broke(), Some(FlatBroke { on: None }));
+    assert_eq!(world.take_flat_broke(), None);
+}
+
+#[test]
+fn a_break_names_the_character_whose_move_it_broke_on() {
+    let (mut world, _, farmer) = farm();
+    // A tick with nobody walking, so Rapier has caught up with all there
+    // is; then the farmer's walk is all that changes.
+    world.step_physics();
+    world.fail_flat_next();
+    let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 1);
+    assert_eq!(at.x, 2.6, "walked all the same");
+    assert_eq!(
+        world.take_flat_broke(),
+        Some(FlatBroke { on: Some(farmer) })
+    );
+}
+
+#[test]
+fn a_break_with_nobody_walking_is_started_again_too() {
+    let (mut world, _, farmer) = farm();
+    world.step_physics();
+    // A bin joins: Rapier fails catching up with it.
+    let bin = EntityId::random();
+    let data = EntityData::new("Bin")
+        .with(&Transform::default())
+        .with(&Collider2D::default());
+    world.add_subtree(&[(bin, data)]);
+    world.fail_flat_next();
+    world.step_physics();
+    assert_eq!(world.take_flat_broke(), Some(FlatBroke { on: None }));
+    let state = world.flat().state();
+    assert!(state.contains(bin) && state.is_character(farmer));
+    assert_eq!(state.wall_count(), 1);
+}
+
+/// One tick of the farmer walking right, with Rapier failing in it if
+/// `fail`: whether the farmer moved, and whether a break was told.
+fn tick(world: &mut World, farmer: EntityId, fail: bool) -> (bool, bool) {
+    if fail {
+        world.fail_flat_next();
+    }
+    let before = world.global(farmer).unwrap();
+    walk(world, farmer, Vec3::new(0.01, 0.0, 0.0), 1);
+    let moved = world.global(farmer).unwrap() != before;
+    (moved, world.take_flat_broke().is_some())
+}
+
+/// A break that repeats doesn't build 2D physics again every tick: it's
+/// started again at once the first time, then only once the wait since
+/// it last was is over; 2D characters stand still meanwhile.
+#[test]
+fn a_break_that_repeats_starts_2d_physics_again_once_a_second_at_most() {
+    let (mut world, _, farmer) = farm();
+    assert_eq!(tick(&mut world, farmer, false), (true, false));
+    // The first break: started again at once, the walk made.
+    assert_eq!(tick(&mut world, farmer, true), (true, true));
+    // Again the tick after: it stays empty, and the farmer stands still.
+    assert_eq!(tick(&mut world, farmer, true), (false, true));
+    assert!(world.flat().state().is_empty());
+    // What joins and leaves meanwhile is no trouble.
+    let bin = EntityId::random();
+    let data = EntityData::new("Bin")
+        .with(&Transform::default())
+        .with(&Collider2D::default());
+    world.add_subtree(&[(bin, data.clone())]);
+    world.remove_subtrees(&[bin]);
+    world.add_subtree(&[(bin, data)]);
+    for step in 2..=RESTART_WAIT {
+        assert_eq!(tick(&mut world, farmer, false), (false, false), "{step}");
+    }
+    // The wait is over: it was started again on its last step, with
+    // what's there now (the farmer, who found it empty that tick, walks
+    // again from this one).
+    let state = world.flat().state();
+    assert!(state.contains(bin) && state.is_character(farmer));
+    assert_eq!(state.wall_count(), 1);
+    // Failing again at once, it stays empty for another wait: one restart
+    // a second, not one a tick.
+    assert_eq!(tick(&mut world, farmer, true), (false, true));
+    assert!(world.flat().state().is_empty());
+    for step in 2..=RESTART_WAIT {
+        assert_eq!(tick(&mut world, farmer, false), (false, false), "{step}");
+    }
+    assert_eq!(tick(&mut world, farmer, false), (true, false));
+    // A break before a second has passed since it last started waits
+    // again; one after it is put right at once, as the first was.
+    for _ in 2..RESTART_WAIT {
+        assert_eq!(tick(&mut world, farmer, false), (true, false));
+    }
+    assert_eq!(tick(&mut world, farmer, true), (true, true));
+}
+
+/// The wait and what's untold are kept when the world is built again (an
+/// edit while playing), though building it joins everything afresh.
+#[test]
+fn a_rebuild_keeps_the_wait_after_a_break() {
+    let mut area = Area::new();
+    let walker = area.spawn(EntityData::new("Walker").with(&Transform::default()).with(
+        &Collider2D {
+            character: true,
+            ..Collider2D::default()
+        },
+    ));
+    let mut world = World::from_area(&area);
+    assert_eq!(tick(&mut world, walker, true), (true, true));
+    world.fail_flat_next();
+    walk(&mut world, walker, Vec3::new(0.01, 0.0, 0.0), 1);
+    world.rebuild(&area);
+    assert!(world.take_flat_broke().is_some(), "still to be told");
+    // Joined again by the rebuild, but not stepped until the wait's over.
+    assert!(world.flat().state().is_character(walker));
+    for step in 2..RESTART_WAIT {
+        assert_eq!(tick(&mut world, walker, false), (false, false), "{step}");
+    }
+    assert_eq!(tick(&mut world, walker, false), (true, false));
+}

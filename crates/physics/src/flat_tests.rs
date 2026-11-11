@@ -294,6 +294,85 @@ fn cleared_it_empties_and_a_clone_carries_on_alike() {
     assert!(flat.state().is_empty());
 }
 
+/// A second character (entity 2) of the same size at `at`.
+fn another(flat: &mut Flat, at: Vec2) {
+    flat.add(id(2), at, circle(0.25), true);
+}
+
+/// Rapier failing never crashes Solis: 2D physics empties, walls and
+/// all, and says so once. It used to say nothing, so nobody built it
+/// again and every 2D character stood still for the rest of the play (the
+/// full review).
+#[test]
+fn a_break_empties_2d_physics_and_says_so_once() {
+    let wall = [rect(2.0, -5.0, 3.0, 5.0)];
+    let mut flat = world(Vec2::ZERO, &wall);
+    assert!(!flat.take_broke(), "nothing broke yet");
+    flat.fail_next();
+    flat.move_characters(&[(id(1), Vec2::new(0.1, 0.0))], 1.0 / 60.0);
+    assert!(flat.state().is_empty(), "emptied, walls too");
+    assert!(flat.moved().is_empty(), "nothing for the world to follow");
+    assert!(flat.take_broke());
+    assert!(!flat.take_broke(), "said once");
+    // Emptied, a walk moves no one and breaks nothing more.
+    flat.move_characters(&[(id(1), Vec2::new(0.1, 0.0))], 1.0 / 60.0);
+    assert!(!flat.take_broke());
+    // Built again (as the world does), it works as it did.
+    flat.add(id(1), Vec2::ZERO, circle(0.25), true);
+    flat.set_walls(id(9), [0, 0], &wall);
+    let at = walk(&mut flat, Vec2::new(0.1, 0.0), 60);
+    assert!(
+        (at.x - (2.0 - 0.25 - SKIN)).abs() < 1e-3,
+        "at the wall: {at}"
+    );
+    assert!(!flat.take_broke());
+}
+
+/// What it broke on is known only when a character's move is all that
+/// had changed since Rapier last caught up.
+#[test]
+fn a_break_names_the_move_it_broke_on_when_that_s_all_that_changed() {
+    let step = Vec2::new(0.1, 0.0);
+    let mut flat = world(Vec2::ZERO, &[rect(2.0, -5.0, 3.0, 5.0)]);
+    another(&mut flat, Vec2::new(0.0, 3.0));
+    assert_eq!(flat.broke_on(), None, "it never broke");
+    // Entities and walls joined since Rapier last caught up: it fails
+    // before anyone moves, on any of them.
+    flat.fail_next();
+    flat.move_characters(&[(id(1), step)], 1.0 / 60.0);
+    assert!(flat.take_broke());
+    assert_eq!(flat.broke_on(), None);
+
+    // Caught up (a tick with no moves), then one walks: it fails catching
+    // up with that walk.
+    let mut flat = world(Vec2::ZERO, &[rect(2.0, -5.0, 3.0, 5.0)]);
+    another(&mut flat, Vec2::new(0.0, 3.0));
+    flat.move_characters(&[], 1.0 / 60.0);
+    flat.fail_next();
+    flat.move_characters(&[(id(2), step)], 1.0 / 60.0);
+    assert!(flat.take_broke());
+    assert_eq!(flat.broke_on(), Some(id(2)));
+
+    // Two walk: it fails catching up with the first's, before the
+    // second's is made.
+    let mut flat = world(Vec2::ZERO, &[rect(2.0, -5.0, 3.0, 5.0)]);
+    another(&mut flat, Vec2::new(0.0, 3.0));
+    flat.move_characters(&[], 1.0 / 60.0);
+    flat.fail_next();
+    flat.move_characters(&[(id(2), step), (id(1), step)], 1.0 / 60.0);
+    assert!(flat.take_broke());
+    assert_eq!(flat.broke_on(), Some(id(2)));
+
+    // One asked to walk nowhere changed nothing Rapier knows of: no move
+    // to name.
+    let mut flat = world(Vec2::ZERO, &[rect(2.0, -5.0, 3.0, 5.0)]);
+    flat.move_characters(&[], 1.0 / 60.0);
+    flat.fail_next();
+    flat.move_characters(&[(id(1), Vec2::ZERO)], 1.0 / 60.0);
+    assert!(flat.take_broke());
+    assert_eq!(flat.broke_on(), None);
+}
+
 proptest! {
     /// Any walls and any moves: the character never ends inside a wall.
     #[test]

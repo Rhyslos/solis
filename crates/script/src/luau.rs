@@ -35,9 +35,57 @@ pub const TICK_LIMIT: Duration = Duration::from_millis(250);
 /// start, each Lua file's, and reading their components.
 pub const LOAD_LIMIT: Duration = Duration::from_secs(1);
 
+/// How long game code may run before it's stopped, and how long checking
+/// it may take: a game's are always [`Limits::default`]. They're kept on
+/// the real clock, so a thread that is kept off the processor uses them
+/// up while it runs nothing. A test that compares one run of a game with
+/// another gives its game `Limits::unhurried`: on a busy machine a tick
+/// could otherwise be cut short, and the two runs would differ though
+/// nothing was wrong.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Limits {
+    /// One call into game code ([`TIME_LIMIT`]).
+    pub(crate) call: Duration,
+    /// All the game code in one tick ([`TICK_LIMIT`]).
+    pub(crate) tick: Duration,
+    /// All the starts of a load, a swap or a sync ([`LOAD_LIMIT`]).
+    pub(crate) load: Duration,
+    /// Checking and compiling the code, start to end
+    /// ([`crate::code::COMPILE_LIMIT`]).
+    pub(crate) compile: Duration,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            call: TIME_LIMIT,
+            tick: TICK_LIMIT,
+            load: LOAD_LIMIT,
+            compile: crate::code::COMPILE_LIMIT,
+        }
+    }
+}
+
+#[cfg(test)]
+impl Limits {
+    /// Limits no busy machine reaches (an hour each): only code that
+    /// never ends is stopped, and the test with it.
+    pub(crate) fn unhurried() -> Self {
+        let long = Duration::from_secs(3600);
+        Self {
+            call: long,
+            tick: long,
+            load: long,
+            compile: long,
+        }
+    }
+}
+
 /// The deadlines game code runs against.
 #[derive(Debug, Default)]
 pub(crate) struct Clock {
+    /// How long game code is given.
+    limits: Cell<Limits>,
     /// When the call running now must end.
     call: Cell<Option<Instant>>,
     /// When everything running now (a tick, a load) must end, and how
@@ -58,6 +106,16 @@ pub(crate) struct Clock {
 const READ_EVERY: u32 = 32;
 
 impl Clock {
+    /// How long game code is given.
+    pub(crate) fn limits(&self) -> Limits {
+        self.limits.get()
+    }
+
+    /// Gives game code other limits from now on (see [`Limits`]).
+    pub(crate) fn set_limits(&self, limits: Limits) {
+        self.limits.set(limits);
+    }
+
     /// Runs one call into game code with the time limit watching it: it
     /// ends by [`TIME_LIMIT`] from now, or when the whole tick or load
     /// must, whichever comes first. A call inside another keeps the outer
@@ -66,7 +124,7 @@ impl Clock {
         if self.call.get().is_some() {
             return run();
         }
-        let mut until = Instant::now() + TIME_LIMIT;
+        let mut until = Instant::now() + self.limits.get().call;
         if let Some((all, _)) = self.all.get() {
             until = until.min(all);
         }
@@ -135,7 +193,7 @@ impl Clock {
             _ => format!(
                 "this took longer than {} ms, so it was stopped (is there a loop that never \
                  ends?)",
-                TIME_LIMIT.as_millis()
+                self.limits.get().call.as_millis()
             ),
         })
     }
@@ -143,12 +201,17 @@ impl Clock {
 
 /// Lua run once in every Luau: `component`; `vec3(x, y, z)`, a Luau
 /// vector (they add, take away and scale, as Lust's do); and `solis`, which reaches the native
-/// methods while game code runs. It gives back two functions for Solis
-/// alone: one lends `solis` the natives, the other hands over the
-/// components `component` made.
+/// methods while game code runs. It's given the names `solis` groups the
+/// natives under (`describe::owners`: every engine object, and `entity`),
+/// and gives back three functions for Solis alone: one lends `solis` the
+/// natives, one hands over the components `component` made, and one says
+/// how game code reaches each native lent ([`Luau::ways`]).
 pub(crate) const PRELUDE: &str = r#"
 local made = {}
 local natives = nil
+-- The names `solis` groups the natives under: the engine objects and
+-- `entity`. Solis hands them over from its own list of natives.
+local owners = ...
 function component(name, fields)
   if type(name) ~= "string" then
     error("component needs a name first, such as component(\"Spinner\", { … })", 2)
@@ -171,11 +234,15 @@ math.random = function(m, n)
   if not r then error("random numbers can only be had while the game runs", 2) end
   if m == nil then return r(nil) end
   if n == nil then m, n = 1, m end
+  if not tonumber(m) or not tonumber(n) then
+    error("math.random wants numbers: math.random() for 0 to 1, math.random(6) for 1 to 6, math.random(2, 12) for 2 to 12", 2)
+  end
   return natives.World_randomInt(nil, m, n)
 end
 math.randomseed = function(seed)
   local s = natives and natives.World_setSeed
   if not s then error("the seed can only be set while the game runs", 2) end
+  if not tonumber(seed) then error("math.randomseed wants a number, such as math.randomseed(42)", 2) end
   s(nil, seed)
 end
 -- table.move is one loop in C that the time limits can't stop: a range
@@ -213,7 +280,7 @@ local function group(prefix)
   return setmetatable({}, inside)
 end
 local groups = {}
-for _, name in ipairs({ "World", "Saves", "Input", "Physics", "Audio", "entity" }) do
+for _, name in ipairs(owners) do
   groups[name] = group(name)
 end
 table.freeze(groups)
@@ -230,9 +297,34 @@ solis = setmetatable({}, reach)
 function solis.send(to, name, ...)
   local send = natives and natives.send_event
   if not send then error("events can only be sent while the game runs", 2) end
+  if type(name) ~= "string" then
+    error("solis.send(to, name, …) wants the event's name as text after the entity it's for, such as solis.send(self.me, \"Hit\", 2.5)", 2)
+  end
   send(to, name, table.pack(...))
 end
-return function(n) natives = n end, function() local m = made; made = {}; return m end
+-- For Solis alone (its list of what game code can call): each native lent
+-- now, as the names game code writes after `solis` to reach it, found by
+-- asking `solis` itself: { "World", "say" }, or { "facingAlong" }.
+local sub = string.sub
+local function ways()
+  local found = {}
+  for key, native in pairs(natives or {}) do
+    if key ~= "send_event" then
+      local way = { key }
+      for name, inside in pairs(groups) do
+        local method = sub(key, #name + 2)
+        if sub(key, 1, #name + 1) == name .. "_" and inside[method] == native then
+          way = { name, method }
+        end
+      end
+      if #way == 2 or solis[key] == native then
+        found[#found + 1] = way
+      end
+    end
+  end
+  return found
+end
+return function(n) natives = n end, function() local m = made; made = {}; return m end, ways
 "#;
 
 /// The Luau game code runs in, with its deadlines and Solis's own parts.
@@ -248,7 +340,10 @@ pub(crate) struct Luau {
     lend: Function,
     /// The classes `component` made since it was last asked.
     made: Function,
-    /// A `send_event` that drops what it's given, for the code's starts.
+    /// How game code reaches each native lent now ([`Self::ways`]).
+    ways: Function,
+    /// A `send_event` that drops what it's given, for game code's starts:
+    /// the code's own, and a component's fields' starting values.
     pub(crate) discard: Function,
     /// Puts the guard on a game-wide object ([`crate::objects::WRAP`]).
     pub(crate) wrap_object: Function,
@@ -294,7 +389,13 @@ impl Luau {
         // the globals it reads are the libraries' own, read-only from the
         // next step on. Lua made later would read the thread's globals,
         // which stay writable.
-        let (lend, made): (Function, Function) = lua.load(PRELUDE).set_name("=solis").eval()?;
+        // `solis` groups the natives under their owners in the engine's
+        // own list, so an engine object added there is within Lua's reach
+        // with nothing more to remember.
+        let (lend, made, ways): (Function, Function, Function) = lua
+            .load(PRELUDE)
+            .set_name("=solis")
+            .call(crate::describe::owners())?;
         let wrap_object = lua.load(crate::objects::WRAP).set_name("=objects").eval()?;
         // The libraries, the prelude's tables and the globals themselves
         // become read-only.
@@ -311,6 +412,7 @@ impl Luau {
             through,
             lend,
             made,
+            ways,
             discard,
             wrap_object,
         })
@@ -338,6 +440,14 @@ impl Luau {
     /// The classes `component` made since this was last asked.
     pub(crate) fn made(&self) -> mlua::Result<Table> {
         self.made.call(())
+    }
+
+    /// Each native lent now, as the names game code writes after `solis`
+    /// to reach it (`["World", "say"]` for `solis.World:say`,
+    /// `["facingAlong"]` for `solis.facingAlong`), in no set order. Asked
+    /// of `solis` itself, so it's what Lua can reach, not what was meant.
+    pub(crate) fn ways(&self) -> mlua::Result<Vec<Vec<String>>> {
+        self.ways.call(())
     }
 }
 
