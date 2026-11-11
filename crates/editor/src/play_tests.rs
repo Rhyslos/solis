@@ -10,6 +10,7 @@ use area::builtin::{Light, Transform};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
 use reflect::{EntityId, Value};
+use std::path::{Path, PathBuf};
 
 fn set_position(w: &mut Workbench, id: EntityId, at: Vec3, gesture: u64) {
     w.apply_property(
@@ -425,4 +426,150 @@ fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
     h.state_mut().0.stop();
     h.run();
     let _ = h.get_by_label("Load the file");
+}
+
+// The open area's file moved or deleted in the Library while playing
+// (the review, BUG-05): only the document the game runs on followed, so
+// Stop put back the copy from before Play with the old path, and Ctrl+S
+// made the old file again beside the moved one (or, after a delete, the
+// area read as saved though its file was gone).
+
+const AREA_FILE: &str = "/p/assets/areas/harbour.solarea";
+
+/// What the Library did: what it moved, where to (`None`: deleted), and
+/// where the open area's file is afterwards (`None`: nowhere).
+type FileCase = (
+    &'static str,
+    &'static str,
+    Option<&'static str>,
+    Option<&'static str>,
+);
+
+const FILE_CASES: [FileCase; 5] = [
+    (
+        "renamed",
+        AREA_FILE,
+        Some("/p/assets/areas/port.solarea"),
+        Some("/p/assets/areas/port.solarea"),
+    ),
+    (
+        "moved into a folder",
+        AREA_FILE,
+        Some("/p/assets/areas/docks/harbour.solarea"),
+        Some("/p/assets/areas/docks/harbour.solarea"),
+    ),
+    (
+        "a parent folder renamed",
+        "/p/assets/areas",
+        Some("/p/assets/levels"),
+        Some("/p/assets/levels/harbour.solarea"),
+    ),
+    ("deleted", AREA_FILE, None, None),
+    ("its folder deleted", "/p/assets/areas", None, None),
+];
+
+/// A saved area with a crate, open from [`AREA_FILE`].
+fn saved_area() -> (Workbench, EntityId) {
+    let (mut w, crate_id) = with_a_crate();
+    w.mark_saved(AREA_FILE.into());
+    (w, crate_id)
+}
+
+/// Does to `w` what the Library did in `case`, as the app tells it.
+fn library_does(w: &mut Workbench, case: &FileCase) {
+    let (what, from, to, after) = *case;
+    assert_eq!(
+        w.file_moved(Path::new(from), to.map(Path::new)),
+        Some(after.map(PathBuf::from)),
+        "{what}: the app is told where the file is now"
+    );
+}
+
+/// The open area is where `case` left its file, and saving (Ctrl+S, as
+/// the app does it) goes there: `unsaved` says whether there are changes
+/// to save. With no file left, the area counts as unsaved, so saving
+/// asks where.
+fn saves_where_the_file_is(w: &mut Workbench, case: &FileCase, unsaved: bool, when: &str) {
+    let (what, _, _, after) = *case;
+    assert_eq!(w.play_state(), PlayState::Editing);
+    assert_eq!(w.document().file(), after.map(Path::new), "{what}, {when}");
+    match after {
+        Some(file) => {
+            assert_eq!(w.document().is_dirty(), unsaved, "{what}, {when}");
+            w.mark_saved(file.into());
+            assert_eq!(w.document().file(), Some(Path::new(file)));
+            assert!(!w.document().is_dirty());
+        }
+        None => assert!(w.document().is_dirty(), "{what}, {when}: unsaved"),
+    }
+}
+
+#[test]
+fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_stop() {
+    for case in &FILE_CASES {
+        let (mut w, _) = saved_area();
+        w.play();
+        library_does(&mut w, case);
+        w.stop();
+        assert!(w.play_changes().is_none());
+        saves_where_the_file_is(&mut w, case, false, "after Stop");
+    }
+}
+
+#[test]
+fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_keep_and_undo_all() {
+    for case in &FILE_CASES {
+        // An edit before the move and one after it, then Stop and Keep.
+        let (mut w, crate_id) = saved_area();
+        w.play();
+        set_position(&mut w, crate_id, Vec3::X, 1);
+        library_does(&mut w, case);
+        let lamp = w.add_point_light();
+        w.stop();
+        assert_eq!(w.play_changes().unwrap().len(), 2);
+        w.keep_play_changes();
+        assert!(w.document().area().contains(lamp));
+        saves_where_the_file_is(&mut w, case, true, "after Stop and Keep");
+        // Undo all: nothing of the user's is left to save.
+        let (mut w, crate_id) = saved_area();
+        w.play();
+        library_does(&mut w, case);
+        set_position(&mut w, crate_id, Vec3::X, 1);
+        w.stop();
+        w.undo_play_changes();
+        saves_where_the_file_is(&mut w, case, false, "after Stop and Undo all");
+    }
+}
+
+#[test]
+fn the_area_s_file_moved_or_deleted_while_keep_is_asked_stays_so_after_the_answer() {
+    for case in &FILE_CASES {
+        let (mut w, _) = saved_area();
+        w.play();
+        let lamp = w.add_point_light();
+        w.stop();
+        assert!(w.play_changes().is_some());
+        library_does(&mut w, case);
+        w.keep_play_changes();
+        assert!(w.document().area().contains(lamp));
+        saves_where_the_file_is(&mut w, case, true, "moved while asked, kept");
+    }
+}
+
+#[test]
+fn another_file_moved_while_playing_changes_nothing() {
+    let (mut w, _) = saved_area();
+    w.play();
+    assert_eq!(
+        w.file_moved(
+            Path::new("/p/assets/crate.glb"),
+            Some(Path::new("/p/assets/box.glb"))
+        ),
+        None
+    );
+    // A file whose name only starts the same isn't the area's folder.
+    assert_eq!(w.file_moved(Path::new("/p/assets/are"), None), None);
+    w.stop();
+    assert_eq!(w.document().file(), Some(Path::new(AREA_FILE)));
+    assert!(!w.document().is_dirty());
 }

@@ -620,7 +620,9 @@ impl Workbench {
     /// A file or folder was moved from `from` to `to` (full paths), or
     /// deleted (`to` is `None`). If it was the open area's file, or a
     /// folder holding it, the area follows it; returns its new file then
-    /// (`None` inside: it was deleted).
+    /// (`None` inside: it was deleted). While playing, and while Keep or
+    /// Undo all is asked, the area that Stop or Keep would put back
+    /// follows too, so the move isn't undone by them.
     pub fn file_moved(
         &mut self,
         from: &std::path::Path,
@@ -636,6 +638,17 @@ impl Workbench {
             }
         });
         self.open.document.file_moved(moved.clone());
+        // Every other copy of the document that can become the open one
+        // again is of the same file: the one kept at Play, which Stop
+        // puts back, and the one Keep would put in its place. Left where
+        // they were, the next save would make the old file again beside
+        // the moved one, or a deleted file's area would count as saved.
+        if let Some(playing) = &mut self.open.playing {
+            playing.before.file_moved(moved.clone());
+        }
+        if let Some(changes) = &mut self.open.play_changes {
+            changes.document.file_moved(moved.clone());
+        }
         match &moved {
             Some(path) => self.log(
                 LogLevel::Info,

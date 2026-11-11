@@ -44,6 +44,8 @@ You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md
 
 **Changes from outside while playing:** if an assembly's file changes (a Git pull, or Notepad), the game shows it at once, and its copies are updated again after Stop. That isn't one of your changes, so Stop doesn't ask about it, and the area you **Keep** has the updated copies too. If the area's own file changes on disk, Solis waits until Stop, and until you've answered **Keep** or **Undo all**, to offer it.
 
+**Renaming, moving or deleting the area's file while playing** (in the [Library](projects-and-the-library.md)) holds after Stop: the area keeps its new name and place, whether you **Keep** your changes or not, and Ctrl + S saves it there. If you deleted the file, the area counts as unsaved after Stop, and saving asks where to put it. That's the one thing Stop doesn't put back, because the file really did move.
+
 ## Settings
 | Setting | What it does |
 |---|---|
