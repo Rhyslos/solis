@@ -194,3 +194,148 @@ fn a_despawned_collider_and_map_leave_2d_physics_with_them() {
     let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 80);
     assert!(at.x > 11.0, "on past the fence: {at}");
 }
+
+/// Where something carried sits from its carrier: half a metre right, a
+/// metre up and a layer above.
+fn carried() -> Transform {
+    Transform {
+        position: Vec3::new(0.5, 1.0, 0.3),
+        ..Transform::default()
+    }
+}
+
+/// `data` under `carrier`, at [`carried`].
+fn carry(area: &mut Area, carrier: EntityId, name: &str) -> EntityId {
+    let mut data = EntityData::new(name).with(&carried());
+    data.parent = Some(carrier);
+    area.spawn(data)
+}
+
+/// A world with, if `flat`, a 2D character carrying a lantern, and, if
+/// `bodies`, a crate 3D physics drops with a label on it and a 3D
+/// character carrying a torch: each pair as (carrier, carried).
+fn carriers(flat: bool, bodies: bool) -> (World, Vec<(EntityId, EntityId)>) {
+    use area::builtin::{CharacterBody, Collider, RigidBody};
+    let mut area = Area::new();
+    let mut pairs = Vec::new();
+    if flat {
+        let walker = area.spawn(
+            EntityData::new("Walker")
+                .with(&Transform {
+                    position: Vec3::new(2.5, -5.5, 0.2),
+                    ..Transform::default()
+                })
+                .with(&Collider2D {
+                    character: true,
+                    ..Collider2D::default()
+                }),
+        );
+        pairs.push((walker, carry(&mut area, walker, "Lantern")));
+    }
+    if bodies {
+        let falling = area.spawn(
+            EntityData::new("Crate")
+                .with(&Transform {
+                    position: Vec3::new(20.0, 0.0, 10.0),
+                    ..Transform::default()
+                })
+                .with(&RigidBody::default())
+                .with(&Collider::default()),
+        );
+        pairs.push((falling, carry(&mut area, falling, "Label")));
+        let hero = area.spawn(
+            EntityData::new("Hero")
+                .with(&Transform {
+                    position: Vec3::new(-20.0, 0.0, 0.0),
+                    ..Transform::default()
+                })
+                .with(&CharacterBody::default()),
+        );
+        pairs.push((hero, carry(&mut area, hero, "Torch")));
+    }
+    (World::from_area(&area), pairs)
+}
+
+/// One tick: every carrier that walks is asked to, and physics steps.
+/// Returns where each carrier was before.
+fn carry_on(world: &mut World, pairs: &[(EntityId, EntityId)]) -> Vec<glam::Mat4> {
+    let before = pairs
+        .iter()
+        .map(|(carrier, _)| world.global(*carrier).unwrap())
+        .collect();
+    for (carrier, _) in pairs {
+        world.move_character(*carrier, Vec3::new(0.1, 0.05, 0.0));
+    }
+    world.step_physics();
+    before
+}
+
+/// Everything carried is exactly at its carrier's place and its own
+/// offset, the checksum is of a world with nothing left to settle, and
+/// what drawing between ticks moves from is where it is.
+fn all_carried_are_with_their_carriers(world: &mut World, pairs: &[(EntityId, EntityId)]) {
+    for &(carrier, held) in pairs {
+        let expected = world.global(carrier).unwrap() * carried().matrix();
+        assert_eq!(world.global(held), Some(expected));
+    }
+    let sum = world.checksum();
+    world.settle();
+    assert_eq!(world.checksum(), sum, "nothing was left to settle");
+    world.remember();
+    for &(carrier, held) in pairs {
+        let expected = world.global(carrier).unwrap() * carried().matrix();
+        assert_eq!(world.global_between(held, 0.0), Some(expected));
+    }
+}
+
+/// The physics step used to return early in a world with no 3D bodies,
+/// before those under a walked 2D character had followed it: a camera or
+/// a held item was drawn and summed a tick behind (the full review).
+#[test]
+fn what_a_2d_character_carries_is_with_it_on_the_same_tick_in_a_2d_only_world() {
+    let (mut world, pairs) = carriers(true, false);
+    assert!(world.physics().state().is_empty(), "no 3D bodies at all");
+    for _ in 0..5 {
+        let before = carry_on(&mut world, &pairs);
+        assert_ne!(world.global(pairs[0].0).unwrap(), before[0], "it walked");
+        all_carried_are_with_their_carriers(&mut world, &pairs);
+    }
+    // Paused (the game's speed 0), a walk asked for still lands, and
+    // what's carried still goes with it.
+    world.set_speed(0.0);
+    let before = carry_on(&mut world, &pairs);
+    assert_ne!(world.global(pairs[0].0).unwrap(), before[0]);
+    all_carried_are_with_their_carriers(&mut world, &pairs);
+}
+
+#[test]
+fn what_3d_physics_moves_carries_what_s_under_it_on_the_same_tick_in_a_3d_only_world() {
+    let (mut world, pairs) = carriers(false, true);
+    assert!(world.flat().state().is_empty(), "no 2D physics at all");
+    for _ in 0..5 {
+        let before = carry_on(&mut world, &pairs);
+        for (i, (carrier, _)) in pairs.iter().enumerate() {
+            // The crate fell (physics moved it) and the hero walked.
+            assert_ne!(world.global(*carrier).unwrap(), before[i]);
+        }
+        all_carried_are_with_their_carriers(&mut world, &pairs);
+    }
+}
+
+#[test]
+fn in_a_world_with_both_everything_carried_is_with_its_carrier_on_the_same_tick() {
+    let (mut world, pairs) = carriers(true, true);
+    for _ in 0..5 {
+        let before = carry_on(&mut world, &pairs);
+        for (i, (carrier, _)) in pairs.iter().enumerate() {
+            assert_ne!(world.global(*carrier).unwrap(), before[i]);
+        }
+        all_carried_are_with_their_carriers(&mut world, &pairs);
+    }
+    // Paused, 3D physics stands still; the 2D walk still lands.
+    world.set_speed(0.0);
+    let before = carry_on(&mut world, &pairs);
+    assert_ne!(world.global(pairs[0].0).unwrap(), before[0]);
+    assert_eq!(world.global(pairs[1].0).unwrap(), before[1], "the crate");
+    all_carried_are_with_their_carriers(&mut world, &pairs);
+}

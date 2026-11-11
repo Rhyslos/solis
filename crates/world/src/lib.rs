@@ -1482,9 +1482,9 @@ impl World {
         let mut moved = std::mem::take(&mut self.physics_moved);
         let mut seen = reflect::IdSet::default();
         moved.retain(|id| seen.insert(*id));
+        let asked = std::mem::take(&mut self.physics_asked);
         // 2D physics first (decision 0071): its own world beside 3D's.
-        let walks: Vec<(EntityId, glam::Vec2)> = self
-            .physics_asked
+        let walks: Vec<(EntityId, glam::Vec2)> = asked
             .iter()
             .filter_map(|ask| match ask {
                 PhysicsAsk::Flat(id, wanted) => Some((*id, *wanted)),
@@ -1492,12 +1492,28 @@ impl World {
             })
             .collect();
         self.step_flat(&moved, &walks);
+        let stepped = self.step_bodies(&moved, asked);
+        // The one way out, whichever physics moved something and however
+        // far the 3D step got: those under what moved follow it now, so
+        // nothing is drawn or summed a tick behind what carries it. A
+        // dynamic body under something stays physics' to move only when
+        // 3D physics stepped.
+        self.after_physics = stepped;
+        self.settle();
+        self.after_physics = false;
+    }
+
+    /// 3D physics' part of [`Self::step_physics`]: bodies go where game
+    /// code `moved` their entities, what it `asked` for is made, physics
+    /// steps, and the entities it moved follow their bodies (those under
+    /// them wait for the caller to settle). Returns whether physics
+    /// stepped: not with nothing in it, nor while the game is paused.
+    fn step_bodies(&mut self, moved: &[EntityId], asked: Vec<PhysicsAsk>) -> bool {
         if self.physics.state().is_empty() {
-            self.physics_asked.clear();
-            return;
+            return false;
         }
         self.touched = true;
-        for id in moved {
+        for &id in moved {
             if let Some(global) = self.global(id) {
                 let (_, rotation, position) = global.to_scale_rotation_translation();
                 self.physics.set_pose(id, position, rotation);
@@ -1506,7 +1522,7 @@ impl World {
         // Pushes and velocities in the order asked, then characters' moves
         // in the order asked (worked out on every core at once).
         let mut characters = Vec::new();
-        for ask in std::mem::take(&mut self.physics_asked) {
+        for ask in asked {
             match ask {
                 PhysicsAsk::Push(id, impulse) => self.physics.push(id, impulse),
                 PhysicsAsk::Velocity(id, velocity) => self.physics.set_velocity(id, velocity),
@@ -1518,8 +1534,7 @@ impl World {
         // code's own moves above still land).
         let dt = self.tick_time() as f32;
         if dt <= 0.0 {
-            self.settle();
-            return;
+            return false;
         }
         if !characters.is_empty() {
             self.physics.move_characters(&characters, dt);
@@ -1541,9 +1556,7 @@ impl World {
             });
         }
         self.following = false;
-        self.after_physics = true;
-        self.settle();
-        self.after_physics = false;
+        true
     }
 
     /// Sets the clock to `ticks` run, at game time `time` (a save game
