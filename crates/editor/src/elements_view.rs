@@ -16,8 +16,6 @@ use ui::source::{Block, Piece};
 pub(crate) struct ElementsOut {
     /// The screen changed: save it.
     pub(crate) changed: bool,
-    /// The pointer is over the panel (Delete and Ctrl+Z are its).
-    pub(crate) hovered: bool,
 }
 
 /// A row's label: its kind and its words, or a hint of what it is.
@@ -58,12 +56,16 @@ fn summary(text: &str, piece: &ui::source::ElementSource) -> String {
     bits.join(" · ")
 }
 
-/// The Elements panel.
-pub(crate) fn elements_tab(ui: &mut Ui, doc: &mut ScreenDoc, accent: Color32) -> ElementsOut {
-    let mut out = ElementsOut {
-        hovered: ui.rect_contains_pointer(ui.max_rect()),
-        ..Default::default()
-    };
+/// The Elements panel. Delete and Ctrl+D act on what's picked while the
+/// keys are the panel's (`keys`: the pointer rests over it and nothing is
+/// being typed).
+pub(crate) fn elements_tab(
+    ui: &mut Ui,
+    doc: &mut ScreenDoc,
+    accent: Color32,
+    keys: bool,
+) -> ElementsOut {
+    let mut out = ElementsOut::default();
     let Some(block) = doc.block().cloned() else {
         let why = doc.source.as_ref().err().cloned().unwrap_or_default();
         crate::panels::placeholder(
@@ -95,7 +97,7 @@ pub(crate) fn elements_tab(ui: &mut Ui, doc: &mut ScreenDoc, accent: Color32) ->
         .color(theme::text_weak())
         .small(),
     );
-    if out.hovered && !ui.ctx().egui_wants_keyboard_input() {
+    if keys {
         if ui.input(|i| i.key_pressed(egui::Key::Delete)) && !doc.picked.is_empty() {
             out.changed |= doc.delete_picked();
         }

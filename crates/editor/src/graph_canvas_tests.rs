@@ -50,12 +50,16 @@ fn board() -> Harness<'static, Board> {
                     picked: false,
                 }];
                 let mut menus = Vec::new();
+                // As in the editor: the keys are the graph's while the
+                // pointer rests over its tab.
+                let keys = ui.rect_contains_pointer(ui.max_rect());
                 let events = graph_canvas(
                     ui,
                     &mut board.canvas,
                     &boxes(),
                     &wires,
                     Color32::GOLD,
+                    keys,
                     &mut |_ui, target| menus.push(target),
                 );
                 board.menus.extend(menus);

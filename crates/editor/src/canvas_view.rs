@@ -41,6 +41,10 @@ pub(crate) struct CanvasUi<'a> {
     pub(crate) picture_files: &'a [String],
     /// What the screen's entity can be read for (Preview values).
     pub(crate) readable: &'a [crate::screen_ties::Readable],
+    /// Whether the keys are the canvas's this frame (the pointer rests
+    /// over its tab and nothing is being typed): its own keys are acted on
+    /// only then.
+    pub(crate) keys: bool,
 }
 
 /// What the canvas asks of the workbench.
@@ -48,8 +52,6 @@ pub(crate) struct CanvasUi<'a> {
 pub(crate) struct CanvasOut {
     /// The screen changed: save it.
     pub(crate) changed: bool,
-    /// The pointer is over the canvas (Ctrl+Z is its).
-    pub(crate) hovered: bool,
     /// Open the file in a code editor.
     pub(crate) open_code: bool,
     /// Something to say in the Console.
@@ -225,10 +227,10 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
         accent,
         picture_files,
         readable: _,
+        keys,
     } = c;
     let area = ui.max_rect();
     let response = ui.allocate_rect(area, Sense::click_and_drag());
-    out.hovered = response.hovered() || response.dragged();
     let painter = ui.painter_at(area);
     painter.rect_filled(area, 0.0, theme::backdrop::horizon());
     let preset = ui::presets::PRESETS
@@ -358,13 +360,13 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
     });
     if !ring_open {
         if doc.tool == crate::canvas_tools::CanvasTool::Select {
-            interact(ui, &response, doc, &drawn, accent, out);
+            interact(ui, &response, doc, &drawn, keys, out);
         } else {
-            draw_with_tool(ui, &response, doc, &drawn, &painter, accent, out);
+            draw_with_tool(ui, &response, doc, &drawn, &painter, (accent, keys), out);
         }
     }
     tools_bar(ui, area, doc, picture_files, accent);
-    tool_keys(ui, &response, doc);
+    tool_keys(ui, &response, doc, keys);
     // Outlines: what's under the pointer, and what's picked with handles.
     let hover = response
         .hover_pos()
@@ -638,7 +640,7 @@ fn interact(
     response: &egui::Response,
     doc: &mut ScreenDoc,
     drawn: &Drawn,
-    _accent: Color32,
+    keys: bool,
     out: &mut CanvasOut,
 ) {
     let id = egui::Id::new("canvas drag");
@@ -813,7 +815,7 @@ fn interact(
         doc.zoom = None;
         doc.pan = Vec2::ZERO;
     }
-    if out.hovered && !ui.ctx().egui_wants_keyboard_input() {
+    if keys {
         let (delete, duplicate, escape) = ui.input(|i| {
             (
                 i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace),
@@ -862,7 +864,7 @@ fn draw_with_tool(
     doc: &mut ScreenDoc,
     drawn: &Drawn,
     painter: &egui::Painter,
-    accent: Color32,
+    (accent, keys): (Color32, bool),
     out: &mut CanvasOut,
 ) {
     use crate::canvas_tools::{CanvasTool, piece_text};
@@ -914,10 +916,8 @@ fn draw_with_tool(
             let p = drawn.rect.min + Vec2::new(last[0], last[1]) / drawn.design_per_point;
             painter.line_segment([p, at], Stroke::new(1.0, accent));
         }
-        let finish = response.double_clicked()
-            || (response.hovered()
-                && !ui.ctx().egui_wants_keyboard_input()
-                && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+        let finish =
+            response.double_clicked() || (keys && ui.input(|i| i.key_pressed(egui::Key::Enter)));
         if finish {
             out.changed |= finish_pen(doc, drawn);
         } else if response.clicked()
@@ -1044,12 +1044,12 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
 }
 
 /// Keys 1 to 7 pick tools, E opens them in a ring, Esc goes back to
-/// picking.
-fn tool_keys(ui: &mut Ui, response: &egui::Response, doc: &mut ScreenDoc) {
+/// picking, while the keys are the canvas's (`keys`).
+fn tool_keys(ui: &mut Ui, response: &egui::Response, doc: &mut ScreenDoc, keys: bool) {
     use crate::canvas_tools::CanvasTool;
     let ring = egui::Id::new("canvas tool ring");
     let mut ring_at: Option<Pos2> = ui.data(|d| d.get_temp(ring));
-    if (response.hovered() || ring_at.is_some()) && !ui.ctx().egui_wants_keyboard_input() {
+    if keys {
         for tool in CanvasTool::ALL {
             if let Some(key) = tool.key()
                 && ui.input(|i| i.key_pressed(key) && i.modifiers.is_none())

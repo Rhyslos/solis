@@ -400,8 +400,10 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
     changed
 }
 
-/// The Frames tab. Returns whether the file changed.
-pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
+/// The Frames tab. Returns whether the file changed. Space and Delete are
+/// acted on while the keys are the tab's (`keys`: the pointer rests over
+/// it and nothing is being typed).
+pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>, keys: bool) -> bool {
     let Some(sheet) = f.sheet else {
         ui.label(
             RichText::new("Choose its sprite sheet in the Clips tab to see its frames.")
@@ -416,9 +418,7 @@ pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     };
     let mut changed = false;
     let own = !clip.from_aseprite;
-    // Keys, while the pointer is over the tab.
-    let over = ui.rect_contains_pointer(ui.max_rect());
-    if over && !ui.ctx().egui_wants_keyboard_input() {
+    if keys {
         let (space, delete) = ui.input_mut(|i| {
             (
                 i.consume_key(egui::Modifiers::NONE, egui::Key::Space),

@@ -131,7 +131,6 @@ fn a_change_is_saved_shown_at_once_and_undone_over_the_tab() {
     let set = w.viewport.sheets.tileset(set_id).unwrap();
     assert!(tiles::autotile::missing_slots(set, &set.terrains[1]).is_empty());
     w.open.outbox.clear();
-    w.tileset_hovered = true;
     w.tileset_undo(false, true);
     assert!(!saved(&w.open.outbox)[0].contains("slot = 6"));
     // Its own save read back changes nothing; a change by hand is taken in.

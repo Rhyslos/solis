@@ -5,6 +5,7 @@
 //! the area and every panel. Type to narrow it, Up and Down to choose,
 //! Enter to do it, Esc to close.
 
+use crate::key_owner::KeyOwner;
 use crate::library::{LibraryKind, LibraryRequest};
 use crate::menu_items::MenuCommand;
 use crate::panel::Panel;
@@ -574,7 +575,8 @@ impl Workbench {
     /// tab (where Space plays the clip) and the game not holding the keys,
     /// opens the search.
     pub(crate) fn search_key(&mut self, ui: &Ui) {
-        if self.search.open || self.frames_hovered || ui.ctx().egui_wants_keyboard_input() {
+        let keys = self.keys;
+        if self.search.open || keys == KeyOwner::Frames || !keys.takes_shortcuts() {
             return;
         }
         let space = ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space));

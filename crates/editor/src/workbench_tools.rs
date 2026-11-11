@@ -222,10 +222,10 @@ impl Workbench {
     }
 
     /// Esc cancels a drag or selects nothing; Ctrl+A selects everything;
-    /// X, Y and Z lock an axis and L switches world and object axes. Not
-    /// while typing, nor while flying.
+    /// X, Y and Z lock an axis and L switches world and object axes, where
+    /// the keys are the area's. Not while flying.
     pub(crate) fn tool_extra_keys(&mut self, ui: &egui::Ui) {
-        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
+        if !self.keys.is_area() || self.viewport.is_flying() {
             return;
         }
         let (escape, all, x, y, z, l) = ui.input_mut(|i| {
@@ -242,7 +242,11 @@ impl Workbench {
                 plain(i, egui::Key::L),
             )
         });
-        if escape && !self.paint_escape() && !self.viewport.tools.cancel() {
+        // Esc does one thing: the Library's drawer, while it's up, is
+        // tucked away by it (where the drawer is drawn); else a stroke, a
+        // copy held or a painting tool is given up; else a drag; and only
+        // then is nothing selected.
+        if escape && !self.drawer_open && !self.paint_escape() && !self.viewport.tools.cancel() {
             self.open.document.selection.clear();
         }
         if all {

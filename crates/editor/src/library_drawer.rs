@@ -48,8 +48,12 @@ impl Workbench {
 
     /// Ctrl + Space: pops the drawer up or tucks it away; with the Library
     /// pinned, brings it to the front. Works while typing too, so it can
-    /// be reached from anywhere; not while the game has the keys.
+    /// be reached from anywhere; not while the game has the keys, a
+    /// question waits for its answer, or a key is being bound.
     pub(crate) fn library_keys(&mut self, ui: &Ui) {
+        if !self.keys.is_editor() {
+            return;
+        }
         let pressed = ui.input_mut(|i| {
             i.consume_shortcut(&egui::KeyboardShortcut::new(
                 egui::Modifiers::COMMAND,

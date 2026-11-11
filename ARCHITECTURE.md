@@ -23,7 +23,7 @@ Panels never change the document: Properties returns `PropertyRequest`s and the 
 
 ## How a frame runs
 
-1. **Input:** winit delivers mouse and keyboard events to egui (through eframe).
+1. **Input:** winit delivers mouse and keyboard events to egui (through eframe). The workbench decides once a frame which part of the editor the keys belong to (`editor::key_owner`: the area, a tab editing a file of its own under the pointer, a field being typed in, a key being bound, the running game), and only that part acts on them: the workbench's key handlers and each tab's own all ask that one answer.
 2. **Editor:** the workbench draws the top bar, the status bar (`status_bar.rs`: `Workbench::status` works out what it says, apart from drawing) and the docked panels, in the standard arrangement of the editor overhaul ([decision 0085](docs/decisions/0085-the-editor-overhaul.md); `layout::standard`), one layout per workspace (`workspace::Workspace`: Level, Animate, Code; the others' layouts kept in `Workbench::other_layouts`, all saved together as `Workspaces`), and returns any actions (such as Quit) for the app to carry out.
 3. **Camera:** the viewport turns the mouse and keys into a `FlyInput`, and `Camera::fly` (in `editor/src/camera.rs`) moves the camera.
 4. **Imports:** File > Import model (or a file dropped on the window) asks the app to import; the app reads the file with `assets` on a thread of its own, then uploads it with `render` and tells the workbench, which lists it (with any lamps the file carries) and frames the camera on it.

@@ -220,7 +220,6 @@ fn a_change_is_saved_run_at_once_and_undone_over_the_tab() {
     let running = w.viewport.sheets.animator_set.get(&anim).unwrap();
     assert_eq!(running.state_name(1), "Hoe");
     // Undo over the tab undoes the file's change, and saves it.
-    w.animator_hovered = true;
     w.animator_undo(false, true);
     assert!(
         saved(&w.open.outbox)

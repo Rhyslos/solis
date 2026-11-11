@@ -14,7 +14,7 @@ For a sprite that plays clips, use [sprites](sprites.md) and [sprite animation](
 2. Set the **Grid** to the size the pictures are drawn on (16 × 16 for most pixel art). Crops snap to it, so a quick drag catches a whole tile.
 3. **Drag on the picture** to draw a crop. It's named `Crop`, `Crop2`… at first: type a better name in **Name** and press **Rename** (or Enter). A name starts with a letter and holds only letters, digits and `_`.
 4. Or press **Crop every tile**: a crop for every grid cell with something drawn in it, named by its column and row (`Tile_3_0`).
-5. Click a crop to pick it; **Delete crop** (or Delete over the picture) removes it. Every change is saved at once, and **Ctrl+Z** over the tab undoes it.
+5. Click a crop to pick it; **Delete crop** (or Delete with the pointer over the tab) removes it. Every change is saved at once, and **Ctrl+Z** over the tab undoes it.
 6. Later, double-click the `.atlas.lst` file in the Library to open its picture's crops again.
 
 Game code names each crop by its picture's path and its name, from `solis/project.lst`: `fetch "solis/project":Picture;` then `Picture.Sprites.Tools.Axe` for `sprites/tools.png`'s Axe. A [screen](screens.md) shows one with `image "sprites/tools.png#Axe";`: the picture's path, `#`, and the crop's name.
@@ -32,7 +32,7 @@ Game code names each crop by its picture's path and its name, from `solis/projec
 |---|---|
 | Draw a crop | Drag with the left button on the picture |
 | Pick a crop | Click it |
-| Delete the picked crop | `Delete`, with the pointer over the picture |
+| Delete the picked crop | `Delete`, with the pointer over the tab |
 | Zoom | Mouse wheel over the picture |
 | Move the picture | Drag with the middle button |
 | Undo, redo | `Ctrl + Z`, `Ctrl + Y` (pointer over the tab) |

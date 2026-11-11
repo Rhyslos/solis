@@ -53,7 +53,6 @@ impl Workbench {
     /// Closes the atlas open, and its tab.
     pub(crate) fn close_atlas(&mut self) {
         self.open.atlas_editor = None;
-        self.atlas_hovered = false;
         self.open.atlas_texture = None;
         layout::close(&mut self.dock, Panel::AtlasCrop);
     }

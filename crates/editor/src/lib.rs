@@ -37,6 +37,7 @@ pub mod hints;
 pub mod icons;
 mod input_window;
 mod inspector;
+mod key_owner;
 pub mod launcher;
 pub mod layout;
 pub mod library;

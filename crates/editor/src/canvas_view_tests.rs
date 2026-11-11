@@ -21,6 +21,9 @@ fn harness() -> Harness<'static, State> {
         .with_size(egui::vec2(1000.0, 600.0))
         .build_ui_state(
             |ui, s: &mut State| {
+                // As in the editor: the keys are the tab's while the
+                // pointer rests over it.
+                let keys = ui.rect_contains_pointer(ui.max_rect());
                 let out = canvas_tab(
                     ui,
                     CanvasUi {
@@ -31,6 +34,7 @@ fn harness() -> Harness<'static, State> {
                         accent: Color32::from_rgb(0x24, 0x68, 0xd8),
                         picture_files: &[],
                         readable: &[],
+                        keys,
                     },
                 );
                 s.out.push(out);

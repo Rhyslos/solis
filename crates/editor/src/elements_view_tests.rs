@@ -11,7 +11,10 @@ fn harness() -> Harness<'static, (ScreenDoc, Vec<ElementsOut>)> {
         .with_size(egui::vec2(320.0, 500.0))
         .build_ui_state(
             |ui, (doc, out): &mut (ScreenDoc, Vec<ElementsOut>)| {
-                out.push(elements_tab(ui, doc, Color32::BLUE));
+                // As in the editor: the keys are the panel's while the
+                // pointer rests over it.
+                let keys = ui.rect_contains_pointer(ui.max_rect());
+                out.push(elements_tab(ui, doc, Color32::BLUE, keys));
             },
             (doc, Vec::new()),
         )

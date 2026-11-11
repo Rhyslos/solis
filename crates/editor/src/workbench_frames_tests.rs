@@ -139,7 +139,6 @@ fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
     let set = w.viewport.sheets.clips(clips).unwrap();
     assert_eq!(set.get("wave").unwrap().speed, 2.0);
     // Undo over the tabs undoes the file's change, and saves it.
-    w.frames_hovered = true;
     w.frames_undo(false, true);
     let undone = saved(&w.open.outbox);
     assert!(undone.last().unwrap().contains("clip1 = [\"wave\", 1.0"));

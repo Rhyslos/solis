@@ -97,7 +97,6 @@ impl Workbench {
     /// Closes the tileset open, and its tab.
     pub(crate) fn close_tileset(&mut self) {
         self.open.tileset_editor = None;
-        self.tileset_hovered = false;
         layout::close(&mut self.dock, Panel::Tileset);
     }
 

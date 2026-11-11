@@ -140,7 +140,7 @@ fn undo_over_the_map_tab_never_reaches_into_another_project() {
     let over_the_tab = h.get_by_label("Add a layer").rect().center();
     h.hover_at(over_the_tab);
     h.run();
-    assert!(h.state().0.map_hovered);
+    assert_eq!(h.state().0.pointer_over, Some(Panel::Map));
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.run();
     let (w, picker) = h.state();

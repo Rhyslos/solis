@@ -133,7 +133,6 @@ impl Workbench {
     /// Closes the clips file open, and its tabs.
     pub(crate) fn close_frames(&mut self) {
         self.open.frames_editor = None;
-        self.frames_hovered = false;
         for panel in Panel::FRAMES_TABS {
             layout::close(&mut self.dock, panel);
         }
@@ -160,14 +159,13 @@ impl Workbench {
         }
     }
 
-    /// After the tabs are drawn: saves a change, closes the file if a tab
-    /// was closed, and notes whether the pointer is over them.
+    /// After the tabs are drawn: saves a change, and closes the file if a
+    /// tab was closed.
     pub(crate) fn frames_tabs_done(
         &mut self,
         out: crate::panels::FramesOut,
         actions: &mut Vec<WorkbenchAction>,
     ) {
-        self.frames_hovered = out.hovered;
         if out.changed {
             self.save_frames(actions);
         }
@@ -178,7 +176,6 @@ impl Workbench {
         if self.open.frames_editor.is_some() && (out.closed || one_gone) {
             self.close_frames();
         }
-        self.screen_hovered = out.screen_hovered;
         if let Some(said) = &out.screen_said {
             self.log(crate::console::LogLevel::Info, said.clone());
         }
@@ -194,7 +191,6 @@ impl Workbench {
                 actions,
             );
         }
-        self.atlas_hovered = out.atlas_hovered;
         if out.atlas_changed {
             self.save_open_atlas();
         }
@@ -206,7 +202,6 @@ impl Workbench {
         {
             self.close_atlas();
         }
-        self.tileset_hovered = out.tileset_hovered;
         if out.tileset_changed {
             self.save_open_tileset();
         }
@@ -218,7 +213,6 @@ impl Workbench {
         {
             self.close_tileset();
         }
-        self.animator_hovered = out.animator_hovered;
         if out.animator_changed {
             self.save_animator(actions);
         }

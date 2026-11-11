@@ -12,6 +12,7 @@ Draw the editor with egui and egui_dock, keep its state between frames (the pane
 
 - `workbench.rs`: the editor's state, and `show`, which draws a frame and returns the actions.
 - `project_state.rs`: the part of that state that belongs to the open project (`Workbench::open`), replaced whole when another project opens.
+- `key_owner.rs`: which part of the editor the keys belong to each frame (the area, a tab editing a file of its own under the pointer, a field being typed in, the running game); every key handler asks it, so a key acts on one thing.
 - `top_bar.rs`: the logo, menus, document tabs, and Play, Pause, Step and Stop.
 - `status_bar.rs`: the status bar along the bottom (decision 0085).
 - `panels.rs`: draws each docked panel and the bits panels share.

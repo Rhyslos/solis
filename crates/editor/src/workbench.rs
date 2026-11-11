@@ -11,6 +11,7 @@ use crate::camera::Camera;
 use crate::console::CONSOLE_LIMIT;
 use crate::console::{Console, LogLevel, LogLine};
 use crate::document::Document;
+use crate::key_owner::KeyOwner;
 use crate::layout;
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::models::ModelInfo;
@@ -343,20 +344,13 @@ pub struct Workbench {
     pub(crate) search: crate::search::SearchState,
     /// The program's logo, for the top bar (the app hands it over).
     pub(crate) logo: Option<egui::TextureId>,
-    /// Whether the pointer was over the Clips or Frames tab last frame:
-    /// Ctrl+Z, Ctrl+Y and Delete are the file's then.
-    pub(crate) frames_hovered: bool,
-    /// Whether the pointer was over the Animator tab last frame: Ctrl+Z,
-    /// Ctrl+Y, Delete and F are the animator's then.
-    pub(crate) animator_hovered: bool,
-    /// Whether the pointer was over the Atlas Crop tab last frame.
-    pub(crate) atlas_hovered: bool,
-    /// Whether the pointer was over the Tileset tab last frame: Ctrl+Z and
-    /// Ctrl+Y are the tileset's then.
-    pub(crate) tileset_hovered: bool,
-    /// Whether the pointer was over the Map tab last frame (Ctrl+Z and
-    /// Ctrl+Y are the map's then).
-    pub(crate) map_hovered: bool,
+    /// The docked panel the pointer rested over when the last frame was
+    /// drawn, if any: what [`Workbench::key_owner`] works the keys' owner
+    /// out from.
+    pub(crate) pointer_over: Option<Panel>,
+    /// Who the keys belong to this frame (`key_owner.rs`): every key
+    /// handler asks this, and none decides for itself.
+    pub(crate) keys: KeyOwner,
     /// Goes up whenever what Problems checks the area against changes:
     /// the models loaded, the Library, the assemblies, the components
     /// known. It only ever goes up, another project included, so nothing
@@ -386,9 +380,6 @@ pub struct Workbench {
     pub(crate) player_settings: script::settings::PlayerSettings,
     /// The fonts the canvas measures with.
     pub(crate) screen_fonts: Option<ui::Fonts>,
-    /// Whether the pointer is over the canvas or Elements (Ctrl+Z is
-    /// theirs then).
-    pub(crate) screen_hovered: bool,
     /// How many times Play has started a game (the app's sound starts
     /// afresh with each). It only ever goes up, another project included.
     pub(crate) plays: u64,
@@ -455,17 +446,13 @@ impl Workbench {
             other_layouts: BTreeMap::new(),
             search: crate::search::SearchState::default(),
             logo: None,
-            frames_hovered: false,
-            animator_hovered: false,
-            atlas_hovered: false,
-            tileset_hovered: false,
-            map_hovered: false,
+            pointer_over: None,
+            keys: KeyOwner::default(),
             sources: 0,
             profiler: crate::profiler::Profiler::default(),
             ui_test: None,
             player_settings: Default::default(),
             screen_fonts: None,
-            screen_hovered: false,
             devices: input::Devices::new(),
             game_input: false,
             release_pointer: false,
@@ -901,18 +888,18 @@ impl Workbench {
         // While the game has the mouse and keys, they're the game's: the
         // editor's own keys are off (decision 0037).
         self.feed_input(ui.ctx());
-        // While Keep or Undo all is asked, the keys wait for the answer.
-        if !self.game_input && self.open.play_changes.is_none() {
-            self.tool_keys(ui);
-            self.paint_keys(ui);
-            self.tool_extra_keys(ui);
-            self.undo_keys(ui);
-            self.editing_keys(ui);
-            self.file_keys(ui, &mut actions);
-            self.console_key(ui);
-            self.library_keys(ui);
-            self.search_key(ui);
-        }
+        // Who has the keys this frame is decided once, here: each handler
+        // below, and each tab drawn after, acts only on what is its own.
+        self.keys = self.key_owner(ui.ctx());
+        self.tool_keys(ui);
+        self.paint_keys(ui);
+        self.tool_extra_keys(ui);
+        self.undo_keys(ui);
+        self.editing_keys(ui);
+        self.file_keys(ui, &mut actions);
+        self.console_key(ui);
+        self.library_keys(ui);
+        self.search_key(ui);
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
         egui::Panel::top("top_bar")
@@ -1259,6 +1246,7 @@ impl Workbench {
                         map,
                         map_requests: &mut map_requests,
                         screen,
+                        keys: self.keys,
                     },
                 );
         });
@@ -1268,7 +1256,7 @@ impl Workbench {
         }
         self.library_drawer(ui, editor, &sheets, &mut library_requests);
         self.in_front = shown;
-        self.map_hovered = frames_out.map_hovered;
+        self.pointer_over = frames_out.pointer_over;
         self.frames_tabs_done(frames_out, &mut actions);
         self.map_requests_done(map_requests);
         self.tile_overlay_done();
@@ -1325,10 +1313,10 @@ impl Workbench {
         actions
     }
 
-    /// Q, W, R, S and T pick the tools, unless typing in a field.
+    /// Q, W, R, S and T pick the tools, where the keys are the area's.
     pub(crate) fn tool_keys(&mut self, ui: &Ui) {
         // While flying, W A S D, Q and E move the camera instead.
-        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
+        if !self.keys.is_area() || self.viewport.is_flying() {
             return;
         }
         let pressed = ui.input(|i| {
@@ -1346,7 +1334,7 @@ impl Workbench {
     /// console's command line, bringing the Console to the front (decided
     /// with the project lead, 2026-10-23). Not while typing.
     pub(crate) fn console_key(&mut self, ui: &Ui) {
-        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
+        if !self.keys.takes_shortcuts() || self.viewport.is_flying() {
             return;
         }
         let pressed = ui.input_mut(|i| {
@@ -1529,13 +1517,13 @@ impl Workbench {
         self.console.history()
     }
 
-    /// Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes. Not while typing in a
-    /// field, where they undo the typing instead.
+    /// Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes: the undo steps of
+    /// whoever has the keys. Not while typing in a field, where they undo
+    /// the typing instead.
     pub(crate) fn undo_keys(&mut self, ui: &Ui) {
-        if ui.ctx().egui_wants_keyboard_input() {
+        if !self.keys.takes_shortcuts() {
             return;
         }
-        let frames = self.frames_hovered && self.open.frames_editor.is_some();
         let (redo, undo) = ui.input_mut(|i| {
             let shift_z = egui::KeyboardShortcut::new(
                 egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
@@ -1547,42 +1535,28 @@ impl Workbench {
             let redo = i.consume_shortcut(&shift_z) || i.consume_shortcut(&y);
             (redo, i.consume_shortcut(&z))
         });
-        let animator = self.animator_hovered && self.open.animator_editor.is_some();
-        if frames {
-            // Over the Clips or Frames tab: the clips file's changes.
-            self.frames_undo(redo, undo);
-        } else if animator {
-            // Over the Animator tab: the animator's changes.
-            self.animator_undo(redo, undo);
-        } else if self.tileset_hovered && self.open.tileset_editor.is_some() {
-            // Over the Tileset tab: the tileset's changes.
-            self.tileset_undo(redo, undo);
-        } else if self.screen_hovered && self.open.screen_doc.is_some() {
-            // Over the canvas or Elements: the screen's changes.
-            if redo || undo {
-                self.screen_undo(redo);
-            }
-        } else if self.atlas_hovered && self.open.atlas_editor.is_some() {
-            // Over the Atlas Crop tab: the crops' changes.
-            if redo || undo {
-                self.atlas_undo(redo);
-            }
-        } else if (self.map_hovered || self.viewport.tile_overlay.paint.painting())
-            && self.open.map_edits.path.is_some()
-        {
+        if !redo && !undo {
+            return;
+        }
+        match self.keys {
+            // Left before the keys were read.
+            KeyOwner::Game | KeyOwner::Question | KeyOwner::Binding | KeyOwner::Field => {}
+            KeyOwner::Area if redo => self.redo(),
+            KeyOwner::Area => self.undo(),
             // Over the Map tab, or painting: the map's changes.
-            self.map_undo(redo, undo);
-        } else if redo {
-            self.redo();
-        } else if undo {
-            self.undo();
+            KeyOwner::Map => self.map_undo(redo, undo),
+            KeyOwner::Clips | KeyOwner::Frames => self.frames_undo(redo, undo),
+            KeyOwner::Animator => self.animator_undo(redo, undo),
+            KeyOwner::Tileset => self.tileset_undo(redo, undo),
+            KeyOwner::Atlas => self.atlas_undo(redo),
+            KeyOwner::Canvas | KeyOwner::Elements => self.screen_undo(redo),
         }
     }
 
     /// Ctrl+N, Ctrl+O, Ctrl+S and Ctrl+Shift+S: new, open, save and save
     /// as (decided with the project lead, 2026-10-23). Not while typing.
     pub(crate) fn file_keys(&mut self, ui: &Ui, actions: &mut Vec<WorkbenchAction>) {
-        if ui.ctx().egui_wants_keyboard_input() {
+        if !self.keys.takes_shortcuts() {
             return;
         }
         let command = egui::Modifiers::COMMAND;
@@ -1768,10 +1742,11 @@ impl Workbench {
     }
 
     /// Delete deletes the selection, Ctrl+D duplicates it, F2 renames it
-    /// and F frames it (decided with the project lead, 2026-10-23). Not
-    /// while typing, nor while flying.
+    /// and F frames it (decided with the project lead, 2026-10-23), where
+    /// the keys are the area's: over a tab with a file of its own they are
+    /// that tab's, and never reach the area as well. Not while flying.
     pub(crate) fn editing_keys(&mut self, ui: &Ui) {
-        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
+        if !self.keys.is_area() || self.viewport.is_flying() {
             return;
         }
         let (delete, duplicate, rename, frame) = ui.input_mut(|i| {
@@ -1786,8 +1761,7 @@ impl Workbench {
                 plain(i, egui::Key::F),
             )
         });
-        // Over the Frames tab, Delete takes out frames instead.
-        if delete && !self.frames_hovered && !self.animator_hovered {
+        if delete {
             self.delete_selection();
         }
         if duplicate {
@@ -1799,7 +1773,7 @@ impl Workbench {
         {
             crate::area_panel::begin_rename(ui.ctx(), id, &entity.name);
         }
-        if frame && !self.animator_hovered {
+        if frame {
             self.frame_selection();
         }
     }

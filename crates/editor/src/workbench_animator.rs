@@ -120,7 +120,6 @@ impl Workbench {
     /// Closes the animator file open, and its tab.
     pub(crate) fn close_animator(&mut self) {
         self.open.animator_editor = None;
-        self.animator_hovered = false;
         layout::close(&mut self.dock, Panel::Animator);
     }
 
