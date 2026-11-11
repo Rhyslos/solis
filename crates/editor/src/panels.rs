@@ -679,7 +679,7 @@ impl TabViewer for PanelViewer<'_> {
 }
 
 /// The border around the viewport and the Game panel while the game
-/// runs, so it's plain that changes made now are undone on Stop.
+/// runs, so it's plain that the area goes back on Stop.
 fn playing_border(ui: &Ui, rect: egui::Rect, accent: Accent) {
     ui.painter().rect_stroke(
         rect,

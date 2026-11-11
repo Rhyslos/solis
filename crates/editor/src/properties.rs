@@ -310,7 +310,8 @@ pub(crate) fn properties(
                             ui.label(
                                 RichText::new(
                                     "Playing: game code's values are shown as they are now. A \
-                                     change here reaches the game; Stop puts every value back.",
+                                     change here reaches the game, and Stop asks whether to keep \
+                                     it; what the game changed goes back.",
                                 )
                                 .color(theme::text_weak()),
                             );

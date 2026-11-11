@@ -658,8 +658,10 @@ impl Workbench {
 
     /// Makes the assembly `id`'s contents known (read from its file),
     /// rebuilding every copy in the area from it while keeping each
-    /// copy's changes. Not an undo step if nothing was unsaved: the area's
-    /// file is the same.
+    /// copy's changes. Nothing to save if nothing was unsaved: the area's
+    /// file is the same. While the game plays it isn't an undo step: the
+    /// rebuilt area has the game's entities in it, and Stop rebuilds the
+    /// copies of the area from before Play itself.
     pub fn set_assembly(&mut self, id: AssetId, file: Arc<AreaFile>) {
         let had = self.assemblies.contains_key(&id);
         let uses = self.document.area().iter().any(|(_, e)| e.origin.is_some());
@@ -709,10 +711,17 @@ impl Workbench {
         let name = self.asset_name(id);
         match rebuilt {
             Ok(area) if area != *self.document.area() => {
-                if let Err(why) = self
-                    .document
-                    .rebuild(area, &format!("Update copies of {name}"))
-                {
+                let updated = if self.playing.is_some() {
+                    // Not one of the user's edits, so not a step for Keep
+                    // to make again; the game takes it in as a change.
+                    self.document.replace_by_game(&area);
+                    self.document.touch();
+                    Ok(())
+                } else {
+                    self.document
+                        .rebuild(area, &format!("Update copies of {name}"))
+                };
+                if let Err(why) = updated {
                     self.log(
                         LogLevel::Error,
                         format!("Couldn't update copies of {name}: {why}."),

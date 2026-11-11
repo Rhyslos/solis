@@ -5,7 +5,9 @@
 //! ([`world::World`]). While it runs, the editor keeps working: changes
 //! reach the game, which is built again from the area when it changes.
 //! Stop throws the world away and puts the copy back, so everything is
-//! exactly as it was before Play. Saving and opening wait until then.
+//! exactly as it was before Play; the edits the user made meanwhile wait
+//! for Keep or Undo all (`play_changes.rs`). Saving and opening wait
+//! until then.
 
 use crate::console::LogLevel;
 use crate::document::Document;
@@ -245,6 +247,9 @@ impl Workbench {
             replay: None,
             replayed: None,
         });
+        // Every edit made from here is kept as an undo step until Stop,
+        // which makes them again on the copy just kept, for Keep.
+        self.document.hold_steps();
         // Nothing held over from before Play.
         self.devices = input::Devices::new();
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
@@ -258,7 +263,10 @@ impl Workbench {
         };
         self.log(
             LogLevel::Info,
-            format!("Playing. Changes made now are undone when you press Stop.{note}"),
+            format!(
+                "Playing. Stop puts the area back as it is now, and asks whether to keep the \
+                 changes you make meanwhile.{note}"
+            ),
         );
     }
 
@@ -417,10 +425,10 @@ impl Workbench {
                     recording.write(),
                 ));
         }
-        // Changes made to the area while playing wait for Keep or Undo
-        // all (decision 0085): never thrown away silently.
-        let edited = self.document.clone();
-        let asked = self.note_play_changes(&edited, playing.before.history().state());
+        // The user's changes to the area while playing wait for Keep or
+        // Undo all (decision 0085): never thrown away silently. Not the
+        // game's: what it spawned, took out or loaded goes with it.
+        let asked = self.note_play_changes(&playing.before, &playing.assemblies_before);
         // The area as it was, but the components known now: code that
         // changed while playing keeps its components in the registry.
         self.replace_document(*playing.before);
@@ -434,6 +442,17 @@ impl Workbench {
                 format!("Stopped after {seconds:.1} s; the area is back as it was.")
             },
         );
+        self.update_copies(now);
+        if let Some(area) = playing.reload {
+            self.offer_reload(area);
+        }
+    }
+
+    /// Makes the assemblies `now` (as their files are now) known, in
+    /// place of the ones known (as they were at Play, which the open
+    /// area's copies were built from): the copies of each that changed
+    /// meanwhile are rebuilt.
+    pub(crate) fn update_copies(&mut self, now: BTreeMap<AssetId, Arc<AreaFile>>) {
         for (id, file) in now {
             let changed = self
                 .assemblies
@@ -442,9 +461,6 @@ impl Workbench {
             if changed {
                 self.set_assembly(id, file);
             }
-        }
-        if let Some(area) = playing.reload {
-            self.offer_reload(area);
         }
     }
 

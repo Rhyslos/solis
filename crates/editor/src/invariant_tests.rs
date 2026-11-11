@@ -351,6 +351,9 @@ struct Player {
     w: Workbench,
     saves: BTreeMap<String, String>,
     sums: Sums,
+    /// The same level with no game running, given every edit made here:
+    /// what Keep should come to.
+    alone: Option<Workbench>,
 }
 
 impl Player {
@@ -359,6 +362,7 @@ impl Player {
             w,
             saves: BTreeMap::new(),
             sums: Sums::new(),
+            alone: None,
         }
     }
 
@@ -460,18 +464,20 @@ impl Player {
             Edit::AddCrate { x, y } => {
                 *made += 1;
                 let at = Vec3::new(f32::from(x) * 0.5, f32::from(y) * 0.5, 1.0);
-                let _ = self.w.document.edit(
-                    "Add crate",
-                    vec![area::Edit::Spawn {
-                        entities: vec![(id(CRATES + 40 + *made), a_crate(at))],
-                    }],
-                    None,
-                    None,
-                );
+                let add = vec![area::Edit::Spawn {
+                    entities: vec![(id(CRATES + 40 + *made), a_crate(at))],
+                }];
+                if let Some(alone) = &mut self.alone {
+                    let _ = alone.document.edit("Add crate", add.clone(), None, None);
+                }
+                let _ = self.w.document.edit("Add crate", add, None, None);
                 None
             }
         };
         if let Some(request) = request {
+            if let Some(alone) = &mut self.alone {
+                alone.apply_property(request.clone(), 1000 + *made);
+            }
             self.w.apply_property(request, 1000 + *made);
             *made += 1;
         }
@@ -649,10 +655,16 @@ proptest! {
     }
 
     /// Stop puts the area, the undo history and the selection back as
-    /// they were before Play, whatever happened while playing.
+    /// they were before Play, whatever happened while playing. Keep then
+    /// makes the edits made meanwhile, and nothing the game did (spawned,
+    /// despawned, loaded): the area is the one the same edits come to with
+    /// no game running, and undoing them is the area from before Play.
     #[test]
     fn stop_puts_everything_back(steps in prop::collection::vec(step(true), 1..16)) {
         let mut p = Player::new(level());
+        let mut alone = level();
+        alone.replace_document(p.w.document.clone());
+        p.alone = Some(alone);
         p.w.select(id(CRATES));
         let registry = p.w.document.registry.clone();
         let area = area::text::write(p.w.document.area(), &registry, &|_| None);
@@ -662,11 +674,27 @@ proptest! {
         p.play(&steps);
         p.w.stop();
         prop_assert_eq!(
-            area::text::write(p.w.document.area(), &registry, &|_| None),
-            area
+            &area::text::write(p.w.document.area(), &registry, &|_| None),
+            &area
         );
         prop_assert_eq!(p.w.document.history().undo_len(), undo);
         prop_assert_eq!(p.w.document.selection.iter().collect::<Vec<_>>(), selected);
         prop_assert!(p.w.world().is_none());
+        let kept = p.w.play_changes().map_or(0, <[String]>::len);
+        p.w.keep_play_changes();
+        let alone = p.alone.as_ref().expect("made above");
+        prop_assert_eq!(
+            area::text::write(p.w.document.area(), &registry, &|_| None),
+            area::text::write(alone.document.area(), &registry, &|_| None)
+        );
+        prop_assert_eq!(p.w.document.history().undo_len(), undo + kept);
+        prop_assert_eq!(alone.document.history().undo_len(), undo + kept);
+        for _ in 0..kept {
+            p.w.undo();
+        }
+        prop_assert_eq!(
+            area::text::write(p.w.document.area(), &registry, &|_| None),
+            area
+        );
     }
 }

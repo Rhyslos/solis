@@ -3,24 +3,38 @@
 //! and the top and status bars take its colour: blue while playing, amber
 //! while paused, so editing and playing can't be mixed up. Changes made to
 //! the area while playing aren't thrown away silently on Stop, as other
-//! engines do: Stop lists them and asks **Keep** (the area as you left it,
-//! with every change still undoable) or **Undo all** (the area as it was
-//! before Play).
+//! engines do: Stop lists them and asks **Keep** (the area as it was
+//! before Play with those changes made, every one still undoable) or
+//! **Undo all** (the area as it was before Play). Only the user's own
+//! edits are kept, never what the game did: their edits are undo steps
+//! and the game's aren't (`Document::edit_by_game`), so Stop makes the
+//! steps again on the area from before Play (`Document::follow`).
 
 use crate::document::Document;
 use crate::play::PlayState;
 use crate::theme;
 use crate::workbench::Workbench;
+use area::text::AreaFile;
 use egui::{Color32, RichText, Ui};
+use reflect::AssetId;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// The most changes listed by name; the rest are counted.
 const LISTED: usize = 8;
 
+/// The most changes that went with the game named in the Console.
+const NAMED: usize = 3;
+
 /// Changes made while playing, waiting for Keep or Undo all.
 #[derive(Clone)]
 pub(crate) struct PlayChanges {
-    /// The area as it was at Stop, with its history.
+    /// The area as it was before Play with the user's changes made, and
+    /// its history with a step for each.
     pub(crate) document: Box<Document>,
+    /// The assemblies as they were at Play: what that area's copies were
+    /// built from, so Keep can rebuild the ones whose files changed since.
+    assemblies: BTreeMap<AssetId, Arc<AreaFile>>,
     /// What was done, oldest first.
     pub(crate) labels: Vec<String>,
 }
@@ -64,20 +78,58 @@ impl Workbench {
         }
     }
 
-    /// Notes what was changed while playing, at Stop: `edited` is the
-    /// area as it is now, `before` its state when Play was pressed. Returns
-    /// whether there was anything (then the question is asked).
-    pub(crate) fn note_play_changes(&mut self, edited: &Document, before: u64) -> bool {
-        let history = edited.history();
-        let mut labels = history.labels_since(before);
-        if labels.is_empty() && history.state() != before {
+    /// Notes what the user changed while playing, at Stop: `before` is
+    /// the document as it was when Play was pressed (and `assemblies` the
+    /// assemblies then), and the open one is as the user and the game
+    /// left it. Returns whether there was anything of the user's (then
+    /// the question is asked). A change to something only the game had
+    /// (an entity it spawned) can't be kept, and the Console says which.
+    pub(crate) fn note_play_changes(
+        &mut self,
+        before: &Document,
+        assemblies: &BTreeMap<AssetId, Arc<AreaFile>>,
+    ) -> bool {
+        let start = before.history().state();
+        if self.document.history().state() == start {
+            return false;
+        }
+        let mut kept = before.clone();
+        let followed = kept.follow(&self.document);
+        if !followed.left_out.is_empty() {
+            let mut named = followed
+                .left_out
+                .iter()
+                .take(NAMED)
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .join(", ");
+            if followed.left_out.len() > NAMED {
+                named.push_str(&format!(" and {} more", followed.left_out.len() - NAMED));
+            }
+            let (was, it) = if followed.left_out.len() == 1 {
+                ("was", "it")
+            } else {
+                ("were", "they")
+            };
+            self.log(
+                crate::console::LogLevel::Info,
+                format!(
+                    "{} made while playing {was} to things the game made, which went with the \
+                     game, so {it} can't be kept: {named}.",
+                    count(followed.left_out.len(), "change"),
+                ),
+            );
+        }
+        let mut labels = followed.made;
+        if labels.is_empty() && kept.history().state() != start {
             labels.push("Undid a change made before Play".into());
         }
         if labels.is_empty() {
             return false;
         }
         self.play_changes = Some(PlayChanges {
-            document: Box::new(edited.clone()),
+            document: Box::new(kept),
+            assemblies: assemblies.clone(),
             labels,
         });
         true
@@ -88,11 +140,17 @@ impl Workbench {
         self.play_changes.as_ref().map(|c| c.labels.as_slice())
     }
 
-    /// Keep: the area as it was at Stop, every change still undoable.
+    /// Keep: the area as it was before Play with the user's changes made,
+    /// every one still undoable. Nothing the game did comes with them.
     pub fn keep_play_changes(&mut self) {
         if let Some(changes) = self.play_changes.take() {
+            // Its copies of assemblies are as they were at Play; the open
+            // area's were rebuilt at Stop (or since) if their files
+            // changed, and these are now.
+            let now = std::mem::replace(&mut self.assemblies, changes.assemblies);
             self.replace_document(*changes.document);
             self.document.touch();
+            self.update_copies(now);
             self.log(
                 crate::console::LogLevel::Info,
                 format!(
@@ -157,7 +215,8 @@ impl Workbench {
                             .min_size(egui::vec2(90.0, 26.0)),
                     )
                     .on_hover_text(
-                        "The area as you left it, every change still undoable with Ctrl + Z",
+                        "Your changes, each still undoable with Ctrl + Z. What the game did isn't \
+                         kept",
                     );
                 if keep.clicked() {
                     answer = Some(true);

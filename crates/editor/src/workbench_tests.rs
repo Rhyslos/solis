@@ -152,8 +152,9 @@ fn play_says_what_it_does() {
     h.run();
     let last = h.state().log_lines().last().map(|l| l.text.clone());
     assert!(
-        last.as_deref()
-            .is_some_and(|l| l.starts_with("Playing. Changes made now are undone")),
+        last.as_deref().is_some_and(
+            |l| l.starts_with("Playing. Stop puts the area back as it is now, and asks")
+        ),
         "{last:?}"
     );
 }
