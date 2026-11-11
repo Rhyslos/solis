@@ -65,40 +65,40 @@ fn inter_comes_first_and_every_weight_has_its_family() {
     }
 }
 
-/// The two Inter weights that aren't in `assets/fonts/` yet. When
-/// `Inter-Medium.ttf` and `Inter-Bold.ttf` are added (and their two lines
-/// in `fonts.rs` filled in), this list becomes empty.
+/// Every weight the design uses has its own file in `assets/fonts/`:
+/// nothing is drawn in a neighbouring weight.
 #[test]
-fn the_weights_still_to_be_bundled_stand_in_as_listed() {
-    assert_eq!(
-        standing_in(),
-        [(MEDIUM, "inter"), (BOLD, "inter-semibold")],
-        "the font files changed: update this list, assets/README.md and licenses/README.md"
-    );
+fn no_weight_stands_in_for_another() {
+    assert!(standing_in().is_empty(), "{:?}", standing_in());
     let fonts = fonts();
-    for (family, stand_in) in standing_in() {
-        let first = fonts.families[&FontFamily::Name(family.into())][0].as_str();
-        assert_eq!(first, stand_in, "{family} is drawn as {stand_in} meanwhile");
-    }
+    let first = |family: &str| fonts.families[&FontFamily::Name(family.into())][0].clone();
+    assert_eq!(first(MEDIUM), "inter-medium");
+    assert_eq!(first(SEMIBOLD), "inter-semibold");
+    assert_eq!(first(BOLD), "inter-bold");
+    assert_eq!(first(MONO_BOLD), "jetbrains-mono-bold");
 }
 
 #[test]
-fn a_bundled_weight_draws_with_its_own_file() {
+fn each_weight_draws_with_its_own_file() {
     let ctx = context();
-    let proportional = FontFamily::Proportional;
     let name = |family: &str| FontFamily::Name(family.into());
-    // Semibold letters are wider than regular ones; bold mono letters
-    // are as wide (that is what mono means) but are another picture.
-    let regular = glyph(&ctx, 'm', &proportional).unwrap();
-    let semibold = glyph(&ctx, 'm', &name(SEMIBOLD)).unwrap();
-    assert!(semibold.2 > regular.2, "semibold is no wider than regular");
+    let width = |family: &FontFamily| glyph(&ctx, 'm', family).unwrap().2;
+    // Inter's letters get wider as they get heavier: 400, 500, 600, 700.
+    let widths = [
+        width(&FontFamily::Proportional),
+        width(&name(MEDIUM)),
+        width(&name(SEMIBOLD)),
+        width(&name(BOLD)),
+    ];
+    for pair in widths.windows(2) {
+        assert!(pair[0] < pair[1], "not heavier: {widths:?}");
+    }
+    // Bold mono letters are as wide as regular ones (that is what mono
+    // means) but are another picture.
     let mono = glyph(&ctx, 'm', &FontFamily::Monospace).unwrap();
     let mono_bold = glyph(&ctx, 'm', &name(MONO_BOLD)).unwrap();
     assert_eq!(mono.2, mono_bold.2, "both are one cell wide");
     assert_ne!((mono.0, mono.1), (mono_bold.0, mono_bold.1));
-    // A weight standing in is, for now, the same picture as its stand-in.
-    let medium = glyph(&ctx, 'm', &name(MEDIUM)).unwrap();
-    assert_eq!(medium.2, regular.2);
 }
 
 /// What egui draws for a character no font has.

@@ -31,5 +31,5 @@ The editor had two themes, Standard and Graphite, a separate "Rounded panels" sw
 - `theme` keeps giving the names the rest of the editor already uses (`theme::panel()`, `theme::text_weak()` …), now from the tokens, so no drawing code changes for the colours; each later milestone moves its own files to the tokens' names.
 - The colour functions stay functions, not constants: a high-contrast palette, which the specification leaves open, could be added later without touching the code that draws.
 - A colour written as numbers is allowed only in `tokens.rs` and `theme.rs`; a test checks.
-- The design needs three font weights Solis didn't bundle (Inter Medium and Bold, JetBrains Mono Bold), under the same licence as the ones it has.
+- The design needs three font weights Solis didn't bundle (Inter Medium and Bold, JetBrains Mono Bold); they are bundled with it, from the families' own releases, under the same licence as the ones it had.
 - The colours of the kinds of file (model, picture, sound and the rest) are not changed by this decision: the design has seven kinds and Solis sixteen, and which colour each of Solis's takes is asked separately.

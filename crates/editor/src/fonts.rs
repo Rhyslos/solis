@@ -5,8 +5,9 @@
 //!
 //! egui has no notion of weight: each weight is a font file under a family
 //! name (`tokens::text::MEDIUM` and the others). [`WEIGHTS`] is the one
-//! place that says which file each family draws with, and which bundled
-//! weight stands in while a file isn't in `assets/fonts/` yet.
+//! place that says which file each family draws with. Every weight the
+//! design uses is bundled; a weight added before its file is (`file:
+//! None`) is drawn with its stand-in meanwhile.
 
 use crate::tokens::text::{BOLD, MEDIUM, MONO_BOLD, SEMIBOLD};
 use egui::{FontData, FontDefinitions, FontFamily};
@@ -19,12 +20,8 @@ pub const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.t
 pub const INTER_SEMIBOLD: &[u8] = include_bytes!("../assets/fonts/Inter-SemiBold.ttf");
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/fonts/JetBrainsMonoNL-Regular.ttf");
 const JETBRAINS_MONO_BOLD: &[u8] = include_bytes!("../assets/fonts/JetBrainsMonoNL-Bold.ttf");
-/// Inter Medium: not bundled yet. When `Inter-Medium.ttf` is added to
-/// `assets/fonts/`, this becomes `Some(include_bytes!(…))` and nothing
-/// else changes.
-const INTER_MEDIUM: Option<&[u8]> = None;
-/// Inter Bold: not bundled yet, as above (`Inter-Bold.ttf`).
-const INTER_BOLD: Option<&[u8]> = None;
+const INTER_MEDIUM: &[u8] = include_bytes!("../assets/fonts/Inter-Medium.ttf");
+const INTER_BOLD: &[u8] = include_bytes!("../assets/fonts/Inter-Bold.ttf");
 
 /// The font the regular interface text is drawn with.
 const REGULAR_FONT: &str = "inter";
@@ -37,9 +34,9 @@ struct Weight {
     family: &'static str,
     /// Its font's name inside egui.
     font: &'static str,
-    /// Its file, if bundled.
+    /// Its file; `None` for a weight whose file isn't bundled yet.
     file: Option<&'static [u8]>,
-    /// The bundled font it is drawn with otherwise: the nearest lighter
+    /// The bundled font it would be drawn with then: the nearest lighter
     /// weight, so nothing looks heavier than designed.
     stand_in: &'static str,
     /// Whether it is a monospace weight.
@@ -52,7 +49,7 @@ const WEIGHTS: [Weight; 4] = [
     Weight {
         family: MEDIUM,
         font: "inter-medium",
-        file: INTER_MEDIUM,
+        file: Some(INTER_MEDIUM),
         stand_in: REGULAR_FONT,
         mono: false,
     },
@@ -66,7 +63,7 @@ const WEIGHTS: [Weight; 4] = [
     Weight {
         family: BOLD,
         font: "inter-bold",
-        file: INTER_BOLD,
+        file: Some(INTER_BOLD),
         stand_in: "inter-semibold",
         mono: false,
     },
@@ -79,9 +76,8 @@ const WEIGHTS: [Weight; 4] = [
     },
 ];
 
-/// The families whose own font file isn't bundled yet, each with the
-/// font it is drawn with meanwhile. A test lists them, so adding a file
-/// is noticed.
+/// The families whose own font file isn't bundled, each with the font
+/// it is drawn with meanwhile. None today, and a test keeps it so.
 #[cfg(test)]
 fn standing_in() -> Vec<(&'static str, &'static str)> {
     WEIGHTS
