@@ -34,9 +34,10 @@ use std::collections::BTreeSet;
 /// Wraps an object so its fields live in a store of their own, written
 /// only while `guard.open`: `wrap(object, class, name, names, guard)`
 /// gives back the store. `names` maps each field's key in Lua to its name
-/// in Lust, for the message.
-const WRAP: &str = r#"
-local next, rawset, setmetatable, type, error = next, rawset, setmetatable, type, error
+/// in Lust, for the message. [`Luau::new`] makes it, before any game code
+/// runs, so the functions it keeps here are the libraries' real ones.
+pub(crate) const WRAP: &str = r#"
+local next, rawset, setmetatable, type, error, tostring = next, rawset, setmetatable, type, error, tostring
 return function(o, class, name, names, guard)
   local store = {}
   for k, v in next, o do store[k] = v end
@@ -105,12 +106,7 @@ impl Objects {
             return Ok(Self::default());
         };
         let objects: Table = api.raw_get("objects")?;
-        let wrap: Function = luau
-            .lua
-            .load(WRAP)
-            .set_name("=objects")
-            .into_function()?
-            .call(())?;
+        let wrap = &luau.wrap_object;
         let guard = luau.lua.create_table()?;
         guard.raw_set("open", false)?;
         let mut list = Vec::new();

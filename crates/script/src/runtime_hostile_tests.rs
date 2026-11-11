@@ -120,13 +120,23 @@ fn a_file_can_t_break_the_others_or_the_lust() {
                   ipairs = nil\n\
                   pcall(function() table.sort = nil end)\n\
                   pcall(function() solis.say = nil end)\n\
+                  pcall(function() setfenv(solis.send, {}) end)\n\
+                  pcall(function() setfenv(vec3, {}) end)\n\
+                  pcall(function() setfenv(component, {}) end)\n\
+                  pcall(function() debug.setfenv(solis.send, {}) end)\n\
+                  pcall(function() getfenv(solis.send).table = nil end)\n\
+                  pcall(function() getfenv(0).pairs = nil end)\n\
                   component('Vandal', {})";
     let lust = "fetch \"solis/world\":World;\n\n\
         component Counter {\n    has {\n        int ticks = 0;\n    }\n\
         \x20   method update(float dt) {\n        ticks = ticks + 1;\n        World:say(\"tick\");\n    }\n}\n\
         pass Counter;\nend\n";
+    // The spinner uses what the vandal went for: Solis's own functions.
     let spinner = "local S = component('Spinner', { { 'n', 'int', 0 } })\n\
-                   function S:update(dt) for _ in pairs({ 1 }) do self.n = self.n + 1 end end";
+                   function S:update(dt)\n\
+                     for _ in pairs({ 1 }) do self.n = self.n + 1 end\n\
+                     solis.send(self.me, 'Poke', vec3(1, 2, 3))\n\
+                   end";
     let both = code(lust, &[("a.lua", vandal), ("b.lua", spinner)]);
     let mut runtime = Runtime::new().unwrap();
     runtime.load(&both, &mut NoHost).unwrap();
@@ -146,6 +156,47 @@ fn a_file_can_t_break_the_others_or_the_lust() {
         runtime.values(me, "Spinner").unwrap().get("n"),
         Some(&reflect::Value::Int(1))
     );
+}
+
+#[test]
+fn game_code_can_t_take_the_guard_off_the_game_s_objects() {
+    // The 2026-11 review (SEC-07): the guard was made anew at each load by
+    // Lua that read `setmetatable` from globals game code could reach with
+    // getfenv(0), so a file could swap it and write any object after the
+    // next reload.
+    let lust = "object Clock {\n    has {\n        int ticks = 0;\n    }\n\
+        \x20   method update(float dt) {\n        ticks = ticks + 1;\n    }\n}\n\
+        component Cheat {\n    method update(float dt) {\n        Clock.ticks = 100;\n    }\n}\n\
+        pass Clock, Cheat;\nend\n";
+    let vandal = "pcall(function() getfenv(0).setmetatable = function(t) return t end end)\n\
+                  pcall(function() getfenv(1).setmetatable = function(t) return t end end)\n\
+                  pcall(function() setfenv(0, { setmetatable = function(t) return t end }) end)";
+    let both = code(lust, &[("a.lua", vandal)]);
+    let mut runtime = Runtime::new().unwrap();
+    runtime.load(&both, &mut NoHost).unwrap();
+    let cheated = |runtime: &mut Runtime| {
+        runtime.swap(&both, &mut NoHost).unwrap();
+        runtime
+            .sync(id(1), "Cheat", &ComponentData::default(), &mut NoHost)
+            .unwrap();
+        let ticked = runtime.tick(0.1, &mut NoHost);
+        assert_eq!(ticked.failures.len(), 1, "{ticked:?}");
+        let said = &ticked.failures[0].at.message;
+        assert!(said.contains("can't be changed here"), "{said}");
+        let ticks = runtime.object_values()[0].1.get("ticks").cloned();
+        assert!(matches!(ticks, Some(reflect::Value::Int(n)) if n < 100));
+    };
+    cheated(&mut runtime);
+    // Even with the thread's own globals changed (which game code has no
+    // way to now), the guard is the one made before any game code ran.
+    let fake = runtime
+        .luau
+        .lua
+        .create_function(|_, table: mlua::Table| Ok(table))
+        .unwrap();
+    let thread_globals = runtime.luau.lua.globals();
+    thread_globals.raw_set("setmetatable", fake).unwrap();
+    cheated(&mut runtime);
 }
 
 #[test]

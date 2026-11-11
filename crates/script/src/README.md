@@ -23,7 +23,7 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 
 | File | What it does | Main items |
 | --- | --- | --- |
-| `luau.rs` | The Luau game code runs in, made safe: time limits per call, per tick and per load, a memory cap, and no access to files. | `TIME_LIMIT`, `TICK_LIMIT`, `Clock` |
+| `luau.rs` | The Luau game code runs in, made safe: time limits per call, per tick and per load, a memory cap, no access to files, and no way to another file's globals or Solis's own (`sandboxed_lua` takes out `require`, `loadstring`, `getfenv` and `setfenv`; Solis's own Lua is all made in `Luau::new`, before any game code). | `TIME_LIMIT`, `TICK_LIMIT`, `Clock` |
 | `interrupt.rs` | The watchman inside Luau that stops code running past its time limit, set cheaply (decision 0034). | |
 | `runtime.rs` | One Luau holding the game's running components, one per entity and component name; swapping in new code while the game runs. | `Runtime`, `Failure`, `Ticked`, `Swapped` |
 | `syncing.rs` | Making running components from the area's values, and passing on what changed. | |
@@ -35,6 +35,6 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 
 ## Tests
 
-`runtime_tests.rs` and the `runtime_*_tests.rs` files test `runtime.rs`: events, swapping code, Lua components, hostile code that once froze or crashed the editor, where the runtime meets the rest (seams), and the speed fixes. `runtime_camera_tests.rs` tests cells at places and the kit's 2D follow camera. `game_tests.rs` tests `game.rs`: the same results on one shard or many; `game_objects_tests.rs` its game-wide objects.
+`runtime_tests.rs` and the `runtime_*_tests.rs` files test `runtime.rs`: events, swapping code, Lua components, hostile code that once froze or crashed the editor, where the runtime meets the rest (seams), and the speed fixes. `runtime_camera_tests.rs` tests cells at places and the kit's 2D follow camera. `game_tests.rs` tests `game.rs`: the same results on one shard or many; `game_objects_tests.rs` its game-wide objects. `luau_names_tests.rs` holds every name game code can see in `luau.rs`'s Luau to a list, so a library update that adds one fails there.
 
 **Read next:** the crate's [README](../README.md).

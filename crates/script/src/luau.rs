@@ -12,6 +12,9 @@
 //!   functions (`component`, `vec3`, `solis`) are read-only. Each Lua file,
 //!   and the Lust, gets globals of its own that fall through to those, so
 //!   one file can't break another, or the Lust, by replacing `pairs`.
+//!   Nothing reaches a function's globals from outside it (no `getfenv`
+//!   or `setfenv`), and all of Solis's own Lua is made in `Luau::new`,
+//!   before any game code runs, so it holds the libraries' real functions.
 //! - **Natives.** Lust finds the native methods in its own globals
 //!   (`LUST_NATIVES`), and Lua's `solis` in a place only Solis can set:
 //!   game code can't take them away from the components after it.
@@ -247,18 +250,27 @@ pub(crate) struct Luau {
     made: Function,
     /// A `send_event` that drops what it's given, for the code's starts.
     pub(crate) discard: Function,
+    /// Puts the guard on a game-wide object ([`crate::objects::WRAP`]).
+    pub(crate) wrap_object: Function,
 }
 
+/// What Luau's safe libraries give that game code must not have:
+/// `require` reads and runs `.lua` files from anywhere on disk;
+/// `loadstring` compiles code into the shared globals, outside each file's
+/// own; `getfenv` and `setfenv` reach and replace the globals of any
+/// function, Solis's own and another file's among them (one file could
+/// break `solis.send` for all the others).
+const TAKEN_OUT: [&str; 4] = ["require", "loadstring", "getfenv", "setfenv"];
+
 /// A Luau with only the libraries game code may use: Luau's safe ones,
-/// without `require` (which reads and runs `.lua` files from anywhere on
-/// disk) or `loadstring` (which compiles code into the shared globals,
-/// outside each file's own). mlua 0.12 gives every Luau both, so they're
-/// taken out here.
+/// without [`TAKEN_OUT`]. Luau and mlua 0.12 between them give every
+/// Luau all of those, so they're taken out here.
 pub(crate) fn sandboxed_lua() -> mlua::Result<Lua> {
     let lua = Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::default())?;
     let globals = lua.globals();
-    globals.raw_remove("require")?;
-    globals.raw_remove("loadstring")?;
+    for name in TAKEN_OUT {
+        globals.raw_remove(name)?;
+    }
     drop(globals);
     Ok(lua)
 }
@@ -278,7 +290,12 @@ impl Luau {
         let clock = Rc::new(Clock::default());
         crate::interrupt::watch(&lua)?;
         let globals = lua.globals();
+        // All of Solis's own Lua is made here, before any game code runs:
+        // the globals it reads are the libraries' own, read-only from the
+        // next step on. Lua made later would read the thread's globals,
+        // which stay writable.
         let (lend, made): (Function, Function) = lua.load(PRELUDE).set_name("=solis").eval()?;
+        let wrap_object = lua.load(crate::objects::WRAP).set_name("=objects").eval()?;
         // The libraries, the prelude's tables and the globals themselves
         // become read-only.
         lua.sandbox(true)?;
@@ -295,6 +312,7 @@ impl Luau {
             lend,
             made,
             discard,
+            wrap_object,
         })
     }
 
@@ -361,6 +379,14 @@ mod tests {
             "getmetatable(solis).__index = nil",
             "vector.create = nil",
             "setmetatable(_G, {})",
+            // A function's globals can't be reached or swapped (SEC-07).
+            "setfenv(solis.send, {})",
+            "setfenv(1, {})",
+            "getfenv(0).setmetatable = print",
+            "getfenv(1).pairs = nil",
+            "local globals = getfenv(solis.send)",
+            "debug.setfenv(solis.send, {})",
+            "debug.getfenv(0).setmetatable = print",
         ] {
             assert!(run(vandal, &one).is_err(), "{vandal} should be refused");
         }
@@ -418,3 +444,7 @@ mod tests {
         assert_eq!(capped("ééé", 3), "é…");
     }
 }
+
+#[cfg(test)]
+#[path = "luau_names_tests.rs"]
+mod names_tests;
