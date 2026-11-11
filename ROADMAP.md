@@ -252,7 +252,7 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 
 ## Shared 1a: The look and the frame
 
-- **The look:** one theme, five accents, the design's sizes and type ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)).
+- **The look:** one theme, five accents, the design's sizes and type ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)). *Built.*
 - **The kit:** icons, the design's controls, and unfinished parts marked, with a setting that hides them.
 - **The top:** tab bar, ribbon and command search in place of the menus.
 - **The middle:** editor groups, the shelf and the status bar in place of the dock.
