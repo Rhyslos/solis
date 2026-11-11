@@ -43,6 +43,7 @@ pub mod layout;
 pub mod library;
 pub mod library_drawer;
 pub mod look;
+mod made_from;
 mod map_tab;
 mod menu_items;
 pub mod mixer_view;

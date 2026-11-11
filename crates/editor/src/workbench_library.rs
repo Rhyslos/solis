@@ -424,8 +424,8 @@ impl Workbench {
             let crate::sprite_sheets::SheetState::Read(sheet) = state else {
                 continue;
             };
-            let from = std::sync::Arc::as_ptr(sheet) as usize;
-            if self.open.sheet_pictures_from.get(path) == Some(&from) {
+            let made = self.open.sheet_pictures_from.get(path);
+            if made.is_some_and(|from| from.is(sheet)) {
                 continue;
             }
             let [w, h] = sheet.atlas_size.map(|v| v as usize);
@@ -436,7 +436,9 @@ impl Workbench {
                 egui::TextureOptions::NEAREST,
             );
             self.open.sheet_pictures.insert(path.clone(), texture);
-            self.open.sheet_pictures_from.insert(path.clone(), from);
+            self.open
+                .sheet_pictures_from
+                .insert(path.clone(), crate::made_from::MadeFrom::new(sheet));
         }
     }
 

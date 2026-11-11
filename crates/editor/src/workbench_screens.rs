@@ -4,11 +4,11 @@
 
 use crate::console::LogLevel;
 use crate::layout;
+use crate::made_from::MadeFrom;
 use crate::panel::Panel;
 use crate::screen_doc::ScreenDoc;
 use crate::workbench::{Workbench, WorkbenchAction};
 use crate::workspace::Workspace;
-use std::sync::Arc;
 
 /// The entity a screen's view is drawn for on the canvas: none of the
 /// area's, so the screen reads only starting values.
@@ -153,15 +153,15 @@ impl Workbench {
     /// from the game's code with the screen's starting values.
     pub(crate) fn refresh_screen(&mut self) {
         let program = self.open.program.clone();
-        let from = program.as_ref().map(|p| Arc::as_ptr(p) as usize);
         let Some(doc) = &mut self.open.screen_doc else {
             return;
         };
-        if self.open.screen_from == from && doc.view.is_some() && !doc.redraw {
+        let same = MadeFrom::same(self.open.screen_from.as_ref(), program.as_ref());
+        if same && doc.view.is_some() && !doc.redraw {
             return;
         }
         doc.redraw = false;
-        self.open.screen_from = from;
+        self.open.screen_from = program.as_ref().map(MadeFrom::new);
         let Some(program) = program.as_ref() else {
             doc.view_problem = Some(
                 "The game's code has mistakes, so the screen can't be drawn: see Problems.".into(),

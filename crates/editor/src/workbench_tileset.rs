@@ -9,6 +9,7 @@
 use crate::console::LogLevel;
 use crate::key_owner::KeyOwner;
 use crate::layout;
+use crate::made_from::MadeFrom;
 use crate::map_tab::TerrainEdit;
 use crate::own_files::{Followed, OwnFile, Told, follow};
 use crate::panel::Panel;
@@ -16,13 +17,25 @@ use crate::sprite_sheets::{ArtState, SpriteSheets, TilesetState};
 use crate::tileset_editor::TilesetEditor;
 use crate::tileset_view::{Picture, TilesetUi};
 use crate::workbench::{Workbench, WorkbenchAction};
+use assets::tile_art::TileArt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tiles::TileKind;
 
-/// A picture's texture for the Tileset tab, by its key (the art read):
-/// the texture, and its size in texels.
-pub(crate) type TileTextures = HashMap<u64, (egui::TextureHandle, [u32; 2])>;
+/// The textures of the pictures the Tileset and Map tabs show: for each,
+/// the art it was made from, the texture, and its size in texels.
+pub(crate) type TileTextures = Vec<(MadeFrom<TileArt>, egui::TextureHandle, [u32; 2])>;
+
+/// The texture made from `art`, and its size in texels.
+pub(crate) fn texture_of<'a>(
+    textures: &'a TileTextures,
+    art: &Arc<TileArt>,
+) -> Option<(&'a egui::TextureHandle, [u32; 2])> {
+    textures
+        .iter()
+        .find(|(from, ..)| from.is(art))
+        .map(|(_, texture, size)| (texture, *size))
+}
 
 /// The project's tilesets as they are being changed: an editor for each
 /// file opened or changed since the project was, holding that file's undo
@@ -83,10 +96,10 @@ pub(crate) fn tileset_ui<'a>(
         _ => None,
     };
     let picture = art.and_then(|art| {
-        let (texture, atlas) = textures.get(&(Arc::as_ptr(art) as u64))?;
+        let (texture, atlas) = texture_of(textures, art)?;
         Some(Picture {
             texture,
-            atlas: *atlas,
+            atlas,
             size: art.size,
             durations: &art.durations,
             art,
@@ -263,15 +276,16 @@ impl Workbench {
             .and_then(|m| m.tileset)
             .and_then(|t| sheets.tileset(t))
             .and_then(|t| t.picture);
-        let arts: Vec<Arc<assets::tile_art::TileArt>> = [open, mapped]
+        let arts: Vec<Arc<TileArt>> = [open, mapped]
             .into_iter()
             .flatten()
             .filter_map(|p| sheets.tile_art(p).cloned())
             .collect();
-        let keys: Vec<u64> = arts.iter().map(|a| Arc::as_ptr(a) as u64).collect();
-        self.open.tile_textures.retain(|k, _| keys.contains(k));
-        for (art, key) in arts.iter().zip(keys) {
-            if self.open.tile_textures.contains_key(&key) {
+        self.open
+            .tile_textures
+            .retain(|(from, ..)| arts.iter().any(|art| from.is(art)));
+        for art in &arts {
+            if texture_of(&self.open.tile_textures, art).is_some() {
                 continue;
             }
             let (size, rgba) = crate::tile_view::atlas_rgba(art);
@@ -280,7 +294,9 @@ impl Workbench {
                 &rgba,
             );
             let texture = ctx.load_texture("tileset picture", image, egui::TextureOptions::NEAREST);
-            self.open.tile_textures.insert(key, (texture, size));
+            self.open
+                .tile_textures
+                .push((MadeFrom::new(art), texture, size));
         }
     }
 

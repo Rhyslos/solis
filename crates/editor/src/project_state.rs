@@ -19,6 +19,7 @@ use crate::console::LogLevel;
 use crate::document::Document;
 use crate::layout;
 use crate::library::{LibraryItem, ProjectInfo};
+use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::AssemblyPart;
@@ -123,7 +124,7 @@ pub(crate) struct ProjectState {
     /// Each sprite sheet's atlas as an egui picture, by path, for the
     /// Library and Properties, and which sheet each was made from.
     pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
-    pub(crate) sheet_pictures_from: HashMap<String, usize>,
+    pub(crate) sheet_pictures_from: HashMap<String, MadeFrom<assets::sprite_sheet::SpriteSheet>>,
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
@@ -159,11 +160,11 @@ pub(crate) struct ProjectState {
     /// The screen open on the UI editor's canvas (decision 0089).
     pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
     /// The program its view was drawn from.
-    pub(crate) screen_from: Option<usize>,
+    pub(crate) screen_from: Option<MadeFrom<script::Compiled>>,
     /// What the open screen can be tied to and send, and the build of the
     /// game's code it's for.
     pub(crate) screen_game: Option<(
-        Option<usize>,
+        Option<MadeFrom<script::Compiled>>,
         std::sync::Arc<crate::screen_ties::ScreenGame>,
     )>,
     /// What the Game panel showed last, and what it was worked out for:

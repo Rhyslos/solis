@@ -14,6 +14,7 @@ use crate::document::Document;
 use crate::key_owner::KeyOwner;
 use crate::layout;
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
+use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
@@ -1017,13 +1018,13 @@ impl Workbench {
                         .and_then(|t| t.picture)
                         .and_then(|p| sheets.tile_art(p))
                         .and_then(|art| {
-                            let (texture, atlas) = self
-                                .open
-                                .tile_textures
-                                .get(&(std::sync::Arc::as_ptr(art) as u64))?;
+                            let (texture, atlas) = crate::workbench_tileset::texture_of(
+                                &self.open.tile_textures,
+                                art,
+                            )?;
                             Some(crate::tileset_view::Picture {
                                 texture,
-                                atlas: *atlas,
+                                atlas,
                                 size: art.size,
                                 durations: &art.durations,
                                 art,
@@ -1077,19 +1078,18 @@ impl Workbench {
         // Image tool is in use.
         let (picture_files, screen_game) = match &self.open.screen_doc {
             Some(doc) => {
-                let from = self
-                    .open
-                    .program
-                    .as_ref()
-                    .map(|p| std::sync::Arc::as_ptr(p) as usize);
+                let program = self.open.program.as_ref();
                 let game = match &self.open.screen_game {
-                    Some((built, game)) if *built == from => std::sync::Arc::clone(game),
+                    Some((built, game)) if MadeFrom::same(built.as_ref(), program) => {
+                        std::sync::Arc::clone(game)
+                    }
                     _ => {
                         let game = std::sync::Arc::new(crate::screen_ties::screen_game(
-                            self.open.program.as_deref(),
+                            program.map(|p| &**p),
                             &self.open.document.registry,
                         ));
-                        self.open.screen_game = Some((from, std::sync::Arc::clone(&game)));
+                        let built = program.map(MadeFrom::new);
+                        self.open.screen_game = Some((built, std::sync::Arc::clone(&game)));
                         game
                     }
                 };

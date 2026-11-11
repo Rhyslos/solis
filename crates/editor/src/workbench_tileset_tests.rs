@@ -557,3 +557,50 @@ fn the_x_on_its_tab_closes_the_tileset() {
     assert!(w.open.tilesets.tab().is_none());
     assert!(w.dock.find_tab(&Panel::Tileset).is_none());
 }
+
+/// The review, BUG-10: the Tileset tab's texture of its picture went by
+/// where the picture was in memory. A picture read again could be put
+/// where the last one was, and the tab kept showing the old one.
+#[test]
+fn a_picture_read_again_gets_its_texture_made_again() {
+    let (mut w, _, _) = with_tileset();
+    w.open_tileset(FARM_SET);
+    let ctx = egui::Context::default();
+    let texture = |w: &Workbench| {
+        let sheets = &w.viewport.sheets;
+        let art = match sheets.tile_art.get("tiles.png") {
+            Some(ArtState::Read(art)) => art,
+            _ => panic!("the picture isn't read"),
+        };
+        crate::workbench_tileset::texture_of(&w.open.tile_textures, art).map(|(t, _)| t.id())
+    };
+    assert_eq!(texture(&w), None, "not made yet");
+    w.tileset_texture(&ctx);
+    let first = texture(&w).expect("made");
+    w.tileset_texture(&ctx);
+    assert_eq!(texture(&w), Some(first), "kept");
+    assert_eq!(w.open.tile_textures.len(), 1);
+    // Read again: the picture let go, and another just like it made.
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.tile_art.remove("tiles.png");
+    w.set_sprite_sheets(sheets.clone());
+    sheets.tile_art.insert(
+        "tiles.png".into(),
+        ArtState::Read(Arc::new(TileArt {
+            size: [32, 32],
+            frames: vec![vec![200; 32 * 32 * 4]],
+            durations: vec![100],
+        })),
+    );
+    w.set_sprite_sheets(sheets.clone());
+    assert_eq!(texture(&w), None, "the old texture isn't this picture's");
+    w.tileset_texture(&ctx);
+    let again = texture(&w).expect("made again");
+    assert_ne!(again, first);
+    assert_eq!(w.open.tile_textures.len(), 1, "the old one let go");
+    // The picture gone: nothing kept.
+    sheets.tile_art.clear();
+    w.set_sprite_sheets(sheets);
+    w.tileset_texture(&ctx);
+    assert!(w.open.tile_textures.is_empty());
+}

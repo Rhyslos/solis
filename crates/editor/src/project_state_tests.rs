@@ -346,7 +346,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(game_screens.pictures.is_empty() && game_screens.sent.is_empty());
     same(screen_pictures, &fresh.screen_pictures, "screens' pictures");
     assert!(screen_doc.is_none() && screen_game.is_none());
-    assert_eq!(screen_from, &None);
+    assert!(screen_from.is_none());
     assert!(assembly_part_kept.borrow().is_none());
     assert_eq!(preview_forgotten, &fresh.preview_forgotten);
 }

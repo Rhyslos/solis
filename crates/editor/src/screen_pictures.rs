@@ -7,6 +7,7 @@
 //! with its line, before the game runs.
 
 use crate::console::LogLevel;
+use crate::made_from::MadeFrom;
 use crate::sprite_sheets::{ArtState, AtlasState, SpriteSheets, is_picture};
 use crate::workbench::Workbench;
 use script::CodeProblem;
@@ -26,8 +27,10 @@ pub(crate) struct ScreenPictures {
     /// Names the running screens' views gave (perhaps worked out as the
     /// game runs), in their order.
     pub(crate) seen: BTreeSet<String>,
-    /// What the pictures were made from, to tell when to make them again.
-    from: Option<(u64, usize, usize)>,
+    /// What the pictures were made from, to tell when to make them again:
+    /// the code and the Library (a fingerprint), the sheets, and how many
+    /// names had been seen.
+    from: Option<(u64, MadeFrom<SpriteSheets>, usize)>,
     /// The picture files last asked for, and whether they changed since
     /// the app last took them.
     wanted: BTreeSet<String>,
@@ -142,11 +145,13 @@ impl ScreenPictures {
         in_project: &dyn Fn(&str) -> bool,
         fingerprint: u64,
     ) -> Vec<String> {
-        let from = (fingerprint, Arc::as_ptr(sheets) as usize, self.seen.len());
-        if self.from == Some(from) {
+        let seen = self.seen.len();
+        if self.from.as_ref().is_some_and(|(print, from, names)| {
+            *print == fingerprint && from.is(sheets) && *names == seen
+        }) {
             return Vec::new();
         }
-        self.from = Some(from);
+        self.from = Some((fingerprint, MadeFrom::new(sheets), seen));
         let mut names: BTreeSet<String> = uses.iter().map(|u| u.name.clone()).collect();
         names.extend(self.seen.iter().cloned());
         // The files to read: those in the project.

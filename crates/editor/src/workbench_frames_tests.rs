@@ -405,3 +405,35 @@ fn opening_the_clips_file_already_open_keeps_its_editor_and_undo_steps() {
     assert_eq!(editor.path, "other.solframes");
     assert_eq!(editor.can_undo_redo(), (false, false));
 }
+
+/// The review, BUG-10: a sheet's picture for the Library and the Frames
+/// tab went by where the sheet was in memory. A sheet read again could
+/// be put where the last one was, and the picture of the old one stayed.
+#[test]
+fn a_sheet_read_again_gets_its_picture_made_again() {
+    let (mut w, _, _) = with_clips();
+    let ctx = egui::Context::default();
+    w.refresh_sheet_pictures(&ctx);
+    let first = w.open.sheet_pictures["walker.aseprite"].id();
+    w.refresh_sheet_pictures(&ctx);
+    assert_eq!(w.open.sheet_pictures["walker.aseprite"].id(), first, "kept");
+    // Read again: the sheet let go, and another just like it in its place.
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.by_path.remove("walker.aseprite");
+    w.set_sprite_sheets(sheets.clone());
+    sheets.by_path.insert(
+        "walker.aseprite".into(),
+        SheetState::Read(Arc::new(crate::sprite_sheets::tests::test_sheet())),
+    );
+    w.set_sprite_sheets(sheets.clone());
+    w.refresh_sheet_pictures(&ctx);
+    let again = w.open.sheet_pictures["walker.aseprite"].id();
+    assert_ne!(again, first, "made again from the sheet as it is");
+    w.refresh_sheet_pictures(&ctx);
+    assert_eq!(w.open.sheet_pictures["walker.aseprite"].id(), again);
+    // Gone from the project: its picture and what it was made from go.
+    sheets.by_path.clear();
+    w.set_sprite_sheets(sheets);
+    w.refresh_sheet_pictures(&ctx);
+    assert!(w.open.sheet_pictures.is_empty() && w.open.sheet_pictures_from.is_empty());
+}

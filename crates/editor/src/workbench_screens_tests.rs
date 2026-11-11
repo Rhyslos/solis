@@ -459,3 +459,29 @@ fn a_file_that_isn_t_a_screen_any_more_takes_its_tabs_with_it() {
     assert!(w.dock.find_tab(&Panel::Canvas).is_none());
     assert!(w.dock.find_tab(&Panel::Elements).is_none());
 }
+
+/// The review, BUG-10: what the open screen can be tied to was kept for
+/// "this build of the game's code", told by where the program was in
+/// memory. A new build could be put where the last one was, and the old
+/// list stayed.
+#[test]
+fn what_a_screen_can_be_tied_to_is_worked_out_again_for_each_build_of_the_code() {
+    let mut w = opened_with(MENU);
+    w.set_program(Some(tied_program(MENU)));
+    let mut h = harness(w);
+    h.run();
+    let first = h.state().0.open.screen_game.as_ref().unwrap().1.clone();
+    h.run();
+    let kept = h.state().0.open.screen_game.as_ref().unwrap().1.clone();
+    assert!(Arc::ptr_eq(&first, &kept), "once per build");
+    // The build let go, then the code checked again: another build.
+    h.state_mut().0.set_program(None);
+    h.run();
+    h.state_mut().0.set_program(Some(tied_program(MENU)));
+    h.run();
+    let again = h.state().0.open.screen_game.as_ref().unwrap().1.clone();
+    assert!(!Arc::ptr_eq(&first, &again), "worked out again");
+    h.run();
+    let kept = h.state().0.open.screen_game.as_ref().unwrap().1.clone();
+    assert!(Arc::ptr_eq(&again, &kept));
+}

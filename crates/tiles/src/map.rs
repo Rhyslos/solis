@@ -11,6 +11,14 @@
 
 use reflect::{AssetId, Id};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// A number no layer's cells have had before (never 0), for
+/// [`TileMap::layer_stamp`].
+fn next_stamp() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    NEXT.fetch_add(1, Ordering::Relaxed)
+}
 
 /// A chunk's side, in cells.
 pub const CHUNK: u32 = 32;
@@ -136,6 +144,13 @@ pub struct TileMap {
     layers: Vec<Layer>,
     /// Each layer's cells: a terrain's code (ASCII), 0 for empty.
     cells: Vec<Arc<Vec<u8>>>,
+    /// A number for each layer's cells as they are held ([`Self::layer_stamp`]):
+    /// two maps have the same one only while they share those very cells.
+    /// What keeps something made from a layer (a picture of it) tells
+    /// layers apart by this, never by where their cells are in memory: a
+    /// place is free for the next cells made as soon as the last are let
+    /// go.
+    stamps: Vec<u64>,
     /// Each layer's exact tiles (D6): cells that show one piece of their
     /// tileset as it is, not the one autotiling would pick, by cell index.
     /// Art only: not in the checksum.
@@ -164,6 +179,7 @@ impl Clone for TileMap {
             size: self.size,
             layers: self.layers.clone(),
             cells: self.cells.clone(),
+            stamps: self.stamps.clone(),
             exact: self.exact.clone(),
             values: self.values.clone(),
             columns: self.columns.clone(),
@@ -218,7 +234,7 @@ impl TileMap {
             let _ = map.add_layer(name, over);
         }
         if let Some(code) = fill {
-            Arc::make_mut(&mut map.cells[0]).fill(code);
+            map.cells_mut(0).fill(code);
         }
         map.all_dirty();
         map
@@ -233,6 +249,7 @@ impl TileMap {
             size,
             layers: Vec::new(),
             cells: Vec::new(),
+            stamps: Vec::new(),
             exact: Vec::new(),
             values: Vec::new(),
             columns: Vec::new(),
@@ -283,6 +300,27 @@ impl TileMap {
     /// drawing makes its picture again when this changes.
     pub fn layer_revision(&self, layer: usize) -> u64 {
         self.layer_revisions.get(layer).copied().unwrap_or(0)
+    }
+
+    /// A number for layer `layer`'s cells as this map holds them (0 past
+    /// the end). A copy of a map has the same one for as long as it shares
+    /// the layer's cells; the first change to either gives the changed one
+    /// a number no cells have had. With the layer's and its chunks'
+    /// revisions, which go up as its cells change, it says whether
+    /// something made from the layer earlier is still right.
+    pub fn layer_stamp(&self, layer: usize) -> u64 {
+        self.stamps.get(layer).copied().unwrap_or(0)
+    }
+
+    /// Layer `layer`'s cells, to change. Cells shared with another map
+    /// are copied first, and the copy is this map's own, under a stamp of
+    /// its own.
+    fn cells_mut(&mut self, layer: usize) -> &mut Vec<u8> {
+        let cells = &mut self.cells[layer];
+        if Arc::get_mut(cells).is_none() {
+            self.stamps[layer] = next_stamp();
+        }
+        Arc::make_mut(cells)
     }
 
     /// How many chunks across and down.
@@ -359,11 +397,11 @@ impl TileMap {
     /// Sets a cell of a layer to `code` (0 empties it). Whether it changed.
     pub fn set_code(&mut self, layer: usize, x: u32, y: u32, code: u8) -> Result<bool, MapError> {
         let i = self.index(x, y).ok_or(MapError::Outside)?;
-        let cells = self.cells.get_mut(layer).ok_or(MapError::NoSuch)?;
+        let cells = self.cells.get(layer).ok_or(MapError::NoSuch)?;
         if cells[i] == code {
             return Ok(false);
         }
-        Arc::make_mut(cells)[i] = code;
+        self.cells_mut(layer)[i] = code;
         // Painted over: autotiled again.
         if self.exact[layer].contains_key(&(i as u32)) {
             Arc::make_mut(&mut self.exact[layer]).remove(&(i as u32));
@@ -542,6 +580,7 @@ impl TileMap {
             over,
         });
         self.cells.push(Arc::new(vec![0; self.cell_count()]));
+        self.stamps.push(next_stamp());
         self.exact.push(Arc::default());
         self.layer_revisions.push(0);
         self.all_dirty();
@@ -555,6 +594,7 @@ impl TileMap {
         }
         self.layers.remove(layer);
         self.cells.remove(layer);
+        self.stamps.remove(layer);
         self.exact.remove(layer);
         self.layer_revisions.remove(layer);
         self.all_dirty();
@@ -576,6 +616,7 @@ impl TileMap {
         }
         self.layers.swap(layer, other);
         self.cells.swap(layer, other);
+        self.stamps.swap(layer, other);
         self.exact.swap(layer, other);
         self.all_dirty();
         true
@@ -706,7 +747,7 @@ impl TileMap {
             (x < size[0] && y < size[1]).then(|| (y * size[0] + x) as usize)
         };
         let count = size[0] as usize * size[1] as usize;
-        for cells in &mut self.cells {
+        for (cells, stamp) in self.cells.iter_mut().zip(&mut self.stamps) {
             let mut fresh = vec![0; count];
             for (i, c) in cells.iter().enumerate() {
                 if let Some(j) = keep(i) {
@@ -714,6 +755,7 @@ impl TileMap {
                 }
             }
             *cells = Arc::new(fresh);
+            *stamp = next_stamp();
         }
         for exact in &mut self.exact {
             let kept = exact

@@ -153,6 +153,66 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
     assert!(pictures.made.lock().unwrap().is_empty());
 }
 
+/// The review, BUG-10: a layer's picture knew what it was made from by
+/// where the layer's cells and the tileset were in memory. A map or a
+/// tileset read again is another one, its layers at the same revisions,
+/// and can be put right where the last one was once that is let go: the
+/// picture was then kept, and showed the old one.
+#[test]
+fn another_map_or_tileset_just_like_the_last_is_never_taken_for_it() {
+    let (id, set) = tileset();
+    let pictures = TilePictures::default();
+    let draw = |map: &Arc<TileMap>, sheets: &SpriteSheets| {
+        let maps = [ViewTileMap {
+            entity: entity(),
+            transform: Mat4::IDENTITY,
+            map: Arc::clone(map),
+        }];
+        pictures
+            .draw(
+                &maps,
+                sheets,
+                [1.0, 1.0],
+                &HashSet::new(),
+                &|_| None,
+                0,
+                None,
+            )
+            .0
+    };
+    let sheets = sheets_with(id, set.clone());
+    let map = Arc::new(TileMap::new([4, 4], Some(id), Some(b'.')));
+    let first = draw(&map, &sheets);
+    let kept = draw(&map, &sheets);
+    assert!(
+        Arc::ptr_eq(&first[0], &kept[0]),
+        "kept while nothing changes"
+    );
+    // The map let go, then another made just like it (its file read
+    // again): its layers are at the same revisions, and it's drawn afresh.
+    let revisions = (0..3).map(|i| map.layer_revision(i)).collect::<Vec<_>>();
+    drop(map);
+    let map = Arc::new(TileMap::new([4, 4], Some(id), Some(b'.')));
+    assert_eq!(
+        (0..3).map(|i| map.layer_revision(i)).collect::<Vec<_>>(),
+        revisions
+    );
+    let again = draw(&map, &sheets);
+    for (a, b) in first.iter().zip(&again) {
+        assert_ne!(a.key, b.key, "made again, and uploaded again");
+        assert_eq!(a.id, b.id, "under the same ID");
+    }
+    // The tileset let go, then another just like it: the same.
+    drop(sheets);
+    let sheets = sheets_with(id, set);
+    let with_new_set = draw(&map, &sheets);
+    for (a, b) in again.iter().zip(&with_new_set) {
+        assert_ne!(a.key, b.key);
+    }
+    let kept = draw(&map, &sheets);
+    assert!(Arc::ptr_eq(&with_new_set[0], &kept[0]), "and kept again");
+}
+
 #[test]
 fn the_cell_at_a_point_and_its_corners() {
     let map = TileMap::new([10, 5], None, None);
@@ -347,6 +407,68 @@ fn with_art_a_map_is_drawn_tile_by_tile_and_its_tiles_animate() {
         None,
     );
     assert_eq!(batches[0].sprites[0].rect, [4.0, 0.0, 4.0, 4.0]);
+}
+
+/// BUG-10, for art: a picture's atlas went by where the picture was in
+/// memory, and so did the ID the graphics card keeps it under. A picture
+/// read again (painted on since) could be put where the last one was:
+/// the old atlas was kept, and the card never got the new one.
+#[test]
+fn a_picture_read_again_gets_an_atlas_of_its_own_and_its_tiles_are_made_again() {
+    let (mut sheets, id) = sheets_with_art();
+    let map = Arc::new(TileMap::new([3, 2], Some(id), Some(b'.')));
+    let maps = [ViewTileMap {
+        entity: entity(),
+        transform: Mat4::IDENTITY,
+        map,
+    }];
+    let pictures = TilePictures::default();
+    let draw = |sheets: &SpriteSheets| {
+        pictures.draw(
+            &maps,
+            sheets,
+            [1.0, 1.0],
+            &HashSet::new(),
+            &|_| None,
+            0,
+            None,
+        )
+    };
+    let (first, first_batches) = draw(&sheets);
+    let (kept, kept_batches) = draw(&sheets);
+    assert!(Arc::ptr_eq(&first[0], &kept[0]), "one atlas, kept");
+    assert!(Arc::ptr_eq(
+        &first_batches[0].sprites,
+        &kept_batches[0].sprites
+    ));
+    // The picture let go, then read again: the same size, painted on.
+    let art = |fill: u8| {
+        crate::sprite_sheets::ArtState::Read(Arc::new(assets::tile_art::TileArt {
+            size: [8, 4],
+            frames: vec![vec![fill; 8 * 4 * 4], vec![7; 8 * 4 * 4]],
+            durations: vec![100, 100],
+        }))
+    };
+    sheets.tile_art.remove("tiles.png");
+    sheets.tile_art.insert("tiles.png".into(), art(200));
+    let (again, again_batches) = draw(&sheets);
+    assert_eq!(again.len(), 1);
+    assert_eq!(again[0].rgba[0], 200, "the atlas of the picture as it is");
+    assert_ne!(again[0].id, first[0].id, "under an ID of its own");
+    assert_ne!(again[0].key, first[0].key);
+    assert_eq!(
+        again_batches[0].sheet, again[0].id,
+        "the tiles drawn from it"
+    );
+    assert!(!Arc::ptr_eq(
+        &first_batches[0].sprites,
+        &again_batches[0].sprites
+    ));
+    assert_eq!(
+        pictures.atlases.lock().unwrap().len(),
+        1,
+        "the old one let go"
+    );
 }
 
 #[test]
