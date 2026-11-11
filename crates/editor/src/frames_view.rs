@@ -305,15 +305,16 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
                 ui.label(RichText::new(format!("{times} (Aseprite)")).color(theme::text_weak()));
             } else {
                 let most = f64::from(animation::frames_file::MAX_REPEATS);
-                let repeats = settled_number(ui, "clip repeats", f64::from(clip.repeats), |d| {
-                    d.range(0.0..=most).speed(0.05).custom_formatter(|n, _| {
-                        match n.round() as u32 {
-                            0 => "over and over".to_owned(),
-                            1 => "once".to_owned(),
-                            n => format!("{n} times"),
-                        }
-                    })
-                });
+                let (repeats, _) =
+                    settled_number(ui, "clip repeats", f64::from(clip.repeats), |d| {
+                        d.range(0.0..=most).speed(0.05).custom_formatter(|n, _| {
+                            match n.round() as u32 {
+                                0 => "over and over".to_owned(),
+                                1 => "once".to_owned(),
+                                n => format!("{n} times"),
+                            }
+                        })
+                    });
                 if let Some(repeats) = repeats {
                     changed |= editor.set_repeats(repeats.round() as u32);
                 }

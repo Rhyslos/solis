@@ -1,9 +1,11 @@
 //! Number fields and colour buttons whose change counts once, when it's
 //! let go (the review, BUG-20). The editors of a file of their own (a
-//! tileset, a clips file, an atlas, an animator, a tile map, the input
-//! actions) make every change an undo step and save it at once, so a field
+//! tileset, a clips file, an atlas, an animator, a tile map) make every
+//! change an undo step and save it at once, as Edit > Input actions… saves
+//! the project's actions (BUG-25), so a field
 //! that handed over its value on each frame of a drag would fill the undo
-//! history with one step a frame and write the file as often. These show
+//! history with one step a frame and write the file as often (and, for the
+//! actions, have the game's code checked again as often). These show
 //! the value so far while the field is dragged or typed in, kept between
 //! frames, and hand it over once: when the mouse comes up, Enter is
 //! pressed or the field is left.
@@ -26,6 +28,7 @@ pub(crate) fn settled_drag(
     settled_number(ui, salt, value, |d| {
         d.range(range).speed(speed).suffix(suffix)
     })
+    .0
 }
 
 /// [`settled_drag`] for a whole number (a count of cells): never shown
@@ -41,22 +44,24 @@ pub(crate) fn settled_whole_drag(
     settled_number(ui, salt, value, |d| {
         d.range(range).speed(speed).suffix(suffix).fixed_decimals(0)
     })
+    .0
     .map(f64::round)
     .filter(|v| (v - value).abs() > f64::EPSILON)
 }
 
 /// [`settled_drag`] for a field that needs more than a range, a speed and
-/// a suffix: `field` sets the number field up (how it reads, say).
+/// a suffix: `field` sets the number field up (how it reads, say), and the
+/// field itself is given back with the value, for a hint on it.
 pub(crate) fn settled_number(
     ui: &mut Ui,
     salt: impl Hash + Debug,
     value: f64,
     field: impl for<'a> FnOnce(egui::DragValue<'a>) -> egui::DragValue<'a>,
-) -> Option<f64> {
+) -> (Option<f64>, egui::Response) {
     let id = ui.id().with(("settled", salt));
     let mut shown: f64 = ui.data(|d| d.get_temp(id)).unwrap_or(value);
     let response = ui.add(field(egui::DragValue::new(&mut shown)));
-    if response.dragged() || response.has_focus() {
+    let settled = if response.dragged() || response.has_focus() {
         ui.data_mut(|d| d.insert_temp(id, shown));
         None
     } else {
@@ -64,7 +69,8 @@ pub(crate) fn settled_number(
         (response.drag_stopped() || response.lost_focus() || response.changed())
             .then_some(shown)
             .filter(|v| (v - value).abs() > f64::EPSILON)
-    }
+    };
+    (settled, response)
 }
 
 /// A colour button whose change counts once the mouse is let go, so a
