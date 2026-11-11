@@ -11,7 +11,7 @@ The canvas never takes your file away from you. It changes only the letters it h
 1. In the Library, open the `ui` folder and **double-click a screen's file** (`pauseMenu`). Solis switches to the **UI** workspace and draws the screen on the **Canvas**.
 2. **Pick a piece**: click it on the canvas, or its row in **Elements** on the left. Shift-click (Ctrl-click in Elements) picks more; drag a box round pieces on an empty part of the canvas to pick everything inside it.
 3. **Change it in Properties** on the right: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
-4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.
+4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. A piece inside a `canvas` goes exactly where you drag it instead: an outline follows the pointer, and the piece is moved there when you let go (one `Ctrl + Z` puts it back). In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.
 5. **Size it**: pick one piece and drag the small square on its right edge, bottom edge or corner.
 6. Check the screen on other screen sizes with the size list at the top left (Full HD, 4K, ultrawide, a phone), and with players' bigger text with **Text 150%** and **200%** beside it. The dashed line is the **safe area**: keep text and buttons inside it, since some TVs cut the edges off.
 7. **Open as code** (top right) opens the file in your code editor, for anything the canvas doesn't edit.
@@ -49,7 +49,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 | Align | Where what's inside it sits: a 3 × 3 grid, from top left to bottom right. On a column or a row this places its pieces; on text, the words. |
 | Padding | Room inside its edge, all round. |
 | Gap | Room between the pieces inside a column or a row. |
-| X, Y | Where a piece sits inside a `canvas`. Dragging it on the canvas changes these. |
+| X, Y | Where a piece sits inside a `canvas`. Dragging it on the canvas changes these, by as many of the screen's pixels as you dragged it, whatever the zoom. |
 | Colour | A button's or shape's colour, text's colour, or a column's background, from Lust's colour words (`blue`, `gray9`, `red5`). |
 | Corners | How round its corners are, in pixels. |
 | Opacity | 1 is solid, 0 is invisible. |

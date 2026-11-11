@@ -3,8 +3,9 @@
 //! for more), a box dragged round them, or the Elements panel; a piece
 //! dragged to another place among its neighbours (or into another
 //! container), dragged by its handles to change its size, or, on a
-//! `canvas`, dragged to move it. The wheel zooms and the middle button
-//! drags the screen, as in the viewport.
+//! `canvas`, dragged to move it: an outline shows where it will sit, and
+//! it's moved there, as one undo step, when the button comes up. The wheel
+//! zooms and the middle button drags the screen, as in the viewport.
 
 use crate::screen_doc::{ScreenDoc, node_at_mut};
 use crate::theme;
@@ -63,8 +64,10 @@ pub(crate) struct CanvasOut {
 enum Drag {
     /// A box round pieces, from here.
     Box(Pos2),
-    /// The picked piece to another place.
-    Move,
+    /// The picked piece to another place, pressed here. A drag keeps where
+    /// it began itself: egui has forgotten the press by the frame the
+    /// button comes up.
+    Move(Pos2),
     /// The picked piece's right edge, bottom edge or corner, by how much.
     Size { right: bool, bottom: bool },
 }
@@ -426,7 +429,23 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
                 painter.rect_filled(r, 0.0, accent.gamma_multiply(0.12));
                 painter.rect_stroke(r, 0.0, Stroke::new(1.0, accent), egui::StrokeKind::Inside);
             }
-            Some(Drag::Move) => {
+            // On a canvas the piece goes where it's dragged: its outline,
+            // moved as far as the pointer.
+            Some(Drag::Move(from)) if moves_freely(doc) => {
+                let dragged = drawn
+                    .pieces
+                    .iter()
+                    .find(|(f, _, _)| Some(f) == doc.picked.first());
+                if let Some((_, _, r)) = dragged {
+                    painter.rect_stroke(
+                        r.translate(at - from),
+                        0.0,
+                        Stroke::new(1.0, accent),
+                        egui::StrokeKind::Outside,
+                    );
+                }
+            }
+            Some(Drag::Move(_)) => {
                 if let Some(drop) = drop_at(doc, &drawn, at) {
                     painter.line_segment(drop.line, Stroke::new(3.0, accent));
                     painter.rect_stroke(
@@ -540,6 +559,19 @@ struct Drop {
     container: Rect,
 }
 
+/// Whether the piece dragged (the first picked) sits on a `canvas`, so a
+/// drag moves it freely by its `x` and `y`; among a column's or a row's
+/// pieces it goes between its neighbours instead.
+fn moves_freely(doc: &ScreenDoc) -> bool {
+    doc.picked
+        .first()
+        .and_then(|p| {
+            let parent = &p[..p.len().saturating_sub(1)];
+            doc.block()?.at(parent).map(|e| e.kind == "canvas")
+        })
+        .unwrap_or(false)
+}
+
 /// Where the picked piece would land if dropped at `p`.
 fn drop_at(doc: &ScreenDoc, drawn: &Drawn, p: Pos2) -> Option<Drop> {
     place_at(doc, drawn, p, Some(doc.picked.first()?))
@@ -648,7 +680,7 @@ fn interact(
     if response.drag_started_by(egui::PointerButton::Primary)
         && let Some(at) = response.interact_pointer_pos()
     {
-        let start = at - response.drag_delta();
+        let start = drag_origin(ui, response, at);
         let picked_box = (doc.picked.len() == 1)
             .then(|| drawn.pieces.iter().find(|(f, _, _)| *f == doc.picked[0]))
             .flatten()
@@ -673,7 +705,7 @@ fn interact(
                         }
                         None => doc.picked = vec![file],
                     }
-                    Some(Drag::Move)
+                    Some(Drag::Move(start))
                 }
                 None => Some(Drag::Box(start)),
             },
@@ -714,15 +746,12 @@ fn interact(
                     doc.picked = outer;
                 }
             }
-            Some(Drag::Move) => {
-                let parent_canvas = doc.picked.first().and_then(|p| {
-                    let parent = &p[..p.len().saturating_sub(1)];
-                    doc.block()?.at(parent).map(|e| e.kind == "canvas")
-                });
-                if parent_canvas == Some(true) {
-                    // On a canvas: moved by its x and y (the one dragged).
+            Some(Drag::Move(from)) => {
+                if moves_freely(doc) {
+                    // On a canvas: moved by its x and y (the one dragged),
+                    // as far as the pointer went since the press.
                     doc.picked.truncate(1);
-                    let total = at - drag_origin(ui, response, at);
+                    let total = at - from;
                     let path = doc.picked[0].clone();
                     let (x, y) = doc
                         .piece(&path)
@@ -737,9 +766,11 @@ fn interact(
                         .unwrap_or((0.0, 0.0));
                     let nx = (x + total.x * drawn.design_per_point).round();
                     let ny = (y + total.y * drawn.design_per_point).round();
-                    let a = doc.set_style("x", Some(&format!("{nx}")));
-                    let b = doc.set_style("y", Some(&format!("{ny}")));
-                    out.changed |= a || b;
+                    // Both at once: the drag is one undo step.
+                    out.changed |= doc.restyle(
+                        &[],
+                        &[("x", Some(&format!("{nx}"))), ("y", Some(&format!("{ny}")))],
+                    );
                 } else if let Some(drop) = drop_at(doc, drawn, at) {
                     out.changed |= doc.move_picked(&drop.into, drop.index);
                 }
@@ -1118,7 +1149,9 @@ fn tool_keys(ui: &mut Ui, response: &egui::Response, doc: &mut ScreenDoc, keys: 
     }
 }
 
-/// Where the drag that ends at `at` began.
+/// Where the drag that starts this frame, now at `at`, was pressed. Right
+/// only on that frame: egui forgets the press when the button comes up, so
+/// a drag keeps this for its end.
 fn drag_origin(ui: &Ui, response: &egui::Response, at: Pos2) -> Pos2 {
     ui.input(|i| i.pointer.press_origin())
         .unwrap_or(at - response.drag_delta())

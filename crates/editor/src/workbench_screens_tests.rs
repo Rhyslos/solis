@@ -30,13 +30,19 @@ pub(crate) fn program(menu: &str) -> Arc<script::Compiled> {
 
 /// A workbench with a project and MENU's program, the screen open.
 pub(crate) fn opened() -> Workbench {
+    opened_with(MENU)
+}
+
+/// A workbench with a project whose `ui/pauseMenu.lst` is `menu`, the
+/// screen open.
+pub(crate) fn opened_with(menu: &str) -> Workbench {
     let mut w = Workbench::new(info(), None);
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
         assets: "/projects/farm/assets".into(),
     }));
-    w.set_program(Some(program(MENU)));
+    w.set_program(Some(program(menu)));
     let mut actions = Vec::new();
     w.library_request(
         LibraryRequest::Open(LibraryKind::Code, "ui/pauseMenu.lst".into()),
