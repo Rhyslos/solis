@@ -170,6 +170,121 @@ fn a_change_in_the_tab_is_saved_at_once_and_undone_and_redone() {
     assert_eq!(w.open.map_edits.undo.len(), steps);
 }
 
+/// How long the file of the map at `path` is, as it's saved now.
+pub(crate) fn file_len(w: &Workbench) -> usize {
+    tiles::map_file::write(&the_map(w)).unwrap().len()
+}
+
+/// The Console's last line, if it's a warning.
+pub(crate) fn last_warning(w: &Workbench) -> Option<&str> {
+    let last = w.log_lines().last()?;
+    (last.level == LogLevel::Warning).then_some(last.text.as_str())
+}
+
+#[test]
+fn a_change_that_would_make_a_map_too_big_to_open_again_is_refused() {
+    // The review of Phase 9, BUG-55: a map's own limits allow far more
+    // than a file that's read back can hold, and the editor saved such a
+    // map all the same: it could never be opened again. Here the reader
+    // takes files just big enough for the farm with one more layer, to
+    // the byte, so the edge is reached with a small map.
+    let (mut w, map, set) = with_map();
+    w.place_tile_map(map, None).unwrap();
+    w.follow_map_selection();
+    w.open.outbox.clear();
+    let path = "farm.tilemap.lst";
+    let start = the_map(&w);
+    // (A layer's ID is always as long, so any fourth layer called Layer1
+    // makes a file this long.)
+    let mut with_a_layer = (*start).clone();
+    with_a_layer.add_layer("Layer1", false).unwrap();
+    let edge = tiles::map_file::write(&with_a_layer).unwrap().len();
+    w.open.map_edits.most_bytes = edge;
+    // To the edge: saved, an undo step, and what's saved opens again.
+    w.map_requests_done(vec![MapRequest::AddLayer]);
+    let at_the_edge = the_map(&w);
+    assert_eq!(at_the_edge.layers().len(), 4);
+    let saves = saved_maps(&w.open.outbox);
+    assert_eq!(saves.len(), 1);
+    assert_eq!(saves[0].1.len(), edge);
+    let opened = tiles::map_file::read(&saves[0].1).unwrap();
+    assert_eq!(opened.map, *at_the_edge);
+    assert_eq!(w.open.map_edits.undo.len(), 1);
+    assert_eq!(last_warning(&w), None);
+    // One step past, each way a map grows: refused as it's made. Nothing
+    // is saved, the map is as it was, and the undo steps are as they were.
+    w.open.outbox.clear();
+    let said = w.log_lines().len();
+    let grown = [
+        "another layer",
+        "another value",
+        "a choice's options",
+        "a cell painted on a layer with nothing on it",
+        "a cell's value",
+        "an exact tile",
+        "the map made bigger",
+        "a layer's longer name",
+    ];
+    for (n, what) in grown.into_iter().enumerate() {
+        let made = match n {
+            0 => w.change_map(path, |m| m.add_layer("Layer2", true).is_ok()),
+            1 => w.change_map(path, |m| m.add_value("ripe", ValueKind::Switch).is_ok()),
+            2 => w.change_map(path, |m| {
+                let options = (0..12).map(|n| format!("kind{n:02}")).collect();
+                m.set_value_kind(2, ValueKind::Choice(options))
+            }),
+            3 => w.change_map(path, |m| m.set_code(1, 2, 2, b'~').unwrap_or(false)),
+            4 => w.change_map(path, |m| {
+                m.set_value(1, 9, 9, CellValue::Number(5)).unwrap_or(false)
+            }),
+            5 => w.change_map(path, |m| {
+                m.set_exact(0, 1, 1, Some(reflect::Id::random()))
+                    .unwrap_or(false)
+            }),
+            6 => {
+                let mut actions = Vec::new();
+                let bigger = LibraryRequest::ShapeTileMap(path.into(), Some(set), [70, 36]);
+                w.library_request(bigger, &mut actions);
+                false
+            }
+            _ => w.change_map(path, |m| m.set_layer(3, "A much longer name", false)),
+        };
+        assert!(!made, "{what}");
+        assert!(Arc::ptr_eq(&the_map(&w), &at_the_edge), "{what}");
+        assert!(saved_maps(&w.open.outbox).is_empty(), "{what}");
+        assert_eq!(w.open.map_edits.undo.len(), 1, "{what}");
+        assert!(w.open.map_edits.redo.is_empty(), "{what}");
+        assert_eq!(w.log_lines().len(), said + n + 1, "{what}");
+        let why = last_warning(&w).expect(what);
+        assert!(
+            why.starts_with("farm.tilemap.lst wasn't changed: saved like that, the map couldn't")
+                && why.contains("the map is too big to read")
+                && why.contains("It's as it was. Make the map smaller"),
+            "{what}: {why}"
+        );
+    }
+    // A change that leaves the file no bigger is still made, at the edge.
+    assert!(w.change_map(path, |m| m.set_code(0, 2, 2, b'~').unwrap_or(false)));
+    assert_eq!(w.open.map_edits.undo.len(), 2);
+    assert_eq!(file_len(&w), edge);
+    // And undo goes back through every step, to the map as it began.
+    w.map_undo(false, true);
+    assert_eq!(*the_map(&w), *at_the_edge);
+    w.map_undo(false, true);
+    assert_eq!(*the_map(&w), *start);
+    assert!(w.open.map_edits.undo.is_empty());
+    // A step back or forward to a map that couldn't be opened again (a
+    // reader taking less than when the step was made) isn't taken, and
+    // stays a step.
+    w.open.outbox.clear();
+    w.open.map_edits.most_bytes = 10;
+    w.map_undo(true, false);
+    assert_eq!(*the_map(&w), *start);
+    assert_eq!(w.open.map_edits.redo.len(), 2);
+    assert!(saved_maps(&w.open.outbox).is_empty());
+    assert!(last_warning(&w).is_some_and(|why| why.contains("wasn't changed")));
+}
+
 #[test]
 fn a_kind_the_map_has_no_room_for_changes_nothing_like_a_value_too_many() {
     // The code review: on a full map a value could still be made a bigger

@@ -88,7 +88,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
 /// A save's text read and written again: an older save in a slot is
 /// replaced only by a save that reads back as itself (Phase 8, C2).
 pub fn save_read_back(text: &str) -> Result<String, String> {
-    Save::read(text).map(|save| save.write())
+    Save::read(text).and_then(|save| save.write())
 }
 
 /// Whether `text` reads as a save (a project's check: read, not written
@@ -335,8 +335,11 @@ fn one_line(name: &str) -> String {
 }
 
 impl Save {
-    /// The save's text.
-    pub(crate) fn write(&self) -> String {
+    /// The save's text, or why it can't be written: a tile map the game
+    /// has grown past what a save is loaded from (its file is read back
+    /// as any map file is), since a save that couldn't be loaded would be
+    /// the player's progress lost.
+    pub(crate) fn write(&self) -> Result<String, String> {
         let mut body = String::new();
         let mut section = |name: &str, text: &str| {
             body.push_str(&format!("{name} {}\n{text}\n", text.len()));
@@ -403,14 +406,13 @@ impl Save {
             })
             .collect();
         section("animators", &animators);
-        let maps: String = self
-            .tile_maps
-            .iter()
-            .map(|(id, map)| {
-                let text = tiles::map_file::write(map);
-                format!("{id} {}\n{text}\n", text.len())
-            })
-            .collect();
+        let mut maps = String::new();
+        for (id, map) in &self.tile_maps {
+            let text = tiles::map_file::write(map).map_err(|why| {
+                format!("the tile map on {id} has grown too big to be loaded again ({why})")
+            })?;
+            maps.push_str(&format!("{id} {}\n{text}\n", text.len()));
+        }
         section("tilemaps", &maps);
         section("objects", &self.objects);
         // Its exact bits, or nothing when it's as usual.
@@ -433,7 +435,8 @@ impl Save {
             self.time.to_bits(),
             self.seed,
         );
-        format!("{HEADER}\n{head}sum {:016x}\n{body}", sum_of(&head, &body))
+        let sum = sum_of(&head, &body);
+        Ok(format!("{HEADER}\n{head}sum {sum:016x}\n{body}"))
     }
 
     /// Reads a save, refusing (with why, in plain words) anything that
@@ -855,9 +858,8 @@ impl Workbench {
     /// the Console). A tick's saves share one: physics is built again
     /// once.
     pub(crate) fn save_text(&mut self) -> Option<String> {
-        match self.save_of_game() {
-            Ok(save) => {
-                let text = save.write();
+        match self.save_of_game().and_then(|save| save.write()) {
+            Ok(text) => {
                 if text.len() > MAX_SAVE_BYTES {
                     self.log(
                         LogLevel::Warning,

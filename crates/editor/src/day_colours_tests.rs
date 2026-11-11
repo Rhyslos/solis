@@ -150,7 +150,7 @@ fn game_code_sets_the_hour_and_night_lamps_follow_it() {
         .collect();
     assert!(said.iter().any(|t| t.starts_with("hour 22")), "{said:?}");
     // A save keeps it.
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     assert!(text.contains("\nday 16\n"), "{text}");
     w.stop();
 }

@@ -140,7 +140,7 @@ fn a_loaded_game_carries_on_exactly_as_the_saved_one_would_have() {
     let mut w = busy("Harbour");
     w.play();
     run_to(&mut w, 50);
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     let saved_at = sums(&mut w);
     run_to(&mut w, 130);
     let carried_on = sums(&mut w);
@@ -174,7 +174,7 @@ fn save_quit_open_and_load_carries_on_the_same() {
     let mut w = busy("Harbour");
     w.play();
     run_to(&mut w, 70);
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     run_to(&mut w, 150);
     let carried_on = sums(&mut w);
     drop(w);
@@ -243,7 +243,7 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     let mut w = busy("Harbour");
     w.play();
     run_to(&mut w, 30);
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     run_to(&mut w, 40);
     let now = sums(&mut w);
     // Another project's.
@@ -316,7 +316,7 @@ fn a_project_name_with_a_line_break_still_loads_its_saves() {
     let mut w = busy("Harbour\nNorth");
     w.play();
     run_to(&mut w, 10);
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     w.load_game(&text, "quick");
     assert!(
         w.log_lines()
@@ -357,7 +357,7 @@ fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
         extra.insert(id, data.clone());
     }
     save.values = area::text::write(&extra, &registry, &|_| None);
-    let text = save.write();
+    let text = save.write().unwrap();
     w.load_game(&text, "hand-made");
     assert!(
         w.log_lines().last().unwrap().text.starts_with("Loaded"),
@@ -479,7 +479,7 @@ fn a_save_keeps_bodies_as_places_and_motion_not_rapier_s_insides() {
     let mut w = busy("Harbour");
     w.play();
     run_to(&mut w, 20);
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     let physics = text.split("\nphysics ").nth(1).unwrap();
     let physics = physics.split("\nplaces ").next().unwrap();
     // The floor and the crate: an ID, 13 numbers, asleep, character.
@@ -529,7 +529,7 @@ fn loading_doesn_t_run_the_game_s_starts_again_on_top_of_the_save() {
     w.set_program(Some(program(&code)));
     w.play();
     run_to(&mut w, 60);
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     run_to(&mut w, 120);
     let carried_on = sums(&mut w);
     w.load_game(&text, "quick");
@@ -760,7 +760,7 @@ fn a_sound_turned_off_stays_off_after_a_load() {
         .set_sound_playing(radio, false);
     assert!(w.audio_sources().is_empty(), "turned off");
     assert_ne!(w.world().unwrap().checksum(), before, "in the checksum");
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     w.stop();
     w.play();
     assert_eq!(w.audio_sources().len(), 1, "a new play starts it again");
@@ -1069,11 +1069,50 @@ fn a_tile_map_the_game_changed_survives_a_save() {
 }
 
 #[test]
+fn a_game_whose_map_couldn_t_be_loaded_again_isn_t_saved() {
+    // The review of Phase 9, BUG-55. Game code may set a value in every
+    // cell of a map, and a map with a number in each of 1,280 × 1,280
+    // cells is more numbers than a map's reader takes (13 million pieces;
+    // 12 million are read). Saved, that game could never be loaded: so
+    // it isn't saved, and the Console says why.
+    let (mut w, field) = busy_with_a_map();
+    w.play();
+    run_to(&mut w, 3);
+    let mut grown = tiles::TileMap::new([1280, 1280], None, Some(b'.'));
+    grown.add_value("growth", tiles::ValueKind::Number).unwrap();
+    for y in 0..1280 {
+        for x in 0..1280 {
+            let to = tiles::CellValue::Number(1 + (x % 7) as i32);
+            grown.set_value(0, x, y, to).unwrap();
+        }
+    }
+    let world = &mut w.open.playing.as_mut().unwrap().world;
+    world.restore_tile_maps(vec![(field, grown)]);
+    assert_eq!(w.save_text(), None);
+    let said = w.log_lines().last().unwrap();
+    assert_eq!(said.level, LogLevel::Warning);
+    assert!(
+        said.text
+            .starts_with("The game wasn't saved: the tile map on ")
+            && said.text.contains("has grown too big to be loaded again")
+            && said.text.contains("it's too big to read"),
+        "{}",
+        said.text
+    );
+    // With the map small again it saves, and the save loads.
+    let world = &mut w.open.playing.as_mut().unwrap().world;
+    world.restore_tile_maps(vec![(field, tiles::TileMap::new([8, 8], None, Some(b'.')))]);
+    let text = w.save_text().expect("saved");
+    let save = Save::read(&text).unwrap();
+    assert_eq!(save.tile_maps[0].1.size(), [8, 8]);
+}
+
+#[test]
 fn a_save_keeps_the_game_s_speed() {
     let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.speed, 0.5);
-    assert_eq!(save.write(), text, "read back as written");
+    assert_eq!(save.write().unwrap(), text, "read back as written");
     let older = std::fs::read_to_string(save_fixtures().join("v6/harbour.solsave")).unwrap();
     assert_eq!(
         Save::read(&older).unwrap().speed,
@@ -1091,7 +1130,7 @@ fn a_save_keeps_the_game_s_speed() {
     // A speed past what Solis runs at is damage.
     let mut fast = save.clone();
     fast.speed = 9.0;
-    assert!(Save::read(&fast.write()).is_err());
+    assert!(Save::read(&fast.write().unwrap()).is_err());
 }
 
 #[test]
@@ -1099,7 +1138,7 @@ fn loading_a_game_keeps_the_player_s_settings() {
     let mut w = busy("Harbour");
     w.play();
     run_to(&mut w, 5);
-    let text = w.save_of_game().unwrap().write();
+    let text = w.save_of_game().unwrap().write().unwrap();
     w.player_settings = w
         .player_settings
         .with(script::settings::Setting::TextSize(1.75));
@@ -1121,7 +1160,7 @@ fn a_save_keeps_the_time_of_day() {
     let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.day_shift, 6.0);
-    assert_eq!(save.write(), text, "read back as written");
+    assert_eq!(save.write().unwrap(), text, "read back as written");
     let older = std::fs::read_to_string(save_fixtures().join("v7/harbour.solsave")).unwrap();
     assert_eq!(
         Save::read(&older).unwrap().day_shift,
@@ -1136,11 +1175,14 @@ fn a_save_keeps_the_time_of_day() {
     // 24 is midnight again (an earlier build could write it).
     let mut midnight = save.clone();
     midnight.day_shift = 24.0;
-    assert_eq!(Save::read(&midnight.write()).unwrap().day_shift, 0.0);
+    assert_eq!(
+        Save::read(&midnight.write().unwrap()).unwrap().day_shift,
+        0.0
+    );
     for bad in [24.5, -1.0, f64::NAN] {
         let mut odd = save.clone();
         odd.day_shift = bad;
-        assert!(Save::read(&odd.write()).is_err(), "{bad}");
+        assert!(Save::read(&odd.write().unwrap()).is_err(), "{bad}");
     }
     let garbled = text.replace(&format!("{:x}", 6.0f64.to_bits()), "zz");
     assert!(Save::read(&garbled).is_err());

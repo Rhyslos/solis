@@ -83,6 +83,46 @@ fn a_brush_stroke_paints_every_cell_dragged_over_as_one_undo_step() {
 }
 
 #[test]
+fn a_stroke_that_would_make_the_map_too_big_to_open_again_is_given_up() {
+    // The review of Phase 9, BUG-55. The map made wider, so it has cells
+    // with nothing on them, and a reader that takes files just big enough
+    // for it as it is.
+    let mut w = painting(PaintTool::Brush);
+    w.viewport.tile_overlay.paint.code = Some(b'~');
+    assert!(w.change_map("farm.tilemap.lst", |m| m.resize([80, 36])));
+    w.open.outbox.clear();
+    w.open.map_edits.most_bytes = crate::workbench_tiles::tests::file_len(&w);
+    let before = the_map(&w);
+    // Painted where no cell had anything: shown as it goes, as ever…
+    frame(&mut w, [70, 1], true, false, true, [false; 2]);
+    frame(&mut w, [72, 1], true, false, false, [false; 2]);
+    assert_eq!(row(&w, 1, 69..74), " ~~~ ");
+    // …and given up when the button comes up: the map as it was, on
+    // screen too, nothing saved, no undo step, and the Console says why.
+    frame(&mut w, [72, 1], false, false, false, [false; 2]);
+    assert_eq!(*the_map(&w), *before);
+    assert_eq!(row(&w, 1, 69..74), "     ");
+    assert!(saved_maps(&w.open.outbox).is_empty());
+    assert!(w.open.map_edits.stroke.is_none());
+    let why = crate::workbench_tiles::tests::last_warning(&w).expect("said");
+    assert!(
+        why.contains("wasn't changed") && why.contains("too big to read"),
+        "{why}"
+    );
+    // A stroke over cells that have something leaves the file no bigger:
+    // painted and saved, one undo step.
+    drag(&mut w, &[[10, 1], [12, 1]], false);
+    assert_eq!(row(&w, 1, 9..14), ".~~~.");
+    assert_eq!(saved_maps(&w.open.outbox).len(), 1);
+    // Undo: that stroke, then the wider map, and no step for the one
+    // given up.
+    w.map_undo(false, true);
+    assert_eq!(*the_map(&w), *before);
+    w.map_undo(false, true);
+    assert_eq!(the_map(&w).size(), [40, 36]);
+}
+
+#[test]
 fn the_right_button_empties_and_a_stroke_changing_nothing_leaves_no_step() {
     let mut w = painting(PaintTool::Brush);
     drag(&mut w, &[[4, 4], [6, 4]], true);

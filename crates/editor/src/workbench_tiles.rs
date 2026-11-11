@@ -13,6 +13,7 @@ use crate::workbench::{Workbench, WorkbenchAction};
 use glam::Vec3;
 use reflect::{AssetId, EntityId};
 use std::sync::Arc;
+use tiles::map_file::MapFileError;
 use tiles::{TileMap, Tileset};
 
 /// The most undo steps the Map tab keeps.
@@ -23,7 +24,7 @@ const MAX_UNDO_BYTES: u64 = 256 << 20;
 
 /// The map file the Map tab is changing: its path, and its undo steps
 /// (copies of the map, which share their cells until changed).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(crate) struct MapEdits {
     /// The map file's path, while the tab shows one.
     pub(crate) path: Option<String>,
@@ -42,6 +43,26 @@ pub(crate) struct MapEdits {
     pub(crate) hidden: std::collections::HashSet<reflect::Id>,
     /// The tile painter's stroke under way (D6).
     pub(crate) stroke: Option<crate::workbench_paint::Stroke>,
+    /// The biggest file a map is saved as (what the reader takes,
+    /// `tiles::map_file::MAX_BYTES`; less in tests).
+    pub(crate) most_bytes: usize,
+}
+
+impl Default for MapEdits {
+    fn default() -> Self {
+        Self {
+            path: None,
+            undo: Vec::new(),
+            redo: Vec::new(),
+            hovered: None,
+            shown_values: Vec::new(),
+            chunks: false,
+            walls: false,
+            hidden: std::collections::HashSet::new(),
+            stroke: None,
+            most_bytes: tiles::map_file::MAX_BYTES,
+        }
+    }
 }
 
 impl MapEdits {
@@ -63,6 +84,17 @@ impl MapEdits {
         }
         self.redo.clear();
     }
+}
+
+/// What the Console says when a change to the map at `path` isn't made
+/// because its file couldn't be opened again (`why`, in the reader's own
+/// words): what happened, that nothing was lost, and what to do.
+fn outgrown_note(path: &str, why: &MapFileError) -> String {
+    format!(
+        "{path} wasn't changed: saved like that, the map couldn't be opened again ({why}). \
+         It's as it was. Make the map smaller, clear layers, values or exact tiles it doesn't \
+         need, or split the world into several maps, then try again."
+    )
 }
 
 /// A free path for a new file named `stem` in `folder`.
@@ -146,9 +178,16 @@ impl Workbench {
             .and_then(|t| t.terrains.first())
             .map(|t| t.code as u8);
         let map = TileMap::new(tiles::map_file::STANDARD_SIZE, tileset, fill);
+        let text = match tiles::map_file::write(&map) {
+            Ok(text) => text,
+            Err(why) => {
+                self.log(LogLevel::Error, format!("Couldn't make {path}: {why}."));
+                return;
+            }
+        };
         self.open.outbox.push(WorkbenchAction::SaveTileMap {
             path: path.clone().into(),
-            text: tiles::map_file::write(&map),
+            text,
         });
         Arc::make_mut(&mut self.viewport.sheets)
             .tile_maps
@@ -198,11 +237,14 @@ impl Workbench {
     }
 
     /// Saves the map file at `path` as `map`, and runs it at once (a
-    /// playing game's copy starts again from it).
-    pub(crate) fn save_tile_map(&mut self, path: &str, map: TileMap) {
+    /// playing game's copy starts again from it). A map whose file
+    /// couldn't be read back isn't saved or shown: nothing changes, and
+    /// the mistake says why.
+    fn save_tile_map(&mut self, path: &str, map: TileMap) -> Result<(), MapFileError> {
+        let text = tiles::map_file::write_within(&map, self.open.map_edits.most_bytes)?;
         self.open.outbox.push(WorkbenchAction::SaveTileMap {
             path: path.into(),
-            text: tiles::map_file::write(&map),
+            text,
         });
         let sheets = Arc::make_mut(&mut self.viewport.sheets);
         sheets.tile_maps.insert(
@@ -211,6 +253,28 @@ impl Workbench {
         );
         sheets.work_out_maps();
         self.sources += 1;
+        Ok(())
+    }
+
+    /// Makes `map` the map file at `path`, saved, with `before` kept as
+    /// the undo step back. Every change to a map ends here (the Map tab's,
+    /// Properties', a painted stroke). One that would make the file too
+    /// big to open again is refused at once (BUG-55): nothing is saved,
+    /// no undo step is made, the map stays as `before`, and the Console
+    /// says why and what to do. Whether the change was made.
+    pub(crate) fn commit_map(&mut self, path: &str, before: &TileMap, map: TileMap) -> bool {
+        match self.save_tile_map(path, map) {
+            Ok(()) => {
+                self.open
+                    .map_edits
+                    .push_undo(path.to_owned(), before.clone());
+                true
+            }
+            Err(why) => {
+                self.log(LogLevel::Warning, outgrown_note(path, &why));
+                false
+            }
+        }
     }
 
     /// The map file at `path`, as read.
@@ -235,11 +299,7 @@ impl Workbench {
         if !change(&mut map) || map == *before {
             return false;
         }
-        self.open
-            .map_edits
-            .push_undo(path.to_owned(), (*before).clone());
-        self.save_tile_map(path, map);
-        true
+        self.commit_map(path, &before, map)
     }
 
     /// Undoes (or redoes) the last change made in the Map tab.
@@ -254,15 +314,28 @@ impl Workbench {
         let Some((path, map)) = popped else {
             return;
         };
-        if let Some(now) = self.map_file(&path) {
-            let other = if redo {
-                &mut self.open.map_edits.undo
+        let now = self.map_file(&path);
+        if let Err(why) = self.save_tile_map(&path, map.clone()) {
+            // The step stays where it was: nothing was undone.
+            let edits = &mut self.open.map_edits;
+            let back = if redo {
+                &mut edits.redo
             } else {
-                &mut self.open.map_edits.redo
+                &mut edits.undo
             };
-            other.push((path.clone(), (*now).clone()));
+            back.push((path.clone(), map));
+            self.log(LogLevel::Warning, outgrown_note(&path, &why));
+            return;
         }
-        self.save_tile_map(&path, map);
+        if let Some(now) = now {
+            let edits = &mut self.open.map_edits;
+            let other = if redo {
+                &mut edits.undo
+            } else {
+                &mut edits.redo
+            };
+            other.push((path, (*now).clone()));
+        }
     }
 
     /// The selected entity's tile map file's path, if it has one.

@@ -465,7 +465,7 @@ impl Projects {
             made_when_missing: true,
             read_back: |text| {
                 tiles::map_file::read(text)
-                    .map(|read| tiles::map_file::write(&read.map))
+                    .and_then(|read| tiles::map_file::write(&read.map))
                     .map_err(|e| e.to_string())
             },
         };

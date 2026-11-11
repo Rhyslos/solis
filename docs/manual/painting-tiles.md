@@ -71,6 +71,7 @@ The tool bar, while a map is selected:
 | Slide the view while painting | Middle-drag |
 
 ## Tips and common problems
+- **Problem:** on a very big map, what you just painted disappears when you let go, and the Console says the map *wasn't changed*. **Why:** with that stroke the map's file would be too big for Solis to open again, so the stroke isn't kept; the map is as it was before it. **Fix:** see [Tile maps](tile-maps.md#tips-and-common-problems) for how much a map can hold and what to do.
 - **Problem:** the painting tools aren't on the tool bar. **Why:** they show only while a tile map's entity is selected, and the game isn't running. **Fix:** select the map in the Area panel; stop the game.
 - **Problem:** right-dragging empties cells instead of sliding the view. **Why:** while a painting tool is in use, the right button empties. **Fix:** slide with the middle button, or press Q for Select.
 - **Problem:** the fill painted more than expected. **Why:** the fill follows every cell of the same terrain joined by its sides, on the layer painted. **Fix:** Ctrl + Z, then break the field with a line first.

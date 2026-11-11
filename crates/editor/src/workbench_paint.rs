@@ -448,10 +448,10 @@ impl Workbench {
             self.show_map_now(&stroke.path, (*stroke.before).clone());
             return;
         }
-        self.open
-            .map_edits
-            .push_undo(stroke.path.clone(), (*stroke.before).clone());
-        self.save_tile_map(&stroke.path, stroke.map);
+        if !self.commit_map(&stroke.path, &stroke.before, stroke.map) {
+            // Its cells were shown as it was painted: the map as it was.
+            self.show_map_now(&stroke.path, (*stroke.before).clone());
+        }
     }
 
     /// The eyedropper let go: one cell picks its terrain (and its exact
