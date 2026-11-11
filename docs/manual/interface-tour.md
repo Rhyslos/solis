@@ -59,7 +59,7 @@ Up and Down choose, **Enter** does it, **Esc** closes. Why? You don't have to re
 | Profiler | Library, and the rest along the bottom | Where each frame's time goes: game code, the world, drawing, the editor, and the graphics card. See [The Profiler](profiler.md). |
 | Code | Library, and the rest along the bottom | The project's game code files in Lust, Rust or Lua. See [Game code](game-code.md). |
 
-**Panels that come with a file.** Some panels are there only while what they show is open, so they don't take room the rest of the time. Most have a × on their tab to close them; the Map tab has none, and goes when you select something else.
+**Panels that come with a file.** Some panels are there only while what they show is open, so they don't take room the rest of the time. Most have a × on their tab to close them; the Map tab has none, and goes when you select something else. Tabs that show the same file close together: the × on **Clips** or **Frames** closes the clips file and both tabs, and the × on **Canvas** or **Elements** closes the screen and both of those, leaving every other open file alone. Nothing asks whether to save, because each change to these files is saved as you make it.
 
 | Panel | When it's there | What it's for |
 |---|---|---|

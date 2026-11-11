@@ -266,3 +266,153 @@ fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
     assert_eq!(title(&w), "7.0", "a preview value");
     assert!(!w.open.screen_doc.as_ref().unwrap().redraw);
 }
+
+/// A workbench with a clips file and a screen both open, in the UI
+/// workspace: Clips, Frames, Canvas and Elements all there.
+fn with_clips_and_a_screen() -> Workbench {
+    let (mut w, _, _) = crate::workbench_frames::tests::with_clips();
+    w.set_program(Some(program(MENU)));
+    w.open_frames("walker.solframes");
+    assert!(w.open_screen("ui/pauseMenu.lst", None));
+    for panel in [Panel::Clips, Panel::Frames, Panel::Canvas, Panel::Elements] {
+        assert!(w.dock.find_tab(&panel).is_some(), "{panel:?} is open");
+    }
+    w
+}
+
+/// BUG-26: the × on Canvas or Elements closes the screen and both its
+/// tabs, and leaves the clips file open with its undo steps.
+#[test]
+fn the_x_on_canvas_or_elements_closes_the_screen_and_not_the_clips_file() {
+    for closed in [Panel::Canvas, Panel::Elements] {
+        let mut w = with_clips_and_a_screen();
+        assert!(w.open.frames_editor.as_mut().unwrap().set_speed(2.0));
+        let mut h = harness(w);
+        click_the_x(&mut h, closed);
+        let w = &mut h.state_mut().0;
+        assert!(w.open.screen_doc.is_none(), "{closed:?}: the screen closed");
+        for panel in [Panel::Canvas, Panel::Elements] {
+            assert!(
+                w.dock.find_tab(&panel).is_none(),
+                "{closed:?}: {panel:?} went with it"
+            );
+        }
+        let clips = w
+            .open
+            .frames_editor
+            .as_mut()
+            .expect("the clips file is open");
+        assert!(clips.undo(), "{closed:?}: with its undo steps");
+        for panel in Panel::FRAMES_TABS {
+            assert!(w.dock.find_tab(&panel).is_some(), "{closed:?}: {panel:?}");
+        }
+        // Gone for good: no tab comes back with the workspace, and the
+        // file opens on the canvas again when asked.
+        w.switch_workspace(Workspace::Level);
+        w.switch_workspace(Workspace::Ui);
+        assert!(w.dock.find_tab(&Panel::Canvas).is_none());
+        assert!(w.dock.find_tab(&Panel::Elements).is_none());
+        let mut actions = Vec::new();
+        w.library_request(
+            LibraryRequest::Open(LibraryKind::Code, "ui/pauseMenu.lst".into()),
+            &mut actions,
+        );
+        assert!(w.open.screen_doc.is_some());
+        assert!(actions.is_empty(), "on the canvas, not in another program");
+    }
+}
+
+/// The × on Clips or Frames closes the clips file and both its tabs, and
+/// leaves the screen open with its undo steps.
+#[test]
+fn the_x_on_clips_or_frames_closes_the_clips_file_and_not_the_screen() {
+    for closed in Panel::FRAMES_TABS {
+        let mut w = with_clips_and_a_screen();
+        let doc = w.open.screen_doc.as_mut().unwrap();
+        doc.picked = vec![vec![0, 0, 0]];
+        assert!(doc.set_style("size", Some("40")));
+        let mut h = harness(w);
+        click_the_x(&mut h, closed);
+        let w = &mut h.state_mut().0;
+        assert!(
+            w.open.frames_editor.is_none(),
+            "{closed:?}: the file closed"
+        );
+        for panel in Panel::FRAMES_TABS {
+            assert!(
+                w.dock.find_tab(&panel).is_none(),
+                "{closed:?}: {panel:?} went with it"
+            );
+        }
+        let doc = w.open.screen_doc.as_mut().expect("the screen is open");
+        assert!(doc.undo(), "{closed:?}: with its undo steps");
+        for panel in [Panel::Canvas, Panel::Elements] {
+            assert!(w.dock.find_tab(&panel).is_some(), "{closed:?}: {panel:?}");
+        }
+    }
+}
+
+/// Closing asks nothing and loses nothing: a change is saved the frame
+/// it's made, so what's on disk is what was on the canvas.
+#[test]
+fn a_screen_closed_was_saved_as_it_was_changed() {
+    let mut w = with_clips_and_a_screen();
+    let doc = w.open.screen_doc.as_mut().unwrap();
+    doc.picked = vec![vec![0, 0, 0]];
+    assert!(doc.set_style("size", Some("40")));
+    let text = doc.text.clone();
+    // The change and the × in the same frame: saved, then closed.
+    let mut actions = Vec::new();
+    w.frames_tabs_done(
+        crate::panels::FramesOut {
+            screen_changed: true,
+            screen_closed: true,
+            ..Default::default()
+        },
+        &mut actions,
+    );
+    assert_eq!(saved(&w), vec![text]);
+    assert!(w.open.screen_doc.is_none());
+    assert!(w.open.unsaved_prompt.is_none(), "nothing asked");
+}
+
+/// A screen opened while already in the UI workspace gets both its tabs.
+#[test]
+fn a_screen_opened_in_the_ui_workspace_gets_elements_too() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(ProjectInfo {
+        name: "Farm".into(),
+        root: "/projects/farm".into(),
+        assets: "/projects/farm/assets".into(),
+    }));
+    w.set_program(Some(program(MENU)));
+    w.switch_workspace(Workspace::Ui);
+    assert!(w.dock.find_tab(&Panel::Elements).is_none());
+    assert!(w.open_screen("ui/pauseMenu.lst", None));
+    assert!(w.dock.find_tab(&Panel::Canvas).is_some());
+    assert!(w.dock.find_tab(&Panel::Elements).is_some());
+}
+
+/// A screen that stops being one closes with its tabs, wherever they are.
+#[test]
+fn a_file_that_isn_t_a_screen_any_more_takes_its_tabs_with_it() {
+    let mut w = opened();
+    w.refresh_screen();
+    // Left in the UI workspace's layout while another is in use.
+    w.switch_workspace(Workspace::Level);
+    let code = script::Code {
+        files: vec![("main.lst".to_string(), "end\n".to_string())],
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let plain = match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        _ => panic!("the code compiles"),
+    };
+    w.set_program(Some(plain));
+    w.refresh_screen();
+    assert!(w.open.screen_doc.is_none());
+    w.switch_workspace(Workspace::Ui);
+    assert!(w.dock.find_tab(&Panel::Canvas).is_none());
+    assert!(w.dock.find_tab(&Panel::Elements).is_none());
+}

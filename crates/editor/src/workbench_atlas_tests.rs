@@ -121,3 +121,20 @@ fn an_atlas_file_opens_its_picture_s_crops_and_a_change_on_disk_is_taken_in() {
     w.atlas_read_again();
     assert!(w.open.atlas_editor.is_none());
 }
+
+/// The × on the Atlas Crop tab closes the atlas file.
+#[test]
+fn the_x_on_its_tab_closes_the_atlas_file() {
+    let mut w = with_project();
+    let mut actions = Vec::new();
+    w.library_request(
+        LibraryRequest::AtlasCrop("sprites/tools.png".into()),
+        &mut actions,
+    );
+    assert!(w.open.atlas_editor.is_some());
+    let mut h = harness(w);
+    click_the_x(&mut h, Panel::AtlasCrop);
+    let w = &h.state().0;
+    assert!(w.open.atlas_editor.is_none());
+    assert!(w.dock.find_tab(&Panel::AtlasCrop).is_none());
+}

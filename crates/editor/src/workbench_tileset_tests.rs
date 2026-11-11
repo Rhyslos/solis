@@ -540,3 +540,16 @@ fn a_tileset_s_steps_follow_its_file_on_disk_and_go_with_it() {
     w.tileset_undo(FARM_SET, false, true);
     assert_eq!(take_saved(&mut w), Vec::<String>::new());
 }
+
+/// The × on the Tileset tab closes the tileset's tab; its undo steps stay
+/// the file's.
+#[test]
+fn the_x_on_its_tab_closes_the_tileset() {
+    let (mut w, _, _) = with_tileset();
+    w.open_tileset("farm.tileset.lst");
+    let mut h = harness(w);
+    click_the_x(&mut h, Panel::Tileset);
+    let w = &h.state().0;
+    assert!(w.open.tilesets.tab().is_none());
+    assert!(w.dock.find_tab(&Panel::Tileset).is_none());
+}

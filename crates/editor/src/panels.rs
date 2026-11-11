@@ -158,6 +158,8 @@ pub(crate) struct FramesOut {
     pub(crate) screen_code: bool,
     /// What the canvas has to say in the Console.
     pub(crate) screen_said: Option<String>,
+    /// The Canvas or Elements tab was closed: close the screen.
+    pub(crate) screen_closed: bool,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -649,21 +651,33 @@ impl TabViewer for PanelViewer<'_> {
     }
 
     fn on_close(&mut self, tab: &mut Panel) -> egui_dock::widgets::tab_viewer::OnCloseResponse {
-        if *tab == Panel::Animator {
-            self.frames_out.animator_closed = true;
-            return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
+        use egui_dock::widgets::tab_viewer::OnCloseResponse;
+        // Every panel is named, with no arm for "the rest": a new one
+        // doesn't build until it's decided what its × closes.
+        match *tab {
+            // Either tab closes the clips file, and the other goes with it.
+            Panel::Clips | Panel::Frames => self.frames_out.closed = true,
+            Panel::Animator => self.frames_out.animator_closed = true,
+            Panel::Tileset => self.frames_out.tileset_closed = true,
+            Panel::AtlasCrop => self.frames_out.atlas_closed = true,
+            // Either tab closes the screen, and the other goes with it.
+            Panel::Canvas | Panel::Elements => self.frames_out.screen_closed = true,
+            // These have no × (`is_closeable`): nothing closes them.
+            Panel::Viewport
+            | Panel::Game
+            | Panel::Area
+            | Panel::Layers
+            | Panel::Properties
+            | Panel::Library
+            | Panel::Code
+            | Panel::Console
+            | Panel::Problems
+            | Panel::Profiler
+            | Panel::Mixer
+            | Panel::Map
+            | Panel::Hints => return OnCloseResponse::Ignore,
         }
-        if *tab == Panel::Tileset {
-            self.frames_out.tileset_closed = true;
-            return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
-        }
-        if *tab == Panel::AtlasCrop {
-            self.frames_out.atlas_closed = true;
-            return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
-        }
-        // Either tab closes the clips file, and the other goes with it.
-        self.frames_out.closed = true;
-        egui_dock::widgets::tab_viewer::OnCloseResponse::Close
+        OnCloseResponse::Close
     }
 }
 

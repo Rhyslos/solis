@@ -400,3 +400,15 @@ fn the_preview_s_values_are_set_beside_the_graph() {
         "moving"
     );
 }
+
+/// The × on the Animator tab closes the animator file, and nothing else.
+#[test]
+fn the_x_on_its_tab_closes_the_animator_file() {
+    let (mut w, _, _) = with_animator();
+    w.open_animator("farmer.solanim");
+    let mut h = harness(w);
+    click_the_x(&mut h, Panel::Animator);
+    let w = &h.state().0;
+    assert!(w.open.animator_editor.is_none());
+    assert!(w.dock.find_tab(&Panel::Animator).is_none());
+}

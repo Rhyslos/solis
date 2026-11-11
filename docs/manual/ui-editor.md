@@ -15,6 +15,7 @@ The canvas never takes your file away from you. It changes only the letters it h
 5. **Size it**: pick one piece and drag the small square on its right edge, bottom edge or corner.
 6. Check the screen on other screen sizes with the size list at the top left (Full HD, 4K, ultrawide, a phone), and with players' bigger text with **Text 150%** and **200%** beside it. The dashed line is the **safe area**: keep text and buttons inside it, since some TVs cut the edges off.
 7. **Open as code** (top right) opens the file in your code editor, for anything the canvas doesn't edit.
+8. **Close the screen:** the **×** on the **Canvas** or the **Elements** tab closes both. Nothing is lost: every change was saved as you made it. Double-click the file in the Library to open it again.
 
 ### Drawing new pieces
 The bar along the canvas's bottom holds the tools: **Select** (picking and moving, as above), **Box**, **Ellipse**, **Line**, **Pen**, **Text**, **Image** and **Button**. Keys `1` to `7` pick them while the pointer is over the canvas, and `E` opens them all in a ring at the pointer, so your hand never leaves the canvas.

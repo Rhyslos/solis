@@ -179,6 +179,8 @@ impl Workbench {
         if let Some(said) = &out.screen_said {
             self.log(crate::console::LogLevel::Info, said.clone());
         }
+        // Saved before it's closed: a change made on the frame its tab
+        // closes isn't lost.
         if out.screen_changed {
             self.save_screen();
         }
@@ -190,6 +192,12 @@ impl Workbench {
                 crate::library::LibraryRequest::Open(crate::library::LibraryKind::Code, path),
                 actions,
             );
+        }
+        // Either of the screen's tabs closed: the screen closes and the
+        // other goes too. (Unlike a clips file's, its tabs are only in the
+        // UI workspace's layout, so a tab not being here says nothing.)
+        if out.screen_closed {
+            self.close_screen();
         }
         if out.atlas_changed {
             self.save_open_atlas();
@@ -266,4 +274,4 @@ impl Workbench {
 
 #[cfg(test)]
 #[path = "workbench_frames_tests.rs"]
-mod tests;
+pub(crate) mod tests;

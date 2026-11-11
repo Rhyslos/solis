@@ -7,6 +7,7 @@ use crate::layout;
 use crate::panel::Panel;
 use crate::screen_doc::ScreenDoc;
 use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workspace::Workspace;
 use std::sync::Arc;
 
 /// The entity a screen's view is drawn for on the canvas: none of the
@@ -102,15 +103,27 @@ impl Workbench {
             self.open.screen_doc = Some(doc);
             self.open.screen_from = None;
         }
-        self.switch_workspace(crate::workspace::Workspace::Ui);
+        // Both tabs, also when the UI workspace is already in use (when
+        // switching to it didn't just open them).
+        self.switch_workspace(Workspace::Ui);
+        layout::open_first_beside(&mut self.dock, Panel::Elements, Panel::Area);
         layout::open_first_beside(&mut self.dock, Panel::Canvas, Panel::Game);
         true
     }
 
-    /// Closes the screen open on the canvas.
+    /// Closes the screen open on the canvas, and its tabs: here, and in
+    /// the UI workspace's layout while another is in use. Nothing is asked
+    /// and nothing is lost: every change was saved as it was made
+    /// (`save_screen`).
     pub(crate) fn close_screen(&mut self) {
         self.open.screen_doc = None;
         self.open.screen_from = None;
+        for panel in Panel::SCREEN_TABS {
+            layout::close(&mut self.dock, panel);
+            if let Some(kept) = self.other_layouts.get_mut(&Workspace::Ui) {
+                layout::close(kept, panel);
+            }
+        }
     }
 
     /// Saves the screen open, after a change.

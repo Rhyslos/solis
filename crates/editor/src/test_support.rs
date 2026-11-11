@@ -156,6 +156,31 @@ pub(crate) fn click(
     h.run();
 }
 
+/// Clicks the × on `panel`'s tab, as the mouse does.
+pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: Panel) {
+    use egui_kittest::kittest::Queryable;
+    h.run();
+    h.run();
+    // The tab is the thing of that name above its panel's body.
+    let path = h.state().0.dock.find_tab(&panel).expect("the tab is open");
+    let body = h.state().0.dock[path.surface][path.node]
+        .get_leaf()
+        .expect("a tab group")
+        .viewport;
+    let tab = h
+        .get_all_by_label(panel.title())
+        .map(|n| n.rect())
+        .find(|r| r.bottom() <= body.top() + 1.0 && body.x_range().contains(r.center().x))
+        .expect("the tab is drawn");
+    // The × sits at the tab's right end.
+    click(
+        h,
+        egui::pos2(tab.right() - 11.0, tab.center().y),
+        egui::Modifiers::NONE,
+    );
+    h.run();
+}
+
 /// A lamp-post assembly file: a post with a lamp under it.
 pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<area::text::AreaFile>) {
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());

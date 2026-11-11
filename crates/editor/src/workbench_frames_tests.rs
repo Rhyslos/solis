@@ -12,7 +12,7 @@ use reflect::AssetId;
 /// A workbench with a project holding `walker.aseprite` (the test sheet:
 /// two frames, no tags) and `walker.solframes` playing it, with a clip
 /// made here, "wave", of both frames.
-fn with_clips() -> (Workbench, AssetId, AssetId) {
+pub(crate) fn with_clips() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info(), None);
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
