@@ -6,7 +6,8 @@
 //!   its words, the roadmap phase that builds it, and a plain sentence
 //!   about what it will do. When a part is built its line is deleted,
 //!   and the compiler points at every place that still draws it.
-//! - **One way to draw** (`unbuilt/draw.rs`): a function for each shape
+//! - **One way to draw** (`unbuilt/draw.rs`, and `unbuilt/page.rs` for a
+//!   whole page): a function for each shape
 //!   the frame has (a ribbon button, a shelf tab, a setting row, a whole
 //!   page ...), each taking the part's id and nothing about looks. A part
 //!   is drawn in place and in shape, in quieter greys, with a small
@@ -23,14 +24,16 @@
 //! (`source_rules_tests.rs`).
 
 mod draw;
+mod page;
 #[cfg(test)]
 pub(crate) mod sheet;
 mod table;
 
 pub use draw::{
-    PageAnswer, RowKind, card, chip, column, field_row, icon_button, link, menu_item, page,
-    ribbon_big, ribbon_row, setting_row, shelf_tab, status_item, sub_tab, tab, tool,
+    RowKind, card, chip, column, field_row, icon_button, link, menu_item, ribbon_big, ribbon_row,
+    setting_row, shelf_tab, status_item, sub_tab, tab, tool,
 };
+pub use page::{PageAnswer, page};
 pub use table::{ALL, UnbuiltId};
 
 use crate::interface_look;

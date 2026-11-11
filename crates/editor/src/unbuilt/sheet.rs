@@ -500,3 +500,7 @@ fn status_bar(ui: &mut Ui) {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "sheet_tests.rs"]
+mod tests;

@@ -141,5 +141,8 @@ pub(crate) fn arrow_step(ui: &Ui, response: &Response) -> i32 {
 }
 
 #[cfg(test)]
+#[path = "picture_tests.rs"]
+mod picture_tests;
+#[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

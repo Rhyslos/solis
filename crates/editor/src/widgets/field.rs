@@ -93,8 +93,9 @@ fn boxed<R>(ui: &mut Ui, width: f32, inside: impl FnOnce(&mut Ui) -> (R, bool)) 
 }
 
 /// A field for words, `width` wide, showing `hint` quietly while empty.
-/// `name` is what it holds, for a screen reader.
-pub fn text_field(ui: &mut Ui, value: &mut String, hint: &str, width: f32) -> Response {
+/// `name` is what it holds: a screen reader says it, and tests find the
+/// field by it.
+pub fn text_field(ui: &mut Ui, name: &str, value: &mut String, hint: &str, width: f32) -> Response {
     let (_, response) = boxed(ui, width, |ui| {
         let response = ui.add(
             egui::TextEdit::singleline(value)
@@ -105,17 +106,36 @@ pub fn text_field(ui: &mut Ui, value: &mut String, hint: &str, width: f32) -> Re
                 .hint_text(RichText::new(hint).color(tokens::text_meta()))
                 .desired_width(f32::INFINITY),
         );
+        named(
+            ui,
+            &response,
+            egui::WidgetType::TextEdit,
+            name,
+            value.as_str(),
+        );
         let focused = response.has_focus();
         (response, focused)
     });
     response
 }
 
+/// Gives a field egui edits its name, for screen readers and tests, with
+/// what it holds as its value.
+fn named(ui: &Ui, response: &Response, kind: egui::WidgetType, name: &str, value: &str) {
+    response.widget_info(|| {
+        let mut info = WidgetInfo::labeled(kind, ui.is_enabled(), name);
+        info.current_text_value = Some(value.to_owned());
+        info
+    });
+}
+
 /// A field for a number, `width` wide, in the mono font, with `axis`'s
 /// letter before it. The number is typed, or dragged left and right;
-/// `speed` is how much a point of dragging changes it.
+/// `speed` is how much a point of dragging changes it. `name` is what
+/// the number is, for screen readers and tests.
 pub fn number_field(
     ui: &mut Ui,
+    name: &str,
     value: &mut f64,
     axis: Option<Axis>,
     speed: f64,
@@ -136,6 +156,13 @@ pub fn number_field(
         ui.visuals_mut().override_text_color = Some(tokens::text_primary());
         ui.spacing_mut().button_padding = vec2(0.0, 0.0);
         let response = ui.add(egui::DragValue::new(value).speed(speed));
+        named(
+            ui,
+            &response,
+            egui::WidgetType::DragValue,
+            name,
+            &value.to_string(),
+        );
         let focused = response.has_focus() || response.dragged();
         (response, focused)
     });

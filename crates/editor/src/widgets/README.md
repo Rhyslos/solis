@@ -22,6 +22,7 @@ Every control follows the accent, the density and the interface scale through th
 | `field.rs` | The field (24 tall, its border the accent while the keyboard is in it): `text_field`, `number_field` (with an axis letter) and `dropdown`, which is meant to be the one drop-down everywhere. The editing inside is egui's own. |
 | `dashed.rs` | A dashed outline round a rounded rectangle, which egui can't draw itself. |
 | `sheet.rs` | Test only: the widget sheet, one page with every control in each of its states. |
-| `tests.rs` | Each control measured against the tokens, found by its name, pressed, and driven from the keyboard; the sheet's colours held against the design's own pictures (the switch from screen 8, the keycap from 13, a card from 1); the focus ring; borders at 150%; and the sheet as an approved picture. |
+| `tests.rs` | Each control measured against the tokens, found by its name, pressed, and driven from the keyboard. |
+| `picture_tests.rs` | The sheet drawn for real: its colours held against the design's own pictures (the switch from screen 8, the keycap from 13, a card from 1); the focus ring; borders at 150%; and the sheet as an approved picture. |
 
 **To add a control:** take every colour and size from `../tokens.rs` and `../tokens/` (add the token there if the design has a value they lack), give it `Sense::click()` and a `WidgetInfo` so it can be focused and found, draw `focus_ring`, put it on the sheet in each of its states, and test it there.

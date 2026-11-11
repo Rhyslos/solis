@@ -308,13 +308,24 @@ impl Sheet {
     fn transform(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = size::ROW_GAP;
-            for (value, axis) in self.position.iter_mut().zip([Axis::X, Axis::Y, Axis::Z]) {
+            let axes = [
+                (Axis::X, "Position X"),
+                (Axis::Y, "Position Y"),
+                (Axis::Z, "Position Z"),
+            ];
+            for (value, (axis, name)) in self.position.iter_mut().zip(axes) {
                 let width = (FIELD_W - 2.0 * size::ROW_GAP) / 3.0;
-                number_field(ui, value, Some(axis), 0.1, width);
+                number_field(ui, name, value, Some(axis), 0.1, width);
             }
         });
-        text_field(ui, &mut self.name, "Name", FIELD_W);
-        text_field(ui, &mut self.search, "Find something to place", FIELD_W);
+        text_field(ui, "Name", &mut self.name, "Name", FIELD_W);
+        text_field(
+            ui,
+            "Find",
+            &mut self.search,
+            "Find something to place",
+            FIELD_W,
+        );
         ui.spacing_mut().item_spacing.y = size::KEY_VALUE_ROW_GAP;
         key_value(ui, "Triangles", "12,480");
         key_value(ui, "File", "Props/Harbour/Crane_Arm_02.glb");
