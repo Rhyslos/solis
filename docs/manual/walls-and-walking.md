@@ -111,6 +111,7 @@ Change them in **Edit > Input actions…** (the Move action). A project with its
 - **Problem:** nothing moves when I press keys. **Why:** the entity has no TopDownController, or its Collider2D isn't ticked Character (walk only moves characters). **Fix:** check both in Properties, and look in the Console for game code mistakes.
 - **Problem:** the character stops at a doorway it should fit through. **Why:** its circle is wider than the gap. **Fix:** make the Radius smaller, or the door wider.
 - **Problem:** it catches on corners. **Why:** a Box collider meets corners square on. **Fix:** use a Circle for characters.
+- **Problem:** the [Console](console.md) says 2D physics stopped and was started again. **Why:** 2D physics met something it couldn't work out, usually a Collider2D or a tile map whose size or place is far out of the ordinary. Rather than leave every character standing still, Solis builds 2D physics again from the entities and tile maps as they are, and the game carries on; the message names the character it was moving when it knows. If it keeps happening, it's built again at most once a second (so the game doesn't slow to a crawl), and 2D characters stand still in between. It's said once each time you press Play. **Fix:** look at the entity named, or at anything very big or very far away, and bring it back into range.
 - Walking into a door or a shop counter to make something happen (a trigger) comes with a later update.
 
 ## Related

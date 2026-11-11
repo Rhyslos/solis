@@ -3,6 +3,15 @@
 //! solid and still), and each tile map's solid cells become walls, built
 //! again chunk by chunk only where cells changed. Sizes on the component
 //! are pixels, turned into metres with the project's 2D settings.
+//!
+//! When Rapier fails in 2D physics (it empties itself rather than crash
+//! Solis), the world starts it again from the entities and maps as they
+//! are and makes the tick's walks again, so the game carries on, and
+//! says so ([`World::take_flat_broke`]). If it breaks again within
+//! [`RESTART_WAIT`] steps of being started, it stays empty, not stepped,
+//! until they've passed (2D characters stand still meanwhile), then is
+//! started again: a break that repeats costs one restart a second, not
+//! one a tick.
 
 use crate::tile_maps::MapState;
 use crate::{Id, World};
@@ -34,6 +43,32 @@ pub(crate) struct WallsBuilt {
     /// Each chunk's revision when its walls were built, in rows.
     revisions: Vec<u64>,
     chunks: [u32; 2],
+}
+
+/// How many physics steps (a second of ticks) pass after 2D physics is
+/// started again before it's started again once more.
+pub const RESTART_WAIT: u32 = 60;
+
+/// 2D physics broke: Rapier failed on something it couldn't work out, and
+/// the world started 2D physics again (at once, or after
+/// [`RESTART_WAIT`] steps if it had only just been).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FlatBroke {
+    /// The character whose move it broke on, when that's known (see
+    /// `physics::flat::Flat::broke_on`).
+    pub on: Option<EntityId>,
+}
+
+/// How 2D physics is kept going after Rapier fails in it.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct FlatRecovery {
+    /// Physics steps to go before it may be started again (0: at once).
+    wait: u32,
+    /// It broke again before the wait was over: it stays empty, not
+    /// stepped, until it is.
+    down: bool,
+    /// The first break not yet told ([`World::take_flat_broke`]).
+    untold: Option<FlatBroke>,
 }
 
 impl World {
@@ -203,10 +238,86 @@ impl World {
         self.touched = true;
     }
 
+    /// Whether 2D physics broke since last asked (asking clears it), and
+    /// on what: Rapier failed on something it couldn't work out, and the
+    /// world started 2D physics again from the entities and tile maps as
+    /// they are, so the game carries on.
+    pub fn take_flat_broke(&mut self) -> Option<FlatBroke> {
+        self.flat_recovery.untold.take()
+    }
+
+    /// Makes Rapier's next catching up in 2D physics fail as a panic in
+    /// it would (`physics::flat::Flat::fail_next`), for tests of what
+    /// follows a break. Nothing else calls it.
+    pub fn fail_flat_next(&mut self) {
+        self.flat.fail_next();
+    }
+
+    /// Starts 2D physics again from nothing: every `Collider2D` joins in
+    /// ID order, and every map's walls are built.
+    fn restart_flat(&mut self) {
+        self.flat.clear();
+        self.walls_built.clear();
+        let mut ids: Vec<EntityId> = self
+            .ecs
+            .query::<(&Id, &Collider2D)>()
+            .iter()
+            .map(|(id, _)| id.0)
+            .collect();
+        ids.sort_unstable();
+        for id in ids {
+            self.flat_join(id);
+        }
+        self.update_walls();
+        self.flat_recovery.wait = RESTART_WAIT;
+        self.flat_recovery.down = false;
+        self.touched = true;
+    }
+
+    /// Whether 2D physics steps this tick: not while it stays empty
+    /// after breaking again too soon. On the wait's last step it's
+    /// started again first (game code found it empty this tick, so
+    /// characters walk again from the next).
+    fn flat_ready(&mut self) -> bool {
+        let recovery = &mut self.flat_recovery;
+        recovery.wait = recovery.wait.saturating_sub(1);
+        if recovery.down && recovery.wait == 0 {
+            self.restart_flat();
+        }
+        !self.flat_recovery.down
+    }
+
+    /// Characters take the moves game code asked for, in order. If Rapier
+    /// fails (2D physics has emptied itself), 2D physics is started again
+    /// and the moves are made again from where the entities stand, so
+    /// nothing of the tick is lost; unless it was started less than
+    /// [`RESTART_WAIT`] steps ago, when it stays empty until then.
+    fn walk_flat(&mut self, walks: &[(EntityId, Vec2)]) {
+        let seconds = self.tick_time() as f32;
+        // Twice at most: started again, the wait isn't over.
+        loop {
+            self.flat.move_characters(walks, seconds);
+            if !self.flat.take_broke() {
+                return;
+            }
+            let on = self.flat.broke_on();
+            self.flat_recovery.untold.get_or_insert(FlatBroke { on });
+            self.touched = true;
+            if self.flat_recovery.wait > 0 {
+                self.flat_recovery.down = true;
+                return;
+            }
+            self.restart_flat();
+        }
+    }
+
     /// Moves 2D physics on by one tick: walls catch up with the maps,
     /// characters take the moves game code asked for in order, and their
     /// entities follow them on the ground (keeping their layer).
     pub(crate) fn step_flat(&mut self, moved: &[EntityId], walks: &[(EntityId, Vec2)]) {
+        if !self.flat_ready() {
+            return;
+        }
         for id in moved {
             if self.flat.state().contains(*id)
                 && let Some(g) = self.global(*id)
@@ -217,8 +328,7 @@ impl World {
         self.update_walls();
         // Each character's move this tick, for game code's `grounded()`
         // and `velocity()`; none asked, they all stood still.
-        let seconds = self.tick_time() as f32;
-        self.flat.move_characters(walks, seconds);
+        self.walk_flat(walks);
         if walks.is_empty() {
             return;
         }

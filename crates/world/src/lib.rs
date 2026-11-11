@@ -18,7 +18,7 @@ pub mod sprites;
 pub mod tile_maps;
 
 pub use animators::Animators;
-pub use flat_physics::SolidSets;
+pub use flat_physics::{FlatBroke, RESTART_WAIT, SolidSets};
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
 pub use tile_maps::MapFiles;
@@ -191,6 +191,8 @@ pub struct World {
     solid_sets: std::sync::Arc<SolidSets>,
     /// What each map's walls were last built from.
     walls_built: HashMap<EntityId, flat_physics::WallsBuilt>,
+    /// How 2D physics is kept going after Rapier fails in it.
+    flat_recovery: flat_physics::FlatRecovery,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -294,6 +296,7 @@ impl World {
             pixels: area::pixels::PixelSettings::default(),
             solid_sets: std::sync::Arc::default(),
             walls_built: HashMap::new(),
+            flat_recovery: flat_physics::FlatRecovery::default(),
         };
         world.index();
         world.place_everything();
@@ -375,7 +378,9 @@ impl World {
         // character's finding.
         let states = self.physics.state().body_states();
         let asked = std::mem::take(&mut self.physics_asked);
+        let flat_recovery = self.flat_recovery;
         *self = Self::from_area_without_physics(area);
+        self.flat_recovery = flat_recovery;
         self.clock = clock;
         self.projectiles = projectiles;
         self.seed = seed;

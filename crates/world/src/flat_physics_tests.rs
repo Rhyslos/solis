@@ -339,3 +339,147 @@ fn in_a_world_with_both_everything_carried_is_with_its_carrier_on_the_same_tick(
     assert_eq!(world.global(pairs[1].0).unwrap(), before[1], "the crate");
     all_carried_are_with_their_carriers(&mut world, &pairs);
 }
+
+/// Rapier failing in 2D physics used to empty it for the rest of the
+/// play, with nothing said: every 2D character stood still (the full
+/// review). Now the world starts it again, makes the tick's walks again
+/// and says so, so the game carries on exactly as one where nothing
+/// broke.
+#[test]
+fn after_a_break_2d_physics_is_started_again_and_the_game_carries_on() {
+    let step = Vec3::new(0.1, 0.0, 0.0);
+    let (mut world, _, farmer) = farm();
+    let (mut twin, _, twin_farmer) = farm();
+    walk(&mut world, farmer, step, 10);
+    walk(&mut twin, twin_farmer, step, 10);
+    assert_eq!(world.take_flat_broke(), None, "nothing broke yet");
+    world.fail_flat_next();
+    for tick in 0..120 {
+        let at = walk(&mut world, farmer, step, 1);
+        let same = walk(&mut twin, twin_farmer, step, 1);
+        assert_eq!(at, same, "tick {tick}: nothing of the walk was lost");
+    }
+    assert!(world.flat().state().is_character(farmer), "back in");
+    assert_eq!(world.flat().state().wall_count(), 1, "the fence too");
+    let at = world.global(farmer).unwrap().w_axis;
+    assert!(at.x < 10.0 - 0.25 && at.x > 10.0 - 0.25 - 0.02, "{at}");
+    // Said once. Walking every tick, more than the walk had changed
+    // (every character's last move is cleared), so no move is named.
+    assert_eq!(world.take_flat_broke(), Some(FlatBroke { on: None }));
+    assert_eq!(world.take_flat_broke(), None);
+}
+
+#[test]
+fn a_break_names_the_character_whose_move_it_broke_on() {
+    let (mut world, _, farmer) = farm();
+    // A tick with nobody walking, so Rapier has caught up with all there
+    // is; then the farmer's walk is all that changes.
+    world.step_physics();
+    world.fail_flat_next();
+    let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 1);
+    assert_eq!(at.x, 2.6, "walked all the same");
+    assert_eq!(
+        world.take_flat_broke(),
+        Some(FlatBroke { on: Some(farmer) })
+    );
+}
+
+#[test]
+fn a_break_with_nobody_walking_is_started_again_too() {
+    let (mut world, _, farmer) = farm();
+    world.step_physics();
+    // A bin joins: Rapier fails catching up with it.
+    let bin = EntityId::random();
+    let data = EntityData::new("Bin")
+        .with(&Transform::default())
+        .with(&Collider2D::default());
+    world.add_subtree(&[(bin, data)]);
+    world.fail_flat_next();
+    world.step_physics();
+    assert_eq!(world.take_flat_broke(), Some(FlatBroke { on: None }));
+    let state = world.flat().state();
+    assert!(state.contains(bin) && state.is_character(farmer));
+    assert_eq!(state.wall_count(), 1);
+}
+
+/// One tick of the farmer walking right, with Rapier failing in it if
+/// `fail`: whether the farmer moved, and whether a break was told.
+fn tick(world: &mut World, farmer: EntityId, fail: bool) -> (bool, bool) {
+    if fail {
+        world.fail_flat_next();
+    }
+    let before = world.global(farmer).unwrap();
+    walk(world, farmer, Vec3::new(0.01, 0.0, 0.0), 1);
+    let moved = world.global(farmer).unwrap() != before;
+    (moved, world.take_flat_broke().is_some())
+}
+
+/// A break that repeats doesn't build 2D physics again every tick: it's
+/// started again at once the first time, then only once the wait since
+/// it last was is over; 2D characters stand still meanwhile.
+#[test]
+fn a_break_that_repeats_starts_2d_physics_again_once_a_second_at_most() {
+    let (mut world, _, farmer) = farm();
+    assert_eq!(tick(&mut world, farmer, false), (true, false));
+    // The first break: started again at once, the walk made.
+    assert_eq!(tick(&mut world, farmer, true), (true, true));
+    // Again the tick after: it stays empty, and the farmer stands still.
+    assert_eq!(tick(&mut world, farmer, true), (false, true));
+    assert!(world.flat().state().is_empty());
+    // What joins and leaves meanwhile is no trouble.
+    let bin = EntityId::random();
+    let data = EntityData::new("Bin")
+        .with(&Transform::default())
+        .with(&Collider2D::default());
+    world.add_subtree(&[(bin, data.clone())]);
+    world.remove_subtrees(&[bin]);
+    world.add_subtree(&[(bin, data)]);
+    for step in 2..=RESTART_WAIT {
+        assert_eq!(tick(&mut world, farmer, false), (false, false), "{step}");
+    }
+    // The wait is over: it was started again on its last step, with
+    // what's there now (the farmer, who found it empty that tick, walks
+    // again from this one).
+    let state = world.flat().state();
+    assert!(state.contains(bin) && state.is_character(farmer));
+    assert_eq!(state.wall_count(), 1);
+    // Failing again at once, it stays empty for another wait: one restart
+    // a second, not one a tick.
+    assert_eq!(tick(&mut world, farmer, true), (false, true));
+    assert!(world.flat().state().is_empty());
+    for step in 2..=RESTART_WAIT {
+        assert_eq!(tick(&mut world, farmer, false), (false, false), "{step}");
+    }
+    assert_eq!(tick(&mut world, farmer, false), (true, false));
+    // A break before a second has passed since it last started waits
+    // again; one after it is put right at once, as the first was.
+    for _ in 2..RESTART_WAIT {
+        assert_eq!(tick(&mut world, farmer, false), (true, false));
+    }
+    assert_eq!(tick(&mut world, farmer, true), (true, true));
+}
+
+/// The wait and what's untold are kept when the world is built again (an
+/// edit while playing), though building it joins everything afresh.
+#[test]
+fn a_rebuild_keeps_the_wait_after_a_break() {
+    let mut area = Area::new();
+    let walker = area.spawn(EntityData::new("Walker").with(&Transform::default()).with(
+        &Collider2D {
+            character: true,
+            ..Collider2D::default()
+        },
+    ));
+    let mut world = World::from_area(&area);
+    assert_eq!(tick(&mut world, walker, true), (true, true));
+    world.fail_flat_next();
+    walk(&mut world, walker, Vec3::new(0.01, 0.0, 0.0), 1);
+    world.rebuild(&area);
+    assert!(world.take_flat_broke().is_some(), "still to be told");
+    // Joined again by the rebuild, but not stepped until the wait's over.
+    assert!(world.flat().state().is_character(walker));
+    for step in 2..RESTART_WAIT {
+        assert_eq!(tick(&mut world, walker, false), (false, false), "{step}");
+    }
+    assert_eq!(tick(&mut world, walker, false), (true, false));
+}

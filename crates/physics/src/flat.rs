@@ -329,6 +329,13 @@ pub struct Flat {
     moved: Vec<EntityId>,
     /// Entities not added because [`crate::MAX_BODIES`] were there.
     refused: u64,
+    /// Rapier's work, guarded as 3D's is: when it panics 2D physics is
+    /// emptied rather than crash Solis, and this remembers it
+    /// ([`Self::take_broke`]).
+    guard: crate::guard::Guard,
+    /// The character whose move was all that had changed when Rapier
+    /// last failed, if that's what it was ([`Self::broke_on`]).
+    broke_on: Option<EntityId>,
 }
 
 impl std::fmt::Debug for Flat {
@@ -347,6 +354,8 @@ impl Clone for Flat {
             stale: true,
             moved: self.moved.clone(),
             refused: self.refused,
+            guard: self.guard,
+            broke_on: self.broke_on,
         }
     }
 }
@@ -498,18 +507,44 @@ impl Flat {
         maps
     }
 
+    /// Whether 2D physics broke (Rapier panicked) and was emptied since
+    /// last asked; asking clears it, so it's said once. The world starts
+    /// it again from its entities and maps.
+    pub fn take_broke(&mut self) -> bool {
+        self.guard.take_broke()
+    }
+
+    /// The character whose move 2D physics last broke on: nothing else
+    /// had changed since Rapier last caught up, so that move is what it
+    /// couldn't work out. `None` when it broke catching up with anything
+    /// else (entities that joined or were moved, walls), or never has.
+    pub fn broke_on(&self) -> Option<EntityId> {
+        self.broke_on
+    }
+
+    /// Makes Rapier's next catching up fail as a panic in it would, for
+    /// tests of what follows a break (nothing that reaches Rapier through
+    /// this crate makes it panic on purpose). Nothing else calls it.
+    pub fn fail_next(&mut self) {
+        self.guard.fail_next();
+    }
+
     /// Rapier catches up with what changed (its lists of what's near
-    /// what), so the next casts see it.
-    fn catch_up(&mut self) {
+    /// what), so the next casts see it. `after` is the character whose
+    /// move is all that changed since it last did, if that's so.
+    fn catch_up(&mut self, after: Option<EntityId>) {
         if !self.stale {
             return;
         }
         self.stale = false;
         let Self {
-            state, pipeline, ..
+            state,
+            pipeline,
+            guard,
+            ..
         } = &mut *self;
         let state = Arc::make_mut(state);
-        let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let caught = guard.run(|| {
             pipeline.step(
                 rp::Vector::ZERO,
                 &state.params,
@@ -525,10 +560,12 @@ impl Flat {
                 &(),
                 &(),
             );
-        }));
-        if caught.is_err() {
-            // Never a crash: 2D physics empties, as 3D's does.
+        });
+        if caught.is_none() {
+            // Never a crash: 2D physics empties, as 3D's does, and says so
+            // (`take_broke`).
             self.clear();
+            self.broke_on = after;
         }
     }
 
@@ -538,7 +575,9 @@ impl Flat {
     /// characters, and wanted moves that aren't finite, are left alone.
     /// A move further than [`MAX_FLAT_MOVE`] is cut short. Each
     /// character's [`FlatMove`] is this tick's (`seconds` long): one not
-    /// moved stood still and isn't grounded.
+    /// moved stood still and isn't grounded. If Rapier fails catching up
+    /// with a move, 2D physics is emptied and the rest aren't made
+    /// ([`Self::take_broke`]).
     pub fn move_characters(&mut self, moves: &[(EntityId, Vec2)], seconds: f32) {
         if self
             .state
@@ -550,6 +589,9 @@ impl Flat {
                 entry.last = FlatMove::default();
             }
         }
+        // The character whose move is all Rapier hasn't caught up with
+        // (none before one moves, whatever else changed by then).
+        let mut last_moved = None;
         for (id, wanted) in moves {
             let Some(entry) = self.state.by_entity.get(id).copied() else {
                 continue;
@@ -557,7 +599,7 @@ impl Flat {
             if !entry.character || !wanted.is_finite() {
                 continue;
             }
-            self.catch_up();
+            self.catch_up(last_moved.take());
             let Some(start) = self
                 .state
                 .colliders
@@ -598,9 +640,10 @@ impl Flat {
                     c.set_translation(to_rp(end));
                 }
                 self.moved.push(*id);
+                last_moved = Some(*id);
             }
         }
-        self.catch_up();
+        self.catch_up(last_moved);
     }
 
     /// The characters moved since last asked, in entity order, with where

@@ -11,6 +11,7 @@
 //! same changes always make the same handles.
 
 pub mod flat;
+mod guard;
 
 use glam::{Quat, Vec3};
 use rapier3d::prelude as rp;
@@ -457,9 +458,10 @@ pub struct Physics {
     pipeline: rp::PhysicsPipeline,
     /// Bodies not made because [`MAX_BODIES`] were already there.
     refused: u64,
-    /// Rapier panicked stepping (a state that doesn't hold together, from
-    /// a damaged save): physics was emptied rather than crash Solis.
-    broke: bool,
+    /// Rapier's work, guarded: when it panics (a state that doesn't hold
+    /// together, from a damaged save) physics is emptied rather than
+    /// crash Solis, and this remembers it ([`Self::take_broke`]).
+    guard: guard::Guard,
     /// Characters moved since [`Self::moved`] last said, in the order
     /// moved.
     characters_moved: Vec<EntityId>,
@@ -480,7 +482,7 @@ impl Clone for Physics {
             state: Arc::clone(&self.state),
             pipeline: rp::PhysicsPipeline::new(),
             refused: self.refused,
-            broke: self.broke,
+            guard: self.guard,
             characters_moved: self.characters_moved.clone(),
         }
     }
@@ -763,23 +765,21 @@ impl Physics {
                     // Rapier panicked (a state that doesn't hold
                     // together): never a crash, as a step that panics.
                     self.clear();
-                    self.broke = true;
+                    self.guard.note_break();
                     return is_character;
                 }
                 continue;
             };
             let spec = planned.spec;
-            let state = self.state_mut();
+            let Self { state, guard, .. } = &mut *self;
+            let state = Arc::make_mut(state);
             let place = |state: &State| {
                 let entry = state.by_entity.get(&id)?;
                 state.bodies.get(entry.body).map(|b| *b.next_position())
             };
             let before = place(state);
-            let Ok(found) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                apply_one(state, planned, dt)
-            })) else {
+            let Some(found) = guard.run(|| apply_one(state, planned, dt)) else {
                 self.clear();
-                self.broke = true;
                 return is_character;
             };
             // Only a character that went somewhere has its entity follow
@@ -870,12 +870,15 @@ impl Physics {
             return;
         }
         let Self {
-            state, pipeline, ..
+            state,
+            pipeline,
+            guard,
+            ..
         } = &mut *self;
         let state = Arc::make_mut(state);
         state.params.dt = dt;
         let gravity = rp::Vector::new(0.0, 0.0, GRAVITY);
-        let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let stepped = guard.run(|| {
             pipeline.step(
                 gravity,
                 &state.params,
@@ -891,19 +894,24 @@ impl Physics {
                 &(),
                 &(),
             );
-        }));
-        if stepped.is_err() {
+        });
+        if stepped.is_none() {
             // Never a crash: physics stops, and says so (`take_broke`).
-            self.state = Arc::new(State::default());
-            self.pipeline = rp::PhysicsPipeline::new();
-            self.broke = true;
+            self.clear();
         }
     }
 
     /// Whether physics broke (Rapier panicked) and was emptied since last
     /// asked; asking clears it, so it's said once.
     pub fn take_broke(&mut self) -> bool {
-        std::mem::take(&mut self.broke)
+        self.guard.take_broke()
+    }
+
+    /// Makes the next step fail as a panic in Rapier would, for tests of
+    /// what follows a break (nothing that reaches Rapier through this
+    /// crate makes it panic on purpose). Nothing else calls it.
+    pub fn fail_next(&mut self) {
+        self.guard.fail_next();
     }
 
     /// The bodies physics moves (dynamic ones, awake, and characters
