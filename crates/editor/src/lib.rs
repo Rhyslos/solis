@@ -144,6 +144,10 @@ mod kit_topdown_tests;
 #[cfg(test)]
 mod open_externally_tests;
 #[cfg(test)]
+mod picture_support;
+#[cfg(test)]
+mod picture_tests;
+#[cfg(test)]
 mod scale_levels_tests;
 #[cfg(test)]
 mod source_rules_tests;

@@ -104,6 +104,12 @@ jobs:
         timeout-minutes: 10
         env:
           REQUIRE_GPU: "1"
+      # The editor's picture tests: real frames of the editor, held to the
+      # design's colours and to Solis's approved pictures.
+      - run: cargo test --locked -p editor picture
+        timeout-minutes: 15
+        env:
+          REQUIRE_GPU: "1"
       # The window title starts with the program's name (APP_NAME in
       # crates/app/src/branding.rs).
       # The sample model the window test imports.
