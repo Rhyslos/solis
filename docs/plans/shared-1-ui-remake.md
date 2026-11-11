@@ -40,7 +40,9 @@ Shown to the project lead in the same pictures and not objected to, so treated a
 
 **Taken by the lead reviewer without asking** (the project lead signs off mock-ups and architecture; they were told): **D1** four phases, Shared 1a to 1d; **D3** the accent mapping as recommended, and saved panel arrangements are not carried over (from M4, when the dock goes; M1 leaves them alone); **D18** every token the specification leaves out, as recommended.
 
-**Not yet shown to the project lead** (to be shown before M3 and M4 build them): the Debug ribbon, the document tab's "+" and right-click menus, the Console's tools on the shelf bar, the shared dialog card.
+**2026-11-11, 18:50, on the whole first round:** "yeah the mockups look good".
+
+17. **All of mock-up round 1 is approved as drawn,** including what had not been shown before: the Debug ribbon with its Session group, the document tab's "+" and right-click menus, the Console's tools on the shelf bar, and the shared dialog card. The approved pictures are in the repository: [`docs/design/g-layout/additions/round-1/`](../design/g-layout/additions/round-1/README.md).
 
 
 **In numbers** (Inventory b.15): the design has 332 elements. 124 exist in Solis today (40 of them pure shell that this phase builds), 44 partly, and 164 are placeholders, 62 of those being three whole unbuilt screens. In the other direction, 29 pieces of today's interface have no place in the design (Inventory part (a)); each has a proposed place that follows the design's own patterns and needs a mock-up, as do the pages the design names but leaves undrawn (Build, Learn, and several sub-tabs of Preferences and Project settings).
@@ -254,7 +256,7 @@ The ribbon tabs switch what today's workspaces switch: Home is Level, Animate is
 
 **Risks.** Tests: this is where most of the 467 label look-ups meet changed labels. Mitigation: the `test_support` helpers land first, in the same pull request, and tests are moved onto them before the menus are removed. The dock in the middle with the ribbon above will look unfinished for one milestone.
 
-**Ask or mock up first.** Settled: D4 (Solis's words), D5 (today's logo in the tile), D6 (a UI tab), D10 (the ribbon collapses to its tabs), D13 (no play tint). Still to ask: D15 rows 13 and 24 (long press, wheel over the ribbon). Mock-up round 1 is approved for the Play group with Pause and Step, the Edit group (Undo, Redo) and the Create group for Solis's kinds; Debug's Session group has not been shown yet and is shown before this milestone builds it.
+**Ask or mock up first.** Settled: D4 (Solis's words), D5 (today's logo in the tile), D6 (a UI tab), D10 (the ribbon collapses to its tabs), D13 (no play tint). Still to ask: D15 rows 13 and 24 (long press, wheel over the ribbon). Mock-up round 1 is approved for the Play group with Pause and Step, the Edit group (Undo, Redo) and the Create group for Solis's kinds; Debug's Session group was approved with the rest of the round (2026-11-11).
 
 **Findings.** DEBT-05: `Shell` is its own type; no new fields on `Workbench` beyond it. DEBT-08: `search.rs` is split, not grown. TEST-03 (the smoke test's fixed sleeps): it must be edited anyway; replace the sleeps with waits for a window title or pixel while there. BUG-28 (`search.rs:702` walks the whole area each frame while open): don't carry it into the new list; cache by the document's revision.
 
@@ -284,7 +286,7 @@ The ribbon tabs switch what today's workspaces switch: Home is Level, Animate is
 
 **Risks.** The largest single change: 34 files, the dock's removal, saved layouts dropped. Three guards: (1) the reach test; (2) the panels' *contents* are not touched in this milestone, only where they sit; (3) the split of work inside the pull request: groups and shelf first with the dock still compiled, the switch second, the removal last, each a commit that passes. Wide panels in narrow columns (Properties at 260 px beside a tree) will look cramped until M5.
 
-**Ask or mock up first.** Settled: D14 (the Game is its own document tab). Still to ask: D12 (what to do with placeholders that have no phase: it decides what the unbuilt shelf tabs say). Mock-up round 1's pictures of the document tab's "+" and right-click menu, the Console's search, Clear and Copy beside the filters, and the shared dialog card have not been shown yet and are shown before this milestone builds them.
+**Ask or mock up first.** Settled: D14 (the Game is its own document tab). Still to ask: D12 (what to do with placeholders that have no phase: it decides what the unbuilt shelf tabs say). Mock-up round 1's pictures of the document tab's "+" and right-click menu, the Console's search, Clear and Copy beside the filters, and the shared dialog card were approved with the rest of the round (2026-11-11).
 
 **Findings.** DEBT-05: `show` gets shorter, the shell's state is out of `Workbench`. BUG-28 (`workbench.rs:1257` walks the whole area every frame for the panels): the Scene column and status bar read counts cached by revision; fix it here, where the code is being moved anyway. BUG-19 (tile caches shared by every view and the Game panel evict each other): the Game becoming a tab beside the viewport must not add a third user; leave the caches alone. DOC-05 and DOC-02: `src/README.md` and `ARCHITECTURE.md` lose the dock's rows and statements. TEST-03 again.
 
@@ -531,7 +533,7 @@ Every piece below is something the lead hasn't designed. Each is drawn in the de
 
 | Round | Needed before | What is drawn |
 | --- | --- | --- |
-| **1** | M2 to M4 | The placeholder look (four cases, section 3.2) · the icon sheet (the 45 icons the mock-up lacks) · the Play group while playing (Stop, Pause, Step) · Home's Edit group (Undo, Redo) · Home's Create group for Solis's kinds · Debug's Session group · the document tab's "+" and right-click menu · the Console's search, Clear and Copy on the shelf bar · the shared dialog card. *Drawn 2026-11-11; the placeholder look, the Play group, Home's groups, the Game tab and the icon sheets are approved, the rest still to be shown.* |
+| **1** | M2 to M4 | The placeholder look (four cases, section 3.2) · the icon sheet (the 45 icons the mock-up lacks) · the Play group while playing (Stop, Pause, Step) · Home's Edit group (Undo, Redo) · Home's Create group for Solis's kinds · Debug's Session group · the document tab's "+" and right-click menu · the Console's search, Clear and Copy on the shelf bar · the shared dialog card. *Drawn and **approved, all of it as drawn**, by the project lead on 2026-11-11. The approved pictures are in [`docs/design/g-layout/additions/round-1/`](../design/g-layout/additions/round-1/README.md), with a README naming each and the decision it settles.* |
 | **2** | M5 to M9 | The Hints card · the third Snapping row and the viewport's bottom-right pill · the Game tab's pills · the Library's chips for Solis's kinds, and Details for a sound, a sprite sheet and a text file · File › Learn, Updates and About · a project card's extras (pin, a missing folder, sort, Scan a folder…) · Preferences › General, Viewport and Shortcuts · Project settings › 2D (or Rendering) and Build |
 | **3** | M10 to M15 | HOME TOOLS · Tile map, with the Map shelf tab · LIBRARY TOOLS · Tileset · LIBRARY TOOLS · Picture (crops) · Animate with a clips file (Frames and Clips) · Animate with an animator · the UI tab · Audio's Bus group with ducking, and a sound event's takes · the Build tab |
 
