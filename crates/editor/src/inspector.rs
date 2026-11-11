@@ -316,7 +316,8 @@ fn shared_by(ui: &mut Ui, area: &area::Area, asset: AssetId) {
             })
             .response
             .on_hover_text(format!(
-                "{users} entities in this area use this file: a change to the file changes                  them all"
+                "{users} entities in this area use this file: a change to the file changes \
+                 them all"
             ));
     }
 }

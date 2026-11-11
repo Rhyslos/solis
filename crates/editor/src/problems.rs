@@ -164,7 +164,9 @@ pub(crate) fn between_pixels(
                 kind: ProblemKind::SpriteBetweenPixels,
                 entity: s.entity,
                 text: format!(
-                    "{name} rests between pixels (at pixel {x:.2}, {y:.2}): the game draws it                      on the nearest one, so it may seem to jump when it moves. Move it with                      snapping to pixels on to fix it"
+                    "{name} rests between pixels (at pixel {x:.2}, {y:.2}): the game draws it \
+                     on the nearest one, so it may seem to jump when it moves. Move it with \
+                     snapping to pixels on to fix it"
                 ),
             }
         })
@@ -788,6 +790,12 @@ mod tests {
                 .text
                 .contains("Off rests between pixels (at pixel 16.16")
         );
+        // One sentence, with no gap where the code breaks its line (the
+        // review, BUG-52).
+        assert!(found[0].text.ends_with(
+            "the game draws it on the nearest one, so it may seem to jump when it moves. Move \
+             it with snapping to pixels on to fix it"
+        ));
         // Through Problems: found once per revision.
         let mut problems = Problems::default();
         problems.refresh_between(1, 16, &area, &sprites);

@@ -6,6 +6,9 @@
 //!   theme; a colour that means something belongs in `theme.rs`. The ones
 //!   written elsewhere are counted in [`KEPT`], each with why it's no
 //!   theme's: one more anywhere fails.
+//! - **No gap in the middle of a sentence.** A message broken over two
+//!   lines of code without its `\` keeps the next line's indentation, and
+//!   shows it as a run of spaces.
 
 use std::path::{Path, PathBuf};
 
@@ -203,4 +206,84 @@ fn the_colour_rule_counts_numbers_and_nothing_else() {
     let file = "let a = 1; // Color32::from_gray(1)\n#[cfg(test)]\nmod tests {\n    \
                 Color32::from_gray(2);\n}\n";
     assert_eq!(colours_written(&code_of(file)), 0);
+}
+
+/// Whether `line` holds a run of four or more spaces in the middle of a
+/// sentence: after a small letter or a comma, colon or full stop, and
+/// before a small letter. Code samples indent after `\n`, and tables put
+/// their gaps before something else, so neither is caught.
+fn gap_in_a_sentence(line: &str) -> bool {
+    let code = line.split("//").next().unwrap_or_default();
+    let mut rest = code;
+    while let Some(start) = rest.find("    ") {
+        let (before, gap) = rest.split_at(start);
+        let after = gap.trim_start_matches(' ');
+        let mid_sentence = before.ends_with(|c: char| c.is_ascii_lowercase() || ",.:;".contains(c))
+            && !before.ends_with("\\n")
+            && after.starts_with(|c: char| c.is_ascii_lowercase());
+        if mid_sentence {
+            return true;
+        }
+        rest = after;
+    }
+    false
+}
+
+#[test]
+fn no_message_has_a_gap_in_the_middle_of_a_sentence() {
+    let crates: Vec<String> = std::fs::read_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join(".."))
+        .unwrap()
+        .flatten()
+        .filter(|entry| entry.path().join("src").is_dir())
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(crates.len() > 10, "found too few crates: {crates:?}");
+    let crates: Vec<&str> = crates.iter().map(String::as_str).collect();
+    let mut wrong = Vec::new();
+    for (path, text) in sources_of(&crates) {
+        for (number, line) in text.lines().enumerate() {
+            if gap_in_a_sentence(line) {
+                wrong.push(format!(
+                    "{}:{}: {}",
+                    path.display(),
+                    number + 1,
+                    line.trim()
+                ));
+            }
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "A sentence broken over two lines of code needs a `\\` at the end of the first, or the \
+         next line's indentation is shown as spaces:\n{}",
+        wrong.join("\n")
+    );
+}
+
+#[test]
+fn the_gap_rule_catches_a_lost_line_break_and_nothing_else() {
+    // Built here, so this file passes its own rule.
+    let gap = " ".repeat(22);
+    assert!(gap_in_a_sentence(&format!(
+        "\"the game draws it{gap}on the nearest one\""
+    )));
+    assert!(gap_in_a_sentence(&format!("\"changes,{gap}them all\"")));
+    assert!(gap_in_a_sentence(&format!(
+        "\"changes{}them all\"",
+        &gap[..4]
+    )));
+    assert!(!gap_in_a_sentence(&format!(
+        "\"changes{}them all\"",
+        &gap[..3]
+    )));
+    // Indentation, a code sample's lines, a table's columns and comments.
+    for fine in [
+        format!("{gap}\"on the nearest one, so it may seem to jump\""),
+        format!("\"component Hive {{\\n{gap}has {{\\n{gap}int made = 0;\""),
+        format!("\"  ok{gap}{{}}\""),
+        format!("\"{{nl}}{{indent}}{gap}send {{event}}() to Ui:entity();\""),
+        format!("let a = 1; // one{gap}two"),
+    ] {
+        assert!(!gap_in_a_sentence(&fine), "{fine}");
+    }
 }
