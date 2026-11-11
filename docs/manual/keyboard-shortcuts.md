@@ -117,7 +117,7 @@ These work while the pointer is over the Tileset tab; see [Tilesets and autotili
 | Action | Shortcut |
 |---|---|
 | Give a tile to a slot | Click the tile in the picture, then the slot; or drag the tile onto the slot |
-| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y |
+| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (over Properties while it shows the tileset, too) |
 
 ## The Atlas Crop tab (a picture's crops open)
 
@@ -199,7 +199,7 @@ These work in the viewport while a tile map's entity is selected; see [Painting 
 
 All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md).
 
-**Where the pointer rests decides what a key acts on**, so one press never does two things. With the pointer over a tab that edits a file of its own (Clips and Frames, Animator, Tileset, Atlas Crop, the UI editor's Canvas and Elements), the keys are that tab's alone: undo and redo, Delete, Ctrl + D and Esc act on what the tab shows, as its table above says, and never on the area as well. The area's other keys (the tools' and the tile painter's keys, F, F2, Ctrl + A, and X, Y, Z and L) wait until the pointer is back over the viewport or another panel. Over the Map tab, undo and redo are the map's, and every other key is still the area's. New, open and save, the search and Ctrl + Space work wherever the pointer is.
+**Where the pointer rests decides what a key acts on**, so one press never does two things. With the pointer over a tab that edits a file of its own (Clips and Frames, Animator, Tileset, Atlas Crop, the UI editor's Canvas and Elements), the keys are that tab's alone: undo and redo, Delete, Ctrl + D and Esc act on what the tab shows, as its table above says, and never on the area as well. The area's other keys (the tools' and the tile painter's keys, F, F2, Ctrl + A, and X, Y, Z and L) wait until the pointer is back over the viewport or another panel. Over the Map tab, undo and redo are the map's, and every other key is still the area's; the same goes for Properties while it shows a tileset's terrains, where undo and redo are that tileset's. New, open and save, the search and Ctrl + Space work wherever the pointer is.
 
 ## The search list
 

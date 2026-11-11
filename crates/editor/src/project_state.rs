@@ -105,8 +105,9 @@ pub(crate) struct ProjectState {
     pub(crate) frames_editor: Option<crate::frames_editor::FramesEditor>,
     /// The animator file open in the Animator tab (Phase 9, D3b).
     pub(crate) animator_editor: Option<crate::animator_editor::AnimatorEditor>,
-    /// The tileset open in the Tileset tab (Phase 9, D5).
-    pub(crate) tileset_editor: Option<crate::tileset_editor::TilesetEditor>,
+    /// The project's tilesets being changed, each with its file's undo
+    /// steps, and the one open in the Tileset tab (Phase 9, D5).
+    pub(crate) tilesets: crate::workbench_tileset::TilesetEdits,
     /// The atlas open in the Atlas Crop tab (decision 0089).
     pub(crate) atlas_editor: Option<crate::atlas_editor::AtlasEditor>,
     /// The open atlas's picture as a texture.

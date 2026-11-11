@@ -143,6 +143,9 @@ pub(crate) struct FramesOut {
     pub(crate) tileset_closed: bool,
     /// Save this kind's template.
     pub(crate) tileset_template: Option<tiles::TileKind>,
+    /// The tileset whose terrains Properties shows (its path): undo and
+    /// redo over Properties are that tileset's.
+    pub(crate) properties_tileset: Option<String>,
     /// The atlas changed: save it.
     pub(crate) atlas_changed: bool,
     /// The Atlas Crop tab was closed: close the file.
@@ -316,6 +319,7 @@ impl TabViewer for PanelViewer<'_> {
                 if self.in_front.contains(&Panel::Tileset)
                     && let Some(tileset) = &mut self.tileset
                 {
+                    self.frames_out.properties_tileset = Some(tileset.editor.path.clone());
                     egui::ScrollArea::vertical()
                         .id_salt("tileset properties")
                         .auto_shrink(false)
@@ -363,17 +367,15 @@ impl TabViewer for PanelViewer<'_> {
                     if let Some(crate::sprite_sheets::TilesetState::Read(set, notes)) =
                         sheets.tilesets.get(path)
                     {
+                        self.frames_out.properties_tileset = Some(path.to_owned());
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                if let Some(changed) =
-                                    crate::map_tab::tileset_properties(ui, path, set, notes)
-                                {
-                                    self.library_requests.push(LibraryRequest::SaveTileset(
-                                        path.to_owned(),
-                                        changed,
-                                    ));
-                                }
+                                let asked =
+                                    crate::map_tab::tileset_properties(ui, path, set, notes);
+                                self.library_requests.extend(asked.into_iter().map(|edit| {
+                                    LibraryRequest::EditTileset(path.to_owned(), edit)
+                                }));
                             });
                         return;
                     }

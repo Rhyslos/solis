@@ -1080,11 +1080,11 @@ impl Workbench {
             )
         });
         let tile_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
-        if self.open.tileset_editor.is_some() && sheets.tiles_animate() {
+        if self.open.tilesets.tab().is_some() && sheets.tiles_animate() {
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_millis(40));
         }
-        let tileset = self.open.tileset_editor.as_mut().map(|editor| {
+        let tileset = self.open.tilesets.tab_mut().map(|editor| {
             crate::workbench_tileset::tileset_ui(
                 editor,
                 &sheets,
@@ -1547,7 +1547,12 @@ impl Workbench {
             KeyOwner::Map => self.map_undo(redo, undo),
             KeyOwner::Clips | KeyOwner::Frames => self.frames_undo(redo, undo),
             KeyOwner::Animator => self.animator_undo(redo, undo),
-            KeyOwner::Tileset => self.tileset_undo(redo, undo),
+            KeyOwner::Tileset | KeyOwner::TilesetProperties => {
+                if let Some(path) = self.open.tilesets.undone_by(self.keys) {
+                    let path = path.to_owned();
+                    self.tileset_undo(&path, redo, undo);
+                }
+            }
             KeyOwner::Atlas => self.atlas_undo(redo),
             KeyOwner::Canvas | KeyOwner::Elements => self.screen_undo(redo),
         }

@@ -335,11 +335,18 @@ fn properties_change_a_map_file_s_tileset_and_size() {
     assert_eq!(bare.tileset, Some(set));
     assert_eq!(bare.counts(0)[usize::from(b'.')], 16);
     // A tileset's terrains changed in Properties are saved.
-    let mut changed = farm_set();
-    changed.terrains[0].name = "meadow".into();
+    let grass = w.viewport.sheets.tileset(set).unwrap().terrains[0].id;
     w.open.outbox.clear();
     w.library_request(
-        LibraryRequest::SaveTileset("farm.tileset.lst".into(), changed),
+        LibraryRequest::EditTileset(
+            "farm.tileset.lst".into(),
+            crate::map_tab::TerrainEdit::Set {
+                id: grass,
+                name: Some("meadow".into()),
+                code: None,
+                colour: None,
+            },
+        ),
         &mut actions,
     );
     assert!(w.open.outbox.iter().any(|a| matches!(

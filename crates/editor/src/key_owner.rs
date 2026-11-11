@@ -38,6 +38,11 @@ pub(crate) enum KeyOwner {
     /// Every other key is the area's, as the tab shows the selected
     /// entity's map, as Properties shows its components.
     Map,
+    /// Properties while it shows a tileset's terrains (the Tileset tab's,
+    /// or the one picked in the Library): undo and redo are that
+    /// tileset's, so what is changed there is undone there. Every other
+    /// key is the area's, as over Properties showing anything else.
+    TilesetProperties,
     /// The Clips tab: undo and redo are the clips file's.
     Clips,
     /// The Frames tab: the clips file's undo, Delete and Space.
@@ -59,7 +64,7 @@ impl KeyOwner {
     /// Whether the area's own keys are acted on: the tools', the tile
     /// painter's, Delete, Ctrl+D, F2, F, Esc, Ctrl+A and the axis keys.
     pub(crate) fn is_area(self) -> bool {
-        matches!(self, Self::Area | Self::Map)
+        matches!(self, Self::Area | Self::Map | Self::TilesetProperties)
     }
 
     /// Whether the editor acts on keys at all: not while the game has
@@ -103,7 +108,10 @@ impl Workbench {
             Some(Panel::Clips) if open.frames_editor.is_some() => Some(KeyOwner::Clips),
             Some(Panel::Frames) if open.frames_editor.is_some() => Some(KeyOwner::Frames),
             Some(Panel::Animator) if open.animator_editor.is_some() => Some(KeyOwner::Animator),
-            Some(Panel::Tileset) if open.tileset_editor.is_some() => Some(KeyOwner::Tileset),
+            Some(Panel::Tileset) if open.tilesets.tab().is_some() => Some(KeyOwner::Tileset),
+            Some(Panel::Properties) if open.tilesets.in_properties.is_some() => {
+                Some(KeyOwner::TilesetProperties)
+            }
             Some(Panel::AtlasCrop) if open.atlas_editor.is_some() => Some(KeyOwner::Atlas),
             Some(Panel::Canvas) if open.screen_doc.is_some() => Some(KeyOwner::Canvas),
             Some(Panel::Elements) if open.screen_doc.is_some() => Some(KeyOwner::Elements),

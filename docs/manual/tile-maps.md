@@ -17,7 +17,7 @@ Why values in the map, rather than an entity per plant? A field of a thousand cr
 For a few things that move or think (a scarecrow that turns, a chicken), use [sprites](sprites.md) instead.
 
 ## How to use it
-1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.tileset.lst` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too. The first terrain fills new maps.
+1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.tileset.lst` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too: change them there, add one with **+ Terrain**, or take one away with **×**. Every change to a tileset is an [undo](undo.md) step of that tileset's, wherever you make it: **Ctrl + Z** with the pointer over Properties while it shows the tileset, or over the Tileset tab, takes it back, so a terrain removed by mistake comes back with its tiles and rules. Dragging a colour is one step, made when you let go. The first terrain fills new maps.
 2. **Make a map:** **New > Tile map**. Solis makes `map.tilemap.lst`, 64 × 64 cells of the project's first tileset's first terrain. Click it in the Library to change its **Tileset** and its **Size** (in cells) in Properties.
 3. **Place it:** double-click the map in the Library (it goes where the viewport looks), or drag it into the viewport. Its top-left corner lands on a whole tile, and each cell is one tile across (the tile size in [2D settings](2d-pixel-perfect.md)). The **2D** view shows it best.
 4. **The Map tab** opens beside Properties while the map's entity is selected (select it in the Area panel). It shows:
@@ -145,6 +145,7 @@ Value kinds:
 | Action | Shortcut |
 |---|---|
 | Undo or redo a change in the Map tab, or a painted stroke | Ctrl + Z, Ctrl + Y (pointer over the tab, or a painting tool in use) |
+| Undo or redo a change to a tileset (its terrains, **Solid**) | Ctrl + Z, Ctrl + Y (pointer over Properties while it shows the tileset, or over the Tileset tab) |
 | A terrain's settings | Right-click its swatch in the Map tab |
 | The painting tools | B, U, N, G, I (see [Painting tiles](painting-tiles.md)) |
 

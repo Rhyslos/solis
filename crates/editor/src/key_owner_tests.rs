@@ -2,7 +2,6 @@
 //! tab that edits a file of its own, a key acts on what that tab shows
 //! and never on the area as well; everywhere else it's the area's.
 
-use crate::layout;
 use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
 use crate::panel::Panel;
 use crate::screen_doc::tests::MENU;
@@ -165,22 +164,6 @@ fn open_the_screen(w: &mut Workbench) {
         LibraryRequest::Open(LibraryKind::Code, SCREEN.into()),
         &mut actions,
     );
-}
-
-/// Draws the editor with `panel` in front and the pointer resting over
-/// the middle of it.
-fn rest_over(mut h: Harness<'static, State>, panel: Panel) -> Harness<'static, State> {
-    h.run();
-    layout::bring_to_front(&mut h.state_mut().0.dock, panel);
-    h.run();
-    let path = h.state().0.dock.find_tab(&panel).expect("the tab is open");
-    let body = h.state().0.dock[path.surface][path.node]
-        .get_leaf()
-        .expect("a tab group")
-        .viewport;
-    h.hover_at(body.center());
-    h.run();
-    h
 }
 
 /// What the area's own keys change.
@@ -454,8 +437,8 @@ const OWN_CHANGES: [OwnChange; 8] = [
     ),
     (
         Panel::Tileset,
-        |w| assert!(w.open.tileset_editor.as_mut().unwrap().add_terrain()),
-        |w| w.open.tileset_editor.as_ref().unwrap().file.terrains.len() == 4,
+        |w| assert!(w.open.tilesets.tab_mut().unwrap().add_terrain()),
+        |w| w.open.tilesets.tab().unwrap().file.terrains.len() == 4,
     ),
     (
         Panel::AtlasCrop,

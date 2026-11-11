@@ -117,6 +117,29 @@ fn settled(
     }
 }
 
+/// A colour button whose change counts once the mouse is let go, so a
+/// drag in its picker is one undo step (and one save), as with
+/// [`settled_drag`]. Returns the colour then.
+pub(crate) fn settled_colour(
+    ui: &mut Ui,
+    salt: impl std::hash::Hash + std::fmt::Debug,
+    value: [f32; 3],
+) -> Option<[f32; 3]> {
+    let id = ui.id().with(("settled colour", salt));
+    let now = value.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
+    let mut shown: [u8; 3] = ui.data(|d| d.get_temp(id)).unwrap_or(now);
+    ui.color_edit_button_srgb(&mut shown);
+    if ui.input(|i| i.pointer.any_down()) {
+        // Still held: shown as dragged so far, and kept for when it's let
+        // go.
+        ui.data_mut(|d| d.insert_temp(id, shown));
+        None
+    } else {
+        ui.data_mut(|d| d.remove::<[u8; 3]>(id));
+        (shown != now).then(|| shown.map(|v| f32::from(v) / 255.0))
+    }
+}
+
 /// The Clips tab. Returns whether the file changed (and must be saved).
 pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let mut changed = false;

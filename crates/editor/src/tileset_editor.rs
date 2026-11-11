@@ -1,9 +1,10 @@
-//! A tileset open in the Tileset tab (Phase 9, D5): its terrains, its
-//! picture and tile size, which tile fills each terrain's slots (pieces,
-//! variations and their weights, animation), and a rule terrain's rules.
-//! Every change is one undo step and keeps the file whole; what's picked
-//! (a terrain, a tile of the picture, a slot, a rule) and the patch to
-//! try edges on are the tab's own, never saved.
+//! A tileset being changed (Phase 9, D5), in the Tileset tab or from
+//! anywhere else that changes it (its Properties, the Map tab's Solid):
+//! its terrains, its picture and tile size, which tile fills each
+//! terrain's slots (pieces, variations and their weights, animation), and
+//! a rule terrain's rules. Every change is one undo step and keeps the
+//! file whole; what's picked (a terrain, a tile of the picture, a slot, a
+//! rule) and the patch to try edges on are the tab's own, never saved.
 
 use reflect::Id;
 use tiles::autotile;
@@ -28,7 +29,7 @@ pub(crate) enum Step {
     MarkUp,
 }
 
-/// A tileset open for editing.
+/// A tileset being changed, with its undo steps.
 #[derive(Debug, Clone)]
 pub(crate) struct TilesetEditor {
     /// Its path inside the assets.
@@ -264,6 +265,19 @@ impl TilesetEditor {
                 if let Some(c) = colour {
                     t.colour = c;
                 }
+            }
+        })
+    }
+
+    /// Makes the terrain written `code` solid or not (decision 0071).
+    pub(crate) fn set_solid(&mut self, code: u8, solid: bool) -> bool {
+        self.change(|f| {
+            if let Some(t) = f
+                .terrains
+                .iter_mut()
+                .find(|t| t.code as u32 == u32::from(code))
+            {
+                t.solid = solid;
             }
         })
     }

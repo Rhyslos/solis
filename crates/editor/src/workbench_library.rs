@@ -163,7 +163,7 @@ impl Workbench {
             LibraryRequest::NewAnimator(folder) => self.new_animator(&folder),
             LibraryRequest::NewTileset(folder) => self.new_tileset(&folder),
             LibraryRequest::NewTileMap(folder) => self.new_tile_map(&folder),
-            LibraryRequest::SaveTileset(path, set) => self.save_tileset(&path, set),
+            LibraryRequest::EditTileset(path, edit) => self.edit_terrains(&path, edit),
             LibraryRequest::ShapeTileMap(path, tileset, size) => {
                 let fill = tileset
                     .and_then(|t| self.viewport.sheets.tileset(t))

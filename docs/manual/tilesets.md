@@ -73,7 +73,7 @@ For the chosen terrain (no slot picked): its **Name**, **Code** (the character m
 | Action | Shortcut |
 |---|---|
 | Give a tile to a slot | Click the tile in the picture, then the slot; or drag the tile onto the slot |
-| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (pointer over the Tileset tab) |
+| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (pointer over the Tileset tab, or over Properties while it shows the tileset) |
 
 ## Tips and common problems
 - **Problem:** pink cells on a map. **Why:** a slot those cells need has no tile, or the cells' code isn't a terrain. **Fix:** the Tileset tab dashes the empty slots red; Problems says which map and which slots. Fill them.

@@ -168,7 +168,7 @@ fn files_open_in_tabs_close_with_their_project() {
         LibraryRequest::AtlasCrop("sprites/tools.png".into()),
         &mut actions,
     );
-    assert!(w.open.frames_editor.is_some() && w.open.tileset_editor.is_some());
+    assert!(w.open.frames_editor.is_some() && w.open.tilesets.tab().is_some());
     assert!(w.open.atlas_editor.is_some());
     for panel in [
         Panel::Clips,
@@ -181,7 +181,7 @@ fn files_open_in_tabs_close_with_their_project() {
 
     open_farm(&mut w, "copy", ids);
     assert!(w.open.frames_editor.is_none(), "the clips file closed");
-    assert!(w.open.tileset_editor.is_none(), "the tileset closed");
+    assert!(w.open.tilesets.tab().is_none(), "the tileset closed");
     assert!(w.open.atlas_editor.is_none(), "the atlas closed");
     for panel in Panel::OPEN_WITH_A_FILE {
         assert!(w.dock.find_tab(&panel).is_none(), "{panel:?} closed");
@@ -257,7 +257,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         cue_sounds,
         frames_editor,
         animator_editor,
-        tileset_editor,
+        tilesets,
         atlas_editor,
         atlas_texture,
         tile_textures,
@@ -317,7 +317,12 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert_eq!(pixels, &fresh.pixels);
     assert_eq!(code_checked, &None);
     assert!(frames_editor.is_none() && animator_editor.is_none());
-    assert!(tileset_editor.is_none() && atlas_editor.is_none());
+    same(
+        tilesets,
+        &fresh.tilesets,
+        "the tilesets' editors and undo steps",
+    );
+    assert!(atlas_editor.is_none());
     assert!(atlas_texture.is_none() && tile_textures.is_empty());
     same(
         map_edits,
@@ -404,7 +409,7 @@ fn work_on_the_farm(w: &mut Workbench, ids: Ids) {
         LibraryRequest::Open(LibraryKind::Code, "ui/pauseMenu.lst".into()),
         &mut actions,
     );
-    assert!(w.open.frames_editor.is_some() && w.open.tileset_editor.is_some());
+    assert!(w.open.frames_editor.is_some() && w.open.tilesets.tab().is_some());
     assert!(w.open.atlas_editor.is_some() && w.open.screen_doc.is_some());
     // The Library, windows, a seed.
     w.pick_in_library(MAP);

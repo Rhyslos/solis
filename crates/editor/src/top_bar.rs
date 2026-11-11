@@ -49,7 +49,7 @@ impl Workbench {
                         (file.to_owned(), self.in_front.contains(&Panel::Animator))
                     });
                     // So is the tileset open (Phase 9, D5).
-                    let tileset = self.open.tileset_editor.as_ref().map(|e| {
+                    let tileset = self.open.tilesets.tab().map(|e| {
                         let file = e.path.rsplit_once('/').map_or(e.path.as_str(), |(_, n)| n);
                         (file.to_owned(), self.in_front.contains(&Panel::Tileset))
                     });

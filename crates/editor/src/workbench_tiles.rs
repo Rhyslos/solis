@@ -1,9 +1,9 @@
 //! The workbench's side of tile maps (Phase 9, D4): placing a map from
-//! the Library, making new tilesets and maps, changing a tileset's
-//! terrains and a map file's tileset and size from Properties, and the
-//! Map tab beside Properties while a map is selected: its layers and
-//! values changed (each one undo step over the tab), saved at once and
-//! shown at once.
+//! the Library, making new tilesets and maps, changing a map file's
+//! tileset and size from Properties, and the Map tab beside Properties
+//! while a map is selected: its layers and values changed (each one undo
+//! step over the tab), saved at once and shown at once. A tileset is
+//! changed through its editor (`workbench_tileset.rs`), from here too.
 
 use crate::console::LogLevel;
 use crate::layout;
@@ -127,7 +127,7 @@ impl Workbench {
             .insert(path.clone(), TilesetState::Read(Arc::new(set), Vec::new()));
         self.show_in_library(&path);
         self.open_tileset(&path);
-        if let Some(editor) = &mut self.open.tileset_editor {
+        if let Some(editor) = self.open.tilesets.tab_mut() {
             editor.on_disk = false;
         }
     }
@@ -195,20 +195,6 @@ impl Workbench {
             });
         data.parent = parent.filter(|&p| self.open.document.area().contains(p));
         Some(self.spawn_selected(data))
-    }
-
-    /// Saves the tileset at `path`, changed in Properties, and shows the
-    /// change at once on every map.
-    pub(crate) fn save_tileset(&mut self, path: &str, set: Tileset) {
-        self.open.outbox.push(WorkbenchAction::SaveTileset {
-            path: path.into(),
-            text: tiles::tileset::write(&set),
-        });
-        Arc::make_mut(&mut self.viewport.sheets).tilesets.insert(
-            path.to_owned(),
-            TilesetState::Read(Arc::new(set), Vec::new()),
-        );
-        self.sources += 1;
     }
 
     /// Saves the map file at `path` as `map`, and runs it at once (a
@@ -389,29 +375,16 @@ impl Workbench {
     }
 
     /// Makes the terrain written `code` in the tileset of the map file at
-    /// `map_path` solid or not, and saves the tileset (decision 0071).
+    /// `map_path` solid or not, as one undo step of the tileset's, and
+    /// saves the tileset (decision 0071).
     pub(crate) fn set_terrain_solid(&mut self, map_path: &str, code: u8, solid: bool) {
-        let sheets = &self.viewport.sheets;
         let Some(set_id) = self.map_file(map_path).and_then(|m| m.tileset) else {
             return;
         };
-        let (Some(path), Some(set)) = (sheets.paths.get(&set_id), sheets.tileset(set_id)) else {
+        let Some(path) = self.viewport.sheets.paths.get(&set_id).cloned() else {
             return;
         };
-        let mut set = (**set).clone();
-        let Some(t) = set
-            .terrains
-            .iter_mut()
-            .find(|t| t.code as u32 == u32::from(code))
-        else {
-            return;
-        };
-        if t.solid == solid {
-            return;
-        }
-        t.solid = solid;
-        let path = path.clone();
-        self.save_tileset(&path, set);
+        self.change_tileset(&path, |editor| editor.set_solid(code, solid));
     }
 
     /// Takes in what the menu over the viewport asked for this frame.

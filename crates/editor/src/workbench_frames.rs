@@ -202,13 +202,14 @@ impl Workbench {
         {
             self.close_atlas();
         }
+        self.open.tilesets.in_properties = out.properties_tileset;
         if out.tileset_changed {
             self.save_open_tileset();
         }
         if let Some(kind) = out.tileset_template {
             self.save_template(kind);
         }
-        if self.open.tileset_editor.is_some()
+        if self.open.tilesets.tab().is_some()
             && (out.tileset_closed || self.dock.find_tab(&Panel::Tileset).is_none())
         {
             self.close_tileset();

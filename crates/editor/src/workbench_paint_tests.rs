@@ -192,7 +192,7 @@ fn ctrl_or_exact_places_the_piece_chosen() {
         weight: 1.0,
         animation: tiles::Animation::None,
     });
-    w.save_tileset("farm.tileset.lst", set);
+    assert!(w.change_tileset("farm.tileset.lst", |e| e.change(|f| *f = set)));
     w.viewport.tile_overlay.paint.code = Some(b'~');
     frame(&mut w, [30, 30], true, false, true, [true, false]);
     frame(&mut w, [30, 30], false, false, false, [false; 2]);
