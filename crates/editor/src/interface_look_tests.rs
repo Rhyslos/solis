@@ -279,7 +279,7 @@ fn the_look_in_use_is_this_thread_s_own() {
     assert_eq!(accent_fill(), Accent::Purple.colour());
     assert_eq!(tokens::size::row_h(), 22.0);
     assert_eq!(tokens::size::shelf_tab_h(), 24.0);
-    assert_eq!(selected(), tokens::select_row(Accent::Purple));
+    assert_eq!(selected(), tokens::select_item(Accent::Purple));
     assert_eq!(selected_border(), tokens::open_card_border(Accent::Purple));
     assert_eq!(notice(), tokens::changes_pill(Accent::Purple));
     // A thread where none was chosen has the standard one.

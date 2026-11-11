@@ -440,8 +440,12 @@ pub fn mix(colour: Color32, surface: Color32, share: f32) -> Color32 {
 /// How much accent goes into each mixed fill. The specification gives
 /// "16 to 24%" (line 71); the exact shares are from the mock-up.
 pub mod share {
-    /// A selected row or tile, a selected header.
+    /// A selected row in a tree or a list (the scene list).
+    pub const SELECTED_ROW: f32 = 0.22;
+    /// A selected tile, table row or header.
     pub const SELECTED: f32 = 0.16;
+    /// A selected track.
+    pub const TRACK: f32 = 0.18;
     /// The active large ribbon button.
     pub const ACTIVE_BUTTON: f32 = 0.22;
     /// The selected lane or module.
@@ -468,9 +472,40 @@ pub mod share {
     pub const ERROR_ROW: f32 = 0.08;
 }
 
-/// A selected row: the accent mixed into a shelf column.
+/// A selected row of a tree or a list: the accent mixed into a shelf
+/// column.
 pub fn select_row(accent: Accent) -> Color32 {
+    mix(accent.colour(), panel(), share::SELECTED_ROW)
+}
+
+/// A selected tile, table row or card: a lighter touch of the accent, on
+/// which field labels still read.
+pub fn select_item(accent: Accent) -> Color32 {
     mix(accent.colour(), panel(), share::SELECTED)
+}
+
+/// A line across, one whole pixel thick at any interface scale, with its
+/// top edge on the pixel edge nearest `y`.
+pub fn hline(painter: &egui::Painter, x: egui::Rangef, y: f32, colour: Color32) {
+    let scale = painter.ctx().pixels_per_point();
+    let top = on_pixel(y, scale);
+    let rect = egui::Rect::from_x_y_ranges(
+        on_pixel(x.min, scale)..=on_pixel(x.max, scale),
+        top..=top + hairline(scale),
+    );
+    painter.rect_filled(rect, 0.0, colour);
+}
+
+/// A line down, one whole pixel thick at any interface scale, with its
+/// left edge on the pixel edge nearest `x`.
+pub fn vline(painter: &egui::Painter, x: f32, y: egui::Rangef, colour: Color32) {
+    let scale = painter.ctx().pixels_per_point();
+    let left = on_pixel(x, scale);
+    let rect = egui::Rect::from_x_y_ranges(
+        left..=left + hairline(scale),
+        on_pixel(y.min, scale)..=on_pixel(y.max, scale),
+    );
+    painter.rect_filled(rect, 0.0, colour);
 }
 
 /// The active large ribbon button, or a selected header on the ribbon's

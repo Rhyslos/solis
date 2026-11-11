@@ -263,7 +263,8 @@ pub fn style_with(look: InterfaceLook) -> Style {
     spacing.icon_width_inner = size::CHECKBOX - 4.0;
     spacing.icon_spacing = size::GAP;
     // Scroll bars: thin, their handle on nothing, lighter under the
-    // pointer (Solis's own; the design shows none).
+    // pointer, and out of sight until the pointer is over what scrolls
+    // (Solis's own; the design's pictures show none).
     spacing.scroll = egui::style::ScrollStyle {
         floating: true,
         bar_width: size::SCROLL_BAR,
@@ -273,7 +274,7 @@ pub fn style_with(look: InterfaceLook) -> Style {
         dormant_background_opacity: 0.0,
         active_background_opacity: 0.0,
         interact_background_opacity: 0.0,
-        dormant_handle_opacity: 1.0,
+        dormant_handle_opacity: 0.0,
         active_handle_opacity: 1.0,
         interact_handle_opacity: 1.0,
         ..egui::style::ScrollStyle::solid()

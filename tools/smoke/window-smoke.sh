@@ -117,12 +117,14 @@ quit() {
 launch
 shot first
 
-# 1. The viewport is drawn: near its top is the sky, a dark blue-grey. A
+# 1. The viewport is drawn: near its top is the sky, a dark neutral grey
+#    (the design's backdrop: no tint, red, green and blue the same). A
 #    wrong colour setting shows as black or washed out.
 read -r R G B <<<"$(pixel 300 90 first)"
-echo "Sky at (300, 90): $R $G $B (expected a dark blue-grey)"
-[ "$B" -ge 20 ] && [ "$B" -le 80 ] || fail "the sky is not a dark blue-grey: ($R, $G, $B)"
-[ "$B" -gt "$R" ] || fail "the sky is not blue-grey: ($R, $G, $B)"
+echo "Sky at (300, 90): $R $G $B (expected a dark neutral grey)"
+[ "$B" -ge 15 ] && [ "$B" -le 80 ] || fail "the sky is not a dark grey: ($R, $G, $B)"
+[ $((R > B ? R - B : B - R)) -le 4 ] && [ $((G > B ? G - B : B - G)) -le 4 ] ||
+    fail "the sky is tinted, not neutral: ($R, $G, $B)"
 grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 
 # 2. W picks the Move tool: its button in the tool bar lights up.

@@ -776,7 +776,8 @@ One helper: `tokens::mix(accent, over, share)`, a straight blend of the two colo
 
 | Constant | Share of accent, over | Used for |
 | --- | --- | --- |
-| `SELECT_ROW` | 16% over `PANEL` | Selected rows (scene list, tables, LOD rows) |
+| `SELECT_ROW` | 22% over the row's surface (`PANEL`) | Selected rows of a tree or list: the scene list. *Corrected in M1: first written here as 16%; the design's first screen and the mock-up both have 22%, and a test now samples it.* |
+| `SELECT_ITEM` | 16% over `PANEL` | Selected table rows (LOD rows, the sound-event table) and cards; 18% for a selected track |
 | `SELECT_TILE` | 16% over the tile's surface; plus a 2 px accent inner outline on the thumbnail | Selected tiles |
 | `ACTIVE_BUTTON` | 22% over `RIBBON` | The active large ribbon button (white text) |
 | `SELECT_HEADER` | 16% over `RIBBON` | Selected emitter header, selected strip's header |

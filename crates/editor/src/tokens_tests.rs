@@ -222,7 +222,13 @@ fn the_pills_and_the_accent_s_shares_are_the_specification_s() {
     assert_eq!(PILL_OPACITY, 0.85);
     assert_eq!(pill_fill().a(), 217);
     assert!(spec.contains("accent mixed 16–24% over the surface"));
-    for share in [share::SELECTED, share::ACTIVE_BUTTON, share::LISTENING] {
+    for share in [
+        share::SELECTED,
+        share::SELECTED_ROW,
+        share::TRACK,
+        share::ACTIVE_BUTTON,
+        share::LISTENING,
+    ] {
         assert!((0.16..=0.24).contains(&share));
     }
 }
@@ -236,8 +242,13 @@ fn mixing_is_a_straight_blend_of_the_two_colours() {
         Color32::from_rgb(0x25, 0x2f, 0x3f)
     );
     assert_eq!(
-        select_row(Accent::Blue),
+        select_item(Accent::Blue),
         Color32::from_rgb(0x25, 0x2f, 0x3f)
+    );
+    // The scene list's selected row, as the design's first screen has it.
+    assert_eq!(
+        select_row(Accent::Blue),
+        Color32::from_rgb(0x29, 0x37, 0x4c)
     );
     assert_eq!(
         active_button(Accent::Blue),

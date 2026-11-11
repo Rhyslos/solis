@@ -143,10 +143,10 @@ pub fn accent_fill() -> Color32 {
     in_use().accent.colour()
 }
 
-/// The chosen row or page on a File page: the accent in use mixed into a
-/// panel.
+/// The chosen row or page on the launcher: the accent in use mixed into a
+/// panel, lightly enough that the row's quieter words still read.
 pub fn selected() -> Color32 {
-    tokens::select_row(in_use().accent)
+    tokens::select_item(in_use().accent)
 }
 
 /// The border round the chosen row and round a notice.

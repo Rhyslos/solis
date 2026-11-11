@@ -620,7 +620,7 @@ fn the_launcher_s_tints_are_the_accent_in_use_mixed_into_the_surface() {
         let drawn = rects_drawn(&h);
         let fills = |colour| drawn.iter().any(|(_, fill, _)| *fill == colour);
         let borders = |colour| drawn.iter().any(|(_, _, border)| *border == colour);
-        assert!(fills(tokens::select_row(chosen)), "{}", chosen.name());
+        assert!(fills(tokens::select_item(chosen)), "{}", chosen.name());
         assert!(fills(tokens::changes_pill(chosen)), "{}", chosen.name());
         assert!(
             borders(tokens::open_card_border(chosen)),
@@ -629,7 +629,7 @@ fn the_launcher_s_tints_are_the_accent_in_use_mixed_into_the_surface() {
         );
         assert!(borders(tokens::card_border()), "{}", chosen.name());
         for other in Accent::ALL.into_iter().filter(|a| *a != chosen) {
-            assert!(!fills(tokens::select_row(other)), "{}", chosen.name());
+            assert!(!fills(tokens::select_item(other)), "{}", chosen.name());
             assert!(!fills(tokens::changes_pill(other)), "{}", chosen.name());
             assert!(
                 !borders(tokens::open_card_border(other)),

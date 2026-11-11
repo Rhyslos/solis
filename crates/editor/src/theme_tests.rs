@@ -135,10 +135,12 @@ fn dark_text_reads_on_every_accent_and_on_play() {
 fn white_text_reads_on_every_accent_mixed_into_a_surface() {
     for accent in Accent::ALL {
         // The launcher writes labels on its chosen row and its notices;
-        // the ribbon's active button carries white only.
+        // a list's selected row and the ribbon's active button carry
+        // bright words only.
         let labels = [tokens::text_emphasis(), text(), text_weak()];
         for (name, fill, texts) in [
-            ("a selected row", tokens::select_row(accent), &labels[..]),
+            ("a selected row", tokens::select_row(accent), &labels[..2]),
+            ("a selected card", tokens::select_item(accent), &labels[..]),
             ("a notice", tokens::changes_pill(accent), &labels[..]),
             (
                 "the active ribbon button",
@@ -323,7 +325,7 @@ fn restyling_sets_the_scale_and_the_look_in_use() {
     assert_eq!(in_use(), look);
     assert_eq!(accent_fill(), Accent::Teal.colour());
     assert_eq!(size::field_h(), 28.0);
-    assert_eq!(selected(), tokens::select_row(Accent::Teal));
+    assert_eq!(selected(), tokens::select_item(Accent::Teal));
     // Another thread still has the standard look.
     std::thread::spawn(|| assert_eq!(in_use(), InterfaceLook::default()))
         .join()
