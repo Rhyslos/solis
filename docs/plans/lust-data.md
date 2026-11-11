@@ -12,6 +12,6 @@ The second step of "usable first" (decision 0070): every file Solis makes become
 | L5 | Sidecars (`<file>.meta.lst`) | Not built |
 | L6 | Save games (`.save.lst`) and recordings (`.recording.lst`), with the scale check | Not built |
 
-L2 to L6 are what's left of this step; ROADMAP.md's order builds them after Shared 1, the editor's UI remade.
+L2 to L6 are what's left of this step; ROADMAP.md's order builds them after Shared 1a to 1d, the editor's UI remade.
 
 Each step: a Lust shape and its classes, the reader (the older layout still read), the writer, an example file of the new version in `tests/fixtures/`, the format added to `reflect::data_files::KINDS` and to `app::to_lust`, its fuzz target reading the new layout, the manual and the changelog.
