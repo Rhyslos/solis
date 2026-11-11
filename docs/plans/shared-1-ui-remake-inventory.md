@@ -563,7 +563,7 @@ The contextual tab is real (b.0); this user of it is not. Double-clicking a mode
 | `proj.frame-rate` | Target frame rate | PLACEHOLDER | Placeholder setting row | not on the roadmap |
 | `proj.engine-version` | Engine version, "up to date", Check now (spec 958) | EXISTS | `AppInfo`, `updates.rs` | |
 | `proj.scripting` | Scripting "Ledger" (spec 959) | PARTLY | Shows where game code opens (the computer's program for the file, `app/src/external.rs`); there is nothing to choose. Decision D11. | not on the roadmap |
-| `proj.units` | Units and axes | PLACEHOLDER | Placeholder setting row showing Solis's fixed "Metres · Y up" | not on the roadmap |
+| `proj.units` | Units and axes | PLACEHOLDER | Placeholder setting row showing Solis's fixed "Metres · Z up" | not on the roadmap |
 | `proj.version-control` | Version control card: Check in, Review (spec 965) | PLACEHOLDER | Placeholder card | Shared 11 |
 | `proj.status` | "Saved · not checked in" (spec 987) | PARTLY | "Saved" is real; "not checked in" belongs to `proj.version-control` | Shared 11 |
 

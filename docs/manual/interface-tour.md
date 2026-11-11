@@ -76,7 +76,7 @@ Up and Down choose, **Enter** does it, **Esc** closes. Why? You don't have to re
 - **Code checked**, or how many mistakes the game's code has. Solis checks the code when the project opens and each time you save a code file; hover to see when it last did.
 - **No problems**, or how many there are. Click it to open the [Problems](problems.md) panel.
 - **Saved**, **Unsaved changes** or **Not saved yet**, for the open area ([Saving areas](saving-areas.md)).
-- On the right: **Playing** or **Paused** while the game runs, then the area's name, whether the viewport shows it in 2D or 3D, and for 2D the game's size in pixels (`farm · 2D · 480 × 270`, from **Edit > Settings… > 2D**).
+- On the right: **Playing** or **Paused** while the game runs, then the area's name, whether the viewport shows it in 2D or 3D, and for 2D the game's size in pixels (`farm · 2D · 480 × 270`, from **Edit > Settings… > 2D**). For three seconds after you click a part that isn't built yet, those last words say so instead ([Unfinished parts](unfinished-parts.md)).
 
 **Rearranging panels ([docking](concepts.md#the-window)):**
 1. Drag a panel by its tab.

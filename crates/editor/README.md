@@ -2,7 +2,7 @@
 
 **Layer 2 · Editor**
 
-The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the one-row top bar (menus, document tabs, Play and Build), the dockable panels (Viewport and Game, Area and Layers, Properties, Library and Code, Console and Problems), the controls in the viewport's corners, the icons (line drawings kept as data and drawn by Solis's own reader, in `icons/`), and the look: one theme, Neutral dark, made from the design's tokens (`tokens.rs`, decision 0100; the design itself is `docs/design/g-layout/`, and the frame is being remade to it, decision 0099). Interface text is Inter and monospace text JetBrains Mono (both OFL, in `assets/fonts`, licences in `licenses/fonts`).
+The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the one-row top bar (menus, document tabs, Play and Build), the dockable panels (Viewport and Game, Area, Properties, Library and Code, Console and Problems), the controls in the viewport's corners, the icons (line drawings kept as data and drawn by Solis's own reader, in `icons/`), and the look: one theme, Neutral dark, made from the design's tokens (`tokens.rs`, decision 0100; the design itself is `docs/design/g-layout/`, and the frame is being remade to it, decision 0099). Interface text is Inter and monospace text JetBrains Mono (both OFL, in `assets/fonts`, licences in `licenses/fonts`).
 
 ## Purpose
 
@@ -19,7 +19,10 @@ Draw the editor with egui and egui_dock, keep its state between frames (the pane
 - `area_panel.rs`, `properties.rs`, `console.rs`: those panels' contents.
 - `viewport.rs`: the viewport, its views (one, two or four, each with its own camera) and their corner controls.
 - `layout.rs`: the standard layout (Reset layout), and restoring a saved one.
-- `settings_window.rs`: Edit > Settings…, the editor's settings a page at a time, with a search box (decision 0061), and the project's (This project > 2D: the project's `area::pixels::PixelSettings`, saved with `WorkbenchAction::SavePixels`; decision 0062).
+- `icons/`: the icons, as a table of line drawings and the reader that draws them.
+- `widgets/`: the kit, the design's own controls (fields, switch, segmented control, chips, buttons, cards, rows and more), which the screens take up one milestone at a time.
+- `unbuilt.rs` and `unbuilt/`: the one way an unfinished part is drawn, the table of them, and the filter that takes them out when **Hide unfinished parts** is on (decision 0101).
+- `settings_window.rs`, `settings_appearance.rs`: Edit > Settings…, the editor's settings a page at a time, with a search box (decision 0061; the Appearance page is drawn with the kit), and the project's (This project > 2D: the project's `area::pixels::PixelSettings`, saved with `WorkbenchAction::SavePixels`; decision 0062).
 
 Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workbench_tests.rs`. `proptest-regressions/` holds the random cases the invariant tests (`invariant_tests.rs`) once failed on, which proptest runs again first; it is written by proptest, so it has no README. `src/README.md` lists every file in `src/`.
 

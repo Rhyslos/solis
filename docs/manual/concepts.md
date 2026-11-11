@@ -17,6 +17,9 @@
 - **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Everything else is a neutral grey, so the accent is easy to spot. Blue unless you pick another of the five in [Settings](settings.md). Colours that mean something keep their own: Play is the one light button, Stop is red, errors are red.
 - **Interface scale:** how large the whole editor is drawn, as a percentage, set in [Settings](settings.md). At 150% every button, word and gap is half as large again. It's for screens whose pixels are too small to read at 100%; it doesn't change your game.
 - **Density:** how much room the editor's controls take, set in [Settings](settings.md): Compact, Default or Comfortable. It changes the height of buttons and fields, not the size of text.
+- **Unfinished part:** a place in the editor for a feature that isn't built yet. Solis's interface follows one design, which has room for things that come in later updates; each is shown where it will be, in grey with a small hollow square, and does nothing but say so. One setting hides them all. Other programs call such a thing a *placeholder*. See [Unfinished parts](unfinished-parts.md).
+- **Ribbon:** in the editor's new interface, the band of buttons under the tabs along the top: each tab (Home, Library, Animate and so on) shows its own buttons there, gathered into named groups. It takes the place of the menus. It isn't in the editor yet: the new interface arrives a part at a time, and this page will say when.
+- **Shelf:** in the editor's new interface, the wide panel along the bottom, with tabs of its own: what's selected and its properties, the Console, Problems and more, side by side in columns. It takes the place of the panels docked round the viewport. Like the ribbon, it isn't in the editor yet.
 
 ## The 3D view
 
