@@ -29,7 +29,7 @@ Plain clicks on buttons and menus aren't listed. This page is for the keys, and 
 
 While the game has them, every key is the game's and the editor's shortcuts are off. In an [exported game](playtest-export.md), the game has them from the start, Esc included, and Alt + Enter really switches the window.
 
-**The game's own keys.** A game's controls are named [input actions](input.md), and these are the keys the ready-made ones start with. They're only a start: change them, and add your own, in **Edit > Input actions…**.
+**The game's own keys.** A game's controls are named [input actions](input.md), and these are the keys the ready-made ones start with. They're only a start: change them, and add your own, in **File > Input**.
 
 | Action | Keyboard and mouse | Gamepad |
 |---|---|---|
@@ -49,7 +49,7 @@ While the game has them, every key is the game's and the editor's shortcuts are 
 
 The [playground](characters-and-cameras.md#how-to-use-it) adds two of its own: it saves on F6 and loads on F7.
 
-In **Edit > Input actions…**, after clicking **+** to bind an input, the next key, mouse button, wheel notch or gamepad button you press is the one bound; Esc gives up instead. That key is only bound: it doesn't also do what it usually does in the editor, so pressing Delete to bind it deletes nothing.
+In **File > Input**, after clicking **+** to bind an input, the next key, mouse button, wheel notch or gamepad button you press is the one bound; Esc gives up instead. That key is only bound: it doesn't also do what it usually does in the editor, so pressing Delete to bind it deletes nothing.
 
 ## Tools (when the right mouse button isn't held)
 
@@ -194,7 +194,7 @@ These work in the viewport while a tile map's entity is selected; see [Painting 
 | Duplicate the selection | Ctrl + D |
 | Rename | F2 |
 | Point the camera at the selection | F |
-| Search for any action, file, entity or panel (with nothing being typed) | Space |
+| Search for anything to do, any file, entity or panel (with nothing being typed) | Space |
 | Pop the Library drawer up or away (or bring the pinned Library to the front) | Ctrl + Space |
 
 All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md).
@@ -203,7 +203,7 @@ All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z 
 
 ## The search list
 
-Space, or a click on **Search or do anything…** in the top bar, opens it; see the [Interface tour](interface-tour.md).
+Space, or a click on **Search or run a command** in the tab bar, opens it (the box shows the key at its right end); see the [Interface tour](interface-tour.md). These keys are the ones Solis has always had: the design the editor's look follows shows other keys in its pictures, and Solis keeps its own ([decision 0103](../decisions/0103-todays-keys-stay.md)).
 
 | Action | Shortcut |
 |---|---|
@@ -214,6 +214,24 @@ Space, or a click on **Search or do anything…** in the top bar, opens it; see 
 | Close the search | Esc, or click outside it |
 
 Over the Frames tab, Space plays and stops the clip instead, so point somewhere else first.
+
+The list shows each thing's shortcut beside it, so it is also the quickest place to look a key up. Some things are done from the search alone, having no button yet: New area, Open area…, Save area as…, Reset layout, the examples, and showing or hiding the viewport's corner controls.
+
+## The tab bar and the ribbon
+
+See the [Interface tour](interface-tour.md).
+
+| Action | Mouse or key |
+|---|---|
+| Bring a tab to the front | Click it |
+| Collapse the ribbon to its tabs, or bring it back | Double-click a tab, or click the chevron at the tab bar's right end |
+| With the ribbon collapsed: drop it over the editor for one choice | Click a tab; it goes when you choose something or move the pointer below it |
+| Scroll a ribbon that doesn't fit the window | Turn the mouse wheel over the ribbon |
+| Make the usual kind with a Create button | Click it (**Light** makes a point light) |
+| List the other kinds it makes | Click the small arrow on the button, or right-click the button |
+| Leave the File page for the tab you came from | Esc, or **Back to editor** |
+
+Why no long press on a Create button? Holding the mouse down is slow, and nothing on the button says it can be done; a small arrow can be seen.
 
 ## The Library
 
@@ -263,7 +281,7 @@ See [The Console](console.md).
 
 ## The launcher
 
-The launcher is what Solis starts on, and **File > Projects…** shows it again; see [The launcher](launcher.md).
+The launcher is what Solis starts on, and the **File** tab shows its pages again; see [The launcher](launcher.md).
 
 | Action | Shortcut |
 |---|---|

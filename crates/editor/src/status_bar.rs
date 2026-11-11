@@ -98,11 +98,10 @@ impl Workbench {
             ))
         });
         let saved = if self.open.document.is_dirty() {
-            Part::new("Unsaved changes", theme::text())
-                .more("File > Save area (Ctrl+S) keeps them.")
+            Part::new("Unsaved changes", theme::text()).more("Home > Save (Ctrl+S) keeps them.")
         } else if self.open.document.file().is_none() {
             Part::new("Not saved yet", theme::text_weak())
-                .more("This area has no file yet: File > Save area (Ctrl+S) gives it one.")
+                .more("This area has no file yet: Home > Save (Ctrl+S) gives it one.")
         } else {
             Part::new("Saved", theme::text_weak())
         };

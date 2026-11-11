@@ -18,7 +18,7 @@ use glam::Vec3;
 use reflect::EntityId;
 use std::sync::Arc;
 
-/// The benchmark's own game code (Help > Make the benchmark…): each
+/// The benchmark's own game code (Make the benchmark…, on File > Learn): each
 /// `Ship` flies a loop and fires a laser six times a second, keeping ten
 /// in flight, so the levels' projectiles (decision 0030) come with their
 /// units.
@@ -87,6 +87,9 @@ fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 6]) {
         .with_step_dt(1.0 / 60.0)
         .build_ui_state(
             |ui, state: &mut State| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 let (workbench, picker) = state;
                 let actions = workbench.show(ui, picker);
                 picker.actions.extend(actions);

@@ -387,9 +387,7 @@ fn a_camera_is_listed_with_its_icon_and_added_from_the_entity_menu() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    // The top bar's Entity menu (the Area panel has one too).
-    h.query_all_by_label("Entity").next().unwrap().click();
-    h.run();
+    // Home, Create, Camera.
     h.get_by_label("Add camera").click();
     h.run();
     let w = &h.state().0;

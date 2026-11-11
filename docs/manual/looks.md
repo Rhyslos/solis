@@ -15,7 +15,7 @@ The look applies to every model in the view at once: a material can't have a loo
 3. For the stylized look, choose how many **Bands of light** (2, 3 or 4), and whether to draw **Outlines**.
 4. Click anywhere else to close the menu. Solis remembers your choice.
 
-To try the looks without a model of your own, choose **Help > Add the sample area**: a checker cube, a row of plastic spheres from glossy to rough, a row of metal ones, and a wall with grooves and a glowing stripe.
+To try the looks without a model of your own, choose **Add the sample area** (press **Space** and type it): a checker cube, a row of plastic spheres from glossy to rough, a row of metal ones, and a wall with grooves and a glowing stripe.
 
 ## Settings
 | Setting | What it does |

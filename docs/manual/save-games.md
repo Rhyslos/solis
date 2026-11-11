@@ -31,18 +31,18 @@ pass QuickSave;
 end
 ```
 
-Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind them to keys of your choice ([Input](input.md)).
+Add the QuickSave and QuickLoad actions in **File > Input** and bind them to keys of your choice ([Input](input.md)).
 
 - A **slot** is a save's name: letters, digits, `_` and `-` (`quick`, `slot_1`, `before-boss`), but not a name Windows keeps for a device (`CON`, `NUL`, `PRN`, `AUX`, `COM1`, `LPT1` and so on). Saving to a slot that has a save replaces it. A project keeps at most 100 saves, and 2 GB of them together; past that, game code can replace one but not add more (the Console says so).
 - Both happen at the **end of the tick**, after every component's `update`, like moves ([what game code sees](game-code.md#components)). A load replaces the whole game, so nothing else runs in that frame after it.
 - Asking for the same slot again in one tick saves once (a save is the whole game, so a `Saves:saveTo` in every unit's `update` would otherwise make thousands at a time). At most four slots are saved or loaded in one tick.
 - Loading doesn't run the game's starts again (the code outside components, and its fields' starting values): what they did already happened in the saved game.
 - `Saves:saveTo`, `Saves:loadFrom` and `Input:rebind` work from `update` and events, not while a component starts (the Console says so if you try).
-- A `Saves:loadFrom` from game code leaves the game the mouse and keys, so the player carries on at once; **Play > Load a save…** gives them back to the editor.
+- A `Saves:loadFrom` from game code leaves the game the mouse and keys, so the player carries on at once; **Debug > Load save** gives them back to the editor.
 - **Game-wide objects** (a clock, the money: [Game code](game-code.md#game-wide-objects)) are kept with every field a component's could have, and loading gives them back. An object or field the code no longer has is left out, and the Console says which.
 - **Physics** is kept as each body's place and motion. Saving starts physics afresh from those, which a loaded game does too, so the loaded game carries on exactly as the saved one does (a stack of crates may settle by a hair as you save).
 
-**From the editor:** **Play > Load a save…** picks a save from the project's `saves` folder and plays from it, whether or not the game is running. **Stop** still puts the area back as it was before you pressed Play: a save is a moment in a game, not a change to your area. If you edit the area after loading, Stop offers to keep those edits as usual, and **Keep** makes them on your area from before Play, never on the save's (a change to an entity only the save had can't be kept; see [Play mode](play-mode.md)).
+**From the editor:** **Debug > Load save** picks a save from the project's `saves` folder and plays from it, whether or not the game is running. **Stop** still puts the area back as it was before you pressed Play: a save is a moment in a game, not a change to your area. If you edit the area after loading, Stop offers to keep those edits as usual, and **Keep** makes them on your area from before Play, never on the save's (a change to an entity only the save had can't be kept; see [Play mode](play-mode.md)).
 
 **Saves survive updates** ([Backups and upgrades](backups-and-upgrades.md)): a save made by an earlier Solis loads in a later one, upgraded as it's read. A save is never refused just for being older, so a game's update never wipes its players' progress. The very first saves (format 1, from before the Phase 6 review) kept physics in a form Solis no longer reads, so things that were moving start at rest where they were, and the Console says so. A save is still refused when it was made by a *newer* Solis.
 
@@ -57,7 +57,7 @@ Save games have no settings: everything is saved.
 None of its own. A game chooses its own save and load keys through [input actions](input.md).
 
 ## Tips and common problems
-- **Problem:** the Console says the game wasn't saved because save games are kept in a project. **Why:** saves are files in a project's folder. **Fix:** open or make a project (File > New project…).
+- **Problem:** the Console says the game wasn't saved because save games are kept in a project. **Why:** saves are files in a project's folder. **Fix:** open or make a project (File > New project).
 - **Problem:** "the saves folder is a link to somewhere else". **Why:** Solis only writes saves into a real folder in the project, so a project you downloaded can't send them elsewhere on your computer. **Fix:** delete the `saves` link (or move the real folder into the project).
 - **Problem:** "Couldn't load quick: it was saved by the project …". **Why:** a save belongs to the project that made it. **Fix:** load it in that project.
 - **Problem:** "Couldn't load …: it's damaged". **Why:** the file was cut short or changed (a save carries a checksum, so a damaged one is refused rather than half loaded). **Fix:** save again.

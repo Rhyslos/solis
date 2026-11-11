@@ -8,7 +8,7 @@ Before you update Solis on a project that matters (your own game), or in a workf
 The samples Solis makes (the turret sample, the benchmark and the playground) are checked this way by Solis's own tests on every change, so a build that breaks them never ships.
 
 ## How to use it
-1. **Keep a few recordings as checks.** Play your game while recording its input (**Play > Play and record inputs**, see [Input](input.md)), then press **Stop**. The recording is saved in the project's `recordings` folder. Move the ones you want checked into `recordings/checks/`. A good check is a minute of ordinary play: walking, using things, saving.
+1. **Keep a few recordings as checks.** Play your game while recording its input (**Debug > Play and record inputs**, see [Input](input.md)), then press **Stop**. The recording is saved in the project's `recordings` folder. Move the ones you want checked into `recordings/checks/`. A good check is a minute of ordinary play: walking, using things, saving.
 2. **Run the check** from a command prompt, with the build you're about to use:
 
    ```text

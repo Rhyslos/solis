@@ -318,24 +318,25 @@ fn the_editor_s_surfaces_are_the_design_s() {
     };
     assert_eq!(picture.size, [1440, 900]);
     // Each surface as the design's first screen has it (the test above
-    // holds that screen to the same tokens). The layout is still today's:
-    // the points are where today's panels are.
+    // holds that screen to the same tokens). The top is the design's; the
+    // middle is still today's panels, and the points are where they are.
     for (what, point, token) in [
-        ("the top bar", [860.0, 17.0], tokens::app()),
-        ("a tab strip", [200.0, 49.0], tokens::app()),
-        ("another tab strip", [800.0, 49.0], tokens::app()),
-        ("a tab behind", [440.0, 42.0], tokens::shelf_bar()),
+        ("the tab bar", [700.0, 17.0], tokens::app()),
+        ("the ribbon", [1150.0, 67.0], tokens::ribbon()),
+        ("a tab strip", [200.0, 115.0], tokens::app()),
+        ("another tab strip", [800.0, 115.0], tokens::app()),
+        ("a tab behind", [440.0, 108.0], tokens::shelf_bar()),
         ("the Area panel", [200.0, 500.0], tokens::panel()),
         ("Properties", [1270.0, 620.0], tokens::panel()),
         ("the Library", [900.0, 800.0], tokens::panel()),
         ("Hints", [1270.0, 866.0], tokens::panel()),
         (
             "the Library's tool row",
-            [700.0, 687.0],
+            [700.0, 705.0],
             tokens::shelf_bar(),
         ),
-        ("the search box", [1150.0, 17.0], tokens::field()),
-        ("Play", [1306.0, 9.0], tokens::PLAY_FILL),
+        ("the search box", [1000.0, 17.0], tokens::ribbon()),
+        ("Play", [1336.0, 50.0], tokens::PLAY_FILL),
         ("the status bar", [700.0, 889.0], tokens::code()),
     ] {
         assert_flat(&picture, what, point, 1.0);
@@ -354,9 +355,10 @@ fn an_open_menu_is_on_the_ribbon_s_grey() {
         return;
     };
     harness.run();
-    harness.get_all_by_label("Edit").next().unwrap().click();
+    // The list of kinds a Create button opens is a menu like any other.
+    harness.get_by_label("Light: more kinds").click();
     harness.run();
-    let item = harness.get_by_label("Settings…").rect();
+    let item = harness.get_by_label("Spotlight").rect();
     let picture = drawn(&mut harness);
     // Inside the menu, in the room between its border and its rows:
     // clear of every letter, of the border and of the rounded corners.

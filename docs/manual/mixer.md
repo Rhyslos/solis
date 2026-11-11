@@ -6,7 +6,7 @@
 When you want to balance a game's sound as a whole rather than one [sound event](sound-events.md) at a time: the music a little quieter, every effect a little louder, voices always clear. Each sound event plays through a [bus](concepts.md#sound), and a bus's fader turns all of its sounds up or down together, like a channel on a mixing desk. To change how one sound is heard (its volume, how far it carries), change its event instead.
 
 ## How to use it
-1. Click the **Mixer** tab, beside the Console, Problems and the Profiler at the bottom. (If you moved it, look for its tab, or use **Window > Reset layout**.)
+1. Click the **Mixer** tab, beside the Console, Problems and the Profiler at the bottom. (If you moved it, look for its tab, or use **Reset layout** (press **Space** and type it).)
 2. Each bus has a strip: its name, a **meter**, a **fader**, its volume in [dB](concepts.md#sound), and **M** (mute) and **S** (solo). **Master** comes first: every other bus is inside it, so its fader turns everything up or down.
 3. Drag a fader, or drag or type the number under it (double-click a fader to put it back to 0 dB). The change is heard at once and saved in the project when you let go (in `mixer.solmix`, beside `project.solis`).
 4. Press **Play**: the meters show how loud each bus is as the game plays, green, then yellow when loud, red near the top. If Master's meter keeps reaching red, turn something down.

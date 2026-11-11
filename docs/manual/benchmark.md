@@ -8,7 +8,7 @@
 - **When something feels slow:** if the benchmark is fine, the slowness is in your own game, and the [Profiler](profiler.md) shows where.
 
 ## How to use it
-1. **Help > Make the benchmark…** and choose an empty folder. Solis makes a new project there and opens it on `target.solarea`.
+1. **Make the benchmark…** (press **Space** and type it, or use **File > Learn**) and choose an empty folder. Solis makes a new project there and opens it on `target.solarea`.
 2. Press **Play**. The ships appear over the first few frames (500 a tick, so no frame stalls), then fly and fire.
 3. Open the **Profiler** (beside the Console) to see the frame's time, and where it goes.
 4. Press **Stop**, open another area from the Library, and play that.

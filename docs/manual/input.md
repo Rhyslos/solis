@@ -37,7 +37,7 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 
 While a screen with buttons is shown, only the four menu actions reach game code: Jump on Space doesn't also jump while Space chooses a button. A project whose input actions file is from before them still gets them while playing.
 
-**Changing them: Edit > Input actions…**
+**Changing them: File > Input**
 1. Each action shows its inputs. Click **×** beside one to unbind it.
 2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels). Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+Left`; turn the mouse wheel to bind a notch up or down.
 3. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, the mouse's movement, or the mouse wheel). One that goes with the mouse or the wheel has a **Mouse speed** and a **Stick and key speed**.
@@ -85,9 +85,9 @@ end
 Input is read **once per [tick](concepts.md#game-code)**, so every component, on every core, sees the same input for that tick.
 
 **Recording and playing back** (the **Play** menu)
-1. With a [project](projects-and-the-library.md) open, choose **Play > Play and record inputs**. Play as usual.
+1. With a [project](projects-and-the-library.md) open, choose **Debug > Play and record inputs**. Play as usual.
 2. Press **Stop**. The recording is saved in the project's `recordings` folder (the Console says its name).
-3. Choose **Play > Replay a recording…** and pick it. (While it replays, the game's `Saves:saveTo` makes its save as the recorded play did, but doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or by which tick it stopped matching (the world is compared every tick, game code's own values once a second).
+3. Choose **Debug > Replay a recording…** and pick it. (While it replays, the game's `Saves:saveTo` makes its save as the recorded play did, but doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or by which tick it stopped matching (the world is compared every tick, game code's own values once a second).
 
 A replay that stops matching means the game came out differently from the same input: the area or code changed since recording, or something in the game isn't deterministic. That's how you find it the tick it starts.
 
@@ -102,15 +102,15 @@ A replay that stops matching means the game came out differently from the same i
 |---|---|
 | Give the game the mouse and keys | Click the Game panel while playing |
 | Give them back to the editor | Esc |
-| Give up binding an input (after **+** in Edit > Input actions…) | Esc |
+| Give up binding an input (after **+** in File > Input) | Esc |
 
 While the game has them, every key is the game's: the editor's shortcuts are off.
 
 ## Tips and common problems
 - **Problem:** my character doesn't move when I press W. **Why:** the editor has the keys. **Fix:** click the Game panel first; its corner says when the game has the mouse and keys.
 - **Problem:** pressing W while playing picked the move tool. **Why:** the same: the game didn't have the keys. **Fix:** click the Game panel.
-- **Problem:** `Input:pressed(Action.Jump)` is never true. **Why:** the action has no inputs. **Fix:** check Edit > Input actions….
-- **Problem:** the Console says an input action "can't be named in game code". **Why:** game code names actions as Lust names, which start with a capital and hold letters, digits and `_` (`OpenMap`, `Fire_2`), and aren't all capitals. **Fix:** rename it in Edit > Input actions….
+- **Problem:** `Input:pressed(Action.Jump)` is never true. **Why:** the action has no inputs. **Fix:** check File > Input.
+- **Problem:** the Console says an input action "can't be named in game code". **Why:** game code names actions as Lust names, which start with a capital and hold letters, digits and `_` (`OpenMap`, `Fire_2`), and aren't all capitals. **Fix:** rename it in File > Input.
 - **Problem:** Esc does nothing in my game. **Why:** in the editor, Esc gives the mouse and keys back, so a game can't use it there. **Fix:** give the action another key as well, to try it in the editor (the ready-made **Pause** is on P). In an [exported game](playtest-export.md) every key is the game's, Esc included.
 - **Problem:** the Console says the input actions couldn't be read. **Why:** `input.solinput` was changed by hand and has a mistake. **Fix:** the Console says what; fix it, or change any action in the window, which writes it again.
 - **Problem:** the Console says the input actions file had a mistake and was kept as `input.solinput.bak`. **Why:** the file couldn't be read, so the ready-made actions were used; changing anything in the window writes the file again, so Solis kept yours first. **Fix:** copy what you need from the `.bak` file, then delete it.

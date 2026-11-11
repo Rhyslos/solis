@@ -1,0 +1,301 @@
+# The full review of November 2026: where each finding stands
+
+The review of the whole engine ([the findings](2026-11-full-review.md)) found 119 problems; one agent fixed each, and a lead reviewer read each fix. **It was paused on 2026-11-11 with 72 fixed and merged, one half fixed, 45 open and one left for the UI remake on purpose** (pull requests 228, 230 to 234), when the project lead moved the work to the editor's UI remake, and it does not resume by itself (the project lead, 2026-11-11: "after the UI update is done, i would like for you to stop working on the next updates and fixes"). What was planned after the fixes, and is **not done**: a second review pass over what the fixes changed, and a short final report for the project lead with every new find scored 1 to 10.
+
+When it resumes: check each open finding against the code first. The UI remake rewrites much of the editor's interface, so an open editor finding may be gone, moved or changed.
+
+## Open (45, and one half open)
+
+| Finding | Severity | What | Where it was | State |
+| --- | --- | --- | --- | --- |
+| BUG-31 | 6 | Pictures and tile maps up to 64 MB are read and decoded on the window thread | `crates/app/src/sprites.rs:161` | **Open** |
+| BUG-32 | 6 | Rescanning the assets folder hashes whole files and parses every sidecar on the frame loop | `crates/asset_db/src/db.rs:320` | **Open** |
+| BUG-53 | 5 | Every change in the assets folder walks the whole folder about five times on the window thread | `crates/app/src/window.rs:2066` | **Open** |
+| BUG-19 | 5 | Tile caches shared by every view and the Game panel evict each other each frame | `crates/editor/src/tile_view.rs:289` | **Open** |
+| BUG-21 | 5 | The Frames ruler's work has no bound (1.2 million marks a frame) | `crates/editor/src/frames_view.rs:750` | **Open** |
+| BUG-22 | 5 | Tile-map UI scans the whole map every frame | `crates/editor/src/map_tab.rs:296, tile_view.rs:764` | **Open** |
+| BUG-27 | 5 | A Markdown file is re-parsed every frame, and its inline parser is quadratic | `crates/editor/src/text_view.rs:182` | **Open** |
+| BUG-28 | 5 | Panels walk the whole area every frame | `crates/editor/src/workbench.rs:1257, inspector.rs:168, search.rs:702` | **Open** |
+| BUG-33 | 4 | A crash in the game-code worker is silent and leaves an exported game on "Starting" forever | `crates/app/src/game_code.rs:315` | **Open** |
+| BUG-35 | 4 | Starting a streamed sound opens and scans the whole Ogg file on the frame loop | `crates/sound/src/device.rs:259` | **Open** |
+| BUG-36 | 3 | The import cache hashes a file, then reads it again to import it | `crates/asset_db/src/cache.rs:70` | **Open** |
+| BUG-38 | 5 | Projectiles and unlit models vanish in a 2D picture that has a parallax layer behind it | `crates/render/src/projectiles.rs:78` | **Open** |
+| BUG-39 | 5 | Game UI and the pixel stage create GPU buffers and bind groups every frame | `crates/render/src/ui.rs:312, pixel.rs:372` | **Open** |
+| BUG-40 | 4 | Every viewport target allocates a 16 MiB shadow map, including parallax layer pictures | `crates/render/src/renderer.rs:281` | **Open** |
+| BUG-41 | 4 | A full letter atlas wipes itself mid-layout: garbled text and a frame-rate collapse | `crates/ui/src/text.rs:177` | **Open** |
+| BUG-42 | 4 | "Matches the shader layout" tests only check Rust against itself | `crates/render/src/frame.rs:312` | **Open** |
+| BUG-43 | 3 | The letter atlas's revision isn't unique across font sets, and its upload skips the length check | `crates/ui/src/text.rs:57` | **Open** |
+| BUG-44 | 2 | Frame statistics count sprites that were not drawn, and warn every frame | `crates/render/src/renderer.rs:1185` | **Open** |
+| BUG-45 | 2 | move_piece computes an indent and throws it away | `crates/ui/src/source.rs:981` | **Open** |
+| TEST-01 | 5 | A sidecar test must reach its check within 50 ms of writing a file | `crates/asset_db/src/db.rs:783` | **Open** |
+| TEST-02 | 4 | Tests race the game code's real-time limits (100 ms a call, 250 ms a tick) | `crates/script/src/runtime_hostile_tests.rs:162, crates/editor/src/game_code_tests.rs:473` | **Open** |
+| TEST-03 | 3 | The window smoke test waits by sleeping fixed times | `tools/smoke/window-smoke.sh:65` | **Open** |
+| TEST-04 | 2 | Short wall-clock budgets asserted in ordinary tests | `crates/reflect/src/id.rs:297, crates/editor/src/workbench_paint_tests.rs:77, crates/app/src/sprites.rs:539` | **Open** |
+| DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | **Open** |
+| DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | **Open** |
+| DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | **Open** |
+| DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | **Open** |
+| DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | **Open** |
+| DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | **Open** |
+| DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
+| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | **Open** |
+| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | **Open** |
+| DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
+| DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
+| DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
+| DEBT-07 | 4 | run_game is one 485-line function; play.rs and save_game.rs are twice the size guide | `crates/editor/src/play.rs:460` | **Open** |
+| DEBT-09 | 4 | viewport.rs (1,742 lines) and the editor views are far past the size guide | `crates/editor/src/viewport.rs:887` | **Open** |
+| DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | **Open** |
+| DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
+| DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
+| DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | **Open** |
+| CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | **Half open:** part a fixed (`06af30cfe`), part b open |
+| DOC-01 | 4 | Crate READMEs' "Depends on" sections no longer match Cargo.toml | `crates/script, editor, app, area, asset_db READMEs` | **Open** |
+| DOC-02 | 4 | ARCHITECTURE.md has eight statements the code has overtaken | `ARCHITECTURE.md:20,27,59,62,110,112,114,136` | **Open** |
+| DOC-05 | 3 | Source-folder READMEs miss files and name functions that don't exist | `crates/editor/src, script/src, tiles/src, world/src, physics/src, animation/src, area/src/builtin READMEs` | **Open** |
+| TEST-06 | 2 | Tests leave their temporary folders behind (over 10,000 in /tmp after a day of runs) | `tests across crates that make solis-* folders in the temp dir` | **Open** |
+
+DEBT-08 (files too large in the editor's interface) is left for the UI remake on purpose: its milestones split those files as they rebuild them.
+
+## Every finding
+
+| Finding | Severity | What | Where it was | State |
+| --- | --- | --- | --- | --- |
+| SEC-01 | 8 | An assembly's "missing part" overrides aren't counted, so a small project can expand to 100 million entities | `crates/area/src/assembly.rs:176,326` | Fixed (`58a311acf`) |
+| SEC-02 | 8 | A small .glb can make the importer copy its binary part once per buffer (100 GB asked for) | `crates/assets/src/reader.rs:310` | Fixed (`3463521c0`) |
+| SEC-08 | 6 | A screen's styles are copied out of game code with no size cap | `crates/script/src/screens.rs:661` | Fixed (`e87897dc3`) |
+| SEC-09 | 5 | A tile map in the Lust layout has no block limit and is grouped quadratically | `crates/tiles/src/map_lust.rs:463` | Fixed (`b68e56831`) |
+| SEC-14 | 5 | The Windows build decodes BMP pictures that nothing tests or fuzzes | `crates/assets/src/texture.rs:41, tile_art.rs:59` | Fixed (`716c13c39`) |
+| SEC-10 | 4 | A sidecar using the biggest part ID makes giving out new IDs quadratic | `crates/asset_db/src/sidecar.rs:251` | Fixed (`af7971360`) |
+| SEC-11 | 4 | A save's lines are split into unbounded word lists before their length is checked | `crates/editor/src/save_game.rs:565,645` | Fixed (`583e3e6f7`) |
+| SEC-12 | 3 | A collider's centre can reach the physics library unbounded or infinite | `crates/physics/src/lib.rs:616` | Fixed (`87dcceedf`) |
+| SEC-15 | 3 | The "ordinary file, bounded read" guard exists four times, and sound files have none | `crates/sound/src/read.rs:188, crates/assets/src/reader.rs:168` | Fixed (`7901d7eb1`) |
+| SEC-03 | 6 | "Open code" on a Lua component opens the .lua file in the system's program | `crates/editor/src/commands.rs:438, crates/app/src/window.rs:2377` | Fixed (`ddd3407ef`) |
+| SEC-06 | 6 | A copy that wasn't installed still downloads and silently runs the installer | `crates/app/src/updates.rs:165` | Fixed (`42af00f66`) |
+| SEC-04 | 5 | A project's own file chooses the export folder, and the dialog probes it on opening (network share) | `crates/app/src/playtest.rs:266, crates/editor/src/export_dialog.rs:250` | Fixed (`8f6d741f5`) |
+| SEC-07 | 5 | getfenv and setfenv are left in the Lua sandbox | `crates/script/src/luau.rs:257` | Fixed (`441895c88`) |
+| SEC-05 | 4 | Choosing a placeable file in the search opens it in the system's program | `crates/editor/src/search.rs:623` | Fixed (`1ec719c31`) |
+| SEC-13 | 4 | Nine copy-pasted save functions, one (sound events) missing its path check | `crates/app/src/project.rs:285` | Fixed (`68fb21f3c`) |
+| BUG-01 | 8 | Exported games never get a sound device: they play no sound | `crates/app/src/window.rs:2017, window_playtest.rs:184` | Fixed (`6cbe5a8f2`) |
+| BUG-02 | 8 | A light with a negative or NaN cone crashes the editor (clamp panics) | `crates/editor/src/area_view.rs:370, commands.rs:1190` | Fixed (`78db0edac`) |
+| BUG-03 | 8 | Keep after Stop also keeps what the game spawned, despawned or loaded | `crates/editor/src/play.rs:422,1018` | Fixed (`e2f817de7`) |
+| BUG-06 | 7 | Delete and Ctrl+D over the UI canvas or Atlas tab act on the area's selection | `crates/editor/src/workbench.rs:1924` | Fixed (`3d1cf9428`) |
+| BUG-12 | 7 | A parent loop in an area file makes world matrices quadratic and overflow | `crates/area/src/tree.rs:106, document.rs:242` | Fixed (`fe5f6498f`) |
+| BUG-17 | 7 | Tileset edits from the Library's Properties skip undo; one click deletes a terrain's art | `crates/editor/src/map_tab.rs:635` | Fixed (`145213347`) |
+| BUG-04 | 6 | The pending Keep/Undo question is ignored by quit and survives opening another project | `crates/editor/src/workbench.rs:1800,728` | Fixed (`8333005fc`) |
+| BUG-07 | 6 | Opening another project leaves per-project state behind (map undo writes into the new project) | `crates/editor/src/workbench.rs:733` | Fixed (`cd93578b2`) |
+| BUG-13 | 6 | A placed assembly's part moved to the top level is not saved | `crates/area/src/assembly.rs:556` | Fixed (`6f0d463fe`) |
+| BUG-05 | 5 | Moving or deleting the open area's file while playing is undone by Stop | `crates/editor/src/play.rs:426` | Fixed (`0e55cbdb0`) |
+| BUG-18 | 6 | Dragging a piece on a UI canvas never moves it | `crates/editor/src/canvas_view.rs:723,1122` | Fixed (`e8b2d76b7`) |
+| BUG-25 | 6 | Dragging a number in Input actions saves and re-checks the project every frame | `crates/editor/src/input_window.rs:87` | Fixed (`e277f5427`) |
+| BUG-08 | 5 | The clips editor never follows its file on disk, unlike its three siblings | `crates/editor/src/workbench_frames.rs:78` | Fixed (`8a3c4139f`) |
+| BUG-09 | 5 | Sheets, maps and clips have two owners, and the app's copy overwrites the editor's | `crates/editor/src/workbench_tiles.rs:216, crates/app/src/window.rs:1138` | Fixed (`3ce39ce87`) |
+| BUG-20 | 5 | Dragging a number or colour in the 2D editors makes one undo step and one save per frame | `crates/editor/src/tileset_view.rs:1043` | Fixed (`233cd65db`) |
+| BUG-26 | 5 | Closing the Canvas or Elements tab closes the clips file instead of the screen | `crates/editor/src/panels.rs:657` | Fixed (`ce1d81f4a`) |
+| BUG-10 | 4 | Caches use a freed pointer's address as their version | `crates/editor/src/workbench_library.rs:427` | Fixed (`7bf7db0a2`) |
+| BUG-11 | 4 | A screen whose view fails runs the game's screen code again every frame | `crates/editor/src/workbench_screens.rs:145` | Fixed (`c268e1e6f`) |
+| BUG-23 | 4 | Scaling with the gizmo can store a NaN rotation | `crates/editor/src/transforming.rs:376` | Fixed (`58e98a1ee`) |
+| BUG-24 | 3 | Right-click doesn't cancel a box selection in a perspective view | `crates/editor/src/viewport.rs:1218` | Fixed (`05c12646b`) |
+| BUG-29 | 3 | Hard-coded neutral colours left behind by the theme switch | `crates/editor/src/launcher.rs:404, theme.rs:251` | Fixed (`764a79f55`) |
+| BUG-30 | 3 | The Library's right-click menu shows "Open" twice | `crates/editor/src/library.rs:960` | Fixed (`d14327b92`) |
+| BUG-51 | 3 | A spawn that can't be made is dropped without a word | `crates/editor/src/play.rs:992` | Fixed (`da1a6af9d`) |
+| BUG-52 | 2 | Two messages lost their line continuations and show runs of spaces | `crates/editor/src/problems.rs:165, inspector.rs:319` | Fixed (`16f911adb`) |
+| BUG-46 | 6 | Lua can't reach Window, Screens, Maps or Animators | `crates/script/src/luau.rs:213` | Fixed (`e3a6e41c8`) |
+| BUG-47 | 6 | Random numbers and spawned IDs repeat while game speed is 0 | `crates/script/src/game.rs:701` | Fixed (`07b64d4f8`) |
+| BUG-14 | 5 | In a world with no 3D bodies, physics returns before children are settled (one tick behind) | `crates/world/src/lib.rs:1489` | Fixed (`0f530aca5`) |
+| BUG-15 | 4 | 2D physics empties itself silently after a caught panic and is never rebuilt | `crates/physics/src/flat.rs:529` | Fixed (`04938c8cd`) |
+| BUG-16 | 4 | Edits while playing drop state game code set (shown screens, stopped sounds) | `crates/world/src/lib.rs:598` | Fixed (`71d164e1d`) |
+| BUG-48 | 4 | Events sent by a component's start are credited to another component | `crates/script/src/runtime.rs:521` | Fixed (`bcff6c2e1`) |
+| BUG-49 | 4 | A native's error reaches a Lua author with no line, in the library's words | `crates/script/src/lua_components.rs:70` | Fixed (`4de97ae4b`) |
+| BUG-50 | 4 | A compile that hangs leaves its thread running; a new one starts on every save | `crates/script/src/code.rs:304` | Fixed (`8b984745e`) |
+| BUG-31 | 6 | Pictures and tile maps up to 64 MB are read and decoded on the window thread | `crates/app/src/sprites.rs:161` | **Open** |
+| BUG-32 | 6 | Rescanning the assets folder hashes whole files and parses every sidecar on the frame loop | `crates/asset_db/src/db.rs:320` | **Open** |
+| BUG-53 | 5 | Every change in the assets folder walks the whole folder about five times on the window thread | `crates/app/src/window.rs:2066` | **Open** |
+| BUG-19 | 5 | Tile caches shared by every view and the Game panel evict each other each frame | `crates/editor/src/tile_view.rs:289` | **Open** |
+| BUG-21 | 5 | The Frames ruler's work has no bound (1.2 million marks a frame) | `crates/editor/src/frames_view.rs:750` | **Open** |
+| BUG-22 | 5 | Tile-map UI scans the whole map every frame | `crates/editor/src/map_tab.rs:296, tile_view.rs:764` | **Open** |
+| BUG-27 | 5 | A Markdown file is re-parsed every frame, and its inline parser is quadratic | `crates/editor/src/text_view.rs:182` | **Open** |
+| BUG-28 | 5 | Panels walk the whole area every frame | `crates/editor/src/workbench.rs:1257, inspector.rs:168, search.rs:702` | **Open** |
+| BUG-33 | 4 | A crash in the game-code worker is silent and leaves an exported game on "Starting" forever | `crates/app/src/game_code.rs:315` | **Open** |
+| BUG-35 | 4 | Starting a streamed sound opens and scans the whole Ogg file on the frame loop | `crates/sound/src/device.rs:259` | **Open** |
+| BUG-36 | 3 | The import cache hashes a file, then reads it again to import it | `crates/asset_db/src/cache.rs:70` | **Open** |
+| BUG-37 | 2 | Changing a tile value's kind skips the map's memory limit | `crates/tiles/src/map.rs:655` | Fixed (`2b6daec1d`) |
+| BUG-38 | 5 | Projectiles and unlit models vanish in a 2D picture that has a parallax layer behind it | `crates/render/src/projectiles.rs:78` | **Open** |
+| BUG-39 | 5 | Game UI and the pixel stage create GPU buffers and bind groups every frame | `crates/render/src/ui.rs:312, pixel.rs:372` | **Open** |
+| BUG-40 | 4 | Every viewport target allocates a 16 MiB shadow map, including parallax layer pictures | `crates/render/src/renderer.rs:281` | **Open** |
+| BUG-41 | 4 | A full letter atlas wipes itself mid-layout: garbled text and a frame-rate collapse | `crates/ui/src/text.rs:177` | **Open** |
+| BUG-42 | 4 | "Matches the shader layout" tests only check Rust against itself | `crates/render/src/frame.rs:312` | **Open** |
+| BUG-43 | 3 | The letter atlas's revision isn't unique across font sets, and its upload skips the length check | `crates/ui/src/text.rs:57` | **Open** |
+| BUG-44 | 2 | Frame statistics count sprites that were not drawn, and warn every frame | `crates/render/src/renderer.rs:1185` | **Open** |
+| BUG-45 | 2 | move_piece computes an indent and throws it away | `crates/ui/src/source.rs:981` | **Open** |
+| TEST-01 | 5 | A sidecar test must reach its check within 50 ms of writing a file | `crates/asset_db/src/db.rs:783` | **Open** |
+| TEST-02 | 4 | Tests race the game code's real-time limits (100 ms a call, 250 ms a tick) | `crates/script/src/runtime_hostile_tests.rs:162, crates/editor/src/game_code_tests.rs:473` | **Open** |
+| TEST-03 | 3 | The window smoke test waits by sleeping fixed times | `tools/smoke/window-smoke.sh:65` | **Open** |
+| TEST-04 | 2 | Short wall-clock budgets asserted in ordinary tests | `crates/reflect/src/id.rs:297, crates/editor/src/workbench_paint_tests.rs:77, crates/app/src/sprites.rs:539` | **Open** |
+| DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | **Open** |
+| DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | **Open** |
+| DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | **Open** |
+| DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | **Open** |
+| DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | **Open** |
+| DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | **Open** |
+| DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
+| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | **Open** |
+| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | **Open** |
+| DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
+| DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
+| DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
+| DEBT-07 | 4 | run_game is one 485-line function; play.rs and save_game.rs are twice the size guide | `crates/editor/src/play.rs:460` | **Open** |
+| DEBT-09 | 4 | viewport.rs (1,742 lines) and the editor views are far past the size guide | `crates/editor/src/viewport.rs:887` | **Open** |
+| DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | **Open** |
+| DEBT-08 | 4 | The editor's panel files and functions are several times the size limit (launcher, library, search, properties) | `crates/editor/src/library.rs, launcher.rs, search.rs` | Left for the UI remake, on purpose |
+| DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
+| DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
+| DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | **Open** |
+| CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | **Half open:** part a fixed (`06af30cfe`), part b open |
+| CI-02 | 6 | The weekly whole-game invariants job cannot fail | `.github/workflows/deep-checks.yml:113` | Fixed (`ccb0ac84a`) |
+| CI-03 | 3 | The release pipeline installs unpinned tools | `.github/workflows/windows-exe.yml:98` | Fixed (`1728e3def`) |
+| CI-04 | 2 | The updater's network tests are ignored and nothing runs them | `crates/updater/src/tests.rs:473` | Fixed (`2ebb5be5b`) |
+| CI-05 | 3 | The fuzzers' lock file is ungoverned and out of step with the main one | `fuzz/Cargo.lock, .github/dependabot.yml` | Fixed (`b40e02648`) |
+| DOC-01 | 4 | Crate READMEs' "Depends on" sections no longer match Cargo.toml | `crates/script, editor, app, area, asset_db READMEs` | **Open** |
+| DOC-02 | 4 | ARCHITECTURE.md has eight statements the code has overtaken | `ARCHITECTURE.md:20,27,59,62,110,112,114,136` | **Open** |
+| DOC-03 | 4 | The README's Status paragraph is stuck at Phase 1, and no top-level folder is described | `README.md:7` | Fixed (`df907ff62`) |
+| DOC-05 | 3 | Source-folder READMEs miss files and name functions that don't exist | `crates/editor/src, script/src, tiles/src, world/src, physics/src, animation/src, area/src/builtin READMEs` | **Open** |
+| DOC-08 | 5 | The manual's interface tour still describes the editor from before the overhaul | `docs/manual/interface-tour.md:11-41` | Fixed (`903d02f68`) |
+| DOC-09 | 5 | The manual says Solis reopens the last project; it never does | `docs/manual/projects-and-the-library.md:19` | Fixed (`fbd18c07c`) |
+| DOC-10 | 4 | The manual says Properties shows starting values while playing; it shows live values | `docs/manual/game-code.md:73` | Fixed (`381399738`) |
+| DOC-11 | 4 | Eleven manual pages still say built features are "coming" | `docs/manual (2d-pixel-perfect, sprites, screens, sounds, importing-models, entities, save-games, tile-maps, looks)` | Fixed (`f6cafac5b`) |
+| DOC-12 | 3 | The manual names a menu item and a control that don't exist | `docs/manual/characters-and-cameras.md:23, physics.md:15, play-mode.md:56` | Fixed (`5cbb353e4`) |
+| DOC-13 | 3 | ROADMAP and plans state built things as begun, and 2D triggers as delivered | `ROADMAP.md:183-187, docs/plans/lust-data.md:7, ideas.md:5` | Fixed (`d06da17d6`) |
+| DOC-14 | 2 | The shortcuts page claims every key but omits the newer ones | `docs/manual/keyboard-shortcuts.md` | Fixed (`b7084ebb2`) |
+| DOC-15 | 2 | The game code page lists three files in the solis folder; there are many more | `docs/manual/game-code.md:18` | Fixed (`e1c12f9e5`) |
+| SEC-16 | 8 | The weekly fuzzer found a file that aborts the model reader; the issue has been open since 1 November | `crates/assets (model import), GitHub issue #157` | Fixed (`0c676502c`) |
+| SEC-17 | 8 | The weekly fuzzer found a sound file that asks for 16 GB of memory; the issue has been open since 1 November | `crates/sound/src/read.rs, GitHub issue #156` | Fixed (`4dd592913`) |
+| TEST-05 | 5 | The game-code checksum test sometimes differs between 1 and 3 shards on a busy machine | `crates/script/src/game_tests.rs, GitHub issue #177` | Fixed (`cc8759e25`) |
+| SEC-18 | 5 | A streamed Ogg's seek can reach stream headers nothing checked, seek(0) reopens without the check, and two hostile test files pass for the wrong reason | `crates/sound/src/read.rs (Decoder::seek), crates/sound/tests/data/huge_codebook.ogg` | Fixed (`b42955689`) |
+| BUG-54 | 4 | Typing a field's starting value into Properties while playing never reaches the game | `crates/editor/src (syncing.rs), GitHub issue #57` | Fixed (`678a5cc7e`) |
+| CI-06 | 6 | The weekly whole-game invariants job has never really run: it cannot build, and reported success | `.github/workflows/deep-checks.yml` | Fixed (`766f05eb4`) |
+| SEC-19 | 7 | A fuzzer that had never run found a tileset file that hangs the reader within one minute | `crates/tiles/src/tileset.rs, dry run 42883728097 job "Fuzz tileset"` | Fixed (`3bc5008f8`) |
+| SEC-20 | 7 | A fuzzer that had never run found an atlas file that crashes its reader within one minute | `crates/animation/src/atlas.rs (or its caller), dry run 42886786800 job "Fuzz atlas"` | Fixed (`600f96655`) |
+| SEC-21 | 6 | Data files are checked by the Lust compiler with no budget: a 160 KB file takes 13 seconds and bigger ones hang | `crates/area/src/lust_data.rs (read)` | Fixed (`ee23a73ee`) |
+| BUG-55 | 8 | The editor can save a tile map it cannot reopen (the format's limits allow maps bigger than the reader can read) | `crates/tiles/src/map_file.rs, crates/editor (Map tab saves)` | Fixed (`58dd901d6`) |
+| TEST-06 | 2 | Tests leave their temporary folders behind (over 10,000 in /tmp after a day of runs) | `tests across crates that make solis-* folders in the temp dir` | **Open** |
+| BUG-56 | 6 | A placed assembly part moved out from under another part of the same copy is lost on reopen once its old parent part is deleted | `crates/area/src/assembly.rs (place_in skips it by its original parent)` | Fixed (`bdff81056`) |
+
+## Notes from the fixes
+
+What each fix changed in behaviour, left undone, or noticed and left alone. These are the raw material for the second pass and the final report.
+
+- **SEC-01:** count is an upper bound (overrides on present parts count too); noticed: area_file fuzz target never reaches place_in/overrides; assembly.rs 1250 lines; manual assemblies.md doesn't mention the entity limit
+- **SEC-02:** only first buffer may be the BIN part; buffers shrunk to declared; behaviour change: uri-less buffer after the first is refused; noticed: referenced_files decodes every data: uri to throw away; read_image doesn't count data: images against budget; reader.rs 660 lines
+- **SEC-08:** one Reading budget for a view (pieces, styles, bytes, buttons); MAX_STYLES 200,000, MAX_VIEW_BYTES 4 MB; noticed: no fuzz target runs a screen's view at all; MAX_PIECES still drops extra pieces silently; screens.rs 825 lines
+- **SEC-09:** hash lookups, MAX_THINGS, MAX_PIECES=12M before Lust; costliest allowed file 1.7 GB / 7.3 s. FOR THE PROJECT LEAD: the format's limits allow maps that can't be read back (16 full layers at 4096^2 = 306 MB of rows ~5 GB; four full layers at 4096^2 already refused; readable: three full layers at 4096^2 or 1000^2 with a number in every cell)
+- **SEC-14:** new assets/src/picture.rs: PNG/JPEG decided by first bytes in one place
+- **SEC-10:** forward-only search for free part IDs
+- **SEC-11:** words_of(line, most) in all four save line readers; noticed: fuzz seed busy.solsave is still format 2 (current 8)
+- **SEC-12:** scaled collider centre clamped to MAX_PLACE; infinite size -> MAX_SIZE; noticed: Flat::add/set_place accept any finite place; Flat::set_walls hi-lo can overflow
+- **SEC-15:** new reflect/src/ordinary_file.rs used by every reader incl. sound; FOR PASS 2 / PROJECT LEAD: the guarded file opener now lives in 'reflect' (its README said it must never touch files; reworded) and 'assets' now depends on 'reflect': a tiny crate of its own is the alternative. Left unguarded on purpose: app play_files::first_line, script::code::read_within, asset_db backup read. fuzz/Cargo.lock touched (deleted on main: resolve at rebase)
+- **SEC-03:** rule in one function (LibraryKind::opens_in_its_program) + app/external.rs is the only place files reach the system; button for non-Lust code reads 'Show in folder'; noticed: links/junctions inside assets aren't resolved before the inside-assets check; Library's Console message hard-codes the program's name
+- **SEC-06:** updater refuses download/start for a copy that wasn't installed (Copy::may_update); launcher shows NotInstalled; left: Updates::follow still queues a Ready installer without checking (start_installer refuses at close); Remote::download on Source still public
+- **SEC-04:** export folder remembered in the program's settings per project, never from the project's file; no disk look until Export is pressed; small UI behaviour change: the '(2)' suffix is no longer shown beforehand; noticed: 'last export.txt' has no fuzz target (CI-01b); game_name keeps invisible direction-changing characters
+- **SEC-07:** getfenv/setfenv removed; engine's own Lua made before game code; allow-list test of every global; noticed: game code still has os.time/os.date/os.clock (differ between runs), newproxy, gcinfo, print
+- **SEC-05:** search picks the file in the Library; no system request
+- **SEC-13:** Projects::place used by all nine savers; follow-up: new_sound_event, move_path, delete, new_folder pass the app's rule first (assets_or_inside, named_inside); noticed: asset_db keeps its own copies of the path rule (files.rs inside, backup.rs twice; it sits below editor so one rule means moving the function down); window.rs writes assemblies to a path it builds itself, not through Projects
+- **BUG-01:** sound poll moved to the top of the frame, before the split (one place); headless whole-frame tests of App; noticed: show_library_messages() never called in playtest_frame (library warnings never reach an exported game's log); a card that opens after play began never restarts a loop started before it and isn't told the game is paused (game_audio.rs:133); the new tests open the real sound card (App::new takes no opener)
+- **BUG-02:** Light::sanitized applied in from_data + place sanitizes, file_light makes angles finite, Model::is_finite checks cone; noticed: render/src/instances.rs:196 clamp bound from an instance's radius (NaN would panic; unverified whether reachable); Console 'set' stores a number outside its field's range as typed (console_commands.rs:859), Properties then shows -5 while it draws at 1 degree
+- **BUG-03:** Keep's document = pre-Play document + the user's undo steps made again on it (History::follow); game edits aren't steps so never come along; no question when nothing of the user's is left; loaded save not refused (edits after it applied where they fit); noticed: History::hold suspends decision 0022's undo memory limit for steps made during one play (may want a decision line); redo of a step made and undone while playing is lost after Keep (in manual); Area::apply(Spawn) doesn't check the root's parent exists; History::undo/redo drop the step when applying it fails; tools/ci/breaking-check.sh fails with unbound $2 when run without arguments; cargo test -p app not run by the agent (disk)
+- **BUG-06:** new editor/src/key_owner.rs: KeyOwner decided once per frame, every handler asks it; six *_hovered flags replaced by pointer_over: Option<Panel>; FOR THE LEAD TO CONFIRM: over a file's tab the area's keys (Q/W/R/S/T, B/U/N/G/I, F, F2, Ctrl+A, X/Y/Z/L) now wait; Atlas Delete works over the whole tab; Space over Clips opens the search; kept as today: over Properties, Library, Console, floating windows and menus the area owns Delete/Ctrl+D/Esc; Delete while painting deletes the map's entity
+- **BUG-12:** Area::mend_loops in the reader and the assembly expander (lowest-ID entity of each loop to the top level); Area::ancestors is the one walk up (ends in a loop); editor = world for damaged areas; Spawn under own descendant refused; a parent naming a missing entity is left as written (counts as top level everywhere, Problems names it); noticed: world::add_subtree drops spawned entities that form a loop among themselves; text::read mends without a message (save games)
+- **BUG-17:** TilesetEdits in ProjectState: one TilesetEditor per tileset file; Workbench::change_tileset the only way a tileset changes; duplicate terrain code removed; colour drag = one step, one save; FOR THE LEAD TO CONFIRM: Ctrl+Z/Ctrl+Y over Properties showing a tileset is the tileset's (KeyOwner::TilesetProperties); Solid ticked in the Map tab is undone over the Tileset tab or Properties, not over the Map tab; noticed: editor-tools F7 (late own save read back counts as a change on disk) now also reaches tilesets edited from Properties; editor-tools F4 (Tileset tab's colour/weight/grid drags a step per frame) untouched
+- **BUG-04:** Workbench::request is the one check (leaves_the_area); held action re-requested after Keep/Undo all; question drawn over the launcher; Help's sample projects now ask about unsaved changes too; noticed: Keep/Undo all has no Cancel (a quit can't be called off at that question: project lead's call, needs a mock-up); edits made between File > Open area passing the check and the file dialog answering are still lost unasked; app-side guard (window.rs one line) has no test
+- **BUG-07:** new editor/src/project_state.rs: ProjectState (59 fields, Workbench::open) replaced whole by set_project; Viewport::forget_project names every field; 84 files touched (mechanical self.X -> self.open.X); behaviour: clipboard and Console seed now go with the project, Game panel mute resets with the project; noticed: Area panel hidden/locked sets aren't cleared by New/Open area within a project
+- **BUG-13:** Override.parent is ParentChange (Unchanged/TopLevel/Under); area + assembly files are format 2 (rule 23: no-op upgrader, v2 fixtures, Breaking line); noticed: saves made now can't be loaded by earlier builds (save format number unchanged; in the Breaking line); fuzz/make-seeds.sh not rerun (busy.solarea stays version 1); NEW BUG-56 found (moved part lost when its old parent part is deleted)
+- **BUG-05:** file_moved also applies to Playing::before and PlayChanges::document (follow, not wait-for-Stop)
+- **BUG-18:** Drag::Move keeps the press position; one restyle on release (one step, one save); FOR THE LEAD: while dragged, an outline now shows where the piece lands (replaces the blue drop line on a canvas); the piece itself doesn't follow the pointer; noticed: atlas_view crop drag and graph_canvas box drag start ~6 points late (where the drag is recognised); graph_canvas drops movement on the release frame; a corner-handle resize on the canvas is two undo steps
+- **BUG-25:** Mouse speed and Stick speed use settled_number: one SaveBindings on release/Enter/focus lost; behaviour: a playing game gets a dragged speed on release, not live (manual says so); noticed: Settings > 2D saves once per typed digit
+- **BUG-08:** clips editor follows its file through own_files::follow; open_frames keeps the editor of the file already open
+- **BUG-09:** own_files.rs: one SaveFile action, App::save_file answers every save, Unanswered laid over app's sheets. BEHAVIOUR for lead: a failed save is taken back (shown as file has it) and kept as one undo step. Not done: SaveScreen failure still only a Console line. Noticed: Sprites::want reads files on the frame thread; map undo after an outside change writes older whole map; stroke keeps old base if file changes mid-stroke
+- **BUG-20:** new editor/src/settled.rs (settled_drag/number/colour moved out of frames_view); every number/colour in tileset, frames, atlas, map tab commits once; noticed: day_colours.rs colour and hour, inspector.rs colours and numbers commit on .changed() relying on the area's merge key; several other once-per-drag patterns exist (mixer fader_changed, settings pixel_control, sound_event_view); settled_colour commits on any mouse release while its value differs
+- **BUG-26:** on_close matches every Panel with no catch-all; FramesOut::screen_closed; close_screen closes both tabs; open_screen opens Elements too; noticed: after a project change, Canvas/Elements tabs in a saved UI layout can still show the 'No screen is open' placeholder
+- **BUG-10:** made_from.rs MadeFrom/Numbered; TileMap::layer_stamp (not in PartialEq). Noticed: gpu.rs never frees a tile atlas texture when its picture is replaced until another project opens
+- **BUG-11:** workbench_screens + game_screens try once per build; start_screens counted in tests
+- **BUG-23:** transforming.rs taken_apart; scale keeps start rotation; non-finite results leave the entity as it was; 8064-case sweep. Noticed: own_axes gives world axes for a flat turned entity
+- **BUG-24:** flying starts only while tools.pressing is Nothing; tests through Workbench::show. Noticed: Tools::cancel (Esc) drops a click on its way while answering 'nothing cancelled'; in a flat view a right press mid-box cancels and also slides the view if dragged
+- **BUG-29:** palette card_border/selected/selected_border/notice; align grid uses accent; Thumbnails::follow_theme; set_accent deleted; source_rules_tests KEPT list. FOR LEAD: Graphite's four launcher values are derived (no mock-up): border 262626, selected 1a283b, selected_border 2d4868, notice 111e2d. LEFT (need a Graphite value = new design): graph_canvas grid/wire/box greys, tileset_view backdrop/swatch, canvas_view from_gray(40) + float backdrop, atlas_view from_gray(60), day_colours from_gray(30). Noticed: update bar and chosen-row tint are blue whatever the accent; theme.rs comment says 'Amber unless the user picks another' above the Blue default
+- **BUG-29:** Windows CI failed: source_rules_tests split on '#[cfg(test)]\nmod' missed CRLF; plain_lines added + test
+- **BUG-30:** LibraryKind::menu_actions; Place greyed with hover text for a file with no ID. Noticed: library.rs about 1,600 lines
+- **BUG-51:** land_edits records why a spawn made nothing, said once per play per name; exported game shares the path. Noticed: AssemblyError Display prints raw asset IDs (still used by 'Couldn't place'); Expander::size_of re-walks a failing assembly on every spawn
+- **BUG-52:** both strings fixed; source_rules_tests gap rule over every crate's src
+- **BUG-46:** prelude groups from describe::owners(); Luau::ways walks solis itself for the interface snapshot; runtime_reach_tests for Lua/Lust/Rust. Noticed: natives stay reachable by raw key (solis.World_say), undocumented
+- **BUG-47:** WorldView::tick hashed in place of time (random_from, spawned_id); no save format change. BEHAVIOUR: a seed now gives other numbers, recordings from earlier builds of games that roll or spawn stop matching (changelog says so)
+- **BUG-14:** step_physics has one way out, settles once after 2D and 3D on every path. Noticed: at game speed 0 a 2D character's walk still lands while 3D bodies stand still
+- **BUG-15:** physics/guard.rs shared by 2D and 3D; world re-joins and rebuilds walls after a break, at most one restart a second (RESTART_WAIT 60 steps); Console says it once a play. FOR PASS 2: test seams Physics::fail_next / Flat::fail_next / World::fail_flat_next are public and compiled into the shipped build (should be behind a feature). Noticed: an exported game that 3D physics pauses has no way to carry on; move_character picks 2D or 3D when asked, not when stepped; physics/src/README.md lacks flat.rs, world/src/README.md lacks flat_physics.rs
+- **BUG-16:** world/game_set.rs: one list (carry/put_back) used by update and rebuild; World::set_by_hand. BEHAVIOUR: an edit that changes the area's Screen name or shown flag now wins over what game code showed. Noticed: save_game.rs names those four components itself, apart from game_set; rebuild keeps the game's place when a Transform is set by hand to the area's own value; Sprite flip and Animator speed aren't in the checksum; update drops Previous so drawing between ticks snaps for a frame
+- **BUG-48:** sync_edited lends luau.discard: a start's sends go nowhere on every path (load, swap, sync). Noticed: dropped silently; API guidelines prefer loud mistakes
+- **BUG-49:** lua_problem takes the place from the author's first .lua frame; native_values.rs `native(scope,key,body)` reads each value itself; 58 natives in host.rs use it. TO CHECK AT SCALE CHECK: cost of natives read through `native` (not measured). Not done: a native's run-time refusal in Lust has line 0 (Lust's LuaChunk::locate; in FOR-LUST.md). Noticed: making a kept native simply work is small; manual game-code.md line 10 names another product (rule 20 sweep)
+- **BUG-50:** check_turns.rs: one check at a time program-wide, at most one given-up check alive, no new check until it ends; app game_code.rs holds unchecked code and rechecks by itself. Guard for one name on two things now covers node and schema. Not done: cancel flag (Lust's repo, FOR-LUST.md); fuzz target edit not compiled. Noticed: GameCode's 60 s GIVE_UP message says 'Saving a change checks the code again' and hard-codes the program's name; script suite 4.9 s -> 6.4 s
+- **BUG-37:** set_value_kind refuses growth past MAX_MAP_BYTES; editor still a silent no-op like add_value
+- **CI-02:** also fixed same mistake twice in sources.yml; noticed: issue body always says 'whole-game rule broke'; windows-exe read_const silent on no match
+- **CI-03:** pins: Inno Setup 6.7.1, cargo-fuzz 0.13.2, nightly-2026-11-08; noticed: licenses/README says cargo install cargo-about unpinned; Deep checks FAILED 2026-11-01 on Fuzz model + sound_file (not investigated!)
+- **CI-04:** weekly Windows job runs the two updater network tests by exact name, 3 tries
+- **CI-05:** fuzz/Cargo.lock no longer in git, derived by tools/ci/fuzz-lock.sh in each fuzz job; libfuzzer-sys/arbitrary pinned exactly in fuzz/Cargo.toml; note: PR touching tools/ needs CHANGELOG or 'internal' label
+- **DOC-03:** README status + folder table; noticed: DESIGN.md header still says 'Status: Phase 1'; ROADMAP.md:7 gate wording; CONTRIBUTING/CLAUDE say '3D game engine'; rule-20 names in ROADMAP.md:179, DESIGN.md s1, navigating-the-viewport.md
+- **DOC-08:** interface tour rewritten to today's editor; noticed: workspace.rs:7 + top_bar.rs:1 stale comments (DOC-07); projects-and-the-library.md:31 names another engine (name sweep pending user's answer)
+- **DOC-09:** one agent, four commits
+- **DOC-10:** one agent, four commits
+- **DOC-11:** 13 sentences on 10 pages; kept true 'later's listed in agent report; noticed: render/src/sprites.rs:14 stale comment (DOC-07), save-games:47 cites 'Phase 6 review'
+- **DOC-12:** one agent, four commits
+- **DOC-13:** TO CONFIRM WITH PROJECT LEAD: 2D triggers (never built) placed in 2D 2 'More movement' (agent notes Shared may suit better since 3D has none either); noticed: ROADMAP.md:179 and ideas.md:7 name other products; three plan titles still say (draft)
+- **DOC-14:** full audit of keys; six tables added; matching rows on nine feature pages
+- **DOC-15:** one agent, four commits
+- **SEC-16:** the abort was the fuzz target's own assert (model with infinite bounds); crash input recovered from the log; three overflow paths refused; noticed: fuzz targets' empty panic hook hides their own assert message (add to CI-01b); huge-but-finite bounds still import (Bounds::size can overflow downstream; needs a reach limit = design decision)
+- **SEC-17:** vorbis_check refuses stray bytes between pages (lewton codebook Vec::with_capacity(u32::MAX) behind a hidden chained stream); behaviour change: Ogg with stray bytes between pages now refused
+- **TEST-05:** cause: game-code time limits run on the real clock; a test thread kept off the CPU 250 ms had its tick cut short. luau::Limits (defaults unchanged), test-only Limits::unhurried + Game::set_limits + code::compile_within; 300/300 under load. Not done: other tests racing these limits (runtime_*_tests, editor) are TEST-02's. Noticed: a real game stalled 250 ms mid-tick is cut short and paused the same way, so its replay stops matching. Issue #177 fixed but open (lead to close)
+- **SEC-18:** new crates/sound/src/vorbis_stream.rs: Solis reads Ogg packets itself and refuses another stream's packets; every seek reopens through the check (walks the file's pages: ~20 ms for 30 min); equivalence test vs the library's reader. For pass 2: larger change than asked; BUG-35 (open on frame loop) now also covers the page walk
+- **BUG-54:** Changes::set lists fields set by hand; Game::sync_edited; Console set while playing makes the edit even when area holds the value. OPEN for lead: redo (Ctrl+Y) of a value set back to what the area holds gives the game nothing (undo/redo carry no field list); such a set is an undo step that changes nothing, listed at Stop. Noticed: World::rebuild has same gap for a Transform set to the area's own place in a rebuilding frame. Issue #57 fixed but open (lead to close)
+- **CI-06:** one shared tools/ci/linux-packages.sh used by ci.yml and deep-checks; noticed: a filter matching no test still passes; issue text says a rule broke even when the build failed
+- **SEC-19:** cause: Lust compiler never finishes on two declarations with one name (class_order), reached through the unguarded data reader; new shared crates/area/src/lust_guard.rs used by data files and game code
+- **SEC-20:** round trip lost control characters in text; reader now refuses them (one rule shared with the writer); behaviour change: a tileset/tile map with such a character is refused whole; noticed: atlas version line match is loose (a file with no version line is read); atlas picture name may hold :*?<>
+- **SEC-21:** new crates/area/src/lust_check.rs: data files are checked against the shapes Solis writes before Lust sees them (43 s -> 4 ms etc.); now refused though Lust-legal: 'new X' without braces, ';' between fields, 'nothing' (manual updated). Left: a valid 64 MB map costs Lust ~25 s and ~5 GB RAM (0.35 s and 77 MB per MB) -> given to SEC-09
+- **BUG-55:** area::lust_data::fits shared by reader and writer; tiles map_file::write returns Result and refuses a file its reader wouldn't read; editor commit_map refuses the edit (nothing saved, no undo step, Console warning); Save::write refuses too; noticed: the editor rewrites the whole map file on every change on the frame (57 MB for the biggest map); an older-layout map already past the budget opens but every edit to it is refused; game code's own map changes refused only at save; area and tiles suites ~6 s slower each (real-size tests); extended scale check (#[ignore], release build) not run; fuzz target edit uncompiled; full editor suite not rerun by the agent after its last test fix
+- **BUG-56:** place_in places a part whose override gives it a parent even when its original parent is gone; new area::assembly::despawn (parts moved out of a deleted copy become ordinary entities in the same undo step); 150-seed save/reopen sweep; format unchanged (still 2); noticed: 'Create assembly from selection' on a copy's root with parts moved out leaves those parts pointing at the old assembly (would be saved as the new copy's missing parts); game code's despawn while playing still a plain Despawn (nothing lost)
+
+## For the project lead to confirm, gathered so far
+
+Behaviour the fixes changed on purpose, each also in its pull request:
+
+- Keys over a tab that edits its own file (Clips, Frames, Animator, Tileset, Atlas Crop, the game-screen editor) belong to that tab alone; the area's keys wait until the pointer is back over the viewport.
+- Ctrl+Z over Properties while it shows a tileset undoes the tileset's change.
+- The clipboard is emptied when another project opens; the sample projects ask about unsaved changes first.
+- The Keep / Undo all question after Stop has no Cancel.
+- A tile map, tileset, clips file, animator or atlas that can't be saved is shown as the file still is, without the change; Ctrl+Z brings the change back and saves it again.
+- While a piece is dragged on the game-screen canvas an outline shows where it lands (a small UI addition made without a mock-up).
+- A playing game gets a dragged input speed when the mouse is let go, not while dragging.
+- A value typed into Properties while playing is an undo step even when the area already held it; redoing such a step gives the game nothing (an open question).
+- The same seed gives other random numbers than before, so recordings from earlier builds of games that roll or spawn no longer match.
+- What a component sends while it starts goes nowhere, on every path.
+- While playing, an edit of an entity's Screen name or shown tick wins over what game code showed.
+- Area and assembly files are format 2 (a part moved out of an assembly is saved); earlier builds can't open files saved now.
+- GitHub issues 57, 157 and 177 are fixed but still open (closing them is the project lead's to do); issue 93 and three dependency update pull requests (105, 155, 185) are stale.
+- Not yet done, small: add the rule "after each merge, tell the project lead: Pull request N is merged and checks passed. Next up: X" to CLAUDE.md (done with this file); one sweep for other products' names in the manual (`docs/manual/game-code.md` line 10 has one).
+
+## Problems in the Lust compiler found along the way
+
+For the Lust language's own repository, not for Solis:
+
+From the SEC-19 agent (measured through Solis's tileset reader):
+- `class A{}class A{}` never finishes (also object, component, node, schema, assembly; one file): `check::Checker::class_order` (check.rs:1029-1064) tracks placed classes by name, so a second of that name is never placed; track by index.
+- `Diags::add` scans all earlier mistakes: 200 KB of `@` (or `'`, `!a`, `\q` in text) takes 43 s; 100 KB 9 s (quadratic).
+- 8,000 lines of `lock int aN = x;` (159 KB) take 13 s; 25,000 more than 60 s. No text scan can see this.
+- `state S = [120,000 options]` takes 20 s.
+- Text holding a value (`"hp: {hp}"`): finding its end costs the square of the line's length.
+- A long run of `!` costs the square of the run's length.
+- Wanted: a step budget or cancel flag in the checker, so a host can stop a compile instead of abandoning its thread (script F9 / BUG-50).
+From the SEC-21 agent:
+- `recover()` resumes inside a value after a bad `lock` name; `new_inits` duplicate check and `suggest()` are quadratic.
+- Per-item type mistakes, a field filled twice, and a reserved word as a value's name each make one mistake per thing (then the quadratic mistake list).
+- Even valid input: about 0.35 s and 77 MB of RAM per MB of number lists (a 64 MB data file = 25 s, 5 GB).
+From the BUG-49/BUG-50 agent (measured at rev 930afae with `lust::to_lua_with`, on 2 cores):
+- The `class_order` hang is still there, and wider than Solis's game-code guard knew: one name on any two of class, object, component, node and schema (all 25 pairings, same kind or not, one file) never finishes (cut off after 8 s each). An assembly sharing a name with any of them, or with another assembly, is reported at once ("there's already an assembly called Health"), as are two states and two events. Solis's guard (`script::code::shared_names`) covered only class, object and component; node and schema are added (BUG-50). The guard can go when `class_order` tracks by index.
+- A long run of `!` is nothing of its own any more: each `!` is a mistake ("Lust writes not, not !"), and the run costs what any symbol Lust doesn't use costs, the `Diags::add` square above. `!`: 32,000 take 0.44 s, 64,000 1.8 s, 128,000 8.4 s; `@`: 64,000 1.4 s, 128,000 8.6 s. A full 1 MB file of either would be about ten minutes. Solis still refuses runs of more than 64 `!` before compiling (`script::code::long_prefix_chains`, `area::lust_guard`); with `Diags::add` fixed (or the number of mistakes capped) that guard can go too.
+- Still wanted most: a step budget or cancel flag (`to_lua_with` taking a deadline or an `&AtomicBool`). Solis can't stop a check, so since BUG-50 it keeps the one it gave up on and starts no other until that thread ends (`script::check_turns`): after one hang the author must restart the editor before any code is checked again, and the thread keeps a core and a 64 MB stack until then.
+- `LuaChunk::locate` reads only the first line of the error's text. An error raised by a host's native (Solis's `send_event` refusing an event: "more than 10000 events are waiting to be delivered") has its place only in the traceback below (`lust:812: in function …`), so it comes back with no line, the first file, and mlua's "runtime error: " still in front of the message. Wanted: when line one has no `lust:N:`, take the first `lust:N` of the traceback, and drop the prefix. (Lua components in Solis had the same gap, fixed in Solis as BUG-49.)

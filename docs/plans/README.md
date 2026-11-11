@@ -24,6 +24,7 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). Phase numbers st
 | `roadmap-2d-3d.md` | No phase: where 2D and 3D each stand (built, planned, later, not talked about yet), a snapshot from 8 November 2026 |
 | `shared-1-ui-remake.md` | Shared 1a to 1d: the editor's UI remade to the project lead's design ([`docs/design/g-layout/`](../design/g-layout/README.md), decisions 0099 to 0101): what the project lead has decided, the sixteen milestones M1 to M16, the placeholder mechanism, what happens to saved settings, the mock-up rounds, and the decisions still open. Begun: M1 (the look) built |
 | `shared-1-ui-remake-inventory.md` | The plan's companion: every piece of today's interface and where it goes, every element of the design and what stands behind it, the keys, the design's tokens, and what egui doesn't give for free |
+| `shared-1-ui-remake-handover.md` | Where the UI remake stands (paused 2026-11-11 with M1 to M3 merged) and how to pick it up: what to ask the project lead first, what M3 left, the builder brief, and the assignment for M4. |
 | `ideas.md` | Shared 2 to 6, 10 and 11, 2D 1 and 3D 1: tools that help make games (timers, tween, tags and more), each idea marked with the milestone that builds it (decision 0098) |
 
 Name a new plan after its phase (`phase-N.md`) or its subject, and add it here.

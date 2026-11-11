@@ -1,6 +1,6 @@
 //! The turret sample, Solis's first game (Phase 4): a turret written in
 //! Lust shoots at a drone that has health (Lust), armour (Rust) and sparks
-//! (Lua), all talking through events. **Help > Make the sample game…**
+//! (Lua), all talking through events. **Make the sample game…** (File > Learn, or the search)
 //! writes it into a folder as a project.
 //!
 //! Its Rust component, Armour, is compiled into Solis from the sample's

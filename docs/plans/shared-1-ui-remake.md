@@ -45,6 +45,38 @@ Shown to the project lead in the same pictures and not objected to, so treated a
 17. **All of mock-up round 1 is approved as drawn,** including what had not been shown before: the Debug ribbon with its Session group, the document tab's "+" and right-click menus, the Console's tools on the shelf bar, and the shared dialog card. The approved pictures are in the repository: [`docs/design/g-layout/additions/round-1/`](../design/g-layout/additions/round-1/README.md).
 
 
+**2026-11-11, 19:59, two mouse actions for the ribbon (rule 17):**
+
+18. **The mouse wheel over the ribbon scrolls it sideways** when it doesn't fit. **A Create button's list of kinds** opens from a small arrow on the button or a right-click; a plain click makes the usual kind; no long press. (Decision 0103.)
+
+**2026-11-11, about 20:40, on the second round of mock-ups** ([`additions/round-2`](../design/g-layout/additions/round-2/README.md)), each asked as a question:
+
+19. **Hints: a card under Properties** (`01-hints-card-a`), chosen over a strip pinned to the bottom of the shelf. Its known cost: it is below the fold when component cards are tall.
+20. **Placing (D16): the Place shelf tab being in front is the mode** (`06-placing-a`). No ribbon button.
+21. **Colours for the kinds of file (D17): option A** (mapped onto the design's colours, `07-library-kinds-a`) **but with option B's colour** (today's `theme::kind`) **for three kinds: sound events, code files and areas.** The Library's milestone (M7) makes one final sheet of every kind's colour for the project lead to check.
+22. **Templates (D8): `09-recent-projects-a`:** the blank project and Solis's four examples (real), then the design's templates as unfinished parts, without VR / XR.
+23. **How Solis starts (D7): in the full editor window,** on the Recent projects page. Decision 0090's small launcher window goes; its two promises stay (always the projects page first; nothing reopened by itself).
+24. **2D settings (D9): a tab of their own** in Project settings, right after General.
+25. **New keys and mouse actions (D15): every recommended answer approved** (`14-keys-and-mouse`): F2 and Delete over the Library or the Assets column act on the picked file, on the entity everywhere else · dragging a field's label changes its value (dragging the value stays) · Shift while dropping a file keeps it loaded for more copies · placing without snapping for one drop is **Ctrl** · R while dragging a file in turns the ghost by the ribbon's Angle step · click-then-click placing and a key that drops under the pointer: **not now** (unfinished part) · a double-click in the Library tab only selects (Place places; the shelf's Assets and Place columns still place) · dragging a tile onto the Home tab: **not now** · all four arrow keys walk the project cards · Backspace clears a picked binding (× stays; while listening, Backspace is a key to bind) · over the Frames tab Left and Right step one frame, Up and Down jump to the next event · a fine fader move is **Shift** · a click on a meter resets its peak (the two drags later) · a click on a bar of the frame-time graph picks that frame · a dragged document tab lands on the left or right half of the center or on another group's tab strip.
+26. **The rest of round 2 is approved as drawn.**
+
+**2026-11-11, 22:57 and 23:15, on the third round of mock-ups** ([`additions/round-3`](../design/g-layout/additions/round-3/README.md)): "All of these look fine as templates, can't wait to see them in engine!", then each choice asked as a question:
+
+27. **A tile map's paint tools are in the ribbon** of a contextual tab, HOME TOOLS · Tile map (`01-tile-map-painting-a`).
+28. **A clip's settings are their own Clip shelf tab** (`04-sprite-clips-a`).
+29. **The game-screen editor's drawing tools are a toolbox** (`07-ui-editor-a`).
+30. **The mixer's Master strip is last,** on the right; the Bus ribbon group stays.
+31. **Two new actions approved:** clicking a layer's row paints on that layer; Esc puts a dragged document tab back.
+32. **The rest of round 3 is approved as drawn.** All three mock-up rounds are now approved: nothing more is needed from the project lead for M4 to M16 except questions that come up while building.
+
+**2026-11-11, how the work is run:**
+
+33. **Choices come as questions.** "Give me them in question form next time so i pay better attention": every choice goes to the project lead as a question to click, one per choice, with the pictures named in it, never as a list in a message.
+34. **Stop after the UI** (21:03): "after the UI update is done, i would like for you to stop working on the next updates and fixes." When Shared 1 is merged, nothing else starts: the paused code review does not resume and the next phase does not begin until the project lead says so.
+35. **Paused to save usage** (23:35): "i will need you to record all your progress and stop here." The work stopped with M3 built. **Where it stands and how to pick it up: [`shared-1-ui-remake-handover.md`](shared-1-ui-remake-handover.md).** Before resuming, ask the project lead how to continue: milestone by milestone as planned, four pull requests (one a phase), or one; the last two with a leaner process (no working in-between states, the manual once at the end), which bends the rules "one milestone per pull request" and "documentation in every pull request" and is the project lead's call.
+
+**What the mock-up rounds found out** (to be folded into the milestones as they are built): the Model component has one setting today (the model), so the Model card's Material and Shadows are unfinished parts and need table lines (M5) · Solis is Z up · "Used by" is unbuilt for every kind but code · a screen is a Lust file shown as Code today · the ready-made input actions share keys on purpose, so a "same input" warning must not mark them · there is no eraser or stamp tool (a right-drag empties; the Eyedropper's copy is the stamp) and no align or distribute · draw calls are measured today (the inventory says unbuilt: wrong) · Solo and ducking exist · the toolbox with nine tools exactly fills the design's viewport height, so it must scroll or wrap when the shelf is taller · six small icons are new in round 3 (minus, add state, transition, start here, wall, take a frame out).
+
 **In numbers** (Inventory b.15): the design has 332 elements. 124 exist in Solis today (40 of them pure shell that this phase builds), 44 partly, and 164 are placeholders, 62 of those being three whole unbuilt screens. In the other direction, 29 pieces of today's interface have no place in the design (Inventory part (a)); each has a proposed place that follows the design's own patterns and needs a mock-up, as do the pages the design names but leaves undrawn (Build, Learn, and several sub-tabs of Preferences and Project settings).
 
 ---
@@ -256,6 +288,22 @@ Sizes are new or rewritten lines of code, then lines of tests, then lines remove
 **Size.** 2,100 + 900 − 500; about 30 files (25 new); 3 sessions.
 
 #### M3. The top: tab bar, ribbon, command search, the File page's frame
+
+**As built (2026-11-11), where the code differs from the plan below** (the code wins; the rest was built as written):
+
+- **Files.** `shell/` has `mod.rs`, `commands.rs` with `command_words.rs` (the table split in two so neither is long), `tab_bar.rs`, `ribbon.rs` (the table types and the layout) with `controls.rs` (the drawing of working controls), `ribbons/` (also `shading.rs`, `vfx.rs`; `mod.rs` hands out a tab's table), `play_group.rs`, `file_page.rs` and `create.rs`. `search.rs` became `search.rs` and `search/` (`list.rs`, `score.rs`, `draw.rs`).
+- **Tabs and workspaces.** Home is Level, Animate is Animate, UI is UI, **Debug is the Code workspace** with the Profiler brought to the front; Library and Audio show Level with their panel in front; Build keeps whatever was shown. The dock's arrangements are still saved as before; the shell's own saved state (`ShellState`) comes with M4, so **whether the ribbon is collapsed is not remembered between runs yet**.
+- **A ribbon control is called, for screen readers and tests, by its command's name** ("Add entity" for the button that says Empty; "Save area" for Save), and a tab is called "Home tab". The words drawn are the design's.
+- **Create.** Empty, Model (runs Import model…), Sprite and Reverb zone (two new one-step makers, `shell/create.rs`), Light (point light; its list has the spotlight), Camera, Tile map (a new tile map file in the Library's folder), More (Reverb zone, Assembly from selection). The unfinished button in Volume's place is the registered **Trigger zone**, whose name is too long for the button and is cut off; pointing at it says it whole. A button with a list carries a small arrow, which the approved picture (drawn before the project lead's answer on it) doesn't show.
+- **Library's, Animate's and Audio's ribbons** hold only Import and the design's unfinished controls. Their working controls (the Library's + New, view and kind filter; a clip's speed and direction; Add bus) stay on their panels until M7, M11 and M13 rebuild those screens: moving them now would have meant designing those ribbons without their mock-ups. **UI's ribbon** has only the Play group, for the same reason (mock-up round 3).
+- **The Play group is on every tab** (the plan says "editing tabs only"): until M4 it is the only Play button there is.
+- **The File page** shows the launcher's three pages in its page area (the launcher's own window still stands at start-up until M8, with its own sidebar). The column has one item the design lacks: **Input**, under Project settings, which opens today's Input actions window until M9 makes it a sub-tab. Updates and About are the two added items approved with mock-up round 2.
+- **Contextual tabs** appear for an open tileset, a picture's crops and a selected tile map, and bring that panel to the front. They have no ribbon of their own yet (mock-up round 3). An open animator has none: Animate is its home.
+- **The document tabs** of an open animator or tileset left the top with the old bar and come back in M4's tab strips; until then each is its own docked panel's tab.
+- **The play tint** went whole in this milestone: the bars' tint and the window's coloured edge. The accent border round the viewport and the Game panel while playing (`panels.rs`) goes in M4, as the plan says.
+- **Restart to update** is a link at the tab bar's right, left of the project's name, until the status bar's slot exists (M4).
+- **Show ribbon labels** (a field of the saved look) has no effect yet: its switch arrives with Preferences (M9).
+- **Tests.** The test window draws nothing in the frame it is built in (the editor's fonts arrive with the next, `test_support::fonts_ready`). `shell_reach_tests.rs` also holds the shortcuts-table test: each key in `ShellCommand::keys` is pressed and held against the command of that name.
 
 **Built.** `shell/` begins: `mod.rs` (`Shell`, `RibbonTab`), `commands.rs` (`ShellCommand`: every action the old menus had, each with its name, shortcut, whether it can run now and why not, and what it does; `search.rs` lists from it, so there is still one table of shortcuts, rule 21), `tab_bar.rs` (logo, tabs, contextual tabs, the search box with its "Space" hint, the project / area path, the collapse chevron), `ribbon.rs` (the drawing) and `ribbons/` (one small table per tab: `home.rs`, `library.rs`, `animate.rs`, `audio.rs`, `debug.rs`, `build.rs`, and the unbuilt `shading.rs` and `vfx.rs`), the **Play** group (Play turning into Stop; Pause and Step while running; nothing else changes colour while the game runs: there is no play tint, the project lead's answer 9), `file_page.rs` (the menu column and an empty page area). The File menu column's items work from the first day by opening what exists: Recent projects shows today's launcher page, Preferences today's Settings window, Project settings its 2D page, Input today's Input actions window, Learn and Updates the launcher's pages, Exit quits.
 

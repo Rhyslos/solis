@@ -15,12 +15,12 @@ For a thing that's pushed around by physics (a ball, a crate) use a [RigidBody](
 
 ## How to use it
 
-**Try the playground first.** **Help > Make the playground…** makes a new project with a level to walk around in: steps, a gentle ramp and one too steep to climb, crates to push, a moving platform to ride, and a character with the third-person camera. Press **Play**, click the **Game panel**, and walk with **W A S D**, look with the **mouse**, jump with **Space**, sprint with **Shift**. **F6** saves the game and **F7** loads it. **Esc** gives the editor the mouse back.
+**Try the playground first.** **Make the playground…** (press **Space** and type it, or use **File > Learn**) makes a new project with a level to walk around in: steps, a gentle ramp and one too steep to climb, crates to push, a moving platform to ride, and a character with the third-person camera. Press **Play**, click the **Game panel**, and walk with **W A S D**, look with the **mouse**, jump with **Space**, sprint with **Shift**. **F6** saves the game and **F7** loads it. **Esc** gives the editor the mouse back.
 
 It has sounds too ([Sound events](sound-events.md)): footsteps as the character walks (faster when it runs, made by the playground's `Footsteps` code), music, a radio on a crate whose chatter makes the music dip as you come near (the [Mixer](mixer.md)'s Voice ducking Music), and a cave with a drip, where every step echoes (a [reverb zone](reverb-zones.md)). The sounds are Solis's own, free to use for anything.
 
 **A character in your own area**
-1. Add an entity for the character (**Entity > Add entity**, which adds an empty one, or a model of a person) with its feet where it should stand.
+1. Add an entity for the character (**Home > Empty**, which adds an empty one, or a model of a person) with its feet where it should stand.
 2. In **Properties**, choose **Add component > CharacterBody**. A green capsule shows its shape when it's selected. Its feet are at the entity's origin.
 3. Make sure there's ground under it: an entity with a **Collider**, see [Physics](physics.md).
 4. In `main.lst`, fetch the ready-made components:
@@ -50,7 +50,7 @@ It has sounds too ([Sound events](sound-events.md)): footsteps as the character 
 | Turn | Alt + left or right arrow | right stick |
 | Zoom | mouse wheel, Page Up and Page Down | right and left triggers |
 
-These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Zoom**, so players can rebind them in **Edit > Input actions…**. A project made before these cameras existed doesn't have them yet: the Input actions window offers to add them.
+These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Zoom**, so players can rebind them in **File > Input**. A project made before these cameras existed doesn't have them yet: the Input actions window offers to add them.
 
 **Moving a character from your own code**
 
@@ -139,7 +139,7 @@ The fields at the bottom of each (`fall`, `yaw`, `pitch`) are how it's moving ri
 | Sprint | Shift (left stick click) |
 | Save and load, in the playground | F6 and F7 |
 
-All of these are the game's only while it has the mouse and keys (click the Game panel); see [Input](input.md). The kit's actions (Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag) are always named in game code, so the kit works in a project that hasn't made them all; one your project hasn't made in **Edit > Input actions…** is never pressed.
+All of these are the game's only while it has the mouse and keys (click the Game panel); see [Input](input.md). The kit's actions (Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag) are always named in game code, so the kit works in a project that hasn't made them all; one your project hasn't made in **File > Input** is never pressed.
 
 ## Tips and common problems
 - **Problem:** the character doesn't move. **Why:** the game doesn't have the keys, or there's no ground under it (it fell). **Fix:** click the Game panel; give the floor a Collider.

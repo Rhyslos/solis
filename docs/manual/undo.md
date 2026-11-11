@@ -6,9 +6,9 @@
 Whenever a change didn't turn out as you hoped: a light dragged too bright, an entity deleted by mistake, a model imported into the wrong area. Every change to the area can be undone, so it's safe to experiment.
 
 ## How to use it
-1. Press **Ctrl + Z** (or choose **Edit > Undo**) to take back the last change. The Edit menu names it, such as *Undo Change Light.strength*.
+1. Press **Ctrl + Z** (or choose **Home > Undo**) to take back the last change. Point at the button and it names the step, such as *Undo Change Light.strength*.
 2. Press again to go further back.
-3. Press **Ctrl + Y** or **Ctrl + Shift + Z** (or **Edit > Redo**) to bring a change back.
+3. Press **Ctrl + Y** or **Ctrl + Shift + Z** (or **Home > Redo**) to bring a change back.
 
 Undo also selects what the change was about, so you can see what came back.
 

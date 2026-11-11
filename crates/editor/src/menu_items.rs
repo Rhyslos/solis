@@ -1,7 +1,7 @@
-//! Menu items shared by the top bar and the panels' own menu rows, so the
-//! Area panel's Edit and Entity menus are the same as the top bar's: each
-//! draws its items and returns the [`MenuCommand`] picked, and
-//! [`Workbench::run`] carries it out.
+//! The Area panel's own Edit and Entity menus: each draws its items and
+//! returns the [`MenuCommand`] picked, and [`Workbench::run`] carries it
+//! out. The editor's commands (`shell/commands.rs`) run the same ones, so
+//! a thing is done one way wherever it is asked for.
 
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui::Ui;
@@ -35,8 +35,6 @@ pub(crate) struct MenuState {
     pub(crate) redo: Option<String>,
     /// Whether anything is selected.
     pub(crate) selection: bool,
-    /// Whether a project is open.
-    pub(crate) project: bool,
 }
 
 impl MenuState {
@@ -47,7 +45,6 @@ impl MenuState {
             undo: history.undo_label().map(|l| format!("Undo {l}")),
             redo: history.redo_label().map(|l| format!("Redo {l}")),
             selection: workbench.open.document.selection.primary().is_some(),
-            project: workbench.open.project.is_some(),
         }
     }
 }

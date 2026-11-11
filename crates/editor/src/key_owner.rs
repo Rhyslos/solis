@@ -29,6 +29,10 @@ pub(crate) enum KeyOwner {
     /// A field being typed in: the keys are its text (Ctrl+Z undoes the
     /// typing).
     Field,
+    /// A whole page stands where the area would be (a File page, a
+    /// screen that isn't built): the area's keys rest, since nothing they
+    /// would change is on screen. The editor's own keys still work.
+    Page,
     /// The area: the viewport, the Area panel, and everywhere no other
     /// owner is named (Properties, the Library, the Console, windows).
     #[default]
@@ -103,6 +107,9 @@ impl Workbench {
         }
         if ctx.egui_wants_keyboard_input() {
             return KeyOwner::Field;
+        }
+        if self.shell.covers_center() {
+            return KeyOwner::Page;
         }
         let own = match self.pointer_over {
             Some(Panel::Clips) if open.frames_editor.is_some() => Some(KeyOwner::Clips),

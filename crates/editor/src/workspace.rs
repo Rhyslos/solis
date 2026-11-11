@@ -217,6 +217,7 @@ impl Workbench {
             );
         }
         self.workspace = saved.current;
+        self.shell.tab = crate::shell::RibbonTab::of_workspace(saved.current);
         if let Some(dock) = layouts.remove(&saved.current) {
             self.dock = dock;
         }
@@ -278,6 +279,10 @@ impl Workbench {
             layout::open_beside(&mut self.dock, panel, beside);
         }
         self.fit_library_pin();
+        // The tab in front is one that shows this arrangement.
+        if self.shell.tab.workspace() != Some(workspace) {
+            self.shell.tab = crate::shell::RibbonTab::of_workspace(workspace);
+        }
     }
 
     /// For each code file, the components written in it and how many
@@ -324,59 +329,6 @@ impl Workbench {
     fn fit_library_pin(&mut self) {
         if !self.library_pinned {
             layout::close(&mut self.dock, Panel::Library);
-        }
-    }
-
-    /// The workspace tabs in the top bar: each its icon and name, the one
-    /// in use lit with the accent's underline.
-    pub(crate) fn workspace_tabs(&mut self, ui: &mut egui::Ui) {
-        use crate::theme;
-        let mut picked = None;
-        for workspace in Workspace::ALL {
-            let on = workspace == self.workspace;
-            let font = egui::FontId::proportional(13.0);
-            let width = ui.fonts_mut(|f| {
-                f.layout_no_wrap(workspace.name().to_string(), font.clone(), theme::text())
-                    .size()
-                    .x
-            }) + 34.0;
-            let (rect, tab) = ui.allocate_exact_size(egui::vec2(width, 26.0), egui::Sense::click());
-            let colour = if on || tab.hovered() {
-                theme::text_strong()
-            } else {
-                theme::text_weak()
-            };
-            let painter = ui.painter();
-            if on {
-                painter.rect_filled(rect, 4.0, theme::field());
-                painter.hline(
-                    rect.x_range().shrink(6.0),
-                    rect.bottom() - 1.0,
-                    egui::Stroke::new(2.0, self.accent.colors().fill),
-                );
-            }
-            let icon = egui::Rect::from_center_size(
-                rect.left_center() + egui::vec2(14.0, 0.0),
-                egui::vec2(12.0, 12.0),
-            );
-            crate::icons::icon(painter, icon, workspace.icon(), colour);
-            painter.text(
-                rect.left_center() + egui::vec2(26.0, 0.0),
-                egui::Align2::LEFT_CENTER,
-                workspace.name(),
-                font,
-                colour,
-            );
-            let name = format!("{} workspace", workspace.name());
-            tab.widget_info(|| {
-                egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, &name)
-            });
-            if tab.on_hover_text(workspace.help()).clicked() {
-                picked = Some(workspace);
-            }
-        }
-        if let Some(workspace) = picked {
-            self.switch_workspace(workspace);
         }
     }
 }

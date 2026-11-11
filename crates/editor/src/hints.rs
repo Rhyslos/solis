@@ -129,7 +129,7 @@ pub(crate) fn hints_panel(ui: &mut Ui, hints: Option<&[String]>) {
             ui.set_min_width(ui.available_width());
             let Some(hints) = hints else {
                 ui.label(
-                    RichText::new("Hints are off. Turn them on in Edit > Settings… > Appearance.")
+                    RichText::new("Hints are off. Turn them on in File > Preferences.")
                         .color(theme::text_weak()),
                 );
                 return;
@@ -147,7 +147,7 @@ pub(crate) fn hints_panel(ui: &mut Ui, hints: Option<&[String]>) {
                 ui.add_space(6.0);
                 ui.label(
                     RichText::new(
-                        "Hints show here for what's selected. Turn them off in Edit > Settings… \
+                        "Hints show here for what's selected. Turn them off in File > Preferences \
                          > Appearance.",
                     )
                     .color(theme::text_weak())

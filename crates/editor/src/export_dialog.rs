@@ -1,4 +1,4 @@
-//! File > Export for playtesting… ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
+//! Build > Export ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
 //! the window asking for the game's name, the area it starts in, the
 //! folder and the window, and [`Playtest`], what an exported game reads to
 //! know them (and what a project remembers for next time).
@@ -200,7 +200,7 @@ pub struct ExportRequest {
     pub suggested: bool,
 }
 
-/// File > Export for playtesting…, while it's open.
+/// Build > Export, while it's open.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ExportWindow {
     playtest: Playtest,
@@ -239,7 +239,7 @@ impl Workbench {
         self.documents = folder;
     }
 
-    /// Opens File > Export for playtesting…: the game named after the
+    /// Opens Build > Export: the game named after the
     /// project, starting in the open area, unless it was exported before.
     pub fn open_export(&mut self) {
         let Some(project) = &self.open.project else {
@@ -341,7 +341,7 @@ impl Workbench {
         }
     }
 
-    /// Draws File > Export for playtesting…, if it's open.
+    /// Draws Build > Export, if it's open.
     pub(crate) fn export_window(
         &mut self,
         ctx: &egui::Context,

@@ -329,8 +329,8 @@ pub(crate) fn area_tree(
         .inner_margin(egui::Margin::symmetric(6, 4))
         .show(ui, |ui| {
             let note = if models.is_empty() {
-                "To see a model, use File > Import model, or drop a .gltf or .glb file onto \
-                 the window. Entity > Add point light adds a lamp."
+                "To see a model, use Library > Import, or drop a .gltf or .glb file onto \
+                 the window. Home > Light adds a lamp."
             } else {
                 "Save the area with Ctrl+S; it's a text file Git can merge."
             };

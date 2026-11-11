@@ -95,7 +95,7 @@ fn space_opens_the_search_and_enter_does_the_first_result() {
 fn arrows_choose_esc_closes_and_the_box_opens_it_too() {
     let mut h = harness(fresh());
     h.run();
-    h.get_by_label("Search or do anything").click();
+    h.get_by_label("Search or run a command").click();
     h.run();
     h.run();
     assert!(h.state().0.search.open);
@@ -150,7 +150,7 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
     assert_eq!(w.selection(), None);
     // A File action goes to the app.
     w.do_search(
-        SearchTarget::App(WorkbenchAction::SaveArea),
+        SearchTarget::Command(crate::shell::ShellCommand::SaveArea),
         &ctx,
         &mut actions,
     );
@@ -158,18 +158,23 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
 }
 
 #[test]
-fn workspaces_can_be_switched_from_the_search() {
+fn tabs_can_be_switched_from_the_search() {
     let mut w = fresh();
     let items = w.search_items();
-    let code = results(&items, "code workspace")[0].clone();
-    assert_eq!(code.name, "Code workspace");
+    let debug = results(&items, "debug tab")[0].clone();
+    assert_eq!(debug.name, "Debug tab");
     let ctx = egui::Context::default();
-    w.do_search(code.target, &ctx, &mut Vec::new());
+    w.do_search(debug.target, &ctx, &mut Vec::new());
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Debug);
     assert_eq!(w.workspace(), crate::workspace::Workspace::Code);
+    let names: Vec<String> = w.search_items().into_iter().map(|i| i.name).collect();
     assert!(
-        !w.search_items().iter().any(|i| i.name == "Code workspace"),
-        "the one in use isn't offered"
+        !names.contains(&"Debug tab".to_string()),
+        "the one in front isn't offered"
     );
+    // A tab that isn't built is never something to do.
+    assert!(!names.contains(&"Shading tab".to_string()));
+    assert!(!names.contains(&"VFX tab".to_string()));
 }
 
 const ASSETS: &str = "/projects/farm/assets";
@@ -371,4 +376,57 @@ fn unfinished_parts_are_hidden_and_shown_from_the_search_and_never_listed() {
         }
     }
     crate::interface_look::use_look(crate::theme::InterfaceLook::default());
+}
+
+#[test]
+fn an_open_search_reads_the_area_once_until_it_changes() {
+    let mut h = harness(fresh());
+    h.run();
+    assert_eq!(
+        h.state().0.found_from(),
+        None,
+        "nothing is read while it is shut"
+    );
+    h.state_mut().0.open_search();
+    h.run();
+    let first = h.state().0.found_from().expect("read when it opened");
+    for _ in 0..5 {
+        h.run();
+    }
+    assert_eq!(
+        h.state().0.found_from(),
+        Some(first),
+        "kept while nothing changed"
+    );
+    // A new entity is found at once: the list is read again.
+    let lamp = h.state_mut().0.add_point_light();
+    h.run();
+    let second = h.state().0.found_from().unwrap();
+    assert_ne!(second, first);
+    let name = h
+        .state()
+        .0
+        .document()
+        .area()
+        .get(lamp)
+        .unwrap()
+        .name
+        .clone();
+    assert!(
+        h.state()
+            .0
+            .search_items()
+            .iter()
+            .any(|i| i.kind == SearchKind::Entity && i.name == name)
+    );
+    // Another area in its place is never answered from the old list.
+    h.state_mut().0.new_area();
+    h.run();
+    assert!(
+        !h.state()
+            .0
+            .search_items()
+            .iter()
+            .any(|i| i.kind == SearchKind::Entity && i.name == name)
+    );
 }

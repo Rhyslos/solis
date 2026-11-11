@@ -155,7 +155,7 @@ impl Startup {
             Status::Available(release) => Phase::Done(Some((
                 LogLevel::Info,
                 format!(
-                    "Build {} is available; you chose to skip it. Help > Check for updates asks \
+                    "Build {} is available; you chose to skip it. File > Updates asks \
                      again.",
                     release.build
                 ),

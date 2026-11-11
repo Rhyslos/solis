@@ -139,10 +139,16 @@ pub enum RowKind {
     List,
 }
 
-/// A small ribbon row that isn't built.
-pub fn ribbon_row(ui: &mut Ui, id: UnbuiltId, kind: RowKind) -> Response {
-    let part = begin(ui, id);
-    let font = text::ribbon_small();
+/// How wide [`ribbon_row`] draws `id`: a ribbon lays its groups out
+/// from their widths before it draws them.
+pub fn ribbon_row_width(ui: &Ui, id: UnbuiltId, kind: RowKind) -> f32 {
+    let (before, after) = row_extras(kind);
+    let content = before + width_of(ui, get(id).name, text::ribbon_small()) + after;
+    2.0 * size::RIBBON_ROW_PAD + content + size::GAP + size::UNBUILT_MARK
+}
+
+/// The room a row's kind takes before and after its name.
+fn row_extras(kind: RowKind) -> (f32, f32) {
     let before = match kind {
         RowKind::Check => size::CHECKBOX + size::GAP,
         RowKind::Plain | RowKind::List => 0.0,
@@ -151,9 +157,18 @@ pub fn ribbon_row(ui: &mut Ui, id: UnbuiltId, kind: RowKind) -> Response {
         RowKind::List => LIST_ARROW + 3.0,
         RowKind::Plain | RowKind::Check => 0.0,
     };
-    let content = before + width_of(ui, part.name, font.clone()) + after;
-    let width = 2.0 * size::RIBBON_ROW_PAD + content + size::GAP + size::UNBUILT_MARK;
-    let (rect, response) = ui.allocate_exact_size(vec2(width, size::RIBBON_ROW_H), Sense::click());
+    (before, after)
+}
+
+/// A small ribbon row that isn't built, as tall as the room it is given
+/// (a ribbon's rows are a pixel shorter where three are stacked).
+pub fn ribbon_row(ui: &mut Ui, id: UnbuiltId, kind: RowKind) -> Response {
+    let part = begin(ui, id);
+    let font = text::ribbon_small();
+    let (before, after) = row_extras(kind);
+    let width = ribbon_row_width(ui, id, kind);
+    let height = ui.available_height().min(size::RIBBON_ROW_H);
+    let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::click());
     if ui.is_rect_visible(rect) {
         let mut left = rect.left() + size::RIBBON_ROW_PAD;
         if kind == RowKind::Check {
@@ -178,7 +193,7 @@ pub fn ribbon_row(ui: &mut Ui, id: UnbuiltId, kind: RowKind) -> Response {
 }
 
 /// How wide the small arrow of a list is.
-const LIST_ARROW: f32 = 5.0;
+const LIST_ARROW: f32 = size::LIST_ARROW;
 
 /// The small filled arrow after a row that would open a list.
 fn list_arrow(ui: &Ui, middle: Pos2) {

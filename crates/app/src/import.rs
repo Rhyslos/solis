@@ -47,7 +47,7 @@ pub enum FolderFor {
     LocateProject(PathBuf),
     /// A folder to look for projects in (Scan a folder…).
     ScanFolder,
-    /// The folder File > Export for playtesting… exports into.
+    /// The folder Build > Export exports into.
     ExportFolder,
 }
 

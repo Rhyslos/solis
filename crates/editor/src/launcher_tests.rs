@@ -347,7 +347,7 @@ fn the_updates_page_says_what_s_new_and_does_the_next_step() {
     h.run();
     assert!(h.state().0.restarting());
     assert!(h.state().1.actions.contains(&WorkbenchAction::Quit));
-    // The question Help > Check for updates asks isn't asked over this page.
+    // The question File > Updates asks isn't asked over this page.
     h.state_mut().0.offer_update(crate::splash::UpdateOffer {
         latest: 61,
         current: Some(57),

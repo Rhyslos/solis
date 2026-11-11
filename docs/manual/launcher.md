@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Solis always starts on the launcher, in a small window, and you pick the project to work on there; the window then grows to the editor's size. Closing the editor's window brings you back to the launcher (the project stays open behind it: **← Back to** returns to it), and closing the launcher quits Solis, asking about unsaved work first. **File > Projects…** brings it back at any time too. Use it to:
+Solis always starts on the launcher, in a small window, and you pick the project to work on there; the window then grows to the editor's size. Closing the editor's window brings you back to the launcher (the project stays open behind it: **← Back to** returns to it), and closing the launcher quits Solis, asking about unsaved work first. Its three pages are on the editor's **File** tab too (**Recent projects**, **Learn** and **Updates**), so they are there at any time without leaving the editor. Use it to:
 
 - open a project you've worked on before, without hunting for its folder;
 - keep the projects you're working on now at the top (pin them);

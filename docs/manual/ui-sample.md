@@ -6,7 +6,7 @@
 Open it when you're about to give your own game a HUD or a menu: it's the shortest working example of each part, and every file is meant to be read and changed. The [turret sample](first-game.md) is the place to start for game code itself; this one is about [screens](screens.md).
 
 ## How to use it
-1. **Help > Make the UI sample…** (or **UI sample** among the launcher's examples), and choose an empty folder. The project opens on its area.
+1. **Make the UI sample…** (press **Space** and type it, or use **File > Learn**) (or **UI sample** among the launcher's examples), and choose an empty folder. The project opens on its area.
 2. Press **Play**, then click the **Game panel** so the game has the keys.
    - **Space** (or a gamepad's **A**) fires the turret at the drone. The HUD in the bottom left counts the ammo and the hits, with a yellow bar that empties as you fire; the drone's health bar at the top follows its health.
    - **P** (or **Start**) pauses: the game stops and the pause menu shows. Move with the arrow keys or the stick, choose with **Space**, **Enter** or **A**, or click.

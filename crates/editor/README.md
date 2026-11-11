@@ -2,7 +2,7 @@
 
 **Layer 2 · Editor**
 
-The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the one-row top bar (menus, document tabs, Play and Build), the dockable panels (Viewport and Game, Area, Properties, Library and Code, Console and Problems), the controls in the viewport's corners, the icons (line drawings kept as data and drawn by Solis's own reader, in `icons/`), and the look: one theme, Neutral dark, made from the design's tokens (`tokens.rs`, decision 0100; the design itself is `docs/design/g-layout/`, and the frame is being remade to it, decision 0099). Interface text is Inter and monospace text JetBrains Mono (both OFL, in `assets/fonts`, licences in `licenses/fonts`).
+The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the frame's top in the project lead's design (the tab bar, a ribbon for each tab with the Play group at its end, and the File page: `src/shell/`, decision 0099), the dockable panels (Viewport and Game, Area, Properties, Library and Code, Console and Problems), the controls in the viewport's corners, the icons (line drawings kept as data and drawn by Solis's own reader, in `icons/`), and the look: one theme, Neutral dark, made from the design's tokens (`tokens.rs`, decision 0100; the design itself is `docs/design/g-layout/`, and the rest of the frame is being remade to it). Interface text is Inter and monospace text JetBrains Mono (both OFL, in `assets/fonts`, licences in `licenses/fonts`).
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Draw the editor with egui and egui_dock, keep its state between frames (the pane
 - `workbench.rs`: the editor's state, and `show`, which draws a frame and returns the actions.
 - `project_state.rs`: the part of that state that belongs to the open project (`Workbench::open`), replaced whole when another project opens.
 - `key_owner.rs`: which part of the editor the keys belong to each frame (the area, a tab editing a file of its own under the pointer, a field being typed in, the running game); every key handler asks it, so a key acts on one thing.
-- `top_bar.rs`: the logo, menus, document tabs, and Play, Pause, Step and Stop.
+- `shell/`: the tab bar, the ribbon and its tables, the Play group, the File page, and the one table of what the editor can do by name (`ShellCommand`).
 - `status_bar.rs`: the status bar along the bottom (decision 0085).
 - `panels.rs`: draws each docked panel and the bits panels share.
 - `area_panel.rs`, `properties.rs`, `console.rs`: those panels' contents.

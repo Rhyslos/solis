@@ -6,7 +6,7 @@
 Any time a place should sound like a place: a cave, a hall, a tunnel, a small room, a sewer. Reverb is the echo a space adds to every sound in it, and it's one of the strongest cues of where you are: the same footstep sounds tight in a cupboard and huge in a cathedral. A reverb zone adds it while the game's camera (the listener) is inside, so the sound changes as you walk in and out, without touching any sound event.
 
 ## How to use it
-1. Add an entity where the space is (Entity > Add entity), and move it to the middle of the space.
+1. Add an entity where the space is (Home > Empty), and move it to the middle of the space.
 2. In Properties, **Add component > ReverbZone**.
 3. Pick its **Shape**: a **Box** for rooms, halls and tunnels (set its **Size** along X, Y and Z), or a **Ball** for caves and domes (set its **Radius**). With the entity selected, the zone is outlined in the viewport in teal, so you can see what it covers. It grows, turns and moves with its entity.
 4. Pick what it **Sounds like**, and its **Strength**.

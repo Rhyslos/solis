@@ -6,7 +6,7 @@ The engine and editor's code, split into small crates (Rust packages), one job e
 | --- | --- | --- |
 | [`app`](app/README.md) | 3 App | The program itself: opens the window, owns the frame loop, wires everything together. |
 | [`updater`](updater/README.md) | 3 App | Finds, downloads and checks new builds on GitHub. |
-| [`editor`](editor/README.md) | 2 Editor | The editor's interface: top bar, dockable panels, viewport tools, play mode. Games never need it. |
+| [`editor`](editor/README.md) | 2 Editor | The editor's interface: tab bar and ribbon, dockable panels, viewport tools, play mode. Games never need it. |
 | [`render`](render/README.md) | 1 Engine | Draws viewports on the GPU: sky, models, lights, shadows, grid, projectiles. |
 | [`assets`](assets/README.md) | 1 Engine | Reads model files (glTF) and textures into plain data, safely. |
 | [`asset_db`](asset_db/README.md) | 1 Engine | The project folder: its assets by stable ID, sidecars, the import cache, watching for changes. |

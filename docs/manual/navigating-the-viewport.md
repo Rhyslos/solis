@@ -21,7 +21,7 @@ Whenever you want to look at the world from somewhere else. Solis has one camera
 - **Hold the middle button (the wheel) and drag:** slides the view sideways and up or down. The ground under the pointer moves with it.
 
 **Several views** (the **≡** menu, under *Views*): **One view**, **Two side by side**, **Two, one above the other**, or **Four views**. Each view has its own camera and its own look; with four, they start as Perspective, Top, Front and Right, the classic way to line things up exactly.
-- **Click in a view** (or turn the wheel over it) to use it: it gets a thin coloured outline and the tool bar and snapping controls. **F**, Entity > Add, and anything else that goes "where the camera looks" use that view.
+- **Click in a view** (or turn the wheel over it) to use it: it gets a thin coloured outline and the tool bar and snapping controls. **F**, the ribbon's Create buttons, and anything else that goes "where the camera looks" use that view.
 - Selecting, the gizmos, and dragging things in from the Library work in every view.
 - **Maximise** (bottom left of each view) shows that view alone, filling the viewport; **All views** brings the others back.
 - Solis remembers the layout and every view's camera next time.

@@ -272,7 +272,7 @@ fn a_camera_added_in_the_2d_view_is_a_2d_camera_on_a_whole_pixel_and_is_framed()
     assert_eq!(camera.view, area::builtin::CameraView::Perspective);
 }
 
-/// Opens Edit > Settings… on the 2D page, with a project open or not.
+/// Opens File > Preferences on the 2D page, with a project open or not.
 fn settings_2d(project: bool) -> egui_kittest::Harness<'static, State> {
     let mut w = crate::workbench::Workbench::new(info(), None);
     if project {

@@ -958,7 +958,7 @@ pub(crate) fn pixel_corner(
                         format!("Grid {w} × {h} px")
                     };
                     ui.label(text)
-                        .on_hover_text("The tile size: Edit > Settings… > 2D changes it");
+                        .on_hover_text("The tile size: File > Project settings changes it");
                 });
         });
         // The row above: the X and Y locks (2D moves across the ground).

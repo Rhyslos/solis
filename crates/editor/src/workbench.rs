@@ -1,4 +1,6 @@
-//! The whole editor window: the top bar and the docked panels
+//! The whole editor window: the frame's top (the tab bar and ribbon,
+//! `shell/`, [decision 0099](../../../docs/decisions/0099-the-g-layout.md))
+//! and, under it, the docked panels
 //! ([decision 0004](../../../docs/decisions/0004-editor-layout.md)).
 //!
 //! The workbench never touches the window, the GPU or files itself: it
@@ -43,27 +45,27 @@ pub enum WorkbenchAction {
     Quit,
     /// Export the game for playtesting (decision 0093).
     ExportPlaytest(crate::export_dialog::ExportRequest),
-    /// Choose the folder File > Export for playtesting… exports into.
+    /// Choose the folder Build > Export exports into.
     ChooseExportFolder,
-    /// Ask which model file to import (File > Import model…).
+    /// Ask which model file to import (Library > Import).
     ImportModel,
-    /// Bring in the built-in sample area (Help > Add the sample area).
+    /// Bring in the built-in sample area (Add the sample area, in the search).
     AddSampleArea,
     /// Make the turret sample game as a new project, in a folder the app
-    /// asks for (Help > Make the sample game).
+    /// asks for (Make the sample game, on File > Learn).
     MakeSampleGame,
-    /// Help > Make the UI sample…: a folder to make it in, then it opens.
+    /// Make the UI sample…, on File > Learn: a folder to make it in, then it opens.
     MakeUiSample,
     /// Make the benchmark as a new project, in a folder the app asks for
-    /// (Help > Make the benchmark).
+    /// (Make the benchmark, on File > Learn).
     MakeBenchmark,
     /// Make the playground (a level for the character, the cameras,
     /// physics and saves) as a new project, in a folder the app asks for
-    /// (Help > Make the playground).
+    /// (Make the playground, on File > Learn).
     MakePlayground,
-    /// Make a new project in a folder the user picks (File > New project…).
+    /// Make a new project in a folder the user picks (File > New project).
     NewProject,
-    /// Open a project from a folder the user picks (File > Open project…).
+    /// Open a project from a folder the user picks (File > Open…).
     OpenProject,
     /// Open the project in this folder (File > Recent projects, the
     /// launcher).
@@ -90,10 +92,10 @@ pub enum WorkbenchAction {
     /// Place the project's asset where the camera looks (a double-click in
     /// the Library).
     PlaceAsset(AssetId),
-    /// Start a new area (File > New area, Ctrl+N): the app calls
+    /// Start a new area (New area (in the search), Ctrl+N): the app calls
     /// [`Workbench::new_area`].
     NewArea,
-    /// Ask which area file to open (File > Open area…, Ctrl+O).
+    /// Ask which area file to open (Open area… (in the search), Ctrl+O).
     OpenArea,
     /// Save the area to its file, or ask where if it has none (Ctrl+S).
     SaveArea,
@@ -203,12 +205,12 @@ pub enum WorkbenchAction {
         value: reflect::Value,
     },
     /// Save the project's input actions (`input.solinput`) with this
-    /// text (Edit > Input actions…).
+    /// text (File > Input).
     SaveBindings(String),
     /// Save a recording of a play's input (this text) in the project's
     /// `recordings` folder.
     SaveRecording(String),
-    /// Ask which recording to play back (Play > Replay a recording…);
+    /// Ask which recording to play back (Debug > Replay a recording…);
     /// the app reads it and calls [`Workbench::replay`].
     OpenRecording,
     /// Save this save game (game code's `saveGame`) as the slot's file in the
@@ -222,13 +224,12 @@ pub enum WorkbenchAction {
     /// Read the slot's save game from the project's `saves` folder (game
     /// code's `load`), and hand it to [`Workbench::load_game`].
     LoadGame(String),
-    /// Ask which save game to load (Play > Load a save…), and hand it to
+    /// Ask which save game to load (Debug > Load save), and hand it to
     /// [`Workbench::load_game`].
     OpenSave,
-    /// Check GitHub for a newer build now (Help > Check for updates).
+    /// Check GitHub for a newer build now (File > Updates).
     CheckForUpdates,
-    /// Turn checking for updates when starting on or off (Help > Check for
-    /// updates when starting); the app saves it.
+    /// Turn checking for updates when starting on or off (File > Updates when starting); the app saves it.
     SetAutoUpdate(bool),
     /// Download the newer build offered (the update question's Update
     /// now); it installs on Restart to update or when Solis closes.
@@ -274,7 +275,7 @@ pub struct Workbench {
     pub(crate) manual_url: String,
     /// How long the game's sound took last frame (the Profiler's Sound).
     pub(crate) sound_spent: std::time::Duration,
-    /// The Settings window, while it's open (Edit > Settings…).
+    /// The Settings window, while it's open (File > Preferences).
     pub(crate) settings_window: Option<crate::settings_window::SettingsWindow>,
     /// The Documents folder, for exports to go in by default.
     pub(crate) documents: Option<std::path::PathBuf>,
@@ -284,7 +285,7 @@ pub struct Workbench {
     pub(crate) release_notes: Option<crate::updates::ReleaseNotes>,
     /// Whether updates are checked when Solis starts.
     pub(crate) auto_update: bool,
-    /// The update question, while it's asked (Help > Check for updates).
+    /// The update question, while it's asked (File > Updates).
     pub(crate) offer: Option<crate::splash::UpdateOffer>,
     /// Its Skip this version tick.
     pub(crate) skip_offer: bool,
@@ -294,8 +295,6 @@ pub struct Workbench {
     /// The tabs that were in front last frame, to underline them in the
     /// accent colour.
     pub(crate) in_front: HashSet<Panel>,
-    /// Projects opened lately, newest first, for File > Recent projects.
-    pub(crate) recent: Vec<std::path::PathBuf>,
     /// An exported game (decision 0093): only the game shows, filling the
     /// window, and the window follows the player's settings.
     pub(crate) play_only: bool,
@@ -319,6 +318,9 @@ pub struct Workbench {
     pub(crate) other_layouts: BTreeMap<crate::workspace::Workspace, DockState<Panel>>,
     /// One search for everything (decision 0085).
     pub(crate) search: crate::search::SearchState,
+    /// The frame: the tab in front, the ribbon, the File page (decision
+    /// 0099).
+    pub(crate) shell: crate::shell::Shell,
     /// The program's logo, for the top bar (the app hands it over).
     pub(crate) logo: Option<egui::TextureId>,
     /// The docked panel the pointer rested over when the last frame was
@@ -422,6 +424,7 @@ impl Workbench {
             workspace: crate::workspace::Workspace::Level,
             other_layouts: BTreeMap::new(),
             search: crate::search::SearchState::default(),
+            shell: crate::shell::Shell::default(),
             logo: None,
             pointer_over: None,
             keys: KeyOwner::default(),
@@ -437,7 +440,6 @@ impl Workbench {
             plays: 0,
             play_only: false,
             may_close: false,
-            recent: Vec::new(),
         }
     }
 
@@ -495,11 +497,6 @@ impl Workbench {
         self.open.project.as_ref()
     }
 
-    /// The projects for File > Recent projects, newest first.
-    pub fn set_recent(&mut self, recent: Vec<std::path::PathBuf>) {
-        self.recent = recent;
-    }
-
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.open.library = items;
@@ -543,7 +540,7 @@ impl Workbench {
         }
     }
 
-    /// Starts a new, unsaved area (File > New area). Doesn't ask about
+    /// Starts a new, unsaved area (New area (in the search)). Doesn't ask about
     /// unsaved changes: asking comes before the action.
     pub fn new_area(&mut self) {
         self.leave_for(Document::default());
@@ -839,6 +836,7 @@ impl Workbench {
         // follow the density read it there, and so does everything that
         // draws an unfinished part or leaves it out.
         crate::interface_look::use_look(self.interface_look());
+        self.settle_tab();
         self.profiler.add(
             crate::profiler::Stage::Sound,
             std::mem::take(&mut self.sound_spent),
@@ -880,14 +878,13 @@ impl Workbench {
         self.search_key(ui);
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
-        egui::Panel::top("top_bar")
-            .frame(theme::top_bar_frame().fill(self.tinted(theme::background())))
-            .exact_size(34.0)
-            .show(ui, |ui| self.top_bar(ui, &mut actions));
         egui::Panel::bottom("status_bar")
-            .frame(theme::status_bar_frame().fill(self.tinted(theme::header())))
+            .frame(theme::status_bar_frame())
             .exact_size(crate::status_bar::HEIGHT)
             .show(ui, |ui| self.status_bar(ui));
+        // The tab bar and the ribbon; a File page or an unfinished
+        // screen stands where the panels would be.
+        let page = self.top(ui, &mut actions);
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         self.play_frames(ui.input(|i| f64::from(i.stable_dt)));
         self.play_animator(ui.input(|i| f64::from(i.stable_dt)));
@@ -1146,92 +1143,95 @@ impl Workbench {
                 self.accent.colors().fill,
             )
         });
-        let editor = theme::dock_frame().show(ui, |ui| {
-            DockArea::new(&mut self.dock)
-                .style(style)
-                .tab_context_menus(false)
-                .show_close_buttons(true)
-                .show_add_buttons(false)
-                .show_leaf_close_all_buttons(false)
-                .show_leaf_collapse_buttons(true)
-                .show_inside(
-                    ui,
-                    &mut PanelViewer {
-                        area_state: &mut self.open.area_panel,
-                        copied: &copied,
-                        menu: &menu,
-                        viewport: &mut self.viewport,
-                        renderer: &mut renderer,
-                        console: &mut self.console,
-                        console_requests: &mut console_requests,
-                        problems: &self.open.problems.list,
-                        code_problems: &code_problems,
-                        game: game.as_ref().map(|(_, scene)| scene),
-                        ui_test: self.ui_test.clone(),
-                        game_screens: &self.open.game_screens.pictures,
-                        playing,
-                        game_input: self.game_input,
-                        pixels: self.open.pixels,
-                        game_out: &mut game_out,
-                        document: &self.open.document,
-                        models: &self.open.models,
-                        area_requests: &mut area_requests,
-                        project: self.open.project.as_ref(),
-                        library: &self.open.library,
-                        folders: &self.open.folders,
-                        library_state: &mut self.open.library_state,
-                        library_requests: &mut library_requests,
-                        library_pin_clicked: &mut library_pin_clicked,
-                        hints: if hints_off {
-                            None
-                        } else {
-                            Some(hints.as_deref().unwrap_or(&[]))
+        let editor = (!page).then(|| {
+            theme::dock_frame().show(ui, |ui| {
+                DockArea::new(&mut self.dock)
+                    .style(style)
+                    .tab_context_menus(false)
+                    .show_close_buttons(true)
+                    .show_add_buttons(false)
+                    .show_leaf_close_all_buttons(false)
+                    .show_leaf_collapse_buttons(true)
+                    .show_inside(
+                        ui,
+                        &mut PanelViewer {
+                            area_state: &mut self.open.area_panel,
+                            copied: &copied,
+                            menu: &menu,
+                            viewport: &mut self.viewport,
+                            renderer: &mut renderer,
+                            console: &mut self.console,
+                            console_requests: &mut console_requests,
+                            problems: &self.open.problems.list,
+                            code_problems: &code_problems,
+                            game: game.as_ref().map(|(_, scene)| scene),
+                            ui_test: self.ui_test.clone(),
+                            game_screens: &self.open.game_screens.pictures,
+                            playing,
+                            game_input: self.game_input,
+                            pixels: self.open.pixels,
+                            game_out: &mut game_out,
+                            document: &self.open.document,
+                            models: &self.open.models,
+                            area_requests: &mut area_requests,
+                            project: self.open.project.as_ref(),
+                            library: &self.open.library,
+                            folders: &self.open.folders,
+                            library_state: &mut self.open.library_state,
+                            library_requests: &mut library_requests,
+                            library_pin_clicked: &mut library_pin_clicked,
+                            hints: if hints_off {
+                                None
+                            } else {
+                                Some(hints.as_deref().unwrap_or(&[]))
+                            },
+                            sounds: crate::library::Sounds {
+                                states: &self.open.sounds,
+                                events: &self.open.sound_events,
+                                preview: self.open.preview.as_ref(),
+                                mixer: &self.open.mixer.mixer,
+                                sheets: &sheets,
+                                sheet_pictures: &self.open.sheet_pictures,
+                                code_uses: &code_uses,
+                            },
+                            mixer: &self.open.mixer,
+                            mixer_requests: &mut mixer_requests,
+                            sound_shown: self
+                                .open
+                                .sound_shown
+                                .as_ref()
+                                .map(|(path, _)| path.as_str()),
+                            text_file: self.open.text_file.as_ref(),
+                            part: part.as_ref(),
+                            running: running.as_ref(),
+                            requests: &mut requests,
+                            help: crate::properties::Help {
+                                manual: &self.manual_url,
+                                places: self.open.program.as_ref().map(|p| &p.places),
+                            },
+                            accent: self.accent,
+                            in_front: &self.in_front,
+                            shown: &mut shown,
+                            profiler: &self.profiler,
+                            frames,
+                            frames_out: &mut frames_out,
+                            animator,
+                            tileset,
+                            atlas,
+                            map,
+                            map_requests: &mut map_requests,
+                            screen,
+                            keys: self.keys,
                         },
-                        sounds: crate::library::Sounds {
-                            states: &self.open.sounds,
-                            events: &self.open.sound_events,
-                            preview: self.open.preview.as_ref(),
-                            mixer: &self.open.mixer.mixer,
-                            sheets: &sheets,
-                            sheet_pictures: &self.open.sheet_pictures,
-                            code_uses: &code_uses,
-                        },
-                        mixer: &self.open.mixer,
-                        mixer_requests: &mut mixer_requests,
-                        sound_shown: self
-                            .open
-                            .sound_shown
-                            .as_ref()
-                            .map(|(path, _)| path.as_str()),
-                        text_file: self.open.text_file.as_ref(),
-                        part: part.as_ref(),
-                        running: running.as_ref(),
-                        requests: &mut requests,
-                        help: crate::properties::Help {
-                            manual: &self.manual_url,
-                            places: self.open.program.as_ref().map(|p| &p.places),
-                        },
-                        accent: self.accent,
-                        in_front: &self.in_front,
-                        shown: &mut shown,
-                        profiler: &self.profiler,
-                        frames,
-                        frames_out: &mut frames_out,
-                        animator,
-                        tileset,
-                        atlas,
-                        map,
-                        map_requests: &mut map_requests,
-                        screen,
-                        keys: self.keys,
-                    },
-                );
+                    );
+            })
         });
-        let editor = editor.response.rect;
         if library_pin_clicked {
             self.set_library_pinned(false);
         }
-        self.library_drawer(ui, editor, &sheets, &mut library_requests);
+        if let Some(editor) = editor {
+            self.library_drawer(ui, editor.response.rect, &sheets, &mut library_requests);
+        }
         self.in_front = shown;
         self.pointer_over = frames_out.pointer_over;
         self.frames_tabs_done(frames_out, &mut actions);
@@ -1269,7 +1269,6 @@ impl Workbench {
         self.play_changes_window(ui);
         // What waited for Keep or Undo all (a quit, say) goes on now.
         actions.append(&mut self.open.outbox);
-        self.play_edge(ui.ctx());
         self.input_actions_window(ui.ctx());
         self.settings(ui.ctx(), &mut actions);
         self.export_window(ui.ctx(), &mut actions);
@@ -1517,7 +1516,11 @@ impl Workbench {
         }
         match self.keys {
             // Left before the keys were read.
-            KeyOwner::Game | KeyOwner::Question | KeyOwner::Binding | KeyOwner::Field => {}
+            KeyOwner::Game
+            | KeyOwner::Question
+            | KeyOwner::Binding
+            | KeyOwner::Field
+            | KeyOwner::Page => {}
             KeyOwner::Area if redo => self.redo(),
             KeyOwner::Area => self.undo(),
             // Over the Map tab, or painting: the map's changes.

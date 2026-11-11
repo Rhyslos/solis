@@ -1,23 +1,10 @@
 use super::*;
+use crate::PlayState;
 use crate::test_support::{harness, info};
 use egui_kittest::kittest::Queryable;
 
 fn fresh() -> Workbench {
     Workbench::new(info(), None)
-}
-
-#[test]
-fn the_editor_takes_a_colour_while_the_game_runs() {
-    let mut w = fresh();
-    assert_eq!(w.play_tint(), None);
-    assert_eq!(w.tinted(theme::header()), theme::header());
-    w.play();
-    assert_eq!(w.play_tint(), Some(PLAYING));
-    assert_ne!(w.tinted(theme::header()), theme::header());
-    w.pause();
-    assert_eq!(w.play_tint(), Some(theme::WARNING));
-    w.stop();
-    assert_eq!(w.play_tint(), None);
 }
 
 #[test]
@@ -96,12 +83,7 @@ fn many_changes_are_counted_after_the_first_few() {
 }
 
 #[test]
-fn colours_blend_between_two() {
-    let a = Color32::from_rgb(0, 100, 200);
-    let b = Color32::from_rgb(200, 100, 0);
-    assert_eq!(blend(a, b, 0.0), a);
-    assert_eq!(blend(a, b, 1.0), b);
-    assert_eq!(blend(a, b, 0.5), Color32::from_rgb(100, 100, 100));
+fn a_count_is_said_with_its_thing_in_the_singular_or_plural() {
     assert_eq!(count(1, "change"), "1 change");
     assert_eq!(count(0, "change"), "0 changes");
 }
