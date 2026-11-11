@@ -10,7 +10,7 @@ An imported model becomes an [entity](entities.md) in the area, where its file p
 ## How to use it
 
 **From the menu:**
-1. Choose **File > Import model…**.
+1. Choose **Library > Import**.
 2. Pick a `.glb` or `.gltf` file and press **Open**.
 
 **By dragging:** drag a `.glb` or `.gltf` file from your file explorer onto the Solis window. While you drag, the window shows where it will go; let go anywhere.
@@ -47,7 +47,7 @@ Then:
 - **Problem:** "it needs a glTF extension Solis doesn't read yet". **Why:** the file was saved with compression (Draco or meshopt, common from Sketchfab or gltfpack). **Fix:** export it again without compression; in Blender, untick **Compression** in the glTF export.
 - **Very large models** are split into pieces the graphics card can hold; you won't see the seams, but the Area panel's triangle count stays the same.
 - **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model as entities under it in the Area panel, and are deleted with it; a sun in the file sets the area's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
-- **Want to see how it should look?** **Help > Add the sample area** brings in a model made for checking the [looks](looks.md). With a project open, it's added to the project's assets as `Sample area.glb`, like any import, so areas using it open again.
+- **Want to see how it should look?** **Add the sample area** (press **Space** and type it) brings in a model made for checking the [looks](looks.md). With a project open, it's added to the project's assets as `Sample area.glb`, like any import, so areas using it open again.
 
 ## Related
 - [Levels of detail](levels-of-detail.md)

@@ -2,7 +2,7 @@
 # Window smoke test: opens the real editor on a virtual screen and checks
 # what a script can: the window opens, the viewport is drawn in the right
 # colours, a tool key picks a tool, the camera flies (right mouse and W), a
-# panel can be dragged to a new place, File > Quit quits, the next launch
+# panel can be dragged to a new place, File > Exit quits, the next launch
 # puts the panel and the camera back where they were, and (with
 # SAMPLE_MODEL set) an imported model is drawn.
 #
@@ -14,9 +14,15 @@
 # crates/app/src/branding.rs); CI passes it in, so this script never names
 # the program. Screenshots land in the output folder for looking at in CI.
 #
-# Positions are for the standard layout (decision 0085: Area on the left,
+# Positions are for the tab bar and ribbon along the top (decision 0099)
+# over the standard arrangement of panels (decision 0085: Area on the left,
 # Properties on the right, the Library and Console along the bottom) on a
 # 1440x900 screen.
+#
+# Nothing here waits a fixed time for the program: it waits until the
+# screen has stopped changing (`settle`), or until the program has ended.
+# The short pauses that are left pace the mouse and keys themselves, as a
+# hand does.
 set -euo pipefail
 
 BIN="${1:?usage: window-smoke.sh <binary> <window title> [output folder]}"
@@ -61,18 +67,33 @@ launch() {
     done
     WINDOW_ID="$(xdotool search --name "$TITLE" 2>/dev/null | head -1)" || true
     [ -n "$WINDOW_ID" ] || fail "no window after 60 seconds"
-    # Let the first frames draw (software rendering is slow).
-    sleep 6
+    # The first frames are drawn (software rendering is slow).
+    settle
     xdotool windowfocus --sync "$WINDOW_ID" 2>/dev/null || true
     # Solis always starts on the launcher (decision 0090): Esc carries on
     # without a project, into the editor.
     xdotool key --window "$WINDOW_ID" Escape 2>/dev/null || true
-    sleep 1
+    settle
+}
+
+# Waits until the screen has stopped changing: two pictures of it in a row
+# are the same and aren't empty. Gives up after 40 tries (the picture then
+# is whatever the screen shows, and the check that follows says what is
+# wrong with it).
+settle() {
+    local last="" now
+    for _ in $(seq 1 40); do
+        now="$(import -window root rgb:- 2>/dev/null | md5sum | cut -d' ' -f1)"
+        if [ -n "$last" ] && [ "$now" = "$last" ]; then return 0; fi
+        last="$now"
+        sleep 0.25
+    done
+    echo "The screen was still changing after 40 looks; carrying on."
 }
 
 shot() {
     xdotool mousemove 1300 880
-    sleep 1
+    settle
     import -window root "$OUT/$1.png"
 }
 
@@ -93,23 +114,29 @@ changed_pixels() {
     { compare -metric AE -fuzz 4% "$a" "$b" null: 2>&1 || true; } | awk '{print int($1)}'
 }
 
-# File > Quit with the mouse, then wait for the program to end.
+# Waits up to `$1` seconds for the program to end. Says whether it did.
+ended_within() {
+    for _ in $(seq 1 $(($1 * 4))); do
+        kill -0 "$PID" 2>/dev/null || return 0
+        sleep 0.25
+    done
+    return 1
+}
+
+# File > Exit with the mouse, then wait for the program to end.
 quit() {
-    # File is after the logo.
-    xdotool mousemove 55 16 click 1
-    sleep 1
-    xdotool mousemove 76 "${QUIT_Y:-367}" click 1
-    sleep 2
+    # The File tab is the first tab after the logo; Exit is the last item
+    # of the File page's column.
+    xdotool mousemove "${FILE_TAB_X:-64}" "${FILE_TAB_Y:-19}" click 1
+    settle
+    xdotool mousemove "${EXIT_X:-110}" "${EXIT_Y:-570}" click 1
     # With unsaved changes (an imported model), Solis asks first: answer
     # Don't save, in the middle of the window.
-    if kill -0 "$PID" 2>/dev/null; then
+    if ! ended_within 3; then
+        settle
         xdotool mousemove "${DONT_SAVE_X:-647}" "${DONT_SAVE_Y:-485}" click 1
     fi
-    for _ in $(seq 1 15); do
-        kill -0 "$PID" 2>/dev/null || break
-        sleep 1
-    done
-    kill -0 "$PID" 2>/dev/null && fail "File > Quit did not quit"
+    ended_within 15 || fail "File > Exit did not quit"
     wait "$PID" || fail "the program exited with an error"
     PID=""
 }
@@ -120,8 +147,8 @@ shot first
 # 1. The viewport is drawn: near its top is the sky, a dark neutral grey
 #    (the design's backdrop: no tint, red, green and blue the same). A
 #    wrong colour setting shows as black or washed out.
-read -r R G B <<<"$(pixel 300 90 first)"
-echo "Sky at (300, 90): $R $G $B (expected a dark neutral grey)"
+read -r R G B <<<"$(pixel 300 156 first)"
+echo "Sky at (300, 156): $R $G $B (expected a dark neutral grey)"
 [ "$B" -ge 15 ] && [ "$B" -le 80 ] || fail "the sky is not a dark grey: ($R, $G, $B)"
 [ $((R > B ? R - B : B - R)) -le 4 ] && [ $((G > B ? G - B : B - G)) -le 4 ] ||
     fail "the sky is tinted, not neutral: ($R, $G, $B)"
@@ -133,7 +160,7 @@ grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 #    not count.
 xdotool key --window "$WINDOW_ID" w || true
 shot move-tool
-TOOL_CHANGE="$(changed_pixels first move-tool 160x26+578+603)"
+TOOL_CHANGE="$(changed_pixels first move-tool 160x26+578+${TOOLS_Y:-622})"
 echo "Pixels changed in the tool bar by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
@@ -153,22 +180,23 @@ sleep 1.5
 xdotool keyup w
 xdotool mouseup 3
 shot flown
-FLY_CHANGE="$(changed_pixels move-tool flown 800x450+280+100)"
+FLY_CHANGE="$(changed_pixels move-tool flown 800x400+280+150)"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
 [ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
-TOOL_AFTER="$(changed_pixels move-tool flown 160x26+578+603)"
+TOOL_AFTER="$(changed_pixels move-tool flown 160x26+578+${TOOLS_Y:-622})"
 echo "Pixels changed in the tool bar by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 
 # 4. Drag the Console tab onto the right-hand column, below Properties.
-xdotool mousemove 147 655
+CONSOLE_Y="${CONSOLE_TAB_Y:-674}"
+xdotool mousemove 147 "$CONSOLE_Y"
 sleep 0.3
 xdotool mousedown 1
 for i in $(seq 1 20); do
-    xdotool mousemove $((147 + i * 56)) $((655 - i * 3))
+    xdotool mousemove $((147 + i * 56)) $((CONSOLE_Y - i * 3))
     sleep 0.1
 done
-sleep 0.5
+settle
 xdotool mouseup 1
 shot dragged
 DRAG_CHANGE="$(changed_pixels flown dragged)"
@@ -199,7 +227,6 @@ quit
 #    frames it, so red fills part of the middle of the viewport.
 if [ -n "${SAMPLE_MODEL:-}" ]; then
     launch --import "$SAMPLE_MODEL"
-    sleep 4
     shot imported
     RED="$(convert "$OUT/imported.png" -crop 600x400+250+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:)"
     echo "Red pixels of the sample's base in the viewport: $RED"

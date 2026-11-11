@@ -9,7 +9,7 @@ Read this page when you see a grey control with a small hollow square beside it 
 
 **Why show them at all?** So the editor's layout stays the same as it grows: what you learn now is where things will still be, and you can see what's coming and roughly when. If you'd rather work with only what works today, hide them: nothing you can use disappears with them.
 
-Today there is one: **Code editor split**, on the Appearance page of **Edit > Settings…**. More appear as the new interface's parts arrive (its [ribbon](concepts.md#the-window) and its [shelf](concepts.md#the-window)), each in its own place.
+Today there is one: **Code editor split**, on the Appearance page of **File > Preferences**. More appear as the new interface's parts arrive (its [ribbon](concepts.md#the-window) and its [shelf](concepts.md#the-window)), each in its own place.
 
 ## How to use it
 1. **Recognise one.** An unfinished part has three signs, always together:
@@ -18,7 +18,7 @@ Today there is one: **Code editor split**, on the Appearance page of **Edit > Se
    - it doesn't light up when the pointer is over it.
 2. **Find out what it will be.** Rest the pointer on it. A note says its name, what it will do in one sentence, and which step of the [roadmap](../../ROADMAP.md) builds it, for example: *Not built yet: Code editor split. Shows game code next to the viewport when a code file is open. Not planned yet.* "Not planned yet" means the design has a place for it but no step of the roadmap builds it so far.
 3. **Clicking it does nothing**, on purpose. The right-hand end of the status bar says so for three seconds (*Code editor split isn't built yet (not planned yet)*), and that's all: no window opens and nothing changes.
-4. **Hide them all:** open **Edit > Settings…**, and on **Appearance** switch on **Hide unfinished parts**. Or press **Space** and type `hide unfinished`. Every unfinished part goes, and what's left closes up, so there are no gaps where they were.
+4. **Hide them all:** open **File > Preferences**, and on **Appearance** switch on **Hide unfinished parts**. Or press **Space** and type `hide unfinished`. Every unfinished part goes, and what's left closes up, so there are no gaps where they were.
 5. **Show them again:** switch it off in the same place, or press **Space** and type `show unfinished`.
 
 ## Settings
@@ -34,7 +34,7 @@ Today there is one: **Code editor split**, on the Appearance page of **Edit > Se
 ## Tips and common problems
 - **Problem:** I clicked a button and nothing happened. **Why:** if it's grey with a small hollow square, it's an unfinished part: it marks where a feature will be. **Fix:** rest the pointer on it to read what it will do and when. For what can be done today, the [manual's list of pages](SUMMARY.md) covers everything that works.
 - **Problem:** is a grey control broken, or switched off? **Why:** neither is the same as unfinished. A control that works but can't be used right now (**Reset this page** with no project open, say) is faded and has **no** square mark; resting the pointer on it says what to do first. An unfinished part always has the mark. **Fix:** look for the square.
-- **Problem:** something I saw before is gone. **Why:** **Hide unfinished parts** may be on: it hides only what never worked. **Fix:** switch it off on **Edit > Settings… > Appearance** to see the marked places again.
+- **Problem:** something I saw before is gone. **Why:** **Hide unfinished parts** may be on: it hides only what never worked. **Fix:** switch it off on **File > Preferences** to see the marked places again.
 - **Problem:** I can't find an unfinished part with the search. **Why:** the search (**Space**) lists only what can be done. **Fix:** nothing to do: when a part is built, it joins the search.
 
 ## Related

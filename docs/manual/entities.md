@@ -22,7 +22,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 **Shared files:** a file several entities use, such as a model or sprite sheet, says **shared by 3** beside it. Changing the file itself (in Aseprite, say) changes all of them, so this tells you before you do.
 
 **Add an entity**
-- **Entity > Add entity** adds an empty one (only a Transform) at the point the camera looks at. Entity > Add point light and Add spotlight add [lights](lights.md); importing a model adds an entity for it.
+- **Home > Empty** adds an empty one (only a Transform) at the point the camera looks at. **Light** beside it adds a point light, and its small arrow lists the spotlight ([lights](lights.md)); **Camera**, **Sprite** and **Tile map** are there too; importing a model adds an entity for it.
 
 **Add or remove a component**
 - Click **+ Add component…** at the bottom of Properties, type part of a name to narrow the list, and pick one (or press Enter for the first): a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings. The list is in two groups: **Built in** (Solis's own) and **Game code** (the ready-made kit's and your own); point at one to see what it does.
@@ -49,7 +49,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 - **Ctrl + D** duplicates the selection, with everything under each one, and selects the copies.
 - **Unpack** (in the **⋯** beside a model's name, or beside a placed [assembly](assemblies.md)'s note) splits it into separate entities.
 - **Delete** (the key, the **⋯** beside its name in Properties, or **Edit > Delete** in the Area panel's own menu) removes the selection and everything under it. In the Area panel, models also have a × that does the same.
-- The Area panel's own **Edit** and **Entity** menus are the same as the ones in the top bar, closer to hand.
+- The Area panel has **Edit** and **Entity** menus of its own, close to hand: the same things as the Home tab's ribbon and the search do.
 - **F** points the camera at the selection.
 
 **Parents and children** ([concepts](concepts.md#the-area)): drag an entity in the Area panel onto another to put it under that one; it then moves, turns and is deleted with its parent. Drag it onto the empty space below the list to make it stand alone again. It stays exactly where it is in the world either way: only its numbers change, because a child's Position is measured from its parent. Lights brought in with a model start under it. Dragging one of several selected entities moves them all.

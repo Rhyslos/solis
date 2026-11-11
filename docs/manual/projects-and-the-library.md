@@ -13,14 +13,14 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 ## How to use it
 
 **Make a project**
-1. **File > New project…** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
+1. **File > New project** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
 2. Solis makes `project.solis`, an `assets` folder, and a hidden `.solis` folder for its cache. If you use Git, it also adds `.gitignore` and `.gitattributes` files set up for games.
 
-**Open a project:** **File > Open project…** and choose the project's folder, or pick it from **File > Recent projects** or the [launcher](launcher.md) (**File > Projects…**). Solis doesn't open the last project again when it starts: it always starts on the launcher, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
+**Open a project:** **File > Open…** and choose the project's folder, or pick it from **File > Recent projects** (the [launcher](launcher.md)'s list of projects). Solis doesn't open the last project again when it starts: it always starts on the launcher, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
 
 **Opening another project starts afresh.** Everything of the project you leave goes with it: its area, the files open in tabs (Clips, Frames, Animator, Map, Tileset, Atlas Crop, the UI canvas) and their undo steps, components' values you copied, and a `seed` chosen in the Console. Nothing of one project can then be saved into another by mistake, which matters most with a copy of a project, whose files have the same names. What's yours stays as it is: the layout, the cameras, the theme and the Console's messages.
 
-**Add models:** **File > Import model…**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project's assets and placed in the area. You can also put files straight into the assets folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
+**Add models:** **Library > Import**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project's assets and placed in the area. You can also put files straight into the assets folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
 
 **Find your way around the Library**
 - On the left, the **folder tree**: click a folder to see what's in it. (**View > Folder tree** puts it away to make room.)
@@ -50,7 +50,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 
 **Text files** (`.md` and `.txt` notes, and data in `.json`, `.csv`, `.toml` and `.ron`) show in the Library with their extension as their icon: notes in light blue, JSON in green, tables in pink, settings in grey-blue. Click one and Properties shows it, read only: a Markdown file's headings, lists, quotes, code and **bold** as they read, the others as plain text (up to 512 KB and the first 3,000 lines). **Open in its program** (or a double-click) opens it in the program your computer uses for that kind of file, such as Ledger for Markdown, to edit it there; Properties shows the change as soon as you save. They're under the **Code** chip too.
 
-**Import model…** above the Library brings in a model, like **File > Import model…**. It's greyed until a project is open, since the model is copied into it.
+**Import model…** above the Library brings in a model, like **Library > Import**. It's greyed until a project is open, since the model is copied into it.
 
 **Organise files** (right-click a file or folder):
 - **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name. A name must work on every computer: at most 100 characters, none of `< > : " / \ | ? *`, and not a name Windows keeps for a device (`CON`, `NUL`, `COM1` …); the Console says why if it isn't.

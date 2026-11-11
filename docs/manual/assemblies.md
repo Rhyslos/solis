@@ -11,7 +11,7 @@ Other engines call this a *prefab*. An imported model works the same way: placin
 
 **Make one**
 1. Build it in an area: a parent entity with everything under it (drag entities onto the parent in the Area panel).
-2. Select the parent and choose **Entity > Create assembly from selection**.
+2. Select the parent and choose **Home > More > Assembly from selection**.
 3. It's saved in your [project](projects-and-the-library.md)'s `assets/assemblies` folder, appears in the **Library**, and what you selected becomes the first copy of it.
 
 **Place copies:** double-click the assembly in the Library (or click its **+**). The copy goes where the camera looks.

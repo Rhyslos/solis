@@ -12,7 +12,7 @@ Solis's physics is **strict**: the same game, with the same inputs, comes out ex
 ## How to use it
 
 **A floor**
-1. Select the entity that should be the floor (an imported model, or an empty one from **Entity > Add entity**, placed where the floor goes).
+1. Select the entity that should be the floor (an imported model, or an empty one from **Home > Empty**, placed where the floor goes).
 2. In **Properties**, choose **Add component > Collider**. A green outline shows its shape in the viewport while it's selected.
 3. Set its **Shape** and **Size** to cover the floor. A box 20 × 20 × 1 m is a good start; its middle sits at the entity, so lower the entity half a metre to put the top at its feet, or set **Centre** to `0 0 -0.5`.
 

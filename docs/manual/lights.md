@@ -22,7 +22,7 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 
 **Add a lamp**
 1. Fly the camera to where the light should be ([Moving around the viewport](navigating-the-viewport.md)).
-2. Choose **Entity > Add point light** to place a bulb 2 m above the point the camera looks at, or **Entity > Add spotlight** to place a spotlight at the camera, shining where the camera looks (like holding a torch).
+2. Choose **Home > Light** to place a bulb 2 m above the point the camera looks at, or **Home > Light**'s small arrow, then **Spotlight** to place a spotlight at the camera, shining where the camera looks (like holding a torch).
 3. The lamp appears as a small cross in its colour (a spotlight also has a line the way it shines). It's listed in the Area panel and selected, with its settings in Properties.
 4. To move it, fly somewhere else and choose **Move here** in the **⋯** beside its name in Properties. **Delete**, in the same menu, removes it.
 

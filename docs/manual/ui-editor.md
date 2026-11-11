@@ -8,7 +8,7 @@ A [screen](screens.md) (a HUD, a pause menu) is a Lust file in your project's `u
 The canvas never takes your file away from you. It changes only the letters it has to (the `gap 14` becomes `gap 20`, and nothing else moves), so comments, spacing and code you wrote by hand stay exactly as they were. You can keep the file open in a code editor beside Solis: a change saved there shows on the canvas within a second.
 
 ## How to use it
-1. In the Library, open the `ui` folder and **double-click a screen's file** (`pauseMenu`). Solis switches to the **UI** workspace and draws the screen on the **Canvas**.
+1. In the Library, open the `ui` folder and **double-click a screen's file** (`pauseMenu`). Solis switches to the **UI** tab and draws the screen on the **Canvas**.
 2. **Pick a piece**: click it on the canvas, or its row in **Elements** on the left. Shift-click (Ctrl-click in Elements) picks more; drag a box round pieces on an empty part of the canvas to pick everything inside it.
 3. **Change it in Properties** on the right: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
 4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. A piece inside a `canvas` goes exactly where you drag it instead: an outline follows the pointer, and the piece is moved there when you let go (one `Ctrl + Z` puts it back). In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.

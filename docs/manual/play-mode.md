@@ -9,16 +9,16 @@ Whenever you want to see the area the way a player will: through the game's came
 
 **Add a camera first** (once per area)
 1. Move the viewport to look the way the game should look.
-2. Choose **Entity > Add camera**. A camera appears exactly where you're looking from, facing the same way, and is selected. In the viewport it's drawn as a small wire pyramid pointing the way it looks; click it to select it.
+2. On the **Home** tab, click **Camera** in the ribbon's **Create** group. A camera appears exactly where you're looking from, facing the same way, and is selected. In the viewport it's drawn as a small wire pyramid pointing the way it looks; click it to select it.
 3. Move and turn it like anything else (**W**, **R**). Its **Field of view** in Properties sets how wide it sees.
 
 The game looks through the **first camera** in the Area panel's list. With no camera, the Game panel shows the editor's own view and says so.
 
-**Play, pause and stop** (the buttons at the top right)
-1. Press **Play** (▶). The **Game** panel comes to the front and shows the game. The whole window takes a colour (a blue edge, and blue-tinted top and bottom bars; amber while paused), a coloured border goes round the viewport and the Game panel, Play is outlined, and **Stop** turns red: all reminders that you're playing, so you never mistake playing for editing.
+**Play, pause and stop** (the **Play** group, at the right end of the [ribbon](interface-tour.md) on every tab)
+1. Press **Play** (▶), the one light button in the editor. The **Game** panel comes to the front and shows the game. Play itself becomes **Stop** (■), still the one light button, and **Pause** and **Step** appear beside it. A border in the accent colour goes round the viewport and the Game panel. Nothing else changes colour: the editor is the same editor while the game runs, and the button that would start the game is the button that ends it. (Earlier builds tinted the whole window blue while playing and amber while paused; the design the editor now follows doesn't.)
 2. Work as usual: the Area panel, Properties, the viewport and its gizmos all still work. Changes show in the game straight away. For game code's components, Properties shows their values as they are right now (a counter counting, a camera's `yaw` turning), and a value you set there reaches the game: the running component takes exactly what you set, whatever the game had made of it. That holds when you set the value it started with, too: a turret that has fired down to 7 has 12 again when you type 12, or click the **↺ 12** beside the field. Its other values stay as the game has them. When you press Stop, every value the game changed goes back as it was before Play; a value you set yourself is one of your changes, which Stop asks about (step 6). Switch to the **Viewport** tab beside Game to move things with the gizmos.
-3. Press **Pause** (❚❚) to stop the game's clock (game code can pause itself too, for a pause menu: the corner then says *Game speed 0*, and the game still runs its code, see [Game screens](screens.md)); press Pause or Play to carry on. The Game panel's corner shows *Playing* or *Paused* and how long the game has run.
-4. While paused, press **Step** (▶❙, beside Pause) to run exactly one [tick](concepts.md#game-code): game code runs once, everything moves on by a sixtieth of a second, and the game stays paused. It's the way to watch something that happens too fast to see, one step at a time.
+3. Press **Pause** (❚❚) to stop the game's clock; the button stays lit while the game is paused (game code can pause itself too, for a pause menu: the corner then says *Game speed 0*, and the game still runs its code, see [Game screens](screens.md)); press Pause again to carry on. The Game panel's corner shows *Playing* or *Paused* and how long the game has run.
+4. While paused, press **Step** (▶❙, beside Pause; faint until the game is paused) to run exactly one [tick](concepts.md#game-code): game code runs once, everything moves on by a sixtieth of a second, and the game stays paused. It's the way to watch something that happens too fast to see, one step at a time.
 5. Press **Stop** (■). The game is thrown away and the area comes back exactly as it was when you pressed Play: every entity and setting, the undo history (Ctrl + Z carries on from where you were) and the selection.
 6. If you changed the area while playing, a question lists what you did (*Add Point light 1*, *Move Crate*…):
    - **Keep** makes your changes again on the area as it was before Play, and each can still be undone with Ctrl + Z.
@@ -39,7 +39,7 @@ The game looks through the **first camera** in the Area panel's list. With no ca
 
 You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md).
 
-**Playing with the keys, mouse and gamepad:** click the Game panel to give the game the mouse and keys (the pointer disappears, and the editor's own keys are off); press **Esc** to give them back. A gamepad works whenever the game plays. The **Play** menu also records a play's input and plays it back exactly (see [Input](input.md)), and **Load a save…** plays from a [save game](save-games.md).
+**Playing with the keys, mouse and gamepad:** click the Game panel to give the game the mouse and keys (the pointer disappears, and the editor's own keys are off); press **Esc** to give them back. A gamepad works whenever the game plays. The **Debug** tab's **Session** group also records a play's input and plays it back exactly (**Play and record inputs** and **Replay a recording…**, see [Input](input.md)), and its **Load save** plays from a [save game](save-games.md).
 
 **Smooth on any screen:** the game itself always runs 60 [ticks](concepts.md#game-code) a second, so it plays the same on every computer. A screen can show more frames than that (120 or 144 a second): between two ticks, the Game panel draws everything part way from where it was at the last tick to where it is now, so movement looks smooth instead of stepping. What you see is up to a sixtieth of a second behind the game, which no one can notice. While paused, it shows exactly where things are.
 
@@ -58,14 +58,15 @@ You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md
 | Camera > Far | The farthest it sees; anything beyond isn't drawn. |
 
 ## Shortcuts
-Play, Pause, Step and Stop are buttons only, so a stray key never starts or stops the game. In the Console: `play`, `pause`, `step`, `stop`.
+Play, Pause, Step and Stop are buttons only, so a stray key never starts or stops the game. They are in the search too (press **Space** and type the name), and in the Console: `play`, `pause`, `step`, `stop`.
 
 ## Tips and common problems
 - **Problem:** I changed something while playing and it went back when I pressed Stop. **Why:** you chose **Undo all** when Stop asked. **Fix:** Undo all can't be taken back; next time choose **Keep**. A value the *game* changed (not you) always goes back: copy the component's values with ⋯ > Copy values before Stop, and paste them after.
 - **Problem:** I chose **Keep**, but one change I made while playing isn't there. **Why:** it was a change to something the game made (an entity it spawned, or one a loaded save held), and those go with the game; the Console named it when you pressed Stop. **Fix:** make the change where the entity comes from: the [assembly](assemblies.md) game code spawns, or an entity of the area itself.
-- **Problem:** the Game panel shows the editor's view. **Why:** the area has no camera. **Fix:** Entity > Add camera.
+- **Problem:** the Game panel shows the editor's view. **Why:** the area has no camera. **Fix:** on the Home tab, Create > Camera.
 - **Problem:** new entities appear in the Area panel while playing. **Why:** game code made them (`World:spawn`, see [Game code](game-code.md#making-and-removing-entities)). **Fix:** nothing: they go when you press Stop.
 - **Problem:** pressing keys while playing changes the area (W picks the move tool). **Why:** the editor has the keys. **Fix:** click the Game panel to give them to the game; Esc gives them back.
+- **Problem:** I can't tell whether the game is running. **Why:** the window no longer changes colour while it plays. **Fix:** look at the ribbon's right end: **Stop** is there instead of **Play** while the game runs, and **Pause** is lit while it is paused. The status bar says **Playing** or **Paused** too, and the Game panel is in front.
 - **Problem:** Step is greyed out. **Why:** it runs one tick of a paused game. **Fix:** press Pause first.
 - **Problem:** the game shows the wrong camera. **Why:** it uses the first one in the Area panel's list. **Fix:** delete the cameras you don't need, or take their Camera component off (**Remove Camera**, in the **⋯** on its card in Properties).
 - **Problem:** the picture in the Game panel looks different from the viewport. **Why:** the game always uses the standard [look](looks.md); the viewport's look is only for editing. Hidden entities (the eye in the Area panel) show in the game, because hiding is only for the editor.

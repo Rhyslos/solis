@@ -254,7 +254,7 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 
 - **The look:** one theme, five accents, the design's sizes and type ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)). *Built.*
 - **The kit:** icons, the design's controls, and unfinished parts marked, with a setting that hides them ([decision 0101](docs/decisions/0101-unfinished-parts-as-placeholders.md)). *Built.*
-- **The top:** tab bar, ribbon and command search in place of the menus.
+- **The top:** tab bar, ribbon and command search in place of the menus ([decision 0103](docs/decisions/0103-todays-keys-stay.md)). *Built.*
 - **The middle:** editor groups, the shelf and the status bar in place of the dock.
 
 **Gate:** the editor opens in the new frame, everything that worked before can be found, and "Hide unfinished parts" leaves no gaps.

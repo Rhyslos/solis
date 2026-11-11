@@ -11,7 +11,7 @@ It's a **playtest** build, made in seconds, because the game's Lust and Lua code
 ## How to use it
 
 1. Open your project, and save the area your game starts in.
-2. Choose **File > Export for playtesting…** (or search for it).
+2. Choose **Build > Export** (or search for it).
 3. Check the settings (see the table below). They start from your project's name and the open area, and next time from what you chose last. The name, area and window are remembered with the project. The folder is remembered by Solis on this computer, so a project you got from someone else never decides where its export goes.
 4. Click **Export**. The window and the [Console](console.md) say where it went. Click **Open folder** to see it.
 5. Zip that folder (in Windows Explorer, right-click it, then **Send to > Compressed (zipped) folder**) and send the zip.

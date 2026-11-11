@@ -8,12 +8,12 @@ Save whenever you've built something you want to keep. An [area](concepts.md#the
 The file is plain text, written so that two people changing different things in the same area can merge their work in Git without conflicts. It's also safe to read and edit by hand.
 
 ## How to use it
-1. **Save:** press **Ctrl + S** (or **File > Save area**). The first time, choose a name and a folder.
+1. **Save:** press **Ctrl + S** (or **Home > Save**). The first time, choose a name and a folder.
 2. **Save as:** **Ctrl + Shift + S** saves a copy under a new name and carries on with that one.
-3. **Open:** **Ctrl + O** (or **File > Open area…**). The models it uses are read from the project, from the cache, so it opens quickly.
+3. **Open:** **Ctrl + O** (or **Open area…** (press **Space** and type it, or Ctrl + O)). The models it uses are read from the project, from the cache, so it opens quickly.
 4. **New:** **Ctrl + N** starts a fresh area with a sun and an environment.
 
-The tab at the top shows the area's name, with a **•** while it has changes that aren't saved. Solis asks before anything would lose them: a new or another area, another project (the Help menu's sample projects too), or closing. **Save**, **Don't save** or **Cancel**.
+The tab bar at the top shows the project and the area's name, with an amber dot after it while it has changes that aren't saved (the window's title shows a **•** too). Solis asks before anything would lose them: a new or another area, another project (the example projects of **File > Learn** too), or closing. **Save**, **Don't save** or **Cancel**.
 
 **Changed on disk:** if the file changes while it's open (a Git pull, or an edit in a text editor), Solis loads the new version as one step you can undo with Ctrl + Z. If you have unsaved changes too, it asks: **Keep mine** or **Load the file**.
 

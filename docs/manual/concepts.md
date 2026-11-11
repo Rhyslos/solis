@@ -12,14 +12,15 @@
 - **Panel:** one area of the editor with one job, such as the Viewport or the Console. Every panel has a **tab** with its name.
 - **Tab group:** panels that share one space. Click a tab to bring that panel to the front; the front tab is underlined in the accent colour.
 - **Docking:** dragging a panel's tab to a new place. Drop it on the edge of another panel to put them side by side, or in the middle to make them one tab group. See [Interface tour](interface-tour.md).
-- **Layout:** where all the panels are. Solis remembers yours; **Window > Reset layout** puts them back as they started.
-- **Workspace:** a whole layout for one kind of work, switched with the tabs in the top bar: **Level** for building areas, **Animate** for sprites, **Code** for testing game code and **UI** for game screens. Each remembers how you arranged its panels, and Reset layout puts back only the one you're in. See [Interface tour](interface-tour.md).
-- **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Everything else is a neutral grey, so the accent is easy to spot. Blue unless you pick another of the five in [Settings](settings.md). Colours that mean something keep their own: Play is the one light button, Stop is red, errors are red.
+- **Layout:** where all the panels are. Solis remembers yours; **Reset layout** (in the search, and in **File > Preferences**) puts them back as they started.
+- **Tab bar:** the dark strip along the top of the window: the logo, the tabs (File, Home, Library and so on), the search box, the open project and area, and the chevron that collapses the ribbon. See [Interface tour](interface-tour.md).
+- **Workspace:** a whole layout for one kind of work, switched with the tabs in the tab bar: **Home** for building areas, **Animate** for sprites, **Debug** for testing game code and **UI** for game screens. Each remembers how you arranged its panels, and Reset layout puts back only the one you're in. See [Interface tour](interface-tour.md).
+- **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Everything else is a neutral grey, so the accent is easy to spot. Blue unless you pick another of the five in [Settings](settings.md). Colours that mean something keep their own: Play (Stop, while the game runs) is the one light button, and errors are red.
 - **Interface scale:** how large the whole editor is drawn, as a percentage, set in [Settings](settings.md). At 150% every button, word and gap is half as large again. It's for screens whose pixels are too small to read at 100%; it doesn't change your game.
 - **Density:** how much room the editor's controls take, set in [Settings](settings.md): Compact, Default or Comfortable. It changes the height of buttons and fields, not the size of text.
 - **Unfinished part:** a place in the editor for a feature that isn't built yet. Solis's interface follows one design, which has room for things that come in later updates; each is shown where it will be, in grey with a small hollow square, and does nothing but say so. One setting hides them all. Other programs call such a thing a *placeholder*. See [Unfinished parts](unfinished-parts.md).
-- **Ribbon:** in the editor's new interface, the band of buttons under the tabs along the top: each tab (Home, Library, Animate and so on) shows its own buttons there, gathered into named groups. It takes the place of the menus. It isn't in the editor yet: the new interface arrives a part at a time, and this page will say when.
-- **Shelf:** in the editor's new interface, the wide panel along the bottom, with tabs of its own: what's selected and its properties, the Console, Problems and more, side by side in columns. It takes the place of the panels docked round the viewport. Like the ribbon, it isn't in the editor yet.
+- **Ribbon:** the band of buttons under the tabs along the top: each tab (Home, Library, Animate and so on) shows its own buttons there, gathered into named groups, with the Play group at its right end. It took the place of the menus. See [Interface tour](interface-tour.md).
+- **Shelf:** in the editor's new interface, the wide panel along the bottom, with tabs of its own: what's selected and its properties, the Console, Problems and more, side by side in columns. It takes the place of the panels docked round the viewport. It isn't in the editor yet: the new interface arrives a part at a time, and this page will say when.
 
 ## The 3D view
 
@@ -106,7 +107,7 @@
 - <a id="player-setting"></a>**Player setting:** a choice the player makes for themselves, not part of the game: text size, UI size, fullscreen, the window's size. The game's own menu offers them through `Screens:` and `Window:` calls; they're not in save games or recordings. [More](screens.md).
 - <a id="playtest"></a>**Playtest build:** a folder holding your game and a program named after it, for someone else to play without the editor. It runs the game's code as Play does, so it's made in seconds; a finished release comes later. [More](playtest-export.md).
 - <a id="focus"></a>**Focus (of a screen's buttons):** the button the keys or a gamepad are on, shown with a blue ring. The arrow keys or the stick move it to the nearest button that way, and Space, Enter or A chooses it. See [Game screens](screens.md).
-- <a id="canvas"></a>**Canvas (UI editor):** where a screen is drawn in the editor's **UI** workspace to pick its pieces and change them. Each change rewrites only the letters it must in the screen's Lust file. See [The UI editor](ui-editor.md).
+- <a id="canvas"></a>**Canvas (UI editor):** where a screen is drawn on the editor's **UI** tab to pick its pieces and change them. Each change rewrites only the letters it must in the screen's Lust file. See [The UI editor](ui-editor.md).
 - **Play mode:** running the area as a game inside the editor. Press Play to start and Stop to finish. Stop puts the area back as it was, then asks whether to keep the changes you made yourself meanwhile; what the game did (entities it spawned or removed, values it changed) is never kept. See [Play mode](play-mode.md).
 - **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
 - **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.
@@ -216,7 +217,7 @@
 
 ## Getting Solis
 
-- **Build:** one version of the program, made by GitHub each time a change is merged into the main version. Each build has a **build number** that goes up by one or more each time, so a bigger number is newer. Help > About shows yours. See [Installing and updating](installing-and-updating.md).
+- **Build:** one version of the program, made by GitHub each time a change is merged into the main version. Each build has a **build number** that goes up by one or more each time, so a bigger number is newer. File > About shows yours. See [Installing and updating](installing-and-updating.md).
 - **Release:** a build published on GitHub's Releases page for anyone to download. Solis publishes every build as a release called `build-` and its number.
 - **Installer:** a program that puts another program on your computer properly: in its own folder, in the Start menu, and in Windows' list of apps so you can uninstall it. Solis's is `solis-setup.exe`.
 - **Splash screen:** the picture a program shows while it starts: Solis's logo, name and version, and what it's doing (such as checking for updates).

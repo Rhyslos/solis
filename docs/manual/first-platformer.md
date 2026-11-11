@@ -18,11 +18,11 @@ Each step says *why* as well as *what*, so you can change things and make the ga
 ### 1. Make a project and an area
 A [project](concepts.md#projects) is a folder holding everything your game is made of. An [area](concepts.md#the-area) is one level (or menu, or room) in it.
 
-1. **File > New project…** (or **+ New project** on the launcher), make an empty folder called `Platformer`, and choose it.
+1. **File > New project** (or **+ New project** on the launcher), make an empty folder called `Platformer`, and choose it.
 2. Save the empty area: **Ctrl + S**, name it `level`. Solis suggests the `assets/areas` folder; that's fine.
 3. Look in pixels: click **Perspective ▴** at the bottom left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
 
-**Why 2D?** A platformer is seen from the side. In Solis, a 2D game lies flat and is seen from straight above, so across the screen is *x* and up the screen is *y*. The project's 2D settings (**Edit > Settings… > 2D**) say 16 pixels make one metre, so one 16-pixel tile is one metre. Every number in this guide is in metres, so think of a metre as a tile.
+**Why 2D?** A platformer is seen from the side. In Solis, a 2D game lies flat and is seen from straight above, so across the screen is *x* and up the screen is *y*. The project's 2D settings (**File > Project settings**) say 16 pixels make one metre, so one 16-pixel tile is one metre. Every number in this guide is in metres, so think of a metre as a tile.
 
 ### 2. Build the level from tiles
 A [tile map](tile-maps.md) is a grid of cells, each painted with a [terrain](concepts.md#2d). Terrains come from a **tileset**. We need two: *sky* (empty air) and *ground* (solid).
@@ -118,7 +118,7 @@ end
 
 **What the code says, line by line:**
 - Lines starting with `--` are comments: notes for people, which Lust skips.
-- `fetch` brings in names from another file. `Input` reads the player's controls, and `Action` holds their names: `Action.Move` is WASD or the arrow keys (or a gamepad's stick), `Action.Jump` is Space (or the gamepad's A). Players can change these keys in **Edit > Input actions…** without touching your code.
+- `fetch` brings in names from another file. `Input` reads the player's controls, and `Action` holds their names: `Action.Move` is WASD or the arrow keys (or a gamepad's stick), `Action.Jump` is Space (or the gamepad's A). Players can change these keys in **File > Input** without touching your code.
 - `component Hero` is a new kind of component. Everything in `has` is a **field**: a value each hero keeps, shown in Properties so you can change it there. `fall` is how fast the hero is going up (more than 0) or down (less than 0), in metres a second.
 - `update(float dt)` runs every tick. `dt` is how long a tick is, in seconds (about 1/60). Multiplying a speed by `dt` turns "metres a second" into "metres this tick", so the game runs the same speed on every computer.
 - `is …? then { … }` is Lust's *if*: the code in the braces runs only when the question is true.
@@ -130,7 +130,7 @@ end
 
 ### 6. Make it play
 1. Select the hero. In Properties, choose **Add component > Hero**. Its four fields appear.
-2. Add a camera: **Entity > Add camera**. In the 2D view it's a 2D camera, and a dashed frame labelled **Game screen** shows what it sees.
+2. Add a camera: **Home > Camera**. In the 2D view it's a 2D camera, and a dashed frame labelled **Game screen** shows what it sees.
 3. With the camera selected, **Add component > FollowCamera2D**. This is a ready-made component from Solis's kit. Set its **target** to the hero and its **bounds** to the map's entity, so it follows the hero and never shows past the map's edges.
 4. Save (**Ctrl + S**) and press **Play**. Click the Game panel so it gets the keys.
 5. Run with **A** and **D** (or the arrows), jump with **Space**. Press **Stop** when you're done: everything goes back to how it was before Play.
