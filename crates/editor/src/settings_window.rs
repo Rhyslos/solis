@@ -43,9 +43,9 @@ impl Page {
 /// One setting: its name and its hint, which the search box looks in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Setting {
-    Theme,
-    Rounded,
     Accent,
+    Scale,
+    Density,
     Layout,
     Hints,
     BaseResolution,
@@ -57,7 +57,7 @@ enum Setting {
 impl Setting {
     fn page(self) -> Page {
         match self {
-            Self::Theme | Self::Rounded | Self::Accent | Self::Layout | Self::Hints => {
+            Self::Accent | Self::Scale | Self::Density | Self::Layout | Self::Hints => {
                 Page::Appearance
             }
             Self::BaseResolution | Self::PixelsPerUnit | Self::TileSize | Self::Scaling => {
@@ -68,9 +68,9 @@ impl Setting {
 
     fn name(self) -> &'static str {
         match self {
-            Self::Theme => "Theme",
-            Self::Rounded => "Rounded panels",
             Self::Accent => "Accent colour",
+            Self::Scale => "Interface scale",
+            Self::Density => "Density",
             Self::Layout => "Panel layout",
             Self::Hints => "Hints",
             Self::BaseResolution => "Base resolution",
@@ -82,16 +82,16 @@ impl Setting {
 
     fn hint(self) -> &'static str {
         match self {
-            Self::Theme => {
-                "The editor's colours. Graphite is near-black with crisp lines; Standard is the \
-                 grey Solis started with."
-            }
-            Self::Rounded => {
-                "Panels become rounded cards with small gaps between them, and the workspaces sit \
-                 in one group of pills. Works with either theme."
-            }
             Self::Accent => {
                 "Marks what's chosen and selected. Play, Stop and warnings keep their own colours."
+            }
+            Self::Scale => {
+                "How large everything in the editor is drawn. Larger is easier to read on a \
+                 small or very sharp screen; lines stay crisp at every step."
+            }
+            Self::Density => {
+                "How tall buttons, fields and drop-downs are. Compact fits more on screen; \
+                 Comfortable gives larger things to aim at."
             }
             Self::Layout => "Puts this workspace's panels back where they started.",
             Self::Hints => {
@@ -114,9 +114,9 @@ impl Setting {
     }
 
     const ALL: [Self; 9] = [
-        Self::Theme,
-        Self::Rounded,
         Self::Accent,
+        Self::Scale,
+        Self::Density,
         Self::Layout,
         Self::Hints,
         Self::BaseResolution,
@@ -144,13 +144,15 @@ pub(crate) struct SettingsWindow {
 /// What a click in the window asks for, carried out once it's drawn.
 enum Request {
     Accent(Accent),
-    /// A theme, rounded panels or not.
-    Appearance(theme::Appearance),
+    /// How large the interface is drawn.
+    Scale(theme::Scale),
+    /// How tall rows and fields are.
+    Density(theme::Density),
     ResetLayout,
     /// Hints on or off.
     Hints(bool),
-    /// The Appearance page as it was at first: the standard theme, flat
-    /// panels, the standard accent, and hints on.
+    /// The Appearance page as it was at first: the standard accent, scale
+    /// and density, and hints on.
     ResetAppearance,
     /// New 2D settings, and whether to save them now (not while a number
     /// is being dragged).
@@ -184,15 +186,25 @@ impl Workbench {
 
     /// Sets the accent colour for the whole editor (remembered next time).
     pub(crate) fn choose_accent(&mut self, ctx: &egui::Context, accent: Accent) {
-        self.accent = accent;
-        theme::restyle(ctx, accent, self.appearance);
+        self.choose_interface_look(
+            ctx,
+            theme::InterfaceLook {
+                accent,
+                ..self.interface
+            },
+        );
     }
 
-    /// Sets the theme and rounded panels for the whole editor (remembered
+    /// Sets the accent, scale and density for the whole editor (remembered
     /// next time).
-    pub(crate) fn choose_appearance(&mut self, ctx: &egui::Context, appearance: theme::Appearance) {
-        self.appearance = appearance;
-        theme::restyle(ctx, self.accent, appearance);
+    pub(crate) fn choose_interface_look(
+        &mut self,
+        ctx: &egui::Context,
+        look: theme::InterfaceLook,
+    ) {
+        self.accent = look.accent;
+        self.interface = look;
+        theme::restyle(ctx, look);
     }
 
     /// Uses the project's 2D settings (as read from its `pixels.solpix`,
@@ -247,8 +259,7 @@ impl Workbench {
         let mut open = true;
         let mut request = None;
         let now = Now {
-            accent: self.accent,
-            appearance: self.appearance,
+            look: self.interface_look(),
             hints: self.hints,
             pixels: self.open.pixels,
             project: self.open.project.is_some(),
@@ -266,12 +277,32 @@ impl Workbench {
             });
         match request {
             Some(Request::Accent(accent)) => self.choose_accent(ctx, accent),
-            Some(Request::Appearance(appearance)) => self.choose_appearance(ctx, appearance),
+            Some(Request::Scale(scale)) => {
+                self.choose_interface_look(ctx, theme::InterfaceLook { scale, ..now.look });
+            }
+            Some(Request::Density(density)) => {
+                self.choose_interface_look(
+                    ctx,
+                    theme::InterfaceLook {
+                        density,
+                        ..now.look
+                    },
+                );
+            }
             Some(Request::ResetLayout) => self.reset_layout(),
             Some(Request::Hints(on)) => self.hints = on,
             Some(Request::ResetAppearance) => {
-                self.appearance = theme::Appearance::default();
-                self.choose_accent(ctx, Accent::default());
+                // The switches that aren't on this page keep their choice.
+                let standard = theme::InterfaceLook::default();
+                self.choose_interface_look(
+                    ctx,
+                    theme::InterfaceLook {
+                        accent: standard.accent,
+                        scale: standard.scale,
+                        density: standard.density,
+                        ..now.look
+                    },
+                );
                 self.hints = true;
             }
             Some(Request::Pixels(settings, save)) => self.change_pixels(settings, save, actions),
@@ -285,8 +316,8 @@ impl Workbench {
 
 /// The settings as they are, for the window to show.
 struct Now {
-    accent: Accent,
-    appearance: theme::Appearance,
+    /// The accent, scale and density in use.
+    look: theme::InterfaceLook,
     /// Whether the Hints panel shows hints.
     hints: bool,
     pixels: PixelSettings,
@@ -425,7 +456,7 @@ fn size_text([w, h]: [u32; 2]) -> String {
 /// right.
 fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
     let mut request = None;
-    let accent = now.accent;
+    let accent = now.look.accent;
     ui.horizontal(|ui| {
         ui.vertical(|ui| {
             ui.set_width(330.0);
@@ -441,33 +472,6 @@ fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
                 let mut on = now.hints;
                 if ui.checkbox(&mut on, "Show hints").changed() {
                     request = Some(Request::Hints(on));
-                }
-            }
-            Setting::Theme => {
-                egui::ComboBox::from_id_salt("settings-theme")
-                    .selected_text(now.appearance.theme.name())
-                    .width(150.0)
-                    .show_ui(ui, |ui| {
-                        for choice in theme::Theme::ALL {
-                            if ui
-                                .selectable_label(now.appearance.theme == choice, choice.name())
-                                .clicked()
-                            {
-                                request = Some(Request::Appearance(theme::Appearance {
-                                    theme: choice,
-                                    ..now.appearance
-                                }));
-                            }
-                        }
-                    });
-            }
-            Setting::Rounded => {
-                let mut on = now.appearance.rounded;
-                if ui.checkbox(&mut on, "Use rounded panels").changed() {
-                    request = Some(Request::Appearance(theme::Appearance {
-                        rounded: on,
-                        ..now.appearance
-                    }));
                 }
             }
             Setting::Accent => {
@@ -489,6 +493,36 @@ fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
                                     request = Some(Request::Accent(choice));
                                 }
                             });
+                        }
+                    });
+            }
+            Setting::Scale => {
+                egui::ComboBox::from_id_salt("settings-scale")
+                    .selected_text(now.look.scale.name())
+                    .width(150.0)
+                    .show_ui(ui, |ui| {
+                        for choice in theme::Scale::ALL {
+                            if ui
+                                .selectable_label(now.look.scale == choice, choice.name())
+                                .clicked()
+                            {
+                                request = Some(Request::Scale(choice));
+                            }
+                        }
+                    });
+            }
+            Setting::Density => {
+                egui::ComboBox::from_id_salt("settings-density")
+                    .selected_text(now.look.density.name())
+                    .width(150.0)
+                    .show_ui(ui, |ui| {
+                        for choice in theme::Density::ALL {
+                            if ui
+                                .selectable_label(now.look.density == choice, choice.name())
+                                .clicked()
+                            {
+                                request = Some(Request::Density(choice));
+                            }
                         }
                     });
             }
@@ -609,7 +643,7 @@ fn pixel_control(ui: &mut Ui, setting: Setting, s: PixelSettings) -> Option<Requ
                     }
                 });
         }
-        Setting::Theme | Setting::Rounded | Setting::Accent | Setting::Layout | Setting::Hints => {}
+        Setting::Accent | Setting::Scale | Setting::Density | Setting::Layout | Setting::Hints => {}
     }
     if changed.get() && new != s {
         // Saved once the drag ends, not every step of it.
@@ -647,21 +681,32 @@ mod tests {
         assert!(h.query_by_label("Reset layout").is_some());
     }
 
+    /// Opens the drop-down beside `setting` and picks `choice` in it.
+    fn choose(h: &mut egui_kittest::Harness<'static, State>, nth: usize, choice: &str) {
+        h.get_all_by_role(egui::accesskit::Role::ComboBox)
+            .nth(nth)
+            .unwrap()
+            .click();
+        h.run();
+        h.get_by_label(choice).click();
+        h.run();
+    }
+
     #[test]
     fn choosing_an_accent_changes_the_editor_s_colour() {
         let mut h = opened();
         // The accent restyles the editor, whose headings need its fonts.
         h.ctx.set_fonts(theme::fonts());
         h.run();
-        // The accent's drop-down (after the theme's), then a colour in it.
-        h.get_all_by_role(egui::accesskit::Role::ComboBox)
-            .nth(1)
-            .unwrap()
-            .click();
-        h.run();
-        h.get_by_label("Plum").click();
-        h.run();
-        assert_eq!(h.state().0.accent(), Accent::Plum);
+        // The accent's drop-down is the page's first.
+        choose(&mut h, 0, "Purple");
+        assert_eq!(h.state().0.accent(), Accent::Purple);
+        assert_eq!(h.state().0.interface_look().accent, Accent::Purple);
+        let style = h.ctx.global_style();
+        assert_eq!(
+            style.visuals.selection.bg_fill,
+            crate::tokens::select_row(Accent::Purple)
+        );
         // Reset this page puts the standard one back.
         h.get_by_label("Reset this page").click();
         h.run();
@@ -669,7 +714,7 @@ mod tests {
     }
 
     #[test]
-    fn graphite_and_rounded_panels_restyle_the_editor_and_reset_puts_them_back() {
+    fn the_five_accents_are_offered_and_the_old_ones_are_gone() {
         let mut h = opened();
         h.ctx.set_fonts(theme::fonts());
         h.run();
@@ -678,21 +723,100 @@ mod tests {
             .unwrap()
             .click();
         h.run();
-        h.get_by_label("Graphite").click();
+        for accent in Accent::ALL {
+            assert!(h.query_all_by_label(accent.name()).next().is_some());
+        }
+        for gone in ["Plum", "Marine green", "Petrol blue", "Amber", "Gold"] {
+            assert!(h.query_by_label(gone).is_none(), "{gone}");
+        }
+    }
+
+    #[test]
+    fn the_theme_and_rounded_panels_settings_are_gone() {
+        let h = opened();
+        for gone in ["Theme", "Rounded panels", "Use rounded panels", "Graphite"] {
+            assert!(h.query_by_label(gone).is_none(), "{gone}");
+        }
+        assert!(!Setting::ALL.iter().any(|s| s.matches("graphite")));
+        assert!(!Setting::ALL.iter().any(|s| s.matches("rounded")));
+    }
+
+    #[test]
+    fn interface_scale_draws_everything_larger_and_reset_puts_it_back() {
+        let mut h = opened();
+        h.ctx.set_fonts(theme::fonts());
         h.run();
-        h.get_by_label("Use rounded panels").click();
+        assert!(h.query_by_label("Interface scale").is_some());
+        let wide = h.ctx.content_rect().width();
+        choose(&mut h, 1, "150%");
         h.run();
-        let chosen = h.state().0.appearance();
-        assert_eq!(chosen.theme, theme::Theme::Graphite);
-        assert!(chosen.rounded);
-        assert_eq!(theme::panel(), theme::Theme::Graphite.palette().panel);
-        assert!(theme::rounded());
-        // The accent keeps its choice when the theme changes.
+        assert_eq!(h.state().0.interface_look().scale.percent(), 150);
+        assert_eq!(h.ctx.zoom_factor(), 1.5);
+        // Each point is now a pixel and a half, so the same window holds
+        // two thirds as many points across.
+        assert_eq!(h.ctx.pixels_per_point(), 1.5);
+        let narrow = h.ctx.content_rect().width();
+        assert!((narrow * 1.5 - wide).abs() < 1.0, "{wide} then {narrow}");
+        // The accent kept its choice.
         assert_eq!(h.state().0.accent(), Accent::default());
         h.get_by_label("Reset this page").click();
         h.run();
-        assert_eq!(h.state().0.appearance(), theme::Appearance::default());
-        assert_eq!(theme::panel(), theme::Theme::Standard.palette().panel);
+        h.run();
+        assert_eq!(
+            h.state().0.interface_look(),
+            theme::InterfaceLook::default()
+        );
+        assert_eq!(h.ctx.zoom_factor(), 1.0);
+    }
+
+    #[test]
+    fn density_makes_buttons_and_fields_taller_or_shorter() {
+        let mut h = opened();
+        h.ctx.set_fonts(theme::fonts());
+        // The standard look first, as the app applies it when it starts.
+        theme::restyle(&h.ctx, theme::InterfaceLook::default());
+        h.run();
+        assert!(h.query_by_label("Density").is_some());
+        let height = |h: &egui_kittest::Harness<'static, State>| {
+            h.get_by_label("Reset layout").rect().height()
+        };
+        assert_eq!(height(&h), 24.0);
+        choose(&mut h, 2, "Compact");
+        h.run();
+        assert_eq!(
+            h.state().0.interface_look().density,
+            theme::Density::Compact
+        );
+        assert_eq!(height(&h), 22.0);
+        choose(&mut h, 2, "Comfortable");
+        h.run();
+        assert_eq!(height(&h), 28.0);
+        h.get_by_label("Reset this page").click();
+        h.run();
+        h.run();
+        assert_eq!(height(&h), 24.0);
+        theme::restyle(&h.ctx, theme::InterfaceLook::default());
+    }
+
+    #[test]
+    fn reset_this_page_leaves_the_switches_of_other_pages_alone() {
+        let mut w = Workbench::new(info(), None).with_interface_look(theme::InterfaceLook {
+            accent: Accent::Teal,
+            hide_unfinished: true,
+            ribbon_labels: false,
+            ..theme::InterfaceLook::default()
+        });
+        w.open_settings();
+        let mut h = harness(w);
+        h.ctx.set_fonts(theme::fonts());
+        h.run();
+        h.get_by_label("Reset this page").click();
+        h.run();
+        let look = h.state().0.interface_look();
+        assert_eq!(look.accent, Accent::default());
+        assert!(look.hide_unfinished);
+        assert!(!look.ribbon_labels);
+        theme::restyle(&h.ctx, theme::InterfaceLook::default());
     }
 
     #[test]
@@ -747,6 +871,9 @@ mod tests {
         assert!(Setting::Accent.matches("colour"));
         assert!(Setting::Layout.matches("panel"));
         assert!(Setting::Layout.matches("appearance"));
+        assert!(Setting::Scale.matches("scale"));
+        assert!(Setting::Scale.matches("larger"));
+        assert!(Setting::Density.matches("compact"));
         // Every word must be found.
         assert!(Setting::Accent.matches("accent colour"));
         assert!(!Setting::Accent.matches("accent zebra"));

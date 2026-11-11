@@ -24,7 +24,7 @@ cargo doc --workspace --no-deps --open                  # read the API docs
 
 Optional, matching CI: `cargo install cargo-deny` and run `cargo deny check`.
 
-**GPU tests** (`cargo test -p render --test gpu`) draw real frames and check their pixels. Without a GPU they skip with a note; set `REQUIRE_GPU=1` to make a missing GPU a failure instead, as CI does. Without a graphics card, Mesa's software driver works: add `WGPU_BACKEND=gl`.
+**GPU tests** (`cargo test -p render --test gpu`) draw real frames and check their pixels. Without a GPU they skip with a note; set `REQUIRE_GPU=1` to make a missing GPU a failure instead, as CI does. Without a graphics card, Mesa's software driver works: add `WGPU_BACKEND=gl`. The editor's **picture tests** (`cargo test -p editor picture`) follow the same rule: they draw real frames of the editor and hold its colours to the project lead's design (`docs/design/g-layout/`) and to Solis's own approved pictures (`crates/editor/tests/pictures/`, whose README says how a changed picture is approved).
 
 **The window test** runs on Linux only, because CI's cheapest machines are Linux ones with a virtual screen (Solis itself is made for Windows, [decision 0012](docs/decisions/0012-windows-only.md)). It opens the real editor on a virtual screen. CI's own run of it is paused ([decision 0102](docs/decisions/0102-linux-checks-paused.md)), so run it yourself before pushing. It checks the viewport's colours, picks a tool with its key, flies the camera, drags a panel to a new place, quits with File > Quit, and checks that the next launch puts the panel and camera back. Pass the program's name (`APP_NAME` in `crates/app/src/branding.rs`) as the window title:
 

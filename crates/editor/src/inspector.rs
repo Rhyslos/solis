@@ -65,7 +65,7 @@ fn row_marked<R>(
         ui.spacing_mut().item_spacing.x = spacing;
         if moved {
             ui.painter()
-                .circle_filled(dot.center(), 2.5, ui.visuals().selection.bg_fill);
+                .circle_filled(dot.center(), 2.5, crate::theme::accent_fill());
         }
         if !help.is_empty() {
             label.on_hover_text(help);

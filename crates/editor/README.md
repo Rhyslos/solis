@@ -2,11 +2,11 @@
 
 **Layer 2 · Editor**
 
-The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the one-row top bar (menus, document tabs, Play and Build), the dockable panels (Viewport and Game, Area and Layers, Properties, Library and Code, Console and Problems), the controls in the viewport's corners, the icons (drawn in code, in `icons.rs`), and the theme. Interface text is Inter and monospace text JetBrains Mono (both OFL, in `assets/fonts`, licences in `licenses/fonts`).
+The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the one-row top bar (menus, document tabs, Play and Build), the dockable panels (Viewport and Game, Area and Layers, Properties, Library and Code, Console and Problems), the controls in the viewport's corners, the icons (drawn in code, in `icons.rs`), and the look: one theme, Neutral dark, made from the design's tokens (`tokens.rs`, decision 0100; the design itself is `docs/design/g-layout/`, and the frame is being remade to it, decision 0099). Interface text is Inter and monospace text JetBrains Mono (both OFL, in `assets/fonts`, licences in `licenses/fonts`).
 
 ## Purpose
 
-Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the theme and accent colour, the camera, the console), and tell the app what to do through `WorkbenchAction`s.
+Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the interface's look (accent, scale, density), the camera, the console), and tell the app what to do through `WorkbenchAction`s.
 
 **Where things are:**
 

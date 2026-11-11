@@ -1625,7 +1625,7 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
     };
     ui.painter().rect_filled(rect, 3.0, fill);
     let color = if chosen {
-        Color32::WHITE
+        theme::on_accent()
     } else {
         theme::text_strong()
     };

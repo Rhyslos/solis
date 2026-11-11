@@ -99,6 +99,10 @@ Each idea: what it is in everyday words, then a note for whoever builds it.
 
 - **Visual scripting** (Unreal's Blueprints): Lust is how games are written in Solis.
 
+## Not a tool for games: the program itself
+
+- **A new logo:** the project lead was never happy with today's; designed with them, mock-ups first. Not part of Shared 1, which shows today's logo in the new interface's logo tile as one swappable picture (2026-11-11). *Not placed in a phase yet.*
+
 ## Making them feel like Lust
 
 So these don't feel bolted on, each builds on something Lust already has:

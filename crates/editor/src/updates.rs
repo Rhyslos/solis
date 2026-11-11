@@ -9,7 +9,7 @@
 
 use crate::theme;
 use crate::workbench::{Workbench, WorkbenchAction};
-use egui::{Color32, RichText, Ui};
+use egui::{RichText, Ui};
 
 /// How updating is going, as the app tells the editor.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -195,10 +195,11 @@ impl Workbench {
         let UpdateNotice::Ready(build) = self.update else {
             return;
         };
-        let button = egui::Button::new(RichText::new("Restart to update").color(Color32::WHITE))
-            .fill(self.accent.colors().fill)
-            .stroke(egui::Stroke::NONE)
-            .min_size(egui::vec2(0.0, crate::top_bar::BAR_BUTTON.y));
+        let button =
+            egui::Button::new(RichText::new("Restart to update").color(theme::on_accent()))
+                .fill(self.accent.colors().fill)
+                .stroke(egui::Stroke::NONE)
+                .min_size(egui::vec2(0.0, crate::top_bar::BAR_BUTTON.y));
         let clicked = ui
             .add(button)
             .on_hover_text(format!(

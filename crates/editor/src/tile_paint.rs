@@ -209,7 +209,7 @@ pub(crate) fn paint_bar(
         };
         ui.painter().rect_filled(rect, 3.0, fill);
         let colour = if chosen {
-            Color32::WHITE
+            theme::on_accent()
         } else {
             theme::text_strong()
         };

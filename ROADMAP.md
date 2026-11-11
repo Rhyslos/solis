@@ -23,7 +23,10 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 11. Playtest export | Games packaged for playtesting, without the editor |
 | 12. Game UI | Sungraph UI: HUDs and menus drawn in Solis |
 | *Three tracks (decision 0097)* | |
-| Shared 1. The editor's UI, remade | The editor rebuilt with the project lead's own design |
+| Shared 1a. The look and the frame | The editor in the project lead's own design: one dark theme with five accents, then the tab bar, ribbon, editor groups, shelf and status bar; unfinished parts marked, and a setting that hides them |
+| Shared 1b. The everyday screens | Home (building and placing), the Library, and the File pages: projects, Preferences, Project settings and Input |
+| Shared 1c. 2D and its editors | Tile maps, tilesets and pictures' crops, sprite clips and animators, and game screens, each in the new frame |
+| Shared 1d. The rest, finished | Audio and Debug; the screens not built yet as placeholders; the manual rewritten, the old code out, the review |
 | Shared 2. Game code: finding and making things | Tile map questions, tags and world questions, spawning with values, game tests |
 | 2D 1. The world and tiles | Levels and the world map, advanced tiling, pathfinding |
 | 2D 2. Movement, light and polish | Platformer and grid-step controllers, triggers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
@@ -226,7 +229,7 @@ The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/009
 
 **The order:**
 
-1. **Shared 1:** the editor's UI, remade.
+1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish.
 2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
 3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes).
 4. **2D 1 and 2D 2:** 2D complete.
@@ -245,9 +248,41 @@ Steps 8 to 10 are written down so nothing is lost, but they aren't planned in de
 
 ## Shared 1: The editor's UI, remade
 
-Added 10 November 2026: the editor's interface rebuilt from scratch, with the project lead's own design. Mocked up first, on screenshots of the editor as it is, and planned in detail when it starts.
+Added 10 November 2026: the editor's interface rebuilt from scratch, with the project lead's own design. The design arrived on 11 November: the "G layout", a tab bar, a ribbon, editor groups, a shelf and a status bar, in one dark theme ([`docs/design/g-layout/`](docs/design/g-layout/README.md), [decision 0099](docs/decisions/0099-the-g-layout.md)). It is sixteen milestones, so it is built as four small phases, each with its own gate; the last carries the gate the phase was given at first. After every milestone the editor works and everything that existed before can still be reached. Where the engine lacks something the design shows, a placeholder stands in its place, and one setting hides them all ([decision 0101](docs/decisions/0101-unfinished-parts-as-placeholders.md)). Parts the design doesn't draw (the 2D editors, above all) are mocked up in its language and approved before they are built. Plan: [docs/plans/shared-1-ui-remake.md](docs/plans/shared-1-ui-remake.md).
 
-- **The editor's UI, remade.**
+## Shared 1a: The look and the frame
+
+- **The look:** one theme, five accents, the design's sizes and type ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)). *Built.*
+- **The kit:** icons, the design's controls, and unfinished parts marked, with a setting that hides them.
+- **The top:** tab bar, ribbon and command search in place of the menus.
+- **The middle:** editor groups, the shelf and the status bar in place of the dock.
+
+**Gate:** the editor opens in the new frame, everything that worked before can be found, and "Hide unfinished parts" leaves no gaps.
+
+## Shared 1b: The everyday screens
+
+- **Home: the level editor.**
+- **Home: placing.**
+- **The Library.**
+- **File: projects, Learn and updates.**
+- **File: Preferences, Project settings and Input.**
+
+**Gate:** build a small area, place things from the shelf, change a setting and a key, and open another project, all on screens that match their pictures.
+
+## Shared 1c: 2D and its editors
+
+- **Tile maps, tilesets and pictures' crops.**
+- **Animate: sprite clips and animators.**
+- **Game screens.**
+
+**Gate:** paint a map, edit a tileset, change a clip and an animator, and lay out a screen, each as its approved mock-up.
+
+## Shared 1d: The rest, finished
+
+- **Audio.**
+- **Debug.**
+- **The unbuilt screens, the Build tab and dragging tabs.**
+- **Finish:** the manual, the old code out, the review.
 
 **Gate:** the project lead works in the new editor for an evening and wouldn't go back.
 

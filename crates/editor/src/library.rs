@@ -668,9 +668,11 @@ fn menu_row(
                 ui.add_enabled_ui(open, |ui| {
                     let colors = accent.colors();
                     let new = egui::containers::menu::MenuButton::from_button(
-                        egui::Button::new(RichText::new("+ New ▾").color(Color32::WHITE).strong())
-                            .fill(colors.fill)
-                            .corner_radius(4.0),
+                        egui::Button::new(
+                            RichText::new("+ New ▾").color(theme::on_accent()).strong(),
+                        )
+                        .fill(colors.fill)
+                        .corner_radius(4.0),
                     )
                     .ui(ui, |ui| new_items(ui, &state.folder, requests));
                     new.0.widget_info(|| {
@@ -815,7 +817,7 @@ fn folder_tree(
                 let open = state.folder == folder && state.search.is_empty();
                 if open {
                     ui.painter()
-                        .rect_filled(rect, 3.0, accent.colors().fill.gamma_multiply(0.45));
+                        .rect_filled(rect, 3.0, crate::tokens::select_row(accent));
                 } else if response.hovered() {
                     ui.painter().rect_filled(rect, 3.0, theme::hover());
                 }
@@ -1404,7 +1406,7 @@ fn list(
                 let selected = state.selected.as_deref() == Some(item.path.as_str());
                 if selected {
                     ui.painter()
-                        .rect_filled(rect, 3.0, accent.colors().fill.gamma_multiply(0.45));
+                        .rect_filled(rect, 3.0, crate::tokens::select_row(accent));
                 } else if response.hovered() {
                     ui.painter().rect_filled(rect, 3.0, theme::hover());
                 }

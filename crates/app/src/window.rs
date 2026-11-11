@@ -9,8 +9,7 @@ use crate::import::{Finished, FolderFor, Importer};
 use crate::project::Projects;
 use asset_db::Change;
 use editor::{
-    AppInfo, Camera, DockState, FileLight, FileLightKind, LogLevel, Look, ModelInfo, NoRenderer,
-    Overlays, Panel, Workbench, WorkbenchAction, theme::Accent,
+    AppInfo, FileLight, FileLightKind, LogLevel, ModelInfo, NoRenderer, Workbench, WorkbenchAction,
 };
 use eframe::egui;
 use reflect::{AssetId, EntityId};
@@ -33,12 +32,15 @@ const LAYOUT_KEY: &str = "panel_layout2";
 /// Key under which every workspace's layout, and the one in use, is
 /// remembered (decision 0085); the layout above is read when it's missing.
 const WORKSPACES_KEY: &str = "workspaces";
-/// Key under which the accent colour is remembered.
-/// The accent chosen, saved since blue became the standard (decision
-/// 0070).
+/// Key under which the interface's look is remembered: its accent, scale
+/// and density (decision 0100).
+const INTERFACE_LOOK_KEY: &str = "interface_look";
+/// The accent as builds before the design's five saved it, since blue
+/// became the standard (decision 0070). Read once, to carry the accent
+/// over, while there is no look yet; never written.
 const ACCENT_KEY: &str = "accent2";
-/// The accent as saved before: amber there was the standard of its day,
-/// so it reads as the new standard, blue; any other was chosen and stays.
+/// The accent as saved before that: amber there was the standard of its
+/// day, so it reads as the standard. Read once, likewise; never written.
 const OLD_ACCENT_KEY: &str = "accent";
 /// Key under which the editor window's size is remembered: the window is
 /// the launcher's size while it's up, and this size again once a project
@@ -49,8 +51,6 @@ const EDITOR_SIZE_KEY: &str = "editor_size";
 const LIBRARY_PINNED_KEY: &str = "library_pinned";
 /// Key under which whether the Hints panel shows hints is remembered.
 const HINTS_KEY: &str = "hints";
-/// Where the theme and rounded panels are kept (decision 0096).
-const APPEARANCE_KEY: &str = "appearance";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
 /// Key under which snapping and the axis locks are remembered.
@@ -165,6 +165,9 @@ struct App {
 mod playtest_window;
 pub use playtest_window::run_playtest;
 
+#[path = "window_saved.rs"]
+mod saved;
+
 impl App {
     fn new(
         cc: &eframe::CreationContext<'_>,
@@ -173,67 +176,9 @@ impl App {
         pending: crate::updates::PendingSlot,
         playtest: Option<crate::playtest::Found>,
     ) -> Self {
-        let storage = cc.storage;
-        let layout: Option<DockState<Panel>> =
-            storage.and_then(|s| eframe::get_value(s, LAYOUT_KEY));
-        let accent: Accent = storage
-            .and_then(|s| {
-                eframe::get_value(s, ACCENT_KEY)
-                    .or_else(|| eframe::get_value(s, OLD_ACCENT_KEY).map(accent_from_before))
-            })
-            .unwrap_or_default();
-        let editor_size = storage.map_or(FIRST_SIZE, saved_editor_size);
-        let library_pinned: bool = storage
-            .and_then(|s| eframe::get_value(s, LIBRARY_PINNED_KEY))
-            .unwrap_or(true);
-        let hints: bool = storage
-            .and_then(|s| eframe::get_value(s, HINTS_KEY))
-            .unwrap_or(true);
-        let workspaces: Option<editor::workspace::Workspaces> =
-            storage.and_then(|s| eframe::get_value(s, WORKSPACES_KEY));
-        let camera: Camera = storage
-            .and_then(|s| eframe::get_value(s, CAMERA_KEY))
-            .unwrap_or_default();
-        let look: Look = storage
-            .and_then(|s| eframe::get_value(s, LOOK_KEY))
-            .unwrap_or_default();
-        let overlays: Overlays = storage
-            .and_then(|s| eframe::get_value(s, OVERLAYS_KEY))
-            .unwrap_or_default();
-        let snapping: editor::Snapping = storage
-            .and_then(|s| eframe::get_value(s, SNAPPING_KEY))
-            .unwrap_or_default();
-        let views: Option<editor::Views> = storage.and_then(|s| eframe::get_value(s, VIEWS_KEY));
-        let console_history: Vec<String> = storage
-            .and_then(|s| eframe::get_value(s, CONSOLE_HISTORY_KEY))
-            .unwrap_or_default();
-        let recent: Vec<PathBuf> = storage
-            .and_then(|s| eframe::get_value(s, RECENT_PROJECTS_KEY))
-            .unwrap_or_default();
-        let known = crate::known_projects::KnownProjects::from_saved(
-            storage.and_then(|s| eframe::get_value(s, KNOWN_PROJECTS_KEY)),
-            recent,
-        );
-        let auto_update: bool = storage
-            .and_then(|s| eframe::get_value(s, AUTO_UPDATE_KEY))
-            .unwrap_or(true);
-        let appearance: editor::theme::Appearance = storage
-            .and_then(|s| eframe::get_value(s, APPEARANCE_KEY))
-            .unwrap_or_default();
-        editor::theme::apply(&cc.egui_ctx, accent, appearance);
-        let mut workbench = Workbench::new(info.clone(), layout)
-            .with_accent(accent)
-            .with_appearance(appearance)
-            .with_overlays(overlays)
-            .with_snapping(snapping)
-            .with_camera(camera)
-            .with_look(look)
-            .with_console_history(console_history);
-        workbench.set_auto_update(auto_update);
-        // Saved before views existed: the one camera and look above.
-        if let Some(views) = &views {
-            workbench = workbench.with_views(views);
-        }
+        let mut saved = saved::Saved::read(cc.storage);
+        editor::theme::apply(&cc.egui_ctx, saved.look);
+        let mut workbench = saved.workbench(info.clone());
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -251,16 +196,14 @@ impl App {
             gpu.as_ref()
                 .map_or(256 << 20, GpuViewport::max_buffer_bytes),
         );
-        let skipped: Option<u64> = storage
-            .and_then(|s| eframe::get_value::<Option<u64>>(s, SKIPPED_BUILD_KEY))
-            .flatten();
+        let skipped = saved.skipped;
         // GitHub is asked as Solis starts, unless checking is off (decision
         // 0045), but nothing is asked of the person: a newer build shows as
         // a bar in the launcher (the project lead, 2026-11-06).
         let copy = crate::updates::this_copy();
         // An exported game never asks GitHub for anything.
-        let check =
-            (auto_update && playtest.is_none()).then(|| crate::updates::start_check(&cc.egui_ctx));
+        let check = (saved.auto_update && playtest.is_none())
+            .then(|| crate::updates::start_check(&cc.egui_ctx));
         let startup = crate::startup::Startup::new(None, skipped, copy.installed, copy.build);
         let mut app = Self {
             workbench,
@@ -271,7 +214,7 @@ impl App {
             sounds: crate::sounds::Sounds::default(),
             sprites: crate::sprites::Sprites::default(),
             game_audio: crate::game_audio::GameAudio::default(),
-            projects: Projects::with_known(known, copy.build),
+            projects: Projects::with_known(std::mem::take(&mut saved.known), copy.build),
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
             game_code: crate::game_code::GameCode::default(),
@@ -292,7 +235,7 @@ impl App {
             tidying: Default::default(),
             startup: playtest.is_none().then_some(startup),
             quitting: false,
-            editor_size,
+            editor_size: saved.editor_size,
             launcher_sized: None,
             settling: None,
             began: std::time::Instant::now(),
@@ -320,13 +263,7 @@ impl App {
         // Solis always opens on the launcher, and a project opens from it
         // (the project lead, 2026-11-06): the last project isn't reopened.
         app.workbench.launch_launcher();
-        if !library_pinned {
-            app.workbench.set_library_pinned(false);
-        }
-        app.workbench.set_hints_on(hints);
-        if let Some(workspaces) = workspaces {
-            app.workbench.set_workspaces(workspaces);
-        }
+        saved.settle(&mut app.workbench);
         for path in imports {
             app.import(&path);
         }
@@ -1934,16 +1871,6 @@ impl App {
     }
 }
 
-/// An accent saved before blue became the standard (decision 0070): amber,
-/// the standard then, becomes blue; any other was chosen and stays.
-fn accent_from_before(saved: Accent) -> Accent {
-    if saved == Accent::Amber {
-        Accent::default()
-    } else {
-        saved
-    }
-}
-
 /// The logo as a texture, for the splash (none if it can't be read).
 fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
     let icon = eframe::icon_data::from_png_bytes(branding::LOGO_PNG).ok()?;
@@ -2098,12 +2025,6 @@ impl eframe::App for App {
             if let Some(program) = checked.program {
                 self.workbench.set_program(program);
             }
-        }
-        // Models' thumbnails are drawn on the theme's backdrop: another
-        // theme, and they're made again.
-        let theme = self.workbench.appearance().theme;
-        if self.thumbnails.follow_theme(theme, self.gpu.as_ref()) {
-            self.refresh_library();
         }
         if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
             self.show_library();
@@ -2274,8 +2195,11 @@ impl eframe::App for App {
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
         eframe::set_value(storage, WORKSPACES_KEY, &self.workbench.workspaces());
         eframe::set_value(storage, HINTS_KEY, &self.workbench.hints_on());
-        eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
-        eframe::set_value(storage, APPEARANCE_KEY, &self.workbench.appearance());
+        eframe::set_value(
+            storage,
+            INTERFACE_LOOK_KEY,
+            &self.workbench.interface_look(),
+        );
         eframe::set_value(
             storage,
             LIBRARY_PINNED_KEY,
@@ -2388,19 +2312,6 @@ mod own_files_tests;
 #[cfg(test)]
 mod tests {
     #[test]
-    fn an_accent_saved_before_blue_was_the_standard_carries_over() {
-        // Decision 0070: amber was the standard nobody chose, so it turns
-        // blue; a colour someone picked stays theirs.
-        use editor::theme::Accent;
-        assert_eq!(super::accent_from_before(Accent::Amber), Accent::Blue);
-        assert_eq!(super::accent_from_before(Accent::Plum), Accent::Plum);
-        assert_eq!(
-            super::accent_from_before(Accent::PetrolBlue),
-            Accent::PetrolBlue
-        );
-    }
-
-    #[test]
     fn models_only_game_code_places_are_loaded_too() {
         use area::builtin::Model;
         use reflect::AssetRef;
@@ -2455,7 +2366,7 @@ mod tests {
 
     /// Settings kept in memory, as eframe keeps them on disk.
     #[derive(Default)]
-    pub(super) struct Memory(std::collections::HashMap<String, String>);
+    pub(super) struct Memory(pub(super) std::collections::HashMap<String, String>);
 
     impl eframe::Storage for Memory {
         fn get_string(&self, key: &str) -> Option<String> {

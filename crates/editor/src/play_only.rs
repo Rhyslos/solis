@@ -118,7 +118,7 @@ impl Workbench {
                 game_ui.centered_and_justified(|ui| {
                     ui.label(
                         egui::RichText::new(text)
-                            .color(egui::Color32::from_gray(200))
+                            .color(crate::tokens::text_body())
                             .size(16.0),
                     );
                 });

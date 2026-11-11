@@ -96,7 +96,9 @@ ureq = { version = "3.5", default-features = false, features = ["rustls-no-provi
 sha2 = "0.11"
 serde_json = "1.0"
 # Development only.
-egui_kittest = "0.36"
+# "wgpu" draws real frames of the editor for its picture tests (on a GPU or
+# Mesa's software driver); comparing pictures is Solis's own (decision 0052).
+egui_kittest = { version = "0.36", features = ["wgpu"] }
 pollster = "1.0"
 ron = "0.12"
 # Watching the project folder for changed files (decision 0021).

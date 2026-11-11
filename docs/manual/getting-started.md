@@ -24,7 +24,7 @@ A copy run this way doesn't update itself. Each download stays available for 30 
 **Opening with a model:** `solis --import ship.glb` opens Solis and imports the model straight away (repeat `--import` for more than one).
 
 ## Settings
-Solis remembers your panel layout, accent colour, camera and viewport controls in your user folder, so each start looks like the last.
+Solis remembers your panel layout, accent colour, interface scale, camera and viewport controls in your user folder, so each start looks like the last.
 
 ## Tips and common problems
 - **Problem:** Windows warns that the program is from an unknown publisher. **Why:** the program isn't signed with a paid certificate yet. **Fix:** choose **More info**, then **Run anyway**.

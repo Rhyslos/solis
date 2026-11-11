@@ -23,6 +23,7 @@ mod day_colours;
 pub mod document;
 mod elements_view;
 pub mod export_dialog;
+mod fonts;
 pub mod frames_editor;
 mod frames_view;
 mod game_code;
@@ -37,6 +38,7 @@ pub mod hints;
 pub mod icons;
 mod input_window;
 mod inspector;
+pub mod interface_look;
 mod key_owner;
 pub mod launcher;
 pub mod layout;
@@ -49,7 +51,6 @@ mod menu_items;
 pub mod mixer_view;
 pub mod models;
 mod own_files;
-mod palette;
 pub mod panel;
 mod panels;
 pub mod picking;
@@ -85,6 +86,7 @@ pub mod tile_paint;
 pub mod tile_view;
 mod tileset_editor;
 mod tileset_view;
+pub mod tokens;
 mod top_bar;
 pub mod transforming;
 pub mod updates;
@@ -108,6 +110,7 @@ pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
 pub use egui_dock::DockState;
 pub use game_sound::{GameSound, Hearer, SoundMode};
+pub use interface_look::InterfaceLook;
 pub use launcher::KnownProject;
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
@@ -140,6 +143,10 @@ mod kit_tests;
 mod kit_topdown_tests;
 #[cfg(test)]
 mod open_externally_tests;
+#[cfg(test)]
+mod picture_support;
+#[cfg(test)]
+mod picture_tests;
 #[cfg(test)]
 mod scale_levels_tests;
 #[cfg(test)]

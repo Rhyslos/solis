@@ -1,0 +1,10 @@
+{
+    "accent": "Amber",
+    "console_history": "[\"help\"]",
+    "panel_layout": "(surfaces:[Main((nodes:[Horizontal((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),fraction:0.765,fully_collapsed:false,collapsed_leaf_count:0)),Vertical((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),fraction:0.72,fully_collapsed:false,collapsed_leaf_count:0)),Vertical((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),fraction:0.72,fully_collapsed:false,collapsed_leaf_count:0)),Horizontal((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),fraction:0.245,fully_collapsed:false,collapsed_leaf_count:0)),Leaf((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),viewport:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),tabs:[Library,Console,Problems,Mixer,Profiler,Code],active:(0),scroll:0.0,collapsed:false,tab_bar_hidden:false)),Leaf((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),viewport:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),tabs:[Properties],active:(0),scroll:0.0,collapsed:false,tab_bar_hidden:false)),Leaf((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),viewport:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),tabs:[Hints],active:(0),scroll:0.0,collapsed:false,tab_bar_hidden:false)),Leaf((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),viewport:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),tabs:[Area],active:(0),scroll:0.0,collapsed:false,tab_bar_hidden:false)),Leaf((rect:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),viewport:(min:(x:inf,y:inf),max:(x:-inf,y:-inf)),tabs:[Viewport,Game],active:(0),scroll:0.0,collapsed:false,tab_bar_hidden:false)),Empty,Empty,Empty,Empty,Empty,Empty],focused_node:Some((7)),collapsed:false,collapsed_leaf_count:0))],focused_surface:None)",
+    "recent_projects": "[\"C:\\\\Games\\\\Farm\",\"C:\\\\Games\\\\Turret\"]",
+    "viewport_camera": "(position:(12.0,-7.5,3.25),heading:0.5880026,tilt:-0.30244648,fov_y:0.87266463,speed:4,kind:Perspective,flat_height:20.0,zoom:2.0)",
+    "viewport_look": "(kind:Standard,bands:3,outlines:true)",
+    "viewport_overlays": "(tools:true,snapping:true,stats:true,preview_animation:false)",
+    "viewport_snapping": "(grid:false,grid_step:1.0,angle:false,angle_step:15.0,scale:false,object_axes:false,locked:(false,false,false),pixel_snap:Pixels)",
+}

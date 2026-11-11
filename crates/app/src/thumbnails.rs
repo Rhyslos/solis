@@ -1,8 +1,7 @@
 //! The Library's thumbnails: pictures shrunk on a worker thread, and
 //! models read on a worker and drawn once on the GPU from a three-quarter
 //! view. A few at a time, so they never hold up the editor or the
-//! project's real imports; made again when the file changes, and models'
-//! when the editor's theme does (they're drawn on its backdrop).
+//! project's real imports; made again when the file changes.
 
 use crate::gpu::GpuViewport;
 use asset_db::{FileKind, Jobs, Listing};
@@ -54,8 +53,6 @@ pub struct Thumbnails {
     /// Goes up when another project opens: thumbnails still being made
     /// for the last one are thrown away when they arrive.
     generation: u64,
-    /// The theme whose backdrop the models' thumbnails are drawn on.
-    theme: editor::theme::Theme,
     jobs: Jobs<(PathBuf, u64, Made)>,
 }
 
@@ -67,7 +64,6 @@ impl Default for Thumbnails {
             queued: VecDeque::new(),
             tried: HashMap::new(),
             generation: 0,
-            theme: editor::theme::Theme::default(),
             jobs: Jobs::new(1),
         }
     }
@@ -124,28 +120,6 @@ impl Thumbnails {
         {
             gpu.free_thumbnail(id);
         }
-    }
-
-    /// Follows the editor's theme: when it's another than the models'
-    /// thumbnails were drawn in, forgets theirs, so each is drawn again on
-    /// the new backdrop the next time they're wanted. Pictures' don't show
-    /// the backdrop, and stay. Returns whether any was forgotten (so the
-    /// Library should be listed again).
-    pub fn follow_theme(&mut self, theme: editor::theme::Theme, gpu: Option<&GpuViewport>) -> bool {
-        if theme == self.theme {
-            return false;
-        }
-        self.theme = theme;
-        let models: Vec<PathBuf> = self
-            .made
-            .keys()
-            .filter(|path| !self.pictures.contains_key(*path))
-            .cloned()
-            .collect();
-        for path in &models {
-            self.forget(path, gpu);
-        }
-        !models.is_empty()
     }
 
     /// Forgets every thumbnail (another project was opened).
@@ -335,55 +309,6 @@ mod tests {
         t.want(&listing, Path::new("/project/assets"), None);
         assert_eq!(t.queued.len(), 3, "made again after it changed");
         assert_ne!(job_id(Path::new("a")), job_id(Path::new("b")));
-    }
-
-    /// The review, BUG-29: a model's thumbnail kept the backdrop of the
-    /// theme it was made in until the project was opened again.
-    #[test]
-    fn another_theme_forgets_the_models_thumbnails_and_keeps_the_pictures() {
-        use editor::theme::Theme;
-        let listing = Listing {
-            folders: Vec::new(),
-            files: vec![
-                asset_db::FileEntry {
-                    path: "a.glb".into(),
-                    kind: FileKind::Model,
-                    id: None,
-                },
-                asset_db::FileEntry {
-                    path: "b.png".into(),
-                    kind: FileKind::Texture,
-                    id: None,
-                },
-            ],
-        };
-        let assets = Path::new("/project/assets");
-        let ctx = egui::Context::default();
-        let mut t = Thumbnails::default();
-        t.want(&listing, assets, None);
-        // As if both were made.
-        t.queued.clear();
-        t.made.insert("a.glb".into(), egui::TextureId::User(7));
-        let picture = ctx.load_texture(
-            "thumbnail b.png",
-            egui::ColorImage::filled([2, 2], egui::Color32::WHITE),
-            egui::TextureOptions::LINEAR,
-        );
-        t.made.insert("b.png".into(), picture.id());
-        t.pictures.insert("b.png".into(), picture);
-        assert!(!t.follow_theme(Theme::Standard, None), "the same theme");
-        assert!(t.get(Path::new("a.glb")).is_some());
-        // Graphite: the model's is forgotten and wanted again, alone.
-        assert!(t.follow_theme(Theme::Graphite, None));
-        assert!(t.get(Path::new("a.glb")).is_none());
-        assert!(t.get(Path::new("b.png")).is_some());
-        t.want(&listing, assets, None);
-        let queued: Vec<&Path> = t.queued.iter().map(|w| w.path.as_path()).collect();
-        assert_eq!(queued, [Path::new("a.glb")]);
-        // Nothing more while the theme stays, or with no model made.
-        assert!(!t.follow_theme(Theme::Graphite, None));
-        assert!(!t.follow_theme(Theme::Standard, None), "none is made yet");
-        assert_eq!(t.queued.len(), 1);
     }
 
     #[test]

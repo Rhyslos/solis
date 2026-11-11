@@ -14,7 +14,9 @@
 - **Docking:** dragging a panel's tab to a new place. Drop it on the edge of another panel to put them side by side, or in the middle to make them one tab group. See [Interface tour](interface-tour.md).
 - **Layout:** where all the panels are. Solis remembers yours; **Window > Reset layout** puts them back as they started.
 - **Workspace:** a whole layout for one kind of work, switched with the tabs in the top bar: **Level** for building areas, **Animate** for sprites, **Code** for testing game code and **UI** for game screens. Each remembers how you arranged its panels, and Reset layout puts back only the one you're in. See [Interface tour](interface-tour.md).
-- **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Blue unless you pick another. Colours that mean something keep their own: Play is blue, Stop red, errors red.
+- **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Everything else is a neutral grey, so the accent is easy to spot. Blue unless you pick another of the five in [Settings](settings.md). Colours that mean something keep their own: Play is the one light button, Stop is red, errors are red.
+- **Interface scale:** how large the whole editor is drawn, as a percentage, set in [Settings](settings.md). At 150% every button, word and gap is half as large again. It's for screens whose pixels are too small to read at 100%; it doesn't change your game.
+- **Density:** how much room the editor's controls take, set in [Settings](settings.md): Compact, Default or Comfortable. It changes the height of buttons and fields, not the size of text.
 
 ## The 3D view
 

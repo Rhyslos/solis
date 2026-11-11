@@ -16,7 +16,7 @@ Solis always starts on the launcher, in a small window, and you pick the project
 
 Solis doesn't open the last project by itself: the projects you opened most recently are at the top, so it's one double-click.
 
-When a newer build of Solis is out, a blue bar over your projects says so, with **Update now**, **See what's new** (the Updates page) and **Not now** (until Solis starts again). Nothing interrupts you as Solis starts. A copy you didn't install with the setup file has no bar, since it never updates itself: the Updates page says where to get the new build.
+When a newer build of Solis is out, a bar over your projects, outlined in the [accent colour](concepts.md#the-window), says so, with **Update now**, **See what's new** (the Updates page) and **Not now** (until Solis starts again). Nothing interrupts you as Solis starts. A copy you didn't install with the setup file has no bar, since it never updates itself: the Updates page says where to get the new build.
 
 ## How to use it
 

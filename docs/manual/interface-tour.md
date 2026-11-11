@@ -7,7 +7,7 @@ When finding your way around, or making the layout suit your screen.
 
 ## How to use it
 
-This page follows what you see, in the order you meet it: the launcher Solis starts on, then the editor from its top bar down to its status bar.
+This page follows what you see, in the order you meet it: the launcher Solis starts on, then the editor from its top bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in [Settings](settings.md).
 
 **The [launcher](launcher.md)** is what Solis always starts on. **Projects** lists your projects (pinned ones first, with **Search projects** and **Sort by**), beside **+ New project**, **Open project…** and **Scan a folder…**; **Learn** has four examples to start from, the first steps and a link to this manual; **Updates** shows the build you have and the newest one. Double-click a project and the editor opens with it. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. **File > Projects…** shows the launcher again, and **Esc** leaves it for the editor. See [The launcher](launcher.md).
 

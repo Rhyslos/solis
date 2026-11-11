@@ -53,7 +53,7 @@ fn strip(ui: &mut Ui, day: &DayColours, now: Option<f64>) {
                 egui::pos2(x, rect.bottom() - 4.0),
                 egui::pos2(x, rect.bottom()),
             ],
-            egui::Stroke::new(1.0, Color32::from_gray(30)),
+            egui::Stroke::new(1.0, crate::tokens::group_gap()),
         );
     }
     if let Some(now) = now {

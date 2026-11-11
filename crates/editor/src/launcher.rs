@@ -412,7 +412,7 @@ impl Workbench {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if let Some((label, action)) = button {
                             let go = egui::Button::new(
-                                RichText::new(label).color(Color32::WHITE).strong(),
+                                RichText::new(label).color(theme::on_accent()).strong(),
                             )
                             .fill(fill);
                             if ui.add(go).clicked() {
@@ -519,14 +519,16 @@ impl Workbench {
             .resizable(false)
             .frame(
                 egui::Frame::new()
-                    .fill(theme::header())
+                    // The design's File page: its menu column.
+                    .fill(crate::tokens::ribbon())
                     .inner_margin(egui::Margin::symmetric(14, 22)),
             )
             .show(ui, |ui| self.launcher_sidebar(ui));
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
-                    .fill(theme::background())
+                    // And its page.
+                    .fill(crate::tokens::shelf_bar())
                     .inner_margin(egui::Margin::symmetric(36, 28)),
             )
             .show(ui, |ui| match self.launcher.page {
@@ -576,10 +578,11 @@ impl Workbench {
             let (rect, item) =
                 ui.allocate_exact_size(vec2(ui.available_width(), 36.0), Sense::click());
             let painter = ui.painter();
-            if on {
-                painter.rect_filled(rect, 6.0, theme::selected());
-            } else if item.hovered() {
-                painter.rect_filled(rect, 6.0, theme::menu_row());
+            // The design's File menu: the page in front and the row under
+            // the pointer share one quiet grey.
+            if on || item.hovered() {
+                let radius = f32::from(crate::tokens::size::radius::MENU);
+                painter.rect_filled(rect, radius, crate::tokens::group_gap());
             }
             let colour = if on {
                 theme::text_strong()
@@ -620,7 +623,7 @@ impl Workbench {
                     Align2::CENTER_CENTER,
                     "New",
                     FontId::proportional(11.0),
-                    Color32::WHITE,
+                    theme::on_accent(),
                 );
             }
             painter.text(
@@ -692,7 +695,7 @@ impl Workbench {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let new = egui::Button::new(
                     RichText::new("+ New project")
-                        .color(Color32::WHITE)
+                        .color(theme::on_accent())
                         .strong(),
                 )
                 .fill(fill)
@@ -1336,7 +1339,7 @@ impl Workbench {
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     let big = |text: &str| {
-                        egui::Button::new(RichText::new(text).color(Color32::WHITE).strong())
+                        egui::Button::new(RichText::new(text).color(theme::on_accent()).strong())
                             .fill(fill)
                             .min_size(vec2(0.0, 32.0))
                     };
@@ -1492,7 +1495,7 @@ impl Workbench {
                                 .add(
                                     egui::Button::new(
                                         RichText::new("Make it in a folder…")
-                                            .color(Color32::WHITE)
+                                            .color(theme::on_accent())
                                             .strong(),
                                     )
                                     .fill(fill),

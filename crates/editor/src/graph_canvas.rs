@@ -273,7 +273,7 @@ pub(crate) fn graph_canvas(
                 canvas.view.offset.x.rem_euclid(step),
                 canvas.view.offset.y.rem_euclid(step),
             );
-        let grid = Color32::from_rgb(0x22, 0x22, 0x22);
+        let grid = crate::tokens::row_hover();
         let mut x = start.x;
         while x < full.right() {
             painter.vline(x, full.y_range(), Stroke::new(1.0, grid));
@@ -450,7 +450,7 @@ pub(crate) fn graph_canvas(
                 );
             }
         }
-        painter.rect_filled(rect, ROUND, Color32::from_rgb(0x2c, 0x2c, 0x2c));
+        painter.rect_filled(rect, ROUND, crate::tokens::field_border());
         let border = if b.live {
             Stroke::new(2.0, LIVE)
         } else if b.picked {
