@@ -1,0 +1,16 @@
+-- The sample project's game code: one small component, so the Library
+-- has a code file and Properties has something of the game's to show.
+fetch "solis/world":World;
+
+-- Swings its entity round at a steady speed.
+component CraneController {
+    has {
+        float speed = 0.8;
+        bool swings = true;
+    }
+
+    method update(float dt) {
+        speed = speed;
+    }
+}
+end

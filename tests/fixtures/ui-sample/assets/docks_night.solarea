@@ -1,0 +1,119 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 2;
+
+entity 1A2B3C4D5E6F7 {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity 2B3C4D5E6F7G8 {
+    name = "Props";
+    order = "a1";
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 3C4D5E6F7G8H9 {
+    name = "Crane_Arm_02";
+    parent = "2B3C4D5E6F7G8";
+    order = "a0";
+    Transform.position = [12.5, 0.0, -4.7];
+    Transform.rotation = [0.0, 0.0, 0.3007058, 0.95371693];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 4D5E6F7G8H9J0 {
+    name = "Crate_Stack_A";
+    parent = "2B3C4D5E6F7G8";
+    order = "a1";
+    Transform.position = [-6.0, 2.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 5E6F7G8H9J0K1 {
+    name = "Crate_Stack_B";
+    parent = "2B3C4D5E6F7G8";
+    order = "a2";
+    Transform.position = [5.0, 3.5, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 6F7G8H9J0K1M2 {
+    name = "Bollard_x12";
+    parent = "2B3C4D5E6F7G8";
+    order = "a3";
+    Transform.position = [0.0, -8.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 7G8H9J0K1M2N3 {
+    name = "Lighting";
+    order = "a2";
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 8H9J0K1M2N3P4 {
+    name = "Sun";
+    parent = "7G8H9J0K1M2N3";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 9J0K1M2N3P4Q5 {
+    name = "Dock_Lamp";
+    parent = "7G8H9J0K1M2N3";
+    order = "a1";
+    Light.kind = "Point";
+    Light.color = [1.0, 0.8, 0.55];
+    Light.strength = 40.0;
+    Light.range = 12.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = false;
+    Transform.position = [4.0, -2.0, 5.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity A0K1M2N3P4Q5R {
+    name = "Gameplay";
+    order = "a3";
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity B1M2N3P4Q5R6S {
+    name = "Camera";
+    parent = "A0K1M2N3P4Q5R";
+    order = "a0";
+    Camera.fov = 50.0;
+    Camera.near = 0.1;
+    Camera.far = 2000.0;
+    Transform.position = [8.0, -10.0, 6.0];
+    Transform.rotation = [0.6614736, 0.12738816, 0.13976377, 0.7257349];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

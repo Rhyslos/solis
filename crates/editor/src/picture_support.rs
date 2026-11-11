@@ -13,6 +13,7 @@
 //! driver is a failure: the same rule as the renderer's tests. Mesa's
 //! software driver does (`WGPU_BACKEND=gl` under `xvfb-run`).
 
+use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::theme::{self, InterfaceLook};
 use crate::viewport::NoRenderer;
 use crate::workbench::Workbench;
@@ -143,6 +144,101 @@ pub(crate) fn design(file: &str) -> Picture {
         .join("g-layout")
         .join(file);
     Picture::read(&path).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// A text file, with its line ends made plain (a Windows checkout ends
+/// lines with a carriage return too).
+fn text_of(path: &Path) -> String {
+    std::fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        .replace("\r\n", "\n")
+}
+
+/// What kind of file the Library shows a file of the sample project as.
+/// The files Solis keeps beside assets (their IDs) aren't shown.
+fn kind_of(file: &Path) -> Option<LibraryKind> {
+    match file.extension()?.to_str()? {
+        "glb" => Some(LibraryKind::Model),
+        "solarea" => Some(LibraryKind::Area),
+        "png" => Some(LibraryKind::Texture),
+        "wav" => Some(LibraryKind::Sound),
+        "lst" => Some(LibraryKind::Code),
+        "md" => Some(LibraryKind::Text),
+        _ => None,
+    }
+}
+
+/// The folders and files under `folder`, as the Library lists them: each
+/// path from the assets folder with `/` between names, in name order.
+fn listed(assets: &Path, folder: &Path, folders: &mut Vec<String>, files: &mut Vec<LibraryItem>) {
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(folder)
+        .unwrap_or_else(|e| panic!("{}: {e}", folder.display()))
+        .flatten()
+        .map(|entry| entry.path())
+        .collect();
+    entries.sort();
+    for entry in entries {
+        let inside: Vec<String> = entry
+            .strip_prefix(assets)
+            .unwrap()
+            .components()
+            .map(|part| part.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        let path = inside.join("/");
+        if entry.is_dir() {
+            folders.push(path);
+            listed(assets, &entry, folders, files);
+        } else if let Some(kind) = kind_of(&entry) {
+            files.push(LibraryItem {
+                id: None,
+                kind,
+                name: crate::sprite_sheets::name_of(&path),
+                path,
+                thumbnail: None,
+            });
+        }
+    }
+}
+
+/// The editor with the small sample project of `tests/fixtures/ui-sample/`
+/// open, as the app would hand it over: its area, its files in the
+/// Library, and its lamp selected, so that the Area panel, Properties and
+/// the Library all have real content to show. Named after the design's
+/// own sample (a harbour at night), so the two can be laid side by side.
+pub(crate) fn sample_project() -> Workbench {
+    let root = repository()
+        .join("tests")
+        .join("fixtures")
+        .join("ui-sample");
+    let assets = root.join("assets");
+    let name = text_of(&root.join("project.solis"))
+        .lines()
+        .find_map(|line| line.strip_prefix("name = "))
+        .map(|name| name.trim().trim_matches('"').to_string())
+        .expect("the sample project has a name");
+    let mut workbench = Workbench::new(crate::test_support::info(), None);
+    workbench.set_project(Some(ProjectInfo {
+        name,
+        root: root.clone(),
+        assets: assets.clone(),
+    }));
+    let (mut folders, mut files) = (Vec::new(), Vec::new());
+    listed(&assets, &assets, &mut folders, &mut files);
+    workbench.set_folders(folders);
+    workbench.set_library(files);
+    let file = assets.join("docks_night.solarea");
+    let area = area::text::read(&text_of(&file), &workbench.document().registry)
+        .unwrap_or_else(|e| panic!("the sample project's area doesn't read: {e:?}"));
+    workbench.open_area(area, file);
+    let lamp = workbench
+        .document()
+        .area()
+        .iter()
+        .find(|(_, entity)| entity.name == "Dock_Lamp")
+        .map(|(id, _)| id)
+        .expect("the sample area has its lamp");
+    workbench.open.document.selection.select_only(lamp);
+    workbench
 }
 
 /// How many pixels the design's screens have to a point.

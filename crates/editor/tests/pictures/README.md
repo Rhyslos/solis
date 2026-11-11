@@ -5,7 +5,7 @@ Solis's own approved pictures of the editor: frames drawn by the picture tests (
 | File | What it shows |
 | --- | --- |
 | `token-sheet.png` | Every colour of the design as a swatch, in the order of `tokens::sheet()`. |
-| `editor.png` | The editor at 1440 x 900 with a small area open and no 3D view: today's layout (top bar, docked panels, status bar) in the design's look. Each milestone that replaces part of the layout replaces this picture, so the change is seen. |
+| `editor.png` | The editor at 1440 x 900 with the sample project open (`tests/fixtures/ui-sample/`: its area in the Area panel, its lamp selected in Properties, its files in the Library) and no 3D view: today's layout (top bar, docked panels, status bar) in the design's look. Each milestone that replaces part of the layout replaces this picture, so the change is seen on real content. |
 | `launcher.png` | The launcher at 1100 x 700 with no projects. |
 
 **Keep them few and small:** the repository is public and cloned often. A new picture is added only for a whole screen, once, when its milestone is approved.

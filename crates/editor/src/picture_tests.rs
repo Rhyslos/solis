@@ -12,9 +12,17 @@
 //!
 //! The tests that draw skip, with a note, where there is no graphics
 //! driver (`picture_support.rs` says how to give them one).
+//!
+//! **Nothing here depends on how a driver softens an edge.** A colour is
+//! sampled only where the surface is flat for some pixels around (the
+//! tests check that it is), never on a letter, a rounded corner or a
+//! border, so the same pixel comes out of every driver: Mesa's on Linux,
+//! and Windows' software renderer, which is what the checks on GitHub
+//! draw with. The hairline test is the one that looks at edges, and it
+//! is built so that they fall on pixel edges (see there).
 
 use crate::picture_support::{
-    DESIGN_SCALE, Picture, design, drawn, editor_window, matches_approved, window,
+    DESIGN_SCALE, Picture, design, drawn, editor_window, matches_approved, sample_project, window,
 };
 use crate::test_support::{info, with_a_crate};
 use crate::theme::{Accent, InterfaceLook, Scale};
@@ -211,6 +219,11 @@ fn the_token_sheet_draws_every_colour_exactly() {
 /// out as whole rows and columns of pixels in exactly its colour, with
 /// exactly the surface's colour on either side. A line of one point
 /// would be a pixel and a half at 150%, and blur.
+///
+/// This holds on any driver, because the rule puts each line's edges on
+/// pixel edges: the row of pixels it covers is covered whole and its
+/// neighbours not at all, so there is no part-covered pixel for a driver
+/// to round its own way.
 #[test]
 fn hairlines_are_whole_sharp_pixels_at_100_125_and_150_percent() {
     let across = [9.0_f32, 20.4, 33.7, 47.5, 61.25];
@@ -265,13 +278,23 @@ fn hairlines_are_whole_sharp_pixels_at_100_125_and_150_percent() {
     }
 }
 
+/// A drawn frame is sampled only where it is one colour for three pixels
+/// every way: clear of letters, corners and borders, which drivers may
+/// soften differently.
+fn assert_flat(picture: &Picture, what: &str, point: [f32; 2], scale: f32) {
+    assert!(
+        picture.is_flat_at(point, scale, 3),
+        "{what} at {point:?} isn't a flat surface: pick another point"
+    );
+}
+
 const EDITOR_SIZE: [f32; 2] = [1440.0, 900.0];
 const LAUNCHER_SIZE: [f32; 2] = [1100.0, 700.0];
 
-/// Today's editor, drawn for real in the new look.
+/// Today's editor with the sample project open, drawn for real in the
+/// new look.
 fn editor_picture(look: InterfaceLook) -> Option<Picture> {
-    let (workbench, _) = with_a_crate();
-    let mut harness = editor_window(workbench, look, EDITOR_SIZE)?;
+    let mut harness = editor_window(sample_project(), look, EDITOR_SIZE)?;
     harness.run();
     harness.run();
     Some(drawn(&mut harness))
@@ -299,14 +322,13 @@ fn the_editor_s_surfaces_are_the_design_s() {
     // the points are where today's panels are.
     for (what, point, token) in [
         ("the top bar", [860.0, 17.0], tokens::app()),
-        ("the line under the top bar", [860.0, 33.0], tokens::line()),
         ("a tab strip", [200.0, 49.0], tokens::app()),
         ("another tab strip", [800.0, 49.0], tokens::app()),
         ("a tab behind", [440.0, 42.0], tokens::shelf_bar()),
-        ("the Area panel", [130.0, 400.0], tokens::panel()),
-        ("Properties", [1270.0, 400.0], tokens::panel()),
-        ("the Library", [500.0, 800.0], tokens::panel()),
-        ("Hints", [1270.0, 830.0], tokens::panel()),
+        ("the Area panel", [200.0, 500.0], tokens::panel()),
+        ("Properties", [1270.0, 620.0], tokens::panel()),
+        ("the Library", [900.0, 800.0], tokens::panel()),
+        ("Hints", [1270.0, 866.0], tokens::panel()),
         (
             "the Library's tool row",
             [700.0, 687.0],
@@ -314,17 +336,9 @@ fn the_editor_s_surfaces_are_the_design_s() {
         ),
         ("the search box", [1150.0, 17.0], tokens::field()),
         ("Play", [1306.0, 9.0], tokens::PLAY_FILL),
-        (
-            "the line over the status bar",
-            [700.0, 877.0],
-            tokens::line(),
-        ),
         ("the status bar", [700.0, 889.0], tokens::code()),
     ] {
-        assert!(
-            picture.is_flat_at(point, 1.0, 1) || what.starts_with("the line"),
-            "{what} at {point:?} isn't flat"
-        );
+        assert_flat(&picture, what, point, 1.0);
         assert_eq!(picture.at(point, 1.0), token, "{what} at {point:?}");
     }
     matches_approved("editor", &picture);
@@ -344,8 +358,11 @@ fn an_open_menu_is_on_the_ribbon_s_grey() {
     harness.run();
     let item = harness.get_by_label("Settings…").rect();
     let picture = drawn(&mut harness);
-    // Just inside the left end of a row nobody points at.
-    let point = [item.left() + 1.0, item.center().y];
+    // Inside the menu, in the room between its border and its rows:
+    // clear of every letter, of the border and of the rounded corners.
+    let point = [item.left() - 2.0, item.center().y];
+    let flat = picture.is_flat_at(point, 1.0, 1);
+    assert!(flat, "{point:?} isn't a flat surface: pick another point");
     assert_eq!(picture.at(point, 1.0), tokens::ribbon(), "{point:?}");
 }
 
@@ -367,6 +384,7 @@ fn the_launcher_s_surfaces_are_the_file_page_s() {
         ),
         ("+ New project", [980.0, 35.0], Accent::Blue.colour()),
     ] {
+        assert_flat(&picture, what, point, 1.0);
         assert_eq!(picture.at(point, 1.0), token, "{what} at {point:?}");
     }
     matches_approved("launcher", &picture);
@@ -385,6 +403,7 @@ fn another_accent_recolours_what_is_chosen_and_nothing_else() {
         return;
     };
     assert_eq!(teal.at([980.0, 35.0], 1.0), Accent::Teal.colour());
+    assert_flat(&teal, "+ New project", [980.0, 35.0], 1.0);
     // The neutral surfaces are the same pixels in both.
     for point in [
         [110.0, 400.0],
