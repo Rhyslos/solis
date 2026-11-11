@@ -1,7 +1,9 @@
-//! The editors' savers (the 2026-11 review, SEC-13): each writes only a
-//! file of its own kind, at a plain path inside the assets folder. One of
-//! the nine once checked its path more loosely than the rest, so
-//! `../x.solsound` was written beside the assets.
+//! The editors' savers and the Library's file changes (the 2026-11
+//! review, SEC-13): each takes only a plain path inside the assets folder,
+//! and a saver writes only a file of its own kind there. One of the nine
+//! savers once checked its path more loosely than the rest, so
+//! `../x.solsound` was written beside the assets, and a new sound event
+//! could be made in any folder a path with `..` reached.
 
 use super::*;
 use std::collections::BTreeMap;
@@ -139,9 +141,13 @@ fn scratch(name: &str) -> (PathBuf, Projects) {
     (base, projects)
 }
 
-/// Every file under `base` and what it holds, but for Solis's own folder
-/// in the project (its cache is trimmed on a worker as a project opens).
-fn files(base: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
+/// What's under a folder: each file with what it holds, and each folder
+/// (holding nothing).
+type Found = BTreeMap<PathBuf, Option<Vec<u8>>>;
+
+/// Every file and folder under `base`, but for Solis's own folder in the
+/// project (its cache is trimmed on a worker as a project opens).
+fn files(base: &Path) -> Found {
     let own = base.join("project").join(asset_db::CACHE_FOLDER);
     let mut found = BTreeMap::new();
     let mut todo = vec![base.to_path_buf()];
@@ -152,22 +158,20 @@ fn files(base: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
                 continue;
             }
             if path.is_dir() {
+                found.insert(path.clone(), None);
                 todo.push(path);
             } else {
                 let holds = std::fs::read(&path).unwrap();
-                found.insert(path, holds);
+                found.insert(path, Some(holds));
             }
         }
     }
     found
 }
 
-/// The files that differ between `before` and `after`: changed, made or
-/// gone.
-fn changed(
-    before: &BTreeMap<PathBuf, Vec<u8>>,
-    after: &BTreeMap<PathBuf, Vec<u8>>,
-) -> Vec<PathBuf> {
+/// The files and folders that differ between `before` and `after`:
+/// changed, made or gone.
+fn changed(before: &Found, after: &Found) -> Vec<PathBuf> {
     let gone = before.keys().filter(|path| !after.contains_key(*path));
     after
         .iter()
@@ -178,36 +182,45 @@ fn changed(
         .collect()
 }
 
-/// Paths that aren't a plain path inside the assets to a file like `file`:
-/// out of the folder, from a root or a drive, empty, or of another kind.
-fn strays(file: &str, outside: &Path) -> Vec<String> {
+/// Paths to a file or folder called `name` that leave the assets folder,
+/// or would on some system: up and out, or from a root, a drive, a
+/// network share or a folder beside the project.
+fn leaving(name: &str, outside: &Path) -> Vec<String> {
     vec![
-        String::new(),
         "..".into(),
-        // Up and out, onto a file that's there and where none is.
-        format!("../{file}"),
-        format!("../fresh-{file}"),
-        format!("a/../../{file}"),
-        format!("..\\{file}"),
-        format!("a\\..\\..\\{file}"),
-        format!("./{file}"),
-        format!("a//{file}"),
-        // From the root of this drive, a drive's own folder, another
-        // drive, a network share, and a folder beside the project.
-        format!("/{file}"),
-        format!("\\{file}"),
-        format!("C:{file}"),
-        format!("C:\\{file}"),
-        format!("C:/{file}"),
-        format!("\\\\server\\share\\{file}"),
-        format!("//server/share/{file}"),
-        outside.join(file).to_string_lossy().into_owned(),
-        // Not its kind of file.
+        "../..".into(),
+        "../../outside".into(),
+        // Onto a file that's there, and where none is.
+        format!("../{name}"),
+        format!("../fresh-{name}"),
+        format!("a/../../{name}"),
+        format!("..\\{name}"),
+        format!("a\\..\\..\\{name}"),
+        format!("./{name}"),
+        format!("a//{name}"),
+        format!("/{name}"),
+        format!("\\{name}"),
+        format!("C:{name}"),
+        format!("C:\\{name}"),
+        format!("C:/{name}"),
+        format!("\\\\server\\share\\{name}"),
+        format!("//server/share/{name}"),
+        outside.join(name).to_string_lossy().into_owned(),
+    ]
+}
+
+/// Paths a saver of files like `file` must refuse: those that leave the
+/// assets, an empty one, and files of another kind.
+fn strays(file: &str, outside: &Path) -> Vec<String> {
+    let mut strays = leaving(file, outside);
+    strays.extend([
+        String::new(),
         "x".into(),
         "x.exe".into(),
         format!("{file}.exe"),
         format!("a/{file}/"),
-    ]
+    ]);
+    strays
 }
 
 #[test]
@@ -289,7 +302,7 @@ fn every_saver_saves_a_plain_path_of_its_kind_as_before() {
 fn no_made_up_path_makes_a_saver_write_outside_the_assets() {
     let (base, projects) = scratch("sweep");
     let assets = base.join("project/assets");
-    let outside = |all: BTreeMap<PathBuf, Vec<u8>>| -> BTreeMap<PathBuf, Vec<u8>> {
+    let outside = |all: Found| -> Found {
         all.into_iter()
             .filter(|(path, _)| !path.starts_with(&assets))
             .collect()
@@ -336,8 +349,103 @@ fn no_made_up_path_makes_a_saver_write_outside_the_assets() {
 fn a_plain_path_is_names_only_on_every_system() {
     for plain in ["x.lst", "a/x.lst", "props/tiles/farm.tileset.lst"] {
         assert!(plain_inside(Path::new(plain)), "{plain}");
+        assert!(assets_or_inside(Path::new(plain)), "{plain}");
+        assert!(named_inside(Path::new(plain)), "{plain}");
     }
     for stray in ["", ".", "..", "/x", "\\x", "C:x", "C:\\x", "a/../x", "a//x"] {
         assert!(!plain_inside(Path::new(stray)), "{stray}");
+        // But for the assets folder itself, where a folder is named.
+        assert_eq!(assets_or_inside(Path::new(stray)), stray.is_empty());
     }
+    // Where a file moves to: its folder by the rule, then a name (whose
+    // letters `asset_db` judges).
+    for named in ["a:b.png", "props/a:b.png", "props\\x"] {
+        assert!(named_inside(Path::new(named)), "{named}");
+    }
+    for stray in [
+        "", ".", "..", "a/", "a/..", "/x", "\\x", "a//x", "./x", "../x", "a/../x", "C:/x", "C:\\x",
+        "C:a/x",
+    ] {
+        assert!(!named_inside(Path::new(stray)), "{stray}");
+    }
+}
+
+#[test]
+fn a_new_sound_event_is_made_only_in_a_folder_inside_the_assets() {
+    let (base, mut projects) = scratch("new-event");
+    let before = files(&base);
+    for folder in leaving("a", &base.join("outside")) {
+        let said = projects.new_sound_event(Path::new(&folder), "sound version 1;\n");
+        let Err(why) = said else {
+            panic!("a sound event was made in {folder:?}");
+        };
+        assert!(why.ends_with("isn't a folder in the assets"), "{why}");
+    }
+    let written = changed(&before, &files(&base));
+    assert!(written.is_empty(), "a refused folder got {written:?}");
+    // In the assets folder itself (no path at all) and in a folder inside
+    // it, as before.
+    for (folder, made) in [
+        ("", "New sound event.solsound"),
+        ("a", "a/New sound event.solsound"),
+    ] {
+        let at = projects
+            .new_sound_event(Path::new(folder), "sound version 1;\n")
+            .unwrap();
+        assert_eq!(at, PathBuf::from(made));
+        assert!(base.join("project/assets").join(made).is_file());
+    }
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+#[test]
+fn moving_deleting_and_new_folders_keep_to_plain_paths_inside_the_assets() {
+    let (base, projects) = scratch("file-changes");
+    let assets = base.join("project/assets");
+    std::fs::write(assets.join("a/keep.png"), "a picture").unwrap();
+    let before = files(&base);
+    let outside = "isn't inside the project's assets folder";
+    for stray in leaving("x.png", &base.join("outside")) {
+        let stray = Path::new(&stray);
+        let moved_from = projects.move_path(stray, Path::new("a/taken.png"));
+        assert!(moved_from.unwrap_err().ends_with(outside), "from {stray:?}");
+        // Where it would go is refused too: its folder by the same rule,
+        // and a new name by `asset_db`'s stricter one for names.
+        let moved_to = projects.move_path(Path::new("a/keep.png"), stray);
+        assert!(moved_to.is_err(), "to {stray:?}");
+        let deleted = projects.delete(stray);
+        assert!(deleted.unwrap_err().ends_with(outside), "delete {stray:?}");
+        let made = projects.new_folder(stray);
+        assert!(made.unwrap_err().ends_with(outside), "folder in {stray:?}");
+    }
+    assert!(projects.delete(Path::new("")).is_err());
+    assert!(projects.move_path(Path::new(""), Path::new("b")).is_err());
+    assert!(projects.move_path(Path::new("a"), Path::new("")).is_err());
+    let touched = changed(&before, &files(&base));
+    assert!(touched.is_empty(), "a refused change touched {touched:?}");
+
+    // Plain paths go through as before. A name that can't be a file's is
+    // still explained as a name.
+    let named = projects
+        .move_path(Path::new("a/keep.png"), Path::new("a/ke:ep.png"))
+        .unwrap_err();
+    assert!(named.contains("can't be a file's name"), "{named}");
+    let gone = projects.delete(Path::new("a/gone.png")).unwrap_err();
+    assert!(gone.contains("isn't there any more"), "{gone}");
+    projects
+        .move_path(Path::new("a/keep.png"), Path::new("a/kept.png"))
+        .unwrap();
+    projects
+        .move_path(Path::new("a/kept.png"), Path::new("kept.png"))
+        .unwrap();
+    assert!(assets.join("kept.png").is_file());
+    assert_eq!(
+        projects.new_folder(Path::new("")).unwrap(),
+        PathBuf::from("New folder")
+    );
+    assert_eq!(
+        projects.new_folder(Path::new("a")).unwrap(),
+        PathBuf::from("a/New folder")
+    );
+    let _ = std::fs::remove_dir_all(&base);
 }

@@ -7,7 +7,11 @@
 //! told where by a path inside the assets, and finds the file through one
 //! function (`Projects::place`), which takes only a plain path there, of
 //! the saver's own kind: a path can't make one write outside the assets
-//! folder, or over another kind of file.
+//! folder, or over another kind of file. The Library's file changes (a
+//! move, a delete, a new folder or sound event) keep to the same rule
+//! (`plain_inside`). Only [`Projects::open`] and [`Projects::bring_in`]
+//! take a path from anywhere on the computer: the user chose it there, in
+//! the system's own window or by dropping a file.
 
 use asset_db::{AssetDb, Change, FileKind, Listing, Project, Watcher};
 use editor::{LibraryItem, LibraryKind, ProjectInfo};
@@ -229,26 +233,39 @@ impl Projects {
     }
 
     /// Renames or moves a file or folder inside the assets, with its
-    /// sidecar.
+    /// sidecar. `from` is a plain path there (`plain_inside`), and `to`
+    /// a name in a folder there (`named_inside`).
     pub fn move_path(&self, from: &Path, to: &Path) -> Result<(), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
+        if !plain_inside(from) {
+            return Err(outside(from));
+        }
+        if !named_inside(to) {
+            return Err(outside(to));
+        }
         db.move_path(from, to).map_err(|e| e.to_string())
     }
 
-    /// Makes a new folder inside `parent` (inside the assets).
+    /// Makes a new folder inside `parent` (inside the assets; empty for
+    /// the assets folder itself).
     pub fn new_folder(&self, parent: &Path) -> Result<PathBuf, String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
+        if !assets_or_inside(parent) {
+            return Err(outside(parent));
+        }
         db.new_folder(parent).map_err(|e| e.to_string())
     }
 
-    /// Makes a new sound event in `folder` (inside the assets) holding
-    /// `text`, named "New sound event" (with a number if that's taken), and
-    /// gives it its ID at once. Returns where it is, inside the assets.
+    /// Makes a new sound event in `folder` (inside the assets; empty for
+    /// the assets folder itself) holding `text`, named "New sound event"
+    /// (with a number if that's taken), and gives it its ID at once.
+    /// Returns where it is, inside the assets.
     pub fn new_sound_event(&mut self, folder: &Path, text: &str) -> Result<PathBuf, String> {
         let db = self.db.as_mut().ok_or("no project is open")?;
         let assets = db.project().assets();
         let dir = assets.join(folder);
-        if !dir.is_dir() {
+        // The path is checked before the disk is asked about it.
+        if !assets_or_inside(folder) || !dir.is_dir() {
             return Err(format!("{} isn't a folder in the assets", folder.display()));
         }
         let ext = asset_db::SOUND_EVENT_EXTENSION;
@@ -458,6 +475,9 @@ impl Projects {
     /// Moves a file or folder (inside the assets) to the Recycle Bin.
     pub fn delete(&self, path: &Path) -> Result<(), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
+        if !plain_inside(path) {
+            return Err(outside(path));
+        }
         db.delete_to_trash(path).map_err(|e| e.to_string())
     }
 
@@ -508,6 +528,38 @@ struct Saved<'a> {
 /// text isn't one.
 pub(crate) fn plain_inside(path: &Path) -> bool {
     path.to_str().is_some_and(editor::plain_relative)
+}
+
+/// Whether `path` is the assets folder itself (an empty path) or a plain
+/// path inside it ([`plain_inside`]): the rule where a folder is named.
+pub(crate) fn assets_or_inside(path: &Path) -> bool {
+    path.as_os_str().is_empty() || plain_inside(path)
+}
+
+/// Whether `to` is somewhere inside the assets to move a file or folder
+/// to: a name, in the assets folder itself or in a plain path inside it
+/// ([`plain_inside`]). Whether the name can be a file's is `asset_db`'s
+/// to say: its rule for a new name is stricter than this one (no `:` or
+/// slash of either kind either), and explains itself to whoever typed
+/// the name; a name that isn't new is `from`'s, which this rule passed.
+fn named_inside(to: &Path) -> bool {
+    let Some(to) = to.to_str() else {
+        return false;
+    };
+    let (folder, name) = match to.rsplit_once(['/', '\\']) {
+        Some((folder, name)) => (Some(folder), name),
+        None => (None, to),
+    };
+    folder.is_none_or(editor::plain_relative) && !matches!(name, "" | "." | "..")
+}
+
+/// The mistake a path that fails the rule is, in `asset_db`'s words for
+/// the same.
+fn outside(path: &Path) -> String {
+    format!(
+        "{} isn't inside the project's assets folder",
+        path.display()
+    )
 }
 
 /// Whether `path`'s name ends in one of `extensions`, in capitals or not.
