@@ -15,6 +15,7 @@ pub(super) struct TestWorld {
     entities: Vec<(EntityId, String, Mat4)>,
     pub(super) said: Vec<String>,
     time: f64,
+    tick: u64,
     shots: Vec<crate::Shot>,
     seed: u64,
     sounds: Vec<Change>,
@@ -38,6 +39,14 @@ impl TestWorld {
         }
     }
 
+    /// Sets the clock as a tick begins: its number, and the game's time
+    /// (which goes on by less than a tick's length, or not at all, when
+    /// the game's speed isn't 1).
+    pub(super) fn set_clock(&mut self, tick: u64, time: f64) {
+        self.tick = tick;
+        self.time = time;
+    }
+
     fn x(&self, n: u64) -> f32 {
         self.entities
             .iter()
@@ -58,6 +67,7 @@ impl GameWorld for TestWorld {
             .collect();
         WorldView {
             time: self.time,
+            tick: self.tick,
             index: Arc::new(ViewIndex::new(&entities)),
             places: Arc::new(self.entities.iter().map(|(_, _, m)| *m).collect()),
             frame_time: 1.0 / 60.0,
@@ -190,7 +200,7 @@ fn run_busy(shards: usize, count: u64, ticks: usize) -> (TestWorld, Vec<Failure>
     assert!(game.sync_many(components, &mut world).is_empty());
     let mut failures = Vec::new();
     for t in 0..ticks {
-        world.time = t as f64 / 60.0;
+        world.set_clock(t as u64, t as f64 / 60.0);
         failures.extend(game.tick(1.0 / 60.0, &mut world).failures);
     }
     let heard = (1..=count)
@@ -400,8 +410,8 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
         game.load(&compiled(HIVES), &mut world).unwrap();
         let empty = ComponentData::default();
         game.sync_many((1..=9u64).map(|n| (id(n), "Hive", &empty)), &mut world);
-        for t in 0..2 {
-            world.0.time = f64::from(t) / 60.0;
+        for t in 0..2_u32 {
+            world.0.set_clock(u64::from(t), f64::from(t) / 60.0);
             assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
         }
         world.1
@@ -432,7 +442,7 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
 }
 
 /// A test world keeping the spawns and despawns game code asks for.
-struct SpawnWorld(TestWorld, Vec<Change>);
+pub(super) struct SpawnWorld(pub(super) TestWorld, pub(super) Vec<Change>);
 
 impl GameWorld for SpawnWorld {
     fn view(&mut self) -> WorldView {
@@ -610,7 +620,7 @@ fn roll_and_sum(shards: usize, seed: u64, ticks: usize) -> (Vec<String>, Vec<u64
     assert!(game.sync_many(components, &mut world).is_empty());
     let mut sums = Vec::new();
     for t in 0..ticks {
-        world.time = t as f64 / 60.0;
+        world.set_clock(t as u64, t as f64 / 60.0);
         let ticked = game.tick(1.0 / 60.0, &mut world);
         assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
         sums.push(game.checksum());

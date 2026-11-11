@@ -22,3 +22,4 @@ Option 2. `spawn(file, place)` makes a copy of an assembly (named by its file in
 - Undoing an editor step while playing still works, unless it touches an entity game code took out (that step can't be undone, and says so).
 - Spawning many entities rebuilds the world from the area that frame. Fine for adding fleets in steps; Phase 6, when games spawn every tick (bullets that are entities, effects), may need a quicker path.
 - Every assembly in a project is read when the project opens, so any can be spawned.
+- Since the review of November 2026 (BUG-47), a new entity's ID is made from the tick's number where this says "the time". `setGameSpeed(0)` came later and stops the game's time while game code goes on, so two paused ticks made the same ID; the tick's number goes up whatever the speed.

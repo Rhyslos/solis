@@ -132,8 +132,13 @@ impl ViewIndex {
 /// entity was when the phase started.
 #[derive(Debug, Clone)]
 pub struct WorldView {
-    /// The game's time, in seconds.
+    /// The game's time, in seconds: it moves at the game's speed, so it
+    /// stands still while that is 0.
     pub time: f64,
+    /// How many ticks the game has run, whatever its speed. No two ticks
+    /// share one, so this (not the time) is what tells one tick's random
+    /// numbers and spawned entities from another's.
+    pub tick: u64,
     /// The entities.
     pub index: Arc<ViewIndex>,
     /// Where each is in the world (by its number in `index`).
@@ -358,10 +363,10 @@ impl Host for ViewHost {
         }
         self.kept.spawn_bytes += assembly.len();
         let order = self.order();
-        // Made from where it was asked for in the tick's order and the
-        // time, so the same game makes the same entities on any number of
-        // cores.
-        let id = spawned_id(&order, self.phase, self.view.time)?;
+        // Made from which tick it is and where in the tick's order it was
+        // asked for, so the same game makes the same entities on any
+        // number of cores, and never the same one twice.
+        let id = spawned_id(&order, self.phase, self.view.tick)?;
         self.kept
             .changes
             .push((order, Change::Spawn(id, assembly.to_string(), place)));
@@ -381,11 +386,11 @@ impl Host for ViewHost {
     }
 
     fn random(&mut self) -> f64 {
-        // Made from the seed and where it was asked for in the tick's
-        // order, not drawn in turn, so it's the same whichever core asks
-        // first (Phase 6 plan, "Determinism rules").
+        // Made from the seed, which tick it is and where in the tick's
+        // order it was asked for, not drawn in turn, so it's the same
+        // whichever core asks first (Phase 6 plan, "Determinism rules").
         let order = self.order();
-        random_from(self.view.seed, &order, self.phase, self.view.time)
+        random_from(self.view.seed, &order, self.phase, self.view.tick)
     }
 
     fn push(&mut self, which: EntityId, impulse: Vec3) {
@@ -695,10 +700,11 @@ impl Host for ViewHost {
 }
 
 /// A random number from 0 up to (not including) 1, made from `seed` and
-/// the place `order` in `phase` of the tick at game time `time`: the same
-/// hash as spawned IDs, with the seed, then mixed (splitmix64's
-/// finalizer) so every bit counts.
-fn random_from(seed: u64, order: &Order, phase: u32, time: f64) -> f64 {
+/// the place `order` in `phase` of tick number `tick`: the same hash as
+/// spawned IDs, with the seed, then mixed (splitmix64's finalizer) so
+/// every bit counts. The tick's number, not the game's time: time stands
+/// still while the game's speed is 0, and game code still runs then.
+fn random_from(seed: u64, order: &Order, phase: u32, tick: u64) -> f64 {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     let mut eat = |bytes: &[u8]| {
         for &b in bytes {
@@ -711,7 +717,7 @@ fn random_from(seed: u64, order: &Order, phase: u32, time: f64) -> f64 {
     eat(order.component.as_bytes());
     eat(&order.seq.to_le_bytes());
     eat(&phase.to_le_bytes());
-    eat(&time.to_bits().to_le_bytes());
+    eat(&tick.to_le_bytes());
     let mut x = hash;
     x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
     x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
@@ -728,10 +734,10 @@ const PHASE_SYNC: u32 = u32::MAX - 1;
 /// The game-wide objects' updates, before the components' (decision 0080).
 const PHASE_OBJECTS: u32 = u32::MAX - 2;
 
-/// The entity a spawn at `order`, in `phase` of the tick, at game time
-/// `time`, makes: a hash of all three (FNV-1a), made odd so it's never
-/// zero.
-fn spawned_id(order: &Order, phase: u32, time: f64) -> Option<EntityId> {
+/// The entity a spawn at `order`, in `phase` of tick number `tick`, makes:
+/// a hash of all three (FNV-1a), made odd so it's never zero. See
+/// [`random_from`] for why the tick's number and not the game's time.
+fn spawned_id(order: &Order, phase: u32, tick: u64) -> Option<EntityId> {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     let mut eat = |bytes: &[u8]| {
         for &b in bytes {
@@ -743,7 +749,7 @@ fn spawned_id(order: &Order, phase: u32, time: f64) -> Option<EntityId> {
     eat(order.component.as_bytes());
     eat(&order.seq.to_le_bytes());
     eat(&phase.to_le_bytes());
-    eat(&time.to_bits().to_le_bytes());
+    eat(&tick.to_le_bytes());
     reflect::Id::from_raw(hash | 1).map(EntityId)
 }
 
@@ -1613,3 +1619,7 @@ mod tests;
 #[cfg(test)]
 #[path = "game_objects_tests.rs"]
 mod objects_tests;
+
+#[cfg(test)]
+#[path = "game_clock_tests.rs"]
+mod clock_tests;
