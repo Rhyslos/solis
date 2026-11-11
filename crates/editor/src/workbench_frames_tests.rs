@@ -65,12 +65,9 @@ pub(crate) fn with_clips() -> (Workbench, AssetId, AssetId) {
 }
 
 fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
-    actions
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveFrames { text, .. } => Some(text.clone()),
-            _ => None,
-        })
+    saved_files(actions, |f| matches!(f, crate::OwnFile::Frames(_)))
+        .into_iter()
+        .map(|(_, text)| text)
         .collect()
 }
 
@@ -132,7 +129,7 @@ fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
         },
         &mut actions,
     );
-    let texts = saved(&actions);
+    let texts = saved(&w.open.outbox);
     assert_eq!(texts.len(), 1);
     assert!(texts[0].contains("clip1 = [\"wave\", 2.0"), "{}", texts[0]);
     // Every sprite playing the file sees it at once.

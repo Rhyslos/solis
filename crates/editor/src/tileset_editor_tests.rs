@@ -179,17 +179,18 @@ fn the_try_it_patch_is_the_terrain_over_its_ground() {
 }
 
 #[test]
-fn its_own_saves_are_told_from_changes_on_disk() {
+fn a_file_changed_on_disk_is_taken_in_as_one_step() {
     let mut e = editor();
     e.assign(1, [0, 0]);
-    let _ = e.saving();
-    assert!(e.is_own(&e.file.clone()));
+    let before = e.file.clone();
+    e.taken_in(before.clone());
+    assert_eq!(e.file, before, "the same file is no change");
     let mut by_hand = e.file.clone();
     by_hand.tile = [8, 8];
-    assert!(!e.is_own(&by_hand));
     e.taken_in(by_hand.clone());
     assert_eq!(e.file, by_hand);
     assert!(e.undo(), "taken in as one step");
+    assert_eq!(e.file, before, "and only one");
     assert_eq!(e.file.tile, [16, 16]);
     // A new picture and tile size, within limits.
     assert!(e.set_picture(None, [0, 9999]));

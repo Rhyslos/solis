@@ -536,13 +536,13 @@ fn right_clicking_the_library_offers_new_everywhere() {
     );
     h.get_by_label("Tile map").click();
     h.run();
-    assert!(
-        h.state()
-            .1
-            .actions
-            .iter()
-            .any(|a| matches!(a, WorkbenchAction::SaveTileMap { .. }))
-    );
+    assert!(h.state().1.actions.iter().any(|a| matches!(
+        a,
+        WorkbenchAction::SaveFile {
+            file: crate::OwnFile::TileMap(_),
+            ..
+        }
+    )));
 }
 
 #[test]

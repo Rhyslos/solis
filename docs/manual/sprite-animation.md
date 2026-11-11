@@ -24,7 +24,7 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 7. **Change frames of your own clips:** click a frame to pick it (Ctrl+click or Shift+click for several), then set its **time**, drag it to a new place, or press **Delete** to take it out.
 8. **Close the file:** the **×** on either tab closes both.
 
-Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over either tab undo and redo changes to the file.
+Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over either tab undo and redo changes to the file. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
 ### In game code
 Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.Sprites.Farmer.Walk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:

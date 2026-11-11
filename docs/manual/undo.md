@@ -30,6 +30,7 @@ Undo also selects what the change was about, so you can see what came back.
 ## Tips and common problems
 - **Problem:** Ctrl + Z changed the text I was typing instead of the area. **Why:** while you type in a field, Ctrl + Z undoes the typing first. **Fix:** click outside the field, then press Ctrl + Z.
 - **Problem:** I undid something, made a new change, and now Redo is greyed out. **Why:** a new change starts a new path; what you undid can't come back after that, as in most programs.
+- **Problem:** a change I made in a tab was taken back, and the Console says *Couldn't save … It's shown as the file has it, without your change*. **Why:** tile maps, tilesets, clips files, animators and atlases are saved the moment you change them, and this time the file couldn't be written (the disk is full, another program has the file open, or its folder is gone). Solis never shows as saved a change that isn't in the file, so it shows the file as it is, and keeps your change as an undo step. **Fix:** put right what the Console says went wrong, then press **Ctrl + Z** with the pointer over the tab the message names: your change comes back and is saved again.
 - Solis keeps the most recent changes, up to about 64 MB of them; the oldest are forgotten first. That's thousands of ordinary changes.
 
 ## Related

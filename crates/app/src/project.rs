@@ -351,6 +351,25 @@ impl Projects {
         self.save_versioned(path, text, &kind)
     }
 
+    /// Saves a file of one of the kinds the editor changes itself
+    /// (`WorkbenchAction::SaveFile`), as `text`, with its kind's saver.
+    /// Gives back where an older one was kept, if it was.
+    pub fn save_file(
+        &self,
+        path: &Path,
+        file: &editor::OwnFile,
+        text: &str,
+    ) -> Result<Option<PathBuf>, String> {
+        use editor::OwnFile;
+        match file {
+            OwnFile::Frames(_) => self.save_frames(path, text),
+            OwnFile::Animator(_) => self.save_animator(path, text),
+            OwnFile::Tileset(_) => self.save_tileset(path, text),
+            OwnFile::Atlas(_) => self.save_atlas(path, text).map(|()| None),
+            OwnFile::TileMap(_) => self.save_tile_map(path, text),
+        }
+    }
+
     /// Saves a sprite's clips file (`.solframes`, inside the assets),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.

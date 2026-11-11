@@ -2,14 +2,16 @@
 //! the Library, making new tilesets and maps, changing a map file's
 //! tileset and size from Properties, and the Map tab beside Properties
 //! while a map is selected: its layers and values changed (each one undo
-//! step over the tab), saved at once and shown at once. A tileset is
-//! changed through its editor (`workbench_tileset.rs`), from here too.
+//! step over the tab), saved at once and shown at once
+//! (`Workbench::save_file`). A tileset is changed through its editor
+//! (`workbench_tileset.rs`), from here too.
 
 use crate::console::LogLevel;
 use crate::layout;
+use crate::own_files::OwnFile;
 use crate::panel::Panel;
-use crate::sprite_sheets::{MapFileState, TilesetState};
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::sprite_sheets::MapFileState;
+use crate::workbench::Workbench;
 use glam::Vec3;
 use reflect::{AssetId, EntityId};
 use std::sync::Arc;
@@ -150,18 +152,10 @@ impl Workbench {
             self.taken(p)
         });
         let set = starter_tileset();
-        self.open.outbox.push(WorkbenchAction::SaveTileset {
-            path: path.clone().into(),
-            text: tiles::tileset::write(&set),
-        });
-        Arc::make_mut(&mut self.viewport.sheets)
-            .tilesets
-            .insert(path.clone(), TilesetState::Read(Arc::new(set), Vec::new()));
+        let text = tiles::tileset::write(&set);
+        self.save_file(&path, OwnFile::Tileset(Arc::new(set)), text);
         self.show_in_library(&path);
         self.open_tileset(&path);
-        if let Some(editor) = self.open.tilesets.tab_mut() {
-            editor.on_disk = false;
-        }
     }
 
     /// Makes a new tile map in `folder`: 64 × 64 cells, the project's
@@ -185,13 +179,7 @@ impl Workbench {
                 return;
             }
         };
-        self.open.outbox.push(WorkbenchAction::SaveTileMap {
-            path: path.clone().into(),
-            text,
-        });
-        Arc::make_mut(&mut self.viewport.sheets)
-            .tile_maps
-            .insert(path.clone(), MapFileState::Read(Arc::new(map), Vec::new()));
+        self.save_file(&path, OwnFile::TileMap(Arc::new(map)), text);
         if tileset.is_none() {
             self.log(
                 LogLevel::Info,
@@ -242,17 +230,7 @@ impl Workbench {
     /// the mistake says why.
     fn save_tile_map(&mut self, path: &str, map: TileMap) -> Result<(), MapFileError> {
         let text = tiles::map_file::write_within(&map, self.open.map_edits.most_bytes)?;
-        self.open.outbox.push(WorkbenchAction::SaveTileMap {
-            path: path.into(),
-            text,
-        });
-        let sheets = Arc::make_mut(&mut self.viewport.sheets);
-        sheets.tile_maps.insert(
-            path.to_owned(),
-            MapFileState::Read(Arc::new(map), Vec::new()),
-        );
-        sheets.work_out_maps();
-        self.sources += 1;
+        self.save_file(path, OwnFile::TileMap(Arc::new(map)), text);
         Ok(())
     }
 

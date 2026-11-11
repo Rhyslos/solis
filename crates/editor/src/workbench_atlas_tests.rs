@@ -4,7 +4,7 @@ use crate::library::{LibraryKind, LibraryRequest};
 use crate::panel::Panel;
 use crate::sprite_sheets::{ArtState, AtlasState};
 use crate::test_support::*;
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 use std::sync::Arc;
 
 fn with_project() -> Workbench {
@@ -18,16 +18,7 @@ fn with_project() -> Workbench {
 }
 
 fn saved(w: &Workbench) -> Vec<(String, String)> {
-    w.open
-        .outbox
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveAtlas { path, text } => {
-                Some((path.to_string_lossy().replace('\\', "/"), text.clone()))
-            }
-            _ => None,
-        })
-        .collect()
+    saved_files(&w.open.outbox, |f| matches!(f, crate::OwnFile::Atlas(_)))
 }
 
 #[test]
@@ -110,15 +101,19 @@ fn an_atlas_file_opens_its_picture_s_crops_and_a_change_on_disk_is_taken_in() {
     assert!(problem.unwrap().contains("hero.aseprite"));
     // Changed by hand: taken in, one undo step.
     atlas.grid = [8, 8];
-    Arc::make_mut(&mut w.viewport.sheets).atlases.insert(
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.atlases.insert(
         "hero.atlas.lst".into(),
         AtlasState::Read(Arc::new(atlas.clone()), Vec::new()),
     );
-    w.atlas_read_again();
-    assert_eq!(w.open.atlas_editor.as_ref().unwrap().atlas.grid, [8, 8]);
+    w.set_sprite_sheets(sheets.clone());
+    let editor = w.open.atlas_editor.as_mut().unwrap();
+    assert_eq!(editor.atlas.grid, [8, 8]);
+    assert!(editor.undo(), "one undo step");
+    assert!(!editor.undo());
     // Gone: the tab closes.
-    Arc::make_mut(&mut w.viewport.sheets).atlases.clear();
-    w.atlas_read_again();
+    sheets.atlases.clear();
+    w.set_sprite_sheets(sheets);
     assert!(w.open.atlas_editor.is_none());
 }
 
@@ -155,8 +150,10 @@ fn a_dragged_grid_size_is_one_step_and_one_save() {
     h.run();
     h.state_mut().1.actions.clear();
     let saves = |h: &egui_kittest::Harness<'static, State>| {
-        let saved = |a: &&WorkbenchAction| matches!(a, WorkbenchAction::SaveAtlas { .. });
-        h.state().1.actions.iter().filter(saved).count()
+        saved_files(&h.state().1.actions, |f| {
+            matches!(f, crate::OwnFile::Atlas(_))
+        })
+        .len()
     };
     let field = number_field_beside(&h, "Grid");
     h.hover_at(field.center());

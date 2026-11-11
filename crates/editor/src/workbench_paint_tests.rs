@@ -82,6 +82,30 @@ fn a_brush_stroke_paints_every_cell_dragged_over_as_one_undo_step() {
     assert!(started.elapsed() < std::time::Duration::from_secs(5));
 }
 
+/// The review, BUG-09: the app handing over its files while a stroke was
+/// under way put the map back as the file has it, until the pointer next
+/// painted a cell; and handed over before the stroke's save was carried
+/// out, they took the whole stroke off the screen.
+#[test]
+fn a_stroke_stays_shown_whatever_the_app_hands_over_meanwhile() {
+    let mut w = painting(PaintTool::Brush);
+    w.viewport.tile_overlay.paint.code = Some(b'~');
+    let files = (*w.viewport.sheets).clone();
+    frame(&mut w, [10, 1], true, false, true, [false; 2]);
+    assert_eq!(row(&w, 1, 9..12), ".~.");
+    w.set_sprite_sheets(files.clone());
+    assert_eq!(row(&w, 1, 9..12), ".~.", "the stroke so far");
+    frame(&mut w, [12, 1], true, false, false, [false; 2]);
+    frame(&mut w, [12, 1], false, false, false, [false; 2]);
+    assert_eq!(row(&w, 1, 9..14), ".~~~.");
+    assert_eq!(saved_maps(&w.open.outbox).len(), 1);
+    // Not saved by the app yet: its files still hold the map unpainted.
+    w.set_sprite_sheets(files);
+    assert_eq!(row(&w, 1, 9..14), ".~~~.", "the stroke, saved or not");
+    w.map_undo(false, true);
+    assert_eq!(row(&w, 1, 9..14), ".....");
+}
+
 #[test]
 fn a_stroke_that_would_make_the_map_too_big_to_open_again_is_given_up() {
     // The review of Phase 9, BUG-55. The map made wider, so it has cells

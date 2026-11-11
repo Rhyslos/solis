@@ -101,6 +101,9 @@ pub(crate) struct ProjectState {
     /// ("sfx/footstep"), and by its file's name alone ("footstep") when
     /// no other sound event has that name.
     pub(crate) cue_sounds: HashMap<String, String>,
+    /// Saves of the project's files the app hasn't answered yet: what the
+    /// editor has that's newer than the app's (`own_files.rs`).
+    pub(crate) unanswered: crate::own_files::Unanswered,
     /// The clips file open in the Clips and Frames tabs (Phase 9, D3).
     pub(crate) frames_editor: Option<crate::frames_editor::FramesEditor>,
     /// The animator file open in the Animator tab (Phase 9, D3b).

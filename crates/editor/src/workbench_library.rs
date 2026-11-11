@@ -370,18 +370,6 @@ impl Workbench {
         self.open.library_state.selected = Some(path.to_owned());
     }
 
-    /// The project's sprite sheets as the app has read them (Phase 9, D2).
-    pub fn set_sprite_sheets(&mut self, mut sheets: crate::sprite_sheets::SpriteSheets) {
-        // The clips each sheet and clips file offers, worked out once here
-        // for drawing, Properties and the running game.
-        sheets.work_out_clips();
-        self.viewport.sheets = std::sync::Arc::new(sheets);
-        self.place_read_pictures();
-        self.animator_read_again();
-        self.tileset_read_again();
-        self.atlas_read_again();
-    }
-
     /// Whether `asset` is a picture (PNG, JPEG), which a sprite can show.
     pub(crate) fn is_picture(&self, asset: AssetId) -> bool {
         self.viewport
@@ -393,7 +381,7 @@ impl Workbench {
 
     /// Places each picture waiting to be a sprite that's now read as a
     /// sheet; says why for one that couldn't be.
-    fn place_read_pictures(&mut self) {
+    pub(crate) fn place_read_pictures(&mut self) {
         let waiting: Vec<_> = self.open.pictures_placing.keys().copied().collect();
         for id in waiting {
             let sheets = std::sync::Arc::clone(&self.viewport.sheets);

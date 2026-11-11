@@ -131,7 +131,7 @@ impl Workbench {
         let Some(doc) = &mut self.open.screen_doc else {
             return;
         };
-        doc.saved = doc.text.clone();
+        doc.saving();
         self.open.outbox.push(WorkbenchAction::SaveScreen {
             path: doc.path.clone().into(),
             text: doc.text.clone(),

@@ -75,12 +75,9 @@ fn with_tileset() -> (Workbench, AssetId, AssetId) {
 }
 
 fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
-    actions
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveTileset { text, .. } => Some(text.clone()),
-            _ => None,
-        })
+    saved_files(actions, |f| matches!(f, crate::OwnFile::Tileset(_)))
+        .into_iter()
+        .map(|(_, text)| text)
         .collect()
 }
 
@@ -130,11 +127,15 @@ fn a_change_is_saved_shown_at_once_and_undone_over_the_tab() {
     assert!(texts[0].contains("slot = 6"), "{}", texts[0]);
     let set = w.viewport.sheets.tileset(set_id).unwrap();
     assert!(tiles::autotile::missing_slots(set, &set.terrains[1]).is_empty());
-    w.open.outbox.clear();
+    save_as_the_app(&mut w, &mut SpriteSheets::default());
     w.tileset_undo(FARM_SET, false, true);
     assert!(!saved(&w.open.outbox)[0].contains("slot = 6"));
-    // Its own save read back changes nothing; a change by hand is taken in.
+    // Saved by the app, and read back: nothing changes. A change by hand
+    // is taken in.
     let mut sheets = (*w.viewport.sheets).clone();
+    save_as_the_app(&mut w, &mut sheets);
+    w.set_sprite_sheets(sheets.clone());
+    assert!(w.console.lines().iter().all(|l| !l.text.contains("disk")));
     let mut by_hand = w.open.tilesets.tab().unwrap().file.clone();
     by_hand.tile = [16, 16];
     sheets.tilesets.insert(
@@ -321,9 +322,12 @@ fn edit_in_properties(w: &mut Workbench, edit: crate::map_tab::TerrainEdit) {
     assert!(actions.is_empty());
 }
 
-/// Takes the tileset's saves waiting for the app, oldest first.
+/// Takes the tileset's saves waiting for the app, oldest first, each
+/// saved as the app would.
 fn take_saved(w: &mut Workbench) -> Vec<String> {
-    saved(&std::mem::take(&mut w.open.outbox))
+    let texts = saved(&w.open.outbox);
+    save_as_the_app(w, &mut SpriteSheets::default());
+    texts
 }
 
 #[test]

@@ -26,10 +26,6 @@ pub(crate) struct AtlasEditor {
     pub(crate) drawing: Option<[f32; 2]>,
     undo: Vec<Atlas>,
     redo: Vec<Atlas>,
-    /// The text last saved, to tell Solis's own save from a change on disk.
-    saved: Option<String>,
-    /// Whether the file has been read from disk since it was opened.
-    pub(crate) on_disk: bool,
 }
 
 impl AtlasEditor {
@@ -45,8 +41,6 @@ impl AtlasEditor {
             drawing: None,
             undo: Vec::new(),
             redo: Vec::new(),
-            saved: None,
-            on_disk: false,
         }
     }
 
@@ -197,28 +191,38 @@ impl AtlasEditor {
         true
     }
 
-    /// The file's text to save, remembered so Solis's own save isn't
-    /// taken for a change on disk.
-    pub(crate) fn saving(&mut self) -> String {
-        let text = atlas::write(&self.atlas);
-        self.saved = Some(text.clone());
-        text
-    }
-
-    /// Whether `on_disk` is what Solis last saved (or what's open).
-    pub(crate) fn is_own(&self, on_disk: &Atlas) -> bool {
-        *on_disk == self.atlas
-            || self
-                .saved
-                .as_deref()
-                .and_then(|t| atlas::read(t).ok())
-                .is_some_and(|r| r.atlas == *on_disk)
+    /// The file's text, to save.
+    pub(crate) fn text(&self) -> String {
+        atlas::write(&self.atlas)
     }
 
     /// The file changed on disk: taken in as one undo step.
     pub(crate) fn taken_in(&mut self, atlas: Atlas) {
         self.change(|a| *a = atlas);
         self.pick(None);
+    }
+}
+
+impl crate::own_files::OpenFile for AtlasEditor {
+    type File = Atlas;
+
+    fn path(&self) -> &str {
+        &self.path
+    }
+
+    fn file(&self) -> &Atlas {
+        &self.atlas
+    }
+
+    fn take_in(&mut self, file: Atlas) {
+        self.taken_in(file);
+    }
+
+    fn of(held: &crate::own_files::OwnFile) -> Option<&std::sync::Arc<Atlas>> {
+        match held {
+            crate::own_files::OwnFile::Atlas(file) => Some(file),
+            _ => None,
+        }
     }
 }
 

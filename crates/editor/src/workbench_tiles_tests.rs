@@ -7,8 +7,9 @@
 use super::*;
 use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
 use crate::map_tab::MapRequest;
-use crate::sprite_sheets::SpriteSheets;
+use crate::sprite_sheets::{SpriteSheets, TilesetState};
 use crate::test_support::*;
+use crate::workbench::WorkbenchAction;
 use egui_kittest::kittest::Queryable;
 use tiles::{CellValue, ValueKind};
 
@@ -76,15 +77,12 @@ pub(crate) fn with_map() -> (Workbench, AssetId, AssetId) {
 }
 
 pub(crate) fn saved_maps(actions: &[WorkbenchAction]) -> Vec<(String, String)> {
-    actions
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveTileMap { path, text } => {
-                Some((path.to_string_lossy().into_owned(), text.clone()))
-            }
-            _ => None,
-        })
-        .collect()
+    saved_files(actions, |f| matches!(f, crate::OwnFile::TileMap(_)))
+}
+
+/// The tilesets saved among `actions`: each one's path and text.
+fn saved_tilesets(actions: &[WorkbenchAction]) -> Vec<(String, String)> {
+    saved_files(actions, |f| matches!(f, crate::OwnFile::Tileset(_)))
 }
 
 pub(crate) fn the_map(w: &Workbench) -> Arc<TileMap> {
@@ -373,16 +371,11 @@ fn new_tilesets_and_maps_are_made_saved_and_shown_with_free_names() {
     let mut actions = Vec::new();
     w.library_request(LibraryRequest::NewTileset("sprites".into()), &mut actions);
     w.library_request(LibraryRequest::NewTileset("sprites".into()), &mut actions);
-    let paths: Vec<String> = w
-        .open
-        .outbox
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveTileset { path, text } => {
-                assert!(text.contains("grass"), "{text}");
-                Some(path.to_string_lossy().into_owned())
-            }
-            _ => None,
+    let paths: Vec<String> = saved_tilesets(&w.open.outbox)
+        .into_iter()
+        .map(|(path, text)| {
+            assert!(text.contains("grass"), "{text}");
+            path
         })
         .collect();
     assert_eq!(
@@ -464,10 +457,11 @@ fn properties_change_a_map_file_s_tileset_and_size() {
         ),
         &mut actions,
     );
-    assert!(w.open.outbox.iter().any(|a| matches!(
-        a,
-        WorkbenchAction::SaveTileset { text, .. } if text.contains("meadow")
-    )));
+    assert!(
+        saved_tilesets(&w.open.outbox)
+            .iter()
+            .any(|(_, text)| text.contains("meadow"))
+    );
     assert_eq!(
         w.viewport.sheets.tileset(set).unwrap().terrains[0].name,
         "meadow"
@@ -523,15 +517,7 @@ fn a_terrain_made_solid_is_saved_in_its_tileset_and_its_walls_shown() {
     let saved = w.viewport.sheets.tileset(set).unwrap();
     assert!(saved.by_code('~').unwrap().solid);
     assert!(!saved.by_code('.').unwrap().solid, "grass isn't");
-    let text = w
-        .open
-        .outbox
-        .iter()
-        .find_map(|a| match a {
-            WorkbenchAction::SaveTileset { text, .. } => Some(text.clone()),
-            _ => None,
-        })
-        .expect("saved");
+    let (_, text) = saved_tilesets(&w.open.outbox).swap_remove(0);
     assert!(text.contains("solid = true"), "{text}");
     // Asking again changes nothing.
     let before = w.open.outbox.len();

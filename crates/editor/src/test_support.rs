@@ -54,6 +54,47 @@ impl ViewportRenderer for Picker {
 
 pub(crate) type State = (Workbench, Picker);
 
+/// The saves of the editor's own files among `actions` whose file `is`
+/// picks, oldest first: each one's path and text.
+pub(crate) fn saved_files(
+    actions: &[crate::workbench::WorkbenchAction],
+    is: fn(&crate::OwnFile) -> bool,
+) -> Vec<(String, String)> {
+    actions
+        .iter()
+        .filter_map(|a| match a {
+            crate::workbench::WorkbenchAction::SaveFile { path, file, text } if is(file) => {
+                Some((path.to_string_lossy().replace('\\', "/"), text.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// Does the app's part of saving for it: every save of the editor's own
+/// files waiting in `w`'s outbox is taken out, kept as the file in
+/// `store` (the app's files) and answered as saved. Gives each one's
+/// path and text, oldest first.
+pub(crate) fn save_as_the_app(
+    w: &mut Workbench,
+    store: &mut crate::sprite_sheets::SpriteSheets,
+) -> Vec<(String, String)> {
+    let mut saved = Vec::new();
+    let waiting = std::mem::take(&mut w.open.outbox);
+    for action in waiting {
+        match action {
+            crate::workbench::WorkbenchAction::SaveFile { path, file, text } => {
+                let path = path.to_string_lossy().replace('\\', "/");
+                store.put(&path, file);
+                w.file_saved(&path);
+                saved.push((path, text));
+            }
+            other => w.open.outbox.push(other),
+        }
+    }
+    saved
+}
+
 pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, State> {
     egui_kittest::Harness::builder()
         .with_size(egui::vec2(1440.0, 900.0))

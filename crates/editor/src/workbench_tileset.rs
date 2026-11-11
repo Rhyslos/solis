@@ -2,15 +2,17 @@
 //! editor for each tileset file, with that file's undo steps, whichever
 //! place changes it (the Tileset tab, its Properties, the Map tab);
 //! opening a tileset into the tab and closing it, saving each change and
-//! showing it at once on every map, undo, a file changed on disk, the
-//! picture as a texture, and saving a kind's template beside the tileset.
+//! showing it at once on every map (`Workbench::save_file`), undo, a file
+//! changed on disk (`own_files::follow`), the picture as a texture, and
+//! saving a kind's template beside the tileset.
 
 use crate::console::LogLevel;
 use crate::key_owner::KeyOwner;
 use crate::layout;
 use crate::map_tab::TerrainEdit;
+use crate::own_files::{Followed, OwnFile, Told, follow};
 use crate::panel::Panel;
-use crate::sprite_sheets::{ArtState, TilesetState};
+use crate::sprite_sheets::{ArtState, SpriteSheets, TilesetState};
 use crate::tileset_editor::TilesetEditor;
 use crate::tileset_view::{Picture, TilesetUi};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -65,7 +67,7 @@ impl TilesetEdits {
 /// What the tab and its Properties draw from, for the file in `editor`.
 pub(crate) fn tileset_ui<'a>(
     editor: &'a mut TilesetEditor,
-    sheets: &'a crate::sprite_sheets::SpriteSheets,
+    sheets: &'a SpriteSheets,
     textures: &'a TileTextures,
     project_tile: [u32; 2],
     ms: u64,
@@ -186,20 +188,11 @@ impl Workbench {
     /// Saves the tileset at `path` as its editor has it, and shows it at
     /// once on every map.
     pub(crate) fn save_tileset(&mut self, path: &str) {
-        let Some(editor) = self.open.tilesets.by_path.get_mut(path) else {
+        let Some(editor) = self.open.tilesets.by_path.get(path) else {
             return;
         };
-        let text = editor.saving();
-        let file = editor.file.clone();
-        self.open.outbox.push(WorkbenchAction::SaveTileset {
-            path: path.into(),
-            text,
-        });
-        Arc::make_mut(&mut self.viewport.sheets).tilesets.insert(
-            path.to_owned(),
-            TilesetState::Read(Arc::new(file), Vec::new()),
-        );
-        self.sources += 1;
+        let (text, file) = (editor.text(), editor.file.clone());
+        self.save_file(path, OwnFile::Tileset(Arc::new(file)), text);
     }
 
     /// Saves the tileset open in the Tileset tab, changed there.
@@ -228,45 +221,34 @@ impl Workbench {
         }
     }
 
-    /// After the app reads the project's tilesets again: a file being
-    /// changed here that changed on disk (by hand, or by Git) is taken in
-    /// as one undo step; one gone takes its undo steps with it, and closes
-    /// the Tileset tab if it was open there.
-    pub(crate) fn tileset_read_again(&mut self) {
-        let paths: Vec<String> = self.open.tilesets.by_path.keys().cloned().collect();
+    /// Makes each tileset's editor follow its file as `sheets` hold it
+    /// (changed by hand, or by Git): one that differs is taken in as one
+    /// undo step; one gone takes its undo steps with it, and closes the
+    /// Tileset tab if it was open there. Gives what each did.
+    pub(crate) fn follow_tilesets(&mut self, sheets: &SpriteSheets) -> Vec<Told> {
+        let mut paths: Vec<String> = self.open.tilesets.by_path.keys().cloned().collect();
+        paths.sort();
+        let mut told = Vec::new();
         for path in paths {
             let in_tab = self.open.tilesets.tab.as_deref() == Some(path.as_str());
             let Some(editor) = self.open.tilesets.by_path.get_mut(&path) else {
                 continue;
             };
-            match self.viewport.sheets.tilesets.get(&path) {
-                Some(TilesetState::Read(file, _)) if editor.is_own(file) => editor.on_disk = true,
-                Some(TilesetState::Read(file, _)) => {
-                    editor.on_disk = true;
-                    editor.taken_in((**file).clone());
-                    if in_tab {
-                        self.log(
-                            LogLevel::Info,
-                            format!(
-                                "{path} changed on disk, so the Tileset tab shows it as it is now \
-                                 (Ctrl+Z over the tab undoes that)."
-                            ),
-                        );
-                    }
+            let followed = follow(editor, sheets);
+            if followed == Followed::Gone {
+                self.open.tilesets.by_path.remove(&path);
+                if in_tab {
+                    self.close_tileset();
                 }
-                None if editor.on_disk => {
-                    self.open.tilesets.by_path.remove(&path);
-                    if in_tab {
-                        self.close_tileset();
-                        self.log(
-                            LogLevel::Warning,
-                            format!("{path} is gone, so the Tileset tab closed."),
-                        );
-                    }
-                }
-                _ => {}
             }
+            told.push(Told {
+                path,
+                followed,
+                tabs: in_tab.then_some("the Tileset tab"),
+                many: false,
+            });
         }
+        told
     }
 
     /// Makes (once) the textures of the open tileset's picture and of the

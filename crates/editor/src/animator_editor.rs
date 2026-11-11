@@ -65,13 +65,6 @@ pub(crate) struct AnimatorEditor {
     pub(crate) preview_time: f64,
     /// Time not yet stepped (the preview steps in the game's ticks).
     pending: f64,
-    /// The versions saved lately: the app reading one of these back is
-    /// Solis's own save (perhaps an older one, arriving late), not a change
-    /// made on disk.
-    written: std::collections::VecDeque<AnimatorFile>,
-    /// Whether the app has read the file from disk since it was opened (a
-    /// file made just now isn't there until it has).
-    pub(crate) on_disk: bool,
 }
 
 impl AnimatorEditor {
@@ -91,23 +84,7 @@ impl AnimatorEditor {
             preview_clip: String::new(),
             preview_time: 0.0,
             pending: 0.0,
-            written: std::collections::VecDeque::new(),
-            on_disk: false,
         }
-    }
-
-    /// Notes the file as it's being saved now.
-    pub(crate) fn saving(&mut self) {
-        self.written.push_back(self.file.clone());
-        if self.written.len() > 16 {
-            self.written.pop_front();
-        }
-    }
-
-    /// Whether `file`, read from disk, is one Solis saved (or the file as
-    /// it is).
-    pub(crate) fn is_own(&self, file: &AnimatorFile) -> bool {
-        *file == self.file || self.written.contains(file)
     }
 
     /// The file as text, to save.
@@ -769,6 +746,29 @@ fn free_parameter_name(file: &AnimatorFile, name: &str) -> String {
         .map(|n| format!("{name}{n}"))
         .find(|n| file.parameter(n).is_none())
         .unwrap_or_default()
+}
+
+impl crate::own_files::OpenFile for AnimatorEditor {
+    type File = AnimatorFile;
+
+    fn path(&self) -> &str {
+        &self.path
+    }
+
+    fn file(&self) -> &AnimatorFile {
+        &self.file
+    }
+
+    fn take_in(&mut self, file: AnimatorFile) {
+        self.reload(file);
+    }
+
+    fn of(held: &crate::own_files::OwnFile) -> Option<&std::sync::Arc<AnimatorFile>> {
+        match held {
+            crate::own_files::OwnFile::Animator(file) => Some(file),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

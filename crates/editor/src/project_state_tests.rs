@@ -255,6 +255,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         code_checked,
         play_changes,
         cue_sounds,
+        unanswered,
         frames_editor,
         animator_editor,
         tilesets,
@@ -316,6 +317,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     same(mixer, &fresh.mixer, "the Mixer");
     assert_eq!(pixels, &fresh.pixels);
     assert_eq!(code_checked, &None);
+    same(unanswered, &fresh.unanswered, "saves waiting for an answer");
     assert!(frames_editor.is_none() && animator_editor.is_none());
     same(
         tilesets,

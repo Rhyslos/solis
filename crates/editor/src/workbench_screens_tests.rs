@@ -187,6 +187,49 @@ fn undo_over_the_canvas_saves_again_and_a_change_on_disk_is_taken_in() {
     assert!(w.open.screen_doc.is_none());
 }
 
+/// The review, BUG-09: the code is checked on a worker, so the program
+/// from a check that began before a save can arrive after it. Its text of
+/// the screen's file is then an older one of Solis's own, not a change
+/// made on disk: it was reported as one, and took the newer change back.
+#[test]
+fn an_older_text_of_its_own_arriving_late_is_no_change_on_disk() {
+    let mut w = opened();
+    w.refresh_screen();
+    let doc = w.open.screen_doc.as_mut().unwrap();
+    doc.picked = vec![vec![0, 0, 2]];
+    assert!(doc.delete_picked());
+    w.save_screen();
+    let first = w.open.screen_doc.as_ref().unwrap().text.clone();
+    let doc = w.open.screen_doc.as_mut().unwrap();
+    doc.picked = vec![vec![0, 0, 1]];
+    assert!(doc.delete_picked());
+    w.save_screen();
+    let second = w.open.screen_doc.as_ref().unwrap().text.clone();
+    assert!(first != MENU && second != first);
+    // The checks finish late, oldest first: the file as it was opened,
+    // then as first saved, then as it is.
+    for text in [MENU, &first, &second] {
+        w.set_program(Some(program(text)));
+        w.refresh_screen();
+        assert_eq!(w.open.screen_doc.as_ref().unwrap().text, second);
+    }
+    assert!(w.log_lines().iter().all(|l| !l.text.contains("on disk")));
+    // Its undo steps are the two changes, and no more.
+    let doc = w.open.screen_doc.as_mut().unwrap();
+    assert!(doc.undo() && doc.undo());
+    assert_eq!(doc.text, MENU);
+    assert!(!doc.undo());
+    // Once a change made on disk is taken in, its own older texts are no
+    // longer the file's: one of them read after that is a change.
+    w.set_program(Some(program(&MENU.replace("Quit", "Leave"))));
+    w.refresh_screen();
+    w.set_program(Some(program(&first)));
+    w.refresh_screen();
+    assert_eq!(w.open.screen_doc.as_ref().unwrap().text, first);
+    let told = |l: &&crate::LogLine| l.text.contains("changed on disk");
+    assert_eq!(w.log_lines().iter().filter(told).count(), 2);
+}
+
 /// MENU's game with a Health component and a Pause event, Quit with an
 /// empty { }.
 fn tied_program(menu: &str) -> Arc<script::Compiled> {

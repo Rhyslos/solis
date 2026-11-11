@@ -1,11 +1,13 @@
 //! The workbench's side of the Clips and Frames tabs (Phase 9, D3):
 //! opening a clips file into them and closing it, playing its clip,
-//! saving each change and showing it at once on every sprite, and undo.
+//! saving each change and showing it at once on every sprite
+//! (`Workbench::save_file`), and undo.
 
 use crate::console::LogLevel;
 use crate::frames_editor::FramesEditor;
 use crate::frames_view::FramesUi;
 use crate::layout;
+use crate::own_files::OwnFile;
 use crate::panel::Panel;
 use crate::sprite_sheets::{FramesState, SpriteSheets};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -119,14 +121,8 @@ impl Workbench {
             sheet: Some(sheet),
             ..animation::FramesFile::default()
         };
-        self.open.outbox.push(WorkbenchAction::SaveFrames {
-            path: path.clone().into(),
-            text: animation::frames_file::write(&file),
-        });
-        let sheets = Arc::make_mut(&mut self.viewport.sheets);
-        sheets
-            .frames
-            .insert(path.clone(), FramesState::Read(Arc::new(file), Vec::new()));
+        let text = animation::frames_file::write(&file);
+        self.save_file(&path, OwnFile::Frames(Arc::new(file)), text);
         self.open_frames(&path);
     }
 
@@ -167,7 +163,7 @@ impl Workbench {
         actions: &mut Vec<WorkbenchAction>,
     ) {
         if out.changed {
-            self.save_frames(actions);
+            self.save_frames();
         }
         // A tab closed in the dock: the other goes too.
         let one_gone = Panel::FRAMES_TABS
@@ -223,7 +219,7 @@ impl Workbench {
             self.close_tileset();
         }
         if out.animator_changed {
-            self.save_animator(actions);
+            self.save_animator();
         }
         if self.open.animator_editor.is_some()
             && (out.animator_closed || self.dock.find_tab(&Panel::Animator).is_none())
@@ -246,29 +242,18 @@ impl Workbench {
             false
         };
         if changed {
-            let mut actions = Vec::new();
-            self.save_frames(&mut actions);
-            self.open.outbox.extend(actions);
+            self.save_frames();
         }
     }
 
     /// Saves the open clips file, and shows the change at once on every
     /// sprite playing it.
-    fn save_frames(&mut self, actions: &mut Vec<WorkbenchAction>) {
+    pub(crate) fn save_frames(&mut self) {
         let Some(editor) = &self.open.frames_editor else {
             return;
         };
-        actions.push(WorkbenchAction::SaveFrames {
-            path: editor.path.clone().into(),
-            text: editor.text(),
-        });
-        let (path, file) = (editor.path.clone(), editor.file.clone());
-        let sheets = Arc::make_mut(&mut self.viewport.sheets);
-        sheets
-            .frames
-            .insert(path, FramesState::Read(Arc::new(file), Vec::new()));
-        sheets.work_out_clips();
-        self.sources += 1;
+        let (path, text, file) = (editor.path.clone(), editor.text(), editor.file.clone());
+        self.save_file(&path, OwnFile::Frames(Arc::new(file)), text);
     }
 }
 

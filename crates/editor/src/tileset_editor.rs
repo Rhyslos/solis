@@ -38,8 +38,6 @@ pub(crate) struct TilesetEditor {
     pub(crate) file: Tileset,
     undo: Vec<Tileset>,
     redo: Vec<Tileset>,
-    /// What was last saved, to tell Solis's own saves from changes on disk.
-    saved: Option<Tileset>,
     /// The terrain chosen on the left.
     pub(crate) terrain: Option<Id>,
     /// The picture's tile picked: column and row.
@@ -52,8 +50,6 @@ pub(crate) struct TilesetEditor {
     pub(crate) try_cells: Vec<bool>,
     /// How big the picture is drawn: screen pixels per pixel of it.
     pub(crate) zoom: f32,
-    /// Whether the file has been read from disk (a new one isn't yet).
-    pub(crate) on_disk: bool,
 }
 
 impl TilesetEditor {
@@ -89,7 +85,6 @@ impl TilesetEditor {
         }
         Self {
             path,
-            saved: Some(file.clone()),
             file,
             undo: Vec::new(),
             redo: Vec::new(),
@@ -99,7 +94,6 @@ impl TilesetEditor {
             rule: None,
             try_cells,
             zoom: 3.0,
-            on_disk: true,
         }
     }
 
@@ -170,25 +164,14 @@ impl TilesetEditor {
         }
     }
 
-    /// The file as text, noting it's Solis's own save.
-    pub(crate) fn saving(&mut self) -> String {
-        self.saved = Some(self.file.clone());
+    /// The file as text, to save.
+    pub(crate) fn text(&self) -> String {
         tiles::tileset::write(&self.file)
-    }
-
-    /// Whether `file` (read from disk) is what Solis last saved.
-    pub(crate) fn is_own(&self, file: &Tileset) -> bool {
-        self.saved.as_ref() == Some(file)
     }
 
     /// Takes in the file as changed on disk, as one undo step.
     pub(crate) fn taken_in(&mut self, file: Tileset) {
-        let before = std::mem::replace(&mut self.file, file);
-        self.saved = Some(self.file.clone());
-        if before != self.file {
-            self.undo.push(before);
-            self.redo.clear();
-        }
+        self.change(|f| *f = file);
         self.keep_picks();
     }
 
@@ -517,6 +500,29 @@ impl TilesetEditor {
             }
         }
         Some(map)
+    }
+}
+
+impl crate::own_files::OpenFile for TilesetEditor {
+    type File = Tileset;
+
+    fn path(&self) -> &str {
+        &self.path
+    }
+
+    fn file(&self) -> &Tileset {
+        &self.file
+    }
+
+    fn take_in(&mut self, file: Tileset) {
+        self.taken_in(file);
+    }
+
+    fn of(held: &crate::own_files::OwnFile) -> Option<&std::sync::Arc<Tileset>> {
+        match held {
+            crate::own_files::OwnFile::Tileset(file) => Some(file),
+            _ => None,
+        }
     }
 }
 

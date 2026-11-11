@@ -81,6 +81,7 @@ For the chosen terrain (no slot picked): its **Name**, **Code** (the character m
 - **Problem:** the grid lines don't match the art. **Why:** the tile size is different from the picture's. **Fix:** set it on the left, or click the size Solis found.
 - **Problem:** a terrain still shows its flat colour. **Why:** it has no tiles yet (or the tileset has no picture). **Fix:** fill its slots.
 - **Problem:** the picture won't open. **Why:** it isn't a PNG, JPEG or Aseprite file, or it's bigger than 4,096 pixels a side. The tab says why.
+- If a change to the tileset can't be saved, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 - PNG and JPEG files get a sidecar (`.solmeta`) like other assets, so a tileset keeps its picture when the picture is moved or renamed. Commit them with the picture.
 
 ## Related
