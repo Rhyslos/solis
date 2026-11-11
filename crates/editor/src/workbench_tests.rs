@@ -659,6 +659,70 @@ fn lights_from_a_file_join_the_model_and_leave_with_it() {
     assert_eq!(w.selection(), None);
 }
 
+/// BUG-02: a spotlight from a model's file whose cone angles aren't
+/// numbers (a damaged import cache) crashed the editor as the model was
+/// placed. Whatever the angles, the light placed is a usable one.
+#[test]
+fn a_file_s_spotlight_with_any_cone_angles_is_placed_safely() {
+    let odd = [
+        -2.0,
+        0.0,
+        0.3,
+        1.0,
+        50.0,
+        f32::MAX,
+        f32::NAN,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+    ];
+    let mut lights = Vec::new();
+    for inner in odd {
+        for outer in odd {
+            lights.push(FileLight {
+                name: String::new(),
+                kind: FileLightKind::Spot { inner, outer },
+                position: Vec3::ONE,
+                direction: -Vec3::Z,
+                color: [1.0; 3],
+                strength: 100.0,
+                range: None,
+            });
+        }
+    }
+    let mut w = Workbench::new(info(), None);
+    let model = w.add_model(crate_info(), &[], 0.1, &lights);
+    let area = w.document().area();
+    let children = area.children(Some(model));
+    assert_eq!(children.len(), lights.len());
+    for (child, from) in children.iter().zip(&lights) {
+        let entity = area.get(*child).unwrap();
+        // As the file's values hold it, and as it's read back.
+        let written = &entity.components["Light"];
+        let read = entity.get::<Light>().unwrap();
+        let (narrow, wide) = Light::CONE_RANGE;
+        for (cone, soft_edge) in [
+            (
+                written
+                    .get("cone")
+                    .and_then(reflect::Value::as_f32)
+                    .unwrap(),
+                written
+                    .get("soft_edge")
+                    .and_then(reflect::Value::as_f32)
+                    .unwrap(),
+            ),
+            (read.cone, read.soft_edge),
+        ] {
+            assert!((narrow..=wide).contains(&cone), "{from:?}: {cone}");
+            assert!((0.0..=cone).contains(&soft_edge), "{from:?}: {soft_edge}");
+        }
+    }
+    // And the viewport draws them.
+    let view = AreaView::of(area, w.models());
+    assert_eq!(view.lamps.len(), lights.len());
+    assert!(view.lamps.iter().all(|l| l.inner <= l.outer));
+}
+
 #[test]
 fn a_sun_from_a_file_sets_the_area_sun() {
     let mut w = Workbench::new(info(), None);

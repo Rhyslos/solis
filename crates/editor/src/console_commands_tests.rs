@@ -182,6 +182,31 @@ fn set_changes_every_selected_entity_in_one_undo_step() {
     assert_eq!(light.strength, 250.0);
 }
 
+/// BUG-02: the Console sets a number as typed, and a cone below zero
+/// stopped the program as the viewport drew the light.
+#[test]
+fn set_can_t_give_a_light_a_cone_that_crashes_the_viewport() {
+    let mut w = Workbench::new(info(), None);
+    let torch = w.add_spotlight();
+    for (typed, cone) in [
+        ("-5", Light::CONE_RANGE.0),
+        ("0", Light::CONE_RANGE.0),
+        ("45", 45.0),
+        ("1000", Light::CONE_RANGE.1),
+    ] {
+        run(&mut w, &format!("set Light.cone {typed}"));
+        run(&mut w, &format!("set Light.soft_edge {typed}"));
+        let light = w.document.area().get(torch).unwrap().get::<Light>();
+        assert_eq!(light.unwrap().cone, cone, "{typed}");
+        let view = crate::area_view::AreaView::of(w.document.area(), w.models());
+        let lamp = view.lamps[0];
+        assert!(
+            0.0 <= lamp.inner && lamp.inner <= lamp.outer,
+            "{typed}: {lamp:?}"
+        );
+    }
+}
+
 #[test]
 fn set_and_get_say_what_went_wrong() {
     let (mut w, crate_id) = with_a_crate();

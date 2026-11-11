@@ -809,6 +809,53 @@ mod tests {
     }
 
     #[test]
+    fn an_entry_with_a_lamp_the_importer_never_makes_is_refused() {
+        // BUG-02: a spotlight's cone angles were read as written, and a
+        // cone that isn't a number crashed the editor when the model was
+        // placed.
+        let limits = Limits::default();
+        let mut good =
+            assets::load_bytes(&assets::sample::sample_glb(), None, "S", &limits).unwrap();
+        good.lamps.push(Lamp {
+            name: "Torch".into(),
+            kind: LampKind::Spot {
+                inner: 0.2,
+                outer: 0.6,
+            },
+            position: Vec3::ONE,
+            direction: -Vec3::Z,
+            color: [1.0; 3],
+            strength: 100.0,
+            range: Some(5.0),
+        });
+        assert_eq!(decode(&encode(&good), &limits).unwrap(), good);
+        let odd = [f32::NAN, f32::INFINITY, f32::NEG_INFINITY];
+        for bad in odd {
+            for kind in [
+                LampKind::Spot {
+                    inner: bad,
+                    outer: 0.6,
+                },
+                LampKind::Spot {
+                    inner: 0.2,
+                    outer: bad,
+                },
+            ] {
+                let mut model = good.clone();
+                model.lamps[0].kind = kind;
+                assert!(!model.is_finite(), "{kind:?}");
+                assert!(decode(&encode(&model), &limits).is_err(), "{kind:?}");
+            }
+            let mut model = good.clone();
+            model.lamps[0].strength = bad;
+            assert!(decode(&encode(&model), &limits).is_err());
+            let mut model = good.clone();
+            model.lamps[0].range = Some(bad);
+            assert!(decode(&encode(&model), &limits).is_err());
+        }
+    }
+
+    #[test]
     fn damaged_entries_never_crash_the_reader() {
         // Fuzzing: every prefix, and thousands of single-byte corruptions,
         // of a real entry. Each must be refused or read safely.

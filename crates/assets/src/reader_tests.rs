@@ -454,6 +454,44 @@ fn silly_light_values_are_tidied() {
     }
 }
 
+/// A spotlight's cone, however the file writes it, is read as a usable
+/// one (or the file is refused): the editor works with these angles
+/// without checking them again.
+#[test]
+fn a_spotlight_s_cone_is_usable_however_the_file_writes_it() {
+    for (inner, outer) in [
+        ("-1.0", "-2.0"),
+        ("5.0", "9.0"),
+        ("0.5", "0.1"),
+        ("0", "0"),
+        ("1e300", "1e300"),
+        ("-1e300", "1e38"),
+        ("1e999", "0.5"),
+        ("0.2", "-1e999"),
+    ] {
+        let mut b = Builder::default();
+        let mesh = b.add_cube_mesh(0.5, None);
+        b.json_lights = vec![format!(
+            r#"{{"type":"spot","intensity":10,"spot":{{"innerConeAngle":{inner},"outerConeAngle":{outer}}}}}"#
+        )];
+        b.json_nodes = vec![
+            format!(r#"{{"mesh":{mesh}}}"#),
+            r#"{"extensions":{"KHR_lights_punctual":{"light":0}}}"#.into(),
+        ];
+        match load_bytes(&b.glb(), None, "X", &limits()) {
+            Ok(model) => {
+                assert!(model.is_finite(), "{inner} {outer}");
+                let crate::lights::LampKind::Spot { inner: i, outer: o } = model.lamps[0].kind
+                else {
+                    panic!("a spotlight was read as {:?}", model.lamps[0].kind);
+                };
+                assert!(0.0 <= i && i <= o && o <= 1.57, "{inner} {outer}: {i} {o}");
+            }
+            Err(e) => assert!(!e.to_string().is_empty()),
+        }
+    }
+}
+
 /// Randomly damaged files with lights in them: read or refused, never a
 /// crash, and any lights read are usable.
 #[test]

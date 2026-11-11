@@ -365,12 +365,15 @@ fn view_model(
     ))
 }
 
-/// `light` placed by `world`: shining along the entity's -Z.
+/// `light` placed by `world`: shining along the entity's -Z. Whatever
+/// numbers `light` holds (one made in code needn't have been read from a
+/// file), what's placed is finite, its inner edge inside its outer one.
 fn place(entity: reflect::EntityId, light: &Light, world: glam::Mat4) -> ViewLight {
-    let outer = light.cone.clamp(0.5, 89.5).to_radians();
-    let inner = (light.cone - light.soft_edge.max(0.0))
-        .clamp(0.0, light.cone)
-        .to_radians();
+    let light = light.sanitized();
+    // The soft edge is never below zero, so the inner edge is never
+    // outside the cone; no bound here comes from the light's own numbers.
+    let outer = light.cone.to_radians();
+    let inner = (light.cone - light.soft_edge).max(0.0).to_radians();
     ViewLight {
         entity,
         kind: light.kind,
@@ -382,7 +385,7 @@ fn place(entity: reflect::EntityId, light: &Light, world: glam::Mat4) -> ViewLig
         color: light.color,
         strength: light.strength,
         range: (light.range > 0.0).then_some(light.range),
-        inner: inner.min(outer),
+        inner,
         outer,
         shadows: light.shadows,
         only_at_night: light.only_at_night,
@@ -565,5 +568,121 @@ mod tests {
         assert_eq!(editor.sun.unwrap().entity, high);
         assert_eq!(game.sun.unwrap().entity, high);
         assert!(editor.lamps.is_empty() && game.lamps.is_empty());
+    }
+
+    /// Whether a placed light's cone is one the renderer can draw.
+    fn drawable(lamp: &ViewLight) -> bool {
+        lamp.outer.is_finite()
+            && lamp.inner.is_finite()
+            && 0.0 <= lamp.inner
+            && lamp.inner <= lamp.outer
+            && lamp.outer < std::f32::consts::FRAC_PI_2
+            && lamp.strength.is_finite()
+            && lamp.range.is_none_or(|r| r.is_finite() && r > 0.0)
+    }
+
+    #[test]
+    fn a_light_holding_any_numbers_is_placed_without_a_crash() {
+        // BUG-02: `clamp(0.0, light.cone)` stopped the program when the
+        // cone was below zero or not a number.
+        let odd = [
+            -5.0,
+            0.0,
+            0.2,
+            30.0,
+            500.0,
+            f32::NAN,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+        ];
+        let id = reflect::EntityId(reflect::Id::from_raw(1).unwrap());
+        for cone in odd {
+            for soft_edge in odd {
+                for other in odd {
+                    let light = Light {
+                        cone,
+                        soft_edge,
+                        strength: other,
+                        range: other,
+                        ..Light::spot()
+                    };
+                    let lamp = place(id, &light, glam::Mat4::IDENTITY);
+                    assert!(drawable(&lamp), "{cone} {soft_edge} {other}: {lamp:?}");
+                }
+            }
+        }
+    }
+
+    /// An area file with one spotlight, its cone and soft edge as written.
+    fn spot_file(cone: &str, soft_edge: &str) -> String {
+        format!(
+            "area version 1;\n\nentity 0000000000001 {{\n    name = \"Torch\";\n    \
+             Light.kind = \"Spot\";\n    Light.cone = {cone};\n    Light.soft_edge = \
+             {soft_edge};\n}}\n"
+        )
+    }
+
+    #[test]
+    fn an_area_file_with_a_bad_cone_loads_and_draws() {
+        let registry = area::builtin::registry().unwrap();
+        // Numbers the file format reads: each loads, and draws.
+        for (cone, soft_edge) in [
+            ("-5", "10"),
+            ("-5.0", "-3.5"),
+            ("0", "0"),
+            ("0.0", "10.0"),
+            ("30.0", "80.0"),
+            ("1000", "5"),
+            ("-1.0e30", "1.0e30"),
+        ] {
+            let text = spot_file(cone, soft_edge);
+            let area = area::text::read(&text, &registry).unwrap_or_else(|e| panic!("{text}{e:?}"));
+            let editor = AreaView::of(&area, &BTreeMap::new());
+            let game = AreaView::of_world(&world::World::from_area(&area), &BTreeMap::new(), 1.0);
+            for view in [editor, game] {
+                assert_eq!(view.lamps.len(), 1, "{text}");
+                assert!(drawable(&view.lamps[0]), "{text}{:?}", view.lamps[0]);
+            }
+        }
+        // What isn't a number at all is refused in words or read as the
+        // standard cone, and draws if it's read.
+        for odd in ["NaN", "nan", "inf", "-inf", "Infinity", "1e999", "-1e999"] {
+            for text in [spot_file(odd, "10.0"), spot_file("30.0", odd)] {
+                match area::text::read(&text, &registry) {
+                    Ok(area) => {
+                        let view = AreaView::of(&area, &BTreeMap::new());
+                        assert!(view.lamps.iter().all(drawable), "{text}");
+                    }
+                    Err(why) => assert!(!why.message.is_empty(), "{text}"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_light_changed_to_a_bad_cone_while_playing_is_drawn_safely() {
+        // The game's world takes a light's values as they change (edited
+        // in Properties while playing, an assembly spawned by game code).
+        let mut area = Area::new();
+        let id = area.spawn(EntityData::new("Torch").with(&Light::spot()));
+        let mut world = world::World::from_area(&area);
+        let mut bad = reflect::Component::to_data(&Light::spot());
+        bad.set("cone", reflect::Value::Float(-5.0));
+        bad.set("soft_edge", reflect::Value::Float(-40.0));
+        area.get_mut(id)
+            .unwrap()
+            .components
+            .insert("Light".into(), bad.clone());
+        world.update(&area, [(id, true)]);
+        let view = AreaView::of_world(&world, &BTreeMap::new(), 1.0);
+        assert!(drawable(&view.lamps[0]), "{:?}", view.lamps[0]);
+        // And one that arrives while playing.
+        let spawned = reflect::EntityId(reflect::Id::from_raw(77).unwrap());
+        let mut torch = EntityData::new("Spawned");
+        torch.components.insert("Light".into(), bad);
+        world.add_subtree(&[(spawned, torch)]);
+        let view = AreaView::of_world(&world, &BTreeMap::new(), 1.0);
+        assert_eq!(view.lamps.len(), 2);
+        assert!(view.lamps.iter().all(drawable), "{:?}", view.lamps);
     }
 }

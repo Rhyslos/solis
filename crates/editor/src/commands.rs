@@ -1194,8 +1194,16 @@ fn file_light(i: usize, light: &FileLight) -> FromFile {
     }
     let (kind, cone, soft_edge) = match light.kind {
         FileLightKind::Spot { inner, outer } => {
-            let outer = outer.to_degrees().clamp(1.0, 89.0);
-            let inner = inner.to_degrees().clamp(0.0, outer);
+            // An angle that isn't a number (a damaged import cache) takes
+            // the importer's standard: as a bound of `clamp` it would
+            // stop the program. `outer` is a number in the cone's range
+            // before it bounds `inner`.
+            let number = |v: f32, standard: f32| if v.is_finite() { v } else { standard };
+            let (narrow, wide) = Light::CONE_RANGE;
+            let outer = number(outer, std::f32::consts::FRAC_PI_4)
+                .to_degrees()
+                .clamp(narrow, wide);
+            let inner = number(inner, 0.0).to_degrees().clamp(0.0, outer);
             (LightKind::Spot, outer, outer - inner)
         }
         _ => (LightKind::Point, 30.0, 10.0),

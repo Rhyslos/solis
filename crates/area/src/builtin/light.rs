@@ -97,6 +97,39 @@ impl Light {
             ..Self::point()
         }
     }
+
+    /// The narrowest and widest a spotlight's cone may be, in degrees
+    /// from its middle.
+    pub const CONE_RANGE: (f32, f32) = (1.0, 89.0);
+    /// The most gradual a spotlight's edge may be, in degrees.
+    pub const MAX_SOFT_EDGE: f32 = 89.0;
+
+    /// The same light with anything unusable put right: a cone in
+    /// [`Self::CONE_RANGE`], a soft edge from 0 to
+    /// [`Self::MAX_SOFT_EDGE`], a strength and a range that aren't below
+    /// zero, and a colour from 0 to 1. A number that isn't one at all
+    /// takes its kind of light's standard. What reads a light's numbers
+    /// can then work with them without checking again.
+    #[must_use]
+    pub fn sanitized(self) -> Self {
+        let d = match self.kind {
+            LightKind::Sun => Self::sun(),
+            LightKind::Point => Self::point(),
+            LightKind::Spot => Self::spot(),
+        };
+        let number = |v: f32, standard: f32| if v.is_finite() { v } else { standard };
+        let (narrow, wide) = Self::CONE_RANGE;
+        Self {
+            kind: self.kind,
+            color: [0, 1, 2].map(|i| number(self.color[i], d.color[i]).clamp(0.0, 1.0)),
+            strength: number(self.strength, d.strength).max(0.0),
+            range: number(self.range, d.range).max(0.0),
+            cone: number(self.cone, d.cone).clamp(narrow, wide),
+            soft_edge: number(self.soft_edge, d.soft_edge).clamp(0.0, Self::MAX_SOFT_EDGE),
+            shadows: self.shadows,
+            only_at_night: self.only_at_night,
+        }
+    }
 }
 
 /// The rotation that points -Z at a sun `heading` degrees clockwise from
@@ -166,7 +199,7 @@ impl Component for Light {
                     "Cone",
                     d.cone,
                     field::hint(
-                        (1.0, 89.0),
+                        (f64::from(Self::CONE_RANGE.0), f64::from(Self::CONE_RANGE.1)),
                         0.5,
                         "°",
                         "A spotlight's width, from the middle of its cone.",
@@ -177,7 +210,7 @@ impl Component for Light {
                     "Soft edge",
                     d.soft_edge,
                     field::hint(
-                        (0.0, 89.0),
+                        (0.0, f64::from(Self::MAX_SOFT_EDGE)),
                         0.5,
                         "°",
                         "How gradually a spotlight fades at its edge.",
@@ -230,6 +263,11 @@ impl Component for Light {
             shadows: f.bool("shadows", d.shadows),
             only_at_night: f.bool("only_at_night", false),
         }
+        // Here a light's numbers come in (an area file, an assembly game
+        // code spawns, a save, a change made while a game plays): put
+        // right once, for everything that reads them. A cone below zero
+        // used to crash the viewport.
+        .sanitized()
     }
 }
 
@@ -245,5 +283,108 @@ mod tests {
         let noon = sun_rotation(0.0, 90.0) * Vec3::NEG_Z;
         assert!(noon.abs_diff_eq(Vec3::NEG_Z, 1e-5));
         assert!((aim(Vec3::ZERO) * Vec3::NEG_Z).abs_diff_eq(Vec3::NEG_Z, 1e-6));
+    }
+
+    /// Whether every number of `light` is one a light can have.
+    fn usable(light: &Light) -> bool {
+        let (narrow, wide) = Light::CONE_RANGE;
+        (narrow..=wide).contains(&light.cone)
+            && (0.0..=Light::MAX_SOFT_EDGE).contains(&light.soft_edge)
+            && light.strength.is_finite()
+            && light.strength >= 0.0
+            && light.range.is_finite()
+            && light.range >= 0.0
+            && light.color.iter().all(|c| (0.0..=1.0).contains(c))
+    }
+
+    /// Numbers a file, game code or a mistake might hold.
+    const ODD: [f32; 12] = [
+        -5.0,
+        0.0,
+        -0.0,
+        0.2,
+        30.0,
+        89.0,
+        500.0,
+        -1.0e30,
+        f32::MAX,
+        f32::NAN,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+    ];
+
+    #[test]
+    fn a_light_read_from_values_is_always_usable() {
+        // BUG-02: a cone below zero came through as written, and drawing
+        // it crashed the editor.
+        for cone in ODD {
+            for soft_edge in ODD {
+                for other in ODD {
+                    let mut data = Light::spot().to_data();
+                    data.set("cone", Value::Float(f64::from(cone)));
+                    data.set("soft_edge", Value::Float(f64::from(soft_edge)));
+                    data.set("strength", Value::Float(f64::from(other)));
+                    data.set("range", Value::Float(f64::from(other)));
+                    let light = Light::from_data(&data);
+                    assert!(usable(&light), "{cone} {soft_edge} {other}: {light:?}");
+                }
+            }
+        }
+        // A number too big for a light's own kind of number, and a value
+        // of the wrong kind.
+        let mut data = Light::spot().to_data();
+        data.set("cone", Value::Float(-1.0e300));
+        data.set("soft_edge", Value::Text("wide".into()));
+        assert!(usable(&Light::from_data(&data)));
+    }
+
+    #[test]
+    fn a_light_made_in_code_is_put_right_and_a_good_one_is_left_alone() {
+        for cone in ODD {
+            for soft_edge in ODD {
+                let wild = Light {
+                    cone,
+                    soft_edge,
+                    strength: soft_edge,
+                    range: cone,
+                    color: [cone, soft_edge, 0.5],
+                    ..Light::spot()
+                }
+                .sanitized();
+                assert!(usable(&wild), "{cone} {soft_edge}: {wild:?}");
+            }
+        }
+        let below = Light {
+            cone: -5.0,
+            soft_edge: -2.0,
+            strength: -1.0,
+            range: -4.0,
+            ..Light::spot()
+        }
+        .sanitized();
+        assert_eq!(
+            (below.cone, below.soft_edge, below.strength, below.range),
+            (Light::CONE_RANGE.0, 0.0, 0.0, 0.0)
+        );
+        let not_numbers = Light {
+            cone: f32::NAN,
+            soft_edge: f32::NAN,
+            strength: f32::NAN,
+            range: f32::INFINITY,
+            ..Light::spot()
+        }
+        .sanitized();
+        assert_eq!(not_numbers, Light::spot(), "each takes its standard");
+        for good in [Light::sun(), Light::point(), Light::spot()] {
+            assert_eq!(good.sanitized(), good);
+            assert_eq!(Light::from_data(&good.to_data()), good);
+        }
+        // A soft edge wider than the cone is allowed: the whole cone fades.
+        let soft = Light {
+            cone: 10.0,
+            soft_edge: 40.0,
+            ..Light::spot()
+        };
+        assert_eq!(soft.sanitized(), soft);
     }
 }
