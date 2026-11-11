@@ -425,7 +425,83 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 1] = [UnbuiltId::PrefsCodeSplit];
+const DRAWN_SO_FAR: [UnbuiltId; 65] = [
+    // The frame.
+    UnbuiltId::ShellTabShading,
+    UnbuiltId::ShellTabVfx,
+    UnbuiltId::ShellPlaySimulate,
+    // Home's ribbon.
+    UnbuiltId::HomeCreateShapes,
+    UnbuiltId::HomeCreateTrigger,
+    UnbuiltId::HomeLightingBake,
+    UnbuiltId::HomeLightingQuality,
+    UnbuiltId::HomeLightingLightmapView,
+    // Library's ribbon.
+    UnbuiltId::LibImportAnyKind,
+    UnbuiltId::LibFilterTags,
+    UnbuiltId::LibFilterMissing,
+    UnbuiltId::LibSourceCheckIn,
+    UnbuiltId::LibSourceHistory,
+    UnbuiltId::LibUseShowInLevel,
+    // Shading: its ribbon and its page.
+    UnbuiltId::ShadingMaterialApply,
+    UnbuiltId::ShadingMaterialSave,
+    UnbuiltId::ShadingAddTexture,
+    UnbuiltId::ShadingAddMath,
+    UnbuiltId::ShadingAddParam,
+    UnbuiltId::ShadingGraphAutoLayout,
+    UnbuiltId::ShadingGraphComment,
+    UnbuiltId::ShadingGraphWires,
+    UnbuiltId::ShadingPreviewShape,
+    UnbuiltId::ShadingPreviewLit,
+    UnbuiltId::ShadingPreviewLive,
+    UnbuiltId::ShadingGraph,
+    // Animate's ribbon.
+    UnbuiltId::AnimKeysAdd,
+    UnbuiltId::AnimKeysAuto,
+    UnbuiltId::AnimInterpStep,
+    UnbuiltId::AnimInterpLinear,
+    UnbuiltId::AnimInterpSmooth,
+    UnbuiltId::AnimTracksTrack,
+    UnbuiltId::AnimTracksCurves,
+    // Debug's ribbon.
+    UnbuiltId::DebugCaptureRecord,
+    UnbuiltId::DebugCapturePause,
+    UnbuiltId::DebugCaptureSave,
+    UnbuiltId::DebugTargetSource,
+    UnbuiltId::DebugTargetDeep,
+    UnbuiltId::DebugShowMemory,
+    UnbuiltId::DebugToolsDebugger,
+    UnbuiltId::DebugToolsMemory,
+    // File's column.
+    UnbuiltId::FilePlugins,
+    // Preferences.
+    UnbuiltId::PrefsCodeSplit,
+    // Audio's ribbon.
+    UnbuiltId::AudioMixerSend,
+    UnbuiltId::AudioMixerSnapshot,
+    UnbuiltId::AudioMonitorMeters,
+    UnbuiltId::AudioListenChoose,
+    UnbuiltId::AudioFxEq,
+    UnbuiltId::AudioFxCompress,
+    UnbuiltId::AudioFxReverb,
+    UnbuiltId::AudioFxLimiter,
+    // VFX: its ribbon and its page.
+    UnbuiltId::VfxEmitterAdd,
+    UnbuiltId::VfxEmitterDuplicate,
+    UnbuiltId::VfxModuleSpawn,
+    UnbuiltId::VfxModuleVelocity,
+    UnbuiltId::VfxModuleColor,
+    UnbuiltId::VfxModuleSize,
+    UnbuiltId::VfxModuleCollide,
+    UnbuiltId::VfxSimLoop,
+    UnbuiltId::VfxSimSpeed,
+    UnbuiltId::VfxSimBounds,
+    UnbuiltId::VfxPreviewBackground,
+    UnbuiltId::VfxPreviewTime,
+    UnbuiltId::VfxPreviewFollow,
+    UnbuiltId::VfxPreview,
+];
 
 /// Walks the editor in `look`: every workspace, each page of the
 /// Settings window, and the launcher. Gives every unfinished part noted
@@ -450,10 +526,22 @@ fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
             .map(|node| node.accesskit_node().label().unwrap_or_default()),
         );
     };
-    for workspace in crate::workspace::Workspace::ALL {
-        h.state_mut().0.switch_workspace(workspace);
+    for tab in crate::shell::RibbonTab::ALL {
+        h.state_mut().0.show_tab(tab);
         look_around(&mut h);
+        // A control's list of kinds is drawn only while it is open.
+        let lists: Vec<egui::Rect> = h
+            .query_all_by_label_contains(": more kinds")
+            .map(|node| node.rect())
+            .collect();
+        for arrow in lists {
+            crate::test_support::click(&mut h, arrow.center(), egui::Modifiers::NONE);
+            look_around(&mut h);
+            h.key_press(egui::Key::Escape);
+            h.run();
+        }
     }
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);
     for page in [Page::Appearance, Page::TwoD] {
         h.state_mut().0.open_settings();
         h.state_mut().0.settings_window.as_mut().unwrap().page = page;
@@ -476,8 +564,10 @@ fn walking_the_editor_meets_every_part_it_should_and_nothing_else_says_not_built
     assert_eq!(noted.into_iter().collect::<Vec<_>>(), wanted);
     // Everything on screen that says it isn't built came from the
     // mechanism: its names are exactly the names of the parts drawn.
+    // (Two parts may share a name: Save, on two screens.)
     let mut names: Vec<String> = wanted.iter().map(|id| get(*id).name.to_owned()).collect();
     names.sort();
+    names.dedup();
     assert_eq!(described, names);
     // A part with nothing to draw is never one the walk expects.
     for (id, why) in NOTHING_TO_DRAW {

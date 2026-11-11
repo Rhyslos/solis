@@ -1,7 +1,7 @@
 //! The launcher ([decision 0086](../../../docs/decisions/0086-the-launcher.md)),
 //! as the project lead approved it (the mock-up of 5 November): a full
 //! page with a sidebar, shown when Solis starts with no project open and
-//! from File > Projects…. It grew from the start page (E1, decision 0070).
+//! from File > Recent projects. It grew from the start page (E1, decision 0070).
 //!
 //! - **Projects:** every project Solis knows, pinned ones first; search by
 //!   name or folder; sort by last opened or name; ☆ to pin; double-click or
@@ -86,7 +86,7 @@ pub(crate) struct Launcher {
     /// The row picked (Enter opens it).
     pub(crate) selected: Option<PathBuf>,
     /// The search box takes the keys when the launcher comes up.
-    focus_search: bool,
+    pub(crate) focus_search: bool,
     /// A line from the app about what it did or couldn't do (renamed,
     /// copying, found), shown under the heading until closed.
     pub(crate) notice: Option<String>,
@@ -448,7 +448,7 @@ impl Workbench {
     }
 
     /// Shows the launcher again (the editor's window was closed with a
-    /// project open, or File > Projects…): the project stays open behind
+    /// project open, or File > Recent projects): the project stays open behind
     /// it, and "Back to" returns to it.
     pub fn back_to_launcher(&mut self) {
         self.open_launcher();
@@ -459,7 +459,7 @@ impl Workbench {
         self.launcher.open
     }
 
-    /// Shows the launcher (File > Projects…), asking the app for the list
+    /// Shows the launcher (File > Recent projects), asking the app for the list
     /// read afresh. A game being played stops first.
     pub(crate) fn open_launcher(&mut self) {
         if self.open.playing.is_some() {
@@ -506,7 +506,6 @@ impl Workbench {
         if !self.launcher.open {
             return false;
         }
-        let mut asked: Vec<WorkbenchAction> = Vec::new();
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && self.open.unsaved_prompt.is_none() {
             if self.launcher.renaming.is_some() {
                 self.launcher.renaming = None;
@@ -524,10 +523,25 @@ impl Workbench {
                     .inner_margin(egui::Margin::symmetric(14, 22)),
             )
             .show(ui, |ui| self.launcher_sidebar(ui));
+        if self.launcher_page(ui, actions) {
+            self.launcher.open = false;
+        }
+        true
+    }
+
+    /// The launcher's page in front, filling what is left of `ui`: the
+    /// launcher's own, and the File tab's. Returns whether the project
+    /// already open was chosen: the caller goes back to it.
+    pub(crate) fn launcher_page(
+        &mut self,
+        ui: &mut Ui,
+        actions: &mut Vec<WorkbenchAction>,
+    ) -> bool {
+        let mut asked: Vec<WorkbenchAction> = Vec::new();
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
-                    // And its page.
+                    // The design's File page.
                     .fill(crate::tokens::shelf_bar())
                     .inner_margin(egui::Margin::symmetric(36, 28)),
             )
@@ -537,17 +551,18 @@ impl Workbench {
                 Page::Updates => self.updates_page(ui, &mut asked),
             });
         self.rename_question(ui, &mut asked);
+        let mut back = false;
         for action in asked {
             if let WorkbenchAction::OpenRecent(root) = &action
                 && self.open.project.as_ref().is_some_and(|p| &p.root == root)
             {
                 // Already open: back to it.
-                self.launcher.open = false;
+                back = true;
                 continue;
             }
             self.request(action, actions);
         }
-        true
+        back
     }
 
     fn launcher_sidebar(&mut self, ui: &mut Ui) {

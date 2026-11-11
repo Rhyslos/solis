@@ -18,11 +18,15 @@
 
 mod command_words;
 pub(crate) mod commands;
+mod controls;
 mod create;
-mod file_page;
+pub(crate) mod file_page;
+mod play_group;
+pub(crate) mod ribbon;
+mod ribbons;
+pub(crate) mod tab_bar;
 
 pub(crate) use commands::ShellCommand;
-pub(crate) use file_page::FileItem;
 
 use crate::layout;
 use crate::panel::Panel;
@@ -112,7 +116,7 @@ impl RibbonTab {
 
     /// The arrangement of panels the tab shows, while the panels are
     /// still docked. A tab without one keeps the arrangement in use.
-    fn workspace(self) -> Option<Workspace> {
+    pub(crate) fn workspace(self) -> Option<Workspace> {
         match self {
             Self::Home | Self::Library | Self::Audio => Some(Workspace::Level),
             Self::Animate => Some(Workspace::Animate),
@@ -157,8 +161,6 @@ pub struct Shell {
     /// While collapsed: whether a click on a tab has dropped the ribbon
     /// down over the center.
     pub(crate) dropped: bool,
-    /// The File page shown.
-    pub(crate) file_item: FileItem,
 }
 
 impl Default for Shell {
@@ -168,7 +170,6 @@ impl Default for Shell {
             before_file: RibbonTab::Home,
             collapsed: false,
             dropped: false,
-            file_item: FileItem::RecentProjects,
         }
     }
 }
@@ -201,7 +202,7 @@ impl Workbench {
             return;
         }
         if tab == RibbonTab::File {
-            self.show_file_page(self.shell.file_item);
+            self.show_file_page(self.launcher.page);
             return;
         }
         self.shell.tab = tab;
@@ -246,8 +247,49 @@ impl Workbench {
             self.shell.dropped = !(again && self.shell.dropped);
         }
     }
+
+    /// The tab bar, and under it the ribbon or the File page. Returns
+    /// whether a whole page was drawn in the middle: the docked panels
+    /// aren't, then.
+    pub(crate) fn top(
+        &mut self,
+        ui: &mut egui::Ui,
+        actions: &mut Vec<crate::WorkbenchAction>,
+    ) -> bool {
+        self.tab_bar(ui, actions);
+        self.ribbon_band(ui, actions);
+        self.search_list(ui, actions);
+        match self.shell.tab {
+            RibbonTab::File => self.file_page(ui, actions),
+            RibbonTab::Shading => self.unbuilt_screen(ui, RibbonTab::Shading),
+            RibbonTab::Vfx => self.unbuilt_screen(ui, RibbonTab::Vfx),
+            _ => return false,
+        }
+        true
+    }
+
+    /// A whole screen that isn't built: its one page, where the panels
+    /// would be.
+    fn unbuilt_screen(&mut self, ui: &mut egui::Ui, tab: RibbonTab) {
+        use crate::icons::Icon;
+        use crate::unbuilt::UnbuiltId;
+        let answer = egui::CentralPanel::default()
+            .frame(egui::Frame::new())
+            .show(ui, |ui| match tab {
+                RibbonTab::Shading => {
+                    crate::unbuilt::page(ui, UnbuiltId::ShadingGraph, Icon::Material)
+                }
+                _ => crate::unbuilt::page(ui, UnbuiltId::VfxPreview, Icon::Sun),
+            })
+            .inner;
+        if answer.hide {
+            self.hide_unfinished(ui.ctx(), true);
+        }
+    }
 }
 
+#[cfg(test)]
+mod picture_tests;
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

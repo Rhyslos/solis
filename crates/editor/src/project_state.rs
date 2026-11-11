@@ -38,7 +38,7 @@ pub(crate) struct ProjectState {
     pub(crate) document: Document,
     /// What the editor knows about the imported models, by asset.
     pub(crate) models: BTreeMap<AssetId, ModelInfo>,
-    /// File > Export for playtesting…, while it's open (decision 0093).
+    /// Build > Export, while it's open (decision 0093).
     pub(crate) export_window: Option<crate::export_dialog::ExportWindow>,
     /// How the open project was last exported, to start from.
     pub(crate) last_export: Option<crate::export_dialog::Playtest>,

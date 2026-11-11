@@ -1,7 +1,7 @@
-//! The Help menu's updates and the Restart to update button.
+//! Checking for updates, and the Restart to update button.
 
 use super::*;
-use crate::test_support::info;
+use crate::test_support::{do_command, info};
 use crate::viewport::NoRenderer;
 use egui_kittest::kittest::Queryable;
 
@@ -13,6 +13,9 @@ fn window(workbench: Workbench) -> egui_kittest::Harness<'static, State> {
         .with_size(egui::vec2(1440.0, 900.0))
         .build_ui_state(
             |ui, state: &mut State| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 let mut renderer = NoRenderer {
                     reason: "testing".into(),
                 };
@@ -23,31 +26,46 @@ fn window(workbench: Workbench) -> egui_kittest::Harness<'static, State> {
         )
 }
 
+/// Does the command called `name`, keeping what it asks the app for.
+fn command(h: &mut egui_kittest::Harness<'static, State>, name: &str) {
+    h.run();
+    let ctx = h.ctx.clone();
+    let (workbench, asked) = h.state_mut();
+    asked.extend(do_command(workbench, &ctx, name));
+    h.run();
+}
+
 #[test]
-fn help_checks_for_updates_and_says_how_it_went() {
+fn check_for_updates_asks_the_app_and_the_updates_page_says_how_it_went() {
     let mut w = Workbench::new(info(), None);
     w.set_update(UpdateNotice::UpToDate(41));
     let mut h = window(w);
     h.run();
-    h.get_by_label("Help").click();
-    h.run();
-    assert!(h.query_by_label("Up to date (build 41)").is_some());
-    h.get_by_label("Check for updates").click();
-    h.run();
+    command(&mut h, "Check for updates");
     assert!(h.state().1.contains(&WorkbenchAction::CheckForUpdates));
+    // File, Updates: the page that says where updating stands.
+    command(&mut h, "Updates");
+    assert_eq!(h.state().0.ribbon_tab(), crate::shell::RibbonTab::File);
+    assert_eq!(h.state().0.launcher.page, crate::launcher::Page::Updates);
+    assert!(h.query_by_label_contains("Check now").is_some());
 }
 
 #[test]
 fn checking_can_t_be_asked_twice_at_once() {
     let mut w = Workbench::new(info(), None);
     w.set_update(UpdateNotice::Downloading(42));
-    let mut h = window(w);
-    h.run();
-    h.get_by_label("Help").click();
-    h.run();
-    h.get_by_label("Check for updates").click();
-    h.run();
-    assert!(!h.state().1.contains(&WorkbenchAction::CheckForUpdates));
+    let ctx = egui::Context::default();
+    let check = crate::shell::ShellCommand::CheckForUpdates;
+    assert_eq!(check.why_not(&w).as_deref(), Some("Already checking"));
+    let mut asked = Vec::new();
+    check.run(&mut w, &ctx, &mut asked);
+    assert!(asked.is_empty());
+    assert!(
+        !w.search_items()
+            .iter()
+            .any(|i| i.name == "Check for updates"),
+        "not offered while it can't be done"
+    );
 }
 
 #[test]
@@ -55,12 +73,11 @@ fn checking_when_starting_can_be_turned_off() {
     let mut h = window(Workbench::new(info(), None));
     h.run();
     assert!(h.state().0.auto_update(), "on unless turned off");
-    h.get_by_label("Help").click();
-    h.run();
-    h.get_by_label("Check for updates when starting").click();
-    h.run();
+    command(&mut h, "Don't check for updates when starting");
     assert!(!h.state().0.auto_update());
     assert!(h.state().1.contains(&WorkbenchAction::SetAutoUpdate(false)));
+    command(&mut h, "Check for updates when starting");
+    assert!(h.state().0.auto_update());
 }
 
 #[test]

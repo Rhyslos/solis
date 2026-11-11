@@ -463,7 +463,7 @@ pub(crate) fn library(
     let Some(project) = project else {
         note(
             ui,
-            "No project is open. File > New project… makes one: a folder whose models are kept \
+            "No project is open. File > New project makes one: a folder whose models are kept \
              here, with IDs that survive renaming.",
         );
         return requests;

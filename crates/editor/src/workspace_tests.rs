@@ -112,13 +112,16 @@ fn an_unpinned_library_stays_out_of_every_workspace() {
 }
 
 #[test]
-fn the_tabs_in_the_top_bar_switch_workspaces() {
+fn the_tabs_in_the_tab_bar_switch_workspaces() {
     let mut h = harness(fresh());
     h.run();
-    for name in ["Level", "Animate", "Code"] {
-        let _ = h.get_by_label(&format!("{name} workspace"));
+    for name in ["Home", "Animate", "UI", "Debug"] {
+        let _ = h.get_by_label(&format!("{name} tab"));
     }
-    h.get_by_label("Code workspace").click();
+    h.get_by_label("Debug tab").click();
     h.run();
     assert_eq!(h.state().0.workspace(), Workspace::Code);
+    h.get_by_label("Animate tab").click();
+    h.run();
+    assert_eq!(h.state().0.workspace(), Workspace::Animate);
 }

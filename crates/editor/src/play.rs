@@ -78,7 +78,7 @@ pub(crate) struct Playing {
     /// The seed Play chose, before game code's starts (which may set
     /// another): what a recording keeps, so its replay starts the same.
     pub(crate) start_seed: u64,
-    /// What this play records (Play > Play and record inputs), if it
+    /// What this play records (Debug > Play and record inputs), if it
     /// records.
     pub(crate) recording: Option<input::Recording>,
     /// At most how big the recording's file is so far.
@@ -293,7 +293,7 @@ impl Workbench {
         }
         let note = if cameras == 0 {
             " There's no camera in the area, so the Game panel shows the editor's view \
-             (Entity > Add camera adds one)."
+             (Home > Camera adds one)."
         } else {
             ""
         };

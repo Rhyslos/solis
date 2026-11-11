@@ -1,7 +1,7 @@
 //! Number fields and colour buttons whose change counts once, when it's
 //! let go (the review, BUG-20). The editors of a file of their own (a
 //! tileset, a clips file, an atlas, an animator, a tile map) make every
-//! change an undo step and save it at once, as Edit > Input actions… saves
+//! change an undo step and save it at once, as File > Input saves
 //! the project's actions (BUG-25), so a field
 //! that handed over its value on each frame of a drag would fill the undo
 //! history with one step a frame and write the file as often (and, for the

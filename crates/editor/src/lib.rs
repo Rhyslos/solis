@@ -89,7 +89,6 @@ pub mod tile_view;
 mod tileset_editor;
 mod tileset_view;
 pub mod tokens;
-mod top_bar;
 pub mod transforming;
 pub mod unbuilt;
 pub mod updates;
@@ -153,5 +152,7 @@ mod picture_support;
 mod picture_tests;
 #[cfg(test)]
 mod scale_levels_tests;
+#[cfg(test)]
+mod shell_reach_tests;
 #[cfg(test)]
 mod source_rules_tests;

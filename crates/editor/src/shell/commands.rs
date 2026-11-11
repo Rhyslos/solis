@@ -267,9 +267,9 @@ impl ShellCommand {
             return;
         }
         match self {
-            C::RecentProjects => w.show_file_page(super::FileItem::RecentProjects),
-            C::Learn => w.show_file_page(super::FileItem::Learn),
-            C::Updates => w.show_file_page(super::FileItem::Updates),
+            C::RecentProjects => w.show_file_page(crate::launcher::Page::Projects),
+            C::Learn => w.show_file_page(crate::launcher::Page::Learn),
+            C::Updates => w.show_file_page(crate::launcher::Page::Updates),
             C::ProjectSettings => w.open_project_settings(),
             C::InputActions => w.open_input_window(),
             C::Preferences => w.open_settings(),

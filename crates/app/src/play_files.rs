@@ -153,8 +153,8 @@ pub fn load_bindings(root: &Path) -> (input::Bindings, Option<String>) {
         Err(why) => (
             input::Bindings::default(),
             Some(format!(
-                "{} {why}, so the ready-made actions are used until it's fixed (Edit > Input \
-                 actions… writes it again).",
+                "{} {why}, so the ready-made actions are used until it's fixed (File > \
+                 Input writes it again).",
                 input::FILE
             )),
         ),

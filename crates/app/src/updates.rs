@@ -2,7 +2,7 @@
 //! 0043](../../../docs/decisions/0043-installed-and-updated-from-github.md),
 //! [decision 0045](../../../docs/decisions/0045-a-splash-screen-that-asks-before-updating.md)).
 //! Solis asks GitHub on the splash screen as it starts (`startup.rs`); this
-//! is the rest: Help > Check for updates asks whether to update when
+//! is the rest: File > Updates asks whether to update when
 //! there's a newer build, Update now downloads it while you work, and the
 //! installer runs when the window closes (opening Solis again after
 //! Restart to update). A check the splash couldn't wait for finishes
@@ -71,8 +71,7 @@ pub fn start_download(
 pub struct Updates {
     /// The check or download under way.
     working: Option<Receiver<Status>>,
-    /// Whether the check under way was asked for (Help > Check for
-    /// updates): its answer is shown, and a newer build asked about.
+    /// Whether the check under way was asked for (File > Updates): its answer is shown, and a newer build asked about.
     asked: bool,
     /// This copy: its build, and whether it was installed.
     copy: updater::Copy,
@@ -161,7 +160,7 @@ impl Updates {
         }
     }
 
-    /// Checks now (Help > Check for updates).
+    /// Checks now (File > Updates).
     pub fn check_now(&mut self, workbench: &mut Workbench, ctx: &eframe::egui::Context) {
         if self.working.is_none() {
             self.asked = true;

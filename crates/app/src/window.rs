@@ -27,7 +27,7 @@ const PREVIEW_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
 /// Key under which the panels' arrangement is remembered: a new key
 /// since the editor overhaul's standard layout (decision 0085), so every
-/// editor starts once from it; Window > Reset layout brings it back later.
+/// editor starts once from it; Reset layout (File > Preferences) brings it back later.
 const LAYOUT_KEY: &str = "panel_layout2";
 /// Key under which every workspace's layout, and the one in use, is
 /// remembered (decision 0085); the layout above is read when it's missing.
@@ -139,7 +139,7 @@ struct App {
     tidying: crate::known_projects::Tidying,
     /// Starting up behind the splash screen, until the editor opens.
     startup: Option<crate::startup::Startup>,
-    /// File > Quit (or the launcher's close) asked to quit: the window's
+    /// File > Exit (or the launcher's close) asked to quit: the window's
     /// close isn't turned into going back to the launcher.
     quitting: bool,
     /// The editor window's size while a project's open, to grow back to
@@ -276,7 +276,6 @@ impl App {
     fn list_projects(&mut self) {
         let rows = self.projects.known_mut().rows();
         self.workbench.set_known_projects(rows);
-        self.workbench.set_recent(self.projects.recent());
     }
 
     /// Gives the project in `root` a new name (the launcher's Rename…).
@@ -1189,7 +1188,7 @@ impl App {
                             Ok(path) => self.workbench.log(
                                 LogLevel::Info,
                                 format!(
-                                    "Saved the recording as {} (Play > Replay a recording… plays it back).",
+                                    "Saved the recording as {} (Debug > Replay a recording… plays it back).",
                                     file_name(&path)
                                 ),
                             ),
@@ -1440,7 +1439,7 @@ impl App {
         let Some(db) = self.projects.db() else {
             self.workbench.log(
                 LogLevel::Warning,
-                "Assemblies live in a project: make or open one first (File > New project…).",
+                "Assemblies live in a project: make or open one first (File > New project).",
             );
             return;
         };
@@ -2081,7 +2080,7 @@ impl eframe::App for App {
         }
         if ctx.input(|i| i.viewport().close_requested()) {
             // Closing the editor goes back to the launcher (the project
-            // stays open behind it); closing the launcher, File > Quit or
+            // stays open behind it); closing the launcher, File > Exit or
             // Restart to update quits, asking about unsaved work first.
             let quit =
                 self.quitting || self.workbench.launcher_open() || self.workbench.restarting();

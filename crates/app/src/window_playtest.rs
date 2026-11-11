@@ -3,7 +3,7 @@
 //! code is ready, only the game drawn, the window following the player's
 //! settings, saves and settings kept in the player's Saved Games folder,
 //! and what the game said written to a log there. And, in the editor,
-//! File > Export for playtesting… carried out on a thread of its own.
+//! Build > Export carried out on a thread of its own.
 
 use super::{App, file_name};
 use crate::playtest::{self, Found};
@@ -350,7 +350,7 @@ impl App {
         });
     }
 
-    /// File > Export for playtesting…'s Export: copies on a thread of its
+    /// Build > Export's Export: copies on a thread of its
     /// own, so the editor keeps drawing.
     pub(super) fn export_playtest(&mut self, request: editor::export_dialog::ExportRequest) {
         if self.exporting.is_some() {

@@ -1,15 +1,14 @@
 //! What the editor shows about updates ([decision
 //! 0043](../../../docs/decisions/0043-installed-and-updated-from-github.md),
 //! [decision 0045](../../../docs/decisions/0045-a-splash-screen-that-asks-before-updating.md)):
-//! a part of the Help menu, the update question when Help > Check for
-//! updates finds a newer build, and a button in the top bar when it's
+//! the update question when Check for updates (File > Updates, or the
+//! search) finds a newer build, and a link in the tab bar when it's
 //! downloaded. When Solis starts, the app asks on the splash screen
 //! instead. The app does the checking and installing, and tells the
 //! editor how it's going with [`Workbench::set_update`].
 
-use crate::theme;
 use crate::workbench::{Workbench, WorkbenchAction};
-use egui::{RichText, Ui};
+use egui::Ui;
 
 /// How updating is going, as the app tells the editor.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -93,7 +92,7 @@ impl Workbench {
         self.update = notice;
     }
 
-    /// Asks the update question (Help > Check for updates found a newer
+    /// Asks the update question (File > Updates found a newer
     /// build); the answer comes back as an action.
     pub fn offer_update(&mut self, offer: crate::splash::UpdateOffer) {
         self.offer = Some(offer);
@@ -153,55 +152,13 @@ impl Workbench {
         self.auto_update = on;
     }
 
-    /// The Help menu's part about updates.
-    pub(crate) fn updates_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
-        let checking = matches!(
-            self.update,
-            UpdateNotice::Checking | UpdateNotice::Downloading(_)
-        );
-        let check = ui
-            .add_enabled(!checking, egui::Button::new("Check for updates"))
-            .on_hover_text(
-                "Asks GitHub for the newest build now, and asks you whether to update if \
-                 there is one (even one you skipped)",
-            );
-        if check.clicked() {
-            actions.push(WorkbenchAction::CheckForUpdates);
-            ui.close();
-        }
-        let mut auto = self.auto_update;
-        if ui
-            .checkbox(&mut auto, "Check for updates when starting")
-            .on_hover_text(format!(
-                "Asks GitHub for a newer build while {} starts, and asks you whether to \
-                 update. Off: nothing is checked unless you choose Check for updates",
-                self.info.name
-            ))
-            .changed()
-        {
-            self.auto_update = auto;
-            actions.push(WorkbenchAction::SetAutoUpdate(auto));
-        }
-        ui.label(
-            RichText::new(self.update.line())
-                .small()
-                .color(theme::text_weak()),
-        );
-    }
-
-    /// The top bar's Restart to update button, shown when a new build is
-    /// ready.
+    /// The tab bar's Restart to update button, shown when a new build is
+    /// ready. (It moves to the status bar with the rest of the frame.)
     pub(crate) fn restart_button(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         let UpdateNotice::Ready(build) = self.update else {
             return;
         };
-        let button =
-            egui::Button::new(RichText::new("Restart to update").color(theme::on_accent()))
-                .fill(self.accent.colors().fill)
-                .stroke(egui::Stroke::NONE)
-                .min_size(egui::vec2(0.0, crate::top_bar::BAR_BUTTON.y));
-        let clicked = ui
-            .add(button)
+        let clicked = crate::widgets::button::link(ui, "Restart to update")
             .on_hover_text(format!(
                 "Build {build} is downloaded. Closes {name} (asking about unsaved work first), \
                  installs the new build and opens it again. Or keep working: it installs \
@@ -213,7 +170,6 @@ impl Workbench {
             self.restarting = true;
             self.request(WorkbenchAction::Quit, actions);
         }
-        ui.add_space(6.0);
     }
 }
 

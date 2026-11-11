@@ -6,7 +6,7 @@ use crate::area_panel::AreaRequest;
 use crate::commands::POINT_LIGHT_HEIGHT;
 use crate::models::{FileLight, FileLightKind};
 use crate::properties::PropertyRequest;
-use crate::test_support::{lamp_post_file, with_a_lamp_post};
+use crate::test_support::{do_command, lamp_post_file, with_a_lamp_post};
 use crate::viewport::NoRenderer;
 use area::Edit;
 use area::builtin::Environment;
@@ -86,6 +86,9 @@ fn harness_with(workbench: Workbench) -> egui_kittest::Harness<'static, Workbenc
         .with_size(egui::vec2(1440.0, 900.0))
         .build_ui_state(
             move |ui, workbench: &mut Workbench| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 if !themed {
                     theme::apply(ui.ctx(), workbench.interface_look());
                     themed = true;
@@ -348,11 +351,18 @@ fn every_panel_has_a_named_tab_and_the_bar_has_its_buttons() {
     for panel in Panel::ALL {
         let _ = h.get_by_label(panel.title());
     }
-    for button in ["Step one tick", "Stop"] {
+    // Play is the Play group's one button until the game runs.
+    assert_eq!(h.query_all_by_label("Play").count(), 1);
+    for button in ["Step one tick", "Stop", "Pause"] {
+        assert!(h.query_by_label(button).is_none(), "{button}");
+    }
+    h.state_mut().play();
+    h.run();
+    for button in ["Step one tick", "Stop", "Pause"] {
         let _ = h.get_by_label(button);
     }
-    // The Play menu and the Play button.
-    assert_eq!(h.query_all_by_label("Play").count(), 2);
+    assert!(h.query_by_label("Play").is_none());
+    h.state_mut().stop();
 }
 
 #[test]
@@ -404,6 +414,9 @@ fn acting(
         .with_size(egui::vec2(1440.0, 900.0))
         .build_ui_state(
             |ui, state: &mut (Workbench, Vec<WorkbenchAction>)| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 let mut renderer = NoRenderer {
                     reason: "testing".into(),
                 };
@@ -525,25 +538,18 @@ fn a_console_message_clicked_is_shown_in_full() {
 fn help_offers_the_sample_area() {
     let mut h = acting(Workbench::new(info(), None));
     h.run();
-    h.get_by_label("Help").click();
-    h.run();
-    h.get_by_label("Add the sample area").click();
-    h.run();
-    assert!(h.state().1.contains(&WorkbenchAction::AddSampleArea));
-    h.get_by_label("Help").click();
-    h.run();
-    h.get_by_label("Make the sample game…").click();
-    h.run();
-    assert!(h.state().1.contains(&WorkbenchAction::MakeSampleGame));
+    let ctx = h.ctx.clone();
+    let asked = do_command(&mut h.state_mut().0, &ctx, "Add the sample area");
+    assert!(asked.contains(&WorkbenchAction::AddSampleArea));
+    let asked = do_command(&mut h.state_mut().0, &ctx, "Make the sample game…");
+    assert!(asked.contains(&WorkbenchAction::MakeSampleGame));
 }
 
 #[test]
-fn the_entity_menu_adds_lights_shown_in_area_and_properties() {
+fn the_ribbon_s_light_button_adds_lights_shown_in_area_and_properties() {
     let mut h = harness();
     h.run();
-    // The top bar's menu (the Area panel's menu row also says Entity).
-    h.get_all_by_label("Entity").next().unwrap().click();
-    h.run();
+    // Home, Create, Light: a plain click makes the usual kind.
     h.get_by_label("Add point light").click();
     h.run();
     let w = h.state();
@@ -563,9 +569,10 @@ fn the_entity_menu_adds_lights_shown_in_area_and_properties() {
     let _ = h.get_by_label("Move here");
     h.key_press(egui::Key::Escape);
     h.run();
-    h.get_all_by_label("Entity").next().unwrap().click();
+    // Its small arrow lists the other kinds.
+    h.get_by_label("Light: more kinds").click();
     h.run();
-    h.get_by_label("Add spotlight").click();
+    h.get_by_label("Spotlight").click();
     h.run();
     let spot = h.state().selection().unwrap();
     let data = h.state().document().area().get(spot).unwrap();
@@ -883,11 +890,8 @@ fn a_drag_undoes_in_one_step_with_ctrl_z_and_redoes_from_the_edit_menu() {
         Some(lamp),
         "undo shows what it changed"
     );
-    // The top bar's menu (panels' menu rows also say Edit).
-    h.get_all_by_label("Edit").next().unwrap().click();
-    h.run();
-    h.get_by_label_contains("Redo Change Light.strength")
-        .click();
+    // Home, Edit, Redo: named for the step it makes again.
+    h.get_by_label("Redo Change Light.strength").click();
     h.run();
     assert_eq!(strength_of(h.state(), lamp), 1300.0);
     // Undoing everything removes the light; Ctrl+Y brings it back.
@@ -1486,27 +1490,15 @@ fn the_library_lists_the_project_and_a_double_click_places() {
 }
 
 #[test]
-fn the_file_menu_asks_for_projects_and_lists_recent_ones() {
-    let mut w = Workbench::new(info(), None);
-    w.set_recent(vec!["/projects/harbour".into()]);
-    let mut h = acting(w);
+fn the_file_page_asks_for_a_new_project_or_another_one() {
+    let mut h = acting(Workbench::new(info(), None));
     h.run();
-    h.get_all_by_label("File").next().unwrap().click();
-    h.run();
-    h.get_by_label("New project…").click();
-    h.run();
+    crate::test_support::file_item(&mut h, "New project");
     assert!(h.state().1.contains(&WorkbenchAction::NewProject));
-    h.get_all_by_label("File").next().unwrap().click();
-    h.run();
-    h.get_by_label_contains("Recent projects").click();
-    h.run();
-    h.get_by_label("harbour").click();
-    h.run();
-    assert!(
-        h.state()
-            .1
-            .contains(&WorkbenchAction::OpenRecent("/projects/harbour".into()))
-    );
+    crate::test_support::file_item(&mut h, "Open…");
+    assert!(h.state().1.contains(&WorkbenchAction::OpenProject));
+    // Opening File reads the projects afresh, for its first page.
+    assert!(h.state().1.contains(&WorkbenchAction::ListProjects));
 }
 
 #[test]

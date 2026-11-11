@@ -1,7 +1,7 @@
 //! The UI sample (game UI milestone M7): a turret the player fires at a
 //! drone, with a HUD, the drone's health bar and a pause menu offering the
 //! player's settings, every screen drawn on the UI editor's canvas.
-//! **Help > Make the UI sample…** writes it into a folder as a project.
+//! **Make the UI sample…** (File > Learn, or the search) writes it into a folder as a project.
 
 use asset_db::Project;
 use std::path::Path;

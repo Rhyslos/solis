@@ -1,4 +1,4 @@
-//! The benchmark (Phase 5, decision 0030): **Help > Make the benchmark…**
+//! The benchmark (Phase 5, decision 0030): **Make the benchmark…** (File > Learn, or the search)
 //! writes a project into a folder: two fleets of ships (a model Solis
 //! makes, nothing proprietary) flying loops and firing lasers, written in
 //! Lust, in three areas: the target level (2,000 ships and 20,000

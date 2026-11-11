@@ -136,8 +136,8 @@ fn hidden_entities_and_their_children_are_not_drawn_and_locked_ones_not_picked()
 fn the_hide_and_lock_switches_appear_on_the_row_and_switch() {
     let (w, _, _, crate_id) = a_room();
     let mut h = harness(w);
-    // The Area panel is on the left (decision 0085).
-    h.hover_at(egui::pos2(200.0, 160.0));
+    // The Area panel is on the left (decision 0085), under the ribbon.
+    h.hover_at(egui::pos2(200.0, 226.0));
     h.run();
     h.get_by_label("Hide Crate").click();
     h.run();
@@ -372,11 +372,23 @@ fn components_are_added_to_and_removed_from_several_at_once() {
 }
 
 #[test]
-fn the_top_bars_edit_menu_has_the_selection_commands() {
+fn the_area_panel_s_edit_menu_has_the_selection_commands() {
     let (w, _, _, _) = a_room();
     let mut h = harness(w);
     h.run();
-    // The top bar's and the Area panel's Edit menus have the same items.
+    // The same things the search does by name.
+    for item in [
+        "Duplicate",
+        "Delete",
+        "Rename",
+        "Select all",
+        "Select nothing",
+    ] {
+        assert!(
+            crate::shell::ShellCommand::named(item, &h.state().0).is_some(),
+            "{item}"
+        );
+    }
     let menus = h.query_all_by_label("Edit").count();
     let mut found = 0;
     for i in 0..menus {
@@ -391,7 +403,7 @@ fn the_top_bars_edit_menu_has_the_selection_commands() {
         h.key_press(egui::Key::Escape);
         h.run();
     }
-    assert!(found >= 2, "in the top bar and the Area panel: {found}");
+    assert!(found >= 1, "in the Area panel: {found}");
 }
 
 #[test]

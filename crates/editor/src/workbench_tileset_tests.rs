@@ -102,18 +102,21 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
         "Tileset picture",
         "Slot 6",
         "Try-it patch",
-        "farm.tileset.lst",
+        // The tab that comes with an open tileset.
+        "Library tools · Tileset",
     ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label_contains("1 missing").is_some());
-    // A saved layout never keeps it, and its document tab closes it.
+    // A saved layout never keeps it, and its tab's × closes it.
     let restored = layout::restore(Some(h.state().0.dock.clone()));
     assert!(restored.find_tab(&Panel::Tileset).is_none());
-    h.get_by_label("Close farm.tileset.lst").click();
+    crate::test_support::click_the_x(&mut h, Panel::Tileset);
     h.run();
     h.run();
     assert!(h.state().0.open.tilesets.tab().is_none());
+    // And the tab that came with it goes.
+    assert!(h.query_by_label("Library tools · Tileset").is_none());
 }
 
 #[test]

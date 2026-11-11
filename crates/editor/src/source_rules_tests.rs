@@ -92,7 +92,7 @@ fn colours_written(code: &str) -> usize {
 /// meter's green, a build's tag), shades or lights what is under it, or
 /// is a grey the design has no name for; each goes, or takes a token,
 /// when its screen is rebuilt to the design.
-const KEPT: [(&str, usize, &str); 14] = [
+const KEPT: [(&str, usize, &str); 13] = [
     (
         "atlas_view.rs",
         3,
@@ -137,11 +137,6 @@ const KEPT: [(&str, usize, &str); 14] = [
         "panels.rs",
         1,
         "the shade over the window while files are dragged in",
-    ),
-    (
-        "play_changes.rs",
-        1,
-        "the blue that says the game is running",
     ),
     ("profiler.rs", 6, "a colour for each part of a frame's time"),
     (

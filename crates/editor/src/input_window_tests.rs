@@ -1,4 +1,4 @@
-//! Edit > Input actions… in the whole window: when a change is saved.
+//! File > Input in the whole window: when a change is saved.
 
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};

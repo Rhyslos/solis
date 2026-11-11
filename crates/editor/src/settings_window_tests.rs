@@ -1,4 +1,4 @@
-//! Edit > Settings…: the window, its pages and its search; the
+//! File > Preferences: the window, its pages and its search; the
 //! Appearance page, drawn with the design's own controls; and Hide
 //! unfinished parts, with the one unfinished part today's editor shows.
 
@@ -8,14 +8,12 @@ use crate::test_support::*;
 use egui::accesskit::Role;
 use egui_kittest::kittest::{By, NodeT as _, Queryable};
 
-/// Opens Edit > Settings… by clicking, as a person would.
+/// Opens Preferences (the Settings window), as File, Preferences and
+/// the search do.
 fn opened() -> egui_kittest::Harness<'static, State> {
     let mut h = harness(Workbench::new(info(), None));
     h.run();
-    h.get_all_by_label("Edit").next().unwrap().click();
-    h.run();
-    h.get_by_label("Settings…").click();
-    h.run();
+    run(&mut h, "Preferences");
     h
 }
 
@@ -218,13 +216,19 @@ fn the_search_box_narrows_the_settings() {
 }
 
 #[test]
-fn the_window_menu_has_reset_layout_and_no_presets() {
+fn reset_layout_is_a_command_and_there_are_no_presets() {
     let mut h = harness(Workbench::new(info(), None));
     h.run();
-    h.get_by_label("Window").click();
-    h.run();
-    assert!(h.query_by_label("Reset layout").is_some());
-    for gone in ["Layouts", "Wide screen", "Small screen", "Accent colour"] {
+    let names: Vec<String> = h
+        .state()
+        .0
+        .search_items()
+        .into_iter()
+        .map(|i| i.name)
+        .collect();
+    assert!(names.contains(&"Reset layout".to_string()));
+    for gone in ["Layouts", "Wide screen", "Small screen"] {
+        assert!(!names.iter().any(|n| n == gone), "{gone}");
         assert!(h.query_by_label(gone).is_none(), "{gone}");
     }
 }
@@ -260,22 +264,33 @@ fn appearance() -> egui_kittest::Harness<'static, State> {
     h
 }
 
-/// The names of everything on screen described as not built yet.
-fn described_as_unbuilt(h: &egui_kittest::Harness<'static, State>) -> Vec<String> {
+/// The unfinished parts under the tab bar and the ribbon (which have
+/// unfinished parts of their own): the ones in the window.
+fn unbuilt_in_the_window<'h>(
+    h: &'h egui_kittest::Harness<'static, State>,
+) -> Vec<egui_kittest::Node<'h>> {
+    use crate::tokens::size;
     h.query_all(
         By::new()
             .predicate(|node| node.description().as_deref() == Some(crate::unbuilt::DESCRIPTION)),
     )
-    .map(|node| node.accesskit_node().label().unwrap_or_default())
+    .filter(|node| node.rect().top() >= size::TAB_BAR_H + size::RIBBON_H)
     .collect()
+}
+
+/// The names of everything in the window described as not built yet.
+fn described_as_unbuilt(h: &egui_kittest::Harness<'static, State>) -> Vec<String> {
+    unbuilt_in_the_window(h)
+        .iter()
+        .map(|node| node.accesskit_node().label().unwrap_or_default())
+        .collect()
 }
 
 /// The one unfinished part on the page.
 fn unbuilt_row<'h>(h: &'h egui_kittest::Harness<'static, State>) -> egui_kittest::Node<'h> {
-    h.get(
-        By::new()
-            .predicate(|node| node.description().as_deref() == Some(crate::unbuilt::DESCRIPTION)),
-    )
+    let mut parts = unbuilt_in_the_window(h);
+    assert_eq!(parts.len(), 1, "one unfinished part on the page");
+    parts.remove(0)
 }
 
 #[test]
@@ -375,10 +390,7 @@ fn code_editor_split_is_shown_as_a_part_that_is_not_built_yet() {
     use crate::unbuilt::{self, UnbuiltId};
     let mut h = appearance();
     assert_eq!(described_as_unbuilt(&h), ["Code editor split"]);
-    assert_eq!(
-        unbuilt::drawn(&h.ctx).into_iter().collect::<Vec<_>>(),
-        [UnbuiltId::PrefsCodeSplit]
-    );
+    assert!(unbuilt::drawn(&h.ctx).contains(&UnbuiltId::PrefsCodeSplit));
     // It stands last in the Layout section, a row like the others.
     let row = unbuilt_row(&h).rect();
     let hide = h

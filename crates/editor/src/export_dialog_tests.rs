@@ -1,7 +1,7 @@
-//! File > Export for playtesting… and the playtest file (decision 0093).
+//! Build > Export and the playtest file (decision 0093).
 
 use super::*;
-use crate::test_support::{harness, info};
+use crate::test_support::{harness, info, ribbon_tab};
 use egui_kittest::kittest::Queryable;
 
 #[test]
@@ -235,11 +235,16 @@ fn export_asks_the_app_and_says_where_it_went() {
 }
 
 #[test]
-fn file_has_export_for_playtesting_above_quit() {
+fn home_s_build_button_and_the_build_tab_open_export_for_playtesting() {
     let mut h = harness(farm());
     h.run();
-    h.get_by_label("File").click();
+    // Home, Project, Build.
+    h.get_by_label("Export for playtesting…").click();
     h.run();
+    assert!(h.state().0.open.export_window.is_some());
+    h.state_mut().0.open.export_window = None;
+    // The Build tab's own button.
+    ribbon_tab(&mut h, crate::shell::RibbonTab::Build);
     h.get_by_label("Export for playtesting…").click();
     h.run();
     assert!(h.state().0.open.export_window.is_some());

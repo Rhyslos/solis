@@ -100,16 +100,31 @@ pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, St
         .with_size(egui::vec2(1440.0, 900.0))
         .build_ui_state(
             |ui, state: &mut State| {
+                if !fonts_ready(ui.ctx()) {
+                    return;
+                }
                 let (workbench, picker) = state;
                 let actions = workbench.show(ui, picker);
                 picker.actions.extend(actions);
             },
             (Workbench::new(info(), None), Picker::default()),
         )
-        // The editor's own fonts, as the app loads them before its first
-        // frame: the design's controls ask for their weights by name.
-        .tap(|h| h.ctx.set_fonts(crate::fonts::fonts()))
         .tap(|h| h.state_mut().0 = workbench)
+}
+
+/// Whether the editor's own fonts are in `ctx`, as the app loads them
+/// before its first frame: the frame asks for the design's weights by
+/// name. The first call asks for them and says no (they arrive with the
+/// next frame), so a test window draws nothing in the frame it is built
+/// in.
+pub(crate) fn fonts_ready(ctx: &egui::Context) -> bool {
+    let asked = egui::Id::new("the editor's fonts were asked for");
+    let ready = ctx.data(|data| data.get_temp::<bool>(asked).is_some());
+    if !ready {
+        ctx.set_fonts(crate::fonts::fonts());
+        ctx.data_mut(|data| data.insert_temp(asked, true));
+    }
+    ready
 }
 
 /// Does the editor's command called `name` (as the search lists it), as
@@ -147,6 +162,17 @@ pub(crate) fn run(h: &mut egui_kittest::Harness<'_, State>, name: &str) {
 /// Brings `tab` to the front, as a click on it in the tab bar does.
 pub(crate) fn ribbon_tab(h: &mut egui_kittest::Harness<'_, State>, tab: crate::shell::RibbonTab) {
     h.state_mut().0.show_tab(tab);
+    h.run();
+}
+
+/// Opens the File tab and clicks the item of its column called `label`,
+/// as a person does.
+pub(crate) fn file_item<S>(h: &mut egui_kittest::Harness<'_, S>, label: &str) {
+    use egui_kittest::kittest::Queryable;
+    h.run();
+    h.get_by_label("File tab").click();
+    h.run();
+    h.get_by_label(label).click();
     h.run();
 }
 

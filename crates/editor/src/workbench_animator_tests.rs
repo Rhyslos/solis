@@ -148,7 +148,6 @@ fn it_opens_first_beside_the_viewport_as_drawn_in_the_mock_up() {
         "State Any state",
         "Transition moving",
         "Transition not moving",
-        "farmer.solanim",
         "Graph canvas",
     ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
@@ -161,8 +160,8 @@ fn it_opens_first_beside_the_viewport_as_drawn_in_the_mock_up() {
     // A saved layout never keeps it.
     let restored = layout::restore(Some(h.state().0.dock.clone()));
     assert!(restored.find_tab(&Panel::Animator).is_none());
-    // Its document tab's × closes it.
-    h.get_by_label("Close farmer.solanim").click();
+    // Its tab's × closes it.
+    crate::test_support::click_the_x(&mut h, Panel::Animator);
     h.run();
     h.run();
     let w = &h.state().0;

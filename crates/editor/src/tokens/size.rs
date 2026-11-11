@@ -32,6 +32,13 @@ pub const SEARCH_H: f32 = 24.0;
 pub const SEARCH_W: f32 = 380.0;
 /// The command search: the most of the window's width it takes.
 pub const SEARCH_MAX_SHARE: f32 = 0.36;
+/// The command search: the least width it is drawn at. Narrower, it
+/// goes (its key still opens the search). Solis's own.
+pub const SEARCH_MIN_W: f32 = 120.0;
+/// The command search: its icon.
+pub const SEARCH_ICON: f32 = 12.0;
+/// The room between the logo tile's edge and the logo. Solis's own.
+pub const LOGO_INSET: f32 = 2.0;
 
 /// The ribbon's height.
 pub const RIBBON_H: f32 = 66.0;
@@ -51,6 +58,20 @@ pub const RIBBON_BIG_GAP: f32 = 4.0;
 pub const RIBBON_ROW_H: f32 = 20.0;
 /// A small ribbon row's padding at each side.
 pub const RIBBON_ROW_PAD: f32 = 8.0;
+/// A small ribbon row's height where three are stacked: three of 20
+/// and a group's label don't fit the ribbon, so such a group has no
+/// label and rows of 19 (the approved additions, round 1).
+pub const RIBBON_ROW_H_TIGHT: f32 = 19.0;
+/// The gap between stacked ribbon rows.
+pub const RIBBON_ROW_GAP: f32 = 1.0;
+/// The height of the line a ribbon group's label is on.
+pub const RIBBON_GROUP_LABEL_H: f32 = 12.0;
+/// The icon on the ribbon's one light button (Play, Stop).
+pub const RIBBON_LIGHT_ICON: f32 = 16.0;
+/// The small arrow that opens a ribbon control's list: its width.
+pub const LIST_ARROW: f32 = 5.0;
+/// The room round that arrow that takes its click. Solis's own.
+pub const LIST_ARROW_REACH: f32 = 14.0;
 
 /// A document tab strip's height.
 pub const DOC_TAB_H: f32 = 30.0;
@@ -172,6 +193,15 @@ pub const BUTTON_PAD: f32 = 8.0;
 
 /// The File page's menu column: its width.
 pub const FILE_MENU_W: f32 = 220.0;
+/// The File page's menu column: its padding, top and bottom, sides.
+pub const FILE_MENU_PAD: [f32; 2] = [16.0, 10.0];
+/// The gap between the items of the File page's menu.
+pub const FILE_MENU_GAP: f32 = 2.0;
+/// The room round a line between blocks of the File page's menu: above
+/// and below, sides.
+pub const FILE_MENU_LINE_PAD: [f32; 2] = [8.0, 6.0];
+/// The room under Back to editor, at the top of the File page's menu.
+pub const FILE_MENU_BACK_GAP: f32 = 8.0;
 /// An item of the File page's menu: its height.
 pub const FILE_MENU_ITEM_H: f32 = 36.0;
 /// A File page's padding: top and bottom, sides.

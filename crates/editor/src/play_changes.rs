@@ -1,9 +1,6 @@
-//! Playing is unmistakable, and nothing is lost (the editor overhaul's O5,
-//! decision 0085). While the game runs, the window has a coloured edge
-//! and the top and status bars take its colour: blue while playing, amber
-//! while paused, so editing and playing can't be mixed up. Changes made to
-//! the area while playing aren't thrown away silently on Stop, as other
-//! engines do: Stop lists them and asks **Keep** (the area as it was
+//! Nothing is lost by playing (the editor overhaul's O5, decision 0085).
+//! Changes made to the area while playing aren't thrown away silently on
+//! Stop: Stop lists them and asks **Keep** (the area as it was
 //! before Play with those changes made, every one still undoable) or
 //! **Undo all** (the area as it was before Play). Only the user's own
 //! edits are kept, never what the game did: their edits are undo steps
@@ -16,11 +13,10 @@
 //! question is asked over the launcher too.
 
 use crate::document::Document;
-use crate::play::PlayState;
 use crate::theme;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
-use egui::{Color32, RichText, Ui};
+use egui::{RichText, Ui};
 use reflect::AssetId;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -51,45 +47,7 @@ pub(crate) struct PlayChanges {
     pub(crate) then: Option<WorkbenchAction>,
 }
 
-/// The colour while playing: the Play button's blue, lighter.
-pub const PLAYING: Color32 = Color32::from_rgb(0x2f, 0x8f, 0xd8);
-
 impl Workbench {
-    /// The colour the editor takes while the game runs: blue playing,
-    /// amber paused; none while editing.
-    pub fn play_tint(&self) -> Option<Color32> {
-        match self.play_state() {
-            PlayState::Editing => None,
-            PlayState::Playing => Some(PLAYING),
-            PlayState::Paused => Some(theme::WARNING),
-        }
-    }
-
-    /// A bar's fill: `base`, tinted while the game runs.
-    pub(crate) fn tinted(&self, base: Color32) -> Color32 {
-        match self.play_tint() {
-            Some(tint) => blend(base, tint, 0.22),
-            None => base,
-        }
-    }
-
-    /// The coloured edge round the window while the game runs.
-    pub(crate) fn play_edge(&self, ctx: &egui::Context) {
-        if let Some(tint) = self.play_tint() {
-            let rect = ctx.content_rect().shrink(1.0);
-            ctx.layer_painter(egui::LayerId::new(
-                egui::Order::Foreground,
-                egui::Id::new("play edge"),
-            ))
-            .rect_stroke(
-                rect,
-                0.0,
-                egui::Stroke::new(2.0, tint),
-                egui::StrokeKind::Inside,
-            );
-        }
-    }
-
     /// Notes what the user changed while playing, at Stop: `before` is
     /// the document as it was when Play was pressed (and `assemblies` the
     /// assemblies then), and the open one is as the user and the game
@@ -275,12 +233,6 @@ fn count(n: usize, thing: &str) -> String {
     } else {
         format!("{n} {thing}s")
     }
-}
-
-/// `a` moved `t` of the way to `b`.
-fn blend(a: Color32, b: Color32, t: f32) -> Color32 {
-    let mix = |x: u8, y: u8| (f32::from(x) + (f32::from(y) - f32::from(x)) * t).round() as u8;
-    Color32::from_rgb(mix(a.r(), b.r()), mix(a.g(), b.g()), mix(a.b(), b.b()))
 }
 
 #[cfg(test)]

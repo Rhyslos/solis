@@ -1,4 +1,4 @@
-//! Edit > Settings…: the editor's settings in one window, a page per
+//! File > Preferences: the editor's settings in one window, a page per
 //! subject with a search box ([decision 0061](../../../docs/decisions/0061-settings-window-and-no-layout-presets.md)).
 //! Pages appear as they get settings: the editor's own (Appearance: the
 //! accent colour, scale, density, Reset layout, hints and Hide unfinished
@@ -199,7 +199,7 @@ const SCREENS: [(&str, [u32; 2]); 3] = [
 ];
 
 impl Workbench {
-    /// Opens Edit > Settings….
+    /// Opens File > Preferences.
     pub(crate) fn open_settings(&mut self) {
         if self.settings_window.is_none() {
             self.settings_window = Some(SettingsWindow::default());

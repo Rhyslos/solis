@@ -2,7 +2,7 @@
 //! clicking the Game panel gives the game the mouse and keys, Esc gives
 //! them back; what they do meanwhile feeds `input::Devices`, sampled once
 //! per tick by `run_game`. Also recording a play's input and playing it
-//! back (Play > Play and record inputs, Replay a recording…).
+//! back (Debug > Play and record inputs, Replay a recording…).
 
 use crate::console::LogLevel;
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -239,13 +239,12 @@ impl Workbench {
     }
 
     /// Plays, recording each tick's input and checksums; Stop saves the
-    /// recording in the project's `recordings` folder (Play > Play and
-    /// record inputs).
+    /// recording in the project's `recordings` folder (Debug > Play and record inputs).
     pub fn play_and_record(&mut self) {
         if self.open.project.is_none() {
             self.log(
                 LogLevel::Warning,
-                "Recordings are kept in a project: open or make one first (File > New project…).",
+                "Recordings are kept in a project: open or make one first (File > New project).",
             );
             return;
         }
@@ -303,7 +302,7 @@ impl Workbench {
         Some(parts.join("/"))
     }
 
-    /// Plays a recording back (Play > Replay a recording…, the app hands
+    /// Plays a recording back (Debug > Replay a recording…, the app hands
     /// over its text): from Play, with the recorded seed and each tick's
     /// recorded input, checking each tick's checksums; the game pauses
     /// and says whether it matched, or where it stopped matching.

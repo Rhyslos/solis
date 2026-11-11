@@ -1,4 +1,4 @@
-//! Edit > Input actions…: the project's input actions and what sets each
+//! File > Input: the project's input actions and what sets each
 //! off ([decision 0037](../../../docs/decisions/0037-input-as-named-actions.md)),
 //! changed by pressing the key or button to bind. Every change is saved
 //! to the project's `input.solinput` at once; a number being dragged or
@@ -57,7 +57,7 @@ enum Change {
 }
 
 impl Workbench {
-    /// Opens Edit > Input actions….
+    /// Opens File > Input.
     pub(crate) fn open_input_window(&mut self) {
         if self.open.input_window.is_none() {
             self.open.input_window = Some(InputWindow::default());

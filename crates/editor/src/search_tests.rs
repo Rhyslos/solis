@@ -95,7 +95,7 @@ fn space_opens_the_search_and_enter_does_the_first_result() {
 fn arrows_choose_esc_closes_and_the_box_opens_it_too() {
     let mut h = harness(fresh());
     h.run();
-    h.get_by_label("Search or do anything").click();
+    h.get_by_label("Search or run a command").click();
     h.run();
     h.run();
     assert!(h.state().0.search.open);
@@ -376,4 +376,57 @@ fn unfinished_parts_are_hidden_and_shown_from_the_search_and_never_listed() {
         }
     }
     crate::interface_look::use_look(crate::theme::InterfaceLook::default());
+}
+
+#[test]
+fn an_open_search_reads_the_area_once_until_it_changes() {
+    let mut h = harness(fresh());
+    h.run();
+    assert_eq!(
+        h.state().0.found_from(),
+        None,
+        "nothing is read while it is shut"
+    );
+    h.state_mut().0.open_search();
+    h.run();
+    let first = h.state().0.found_from().expect("read when it opened");
+    for _ in 0..5 {
+        h.run();
+    }
+    assert_eq!(
+        h.state().0.found_from(),
+        Some(first),
+        "kept while nothing changed"
+    );
+    // A new entity is found at once: the list is read again.
+    let lamp = h.state_mut().0.add_point_light();
+    h.run();
+    let second = h.state().0.found_from().unwrap();
+    assert_ne!(second, first);
+    let name = h
+        .state()
+        .0
+        .document()
+        .area()
+        .get(lamp)
+        .unwrap()
+        .name
+        .clone();
+    assert!(
+        h.state()
+            .0
+            .search_items()
+            .iter()
+            .any(|i| i.kind == SearchKind::Entity && i.name == name)
+    );
+    // Another area in its place is never answered from the old list.
+    h.state_mut().0.new_area();
+    h.run();
+    assert!(
+        !h.state()
+            .0
+            .search_items()
+            .iter()
+            .any(|i| i.kind == SearchKind::Entity && i.name == name)
+    );
 }

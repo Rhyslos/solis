@@ -1,4 +1,4 @@
-//! The playground (Phase 6, M5): **Help > Make the playground…** writes a
+//! The playground (Phase 6, M5): **Make the playground…** (File > Learn, or the search) writes a
 //! project into a folder for trying the character, the cameras, physics
 //! and saves: a level with steps, ramps (one too steep to walk up), crates
 //! to push and a moving platform, a character with the ready-made

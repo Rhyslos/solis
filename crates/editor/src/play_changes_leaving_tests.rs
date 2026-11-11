@@ -5,6 +5,7 @@
 //! answer. Each path is pinned to one outcome here.
 
 use super::*;
+use crate::PlayState;
 use crate::test_support::{harness, info};
 use crate::workbench::WorkbenchAction;
 use egui_kittest::kittest::Queryable;
@@ -53,7 +54,7 @@ fn leaving() -> Vec<WorkbenchAction> {
 
 #[test]
 fn quitting_while_playing_asks_about_the_edits_before_it_closes() {
-    // File > Quit while playing, after an edit, with a saved area: the
+    // File > Exit while playing, after an edit, with a saved area: the
     // editor closed with no question and the edit was gone.
     let (mut w, lamp) = playing_with_an_edit();
     let mut actions = Vec::new();

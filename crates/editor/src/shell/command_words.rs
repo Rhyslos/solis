@@ -265,6 +265,7 @@ impl ShellCommand {
     }
 
     /// The command whose name is `name` now.
+    #[cfg(test)]
     pub(crate) fn named(name: &str, w: &Workbench) -> Option<Self> {
         Self::ALL.into_iter().find(|c| c.name(w) == name)
     }

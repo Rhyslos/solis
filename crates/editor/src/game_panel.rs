@@ -252,7 +252,7 @@ pub(crate) fn game_panel(
         crate::panels::empty_note(
             ui,
             "Press Play (at the top) to run the area here. The game looks through the first \
-             camera in the area: Entity > Add camera adds one where you're looking from.",
+             camera in the area: Home > Camera adds one where you're looking from.",
         );
         return GamePanelOut::default();
     };
