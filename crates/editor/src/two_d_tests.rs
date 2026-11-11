@@ -243,18 +243,18 @@ fn a_camera_added_in_the_2d_view_is_a_2d_camera_on_a_whole_pixel_and_is_framed()
     let mut w = crate::workbench::Workbench::new(info(), None);
     w.viewport.camera = two_d(Vec3::new(3.01, -1.47, 0.0), 2.0);
     let id = w.add_camera();
-    let entity = w.document.area().get(id).unwrap();
+    let entity = w.open.document.area().get(id).unwrap();
     let camera = entity.get::<area::builtin::Camera>().unwrap();
     assert_eq!(camera.view, area::builtin::CameraView::TwoD);
     let at = entity.get::<area::builtin::Transform>().unwrap().position;
     assert_eq!((at.x * 16.0, at.y * 16.0), (48.0, -24.0));
     assert!(at.z > 10.0, "above what it sees");
     // The 2D view frames what it shows; it's the game's own.
-    let view = crate::area_view::AreaView::of(w.document.area(), &w.models);
+    let view = crate::area_view::AreaView::of(w.open.document.area(), &w.open.models);
     assert_eq!(view.screens, vec![(at, true)]);
     // A second 2D camera is framed too, but isn't the game's.
     let second = w.add_camera();
-    let view = crate::area_view::AreaView::of(w.document.area(), &w.models);
+    let view = crate::area_view::AreaView::of(w.open.document.area(), &w.open.models);
     assert_eq!(view.screens.len(), 2);
     assert_eq!(view.screens.iter().filter(|(_, game)| *game).count(), 1);
     let _ = second;
@@ -262,6 +262,7 @@ fn a_camera_added_in_the_2d_view_is_a_2d_camera_on_a_whole_pixel_and_is_framed()
     w.viewport.camera = Camera::default();
     let third = w.add_camera();
     let camera = w
+        .open
         .document
         .area()
         .get(third)

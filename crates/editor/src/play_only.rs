@@ -34,13 +34,13 @@ impl Workbench {
 
     /// Whether game code asked to close the game (`Window:quit()`).
     pub fn quit_asked(&self) -> bool {
-        self.quit_asked
+        self.open.quit_asked
     }
 
     /// Whether the game's code is read and ready (or there's none): an
     /// exported game starts then.
     pub fn code_ready(&self) -> bool {
-        self.program.is_some()
+        self.open.program.is_some()
     }
 
     /// Why an exported game can't start, if its code has mistakes: the
@@ -54,11 +54,11 @@ impl Workbench {
     /// Starts an exported game: plays the open area, giving the game the
     /// mouse and keys.
     pub fn start_play_only(&mut self, ctx: &egui::Context) {
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             return;
         }
         self.play();
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             self.give_game_input(ctx);
         } else {
             self.log(LogLevel::Error, "The game couldn't start.");
@@ -74,7 +74,7 @@ impl Workbench {
         renderer: &mut dyn ViewportRenderer,
         waiting: &NotPlaying,
     ) -> Vec<WorkbenchAction> {
-        let mut actions = std::mem::take(&mut self.outbox);
+        let mut actions = std::mem::take(&mut self.open.outbox);
         let ctx = ui.ctx().clone();
         self.refresh_sheet_pictures(&ctx);
         // The window came back (after Alt+Tab, say): the pointer is held
@@ -83,7 +83,7 @@ impl Workbench {
         let id = egui::Id::new("play only focused");
         let was = ctx.data(|d| d.get_temp::<bool>(id)).unwrap_or(focused);
         ctx.data_mut(|d| d.insert_temp(id, focused));
-        if focused && !was && self.game_input && !self.game_screens.freed {
+        if focused && !was && self.game_input && !self.open.game_screens.freed {
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(egui::CursorGrab::Locked));
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(false));
         }
@@ -104,13 +104,13 @@ impl Workbench {
                 true,
                 self.game_input,
                 &self.viewport.camera,
-                self.pixels,
+                self.open.pixels,
                 &self.viewport.sheets,
                 renderer,
-                self.game_screens.pictures.clone(),
+                self.open.game_screens.pictures.clone(),
             ),
             None => {
-                let text = match (self.quit_asked, waiting) {
+                let text = match (self.open.quit_asked, waiting) {
                     (true, _) => "Closing…".to_owned(),
                     (false, NotPlaying::Starting) => "Starting…".to_owned(),
                     (false, NotPlaying::Cannot(why)) => why.clone(),
@@ -127,8 +127,8 @@ impl Workbench {
         };
         ui.advance_cursor_after_rect(rect);
         self.game_panel_done(&ctx, out);
-        self.game_scene = game;
-        actions.append(&mut self.outbox);
+        self.open.game_scene = game;
+        actions.append(&mut self.open.outbox);
         // Only what an exported game does: saving and loading games, and
         // closing. Nothing of the editor's.
         actions.retain(|a| {
@@ -137,10 +137,10 @@ impl Workbench {
                 WorkbenchAction::SaveGame { .. } | WorkbenchAction::LoadGame(_)
             )
         });
-        if self.quit_asked {
+        if self.open.quit_asked {
             actions.push(WorkbenchAction::Quit);
         }
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             ctx.request_repaint();
         }
         actions

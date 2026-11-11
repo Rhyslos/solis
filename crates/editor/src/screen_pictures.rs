@@ -204,14 +204,16 @@ impl Workbench {
     /// and puts them on the screens shown.
     pub(crate) fn refresh_screen_pictures(&mut self) {
         let uses = self
+            .open
             .program
             .as_ref()
             .and_then(|p| p.screens.as_ref())
             .map_or(&[][..], |s| s.pictures.as_slice());
-        if uses.is_empty() && self.screen_pictures.seen.is_empty() {
-            if self.screen_pictures.pictures.is_some() || !self.screen_pictures.problems.is_empty()
+        if uses.is_empty() && self.open.screen_pictures.seen.is_empty() {
+            if self.open.screen_pictures.pictures.is_some()
+                || !self.open.screen_pictures.problems.is_empty()
             {
-                self.screen_pictures = crate::screen_pictures::ScreenPictures {
+                self.open.screen_pictures = crate::screen_pictures::ScreenPictures {
                     wanted_changed: true,
                     ..Default::default()
                 };
@@ -220,21 +222,24 @@ impl Workbench {
         }
         // Made only if a name is looked up: most frames nothing changed
         // (the phase review, speed).
-        let items = &self.library;
+        let items = &self.open.library;
         let library: std::cell::OnceCell<HashSet<&str>> = std::cell::OnceCell::new();
         let in_project = |f: &str| {
             library
                 .get_or_init(|| items.iter().map(|i| i.path.as_str()).collect())
                 .contains(f)
         };
-        let said =
-            self.screen_pictures
-                .refresh(uses, &self.viewport.sheets, &in_project, self.sources);
+        let said = self.open.screen_pictures.refresh(
+            uses,
+            &self.viewport.sheets,
+            &in_project,
+            self.sources,
+        );
         for line in said {
             self.log(LogLevel::Warning, line);
         }
-        let pictures = self.screen_pictures.pictures.clone();
-        for screen in &mut self.game_screens.pictures {
+        let pictures = self.open.screen_pictures.pictures.clone();
+        for screen in &mut self.open.game_screens.pictures {
             if screen.pictures != pictures {
                 Arc::make_mut(screen).pictures = pictures.clone();
             }
@@ -244,13 +249,13 @@ impl Workbench {
     /// The picture files the game's screens show (paths inside the
     /// assets), when they changed since last taken: the app reads them.
     pub fn take_wanted_pictures(&mut self) -> Option<BTreeSet<String>> {
-        let p = &mut self.screen_pictures;
+        let p = &mut self.open.screen_pictures;
         std::mem::take(&mut p.wanted_changed).then(|| p.wanted.clone())
     }
 
     /// Pictures named in the screens' code that can't be shown, where.
     pub fn picture_problems(&self) -> &[CodeProblem] {
-        &self.screen_pictures.problems
+        &self.open.screen_pictures.problems
     }
 }
 

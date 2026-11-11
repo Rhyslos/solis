@@ -70,7 +70,8 @@ fn with_a_speaker() -> (Workbench, EntityId) {
         ),
         (camera, camera_data),
     ] {
-        w.document
+        w.open
+            .document
             .edit(
                 "Add",
                 vec![area::Edit::Spawn {
@@ -143,7 +144,7 @@ fn sound_never_changes_the_game() {
     // The same game played twice in one area, with its sounds taken every
     // frame and never: the same world, tick by tick.
     let (mut w, _) = with_a_speaker();
-    w.fixed_seed = Some(7);
+    w.open.fixed_seed = Some(7);
     let mut run = |take: bool| {
         w.play();
         let mut sums = Vec::new();
@@ -185,7 +186,7 @@ fn the_first_listener_hearing_now_hears_or_else_the_camera() {
     let on = w.add_entity();
     let child = w.add_entity();
     let add = |w: &mut Workbench, id, edits| {
-        w.document.edit("Add", edits, None, None).unwrap();
+        w.open.document.edit("Add", edits, None, None).unwrap();
         let _ = id;
     };
     add(
@@ -336,7 +337,8 @@ fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
         }),
         ..area::builtin::Sprite::default()
     };
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {

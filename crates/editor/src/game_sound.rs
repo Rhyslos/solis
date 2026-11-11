@@ -105,7 +105,7 @@ impl crate::Workbench {
     /// Game code's sound requests since the last call, in the order asked
     /// for. The app plays them; a long stall's older ticks it may drop.
     pub fn take_game_sounds(&mut self) -> Vec<GameSound> {
-        std::mem::take(&mut self.game_sounds)
+        std::mem::take(&mut self.open.game_sounds)
     }
 
     /// What the game's sounds should be doing: playing, held while the
@@ -122,7 +122,7 @@ impl crate::Workbench {
     }
 
     fn game_sound_mode_now(&self) -> SoundMode {
-        match &self.playing {
+        match &self.open.playing {
             None => SoundMode::Off,
             Some(playing) if playing.paused => SoundMode::Paused,
             Some(_) => SoundMode::Playing,
@@ -141,7 +141,7 @@ impl crate::Workbench {
     /// group), where it's drawn between ticks. `None` when there's no game,
     /// or neither.
     pub fn hearer(&self) -> Option<Hearer> {
-        let playing = self.playing.as_ref()?;
+        let playing = self.open.playing.as_ref()?;
         let t = playing.world.progress();
         let listener = playing
             .world
@@ -175,7 +175,7 @@ impl crate::Workbench {
         if a == b {
             return true;
         }
-        let Some(playing) = self.playing.as_ref() else {
+        let Some(playing) = self.open.playing.as_ref() else {
             return false;
         };
         playing.world.is_inside(b, a) || playing.world.is_inside(a, b)
@@ -188,7 +188,7 @@ impl crate::Workbench {
     pub fn audio_sources(
         &self,
     ) -> Vec<(reflect::EntityId, area::builtin::AudioSource, glam::Vec3)> {
-        let Some(playing) = self.playing.as_ref() else {
+        let Some(playing) = self.open.playing.as_ref() else {
             return Vec::new();
         };
         let t = playing.world.progress();
@@ -207,7 +207,7 @@ impl crate::Workbench {
     /// turn and scale): the app works out which the listener is in
     /// (Phase 7, S6). Empty with no game.
     pub fn reverb_zones(&self) -> Vec<(area::builtin::ReverbZone, glam::Mat4)> {
-        let Some(playing) = self.playing.as_ref() else {
+        let Some(playing) = self.open.playing.as_ref() else {
             return Vec::new();
         };
         let t = playing.world.progress();
@@ -228,7 +228,7 @@ impl crate::Workbench {
     /// Where an entity of the game is drawn now, between ticks: where
     /// sounds on it are heard from. `None` when it isn't in the game.
     pub fn place_between(&self, id: reflect::EntityId) -> Option<glam::Vec3> {
-        let playing = self.playing.as_ref()?;
+        let playing = self.open.playing.as_ref()?;
         let t = playing.world.progress();
         playing
             .world

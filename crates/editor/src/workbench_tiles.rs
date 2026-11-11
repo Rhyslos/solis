@@ -106,7 +106,7 @@ pub(crate) fn starter_tileset() -> Tileset {
 
 impl Workbench {
     fn taken(&self, path: &str) -> bool {
-        self.library.iter().any(|i| i.path == path)
+        self.open.library.iter().any(|i| i.path == path)
             || self.viewport.sheets.tilesets.contains_key(path)
             || self.viewport.sheets.tile_maps.contains_key(path)
     }
@@ -118,7 +118,7 @@ impl Workbench {
             self.taken(p)
         });
         let set = starter_tileset();
-        self.outbox.push(WorkbenchAction::SaveTileset {
+        self.open.outbox.push(WorkbenchAction::SaveTileset {
             path: path.clone().into(),
             text: tiles::tileset::write(&set),
         });
@@ -127,7 +127,7 @@ impl Workbench {
             .insert(path.clone(), TilesetState::Read(Arc::new(set), Vec::new()));
         self.show_in_library(&path);
         self.open_tileset(&path);
-        if let Some(editor) = &mut self.tileset_editor {
+        if let Some(editor) = &mut self.open.tileset_editor {
             editor.on_disk = false;
         }
     }
@@ -146,7 +146,7 @@ impl Workbench {
             .and_then(|t| t.terrains.first())
             .map(|t| t.code as u8);
         let map = TileMap::new(tiles::map_file::STANDARD_SIZE, tileset, fill);
-        self.outbox.push(WorkbenchAction::SaveTileMap {
+        self.open.outbox.push(WorkbenchAction::SaveTileMap {
             path: path.clone().into(),
             text: tiles::map_file::write(&map),
         });
@@ -181,7 +181,7 @@ impl Workbench {
         if !at.is_finite() {
             return None;
         }
-        let [tx, ty] = self.pixels.tile_size();
+        let [tx, ty] = self.open.pixels.tile_size();
         let mut data = area::EntityData::new(&name)
             .with(&area::builtin::Transform {
                 position: Vec3::new((at.x / tx).round() * tx, (at.y / ty).round() * ty, at.z),
@@ -193,14 +193,14 @@ impl Workbench {
                     part: None,
                 }),
             });
-        data.parent = parent.filter(|&p| self.document.area().contains(p));
+        data.parent = parent.filter(|&p| self.open.document.area().contains(p));
         Some(self.spawn_selected(data))
     }
 
     /// Saves the tileset at `path`, changed in Properties, and shows the
     /// change at once on every map.
     pub(crate) fn save_tileset(&mut self, path: &str, set: Tileset) {
-        self.outbox.push(WorkbenchAction::SaveTileset {
+        self.open.outbox.push(WorkbenchAction::SaveTileset {
             path: path.into(),
             text: tiles::tileset::write(&set),
         });
@@ -214,7 +214,7 @@ impl Workbench {
     /// Saves the map file at `path` as `map`, and runs it at once (a
     /// playing game's copy starts again from it).
     pub(crate) fn save_tile_map(&mut self, path: &str, map: TileMap) {
-        self.outbox.push(WorkbenchAction::SaveTileMap {
+        self.open.outbox.push(WorkbenchAction::SaveTileMap {
             path: path.into(),
             text: tiles::map_file::write(&map),
         });
@@ -249,7 +249,9 @@ impl Workbench {
         if !change(&mut map) || map == *before {
             return false;
         }
-        self.map_edits.push_undo(path.to_owned(), (*before).clone());
+        self.open
+            .map_edits
+            .push_undo(path.to_owned(), (*before).clone());
         self.save_tile_map(path, map);
         true
     }
@@ -257,9 +259,9 @@ impl Workbench {
     /// Undoes (or redoes) the last change made in the Map tab.
     pub(crate) fn map_undo(&mut self, redo: bool, undo: bool) {
         let popped = if redo {
-            self.map_edits.redo.pop()
+            self.open.map_edits.redo.pop()
         } else if undo {
-            self.map_edits.undo.pop()
+            self.open.map_edits.undo.pop()
         } else {
             None
         };
@@ -268,9 +270,9 @@ impl Workbench {
         };
         if let Some(now) = self.map_file(&path) {
             let other = if redo {
-                &mut self.map_edits.undo
+                &mut self.open.map_edits.undo
             } else {
-                &mut self.map_edits.redo
+                &mut self.open.map_edits.redo
             };
             other.push((path.clone(), (*now).clone()));
         }
@@ -279,8 +281,9 @@ impl Workbench {
 
     /// The selected entity's tile map file's path, if it has one.
     pub(crate) fn selected_map_path(&self) -> Option<(EntityId, String)> {
-        let id = self.document.selection.primary()?;
+        let id = self.open.document.selection.primary()?;
         let component = self
+            .open
             .document
             .area()
             .get(id)?
@@ -293,15 +296,15 @@ impl Workbench {
     /// closes it otherwise (each frame, before the panels are drawn).
     pub(crate) fn follow_map_selection(&mut self) {
         let selected = self.selected_map_path().map(|(_, p)| p);
-        if selected != self.map_edits.path {
-            self.map_edits.hovered = None;
+        if selected != self.open.map_edits.path {
+            self.open.map_edits.hovered = None;
         }
         match (&selected, self.dock.find_tab(&Panel::Map)) {
             (Some(_), None) => layout::open_beside(&mut self.dock, Panel::Map, Panel::Properties),
             (None, Some(_)) => layout::close(&mut self.dock, Panel::Map),
             _ => {}
         }
-        self.map_edits.path = selected;
+        self.open.map_edits.path = selected;
     }
 }
 
@@ -310,7 +313,7 @@ impl Workbench {
     /// playing, otherwise its file's), with its tileset.
     pub(crate) fn map_shown(&self) -> Option<(TileMap, Option<Arc<Tileset>>)> {
         let (id, path) = self.selected_map_path()?;
-        let map = match &self.playing {
+        let map = match &self.open.playing {
             Some(playing) => playing
                 .world
                 .tile_map(id)
@@ -329,9 +332,9 @@ impl Workbench {
     pub(crate) fn set_tile_overlay(&mut self) {
         let selected = self.selected_map_path();
         let overlay = &mut self.viewport.tile_overlay;
-        overlay.hidden.clone_from(&self.map_edits.hidden);
-        overlay.chunks = self.map_edits.chunks;
-        overlay.walls = self.map_edits.walls;
+        overlay.hidden.clone_from(&self.open.map_edits.hidden);
+        overlay.chunks = self.open.map_edits.chunks;
+        overlay.walls = self.open.map_edits.walls;
         overlay.solid = None;
         overlay.map = None;
         overlay.values.clear();
@@ -339,7 +342,7 @@ impl Workbench {
         let Some((id, path)) = selected else {
             return;
         };
-        let map = match &self.playing {
+        let map = match &self.open.playing {
             Some(playing) => playing.world.tile_map(id).map(Arc::new),
             None => None,
         }
@@ -351,12 +354,14 @@ impl Workbench {
             return;
         };
         let transform = self
+            .open
             .playing
             .as_ref()
             .and_then(|p| p.world.global(id))
-            .unwrap_or_else(|| self.document.world_matrix(id));
+            .unwrap_or_else(|| self.open.document.world_matrix(id));
         let overlay = &mut self.viewport.tile_overlay;
         overlay.values = self
+            .open
             .map_edits
             .shown_values
             .iter()
@@ -364,7 +369,7 @@ impl Workbench {
             .collect();
         // Painting is for the map file, not the game's copy of it.
         let paint = &mut overlay.paint;
-        paint.allowed = self.playing.is_none() && !map.layers().is_empty();
+        paint.allowed = self.open.playing.is_none() && !map.layers().is_empty();
         paint.layers = map.layers().iter().map(|l| l.name.clone()).collect();
         paint.layer = paint.layer.min(paint.layers.len().saturating_sub(1));
         // Which terrains are solid, from the map's tileset (none solid:
@@ -413,18 +418,18 @@ impl Workbench {
     pub(crate) fn tile_overlay_done(&mut self) {
         let overlay = &mut self.viewport.tile_overlay;
         for (name, on) in std::mem::take(&mut overlay.asked) {
-            self.map_edits.shown_values.retain(|n| *n != name);
+            self.open.map_edits.shown_values.retain(|n| *n != name);
             if on {
-                self.map_edits.shown_values.push(name);
+                self.open.map_edits.shown_values.push(name);
             }
         }
         if std::mem::take(&mut overlay.chunks_asked) {
-            self.map_edits.chunks = !self.map_edits.chunks;
+            self.open.map_edits.chunks = !self.open.map_edits.chunks;
         }
         if std::mem::take(&mut overlay.walls_asked) {
-            self.map_edits.walls = !self.map_edits.walls;
+            self.open.map_edits.walls = !self.open.map_edits.walls;
         }
-        self.map_edits.hovered = overlay
+        self.open.map_edits.hovered = overlay
             .hovered
             .zip(overlay.map.as_ref())
             .map(|(cell, m)| (m.entity, cell));
@@ -433,7 +438,7 @@ impl Workbench {
     /// Makes the changes the Map tab asked for, each one undo step.
     pub(crate) fn map_requests_done(&mut self, requests: Vec<crate::map_tab::MapRequest>) {
         use crate::map_tab::MapRequest;
-        let Some(path) = self.map_edits.path.clone() else {
+        let Some(path) = self.open.map_edits.path.clone() else {
             return;
         };
         for request in requests {
@@ -452,8 +457,8 @@ impl Workbench {
                     paint.exact = true;
                 }
                 MapRequest::ToggleHidden(id) => {
-                    if !self.map_edits.hidden.remove(&id) {
-                        self.map_edits.hidden.insert(id);
+                    if !self.open.map_edits.hidden.remove(&id) {
+                        self.open.map_edits.hidden.insert(id);
                     }
                 }
                 MapRequest::AddLayer => {

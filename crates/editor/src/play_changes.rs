@@ -90,11 +90,11 @@ impl Workbench {
         assemblies: &BTreeMap<AssetId, Arc<AreaFile>>,
     ) -> bool {
         let start = before.history().state();
-        if self.document.history().state() == start {
+        if self.open.document.history().state() == start {
             return false;
         }
         let mut kept = before.clone();
-        let followed = kept.follow(&self.document);
+        let followed = kept.follow(&self.open.document);
         if !followed.left_out.is_empty() {
             let mut named = followed
                 .left_out
@@ -127,7 +127,7 @@ impl Workbench {
         if labels.is_empty() {
             return false;
         }
-        self.play_changes = Some(PlayChanges {
+        self.open.play_changes = Some(PlayChanges {
             document: Box::new(kept),
             assemblies: assemblies.clone(),
             labels,
@@ -137,19 +137,19 @@ impl Workbench {
 
     /// The changes made while playing, waiting for an answer.
     pub fn play_changes(&self) -> Option<&[String]> {
-        self.play_changes.as_ref().map(|c| c.labels.as_slice())
+        self.open.play_changes.as_ref().map(|c| c.labels.as_slice())
     }
 
     /// Keep: the area as it was before Play with the user's changes made,
     /// every one still undoable. Nothing the game did comes with them.
     pub fn keep_play_changes(&mut self) {
-        if let Some(changes) = self.play_changes.take() {
+        if let Some(changes) = self.open.play_changes.take() {
             // Its copies of assemblies are as they were at Play; the open
             // area's were rebuilt at Stop (or since) if their files
             // changed, and these are now.
-            let now = std::mem::replace(&mut self.assemblies, changes.assemblies);
+            let now = std::mem::replace(&mut self.open.assemblies, changes.assemblies);
             self.replace_document(*changes.document);
-            self.document.touch();
+            self.open.document.touch();
             self.update_copies(now);
             self.log(
                 crate::console::LogLevel::Info,
@@ -163,7 +163,7 @@ impl Workbench {
 
     /// Undo all: the area stays as it was before Play.
     pub fn undo_play_changes(&mut self) {
-        if let Some(changes) = self.play_changes.take() {
+        if let Some(changes) = self.open.play_changes.take() {
             self.log(
                 crate::console::LogLevel::Info,
                 format!(
@@ -177,7 +177,7 @@ impl Workbench {
     /// The question after Stop, while there are changes to keep or undo.
     /// It waits for an answer: nothing is thrown away by accident.
     pub(crate) fn play_changes_window(&mut self, ui: &Ui) {
-        let Some(changes) = &self.play_changes else {
+        let Some(changes) = &self.open.play_changes else {
             return;
         };
         let labels = changes.labels.clone();

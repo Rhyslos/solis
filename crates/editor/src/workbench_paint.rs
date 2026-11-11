@@ -122,7 +122,7 @@ impl Workbench {
             .tile_overlay
             .paint
             .allowed
-            .then(|| self.map_edits.path.clone())
+            .then(|| self.open.map_edits.path.clone())
             .flatten()
     }
 
@@ -174,7 +174,7 @@ impl Workbench {
     /// else the copy held is put away, or else the painting tool is. Whether
     /// it did anything.
     pub(crate) fn paint_escape(&mut self) -> bool {
-        if let Some(stroke) = self.map_edits.stroke.take() {
+        if let Some(stroke) = self.open.map_edits.stroke.take() {
             self.show_map_now(&stroke.path, (*stroke.before).clone());
             self.viewport.tile_overlay.preview.clear();
             return true;
@@ -225,6 +225,7 @@ impl Workbench {
         let painting = self.viewport.tile_overlay.paint.painting();
         // A stroke whose map is no longer the one painted is given up.
         if self
+            .open
             .map_edits
             .stroke
             .as_ref()
@@ -237,7 +238,7 @@ impl Workbench {
             return;
         };
         let pointer = self.viewport.tile_overlay.pointer;
-        match self.map_edits.stroke.take() {
+        match self.open.map_edits.stroke.take() {
             None => {
                 let pressed = input.left.pressed || input.right.pressed;
                 if let (true, true, Some(at)) = (pressed, input.on_view, pointer) {
@@ -253,7 +254,7 @@ impl Workbench {
                 let at = pointer.unwrap_or(stroke.last);
                 self.stroke_moved(&mut stroke, at);
                 if held {
-                    self.map_edits.stroke = Some(stroke);
+                    self.open.map_edits.stroke = Some(stroke);
                 } else {
                     self.end_stroke(stroke);
                 }
@@ -336,7 +337,7 @@ impl Workbench {
                 let cells = stroke.dab(at);
                 stroke.paint(layer, cells);
                 self.show_map_now(path, stroke.map.clone());
-                self.map_edits.stroke = Some(stroke);
+                self.open.map_edits.stroke = Some(stroke);
             }
             PaintTool::Fill => {
                 let [w, h] = stroke.map.size();
@@ -353,7 +354,7 @@ impl Workbench {
             }
             PaintTool::Rectangle | PaintTool::Line | PaintTool::Eyedropper => {
                 self.viewport.tile_overlay.preview = vec![[at, at]];
-                self.map_edits.stroke = Some(stroke);
+                self.open.map_edits.stroke = Some(stroke);
             }
         }
     }
@@ -447,7 +448,8 @@ impl Workbench {
             self.show_map_now(&stroke.path, (*stroke.before).clone());
             return;
         }
-        self.map_edits
+        self.open
+            .map_edits
             .push_undo(stroke.path.clone(), (*stroke.before).clone());
         self.save_tile_map(&stroke.path, stroke.map);
     }

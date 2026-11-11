@@ -28,8 +28,8 @@ impl Workbench {
         let left_out: std::collections::BTreeSet<String> = schemas
             .iter()
             .filter(|s| {
-                self.document.registry.get(&s.name).is_some()
-                    && !self.game_components.contains(&s.name)
+                self.open.document.registry.get(&s.name).is_some()
+                    && !self.open.game_components.contains(&s.name)
             })
             .map(|s| s.name.clone())
             .collect();
@@ -37,41 +37,41 @@ impl Workbench {
             .iter()
             .map(|name| self.name_taken(chunk.as_deref(), name))
             .collect();
-        if self.playing.is_some()
+        if self.open.playing.is_some()
             && let Err(failure) = self.swap_into_game(chunk.as_ref(), &left_out)
         {
             let text = format!(
                 "The running game couldn't take the new code, so it keeps the last: {failure}"
             );
             self.log(LogLevel::Error, text);
-            self.code_problems.push(failure.at);
+            self.open.code_problems.push(failure.at);
             return;
         }
-        for name in std::mem::take(&mut self.game_components) {
-            self.document.registry.remove(&name);
+        for name in std::mem::take(&mut self.open.game_components) {
+            self.open.document.registry.remove(&name);
         }
         self.sources += 1;
         for schema in schemas {
             if !left_out.contains(&schema.name)
-                && self.document.registry.register(schema.clone()).is_ok()
+                && self.open.document.registry.register(schema.clone()).is_ok()
             {
-                self.game_components.insert(schema.name.clone());
+                self.open.game_components.insert(schema.name.clone());
             }
         }
-        self.code_problems.extend(taken);
-        self.left_out = left_out;
+        self.open.code_problems.extend(taken);
+        self.open.left_out = left_out;
         let notes: Vec<String> = chunk
             .as_ref()
             .and_then(|c| c.lust.as_ref())
             .map(|lust| lust.notes.iter().map(ToString::to_string).collect())
             .unwrap_or_default();
-        if notes != self.told_code_notes {
+        if notes != self.open.told_code_notes {
             for note in &notes {
                 self.log(LogLevel::Warning, note.clone());
             }
-            self.told_code_notes = notes;
+            self.open.told_code_notes = notes;
         }
-        self.program = chunk;
+        self.open.program = chunk;
         // The screens a Screen can show (decision 0087).
         let screens = self.screen_names();
         if self.viewport.sheets.screens != screens {
@@ -86,7 +86,7 @@ impl Workbench {
     /// entity field is still text until then, and would read as nothing.
     /// In the area (not an undo step) and the assemblies.
     fn fit_values_to_code(&mut self) {
-        let registry = &self.document.registry;
+        let registry = &self.open.document.registry;
         let fits = |data: &area::EntityData| -> Vec<(String, String, reflect::Value)> {
             let mut fitted = Vec::new();
             for (name, component) in &data.components {
@@ -105,7 +105,7 @@ impl Workbench {
             fitted
         };
         let mut edits = Vec::new();
-        for (id, data) in self.document.area().iter() {
+        for (id, data) in self.open.document.area().iter() {
             for (component, field, value) in fits(data) {
                 edits.push(area::Edit::SetField {
                     entity: id,
@@ -116,7 +116,7 @@ impl Workbench {
             }
         }
         let mut files = Vec::new();
-        for (asset, file) in &self.assemblies {
+        for (asset, file) in &self.open.assemblies {
             let changes: Vec<_> = file
                 .area
                 .iter()
@@ -127,10 +127,10 @@ impl Workbench {
             }
         }
         if !edits.is_empty() {
-            self.document.edit_by_game(edits);
+            self.open.document.edit_by_game(edits);
         }
         for (asset, changes) in files {
-            if let Some(file) = self.assemblies.get_mut(&asset) {
+            if let Some(file) = self.open.assemblies.get_mut(&asset) {
                 let file = std::sync::Arc::make_mut(file);
                 for (id, (component, field, value)) in changes {
                     if let Some(c) = file
@@ -148,7 +148,12 @@ impl Workbench {
     /// The problem of a component in `chunk` called `name` when the name
     /// is taken already.
     fn name_taken(&self, chunk: Option<&script::Compiled>, name: &str) -> CodeProblem {
-        let by = if self.rust_components.iter().any(|k| k.schema.name == name) {
+        let by = if self
+            .open
+            .rust_components
+            .iter()
+            .any(|k| k.schema.name == name)
+        {
             "a component written in Rust"
         } else {
             "one of the engine's own components"
@@ -176,11 +181,11 @@ impl Workbench {
         chunk: Option<&Arc<script::Compiled>>,
         left_out: &std::collections::BTreeSet<String>,
     ) -> Result<(), Failure> {
-        let Some(playing) = &mut self.playing else {
+        let Some(playing) = &mut self.open.playing else {
             return Ok(());
         };
         if playing.game.is_none() {
-            playing.game = Some(new_game(&self.rust_components)?);
+            playing.game = Some(new_game(&self.open.rust_components)?);
         }
         let Some(game) = &mut playing.game else {
             return Ok(());
@@ -209,14 +214,14 @@ impl Workbench {
             }
         }
         game.leave_out(left_out.clone());
-        let failures = sync_all(game, self.document.area(), &mut world);
+        let failures = sync_all(game, self.open.document.area(), &mut world);
         world.outside_a_tick();
         let said = std::mem::take(&mut world.said);
         // What starts spawned lands before the next tick.
         let edits = std::mem::take(&mut world.edits);
         let sounds = std::mem::take(&mut world.sounds);
         playing.pending.extend(edits);
-        crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
+        crate::game_sound::gather(&mut self.open.game_sounds, sounds, tick, seed);
         for line in lines {
             self.log(LogLevel::Info, line);
         }
@@ -232,7 +237,7 @@ impl Workbench {
         kind: script::RustKind,
     ) -> Result<(), reflect::RegistryError> {
         self.register_component(kind.schema.clone())?;
-        self.rust_components.push(kind);
+        self.open.rust_components.push(kind);
         Ok(())
     }
 
@@ -241,8 +246,8 @@ impl Workbench {
     /// join it. A name already taken is a problem, and that one is left
     /// out.
     pub fn set_rust_components(&mut self, kinds: Vec<script::RustKind>) {
-        for kind in std::mem::take(&mut self.rust_components) {
-            self.document.registry.remove(&kind.schema.name);
+        for kind in std::mem::take(&mut self.open.rust_components) {
+            self.open.document.registry.remove(&kind.schema.name);
         }
         self.sources += 1;
         for kind in kinds {
@@ -257,7 +262,7 @@ impl Workbench {
 
     /// The components the game's code has, by name.
     pub fn game_components(&self) -> impl Iterator<Item = &str> {
-        self.game_components.iter().map(String::as_str)
+        self.open.game_components.iter().map(String::as_str)
     }
 }
 

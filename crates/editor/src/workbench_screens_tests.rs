@@ -46,7 +46,8 @@ pub(crate) fn opened() -> Workbench {
 }
 
 fn saved(w: &Workbench) -> Vec<String> {
-    w.outbox
+    w.open
+        .outbox
         .iter()
         .filter_map(|a| match a {
             WorkbenchAction::SaveScreen { path, text } => {
@@ -68,7 +69,7 @@ fn a_screen_s_file_opens_on_the_canvas_in_the_ui_workspace() {
     assert!(w.dock.find_tab(&Panel::Canvas).is_some());
     assert!(w.dock.find_tab(&Panel::Elements).is_some());
     w.refresh_screen();
-    let doc = w.screen_doc.as_ref().unwrap();
+    let doc = w.open.screen_doc.as_ref().unwrap();
     assert_eq!(
         (doc.path.as_str(), doc.screen.as_str()),
         ("ui/pauseMenu.lst", "PauseMenu")
@@ -97,7 +98,7 @@ fn a_screen_s_file_opens_on_the_canvas_in_the_ui_workspace() {
 #[test]
 fn the_canvas_draws_the_screen_and_properties_changes_the_piece_picked() {
     let mut w = opened();
-    w.screen_doc.as_mut().unwrap().picked = vec![vec![0, 0, 0]];
+    w.open.screen_doc.as_mut().unwrap().picked = vec![vec![0, 0, 0]];
     let mut h = harness(w);
     h.run();
     let views = &h.state().1.views;
@@ -145,7 +146,7 @@ fn the_canvas_draws_the_screen_and_properties_changes_the_piece_picked() {
 fn undo_over_the_canvas_saves_again_and_a_change_on_disk_is_taken_in() {
     let mut w = opened();
     w.refresh_screen();
-    let doc = w.screen_doc.as_mut().unwrap();
+    let doc = w.open.screen_doc.as_mut().unwrap();
     doc.picked = vec![vec![0, 0, 2]];
     assert!(doc.delete_picked());
     w.save_screen();
@@ -156,12 +157,12 @@ fn undo_over_the_canvas_saves_again_and_a_change_on_disk_is_taken_in() {
     // to take in.
     w.set_program(Some(program(MENU)));
     w.refresh_screen();
-    assert_eq!(w.screen_doc.as_ref().unwrap().text, MENU);
+    assert_eq!(w.open.screen_doc.as_ref().unwrap().text, MENU);
     // Someone else changes it.
     let theirs = MENU.replace("Quit", "Leave");
     w.set_program(Some(program(&theirs)));
     w.refresh_screen();
-    assert_eq!(w.screen_doc.as_ref().unwrap().text, theirs);
+    assert_eq!(w.open.screen_doc.as_ref().unwrap().text, theirs);
     assert!(
         w.log_lines()
             .iter()
@@ -177,7 +178,7 @@ fn undo_over_the_canvas_saves_again_and_a_change_on_disk_is_taken_in() {
     .unwrap();
     w.set_program(Some(Arc::new(none)));
     w.refresh_screen();
-    assert!(w.screen_doc.is_none());
+    assert!(w.open.screen_doc.is_none());
 }
 
 /// MENU's game with a Health component and a Pause event, Quit with an
@@ -201,7 +202,7 @@ fn tied_program(menu: &str) -> Arc<script::Compiled> {
 
 /// The words of the title piece drawn.
 fn title(w: &Workbench) -> String {
-    let view = w.screen_doc.as_ref().unwrap().view.as_ref().unwrap();
+    let view = w.open.screen_doc.as_ref().unwrap().view.as_ref().unwrap();
     view.children[0].children[0].children[0].text.clone()
 }
 
@@ -216,7 +217,8 @@ fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
     let mut w = opened();
     w.set_program(Some(tied_program(&menu)));
     w.refresh_screen();
-    let readable = crate::screen_ties::readable(w.program.as_deref(), &w.document.registry);
+    let readable =
+        crate::screen_ties::readable(w.open.program.as_deref(), &w.open.document.registry);
     let health = readable
         .iter()
         .find(|r| r.component == "Health")
@@ -230,9 +232,17 @@ fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
             .iter()
             .any(|(n, k, s)| n == "hp" && *k == crate::screen_ties::Kind::Number && *s == 20.0)
     );
-    let events = &w.program.as_ref().unwrap().screens.as_ref().unwrap().events;
+    let events = &w
+        .open
+        .program
+        .as_ref()
+        .unwrap()
+        .screens
+        .as_ref()
+        .unwrap()
+        .events;
     assert_eq!(events, &[("Pause".to_string(), "main.lst".to_string())]);
-    let doc = w.screen_doc.as_mut().unwrap();
+    let doc = w.open.screen_doc.as_mut().unwrap();
     doc.picked = vec![vec![0, 0, 0]];
     assert!(doc.tie(&health, "hp", &crate::screen_ties::TieTo::Words));
     doc.picked = vec![vec![1, 0, 2]];
@@ -243,10 +253,10 @@ fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
     w.set_program(Some(tied_program(&text)));
     w.refresh_screen();
     assert_eq!(title(&w), "20.0", "the starting hp");
-    let doc = w.screen_doc.as_mut().unwrap();
+    let doc = w.open.screen_doc.as_mut().unwrap();
     doc.preview.insert(("Health".into(), "hp".into()), 7.0);
     doc.redraw = true;
     w.refresh_screen();
     assert_eq!(title(&w), "7.0", "a preview value");
-    assert!(!w.screen_doc.as_ref().unwrap().redraw);
+    assert!(!w.open.screen_doc.as_ref().unwrap().redraw);
 }

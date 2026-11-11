@@ -83,27 +83,32 @@ impl Workbench {
                 return;
             }
         };
-        if self.tileset_editor.as_ref().is_none_or(|e| e.path != path) {
-            self.tileset_editor = Some(TilesetEditor::new(path.to_owned(), file));
+        if self
+            .open
+            .tileset_editor
+            .as_ref()
+            .is_none_or(|e| e.path != path)
+        {
+            self.open.tileset_editor = Some(TilesetEditor::new(path.to_owned(), file));
         }
         layout::open_first_beside(&mut self.dock, Panel::Tileset, Panel::Viewport);
     }
 
     /// Closes the tileset open, and its tab.
     pub(crate) fn close_tileset(&mut self) {
-        self.tileset_editor = None;
+        self.open.tileset_editor = None;
         self.tileset_hovered = false;
         layout::close(&mut self.dock, Panel::Tileset);
     }
 
     /// Saves the open tileset, and shows it at once on every map.
     pub(crate) fn save_open_tileset(&mut self) {
-        let Some(editor) = &mut self.tileset_editor else {
+        let Some(editor) = &mut self.open.tileset_editor else {
             return;
         };
         let text = editor.saving();
         let (path, file) = (editor.path.clone(), editor.file.clone());
-        self.outbox.push(WorkbenchAction::SaveTileset {
+        self.open.outbox.push(WorkbenchAction::SaveTileset {
             path: path.clone().into(),
             text,
         });
@@ -116,7 +121,7 @@ impl Workbench {
     /// Undoes (or redoes) the tileset's last change, from Ctrl+Z (or
     /// Ctrl+Y) over its tab.
     pub(crate) fn tileset_undo(&mut self, redo: bool, undo: bool) {
-        let Some(editor) = &mut self.tileset_editor else {
+        let Some(editor) = &mut self.open.tileset_editor else {
             return;
         };
         let changed = if redo {
@@ -135,7 +140,7 @@ impl Workbench {
     /// changed on disk (by hand, or by Git) is taken in as one undo step;
     /// one gone closes.
     pub(crate) fn tileset_read_again(&mut self) {
-        let Some(editor) = &mut self.tileset_editor else {
+        let Some(editor) = &mut self.open.tileset_editor else {
             return;
         };
         match self.viewport.sheets.tilesets.get(&editor.path) {
@@ -169,7 +174,11 @@ impl Workbench {
     /// lets others go.
     pub(crate) fn tileset_texture(&mut self, ctx: &egui::Context) {
         let sheets = &self.viewport.sheets;
-        let open = self.tileset_editor.as_ref().and_then(|e| e.file.picture);
+        let open = self
+            .open
+            .tileset_editor
+            .as_ref()
+            .and_then(|e| e.file.picture);
         let mapped = self
             .selected_map_path()
             .and_then(|(_, path)| self.map_file(&path))
@@ -182,9 +191,9 @@ impl Workbench {
             .filter_map(|p| sheets.tile_art(p).cloned())
             .collect();
         let keys: Vec<u64> = arts.iter().map(|a| Arc::as_ptr(a) as u64).collect();
-        self.tile_textures.retain(|k, _| keys.contains(k));
+        self.open.tile_textures.retain(|k, _| keys.contains(k));
         for (art, key) in arts.iter().zip(keys) {
-            if self.tile_textures.contains_key(&key) {
+            if self.open.tile_textures.contains_key(&key) {
                 continue;
             }
             let (size, rgba) = crate::tile_view::atlas_rgba(art);
@@ -193,14 +202,14 @@ impl Workbench {
                 &rgba,
             );
             let texture = ctx.load_texture("tileset picture", image, egui::TextureOptions::NEAREST);
-            self.tile_textures.insert(key, (texture, size));
+            self.open.tile_textures.insert(key, (texture, size));
         }
     }
 
     /// Saves `kind`'s template at the open tileset's tile size, as a PNG
     /// beside it with a free name.
     pub(crate) fn save_template(&mut self, kind: TileKind) {
-        let Some(editor) = &self.tileset_editor else {
+        let Some(editor) = &self.open.tileset_editor else {
             return;
         };
         let folder = editor.path.rsplit_once('/').map_or("", |(f, _)| f);
@@ -210,7 +219,7 @@ impl Workbench {
         } else {
             format!("{folder}/")
         };
-        let taken = |p: &str| self.library.iter().any(|i| i.path == p);
+        let taken = |p: &str| self.open.library.iter().any(|i| i.path == p);
         let path = std::iter::once(format!("{base}{stem}.png"))
             .chain((2..).map(|n| format!("{base}{stem} {n}.png")))
             .find(|p| !taken(p))
@@ -219,7 +228,7 @@ impl Workbench {
             tiles::autotile::template_rgba(kind, editor.file.tile, [107, 74, 46], [79, 122, 58]);
         match assets::tile_art::png_of(size, &rgba) {
             Ok(png) => {
-                self.outbox.push(WorkbenchAction::SavePicture {
+                self.open.outbox.push(WorkbenchAction::SavePicture {
                     path: path.clone().into(),
                     bytes: png,
                 });

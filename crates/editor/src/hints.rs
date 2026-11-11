@@ -58,7 +58,7 @@ impl Workbench {
     /// to start when nothing is. The first is the main one.
     pub fn hints(&self) -> Vec<String> {
         let mut hints = Vec::new();
-        let selected: Vec<_> = self.document.selection.iter().collect();
+        let selected: Vec<_> = self.open.document.selection.iter().collect();
         match selected.as_slice() {
             [] => hints.push(
                 "Select something in the viewport or the Area panel to see what it is and what you \
@@ -66,10 +66,10 @@ impl Workbench {
                     .to_string(),
             ),
             [one] => {
-                if let Some(entity) = self.document.area().get(*one) {
+                if let Some(entity) = self.open.document.area().get(*one) {
                     let mut names: Vec<&String> = entity.components.keys().collect();
                     names.sort_by_key(|n| *n != "Transform");
-                    let places = self.program.as_ref().map(|p| &p.places);
+                    let places = self.open.program.as_ref().map(|p| &p.places);
                     for name in names {
                         if let Some((file, _)) = places.and_then(|p| p.get(name)) {
                             hints.push(format!(

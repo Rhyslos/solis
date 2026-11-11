@@ -83,8 +83,8 @@ pub struct Status {
 impl Workbench {
     /// What the status bar says now.
     pub fn status(&self) -> Status {
-        let code = self.code_checked.as_ref().map(|at| {
-            match self.code_problems.len() + self.picture_problems().len() {
+        let code = self.open.code_checked.as_ref().map(|at| {
+            match self.open.code_problems.len() + self.picture_problems().len() {
                 0 => Part::new("Code checked", theme::text_weak()).marked(Mark::Tick),
                 1 => Part::new("1 mistake in the code", theme::WARNING).marked(Mark::Warning),
                 n => Part::new(format!("{n} mistakes in the code"), theme::WARNING)
@@ -95,10 +95,10 @@ impl Workbench {
                  file was saved. Mistakes are listed in Problems."
             ))
         });
-        let saved = if self.document.is_dirty() {
+        let saved = if self.open.document.is_dirty() {
             Part::new("Unsaved changes", theme::text())
                 .more("File > Save area (Ctrl+S) keeps them.")
-        } else if self.document.file().is_none() {
+        } else if self.open.document.file().is_none() {
             Part::new("Not saved yet", theme::text_weak())
                 .more("This area has no file yet: File > Save area (Ctrl+S) gives it one.")
         } else {
@@ -112,15 +112,15 @@ impl Workbench {
             PlayState::Paused => Some(Part::new("Paused", theme::WARNING).marked(Mark::Paused)),
         };
         let area = if self.viewport.camera.kind == crate::camera::ViewKind::TwoD {
-            let [w, h] = self.pixels.base;
-            format!("{} · 2D · {w} × {h}", self.document.name())
+            let [w, h] = self.open.pixels.base;
+            format!("{} · 2D · {w} × {h}", self.open.document.name())
         } else {
-            format!("{} · 3D", self.document.name())
+            format!("{} · 3D", self.open.document.name())
         };
         Status {
             code,
-            problems: self.problems.list.len()
-                + self.code_problems.len()
+            problems: self.open.problems.list.len()
+                + self.open.code_problems.len()
                 + self.picture_problems().len(),
             saved,
             playing,

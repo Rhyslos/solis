@@ -742,12 +742,13 @@ impl Workbench {
     /// The running game as a save (decision 0038), or why not.
     pub(crate) fn save_of_game(&mut self) -> Result<Save, String> {
         let project = self
+            .open
             .project
             .as_ref()
             .map(|p| p.name.clone())
             .ok_or("save games are kept in a project")?;
-        let registry = &self.document.registry;
-        let playing = self.playing.as_mut().ok_or("nothing is running")?;
+        let registry = &self.open.document.registry;
+        let playing = self.open.playing.as_mut().ok_or("nothing is running")?;
         // Physics built again from each body's place and motion, as loading
         // will: from here the running game and a loaded one go on alike.
         let bodies = playing.world.physics_states();
@@ -758,7 +759,7 @@ impl Workbench {
         // keeps the game's), so a loaded game must too, or it goes on
         // differently from the saved one (found by the hardening
         // milestone's invariant tests, decision 0042).
-        let mut area = self.document.area().clone();
+        let mut area = self.open.document.area().clone();
         let mut places = Vec::new();
         let ids: Vec<EntityId> = area.iter().map(|(id, _)| id).collect();
         for id in ids {
@@ -902,7 +903,7 @@ impl Workbench {
                 return;
             }
         };
-        if let Some(project) = &self.project
+        if let Some(project) = &self.open.project
             && one_line(&project.name) != save.project
         {
             self.log(
@@ -914,7 +915,7 @@ impl Workbench {
             );
             return;
         }
-        let registry = &self.document.registry;
+        let registry = &self.open.document.registry;
         let (area, values) = match (
             area::text::read(&save.area, registry),
             area::text::read(&save.values, registry),
@@ -942,7 +943,7 @@ impl Workbench {
         // The loaded game sounds afresh: what played before the load fades
         // out, and nothing queued from before it plays after.
         self.plays += 1;
-        self.game_sounds.clear();
+        self.open.game_sounds.clear();
         // Physics built from each body's place and motion, as saving built
         // the running game's.
         let mut world = world::World::from_area_without_physics(&area);
@@ -960,10 +961,10 @@ impl Workbench {
         world.projectiles_mut().restore(save.projectiles);
         world.restore_animator_values(save.animators);
         world.restore_tile_maps(save.tile_maps);
-        if self.playing.is_none() {
+        if self.open.playing.is_none() {
             self.play();
         }
-        if self.playing.is_none() {
+        if self.open.playing.is_none() {
             return;
         }
         // The area as it was saved, for the editor's panels; not undone
@@ -974,8 +975,8 @@ impl Workbench {
         } else {
             self.give_back_input();
         }
-        self.document.replace_by_game(&area);
-        let _ = self.document.take_changes();
+        self.open.document.replace_by_game(&area);
+        let _ = self.open.document.take_changes();
         let mut view = crate::game_code::ViewCache::default();
         // The player's settings aren't the game's: a load keeps them.
         view.settings = self.player_settings;
@@ -1028,7 +1029,7 @@ impl Workbench {
             );
             pending.extend(std::mem::take(&mut host.edits));
             for failure in failures {
-                let text = crate::game_code::failure_text(self.document.area(), &failure);
+                let text = crate::game_code::failure_text(self.open.document.area(), &failure);
                 self.log(LogLevel::Error, text);
             }
             // And the game-wide objects theirs (decision 0080).
@@ -1066,7 +1067,7 @@ impl Workbench {
                 ),
             }
         }
-        let Some(playing) = &mut self.playing else {
+        let Some(playing) = &mut self.open.playing else {
             return;
         };
         playing.world = world;
@@ -1079,7 +1080,8 @@ impl Workbench {
         let recorded = playing.recording.take();
         let stopped = recorded.is_some() | playing.replay.take().is_some();
         if let Some(recording) = recorded.filter(|r| !r.ticks.is_empty()) {
-            self.outbox
+            self.open
+                .outbox
                 .push(WorkbenchAction::SaveRecording(recording.write()));
         }
         self.log(

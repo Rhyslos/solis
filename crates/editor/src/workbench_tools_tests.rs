@@ -25,7 +25,7 @@ fn a_click_asks_the_renderer_and_selects_what_it_found() {
     assert_eq!([asked[0][2], asked[0][3]], [1, 1], "of one pixel");
     assert_eq!(h.state().0.selection(), Some(id));
     assert!(
-        h.state().0.document.history().undo_len() <= 1,
+        h.state().0.open.document.history().undo_len() <= 1,
         "not an undo step"
     );
 
@@ -40,7 +40,7 @@ fn a_click_asks_the_renderer_and_selects_what_it_found() {
 fn ctrl_click_adds_and_takes_away() {
     let (mut w, id) = with_a_crate();
     let other = w.add_model(crate_model(), &[], 0.1, &[]);
-    w.document.selection.select_only(other);
+    w.open.document.selection.select_only(other);
     let mut h = harness(w);
     // The crate placed first is pick number 1 or 2; find which.
     h.run();
@@ -60,11 +60,11 @@ fn ctrl_click_adds_and_takes_away() {
     });
     click(&mut h, IN_VIEW, egui::Modifiers::COMMAND);
     h.run();
-    let s = &h.state().0.document.selection;
+    let s = &h.state().0.open.document.selection;
     assert!(s.contains(id) && s.contains(other));
     click(&mut h, IN_VIEW, egui::Modifiers::COMMAND);
     h.run();
-    let s = &h.state().0.document.selection;
+    let s = &h.state().0.open.document.selection;
     assert!(!s.contains(id) && s.contains(other));
 }
 
@@ -72,7 +72,7 @@ fn ctrl_click_adds_and_takes_away() {
 fn dragging_on_empty_space_draws_a_box_that_selects_what_is_inside() {
     let (mut w, id) = with_a_crate();
     let other = w.add_model(crate_model(), &[], 0.1, &[]);
-    w.document.selection.clear();
+    w.open.document.selection.clear();
     let mut h = harness(w);
     h.state_mut().1.answer = Some(PickAnswer {
         found: vec![1, 2],
@@ -91,7 +91,7 @@ fn dragging_on_empty_space_draws_a_box_that_selects_what_is_inside() {
     let asked = h.state().1.asked.clone();
     assert_eq!(asked.len(), 1);
     assert!(asked[0][2] >= 119 && asked[0][3] >= 79, "{:?}", asked[0]);
-    let s = &h.state().0.document.selection;
+    let s = &h.state().0.open.document.selection;
     assert!(s.contains(id) && s.contains(other));
 }
 
@@ -117,7 +117,7 @@ fn x_arrow(h: &egui_kittest::Harness<'_, State>) -> Pos2 {
 /// and dragged sideways; the button still held.
 fn dragging_the_x_arrow() -> (egui_kittest::Harness<'static, State>, EntityId, Pos2) {
     let (mut w, id) = with_a_crate();
-    w.document.selection.select_only(id);
+    w.open.document.selection.select_only(id);
     w.viewport.tool = Tool::Move;
     let mut h = harness(w);
     h.run();
@@ -133,7 +133,8 @@ fn dragging_the_x_arrow() -> (egui_kittest::Harness<'static, State>, EntityId, P
 }
 
 fn position(w: &Workbench, id: EntityId) -> Vec3 {
-    w.document
+    w.open
+        .document
         .area()
         .get(id)
         .and_then(|e| e.get::<Transform>())
@@ -144,7 +145,7 @@ fn position(w: &Workbench, id: EntityId) -> Vec3 {
 #[test]
 fn dragging_an_arrow_moves_along_it_as_one_undo_step() {
     let (mut h, id, to) = dragging_the_x_arrow();
-    let steps_before = h.state().0.document.history().undo_len();
+    let steps_before = h.state().0.open.document.history().undo_len();
     h.hover_at(to + egui::vec2(30.0, 0.0));
     h.run();
     press(&h, false, to + egui::vec2(30.0, 0.0), egui::Modifiers::NONE);
@@ -155,7 +156,7 @@ fn dragging_an_arrow_moves_along_it_as_one_undo_step() {
         moved.y.abs() < 1e-4 && moved.z.abs() < 1e-4,
         "only along X: {moved}"
     );
-    let history = h.state().0.document.history();
+    let history = h.state().0.open.document.history();
     assert_eq!(history.undo_label(), Some("Move"));
     assert!(
         history.undo_len() <= steps_before + 1,
@@ -173,6 +174,7 @@ fn esc_or_a_right_click_cancels_a_drag_and_leaves_no_step() {
         let label_before = h
             .state()
             .0
+            .open
             .document
             .history()
             .undo_label()
@@ -191,7 +193,7 @@ fn esc_or_a_right_click_cancels_a_drag_and_leaves_no_step() {
         h.run();
         assert_eq!(position(&h.state().0, id), Vec3::ZERO, "{cancel}: back");
         assert_ne!(
-            h.state().0.document.history().undo_label(),
+            h.state().0.open.document.history().undo_label(),
             Some("Move"),
             "{cancel}: no step left"
         );
@@ -223,9 +225,9 @@ fn esc_selects_nothing_and_ctrl_a_selects_everything() {
     h.run();
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
     h.run();
-    let count = h.state().0.document.area().len();
-    assert_eq!(h.state().0.document.selection.iter().count(), count);
-    assert!(h.state().0.document.selection.contains(id));
+    let count = h.state().0.open.document.area().len();
+    assert_eq!(h.state().0.open.document.selection.iter().count(), count);
+    assert!(h.state().0.open.document.selection.contains(id));
     h.key_press(egui::Key::Escape);
     h.run();
     assert_eq!(h.state().0.selection(), None);
@@ -270,7 +272,7 @@ fn the_corner_buttons_switch_snapping_and_locks() {
 fn the_select_tool_shows_no_gizmo_and_others_do_on_a_selection() {
     let (mut w, id) = with_a_crate();
     let mut h = harness({
-        w.document.selection.select_only(id);
+        w.open.document.selection.select_only(id);
         w
     });
     h.run();
@@ -293,7 +295,7 @@ fn the_select_tool_shows_no_gizmo_and_others_do_on_a_selection() {
 #[test]
 fn clicking_a_corner_button_never_clicks_the_viewport_behind_it() {
     let (mut w, id) = with_a_crate();
-    w.document.selection.select_only(id);
+    w.open.document.selection.select_only(id);
     let mut h = harness(w);
     h.run();
     h.get_by_label("Move (W)").click();
@@ -318,7 +320,7 @@ fn a_selected_collider_is_outlined_as_its_shape() {
         },
         1,
     );
-    w.document.selection.select_only(id);
+    w.open.document.selection.select_only(id);
     w.prepare_tools();
     assert!(
         w.viewport
@@ -327,7 +329,7 @@ fn a_selected_collider_is_outlined_as_its_shape() {
             .iter()
             .any(|o| matches!(o, crate::viewport_tools::Outline::Collider { .. }))
     );
-    w.document.selection.clear();
+    w.open.document.selection.clear();
     w.prepare_tools();
     assert!(w.viewport.tools.outlines.is_empty());
 }
@@ -343,7 +345,7 @@ fn a_selected_reverb_zone_is_outlined_in_sound_s_colour() {
         },
         1,
     );
-    w.document.selection.select_only(id);
+    w.open.document.selection.select_only(id);
     w.prepare_tools();
     let zone = w
         .viewport

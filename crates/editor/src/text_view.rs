@@ -26,8 +26,9 @@ impl Workbench {
     /// The text file Properties shows, by path inside the assets, for the
     /// app to read (again whenever it changes on disk).
     pub fn text_file_wanted(&self) -> Option<&str> {
-        let (path, _) = self.sound_shown.as_ref()?;
-        self.library
+        let (path, _) = self.open.sound_shown.as_ref()?;
+        self.open
+            .library
             .iter()
             .any(|i| &i.path == path && i.kind == LibraryKind::Text)
             .then_some(path.as_str())
@@ -36,7 +37,7 @@ impl Workbench {
     /// The text of the file at `path` (inside the assets), as the app read
     /// it.
     pub fn set_text_file(&mut self, path: String, read: TextRead) {
-        self.text_file = Some((path, read));
+        self.open.text_file = Some((path, read));
     }
 }
 

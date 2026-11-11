@@ -198,13 +198,13 @@ impl Workbench {
     /// Uses the project's 2D settings (as read from its `pixels.solpix`,
     /// or the standard ones).
     pub fn set_pixels(&mut self, settings: PixelSettings) {
-        self.pixels = settings.sanitized();
-        self.viewport.pixels = self.pixels;
+        self.open.pixels = settings.sanitized();
+        self.viewport.pixels = self.open.pixels;
     }
 
     /// The project's 2D settings.
     pub fn pixels(&self) -> PixelSettings {
-        self.pixels
+        self.open.pixels
     }
 
     /// Changes the project's 2D settings, saving them when `save` (the
@@ -215,11 +215,11 @@ impl Workbench {
         save: bool,
         actions: &mut Vec<crate::WorkbenchAction>,
     ) {
-        self.pixels = settings.sanitized();
-        self.viewport.pixels = self.pixels;
+        self.open.pixels = settings.sanitized();
+        self.viewport.pixels = self.open.pixels;
         if save {
-            if self.project.is_some() {
-                actions.push(crate::WorkbenchAction::SavePixels(self.pixels));
+            if self.open.project.is_some() {
+                actions.push(crate::WorkbenchAction::SavePixels(self.open.pixels));
             } else {
                 self.log(
                     crate::LogLevel::Info,
@@ -250,8 +250,8 @@ impl Workbench {
             accent: self.accent,
             appearance: self.appearance,
             hints: self.hints,
-            pixels: self.pixels,
-            project: self.project.is_some(),
+            pixels: self.open.pixels,
+            project: self.open.project.is_some(),
         };
         egui::Window::new("Settings")
             .open(&mut open)

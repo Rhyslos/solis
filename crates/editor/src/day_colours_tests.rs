@@ -125,7 +125,7 @@ fn game_code_sets_the_hour_and_night_lamps_follow_it() {
     let mut w = with_a_day(22.0);
     // Editing: the area at its start, 08:00, the lamp off.
     w.viewport.area =
-        crate::area_view::AreaView::of(w.document.area(), &std::collections::BTreeMap::new());
+        crate::area_view::AreaView::of(w.open.document.area(), &std::collections::BTreeMap::new());
     let view = w.viewport.view([64, 64], 1.0);
     assert_eq!(view.hour, 8.0);
     assert_eq!(view.lamps.len(), 1);

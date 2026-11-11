@@ -96,14 +96,14 @@ fn placing_a_map_selects_it_and_opens_the_map_tab_beside_properties() {
     let (mut w, map, _) = with_map();
     let mut actions = Vec::new();
     w.library_request(LibraryRequest::Place(map), &mut actions);
-    let placed = w.document.selection.primary().expect("selected");
-    let entity = w.document.area().get(placed).unwrap();
+    let placed = w.open.document.selection.primary().expect("selected");
+    let entity = w.open.document.area().get(placed).unwrap();
     assert_eq!(entity.name, "farm");
     let component = entity.get::<area::builtin::TileMap>().unwrap();
     assert_eq!(component.map.unwrap().asset, map);
     // Its corner on a whole tile.
     let at = entity.get::<area::builtin::Transform>().unwrap().position;
-    let [tx, ty] = w.pixels.tile_size();
+    let [tx, ty] = w.open.pixels.tile_size();
     assert_eq!((at.x / tx).fract(), 0.0);
     assert_eq!((at.y / ty).fract(), 0.0);
     // The tab beside Properties, as drawn in mock-up A.
@@ -125,7 +125,7 @@ fn placing_a_map_selects_it_and_opens_the_map_tab_beside_properties() {
     }
     assert!(h.query_by_label_contains("40 × 36 cells").is_some());
     // Nothing selected: the tab goes.
-    h.state_mut().0.document.selection.clear();
+    h.state_mut().0.open.document.selection.clear();
     h.run();
     h.run();
     assert!(h.state().0.dock.find_tab(&Panel::Map).is_none());
@@ -136,12 +136,12 @@ fn a_change_in_the_tab_is_saved_at_once_and_undone_and_redone() {
     let (mut w, map, _) = with_map();
     w.place_tile_map(map, None).unwrap();
     w.follow_map_selection();
-    w.outbox.clear();
+    w.open.outbox.clear();
     w.map_requests_done(vec![
         MapRequest::AddLayer,
         MapRequest::RenameValue(1, "age".into()),
     ]);
-    let saves = saved_maps(&w.outbox);
+    let saves = saved_maps(&w.open.outbox);
     assert_eq!(saves.len(), 2, "each its own step, each saved");
     assert_eq!(saves[0].0, "farm.tilemap.lst");
     assert!(saves[1].1.contains("name = \"age\""), "{}", saves[1].1);
@@ -161,13 +161,13 @@ fn a_change_in_the_tab_is_saved_at_once_and_undone_and_redone() {
     assert!(the_map(&w).value_named("age").is_none());
     // A change that changes nothing isn't a step: renaming to a name in
     // use, or a layer over the top.
-    let steps = w.map_edits.undo.len();
+    let steps = w.open.map_edits.undo.len();
     w.map_requests_done(vec![
         MapRequest::RenameValue(0, "watered".into()),
         MapRequest::MoveLayer(3, true),
         MapRequest::SetLayer(1, "Ground".into(), false),
     ]);
-    assert_eq!(w.map_edits.undo.len(), steps);
+    assert_eq!(w.open.map_edits.undo.len(), steps);
 }
 
 #[test]
@@ -193,14 +193,14 @@ fn a_kind_the_map_has_no_room_for_changes_nothing_like_a_value_too_many() {
         "farm.tilemap.lst".into(),
         MapFileState::Read(Arc::new(full), Vec::new()),
     );
-    w.outbox.clear();
-    let steps = w.map_edits.undo.len();
+    w.open.outbox.clear();
+    let steps = w.open.map_edits.undo.len();
     w.map_requests_done(vec![
         MapRequest::SetValueKind(0, ValueKind::Number),
         MapRequest::AddValue,
     ]);
-    assert_eq!(w.map_edits.undo.len(), steps);
-    assert!(saved_maps(&w.outbox).is_empty());
+    assert_eq!(w.open.map_edits.undo.len(), steps);
+    assert!(saved_maps(&w.open.outbox).is_empty());
     let now = the_map(&w);
     assert_eq!(now.values().len(), 16);
     assert_eq!(now.values()[0].kind, ValueKind::Switch);
@@ -212,14 +212,14 @@ fn hiding_a_layer_is_the_editor_s_alone() {
     w.place_tile_map(map, None).unwrap();
     w.follow_map_selection();
     let ground = the_map(&w).layers()[0].id;
-    w.outbox.clear();
+    w.open.outbox.clear();
     w.map_requests_done(vec![MapRequest::ToggleHidden(ground)]);
-    assert!(w.map_edits.hidden.contains(&ground));
-    assert!(saved_maps(&w.outbox).is_empty(), "never saved");
+    assert!(w.open.map_edits.hidden.contains(&ground));
+    assert!(saved_maps(&w.open.outbox).is_empty(), "never saved");
     w.set_tile_overlay();
     assert!(w.viewport.tile_overlay.hidden.contains(&ground));
     w.map_requests_done(vec![MapRequest::ToggleHidden(ground)]);
-    assert!(w.map_edits.hidden.is_empty());
+    assert!(w.open.map_edits.hidden.is_empty());
 }
 
 #[test]
@@ -234,16 +234,16 @@ fn the_viewport_s_menu_chooses_the_values_laid_over_and_the_chunks() {
     overlay.chunks_asked = true;
     overlay.hovered = Some([5, 5]);
     w.tile_overlay_done();
-    assert_eq!(w.map_edits.shown_values, ["watered", "growth"]);
-    assert!(w.map_edits.chunks);
-    assert_eq!(w.map_edits.hovered, Some((placed, [5, 5])));
+    assert_eq!(w.open.map_edits.shown_values, ["watered", "growth"]);
+    assert!(w.open.map_edits.chunks);
+    assert_eq!(w.open.map_edits.hovered, Some((placed, [5, 5])));
     w.set_tile_overlay();
     assert_eq!(w.viewport.tile_overlay.values, [2, 1]);
     assert!(w.viewport.tile_overlay.chunks);
     // Off again.
     w.viewport.tile_overlay.asked = vec![("watered".into(), false)];
     w.tile_overlay_done();
-    assert_eq!(w.map_edits.shown_values, ["growth"]);
+    assert_eq!(w.open.map_edits.shown_values, ["growth"]);
     // Drawn in the whole editor, with the cell inspector in the tab.
     let mut h = harness(w);
     h.run();
@@ -259,6 +259,7 @@ fn new_tilesets_and_maps_are_made_saved_and_shown_with_free_names() {
     w.library_request(LibraryRequest::NewTileset("sprites".into()), &mut actions);
     w.library_request(LibraryRequest::NewTileset("sprites".into()), &mut actions);
     let paths: Vec<String> = w
+        .open
         .outbox
         .iter()
         .filter_map(|a| match a {
@@ -276,9 +277,9 @@ fn new_tilesets_and_maps_are_made_saved_and_shown_with_free_names() {
             "sprites/tileset 2.tileset.lst"
         ]
     );
-    w.outbox.clear();
+    w.open.outbox.clear();
     w.library_request(LibraryRequest::NewTileMap(String::new()), &mut actions);
-    let saves = saved_maps(&w.outbox);
+    let saves = saved_maps(&w.open.outbox);
     assert_eq!(saves.len(), 1);
     assert_eq!(saves[0].0, "map.tilemap.lst");
     let made = w.map_file("map.tilemap.lst").unwrap();
@@ -336,12 +337,12 @@ fn properties_change_a_map_file_s_tileset_and_size() {
     // A tileset's terrains changed in Properties are saved.
     let mut changed = farm_set();
     changed.terrains[0].name = "meadow".into();
-    w.outbox.clear();
+    w.open.outbox.clear();
     w.library_request(
         LibraryRequest::SaveTileset("farm.tileset.lst".into(), changed),
         &mut actions,
     );
-    assert!(w.outbox.iter().any(|a| matches!(
+    assert!(w.open.outbox.iter().any(|a| matches!(
         a,
         WorkbenchAction::SaveTileset { text, .. } if text.contains("meadow")
     )));
@@ -354,14 +355,14 @@ fn properties_change_a_map_file_s_tileset_and_size() {
 #[test]
 fn properties_show_a_tileset_and_a_map_file_from_the_library() {
     let (mut w, _, _) = with_map();
-    let selection = w.document.selection.clone();
-    w.sound_shown = Some(("farm.tileset.lst".into(), selection.clone()));
+    let selection = w.open.document.selection.clone();
+    w.open.sound_shown = Some(("farm.tileset.lst".into(), selection.clone()));
     let mut h = harness(w);
     h.run();
     h.run();
     assert!(h.query_by_label("Remove grass").is_some());
     assert!(h.query_by_label("+ Terrain").is_some());
-    h.state_mut().0.sound_shown = Some(("farm.tilemap.lst".into(), selection));
+    h.state_mut().0.open.sound_shown = Some(("farm.tilemap.lst".into(), selection));
     h.run();
     h.run();
     assert!(h.query_by_label_contains("3 layers · 3 values").is_some());
@@ -373,7 +374,8 @@ fn while_playing_the_tab_shows_the_game_s_map() {
     let placed = w.place_tile_map(map, None).unwrap();
     w.play();
     w.run_game(0.05);
-    w.playing
+    w.open
+        .playing
         .as_mut()
         .unwrap()
         .world
@@ -400,6 +402,7 @@ fn a_terrain_made_solid_is_saved_in_its_tileset_and_its_walls_shown() {
     assert!(saved.by_code('~').unwrap().solid);
     assert!(!saved.by_code('.').unwrap().solid, "grass isn't");
     let text = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -409,16 +412,16 @@ fn a_terrain_made_solid_is_saved_in_its_tileset_and_its_walls_shown() {
         .expect("saved");
     assert!(text.contains("solid = true"), "{text}");
     // Asking again changes nothing.
-    let before = w.outbox.len();
+    let before = w.open.outbox.len();
     w.map_requests_done(vec![crate::map_tab::MapRequest::SetSolid(b'~', true)]);
-    assert_eq!(w.outbox.len(), before);
+    assert_eq!(w.open.outbox.len(), before);
     // The viewport's Walls switch shows them: the tileset's solid codes.
     w.set_tile_overlay();
     assert!(!w.viewport.tile_overlay.walls);
     assert!(w.viewport.tile_overlay.solid.unwrap()[b'~' as usize]);
     w.viewport.tile_overlay.walls_asked = true;
     w.tile_overlay_done();
-    assert!(w.map_edits.walls);
+    assert!(w.open.map_edits.walls);
     w.set_tile_overlay();
     assert!(w.viewport.tile_overlay.walls);
     let mut h = harness(w);

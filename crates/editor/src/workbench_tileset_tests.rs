@@ -92,7 +92,7 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
         LibraryRequest::Open(LibraryKind::Tileset, "farm.tileset.lst".into()),
         &mut actions,
     );
-    assert!(w.tileset_editor.is_some());
+    assert!(w.open.tileset_editor.is_some());
     let path = w.dock.find_tab(&Panel::Tileset).expect("open");
     let tabs = w.dock[path.surface][path.node].tabs().unwrap().to_vec();
     assert_eq!(tabs[0], Panel::Tileset);
@@ -116,34 +116,34 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
     h.get_by_label("Close farm.tileset.lst").click();
     h.run();
     h.run();
-    assert!(h.state().0.tileset_editor.is_none());
+    assert!(h.state().0.open.tileset_editor.is_none());
 }
 
 #[test]
 fn a_change_is_saved_shown_at_once_and_undone_over_the_tab() {
     let (mut w, set_id, _) = with_tileset();
     w.open_tileset("farm.tileset.lst");
-    w.tileset_editor.as_mut().unwrap().assign(6, [2, 1]);
+    w.open.tileset_editor.as_mut().unwrap().assign(6, [2, 1]);
     w.save_open_tileset();
-    let texts = saved(&w.outbox);
+    let texts = saved(&w.open.outbox);
     assert_eq!(texts.len(), 1);
     assert!(texts[0].contains("slot = 6"), "{}", texts[0]);
     let set = w.viewport.sheets.tileset(set_id).unwrap();
     assert!(tiles::autotile::missing_slots(set, &set.terrains[1]).is_empty());
-    w.outbox.clear();
+    w.open.outbox.clear();
     w.tileset_hovered = true;
     w.tileset_undo(false, true);
-    assert!(!saved(&w.outbox)[0].contains("slot = 6"));
+    assert!(!saved(&w.open.outbox)[0].contains("slot = 6"));
     // Its own save read back changes nothing; a change by hand is taken in.
     let mut sheets = (*w.viewport.sheets).clone();
-    let mut by_hand = w.tileset_editor.as_ref().unwrap().file.clone();
+    let mut by_hand = w.open.tileset_editor.as_ref().unwrap().file.clone();
     by_hand.tile = [16, 16];
     sheets.tilesets.insert(
         "farm.tileset.lst".into(),
         TilesetState::Read(Arc::new(by_hand), Vec::new()),
     );
     w.set_sprite_sheets(sheets.clone());
-    assert_eq!(w.tileset_editor.as_ref().unwrap().file.tile, [16, 16]);
+    assert_eq!(w.open.tileset_editor.as_ref().unwrap().file.tile, [16, 16]);
     assert!(
         w.console
             .lines()
@@ -153,20 +153,20 @@ fn a_change_is_saved_shown_at_once_and_undone_over_the_tab() {
     // Gone from disk: the tab closes.
     sheets.tilesets.clear();
     w.set_sprite_sheets(sheets);
-    assert!(w.tileset_editor.is_none());
+    assert!(w.open.tileset_editor.is_none());
 }
 
 #[test]
 fn a_new_tileset_opens_in_its_tab_and_stays_until_it_s_read() {
     let (mut w, _, _) = with_tileset();
     w.new_tileset("sprites");
-    let e = w.tileset_editor.as_ref().unwrap();
+    let e = w.open.tileset_editor.as_ref().unwrap();
     assert_eq!(e.path, "sprites/tileset.tileset.lst");
     // A read of the project from before it was written doesn't close it.
     let mut sheets = (*w.viewport.sheets).clone();
     sheets.tilesets.remove("sprites/tileset.tileset.lst");
     w.set_sprite_sheets(sheets);
-    assert!(w.tileset_editor.is_some());
+    assert!(w.open.tileset_editor.is_some());
 }
 
 #[test]
@@ -175,6 +175,7 @@ fn a_template_is_saved_beside_the_tileset_as_a_png() {
     w.open_tileset("farm.tileset.lst");
     w.save_template(TileKind::Blob47);
     let (path, bytes) = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -193,6 +194,7 @@ fn a_map_whose_tileset_misses_tiles_is_in_problems_and_drawn_tile_by_tile() {
     let placed = w.place_tile_map(map_id, None).unwrap();
     w.find_problems();
     let found: Vec<&crate::problems::Problem> = w
+        .open
         .problems
         .list
         .iter()

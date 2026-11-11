@@ -24,7 +24,8 @@ fn set_position(w: &mut Workbench, id: EntityId, at: Vec3, gesture: u64) {
 }
 
 fn position(w: &Workbench, id: EntityId) -> Vec3 {
-    w.document
+    w.open
+        .document
         .area()
         .get(id)
         .unwrap()
@@ -39,30 +40,30 @@ fn stop_puts_the_area_its_history_and_the_selection_back_exactly() {
     let (mut w, crate_id) = with_a_crate();
     let lamp = w.add_point_light();
     set_position(&mut w, crate_id, Vec3::new(1.0, 0.0, 0.0), 1);
-    w.document.selection.select_only(crate_id);
-    let area = w.document.area().clone();
-    let steps = w.document.history().undo_len();
-    let dirty = w.document.is_dirty();
-    let selection = w.document.selection.clone();
+    w.open.document.selection.select_only(crate_id);
+    let area = w.open.document.area().clone();
+    let steps = w.open.document.history().undo_len();
+    let dirty = w.open.document.is_dirty();
+    let selection = w.open.document.selection.clone();
 
     w.play();
     assert_eq!(w.play_state(), PlayState::Playing);
     // Everything changes while playing…
     set_position(&mut w, crate_id, Vec3::new(9.0, 9.0, 9.0), 2);
     w.add_entity();
-    w.document.selection.select_only(lamp);
+    w.open.document.selection.select_only(lamp);
     w.delete_selection();
     w.undo();
     w.redo();
-    assert_ne!(*w.document.area(), area);
+    assert_ne!(*w.open.document.area(), area);
 
     // …and Stop puts it all back.
     w.stop();
     assert_eq!(w.play_state(), PlayState::Editing);
-    assert_eq!(*w.document.area(), area);
-    assert_eq!(w.document.history().undo_len(), steps);
-    assert_eq!(w.document.is_dirty(), dirty);
-    assert_eq!(w.document.selection, selection);
+    assert_eq!(*w.open.document.area(), area);
+    assert_eq!(w.open.document.history().undo_len(), steps);
+    assert_eq!(w.open.document.is_dirty(), dirty);
+    assert_eq!(w.open.document.selection, selection);
     assert!(w.world().is_none());
     // Undo still undoes what was done before Play.
     w.undo();
@@ -137,7 +138,7 @@ fn saving_and_opening_wait_until_the_game_stops() {
         assert_eq!(last.level, LogLevel::Warning);
         assert!(last.text.starts_with("Stop playing first"));
     }
-    assert!(w.unsaved_prompt.is_none(), "no question about saving");
+    assert!(w.open.unsaved_prompt.is_none(), "no question about saving");
     // Other actions go through.
     let mut actions = vec![WorkbenchAction::ImportModel];
     w.hold_while_playing(&mut actions);
@@ -161,17 +162,17 @@ fn quitting_while_playing_stops_first() {
     assert_eq!(position(&w, crate_id), Vec3::ZERO);
     // The crate was placed and not saved, so the question about saving
     // is asked about the area as it was before Play.
-    assert!(w.unsaved_prompt.is_some() || actions == [WorkbenchAction::Quit]);
+    assert!(w.open.unsaved_prompt.is_some() || actions == [WorkbenchAction::Quit]);
     // Closing the window with unsaved changes asks first, and the game
     // plays on meanwhile (Cancel leaves it running); with nothing unsaved,
     // it stops and closes.
     let (mut w, _) = with_a_crate();
     w.play();
     assert!(!w.close_requested());
-    assert_eq!(w.unsaved_prompt, Some(WorkbenchAction::Quit));
+    assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
     assert_ne!(w.play_state(), PlayState::Editing, "still playing");
     let (mut w, _) = with_a_crate();
-    w.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.solarea".into());
     w.play();
     assert!(w.close_requested());
     assert_eq!(w.play_state(), PlayState::Editing);
@@ -180,15 +181,18 @@ fn quitting_while_playing_stops_first() {
 #[test]
 fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
     let (mut w, _) = with_a_crate();
-    w.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.solarea".into());
     w.play();
     let mut theirs = area::builtin::starter_area();
     let theirs_id = theirs.spawn(area::EntityData::new("Theirs"));
     w.offer_reload(theirs);
-    assert!(!w.document.area().contains(theirs_id), "not while playing");
+    assert!(
+        !w.open.document.area().contains(theirs_id),
+        "not while playing"
+    );
     w.stop();
     assert!(
-        w.document.area().contains(theirs_id),
+        w.open.document.area().contains(theirs_id),
         "loaded after Stop (nothing was unsaved)"
     );
 }
@@ -196,7 +200,7 @@ fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
 #[test]
 fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     let (mut w, asset, _, lamp) = with_a_lamp_post();
-    w.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.solarea".into());
     w.play();
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
@@ -210,7 +214,8 @@ fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     ));
     w.set_assembly(asset, std::sync::Arc::new(file));
     let strength = |w: &Workbench| {
-        w.document
+        w.open
+            .document
             .area()
             .get(lamp)
             .unwrap()
@@ -221,28 +226,32 @@ fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     assert_eq!(strength(&w), 5.0, "the game sees it at once");
     w.stop();
     assert_eq!(strength(&w), 5.0, "and it's still there after Stop");
-    assert!(!w.document.is_dirty(), "nothing to save: the file has it");
+    assert!(
+        !w.open.document.is_dirty(),
+        "nothing to save: the file has it"
+    );
 }
 
 #[test]
 fn a_new_camera_looks_the_way_the_editor_does() {
     let (mut w, _) = with_a_crate();
     let id = w.add_camera();
-    let data = w.document.area().get(id).unwrap();
+    let data = w.open.document.area().get(id).unwrap();
     assert_eq!(data.name, "Camera 1");
     let camera = data.get::<area::builtin::Camera>().unwrap();
     assert!((camera.fov - 50.0).abs() < 1e-3);
-    let (view, position) = crate::game_panel::camera_view(w.document.area().world_matrix(id));
+    let (view, position) = crate::game_panel::camera_view(w.open.document.area().world_matrix(id));
     assert!(position.distance(w.viewport.camera.position) < 1e-4);
     let editor = w.viewport.camera.view_matrix();
     for (a, b) in view.to_cols_array().iter().zip(editor.to_cols_array()) {
         assert!((a - b).abs() < 1e-4, "{view:?} vs {editor:?}");
     }
-    assert_eq!(w.add_camera(), w.document.selection.primary().unwrap());
+    assert_eq!(w.add_camera(), w.open.document.selection.primary().unwrap());
     assert_eq!(
-        w.document
+        w.open
+            .document
             .area()
-            .get(w.document.selection.primary().unwrap())
+            .get(w.open.document.selection.primary().unwrap())
             .unwrap()
             .name,
         "Camera 2"
@@ -367,15 +376,15 @@ fn a_camera_is_listed_with_its_icon_and_added_from_the_entity_menu() {
     h.get_by_label("Add camera").click();
     h.run();
     let w = &h.state().0;
-    let id = w.document.selection.primary().unwrap();
-    assert!(w.document.area().get(id).unwrap().has("Camera"));
+    let id = w.open.document.selection.primary().unwrap();
+    assert!(w.open.document.area().get(id).unwrap().has("Camera"));
     assert!(h.query_all_by_label("Camera 1").next().is_some(), "listed");
 }
 
 #[test]
 fn a_cancelled_save_calls_off_the_quit_so_a_later_close_asks_again() {
     let (mut w, _) = with_a_crate();
-    assert!(w.document.is_dirty());
+    assert!(w.open.document.is_dirty());
     assert!(!w.close_requested(), "asks first");
     // "Save" was chosen: the quit may go ahead once the save works...
     w.may_close = true;
@@ -383,13 +392,13 @@ fn a_cancelled_save_calls_off_the_quit_so_a_later_close_asks_again() {
     // ...but the Save window was cancelled.
     w.quit_cancelled();
     assert!(!w.close_requested(), "asks again");
-    assert_eq!(w.unsaved_prompt, Some(WorkbenchAction::Quit));
+    assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
 }
 
 #[test]
 fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
     let (mut w, _) = with_a_crate();
-    w.pending_reload = Some(area::builtin::starter_area());
+    w.open.pending_reload = Some(area::builtin::starter_area());
     w.play();
     let mut h = harness(w);
     h.run();

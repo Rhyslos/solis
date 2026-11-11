@@ -97,7 +97,7 @@ pub(crate) fn crate_model() -> ModelInfo {
 pub(crate) fn with_a_crate() -> (Workbench, EntityId) {
     let mut w = Workbench::new(info(), None);
     let id = w.add_model(crate_model(), &[], 0.1, &[]);
-    w.document.selection.clear();
+    w.open.document.selection.clear();
     (w, id)
 }
 

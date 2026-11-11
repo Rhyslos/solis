@@ -51,7 +51,7 @@ fn the_area_is_named_with_2d_or_3d_and_a_2d_games_size() {
     let mut w = fresh();
     assert!(w.status().area.ends_with(" · 3D"), "{}", w.status().area);
     w.viewport.camera.kind = crate::camera::ViewKind::TwoD;
-    w.pixels.base = [480, 270];
+    w.open.pixels.base = [480, 270];
     assert!(
         w.status().area.ends_with(" · 2D · 480 × 270"),
         "{}",

@@ -566,6 +566,58 @@ const FRAME_TIME_SMOOTHING: f32 = 0.05;
 const IDLE_GAP: f32 = 0.25;
 
 impl Viewport {
+    /// Forgets everything of the project that was open, keeping what is
+    /// the user's own. Every field is named, so a new one can't be added
+    /// without deciding which it is.
+    pub(crate) fn forget_project(&mut self) {
+        let Self {
+            // The user's own: the views and their cameras and looks, the
+            // tool, the corner controls, snapping, and where things were
+            // drawn last frame.
+            camera: _,
+            tool: _,
+            overlays: _,
+            menu_open: _,
+            frame_time: _,
+            idle: _,
+            look: _,
+            flying_from: _,
+            wheel_carry: _,
+            snapping: _,
+            rect: _,
+            covered: _,
+            layout: _,
+            maximized: _,
+            active: _,
+            full: _,
+            tile_ms: _,
+            paint_bar_width: _,
+            snapping_width: _,
+            preview_since: _,
+            // The project's: what its area shows, its files, the map
+            // selected and the painter's stamp of its cells, and picks and
+            // drags under way in any view.
+            area,
+            entities,
+            tools,
+            panes,
+            pixels,
+            sheets,
+            tile_overlay,
+            preview_hour,
+        } = self;
+        *area = AreaView::default();
+        *entities = 0;
+        *tools = Tools::default();
+        for pane in panes {
+            pane.tools = Tools::default();
+        }
+        *pixels = area::pixels::PixelSettings::default();
+        *sheets = std::sync::Arc::default();
+        *tile_overlay = crate::tile_view::TileOverlay::default();
+        *preview_hour = None;
+    }
+
     /// Swaps view `i`'s own state with the fields in use.
     fn exchange(&mut self, i: usize) {
         let pane = &mut self.panes[i];

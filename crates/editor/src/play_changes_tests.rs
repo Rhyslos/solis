@@ -183,7 +183,7 @@ fn with_a_busy_game() -> Workbench {
         Err(problems) => panic!("{}", problems[0]),
     };
     let mut w = fresh();
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Keeping".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -372,7 +372,7 @@ fn a_step_about_your_entities_and_the_games_keeps_your_share() {
     // The crate and a drone, deleted together; then the lamp put under
     // another drone (moved, so it stays where it was in the world).
     let drone = a_drone(&w);
-    w.document.selection.select_all([drone], id(CRATE));
+    w.open.document.selection.select_all([drone], id(CRATE));
     w.delete_selection();
     let other = a_drone(&w);
     move_to(&mut w, other, Vec3::new(4.0, 0.0, 0.0), 1);

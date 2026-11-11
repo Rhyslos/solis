@@ -51,7 +51,7 @@ impl Workbench {
     /// The screens in the code file at `path` (inside the assets), by
     /// name, when it has any.
     pub(crate) fn screens_in(&self, path: &str) -> Vec<String> {
-        let Some(code) = self.program.as_ref().and_then(|p| p.screens.as_ref()) else {
+        let Some(code) = self.open.program.as_ref().and_then(|p| p.screens.as_ref()) else {
             return Vec::new();
         };
         code.screens
@@ -73,6 +73,7 @@ impl Workbench {
             return false;
         };
         let text = self
+            .open
             .program
             .as_ref()
             .and_then(|p| p.screens.as_ref())
@@ -82,6 +83,7 @@ impl Workbench {
             return false;
         };
         let same = self
+            .open
             .screen_doc
             .as_ref()
             .is_some_and(|d| d.path == path && d.screen == name);
@@ -97,8 +99,8 @@ impl Workbench {
                 );
             }
             doc.view = None;
-            self.screen_doc = Some(doc);
-            self.screen_from = None;
+            self.open.screen_doc = Some(doc);
+            self.open.screen_from = None;
         }
         self.switch_workspace(crate::workspace::Workspace::Ui);
         layout::open_first_beside(&mut self.dock, Panel::Canvas, Panel::Game);
@@ -107,17 +109,17 @@ impl Workbench {
 
     /// Closes the screen open on the canvas.
     pub(crate) fn close_screen(&mut self) {
-        self.screen_doc = None;
-        self.screen_from = None;
+        self.open.screen_doc = None;
+        self.open.screen_from = None;
     }
 
     /// Saves the screen open, after a change.
     pub(crate) fn save_screen(&mut self) {
-        let Some(doc) = &mut self.screen_doc else {
+        let Some(doc) = &mut self.open.screen_doc else {
             return;
         };
         doc.saved = doc.text.clone();
-        self.outbox.push(WorkbenchAction::SaveScreen {
+        self.open.outbox.push(WorkbenchAction::SaveScreen {
             path: doc.path.clone().into(),
             text: doc.text.clone(),
         });
@@ -125,7 +127,7 @@ impl Workbench {
 
     /// Undoes (or redoes) the screen's last change.
     pub(crate) fn screen_undo(&mut self, redo: bool) {
-        let Some(doc) = &mut self.screen_doc else {
+        let Some(doc) = &mut self.open.screen_doc else {
             return;
         };
         if if redo { doc.redo() } else { doc.undo() } {
@@ -137,16 +139,16 @@ impl Workbench {
     /// taken in as one undo step, and the screen's view is drawn again
     /// from the game's code with the screen's starting values.
     pub(crate) fn refresh_screen(&mut self) {
-        let program = self.program.clone();
+        let program = self.open.program.clone();
         let from = program.as_ref().map(|p| Arc::as_ptr(p) as usize);
-        let Some(doc) = &mut self.screen_doc else {
+        let Some(doc) = &mut self.open.screen_doc else {
             return;
         };
-        if self.screen_from == from && doc.view.is_some() && !doc.redraw {
+        if self.open.screen_from == from && doc.view.is_some() && !doc.redraw {
             return;
         }
         doc.redraw = false;
-        self.screen_from = from;
+        self.open.screen_from = from;
         let Some(program) = program.as_ref() else {
             doc.view_problem = Some(
                 "The game's code has mistakes, so the screen can't be drawn: see Problems.".into(),
@@ -194,7 +196,7 @@ impl Workbench {
         let preview = doc.preview.clone();
         let mut reader = PreviewReader {
             schemas: program.schemas.clone(),
-            registry: &self.document.registry,
+            registry: &self.open.document.registry,
             preview: &preview,
         };
         let made = script::screens::Screens::start(code)

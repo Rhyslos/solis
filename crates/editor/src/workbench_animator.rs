@@ -59,6 +59,7 @@ impl Workbench {
             }
         };
         if self
+            .open
             .animator_editor
             .as_ref()
             .is_some_and(|e| e.path == path)
@@ -66,7 +67,7 @@ impl Workbench {
             layout::open_first_beside(&mut self.dock, Panel::Animator, Panel::Viewport);
             return;
         }
-        self.animator_editor = Some(AnimatorEditor::new(path.to_owned(), file));
+        self.open.animator_editor = Some(AnimatorEditor::new(path.to_owned(), file));
         layout::open_first_beside(&mut self.dock, Panel::Animator, Panel::Viewport);
     }
 
@@ -75,7 +76,7 @@ impl Workbench {
     pub(crate) fn new_animator(&mut self, folder: &str) {
         let taken = |name: &str| {
             self.viewport.sheets.animators.contains_key(name)
-                || self.library.iter().any(|i| i.path == name)
+                || self.open.library.iter().any(|i| i.path == name)
         };
         let base = if folder.is_empty() {
             String::new()
@@ -100,7 +101,7 @@ impl Workbench {
             }],
             ..animation::AnimatorFile::default()
         };
-        self.outbox.push(WorkbenchAction::SaveAnimator {
+        self.open.outbox.push(WorkbenchAction::SaveAnimator {
             path: path.clone().into(),
             text: animation::animator_file::write(&file),
         });
@@ -111,21 +112,21 @@ impl Workbench {
         );
         sheets.work_out_animators();
         self.open_animator(&path);
-        if let Some(editor) = &mut self.animator_editor {
+        if let Some(editor) = &mut self.open.animator_editor {
             editor.saving();
         }
     }
 
     /// Closes the animator file open, and its tab.
     pub(crate) fn close_animator(&mut self) {
-        self.animator_editor = None;
+        self.open.animator_editor = None;
         self.animator_hovered = false;
         layout::close(&mut self.dock, Panel::Animator);
     }
 
     /// Moves the preview on by `seconds` (it always plays, decision 0057).
     pub(crate) fn play_animator(&mut self, seconds: f64) {
-        let Some(editor) = &mut self.animator_editor else {
+        let Some(editor) = &mut self.open.animator_editor else {
             return;
         };
         let clips = editor
@@ -139,7 +140,7 @@ impl Workbench {
     /// Undoes (or redoes) the animator's last change, from Ctrl+Z (or
     /// Ctrl+Y) over its tab.
     pub(crate) fn animator_undo(&mut self, redo: bool, undo: bool) {
-        let Some(editor) = &mut self.animator_editor else {
+        let Some(editor) = &mut self.open.animator_editor else {
             return;
         };
         let changed = if redo {
@@ -152,14 +153,14 @@ impl Workbench {
         if changed {
             let mut actions = Vec::new();
             self.save_animator(&mut actions);
-            self.outbox.extend(actions);
+            self.open.outbox.extend(actions);
         }
     }
 
     /// Saves the open animator file, and runs it at once for every entity
     /// using it (in the running game too: each carries on by name).
     pub(crate) fn save_animator(&mut self, actions: &mut Vec<WorkbenchAction>) {
-        let Some(editor) = &mut self.animator_editor else {
+        let Some(editor) = &mut self.open.animator_editor else {
             return;
         };
         editor.saving();
@@ -179,9 +180,9 @@ impl Workbench {
     /// While playing, the selected entity's animator state and values, if
     /// it runs the file open.
     pub(crate) fn live_animator(&self) -> Option<(String, Vec<(String, ParamValue)>)> {
-        let editor = self.animator_editor.as_ref()?;
-        let playing = self.playing.as_ref()?;
-        let id = self.document.selection.primary()?;
+        let editor = self.open.animator_editor.as_ref()?;
+        let playing = self.open.playing.as_ref()?;
+        let id = self.open.document.selection.primary()?;
         let animator = playing.world.get::<area::builtin::Animator>(id)?;
         let file = animator.animator?.asset;
         (self.viewport.sheets.paths.get(&file) == Some(&editor.path))
@@ -192,7 +193,7 @@ impl Workbench {
     /// After the app reads the project's animators again: an open file
     /// changed on disk (by hand, or by Git) is taken in, as one undo step.
     pub(crate) fn animator_read_again(&mut self) {
-        let Some(editor) = &mut self.animator_editor else {
+        let Some(editor) = &mut self.open.animator_editor else {
             return;
         };
         match self.viewport.sheets.animators.get(&editor.path) {

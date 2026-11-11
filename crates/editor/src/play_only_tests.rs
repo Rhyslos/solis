@@ -74,7 +74,7 @@ fn an_exported_game_shows_only_the_game_and_closes_when_its_code_quits() {
     h.get_by_label("Starting…");
     let ctx = h.ctx.clone();
     h.state_mut().0.start_play_only(&ctx);
-    assert!(h.state().0.playing.is_some());
+    assert!(h.state().0.open.playing.is_some());
     assert!(h.state().0.game_input, "the game has the mouse and keys");
     h.step();
     assert!(
@@ -92,7 +92,7 @@ fn an_exported_game_shows_only_the_game_and_closes_when_its_code_quits() {
     h.step();
     let (w, picker, _) = h.state();
     assert!(w.quit_asked());
-    assert!(w.playing.is_none(), "play stopped");
+    assert!(w.open.playing.is_none(), "play stopped");
     assert!(
         picker.actions.contains(&WorkbenchAction::Quit),
         "{:?}",
@@ -121,7 +121,7 @@ fn in_the_editor_quitting_stops_play_and_says_so() {
     for _ in 0..10 {
         w.run_game(1.0 / 60.0);
     }
-    assert!(w.playing.is_none());
+    assert!(w.open.playing.is_none());
     assert!(w.log_lines().iter().any(|l| {
         l.text
             .contains("Window:quit(): the exported game would close")

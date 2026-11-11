@@ -16,7 +16,7 @@ struct State {
 fn harness() -> Harness<'static, State> {
     let mut w = crate::workbench_screens::tests::opened();
     w.refresh_screen();
-    let doc = w.screen_doc.take().unwrap();
+    let doc = w.open.screen_doc.take().unwrap();
     Harness::builder()
         .with_size(egui::vec2(1000.0, 600.0))
         .build_ui_state(

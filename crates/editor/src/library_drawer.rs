@@ -87,12 +87,12 @@ impl Workbench {
         let mut pin_clicked = false;
         let code_uses = self.code_uses();
         let sounds = crate::library::Sounds {
-            states: &self.sounds,
-            events: &self.sound_events,
-            preview: self.preview.as_ref(),
-            mixer: &self.mixer.mixer,
+            states: &self.open.sounds,
+            events: &self.open.sound_events,
+            preview: self.open.preview.as_ref(),
+            mixer: &self.open.mixer.mixer,
             sheets,
-            sheet_pictures: &self.sheet_pictures,
+            sheet_pictures: &self.open.sheet_pictures,
             code_uses: &code_uses,
         };
         let shown = egui::Area::new(egui::Id::new("library drawer"))
@@ -108,9 +108,9 @@ impl Workbench {
                         ui.set_max_size(rect.size() - egui::vec2(2.0, 2.0));
                         let asked = crate::library::library(
                             ui,
-                            self.project.as_ref(),
-                            (&self.library, &self.folders),
-                            &mut self.library_state,
+                            self.open.project.as_ref(),
+                            (&self.open.library, &self.open.folders),
+                            &mut self.open.library_state,
                             self.accent,
                             false,
                             sounds,

@@ -34,9 +34,14 @@ impl Workbench {
                 animation::atlas::Atlas::new(name)
             }
         };
-        if self.atlas_editor.as_ref().is_none_or(|e| e.path != path) {
+        if self
+            .open
+            .atlas_editor
+            .as_ref()
+            .is_none_or(|e| e.path != path)
+        {
             let new = !self.viewport.sheets.atlases.contains_key(&path);
-            self.atlas_editor = Some(AtlasEditor::new(path, atlas));
+            self.open.atlas_editor = Some(AtlasEditor::new(path, atlas));
             if new {
                 // Made at once, so the picture is read for the tab.
                 self.save_open_atlas();
@@ -47,20 +52,20 @@ impl Workbench {
 
     /// Closes the atlas open, and its tab.
     pub(crate) fn close_atlas(&mut self) {
-        self.atlas_editor = None;
+        self.open.atlas_editor = None;
         self.atlas_hovered = false;
-        self.atlas_texture = None;
+        self.open.atlas_texture = None;
         layout::close(&mut self.dock, Panel::AtlasCrop);
     }
 
     /// Saves the open atlas, and keeps it as read.
     pub(crate) fn save_open_atlas(&mut self) {
-        let Some(editor) = &mut self.atlas_editor else {
+        let Some(editor) = &mut self.open.atlas_editor else {
             return;
         };
         let text = editor.saving();
         let (path, atlas) = (editor.path.clone(), editor.atlas.clone());
-        self.outbox.push(WorkbenchAction::SaveAtlas {
+        self.open.outbox.push(WorkbenchAction::SaveAtlas {
             path: path.clone().into(),
             text,
         });
@@ -72,7 +77,7 @@ impl Workbench {
     /// Undoes (or redoes) the atlas's last change, from Ctrl+Z (or Ctrl+Y)
     /// over its tab.
     pub(crate) fn atlas_undo(&mut self, redo: bool) {
-        let Some(editor) = &mut self.atlas_editor else {
+        let Some(editor) = &mut self.open.atlas_editor else {
             return;
         };
         if if redo { editor.redo() } else { editor.undo() } {
@@ -83,7 +88,7 @@ impl Workbench {
     /// After the app reads the project's atlases again: the open file
     /// changed on disk is taken in as one undo step; one gone closes.
     pub(crate) fn atlas_read_again(&mut self) {
-        let Some(editor) = &mut self.atlas_editor else {
+        let Some(editor) = &mut self.open.atlas_editor else {
             return;
         };
         match self.viewport.sheets.atlases.get(&editor.path) {
@@ -114,7 +119,7 @@ impl Workbench {
 
     /// The open atlas's picture's path inside the assets.
     fn atlas_picture_path(&self) -> Option<String> {
-        let editor = self.atlas_editor.as_ref()?;
+        let editor = self.open.atlas_editor.as_ref()?;
         Some(animation::atlas::picture_path(&editor.path, &editor.atlas))
     }
 
@@ -128,10 +133,11 @@ impl Workbench {
                     _ => None,
                 });
         let Some(art) = art else {
-            self.atlas_texture = None;
+            self.open.atlas_texture = None;
             return;
         };
         if self
+            .open
             .atlas_texture
             .as_ref()
             .is_some_and(|(had, _)| Arc::ptr_eq(had, &art))
@@ -139,7 +145,7 @@ impl Workbench {
             return;
         }
         let Some(rgba) = art.frames.first() else {
-            self.atlas_texture = None;
+            self.open.atlas_texture = None;
             return;
         };
         let image = egui::ColorImage::from_rgba_unmultiplied(
@@ -147,12 +153,12 @@ impl Workbench {
             rgba,
         );
         let texture = ctx.load_texture("atlas picture", image, egui::TextureOptions::NEAREST);
-        self.atlas_texture = Some((art, texture));
+        self.open.atlas_texture = Some((art, texture));
     }
 
     /// What the tab draws the picture from, or why it can't.
     pub(crate) fn atlas_picture(&self) -> (Option<AtlasPicture<'_>>, Option<String>) {
-        if let Some((art, texture)) = &self.atlas_texture
+        if let Some((art, texture)) = &self.open.atlas_texture
             && let Some(rgba) = art.frames.first()
         {
             return (
@@ -171,7 +177,7 @@ impl Workbench {
             Some((Some(ArtState::Failed(why)), _)) => {
                 Some(format!("Couldn't read the picture: {why}"))
             }
-            Some((None, p)) if !self.library.iter().any(|i| i.path == p) => Some(format!(
+            Some((None, p)) if !self.open.library.iter().any(|i| i.path == p) => Some(format!(
                 "The picture {p} isn't in the project: an atlas file sits beside its picture."
             )),
             _ => None,

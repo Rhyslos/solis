@@ -56,6 +56,7 @@ mod play_input;
 pub mod play_only;
 pub mod problems;
 pub mod profiler;
+mod project_state;
 mod properties;
 mod save_game;
 pub mod screen;

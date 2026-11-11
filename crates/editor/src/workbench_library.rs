@@ -51,7 +51,12 @@ impl Workbench {
     /// assets if the project has none (game code starts there), otherwise
     /// a free `component.lst` in `folder`.
     pub(crate) fn new_code_file(&self, folder: &str) -> (String, String) {
-        let taken = |p: &str| self.library.iter().any(|i| i.path.eq_ignore_ascii_case(p));
+        let taken = |p: &str| {
+            self.open
+                .library
+                .iter()
+                .any(|i| i.path.eq_ignore_ascii_case(p))
+        };
         if !taken(MAIN) {
             return (MAIN.to_owned(), starter_code("Game", MAIN));
         }
@@ -80,7 +85,7 @@ impl Workbench {
         request: LibraryRequest,
         actions: &mut Vec<WorkbenchAction>,
     ) {
-        let Some(assets) = self.project.as_ref().map(|p| p.assets.clone()) else {
+        let Some(assets) = self.open.project.as_ref().map(|p| p.assets.clone()) else {
             if request == LibraryRequest::Import {
                 actions.push(WorkbenchAction::ImportModel);
             }
@@ -122,7 +127,7 @@ impl Workbench {
             }
             LibraryRequest::Place(id) if self.is_picture(id) => {
                 // Read as a sheet first (asked for by `get` above).
-                self.pictures_placing.insert(id, None);
+                self.open.pictures_placing.insert(id, None);
             }
             LibraryRequest::Place(id) if self.viewport.sheets.tile_map(id).is_some() => {
                 self.place_tile_map(id, None);
@@ -130,7 +135,7 @@ impl Workbench {
             LibraryRequest::Place(id) => {
                 // A double-click places it where the camera looks, even if
                 // an earlier drop of the same asset never arrived.
-                self.place_targets.remove(&id);
+                self.open.place_targets.remove(&id);
                 actions.push(WorkbenchAction::PlaceAsset(id));
             }
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
@@ -202,10 +207,10 @@ impl Workbench {
             }
             LibraryRequest::NewArea(folder) => {
                 let path = crate::workbench_tiles::free_path(&folder, "area", "solarea", |p| {
-                    self.library.iter().any(|i| i.path == p)
+                    self.open.library.iter().any(|i| i.path == p)
                 });
                 let fresh = crate::document::Document::default();
-                let text = area::text::write(fresh.area(), &self.document.registry, &|_| None);
+                let text = area::text::write(fresh.area(), &self.open.document.registry, &|_| None);
                 actions.push(WorkbenchAction::NewTextFile {
                     path: path.clone().into(),
                     text,
@@ -219,7 +224,11 @@ impl Workbench {
             // A screen's file opens on the canvas (decision 0089), unless
             // the canvas is what asked for it as code.
             LibraryRequest::Open(LibraryKind::Code, path)
-                if !self.screen_doc.as_ref().is_some_and(|d| d.path == path)
+                if !self
+                    .open
+                    .screen_doc
+                    .as_ref()
+                    .is_some_and(|d| d.path == path)
                     && self.open_screen(&path, None) => {}
             LibraryRequest::Open(kind, path) => {
                 // Which files open in another program is one rule, kept
@@ -288,10 +297,10 @@ impl Workbench {
     /// Shows a sound file in Properties when one is picked in the Library
     /// (`before` is what was picked before this frame).
     pub(crate) fn follow_sound_selection(&mut self, before: &Option<String>) {
-        let picked = &self.library_state.selected;
+        let picked = &self.open.library_state.selected;
         if picked != before
             && let Some(path) = picked
-            && self.library.iter().any(|i| {
+            && self.open.library.iter().any(|i| {
                 &i.path == path
                     && matches!(
                         i.kind,
@@ -304,15 +313,16 @@ impl Workbench {
                     )
             })
         {
-            self.sound_shown = Some((path.clone(), self.document.selection.clone()));
-            self.mixer.shown = None;
+            self.open.sound_shown = Some((path.clone(), self.open.document.selection.clone()));
+            self.open.mixer.shown = None;
         }
     }
 
     /// Adds `take` to the sound event at `path`, unless it's already there
     /// or the event is full (said in the Console).
     fn add_take(&mut self, path: &str, take: AssetId, actions: &mut Vec<WorkbenchAction>) {
-        let Some(crate::sound_view::EventState::Read { event, .. }) = self.sound_events.get(path)
+        let Some(crate::sound_view::EventState::Read { event, .. }) =
+            self.open.sound_events.get(path)
         else {
             self.log(
                 LogLevel::Warning,
@@ -348,16 +358,16 @@ impl Workbench {
     /// sound event (the app calls this after making a new sound event).
     pub fn show_in_library(&mut self, path: &str) {
         self.pick_in_library(path);
-        self.sound_shown = Some((path.to_owned(), self.document.selection.clone()));
+        self.open.sound_shown = Some((path.to_owned(), self.open.document.selection.clone()));
     }
 
     /// Picks the file at `path` (inside the assets) in the Library and
     /// opens its folder there, with the Library's own search cleared so
     /// the file is in view.
     pub(crate) fn pick_in_library(&mut self, path: &str) {
-        self.library_state.folder = path.rsplit_once('/').map_or("", |(f, _)| f).to_owned();
-        self.library_state.search.clear();
-        self.library_state.selected = Some(path.to_owned());
+        self.open.library_state.folder = path.rsplit_once('/').map_or("", |(f, _)| f).to_owned();
+        self.open.library_state.search.clear();
+        self.open.library_state.selected = Some(path.to_owned());
     }
 
     /// The project's sprite sheets as the app has read them (Phase 9, D2).
@@ -384,17 +394,17 @@ impl Workbench {
     /// Places each picture waiting to be a sprite that's now read as a
     /// sheet; says why for one that couldn't be.
     fn place_read_pictures(&mut self) {
-        let waiting: Vec<_> = self.pictures_placing.keys().copied().collect();
+        let waiting: Vec<_> = self.open.pictures_placing.keys().copied().collect();
         for id in waiting {
             let sheets = std::sync::Arc::clone(&self.viewport.sheets);
             let state = sheets.paths.get(&id).and_then(|p| sheets.by_path.get(p));
             match state {
                 Some(crate::sprite_sheets::SheetState::Read(_)) => {
-                    let target = self.pictures_placing.remove(&id).flatten();
+                    let target = self.open.pictures_placing.remove(&id).flatten();
                     self.place_sprite(id, target);
                 }
                 Some(crate::sprite_sheets::SheetState::Failed(why)) => {
-                    self.pictures_placing.remove(&id);
+                    self.open.pictures_placing.remove(&id);
                     self.log(
                         LogLevel::Warning,
                         format!("Couldn't place the picture as a sprite: {why}."),
@@ -416,16 +426,18 @@ impl Workbench {
     /// (or whose sheet changed), and lets go of those whose file is gone.
     pub(crate) fn refresh_sheet_pictures(&mut self, ctx: &egui::Context) {
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
-        self.sheet_pictures
+        self.open
+            .sheet_pictures
             .retain(|path, _| sheets.at(path).is_some());
-        self.sheet_pictures_from
+        self.open
+            .sheet_pictures_from
             .retain(|path, _| sheets.at(path).is_some());
         for (path, state) in &sheets.by_path {
             let crate::sprite_sheets::SheetState::Read(sheet) = state else {
                 continue;
             };
             let from = std::sync::Arc::as_ptr(sheet) as usize;
-            if self.sheet_pictures_from.get(path) == Some(&from) {
+            if self.open.sheet_pictures_from.get(path) == Some(&from) {
                 continue;
             }
             let [w, h] = sheet.atlas_size.map(|v| v as usize);
@@ -435,8 +447,8 @@ impl Workbench {
                 image,
                 egui::TextureOptions::NEAREST,
             );
-            self.sheet_pictures.insert(path.clone(), texture);
-            self.sheet_pictures_from.insert(path.clone(), from);
+            self.open.sheet_pictures.insert(path.clone(), texture);
+            self.open.sheet_pictures_from.insert(path.clone(), from);
         }
     }
 
@@ -446,24 +458,25 @@ impl Workbench {
         &mut self,
         events: std::collections::HashMap<String, crate::sound_view::EventState>,
     ) {
-        self.sound_events = events;
+        self.open.sound_events = events;
     }
 
     /// Stops showing a sound file in Properties once the area's selection
     /// has changed or the file is gone. Called before the panels are
     /// drawn, so the change shows in the same frame.
     pub(crate) fn drop_stale_sound(&mut self) {
-        let stale = self.sound_shown.as_ref().is_some_and(|(path, then)| {
-            *then != self.document.selection || !self.library.iter().any(|i| &i.path == path)
+        let stale = self.open.sound_shown.as_ref().is_some_and(|(path, then)| {
+            *then != self.open.document.selection
+                || !self.open.library.iter().any(|i| &i.path == path)
         });
         if stale {
-            self.sound_shown = None;
+            self.open.sound_shown = None;
         }
-        let bus_stale = self.mixer.shown.as_ref().is_some_and(|(at, then)| {
-            *then != self.document.selection || *at >= self.mixer.mixer.buses.len()
+        let bus_stale = self.open.mixer.shown.as_ref().is_some_and(|(at, then)| {
+            *then != self.open.document.selection || *at >= self.open.mixer.mixer.buses.len()
         });
         if bus_stale {
-            self.mixer.shown = None;
+            self.open.mixer.shown = None;
         }
     }
 
@@ -473,19 +486,19 @@ impl Workbench {
         &mut self,
         sounds: std::collections::HashMap<String, crate::sound_view::SoundState>,
     ) {
-        self.sounds = sounds;
+        self.open.sounds = sounds;
     }
 
     /// The sound being listened to and how far it has got, or `None` when
     /// nothing plays. Called by the app every frame.
     pub fn set_preview(&mut self, preview: Option<crate::sound_view::Preview>) {
-        self.preview = preview;
+        self.open.preview = preview;
     }
 
     /// Whether a sound is being listened to (the app draws frames for its
     /// playhead).
     pub fn previewing(&self) -> bool {
-        self.preview.is_some()
+        self.open.preview.is_some()
     }
 
     /// Places `asset`, dropped at `at` in the world (under `parent`, if it
@@ -501,11 +514,11 @@ impl Workbench {
             return;
         }
         if self.is_picture(asset) {
-            self.pictures_placing.insert(asset, Some((at, parent)));
+            self.open.pictures_placing.insert(asset, Some((at, parent)));
             return;
         }
-        self.place_targets.insert(asset, (at, parent));
-        self.outbox.push(WorkbenchAction::PlaceAsset(asset));
+        self.open.place_targets.insert(asset, (at, parent));
+        self.open.outbox.push(WorkbenchAction::PlaceAsset(asset));
     }
 
     /// Places a sprite of sheet `sheet` (Phase 9, D2): at `target` (a point
@@ -527,7 +540,7 @@ impl Workbench {
             .map_or_else(|| "Sprite".to_owned(), |p| crate::sprite_sheets::name_of(p));
         let (at, parent) = match target {
             Some((at, parent)) => {
-                let area = self.document.area();
+                let area = self.open.document.area();
                 let parent = parent.filter(|&p| area.contains(p));
                 let local = match parent {
                     Some(p) => area.world_matrix(p).inverse().transform_point3(at),
@@ -540,7 +553,7 @@ impl Workbench {
         if !at.is_finite() {
             return None;
         }
-        let px = self.pixels.pixel_size();
+        let px = self.open.pixels.pixel_size();
         let on_pixel = |v: f32| (v / px).round() * px;
         let pivot = ["pivot", "feet"]
             .into_iter()
@@ -566,15 +579,15 @@ impl Workbench {
     /// Forgets where `asset` was to go: its import failed, so a later
     /// placing of it doesn't land at an old drop point.
     pub fn placing_failed(&mut self, asset: AssetId) {
-        self.place_targets.remove(&asset);
+        self.open.place_targets.remove(&asset);
     }
 
     /// Where a model or assembly being placed goes: the point it was
     /// dropped at (made relative to the entity it goes under) and that
     /// entity, or `None` to place it where the camera looks.
     pub(crate) fn take_place_target(&mut self, asset: AssetId) -> Option<(Vec3, Option<EntityId>)> {
-        let (at, parent) = self.place_targets.remove(&asset)?;
-        let area = self.document.area();
+        let (at, parent) = self.open.place_targets.remove(&asset)?;
+        let area = self.open.document.area();
         let parent = parent.filter(|&p| area.contains(p));
         let local = match parent {
             Some(p) => area.world_matrix(p).inverse().transform_point3(at),
@@ -607,7 +620,7 @@ mod opening_tests {
     fn opened(kind: LibraryKind, path: &str) -> PathBuf {
         let mut w = Workbench::new(info(), None);
         let assets = std::env::temp_dir().join("solis-library-open");
-        w.project = Some(crate::library::ProjectInfo {
+        w.open.project = Some(crate::library::ProjectInfo {
             name: "Opening".into(),
             root: assets.clone(),
             assets: assets.clone(),
@@ -653,7 +666,7 @@ mod opening_tests {
         // text, so a click could open a network share in Explorer.
         let mut w = Workbench::new(info(), None);
         let assets = std::env::temp_dir().join("solis-library-open");
-        w.project = Some(crate::library::ProjectInfo {
+        w.open.project = Some(crate::library::ProjectInfo {
             name: "Opening".into(),
             root: assets.clone(),
             assets,
@@ -684,7 +697,7 @@ mod opening_tests {
         // program, with no word on why.
         let mut w = Workbench::new(info(), None);
         let assets = std::env::temp_dir().join("solis-library-open");
-        w.project = Some(crate::library::ProjectInfo {
+        w.open.project = Some(crate::library::ProjectInfo {
             name: "Opening".into(),
             root: assets.clone(),
             assets,

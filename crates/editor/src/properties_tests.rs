@@ -156,7 +156,7 @@ fn the_entity_menu_holds_what_the_bottom_buttons_did() {
     }
     h.get_by_label("Copy components").click();
     h.run();
-    assert!(!h.state().0.copied.is_empty());
+    assert!(!h.state().0.open.copied.is_empty());
     h.get_by_label("Entity menu").click();
     h.run();
     h.get_by_label("Delete").click();

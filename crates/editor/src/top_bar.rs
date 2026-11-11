@@ -38,18 +38,18 @@ impl Workbench {
                     ui.add_space(14.0);
                     self.workspace_tabs(ui);
                     ui.add_space(10.0);
-                    let mut name = self.document.name();
-                    if self.document.is_dirty() {
+                    let mut name = self.open.document.name();
+                    if self.open.document.is_dirty() {
                         name.push_str(" •");
                     }
                     // The animator open is a document too (Phase 9, D3b):
                     // its tab is in front while the Animator panel is.
-                    let animator = self.animator_editor.as_ref().map(|e| {
+                    let animator = self.open.animator_editor.as_ref().map(|e| {
                         let file = e.path.rsplit_once('/').map_or(e.path.as_str(), |(_, n)| n);
                         (file.to_owned(), self.in_front.contains(&Panel::Animator))
                     });
                     // So is the tileset open (Phase 9, D5).
-                    let tileset = self.tileset_editor.as_ref().map(|e| {
+                    let tileset = self.open.tileset_editor.as_ref().map(|e| {
                         let file = e.path.rsplit_once('/').map_or(e.path.as_str(), |(_, n)| n);
                         (file.to_owned(), self.in_front.contains(&Panel::Tileset))
                     });
@@ -105,7 +105,7 @@ impl Workbench {
     fn file_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         // What replaces or saves the area waits until the game stops: greyed
         // out meanwhile, saying so.
-        let playing = self.playing.is_some();
+        let playing = self.open.playing.is_some();
         ui.menu_button("File", |ui| {
             if ui
                 .add_enabled(!playing, egui::Button::new("New project…"))
@@ -190,7 +190,7 @@ impl Workbench {
             ui.separator();
             if ui
                 .add_enabled(
-                    self.project.is_some(),
+                    self.open.project.is_some(),
                     egui::Button::new("Export for playtesting…"),
                 )
                 .on_hover_text(
@@ -308,7 +308,7 @@ impl Workbench {
             ui.separator();
             let record_why_not = if state != PlayState::Editing {
                 "Stop the game first"
-            } else if self.project.is_none() {
+            } else if self.open.project.is_none() {
                 "Recordings are kept in a project: open or make one first"
             } else {
                 ""
@@ -386,7 +386,7 @@ impl Workbench {
 
     /// The Help menu.
     fn help_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
-        let playing = self.playing.is_some();
+        let playing = self.open.playing.is_some();
         ui.menu_button("Help", |ui| {
             if !self.manual_url.is_empty()
                 && ui

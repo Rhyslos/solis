@@ -599,35 +599,36 @@ impl crate::Workbench {
     /// standard ones). Mute and solo stay on buses that are still there.
     pub fn set_mixer(&mut self, mixer: Mixer) {
         let names: Vec<&str> = mixer.buses.iter().map(|b| b.name.as_str()).collect();
-        let listening = &mut self.mixer.listening;
+        let listening = &mut self.open.mixer.listening;
         listening.muted.retain(|n| names.contains(&n.as_str()));
         listening.soloed.retain(|n| names.contains(&n.as_str()));
         if self
+            .open
             .mixer
             .shown
             .as_ref()
             .is_some_and(|(at, _)| *at >= mixer.buses.len())
         {
-            self.mixer.shown = None;
+            self.open.mixer.shown = None;
         }
-        self.mixer.mixer = mixer;
+        self.open.mixer.mixer = mixer;
     }
 
     /// The project's buses, as the Mixer has them now.
     pub fn mixer(&self) -> &Mixer {
-        &self.mixer.mixer
+        &self.open.mixer.mixer
     }
 
     /// Mute and solo, and the Game panel's mute.
     pub fn listening(&self) -> &Listening {
-        &self.mixer.listening
+        &self.open.mixer.listening
     }
 
     /// The meters' newest peaks (amplitudes) and each bus's ducking now,
     /// `dt` seconds after the last call; keeps drawing while they move.
     pub fn set_bus_meters(&mut self, peaks: &[f32], ducked: &[f32], dt: f32, ctx: &egui::Context) {
-        self.mixer.update_meters(peaks, ducked, dt);
-        if self.mixer.meters_moving() && self.in_front.contains(&crate::Panel::Mixer) {
+        self.open.mixer.update_meters(peaks, ducked, dt);
+        if self.open.mixer.meters_moving() && self.in_front.contains(&crate::Panel::Mixer) {
             ctx.request_repaint();
         }
     }
@@ -640,14 +641,16 @@ impl crate::Workbench {
     ) {
         match request {
             MixerRequest::Select(at) => {
-                self.mixer.shown = Some((at, self.document.selection.clone()));
-                self.sound_shown = None;
+                self.open.mixer.shown = Some((at, self.open.document.selection.clone()));
+                self.open.sound_shown = None;
             }
             MixerRequest::Changed { mixer, save } => {
                 self.set_mixer(mixer);
                 if save {
-                    if self.project.is_some() {
-                        actions.push(crate::WorkbenchAction::SaveMixer(self.mixer.mixer.clone()));
+                    if self.open.project.is_some() {
+                        actions.push(crate::WorkbenchAction::SaveMixer(
+                            self.open.mixer.mixer.clone(),
+                        ));
                     } else {
                         self.log(
                             crate::LogLevel::Info,
@@ -656,10 +659,18 @@ impl crate::Workbench {
                     }
                 }
             }
-            MixerRequest::Mute(at) => flip(&mut self.mixer.listening.muted, &self.mixer.mixer, at),
-            MixerRequest::Solo(at) => flip(&mut self.mixer.listening.soloed, &self.mixer.mixer, at),
+            MixerRequest::Mute(at) => flip(
+                &mut self.open.mixer.listening.muted,
+                &self.open.mixer.mixer,
+                at,
+            ),
+            MixerRequest::Solo(at) => flip(
+                &mut self.open.mixer.listening.soloed,
+                &self.open.mixer.mixer,
+                at,
+            ),
             MixerRequest::MuteAll => {
-                self.mixer.listening.all_muted = !self.mixer.listening.all_muted;
+                self.open.mixer.listening.all_muted = !self.open.mixer.listening.all_muted;
             }
         }
     }
@@ -798,7 +809,7 @@ mod tests {
         let mut h = with_the_mixer();
         h.get_by_label("Music").click();
         h.run();
-        assert_eq!(h.state().0.mixer.shown.as_ref().map(|s| s.0), Some(1));
+        assert_eq!(h.state().0.open.mixer.shown.as_ref().map(|s| s.0), Some(1));
         assert!(h.query_by_label("Quieter while").is_some());
         assert!(h.query_by_label("Remove bus").is_some());
         // A new bus goes inside the one shown.
@@ -809,7 +820,10 @@ mod tests {
         let m = &saves[0];
         let new = m.index_of("Bus").unwrap();
         assert_eq!(m.buses[new].inside, "Music");
-        assert_eq!(h.state().0.mixer.shown.as_ref().map(|s| s.0), Some(new));
+        assert_eq!(
+            h.state().0.open.mixer.shown.as_ref().map(|s| s.0),
+            Some(new)
+        );
         // Removing it saves again, and Properties goes back.
         h.get_by_label("Remove bus").click();
         h.run();
@@ -825,10 +839,15 @@ mod tests {
             .0
             .mixer_request(MixerRequest::Select(2), &mut Vec::new());
         h.run();
-        assert!(h.state().0.mixer.shown.is_some());
-        h.state_mut().0.document.selection.select_only(crate_id);
+        assert!(h.state().0.open.mixer.shown.is_some());
+        h.state_mut()
+            .0
+            .open
+            .document
+            .selection
+            .select_only(crate_id);
         h.run();
-        assert!(h.state().0.mixer.shown.is_none());
+        assert!(h.state().0.open.mixer.shown.is_none());
     }
 
     #[test]

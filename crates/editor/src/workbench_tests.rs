@@ -824,7 +824,8 @@ fn the_environment_is_shown_in_properties() {
 fn a_component_nobody_knows_is_kept_and_can_be_removed() {
     let mut w = Workbench::new(info(), None);
     let id = w.add_entity();
-    w.document
+    w.open
+        .document
         .edit(
             "Add Wobble",
             vec![Edit::AddComponent {
@@ -1254,7 +1255,7 @@ fn crowded(count: usize) -> Workbench {
     let mut w = Workbench::new(info(), None);
     let info = crate_info();
     let asset = info.asset;
-    w.models.insert(asset, info);
+    w.open.models.insert(asset, info);
     let mut entities = Vec::new();
     let mut parent = None;
     for i in 0..count {
@@ -1284,7 +1285,7 @@ fn crowded(count: usize) -> Workbench {
         });
     }
     // Spawned parents first: each group's head comes before its members.
-    w.document.edit("Fill", entities, None, None).unwrap();
+    w.open.document.edit("Fill", entities, None, None).unwrap();
     w
 }
 
@@ -2043,7 +2044,7 @@ fn a_sound_picked_in_the_library_shows_in_properties_and_plays() {
     h.run();
     assert!(h.state().1.contains(&WorkbenchAction::StopSound));
     // Picking something else in the area (here, nothing) shows that.
-    h.state_mut().0.document.selection.clear();
+    h.state_mut().0.open.document.selection.clear();
     h.run();
     assert!(h.query_by_label("Sample rate").is_none());
 }

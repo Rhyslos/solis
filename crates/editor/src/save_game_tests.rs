@@ -67,7 +67,7 @@ fn raw(n: u64) -> EntityId {
 /// floor, a crate on it, and the busy entity.
 pub(super) fn busy(project: &str) -> Workbench {
     let mut w = Workbench::new(info(), None);
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: project.into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -95,7 +95,8 @@ pub(super) fn busy(project: &str) -> Workbench {
     let mut busy = EntityData::new("Busy").with(&Transform::default());
     busy.components
         .insert("Busy".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![
@@ -113,7 +114,7 @@ pub(super) fn busy(project: &str) -> Workbench {
             None,
         )
         .unwrap();
-    w.fixed_seed = Some(11);
+    w.open.fixed_seed = Some(11);
     w
 }
 
@@ -127,7 +128,7 @@ pub(super) fn run_to(w: &mut Workbench, ticks: u64) {
 
 /// The game's checksums now: the world's and game code's.
 pub(super) fn sums(w: &mut Workbench) -> (u64, u64) {
-    let playing = w.playing.as_mut().unwrap();
+    let playing = w.open.playing.as_mut().unwrap();
     (
         playing.world.checksum(),
         playing.game.as_mut().unwrap().checksum(),
@@ -156,7 +157,8 @@ fn a_loaded_game_carries_on_exactly_as_the_saved_one_would_have() {
     // Stop goes back to the area as it was before Play.
     w.stop();
     assert_eq!(
-        w.document
+        w.open
+            .document
             .area()
             .get(raw(3))
             .unwrap()
@@ -179,7 +181,7 @@ fn save_quit_open_and_load_carries_on_the_same() {
     // Solis again: a new workbench with the project's code, nothing
     // playing. Loading plays.
     let mut again = busy("Harbour");
-    again.fixed_seed = None;
+    again.open.fixed_seed = None;
     again.load_game(&text, "quick.solsave");
     assert_eq!(again.play_state(), crate::play::PlayState::Playing);
     run_to(&mut again, 150);
@@ -205,6 +207,7 @@ fn game_code_saves_and_loads_at_the_end_of_the_tick() {
     set_ask(&mut w, 1);
     run_to(&mut w, 12);
     let saved = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -213,12 +216,13 @@ fn game_code_saves_and_loads_at_the_end_of_the_tick() {
         })
         .expect("save asked the app to write it");
     assert_eq!(saved.0, "quick");
-    w.outbox.clear();
+    w.open.outbox.clear();
     set_ask(&mut w, 2);
     let before = w.world().unwrap().clock().ticks;
     w.run_game((world::TICK * 4.0) as f32);
     assert!(
-        w.outbox
+        w.open
+            .outbox
             .iter()
             .any(|a| matches!(a, WorkbenchAction::LoadGame(slot) if slot == "quick"))
     );
@@ -253,7 +257,7 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
             .text
             .contains("saved by the project Harbour")
     );
-    assert!(other.playing.is_none());
+    assert!(other.open.playing.is_none());
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
@@ -334,6 +338,7 @@ fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
     run_to(&mut w, 10);
     let mut save = w.save_of_game().unwrap();
     let floor = w
+        .open
         .document
         .area()
         .iter()
@@ -346,7 +351,7 @@ fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
         .components
         .insert("Busy".into(), reflect::ComponentData::default());
     extra.insert(floor, holder);
-    let registry = w.document.registry.clone();
+    let registry = w.open.document.registry.clone();
     let values = area::text::read(&save.values, &registry).unwrap();
     for (id, data) in values.iter() {
         extra.insert(id, data.clone());
@@ -359,7 +364,7 @@ fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
         "{}",
         w.log_lines().last().unwrap().text
     );
-    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let running = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert!(
         running
             .all_values()
@@ -373,7 +378,7 @@ fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
 fn saving_needs_a_project_and_a_running_game() {
     let mut w = busy("Harbour");
     assert_eq!(w.save_of_game().unwrap_err(), "nothing is running");
-    w.project = None;
+    w.open.project = None;
     w.play();
     assert_eq!(
         w.save_of_game().unwrap_err(),
@@ -403,7 +408,8 @@ fn ask(w: &mut Workbench, n: u64, request: i64, change: u64) {
 }
 
 fn saves_asked(w: &Workbench) -> usize {
-    w.outbox
+    w.open
+        .outbox
         .iter()
         .filter(|a| matches!(a, WorkbenchAction::SaveGame { .. }))
         .count()
@@ -427,7 +433,7 @@ fn many_saves_of_one_slot_in_a_tick_are_made_once() {
             entities: vec![(raw(100 + n), more)],
         });
     }
-    w.document.edit("More", spawns, None, None).unwrap();
+    w.open.document.edit("More", spawns, None, None).unwrap();
     w.play();
     run_to(&mut w, 3);
     assert_eq!(saves_asked(&w), 1);
@@ -458,11 +464,11 @@ fn a_save_asked_for_on_a_tick_that_pauses_is_still_made() {
     w.play();
     run_to(&mut w, 5);
     // A recording that's full: the next tick pauses the game.
-    let playing = w.playing.as_mut().unwrap();
+    let playing = w.open.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording::default());
     playing.recording_bytes = input::MAX_RECORDING_BYTES;
     ask(&mut w, 3, 1, 950);
-    w.outbox.clear();
+    w.open.outbox.clear();
     run_to(&mut w, 6);
     assert_eq!(w.play_state(), crate::play::PlayState::Paused);
     assert_eq!(saves_asked(&w), 1, "saved, then paused");
@@ -569,7 +575,8 @@ fn busy_with_keys() -> Workbench {
     let mut keys = EntityData::new("Keys");
     keys.components
         .insert("Keys".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Keys",
             vec![area::Edit::Spawn {
@@ -587,7 +594,7 @@ fn a_recording_with_a_quick_save_in_it_replays_matching() {
     // The third review: a replay skipped the save, and so the physics
     // built again with it, and stopped matching right after.
     let mut w = busy_with_keys();
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -601,6 +608,7 @@ fn a_recording_with_a_quick_save_in_it_replays_matching() {
     run_to(&mut w, 90);
     w.stop();
     let text = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -613,9 +621,9 @@ fn a_recording_with_a_quick_save_in_it_replays_matching() {
         1,
         "saved while recording: {:?} {:?}",
         w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>(),
-        w.outbox.len()
+        w.open.outbox.len()
     );
-    w.outbox.clear();
+    w.open.outbox.clear();
     w.replay(&text, "quick.solrec");
     for _ in 0..200 {
         if w.play_state() == crate::play::PlayState::Paused {
@@ -636,7 +644,7 @@ fn a_recording_with_a_quick_save_in_it_replays_matching() {
 #[test]
 fn a_quick_load_keeps_the_game_s_keys_and_keeps_what_was_recorded() {
     let mut w = busy_with_keys();
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -650,6 +658,7 @@ fn a_quick_load_keeps_the_game_s_keys_and_keeps_what_was_recorded() {
     w.load_game_from_code(&text, "quick");
     assert!(w.game_has_input(), "still the game's");
     let kept = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -694,6 +703,7 @@ fn write_fuzz_seeds() {
     put("save_game", "long-line.solsave", &long);
     w.stop();
     let recording = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -711,7 +721,7 @@ fn write_fuzz_seeds() {
     put(
         "area_file",
         "busy.solarea",
-        &area::text::write(w.document.area(), &w.document.registry, &|_| None),
+        &area::text::write(w.open.document.area(), &w.open.document.registry, &|_| None),
     );
     put("game_code", "busy.lst", BUSY);
 }
@@ -720,7 +730,7 @@ fn write_fuzz_seeds() {
 fn a_sound_turned_off_stays_off_after_a_load() {
     use area::builtin::AudioSource;
     let mut w = Workbench::new(info(), None);
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Radio".into(),
         root: std::path::PathBuf::from("/nowhere"),
         assets: std::path::PathBuf::from("/nowhere/assets"),
@@ -730,7 +740,8 @@ fn a_sound_turned_off_stays_off_after_a_load() {
         event: "radio".into(),
         ..AudioSource::default()
     };
-    w.document
+    w.open
+        .document
         .edit(
             "Add a sound",
             crate::commands::component_edits(radio, None, &source),
@@ -741,7 +752,8 @@ fn a_sound_turned_off_stays_off_after_a_load() {
     w.play();
     assert_eq!(w.audio_sources().len(), 1, "on at Play");
     let before = w.world().unwrap().checksum();
-    w.playing
+    w.open
+        .playing
         .as_mut()
         .unwrap()
         .world
@@ -797,6 +809,7 @@ fn every_version_of_a_save_loads_and_plays_on() {
             // It plays on: the counter's values came back and go on.
             run_to(&mut w, 60);
             let values = w
+                .open
                 .playing
                 .as_mut()
                 .unwrap()
@@ -925,7 +938,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     let (mut w, farmer) = busy_with_an_animator();
     w.play();
     run_to(&mut w, 5);
-    let world = &mut w.playing.as_mut().unwrap().world;
+    let world = &mut w.open.playing.as_mut().unwrap().world;
     world
         .set_animator_value(farmer, "moving", animation::ParamValue::Switch(true))
         .unwrap();
@@ -1017,7 +1030,7 @@ fn a_tile_map_the_game_changed_survives_a_save() {
     let (mut w, field) = busy_with_a_map();
     w.play();
     run_to(&mut w, 5);
-    let world = &mut w.playing.as_mut().unwrap().world;
+    let world = &mut w.open.playing.as_mut().unwrap().world;
     world.set_tile(field, 0, [3, 4], b't').unwrap();
     world
         .set_cell_value(field, 0, [3, 4], tiles::CellValue::Number(2))
@@ -1090,14 +1103,17 @@ fn loading_a_game_keeps_the_player_s_settings() {
     w.player_settings = w
         .player_settings
         .with(script::settings::Setting::TextSize(1.75));
-    w.playing.as_mut().unwrap().view.settings = w.player_settings;
+    w.open.playing.as_mut().unwrap().view.settings = w.player_settings;
     w.load_game(&text, "quick");
     run_to(&mut w, 8);
     assert_eq!(
         w.player_settings.text_size, 1.75,
         "the player's, not the save's"
     );
-    assert_eq!(w.playing.as_ref().unwrap().view.settings.text_size, 1.75);
+    assert_eq!(
+        w.open.playing.as_ref().unwrap().view.settings.text_size,
+        1.75
+    );
 }
 
 #[test]

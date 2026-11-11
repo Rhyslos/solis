@@ -16,7 +16,7 @@ use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
-use crate::properties::AssemblyPart;
+use crate::project_state::ProjectState;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
@@ -272,16 +272,17 @@ pub(crate) type PartKey = (Option<reflect::EntityId>, u64, u64);
 /// The editor's state, kept between frames.
 pub struct Workbench {
     pub(crate) info: AppInfo,
+    /// Everything that belongs to the open project (or to working without
+    /// one): replaced whole when another project opens, so nothing of one
+    /// project is used with another. What is declared below is the
+    /// program's and the user's, and stays.
+    pub(crate) open: ProjectState,
     pub(crate) dock: DockState<Panel>,
     pub(crate) accent: Accent,
     /// The theme and whether panels are rounded (decision 0096).
     pub(crate) appearance: theme::Appearance,
     pub(crate) viewport: Viewport,
     pub(crate) console: Console,
-    /// The open area and what's selected in it.
-    pub(crate) document: Document,
-    /// What the editor knows about the imported models, by asset.
-    pub(crate) models: BTreeMap<AssetId, ModelInfo>,
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
     pub(crate) about_open: bool,
@@ -297,13 +298,6 @@ pub struct Workbench {
     pub(crate) sound_spent: std::time::Duration,
     /// The Settings window, while it's open (Edit > Settings…).
     pub(crate) settings_window: Option<crate::settings_window::SettingsWindow>,
-    /// File > Export for playtesting…, while it's open (decision 0093).
-    pub(crate) export_window: Option<crate::export_dialog::ExportWindow>,
-    /// How the open project was last exported, to start from.
-    pub(crate) last_export: Option<crate::export_dialog::Playtest>,
-    /// Where the open project was last exported on this computer, if the
-    /// app remembers.
-    pub(crate) last_export_folder: Option<std::path::PathBuf>,
     /// The Documents folder, for exports to go in by default.
     pub(crate) documents: Option<std::path::PathBuf>,
     /// How updating is going, as the app last said.
@@ -322,72 +316,19 @@ pub struct Workbench {
     /// The tabs that were in front last frame, to underline them in the
     /// accent colour.
     pub(crate) in_front: HashSet<Panel>,
-    /// The open project, if any.
-    pub(crate) project: Option<ProjectInfo>,
     /// Projects opened lately, newest first, for File > Recent projects.
     pub(crate) recent: Vec<std::path::PathBuf>,
-    /// The project's assets, for the Library.
-    pub(crate) library: Vec<LibraryItem>,
-    /// The project's assemblies the area uses, as read from their files.
-    pub(crate) assemblies: BTreeMap<AssetId, std::sync::Arc<area::text::AreaFile>>,
-    /// Actions asked for outside [`Self::show`]'s own flow (menus,
-    /// Properties), handed to the app with the next frame's.
-    pub(crate) outbox: Vec<WorkbenchAction>,
-    /// What waits for an answer about unsaved changes: Save, Don't save
-    /// or Cancel.
-    pub(crate) unsaved_prompt: Option<WorkbenchAction>,
-    /// The area as the file now on disk holds it, waiting for Keep mine
-    /// or Load the file.
-    pub(crate) pending_reload: Option<area::Area>,
-    /// Whether the Environment's Preview time is forgotten next frame
-    /// (another project was opened).
-    forget_preview: bool,
     /// An exported game (decision 0093): only the game shows, filling the
     /// window, and the window follows the player's settings.
     pub(crate) play_only: bool,
-    /// Whether game code asked to close the game (`Window:quit()`).
-    pub(crate) quit_asked: bool,
     /// Whether the window may close despite unsaved changes (the user
     /// said Don't save).
     pub(crate) may_close: bool,
     /// Counts presses of the mouse: changes to one field during one press
     /// (a drag) are one undo step.
     pub(crate) gesture: u64,
-    /// While a gizmo is dragged: what moves, as it was when the drag
-    /// began, and the drag's gesture.
-    pub(crate) moving: Option<(crate::transforming::Targets, u64)>,
-    /// What the Area panel searches for, folds, hides and locks.
-    pub(crate) area_panel: crate::area_panel::AreaPanelState,
-    /// Components' values copied in Properties, to paste.
-    pub(crate) copied: Vec<(String, reflect::ComponentData)>,
     /// Whether the Console has said which program opens Lust files.
     pub(crate) told_how_lust_opens: bool,
-    /// The project's folders, for the Library's tree.
-    pub(crate) folders: Vec<String>,
-    /// How the Library is shown.
-    pub(crate) library_state: crate::library::LibraryState,
-    /// The project's sound files as the app has measured them, by path
-    /// inside the assets.
-    pub(crate) sounds: std::collections::HashMap<String, crate::sound_view::SoundState>,
-    /// The project's sound events as the app has read them, by path
-    /// inside the assets.
-    pub(crate) sound_events: std::collections::HashMap<String, crate::sound_view::EventState>,
-    /// The sound being listened to, and how far it has got.
-    pub(crate) preview: Option<crate::sound_view::Preview>,
-    /// The sound file Properties shows (picked in the Library), with the
-    /// area's selection as it was then: picking something else in the
-    /// area shows that instead.
-    pub(crate) sound_shown: Option<(String, crate::document::Selection)>,
-    /// The text file shown in Properties, as the app last read it (by
-    /// path inside the assets).
-    pub(crate) text_file: Option<(String, crate::text_view::TextRead)>,
-    /// The project's buses, mute and solo, and the meters (the Mixer).
-    pub(crate) mixer: crate::mixer_view::MixerState,
-    /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
-    pub(crate) pixels: area::pixels::PixelSettings,
-    /// When the game's code was last checked (the local time, for the
-    /// status bar); none before the first check.
-    pub(crate) code_checked: Option<String>,
     /// Whether the Library is docked (pinned) or a drawer (decision 0085).
     pub(crate) library_pinned: bool,
     /// Whether the Library's drawer is popped up (unpinned only).
@@ -398,78 +339,31 @@ pub struct Workbench {
     pub(crate) workspace: crate::workspace::Workspace,
     /// The other workspaces' layouts, as last left.
     pub(crate) other_layouts: BTreeMap<crate::workspace::Workspace, DockState<Panel>>,
-    /// Changes made while playing, waiting for Keep or Undo all.
-    pub(crate) play_changes: Option<crate::play_changes::PlayChanges>,
     /// One search for everything (decision 0085).
     pub(crate) search: crate::search::SearchState,
     /// The program's logo, for the top bar (the app hands it over).
     pub(crate) logo: Option<egui::TextureId>,
-    /// The sound event a sprite's clip event plays, by the event's name
-    /// (Phase 9, D3): each sound event by its path without `.solsound`
-    /// ("sfx/footstep"), and by its file's name alone ("footstep") when
-    /// no other sound event has that name.
-    pub(crate) cue_sounds: HashMap<String, String>,
-    /// The clips file open in the Clips and Frames tabs (Phase 9, D3).
-    pub(crate) frames_editor: Option<crate::frames_editor::FramesEditor>,
     /// Whether the pointer was over the Clips or Frames tab last frame:
     /// Ctrl+Z, Ctrl+Y and Delete are the file's then.
     pub(crate) frames_hovered: bool,
-    /// The animator file open in the Animator tab (Phase 9, D3b).
-    pub(crate) animator_editor: Option<crate::animator_editor::AnimatorEditor>,
     /// Whether the pointer was over the Animator tab last frame: Ctrl+Z,
     /// Ctrl+Y, Delete and F are the animator's then.
     pub(crate) animator_hovered: bool,
-    /// The tileset open in the Tileset tab (Phase 9, D5).
-    pub(crate) tileset_editor: Option<crate::tileset_editor::TilesetEditor>,
-    /// The atlas open in the Atlas Crop tab (decision 0089).
-    pub(crate) atlas_editor: Option<crate::atlas_editor::AtlasEditor>,
     /// Whether the pointer was over the Atlas Crop tab last frame.
     pub(crate) atlas_hovered: bool,
-    /// The open atlas's picture as a texture.
-    pub(crate) atlas_texture: crate::workbench_atlas::AtlasTexture,
     /// Whether the pointer was over the Tileset tab last frame: Ctrl+Z and
     /// Ctrl+Y are the tileset's then.
     pub(crate) tileset_hovered: bool,
-    /// The open tileset's picture as a texture.
-    pub(crate) tile_textures: crate::workbench_tileset::TileTextures,
-    /// The Map tab's undo steps, the selected map's values shown over it
-    /// and its hidden layers (Phase 9, D4).
-    pub(crate) map_edits: crate::workbench_tiles::MapEdits,
     /// Whether the pointer was over the Map tab last frame (Ctrl+Z and
     /// Ctrl+Y are the map's then).
     pub(crate) map_hovered: bool,
-    /// Each sprite sheet's atlas as an egui picture, by path, for the
-    /// Library and Properties, and which sheet each was made from.
-    pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
-    pub(crate) sheet_pictures_from: HashMap<String, usize>,
-    /// Where assets being placed go, when they were dropped somewhere:
-    /// the point, and the entity they go under.
-    pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
-    /// Pictures being placed as sprites, waiting to be read as sheets:
-    /// where each goes (`None`: where the camera looks).
-    pub(crate) pictures_placing: BTreeMap<AssetId, Option<(glam::Vec3, Option<EntityId>)>>,
-    /// Mistakes found in the area, for the Problems panel.
-    pub(crate) problems: crate::problems::Problems,
-    /// The game, while it runs.
-    pub(crate) playing: Option<crate::play::Playing>,
     /// Goes up whenever what Problems checks the area against changes:
     /// the models loaded, the Library, the assemblies, the components
-    /// known.
+    /// known. It only ever goes up, another project included, so nothing
+    /// worked out for one count is taken for a later one's.
     pub(crate) sources: u64,
-    /// Mistakes in the game's code, from the last check.
-    pub(crate) code_problems: Vec<script::CodeProblem>,
-    /// The game's program, from the last code without mistakes.
-    pub(crate) program: Option<std::sync::Arc<script::Compiled>>,
-    /// The components it put in the registry, by name.
-    pub(crate) game_components: std::collections::BTreeSet<String>,
     /// Where each frame's time goes (the Profiler panel).
     pub(crate) profiler: crate::profiler::Profiler,
-    /// What the viewport's [`AreaView`] was last worked out for.
-    editor_view: Option<ViewKey>,
-    /// The project's input actions (decision 0037), from its
-    /// `input.solinput` ([`Self::set_bindings`]); the ready-made ones
-    /// without a project.
-    pub(crate) bindings: input::Bindings,
     /// What the keyboard, mouse and gamepad are doing, while the game has
     /// them.
     pub(crate) devices: input::Devices,
@@ -482,64 +376,28 @@ pub struct Workbench {
     /// The gamepad as the app last read it (also while editing, for
     /// binding its buttons in the Input actions window).
     pub(crate) pad_now: Option<input::Pad>,
-    /// Whether the Input actions window is open.
-    pub(crate) input_window: Option<crate::input_window::InputWindow>,
-    /// The seed every Play starts the game's random numbers from, if one
-    /// was chosen (`seed` in the Console); otherwise each Play has a new
-    /// one.
-    pub(crate) fixed_seed: Option<u64>,
     /// A test screen the Game panel shows over the game (the Console's
     /// `ui test`, decision 0083), until screens are made in Lust.
     pub(crate) ui_test: Option<std::sync::Arc<ui::Screen>>,
-    /// The game's screens while it plays (decision 0087).
-    pub(crate) game_screens: crate::game_screens::GameScreens,
-    /// The pictures the game's screens show (decision 0089).
-    pub(crate) screen_pictures: crate::screen_pictures::ScreenPictures,
-    /// The screen open on the UI editor's canvas (decision 0089).
-    pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
-    /// The program its view was drawn from.
-    pub(crate) screen_from: Option<usize>,
     /// The player's settings (decision 0091): text size, UI size and the
-    /// window, as game code last set them; kept from play to play.
+    /// window, as game code last set them; kept from play to play. They
+    /// are the player's, not the project's: an exported game is handed
+    /// them before its project opens.
     pub(crate) player_settings: script::settings::PlayerSettings,
-    /// What the open screen can be tied to and send, and the build of the
-    /// game's code it's for.
-    pub(crate) screen_game: Option<(
-        Option<usize>,
-        std::sync::Arc<crate::screen_ties::ScreenGame>,
-    )>,
     /// The fonts the canvas measures with.
     pub(crate) screen_fonts: Option<ui::Fonts>,
     /// Whether the pointer is over the canvas or Elements (Ctrl+Z is
     /// theirs then).
     pub(crate) screen_hovered: bool,
-    /// What the Game panel showed last, and what it was worked out for:
-    /// made again only when the world, the models or the state changed
-    /// (not on a frame without a tick, or while paused).
-    pub(crate) game_scene: Option<(GameKey, crate::game_panel::GameScene)>,
-    /// Game code's sound requests since the app last took them.
-    pub(crate) game_sounds: Vec<crate::game_sound::GameSound>,
     /// How many times Play has started a game (the app's sound starts
-    /// afresh with each).
+    /// afresh with each). It only ever goes up, another project included.
     pub(crate) plays: u64,
-    /// Its components whose names were taken (by the engine's own, or a
-    /// Rust one's): they don't run.
-    pub(crate) left_out: std::collections::BTreeSet<String>,
-    /// The Lust compiler's notes on the game code last checked (older ways of writing that
-    /// still work), told in the Console once each time they change.
-    pub(crate) told_code_notes: Vec<String>,
-    /// Kinds of component written in Rust, run in play mode.
-    pub(crate) rust_components: Vec<script::RustKind>,
-    /// The last [`Self::assembly_part`], with the selection, revision and
-    /// sources it was worked out for: kept, since it expands the whole
-    /// assembly.
-    pub(crate) assembly_part_kept: std::cell::RefCell<Option<(PartKey, Option<AssemblyPart>)>>,
 }
 
 /// What the viewport's view of the area depends on: when it's the same,
 /// the view is too.
 #[derive(Debug, Clone, PartialEq)]
-struct ViewKey {
+pub(crate) struct ViewKey {
     revision: u64,
     sources: u64,
     models: usize,
@@ -566,13 +424,12 @@ impl Workbench {
     pub fn new(info: AppInfo, saved_layout: Option<DockState<Panel>>) -> Self {
         Self {
             info,
+            open: ProjectState::default(),
             dock: layout::restore(saved_layout),
             accent: Accent::default(),
             appearance: theme::Appearance::default(),
             viewport: Viewport::default(),
             console: Console::default(),
-            document: Document::default(),
-            models: BTreeMap::new(),
             files_hovering: false,
             about_open: false,
             launcher: Default::default(),
@@ -581,9 +438,6 @@ impl Workbench {
             manual_url: String::new(),
             sound_spent: std::time::Duration::ZERO,
             settings_window: None,
-            export_window: None,
-            last_export: None,
-            last_export_folder: None,
             documents: None,
             update: Default::default(),
             release_notes: None,
@@ -593,87 +447,33 @@ impl Workbench {
             restarting: false,
             in_front: HashSet::new(),
             gesture: 0,
-            moving: None,
-            area_panel: Default::default(),
-            copied: Vec::new(),
             told_how_lust_opens: false,
-            folders: Vec::new(),
-            library_state: Default::default(),
-            sounds: std::collections::HashMap::new(),
-            sound_events: std::collections::HashMap::new(),
-            preview: None,
-            sound_shown: None,
-            text_file: None,
-            mixer: Default::default(),
-            pixels: area::pixels::PixelSettings::default(),
-            code_checked: None,
             library_pinned: true,
             drawer_open: false,
             hints: true,
             workspace: crate::workspace::Workspace::Level,
             other_layouts: BTreeMap::new(),
-            play_changes: None,
             search: crate::search::SearchState::default(),
             logo: None,
-            cue_sounds: HashMap::new(),
-            frames_editor: None,
             frames_hovered: false,
-            animator_editor: None,
             animator_hovered: false,
-            tileset_editor: None,
-            atlas_editor: None,
             atlas_hovered: false,
-            atlas_texture: None,
             tileset_hovered: false,
-            tile_textures: Default::default(),
-            map_edits: Default::default(),
             map_hovered: false,
-            sheet_pictures: HashMap::new(),
-            sheet_pictures_from: HashMap::new(),
-            place_targets: BTreeMap::new(),
-            pictures_placing: BTreeMap::new(),
-            problems: Default::default(),
-            playing: None,
             sources: 0,
-            code_problems: Vec::new(),
-            program: None,
-            game_components: std::collections::BTreeSet::new(),
             profiler: crate::profiler::Profiler::default(),
-            editor_view: None,
-            fixed_seed: None,
             ui_test: None,
-            game_screens: Default::default(),
-            screen_pictures: Default::default(),
-            screen_doc: None,
-            screen_from: None,
             player_settings: Default::default(),
-            screen_game: None,
             screen_fonts: None,
             screen_hovered: false,
-            bindings: input::Bindings::default(),
             devices: input::Devices::new(),
             game_input: false,
             release_pointer: false,
             pad_now: None,
-            input_window: None,
-            game_scene: None,
-            game_sounds: Vec::new(),
             plays: 0,
-            left_out: std::collections::BTreeSet::new(),
-            told_code_notes: Vec::new(),
-            rust_components: Vec::new(),
-            assembly_part_kept: std::cell::RefCell::new(None),
-            assemblies: BTreeMap::new(),
-            outbox: Vec::new(),
-            unsaved_prompt: None,
-            pending_reload: None,
-            forget_preview: false,
             play_only: false,
-            quit_asked: false,
             may_close: false,
-            project: None,
             recent: Vec::new(),
-            library: Vec::new(),
         }
     }
 
@@ -719,60 +519,22 @@ impl Workbench {
 
     /// What the editor knows about the imported models, by asset.
     pub fn models(&self) -> &BTreeMap<AssetId, ModelInfo> {
-        &self.models
+        &self.open.models
     }
 
     /// The open area and its selection.
     pub fn document(&self) -> &Document {
-        &self.document
+        &self.open.document
     }
 
     /// The entity shown in Properties, if any.
     pub fn selection(&self) -> Option<EntityId> {
-        self.document.selection.primary()
-    }
-
-    /// Shows `project` as the open one (or none). A different project
-    /// starts a new area, as the old one's models belong to the old
-    /// project.
-    pub fn set_project(&mut self, project: Option<ProjectInfo>) {
-        if project.is_some() {
-            // A project is open: the launcher has done its job.
-            self.launcher.open = false;
-        }
-        if project != self.project {
-            self.replace_document(Document::default());
-            self.models.clear();
-            self.library.clear();
-            self.sources += 1;
-            // Nothing of the old project's is used with the new one: its
-            // assemblies (a copy of a project shares IDs with it), where
-            // things were dropped, a question about its file, the
-            // Library's place in its folders, its code's mistakes.
-            self.assemblies.clear();
-            self.place_targets.clear();
-            self.pictures_placing.clear();
-            self.code_problems.clear();
-            self.screen_pictures = crate::screen_pictures::ScreenPictures::default();
-            self.set_program(None);
-            self.set_rust_components(Vec::new());
-            self.pending_reload = None;
-            self.forget_preview = true;
-            self.export_window = None;
-            self.last_export = None;
-            self.last_export_folder = None;
-            self.unsaved_prompt = None;
-            self.library_state = Default::default();
-            if let Some(p) = &project {
-                self.log(LogLevel::Info, format!("Opened the project {}.", p.name));
-            }
-        }
-        self.project = project;
+        self.open.document.selection.primary()
     }
 
     /// The open project, if any.
     pub fn project(&self) -> Option<&ProjectInfo> {
-        self.project.as_ref()
+        self.open.project.as_ref()
     }
 
     /// The projects for File > Recent projects, newest first.
@@ -782,23 +544,23 @@ impl Workbench {
 
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
-        self.library = items;
-        self.cue_sounds = cue_sounds(&self.library);
+        self.open.library = items;
+        self.open.cue_sounds = cue_sounds(&self.open.library);
         self.sources += 1;
     }
 
     /// The project's folders inside its assets, `/` between names, for
     /// the Library's tree.
     pub fn set_folders(&mut self, folders: Vec<String>) {
-        if !folders.contains(&self.library_state.folder) {
-            self.library_state.folder.clear();
+        if !folders.contains(&self.open.library_state.folder) {
+            self.open.library_state.folder.clear();
         }
-        self.folders = folders;
+        self.open.folders = folders;
     }
 
     /// Whether the model `id` is loaded (placed or reloaded before).
     pub fn has_model(&self, id: AssetId) -> bool {
-        self.models.contains_key(&id)
+        self.open.models.contains_key(&id)
     }
 
     /// Swaps in a model that changed on disk (or loads one an opened area
@@ -807,7 +569,7 @@ impl Workbench {
     pub fn reload_model(&mut self, info: ModelInfo, warnings: &[String]) {
         let (name, triangles) = (info.name.clone(), info.triangles);
         self.sources += 1;
-        if self.models.insert(info.asset, info).is_none() {
+        if self.open.models.insert(info.asset, info).is_none() {
             // First loaded for an opened area: nothing to announce.
             return;
         }
@@ -827,22 +589,25 @@ impl Workbench {
     /// unsaved changes: asking comes before the action.
     pub fn new_area(&mut self) {
         self.replace_document(Document::default());
-        self.pending_reload = None;
+        self.open.pending_reload = None;
     }
 
     /// Shows `area`, read from `file`, in place of the open one.
     pub fn open_area(&mut self, area: area::Area, file: std::path::PathBuf) {
         self.replace_document(Document::opened(area, file));
-        self.pending_reload = None;
-        self.log(LogLevel::Info, format!("Opened {}.", self.document.name()));
+        self.open.pending_reload = None;
+        self.log(
+            LogLevel::Info,
+            format!("Opened {}.", self.open.document.name()),
+        );
     }
 
     /// Uses `document` in place of the open one, keeping the components
     /// registered so far (game code registers its own once, not once per
     /// area).
     pub(crate) fn replace_document(&mut self, mut document: Document) {
-        document.registry = std::mem::take(&mut self.document.registry);
-        self.document = document;
+        document.registry = std::mem::take(&mut self.open.document.registry);
+        self.open.document = document;
     }
 
     /// A file or folder was moved from `from` to `to` (full paths), or
@@ -854,7 +619,7 @@ impl Workbench {
         from: &std::path::Path,
         to: Option<&std::path::Path>,
     ) -> Option<Option<std::path::PathBuf>> {
-        let file = self.document.file()?.to_path_buf();
+        let file = self.open.document.file()?.to_path_buf();
         let rest = file.strip_prefix(from).ok()?;
         let moved = to.map(|to| {
             if rest.as_os_str().is_empty() {
@@ -863,7 +628,7 @@ impl Workbench {
                 to.join(rest)
             }
         });
-        self.document.file_moved(moved.clone());
+        self.open.document.file_moved(moved.clone());
         match &moved {
             Some(path) => self.log(
                 LogLevel::Info,
@@ -879,21 +644,24 @@ impl Workbench {
 
     /// Notes that the area was saved to `file`.
     pub fn mark_saved(&mut self, file: std::path::PathBuf) {
-        self.document.mark_saved(file);
-        self.log(LogLevel::Info, format!("Saved {}.", self.document.name()));
+        self.open.document.mark_saved(file);
+        self.log(
+            LogLevel::Info,
+            format!("Saved {}.", self.open.document.name()),
+        );
     }
 
     /// The open area's file changed on disk and now holds `area`: it's
     /// loaded as one undoable step, or, with unsaved changes, the user is
     /// asked which to keep.
     pub fn offer_reload(&mut self, area: area::Area) {
-        if let Some(playing) = &mut self.playing {
+        if let Some(playing) = &mut self.open.playing {
             // The game's copy isn't the file's; offered again after Stop.
             playing.reload = Some(area);
             return;
         }
-        if self.document.is_dirty() {
-            self.pending_reload = Some(area);
+        if self.open.document.is_dirty() {
+            self.open.pending_reload = Some(area);
         } else {
             self.reload_area(area);
         }
@@ -901,15 +669,16 @@ impl Workbench {
 
     fn reload_area(&mut self, area: area::Area) {
         let file = self
+            .open
             .document
             .file()
             .and_then(|f| f.file_name())
             .map_or_else(
-                || self.document.name(),
+                || self.open.document.name(),
                 |n| n.to_string_lossy().into_owned(),
             );
         let label = format!("Reloaded {file} from disk");
-        match self.document.reload(area, &label) {
+        match self.open.document.reload(area, &label) {
             Ok(()) => self.log(LogLevel::Info, format!("{label}.")),
             Err(why) => self.log(LogLevel::Error, format!("Couldn't reload {file}: {why}.")),
         }
@@ -1003,11 +772,11 @@ impl Workbench {
 
     /// The window title: the program, its version and the open area.
     pub fn title(&self) -> String {
-        let mut area = self.document.name();
-        if self.document.is_dirty() {
+        let mut area = self.open.document.name();
+        if self.open.document.is_dirty() {
             area.push_str(" •");
         }
-        match &self.project {
+        match &self.open.project {
             Some(project) => format!(
                 "{} {} · {} · {area}",
                 self.info.name, self.info.version, project.name
@@ -1022,9 +791,9 @@ impl Workbench {
     /// screen moves, and the app draws a frame only when something
     /// happens ([decision 0026](../../docs/decisions/0026-draw-only-when-something-changes.md)).
     pub fn wants_frames(&self, ctx: &egui::Context) -> bool {
-        self.playing.as_ref().is_some_and(|p| !p.paused)
-            || self.frames_editor.as_ref().is_some_and(|f| f.playing)
-            || self.moving.is_some()
+        self.open.playing.as_ref().is_some_and(|p| !p.paused)
+            || self.open.frames_editor.as_ref().is_some_and(|f| f.playing)
+            || self.open.moving.is_some()
             || self.viewport.needs_frames()
             || ctx.input(|i| i.pointer.any_down() || !i.keys_down.is_empty())
     }
@@ -1033,7 +802,7 @@ impl Workbench {
     /// nothing it shows changed.
     pub(crate) fn game_scene_now(&mut self) -> Option<(GameKey, crate::game_panel::GameScene)> {
         let state = self.play_state();
-        let playing = self.playing.as_mut()?;
+        let playing = self.open.playing.as_mut()?;
         let between = match state {
             crate::play::PlayState::Playing => playing.world.progress().to_bits(),
             _ => 1.0_f32.to_bits(),
@@ -1042,14 +811,14 @@ impl Workbench {
             world: playing.world.changes(),
             between,
             sources: self.sources,
-            models: self.models.len(),
+            models: self.open.models.len(),
             state,
         };
-        Some(match self.game_scene.take() {
+        Some(match self.open.game_scene.take() {
             Some((was, scene)) if was == key => (key, scene),
             _ => (key, {
                 let mut scene =
-                    crate::game_panel::GameScene::of(&playing.world, &self.models, state);
+                    crate::game_panel::GameScene::of(&playing.world, &self.open.models, state);
                 scene.camera_start =
                     crate::game_panel::GameScene::camera_start_in(playing.before.area());
                 scene
@@ -1062,10 +831,10 @@ impl Workbench {
     /// project, and never used while playing, when the viewport shows the
     /// game's own hour.
     pub(crate) fn preview_hour(&mut self, ctx: &egui::Context) -> Option<f64> {
-        if std::mem::take(&mut self.forget_preview) {
+        if !std::mem::replace(&mut self.open.preview_forgotten, true) {
             ctx.data_mut(|d| d.remove::<Option<f64>>(crate::day_colours::preview_id()));
         }
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             return None;
         }
         ctx.data(|d| d.get_temp::<Option<f64>>(crate::day_colours::preview_id()))
@@ -1083,7 +852,7 @@ impl Workbench {
             crate::profiler::Stage::Sound,
             std::mem::take(&mut self.sound_spent),
         );
-        let mut actions = std::mem::take(&mut self.outbox);
+        let mut actions = std::mem::take(&mut self.open.outbox);
         // The Environment's Preview time (decision 0092), set in
         // Properties: the viewport shows the area at that hour.
         self.viewport.preview_hour = self.preview_hour(ui.ctx());
@@ -1092,7 +861,7 @@ impl Workbench {
             self.prompts(ui, &mut actions);
             self.about(ui);
             self.update_question(ui.ctx(), &mut actions);
-            actions.append(&mut self.outbox);
+            actions.append(&mut self.open.outbox);
             return actions;
         }
         self.refresh_sheet_pictures(ui.ctx());
@@ -1104,7 +873,7 @@ impl Workbench {
         // editor's own keys are off (decision 0037).
         self.feed_input(ui.ctx());
         // While Keep or Undo all is asked, the keys wait for the answer.
-        if !self.game_input && self.play_changes.is_none() {
+        if !self.game_input && self.open.play_changes.is_none() {
             self.tool_keys(ui);
             self.paint_keys(ui);
             self.tool_extra_keys(ui);
@@ -1134,7 +903,7 @@ impl Workbench {
         let mut library_requests = Vec::new();
         let mut library_pin_clicked = false;
         let mut mixer_requests = Vec::new();
-        let picked_before = self.library_state.selected.clone();
+        let picked_before = self.open.library_state.selected.clone();
         self.drop_stale_sound();
         let mut console_requests = Vec::new();
         let part = self.assembly_part();
@@ -1146,25 +915,25 @@ impl Workbench {
         // phase review, speed): the key holds what was picked, which is
         // small.
         let key = ViewKey {
-            revision: self.document.revision(),
+            revision: self.open.document.revision(),
             sources: self.sources,
-            models: self.models.len(),
-            hidden: self.area_panel.hidden.clone(),
-            locked: self.area_panel.locked.clone(),
+            models: self.open.models.len(),
+            hidden: self.open.area_panel.hidden.clone(),
+            locked: self.open.area_panel.locked.clone(),
         };
-        if self.editor_view.as_ref() != Some(&key) {
-            let (hidden, locked) = self.area_panel.in_effect(&self.document);
+        if self.open.editor_view.as_ref() != Some(&key) {
+            let (hidden, locked) = self.open.area_panel.in_effect(&self.open.document);
             self.viewport.area = AreaView::of_placed(
-                self.document.area(),
-                &self.document.tree(),
-                &self.document.world_matrices(),
-                &self.models,
+                self.open.document.area(),
+                &self.open.document.tree(),
+                &self.open.document.world_matrices(),
+                &self.open.models,
                 &hidden,
                 &locked,
             );
-            self.editor_view = Some(key);
+            self.open.editor_view = Some(key);
         }
-        self.viewport.entities = self.document.area().len();
+        self.viewport.entities = self.open.document.area().len();
         self.follow_map_selection();
         self.set_tile_overlay();
         self.prepare_tools();
@@ -1173,7 +942,12 @@ impl Workbench {
         self.refresh_screen();
         let code_problems = self.all_code_problems().into_owned();
         let menu = crate::menu_items::MenuState::of(self);
-        let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
+        let copied: Vec<String> = self
+            .open
+            .copied
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect();
         // Worked out only while the Game panel is in front.
         let game = if self.in_front.contains(&crate::panel::Panel::Game) {
             self.game_scene_now()
@@ -1185,11 +959,15 @@ impl Workbench {
         // While playing, the selected entity's game code values as they
         // are now, for Properties (in front) to show instead of the
         // values it started with.
-        let running = match (&mut self.playing, self.document.selection.primary()) {
+        let running = match (
+            &mut self.open.playing,
+            self.open.document.selection.primary(),
+        ) {
             (Some(playing), Some(id))
                 if self.in_front.contains(&crate::panel::Panel::Properties) =>
             {
                 let names: Vec<String> = self
+                    .open
                     .document
                     .area()
                     .get(id)
@@ -1204,7 +982,7 @@ impl Workbench {
             }
             _ => None,
         };
-        let playing = self.playing.is_some();
+        let playing = self.open.playing.is_some();
         let mut game_out = crate::game_panel::GamePanelOut::default();
         let mut renderer = crate::profiler::Timed {
             inner: renderer,
@@ -1218,6 +996,7 @@ impl Workbench {
         let map_shown = self.map_shown();
         let map_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
         let map_name = self
+            .open
             .map_edits
             .path
             .as_deref()
@@ -1230,7 +1009,7 @@ impl Workbench {
                 map,
                 tileset: tileset.as_deref(),
                 hovered: self.viewport.tile_overlay.hovered,
-                hidden: &self.map_edits.hidden,
+                hidden: &self.open.map_edits.hidden,
                 playing,
                 paint: crate::map_tab::PaintShown {
                     code: self.viewport.tile_overlay.paint.code,
@@ -1249,6 +1028,7 @@ impl Workbench {
                         .and_then(|p| sheets.tile_art(p))
                         .and_then(|art| {
                             let (texture, atlas) = self
+                                .open
                                 .tile_textures
                                 .get(&(std::sync::Arc::as_ptr(art) as u64))?;
                             Some(crate::tileset_view::Picture {
@@ -1275,55 +1055,57 @@ impl Workbench {
         let hints = (self.hints && self.in_front.contains(&Panel::Hints)).then(|| self.hints());
         let hints_off = !self.hints;
         let atlas_problem = self.atlas_picture().1;
-        let frames = self.frames_editor.as_mut().map(|editor| {
+        let frames = self.open.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
                 editor,
                 &sheets,
-                &self.sheet_pictures,
-                &self.cue_sounds,
+                &self.open.sheet_pictures,
+                &self.open.cue_sounds,
             )
         });
         let tile_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
-        if self.tileset_editor.is_some() && sheets.tiles_animate() {
+        if self.open.tileset_editor.is_some() && sheets.tiles_animate() {
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_millis(40));
         }
-        let tileset = self.tileset_editor.as_mut().map(|editor| {
+        let tileset = self.open.tileset_editor.as_mut().map(|editor| {
             crate::workbench_tileset::tileset_ui(
                 editor,
                 &sheets,
-                &self.tile_textures,
-                self.pixels.tile,
+                &self.open.tile_textures,
+                self.open.pixels.tile,
                 tile_ms,
                 self.accent.colors().fill,
             )
         });
-        let screen_pictures = self.screen_pictures.pictures.clone();
+        let screen_pictures = self.open.screen_pictures.pictures.clone();
         let screen_fonts = self
             .screen_fonts
             .get_or_insert_with(crate::game_screens::editor_fonts);
         // Only worked out while a screen is open: what it can be tied to
         // once per build of the game's code, the pictures only while the
         // Image tool is in use.
-        let (picture_files, screen_game) = match &self.screen_doc {
+        let (picture_files, screen_game) = match &self.open.screen_doc {
             Some(doc) => {
                 let from = self
+                    .open
                     .program
                     .as_ref()
                     .map(|p| std::sync::Arc::as_ptr(p) as usize);
-                let game = match &self.screen_game {
+                let game = match &self.open.screen_game {
                     Some((built, game)) if *built == from => std::sync::Arc::clone(game),
                     _ => {
                         let game = std::sync::Arc::new(crate::screen_ties::screen_game(
-                            self.program.as_deref(),
-                            &self.document.registry,
+                            self.open.program.as_deref(),
+                            &self.open.document.registry,
                         ));
-                        self.screen_game = Some((from, std::sync::Arc::clone(&game)));
+                        self.open.screen_game = Some((from, std::sync::Arc::clone(&game)));
                         game
                     }
                 };
                 let files: Vec<String> = if doc.tool == crate::canvas_tools::CanvasTool::Image {
-                    self.library
+                    self.open
+                        .library
                         .iter()
                         .filter(|i| {
                             matches!(
@@ -1341,15 +1123,19 @@ impl Workbench {
             }
             None => (Vec::new(), std::sync::Arc::default()),
         };
-        let screen = self.screen_doc.as_mut().map(|doc| crate::panels::ScreenUi {
-            doc,
-            fonts: screen_fonts,
-            pictures: screen_pictures,
-            picture_files,
-            game: screen_game,
-        });
-        let atlas = self.atlas_editor.as_mut().map(|editor| {
-            let picture = self.atlas_texture.as_ref().and_then(|(art, texture)| {
+        let screen = self
+            .open
+            .screen_doc
+            .as_mut()
+            .map(|doc| crate::panels::ScreenUi {
+                doc,
+                fonts: screen_fonts,
+                pictures: screen_pictures,
+                picture_files,
+                game: screen_game,
+            });
+        let atlas = self.open.atlas_editor.as_mut().map(|editor| {
+            let picture = self.open.atlas_texture.as_ref().and_then(|(art, texture)| {
                 Some(crate::atlas_view::AtlasPicture {
                     texture,
                     size: art.size,
@@ -1358,11 +1144,11 @@ impl Workbench {
             });
             (editor, picture, atlas_problem)
         });
-        let animator = self.animator_editor.as_mut().map(|editor| {
+        let animator = self.open.animator_editor.as_mut().map(|editor| {
             crate::workbench_animator::animator_ui(
                 editor,
                 &sheets,
-                &self.sheet_pictures,
+                &self.open.sheet_pictures,
                 live,
                 self.accent.colors().fill,
             )
@@ -1378,29 +1164,29 @@ impl Workbench {
                 .show_inside(
                     ui,
                     &mut PanelViewer {
-                        area_state: &mut self.area_panel,
+                        area_state: &mut self.open.area_panel,
                         copied: &copied,
                         menu: &menu,
                         viewport: &mut self.viewport,
                         renderer: &mut renderer,
                         console: &mut self.console,
                         console_requests: &mut console_requests,
-                        problems: &self.problems.list,
+                        problems: &self.open.problems.list,
                         code_problems: &code_problems,
                         game: game.as_ref().map(|(_, scene)| scene),
                         ui_test: self.ui_test.clone(),
-                        game_screens: &self.game_screens.pictures,
+                        game_screens: &self.open.game_screens.pictures,
                         playing,
                         game_input: self.game_input,
-                        pixels: self.pixels,
+                        pixels: self.open.pixels,
                         game_out: &mut game_out,
-                        document: &self.document,
-                        models: &self.models,
+                        document: &self.open.document,
+                        models: &self.open.models,
                         area_requests: &mut area_requests,
-                        project: self.project.as_ref(),
-                        library: &self.library,
-                        folders: &self.folders,
-                        library_state: &mut self.library_state,
+                        project: self.open.project.as_ref(),
+                        library: &self.open.library,
+                        folders: &self.open.folders,
+                        library_state: &mut self.open.library_state,
                         library_requests: &mut library_requests,
                         library_pin_clicked: &mut library_pin_clicked,
                         hints: if hints_off {
@@ -1409,24 +1195,28 @@ impl Workbench {
                             Some(hints.as_deref().unwrap_or(&[]))
                         },
                         sounds: crate::library::Sounds {
-                            states: &self.sounds,
-                            events: &self.sound_events,
-                            preview: self.preview.as_ref(),
-                            mixer: &self.mixer.mixer,
+                            states: &self.open.sounds,
+                            events: &self.open.sound_events,
+                            preview: self.open.preview.as_ref(),
+                            mixer: &self.open.mixer.mixer,
                             sheets: &sheets,
-                            sheet_pictures: &self.sheet_pictures,
+                            sheet_pictures: &self.open.sheet_pictures,
                             code_uses: &code_uses,
                         },
-                        mixer: &self.mixer,
+                        mixer: &self.open.mixer,
                         mixer_requests: &mut mixer_requests,
-                        sound_shown: self.sound_shown.as_ref().map(|(path, _)| path.as_str()),
-                        text_file: self.text_file.as_ref(),
+                        sound_shown: self
+                            .open
+                            .sound_shown
+                            .as_ref()
+                            .map(|(path, _)| path.as_str()),
+                        text_file: self.open.text_file.as_ref(),
                         part: part.as_ref(),
                         running: running.as_ref(),
                         requests: &mut requests,
                         help: crate::properties::Help {
                             manual: &self.manual_url,
-                            places: self.program.as_ref().map(|p| &p.places),
+                            places: self.open.program.as_ref().map(|p| &p.places),
                         },
                         accent: self.accent,
                         in_front: &self.in_front,
@@ -1459,7 +1249,7 @@ impl Workbench {
         for request in requests {
             self.apply_property(request, self.gesture);
         }
-        actions.append(&mut self.outbox);
+        actions.append(&mut self.open.outbox);
         for request in library_requests {
             self.library_request(request, &mut actions);
         }
@@ -1477,7 +1267,7 @@ impl Workbench {
             }
         }
         // Kept for the next frame, which may show the same.
-        self.game_scene = game;
+        self.open.game_scene = game;
         if self.files_hovering {
             drop_hint(ui, self.accent);
         }
@@ -1492,12 +1282,12 @@ impl Workbench {
         self.hold_while_playing(&mut actions);
         self.profiler
             .add(crate::profiler::Stage::Draw, renderer.spent);
-        let (components, entities) = match &mut self.playing {
+        let (components, entities) = match &mut self.open.playing {
             Some(playing) => (
                 playing.game.as_mut().map_or(0, script::Game::len),
                 playing.world.len(),
             ),
-            None => (0, self.document.area().len()),
+            None => (0, self.open.document.area().len()),
         };
         let drawn = renderer.inner.take_report();
         self.profiler.end(drawn, components, entities);
@@ -1599,25 +1389,25 @@ impl Workbench {
     /// changed.
     pub(crate) fn find_problems(&mut self) {
         use crate::problems::{Fingerprint, Sources};
-        let print = Fingerprint::of(&self.document, self.sources);
-        self.problems.refresh_between(
-            self.document.revision(),
-            self.pixels.pixels_per_unit,
-            self.document.area(),
+        let print = Fingerprint::of(&self.open.document, self.sources);
+        self.open.problems.refresh_between(
+            self.open.document.revision(),
+            self.open.pixels.pixels_per_unit,
+            self.open.document.area(),
             &self.viewport.area.sprites,
         );
-        if self.problems.is_from(&print) {
+        if self.open.problems.is_from(&print) {
             return;
         }
-        let known: HashSet<AssetId> = self.library.iter().filter_map(|i| i.id).collect();
-        let assemblies: HashSet<AssetId> = self.assemblies.keys().copied().collect();
+        let known: HashSet<AssetId> = self.open.library.iter().filter_map(|i| i.id).collect();
+        let assemblies: HashSet<AssetId> = self.open.assemblies.keys().copied().collect();
         let tile_gaps = self.viewport.sheets.tile_gaps();
-        self.problems.refresh(
+        self.open.problems.refresh(
             print,
             &Sources {
-                area: self.document.area(),
-                registry: &self.document.registry,
-                models: &self.models,
+                area: self.open.document.area(),
+                registry: &self.open.document.registry,
+                models: &self.open.models,
                 known: &known,
                 assemblies: &assemblies,
                 tile_gaps: &tile_gaps,
@@ -1634,7 +1424,7 @@ impl Workbench {
             self.log(LogLevel::Warning, note.clone());
         }
         let text = match problems.len() {
-            0 if !self.code_problems.is_empty() => Some((
+            0 if !self.open.code_problems.is_empty() => Some((
                 LogLevel::Info,
                 "The game's code has no mistakes now.".to_string(),
             )),
@@ -1651,8 +1441,8 @@ impl Workbench {
         if let Some((level, text)) = text {
             self.log(level, text);
         }
-        self.code_problems = problems;
-        self.code_checked = Some(chrono::Local::now().format("%H:%M:%S").to_string());
+        self.open.code_problems = problems;
+        self.open.code_checked = Some(chrono::Local::now().format("%H:%M:%S").to_string());
     }
 
     /// Hands over the program's logo, for the top bar.
@@ -1662,7 +1452,7 @@ impl Workbench {
 
     /// Mistakes in the game's code, from the last check.
     pub fn code_problems(&self) -> &[script::CodeProblem] {
-        &self.code_problems
+        &self.open.code_problems
     }
 
     /// Entity `id`'s component `name` as it is now: while the game plays,
@@ -1670,7 +1460,7 @@ impl Workbench {
     /// has it; otherwise as the area has it. For the Console's `get` and
     /// `values`, and for tests reading a game as it plays.
     pub fn values_now(&mut self, id: EntityId, name: &str) -> Option<reflect::ComponentData> {
-        if let Some(playing) = &mut self.playing {
+        if let Some(playing) = &mut self.open.playing {
             if let Some(found) = playing.game.as_mut().and_then(|g| g.values(id, name)) {
                 return Some(found);
             }
@@ -1678,7 +1468,13 @@ impl Workbench {
                 return Some(found);
             }
         }
-        self.document.area().get(id)?.components.get(name).cloned()
+        self.open
+            .document
+            .area()
+            .get(id)?
+            .components
+            .get(name)
+            .cloned()
     }
 
     /// The code's mistakes, then pictures its screens name that can't be
@@ -1686,15 +1482,15 @@ impl Workbench {
     pub(crate) fn all_code_problems(&self) -> std::borrow::Cow<'_, [script::CodeProblem]> {
         let pictures = self.picture_problems();
         if pictures.is_empty() {
-            std::borrow::Cow::Borrowed(&self.code_problems)
+            std::borrow::Cow::Borrowed(&self.open.code_problems)
         } else {
-            std::borrow::Cow::Owned([&self.code_problems[..], pictures].concat())
+            std::borrow::Cow::Owned([&self.open.code_problems[..], pictures].concat())
         }
     }
 
     /// The problems found in the area, for the app and tests.
     pub fn problems(&self) -> &[crate::problems::Problem] {
-        &self.problems.list
+        &self.open.problems.list
     }
 
     /// The console's earlier commands, oldest first, for saving.
@@ -1708,7 +1504,7 @@ impl Workbench {
         if ui.ctx().egui_wants_keyboard_input() {
             return;
         }
-        let frames = self.frames_hovered && self.frames_editor.is_some();
+        let frames = self.frames_hovered && self.open.frames_editor.is_some();
         let (redo, undo) = ui.input_mut(|i| {
             let shift_z = egui::KeyboardShortcut::new(
                 egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
@@ -1720,28 +1516,28 @@ impl Workbench {
             let redo = i.consume_shortcut(&shift_z) || i.consume_shortcut(&y);
             (redo, i.consume_shortcut(&z))
         });
-        let animator = self.animator_hovered && self.animator_editor.is_some();
+        let animator = self.animator_hovered && self.open.animator_editor.is_some();
         if frames {
             // Over the Clips or Frames tab: the clips file's changes.
             self.frames_undo(redo, undo);
         } else if animator {
             // Over the Animator tab: the animator's changes.
             self.animator_undo(redo, undo);
-        } else if self.tileset_hovered && self.tileset_editor.is_some() {
+        } else if self.tileset_hovered && self.open.tileset_editor.is_some() {
             // Over the Tileset tab: the tileset's changes.
             self.tileset_undo(redo, undo);
-        } else if self.screen_hovered && self.screen_doc.is_some() {
+        } else if self.screen_hovered && self.open.screen_doc.is_some() {
             // Over the canvas or Elements: the screen's changes.
             if redo || undo {
                 self.screen_undo(redo);
             }
-        } else if self.atlas_hovered && self.atlas_editor.is_some() {
+        } else if self.atlas_hovered && self.open.atlas_editor.is_some() {
             // Over the Atlas Crop tab: the crops' changes.
             if redo || undo {
                 self.atlas_undo(redo);
             }
         } else if (self.map_hovered || self.viewport.tile_overlay.paint.painting())
-            && self.map_edits.path.is_some()
+            && self.open.map_edits.path.is_some()
         {
             // Over the Map tab, or painting: the map's changes.
             self.map_undo(redo, undo);
@@ -1790,12 +1586,12 @@ impl Workbench {
     /// Asks for `action`, first asking about unsaved changes if it would
     /// lose them (a new or another area, another project, quitting).
     pub(crate) fn request(&mut self, action: WorkbenchAction, actions: &mut Vec<WorkbenchAction>) {
-        if self.playing.is_some() && crate::play::waits_for_stop(&action) {
+        if self.open.playing.is_some() && crate::play::waits_for_stop(&action) {
             // Refused, with a word in the Console, at the end of the frame.
             actions.push(action);
             return;
         }
-        if self.playing.is_some() && action == WorkbenchAction::Quit {
+        if self.open.playing.is_some() && action == WorkbenchAction::Quit {
             self.stop();
         }
         let loses_changes = matches!(
@@ -1808,8 +1604,8 @@ impl Workbench {
                 | WorkbenchAction::OpenRecent(_)
                 | WorkbenchAction::Quit
         );
-        if loses_changes && self.document.is_dirty() {
-            self.unsaved_prompt = Some(action);
+        if loses_changes && self.open.document.is_dirty() {
+            self.open.unsaved_prompt = Some(action);
         } else {
             if action == WorkbenchAction::Quit {
                 self.may_close = true;
@@ -1828,25 +1624,25 @@ impl Workbench {
     /// asks first (and the app should cancel this close).
     pub fn close_requested(&mut self) -> bool {
         // While playing, the area that matters is the one from before Play.
-        let dirty = match &self.playing {
+        let dirty = match &self.open.playing {
             Some(playing) => playing.before.is_dirty(),
-            None => self.document.is_dirty(),
+            None => self.open.document.is_dirty(),
         };
         if self.may_close || !dirty {
-            if self.playing.is_some() {
+            if self.open.playing.is_some() {
                 self.stop();
             }
             return true;
         }
         // Asked first: Cancel leaves the game running.
-        self.unsaved_prompt = Some(WorkbenchAction::Quit);
+        self.open.unsaved_prompt = Some(WorkbenchAction::Quit);
         false
     }
 
     /// The questions about unsaved changes and files changed on disk.
     fn prompts(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
-        if let Some(waiting) = self.unsaved_prompt.clone() {
-            let name = self.document.name();
+        if let Some(waiting) = self.open.unsaved_prompt.clone() {
+            let name = self.open.document.name();
             let mut answer = None;
             egui::Window::new("Unsaved changes")
                 .collapsible(false)
@@ -1863,17 +1659,17 @@ impl Workbench {
                             answer = Some(false);
                         }
                         if ui.button("Cancel").clicked() {
-                            self.unsaved_prompt = None;
+                            self.open.unsaved_prompt = None;
                             // A cancelled restart is no restart.
                             self.restarting = false;
                         }
                     });
                 });
             if let Some(save) = answer {
-                self.unsaved_prompt = None;
+                self.open.unsaved_prompt = None;
                 // Saving or leaving waits for Stop, which puts the area
                 // back as it was before Play.
-                if self.playing.is_some() {
+                if self.open.playing.is_some() {
                     self.stop();
                 }
                 if save {
@@ -1886,8 +1682,8 @@ impl Workbench {
             }
         }
         // Asked after the game stops: loading it now would only be undone.
-        if self.pending_reload.is_some() && self.playing.is_none() {
-            let name = self.document.name();
+        if self.open.pending_reload.is_some() && self.open.playing.is_none() {
+            let name = self.open.document.name();
             let mut answer = None;
             egui::Window::new("Changed on disk")
                 .collapsible(false)
@@ -1913,7 +1709,7 @@ impl Workbench {
                     });
                 });
             if let Some(load) = answer
-                && let Some(area) = self.pending_reload.take()
+                && let Some(area) = self.open.pending_reload.take()
                 && load
             {
                 self.reload_area(area);
@@ -1948,8 +1744,8 @@ impl Workbench {
             self.duplicate_selection();
         }
         if rename
-            && let Some(id) = self.document.selection.primary()
-            && let Some(entity) = self.document.area().get(id)
+            && let Some(id) = self.open.document.selection.primary()
+            && let Some(entity) = self.open.document.area().get(id)
         {
             crate::area_panel::begin_rename(ui.ctx(), id, &entity.name);
         }

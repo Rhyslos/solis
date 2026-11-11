@@ -223,7 +223,7 @@ impl Workbench {
     /// Remembers how the project was last exported (the app reads it with
     /// the project), for the window to start from.
     pub fn set_last_export(&mut self, last: Option<Playtest>) {
-        self.last_export = last;
+        self.open.last_export = last;
     }
 
     /// Remembers where the project was last exported on this computer,
@@ -231,7 +231,7 @@ impl Workbench {
     /// its own saved settings, never in the project. Anything but a whole
     /// path on this computer's own drives ([`local_folder`]) is dropped.
     pub fn set_last_export_folder(&mut self, folder: Option<PathBuf>) {
-        self.last_export_folder = folder.filter(|f| local_folder(f));
+        self.open.last_export_folder = folder.filter(|f| local_folder(f));
     }
 
     /// The Documents folder, for exports to go in by default.
@@ -242,7 +242,7 @@ impl Workbench {
     /// Opens File > Export for playtesting…: the game named after the
     /// project, starting in the open area, unless it was exported before.
     pub fn open_export(&mut self) {
-        let Some(project) = &self.project else {
+        let Some(project) = &self.open.project else {
             self.log(
                 crate::LogLevel::Warning,
                 "Export for playtesting needs a project: open or make one first.",
@@ -251,13 +251,14 @@ impl Workbench {
         };
         let assets = project.assets.clone();
         let open_area = self
+            .open
             .document
             .file()
             .and_then(|f| f.strip_prefix(&assets).ok())
             .and_then(|f| f.to_str())
             .map(|f| f.replace('\\', "/"))
             .filter(|f| usable_area(f));
-        let mut playtest = self.last_export.clone().unwrap_or_else(|| Playtest {
+        let mut playtest = self.open.last_export.clone().unwrap_or_else(|| Playtest {
             name: game_name(&project.name),
             ..Playtest::default()
         });
@@ -269,7 +270,7 @@ impl Workbench {
         let date = chrono::Local::now().format("%Y-%m-%d").to_string();
         // Only named here, never looked at: whether it's there, or has
         // files in, is the app's to find out once Export is pressed.
-        let folder = match (&self.last_export_folder, &self.documents) {
+        let folder = match (&self.open.last_export_folder, &self.documents) {
             // A new dated folder beside the last, so old builds stay.
             (Some(last), _) if last.parent().is_some() => last
                 .parent()
@@ -283,7 +284,7 @@ impl Workbench {
                 .unwrap_or_default(),
         };
         let folder = folder.display().to_string();
-        self.export_window = Some(ExportWindow {
+        self.open.export_window = Some(ExportWindow {
             playtest,
             suggested: folder.clone(),
             folder,
@@ -295,6 +296,7 @@ impl Workbench {
     /// The project's areas, inside the assets.
     fn areas(&self) -> Vec<String> {
         let mut areas: Vec<String> = self
+            .open
             .library
             .iter()
             .filter(|i| i.kind == crate::library::LibraryKind::Area && usable_area(&i.path))
@@ -306,7 +308,7 @@ impl Workbench {
 
     /// The folder chosen with the window's "…" button.
     pub fn set_export_folder(&mut self, folder: PathBuf) {
-        if let Some(window) = &mut self.export_window {
+        if let Some(window) = &mut self.open.export_window {
             window.folder = folder.display().to_string();
         }
     }
@@ -327,7 +329,7 @@ impl Workbench {
                 format!("The export didn't finish: {why}."),
             ),
         }
-        if let Some(window) = &mut self.export_window {
+        if let Some(window) = &mut self.open.export_window {
             window.busy = false;
             // Exporting again goes in a folder of its own, beside this
             // one.
@@ -345,13 +347,13 @@ impl Workbench {
         ctx: &egui::Context,
         actions: &mut Vec<WorkbenchAction>,
     ) {
-        let Some(mut window) = self.export_window.take() else {
+        let Some(mut window) = self.open.export_window.take() else {
             return;
         };
         let areas = self.areas();
         let program = self.info.name.clone();
         let accent = self.accent.colors().fill;
-        let unsaved = self.document.is_dirty();
+        let unsaved = self.open.document.is_dirty();
         let mut open = true;
         let mut close = false;
         egui::Window::new("Export for playtesting")
@@ -365,7 +367,7 @@ impl Workbench {
                 close = contents(ui, &mut window, &areas, &program, accent, unsaved, actions);
             });
         if open && !close {
-            self.export_window = Some(window);
+            self.open.export_window = Some(window);
         }
     }
 }

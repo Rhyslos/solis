@@ -82,9 +82,9 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
         LibraryRequest::Open(LibraryKind::SpriteClips, "walker.solframes".into()),
         &mut actions,
     );
-    assert!(w.frames_editor.is_some());
+    assert!(w.open.frames_editor.is_some());
     assert_eq!(
-        w.frames_editor.as_ref().unwrap().clip,
+        w.open.frames_editor.as_ref().unwrap().clip,
         "wave",
         "the clip played first"
     );
@@ -114,7 +114,7 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
     assert!(restored.find_tab(&Panel::Clips).is_none());
     h.state_mut().0.close_frames();
     let w = &h.state().0;
-    assert!(w.frames_editor.is_none());
+    assert!(w.open.frames_editor.is_none());
     assert!(w.dock.find_tab(&Panel::Frames).is_none());
 }
 
@@ -122,7 +122,7 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
 fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
     let (mut w, _, clips) = with_clips();
     w.open_frames("walker.solframes");
-    let editor = w.frames_editor.as_mut().unwrap();
+    let editor = w.open.frames_editor.as_mut().unwrap();
     assert!(editor.set_speed(2.0));
     let mut actions = Vec::new();
     w.frames_tabs_done(
@@ -141,7 +141,7 @@ fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
     // Undo over the tabs undoes the file's change, and saves it.
     w.frames_hovered = true;
     w.frames_undo(false, true);
-    let undone = saved(&w.outbox);
+    let undone = saved(&w.open.outbox);
     assert!(undone.last().unwrap().contains("clip1 = [\"wave\", 1.0"));
     assert_eq!(
         w.viewport
@@ -172,22 +172,25 @@ fn a_sheet_s_properties_make_its_clips_file() {
         LibraryRequest::MakeClipsFile("crops.aseprite".into()),
         &mut actions,
     );
-    let made = saved(&w.outbox);
+    let made = saved(&w.open.outbox);
     assert_eq!(made.len(), 1);
     assert!(made[0].contains(&format!("sheet = \"{crops}\"")));
     assert_eq!(
-        w.frames_editor.as_ref().unwrap().path,
+        w.open.frames_editor.as_ref().unwrap().path,
         "crops.solframes",
         "opened beside it"
     );
     // One that's there already is just opened.
-    w.outbox.clear();
+    w.open.outbox.clear();
     w.library_request(
         LibraryRequest::MakeClipsFile("walker.aseprite".into()),
         &mut actions,
     );
-    assert!(saved(&w.outbox).is_empty());
-    assert_eq!(w.frames_editor.as_ref().unwrap().path, "walker.solframes");
+    assert!(saved(&w.open.outbox).is_empty());
+    assert_eq!(
+        w.open.frames_editor.as_ref().unwrap().path,
+        "walker.solframes"
+    );
     let _ = sheet;
 }
 
@@ -201,7 +204,7 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
     );
     w.set_sprite_sheets(sheets);
     w.open_frames("walker.solframes");
-    assert!(w.frames_editor.is_none());
+    assert!(w.open.frames_editor.is_none());
     assert!(
         w.console
             .lines()

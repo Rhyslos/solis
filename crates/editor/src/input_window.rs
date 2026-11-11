@@ -55,18 +55,18 @@ enum Change {
 impl Workbench {
     /// Opens Edit > Input actions….
     pub(crate) fn open_input_window(&mut self) {
-        if self.input_window.is_none() {
-            self.input_window = Some(InputWindow::default());
+        if self.open.input_window.is_none() {
+            self.open.input_window = Some(InputWindow::default());
         }
     }
 
     /// Draws the Input actions window, if it's open.
     pub(crate) fn input_actions_window(&mut self, ctx: &egui::Context) {
-        let Some(mut window) = self.input_window.take() else {
+        let Some(mut window) = self.open.input_window.take() else {
             return;
         };
         let mut open = true;
-        let mut bindings = self.bindings.clone();
+        let mut bindings = self.open.bindings.clone();
         let pad_down: Vec<String> = self.pad_now.as_ref().map_or(Vec::new(), |p| {
             p.buttons.iter().map(|b| format!("Pad {b}")).collect()
         });
@@ -91,7 +91,7 @@ impl Workbench {
             }
         }
         if open {
-            self.input_window = Some(window);
+            self.open.input_window = Some(window);
         }
     }
 }
@@ -101,13 +101,14 @@ impl Workbench {
     /// kept, saved in the project, and taken by a running game at once
     /// (game code's own rebinding for this play gives way to them).
     pub(crate) fn change_bindings(&mut self, bindings: Bindings) {
-        self.bindings = bindings;
-        if let Some(playing) = &mut self.playing {
-            playing.bindings = std::sync::Arc::new(self.bindings.clone());
+        self.open.bindings = bindings;
+        if let Some(playing) = &mut self.open.playing {
+            playing.bindings = std::sync::Arc::new(self.open.bindings.clone());
         }
-        if self.project.is_some() {
-            self.outbox
-                .push(WorkbenchAction::SaveBindings(self.bindings.write()));
+        if self.open.project.is_some() {
+            self.open
+                .outbox
+                .push(WorkbenchAction::SaveBindings(self.open.bindings.write()));
         }
     }
 }

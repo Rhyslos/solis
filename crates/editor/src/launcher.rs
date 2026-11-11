@@ -462,12 +462,12 @@ impl Workbench {
     /// Shows the launcher (File > Projects…), asking the app for the list
     /// read afresh. A game being played stops first.
     pub(crate) fn open_launcher(&mut self) {
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             self.stop();
         }
         self.launcher.open = true;
         self.launcher.focus_search = true;
-        self.outbox.push(WorkbenchAction::ListProjects);
+        self.open.outbox.push(WorkbenchAction::ListProjects);
     }
 
     /// The projects Solis knows, for the launcher (the app reads them).
@@ -490,7 +490,7 @@ impl Workbench {
     /// The open project was renamed: its new name in the title and the
     /// launcher, without opening it again.
     pub fn rename_open_project(&mut self, name: &str) {
-        if let Some(project) = &mut self.project {
+        if let Some(project) = &mut self.open.project {
             project.name = name.to_string();
         }
     }
@@ -507,7 +507,7 @@ impl Workbench {
             return false;
         }
         let mut asked: Vec<WorkbenchAction> = Vec::new();
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && self.unsaved_prompt.is_none() {
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && self.open.unsaved_prompt.is_none() {
             if self.launcher.renaming.is_some() {
                 self.launcher.renaming = None;
             } else {
@@ -537,7 +537,7 @@ impl Workbench {
         self.rename_question(ui, &mut asked);
         for action in asked {
             if let WorkbenchAction::OpenRecent(root) = &action
-                && self.project.as_ref().is_some_and(|p| &p.root == root)
+                && self.open.project.as_ref().is_some_and(|p| &p.root == root)
             {
                 // Already open: back to it.
                 self.launcher.open = false;
@@ -663,7 +663,7 @@ impl Workbench {
                 ui.label(RichText::new(line).small().color(theme::WARNING));
             }
             ui.add_space(6.0);
-            let back = match &self.project {
+            let back = match &self.open.project {
                 Some(p) => format!("← Back to {}", p.name),
                 None => "Carry on without a project".to_string(),
             };

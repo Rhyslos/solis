@@ -99,7 +99,7 @@ impl Workbench {
             .and_then(|id| sheets.get(id))
             .map(|sheet| animation::ClipSet::of_sheet(sheet, Some(&file)))
             .unwrap_or_default();
-        self.frames_editor = Some(FramesEditor::new(path.to_owned(), file, &clips));
+        self.open.frames_editor = Some(FramesEditor::new(path.to_owned(), file, &clips));
         layout::open_beside(&mut self.dock, Panel::Clips, Panel::Properties);
         layout::open_beside(&mut self.dock, Panel::Frames, Panel::Library);
     }
@@ -119,7 +119,7 @@ impl Workbench {
             sheet: Some(sheet),
             ..animation::FramesFile::default()
         };
-        self.outbox.push(WorkbenchAction::SaveFrames {
+        self.open.outbox.push(WorkbenchAction::SaveFrames {
             path: path.clone().into(),
             text: animation::frames_file::write(&file),
         });
@@ -132,7 +132,7 @@ impl Workbench {
 
     /// Closes the clips file open, and its tabs.
     pub(crate) fn close_frames(&mut self) {
-        self.frames_editor = None;
+        self.open.frames_editor = None;
         self.frames_hovered = false;
         for panel in Panel::FRAMES_TABS {
             layout::close(&mut self.dock, panel);
@@ -142,7 +142,7 @@ impl Workbench {
     /// Moves the open clip on by `seconds` while it's playing in the
     /// Frames tab.
     pub(crate) fn play_frames(&mut self, seconds: f64) {
-        let Some(editor) = &mut self.frames_editor else {
+        let Some(editor) = &mut self.open.frames_editor else {
             return;
         };
         if !editor.playing {
@@ -175,7 +175,7 @@ impl Workbench {
         let one_gone = Panel::FRAMES_TABS
             .iter()
             .any(|p| self.dock.find_tab(p).is_none());
-        if self.frames_editor.is_some() && (out.closed || one_gone) {
+        if self.open.frames_editor.is_some() && (out.closed || one_gone) {
             self.close_frames();
         }
         self.screen_hovered = out.screen_hovered;
@@ -186,7 +186,7 @@ impl Workbench {
             self.save_screen();
         }
         if out.screen_code
-            && let Some(doc) = &self.screen_doc
+            && let Some(doc) = &self.open.screen_doc
         {
             let path = doc.path.clone();
             self.library_request(
@@ -201,7 +201,7 @@ impl Workbench {
         if let Some(said) = &out.atlas_said {
             self.log(crate::console::LogLevel::Info, said.clone());
         }
-        if self.atlas_editor.is_some()
+        if self.open.atlas_editor.is_some()
             && (out.atlas_closed || self.dock.find_tab(&Panel::AtlasCrop).is_none())
         {
             self.close_atlas();
@@ -213,7 +213,7 @@ impl Workbench {
         if let Some(kind) = out.tileset_template {
             self.save_template(kind);
         }
-        if self.tileset_editor.is_some()
+        if self.open.tileset_editor.is_some()
             && (out.tileset_closed || self.dock.find_tab(&Panel::Tileset).is_none())
         {
             self.close_tileset();
@@ -222,7 +222,7 @@ impl Workbench {
         if out.animator_changed {
             self.save_animator(actions);
         }
-        if self.animator_editor.is_some()
+        if self.open.animator_editor.is_some()
             && (out.animator_closed || self.dock.find_tab(&Panel::Animator).is_none())
         {
             self.close_animator();
@@ -232,7 +232,7 @@ impl Workbench {
     /// Undoes (or redoes) the clips file's last change, from Ctrl+Z (or
     /// Ctrl+Y) over its tabs.
     pub(crate) fn frames_undo(&mut self, redo: bool, undo: bool) {
-        let Some(editor) = &mut self.frames_editor else {
+        let Some(editor) = &mut self.open.frames_editor else {
             return;
         };
         let changed = if redo {
@@ -245,14 +245,14 @@ impl Workbench {
         if changed {
             let mut actions = Vec::new();
             self.save_frames(&mut actions);
-            self.outbox.extend(actions);
+            self.open.outbox.extend(actions);
         }
     }
 
     /// Saves the open clips file, and shows the change at once on every
     /// sprite playing it.
     fn save_frames(&mut self, actions: &mut Vec<WorkbenchAction>) {
-        let Some(editor) = &self.frames_editor else {
+        let Some(editor) = &self.open.frames_editor else {
             return;
         };
         actions.push(WorkbenchAction::SaveFrames {
