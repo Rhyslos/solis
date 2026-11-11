@@ -97,11 +97,11 @@ fn settle(want: External<'_>) -> io::Result<Handed> {
 }
 
 /// `path` as a path inside `assets`, if that is where it is: the assets
-/// folder itself, or plain names under it (`editor::plain_relative`).
+/// folder itself, or plain names under it (`project::plain_inside`, the
+/// rule the savers keep to as well).
 fn inside<'a>(path: &'a Path, assets: Option<&Path>) -> Option<&'a Path> {
     let rest = path.strip_prefix(assets?).ok()?;
-    (rest.as_os_str().is_empty() || rest.to_str().is_some_and(editor::plain_relative))
-        .then_some(rest)
+    (rest.as_os_str().is_empty() || crate::project::plain_inside(rest)).then_some(rest)
 }
 
 /// Whether the file at `inside` (a path inside the assets) may be opened
