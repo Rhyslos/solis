@@ -22,7 +22,7 @@ fn sources_of(crates: &[&str]) -> Vec<(PathBuf, String)> {
                 gather(&path, found);
             } else if path.extension().is_some_and(|e| e == "rs") {
                 let text = std::fs::read_to_string(&path).unwrap();
-                found.push((path, text));
+                found.push((path, plain_lines(&text)));
             }
         }
     }
@@ -33,6 +33,13 @@ fn sources_of(crates: &[&str]) -> Vec<(PathBuf, String)> {
     }
     found.sort();
     found
+}
+
+/// `text` with each line ended the one way the rules look for: a checkout
+/// on Windows ends lines with a carriage return too, and a rule that
+/// looks for a line break must find the same thing there.
+fn plain_lines(text: &str) -> String {
+    text.replace("\r\n", "\n")
 }
 
 /// A file's name, for a message.
@@ -185,6 +192,16 @@ fn no_colour_is_written_as_numbers_outside_the_palette() {
          something in theme.rs. If one belongs to no theme, count it in KEPT and say why.\n{}",
         wrong.join("\n")
     );
+}
+
+/// A Windows checkout failed the colour rule: with a carriage return
+/// before each line break, the tests at a file's end weren't found, and a
+/// colour written in them was counted.
+#[test]
+fn the_rules_read_a_windows_checkout_like_any_other() {
+    let windows = "let a = 1;\r\n#[cfg(test)]\r\nmod tests {\r\n    Color32::from_gray(40)\r\n}";
+    assert_eq!(colours_written(&code_of(&plain_lines(windows))), 0);
+    assert_eq!(plain_lines(windows), windows.replace('\r', ""));
 }
 
 #[test]
