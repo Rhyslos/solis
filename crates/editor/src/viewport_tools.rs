@@ -309,7 +309,9 @@ impl Tools {
             Pressing::Box { from } => {
                 let mouse = input.mouse.unwrap_or(from);
                 if input.right_pressed {
-                    // Cancelled: nothing selected.
+                    // Cancelled: the selection stays as it was. (The
+                    // viewport starts no flight while a press is under
+                    // way, so this press always gets here.)
                 } else if input.released || !input.down {
                     self.boxed(from, mouse, input.ctrl, camera, area, size, ppp);
                 } else {
@@ -354,11 +356,6 @@ impl Tools {
             Pressing::Box { .. } => true,
             Pressing::Nothing | Pressing::Click { .. } => false,
         }
-    }
-
-    /// Whether a gizmo is being dragged.
-    pub(crate) fn dragging(&self) -> bool {
-        matches!(self.pressing, Pressing::Gizmo { .. })
     }
 
     /// A click at `at`: a lamp's marker, or whatever the renderer finds

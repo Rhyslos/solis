@@ -1267,10 +1267,14 @@ impl Viewport {
         });
         // Flat views don't fly: the right button slides them instead.
         let flat = self.camera.is_flat();
+        // While the left button is doing something for the tools (a click
+        // on its way, a box, a gizmo drag), the right button is theirs: it
+        // cancels a box or a drag, and never starts flying over one.
+        let tools_idle = self.tools.pressing == viewport_tools::Pressing::Nothing;
         let starting = !flat
             && !painting
             && self.flying_from.is_none()
-            && !self.tools.dragging()
+            && tools_idle
             && pressed_here
             && response.hovered()
             && response.is_pointer_button_down_on();
