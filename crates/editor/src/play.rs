@@ -536,6 +536,15 @@ impl Workbench {
                     .map(|&id| (id, changes.moved.contains(&id))),
             );
         }
+        // A field set by hand takes the area's value even where that's
+        // what the area held all along and game code had set its own
+        // meanwhile: for Solis's own components here, as for game code's
+        // below. Everything else game code set on the entity stays.
+        for ((id, component), fields) in &changes.set {
+            for field in fields {
+                playing.world.set_by_hand(*id, component, field);
+            }
+        }
         let mut said = Vec::new();
         let mut failures = Vec::new();
         let mut dropped_sounds = 0usize;

@@ -28,8 +28,9 @@ pub enum SpriteCue {
     Finished(EntityId, String),
 }
 
-/// A Sprite's clip, whether it's playing, and how far in: what the game
-/// changes of a Sprite.
+/// A Sprite's clip, whether it's playing, and how far in: the game's own
+/// playback is kept over an edit unless the edit changed the area's (see
+/// `game_set`).
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Playback {
     clip: String,
@@ -46,18 +47,12 @@ impl Playback {
         }
     }
 
-    fn put(&self, sprite: &mut Sprite) {
+    pub(crate) fn put(&self, sprite: &mut Sprite) {
         sprite.clip.clone_from(&self.clip);
         sprite.playing = self.playing;
         sprite.time = self.time;
     }
 }
-
-/// A Sprite's playback as the area gave it when the world took it in: the
-/// game's own playback is kept over an edit unless the edit changed the
-/// area's.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct SpriteStart(pub(crate) Playback);
 
 impl World {
     /// Gives the world the clips sprites play (again whenever a sheet or a
@@ -232,32 +227,6 @@ impl World {
             .collect();
         states.sort_unstable_by_key(|(id, ..)| *id);
         states
-    }
-
-    /// Each Sprite's playback now with what the area gave it, by ID: kept
-    /// over an edit that leaves the area's playback as it was.
-    pub(crate) fn playbacks(&self) -> Vec<(EntityId, Playback, Playback)> {
-        self.ecs
-            .query::<(&Id, &Sprite, &SpriteStart)>()
-            .iter()
-            .filter(|(_, s, start)| Playback::of(s) != start.0)
-            .map(|(id, s, start)| (id.0, start.0.clone(), Playback::of(s)))
-            .collect()
-    }
-
-    /// Puts back the game's playback of each sprite whose area playback
-    /// is still `start` (after a rebuild or an update).
-    pub(crate) fn keep_playbacks(&mut self, kept: Vec<(EntityId, Playback, Playback)>) {
-        for (id, start, now) in kept {
-            if let Some(&entity) = self.by_id.get(&id)
-                && let Ok((sprite, area_start)) = self
-                    .ecs
-                    .query_one_mut::<(&mut Sprite, &SpriteStart)>(entity)
-                && area_start.0 == start
-            {
-                now.put(sprite);
-            }
-        }
     }
 }
 
