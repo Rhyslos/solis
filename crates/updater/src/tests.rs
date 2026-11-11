@@ -261,8 +261,26 @@ fn the_installer_runs_quietly_and_relaunches_only_when_asked() {
 
 #[test]
 fn a_missing_installer_isn_t_started() {
-    let err = start_installer(Path::new("/no/such/setup.exe"), false).unwrap_err();
+    let err =
+        start_installer(&copy(Some(1), true), Path::new("/no/such/setup.exe"), false).unwrap_err();
     assert!(err.contains("is gone"), "{err}");
+}
+
+/// A copy run from a build's zip never starts an installer, even one
+/// that's there and whole (SEC-06): it's refused before the file is even
+/// looked at, so the answer is the same whether it exists or not.
+#[test]
+fn a_copy_that_wasn_t_installed_never_starts_an_installer() {
+    let folder = temp_folder("not-installed");
+    let there = folder.join(SETUP);
+    std::fs::write(&there, "not a program").unwrap();
+    for installer in [there.as_path(), Path::new("/no/such/setup.exe")] {
+        for relaunch in [false, true] {
+            let err = start_installer(&copy(Some(10), false), installer, relaunch).unwrap_err();
+            assert!(err.contains("wasn't installed"), "{err}");
+        }
+    }
+    assert_eq!(std::fs::read_to_string(&there).unwrap(), "not a program");
 }
 
 #[test]
@@ -353,7 +371,7 @@ fn asked_to_update_it_downloads_and_says_when_it_s_ready() {
     let fake = Fake::new(Ok(12));
     let release = fake.latest().unwrap();
     let mut steps = Vec::new();
-    let last = download(&fake, &release, Path::new("updates"), &mut |s| {
+    let last = download(&fake, &copy(Some(10), true), &release, &mut |s| {
         steps.push(s)
     });
     assert_eq!(steps, vec![Status::Downloading(12)]);
@@ -365,6 +383,39 @@ fn asked_to_update_it_downloads_and_says_when_it_s_ready() {
         }
     );
     assert_eq!(fake.downloads.get(), 1);
+}
+
+/// A copy run from a build's zip has a build number, so a check finds a
+/// newer build for it, but it never downloads one (SEC-06): GitHub isn't
+/// asked, nothing says it's downloading, and it ends failed, in words.
+#[test]
+fn a_copy_that_wasn_t_installed_never_downloads() {
+    let fake = Fake::new(Ok(12));
+    let zip = copy(Some(10), false);
+    let (_, found) = check(&fake, &zip);
+    let Status::Available(release) = found else {
+        panic!("{found:?}");
+    };
+    let mut steps = Vec::new();
+    let last = download(&fake, &zip, &release, &mut |s| steps.push(s));
+    assert!(steps.is_empty(), "{steps:?}");
+    let Status::Failed(why) = &last else {
+        panic!("{last:?}");
+    };
+    assert!(why.contains("wasn't installed"), "{why}");
+    assert_eq!(fake.downloads.get(), 0, "GitHub was never asked for it");
+    assert!(zip.may_update().is_err());
+    assert!(copy(Some(10), true).may_update().is_ok());
+
+    // On its own thread too: one final step, and no download.
+    let steps: Vec<Status> = start_download(Sendable(12), zip, release, || {})
+        .iter()
+        .collect();
+    assert_eq!(steps.len(), 1, "{steps:?}");
+    assert!(
+        matches!(steps.first(), Some(Status::Failed(_))),
+        "{steps:?}"
+    );
 }
 
 #[test]
@@ -383,7 +434,7 @@ fn failures_are_reported_in_words() {
     let mut fake = Fake::new(Ok(2));
     fake.download = Err("didn't match its checksum".into());
     let release = Fake::new(Ok(2)).latest().unwrap();
-    let last = download(&fake, &release, Path::new("updates"), &mut |_| {});
+    let last = download(&fake, &copy(Some(1), true), &release, &mut |_| {});
     assert_eq!(last, Status::Failed("didn't match its checksum".into()));
 }
 
@@ -422,7 +473,7 @@ fn a_started_check_and_download_report_every_step_and_wake_the_window() {
         panic!("{steps:?}");
     };
     assert_eq!(wakes.load(Ordering::SeqCst), 2);
-    let receiver = start_download(Sendable(5), release, PathBuf::from("updates"), || {});
+    let receiver = start_download(Sendable(5), copy(Some(4), true), release, || {});
     let steps: Vec<Status> = receiver.iter().collect();
     assert_eq!(steps.first(), Some(&Status::Downloading(5)));
     assert!(matches!(steps.last(), Some(Status::Ready { build: 5, .. })));

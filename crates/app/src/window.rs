@@ -287,7 +287,7 @@ impl App {
             queued: VecDeque::new(),
             title: String::new(),
             messages: crate::logger::install(),
-            updates: crate::updates::Updates::new(pending, skipped),
+            updates: crate::updates::Updates::new(pending, skipped, copy.clone()),
             text_files: crate::text_files::TextFiles::default(),
             tidying: Default::default(),
             startup: playtest.is_none().then_some(startup),
@@ -1918,7 +1918,7 @@ impl App {
                 log::warn!("couldn't open the download page: {why}");
             }
             startup.answer(answer, |release| {
-                crate::updates::start_download(&ctx, release)
+                crate::updates::start_download(&ctx, crate::updates::this_copy(), release)
             });
         }
         let doing = startup.doing();

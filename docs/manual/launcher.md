@@ -16,7 +16,7 @@ Solis always starts on the launcher, in a small window, and you pick the project
 
 Solis doesn't open the last project by itself: the projects you opened most recently are at the top, so it's one double-click.
 
-When a newer build of Solis is out, a blue bar over your projects says so, with **Update now**, **See what's new** (the Updates page) and **Not now** (until Solis starts again). Nothing interrupts you as Solis starts.
+When a newer build of Solis is out, a blue bar over your projects says so, with **Update now**, **See what's new** (the Updates page) and **Not now** (until Solis starts again). Nothing interrupts you as Solis starts. A copy you didn't install with the setup file has no bar, since it never updates itself: the Updates page says where to get the new build.
 
 ## How to use it
 
@@ -32,7 +32,7 @@ When a newer build of Solis is out, a blue bar over your projects says so, with 
 5. **Search projects** narrows the list as you type, by name or folder. Every word you type must appear somewhere, in any order.
 6. **Sort by** orders the list by when each was last opened, or by name. Pinned projects always come first.
 7. **+ New project** makes a folder into a new project; **Open project…** opens a project folder that isn't in the list yet. **Scan a folder…** looks through a folder you choose, and the folders inside it (four levels down), and adds every project it finds to the list, without opening them. It doesn't look inside projects or hidden folders.
-8. **Updates** shows the build you have and the newest one. When a newer build is out, Updates has a **New** mark and the bottom of the sidebar says so. The page says what the new build brings (from its release on GitHub) and when it was published, and has the next step: **Download** (it downloads while you work), then **Restart to update** (Solis asks about unsaved work, closes, installs it and opens again). **Check now** asks GitHub at once; **Look for updates when Solis starts** is the same setting as in the Help menu. See [Installing and updating](installing-and-updating.md).
+8. **Updates** shows the build you have and the newest one. When a newer build is out, Updates has a **New** mark and the bottom of the sidebar says so. The page says what the new build brings (from its release on GitHub) and when it was published, and has the next step: **Download** (it downloads while you work), then **Restart to update** (Solis asks about unsaved work, closes, installs it and opens again). In a copy you didn't install with the setup file, the step is **Open the releases page** instead. **Check now** asks GitHub at once; **Look for updates when Solis starts** is the same setting as in the Help menu. See [Installing and updating](installing-and-updating.md).
 9. **Learn** has four examples, each made as a new project in a folder you choose (the Playground, the Turret sample, the UI sample and the Benchmark), the first steps for someone new, and a link to this manual.
 10. To go back to the editor without opening anything, press **Esc**, or click **← Back to** your project (or **Carry on without a project**) at the bottom left.
 

@@ -45,7 +45,9 @@ impl Status {
 pub trait Remote {
     /// The latest release.
     fn latest(&self) -> Result<Release, String>;
-    /// Downloads and checks `release`'s installer into `folder`.
+    /// Downloads and checks `release`'s installer into `folder`. Only
+    /// [`download`] calls this, after making sure this copy may update
+    /// itself.
     fn download(&self, release: &Release, folder: &Path) -> Result<PathBuf, String>;
 }
 
@@ -69,6 +71,22 @@ pub struct Copy {
     pub folder: PathBuf,
 }
 
+impl Copy {
+    /// Whether this copy may update itself: only one the installer put
+    /// there. A copy run from a build's zip has a build number, so a check
+    /// finds newer builds for it, but updating it would install a second
+    /// copy elsewhere and leave this one as old as before (decision 0043).
+    /// [`download`] and [`crate::start_installer`] ask this themselves, so
+    /// no caller can leave it out.
+    pub fn may_update(&self) -> Result<(), String> {
+        if self.installed {
+            Ok(())
+        } else {
+            Err("this copy wasn't installed with the installer, so it doesn't update itself".into())
+        }
+    }
+}
+
 /// Runs one check, telling `report` each step; gives the last status:
 /// up to date, a newer build available, built from source, or failed.
 /// Never downloads.
@@ -84,16 +102,21 @@ pub fn run(remote: &dyn Remote, copy: &Copy, report: &mut dyn FnMut(Status)) -> 
     }
 }
 
-/// Downloads and checks `release`'s installer into `folder`, telling
-/// `report` each step; gives the last status: ready, or failed.
+/// Downloads and checks `release`'s installer into `copy`'s updates
+/// folder, telling `report` each step; gives the last status: ready, or
+/// failed. A copy that may not update itself ([`Copy::may_update`]) fails
+/// at once, and nothing is asked of `remote`.
 pub fn download(
     remote: &dyn Remote,
+    copy: &Copy,
     release: &Release,
-    folder: &Path,
     report: &mut dyn FnMut(Status),
 ) -> Status {
+    if let Err(why) = copy.may_update() {
+        return Status::Failed(why);
+    }
     report(Status::Downloading(release.build));
-    match remote.download(release, folder) {
+    match remote.download(release, &copy.folder) {
         Ok(installer) => Status::Ready {
             build: release.build,
             installer,
@@ -113,16 +136,16 @@ pub fn start<R: Remote + Send + 'static>(
     on_a_thread(wake, move |report| run(&remote, &copy, report))
 }
 
-/// Starts downloading `release` into `folder` on its own thread, the
-/// steps arriving as [`start`]'s do.
+/// Starts downloading `release` for `copy` on its own thread, the steps
+/// arriving as [`start`]'s do.
 pub fn start_download<R: Remote + Send + 'static>(
     remote: R,
+    copy: Copy,
     release: Release,
-    folder: PathBuf,
     wake: impl Fn() + Send + 'static,
 ) -> Receiver<Status> {
     on_a_thread(wake, move |report| {
-        download(&remote, &release, &folder, report)
+        download(&remote, &copy, &release, report)
     })
 }
 

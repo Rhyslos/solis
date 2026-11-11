@@ -41,7 +41,7 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | `sounds.rs` | The project's sound files and sound events in the editor: sounds measured and events read on a worker for the Library and Properties, and listened to through the sound device (an event plays a new pick each press). | `Sounds` |
 | `text_files.rs` | The text file shown in Properties, read when it's picked and again when it changes on disk, at most 512 KB, refused if it holds a zero byte. | `TextFiles`, `read_text` |
 | `sprites.rs` | The project's sprite sheets (Phase 9, D2): Aseprite files read and packed on a worker, again whenever one is saved, a failed read keeping the last good one; clips files, animators, tilesets, tile maps, atlas files (Atlas Crop) and the pictures tilesets and atlases use read beside them. | `Sprites`, `read_sheet`, `read_tileset`, `read_tile_map`, `read_atlas`, `read_art` |
-| `updates.rs` | Keeping the program up to date while it runs: Help > Check for updates, downloading while you work, installing on close (decisions 0043 and 0045). | `Updates`, `Pending` |
+| `updates.rs` | Keeping the program up to date while it runs: Help > Check for updates, downloading while you work, installing on close (decisions 0043 and 0045). A copy that wasn't installed is only told a newer build is out. | `Updates`, `Pending` |
 
 ## Ready-made projects (Help menu)
 
