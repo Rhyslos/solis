@@ -159,8 +159,10 @@ pub(crate) struct ProjectState {
     pub(crate) screen_pictures: crate::screen_pictures::ScreenPictures,
     /// The screen open on the UI editor's canvas (decision 0089).
     pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
-    /// The program its view was drawn from.
-    pub(crate) screen_from: Option<MadeFrom<script::Compiled>>,
+    /// The build of the game's code its view was last tried with,
+    /// whatever came of it (`Some(None)`: with none, the code having
+    /// mistakes); `None` until it's tried.
+    pub(crate) screen_from: Option<Option<MadeFrom<script::Compiled>>>,
     /// What the open screen can be tied to and send, and the build of the
     /// game's code it's for.
     pub(crate) screen_game: Option<(

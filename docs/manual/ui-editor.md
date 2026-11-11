@@ -90,6 +90,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 - **Problem:** a bar or a number shows as empty. **Why:** the canvas draws the screen for an entity whose values are all their starting ones (health 0, say). **Fix:** try other numbers with **Preview values**, or press Play to see it with the game's real values in the Game panel.
 - **Problem:** **Tie to…** says to give the entity a component. **Why:** the game's code has no components a screen can read yet, or has a mistake. **Fix:** write a component (`component Health { has { float hp = 20; } }`), check Problems is empty, and try again.
 - **Problem:** **Sends** has nothing to pick. **Why:** the game's code declares no events yet, so there's nothing a button could send. **Fix:** declare one in your game code (`event Pause();`, and `pass` it), and check Problems is empty.
+- **Problem:** the canvas says *The screen's view stopped: …* in place of the screen. **Why:** the screen's own code stopped with an error as its view ran (the message says what and where), so there's nothing to draw. The canvas tries a screen once each time the game's code changes, not over and over. **Fix:** put the line right as code and save: the canvas draws the screen again by itself.
 - **Problem:** dragging a piece doesn't move it where expected. **Why:** in a column or a row, pieces go one after another: a piece moves *between* its neighbours, not to any spot. **Fix:** to place pieces freely, put them in a `canvas` and drag them there.
 
 ## Related

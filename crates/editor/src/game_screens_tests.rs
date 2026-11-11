@@ -778,3 +778,54 @@ fn a_menu_shown_this_tick_has_the_keys_next_tick_however_many_ticks_a_frame_runs
     assert_eq!(one_a_frame, reflect::Value::Int(1), "only before the menu");
     assert_eq!(many_a_frame, one_a_frame);
 }
+
+/// The review, BUG-11, in the running game: screens whose code can't
+/// start were started again after every tick (and before each one, since
+/// the screens shown never matched the ones drawn), for the same build of
+/// the code and the same failure.
+#[test]
+fn screens_that_can_t_start_are_tried_once_for_each_build_of_the_code() {
+    // A build whose screens' own start stops.
+    let broken = || {
+        let mut build = (*program(&hud("text \"Hud\";"), None)).clone();
+        build.screens.as_mut().unwrap().chunk.code = "error('the screens broke')".into();
+        Arc::new(build)
+    };
+    let starts = || crate::game_screens::STARTS.with(std::cell::Cell::get);
+    let mut w = showing(broken(), &[("Hud", true, 0)]);
+    let before = starts();
+    w.play();
+    for _ in 0..30 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert_eq!(starts() - before, 1, "once, not once a tick");
+    assert!(w.open.game_screens.pictures.is_empty());
+    let said = |w: &Workbench| {
+        w.log_lines()
+            .iter()
+            .filter(|l| l.text.starts_with("The game's screens couldn't start"))
+            .count()
+    };
+    assert_eq!(said(&w), 1, "said once");
+    // Another build that fails the same way: tried once more.
+    w.set_program(Some(broken()));
+    for _ in 0..30 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert_eq!(starts() - before, 2, "once for the new build");
+    // A build that works: started once, and its screen is drawn from
+    // then on without starting again.
+    w.set_program(Some(program(&hud("text \"Hud\";"), None)));
+    for _ in 0..30 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert_eq!(starts() - before, 3);
+    assert_eq!(drawn(&w), vec!["Hud".to_string()]);
+    // Stop and Play: a new play starts them once.
+    w.stop();
+    w.play();
+    for _ in 0..30 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert_eq!(starts() - before, 4);
+}

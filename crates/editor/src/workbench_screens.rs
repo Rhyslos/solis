@@ -1,6 +1,7 @@
 //! The workbench's side of the UI editor (decision 0089): opening a
 //! screen's file on the canvas, saving each change, undo, the file
-//! changed on disk, and the screen's view drawn from the game's code.
+//! changed on disk, and the screen's view drawn from the game's code,
+//! once for each build of it.
 
 use crate::console::LogLevel;
 use crate::layout;
@@ -148,20 +149,31 @@ impl Workbench {
         }
     }
 
-    /// After the code is checked again: the open file changed on disk is
-    /// taken in as one undo step, and the screen's view is drawn again
-    /// from the game's code with the screen's starting values.
+    /// After the code is checked again (or a redraw is asked for): the
+    /// open file changed on disk is taken in as one undo step, and the
+    /// screen's view is drawn again from the game's code with the screen's
+    /// starting values. Called every frame; it does that once for each
+    /// build of the code.
     pub(crate) fn refresh_screen(&mut self) {
         let program = self.open.program.clone();
         let Some(doc) = &mut self.open.screen_doc else {
             return;
         };
-        let same = MadeFrom::same(self.open.screen_from.as_ref(), program.as_ref());
-        if same && doc.view.is_some() && !doc.redraw {
+        // A build is tried once, whatever came of it (the review, BUG-11):
+        // its view, or why it stopped, stays shown until another build
+        // comes or the view is asked for again. Trying the same one again
+        // could only end the same way, and would start the game's screen
+        // code on every frame.
+        let tried = self
+            .open
+            .screen_from
+            .as_ref()
+            .is_some_and(|from| MadeFrom::same(from.as_ref(), program.as_ref()));
+        if tried && !doc.redraw {
             return;
         }
         doc.redraw = false;
-        self.open.screen_from = program.as_ref().map(MadeFrom::new);
+        self.open.screen_from = Some(program.as_ref().map(MadeFrom::new));
         let Some(program) = program.as_ref() else {
             doc.view_problem = Some(
                 "The game's code has mistakes, so the screen can't be drawn: see Problems.".into(),
@@ -212,7 +224,7 @@ impl Workbench {
             registry: &self.open.document.registry,
             preview: &preview,
         };
-        let made = script::screens::Screens::start(code)
+        let made = crate::game_screens::start_screens(code)
             .map_err(|f| f.to_string())
             .and_then(|s| {
                 s.view(&doc.screen, Some(preview_entity()), &mut reader)

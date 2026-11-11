@@ -485,3 +485,100 @@ fn what_a_screen_can_be_tied_to_is_worked_out_again_for_each_build_of_the_code()
     let kept = h.state().0.open.screen_game.as_ref().unwrap().1.clone();
     assert!(Arc::ptr_eq(&again, &kept));
 }
+
+/// A game with a clock, and MENU's screen with a view that stops each
+/// time it runs: it tries to change the clock, which a screen can't.
+fn program_whose_view_stops() -> Arc<script::Compiled> {
+    let main = "object Clock {\n    has { int hour = 6; }\n}\npass Clock;\nend\n";
+    let menu = MENU
+        .replace(
+            "fetch \"solis/screen\":Ui;",
+            "fetch \"solis/screen\":Ui;\nfetch \"main\":Clock;",
+        )
+        .replace(
+            "text \"Paused\" [size 28];",
+            "is true? then { Clock.hour = 99; }\n                text \"Paused\" [size 28];",
+        );
+    assert_ne!(menu, MENU);
+    let code = script::Code {
+        files: vec![
+            ("main.lst".to_string(), main.to_string()),
+            ("ui/pauseMenu.lst".to_string(), menu),
+        ],
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    }
+}
+
+/// How many times this test has started the game's screens' code.
+fn starts() -> u32 {
+    crate::game_screens::STARTS.with(std::cell::Cell::get)
+}
+
+/// The review, BUG-11: a screen whose view stopped was drawn again on
+/// every frame, starting the game's screens and running its view each
+/// time, for the same build of the code and the same result.
+#[test]
+fn a_screen_whose_view_stops_is_tried_once_for_each_build_of_the_code() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(ProjectInfo {
+        name: "Farm".into(),
+        root: "/projects/farm".into(),
+        assets: "/projects/farm/assets".into(),
+    }));
+    w.set_program(Some(program_whose_view_stops()));
+    assert!(w.open_screen("ui/pauseMenu.lst", None));
+    let before = starts();
+    let stopped = |w: &Workbench| {
+        let doc = w.open.screen_doc.as_ref().unwrap();
+        assert!(doc.view.is_none());
+        let why = doc.view_problem.as_deref().expect("it says why");
+        assert!(why.starts_with("The screen's view stopped: "), "{why}");
+        assert!(why.contains("can't be changed here"), "{why}");
+    };
+    // Twenty frames of the whole editor: its code is started once.
+    let mut h = harness(w);
+    for _ in 0..20 {
+        h.run();
+    }
+    assert_eq!(starts() - before, 1, "once, not once a frame");
+    stopped(&h.state().0);
+    // The code is checked again and comes out the same: another build,
+    // tried once more, and no more.
+    h.state_mut()
+        .0
+        .set_program(Some(program_whose_view_stops()));
+    for _ in 0..20 {
+        h.run();
+    }
+    assert_eq!(starts() - before, 2, "once for the new build");
+    stopped(&h.state().0);
+    // A preview value changed: the view is asked for again, once.
+    h.state_mut().0.open.screen_doc.as_mut().unwrap().redraw = true;
+    for _ in 0..20 {
+        h.run();
+    }
+    assert_eq!(starts() - before, 3, "once when asked to draw again");
+    stopped(&h.state().0);
+    // The code has mistakes: said on the canvas, with nothing to run.
+    h.state_mut().0.set_program(None);
+    for _ in 0..20 {
+        h.run();
+    }
+    assert_eq!(starts() - before, 3);
+    let doc = h.state().0.open.screen_doc.as_ref().unwrap();
+    assert!(doc.view_problem.as_deref().unwrap().contains("mistakes"));
+    // Put right: drawn, once, and the message goes.
+    h.state_mut().0.set_program(Some(program(MENU)));
+    for _ in 0..20 {
+        h.run();
+    }
+    assert_eq!(starts() - before, 4);
+    let doc = h.state().0.open.screen_doc.as_ref().unwrap();
+    assert!(doc.view.is_some() && doc.view_problem.is_none());
+}
