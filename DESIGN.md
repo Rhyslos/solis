@@ -258,7 +258,7 @@ The area to spend extra time on. In order of payoff:
 
 **Being remade** ([decision 0099](docs/decisions/0099-the-g-layout.md), Shared 1a to 1d in ROADMAP.md): the editor's frame becomes the project lead's own design, the "G layout" ([`docs/design/g-layout/`](docs/design/g-layout/README.md)): a tab bar, a ribbon whose tabs are the areas of the engine, one or two editor groups, a shelf of tabs along the bottom and a status bar, in one dark neutral theme with five accents ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)). What the engine lacks is shown as a placeholder, and one setting hides them all ([decision 0101](docs/decisions/0101-unfinished-parts-as-placeholders.md)). The look is built; the frame below is today's until the top and the middle are, and each line is rewritten as its part is replaced.
 
-Today's frame, settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's panels with Unreal's tabs, and every panel dockable.
+Today's frame, settled in [decision 0004](docs/decisions/0004-editor-layout.md): flat panels with tabs, a one-row top bar, and every panel dockable.
 
 - **Top bar, one row:** menus and document tabs on the left (Unreal's tab system), and Play, Build and Build & Play on the right.
 - **Default arrangement:** Area and Layers above Properties on the right, full height; the viewport in the centre, with the tools as icons at its bottom centre (Select, Move, Rotate, Scale, Transform) and its other overlays in the corners, switchable from its ≡ menu; the library (with Code as a second tab) beside the console (with Problems) underneath. The camera is Fly only.
