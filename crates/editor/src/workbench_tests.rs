@@ -1750,6 +1750,37 @@ fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round(
     assert_eq!(w.selected_roots(), [lost]);
 }
 
+/// The open area saved and opened again: what its file's text reads
+/// back and expands to.
+fn saved_and_opened(w: &mut Workbench) -> area::Area {
+    let file = w.area_file().unwrap();
+    let registry = w.document().registry.clone();
+    let text = area::text::write_file(&file, &registry, &|_| None);
+    let read = area::text::read_file(&text, &registry).unwrap();
+    assert_eq!(read, file, "{text}");
+    w.expand_file(&read).unwrap()
+}
+
+#[test]
+fn a_part_dragged_out_of_its_copy_is_where_it_was_left_after_opening_again() {
+    // The review of Phase 9, BUG-13: a copy's part dragged to the top
+    // level in the Area panel was back under its copy after saving and
+    // opening the area again.
+    let (mut w, _, root, lamp) = with_a_lamp_post();
+    assert_eq!(w.document().area().get(lamp).unwrap().parent, Some(root));
+    w.reparent(&[lamp], None);
+    assert_eq!(w.document().area().get(lamp).unwrap().parent, None);
+    let opened = saved_and_opened(&mut w);
+    assert_eq!(opened.get(lamp).unwrap().parent, None);
+    assert_eq!(opened, *w.document().area());
+    // Under another entity.
+    let light = w.add_point_light();
+    w.reparent(&[lamp], Some(light));
+    let opened = saved_and_opened(&mut w);
+    assert_eq!(opened.get(lamp).unwrap().parent, Some(light));
+    assert_eq!(opened, *w.document().area());
+}
+
 #[test]
 fn placing_an_assembly_makes_a_copy_that_saves_as_one_line() {
     let (mut w, _, root, lamp) = with_a_lamp_post();

@@ -20,6 +20,8 @@ Other engines call this a *prefab*. An imported model works the same way: placin
 - **↺** puts that setting back to the assembly's value;
 - **↑** makes it the assembly's value, for every copy (**Apply**).
 
+**Move a part of one copy:** drag it in the Area panel, under another entity or onto empty space to bring it out to the top level. It keeps its place in the world and is still part of its copy: the move is one of that copy's own changes, saved with the area, and the part still follows the assembly in everything else.
+
 **Change every copy:** use ↑, or open the `.solassembly` file and edit it (in Solis or a text editor). Every copy updates, and each keeps its own bold changes.
 
 **Unpack:** select a copy's top entity and click **Unpack** in Properties. It becomes ordinary entities that no longer follow the assembly. For a model, **Unpack** splits it into one entity per part of the file (as in Blender's outliner), so each part can be moved, hidden or given components on its own.

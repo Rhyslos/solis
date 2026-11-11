@@ -29,7 +29,7 @@ The tab at the top shows the area's name, with a **•** while it has changes th
 
 ```
 -- An area. Safe to edit by hand: one block per entity, one line per field.
-area version 1;
+area version 2;
 
 entity 2B8D4NE6TV0HC {
     name = "Sun";
@@ -43,12 +43,14 @@ entity 2B8D4NE6TV0HC {
 - One block per entity, sorted by its ID (13 letters and digits that never change), never by the tree or by when it was made, so renaming or moving an entity never moves its block.
 - One line per setting: `Component.setting = value;`. Text is in quotes, lists in `[ ]`, and `--` starts a comment.
 - A child names its parent with `parent = "…";`.
+- A copy of an [assembly](assemblies.md) is one block naming its assembly. Each part you changed in that copy has a short block of its own, named after the copy and the part (`copy/part`), holding only what you changed. If you moved the part, its `parent` line names what it's under now, or is `parent = "";` when you moved it out to the top level.
 - Models are named by their asset ID, with the file's path in a comment for people to read; the comment is rewritten on every save and never read.
 - Components Solis doesn't know (from game code that isn't there) are kept exactly as written.
 
 ## Tips and common problems
 - **Problem:** "line 12: …" when opening. **Why:** the file has a mistake, perhaps from a hand edit or a bad merge. **Fix:** the message says the line and what's wrong; fix it in a text editor. Solis never opens half a file.
 - **Problem:** "it was saved by a newer version". **Why:** someone saved it with a newer Solis, which may write things this one can't read. **Fix:** update Solis.
+- **Problem:** the Console says an area "was saved by an older version". **Why:** the file's first line says which version of the layout it's in, and this Solis writes a newer one (version 2, which can say that a part of a copy was moved out to the top level). Nothing is lost: it opens as it always did. **Fix:** nothing. When you save, the old file is first copied into the project's `.solis/backups` folder.
 - **Problem:** Git reports a conflict in an area file. **Why:** two people added entities in the same spot, or changed lines right next to each other in the same component (both rare). **Fix:** open the file in a text editor and keep both blocks, or the line you want; Solis's own merge tool (Phase 18) will do this for you.
 - **Problem:** "Not saved: … already exists". **Why:** the name typed in the Save window had no `.solarea`, and a file with that name and `.solarea` is already there; the window only asked about replacing the name as typed. **Fix:** choose **Save as** again and pick the existing file to replace it, or type another name.
 - **Problem:** "Stop playing first" when saving. **Why:** the game is running, and saving now would save its changes, which Stop undoes. **Fix:** press Stop, then save. A Save window opened before Play finishes after Stop.

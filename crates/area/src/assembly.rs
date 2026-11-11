@@ -21,7 +21,7 @@
 //! can make the editor explode.
 
 use crate::document::{Area, EntityData, Origin};
-use crate::text::{AreaFile, FileKind, MAX_ENTITIES, MAX_NESTING, Override};
+use crate::text::{AreaFile, FileKind, MAX_ENTITIES, MAX_NESTING, Override, ParentChange};
 use crate::tree::Mended;
 use reflect::{AssetId, EntityId, Value};
 use std::collections::{HashMap, HashSet};
@@ -396,7 +396,13 @@ impl<'a> Expander<'a> {
                 return Err(AssemblyError::TooBig);
             }
             let mut data = EntityData::new(changes.name.as_deref().unwrap_or("Missing part"));
-            data.parent = Some(changes.parent.unwrap_or(root));
+            // With nothing said it hangs under the copy's root, so it's
+            // found with its copy; moved somewhere, it's there.
+            data.parent = match changes.parent {
+                ParentChange::Unchanged => Some(root),
+                ParentChange::TopLevel => None,
+                ParentChange::Under(parent) => Some(parent),
+            };
             if let Some(order) = &changes.order {
                 data.order.clone_from(order);
             }
@@ -517,7 +523,7 @@ impl<'a> Expander<'a> {
                     (root, o.path.clone()),
                     Override {
                         name: Some(entity.name.clone()),
-                        parent: entity.parent,
+                        parent: ParentChange::to(entity.parent),
                         order: Some(entity.order.clone()),
                         components: entity.components.clone(),
                         ..Override::default()
@@ -595,8 +601,10 @@ fn apply(data: &mut EntityData, changes: &Override) {
     if let Some(name) = &changes.name {
         data.name.clone_from(name);
     }
-    if let Some(parent) = changes.parent {
-        data.parent = Some(parent);
+    match changes.parent {
+        ParentChange::Unchanged => {}
+        ParentChange::TopLevel => data.parent = None,
+        ParentChange::Under(parent) => data.parent = Some(parent),
     }
     if let Some(order) = &changes.order {
         data.order.clone_from(order);
@@ -622,7 +630,7 @@ fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override 
             changes.name = Some(actual.name.clone());
         }
         if actual.parent != wanted.parent {
-            changes.parent = actual.parent;
+            changes.parent = ParentChange::to(actual.parent);
         }
         if actual.order != wanted.order {
             changes.order = Some(actual.order.clone());
@@ -823,6 +831,107 @@ mod tests {
         let saved = Expander::new(&lib).collapse(&area, FileKind::Area).unwrap();
         assert!(saved.overrides.is_empty(), "{:?}", saved.overrides);
         assert_eq!(Expander::new(&lib).expand(&saved).unwrap(), area);
+    }
+
+    /// `area` saved and opened again: its file as collapsed, and what
+    /// reading that file's text back expands to.
+    fn saved_and_opened(area: &Area, lib: Lookup<'_>) -> (AreaFile, Area) {
+        let registry = crate::builtin::registry().unwrap();
+        let file = Expander::new(lib).collapse(area, FileKind::Area).unwrap();
+        let written = text::write_file(&file, &registry, &|_| None);
+        let read = text::read_file(&written, &registry).unwrap();
+        assert_eq!(read, file, "{written}");
+        let opened = Expander::new(lib).expand(&read).unwrap();
+        (file, opened)
+    }
+
+    fn placed_at(x: f32, y: f32) -> Transform {
+        Transform {
+            position: glam::Vec3::new(x, y, 0.0),
+            ..Transform::default()
+        }
+    }
+
+    #[test]
+    fn a_part_moved_to_the_top_level_is_saved_there() {
+        // The review of Phase 9, BUG-13: "no parent" was written the same
+        // as "the assembly's parent" (nothing), so a part dragged out of
+        // its copy came back under its old parent when the area was
+        // opened again, with its place in the world taken as a place
+        // under that parent: it had jumped.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let post = id(40);
+        let lamp = derive(post, &[id(2)]);
+        let mut area = Expander::new(&lib).expand(&town_of_posts()).unwrap();
+        area.get_mut(post).unwrap().set(&placed_at(10.0, 20.0));
+        assert_eq!(area.get(lamp).unwrap().parent, Some(post));
+        // Out to the top level, to a place of its own in the world.
+        let moved = area.get_mut(lamp).unwrap();
+        moved.parent = None;
+        moved.set(&placed_at(7.0, 5.0));
+        let there = area.world_matrix(lamp);
+        let (file, opened) = saved_and_opened(&area, &lib);
+        let change = |file: &AreaFile| file.overrides.get(&(post, vec![id(2)])).cloned();
+        assert_eq!(change(&file).unwrap().parent, ParentChange::TopLevel);
+        assert_eq!(opened.get(lamp).unwrap().parent, None);
+        assert_eq!(opened.world_matrix(lamp), there);
+        assert_eq!(opened, area);
+        // Under another entity instead.
+        let mut shed = EntityData::new("Shed").with(&placed_at(-3.0, 0.0));
+        shed.order = "a5".into();
+        area.insert(id(60), shed);
+        area.get_mut(lamp).unwrap().parent = Some(id(60));
+        let there = area.world_matrix(lamp);
+        let (file, opened) = saved_and_opened(&area, &lib);
+        assert_eq!(change(&file).unwrap().parent, ParentChange::Under(id(60)));
+        assert_eq!(opened.get(lamp).unwrap().parent, Some(id(60)));
+        assert_eq!(opened.world_matrix(lamp), there);
+        assert_eq!(opened, area);
+        // And back where the assembly has it: nothing is left to write.
+        let home = Expander::new(&lib)
+            .expected(&area, area.get(lamp).unwrap().origin.as_ref().unwrap())
+            .unwrap();
+        *area.get_mut(lamp).unwrap() = home;
+        let (file, opened) = saved_and_opened(&area, &lib);
+        assert_eq!(change(&file), None);
+        assert_eq!(opened.get(lamp).unwrap().parent, Some(post));
+        assert_eq!(opened, area);
+        // The other copy was never touched.
+        assert!(file.overrides.keys().all(|(copy, _)| *copy == post));
+    }
+
+    #[test]
+    fn a_part_gone_from_its_assembly_stays_at_the_top_level_if_moved_there() {
+        // BUG-13 again: changes to a part the assembly no longer has are
+        // kept as an entity, under its copy until it's moved.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let mut file = town_of_posts();
+        file.overrides.insert(
+            (id(40), vec![id(9)]),
+            Override {
+                name: Some("Bulb".into()),
+                ..Override::default()
+            },
+        );
+        let mut area = Expander::new(&lib).expand(&file).unwrap();
+        let bulb = derive(id(40), &[id(9)]);
+        assert_eq!(area.get(bulb).unwrap().parent, Some(id(40)));
+        let (_, opened) = saved_and_opened(&area, &lib);
+        assert_eq!(opened, area, "under its copy, as before");
+        area.get_mut(bulb).unwrap().parent = None;
+        let (file, opened) = saved_and_opened(&area, &lib);
+        let change = &file.overrides[&(id(40), vec![id(9)])];
+        assert_eq!(change.parent, ParentChange::TopLevel);
+        assert_eq!(opened.get(bulb).unwrap().parent, None);
+        assert_eq!(opened, area);
+        // A file from before, which says nothing of its parent: under
+        // its copy, as it always was.
+        let mut old = file.clone();
+        if let Some(change) = old.overrides.get_mut(&(id(40), vec![id(9)])) {
+            change.parent = ParentChange::Unchanged;
+        }
+        let opened = Expander::new(&lib).expand(&old).unwrap();
+        assert_eq!(opened.get(bulb).unwrap().parent, Some(id(40)));
     }
 
     #[test]
