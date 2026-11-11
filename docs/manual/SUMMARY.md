@@ -12,6 +12,7 @@ New to game engines? Start with [Concepts](concepts.md), then build [your first 
 - [Concepts: the ideas behind a game engine's editor](concepts.md)
 - [Interface tour: the top bar, the panels, and rearranging them](interface-tour.md)
 - [Settings: the editor's own colour, layout and more](settings.md)
+- [Unfinished parts: the grey controls with a small square, what they are, and hiding them](unfinished-parts.md)
 - [Moving around the viewport: the fly camera, several views, flat views and the corner controls](navigating-the-viewport.md)
 - [Entities and components: what an area is made of](entities.md)
 - [Selecting and moving things: clicking, boxes, and the move, rotate and scale gizmos](selecting-and-moving.md)

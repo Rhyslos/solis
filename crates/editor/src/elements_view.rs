@@ -68,7 +68,7 @@ pub(crate) fn elements_tab(
     let mut out = ElementsOut::default();
     let Some(block) = doc.block().cloned() else {
         let why = doc.source.as_ref().err().cloned().unwrap_or_default();
-        crate::panels::placeholder(
+        crate::panels::empty_note(
             ui,
             &format!("The canvas can't follow this file ({why}): edit it as code."),
         );

@@ -115,16 +115,19 @@ impl LibraryKind {
     fn icon(self) -> Icon {
         match self {
             Self::Model => Icon::Model,
-            Self::Assembly => Icon::Area,
+            Self::Assembly => Icon::Assembly,
             Self::Area => Icon::AreaFile,
-            Self::Texture => Icon::Viewport,
-            Self::Code => Icon::Code,
-            Self::Sound | Self::SoundEvent => Icon::Sound,
-            Self::SpriteSheet | Self::SpriteClips => Icon::Viewport,
+            Self::Texture => Icon::Picture,
+            Self::Code => Icon::CodeFile,
+            Self::Sound => Icon::Sound,
+            Self::SoundEvent => Icon::SoundEvent,
+            Self::SpriteSheet => Icon::SpriteSheet,
+            Self::SpriteClips => Icon::Clips,
             Self::Animator => Icon::Animator,
-            Self::Tileset | Self::TileMap => Icon::Layers,
-            Self::Atlas => Icon::Viewport,
-            Self::Text | Self::Other => Icon::Properties,
+            Self::Tileset => Icon::Tileset,
+            Self::TileMap => Icon::TileMap,
+            Self::Atlas => Icon::Crops,
+            Self::Text | Self::Other => Icon::TextFile,
         }
     }
 

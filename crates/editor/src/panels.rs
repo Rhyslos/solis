@@ -1,6 +1,6 @@
 //! Drawing each docked panel's contents, and the bits panels share: the
-//! small menu row under a title, a quiet placeholder note, and the hint
-//! shown while files are dragged over the window.
+//! small menu row under a title, a quiet note for a panel with nothing
+//! to show, and the hint shown while files are dragged over the window.
 
 use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, ConsoleRequest, console};
@@ -292,13 +292,6 @@ impl TabViewer for PanelViewer<'_> {
                 );
                 self.area_requests.extend(requests);
             }
-            Panel::Layers => {
-                placeholder(
-                    ui,
-                    "Layers (groups of entities to show, hide or lock together) aren't built \
-                     yet. Until then, hide and lock entities in the Area panel.",
-                );
-            }
             Panel::Properties => {
                 if (self.in_front.contains(&Panel::Canvas)
                     || self.in_front.contains(&Panel::Elements))
@@ -525,7 +518,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Clips | Panel::Frames => {
                 let Some(frames) = &mut self.frames else {
-                    placeholder(ui, "No clips file is open.");
+                    empty_note(ui, "No clips file is open.");
                     return;
                 };
                 let changed = if *tab == Panel::Clips {
@@ -540,7 +533,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Map => {
                 let Some(map) = &self.map else {
-                    placeholder(ui, "Select an entity with a Tile Map to see its map here.");
+                    empty_note(ui, "Select an entity with a Tile Map to see its map here.");
                     return;
                 };
                 egui::ScrollArea::vertical()
@@ -557,7 +550,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Tileset => {
                 let Some(tileset) = &mut self.tileset else {
-                    placeholder(ui, "No tileset is open.");
+                    empty_note(ui, "No tileset is open.");
                     return;
                 };
                 let out = crate::tileset_view::tileset_tab(ui, tileset);
@@ -568,7 +561,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Canvas => {
                 let Some(screen) = &mut self.screen else {
-                    placeholder(
+                    empty_note(
                         ui,
                         "No screen is open. Double-click a screen's file (in ui/) in the \
                          Library to draw it here.",
@@ -596,7 +589,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Elements => {
                 let Some(screen) = &mut self.screen else {
-                    placeholder(ui, "No screen is open.");
+                    empty_note(ui, "No screen is open.");
                     return;
                 };
                 let out = egui::Frame::new()
@@ -614,7 +607,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::AtlasCrop => {
                 let Some((editor, picture, problem)) = &mut self.atlas else {
-                    placeholder(ui, "No picture's crops are open.");
+                    empty_note(ui, "No picture's crops are open.");
                     return;
                 };
                 let out = crate::atlas_view::atlas_tab(
@@ -632,7 +625,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Animator => {
                 let Some(animator) = &mut self.animator else {
-                    placeholder(ui, "No animator is open.");
+                    empty_note(ui, "No animator is open.");
                     return;
                 };
                 self.frames_out.animator_changed |= crate::animator_view::animator_tab(
@@ -666,7 +659,6 @@ impl TabViewer for PanelViewer<'_> {
             Panel::Viewport
             | Panel::Game
             | Panel::Area
-            | Panel::Layers
             | Panel::Properties
             | Panel::Library
             | Panel::Code
@@ -715,8 +707,10 @@ pub(crate) fn drop_hint(ui: &Ui, accent: Accent) {
     );
 }
 
-/// A quiet note in a panel that has nothing to show yet.
-pub(crate) fn placeholder(ui: &mut Ui, text: &str) {
+/// A quiet note in a panel that has nothing to show right now ("No
+/// tileset is open."). Something the editor can't do yet is another
+/// matter: that is drawn by `crate::unbuilt`, and only there.
+pub(crate) fn empty_note(ui: &mut Ui, text: &str) {
     egui::Frame::new()
         .inner_margin(theme::panel_margin())
         .show(ui, |ui| {

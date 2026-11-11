@@ -75,7 +75,7 @@ impl Workspace {
             Self::Level => Icon::AreaFile,
             Self::Animate => Icon::Animator,
             Self::Code => Icon::Code,
-            Self::Ui => Icon::Game,
+            Self::Ui => Icon::Screen,
         }
     }
 

@@ -66,10 +66,10 @@ pub(crate) fn atlas_tab(
     match (&picture, problem) {
         (Some(picture), _) => picture_canvas(&mut right, editor, picture, accent, &mut out),
         (None, Some(why)) => {
-            crate::panels::placeholder(&mut right, why);
+            crate::panels::empty_note(&mut right, why);
         }
         (None, None) => {
-            crate::panels::placeholder(&mut right, "Reading the picture…");
+            crate::panels::empty_note(&mut right, "Reading the picture…");
         }
     }
     ui.advance_cursor_after_rect(full);

@@ -267,7 +267,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
             .view_problem
             .clone()
             .unwrap_or_else(|| "Reading the screen…".into());
-        crate::panels::placeholder(ui, &why);
+        crate::panels::empty_note(ui, &why);
         return;
     };
     // The view as drawn: hidden pieces see-through.
@@ -1007,7 +1007,8 @@ fn finish_pen(doc: &mut ScreenDoc, drawn: &Drawn) -> bool {
 
 /// The tools along the canvas's bottom, and the picture for Image.
 fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], accent: Color32) {
-    use crate::canvas_tools::{CanvasTool, paint_tool};
+    use crate::canvas_tools::CanvasTool;
+    use crate::tokens::size;
     let n = CanvasTool::ALL.len() as f32;
     let width = n * 30.0
         + 8.0
@@ -1039,10 +1040,10 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
                         Color32::TRANSPARENT
                     };
                     ui.painter().rect_filled(rect, 4.0, fill);
-                    paint_tool(
+                    crate::icons::icon(
                         ui.painter(),
-                        rect,
-                        tool,
+                        Rect::from_center_size(rect.center(), Vec2::splat(size::TOOL_ICON)),
+                        tool.icon(),
                         if on {
                             theme::on_accent()
                         } else {
@@ -1130,7 +1131,12 @@ fn tool_keys(ui: &mut Ui, response: &egui::Response, doc: &mut ScreenDoc, keys: 
                     theme::panel()
                 },
             );
-            crate::canvas_tools::paint_tool(&painter, r, tool, theme::text());
+            crate::icons::icon(
+                &painter,
+                Rect::from_center_size(p, Vec2::splat(crate::tokens::size::TOOL_ICON)),
+                tool.icon(),
+                theme::text(),
+            );
             if hover && ui.input(|i| i.pointer.primary_clicked()) {
                 chosen = Some(tool);
             }

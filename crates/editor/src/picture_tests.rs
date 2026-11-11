@@ -462,3 +462,40 @@ fn the_side_by_side_sheet() {
 fn design_file_page() -> Picture {
     design("07-file-recent-projects.png")
 }
+
+/// Today's Settings window on its Appearance page, drawn for real over
+/// the editor.
+fn appearance_picture(look: InterfaceLook) -> Option<Picture> {
+    let mut workbench = sample_project();
+    workbench.open_settings();
+    let mut harness = editor_window(workbench, look, EDITOR_SIZE)?;
+    harness.run();
+    harness.run();
+    Some(drawn(&mut harness))
+}
+
+/// Writes the Settings window's Appearance page beside the design's
+/// Preferences screen, shown and with unfinished parts hidden. Run with
+/// `--ignored` and `SOLIS_PICTURE_SHEET` set to the folder to write into.
+#[test]
+#[ignore = "writes pictures to look at; needs SOLIS_PICTURE_SHEET and a graphics driver"]
+fn the_appearance_page_beside_the_design_s_preferences() {
+    let folder = std::env::var_os("SOLIS_PICTURE_SHEET").expect("SOLIS_PICTURE_SHEET");
+    let folder = std::path::Path::new(&folder);
+    let Some(shown) = appearance_picture(InterfaceLook::default()) else {
+        return;
+    };
+    let design = design("08-file-preferences.png").halved();
+    design
+        .beside(&shown, 24, tokens::text_meta())
+        .write(&folder.join("preferences-design-and-appearance.png"));
+    shown.write(&folder.join("appearance.png"));
+    let hidden = InterfaceLook {
+        hide_unfinished: true,
+        ..InterfaceLook::default()
+    };
+    if let Some(hidden) = appearance_picture(hidden) {
+        hidden.write(&folder.join("appearance-hidden.png"));
+    }
+    crate::interface_look::use_look(InterfaceLook::default());
+}

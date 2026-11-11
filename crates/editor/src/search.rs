@@ -77,6 +77,8 @@ pub(crate) enum Doing {
     ResetLayout,
     PinLibrary,
     UnpinLibrary,
+    /// Hide every unfinished part of the editor (`true`), or show them.
+    HideUnfinished(bool),
     Workspace(crate::workspace::Workspace),
     About,
 }
@@ -452,6 +454,17 @@ impl Workbench {
                 T::Do(Doing::UnpinLibrary),
             ),
         );
+        // The switch of Settings > Appearance, from anywhere.
+        let hidden = self.interface_look().hide_unfinished;
+        let name = if hidden {
+            "Show unfinished parts"
+        } else {
+            "Hide unfinished parts"
+        };
+        push(
+            true,
+            SearchItem::action(name, "Settings", "", T::Do(Doing::HideUnfinished(!hidden))),
+        );
         // Help.
         push(
             true,
@@ -607,6 +620,7 @@ impl Workbench {
                 Doing::ResetLayout => self.reset_layout(),
                 Doing::PinLibrary => self.set_library_pinned(true),
                 Doing::UnpinLibrary => self.set_library_pinned(false),
+                Doing::HideUnfinished(hide) => self.hide_unfinished(ctx, hide),
                 Doing::Workspace(workspace) => self.switch_workspace(workspace),
                 Doing::About => self.about_open = true,
             },

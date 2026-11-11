@@ -4,7 +4,9 @@
 //! was checked (or how many mistakes it has), the number of problems
 //! (clicking opens Problems) and whether the area is saved; on the right,
 //! whether the game is playing, and the area's name, whether it's seen in
-//! 2D or 3D, and a 2D game's size in pixels.
+//! 2D or 3D, and a 2D game's size in pixels. For three seconds after a
+//! click on a part that isn't built yet, those last words give way to a
+//! line saying so (`unbuilt::said`).
 
 use crate::icons::Icon;
 use crate::panel::Panel;
@@ -147,7 +149,10 @@ impl Workbench {
             }
             part(ui, &status.saved, false);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                part(ui, &Part::new(&status.area, theme::text_weak()), false);
+                // For three seconds after a click on a part that isn't
+                // built, the right-hand words say so instead.
+                let right = crate::unbuilt::said(ui.ctx()).unwrap_or_else(|| status.area.clone());
+                part(ui, &Part::new(right, theme::text_weak()), false);
                 if let Some(playing) = &status.playing {
                     part(ui, playing, false);
                 }

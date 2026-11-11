@@ -50,6 +50,18 @@ impl PaintTool {
         }
     }
 
+    /// The tool's icon.
+    pub fn icon(self) -> crate::icons::Icon {
+        use crate::icons::Icon;
+        match self {
+            Self::Brush => Icon::Brush,
+            Self::Rectangle => Icon::Rectangle,
+            Self::Line => Icon::Line,
+            Self::Fill => Icon::Fill,
+            Self::Eyedropper => Icon::Eyedropper,
+        }
+    }
+
     /// The key that picks it while a map is selected (chosen with the
     /// project lead, 2026-10-29).
     pub fn key(self) -> egui::Key {
@@ -213,10 +225,10 @@ pub(crate) fn paint_bar(
         } else {
             theme::text_strong()
         };
-        crate::icons::paint_icon(
+        crate::icons::icon(
             ui.painter(),
             Rect::from_center_size(rect.center() - vec2(2.0, 1.0), vec2(15.0, 15.0)),
-            tool,
+            tool.icon(),
             colour,
         );
         ui.painter().text(

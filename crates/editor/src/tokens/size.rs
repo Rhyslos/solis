@@ -91,8 +91,12 @@ pub const GAP: f32 = 6.0;
 pub const ROW_GAP: f32 = 4.0;
 /// An icon button's side.
 pub const ICON_BUTTON: f32 = 26.0;
+/// A small icon: in an icon button, before a button's word.
+pub const ICON_SMALL: f32 = 14.0;
 /// A floating pill's height.
 pub const PILL_H: f32 = 24.0;
+/// A floating pill's padding at each side.
+pub const PILL_PAD: f32 = 8.0;
 /// The status bar's height.
 pub const STATUS_BAR_H: f32 = 24.0;
 /// The gap between the status bar's parts.
@@ -110,10 +114,20 @@ pub const CARD_GAP: f32 = 10.0;
 pub const CARD_MIN_W: f32 = 180.0;
 /// The gap in a grid of tiles.
 pub const TILE_GAP: f32 = 4.0;
+/// A tile's padding round its thumbnail and words.
+pub const TILE_PAD: f32 = 6.0;
+/// The accent outline inside a chosen tile's thumbnail.
+pub const TILE_OUTLINE: f32 = 2.0;
+/// The small square dot in a kind's colour.
+pub const KIND_DOT: f32 = 7.0;
 /// The least width of a tile in the Library.
 pub const TILE_MIN_W: f32 = 108.0;
 /// The width of the names in a list of names and values.
 pub const KEY_COLUMN_W: f32 = 96.0;
+/// The gap between a name and its value.
+pub const KEY_VALUE_GAP: f32 = 10.0;
+/// The gap between the lines of a list of names and values.
+pub const KEY_VALUE_ROW_GAP: f32 = 7.0;
 /// A panel's padding. The design gives 10 to 12.
 pub const PANEL_PAD: f32 = 12.0;
 
@@ -125,20 +139,34 @@ pub const TOGGLE_KNOB: f32 = 14.0;
 pub const CHECKBOX: f32 = 12.0;
 /// A segmented control's segment: its height.
 pub const SEGMENT_H: f32 = 20.0;
+/// A segment's padding at each side.
+pub const SEGMENT_PAD: f32 = 9.0;
+/// The padding of the well the segments sit in.
+pub const SEGMENT_WELL_PAD: f32 = 2.0;
 /// A chip's height.
 pub const CHIP_H: f32 = 24.0;
 /// A colour swatch's side.
 pub const SWATCH: f32 = 22.0;
+/// The gap between swatches.
+pub const SWATCH_GAP: f32 = 8.0;
+/// The width of each of the two rings round the chosen swatch.
+pub const SWATCH_RING: f32 = 2.0;
 /// A slider's track: its thickness.
 pub const SLIDER_TRACK: f32 = 4.0;
 /// A slider's knob.
 pub const SLIDER_KNOB: f32 = 12.0;
 /// A keycap's height and least width.
 pub const KEYCAP: f32 = 22.0;
+/// How many times thicker a keycap's border is along its foot.
+pub const KEYCAP_FOOT: f32 = 2.0;
 /// A dashed "add" button's height.
 pub const DASHED_BUTTON_H: f32 = 22.0;
+/// A dashed "add" button's padding at each side.
+pub const DASHED_BUTTON_PAD: f32 = 10.0;
 /// A plain or main button's height on a File page.
 pub const PAGE_BUTTON_H: f32 = 30.0;
+/// A plain or main button's padding at each side on a File page.
+pub const PAGE_BUTTON_PAD: f32 = 14.0;
 /// A plain button's padding at each side. Solis's own.
 pub const BUTTON_PAD: f32 = 8.0;
 
@@ -154,13 +182,55 @@ pub const SETTINGS_MAX_W: f32 = 760.0;
 pub const SETTING_CONTROL_W: f32 = 260.0;
 /// A setting row's padding above and below.
 pub const SETTING_ROW_PAD: f32 = 12.0;
+/// The gap between a setting's words and its control.
+pub const SETTING_COLUMN_GAP: f32 = 16.0;
+/// The gap between a setting's name and the line under it.
+pub const SETTING_HINT_GAP: f32 = 3.0;
+/// The least height of a setting row's inside: a field's.
+pub const SETTING_ROW_MIN_H: f32 = 24.0;
+/// The least room a setting's words keep beside its control.
+pub const SETTING_WORDS_MIN_W: f32 = 120.0;
+/// The gap above a section's capitals, after the rows before it.
+pub const SECTION_GAP: f32 = 18.0;
+/// The gap between the blocks of a File page.
+pub const PAGE_BLOCK_GAP: f32 = 22.0;
+/// The width of a drop-down on a settings page.
+pub const SETTING_FIELD_W: f32 = 200.0;
 /// A project card's least width.
 pub const PROJECT_CARD_MIN_W: f32 = 240.0;
 /// A project card's thumbnail: its height.
 pub const PROJECT_THUMB_H: f32 = 140.0;
 
+/// The mark on a part that isn't built yet: a hollow square, this wide.
+pub const UNBUILT_MARK: f32 = 5.0;
+/// The gap between an unbuilt part's words and its mark.
+pub const UNBUILT_MARK_GAP: f32 = 6.0;
+/// How far below the middle of its words' line the mark's own middle
+/// is: it sits just above the line the letters stand on.
+pub const UNBUILT_MARK_DROP: f32 = 1.5;
+/// How far the mark is from the top and the right of an unbuilt button.
+pub const UNBUILT_CORNER: f32 = 4.0;
+/// An unbuilt page's card: its width.
+pub const UNBUILT_CARD_W: f32 = 400.0;
+/// An unbuilt page's card: its padding at the top, the sides, the foot.
+pub const UNBUILT_CARD_PAD: [f32; 3] = [28.0, 28.0, 24.0];
+/// An unbuilt page's card: its icon.
+pub const UNBUILT_PAGE_ICON: f32 = 28.0;
+/// A File page's sub-tab: its height.
+pub const SUB_TAB_H: f32 = 30.0;
+/// A File page's sub-tab: its padding at each side.
+pub const SUB_TAB_PAD: f32 = 2.0;
+/// The gap between a File page's sub-tabs.
+pub const SUB_TAB_GAP: f32 = 18.0;
+/// An item of the File page's menu: its padding at each side.
+pub const FILE_MENU_ITEM_PAD: f32 = 14.0;
+/// An item of the File page's menu: the gap between its icon and name.
+pub const FILE_MENU_ITEM_GAP: f32 = 10.0;
+
 /// A menu's or drop-down list's padding. Solis's own.
 pub const MENU_PAD: f32 = 4.0;
+/// The height of a row in a menu or a drop-down list. Solis's own.
+pub const MENU_ROW_H: f32 = 24.0;
 /// A scroll bar's width. Solis's own.
 pub const SCROLL_BAR: f32 = 8.0;
 /// The width of every border and separator, before the hairline rule.

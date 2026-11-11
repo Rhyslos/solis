@@ -6,7 +6,7 @@
 use crate::document::Document;
 use crate::inspector::{self, FieldChange};
 use crate::models::ModelInfo;
-use crate::panels::placeholder;
+use crate::panels::empty_note;
 use crate::theme;
 use egui::{RichText, Ui};
 use reflect::{AssetId, EntityId, Value};
@@ -189,10 +189,10 @@ fn component_icon(component: &str, game_code: bool) -> Option<(crate::icons::Ico
         "Environment" => (Icon::AreaFile, kind::ENVIRONMENT),
         "Camera" => (Icon::Camera, kind::CAMERA),
         "AudioSource" | "Listener" | "ReverbZone" => (Icon::Sound, kind::SOUND),
-        "Sprite" | "Parallax" => (Icon::Game, kind::SPRITE),
+        "Sprite" | "Parallax" => (Icon::Sprite, kind::SPRITE),
         "Animator" => (Icon::Animator, kind::SOUND_EVENT),
-        "TileMap" => (Icon::Layers, kind::AREA),
-        "Screen" => (Icon::Game, kind::PICTURE),
+        "TileMap" => (Icon::TileMap, kind::AREA),
+        "Screen" => (Icon::Screen, kind::PICTURE),
         "Transform" => (Icon::Properties, theme::text()),
         _ if game_code => (Icon::Code, kind::CODE),
         _ => return None,
@@ -221,7 +221,7 @@ pub(crate) fn properties(
         .primary()
         .and_then(|id| document.area().get(id).map(|e| (id, e)))
     else {
-        placeholder(
+        empty_note(
             ui,
             "Nothing selected. Pick something in the viewport or the Area panel.",
         );

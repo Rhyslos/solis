@@ -370,7 +370,7 @@ pub(crate) fn problems_panel(
     problems: &[Problem],
 ) -> Option<ProblemClick> {
     if problems.is_empty() && code.is_empty() {
-        crate::panels::placeholder(ui, "No problems found in the area or the game's code.");
+        crate::panels::empty_note(ui, "No problems found in the area or the game's code.");
         return None;
     }
     let mut clicked = None;

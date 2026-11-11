@@ -27,7 +27,7 @@ For how a placeholder looks, three were drawn on the design's own screens and sh
 ## Consequences
 
 - Decision 0070's rule now reads: nothing unfinished is shown *unmarked*. A dead button that looks like a working one is still not allowed, and a control that exists but can't be used right now still says why when hovered.
-- The setting is saved from the first milestone of Shared 1a, with the rest of the editor's look; the mechanism, the table and the setting's row in the settings arrive with the second ("the kit"), and the first placeholders with the third.
+- The setting is saved from the first milestone of Shared 1a, with the rest of the editor's look; the mechanism, the table and the setting's row in the settings arrive with the second ("the kit"), and the first placeholders with the third. (As built: the second also shows one, the design's Code editor split on the Appearance page, so the whole path is proved in the real editor before the frame arrives.)
 - A placeholder's hover text names a phase by its title in ROADMAP.md, and a test fails if that title isn't a heading there, so a renamed phase can't leave a wrong promise behind.
 - The manual gains a page on unfinished parts when the first one is on screen.
 - When a feature is built, its line leaves the table and the compiler points at every place that still draws its placeholder.

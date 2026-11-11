@@ -19,6 +19,14 @@ The project lead's design for the editor's interface, the "G layout": a tab bar,
 | `12-file-project-settings.png` | Screen 12: File, Project settings |
 | `13-project-settings-input.png` | Screen 13: File, Project settings, Input |
 
+## Additions the project lead has approved
+
+`additions/` holds the parts the design doesn't draw, once they are mocked up and approved: one folder per round of mock-ups, each with a README naming every picture, what it adds and the decision it settles. They count as the design.
+
+| Folder | Approved | What it adds |
+| --- | --- | --- |
+| [`additions/round-1/`](additions/round-1/README.md) | 2026-11-11 | A placeholder's look and the hidden state, the tab bar for Solis's tabs, the collapsed ribbon, Home's ribbon stopped, playing and paused, the Game tab, the Debug ribbon's Session group, the document tab's menus, the Console on the shelf, the dialog card, and the sheets of new icons |
+
 ## How the pictures are used
 
 - Each picture is a screen drawn at 1440 × 900 and saved at twice that size (2880 pixels wide), so a point at (x, y) on the screen is the pixel at (2x, 2y). Screens 9 and 12 are a little taller than 900.
@@ -28,4 +36,4 @@ The project lead's design for the editor's interface, the "G layout": a tab bar,
 ## What isn't here
 
 - **The mock-up's HTML and the PDF copies** stay with the project lead: they are large, and the specification and pictures say the same. Where the specification leaves a value out and the HTML had one, the value is written down in the plan's inventory ([`shared-1-ui-remake-inventory.md`](../../plans/shared-1-ui-remake-inventory.md), part d) and in `crates/editor/src/tokens.rs`.
-- **Parts the design doesn't draw** (Solis's 2D editors, the Play group while playing, a placeholder's look, dialogs and more). Each is mocked up in the design's own language on its screens and approved by the project lead before it is built; the plan lists them and records each approval.
+- **Parts the design doesn't draw that are still to be mocked up** (Solis's 2D editors, the Library's chips for Solis's kinds of file, the pages of File the design names but leaves undrawn, and more). Each is drawn in the design's own language on its screens and approved by the project lead before it is built; the plan lists them and records each approval. Once approved, a round's pictures join `additions/`.

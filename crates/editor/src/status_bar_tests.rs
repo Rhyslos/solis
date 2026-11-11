@@ -88,3 +88,35 @@ fn clicking_the_problems_opens_the_problems_panel() {
     assert!(h.query_by_label("Not saved yet").is_some());
     assert!(h.query_by_label_contains(" · 3D").is_some());
 }
+
+#[test]
+fn a_click_on_an_unfinished_part_is_said_at_the_right_for_three_seconds() {
+    use crate::unbuilt::{self, UnbuiltId};
+    use egui_kittest::kittest::Queryable;
+    let mut h = crate::test_support::harness(fresh());
+    h.run();
+    assert!(h.query_by_label_contains(" · 3D").is_some());
+    // What a click on the part does, and nothing else.
+    unbuilt::say(&h.ctx, UnbuiltId::HomeLightingBake);
+    h.step();
+    let words = unbuilt::get(UnbuiltId::HomeLightingBake).click_text();
+    assert_eq!(words, "Bake isn't built yet (3D 5: Bounced light)");
+    assert!(h.query_by_label(&words).is_some());
+    // The words it took the place of come back by themselves.
+    assert!(h.query_by_label_contains(" · 3D").is_none());
+    // A step of the test window is a quarter of a second.
+    for _ in 0..10 {
+        h.step();
+    }
+    assert!(
+        h.query_by_label(&words).is_some(),
+        "still there after 2.5 s"
+    );
+    for _ in 0..3 {
+        h.step();
+    }
+    assert!(h.query_by_label(&words).is_none(), "gone after 3 s");
+    assert!(h.query_by_label_contains(" · 3D").is_some());
+    // The Console wasn't told, and the rest of the bar never changed.
+    assert!(h.query_by_label("Not saved yet").is_some());
+}

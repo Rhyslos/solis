@@ -138,7 +138,7 @@ pub fn restore_with(
         return fallback();
     };
     // Tabs that come with a file aren't kept: no file is open yet.
-    for panel in Panel::OPEN_WITH_A_FILE.into_iter().chain(Panel::NOT_BUILT) {
+    for panel in Panel::OPEN_WITH_A_FILE {
         close(&mut dock, panel);
     }
     let twice = Panel::ALL.iter().any(|panel| {

@@ -14,6 +14,7 @@ use crate::camera::{Camera, FlyInput, ViewKind};
 use crate::icons;
 use crate::look::{Look, LookKind};
 use crate::theme::{self, Accent};
+use crate::tokens::size;
 use crate::transforming::Snapping;
 use crate::viewport_tools::{self, PickAnswer, ToolInput, Tools};
 use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
@@ -56,6 +57,17 @@ impl Tool {
             Self::Rotate => "Rotate",
             Self::Scale => "Scale",
             Self::Transform => "Transform",
+        }
+    }
+
+    /// The tool's icon.
+    pub fn icon(self) -> icons::Icon {
+        match self {
+            Self::Select => icons::Icon::Select,
+            Self::Move => icons::Icon::Move,
+            Self::Rotate => icons::Icon::Rotate,
+            Self::Scale => icons::Icon::Scale,
+            Self::Transform => icons::Icon::Transform,
         }
     }
 
@@ -1629,10 +1641,10 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
     } else {
         theme::text_strong()
     };
-    icons::tool_icon(
+    icons::icon(
         ui.painter(),
-        Rect::from_center_size(rect.center(), vec2(16.0, 16.0)),
-        tool,
+        Rect::from_center_size(rect.center(), Vec2::splat(size::TOOL_ICON)),
+        tool.icon(),
         color,
     );
     response.widget_info(|| {

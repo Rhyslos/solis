@@ -339,3 +339,36 @@ fn enter_on_a_model_in_the_search_shows_it_in_the_library_and_opens_nothing() {
     // Its tab came to the front, with the file in view.
     let _ = h.get_by_label("ship");
 }
+
+#[test]
+fn unfinished_parts_are_hidden_and_shown_from_the_search_and_never_listed() {
+    let mut w = fresh();
+    let ctx = egui::Context::default();
+    let names =
+        |w: &Workbench| -> Vec<String> { w.search_items().into_iter().map(|i| i.name).collect() };
+    assert!(names(&w).contains(&"Hide unfinished parts".to_string()));
+    assert!(!names(&w).contains(&"Show unfinished parts".to_string()));
+    let items = w.search_items();
+    let hide = results(&items, "hide unfinished")[0].clone();
+    assert_eq!(hide.name, "Hide unfinished parts");
+    w.do_search(hide.target, &ctx, &mut Vec::new());
+    assert!(w.interface_look().hide_unfinished);
+    assert!(crate::unbuilt::hidden());
+    // Now the other way is offered, and it puts them back.
+    assert!(!names(&w).contains(&"Hide unfinished parts".to_string()));
+    let items = w.search_items();
+    let show = results(&items, "show unfinished")[0].clone();
+    assert_eq!(show.name, "Show unfinished parts");
+    w.do_search(show.target, &ctx, &mut Vec::new());
+    assert!(!w.interface_look().hide_unfinished);
+    // What can't be done isn't listed: no unfinished part is a result,
+    // hidden or shown.
+    for part in crate::unbuilt::ALL {
+        // A working action may share a word with one (Save, Pause), so
+        // only names nothing real has are looked for.
+        if ["Bake", "Simulate", "Code editor split", "Scatter"].contains(&part.name) {
+            assert!(!names(&w).contains(&part.name.to_string()), "{}", part.name);
+        }
+    }
+    crate::interface_look::use_look(crate::theme::InterfaceLook::default());
+}

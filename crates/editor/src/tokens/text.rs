@@ -43,6 +43,16 @@ fn named(size: f32, family: &str) -> FontId {
     FontId::new(size, FontFamily::Name(family.into()))
 }
 
+/// Inter Medium (500) at `size`: a chip's or a segment's word.
+pub fn medium_at(size: f32) -> FontId {
+    named(size, MEDIUM)
+}
+
+/// Inter SemiBold (600) at `size`: a main button's word.
+pub fn semibold_at(size: f32) -> FontId {
+    named(size, SEMIBOLD)
+}
+
 /// Interface text: 12 / 400.
 pub fn ui() -> FontId {
     regular(UI_SIZE)
@@ -120,6 +130,10 @@ pub fn setting_name() -> FontId {
 pub fn setting_hint() -> FontId {
     regular(ROW_SIZE)
 }
+
+/// The distance between the lines under a setting's name: 1.45 of their
+/// size.
+pub const SETTING_HINT_LINE_H: f32 = ROW_SIZE * 1.45;
 
 /// An item of the File page's menu: 13 / 500.
 pub fn menu_item() -> FontId {

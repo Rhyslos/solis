@@ -35,7 +35,7 @@ pub struct InterfaceLook {
     pub ribbon_labels: bool,
     /// Whether parts that aren't built yet are hidden
     /// ([decision 0101](../../../docs/decisions/0101-unfinished-parts-as-placeholders.md)).
-    /// Read by the placeholders when they are built; saved from now.
+    /// Read by everything that draws an unfinished part (`unbuilt.rs`).
     pub hide_unfinished: bool,
 }
 
