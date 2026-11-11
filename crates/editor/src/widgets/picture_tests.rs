@@ -280,3 +280,38 @@ fn borders_stay_one_sharp_pixel_at_150_percent() {
     assert_eq!(row[4], tokens::field());
     standard_again();
 }
+
+/// An open drop-down's list is a menu like the editor's others: on the
+/// ribbon's grey, as wide as its field, its rows 24 tall.
+#[test]
+fn an_open_drop_down_lists_its_choices_as_a_menu_does() {
+    if !can_draw() {
+        return;
+    }
+    let mut h = sheet_in(InterfaceLook::default(), true);
+    let field = h
+        .get_by_role_and_label(Role::ComboBox, "Shelf opens on")
+        .rect();
+    h.get_by_role_and_label(Role::ComboBox, "Shelf opens on")
+        .click();
+    h.run();
+    let rows: Vec<egui::Rect> = ["Entity", "Console", "Problems"]
+        .iter()
+        .map(|choice| h.get_by_role_and_label(Role::RadioButton, choice).rect())
+        .collect();
+    for pair in rows.windows(2) {
+        assert_eq!(pair[0].height(), size::MENU_ROW_H);
+        assert_eq!(pair[1].top() - pair[0].bottom(), 0.0, "rows touch");
+    }
+    // Under the field, and no wider than it.
+    assert!(rows[0].top() >= field.bottom());
+    assert!(rows[0].left() >= field.left() && rows[0].right() <= field.right());
+    let picture = drawn(&mut h);
+    if let Some(folder) = std::env::var_os("SOLIS_PICTURE_SHEET") {
+        picture.write(&std::path::Path::new(&folder).join("widget-sheet-drop-down.png"));
+    }
+    // Inside a row that isn't under the pointer, clear of its word.
+    let quiet = egui::pos2(rows[2].right() - 6.0, rows[2].center().y);
+    assert_eq!(flat_at(&picture, "the open list", quiet), tokens::ribbon());
+    standard_again();
+}

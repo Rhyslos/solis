@@ -197,6 +197,8 @@ pub fn dropdown<T: Copy + PartialEq>(
         }
     }
     egui::Popup::menu(&response).width(width).show(|ui| {
+        // The rows of a list touch.
+        ui.spacing_mut().item_spacing.y = 0.0;
         for (value, word) in choices {
             if list_row(ui, word, value == chosen).clicked() {
                 *chosen = *value;
