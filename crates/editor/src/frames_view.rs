@@ -40,6 +40,10 @@ const EVENT: Color32 = Color32::from_rgb(0x7c, 0xc4, 0xe4);
 const TILE_WIDTH: (f32, f32) = (28.0, 600.0);
 /// A frame's tile's height.
 const TILE_HEIGHT: f32 = 118.0;
+/// The ruler's marks are at least this far apart, in points.
+const MARK_GAP: f32 = 8.0;
+/// A time is written by a mark only this far from the last, in points.
+const TIME_GAP: f32 = 24.0;
 
 /// A frame being dragged to a new place in its clip.
 #[derive(Debug, Clone, Copy)]
@@ -674,20 +678,17 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
         marks.push(x);
         x += width_of(clip.frames[i].ms) + 4.0;
     }
-    let pass_ms: u32 = order.iter().map(|&i| clip.frames[i].ms).sum();
-    for k in 0..=(pass_ms / 50) {
-        let ms = k * 50;
-        let at = x_of_ms(&order, clip, &width_of, left, ms);
+    for mark in ruler_marks(&order, clip, &width_of, left, painter.clip_rect().x_range()) {
         painter.vline(
-            at,
+            mark.x,
             (ruler_y + 11.0)..=(ruler_y + 17.0),
             egui::Stroke::new(1.0, theme::button_border()),
         );
-        if ms % 100 == 0 {
+        if mark.time {
             painter.text(
-                egui::pos2(at + 2.0, ruler_y),
+                egui::pos2(mark.x + 2.0, ruler_y),
                 egui::Align2::LEFT_TOP,
-                seconds(f64::from(ms) / 1000.0),
+                seconds(f64::from(mark.ms) / 1000.0),
                 egui::FontId::proportional(10.0),
                 theme::text_weak(),
             );
@@ -856,6 +857,84 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
     changed
 }
 
+/// A mark on the time ruler: where it is, how far into the pass, and
+/// whether the time is written by it.
+#[derive(Debug, Clone, PartialEq)]
+struct Mark {
+    x: f32,
+    ms: u32,
+    time: bool,
+}
+
+/// The steps the ruler can mark at, in milliseconds: the first that
+/// keeps marks [`MARK_GAP`] apart in a tile, with times written at the
+/// first of them (from 100 ms) that is a multiple of it and keeps times
+/// [`TIME_GAP`] apart.
+const MARK_STEPS: [u32; 10] = [
+    50, 100, 200, 500, 1_000, 2_000, 5_000, 10_000, 20_000, 60_000,
+];
+
+/// The ruler's marks over one pass's tiles (`order`, the first starting
+/// at `left`) that fall within `seen`, the part on screen: a mark every
+/// 50 ms and a time every 100 ms where a tile is wide enough, and further
+/// apart where a tile is too narrow for how long it lasts. Placed as the
+/// playhead is ([`x_of_ms`]), walking the tiles once (the review, BUG-21:
+/// every mark of the pass was drawn, each placed by walking every tile
+/// before it, so a long clip's ruler alone could stop the editor).
+fn ruler_marks(
+    order: &[usize],
+    clip: &animation::Clip,
+    width_of: &dyn Fn(u32) -> f32,
+    left: f32,
+    seen: egui::Rangef,
+) -> Vec<Mark> {
+    let mut marks = Vec::new();
+    let mut x = left;
+    let mut start = 0;
+    let mut steps = (Some(MARK_STEPS[0]), Some(MARK_STEPS[1]));
+    for &i in order {
+        let len = clip.frames[i].ms;
+        let w = width_of(len);
+        let per_ms = w / len.max(1) as f32;
+        let wide = |ms: u32, gap: f32| ms as f32 * per_ms >= gap;
+        let step = MARK_STEPS.into_iter().find(|&s| wide(s, MARK_GAP));
+        let time = step.and_then(|step| {
+            MARK_STEPS
+                .into_iter()
+                .find(|&t| t >= 100 && t % step == 0 && wide(t, TIME_GAP))
+        });
+        steps = (step, time);
+        // The part of the tile on screen, in milliseconds from its start.
+        let (from, to) = ((seen.min - x) / per_ms, (seen.max - x) / per_ms);
+        if let Some(step) = step
+            && to >= 0.0
+            && from < len as f32
+        {
+            let mut ms = (start + from.max(0.0) as u32).div_ceil(step) * step;
+            while ms < start + len && (ms - start) as f32 <= to {
+                marks.push(Mark {
+                    x: x + w * (ms - start) as f32 / len.max(1) as f32,
+                    ms,
+                    time: time.is_some_and(|t| ms % t == 0),
+                });
+                ms += step;
+            }
+        }
+        start += len;
+        x += w + 4.0;
+    }
+    // The pass's end, at the last tile's right edge.
+    let (step, time) = steps;
+    if step.is_some_and(|s| start % s == 0) && seen.contains(x - 4.0) {
+        marks.push(Mark {
+            x: x - 4.0,
+            ms: start,
+            time: time.is_some_and(|t| start % t == 0),
+        });
+    }
+    marks
+}
+
 /// Milliseconds into the pass before step `step` starts.
 fn ms_before(order: &[usize], clip: &animation::Clip, step: usize) -> u32 {
     order[..step].iter().map(|&i| clip.frames[i].ms).sum()
@@ -883,3 +962,7 @@ fn x_of_ms(
     }
     x - 4.0
 }
+
+#[cfg(test)]
+#[path = "frames_view_tests.rs"]
+mod tests;

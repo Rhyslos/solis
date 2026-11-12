@@ -20,7 +20,7 @@ use crate::sprite_parallax::{OVER, UNDER};
 use crate::sprite_sheets::{SpriteBatch, SpriteSheets, ViewSprite};
 use glam::{Mat4, Vec2, Vec3};
 use reflect::{AssetId, EntityId};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tiles::TileMap;
 use tiles::autotile::{Art, Placed};
@@ -61,13 +61,68 @@ pub struct TilePicture {
     pub rgba: Arc<Vec<u8>>,
 }
 
-/// One chunk's tiles, as autotiling placed them, with what they were
-/// worked out from.
-type ChunkTiles = (u64, Arc<Vec<Placed>>);
-
 /// Which chunk: a map's entity, a layer's ID, and the chunk's column and
 /// row.
 type ChunkId = (EntityId, reflect::Id, [u32; 2]);
+
+/// A chunk's tiles as worked out from what a key says: which chunk, and
+/// the key (`chunk_key`).
+type MadeChunk = (ChunkId, u64);
+
+/// Who draws maps with one [`TilePictures`]: each view of the viewport,
+/// by its number, and the Game panel. Each is drawn once a frame, one
+/// after another, so each keeps what it drew until it draws again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Viewer {
+    /// A view of the viewport.
+    View(usize),
+    /// The Game panel.
+    Game,
+}
+
+/// How many draws (by every viewer) a viewer may miss before what it
+/// last drew is let go: a view hidden or the Game panel closed. More than
+/// one frame's draws (four views and the Game panel).
+const FORGET_AFTER: u64 = 16;
+
+/// What a viewer drew with last time, and when.
+#[derive(Debug, Default)]
+struct Used {
+    /// Which draw that was, counting every viewer's.
+    draw: u64,
+    /// Layers drawn as their colour pictures.
+    pictures: HashSet<(EntityId, usize)>,
+    /// Atlases, by their picture's number.
+    atlases: HashSet<u64>,
+    /// Chunks drawn tile by tile, with the key of what made their tiles.
+    chunks: HashSet<MadeChunk>,
+    /// Layers drawn tile by tile.
+    layers: HashSet<(EntityId, reflect::Id)>,
+}
+
+/// Every viewer's [`Used`], and how many draws there have been.
+#[derive(Debug, Default)]
+struct Viewers {
+    draws: u64,
+    used: HashMap<Viewer, Used>,
+}
+
+impl Viewers {
+    /// Notes what `viewer` drew with now, and forgets viewers that
+    /// stopped drawing.
+    fn note(&mut self, viewer: Viewer, mut used: Used) {
+        self.draws += 1;
+        used.draw = self.draws;
+        self.used.insert(viewer, used);
+        let now = self.draws;
+        self.used.retain(|_, u| now - u.draw < FORGET_AFTER);
+    }
+
+    /// Whether any viewer drew with what `in_use` looks for.
+    fn any(&self, in_use: impl Fn(&Used) -> bool) -> bool {
+        self.used.values().any(in_use)
+    }
+}
 
 /// Each layer's picture and each chunk's tiles, kept until they change.
 ///
@@ -76,6 +131,10 @@ type ChunkId = (EntityId, reflect::Id, [u32; 2]);
 /// (`TileMap::layer_stamp`), a tileset and a picture by their number
 /// here. None is told by where it is in memory, where the next one made
 /// can turn up.
+///
+/// Every view of the viewport and the Game panel draw with one of these,
+/// one after another each frame: what any of them drew with last time is
+/// kept, so none throws out another's (the review, BUG-19).
 #[derive(Debug, Default)]
 pub struct TilePictures {
     made: Mutex<HashMap<(EntityId, usize), Arc<TilePicture>>>,
@@ -84,11 +143,16 @@ pub struct TilePictures {
     /// A number for each tileset and each picture drawn with, for as long
     /// as it lasts.
     numbers: Mutex<Numbers>,
-    chunks: Mutex<HashMap<ChunkId, ChunkTiles>>,
-    /// Each layer's sprites as last made, and what they were made from:
-    /// kept while nothing they show changes, so a big map isn't rebuilt
-    /// and sorted every frame (the phase review, speed).
-    layers: Mutex<HashMap<(EntityId, reflect::Id), LayerSprites>>,
+    /// Each chunk's tiles, by the key of what made them: two viewers
+    /// showing a chunk differently (the game's map and the file's) keep
+    /// both.
+    chunks: Mutex<HashMap<MadeChunk, Arc<Vec<Placed>>>>,
+    /// Each viewer's sprites of each layer as last made, and what they
+    /// were made from: kept while nothing they show changes, so a big map
+    /// isn't rebuilt and sorted every frame (the phase review, speed).
+    layers: Mutex<HashMap<(Viewer, EntityId, reflect::Id), LayerSprites>>,
+    /// What each viewer drew with last time.
+    viewers: Mutex<Viewers>,
 }
 
 /// A layer's finished sprites, and the key of what made them.
@@ -245,24 +309,24 @@ impl TilePictures {
     /// The pictures and the batches that draw `maps`, cells `cell` metres
     /// across, leaving out layers `hidden` in the editor (by ID). `ground`
     /// gives the part of the ground at a height that's in view (none for
-    /// all of it); `ms` is the time animated tiles show.
+    /// all of it); `ms` is the time animated tiles show. `viewer` is who
+    /// draws: what each viewer drew with is kept until it draws again.
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &self,
         maps: &[ViewTileMap],
         sheets: &SpriteSheets,
         cell: [f32; 2],
-        hidden: &std::collections::HashSet<reflect::Id>,
+        hidden: &HashSet<reflect::Id>,
         ground: &dyn Fn(f32) -> Option<[Vec2; 2]>,
         ms: u64,
         meaning: Option<EntityId>,
+        viewer: Viewer,
     ) -> (Vec<Arc<TilePicture>>, Vec<SpriteBatch>) {
         let mut pictures: Vec<Arc<TilePicture>> = Vec::new();
         let mut under = Vec::new();
         let mut over = Vec::new();
-        let mut used = std::collections::HashSet::new();
-        let mut used_atlases = std::collections::HashSet::new();
-        let mut used_chunks = std::collections::HashSet::new();
+        let mut used = Used::default();
         let mut numbers = lock(&self.numbers);
         for m in maps {
             let set = m.map.tileset.and_then(|t| sheets.tileset(t));
@@ -273,7 +337,7 @@ impl TilePictures {
                 art: set.filter(|_| meaning != Some(m.entity)).and_then(|s| {
                     let art = sheets.tile_art(s.picture?)?;
                     let key = numbers.art.number(art);
-                    used_atlases.insert(key);
+                    used.atlases.insert(key);
                     let atlas = self.atlas(key, art);
                     Some((art, atlas))
                 }),
@@ -295,9 +359,9 @@ impl TilePictures {
                     continue;
                 }
                 let batch = if tile_by_tile {
-                    self.tiles_of(m, i, &look, &chunks, cell, ms, &mut used_chunks)
+                    self.tiles_of(m, i, &look, &chunks, (cell, ms), viewer, &mut used)
                 } else {
-                    used.insert((m.entity, i));
+                    used.pictures.insert((m.entity, i));
                     let picture = self.layer_picture(m, i, &look);
                     let batch = colour_batch(m, i, &picture, cell);
                     pictures.push(picture);
@@ -312,10 +376,18 @@ impl TilePictures {
         }
         numbers.sets.forget_gone();
         numbers.art.forget_gone();
-        lock(&self.made).retain(|k, _| used.contains(k));
-        lock(&self.atlases).retain(|k, _| used_atlases.contains(k));
-        lock(&self.chunks).retain(|k, _| used_chunks.contains(k));
-        lock(&self.layers).retain(|(e, l), _| used_chunks.iter().any(|c| c.0 == *e && c.1 == *l));
+        // Kept: what any viewer drew with last time.
+        let mut viewers = lock(&self.viewers);
+        viewers.note(viewer, used);
+        lock(&self.made).retain(|k, _| viewers.any(|u| u.pictures.contains(k)));
+        lock(&self.atlases).retain(|k, _| viewers.any(|u| u.atlases.contains(k)));
+        lock(&self.chunks).retain(|k, _| viewers.any(|u| u.chunks.contains(k)));
+        lock(&self.layers).retain(|(v, e, l), _| {
+            viewers
+                .used
+                .get(v)
+                .is_some_and(|u| u.layers.contains(&(*e, *l)))
+        });
         under.extend(over);
         under.retain(|b| !b.sprites.is_empty());
         (pictures, under)
@@ -367,7 +439,8 @@ impl TilePictures {
         }
     }
 
-    /// Layer `i` of `m` tile by tile, in `chunks`.
+    /// Layer `i` of `m` tile by tile, in `chunks`, cells `cell` across at
+    /// time `ms`, as `viewer` draws it; noting what it used in `used`.
     #[allow(clippy::too_many_arguments)]
     fn tiles_of(
         &self,
@@ -375,9 +448,9 @@ impl TilePictures {
         i: usize,
         look: &Look<'_>,
         chunks: &[[u32; 2]],
-        cell: [f32; 2],
-        ms: u64,
-        used: &mut std::collections::HashSet<ChunkId>,
+        (cell, ms): ([f32; 2], u64),
+        viewer: Viewer,
+        used: &mut Used,
     ) -> SpriteBatch {
         let (Some(set), Some((art, atlas))) = (look.set, &look.art) else {
             return SpriteBatch {
@@ -414,10 +487,11 @@ impl TilePictures {
             sum.u64(u64::from(layer.over));
             sum.finish()
         };
-        for &c in chunks {
-            used.insert((m.entity, layer.id, c));
+        for (&c, &key) in chunks.iter().zip(&keys) {
+            used.chunks.insert(((m.entity, layer.id, c), key));
         }
-        if let Some((key, sprites, picks)) = lock(&self.layers).get(&(m.entity, layer.id))
+        used.layers.insert((m.entity, layer.id));
+        if let Some((key, sprites, picks)) = lock(&self.layers).get(&(viewer, m.entity, layer.id))
             && *key == layer_key
         {
             return SpriteBatch {
@@ -431,15 +505,9 @@ impl TilePictures {
         {
             let mut cache = lock(&self.chunks);
             for (&c, &key) in chunks.iter().zip(&keys) {
-                let id = (m.entity, layer.id, c);
-                let tiles = match cache.get(&id) {
-                    Some((k, tiles)) if *k == key => Arc::clone(tiles),
-                    _ => {
-                        let tiles = Arc::new(tiles::autotile::chunk_tiles(&m.map, i, set, c));
-                        cache.insert(id, (key, Arc::clone(&tiles)));
-                        tiles
-                    }
-                };
+                let tiles = cache
+                    .entry(((m.entity, layer.id, c), key))
+                    .or_insert_with(|| Arc::new(tiles::autotile::chunk_tiles(&m.map, i, set, c)));
                 placed.extend(tiles.iter().copied());
             }
         }
@@ -506,7 +574,7 @@ impl TilePictures {
         let picks = Arc::new(vec![0; sprites.len()]);
         let sprites = Arc::new(sprites);
         lock(&self.layers).insert(
-            (m.entity, layer.id),
+            (viewer, m.entity, layer.id),
             (layer_key, Arc::clone(&sprites), Arc::clone(&picks)),
         );
         SpriteBatch {
@@ -614,7 +682,7 @@ pub struct TileOverlay {
     /// Whether its 32 × 32 chunks are outlined.
     pub chunks: bool,
     /// Layers hidden in the editor, by ID.
-    pub hidden: std::collections::HashSet<reflect::Id>,
+    pub hidden: HashSet<reflect::Id>,
     /// The cell under the pointer, found while drawing.
     pub hovered: Option<[u32; 2]>,
     /// Whether what's solid is shown: the walls 2D physics makes of the
@@ -634,6 +702,53 @@ pub struct TileOverlay {
     pub preview: Vec<[[i64; 2]; 2]>,
     /// The preview empties cells (drawn in red).
     pub preview_erase: bool,
+    /// The walls drawn, by chunk, kept from frame to frame.
+    walls_kept: KeptWalls,
+}
+
+/// The walls drawn over the selected map, by chunk: worked out only for
+/// chunks in view, and again only when one changes (the review, BUG-22:
+/// every chunk of the map was looked through every frame).
+#[derive(Debug, Clone, Default)]
+struct KeptWalls {
+    /// The map they're of.
+    map: Option<EntityId>,
+    /// Each chunk's walls, and the key of what they were made from.
+    chunks: HashMap<[u32; 2], (u64, Arc<Vec<tiles::walls::Rect>>)>,
+}
+
+impl KeptWalls {
+    /// The walls of chunk `chunk` of `m`, of the cells `solid` says.
+    fn of(
+        &mut self,
+        m: &ViewTileMap,
+        solid: &tiles::walls::Solid,
+        chunk: [u32; 2],
+    ) -> Arc<Vec<tiles::walls::Rect>> {
+        if self.map != Some(m.entity) {
+            self.map = Some(m.entity);
+            self.chunks.clear();
+        }
+        // A chunk's cells, on every layer, are as they were while every
+        // layer's stamp and the chunk's revision are.
+        let mut key = reflect::Checksum::new();
+        key.u64(m.map.chunk_revision(chunk));
+        for l in 0..m.map.layers().len() {
+            key.u64(m.map.layer_stamp(l));
+        }
+        for (code, _) in solid.iter().enumerate().filter(|(_, s)| **s) {
+            key.u64(code as u64);
+        }
+        let key = key.finish();
+        match self.chunks.get(&chunk) {
+            Some((k, walls)) if *k == key => Arc::clone(walls),
+            _ => {
+                let walls = Arc::new(tiles::walls::chunk_walls(&m.map, solid, chunk));
+                self.chunks.insert(chunk, (key, Arc::clone(&walls)));
+                walls
+            }
+        }
+    }
 }
 
 /// The most preview rectangles drawn (a long line's cells).
@@ -641,6 +756,22 @@ const MOST_PREVIEWED: usize = 4096;
 
 /// The cells shown most: past this many in view, values aren't written.
 const MOST_LABELLED: u64 = 4000;
+
+/// The most cells in view whose values are shown at all: past this many
+/// (each a few points across), none are looked at, so a big map seen
+/// whole isn't read cell by cell every frame (the review, BUG-22).
+const MOST_VALUED: u64 = 65_536;
+
+/// The cells in view (first and last column, first and last row) whose
+/// values are shown: none past [`MOST_VALUED`].
+fn valued_cells(seen: Option<(u32, u32, u32, u32)>) -> Option<(u32, u32, u32, u32)> {
+    seen.filter(|&(x0, x1, y0, y1)| cells_in(x0, x1, y0, y1) <= MOST_VALUED)
+}
+
+/// How many cells from column `x0` to `x1` and row `y0` to `y1`.
+fn cells_in(x0: u32, x1: u32, y0: u32, y1: u32) -> u64 {
+    u64::from(x1.saturating_sub(x0) + 1) * u64::from(y1.saturating_sub(y0) + 1)
+}
 
 /// Draws the selected map's overlay over the view in `rect` (seen by
 /// `camera`): its values on its cells (a switch as a blue tint, a number
@@ -661,11 +792,8 @@ pub(crate) fn draw_overlay(
         return;
     };
     let size = glam::Vec2::new(rect.width(), rect.height());
-    let to_screen = |p: Vec3| {
-        camera
-            .project(p, size)
-            .map(|s| egui::pos2(rect.min.x + s.x, rect.min.y + s.y))
-    };
+    let project = camera.projector(size);
+    let to_screen = |p: Vec3| project(p).map(|s| egui::pos2(rect.min.x + s.x, rect.min.y + s.y));
     let painter = ui.painter_at(rect);
     let z = m.transform.w_axis.z;
     if let Some(at) = mouse
@@ -715,10 +843,10 @@ pub(crate) fn draw_overlay(
         let [a, b] = cell_corners(m.transform, cell, at);
         Some(egui::Rect::from_two_pos(to_screen(a)?, to_screen(b)?))
     };
-    if let Some((x0, x1, y0, y1)) = seen
+    if let Some((x0, x1, y0, y1)) = valued_cells(seen)
         && !overlay.values.is_empty()
     {
-        let count = u64::from(x1.saturating_sub(x0) + 1) * u64::from(y1.saturating_sub(y0) + 1);
+        let count = cells_in(x0, x1, y0, y1);
         let big_enough = screen_cell([x0, y0]).is_some_and(|r| r.width() >= 18.0);
         let font = egui::FontId::proportional(11.0);
         for y in y0..=y1 {
@@ -774,11 +902,20 @@ pub(crate) fn draw_overlay(
                 0.0,
             )))
         };
+        // Only the chunks in view (every chunk when the view sees past
+        // the horizon).
         let [across, down] = m.map.chunks();
+        let ((cx0, cx1), (cy0, cy1)) = match seen {
+            Some((x0, x1, y0, y1)) => (
+                (x0 / tiles::CHUNK, x1 / tiles::CHUNK + 1),
+                (y0 / tiles::CHUNK, y1 / tiles::CHUNK + 1),
+            ),
+            None => ((0, across), (0, down)),
+        };
         let green = crate::theme::COLLIDER;
-        for cy in 0..down {
-            for cx in 0..across {
-                for r in tiles::walls::chunk_walls(&m.map, solid, [cx, cy]) {
+        for cy in cy0..cy1.min(down) {
+            for cx in cx0..cx1.min(across) {
+                for r in overlay.walls_kept.of(&m, solid, [cx, cy]).iter() {
                     if let (Some(a), Some(b)) = (wall(r.x, r.y), wall(r.x + r.w, r.y + r.h)) {
                         let r = egui::Rect::from_two_pos(a, b);
                         painter.rect_filled(r, 0.0, green.gamma_multiply(0.18));

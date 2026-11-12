@@ -289,6 +289,14 @@ impl GameAudio {
                 Err(_) => {}
             }
         }
+        // A long sound's file is opened as it starts playing, away from
+        // the frame: one that couldn't be is said here, the same way.
+        for why in device.take_game_sound_failures() {
+            if !self.told_full {
+                self.told_full = true;
+                notes.push(format!("A game sound didn't play: {why}. Said once."));
+            }
+        }
         for note in notes {
             workbench.log(LogLevel::Warning, note);
         }

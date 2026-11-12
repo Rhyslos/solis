@@ -26,12 +26,13 @@ pub const VERSION: u32 = 3;
 /// The cache files' extension.
 pub const EXTENSION: &str = "solbin";
 
-/// The key of a model's cache entry: its bytes (and those of the files it
-/// reads), the import limits that shape the result, and the layout version.
-pub fn key(path: &Path, limits: &Limits) -> std::io::Result<u64> {
+/// The key of a model's cache entry: its file's `bytes` (and those of the
+/// files it reads, in `folder`), the import limits that shape the result,
+/// and the layout version.
+pub fn key(bytes: &[u8], folder: Option<&Path>, limits: &Limits) -> u64 {
     let mut hash = ContentHash::default();
-    hash.update_file(path)?;
-    if let Ok(files) = assets::referenced_files(path, limits) {
+    hash.update(bytes);
+    if let Ok(files) = assets::referenced_files_in(bytes, folder) {
         for file in files {
             // A missing companion file makes the import fail anyway.
             let _ = hash.update_file(&file);
@@ -48,7 +49,7 @@ pub fn key(path: &Path, limits: &Limits) -> std::io::Result<u64> {
     ] {
         hash.update(&n.to_le_bytes());
     }
-    Ok(hash.finish())
+    hash.finish()
 }
 
 /// Where the entry for `key` lives in `folder`.
@@ -67,35 +68,45 @@ pub fn load(
     let Some(folder) = folder else {
         return assets::load(path, limits).map(|m| (m, false));
     };
-    let key = key(path, limits).ok();
-    if let Some(key) = key {
-        let entry = entry_path(folder, key);
-        if let Ok(bytes) = read_entry(&entry, limits)
-            && let Ok(mut model) = decode(&bytes, limits)
-        {
-            // The name follows the file, which may have been renamed.
-            model.name = assets_name(path);
-            // Used now: the last to go when the cache is trimmed (only
-            // an entry that's a file of its own, never through a link).
-            if std::fs::symlink_metadata(&entry).is_ok_and(|m| m.is_file()) {
-                let _ = std::fs::File::options()
-                    .write(true)
-                    .open(&entry)
-                    .and_then(|f| f.set_modified(std::time::SystemTime::now()));
-            }
-            return Ok((model, true));
+    // Read once: what's hashed is what's imported, so a save landing in
+    // between can't put the new model under the old content's key (the
+    // review, BUG-36), and a miss doesn't read and parse the file twice.
+    let bytes = assets::read_model_file(path, limits)?;
+    load_read(path, &bytes, folder, limits)
+}
+
+/// [`load`] of the model file at `path`, already read as `bytes`.
+fn load_read(
+    path: &Path,
+    bytes: &[u8],
+    folder: &Path,
+    limits: &Limits,
+) -> Result<(Model, bool), assets::ImportError> {
+    let key = key(bytes, path.parent(), limits);
+    let entry = entry_path(folder, key);
+    if let Ok(stored) = read_entry(&entry, limits)
+        && let Ok(mut model) = decode(&stored, limits)
+    {
+        // The name follows the file, which may have been renamed.
+        model.name = assets_name(path);
+        // Used now: the last to go when the cache is trimmed (only an
+        // entry that's a file of its own, never through a link).
+        if std::fs::symlink_metadata(&entry).is_ok_and(|m| m.is_file()) {
+            let _ = std::fs::File::options()
+                .write(true)
+                .open(&entry)
+                .and_then(|f| f.set_modified(std::time::SystemTime::now()));
         }
+        return Ok((model, true));
     }
-    let model = assets::load(path, limits)?;
-    if let Some(key) = key {
-        // A cache that can't be written only costs time next start.
-        // Never through a link planted as the cache folder.
-        let made = match (folder.parent(), folder.file_name().and_then(|n| n.to_str())) {
-            (Some(parent), Some(name)) => crate::own_folder(parent, name).map(|_| ()),
-            _ => std::fs::create_dir_all(folder),
-        };
-        let _ = made.and_then(|()| write_atomically(&entry_path(folder, key), &encode(&model)));
-    }
+    let model = assets::load_bytes(bytes, path.parent(), &assets_name(path), limits)?;
+    // A cache that can't be written only costs time next start. Never
+    // through a link planted as the cache folder.
+    let made = match (folder.parent(), folder.file_name().and_then(|n| n.to_str())) {
+        (Some(parent), Some(name)) => crate::own_folder(parent, name).map(|_| ()),
+        _ => std::fs::create_dir_all(folder),
+    };
+    let _ = made.and_then(|()| write_atomically(&entry, &encode(&model)));
     Ok((model, false))
 }
 
@@ -717,6 +728,55 @@ mod tests {
         assert_eq!(trim(&folder.join("missing"), 0), 0);
     }
 
+    /// A model file of a cube `size` across.
+    fn cube(size: f32) -> Vec<u8> {
+        let mut b = assets::sample::Builder::default();
+        b.add_cube_mesh(size, None);
+        b.json_nodes = vec![r#"{"mesh":0,"name":"Box"}"#.into()];
+        b.glb()
+    }
+
+    /// The review, BUG-36: the cache hashed the file, then read it again
+    /// to import it, and stored that import under the first read's key. A
+    /// save landing in between put the new model under the old content's
+    /// key, and checking the old version out later showed the new model.
+    /// The file is read once now: what's stored is the model of the bytes
+    /// that were hashed, whatever the file holds by then.
+    #[test]
+    fn what_is_stored_is_the_model_of_the_bytes_that_were_hashed() {
+        let root = test_folder("cache-one-read");
+        let cache = root.join("cache");
+        std::fs::create_dir_all(&root).unwrap();
+        let file = root.join("crate.glb");
+        let limits = Limits::default();
+        let (old, new) = (cube(0.5), cube(2.0));
+        let model_of = |bytes: &[u8]| assets::load_bytes(bytes, None, "crate", &limits).unwrap();
+        // Read as the old version; the new one is saved before the import.
+        std::fs::write(&file, &new).unwrap();
+        let (model, hit) = load_read(&file, &old, &cache, &limits).unwrap();
+        assert!(!hit);
+        assert_eq!(model.meshes, model_of(&old).meshes, "what was read");
+        // The old version checked out again: its own model, from the cache.
+        std::fs::write(&file, &old).unwrap();
+        let (model, hit) = load(&file, Some(&cache), &limits).unwrap();
+        assert!(hit);
+        assert_eq!(model.meshes, model_of(&old).meshes);
+        // And the new one is its own.
+        std::fs::write(&file, &new).unwrap();
+        let (model, hit) = load(&file, Some(&cache), &limits).unwrap();
+        assert!(!hit);
+        assert_eq!(model.meshes, model_of(&new).meshes);
+        assert_ne!(model_of(&old).meshes, model_of(&new).meshes);
+        // A file that can't be read says why, as an import would.
+        let gone = load(&root.join("gone.glb"), Some(&cache), &limits).unwrap_err();
+        assert_eq!(
+            gone.to_string(),
+            assets::load(&root.join("gone.glb"), &limits)
+                .unwrap_err()
+                .to_string()
+        );
+    }
+
     #[test]
     fn a_renamed_file_is_a_cache_hit() {
         let root = test_folder("cache-rename");
@@ -740,7 +800,8 @@ mod tests {
         };
         assert!(!load(&renamed, Some(&cache), &small).unwrap().1);
         // A damaged entry is imported again, not trusted.
-        let entry = entry_path(&cache, key(&renamed, &limits).unwrap());
+        let read = std::fs::read(&renamed).unwrap();
+        let entry = entry_path(&cache, key(&read, renamed.parent(), &limits));
         std::fs::write(&entry, b"SOLBIN\0\0rubbish").unwrap();
         let (fixed, hit) = load(&renamed, Some(&cache), &limits).unwrap();
         assert!(!hit);

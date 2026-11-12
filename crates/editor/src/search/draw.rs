@@ -1,7 +1,6 @@
 //! The search while it is open: the field, the list under it, and the
 //! keys that choose and do a result.
 
-use super::score::results;
 use super::{SearchItem, SearchTarget};
 use crate::theme;
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -16,9 +15,7 @@ impl Workbench {
         if !self.search.open {
             return;
         }
-        self.keep_found();
-        let items = self.search_items();
-        let shown = results(&items, &self.search.query);
+        let shown = self.search_results();
         // Keys: Up and Down choose, Enter does it, Esc closes.
         let (up, down, enter, escape) = ui.input_mut(|i| {
             (

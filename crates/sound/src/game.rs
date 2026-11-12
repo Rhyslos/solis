@@ -16,7 +16,7 @@
 //! Nothing is converted, so nothing can be converted wrongly.
 
 use crate::buses::{BusTree, container, decibels};
-use crate::device::{FileStream, Manager, Preview, memory_sound};
+use crate::device::{LaterStream, Manager, Preview, memory_sound};
 use crate::event::{Fade, Pick};
 use crate::mixer::Mixer;
 use crate::read::{Clip, Samples};
@@ -141,6 +141,9 @@ pub(crate) struct GameTracks {
     send_levels: Vec<f32>,
     listener: ListenerHandle,
     playing: Vec<Playing>,
+    /// Why sounds streamed from their files couldn't be played, since the
+    /// app last asked.
+    failed: Vec<String>,
     paused: bool,
     /// The reverb sends (S6): one per zone heard at once, each a send
     /// track with a reverb, which placed sounds send to.
@@ -185,6 +188,7 @@ impl GameTracks {
             send_levels: Vec::new(),
             listener,
             playing: Vec::new(),
+            failed: Vec::new(),
             paused: false,
             reverbs,
             sends: [(f32::NEG_INFINITY, None); MAX_HEARD],
@@ -196,6 +200,11 @@ impl GameTracks {
     }
 
     fn tidy(&mut self) {
+        for playing in &mut self.playing {
+            if let Some(why) = playing.sound.pop_error() {
+                self.failed.push(why.to_string());
+            }
+        }
         self.playing
             .retain(|p| p.sound.state() != kira::sound::PlaybackState::Stopped);
     }
@@ -296,6 +305,9 @@ impl crate::SoundDevice {
     /// paused (a Step), it plays without waiting for the game to carry on.
     /// Silent devices do nothing.
     /// `voice` says through which bus, whether it loops, and from where.
+    /// A sound streamed from its file is opened as it starts playing,
+    /// away from the frame: one that can't be is said by
+    /// [`Self::take_game_sound_failures`].
     pub fn play_game_sound(
         &mut self,
         clip: &Clip,
@@ -393,8 +405,7 @@ impl crate::SoundDevice {
                 Preview::Memory(handle.map_err(|e| format!("couldn't play it ({e})"))?)
             }
             Samples::Streamed(path) => {
-                let stream = FileStream::open(path, clip.info).map_err(|e| e.to_string())?;
-                let mut data = StreamingSoundData::from_decoder(stream)
+                let mut data = StreamingSoundData::from_decoder(LaterStream::new(path, clip.info))
                     .volume(volume)
                     .playback_rate(rate)
                     .start_position(start);
@@ -677,6 +688,16 @@ impl crate::SoundDevice {
             .zip(b.take_meters())
             .map(|(x, y)| x.max(y))
             .collect()
+    }
+
+    /// Why game sounds streamed from their files couldn't be played, since
+    /// last asked: a long sound's file is opened as it starts playing,
+    /// away from the frame, so [`Self::play_game_sound`] can't say.
+    pub fn take_game_sound_failures(&mut self) -> Vec<String> {
+        self.game.as_mut().map_or_else(Vec::new, |g| {
+            g.tidy();
+            std::mem::take(&mut g.failed)
+        })
     }
 
     /// How many game sounds are playing (tests, and the Profiler later).

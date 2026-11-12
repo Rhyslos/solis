@@ -1338,6 +1338,41 @@ fn scale_check_editor_with_2000_entities() {
 
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_editor_with_10000_entities_listed_inspected_and_searched() {
+    // BUG-28: with nothing changing, every frame the Area column listed
+    // the whole tree again, Properties counted every entity using the
+    // inspected model's file, and the open search copied and scored every
+    // entity.
+    const TARGET_MS: f64 = 8.0;
+    let mut w = crowded(10_000);
+    let model = w
+        .document()
+        .area()
+        .depth_first()
+        .into_iter()
+        .find(|&id| w.document().area().get(id).is_some_and(|e| e.has("Model")))
+        .unwrap();
+    w.select(model);
+    w.open_search();
+    w.search.query = "thing 99".into();
+    let mut h = harness_with(w);
+    h.run();
+    let frames = 20;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: editor frame with 10,000 entities listed, a model inspected and the \
+         search open {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_editor_with_four_views() {
     const TARGET_MS: f64 = 4.0;
     let mut w = crowded(2_000);

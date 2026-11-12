@@ -309,6 +309,8 @@ fn damaged_files_never_crash_the_reader() {
                 bytes.drain(at..at + len);
             }
         }
+        // Listing the files it reads (the import cache's key) too.
+        let _ = referenced_files_in(&bytes, None);
         if let Ok(model) = load_bytes(&bytes, None, "X", &limits()) {
             read += 1;
             assert!(model.triangles() > 0);
@@ -359,6 +361,7 @@ fn damaged_json_never_crashes_the_reader() {
             bytes[at] = b"0123456789,[]{}\":-e.x"[noise.below(21)];
         }
         let _ = load_bytes(&bytes, None, "X", &limits());
+        let _ = referenced_files_in(&bytes, None);
     }
 }
 
@@ -909,6 +912,9 @@ fn a_gltf_lists_the_files_beside_it_that_it_reads() {
     std::fs::write(folder.join("crate.bin"), &b.bin).unwrap();
     let files = referenced_files(&path, &limits()).unwrap();
     assert_eq!(files, [folder.join("crate.bin")]);
+    // The same from the file's bytes, already read.
+    let bytes = read_model_file(&path, &limits()).unwrap();
+    assert_eq!(referenced_files_in(&bytes, Some(&folder)).unwrap(), files);
     // A .glb holds everything itself.
     let glb = folder.join("crate.glb");
     std::fs::write(&glb, b.glb()).unwrap();

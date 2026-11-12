@@ -364,6 +364,15 @@ impl Sounds {
         self.playing = None;
     }
 
+    /// Why what's being listened to couldn't be played, in plain words,
+    /// once: a long sound's file is opened as it starts playing, away from
+    /// the frame, so [`Sounds::play`] can't say.
+    pub fn failure(&self, device: &mut SoundDevice) -> Option<String> {
+        let why = device.preview_failure()?;
+        let path = self.playing.as_deref().unwrap_or("the sound");
+        Some(format!("Couldn't play {path}: {why}."))
+    }
+
     /// What's being listened to and how far it has got, or `None` once it
     /// has finished.
     pub fn preview(&mut self, device: &SoundDevice) -> Option<Preview> {

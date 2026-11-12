@@ -22,6 +22,67 @@ pub const MAX_LINES: usize = 3_000;
 /// A text file as the app read it: its text, or why it couldn't be.
 pub type TextRead = Result<String, String>;
 
+/// A text file as Properties shows it, worked out once when it's read,
+/// or why it couldn't be read.
+pub type TextShown = Result<ShownText, String>;
+
+/// A text file made ready to show, once, when the app reads it (the
+/// review, BUG-27: a note was cut to its first lines, read into blocks
+/// and its marks into runs again every frame it was shown).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShownText {
+    /// How many lines it has.
+    lines: usize,
+    /// Whether it holds nothing but spaces.
+    empty: bool,
+    /// Its first [`MAX_LINES`] lines, as they're drawn.
+    body: Body,
+    /// Whether it has more lines than that.
+    more: bool,
+}
+
+/// What of a text file is drawn.
+#[derive(Debug, Clone, PartialEq)]
+enum Body {
+    /// Markdown's blocks, each with its words as runs (none for code and
+    /// lines across).
+    Markdown(Vec<(Block, Vec<(Style, String)>)>),
+    /// Text as it is.
+    Plain(String),
+}
+
+impl ShownText {
+    /// `text`, of the file at `path`: Markdown when its name ends `.md`.
+    pub fn of(path: &str, text: &str) -> Self {
+        let (shown, more) = first_lines(text);
+        let body = if path.to_lowercase().ends_with(".md") {
+            Body::Markdown(
+                markdown_blocks(&shown)
+                    .into_iter()
+                    .map(|block| {
+                        let runs = match &block {
+                            Block::Heading(_, words)
+                            | Block::Paragraph(words)
+                            | Block::Item(_, _, words)
+                            | Block::Quote(words) => inline_runs(words),
+                            Block::Code(_) | Block::Rule => Vec::new(),
+                        };
+                        (block, runs)
+                    })
+                    .collect(),
+            )
+        } else {
+            Body::Plain(shown)
+        };
+        Self {
+            lines: text.lines().count(),
+            empty: text.trim().is_empty(),
+            body,
+            more,
+        }
+    }
+}
+
 impl Workbench {
     /// The text file Properties shows, by path inside the assets, for the
     /// app to read (again whenever it changes on disk).
@@ -35,9 +96,10 @@ impl Workbench {
     }
 
     /// The text of the file at `path` (inside the assets), as the app read
-    /// it.
+    /// it: made ready to show here, once.
     pub fn set_text_file(&mut self, path: String, read: TextRead) {
-        self.open.text_file = Some((path, read));
+        let shown = read.map(|text| ShownText::of(&path, &text));
+        self.open.text_file = Some((path, shown));
     }
 }
 
@@ -164,9 +226,60 @@ pub enum Style {
     Link,
 }
 
+/// The inline marks: how each opens and closes, and what it makes.
+const MARKS: [(&str, &str, Style); 6] = [
+    ("`", "`", Style::Code),
+    ("**", "**", Style::Strong),
+    ("__", "__", Style::Strong),
+    ("*", "*", Style::Emphasis),
+    ("_", "_", Style::Emphasis),
+    ("[", "](", Style::Link),
+];
+
+/// Where a pattern next occurs in a text, remembered: asked from places
+/// that only move forward, it reads each part of the text once.
+struct Ahead<'a> {
+    text: &'a str,
+    pattern: &'static str,
+    /// Where it was last looked for from, and where it was found.
+    known: Option<(usize, Option<usize>)>,
+}
+
+impl<'a> Ahead<'a> {
+    fn new(text: &'a str, pattern: &'static str) -> Self {
+        Self {
+            text,
+            pattern,
+            known: None,
+        }
+    }
+
+    /// Where the pattern first occurs at or after byte `from`.
+    fn from(&mut self, from: usize) -> Option<usize> {
+        if let Some((looked, found)) = self.known
+            && from >= looked
+            && found.is_none_or(|at| at >= from)
+        {
+            return found;
+        }
+        let found = self
+            .text
+            .get(from..)
+            .and_then(|rest| rest.find(self.pattern))
+            .map(|at| from + at);
+        self.known = Some((from, found));
+        found
+    }
+}
+
 /// `text`'s inline Markdown (`**strong**`, `*emphasis*`, `` `code` ``,
 /// `[link](address)`) as runs, the marks taken out. Marks that aren't
 /// closed are kept as written.
+///
+/// One pass: where each mark next opens and closes is remembered, not
+/// looked for again from each run (the review, BUG-27: a mark the text
+/// never uses was looked for to the end after every run, so a long
+/// paragraph took seconds).
 pub fn inline_runs(text: &str) -> Vec<(Style, String)> {
     let mut runs: Vec<(Style, String)> = Vec::new();
     let mut push = |style: Style, words: &str| {
@@ -178,45 +291,52 @@ pub fn inline_runs(text: &str) -> Vec<(Style, String)> {
             _ => runs.push((style, words.to_owned())),
         }
     };
-    let mut rest = text;
-    while !rest.is_empty() {
-        let found = [
-            ("`", "`", Style::Code),
-            ("**", "**", Style::Strong),
-            ("__", "__", Style::Strong),
-            ("*", "*", Style::Emphasis),
-            ("_", "_", Style::Emphasis),
-            ("[", "](", Style::Link),
-        ]
-        .iter()
-        .filter_map(|(open, close, style)| {
-            let at = rest.find(open)?;
-            let inside = &rest[at + open.len()..];
-            let end = inside.find(close)?;
-            (end > 0).then_some((at, *open, *close, *style, end))
-        })
-        .min_by_key(|(at, open, ..)| (*at, std::cmp::Reverse(open.len())));
-        let Some((at, open, close, style, end)) = found else {
-            push(Style::Plain, rest);
+    let mut opens = MARKS.map(|(open, ..)| Ahead::new(text, open));
+    let mut closes = MARKS.map(|(_, close, _)| Ahead::new(text, close));
+    let mut addresses = Ahead::new(text, ")");
+    let mut at = 0;
+    while at < text.len() {
+        // The mark opening first (the longer of two at one place) that is
+        // closed with something inside.
+        let mut found: Option<(usize, usize, usize)> = None;
+        for (m, (open, ..)) in MARKS.iter().enumerate() {
+            let Some(start) = opens[m].from(at) else {
+                continue;
+            };
+            let inside = start + open.len();
+            let Some(end) = closes[m].from(inside) else {
+                continue;
+            };
+            let first = found.is_none_or(|(f, other, _)| {
+                (start, std::cmp::Reverse(open.len()))
+                    < (f, std::cmp::Reverse(MARKS[other].0.len()))
+            });
+            if end > inside && first {
+                found = Some((start, m, end));
+            }
+        }
+        let Some((start, m, end)) = found else {
+            push(Style::Plain, &text[at..]);
             break;
         };
-        push(Style::Plain, &rest[..at]);
-        let inside = &rest[at + open.len()..at + open.len() + end];
-        let mut after = &rest[at + open.len() + end + close.len()..];
+        let (open, close, style) = MARKS[m];
+        push(Style::Plain, &text[at..start]);
+        push(style, &text[start + open.len()..end]);
+        at = end + close.len();
         if style == Style::Link {
             // The address, up to its ")", isn't shown.
-            after = after.find(')').map_or(after, |i| &after[i + 1..]);
+            if let Some(paren) = addresses.from(at) {
+                at = paren + 1;
+            }
         }
-        push(style, inside);
-        rest = after;
     }
     runs
 }
 
-/// Draws `words` with their inline Markdown, wrapped, at `size`.
-fn inline(ui: &mut Ui, words: &str, size: f32, colour: Color32) {
+/// Draws words as their inline Markdown's `runs`, wrapped, at `size`.
+fn inline(ui: &mut Ui, runs: &[(Style, String)], size: f32, colour: Color32) {
     let mut job = LayoutJob::default();
-    for (style, text) in inline_runs(words) {
+    for (style, text) in runs {
         let format = match style {
             Style::Plain => TextFormat::simple(FontId::proportional(size), colour),
             Style::Strong => TextFormat::simple(FontId::proportional(size), theme::text_strong()),
@@ -233,39 +353,39 @@ fn inline(ui: &mut Ui, words: &str, size: f32, colour: Color32) {
                 ..TextFormat::simple(FontId::proportional(size), crate::tokens::LINK)
             },
         };
-        job.append(&text, 0.0, format);
+        job.append(text, 0.0, format);
     }
     job.wrap.max_width = ui.available_width();
     ui.label(job);
 }
 
-/// Draws a Markdown file's blocks.
-fn markdown(ui: &mut Ui, text: &str) {
-    for block in markdown_blocks(text) {
+/// Draws a Markdown file's blocks, each with its words' runs.
+fn markdown(ui: &mut Ui, blocks: &[(Block, Vec<(Style, String)>)]) {
+    for (block, words) in blocks {
         match block {
-            Block::Heading(level, words) => {
+            Block::Heading(level, _) => {
                 let size = match level {
                     1 => 20.0,
                     2 => 17.0,
                     3 => 15.0,
                     _ => 13.5,
                 };
-                ui.add_space(if level <= 2 { 6.0 } else { 3.0 });
-                inline(ui, &words, size, theme::text_strong());
+                ui.add_space(if *level <= 2 { 6.0 } else { 3.0 });
+                inline(ui, words, size, theme::text_strong());
                 ui.add_space(2.0);
             }
-            Block::Paragraph(words) => {
-                inline(ui, &words, 13.0, theme::text());
+            Block::Paragraph(_) => {
+                inline(ui, words, 13.0, theme::text());
                 ui.add_space(6.0);
             }
-            Block::Item(depth, marker, words) => {
+            Block::Item(depth, marker, _) => {
                 ui.horizontal_top(|ui| {
-                    ui.add_space(4.0 + f32::from(depth) * 14.0);
+                    ui.add_space(4.0 + f32::from(*depth) * 14.0);
                     ui.label(RichText::new(marker).color(theme::text_weak()));
-                    inline(ui, &words, 13.0, theme::text());
+                    inline(ui, words, 13.0, theme::text());
                 });
             }
-            Block::Quote(words) => {
+            Block::Quote(_) => {
                 let bar = egui::Frame::new()
                     .inner_margin(egui::Margin {
                         left: 10,
@@ -273,7 +393,7 @@ fn markdown(ui: &mut Ui, text: &str) {
                         top: 2,
                         bottom: 2,
                     })
-                    .show(ui, |ui| inline(ui, &words, 13.0, theme::text_weak()))
+                    .show(ui, |ui| inline(ui, words, 13.0, theme::text_weak()))
                     .response
                     .rect;
                 // A quote's bar down its left.
@@ -284,7 +404,7 @@ fn markdown(ui: &mut Ui, text: &str) {
                 );
             }
             Block::Code(code) => {
-                plain_frame(ui, &code);
+                plain_frame(ui, code);
                 ui.add_space(6.0);
             }
             Block::Rule => {
@@ -323,18 +443,17 @@ fn first_lines(text: &str) -> (String, bool) {
 pub(crate) fn text_properties(
     ui: &mut Ui,
     path: &str,
-    read: Option<&TextRead>,
+    read: Option<&TextShown>,
 ) -> Vec<LibraryRequest> {
     let mut asked = Vec::new();
     let name = path.rsplit_once('/').map_or(path, |(_, n)| n);
-    let markdown_file = name.to_lowercase().ends_with(".md");
     egui::Frame::new()
         .inner_margin(theme::panel_margin())
         .show(ui, |ui| {
             ui.label(RichText::new(name).strong().color(theme::text_strong()));
             let about = match read {
                 Some(Ok(text)) => {
-                    let lines = text.lines().count();
+                    let lines = text.lines;
                     format!("Text · {lines} line{}", if lines == 1 { "" } else { "s" })
                 }
                 Some(Err(_)) => "Text".to_owned(),
@@ -367,17 +486,15 @@ pub(crate) fn text_properties(
                     Some(Err(why)) => {
                         ui.colored_label(theme::WARNING, format!("Can't show it: {why}."));
                     }
-                    Some(Ok(text)) if text.trim().is_empty() => {
+                    Some(Ok(text)) if text.empty => {
                         ui.label(RichText::new("It's empty.").color(theme::text_weak()));
                     }
                     Some(Ok(text)) => {
-                        let (shown, more) = first_lines(text);
-                        if markdown_file {
-                            markdown(ui, &shown);
-                        } else {
-                            plain_frame(ui, &shown);
+                        match &text.body {
+                            Body::Markdown(blocks) => markdown(ui, blocks),
+                            Body::Plain(shown) => plain_frame(ui, shown),
                         }
-                        if more {
+                        if text.more {
                             ui.label(
                                 RichText::new(format!(
                                     "Only the first {MAX_LINES} lines are shown: open it in its \

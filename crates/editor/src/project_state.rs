@@ -94,8 +94,8 @@ pub(crate) struct ProjectState {
     /// area shows that instead.
     pub(crate) sound_shown: Option<(String, crate::document::Selection)>,
     /// The text file shown in Properties, as the app last read it (by
-    /// path inside the assets).
-    pub(crate) text_file: Option<(String, crate::text_view::TextRead)>,
+    /// path inside the assets), made ready to show.
+    pub(crate) text_file: Option<(String, crate::text_view::TextShown)>,
     /// The project's buses, mute and solo, and the meters (the Mixer).
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).

@@ -57,7 +57,7 @@ pub(crate) struct PanelViewer<'a> {
     /// The sound file Properties shows instead of the selection, if any.
     pub(crate) sound_shown: Option<&'a str>,
     /// The text file shown, as the app last read it.
-    pub(crate) text_file: Option<&'a (String, crate::text_view::TextRead)>,
+    pub(crate) text_file: Option<&'a (String, crate::text_view::TextShown)>,
     /// The project's buses, and the bus Properties shows, if any.
     pub(crate) mixer: &'a crate::mixer_view::MixerState,
     pub(crate) mixer_requests: &'a mut Vec<crate::mixer_view::MixerRequest>,

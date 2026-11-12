@@ -20,6 +20,15 @@ fn next_stamp() -> u64 {
     NEXT.fetch_add(1, Ordering::Relaxed)
 }
 
+/// How many of `cells` hold each code.
+fn count_codes(cells: &[u8]) -> [usize; 256] {
+    let mut counts = [0; 256];
+    for &c in cells {
+        counts[usize::from(c)] += 1;
+    }
+    counts
+}
+
 /// A chunk's side, in cells.
 pub const CHUNK: u32 = 32;
 /// The longest side a map has, in cells.
@@ -151,6 +160,11 @@ pub struct TileMap {
     /// place is free for the next cells made as soon as the last are let
     /// go.
     stamps: Vec<u64>,
+    /// How many cells of each layer hold each code, kept as cells change
+    /// ([`Self::counts`]): the editor's palette shows them every frame,
+    /// and counting a big map's cells every frame took milliseconds (the
+    /// review, BUG-22).
+    counts: Vec<Arc<[usize; 256]>>,
     /// Each layer's exact tiles (D6): cells that show one piece of their
     /// tileset as it is, not the one autotiling would pick, by cell index.
     /// Art only: not in the checksum.
@@ -180,6 +194,7 @@ impl Clone for TileMap {
             layers: self.layers.clone(),
             cells: self.cells.clone(),
             stamps: self.stamps.clone(),
+            counts: self.counts.clone(),
             exact: self.exact.clone(),
             values: self.values.clone(),
             columns: self.columns.clone(),
@@ -235,6 +250,7 @@ impl TileMap {
         }
         if let Some(code) = fill {
             map.cells_mut(0).fill(code);
+            map.counts[0] = Arc::new(count_codes(&map.cells[0]));
         }
         map.all_dirty();
         map
@@ -250,6 +266,7 @@ impl TileMap {
             layers: Vec::new(),
             cells: Vec::new(),
             stamps: Vec::new(),
+            counts: Vec::new(),
             exact: Vec::new(),
             values: Vec::new(),
             columns: Vec::new(),
@@ -398,10 +415,14 @@ impl TileMap {
     pub fn set_code(&mut self, layer: usize, x: u32, y: u32, code: u8) -> Result<bool, MapError> {
         let i = self.index(x, y).ok_or(MapError::Outside)?;
         let cells = self.cells.get(layer).ok_or(MapError::NoSuch)?;
-        if cells[i] == code {
+        let was = cells[i];
+        if was == code {
             return Ok(false);
         }
         self.cells_mut(layer)[i] = code;
+        let counts = Arc::make_mut(&mut self.counts[layer]);
+        counts[usize::from(was)] = counts[usize::from(was)].saturating_sub(1);
+        counts[usize::from(code)] += 1;
         // Painted over: autotiled again.
         if self.exact[layer].contains_key(&(i as u32)) {
             Arc::make_mut(&mut self.exact[layer]).remove(&(i as u32));
@@ -580,6 +601,9 @@ impl TileMap {
             over,
         });
         self.cells.push(Arc::new(vec![0; self.cell_count()]));
+        let mut empty = [0; 256];
+        empty[0] = self.cell_count();
+        self.counts.push(Arc::new(empty));
         self.stamps.push(next_stamp());
         self.exact.push(Arc::default());
         self.layer_revisions.push(0);
@@ -594,6 +618,7 @@ impl TileMap {
         }
         self.layers.remove(layer);
         self.cells.remove(layer);
+        self.counts.remove(layer);
         self.stamps.remove(layer);
         self.exact.remove(layer);
         self.layer_revisions.remove(layer);
@@ -616,6 +641,7 @@ impl TileMap {
         }
         self.layers.swap(layer, other);
         self.cells.swap(layer, other);
+        self.counts.swap(layer, other);
         self.stamps.swap(layer, other);
         self.exact.swap(layer, other);
         self.all_dirty();
@@ -747,13 +773,19 @@ impl TileMap {
             (x < size[0] && y < size[1]).then(|| (y * size[0] + x) as usize)
         };
         let count = size[0] as usize * size[1] as usize;
-        for (cells, stamp) in self.cells.iter_mut().zip(&mut self.stamps) {
+        for ((cells, stamp), counts) in self
+            .cells
+            .iter_mut()
+            .zip(&mut self.stamps)
+            .zip(&mut self.counts)
+        {
             let mut fresh = vec![0; count];
             for (i, c) in cells.iter().enumerate() {
                 if let Some(j) = keep(i) {
                     fresh[j] = *c;
                 }
             }
+            *counts = Arc::new(count_codes(&fresh));
             *cells = Arc::new(fresh);
             *stamp = next_stamp();
         }
@@ -805,15 +837,10 @@ impl TileMap {
         true
     }
 
-    /// How many cells of layer `layer` hold each code (by byte).
+    /// How many cells of layer `layer` hold each code (by byte): kept as
+    /// cells change, so asking costs nothing (none past the end).
     pub fn counts(&self, layer: usize) -> [usize; 256] {
-        let mut counts = [0; 256];
-        if let Some(cells) = self.cells.get(layer) {
-            for &c in cells.iter() {
-                counts[usize::from(c)] += 1;
-            }
-        }
-        counts
+        self.counts.get(layer).map_or([0; 256], |c| **c)
     }
 
     /// A checksum of the map: its layers, values and every cell, worked

@@ -11,6 +11,7 @@ use reflect::AssetId;
 use reflect::ordinary_file::Refused;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant, SystemTime};
 
 /// How long a new file without a sidecar must have been left alone before
@@ -181,11 +182,16 @@ pub enum Change {
     },
 }
 
+/// Every asset, by ID.
+type Records = BTreeMap<AssetId, AssetRecord>;
+
 /// The project's assets.
 #[derive(Debug)]
 pub struct AssetDb {
     project: Project,
-    records: BTreeMap<AssetId, AssetRecord>,
+    /// Shared with a look at the folder on its way ([`Scan`]), never
+    /// copied for it.
+    records: Arc<Records>,
     limits: assets::Limits,
     /// When a new file left waiting (see [`SETTLE`]) should be looked at
     /// again, if one is.
@@ -193,6 +199,38 @@ pub struct AssetDb {
     /// How long a new file waits ([`SETTLE`]; none in this crate's own
     /// tests, which write files and look straight away).
     pub(crate) settle: Duration,
+    /// The number the next look at the folder gets, and that of the last
+    /// one taken in: an older look's findings are out of date.
+    scans: u64,
+    taken: u64,
+    /// Held by a look while it runs: two at once would each give a new
+    /// file a sidecar of its own.
+    looking: Arc<Mutex<()>>,
+}
+
+/// A look at the assets folder, to run away from the window's thread
+/// (CONTRIBUTING rule 10): walking the folder, reading every sidecar and
+/// hashing new files can take seconds in a big project. Made by
+/// [`AssetDb::scan`]; [`Scan::run`] works out what's there, and
+/// [`AssetDb::take`] takes it in.
+#[derive(Debug)]
+pub struct Scan {
+    project: Project,
+    /// The assets as the database knew them when the look began.
+    records: Arc<Records>,
+    limits: assets::Limits,
+    settle: Duration,
+    number: u64,
+    looking: Arc<Mutex<()>>,
+}
+
+/// What a [`Scan`] found, for [`AssetDb::take`].
+#[derive(Debug)]
+pub struct Scanned {
+    number: u64,
+    records: Records,
+    notes: Vec<String>,
+    waiting: Option<Instant>,
 }
 
 impl AssetDb {
@@ -201,10 +239,13 @@ impl AssetDb {
     pub fn open(project: Project, limits: assets::Limits) -> (Self, Vec<Change>, Vec<String>) {
         let mut db = Self {
             project,
-            records: BTreeMap::new(),
+            records: Arc::default(),
             limits,
             waiting: None,
             settle: if cfg!(test) { Duration::ZERO } else { SETTLE },
+            scans: 0,
+            taken: 0,
+            looking: Arc::default(),
         };
         let (changes, notes) = db.rescan();
         (db, changes, notes)
@@ -217,7 +258,7 @@ impl AssetDb {
 
     /// Every asset, by ID.
     pub fn records(&self) -> &BTreeMap<AssetId, AssetRecord> {
-        &self.records
+        self.records.as_ref()
     }
 
     /// The asset `id`.
@@ -241,128 +282,40 @@ impl AssetDb {
             .map(|r| r.id)
     }
 
-    /// Looks at the whole folder again and returns what changed. Sidecars
-    /// are written for new assets, follow a file renamed outside Solis when
+    /// Looks at the whole folder again and returns what changed, here and
+    /// now ([`AssetDb::scan`] looks on another thread). Sidecars are
+    /// written for new assets, follow a file renamed outside Solis when
     /// its content shows which it is, and are never deleted.
     pub fn rescan(&mut self) -> (Vec<Change>, Vec<String>) {
-        let root = self.project.assets();
-        let mut notes = Vec::new();
-        let (files, sidecars) = walk(&root);
-        self.waiting = None;
-        // Orphans: sidecars whose asset isn't there, by recorded hash.
-        let orphans: Vec<(PathBuf, Sidecar)> = sidecars
-            .iter()
-            .filter(|s| sidecar::asset_for(s).is_some_and(|a| !a.exists()))
-            .filter_map(|s| Sidecar::read(s).ok().map(|c| (s.clone(), c)))
-            .collect();
-        let mut found: BTreeMap<AssetId, AssetRecord> = BTreeMap::new();
-        let mut unpaired: Vec<PathBuf> = Vec::new();
-        let mut known: Vec<(PathBuf, AssetKind, Sidecar)> = Vec::new();
-        for file in files {
-            let Some(kind) = AssetKind::of(&file) else {
-                continue;
-            };
-            let sidecar_path = sidecar::path_for(&file);
-            if !sidecar_path.exists() {
-                unpaired.push(file);
-                continue;
-            }
-            let relative = relative(&root, &file);
-            match Sidecar::read(&sidecar_path) {
-                Ok(sidecar) => known.push((relative, kind, sidecar)),
-                Err(why) => notes.push(format!(
-                    "{}'s sidecar couldn't be read ({why}). Fix it, or delete it to give the \
-                     file a new ID; it's left out until then.",
-                    relative.display()
-                )),
-            }
+        let scanned = self.scan().run();
+        self.take(scanned).unwrap_or_default()
+    }
+
+    /// A look at the whole folder, to [`Scan::run`] on another thread and
+    /// hand to [`AssetDb::take`]. The database can be used meanwhile.
+    pub fn scan(&mut self) -> Scan {
+        self.scans += 1;
+        Scan {
+            project: self.project.clone(),
+            records: Arc::clone(&self.records),
+            limits: self.limits,
+            settle: self.settle,
+            number: self.scans,
+            looking: Arc::clone(&self.looking),
         }
-        // A copy that brought its sidecar along shares an ID: the file
-        // already known by it keeps it (or the first, by name), and the
-        // others get IDs of their own.
-        let mut by_id: BTreeMap<AssetId, Vec<usize>> = BTreeMap::new();
-        for (i, (_, _, sidecar)) in known.iter().enumerate() {
-            by_id.entry(sidecar.id).or_default().push(i);
+    }
+
+    /// Takes in what a look found, returning what changed since the last
+    /// one taken and any problems in plain words; or nothing, when a look
+    /// begun later has already been taken (what this one found is out of
+    /// date).
+    pub fn take(&mut self, scanned: Scanned) -> Option<(Vec<Change>, Vec<String>)> {
+        if scanned.number <= self.taken {
+            return None;
         }
-        for (id, sharing) in by_id {
-            let keeper = if sharing.len() == 1 {
-                sharing[0]
-            } else {
-                sharing
-                    .iter()
-                    .copied()
-                    .find(|&i| self.records.get(&id).is_some_and(|r| r.path == known[i].0))
-                    .unwrap_or_else(|| original(&root, &known, &sharing))
-            };
-            let (path, kind, _) = &known[keeper];
-            found.insert(id, self.record(id, path.clone(), *kind));
-            for &copy in sharing.iter().filter(|&&i| i != keeper) {
-                let (path, kind, sidecar) = &known[copy];
-                let mut fresh = sidecar.clone();
-                fresh.id = AssetId::random();
-                fresh.parts.clear();
-                match fresh.write(&sidecar::path_for(&root.join(path))) {
-                    Ok(_) => {
-                        notes.push(format!(
-                            "{} is a copy, so it got a new ID of its own.",
-                            path.display()
-                        ));
-                        found.insert(fresh.id, self.record(fresh.id, path.clone(), *kind));
-                    }
-                    Err(e) => notes.push(format!(
-                        "Couldn't give {} its own ID ({e}); it's left out.",
-                        path.display()
-                    )),
-                }
-            }
-        }
-        // New files: a renamed one finds its orphaned sidecar by content.
-        let mut orphan_taken = vec![false; orphans.len()];
-        let hashes: Vec<Option<u64>> = unpaired.iter().map(|f| hash_file(f).ok()).collect();
-        for (file, hash) in unpaired.iter().zip(&hashes) {
-            let Some(kind) = AssetKind::of(file) else {
-                continue;
-            };
-            let relative = relative(&root, file);
-            let matching: Vec<usize> = orphans
-                .iter()
-                .enumerate()
-                .filter(|(i, (_, o))| {
-                    !orphan_taken[*i] && hash.is_some() && o.content_hash() == *hash
-                })
-                .map(|(i, _)| i)
-                .collect();
-            let same_content_files = hashes.iter().filter(|h| **h == *hash).count();
-            let sidecar_path = sidecar::path_for(file);
-            if matching.is_empty() && !settled(file, self.settle) {
-                // Just written: its sidecar may be on its way (Git writes
-                // them one after the other). Looked at again shortly.
-                let again = Instant::now() + self.settle;
-                self.waiting = Some(self.waiting.map_or(again, |w| w.min(again)));
-                continue;
-            }
-            if let ([only], 1) = (matching.as_slice(), same_content_files) {
-                let (orphan_path, orphan) = &orphans[*only];
-                if !found.contains_key(&orphan.id)
-                    && std::fs::rename(orphan_path, &sidecar_path).is_ok()
-                {
-                    orphan_taken[*only] = true;
-                    found.insert(orphan.id, self.record(orphan.id, relative, kind));
-                    continue;
-                }
-            }
-            let new = Sidecar::new(hash.unwrap_or(0));
-            match new.write(&sidecar_path) {
-                Ok(_) => {
-                    found.insert(new.id, self.record(new.id, relative, kind));
-                }
-                Err(e) => notes.push(format!(
-                    "Couldn't write {}'s sidecar ({e}); it's left out.",
-                    relative.display()
-                )),
-            }
-        }
-        // What changed since last time.
+        self.taken = scanned.number;
+        self.waiting = scanned.waiting;
+        let found = scanned.records;
         let mut changes = Vec::new();
         for (id, record) in &found {
             match self.records.get(id) {
@@ -385,7 +338,7 @@ impl AssetDb {
                 }
             }
         }
-        for (id, old) in &self.records {
+        for (id, old) in self.records.iter() {
             if !found.contains_key(id) {
                 changes.push(Change::Removed {
                     id: *id,
@@ -393,8 +346,8 @@ impl AssetDb {
                 });
             }
         }
-        self.records = found;
-        (changes, notes)
+        self.records = Arc::new(found);
+        Some((changes, scanned.notes))
     }
 
     /// When to look at the folder again without being told to: a new
@@ -414,39 +367,6 @@ impl AssetDb {
         Sidecar::new(hash_file(path)?)
             .write(&sidecar_path)
             .map(|_| ())
-    }
-
-    fn record(&self, id: AssetId, path: PathBuf, kind: AssetKind) -> AssetRecord {
-        let file = self.project.assets().join(&path);
-        let own = Stamp::of(&file);
-        let mut stamps = vec![(path.clone(), own)];
-        if file
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("gltf"))
-        {
-            // The files it reads only change when it does: while it's the
-            // same, last time's list is used and only their stamps looked
-            // at, so a rescan doesn't read every .gltf again.
-            let known = self
-                .records
-                .get(&id)
-                .filter(|old| old.path == path && old.stamps.first().is_some_and(|s| s.1 == own))
-                .filter(|_| own.is_some())
-                .map(|old| old.stamps[1..].iter().map(|(p, _)| p.clone()).collect());
-            let dependencies = known.unwrap_or_else(|| {
-                assets::referenced_files(&file, &self.limits).unwrap_or_default()
-            });
-            for dependency in dependencies {
-                let stamp = Stamp::of(&dependency);
-                stamps.push((dependency, stamp));
-            }
-        }
-        AssetRecord {
-            id,
-            path,
-            kind,
-            stamps,
-        }
     }
 
     /// Copies the model at `source` (and the files it reads) into the
@@ -508,6 +428,181 @@ impl AssetDb {
         }
         sidecar.write_in(self.project.root(), &path)?;
         Ok(ids)
+    }
+}
+
+impl Scan {
+    /// Works out what's in the folder now. Sidecars are written for new
+    /// assets (once they've settled), follow a file renamed outside Solis
+    /// when its content shows which it is, and are never deleted. Slow in
+    /// a big project: run it away from the window's thread.
+    pub fn run(self) -> Scanned {
+        let _looking = self.looking.lock().unwrap_or_else(PoisonError::into_inner);
+        let root = self.project.assets();
+        let mut notes = Vec::new();
+        let mut waiting: Option<Instant> = None;
+        let (files, sidecars) = walk(&root);
+        // Orphans: sidecars whose asset isn't there, by recorded hash.
+        let orphans: Vec<(PathBuf, Sidecar)> = sidecars
+            .iter()
+            .filter(|s| sidecar::asset_for(s).is_some_and(|a| !a.exists()))
+            .filter_map(|s| Sidecar::read(s).ok().map(|c| (s.clone(), c)))
+            .collect();
+        let mut found: Records = BTreeMap::new();
+        let mut unpaired: Vec<PathBuf> = Vec::new();
+        let mut known: Vec<(PathBuf, AssetKind, Sidecar)> = Vec::new();
+        for file in files {
+            let Some(kind) = AssetKind::of(&file) else {
+                continue;
+            };
+            let sidecar_path = sidecar::path_for(&file);
+            if !sidecar_path.exists() {
+                unpaired.push(file);
+                continue;
+            }
+            let relative = relative(&root, &file);
+            match Sidecar::read(&sidecar_path) {
+                Ok(sidecar) => known.push((relative, kind, sidecar)),
+                Err(why) => notes.push(format!(
+                    "{}'s sidecar couldn't be read ({why}). Fix it, or delete it to give the \
+                     file a new ID; it's left out until then.",
+                    relative.display()
+                )),
+            }
+        }
+        // A copy that brought its sidecar along shares an ID: the file
+        // already known by it keeps it (or the first, by name), and the
+        // others get IDs of their own.
+        let mut by_id: BTreeMap<AssetId, Vec<usize>> = BTreeMap::new();
+        for (i, (_, _, sidecar)) in known.iter().enumerate() {
+            by_id.entry(sidecar.id).or_default().push(i);
+        }
+        for (id, sharing) in by_id {
+            let keeper = if sharing.len() == 1 {
+                sharing[0]
+            } else {
+                sharing
+                    .iter()
+                    .copied()
+                    .find(|&i| self.records.get(&id).is_some_and(|r| r.path == known[i].0))
+                    .unwrap_or_else(|| original(&root, &known, &sharing))
+            };
+            let (path, kind, _) = &known[keeper];
+            found.insert(id, self.record(id, path.clone(), *kind));
+            for &copy in sharing.iter().filter(|&&i| i != keeper) {
+                let (path, kind, sidecar) = &known[copy];
+                let mut fresh = sidecar.clone();
+                fresh.id = AssetId::random();
+                fresh.parts.clear();
+                match fresh.write(&sidecar::path_for(&root.join(path))) {
+                    Ok(_) => {
+                        notes.push(format!(
+                            "{} is a copy, so it got a new ID of its own.",
+                            path.display()
+                        ));
+                        found.insert(fresh.id, self.record(fresh.id, path.clone(), *kind));
+                    }
+                    Err(e) => notes.push(format!(
+                        "Couldn't give {} its own ID ({e}); it's left out.",
+                        path.display()
+                    )),
+                }
+            }
+        }
+        // New files. One just written may have its sidecar on its way (Git
+        // writes them one after the other), or still be being copied: it's
+        // left, unread, and looked at again shortly. Hashing it now would
+        // read a whole file that may be gigabytes, again at every look
+        // while it's copied (the review, BUG-32).
+        let settled_files: Vec<PathBuf> = unpaired
+            .into_iter()
+            .filter(|file| {
+                let ready = settled(file, self.settle);
+                if !ready {
+                    let again = Instant::now() + self.settle;
+                    waiting = Some(waiting.map_or(again, |w| w.min(again)));
+                }
+                ready
+            })
+            .collect();
+        // A renamed one finds its orphaned sidecar by content.
+        let mut orphan_taken = vec![false; orphans.len()];
+        let hashes: Vec<Option<u64>> = settled_files.iter().map(|f| hash_file(f).ok()).collect();
+        for (file, hash) in settled_files.iter().zip(&hashes) {
+            let Some(kind) = AssetKind::of(file) else {
+                continue;
+            };
+            let relative = relative(&root, file);
+            let matching: Vec<usize> = orphans
+                .iter()
+                .enumerate()
+                .filter(|(i, (_, o))| {
+                    !orphan_taken[*i] && hash.is_some() && o.content_hash() == *hash
+                })
+                .map(|(i, _)| i)
+                .collect();
+            let same_content_files = hashes.iter().filter(|h| **h == *hash).count();
+            let sidecar_path = sidecar::path_for(file);
+            if let ([only], 1) = (matching.as_slice(), same_content_files) {
+                let (orphan_path, orphan) = &orphans[*only];
+                if !found.contains_key(&orphan.id)
+                    && std::fs::rename(orphan_path, &sidecar_path).is_ok()
+                {
+                    orphan_taken[*only] = true;
+                    found.insert(orphan.id, self.record(orphan.id, relative, kind));
+                    continue;
+                }
+            }
+            let new = Sidecar::new(hash.unwrap_or(0));
+            match new.write(&sidecar_path) {
+                Ok(_) => {
+                    found.insert(new.id, self.record(new.id, relative, kind));
+                }
+                Err(e) => notes.push(format!(
+                    "Couldn't write {}'s sidecar ({e}); it's left out.",
+                    relative.display()
+                )),
+            }
+        }
+        Scanned {
+            number: self.number,
+            records: found,
+            notes,
+            waiting,
+        }
+    }
+
+    fn record(&self, id: AssetId, path: PathBuf, kind: AssetKind) -> AssetRecord {
+        let file = self.project.assets().join(&path);
+        let own = Stamp::of(&file);
+        let mut stamps = vec![(path.clone(), own)];
+        if file
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("gltf"))
+        {
+            // The files it reads only change when it does: while it's the
+            // same, last time's list is used and only their stamps looked
+            // at, so a rescan doesn't read every .gltf again.
+            let known = self
+                .records
+                .get(&id)
+                .filter(|old| old.path == path && old.stamps.first().is_some_and(|s| s.1 == own))
+                .filter(|_| own.is_some())
+                .map(|old| old.stamps[1..].iter().map(|(p, _)| p.clone()).collect());
+            let dependencies = known.unwrap_or_else(|| {
+                assets::referenced_files(&file, &self.limits).unwrap_or_default()
+            });
+            for dependency in dependencies {
+                let stamp = Stamp::of(&dependency);
+                stamps.push((dependency, stamp));
+            }
+        }
+        AssetRecord {
+            id,
+            path,
+            kind,
+            stamps,
+        }
     }
 }
 
@@ -788,6 +883,67 @@ mod tests {
         db.rescan();
         assert!(db.id_at(&assets.join("barrel.glb")).is_some());
     }
+
+    /// The review, BUG-32: every look hashed each file without a sidecar
+    /// (up to 4 GB) before asking whether it had settled, so a big file
+    /// being copied in was read whole at every look, on the window's
+    /// thread, and the hash thrown away. Now a file that hasn't settled
+    /// isn't read at all, even one that may turn out to be an asset
+    /// renamed outside Solis: that's found once it has settled.
+    #[test]
+    fn a_file_that_hasn_t_settled_isn_t_read_even_to_find_a_renamed_asset() {
+        let (project, assets) = project("db-unsettled");
+        glb(&assets.join("crate.glb"), 0.5);
+        let (mut db, ..) = open(project);
+        let id = db.id_at(&assets.join("crate.glb")).unwrap();
+        // Moved by a program that writes it afresh, leaving the sidecar.
+        let bytes = std::fs::read(assets.join("crate.glb")).unwrap();
+        std::fs::remove_file(assets.join("crate.glb")).unwrap();
+        std::fs::write(assets.join("box.glb"), &bytes).unwrap();
+        db.settle = Duration::from_secs(3600);
+        let (changes, _) = db.rescan();
+        assert!(
+            !changes.iter().any(|c| matches!(c, Change::Moved { .. })),
+            "not hashed while it may still be being written: {changes:?}"
+        );
+        assert!(db.look_again_at().is_some(), "looked at again later");
+        assert!(!assets.join("box.glb.solmeta").exists());
+        // Settled: it's read, and keeps its ID.
+        db.settle = Duration::ZERO;
+        db.rescan();
+        assert_eq!(db.id_at(&assets.join("box.glb")), Some(id));
+        assert_eq!(db.look_again_at(), None);
+    }
+
+    /// A look runs on another thread while the database is used, and
+    /// one begun before a later look was taken in is out of date.
+    #[test]
+    fn a_look_runs_on_another_thread_and_an_older_one_is_dropped() {
+        let (project, assets) = project("db-scan");
+        let (mut db, ..) = open(project);
+        glb(&assets.join("crate.glb"), 0.5);
+        let scan = db.scan();
+        let scanned = std::thread::spawn(move || scan.run()).join().unwrap();
+        let (changes, notes) = db.take(scanned).expect("the latest look");
+        let id = db.id_at(&assets.join("crate.glb")).unwrap();
+        assert_eq!((changes, notes), (vec![Change::Added(id)], Vec::new()));
+        // Begun first, finished last: what it found is out of date.
+        glb(&assets.join("barrel.glb"), 0.5);
+        let older = db.scan();
+        let (changes, _) = db.rescan();
+        let barrel = db.id_at(&assets.join("barrel.glb")).unwrap();
+        assert_eq!(changes, [Change::Added(barrel)]);
+        std::fs::remove_file(assets.join("barrel.glb")).unwrap();
+        assert!(db.take(older.run()).is_none());
+        assert_eq!(db.id_at(&assets.join("barrel.glb")), Some(barrel));
+    }
+
+    /// A look is handed to another thread whole.
+    const _: fn() = || {
+        fn sendable<T: Send + 'static>() {}
+        sendable::<Scan>();
+        sendable::<Scanned>();
+    };
 
     #[test]
     fn edits_moves_and_removals_are_noticed_and_sidecars_kept() {

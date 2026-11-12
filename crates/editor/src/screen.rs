@@ -75,14 +75,23 @@ impl Camera {
     /// Where `point` in the world appears in a viewport of `size`, or
     /// `None` when it's behind the camera.
     pub fn project(&self, point: Vec3, size: Vec2) -> Option<Vec2> {
+        self.projector(size)(point)
+    }
+
+    /// [`Self::project`] for many points: the camera's matrix is worked
+    /// out once, not for each point.
+    pub fn projector(&self, size: Vec2) -> impl Fn(Vec3) -> Option<Vec2> + use<> {
         let size = size.max(Vec2::ONE);
-        let clip = self.view_projection(aspect_of(size)) * point.extend(1.0);
-        if clip.w <= 1e-4 {
-            return None;
+        let view_projection = self.view_projection(aspect_of(size));
+        move |point| {
+            let clip = view_projection * point.extend(1.0);
+            if clip.w <= 1e-4 {
+                return None;
+            }
+            let ndc = clip.truncate() / clip.w;
+            let screen = Vec2::new((ndc.x + 1.0) * 0.5 * size.x, (1.0 - ndc.y) * 0.5 * size.y);
+            screen.is_finite().then_some(screen)
         }
-        let ndc = clip.truncate() / clip.w;
-        let screen = Vec2::new((ndc.x + 1.0) * 0.5 * size.x, (1.0 - ndc.y) * 0.5 * size.y);
-        screen.is_finite().then_some(screen)
     }
 
     /// How many metres one point of the screen covers at `at`.

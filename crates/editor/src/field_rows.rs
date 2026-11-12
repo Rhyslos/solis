@@ -140,7 +140,8 @@ struct After {
 /// differ are bold, with Revert and Apply buttons. `yours` are the fields
 /// the user changed while playing, with their values from before Play.
 /// `others` are the same component on the other selected entities: values
-/// that differ show as "—".
+/// that differ show as "—". `users` says how many entities use each file
+/// (`Document::asset_users`).
 pub(crate) fn fields(
     ui: &mut Ui,
     schema: &ComponentSchema,
@@ -148,7 +149,7 @@ pub(crate) fn fields(
     (assembly, yours): (Option<&ComponentData>, &BTreeMap<&str, Option<&Value>>),
     others: &[&ComponentData],
     (models, sheets): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets),
-    area: &area::Area,
+    (area, users): (&area::Area, &crate::document::AssetUsers),
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
     for field in &schema.fields {
@@ -181,7 +182,7 @@ pub(crate) fn fields(
                         field_widget(ui, field, value, (models, sheets, data), area, mixed)
                     });
                     if let Value::Asset(Some(used)) = value {
-                        shared_by(ui, area, used.asset);
+                        shared_by(ui, users.get(&used.asset).copied().unwrap_or(0));
                     }
                     (set, after_field(ui, field, marks))
                 },
