@@ -37,9 +37,6 @@ pub(crate) struct CanvasUi<'a> {
     pub(crate) pictures: Option<Arc<ui::Pictures>>,
     /// The accent colour.
     pub(crate) accent: Color32,
-    /// The project's pictures (paths inside the assets), for the Image
-    /// tool.
-    pub(crate) picture_files: &'a [String],
     /// What the screen's entity can be read for (Preview values).
     pub(crate) readable: &'a [crate::screen_ties::Readable],
     /// Whether the keys are the canvas's this frame (the pointer rests
@@ -53,8 +50,6 @@ pub(crate) struct CanvasUi<'a> {
 pub(crate) struct CanvasOut {
     /// The screen changed: save it.
     pub(crate) changed: bool,
-    /// Open the file in a code editor.
-    pub(crate) open_code: bool,
     /// Something to say in the Console.
     pub(crate) said: Option<String>,
 }
@@ -87,55 +82,61 @@ struct Drawn {
 /// The canvas tab.
 pub(crate) fn canvas_tab(ui: &mut Ui, c: CanvasUi<'_>) -> CanvasOut {
     let mut out = CanvasOut::default();
-    let full = ui.max_rect();
+    let whole = ui.max_rect();
+    // The drawing tools are a toolbox down the left (round 3, the
+    // project lead's answer 29).
+    let (tools, full) = whole.split_left_right_at_x(whole.left() + crate::tokens::size::TOOLBOX_W);
+    canvas_toolbox(ui, tools, c.doc);
     let bar = Rect::from_min_size(full.min, Vec2::new(full.width(), 30.0));
     let area = Rect::from_min_max(Pos2::new(full.min.x, bar.max.y), full.max);
     let mut top = ui.new_child(egui::UiBuilder::new().max_rect(bar.shrink2(Vec2::new(8.0, 3.0))));
     toolbar(&mut top, c.doc, c.readable, &mut out);
     let mut main = ui.new_child(egui::UiBuilder::new().max_rect(area));
     canvas(&mut main, c, &mut out);
-    ui.advance_cursor_after_rect(full);
+    ui.advance_cursor_after_rect(whole);
     out
 }
 
-/// The preview size, the safe area, snapping, zoom and Open as code.
+/// The canvas's toolbox: Select, Box, Ellipse, Line, Pen, Text, Image and
+/// Button, the one in use lit.
+fn canvas_toolbox(ui: &mut Ui, rect: Rect, doc: &mut ScreenDoc) {
+    use crate::canvas_tools::CanvasTool;
+    let tools: Vec<_> = CanvasTool::ALL
+        .into_iter()
+        .map(|tool| {
+            (
+                tool.icon(),
+                doc.tool == tool,
+                tool.hint().to_owned(),
+                tool.name(),
+            )
+        })
+        .collect();
+    if let Some(index) = crate::toolbox::tools_column(ui, rect, &tools) {
+        doc.tool = CanvasTool::ALL[index];
+        doc.pen.clear();
+    }
+}
+
+/// The canvas's keys, in the hint over its foot (round 3).
+const CANVAS_KEYS: [(&str, &str); 5] = [
+    ("1-7", "tools"),
+    ("E", "all tools in a ring"),
+    ("Shift click", "pick more"),
+    ("Ctrl D", "copy"),
+    ("Delete", "delete"),
+];
+
+/// The zoom and the preview values over the canvas. The screen's size,
+/// text size, safe area, snapping and Open as code are on the UI tab's
+/// ribbon (round 3).
 fn toolbar(
     ui: &mut Ui,
     doc: &mut ScreenDoc,
     readable: &[crate::screen_ties::Readable],
-    out: &mut CanvasOut,
+    _out: &mut CanvasOut,
 ) {
     ui.horizontal(|ui| {
-        let presets = ui::presets::PRESETS;
-        let shown = presets.get(doc.preset).unwrap_or(&presets[0]);
-        egui::ComboBox::from_id_salt("canvas preview size")
-            .selected_text(format!("{} × {}", shown.size[0], shown.size[1]))
-            .show_ui(ui, |ui| {
-                for (i, p) in presets.iter().enumerate() {
-                    ui.selectable_value(
-                        &mut doc.preset,
-                        i,
-                        format!("{} × {}  {} · {}", p.size[0], p.size[1], p.name, p.shape),
-                    );
-                }
-            })
-            .response
-            .on_hover_text("The screen size the canvas shows: check the screen on each");
-        egui::ComboBox::from_id_salt("canvas text size")
-            .selected_text(format!("Text {}%", doc.text_percent))
-            .show_ui(ui, |ui| {
-                for p in [100u16, 150, 200] {
-                    ui.selectable_value(&mut doc.text_percent, p, format!("{p}%"));
-                }
-            })
-            .response
-            .on_hover_text(
-                "The player's text size: check the screen still fits when players make text bigger",
-            );
-        ui.toggle_value(&mut doc.safe_area, "Safe area")
-            .on_hover_text("A guide 5% in from each edge: keep text and buttons inside it");
-        ui.toggle_value(&mut doc.snap, "Snap")
-            .on_hover_text("Sizes snap to whole pixels and to other pieces' edges");
         let zoom = match doc.zoom {
             Some(z) => format!("{:.0}%", z * 100.0),
             None => "Fit".into(),
@@ -150,13 +151,6 @@ fn toolbar(
         }
         preview_values(ui, doc, readable);
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui
-                .button("Open as code ‹›")
-                .on_hover_text("Opens the screen's file in your code editor")
-                .clicked()
-            {
-                out.open_code = true;
-            }
             if doc.behind {
                 ui.label(RichText::new("Updating…").color(theme::text_weak()));
             }
@@ -228,7 +222,6 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
         fonts,
         pictures,
         accent,
-        picture_files,
         readable: _,
         keys,
     } = c;
@@ -368,7 +361,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
             draw_with_tool(ui, &response, doc, &drawn, &painter, (accent, keys), out);
         }
     }
-    tools_bar(ui, area, doc, picture_files, accent);
+    crate::widgets::pill::key_hints(ui, area, &CANVAS_KEYS);
     tool_keys(ui, &response, doc, keys);
     // Outlines: what's under the pointer, and what's picked with handles.
     let hover = response
@@ -1003,80 +996,6 @@ fn finish_pen(doc: &mut ScreenDoc, drawn: &Drawn) -> bool {
         Some(text) => doc.insert(&drop.into, drop.index, &text),
         None => false,
     }
-}
-
-/// The tools along the canvas's bottom, and the picture for Image.
-fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], accent: Color32) {
-    use crate::canvas_tools::CanvasTool;
-    use crate::tokens::size;
-    let n = CanvasTool::ALL.len() as f32;
-    let width = n * 30.0
-        + 8.0
-        + if doc.tool == CanvasTool::Image {
-            220.0
-        } else {
-            0.0
-        };
-    let bar = Rect::from_center_size(
-        Pos2::new(area.center().x, area.bottom() - 26.0),
-        Vec2::new(width, 34.0),
-    );
-    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(bar));
-    egui::Frame::new()
-        .fill(theme::panel())
-        .corner_radius(6.0)
-        .inner_margin(4.0)
-        .show(&mut child, |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 2.0;
-                for tool in CanvasTool::ALL {
-                    let on = doc.tool == tool;
-                    let (rect, r) = ui.allocate_exact_size(Vec2::splat(26.0), Sense::click());
-                    let fill = if on {
-                        accent
-                    } else if r.hovered() {
-                        theme::hover()
-                    } else {
-                        Color32::TRANSPARENT
-                    };
-                    ui.painter().rect_filled(rect, 4.0, fill);
-                    crate::icons::icon(
-                        ui.painter(),
-                        Rect::from_center_size(rect.center(), Vec2::splat(size::TOOL_ICON)),
-                        tool.icon(),
-                        if on {
-                            theme::on_accent()
-                        } else {
-                            theme::text()
-                        },
-                    );
-                    r.widget_info(|| {
-                        egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, tool.name())
-                    });
-                    if r.on_hover_text(tool.hint()).clicked() {
-                        doc.tool = tool;
-                        doc.pen.clear();
-                    }
-                }
-                if doc.tool == CanvasTool::Image {
-                    egui::ComboBox::from_id_salt("canvas picture")
-                        .width(200.0)
-                        .selected_text(
-                            doc.picture
-                                .clone()
-                                .unwrap_or_else(|| "Choose a picture".into()),
-                        )
-                        .show_ui(ui, |ui| {
-                            for p in pictures {
-                                ui.selectable_value(&mut doc.picture, Some(p.clone()), p);
-                            }
-                            if pictures.is_empty() {
-                                ui.label("No pictures in the project yet.");
-                            }
-                        });
-                }
-            });
-        });
 }
 
 /// Keys 1 to 7 pick tools, E opens them in a ring, Esc goes back to

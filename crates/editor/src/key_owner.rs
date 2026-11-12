@@ -131,7 +131,9 @@ impl Workbench {
                 Some(KeyOwner::Atlas)
             }
             Some(Panel::Canvas) if open.screen_doc.is_some() => Some(KeyOwner::Canvas),
-            Some(Panel::Elements) if open.screen_doc.is_some() => Some(KeyOwner::Elements),
+            Some(Panel::Elements | Panel::Pictures) if open.screen_doc.is_some() => {
+                Some(KeyOwner::Elements)
+            }
             _ => None,
         };
         own.unwrap_or_else(|| {

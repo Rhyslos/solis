@@ -164,6 +164,11 @@ impl ShelfTab {
             Self::Screen => &[
                 column!("Elements", [P::Elements], Fixed(size::SCENE_COLUMN_W)),
                 column!("Properties", [P::Properties], Rest),
+                column!(
+                    "Pictures",
+                    [P::Pictures],
+                    Fixed(size::ASSETS_COLUMN_W - 50.0)
+                ),
             ],
             Self::Details | Self::Properties | Self::Bus => {
                 &[column!("Properties", [P::Properties], Rest)]
@@ -274,7 +279,11 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
             Entry::Unbuilt(UnbuiltId::AnimShelfKey),
             Entry::Built(S::Console),
         ],
-        RibbonTab::Ui => vec![Entry::Built(S::Screen), Entry::Built(S::Console)],
+        RibbonTab::Ui => vec![
+            Entry::Built(S::Screen),
+            Entry::Built(S::Console),
+            Entry::Built(S::Problems),
+        ],
         RibbonTab::Audio => vec![
             Entry::Built(S::Bus),
             Entry::Unbuilt(UnbuiltId::AudioMixerSnapshot),

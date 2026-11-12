@@ -205,14 +205,10 @@ fn a_change_is_saved_run_at_once_and_undone_over_the_tab() {
     w.open_animator("farmer.solanim");
     let editor = w.open.animator_editor.as_mut().unwrap();
     assert!(editor.rename_state(id(2), "Hoe"));
-    let mut actions = Vec::new();
-    w.frames_tabs_done(
-        crate::panels::FramesOut {
-            animator_changed: true,
-            ..Default::default()
-        },
-        &mut actions,
-    );
+    w.frames_tabs_done(crate::panels::FramesOut {
+        animator_changed: true,
+        ..Default::default()
+    });
     let texts = saved(&w.open.outbox);
     assert_eq!(texts.len(), 1);
     assert!(texts[0].contains("name = \"Hoe\";"), "{}", texts[0]);

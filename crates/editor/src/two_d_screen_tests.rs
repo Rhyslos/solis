@@ -72,6 +72,13 @@ fn animator() -> Workbench {
     w
 }
 
+/// A game screen open on the UI tab.
+fn screen_open() -> Workbench {
+    let mut w = crate::workbench_screens::tests::opened();
+    w.show_tab(RibbonTab::Ui);
+    w
+}
+
 /// The editor as `w` is, drawn at the design's size: the picture, the
 /// tab in front, and whether the tile map's tools are.
 fn screen(w: Workbench) -> Option<(Picture, RibbonTab, bool)> {
@@ -92,6 +99,7 @@ fn scenes() -> Vec<(&'static str, Workbench, &'static str)> {
         ("crops", crops(), "03-picture-crops.png"),
         ("clips", clips(), "04-sprite-clips-a.png"),
         ("animator", animator(), "05-animator-graph.png"),
+        ("ui", screen_open(), "07-ui-editor-a.png"),
     ]
 }
 
@@ -105,6 +113,7 @@ fn each_2d_editor_is_its_own_tools_tab_with_its_ribbon() {
             "tile-map" => assert!(map_tools, "{name}"),
             "tileset" => assert_eq!(tab, RibbonTab::Tileset),
             "crops" => assert_eq!(tab, RibbonTab::Picture),
+            "ui" => assert_eq!(tab, RibbonTab::Ui),
             _ => assert_eq!(tab, RibbonTab::Animate),
         }
     }

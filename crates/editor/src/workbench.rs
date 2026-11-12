@@ -1185,7 +1185,7 @@ impl Workbench {
         self.in_front = shown;
         self.pointer_over = frames_out.pointer_over;
         self.doc_asks(asks, ui.ctx(), &mut actions);
-        self.frames_tabs_done(frames_out, &mut actions);
+        self.frames_tabs_done(frames_out);
         self.map_requests_done(map_requests);
         self.tile_overlay_done();
         self.paint_frame();

@@ -16,6 +16,7 @@ mod picture;
 mod shading;
 mod tile_map;
 mod tileset;
+mod ui;
 mod vfx;
 
 use super::RibbonTab;
@@ -25,7 +26,8 @@ use crate::workbench::Workbench;
 /// The ribbon of `tab`, as the editor is now.
 pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
     match tab {
-        RibbonTab::File | RibbonTab::Ui => Vec::new(),
+        RibbonTab::File => Vec::new(),
+        RibbonTab::Ui => ui::groups(w),
         RibbonTab::Home | RibbonTab::Build if w.map_tools_in_front() => tile_map::groups(w),
         RibbonTab::Home => home::groups(w),
         RibbonTab::Library => library::groups(w),

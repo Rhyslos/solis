@@ -137,6 +137,17 @@ pub(crate) enum ShellCommand {
     StateDelete,
     /// Starts the animator's preview again.
     PreviewAgain,
+    /// Shows the screen on the canvas at the size of this preset of
+    /// `ui::presets::PRESETS` (UI › Screen).
+    ScreenSize(u8),
+    /// Shows the screen's text at this size, in percent.
+    ScreenText(u16),
+    /// Shows the safe area on the canvas, or stops.
+    SafeArea,
+    /// Snaps sizes and places on the canvas, or stops.
+    ScreenSnap,
+    /// Opens the screen's file in the code editor.
+    OpenScreenCode,
     Tab(RibbonTab),
     OpenManual,
     Learn,
@@ -209,7 +220,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 125] = [
+    pub(crate) const ALL: [Self; 131] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -313,6 +324,12 @@ impl ShellCommand {
         C::StateStartHere,
         C::StateDelete,
         C::PreviewAgain,
+        C::ScreenText(100),
+        C::ScreenText(150),
+        C::ScreenText(200),
+        C::SafeArea,
+        C::ScreenSnap,
+        C::OpenScreenCode,
         C::Tab(RibbonTab::File),
         C::Tab(RibbonTab::Home),
         C::Tab(RibbonTab::Library),
@@ -416,6 +433,14 @@ impl ShellCommand {
             | C::StateStartHere
             | C::StateDelete
             | C::PreviewAgain => w.why_not_animate(self),
+            C::ScreenSize(_)
+            | C::ScreenText(_)
+            | C::SafeArea
+            | C::ScreenSnap
+            | C::OpenScreenCode => when(
+                w.open.screen_doc.is_some(),
+                "Open a screen from the Library first",
+            ),
             C::Tab(tab) => {
                 if tab == w.shell.tab {
                     Some(format!("{} is the tab in front", tab.name()))
@@ -462,6 +487,8 @@ impl ShellCommand {
             C::PaintExact => w.viewport.tile_overlay.paint.exact,
             C::MapChunks => w.open.map_edits.chunks,
             C::MapWalls => w.open.map_edits.walls,
+            C::SafeArea => w.open.screen_doc.as_ref().is_some_and(|d| d.safe_area),
+            C::ScreenSnap => w.open.screen_doc.as_ref().is_some_and(|d| d.snap),
             _ => return None,
         })
     }
@@ -564,6 +591,25 @@ impl ShellCommand {
             | C::StateStartHere
             | C::StateDelete
             | C::PreviewAgain => w.run_animate(self),
+            C::ScreenSize(_) | C::ScreenText(_) | C::SafeArea | C::ScreenSnap => {
+                if let Some(doc) = &mut w.open.screen_doc {
+                    match self {
+                        C::ScreenSize(i) => doc.preset = usize::from(i),
+                        C::ScreenText(percent) => doc.text_percent = percent,
+                        C::SafeArea => doc.safe_area ^= true,
+                        _ => doc.snap ^= true,
+                    }
+                }
+            }
+            C::OpenScreenCode => {
+                if let Some(path) = w.open.screen_doc.as_ref().map(|d| d.path.clone()) {
+                    let open = crate::library::LibraryRequest::Open(
+                        crate::library::LibraryKind::Code,
+                        path,
+                    );
+                    w.library_request(open, actions);
+                }
+            }
             C::Tab(tab) => w.show_tab(tab),
             C::OpenManual => ctx.open_url(egui::OpenUrl::new_tab(w.manual_url.clone())),
             C::AutoUpdate => {

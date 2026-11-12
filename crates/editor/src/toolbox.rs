@@ -86,6 +86,48 @@ pub(crate) fn toolbox(ui: &mut Ui, rect: Rect, tool: Tool, paint: &PaintSettings
     picked
 }
 
+/// A column of tools down the left of `rect` other than the viewport's
+/// (the game-screen canvas's, round 3 `07-ui-editor-a.png`): each tool's
+/// icon, whether it is in use, its hover text and its name. Returns the
+/// index of the one clicked.
+pub(crate) fn tools_column(
+    ui: &mut Ui,
+    rect: Rect,
+    tools: &[(Icon, bool, String, &str)],
+) -> Option<usize> {
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 0.0, tokens::shelf_bar());
+    let line = crate::widgets::hairline(ui);
+    painter.vline(
+        rect.right() - line / 2.0,
+        rect.y_range(),
+        egui::Stroke::new(line, tokens::line()),
+    );
+    let mut column = ui.new_child(
+        UiBuilder::new()
+            .id_salt("tools column")
+            .max_rect(rect)
+            .layout(egui::Layout::top_down(egui::Align::Center)),
+    );
+    let mut picked = None;
+    egui::ScrollArea::vertical()
+        .id_salt("tools column scroll")
+        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+        .auto_shrink(false)
+        .show(&mut column, |ui| {
+            ui.set_width(rect.width());
+            ui.spacing_mut().item_spacing.y = size::TOOL_GAP;
+            ui.add_space(size::TOOLBOX_PAD);
+            for (index, (icon, chosen, hint, name)) in tools.iter().enumerate() {
+                if tool_square(ui, *icon, *chosen, hint, name).clicked() {
+                    picked = Some(index);
+                }
+            }
+            ui.add_space(size::TOOLBOX_PAD);
+        });
+    picked
+}
+
 /// One tool: a 34 px square, the accent filling it while in use, lifted
 /// under the pointer; `hint` (its name and key) on hover, `label` for
 /// screen readers and tests.

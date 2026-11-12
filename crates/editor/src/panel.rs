@@ -68,6 +68,9 @@ pub enum Panel {
     Parameters,
     /// The open animator's preview: a group of its own beside the graph.
     Preview,
+    /// The project's pictures for the canvas's Image tool: on the UI
+    /// tab's Screen shelf tab (round 3).
+    Pictures,
 }
 
 impl Panel {
@@ -89,7 +92,7 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`] or the Window menu, and never saved in a layout.
-    pub const OPEN_WITH_A_FILE: [Self; 13] = [
+    pub const OPEN_WITH_A_FILE: [Self; 14] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
@@ -103,13 +106,14 @@ impl Panel {
         Self::Clip,
         Self::Parameters,
         Self::Preview,
+        Self::Pictures,
     ];
 
     /// The tabs a clips file opens (and closes) together.
     pub const FRAMES_TABS: [Self; 3] = [Self::Clips, Self::Frames, Self::Clip];
 
     /// The tabs a screen opens (and closes) together, in the UI workspace.
-    pub const SCREEN_TABS: [Self; 2] = [Self::Canvas, Self::Elements];
+    pub const SCREEN_TABS: [Self; 3] = [Self::Canvas, Self::Elements, Self::Pictures];
 
     /// Whether it comes and goes with what's open (and can be closed).
     pub fn comes_with_a_file(self) -> bool {
@@ -144,6 +148,7 @@ impl Panel {
             Self::Clip => "Clip",
             Self::Parameters => "Parameters",
             Self::Preview => "Preview",
+            Self::Pictures => "Pictures",
         }
     }
 
@@ -175,6 +180,7 @@ impl Panel {
             Self::Clip => Icon::Clips,
             Self::Parameters => Icon::Sliders,
             Self::Preview => Icon::Play,
+            Self::Pictures => Icon::Picture,
         }
     }
 }

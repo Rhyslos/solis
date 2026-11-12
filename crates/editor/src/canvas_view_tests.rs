@@ -40,7 +40,6 @@ fn harness_of(menu: &str) -> Harness<'static, State> {
                         fonts: &mut s.fonts,
                         pictures: None,
                         accent: Color32::from_rgb(0x24, 0x68, 0xd8),
-                        picture_files: &[],
                         readable: &[],
                         keys,
                     },
@@ -60,7 +59,8 @@ fn harness_of(menu: &str) -> Harness<'static, State> {
 fn rect_of(h: &Harness<'static, State>, file: &[usize]) -> Rect {
     let s = h.state();
     let full = Rect::from_min_size(Pos2::ZERO, Vec2::new(1000.0, 600.0));
-    let area = Rect::from_min_max(Pos2::new(0.0, 30.0), full.max);
+    // Right of the toolbox, under the strip of preview values.
+    let area = Rect::from_min_max(Pos2::new(crate::tokens::size::TOOLBOX_W, 30.0), full.max);
     let fit = ((area.width() - 40.0) / 1920.0).min((area.height() - 40.0) / 1080.0);
     let rect = Rect::from_center_size(
         area.center() + s.doc.pan,

@@ -82,6 +82,20 @@ impl ShellCommand {
             C::TerrainKind(kind) => format!("Make the terrain {}", kind.word()),
             C::TilesetZoom(zoom) => format!("Show the tileset at {}%", u32::from(zoom) * 100),
             C::CropsZoom(zoom) => format!("Show the picture at {}%", u32::from(zoom) * 100),
+            C::ScreenSize(i) => match ui::presets::PRESETS.get(usize::from(i)) {
+                Some(p) => format!("Show the screen at {} × {}", p.size[0], p.size[1]),
+                None => "Show the screen at another size".to_owned(),
+            },
+            C::ScreenText(percent) => format!("Show the screen's text at {percent}%"),
+            C::SafeArea => switch(
+                w.open.screen_doc.as_ref().is_some_and(|d| d.safe_area),
+                "the screen's safe area",
+            ),
+            C::ScreenSnap => on_off(
+                "Snap on the canvas",
+                "Stop snapping on the canvas",
+                w.open.screen_doc.as_ref().is_some_and(|d| d.snap),
+            ),
             C::ClipDirection(i) => {
                 let d = crate::shell::ribbons::animate::DIRECTIONS
                     .get(usize::from(i))
@@ -159,6 +173,7 @@ impl ShellCommand {
             C::StateStartHere => "Start in the state picked",
             C::StateDelete => "Delete what is picked in the graph",
             C::PreviewAgain => "Start the preview again",
+            C::OpenScreenCode => "Open the screen as code",
             // Named by `name`, from what the editor holds.
             C::Undo
             | C::Redo
@@ -189,6 +204,10 @@ impl ShellCommand {
             | C::TilesetZoom(_)
             | C::CropsZoom(_)
             | C::ClipDirection(_)
+            | C::ScreenSize(_)
+            | C::ScreenText(_)
+            | C::SafeArea
+            | C::ScreenSnap
             | C::About => "",
         }
     }
@@ -255,6 +274,11 @@ impl ShellCommand {
             | C::StateStartHere
             | C::StateDelete
             | C::PreviewAgain => "Animate",
+            C::ScreenSize(_)
+            | C::ScreenText(_)
+            | C::SafeArea
+            | C::ScreenSnap
+            | C::OpenScreenCode => "UI",
             _ => "Home",
         }
     }
@@ -401,6 +425,13 @@ impl ShellCommand {
             }
             C::FramesTakeOut => "Takes the frames picked on the Frames tab out of the clip",
             C::StateAdd => "A state that plays a clip, to join to the others",
+            C::ScreenSize(_) => "The screen size the canvas shows: check the screen on each",
+            C::ScreenText(_) => {
+                "The player's text size: check the screen still fits when players make text bigger"
+            }
+            C::SafeArea => "A guide 5% in from each edge: keep text and buttons inside it",
+            C::ScreenSnap => "Sizes snap to whole pixels and to other pieces' edges",
+            C::OpenScreenCode => "Opens the screen's file in your code editor",
             _ => "",
         }
     }

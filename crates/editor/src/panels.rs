@@ -143,8 +143,6 @@ pub(crate) struct FramesOut {
     pub(crate) atlas_said: Option<String>,
     /// The screen on the canvas changed: save it.
     pub(crate) screen_changed: bool,
-    /// Open the screen's file as code.
-    pub(crate) screen_code: bool,
     /// What the canvas has to say in the Console.
     pub(crate) screen_said: Option<String>,
     /// The Canvas or Elements tab was closed: close the screen.
@@ -159,8 +157,8 @@ impl PanelViewer<'_> {
         if panel == Panel::Viewport {
             return self.document.name();
         }
-        // A LIBRARY TOOLS document is called by its file's name alone
-        // (round 3: "harbour.tileset", "items.png").
+        // A LIBRARY TOOLS document, and a screen on the canvas, is called
+        // by its file's name alone (round 3: "harbour.tileset", "hud.lst").
         let file = |path: &str| path.rsplit('/').next().unwrap_or(path).to_owned();
         match panel {
             Panel::Tileset => {
@@ -173,6 +171,11 @@ impl PanelViewer<'_> {
                     return file(&editor.atlas.picture);
                 }
             }
+            Panel::Canvas => {
+                if let Some(screen) = &self.screen {
+                    return file(&screen.doc.path);
+                }
+            }
             _ => {}
         }
         let what = match panel {
@@ -181,10 +184,6 @@ impl PanelViewer<'_> {
                 .animator
                 .as_ref()
                 .map(|a| crate::sprite_sheets::name_of(&a.editor.path)),
-            Panel::Canvas => self
-                .screen
-                .as_ref()
-                .map(|s| crate::sprite_sheets::name_of(&s.doc.path)),
             _ => None,
         };
         match what.filter(|w| !w.is_empty()) {
@@ -200,7 +199,7 @@ impl PanelViewer<'_> {
             Panel::Animator => self.animator.is_some(),
             Panel::Tileset => self.tileset.is_some(),
             Panel::AtlasCrop => self.atlas.is_some(),
-            Panel::Canvas | Panel::Elements => self.screen.is_some(),
+            Panel::Canvas | Panel::Elements | Panel::Pictures => self.screen.is_some(),
             Panel::Viewport
             | Panel::Game
             | Panel::Area
@@ -231,7 +230,9 @@ impl PanelViewer<'_> {
             Panel::Animator => self.frames_out.animator_closed = true,
             Panel::Tileset => self.frames_out.tileset_closed = true,
             Panel::AtlasCrop => self.frames_out.atlas_closed = true,
-            Panel::Canvas | Panel::Elements => self.frames_out.screen_closed = true,
+            Panel::Canvas | Panel::Elements | Panel::Pictures => {
+                self.frames_out.screen_closed = true;
+            }
             // These have no × (`closes_a_file`): nothing closes them.
             Panel::Viewport
             | Panel::Game
@@ -646,7 +647,6 @@ impl PanelViewer<'_> {
                         fonts: screen.fonts,
                         pictures: screen.pictures.clone(),
                         accent: self.accent.colors().fill,
-                        picture_files: &screen.picture_files,
                         readable: &screen.game.readable,
                         keys: self.keys == KeyOwner::Canvas,
                     },
@@ -655,7 +655,16 @@ impl PanelViewer<'_> {
                     self.frames_out.screen_said = out.said;
                 }
                 self.frames_out.screen_changed |= out.changed;
-                self.frames_out.screen_code |= out.open_code;
+            }
+            Panel::Pictures => {
+                let Some(screen) = &mut self.screen else {
+                    empty_note(ui, "No screen is open.");
+                    return;
+                };
+                scrolled(ui, "screen pictures", |ui| {
+                    crate::elements_view::pictures(ui, screen.doc, &screen.picture_files);
+                    false
+                });
             }
             Panel::Elements => {
                 let Some(screen) = &mut self.screen else {

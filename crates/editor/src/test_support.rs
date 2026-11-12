@@ -313,6 +313,7 @@ pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: 
     let title = match panel {
         Panel::Tileset => open.tilesets.tab().map(|t| file(&t.path)),
         Panel::AtlasCrop => open.atlas_editor.as_ref().map(|e| file(&e.atlas.picture)),
+        Panel::Canvas => open.screen_doc.as_ref().map(|d| file(&d.path)),
         _ => shelf,
     }
     .unwrap_or_else(|| panel.title().to_owned());
@@ -406,7 +407,7 @@ pub(crate) fn with_a_lamp_post() -> (Workbench, AssetId, EntityId, EntityId) {
 /// whether a screen is open on them.
 pub(crate) fn has_panel(w: &Workbench, panel: Panel) -> bool {
     match panel {
-        Panel::Canvas | Panel::Elements => w.open.screen_doc.is_some(),
+        Panel::Canvas | Panel::Elements | Panel::Pictures => w.open.screen_doc.is_some(),
         _ => crate::shell::workspaces::tab_for(panel, w.open_now()).is_some(),
     }
 }

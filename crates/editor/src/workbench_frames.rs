@@ -10,7 +10,7 @@ use crate::frames_view::FramesUi;
 use crate::own_files::OwnFile;
 use crate::panel::Panel;
 use crate::sprite_sheets::{FramesState, SpriteSheets};
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -162,11 +162,7 @@ impl Workbench {
 
     /// After the tabs are drawn: saves a change, and closes the file if a
     /// tab was closed.
-    pub(crate) fn frames_tabs_done(
-        &mut self,
-        out: crate::panels::FramesOut,
-        actions: &mut Vec<WorkbenchAction>,
-    ) {
+    pub(crate) fn frames_tabs_done(&mut self, out: crate::panels::FramesOut) {
         if out.changed {
             self.save_frames();
         }
@@ -180,15 +176,6 @@ impl Workbench {
         // closes isn't lost.
         if out.screen_changed {
             self.save_screen();
-        }
-        if out.screen_code
-            && let Some(doc) = &self.open.screen_doc
-        {
-            let path = doc.path.clone();
-            self.library_request(
-                crate::library::LibraryRequest::Open(crate::library::LibraryKind::Code, path),
-                actions,
-            );
         }
         // The canvas's × closes the screen.
         if out.screen_closed {
