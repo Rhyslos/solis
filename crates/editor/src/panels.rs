@@ -196,7 +196,7 @@ impl PanelViewer<'_> {
     /// Whether `panel` shows a file of its own that its × closes now.
     pub(crate) fn closes_a_file(&self, panel: Panel) -> bool {
         match panel {
-            Panel::Clips | Panel::Frames => self.frames.is_some(),
+            Panel::Clips | Panel::Frames | Panel::Clip => self.frames.is_some(),
             Panel::Animator => self.animator.is_some(),
             Panel::Tileset => self.tileset.is_some(),
             Panel::AtlasCrop => self.atlas.is_some(),
@@ -215,6 +215,8 @@ impl PanelViewer<'_> {
             | Panel::Mixer
             | Panel::Terrains
             | Panel::Crops
+            | Panel::Parameters
+            | Panel::Preview
             | Panel::Map => false,
         }
     }
@@ -225,7 +227,7 @@ impl PanelViewer<'_> {
     pub(crate) fn close(&mut self, panel: Panel) {
         match panel {
             // Either tab closes the clips file, and the other goes with it.
-            Panel::Clips | Panel::Frames => self.frames_out.closed = true,
+            Panel::Clips | Panel::Frames | Panel::Clip => self.frames_out.closed = true,
             Panel::Animator => self.frames_out.animator_closed = true,
             Panel::Tileset => self.frames_out.tileset_closed = true,
             Panel::AtlasCrop => self.frames_out.atlas_closed = true,
@@ -245,6 +247,8 @@ impl PanelViewer<'_> {
             | Panel::Mixer
             | Panel::Terrains
             | Panel::Crops
+            | Panel::Parameters
+            | Panel::Preview
             | Panel::Map => {}
         }
     }
@@ -544,20 +548,39 @@ impl PanelViewer<'_> {
                     None => {}
                 }
             }
-            Panel::Clips | Panel::Frames => {
+            Panel::Clips | Panel::Frames | Panel::Clip => {
                 let Some(frames) = &mut self.frames else {
                     empty_note(ui, "No clips file is open.");
                     return;
                 };
-                let changed = if *tab == Panel::Clips {
-                    egui::ScrollArea::vertical()
-                        .auto_shrink(false)
-                        .show(ui, |ui| crate::frames_view::clips_tab(ui, frames))
-                        .inner
-                } else {
-                    crate::frames_view::frames_tab(ui, frames, self.keys == KeyOwner::Frames)
+                let changed = match tab {
+                    Panel::Frames => {
+                        crate::frames_view::frames_tab(ui, frames, self.keys == KeyOwner::Frames)
+                    }
+                    Panel::Clips => scrolled(ui, "clips list", |ui| {
+                        crate::frames_view::clips_list(ui, frames)
+                    }),
+                    _ => scrolled(ui, "clip settings", |ui| {
+                        crate::frames_view::clip_tab(ui, frames)
+                    }),
                 };
                 self.frames_out.changed |= changed;
+            }
+            Panel::Parameters | Panel::Preview => {
+                let Some(animator) = &mut self.animator else {
+                    empty_note(ui, "No animator is open.");
+                    return;
+                };
+                if *tab == Panel::Parameters {
+                    self.frames_out.animator_changed |= scrolled(ui, "animator parameters", |ui| {
+                        crate::animator_view::parameters(ui, animator)
+                    });
+                } else {
+                    scrolled(ui, "animator preview", |ui| {
+                        crate::animator_view::preview(ui, animator);
+                        false
+                    });
+                }
             }
             Panel::Map => {
                 let Some(map) = &self.map else {
@@ -684,6 +707,20 @@ impl PanelViewer<'_> {
             Panel::Viewport => {}
         }
     }
+}
+
+/// `contents` in a column that scrolls, inside the panels' margin.
+fn scrolled(ui: &mut Ui, salt: &str, contents: impl FnOnce(&mut Ui) -> bool) -> bool {
+    egui::ScrollArea::vertical()
+        .id_salt(salt)
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            egui::Frame::new()
+                .inner_margin(theme::panel_margin())
+                .show(ui, contents)
+                .inner
+        })
+        .inner
 }
 
 /// Shown while files are dragged over the window: where they'll go.

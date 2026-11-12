@@ -205,7 +205,8 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
 fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
     let (mut w, _, _) = with_clips();
     w.open_frames("walker.solframes");
-    w.show_panel(Panel::Clips);
+    // A clip's settings are its own Clip shelf tab (round 3).
+    w.show_panel(Panel::Clip);
     let mut h = harness(w);
     h.run();
     h.run();

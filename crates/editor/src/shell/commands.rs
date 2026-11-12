@@ -118,6 +118,25 @@ pub(crate) enum ShellCommand {
     CropDelete,
     /// Shows the picture this many times its size.
     CropsZoom(u8),
+    /// A new clip in the open clips file (Animate › Clip).
+    ClipNew,
+    /// A copy of the chosen clip.
+    ClipCopy,
+    /// Deletes the chosen clip (or forgets what was added to a tag).
+    ClipDelete,
+    /// Takes the frames picked out of the chosen clip.
+    FramesTakeOut,
+    /// Plays the chosen clip in the direction of this index of
+    /// `ribbons::animate::DIRECTIONS`.
+    ClipDirection(u8),
+    /// Adds a state to the open animator (Animate › State).
+    StateAdd,
+    /// Makes the state picked the one the animator starts in.
+    StateStartHere,
+    /// Deletes the state or transition picked.
+    StateDelete,
+    /// Starts the animator's preview again.
+    PreviewAgain,
     Tab(RibbonTab),
     OpenManual,
     Learn,
@@ -190,7 +209,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 113] = [
+    pub(crate) const ALL: [Self; 125] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -282,6 +301,18 @@ impl ShellCommand {
         C::SaveTemplate,
         C::CropEveryTile,
         C::CropDelete,
+        C::ClipNew,
+        C::ClipCopy,
+        C::ClipDelete,
+        C::FramesTakeOut,
+        C::ClipDirection(0),
+        C::ClipDirection(1),
+        C::ClipDirection(2),
+        C::ClipDirection(3),
+        C::StateAdd,
+        C::StateStartHere,
+        C::StateDelete,
+        C::PreviewAgain,
         C::Tab(RibbonTab::File),
         C::Tab(RibbonTab::Home),
         C::Tab(RibbonTab::Library),
@@ -376,6 +407,15 @@ impl ShellCommand {
             | C::CropEveryTile
             | C::CropDelete
             | C::CropsZoom(_) => w.why_not_library_tool(self),
+            C::ClipNew
+            | C::ClipCopy
+            | C::ClipDelete
+            | C::FramesTakeOut
+            | C::ClipDirection(_)
+            | C::StateAdd
+            | C::StateStartHere
+            | C::StateDelete
+            | C::PreviewAgain => w.why_not_animate(self),
             C::Tab(tab) => {
                 if tab == w.shell.tab {
                     Some(format!("{} is the tab in front", tab.name()))
@@ -515,6 +555,15 @@ impl ShellCommand {
             | C::CropEveryTile
             | C::CropDelete
             | C::CropsZoom(_) => w.run_library_tool(self),
+            C::ClipNew
+            | C::ClipCopy
+            | C::ClipDelete
+            | C::FramesTakeOut
+            | C::ClipDirection(_)
+            | C::StateAdd
+            | C::StateStartHere
+            | C::StateDelete
+            | C::PreviewAgain => w.run_animate(self),
             C::Tab(tab) => w.show_tab(tab),
             C::OpenManual => ctx.open_url(egui::OpenUrl::new_tab(w.manual_url.clone())),
             C::AutoUpdate => {

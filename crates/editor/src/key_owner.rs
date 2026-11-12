@@ -112,9 +112,15 @@ impl Workbench {
             return KeyOwner::Page;
         }
         let own = match self.pointer_over {
-            Some(Panel::Clips) if open.frames_editor.is_some() => Some(KeyOwner::Clips),
+            Some(Panel::Clips | Panel::Clip) if open.frames_editor.is_some() => {
+                Some(KeyOwner::Clips)
+            }
             Some(Panel::Frames) if open.frames_editor.is_some() => Some(KeyOwner::Frames),
-            Some(Panel::Animator) if open.animator_editor.is_some() => Some(KeyOwner::Animator),
+            Some(Panel::Animator | Panel::Parameters | Panel::Preview)
+                if open.animator_editor.is_some() =>
+            {
+                Some(KeyOwner::Animator)
+            }
             Some(Panel::Tileset | Panel::Terrains) if open.tilesets.tab().is_some() => {
                 Some(KeyOwner::Tileset)
             }

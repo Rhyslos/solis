@@ -38,6 +38,11 @@ pub(crate) mod tab_bar;
 pub mod workspaces;
 
 pub(crate) use commands::ShellCommand;
+
+/// The direction of index `i` in Animate's Direction list.
+pub(crate) fn animate_direction(i: u8) -> Option<animation::Direction> {
+    ribbons::animate::DIRECTIONS.get(usize::from(i)).copied()
+}
 pub use saved::{ShellState, WorkspaceState};
 use std::collections::BTreeMap;
 use workspaces::Arrangement;
@@ -400,6 +405,9 @@ impl Workbench {
     ) {
         for command in asks.commands {
             command.run(self, ctx, actions);
+        }
+        if asks.hide_unfinished {
+            self.hide_unfinished(ctx, true);
         }
         if asks.show_area_in_library {
             let root = self.open.project.as_ref().map(|p| p.root.clone());

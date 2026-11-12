@@ -98,6 +98,7 @@ pub mod viewport;
 mod viewport_tools;
 pub mod widgets;
 pub mod workbench;
+mod workbench_animate_tools;
 mod workbench_animator;
 mod workbench_atlas;
 mod workbench_frames;

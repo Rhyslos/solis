@@ -303,11 +303,17 @@ pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: 
     // "Close Clips", or "Close Animator · walk" for a document's tab; a
     // LIBRARY TOOLS document is called by its file's name.
     let file = |path: &str| path.rsplit('/').next().unwrap_or(path).to_owned();
-    let open = &h.state().0.open;
+    let w = &h.state().0;
+    let open = &w.open;
+    // On the shelf, the × is on the shelf tab the panel is a column of.
+    let shelf = match crate::shell::workspaces::home_of(w.ribbon_tab(), w.open_now(), panel) {
+        Some(crate::shell::workspaces::Home::Shelf(shelf)) => Some(shelf.name().to_owned()),
+        _ => None,
+    };
     let title = match panel {
         Panel::Tileset => open.tilesets.tab().map(|t| file(&t.path)),
         Panel::AtlasCrop => open.atlas_editor.as_ref().map(|e| file(&e.atlas.picture)),
-        _ => None,
+        _ => shelf,
     }
     .unwrap_or_else(|| panel.title().to_owned());
     let name = format!("Close {title}");

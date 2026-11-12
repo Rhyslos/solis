@@ -58,6 +58,20 @@ fn crops() -> Workbench {
     w
 }
 
+/// A clips file open on Animate, with its Frames tab in front.
+fn clips() -> Workbench {
+    let (mut w, _, _) = crate::workbench_frames::tests::with_clips();
+    w.open_frames("walker.solframes");
+    w
+}
+
+/// An animator open on Animate, a state picked.
+fn animator() -> Workbench {
+    let (mut w, _, _) = crate::workbench_animator::tests::with_animator();
+    w.open_animator("farmer.solanim");
+    w
+}
+
 /// The editor as `w` is, drawn at the design's size: the picture, the
 /// tab in front, and whether the tile map's tools are.
 fn screen(w: Workbench) -> Option<(Picture, RibbonTab, bool)> {
@@ -76,6 +90,8 @@ fn scenes() -> Vec<(&'static str, Workbench, &'static str)> {
         ("tile-map", tile_map(), "01-tile-map-painting-a.png"),
         ("tileset", tileset(), "02-tileset-editor.png"),
         ("crops", crops(), "03-picture-crops.png"),
+        ("clips", clips(), "04-sprite-clips-a.png"),
+        ("animator", animator(), "05-animator-graph.png"),
     ]
 }
 
@@ -88,7 +104,8 @@ fn each_2d_editor_is_its_own_tools_tab_with_its_ribbon() {
         match name {
             "tile-map" => assert!(map_tools, "{name}"),
             "tileset" => assert_eq!(tab, RibbonTab::Tileset),
-            _ => assert_eq!(tab, RibbonTab::Picture),
+            "crops" => assert_eq!(tab, RibbonTab::Picture),
+            _ => assert_eq!(tab, RibbonTab::Animate),
         }
     }
 }

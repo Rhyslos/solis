@@ -126,7 +126,7 @@ fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
 }
 
 #[test]
-fn it_opens_beside_the_viewport_on_the_animate_tab() {
+fn it_opens_on_the_animate_tab_with_its_preview_beside_it() {
     let (mut w, _, _) = with_animator();
     let mut actions = Vec::new();
     w.library_request(
@@ -137,8 +137,13 @@ fn it_opens_beside_the_viewport_on_the_animate_tab() {
     assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Animate);
     assert_eq!(
         crate::shell::workspaces::groups(w.ribbon_tab(), w.open_now()),
-        [vec![Panel::Viewport], vec![Panel::Animator]],
-        "a group of its own, beside the viewport"
+        [vec![Panel::Viewport, Panel::Animator], vec![Panel::Preview]],
+        "a document beside the viewport's, and its preview a group of its own (round 3)"
+    );
+    assert_eq!(
+        w.shelf_tab(),
+        Some(crate::shell::ShelfTab::Properties),
+        "what is picked, on the shelf"
     );
     let mut h = harness(w);
     h.run();
@@ -350,6 +355,8 @@ fn it_runs_in_the_game_and_the_selected_entity_s_state_is_live() {
     // The tab shows the game's values (read-only) and lights its state
     // (Play brought the Game panel to the front of the group).
     w.show_panel(Panel::Animator);
+    // The values are the Parameters shelf tab's (round 3).
+    w.show_panel(Panel::Parameters);
     let mut h = harness(w);
     h.run();
     h.run();
@@ -361,9 +368,10 @@ fn it_runs_in_the_game_and_the_selected_entity_s_state_is_live() {
 }
 
 #[test]
-fn the_preview_s_values_are_set_beside_the_graph() {
+fn the_preview_s_values_are_set_on_the_parameters_tab() {
     let (mut w, _, _) = with_animator();
     w.open_animator("farmer.solanim");
+    w.show_panel(Panel::Parameters);
     w.open
         .animator_editor
         .as_mut()

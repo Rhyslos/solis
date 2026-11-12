@@ -6,7 +6,7 @@
 //! unfinished part (`Entry::Unbuilt`), so it is drawn by the one
 //! mechanism and goes with **Hide unfinished parts**.
 
-mod animate;
+pub(crate) mod animate;
 mod audio;
 mod build;
 mod debug;
@@ -30,7 +30,7 @@ pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
         RibbonTab::Home => home::groups(w),
         RibbonTab::Library => library::groups(w),
         RibbonTab::Shading => shading::groups(),
-        RibbonTab::Animate => animate::groups(),
+        RibbonTab::Animate => animate::groups(w),
         RibbonTab::Vfx => vfx::groups(),
         RibbonTab::Audio => audio::groups(),
         RibbonTab::Debug => debug::groups(),

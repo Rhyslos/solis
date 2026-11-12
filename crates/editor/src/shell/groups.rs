@@ -26,6 +26,8 @@ pub(crate) struct DocAsks {
     pub(crate) commands: Vec<ShellCommand>,
     /// The area's file is to be shown in the Library.
     pub(crate) show_area_in_library: bool,
+    /// An unfinished part's page asked for unfinished parts to be hidden.
+    pub(crate) hide_unfinished: bool,
 }
 
 /// Draws the center into `rect`: the groups of the tab in front, each
@@ -42,7 +44,17 @@ pub(crate) fn center(
     let mut asks = DocAsks::default();
     let side_by_side = rect.width() >= 2.0 * size::GROUP_MIN_W;
     let places = match documents.len() {
-        0 => return asks,
+        0 => {
+            if tab == RibbonTab::Animate && !crate::unbuilt::hidden() {
+                // Neither a clips file nor an animator: the sequencer's
+                // page (round 3, `06-animate-sequencer-unbuilt.png`).
+                use crate::{icons::Icon, unbuilt::UnbuiltId};
+                let page = &mut ui.new_child(egui::UiBuilder::new().max_rect(rect));
+                let answer = crate::unbuilt::page(page, UnbuiltId::AnimShelfSequencer, Icon::Track);
+                asks.hide_unfinished = answer.hide;
+            }
+            return asks;
+        }
         1 => vec![rect],
         _ => split(ui, rect, shell, side_by_side),
     };

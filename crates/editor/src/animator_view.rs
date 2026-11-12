@@ -112,38 +112,21 @@ fn state_line(state: &animation::State, clips: Option<&ClipSet>) -> (String, Opt
     (line, chip)
 }
 
-/// The animator tab. Returns whether the file changed (and must be saved).
-/// The graph's keys are acted on while they are the tab's (`keys`: the
-/// pointer rests over it and nothing is being typed).
+/// The animator's document (round 3, `05-animator-graph.png`): its graph
+/// of states and transitions, filling `ui`. Its parameters are the
+/// Parameters shelf tab ([`parameters`]) and its preview a group of its
+/// own ([`preview`]).
 pub(crate) fn animator_tab(ui: &mut Ui, a: &mut AnimatorUi<'_>, keys: bool) -> bool {
-    let mut changed = false;
     let full = ui.available_rect_before_wrap();
-    let side = 220.0_f32.min(full.width() * 0.4);
-    let left = egui::Rect::from_min_size(full.min, vec2(side, full.height()));
-    let right = egui::Rect::from_min_max(pos2(full.min.x + side, full.min.y), full.max);
-    let mut left_ui = ui.new_child(egui::UiBuilder::new().max_rect(left.shrink2(vec2(8.0, 6.0))));
-    egui::ScrollArea::vertical()
-        .id_salt("animator side")
-        .auto_shrink(false)
-        .show(&mut left_ui, |ui| {
-            changed |= parameters(ui, a);
-            ui.add_space(10.0);
-            preview(ui, a);
-        });
-    ui.painter().vline(
-        right.left(),
-        right.y_range(),
-        egui::Stroke::new(1.0, theme::line()),
-    );
-    let mut graph_ui = ui.new_child(egui::UiBuilder::new().max_rect(right));
-    changed |= graph(&mut graph_ui, a, keys);
+    let mut graph_ui = ui.new_child(egui::UiBuilder::new().max_rect(full));
+    let changed = graph(&mut graph_ui, a, keys);
     ui.advance_cursor_after_rect(full);
     changed
 }
 
 /// The parameters, each with its kind and the value the preview (or,
 /// while playing, the game) has.
-fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
+pub(crate) fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
         ui.label(RichText::new("Parameters").color(theme::text_weak()));
@@ -309,7 +292,7 @@ fn parameter_value(
 }
 
 /// The sheet's frame the preview shows, and what it's playing.
-fn preview(ui: &mut Ui, a: &mut AnimatorUi<'_>) {
+pub(crate) fn preview(ui: &mut Ui, a: &mut AnimatorUi<'_>) {
     egui::Frame::new()
         .fill(theme::field())
         .corner_radius(4.0)

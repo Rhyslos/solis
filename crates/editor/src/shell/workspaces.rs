@@ -32,8 +32,10 @@ pub enum ShelfTab {
     Code,
     /// A clips file's frames along a time ruler, while one is open.
     Frames,
-    /// A clips file's clips, while one is open.
-    Clips,
+    /// The chosen clip's playback, while a clips file is open.
+    Clip,
+    /// The open animator's parameters.
+    Parameters,
     /// What Properties shows on the Animate tab: the animator's state or
     /// transition picked, or the selected entity.
     Properties,
@@ -100,13 +102,14 @@ macro_rules! column {
 
 impl ShelfTab {
     /// Every shelf tab.
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 15] = [
         Self::Place,
         Self::Entity,
         Self::Details,
         Self::Code,
         Self::Frames,
-        Self::Clips,
+        Self::Clip,
+        Self::Parameters,
         Self::Properties,
         Self::Screen,
         Self::Bus,
@@ -125,7 +128,8 @@ impl ShelfTab {
             Self::Details => "Details",
             Self::Code => "Code",
             Self::Frames => "Frames",
-            Self::Clips => "Clips",
+            Self::Clip => "Clip",
+            Self::Parameters => "Parameters",
             Self::Properties => "Properties",
             Self::Screen => "Screen",
             Self::Bus => "Bus",
@@ -165,8 +169,12 @@ impl ShelfTab {
                 &[column!("Properties", [P::Properties], Rest)]
             }
             Self::Code => &[column!("Code", [P::Code], Rest)],
-            Self::Frames => &[column!("Frames", [P::Frames], Rest)],
-            Self::Clips => &[column!("Clips", [P::Clips], Rest)],
+            Self::Frames => &[
+                column!("Clips", [P::Clips], Fixed(size::SCENE_COLUMN_W + 60.0)),
+                column!("Frames", [P::Frames], Rest),
+            ],
+            Self::Clip => &[column!("Clip", [P::Clip], Rest)],
+            Self::Parameters => &[column!("Parameters", [P::Parameters], Rest)],
             Self::Console => &[column!("Console", [P::Console], Rest)],
             Self::Problems => &[column!("Problems", [P::Problems], Rest)],
             Self::Map => &[column!("Map", [P::Map], Rest)],
@@ -187,7 +195,7 @@ impl ShelfTab {
     /// that it closes (until the Animate screen gives a clips file its
     /// own document tab).
     pub fn closes_a_file(self) -> bool {
-        matches!(self, Self::Frames | Self::Clips)
+        matches!(self, Self::Frames | Self::Clip)
     }
 }
 
@@ -213,7 +221,7 @@ pub struct OpenNow {
 /// none: a page stands there.
 pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
     use Panel as P;
-    let mut groups: Vec<Vec<Panel>> = match tab {
+    let groups: Vec<Vec<Panel>> = match tab {
         RibbonTab::Home | RibbonTab::Build => {
             let mut area = vec![P::Viewport];
             if open.playing {
@@ -224,23 +232,22 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         RibbonTab::Library => vec![vec![P::Library]],
         RibbonTab::Tileset if open.tileset => vec![vec![P::Tileset]],
         RibbonTab::Picture if open.atlas => vec![vec![P::AtlasCrop]],
-        RibbonTab::Animate => vec![vec![P::Viewport]],
+        // With neither a clips file nor an animator open, the Sequencer's
+        // page stands in the middle (round 3).
+        RibbonTab::Animate if open.animator => {
+            vec![vec![P::Viewport, P::Animator], vec![P::Preview]]
+        }
+        RibbonTab::Animate if open.clips => vec![vec![P::Viewport]],
         RibbonTab::Ui => vec![vec![P::Canvas]],
         RibbonTab::Audio => vec![vec![P::Mixer]],
         RibbonTab::Debug => vec![vec![P::Game, P::Viewport], vec![P::Profiler]],
         RibbonTab::File
         | RibbonTab::Shading
         | RibbonTab::Vfx
+        | RibbonTab::Animate
         | RibbonTab::Tileset
         | RibbonTab::Picture => Vec::new(),
     };
-    let second: Vec<Panel> = match tab {
-        RibbonTab::Animate if open.animator => vec![P::Animator],
-        _ => Vec::new(),
-    };
-    if !second.is_empty() {
-        groups.push(second);
-    }
     groups
 }
 
@@ -264,7 +271,6 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
         ],
         RibbonTab::Animate => vec![
             Entry::Unbuilt(UnbuiltId::AnimShelfSequencer),
-            Entry::Built(S::Properties),
             Entry::Unbuilt(UnbuiltId::AnimShelfKey),
             Entry::Built(S::Console),
         ],
@@ -299,9 +305,17 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
     if matches!(tab, RibbonTab::Home | RibbonTab::Build) && open.map {
         tabs.push(Entry::Built(S::Map));
     }
-    if tab == RibbonTab::Animate && open.clips {
-        // A clips file's tabs come first, after the unfinished sequencer.
-        tabs.splice(1..1, [Entry::Built(S::Frames), Entry::Built(S::Clips)]);
+    if tab == RibbonTab::Animate {
+        // A clips file's tabs, then an animator's, after the unfinished
+        // sequencer (round 3).
+        let mut file_tabs = Vec::new();
+        if open.clips {
+            file_tabs.extend([Entry::Built(S::Frames), Entry::Built(S::Clip)]);
+        }
+        if open.animator {
+            file_tabs.extend([Entry::Built(S::Parameters), Entry::Built(S::Properties)]);
+        }
+        tabs.splice(1..1, file_tabs);
     }
     tabs
 }

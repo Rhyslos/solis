@@ -1,9 +1,11 @@
-//! The Clips and Frames tabs drawn (Phase 9, D3; the editing itself is
-//! [`crate::frames_editor`]). Clips, beside Properties: the file's clips,
-//! the chosen one's speed, direction, repeats and whether it plays first.
-//! Frames, at the bottom: the chosen clip's frames along a time ruler, each
+//! A clips file's shelf tabs drawn (Phase 9, D3; the editing itself is
+//! [`crate::frames_editor`]; round 3, `04-sprite-clips-a.png`). Frames:
+//! the file's clips in a column, and the chosen clip's frames along a
+//! time ruler beside them, each
 //! as wide as it lasts, the frames a ping-pong plays back faded after
 //! them, a blue line where it's playing, and its events in a lane below.
+//! Clip: the chosen one's speed, direction, repeats and whether it plays
+//! first. New, Copy and Delete are on Animate's ribbon.
 
 use crate::frames_editor::{FramesEditor, STANDARD_ZOOM, ZOOM_RANGE};
 use crate::settled::{settled_drag, settled_number};
@@ -63,77 +65,56 @@ fn about(clip: &animation::Clip) -> String {
     }
 }
 
-/// The Clips tab. Returns whether the file changed (and must be saved).
-pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
+/// The Frames shelf tab's first column: the file's clips, searched, one
+/// row each. New, Copy and Delete are on Animate's ribbon (round 3).
+pub(crate) fn clips_list(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let mut changed = false;
-    ui.horizontal(|ui| {
-        ui.label(RichText::new(file_name(&f.editor.path)).color(theme::text_weak()));
-    });
     let Some(sheet) = f.sheet else {
-        changed |= choose_sheet(ui, f);
-        return changed;
+        ui.label(
+            RichText::new("Choose the file's sheet on the Clip tab.").color(theme::text_weak()),
+        );
+        return false;
     };
     let clips = f.editor.clips(sheet);
-    let chosen = clips.get(&f.editor.clip).cloned();
-    ui.horizontal(|ui| {
-        if ui
-            .button("+ Clip")
-            .on_hover_text("A new clip of your own, made from the sheet's frames in Frames")
-            .clicked()
-        {
-            changed |= f.editor.new_clip(&clips, Vec::new());
-        }
-        if ui
-            .add_enabled(chosen.is_some(), egui::Button::new("Copy"))
-            .on_hover_text("A copy of this clip to change here (an Aseprite tag's frames stay Aseprite's)")
-            .clicked()
-        {
-            changed |= f.editor.copy_clip(&clips);
-        }
-        let own = chosen.as_ref().is_some_and(|c| !c.from_aseprite);
-        let tag_changed = f.editor.file.tags.iter().any(|t| t.name == f.editor.clip);
-        if ui
-            .add_enabled(own || tag_changed, egui::Button::new("Delete"))
-            .on_hover_text(if own {
-                "Delete this clip"
-            } else {
-                "Forget what was added here to this Aseprite tag (its speed and events); the tag itself stays Aseprite's"
-            })
-            .on_disabled_hover_text("An Aseprite tag: delete it in Aseprite")
-            .clicked()
-        {
-            changed |= f.editor.delete_clip();
-        }
-    });
     ui.add(
         egui::TextEdit::singleline(&mut f.editor.search)
             .hint_text("Search clips")
             .desired_width(f32::INFINITY),
     );
     let search = f.editor.search.to_lowercase();
-    egui::ScrollArea::vertical()
-        .id_salt("clips list")
-        .max_height(ui.available_height() * 0.5)
-        .auto_shrink([false, true])
-        .show(ui, |ui| {
-            for (i, clip) in clips.clips.iter().enumerate() {
-                if !search.is_empty() && !clip.name.to_lowercase().contains(&search) {
-                    continue;
-                }
-                changed |= clip_row(ui, f.editor, &clips, i, clip);
-            }
-            if clips.clips.is_empty() {
-                ui.label(
-                    RichText::new(
-                        "No clips yet: tag runs of frames in Aseprite, or make one here with + Clip.",
-                    )
-                    .color(theme::text_weak()),
-                );
-            }
-        });
-    ui.separator();
-    if let Some(clip) = chosen {
-        changed |= clip_settings(ui, f.editor, &clip);
+    for (i, clip) in clips.clips.iter().enumerate() {
+        if !search.is_empty() && !clip.name.to_lowercase().contains(&search) {
+            continue;
+        }
+        changed |= clip_row(ui, f.editor, &clips, i, clip);
+    }
+    if clips.clips.is_empty() {
+        ui.label(
+            RichText::new(
+                "No clips yet: tag runs of frames in Aseprite, or make one here with Clip › New.",
+            )
+            .color(theme::text_weak()),
+        );
+    }
+    changed
+}
+
+/// The Clip shelf tab (round 3, `04-sprite-clip-tab-a.png`): the file and
+/// its sheet, and the chosen clip's playback: speed, direction, how many
+/// times it plays, whether it plays first.
+pub(crate) fn clip_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
+    let mut changed = false;
+    ui.label(RichText::new(file_name(&f.editor.path)).color(theme::text_weak()));
+    let Some(sheet) = f.sheet else {
+        changed |= choose_sheet(ui, f);
+        return changed;
+    };
+    let clips = f.editor.clips(sheet);
+    match clips.get(&f.editor.clip).cloned() {
+        Some(clip) => changed |= clip_settings(ui, f.editor, &clip),
+        None => {
+            ui.label(RichText::new("Choose a clip on the Frames tab.").color(theme::text_weak()));
+        }
     }
     for note in clips.notes.iter().chain(&f.notes) {
         ui.label(RichText::new(note).size(11.0).color(theme::WARNING));

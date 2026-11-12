@@ -82,6 +82,13 @@ impl ShellCommand {
             C::TerrainKind(kind) => format!("Make the terrain {}", kind.word()),
             C::TilesetZoom(zoom) => format!("Show the tileset at {}%", u32::from(zoom) * 100),
             C::CropsZoom(zoom) => format!("Show the picture at {}%", u32::from(zoom) * 100),
+            C::ClipDirection(i) => {
+                let d = crate::shell::ribbons::animate::DIRECTIONS
+                    .get(usize::from(i))
+                    .copied()
+                    .unwrap_or(animation::Direction::Forward);
+                format!("Play the clip {}", d.name())
+            }
             other => other.fixed_name().to_owned(),
         }
     }
@@ -144,6 +151,14 @@ impl ShellCommand {
             C::SaveTemplate => "Save the terrain's template",
             C::CropEveryTile => "Crop every tile",
             C::CropDelete => "Delete the picked crop",
+            C::ClipNew => "New clip",
+            C::ClipCopy => "Copy the clip",
+            C::ClipDelete => "Delete the clip",
+            C::FramesTakeOut => "Take the frames picked out",
+            C::StateAdd => "Add a state",
+            C::StateStartHere => "Start in the state picked",
+            C::StateDelete => "Delete what is picked in the graph",
+            C::PreviewAgain => "Start the preview again",
             // Named by `name`, from what the editor holds.
             C::Undo
             | C::Redo
@@ -173,6 +188,7 @@ impl ShellCommand {
             | C::TerrainKind(_)
             | C::TilesetZoom(_)
             | C::CropsZoom(_)
+            | C::ClipDirection(_)
             | C::About => "",
         }
     }
@@ -230,6 +246,15 @@ impl ShellCommand {
             | C::SaveTemplate
             | C::TilesetZoom(_) => "Tileset",
             C::CropEveryTile | C::CropDelete | C::CropsZoom(_) => "Picture",
+            C::ClipNew
+            | C::ClipCopy
+            | C::ClipDelete
+            | C::FramesTakeOut
+            | C::ClipDirection(_)
+            | C::StateAdd
+            | C::StateStartHere
+            | C::StateDelete
+            | C::PreviewAgain => "Animate",
             _ => "Home",
         }
     }
@@ -367,6 +392,15 @@ impl ShellCommand {
                 "A crop for every grid cell with something drawn in it, named by its column and row"
             }
             C::CropDelete => "Delete",
+            C::ClipNew => "A new clip of your own, made from the sheet's frames",
+            C::ClipCopy => {
+                "A copy of the clip to change here (an Aseprite tag's frames stay Aseprite's)"
+            }
+            C::ClipDelete => {
+                "Deletes a clip of your own; for an Aseprite tag, forgets what was added here"
+            }
+            C::FramesTakeOut => "Takes the frames picked on the Frames tab out of the clip",
+            C::StateAdd => "A state that plays a clip, to join to the others",
             _ => "",
         }
     }

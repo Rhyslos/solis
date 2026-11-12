@@ -82,11 +82,8 @@ fn each_tab_shows_its_own_documents_and_shelf() {
     h.run();
     assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);
     for (tab, documents, shelf) in [
-        (
-            RibbonTab::Animate,
-            vec![Panel::Viewport],
-            ShelfTab::Properties,
-        ),
+        // Nothing open: the sequencer's page, and the Console (round 3).
+        (RibbonTab::Animate, vec![], ShelfTab::Console),
         (
             RibbonTab::Debug,
             vec![Panel::Game, Panel::Profiler],

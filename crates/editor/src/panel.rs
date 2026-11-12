@@ -62,6 +62,12 @@ pub enum Panel {
     /// The open picture's crops, and the one picked: on LIBRARY TOOLS ·
     /// Picture's Crops shelf tab (round 3).
     Crops,
+    /// The chosen clip's playback: Animate's Clip shelf tab (round 3).
+    Clip,
+    /// The open animator's parameters: Animate's Parameters shelf tab.
+    Parameters,
+    /// The open animator's preview: a group of its own beside the graph.
+    Preview,
 }
 
 impl Panel {
@@ -83,7 +89,7 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`] or the Window menu, and never saved in a layout.
-    pub const OPEN_WITH_A_FILE: [Self; 10] = [
+    pub const OPEN_WITH_A_FILE: [Self; 13] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
@@ -94,10 +100,13 @@ impl Panel {
         Self::Elements,
         Self::Terrains,
         Self::Crops,
+        Self::Clip,
+        Self::Parameters,
+        Self::Preview,
     ];
 
     /// The tabs a clips file opens (and closes) together.
-    pub const FRAMES_TABS: [Self; 2] = [Self::Clips, Self::Frames];
+    pub const FRAMES_TABS: [Self; 3] = [Self::Clips, Self::Frames, Self::Clip];
 
     /// The tabs a screen opens (and closes) together, in the UI workspace.
     pub const SCREEN_TABS: [Self; 2] = [Self::Canvas, Self::Elements];
@@ -132,6 +141,9 @@ impl Panel {
             Self::Placement => "Placement",
             Self::Terrains => "Terrains",
             Self::Crops => "Crops",
+            Self::Clip => "Clip",
+            Self::Parameters => "Parameters",
+            Self::Preview => "Preview",
         }
     }
 
@@ -160,6 +172,9 @@ impl Panel {
             Self::Placement => Icon::Move,
             Self::Terrains => Icon::Tileset,
             Self::Crops => Icon::Crops,
+            Self::Clip => Icon::Clips,
+            Self::Parameters => Icon::Sliders,
+            Self::Preview => Icon::Play,
         }
     }
 }
