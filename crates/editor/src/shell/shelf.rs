@@ -248,6 +248,21 @@ fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut Pane
     if front == Some(ShelfTab::Console) {
         crate::console::console_tools(ui, viewer.console);
     }
+    if tab == RibbonTab::Library && viewer.project.is_some() {
+        // "48 items · 1 selected" (spec 315): the folder shown.
+        let state = &viewer.library_state;
+        let items = viewer
+            .library
+            .iter()
+            .filter(|item| item.folder() == state.folder)
+            .count();
+        let picked = usize::from(state.selected.is_some());
+        ui.label(
+            egui::RichText::new(format!("{items} items \u{b7} {picked} selected"))
+                .font(crate::tokens::text::ui())
+                .color(crate::tokens::text_meta()),
+        );
+    }
 }
 
 /// The front shelf tab's columns in `content`, side by side, or under

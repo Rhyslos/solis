@@ -135,46 +135,47 @@ pub mod level {
     pub const ERROR: Color32 = Color32::from_rgb(0xb0, 0x3a, 0x34);
 }
 
-/// A colour per kind of thing, shared by the Library (the stripe under a
-/// tile) and the Area panel (an entity's icon), so a model or a sound looks
-/// the same in both. Solis has more kinds than the design's seven, and
-/// which colour each takes is still to be asked: until then these are as
-/// they were.
+/// A colour per kind of thing, shared by the Library (a tile's dot) and
+/// the Area panel (an entity's icon), so a model or a sound looks the
+/// same in both: the design's seven where a kind maps onto one (the
+/// project lead's answer 21; round 2, `07-library-kinds-a.png`), and
+/// today's own colours for sound events, code files and areas
+/// (`07-library-kinds-b.png`).
 pub mod kind {
+    use crate::tokens;
     use egui::Color32;
 
-    /// Models.
-    pub const MODEL: Color32 = Color32::from_rgb(0x4a, 0x9c, 0xd9);
-    /// Assemblies (and a placed copy of one).
-    pub const ASSEMBLY: Color32 = Color32::from_rgb(0xe8, 0xc3, 0x5a);
-    /// Area files.
+    /// Models (the design's mesh).
+    pub const MODEL: Color32 = tokens::KIND_MODEL;
+    /// Assemblies, and a placed copy of one (the design's prefab).
+    pub const ASSEMBLY: Color32 = tokens::KIND_ASSEMBLY;
+    /// Area files: Solis's own green.
     pub const AREA: Color32 = Color32::from_rgb(0x58, 0xc2, 0x6a);
-    /// Pictures.
-    pub const PICTURE: Color32 = Color32::from_rgb(0xb4, 0x7c, 0xf0);
-    /// Game code.
+    /// Pictures, and a picture's crops (the design's texture).
+    pub const PICTURE: Color32 = tokens::KIND_PICTURE;
+    /// Game code: Solis's own orange.
     pub const CODE: Color32 = Color32::from_rgb(0xe8, 0x87, 0x5a);
-    /// Sound files.
-    pub const SOUND: Color32 = Color32::from_rgb(0x1d, 0x9e, 0x75);
-    /// Sound events.
+    /// Sound files (the design's audio).
+    pub const SOUND: Color32 = tokens::KIND_SOUND;
+    /// Sound events: Solis's own teal.
     pub const SOUND_EVENT: Color32 = Color32::from_rgb(0x5d, 0xca, 0xa5);
-    /// Sprite sheets (Aseprite files).
-    pub const SPRITE: Color32 = Color32::from_rgb(0xd8, 0xb4, 0x4a);
+    /// Sprite sheets (Aseprite files): a picture's colour.
+    pub const SPRITE: Color32 = tokens::KIND_PICTURE;
+    /// A sprite's clips and animators (the design's animation).
+    pub const CLIPS: Color32 = tokens::KIND_ANIMATION;
+    /// Tilesets and tile maps (the design's material green).
+    pub const TILES: Color32 = tokens::KIND_MATERIAL;
     /// The sun (other lamps show their own light's colour).
     pub const SUN: Color32 = super::WARNING;
     /// The environment (sky and fog).
     pub const ENVIRONMENT: Color32 = Color32::from_rgb(0x4f, 0xb3, 0xa9);
     /// Cameras.
     pub const CAMERA: Color32 = Color32::from_rgb(0xc8, 0xc8, 0xc8);
-    /// Notes: Markdown and plain text files (`.md`, `.txt`).
-    pub const NOTES: Color32 = Color32::from_rgb(0x7c, 0xc4, 0xff);
-    /// JSON files.
-    pub const JSON: Color32 = Color32::from_rgb(0x7a, 0xd1, 0x7a);
-    /// Tables of data (`.csv`).
-    pub const TABLE: Color32 = Color32::from_rgb(0xf0, 0x9a, 0xc0);
-    /// Settings files (`.toml`, `.ron`).
-    pub const SETTINGS: Color32 = Color32::from_rgb(0xa0, 0xac, 0xc4);
+    /// Text: notes (`.md`, `.txt`) and data (`.json`, `.csv`, `.toml`,
+    /// `.ron`).
+    pub const TEXT: Color32 = Color32::from_rgb(0x8f, 0xb8, 0xf0);
     /// Anything else.
-    pub const OTHER: Color32 = Color32::from_rgb(0xa5, 0xa5, 0xa5);
+    pub const OTHER: Color32 = Color32::from_rgb(0x8c, 0x8c, 0x8c);
 }
 
 /// The viewport's backdrop, where an area has no sky of its own.

@@ -57,6 +57,20 @@ impl ShellCommand {
             ),
             C::Tab(tab) => format!("{} tab", tab.name()),
             C::UseTool(tool) => format!("{} tool", tool_word(tool)),
+            C::NewInLibrary(new) => format!("New in the Library: {}", new.word()),
+            C::LibraryList => on_off(
+                "Show the Library as a list",
+                "Show the Library as tiles",
+                w.open.library_state.list,
+            ),
+            C::LibraryFolders => switch(
+                w.open.library_state.folders_shown,
+                "the Library's folder tree",
+            ),
+            C::LibraryFilter(filter) => match filter {
+                crate::library::Filter::All => "Show every kind of file".to_owned(),
+                other => format!("Show only {}", other.name().to_lowercase()),
+            },
             C::About => format!("About {}", w.info.name),
             other => other.fixed_name().to_owned(),
         }
@@ -110,6 +124,7 @@ impl ShellCommand {
             C::Updates => "Updates",
             C::CheckForUpdates => "Check for updates",
             C::Exit => "Exit",
+            C::PlacePicked => "Place the picked file",
             // Named by `name`, from what the editor holds.
             C::Undo
             | C::Redo
@@ -125,6 +140,10 @@ impl ShellCommand {
             | C::AutoUpdate
             | C::Tab(_)
             | C::UseTool(_)
+            | C::NewInLibrary(_)
+            | C::LibraryList
+            | C::LibraryFolders
+            | C::LibraryFilter(_)
             | C::About => "",
         }
     }
@@ -151,7 +170,12 @@ impl ShellCommand {
             | C::AutoUpdate
             | C::About
             | C::Exit => "File",
-            C::ImportModel => "Library",
+            C::ImportModel
+            | C::NewInLibrary(_)
+            | C::LibraryList
+            | C::LibraryFolders
+            | C::LibraryFilter(_)
+            | C::PlacePicked => "Library",
             C::ExportPlaytest => "Build",
             C::LoadSave
             | C::PlayAndRecord
@@ -272,6 +296,10 @@ impl ShellCommand {
                  one (even one you skipped)"
             }
             C::Exit => "Closes the editor, asking about unsaved work first",
+            C::PlacePicked => {
+                "Places the picked file where the camera looks on Home. A double-click in the \
+                 Library only picks a file"
+            }
             _ => "",
         }
     }

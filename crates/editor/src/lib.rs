@@ -150,6 +150,8 @@ mod kit_tests;
 #[cfg(test)]
 mod kit_topdown_tests;
 #[cfg(test)]
+mod library_screen_tests;
+#[cfg(test)]
 mod open_externally_tests;
 #[cfg(test)]
 mod picture_support;

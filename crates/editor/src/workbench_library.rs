@@ -48,6 +48,17 @@ pub(crate) fn starter_code(name: &str, path: &str) -> String {
 pub(crate) const MAIN: &str = "main.lst";
 
 impl Workbench {
+    /// The file picked in the Library, if it can be placed and has its
+    /// ID (Use › Place).
+    pub(crate) fn picked_placeable(&self) -> Option<AssetId> {
+        let picked = self.open.library_state.selected.as_deref()?;
+        self.open
+            .library
+            .iter()
+            .find(|item| item.path == picked && item.kind.placeable())
+            .and_then(|item| item.id)
+    }
+
     /// F2 and Delete over the Library or the Assets column act on the
     /// file picked there, not on the selected entity (the project lead's
     /// answer 25): F2 renames it, Delete moves it to the Recycle Bin, as

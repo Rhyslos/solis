@@ -1,11 +1,13 @@
 //! The Library panel: the project's files
-//! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md)),
+//! ([decision 0021](../../../../docs/decisions/0021-asset-database-and-models.md)),
 //! with a folder tree that can be put away, the files of one folder as
 //! thumbnails or a list, and a search box. Drag a model or assembly onto
 //! the viewport or the Area panel to place it, or onto a folder to move
-//! it; double-click to place, open an area, or open a file in its own
-//! program; right-click for the rest. The Code tab shows the code files
-//! the same way.
+//! it; double-click to open an area or a file in its own program (a file
+//! that would be placed is only picked: the ribbon's **Place** places it,
+//! the project lead's answer 25); right-click for the rest. The Code tab
+//! shows the code files the same way. The ribbon has making files, the
+//! view and the kinds' filter (milestone M7).
 //!
 //! The app keeps the list up to date from the asset database and makes
 //! the thumbnails; the panel only shows them and returns
@@ -14,10 +16,15 @@
 use crate::icons::{self, Icon};
 use crate::sound_view::{self, EventState, Preview, SOUND_COLOR, SoundState};
 use crate::theme::{self, Accent};
+use crate::tokens::{self, size, text};
 use egui::{Align, Color32, Layout, RichText, Ui};
 use reflect::AssetId;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
+
+mod kinds;
+pub(crate) use kinds::Filter;
+pub use kinds::LibraryKind;
 
 /// The open project, as the editor shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,243 +35,6 @@ pub struct ProjectInfo {
     pub root: PathBuf,
     /// Its assets folder, which the Library shows.
     pub assets: PathBuf,
-}
-
-/// What kind of file a Library item is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum LibraryKind {
-    /// A model.
-    #[default]
-    Model,
-    /// An assembly.
-    Assembly,
-    /// An area.
-    Area,
-    /// A picture.
-    Texture,
-    /// Game code (Lust, Lua or Rust).
-    Code,
-    /// A sound file (WAV or Ogg Vorbis).
-    Sound,
-    /// A sound event (`.solsound`): takes and how to vary them.
-    SoundEvent,
-    /// An Aseprite file: a sprite sheet (Phase 9, D2).
-    SpriteSheet,
-    /// A sprite's clips file (`.solframes`, Phase 9, D3).
-    SpriteClips,
-    /// An animator (`.solanim`, Phase 9, D3b).
-    Animator,
-    /// A tileset (`.tileset.lst`, Phase 9, D4): the terrains a cell can be.
-    Tileset,
-    /// A tile map (`.tilemap.lst`, Phase 9, D4).
-    TileMap,
-    /// A picture's crops (`.atlas.lst`, Atlas Crop).
-    Atlas,
-    /// Plain text: notes (`.md`, `.txt`) and data (`.json`, `.csv`,
-    /// `.toml`, `.ron`), shown in Properties.
-    Text,
-    /// Anything else.
-    Other,
-}
-
-impl LibraryKind {
-    /// What it's called, for tooltips.
-    pub(crate) fn name(self) -> &'static str {
-        match self {
-            Self::Model => "Model",
-            Self::Assembly => "Assembly",
-            Self::Area => "Area",
-            Self::Texture => "Picture",
-            Self::Code => "Code",
-            Self::Sound => "Sound",
-            Self::SoundEvent => "Sound event",
-            Self::SpriteSheet => "Sprite sheet",
-            Self::SpriteClips => "Sprite clips",
-            Self::Animator => "Animator",
-            Self::Tileset => "Tileset",
-            Self::TileMap => "Tile map",
-            Self::Atlas => "Atlas crops",
-            Self::Text => "Text",
-            Self::Other => "File",
-        }
-    }
-
-    /// The stripe under its thumbnail, a colour per kind (decision 0004),
-    /// the same as its icon in the Area panel (decision 0060).
-    fn color(self) -> Color32 {
-        match self {
-            Self::Model => theme::kind::MODEL,
-            Self::Assembly => theme::kind::ASSEMBLY,
-            Self::Area => theme::kind::AREA,
-            Self::Texture => theme::kind::PICTURE,
-            Self::Code => theme::kind::CODE,
-            Self::Sound => theme::kind::SOUND,
-            Self::SoundEvent => theme::kind::SOUND_EVENT,
-            Self::SpriteSheet
-            | Self::SpriteClips
-            | Self::Animator
-            | Self::Tileset
-            | Self::TileMap
-            | Self::Atlas => theme::kind::SPRITE,
-            Self::Text => theme::kind::NOTES,
-            Self::Other => theme::kind::OTHER,
-        }
-    }
-
-    /// Its icon when it has no thumbnail.
-    fn icon(self) -> Icon {
-        match self {
-            Self::Model => Icon::Model,
-            Self::Assembly => Icon::Assembly,
-            Self::Area => Icon::AreaFile,
-            Self::Texture => Icon::Picture,
-            Self::Code => Icon::CodeFile,
-            Self::Sound => Icon::Sound,
-            Self::SoundEvent => Icon::SoundEvent,
-            Self::SpriteSheet => Icon::SpriteSheet,
-            Self::SpriteClips => Icon::Clips,
-            Self::Animator => Icon::Animator,
-            Self::Tileset => Icon::Tileset,
-            Self::TileMap => Icon::TileMap,
-            Self::Atlas => Icon::Crops,
-            Self::Text | Self::Other => Icon::TextFile,
-        }
-    }
-
-    /// Whether it can be placed in an area (dragged in, double-clicked; a
-    /// picture, as a sprite, is only dragged in: a double-click opens it).
-    pub fn placeable(self) -> bool {
-        matches!(
-            self,
-            Self::Model
-                | Self::Assembly
-                | Self::SpriteSheet
-                | Self::SpriteClips
-                | Self::TileMap
-                | Self::Texture
-        )
-    }
-
-    /// Whether a double-click opens it (in the editor) rather than placing
-    /// it: a sprite's clips file opens its Clips and Frames tabs, an
-    /// animator its Animator tab.
-    pub fn opens_on_double_click(self) -> bool {
-        matches!(
-            self,
-            Self::SpriteClips | Self::Animator | Self::Tileset | Self::Atlas
-        )
-    }
-
-    /// What an item's right-click menu offers to do with a file of this
-    /// kind, in the menu's order: Open, Place or both, each once. (One
-    /// that opens on a double-click and can't be placed was offered Open
-    /// twice: the review, BUG-30.)
-    fn menu_actions(self) -> &'static [MenuAction] {
-        match (
-            self.opens_on_double_click() || self == Self::Texture,
-            self.placeable(),
-        ) {
-            (true, true) => &[MenuAction::Open, MenuAction::Place],
-            (_, false) => &[MenuAction::Open],
-            (false, true) => &[MenuAction::Place],
-        }
-    }
-
-    /// Whether a file of this kind at `path` may be opened in the program
-    /// the computer has for it. A project can come from anyone, so only
-    /// kinds whose program just shows or edits them do (a picture viewer,
-    /// a text editor for notes, data and Lust). Anything else, such as a
-    /// file called "brick.png.exe" or a `.lua` file a program on the
-    /// computer might run outside the sandbox, is shown in its folder
-    /// instead, never opened.
-    ///
-    /// This is the only copy of the rule. The editor asks it to say what
-    /// will happen; the app asks it again, about the kind the file's own
-    /// name gives, at the one place anything is handed to another program,
-    /// so no way of asking can skip it.
-    pub fn opens_in_its_program(self, path: &str) -> bool {
-        match self {
-            // Text files only ever show text: a .md opens in the
-            // computer's Markdown program (Ledger), never runs.
-            Self::Texture | Self::Text => true,
-            Self::Code => path.to_lowercase().ends_with(".lst"),
-            _ => false,
-        }
-    }
-}
-
-/// The Library's filter chips (decision 0085): every file, or one group
-/// of kinds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) enum Filter {
-    /// Every file.
-    #[default]
-    All,
-    /// Models and assemblies.
-    Models,
-    /// Sprite sheets, their clips, animators and pictures.
-    Sprites,
-    /// Areas, tile maps and tilesets.
-    Maps,
-    /// Sound files and sound events.
-    Sounds,
-    /// Lust, Lua and Rust files.
-    Code,
-}
-
-impl Filter {
-    /// Every chip, in order.
-    pub(crate) const ALL: [Self; 6] = [
-        Self::All,
-        Self::Models,
-        Self::Sprites,
-        Self::Maps,
-        Self::Sounds,
-        Self::Code,
-    ];
-
-    /// The chip's words.
-    pub(crate) fn name(self) -> &'static str {
-        match self {
-            Self::All => "All",
-            Self::Models => "Models",
-            Self::Sprites => "Sprites",
-            Self::Maps => "Maps",
-            Self::Sounds => "Sounds",
-            Self::Code => "Code",
-        }
-    }
-
-    /// Whether a file of `kind` passes.
-    pub(crate) fn passes(self, kind: LibraryKind) -> bool {
-        use LibraryKind as K;
-        match self {
-            Self::All => true,
-            Self::Models => matches!(kind, K::Model | K::Assembly),
-            Self::Sprites => matches!(
-                kind,
-                K::SpriteSheet | K::SpriteClips | K::Animator | K::Texture
-            ),
-            Self::Maps => matches!(kind, K::Area | K::TileMap | K::Tileset),
-            Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
-            Self::Code => matches!(kind, K::Code | K::Text),
-        }
-    }
-
-    /// The dot before the chip's word: its first kind's colour (none for
-    /// All).
-    pub(crate) fn dot(self) -> Option<Color32> {
-        use LibraryKind as K;
-        let kind = match self {
-            Self::All => return None,
-            Self::Models => K::Model,
-            Self::Sprites => K::SpriteSheet,
-            Self::Maps => K::TileMap,
-            Self::Sounds => K::Sound,
-            Self::Code => K::Code,
-        };
-        Some(kind.color())
-    }
 }
 
 /// One file in the Library.
@@ -283,16 +53,9 @@ pub struct LibraryItem {
 }
 
 impl LibraryItem {
-    /// Its colour: its kind's, or a text file's by its extension (notes
-    /// light blue, JSON green, tables pink, settings grey-blue).
+    /// Its colour: its kind's (the project lead's answer 21).
     pub(crate) fn colour(&self) -> Color32 {
-        match self.text_extension().as_deref() {
-            Some("md" | "txt") => theme::kind::NOTES,
-            Some("json") => theme::kind::JSON,
-            Some("csv") => theme::kind::TABLE,
-            Some(_) => theme::kind::SETTINGS,
-            None => self.kind.color(),
-        }
+        self.kind.color()
     }
 
     /// A text file's extension, lower case, which its icon shows ("md").
@@ -437,9 +200,7 @@ impl Sounds<'_> {
     }
 }
 
-/// Tile and row sizes.
-const TILE: egui::Vec2 = egui::vec2(88.0, 104.0);
-const PICTURE: f32 = 72.0;
+/// A list row's height.
 const ROW: f32 = 21.0;
 const TREE_WIDTH: f32 = 150.0;
 
@@ -646,92 +407,44 @@ fn shown_items<'a>(
         .collect()
 }
 
-/// The Library's tool row, as in the editor overhaul's mock-up (decision
-/// 0085): **+ New** (the accent's colour), **Import**, the filter chips,
-/// **View**, then on the right the search and the pin. Returns whether the
-/// pin was clicked.
+/// The Library's tool row (spec 305): the kinds' chips, each with its
+/// colour's dot, and the search at the right. Making files, importing,
+/// the view and the folder tree are on the ribbon (Add, View, Filter).
 fn menu_row(
     ui: &mut Ui,
     state: &mut LibraryState,
     code: bool,
-    open: bool,
-    accent: Accent,
-    requests: &mut Vec<LibraryRequest>,
+    _open: bool,
+    _accent: Accent,
+    _requests: &mut Vec<LibraryRequest>,
 ) {
+    use crate::widgets::chip::{ChipKind, chip};
     theme::menu_row_frame().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 6.0;
             if !code {
-                ui.add_enabled_ui(open, |ui| {
-                    let colors = accent.colors();
-                    let new = egui::containers::menu::MenuButton::from_button(
-                        egui::Button::new(
-                            RichText::new("+ New ▾").color(theme::on_accent()).strong(),
-                        )
-                        .fill(colors.fill)
-                        .corner_radius(4.0),
-                    )
-                    .ui(ui, |ui| new_items(ui, &state.folder, requests));
-                    new.0.widget_info(|| {
-                        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "+ New")
-                    });
-                    new.0
-                        .on_hover_text("Make something new in the folder shown (or right-click)")
-                        .on_disabled_hover_text("Open or make a project first (File)");
-                });
-                let import = ui
-                    .add_enabled(open, egui::Button::new("Import model…"))
-                    .on_hover_text("Copies a glTF model (.gltf or .glb) into the project")
-                    .on_disabled_hover_text("Open or make a project first (File)");
-                if import.clicked() {
-                    requests.push(LibraryRequest::Import);
-                }
-                ui.add_space(6.0);
                 for filter in Filter::ALL {
                     let on = state.filter == filter;
-                    let chip = ui
-                        .add(
-                            egui::Button::new(RichText::new(filter.name()).size(12.0))
-                                .selected(on)
-                                .corner_radius(10.0),
-                        )
-                        .on_hover_text(match filter {
-                            Filter::All => "Every file".to_string(),
-                            other => format!("Only {}", other.name().to_lowercase()),
-                        });
                     let name = format!("{} files", filter.name());
-                    chip.widget_info(|| {
+                    let response = chip(ui, ChipKind::Filter, filter.name(), on, filter.dot());
+                    response.widget_info(|| {
                         egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, &name)
                     });
-                    if chip.clicked() {
+                    let hover = match filter {
+                        Filter::All => "Every file".to_string(),
+                        other => format!("Only {}", other.name().to_lowercase()),
+                    };
+                    if response.on_hover_text(hover).clicked() {
                         state.filter = filter;
                     }
                 }
-                ui.menu_button("View", |ui| {
-                    if ui
-                        .add(egui::Button::new("Thumbnails").selected(!state.list))
-                        .clicked()
-                    {
-                        state.list = false;
-                        ui.close();
-                    }
-                    if ui
-                        .add(egui::Button::new("List").selected(state.list))
-                        .clicked()
-                    {
-                        state.list = true;
-                        ui.close();
-                    }
-                    ui.separator();
-                    ui.checkbox(&mut state.folders_shown, "Folder tree");
-                });
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let search = ui.add(
                     egui::TextEdit::singleline(&mut state.search)
                         .hint_text("Search the project")
-                        .desired_width(ui.available_width().clamp(40.0, 180.0)),
+                        .desired_width(ui.available_width().clamp(40.0, 260.0)),
                 );
                 let label = if code {
                     "Search code"
@@ -908,7 +621,7 @@ fn join(folder: &str, name: &str) -> String {
 /// What an item's right-click menu offers to do with it
 /// ([`LibraryKind::menu_actions`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MenuAction {
+pub(super) enum MenuAction {
     /// Open it: in its tab in the editor, or in the computer's own
     /// program for it.
     Open,
@@ -933,6 +646,10 @@ struct Picked<'a> {
     place: bool,
     /// Play or Stop, from a sound's ▶ or ■.
     listen: Option<LibraryRequest>,
+    /// It is on the Library tab, where a double-click only selects a
+    /// file that would be placed (the project lead's answer 25): **Place**
+    /// on the ribbon places it.
+    in_tab: bool,
 }
 
 /// Why Place is greyed for a file with no ID.
@@ -953,6 +670,7 @@ pub(crate) fn act_on(
         response,
         place: false,
         listen: None,
+        in_tab: false,
     };
     item_actions(picked, state, requests);
 }
@@ -964,6 +682,7 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
         response,
         place,
         listen,
+        in_tab,
     } = picked;
     requests.extend(listen);
     if item.kind == LibraryKind::SoundEvent
@@ -982,7 +701,11 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
             (true, Some(id))
                 if !item.kind.opens_on_double_click() && item.kind != LibraryKind::Texture =>
             {
-                requests.push(LibraryRequest::Place(id));
+                if in_tab {
+                    state.selected = Some(item.path.clone());
+                } else {
+                    requests.push(LibraryRequest::Place(id));
+                }
             }
             _ => requests.push(LibraryRequest::Open(item.kind, item.path.clone())),
         }
@@ -1059,17 +782,144 @@ pub(crate) fn frames_text(n: usize) -> String {
     }
 }
 
+/// The files as tiles that fill the width, each at least 108 px (spec
+/// 306): only the rows in view are drawn.
+fn grid(
+    ui: &mut Ui,
+    items: &[&LibraryItem],
+    state: &mut LibraryState,
+    accent: Accent,
+    sounds: Sounds<'_>,
+    requests: &mut Vec<LibraryRequest>,
+) {
+    let gap = size::TILE_GAP;
+    let per_row = ((ui.available_width() + gap) / (size::TILE_MIN_W + gap))
+        .floor()
+        .max(1.0) as usize;
+    let width = ((ui.available_width() - (per_row - 1) as f32 * gap) / per_row as f32).floor();
+    let rows = items.len().div_ceil(per_row);
+    egui::ScrollArea::vertical().auto_shrink(false).show_rows(
+        ui,
+        tile_height(width) + gap,
+        rows,
+        |ui, range| {
+            for row in range {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = gap;
+                    for item in items.iter().skip(row * per_row).take(per_row) {
+                        let picked = tile(ui, item, state, (accent, width), sounds);
+                        item_actions(picked, state, requests);
+                    }
+                });
+                ui.add_space(gap);
+            }
+        },
+    );
+}
+
+/// How tall a tile `width` wide is: its square, its name and its kind.
+fn tile_height(width: f32) -> f32 {
+    width + size::GAP + 2.0 * size::ASSET_NAME_H
+}
+
+/// One tile (spec 306-309): the square thumbnail (an accent outline
+/// inside it when picked), the name cut off with "…", and the kind's dot
+/// and word; a + to place it.
+fn tile<'a>(
+    ui: &mut Ui,
+    item: &'a LibraryItem,
+    state: &LibraryState,
+    (accent, width): (Accent, f32),
+    sounds: Sounds<'_>,
+) -> Picked<'a> {
+    use egui::{CornerRadius, Stroke, StrokeKind, pos2, vec2};
+    let (rect, response) = ui.allocate_exact_size(
+        vec2(width, tile_height(width)),
+        egui::Sense::click_and_drag(),
+    );
+    let selected = state.selected.as_deref() == Some(item.path.as_str());
+    let round = CornerRadius::same(size::radius::TAB);
+    if selected {
+        ui.painter()
+            .rect_filled(rect.expand(2.0), round, tokens::select_item(accent));
+    }
+    let picture = egui::Rect::from_min_size(rect.min, vec2(width, width));
+    let fill = if response.hovered() {
+        tokens::card_border()
+    } else {
+        tokens::hover()
+    };
+    ui.painter().rect(
+        picture,
+        round,
+        fill,
+        Stroke::new(size::LINE, tokens::field_border()),
+        StrokeKind::Inside,
+    );
+    paint_thumbnail(ui.painter(), picture, item, sounds);
+    if item.kind == LibraryKind::SoundEvent {
+        event_badge(ui, item, picture, &response, sounds);
+    }
+    if selected {
+        ui.painter().rect_stroke(
+            picture,
+            round,
+            Stroke::new(size::TILE_OUTLINE, accent.colors().fill),
+            StrokeKind::Inside,
+        );
+    }
+    let name = egui::Rect::from_min_size(
+        pos2(rect.left(), picture.bottom() + size::GAP),
+        vec2(width, size::ASSET_NAME_H),
+    );
+    crate::widgets::cut_off(ui, name, &item.name, text::tile_name(), tokens::text_tile());
+    let kind_line = name.translate(vec2(0.0, size::ASSET_NAME_H));
+    let dot = pos2(
+        kind_line.left() + size::KIND_DOT / 2.0,
+        kind_line.center().y,
+    );
+    ui.painter()
+        .circle_filled(dot, size::KIND_DOT / 2.0, item.colour());
+    let words = egui::Rect::from_min_max(
+        pos2(
+            dot.x + size::KIND_DOT / 2.0 + size::ROW_GAP,
+            kind_line.top(),
+        ),
+        kind_line.max,
+    );
+    crate::widgets::cut_off(
+        ui,
+        words,
+        item.kind.name(),
+        text::tile_kind(),
+        tokens::text_meta(),
+    );
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, &item.name)
+    });
+    let response = response.on_hover_text(hint(item));
+    let place = item.kind.placeable() && place_button(ui, item, picture);
+    let listen = listen_button(ui, item, picture, &response, sounds);
+    Picked {
+        item,
+        response,
+        place,
+        listen,
+        in_tab: true,
+    }
+}
+
 /// The hint shown when pointing at an item.
 fn hint(item: &LibraryItem) -> String {
     let what = match item.kind {
         LibraryKind::Model | LibraryKind::Assembly => {
-            "Drag it into the viewport or onto an entity, or double-click, to place it."
+            "Drag it into the viewport or onto an entity, or pick it and press Place, to place it."
         }
         LibraryKind::Area => "Double-click to open it.",
         LibraryKind::Sound => "▶ to listen; click it to see it in Properties.",
         LibraryKind::SpriteSheet => {
-            "Drag it into the viewport, or double-click, to place it as a sprite; click it to \
-             see its frames in Properties."
+            "Drag it into the viewport, or pick it and press Place, to place it as a sprite; click \
+             it to see its frames in Properties."
         }
         LibraryKind::SpriteClips => {
             "Double-click to open its clips; drag it into the viewport to place a sprite that \
@@ -1080,8 +930,8 @@ fn hint(item: &LibraryItem) -> String {
              be), their art and how it joins up."
         }
         LibraryKind::TileMap => {
-            "Drag it into the viewport, or double-click, to place it; click it to change its \
-             tileset and size in Properties."
+            "Drag it into the viewport, or pick it and press Place, to place it; click it to \
+             change its tileset and size in Properties."
         }
         LibraryKind::Animator => {
             "Double-click to open it in the Animator tab: its states, and how it moves between \
@@ -1098,107 +948,6 @@ fn hint(item: &LibraryItem) -> String {
         _ => "Double-click to open it in its own program.",
     };
     format!("{} · {}\n{what}", item.kind.name(), item.path)
-}
-
-/// Items as thumbnails, row by row; only the rows in view are drawn.
-fn grid(
-    ui: &mut Ui,
-    items: &[&LibraryItem],
-    state: &mut LibraryState,
-    accent: Accent,
-    sounds: Sounds<'_>,
-    requests: &mut Vec<LibraryRequest>,
-) {
-    let gap = 6.0;
-    let per_row = ((ui.available_width() + gap) / (TILE.x + gap))
-        .floor()
-        .max(1.0) as usize;
-    let rows = items.len().div_ceil(per_row);
-    egui::ScrollArea::vertical().auto_shrink(false).show_rows(
-        ui,
-        TILE.y + gap,
-        rows,
-        |ui, range| {
-            for row in range {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = gap;
-                    for item in items.iter().skip(row * per_row).take(per_row) {
-                        let picked = tile(ui, item, state, accent, sounds);
-                        item_actions(picked, state, requests);
-                    }
-                });
-                ui.add_space(gap);
-            }
-        },
-    );
-}
-
-/// One thumbnail tile: the picture (or the kind's icon), the kind's
-/// stripe, the name, and a + to place it.
-fn tile<'a>(
-    ui: &mut Ui,
-    item: &'a LibraryItem,
-    state: &LibraryState,
-    accent: Accent,
-    sounds: Sounds<'_>,
-) -> Picked<'a> {
-    let (rect, response) = ui.allocate_exact_size(TILE, egui::Sense::click_and_drag());
-    let selected = state.selected.as_deref() == Some(item.path.as_str());
-    let painter = ui.painter();
-    let picture = egui::Rect::from_min_size(rect.min, egui::vec2(TILE.x, PICTURE));
-    painter.rect_filled(picture, 3.0, theme::field());
-    paint_thumbnail(painter, picture, item, sounds);
-    if item.kind == LibraryKind::SoundEvent {
-        event_badge(ui, item, picture, &response, sounds);
-    }
-    let painter = ui.painter();
-    painter.rect_filled(
-        egui::Rect::from_min_max(
-            egui::pos2(picture.left(), picture.bottom() - 3.0),
-            picture.max,
-        ),
-        0.0,
-        item.colour(),
-    );
-    let name_rect = egui::Rect::from_min_max(egui::pos2(rect.left(), picture.bottom()), rect.max);
-    let galley = ui.painter().layout(
-        item.name.clone(),
-        egui::FontId::proportional(11.5),
-        theme::text(),
-        TILE.x - 4.0,
-    );
-    ui.painter().galley(
-        egui::pos2(name_rect.left() + 2.0, name_rect.top() + 3.0),
-        galley,
-        theme::text(),
-    );
-    if selected {
-        ui.painter().rect_stroke(
-            rect.expand(1.0),
-            4.0,
-            egui::Stroke::new(1.5, accent.colors().light),
-            egui::StrokeKind::Outside,
-        );
-    } else if response.hovered() {
-        ui.painter().rect_stroke(
-            rect.expand(1.0),
-            4.0,
-            egui::Stroke::new(1.0, theme::button_border()),
-            egui::StrokeKind::Outside,
-        );
-    }
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, &item.name)
-    });
-    let response = response.on_hover_text(hint(item));
-    let place = item.kind.placeable() && place_button(ui, item, picture);
-    let listen = listen_button(ui, item, picture, &response, sounds);
-    Picked {
-        item,
-        response,
-        place,
-        listen,
-    }
 }
 
 /// What a file looks like in a tile's square `picture`: a sound's
@@ -1465,6 +1214,7 @@ fn list(
                         response,
                         place,
                         listen,
+                        in_tab: true,
                     },
                     state,
                     requests,

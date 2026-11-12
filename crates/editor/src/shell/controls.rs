@@ -316,7 +316,9 @@ pub(crate) fn with_list(
                 tokens::text_label()
             };
             list_arrow(ui, middle, ink);
-            let clicked = arrow.clicked();
+            // A button that is only a list (the Library's Create) opens
+            // it on a plain click too.
+            let clicked = arrow.clicked() || (command.is_none() && response.clicked());
             arrow.on_hover_text("Lists the other kinds. A right-click on the button does too.");
             (response, clicked)
         }

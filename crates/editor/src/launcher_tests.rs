@@ -519,7 +519,7 @@ fn right_clicking_the_library_offers_new_everywhere() {
     let mut h = harness(w);
     h.run();
     crate::test_support::ribbon_tab(&mut h, crate::shell::RibbonTab::Library);
-    h.get_by_label("+ New").click();
+    h.get_by_label("Create").click();
     h.run();
     for label in [
         "Lust code file",

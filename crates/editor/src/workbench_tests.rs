@@ -2428,7 +2428,7 @@ fn new_sound_event_is_in_the_new_menu() {
     h.run();
     h.state_mut().0.show_tab(crate::shell::RibbonTab::Library);
     h.run();
-    h.get_by_label("+ New").click();
+    h.get_by_label("Create").click();
     h.run();
     h.get_by_label("Sound event").click();
     h.run();

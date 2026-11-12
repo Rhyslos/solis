@@ -8,6 +8,7 @@
 //! hover text.
 
 use super::RibbonTab;
+use crate::library::Filter;
 use crate::menu_items::MenuCommand;
 use crate::play::PlayState;
 use crate::viewport::Tool;
@@ -69,6 +70,18 @@ pub(crate) enum ShellCommand {
     /// Picks one of the toolbox's tools (the build form's Transform
     /// group, where there is no toolbox).
     UseTool(crate::viewport::Tool),
+    /// Makes something in the Library's open folder (its Create list and
+    /// Folder).
+    NewInLibrary(NewFile),
+    /// The Library shows its files as a list (or, off, as tiles).
+    LibraryList,
+    /// The Library's folder tree is out.
+    LibraryFolders,
+    /// The Library shows only one group of kinds.
+    LibraryFilter(crate::library::Filter),
+    /// Places the file picked in the Library where the camera looks, on
+    /// Home (Use › Place).
+    PlacePicked,
     Tab(RibbonTab),
     OpenManual,
     Learn,
@@ -86,9 +99,62 @@ pub(crate) enum ShellCommand {
 
 pub(super) use ShellCommand as C;
 
+/// What the Library's Create list and its Folder button make.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum NewFile {
+    CodeFile,
+    Folder,
+    Area,
+    TileMap,
+    Tileset,
+    Animator,
+    SoundEvent,
+}
+
+impl NewFile {
+    /// Every one, in the Create list's order.
+    pub(crate) const ALL: [Self; 7] = [
+        Self::CodeFile,
+        Self::Folder,
+        Self::Area,
+        Self::TileMap,
+        Self::Tileset,
+        Self::Animator,
+        Self::SoundEvent,
+    ];
+
+    /// Its word in the Create list (the Library's right-click New has
+    /// the same).
+    pub(crate) fn word(self) -> &'static str {
+        match self {
+            Self::CodeFile => "Lust code file",
+            Self::Folder => "Folder",
+            Self::Area => "Area",
+            Self::TileMap => "Tile map",
+            Self::Tileset => "Tileset",
+            Self::Animator => "Animator",
+            Self::SoundEvent => "Sound event",
+        }
+    }
+
+    /// The Library's request that makes it in `folder`.
+    pub(crate) fn request(self, folder: String) -> crate::library::LibraryRequest {
+        use crate::library::LibraryRequest as R;
+        match self {
+            Self::CodeFile => R::NewCodeFile(folder),
+            Self::Folder => R::NewFolder(folder),
+            Self::Area => R::NewArea(folder),
+            Self::TileMap => R::NewTileMap(folder),
+            Self::Tileset => R::NewTileset(folder),
+            Self::Animator => R::NewAnimator(folder),
+            Self::SoundEvent => R::NewSoundEvent(folder),
+        }
+    }
+}
+
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 73] = [
+    pub(crate) const ALL: [Self; 89] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -140,6 +206,22 @@ impl ShellCommand {
         C::UseTool(Tool::Rotate),
         C::UseTool(Tool::Scale),
         C::UseTool(Tool::Transform),
+        C::NewInLibrary(NewFile::CodeFile),
+        C::NewInLibrary(NewFile::Folder),
+        C::NewInLibrary(NewFile::Area),
+        C::NewInLibrary(NewFile::TileMap),
+        C::NewInLibrary(NewFile::Tileset),
+        C::NewInLibrary(NewFile::Animator),
+        C::NewInLibrary(NewFile::SoundEvent),
+        C::LibraryList,
+        C::LibraryFolders,
+        C::LibraryFilter(Filter::All),
+        C::LibraryFilter(Filter::Models),
+        C::LibraryFilter(Filter::Sprites),
+        C::LibraryFilter(Filter::Maps),
+        C::LibraryFilter(Filter::Sounds),
+        C::LibraryFilter(Filter::Code),
+        C::PlacePicked,
         C::Tab(RibbonTab::File),
         C::Tab(RibbonTab::Home),
         C::Tab(RibbonTab::Library),
@@ -210,6 +292,11 @@ impl ShellCommand {
                 }
             }
             C::FoldShelf => when(!w.shell.covers_center(), "This tab has no shelf"),
+            C::NewInLibrary(_) => when(project, "Open or make a project first (File)"),
+            C::PlacePicked => when(
+                w.picked_placeable().is_some(),
+                "Pick a model, an assembly, a sprite sheet or a tile map in the Library first",
+            ),
             C::Tab(tab) => {
                 if tab == w.shell.tab {
                     Some(format!("{} is the tab in front", tab.name()))
@@ -250,6 +337,9 @@ impl ShellCommand {
             C::ProfilerGpu => !w.profiler.hide_gpu,
             C::HideUnfinished => w.interface_look().hide_unfinished,
             C::AutoUpdate => w.auto_update,
+            C::LibraryList => w.open.library_state.list,
+            C::LibraryFolders => w.open.library_state.folders_shown,
+            C::LibraryFilter(filter) => w.open.library_state.filter == filter,
             _ => return None,
         })
     }
@@ -309,6 +399,19 @@ impl ShellCommand {
                 w.hide_unfinished(ctx, hide);
             }
             C::CollapseRibbon => w.set_ribbon_collapsed(!w.shell.collapsed),
+            C::NewInLibrary(new) => {
+                let folder = w.open.library_state.folder.clone();
+                w.library_request(new.request(folder), actions);
+            }
+            C::LibraryList => w.open.library_state.list ^= true,
+            C::LibraryFolders => w.open.library_state.folders_shown ^= true,
+            C::LibraryFilter(filter) => w.open.library_state.filter = filter,
+            C::PlacePicked => {
+                if let Some(id) = w.picked_placeable() {
+                    w.show_tab(RibbonTab::Home);
+                    w.library_request(crate::library::LibraryRequest::Place(id), actions);
+                }
+            }
             C::UseTool(tool) => {
                 w.viewport.tool = tool;
                 w.viewport.tile_overlay.paint.tool = None;

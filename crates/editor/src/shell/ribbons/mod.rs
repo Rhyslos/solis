@@ -24,7 +24,7 @@ pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
     match tab {
         RibbonTab::File | RibbonTab::Ui => Vec::new(),
         RibbonTab::Home => home::groups(w),
-        RibbonTab::Library => library::groups(),
+        RibbonTab::Library => library::groups(w),
         RibbonTab::Shading => shading::groups(),
         RibbonTab::Animate => animate::groups(),
         RibbonTab::Vfx => vfx::groups(),
