@@ -78,10 +78,13 @@ impl Mixed {
 }
 
 /// A field's three numbers as Properties shows them (a rotation in
-/// degrees), if it has three.
+/// degrees, a vec2 with a last 0 it doesn't show), if it has them.
 fn three(field: &FieldInfo, value: &Value) -> Option<[f64; 3]> {
     match field.kind {
         FieldKind::Vec3 => value.as_floats::<3>().map(|v| v.map(f64::from)),
+        FieldKind::Vec2 => value
+            .as_floats::<2>()
+            .map(|[x, y]| [f64::from(x), f64::from(y), 0.0]),
         FieldKind::Rotation => Some(degrees_of(value)),
         _ => None,
     }
@@ -314,22 +317,28 @@ pub(crate) fn field_widget(
         }
         FieldKind::Vec3 => {
             let mut v = value.as_floats::<3>().unwrap_or([0.0; 3]).map(f64::from);
-            let part = three_numbers(ui, &mut v, field, mixed.parts);
+            let part = numbers(ui, &mut v, field, &mixed.parts);
+            part.map(|p| (Value::floats(&v.map(|c| c as f32)), Some(p)))
+        }
+        FieldKind::Vec2 => {
+            let mut v = value.as_floats::<2>().unwrap_or([0.0; 2]).map(f64::from);
+            let part = numbers(ui, &mut v, field, &mixed.parts[..2]);
             part.map(|p| (Value::floats(&v.map(|c| c as f32)), Some(p)))
         }
         FieldKind::Rotation => {
             let mut degrees = degrees_of(value);
-            let part = three_numbers(ui, &mut degrees, field, mixed.parts);
+            let part = numbers(ui, &mut degrees, field, &mixed.parts);
             part.map(|p| (rotation_of(degrees), Some(p)))
         }
         FieldKind::Color => {
-            let c = value.as_floats::<3>().unwrap_or([1.0; 3]);
-            let mut bytes = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            whole(
-                ui.color_edit_button_srgb(&mut bytes)
-                    .changed()
-                    .then(|| Value::floats(&bytes.map(|b| f32::from(b) / 255.0))),
-            )
+            // Game code's colours may be see-through: the picker sets the
+            // colour and keeps that.
+            let [r, g, b, a] = value.as_colour().unwrap_or([1.0; 4]);
+            let mut bytes = [r, g, b].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
+            whole(ui.color_edit_button_srgb(&mut bytes).changed().then(|| {
+                let [r, g, b] = bytes.map(|b| f32::from(b) / 255.0);
+                Value::colour([r, g, b, a])
+            }))
         }
         FieldKind::Asset => {
             let text = match value {
@@ -742,16 +751,18 @@ fn entity_picker(ui: &mut Ui, value: &Value, area: &area::Area, mixed: bool) -> 
     chosen.filter(|v| mixed || *v != *value)
 }
 
-/// Three numbers side by side, each with its axis letter, sharing the
-/// room. Returns which changed, and to what.
-fn three_numbers(
+/// Two or three numbers side by side (a vec2, a place, a rotation), each
+/// with its axis letter, sharing the room. Returns which changed, and to
+/// what.
+fn numbers(
     ui: &mut Ui,
-    values: &mut [f64; 3],
+    values: &mut [f64],
     field: &FieldInfo,
-    mixed: [bool; 3],
+    mixed: &[bool],
 ) -> Option<(usize, f64)> {
     let gap = ui.spacing().item_spacing.x;
-    let width = ((ui.available_width() - 2.0 * gap) / 3.0).max(size::FIELD_MIN_W / 3.0);
+    let n = values.len() as f32;
+    let width = ((ui.available_width() - (n - 1.0) * gap) / n).max(size::FIELD_MIN_W / 3.0);
     let mut part = None;
     for (i, (c, axis)) in values.iter_mut().zip(widgets::field::Axis::ALL).enumerate() {
         if number(ui, c, field, (mixed[i], Some(axis), width)) {

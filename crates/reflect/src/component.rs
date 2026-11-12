@@ -109,12 +109,13 @@ impl Fields<'_> {
             .map_or(default, keep_unit)
     }
 
-    /// Three numbers kept between 0 and 1: a colour.
+    /// Three numbers kept between 0 and 1: a colour (its see-through, if
+    /// it has one, is left out).
     pub fn color(&self, name: &str, default: [f32; 3]) -> [f32; 3] {
         self.0
             .get(name)
-            .and_then(Value::as_floats::<3>)
-            .map_or(default, |c| c.map(|v| v.clamp(0.0, 1.0)))
+            .and_then(Value::as_colour)
+            .map_or(default, |[r, g, b, _]| [r, g, b].map(|v| v.clamp(0.0, 1.0)))
     }
 
     /// An asset reference.

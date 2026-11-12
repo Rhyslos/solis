@@ -1,10 +1,12 @@
 //! Values between the editor's kinds (`reflect`) and how Lust keeps them
 //! in Luau: numbers, text, Luau vectors for `vec3` (a table with `x`, `y`,
-//! `z` is taken too), `{x, y, z, w}` rotations (quaternions), and entities
-//! as their 13-letter text. Tables are read
-//! and written raw, so game code's metatables never run here.
+//! `z` is taken too), `{x, y, z, w}` rotations (quaternions), `{x, y}`
+//! tables for `vec2`, `{r, g, b, a}` tables for `colour` (Solis's colour,
+//! with its see-through kept when it isn't 1, `Value::colour`), and
+//! entities as their 13-letter text. Tables are read and written raw, so
+//! game code's metatables never run here.
 
-use glam::{Quat, Vec3};
+use glam::{Quat, Vec2, Vec3};
 use mlua::{Lua, Table, Value as LuaValue};
 use reflect::{EntityId, FieldKind, Value};
 
@@ -17,6 +19,8 @@ pub(crate) fn kind_of(name: &str, options: Vec<String>) -> Option<FieldKind> {
         "string" => FieldKind::Text,
         "state" => FieldKind::Choice(options),
         "vec3" => FieldKind::Vec3,
+        "vec2" => FieldKind::Vec2,
+        "colour" => FieldKind::Color,
         "rotation" => FieldKind::Rotation,
         "entity" => FieldKind::Entity,
         _ => return None,
@@ -31,6 +35,7 @@ pub(crate) fn empty(kind: &FieldKind) -> Value {
         FieldKind::Float => Value::Float(0.0),
         FieldKind::Choice(options) => Value::Text(options.first().cloned().unwrap_or_default()),
         FieldKind::Vec3 | FieldKind::Color => Value::floats(&[0.0, 0.0, 0.0]),
+        FieldKind::Vec2 => Value::floats(&[0.0, 0.0]),
         FieldKind::Rotation => Value::floats(&[0.0, 0.0, 0.0, 1.0]),
         FieldKind::Entity => Value::Entity(None),
         FieldKind::Asset => Value::Asset(None),
@@ -85,6 +90,44 @@ pub(crate) fn vec3_of(value: &LuaValue) -> Option<Vec3> {
         _ => return None,
     };
     v.is_finite().then_some(v)
+}
+
+/// A vec2 as game code gives it: a table with `x` and `y`, or a Luau
+/// vector (its z left out), as Lust takes one from a native.
+pub(crate) fn vec2_of(value: &LuaValue) -> Option<Vec2> {
+    let v = match value {
+        LuaValue::Vector(v) => Vec2::new(v.x(), v.y()),
+        LuaValue::Table(table) => {
+            let n = |k: &str| number(&table.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
+            Vec2::new(n("x")?, n("y")?)
+        }
+        _ => return None,
+    };
+    v.is_finite().then_some(v)
+}
+
+/// A colour as game code gives it: a table with `r`, `g` and `b`, and
+/// `a` (1 when it's left out), each kept between 0 and 1 as Lust keeps
+/// them.
+pub(crate) fn colour_of(value: &LuaValue) -> Option<[f32; 4]> {
+    let LuaValue::Table(table) = value else {
+        return None;
+    };
+    let n = |k: &str| number(&table.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
+    let a = match table.raw_get::<LuaValue>("a").ok()? {
+        LuaValue::Nil => 1.0,
+        _ => n("a")?,
+    };
+    Some([n("r")?, n("g")?, n("b")?, a].map(|v| v.clamp(0.0, 1.0)))
+}
+
+/// A table with these keys and numbers, as Lust keeps a vec2 or colour.
+fn numbers_table(lua: &Lua, keys: &[&str], values: &[f32]) -> mlua::Result<Table> {
+    let t = lua.create_table_with_capacity(0, keys.len())?;
+    for (k, v) in keys.iter().zip(values) {
+        t.raw_set(*k, *v)?;
+    }
+    Ok(t)
 }
 
 /// A vec3 as Lust keeps it in Luau: a Luau vector.
@@ -147,6 +190,13 @@ pub(crate) fn to_lua(lua: &Lua, kind: &FieldKind, value: &Value) -> Option<LuaVa
             let [x, y, z] = v.as_floats::<3>()?;
             vec3_value(Vec3::new(x, y, z))
         }
+        (FieldKind::Vec2, v) => {
+            LuaValue::Table(numbers_table(lua, &["x", "y"], &v.as_floats::<2>()?).ok()?)
+        }
+        (FieldKind::Color, v) => {
+            let colour = v.as_colour()?.map(|c| c.clamp(0.0, 1.0));
+            LuaValue::Table(numbers_table(lua, &["r", "g", "b", "a"], &colour).ok()?)
+        }
         (FieldKind::Rotation, v) => {
             let [x, y, z, w] = v.as_floats::<4>()?;
             LuaValue::Table(quat_table(lua, Quat::from_xyzw(x, y, z, w)).ok()?)
@@ -177,6 +227,10 @@ pub(crate) fn from_lua(kind: &FieldKind, value: &LuaValue) -> Option<Value> {
             let v = vec3_of(v)?;
             Value::floats(&[v.x, v.y, v.z])
         }
+        (FieldKind::Vec2, v @ (LuaValue::Vector(_) | LuaValue::Table(_))) => {
+            Value::vec2(vec2_of(v)?)
+        }
+        (FieldKind::Color, v) => Value::colour(colour_of(v)?),
         (FieldKind::Rotation, LuaValue::Table(t)) => {
             let n = |k: &str| number(&t.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
             Value::floats(&[n("x")?, n("y")?, n("z")?, n("w")?])
@@ -190,7 +244,8 @@ pub(crate) fn from_lua(kind: &FieldKind, value: &LuaValue) -> Option<Value> {
 /// A Lua value as the editor's, guessing its kind (for an event no Lust
 /// declares, sent from Lua): a number is a float (Lua has one kind of
 /// number, so `2` and `2.5` arrive alike), a table with `x`, `y`, `z`
-/// (and `w`) a vector (or rotation), nil an empty entity.
+/// (and `w`) a vector (or rotation), one with only `x` and `y` a vec2, one
+/// with `r` a colour, nil an empty entity.
 pub(crate) fn guessed(value: &LuaValue) -> Option<Value> {
     Some(match value {
         LuaValue::Nil => Value::Entity(None),
@@ -200,19 +255,28 @@ pub(crate) fn guessed(value: &LuaValue) -> Option<Value> {
         LuaValue::String(s) => Value::Text(s.to_str().ok()?.to_string()),
         LuaValue::Vector(_) => from_lua(&FieldKind::Vec3, value)?,
         LuaValue::Table(t) => {
-            let has_w = !matches!(t.raw_get::<LuaValue>("w").ok()?, LuaValue::Nil);
-            if has_w {
-                from_lua(&FieldKind::Rotation, value)?
+            let has = |k: &str| {
+                t.raw_get::<LuaValue>(k)
+                    .is_ok_and(|v| !matches!(v, LuaValue::Nil))
+            };
+            let kind = if has("r") {
+                FieldKind::Color
+            } else if has("w") {
+                FieldKind::Rotation
+            } else if has("z") {
+                FieldKind::Vec3
             } else {
-                from_lua(&FieldKind::Vec3, value)?
-            }
+                FieldKind::Vec2
+            };
+            from_lua(&kind, value)?
         }
         _ => return None,
     })
 }
 
 /// An editor value as Lua takes it, by its own kind (for an event no Lust
-/// declares).
+/// declares): four numbers are a rotation, three a vector and two a vec2,
+/// so a colour arrives as its numbers.
 pub(crate) fn guessed_to_lua(lua: &Lua, value: &Value) -> Option<LuaValue> {
     let kind = match value {
         Value::Bool(_) => FieldKind::Bool,
@@ -221,6 +285,7 @@ pub(crate) fn guessed_to_lua(lua: &Lua, value: &Value) -> Option<LuaValue> {
         Value::Text(_) => FieldKind::Text,
         Value::Entity(_) => FieldKind::Entity,
         Value::List(items) if items.len() == 4 => FieldKind::Rotation,
+        Value::List(items) if items.len() == 2 => FieldKind::Vec2,
         Value::List(_) => FieldKind::Vec3,
         Value::Asset(_) => return None,
     };
@@ -249,6 +314,16 @@ mod tests {
             (f(), f(), f()).prop_map(|(x, y, z)| (FieldKind::Vec3, Value::floats(&[x, y, z]))),
             (f(), f(), f(), f())
                 .prop_map(|(x, y, z, w)| (FieldKind::Rotation, Value::floats(&[x, y, z, w]))),
+            (f(), f()).prop_map(|(x, y)| (FieldKind::Vec2, Value::floats(&[x, y]))),
+            // Lust keeps a colour's parts between 0 and 1; one fully solid
+            // a time in four, as most are.
+            (
+                0.0f32..=1.0,
+                0.0f32..=1.0,
+                0.0f32..=1.0,
+                prop_oneof![Just(1.0f32), 0.0f32..=1.0]
+            )
+                .prop_map(|(r, g, b, a)| (FieldKind::Color, Value::colour([r, g, b, a]))),
             any::<u64>().prop_map(|n| (
                 FieldKind::Entity,
                 Value::Entity(reflect::Id::from_raw(n).map(EntityId))
@@ -296,6 +371,7 @@ mod tests {
             FieldKind::Text,
             FieldKind::Choice(vec!["A".into()]),
             FieldKind::Vec3,
+            FieldKind::Vec2,
             FieldKind::Color,
             FieldKind::Rotation,
             FieldKind::Entity,
@@ -311,6 +387,60 @@ mod tests {
         assert_eq!(
             empty(&FieldKind::Choice(vec!["A".into()])),
             Value::Text("A".into())
+        );
+    }
+
+    #[test]
+    fn a_vec2_comes_as_a_table_or_a_vector_and_only_finite() {
+        let lua = Lua::new();
+        let table = lua.create_table().unwrap();
+        table.raw_set("x", 3).unwrap();
+        table.raw_set("y", 4.5).unwrap();
+        assert_eq!(
+            vec2_of(&LuaValue::Table(table.clone())),
+            Some(Vec2::new(3.0, 4.5))
+        );
+        let v = LuaValue::Vector(mlua::Vector::new(1.0, 2.0, 9.0));
+        assert_eq!(vec2_of(&v), Some(Vec2::new(1.0, 2.0)), "its z left out");
+        table.raw_set("y", f64::INFINITY).unwrap();
+        assert_eq!(vec2_of(&LuaValue::Table(table.clone())), None);
+        table.raw_set("y", "four").unwrap();
+        assert_eq!(vec2_of(&LuaValue::Table(table)), None);
+        assert_eq!(vec2_of(&LuaValue::Integer(2)), None);
+        let there = to_lua(&lua, &FieldKind::Vec2, &Value::floats(&[3.0, 4.5])).unwrap();
+        let LuaValue::Table(there) = there else {
+            panic!("a vec2 is a table in Lust")
+        };
+        assert_eq!(there.raw_get::<f32>("x").unwrap(), 3.0);
+        assert_eq!(there.raw_get::<LuaValue>("z").unwrap(), LuaValue::Nil);
+    }
+
+    #[test]
+    fn a_colour_is_kept_between_0_and_1_and_solid_when_its_see_through_is_left_out() {
+        let lua = Lua::new();
+        let table = lua.create_table().unwrap();
+        table.raw_set("r", 2.0).unwrap();
+        table.raw_set("g", 0.5).unwrap();
+        table.raw_set("b", -1).unwrap();
+        assert_eq!(
+            from_lua(&FieldKind::Color, &LuaValue::Table(table.clone())),
+            Some(Value::floats(&[1.0, 0.5, 0.0])),
+            "no a: fully solid, kept as three numbers"
+        );
+        table.raw_set("a", 0.25).unwrap();
+        assert_eq!(
+            from_lua(&FieldKind::Color, &LuaValue::Table(table.clone())),
+            Some(Value::floats(&[1.0, 0.5, 0.0, 0.25]))
+        );
+        table.raw_set("a", "half").unwrap();
+        assert_eq!(from_lua(&FieldKind::Color, &LuaValue::Table(table)), None);
+        // A colour the area holds out of range (written by hand) reaches
+        // game code within 0 and 1, solid when it has three numbers.
+        let there = to_lua(&lua, &FieldKind::Color, &Value::floats(&[1.5, 0.5, -2.0])).unwrap();
+        assert_eq!(colour_of(&there), Some([1.0, 0.5, 0.0, 1.0]));
+        assert_eq!(
+            colour_of(&LuaValue::Vector(mlua::Vector::new(1.0, 1.0, 1.0))),
+            None
         );
     }
 

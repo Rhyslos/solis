@@ -1639,3 +1639,7 @@ mod objects_tests;
 #[cfg(test)]
 #[path = "game_clock_tests.rs"]
 mod clock_tests;
+
+#[cfg(test)]
+#[path = "game_tweens_tests.rs"]
+mod tweens_tests;

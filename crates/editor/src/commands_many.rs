@@ -50,6 +50,11 @@ impl Workbench {
                         v[i] = x as f32;
                         Value::floats(&v)
                     }
+                    (Some((i, x)), FieldKind::Vec2) if i < 2 => {
+                        let mut v = old.as_floats::<2>().unwrap_or([0.0; 2]);
+                        v[i] = x as f32;
+                        Value::floats(&v)
+                    }
                     (Some((i, x)), FieldKind::Rotation) if i < 3 => {
                         let mut d = degrees_of(old);
                         d[i] = x;

@@ -1,5 +1,6 @@
-//! Checks a data file before Lust does. Lust (rev 930afae) has no budget:
-//! each mistake it finds is compared with every one before it, and a name
+//! Checks a data file before Lust does. Lust (measured at rev 930afae;
+//! the same at 2.0.0-alpha.67, rev ee12407) has no budget: each mistake
+//! it finds is compared with every one before it, and a name
 //! it can't find with every name it knows, so a file with thousands of
 //! mistakes takes it time that grows with their square (200 KB of `@`: 43
 //! seconds; 25,000 values of something unknown: more than a minute). A

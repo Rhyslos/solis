@@ -228,9 +228,8 @@ impl Component for Sprite {
         let f = Fields(data);
         let colour = |name: &str, default: [f32; 3]| {
             data.get(name)
-                .and_then(Value::as_floats::<3>)
-                .filter(|c| c.iter().all(|v| v.is_finite()))
-                .map_or(default, |c| c.map(|v| v.clamp(0.0, 1.0)))
+                .and_then(Value::as_colour)
+                .map_or(default, |[r, g, b, _]| [r, g, b].map(|v| v.clamp(0.0, 1.0)))
         };
         let flash = f.float("flash", d.flash);
         let within = |v: f32, hi: f32, standard: f32| {
