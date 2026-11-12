@@ -60,9 +60,19 @@ pub(crate) fn center(
     };
     for (index, (docs, place)) in documents.iter().zip(places).enumerate() {
         let front = shell.arrangement(tab).front_of(index, docs);
-        let strip = place.with_max_y(place.top() + size::DOC_TAB_H);
+        // A page (Build's Export for playtesting) has no tab strip.
+        let strip_h = if *docs == [Panel::Export] {
+            0.0
+        } else {
+            size::DOC_TAB_H
+        };
+        let strip = place.with_max_y(place.top() + strip_h);
         let body = place.with_min_y(strip.bottom());
-        let chosen = tab_strip(ui, strip, (tab, index), docs, front, viewer, &mut asks);
+        let chosen = if strip_h > 0.0 {
+            tab_strip(ui, strip, (tab, index), docs, front, viewer, &mut asks)
+        } else {
+            None
+        };
         if let Some(chosen) = chosen {
             shell.arrangement_mut(tab).front[index] = Some(chosen);
         }

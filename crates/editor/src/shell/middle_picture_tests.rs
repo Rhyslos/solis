@@ -15,7 +15,7 @@ const SIZES: [[f32; 2]; 2] = [[1440.0, 900.0], [1100.0, 700.0]];
 
 /// The tabs with a screen of their own, each with the design's picture
 /// of it where the design has one.
-const TABS: [(RibbonTab, &str, Option<&str>); 6] = [
+const TABS: [(RibbonTab, &str, Option<&str>); 7] = [
     (RibbonTab::Home, "home", Some("01-home-level-editor.png")),
     (RibbonTab::Library, "library", Some("03-library.png")),
     (
@@ -30,6 +30,7 @@ const TABS: [(RibbonTab, &str, Option<&str>); 6] = [
         "debug",
         Some("06-debug-profiler-and-console.png"),
     ),
+    (RibbonTab::Build, "build", None),
 ];
 
 /// The sample project with `tab` in front, drawn at `size`.
@@ -128,8 +129,10 @@ fn the_shelf_and_the_status_bar_are_the_design_s_colours() {
 fn every_tab_s_screen_is_its_approved_picture() {
     // Home is `editor.png` (`picture_tests.rs`). Debug's center shows the
     // Profiler's times, which are this machine's and this moment's: it is
-    // looked at, not compared.
-    let compared = |tab: &RibbonTab| !matches!(tab, RibbonTab::Home | RibbonTab::Debug);
+    // looked at, not compared; Build's Console in front shows the times
+    // of day its lines were written.
+    let compared =
+        |tab: &RibbonTab| !matches!(tab, RibbonTab::Home | RibbonTab::Debug | RibbonTab::Build);
     for (tab, name, _) in TABS.into_iter().filter(|(tab, ..)| compared(tab)) {
         let Some(picture) = tab_picture(tab, SIZES[0]) else {
             return;

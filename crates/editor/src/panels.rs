@@ -223,6 +223,7 @@ impl PanelViewer<'_> {
             | Panel::Mixer
             | Panel::Bus
             | Panel::SoundEvents
+            | Panel::Export
             | Panel::Terrains
             | Panel::Crops
             | Panel::Parameters
@@ -259,6 +260,7 @@ impl PanelViewer<'_> {
             | Panel::Mixer
             | Panel::Bus
             | Panel::SoundEvents
+            | Panel::Export
             | Panel::Terrains
             | Panel::Crops
             | Panel::Parameters
@@ -541,6 +543,9 @@ impl PanelViewer<'_> {
                 let requests = crate::bus_view::bus(ui, self.mixer);
                 self.mixer_requests.extend(requests);
             }
+            // Drawn by the workbench once the frame is laid out
+            // (`Workbench::build_page`): it needs the whole workbench.
+            Panel::Export => {}
             Panel::SoundEvents => {
                 let (mixer, library) = crate::sound_events_view::sound_events(
                     ui,

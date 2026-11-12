@@ -226,7 +226,7 @@ fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut Pane
         );
         return;
     }
-    if matches!(tab, RibbonTab::Home | RibbonTab::Build) {
+    if tab == RibbonTab::Home {
         let parts = vec![
             Entry::Unbuilt(UnbuiltId::HomeShelfFrameCounter),
             Entry::Unbuilt(UnbuiltId::HomeShelfTransport),

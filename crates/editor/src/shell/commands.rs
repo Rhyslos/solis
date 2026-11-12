@@ -160,6 +160,8 @@ pub(crate) enum ShellCommand {
     MuteGame,
     /// How many sounds play at once: this many.
     HeardAtOnce(u16),
+    /// Shows the last export's folder (Build › Playtest).
+    OpenExportFolder,
     Tab(RibbonTab),
     OpenManual,
     Learn,
@@ -232,7 +234,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 136] = [
+    pub(crate) const ALL: [Self; 137] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -347,6 +349,7 @@ impl ShellCommand {
         C::RemoveBus,
         C::ClearSolo,
         C::MuteGame,
+        C::OpenExportFolder,
         C::Tab(RibbonTab::File),
         C::Tab(RibbonTab::Home),
         C::Tab(RibbonTab::Library),
@@ -392,6 +395,13 @@ impl ShellCommand {
             | C::MakeBenchmark
             | C::MakePlayground => when(!playing, STOP_FIRST),
             C::ExportPlaytest => when(project, "Open a project first"),
+            C::OpenExportFolder => when(
+                w.open
+                    .export
+                    .as_ref()
+                    .is_some_and(|form| matches!(form.done, Some(Ok(_)))),
+                "Export once first: this opens the folder it made",
+            ),
             C::NewTileMap => when(
                 project,
                 "Tile maps are kept in a project: open or make one first",
@@ -647,6 +657,11 @@ impl ShellCommand {
                 actions.push(WorkbenchAction::SetAutoUpdate(w.auto_update));
             }
             C::About => w.show_file_page(crate::file_pages::Page::About),
+            C::OpenExportFolder => {
+                if let Some(Some(Ok(folder))) = w.open.export.as_ref().map(|f| f.done.clone()) {
+                    actions.push(WorkbenchAction::ShowFolder(folder));
+                }
+            }
             _ => {}
         }
     }

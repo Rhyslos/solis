@@ -52,7 +52,13 @@ unbuilt! {
     HomeLightingBake: "home.lighting.bake" => ("Bake", ThreeD5, "Works out bounced light for the area"),
     HomeLightingQuality: "home.lighting.quality" => ("Quality", ThreeD5, "Chooses how carefully bounced light is worked out"),
     HomeLightingLightmapView: "home.lighting.lightmap-view" => ("Light map view", ThreeD5, "Shows the worked-out light on its own in the viewport"),
-    BuildTargets: "build.targets" => ("Build targets", Shared11, "Builds the finished game for each platform, with a log of the build"),
+    BuildTargets: "build.targets" => ("Targets and the full export", Shared11, "A finished game for Windows: an installer, your game's own Rust code built in, and a list of targets to build"),
+    BuildTargetWindows: "build.target.windows" => ("Windows", Shared11, "Builds the finished game for Windows"),
+    BuildTargetPlatforms: "build.target.platforms" => ("Platforms", Shared11, "Chooses which platforms the finished game is built for"),
+    BuildFull: "build.full" => ("Build", Shared11, "Builds the finished game, ready to hand out"),
+    BuildInstaller: "build.installer" => ("Installer", Shared11, "Wraps the finished game in an installer"),
+    BuildRustCode: "build.rust-code" => ("Your Rust code", Shared11, "Builds your game's own Rust code into the finished game"),
+    BuildLog: "build.log" => ("Build log", Shared11, "Everything a build says, step by step"),
     HomeToolPose: "home.tool.pose" => ("Pose bones", ThreeD1, "Turns a model's bones by hand to pose it"),
     HomeToolMotionPath: "home.tool.motion-path" => ("Motion path", Shared4, "Draws a path in the viewport for things to move along"),
     HomeToolAddKey: "home.tool.add-key" => ("Add key", Shared10, "Records the selected entity's place at this moment of a cutscene"),
@@ -158,7 +164,7 @@ unbuilt! {
     PrefsCodeSplit: "prefs.code-split" => ("Code editor split", NotPlanned, "Shows game code next to the viewport when a code file is open"),
 
     // Library: the model viewer, a whole screen.
-    MeshTab: "mesh.tab" => ("Model", NotPlanned, "A viewer for one model: its shape, its picture layout and its levels of detail"),
+    MeshTab: "mesh.tab" => ("Model viewer", NotPlanned, "A model on its own: its levels of detail, its picture's layout, where it joins and how it was imported"),
     MeshViewLit: "mesh.view.lit" => ("Lit", NotPlanned, "Shows the model lit, as the game draws it"),
     MeshViewUnlit: "mesh.view.unlit" => ("Unlit", NotPlanned, "Shows the model's own colours with no light"),
     MeshViewWire: "mesh.view.wire" => ("Wire", NotPlanned, "Shows the model's triangles as lines"),

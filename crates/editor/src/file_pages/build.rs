@@ -9,6 +9,7 @@ use super::settings::Setting;
 use super::{plain, sentence};
 use crate::export_dialog::{ExportRequest, game_name, usable_area};
 use crate::tokens::{self, size, text};
+use crate::unbuilt::{self, UnbuiltId};
 use crate::widgets::{self, button::Button, field, segmented::segmented};
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui::Ui;
@@ -190,5 +191,76 @@ impl Workbench {
         if let Some(folder) = open {
             self.open.outbox.push(WorkbenchAction::ShowFolder(folder));
         }
+    }
+}
+
+impl Workbench {
+    /// The Build tab's page (round 3, `10-build-tab`): Export for
+    /// playtesting in the File pages' pattern, in `rect` (where the
+    /// shell put `Panel::Export`), with what goes in the folder and the
+    /// unfinished targets beside it.
+    pub(crate) fn build_page(
+        &mut self,
+        ui: &mut Ui,
+        rect: egui::Rect,
+        asked: &mut Vec<WorkbenchAction>,
+    ) {
+        let [pad_y, pad_x] = size::FILE_PAGE_PAD;
+        let mut page = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(rect.shrink2(egui::vec2(pad_x, pad_y)))
+                .id_salt("build page")
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        );
+        page.set_clip_rect(rect.intersect(ui.clip_rect()));
+        ui.painter().rect_filled(rect, 0.0, tokens::shelf_bar());
+        if self.open.project.is_none() {
+            plain(
+                &mut page,
+                "Open or make a project first (File): an export is made from a project.",
+                text::ui(),
+                tokens::text_meta(),
+            );
+            return;
+        }
+        if self.open.export.is_none() {
+            self.prepare_export();
+        }
+        let name = self
+            .open
+            .export
+            .as_ref()
+            .map_or_else(String::new, |f| game_name(&f.playtest.name));
+        let subtitle = format!(
+            "A folder to zip and send. Your friend runs {name}.exe inside it: no {} needed.",
+            self.info.name
+        );
+        super::page_head(&mut page, "Export for playtesting", &subtitle, |_| {});
+        page.add_space(size::PAGE_BLOCK_GAP);
+        egui::ScrollArea::vertical()
+            .id_salt("build page rows")
+            .auto_shrink([false, false])
+            .show(&mut page, |ui| {
+                super::with_side(
+                    ui,
+                    &mut (self, asked),
+                    |ui, (w, asked)| {
+                        for setting in [
+                            Setting::GameName,
+                            Setting::StartsIn,
+                            Setting::ExportFolder,
+                            Setting::Window,
+                        ] {
+                            w.setting(ui, setting, asked);
+                        }
+                    },
+                    |ui, (w, _)| {
+                        w.export_card(ui);
+                        if !unbuilt::hidden() {
+                            unbuilt::card(ui, UnbuiltId::BuildTargets);
+                        }
+                    },
+                );
+            });
     }
 }

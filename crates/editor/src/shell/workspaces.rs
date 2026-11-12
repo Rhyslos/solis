@@ -226,7 +226,9 @@ pub struct OpenNow {
 pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
     use Panel as P;
     let groups: Vec<Vec<Panel>> = match tab {
-        RibbonTab::Home | RibbonTab::Build => {
+        // Export for playtesting is Build's page (round 3).
+        RibbonTab::Build => vec![vec![P::Export]],
+        RibbonTab::Home => {
             let mut area = vec![P::Viewport];
             if open.playing {
                 area.push(P::Game);
@@ -252,7 +254,8 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         | RibbonTab::Vfx
         | RibbonTab::Animate
         | RibbonTab::Tileset
-        | RibbonTab::Picture => Vec::new(),
+        | RibbonTab::Picture
+        | RibbonTab::Model => Vec::new(),
     };
     groups
 }
@@ -262,7 +265,12 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
 pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
     use ShelfTab as S;
     let mut tabs = match tab {
-        RibbonTab::Home | RibbonTab::Build => vec![
+        RibbonTab::Build => vec![
+            Entry::Built(S::Console),
+            Entry::Built(S::Problems),
+            Entry::Unbuilt(UnbuiltId::BuildLog),
+        ],
+        RibbonTab::Home => vec![
             Entry::Built(S::Place),
             Entry::Built(S::Entity),
             Entry::Unbuilt(UnbuiltId::HomeShelfAnimation),
@@ -310,9 +318,10 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
         | RibbonTab::Shading
         | RibbonTab::Vfx
         | RibbonTab::Tileset
-        | RibbonTab::Picture => Vec::new(),
+        | RibbonTab::Picture
+        | RibbonTab::Model => Vec::new(),
     };
-    if matches!(tab, RibbonTab::Home | RibbonTab::Build) && open.map {
+    if tab == RibbonTab::Home && open.map {
         tabs.push(Entry::Built(S::Map));
     }
     if tab == RibbonTab::Animate {
@@ -440,7 +449,7 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
 /// The ribbon tab that shows `panel` when the one in front doesn't: the
 /// first, in this order, that has it.
 pub fn tab_for(panel: Panel, open: OpenNow) -> Option<RibbonTab> {
-    const ORDER: [RibbonTab; 8] = [
+    const ORDER: [RibbonTab; 9] = [
         RibbonTab::Home,
         RibbonTab::Library,
         RibbonTab::Tileset,
@@ -449,6 +458,7 @@ pub fn tab_for(panel: Panel, open: OpenNow) -> Option<RibbonTab> {
         RibbonTab::Ui,
         RibbonTab::Audio,
         RibbonTab::Debug,
+        RibbonTab::Build,
     ];
     ORDER
         .into_iter()

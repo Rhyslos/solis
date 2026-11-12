@@ -12,6 +12,7 @@ mod build;
 mod debug;
 mod home;
 mod library;
+mod model;
 mod picture;
 mod shading;
 mod tile_map;
@@ -28,7 +29,7 @@ pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
     match tab {
         RibbonTab::File => Vec::new(),
         RibbonTab::Ui => ui::groups(w),
-        RibbonTab::Home | RibbonTab::Build if w.map_tools_in_front() => tile_map::groups(w),
+        RibbonTab::Home if w.map_tools_in_front() => tile_map::groups(w),
         RibbonTab::Home => home::groups(w),
         RibbonTab::Library => library::groups(w),
         RibbonTab::Shading => shading::groups(),
@@ -36,9 +37,10 @@ pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
         RibbonTab::Vfx => vfx::groups(),
         RibbonTab::Audio => audio::groups(w),
         RibbonTab::Debug => debug::groups(),
-        RibbonTab::Build => build::groups(),
+        RibbonTab::Build => build::groups(w),
         RibbonTab::Tileset => tileset::groups(w),
         RibbonTab::Picture => picture::groups(w),
+        RibbonTab::Model => model::groups(),
     }
 }
 

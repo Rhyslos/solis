@@ -77,11 +77,14 @@ pub enum Panel {
     /// The project's sound events as a table, and the one picked: the
     /// Audio tab's Sound events shelf tab.
     SoundEvents,
+    /// Export for playtesting as a page: the Build tab's middle (round
+    /// 3, `10-build-tab`). The workbench draws it where the shell puts it.
+    Export,
 }
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 15] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -96,6 +99,7 @@ impl Panel {
         Self::Placement,
         Self::Bus,
         Self::SoundEvents,
+        Self::Export,
     ];
 
     /// Panels that come and go with what's open (a clips file), never in
@@ -159,6 +163,7 @@ impl Panel {
             Self::Pictures => "Pictures",
             Self::Bus => "Bus",
             Self::SoundEvents => "Sound events",
+            Self::Export => "Export for playtesting",
         }
     }
 
@@ -193,6 +198,7 @@ impl Panel {
             Self::Pictures => Icon::Picture,
             Self::Bus => Icon::Sliders,
             Self::SoundEvents => Icon::SoundEvent,
+            Self::Export => Icon::Build,
         }
     }
 }

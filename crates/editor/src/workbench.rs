@@ -1185,6 +1185,13 @@ impl Workbench {
         self.in_front = shown;
         self.pointer_over = frames_out.pointer_over;
         self.doc_asks(asks, ui.ctx(), &mut actions);
+        if let Some(rect) = self.shell.drawn_at(Panel::Export) {
+            let mut asked = Vec::new();
+            self.build_page(ui, rect, &mut asked);
+            for action in asked {
+                self.request(action, &mut actions);
+            }
+        }
         self.frames_tabs_done(frames_out);
         self.map_requests_done(map_requests);
         self.tile_overlay_done();

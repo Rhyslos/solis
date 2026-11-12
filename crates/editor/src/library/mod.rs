@@ -172,6 +172,9 @@ pub(crate) enum LibraryRequest {
     AtlasCrop(String),
     /// Add a sound file (by its asset ID) to a sound event's takes.
     AddTake(String, AssetId),
+    /// Look at the model at this path in the model viewer (not built
+    /// yet: its tab, ribbon and page; round 3, `11-unbuilt-model-viewer`).
+    ViewModel(String),
 }
 
 /// The sound files the app has measured, by path inside the assets, and
@@ -722,6 +725,13 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
                 .clicked()
         {
             requests.push(LibraryRequest::AtlasCrop(item.path.clone()));
+            ui.close();
+        }
+        if item.kind == LibraryKind::Model
+            && !crate::unbuilt::hidden()
+            && ui.button("Open in the model viewer").clicked()
+        {
+            requests.push(LibraryRequest::ViewModel(item.path.clone()));
             ui.close();
         }
         if item.kind == LibraryKind::Sound && ui.button("Play").clicked() {

@@ -184,6 +184,7 @@ impl ShellCommand {
             C::AddDuckingRule => "Add a ducking rule",
             C::RemoveBus => "Remove the bus",
             C::ClearSolo => "Clear solo",
+            C::OpenExportFolder => "Open the export's folder",
             // Named by `name`, from what the editor holds.
             C::Undo
             | C::Redo
@@ -252,7 +253,7 @@ impl ShellCommand {
             | C::LibraryFolders
             | C::LibraryFilter(_)
             | C::PlacePicked => "Library",
-            C::ExportPlaytest => "Build",
+            C::ExportPlaytest | C::OpenExportFolder => "Build",
             C::LoadSave
             | C::PlayAndRecord
             | C::ReplayRecording
@@ -456,6 +457,7 @@ impl ShellCommand {
             }
             C::RemoveBus => "Buses inside it move up; sound events on it play through Master",
             C::ClearSolo => "Hears every bus again",
+            C::OpenExportFolder => "Shows the folder the last export made, to zip and send",
             C::MuteGame => "Silences the game while you work; the game's sound isn't changed",
             C::HeardAtOnce(_) => {
                 "How many sounds play at once: when more want to, the most important are heard \

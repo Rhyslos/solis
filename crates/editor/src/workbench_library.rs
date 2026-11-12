@@ -141,6 +141,7 @@ impl Workbench {
         let path_of = |request: &LibraryRequest| match request {
             LibraryRequest::Open(_, path)
             | LibraryRequest::AtlasCrop(path)
+            | LibraryRequest::ViewModel(path)
             | LibraryRequest::Show(path)
             | LibraryRequest::PlaySound(path) => Some(path.clone()),
             _ => None,
@@ -186,6 +187,12 @@ impl Workbench {
             LibraryRequest::Open(LibraryKind::Animator, path) => self.open_animator(&path),
             LibraryRequest::Open(LibraryKind::Tileset, path) => self.open_tileset(&path),
             LibraryRequest::AtlasCrop(picture) => self.open_atlas(&picture),
+            LibraryRequest::ViewModel(path) => {
+                // Picked too, so the viewer's Place places it.
+                self.open.library_state.selected = Some(path.clone());
+                self.shell.viewing_model = Some(path);
+                self.show_tab(crate::shell::RibbonTab::Model);
+            }
             LibraryRequest::Open(LibraryKind::Atlas, path) => {
                 match self.viewport.sheets.atlases.get(&path) {
                     Some(crate::sprite_sheets::AtlasState::Read(atlas, _)) => {
