@@ -34,7 +34,7 @@ const SHELL_KEY: &str = "shell";
 /// nothing to the frame) and never written or removed, so an earlier
 /// build still finds what it saved; only whether one is there is looked
 /// at, for the Console to say once that it wasn't carried over.
-const OLD_LAYOUT_KEYS: [&str; 2] = ["panel_layout2", "workspaces"];
+const OLD_LAYOUT_KEYS: [&str; 3] = ["panel_layout", "panel_layout2", "workspaces"];
 /// Key under which the interface's look is remembered: its accent, scale
 /// and density (decision 0100).
 const INTERFACE_LOOK_KEY: &str = "interface_look";

@@ -250,6 +250,7 @@ fn no_settings_and_damaged_settings_both_start_as_standard() {
         EDITOR_SIZE_KEY,
         super::super::OLD_LAYOUT_KEYS[0],
         super::super::OLD_LAYOUT_KEYS[1],
+        super::super::OLD_LAYOUT_KEYS[2],
         SHELL_KEY,
         super::super::CAMERA_KEY,
         super::super::KNOWN_PROJECTS_KEY,
