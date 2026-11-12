@@ -14,7 +14,7 @@ This page follows what you see, in the order you meet it: Recent projects, the F
 **The tab bar** is the dark strip along the very top. From left to right:
 - **The logo**, in a small light tile.
 - **The [tabs](concepts.md#the-window):** **File**, **Home**, **Library**, **Shading**, **Animate**, **UI**, **VFX**, **Audio**, **Debug** and **Build**. Each is one kind of work, and a click on one changes the [ribbon](concepts.md#the-window) under it and what the editor shows (see **The tabs** below). The tab in front is lit, with a line of the accent colour under it. **Shading** and **VFX** are grey with a small hollow square after their names: those screens aren't built yet ([Unfinished parts](unfinished-parts.md)).
-- **A tab that comes with a file:** while a tileset, a picture's crops or a selected tile map is open, a tab such as **LIBRARY TOOLS · Tileset** stands right after the tab it belongs to. Click it to bring that file to the front; it goes when the file closes.
+- **A tab that comes with a file** (a [contextual tab](concepts.md#the-window)): while a tileset, a picture's crops or a selected tile map is open, a tab such as **LIBRARY TOOLS · Tileset** stands right after the tab it belongs to, with a ribbon of that file's own tools. Click it to bring that file to the front; it goes when the file closes. A tileset and a picture's crops fill their tab (with **‹ Back to Library** at the right of the document's tab); a tile map's tab is Home with the **Map** shelf tab in front.
 - **Search or run a command**, in the middle: one search for everything (see below). Its right end shows its key, **Space**.
 - **The project and the area**, as in `Harbour / docks`, with an amber dot after the area's name while it has unsaved changes. Once an update has downloaded, **Restart to update** appears just left of it ([Installing and updating](installing-and-updating.md)).
 - **The chevron** at the far right collapses the ribbon (see below).
@@ -79,9 +79,11 @@ What each tab shows:
 | Tab | Editor groups | Shelf tabs |
 |---|---|---|
 | Home | The area (its viewport, with the toolbox down its left edge); a **Game** tab beside it, brought to the front, while the game runs | **Entity**: the Area tree, Properties (its components as cards, Hints the last) and Assets, side by side · Animation (not built yet) · **Console** · **Problems** (with how many) · **Map**, while an entity with a tile map is selected |
-| Library | The Library; a **Tileset** or a picture's crops (**Atlas Crop**) beside it while one is open | **Details**: Properties, showing the file picked · **Code**: the game's code files and what uses each · Import queue and History (not built yet) |
-| Animate | The viewport; an **Animator** beside it while one is open | Sequencer (not built yet) · **Frames** and **Clips** while a clips file is open (each with a × that closes it) · **Properties**: the animator's state picked, or the entity selected · Key (not built yet) · **Console** |
-| UI | The **Canvas** (a × closes the screen open on it) | **Screen**: Elements (the screen's pieces) and Properties (the piece picked) · **Console** |
+| Library | The Library | **Details**: Properties, showing the file picked · **Code**: the game's code files and what uses each · Import queue and History (not built yet) |
+| Library tools · Tileset | The tileset open (its picture, the chosen terrain's slots, Try it) | **Terrains**: the terrains, the picture and the slot picked · **Console** · **Problems** |
+| Library tools · Picture | The picture with its crops | **Crops**: the grid and every crop, and the crop picked · **Console** · **Problems** |
+| Animate | The viewport while a clips file is open; with an animator, the **Animator** beside it and its **Preview** as a group of its own; with neither, the Sequencer's page (not built yet) | Sequencer (not built yet) · **Frames** (the clips and the chosen clip's frames) and **Clip** (its playback) while a clips file is open, each with a × that closes it · **Parameters** and **Properties** (the state picked) while an animator is · Key (not built yet) · **Console** |
+| UI | The **Canvas**, with its toolbox down its left edge (a × closes the screen open on it) | **Screen**: Elements (the screen's pieces), Properties (the piece picked) and Pictures (for the Image tool) · **Console** · **Problems** |
 | Audio | The **Mixer** | **Bus**: Properties, showing the bus picked · Snapshot (not built yet) · **Console** |
 | Debug | The **Game** (and the viewport behind it) beside the **Profiler** | **Console** · **Problems** · Hottest functions and Memory snapshot (not built yet) |
 | Build | As Home | As Home |
@@ -101,7 +103,7 @@ The panels inside follow the design on Home; the other tabs' panels are today's,
 | Problems | A shelf tab on Home and Debug | Mistakes found in the game's code and in the area, such as a missing model. See [Problems](problems.md). |
 | Mixer | Audio | The project's buses: a fader, meter, mute and solo each, and ducking. See [The Mixer](mixer.md). |
 | Profiler | Debug | Where each frame's time goes. See [The Profiler](profiler.md). |
-| Clips and Frames, Animator, Map, Tileset, Atlas Crop, Canvas and Elements | While their file is open (the Map while a tile map is selected) | See [Animating sprites](sprite-animation.md), [Animators](animators.md), [Painting tiles](painting-tiles.md), [Tilesets and autotiling](tilesets.md), [Atlas Crop](atlas-crop.md) and [The UI editor](ui-editor.md). Opening the file brings its tab to the front. |
+| Clips, Frames and Clip, Animator, Parameters and Preview, Map, Tileset and Terrains, Atlas Crop and Crops, Canvas, Elements and Pictures | While their file is open (the Map while a tile map is selected) | See [Animating sprites](sprite-animation.md), [Animators](animators.md), [Painting tiles](painting-tiles.md), [Tilesets and autotiling](tilesets.md), [Atlas Crop](atlas-crop.md) and [The UI editor](ui-editor.md). Opening the file brings its tab to the front. |
 
 **The status bar** along the bottom says what's happening, so you don't have to go looking:
 - On the left, a green dot and **Ready** while the game's code is clean (Solis checks it when the project opens and each time you save a code file; hover to see when it last did), or, in red, how many mistakes it has.

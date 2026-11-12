@@ -20,10 +20,10 @@ How many tiles you need depends on the terrain's **[kind](concepts.md#2d)**:
 **16-tile** works on a **[dual grid](concepts.md#2d)**: each tile is drawn half a cell off, where four cells meet, and is chosen by which of those four are the terrain. That's why 15 drawings cover every case. You still paint and the game still thinks in whole cells; only the art is shifted.
 
 ## How to use it
-1. **Draw your tiles** in one picture: a PNG, or an Aseprite file (handy for animated tiles), with every tile the same size in a grid. Not sure what to draw? Open the tileset, choose a terrain's kind, and press **Save … template**: Solis saves a picture beside the tileset with every slot laid out at your tile size, ready to draw over.
-2. **Open the tileset:** double-click it in the Library. The **Library** tab comes to the front with the **Tileset** beside the Library, as a group of its own (and a **Library tools · Tileset** tab joins the tab bar); its terrains show on the shelf's **Details** tab.
-3. **Choose the picture** on the left. Solis cuts it into tiles at the tile size shown. If the art looks cut differently, it offers the size it found: click it.
-4. **Choose a terrain** on the left, and give it a **kind**. While it has no tiles, the tab guesses its kind from the picture (pick the top-left tile of its block first) and asks you to confirm. **Kind** at the top right changes it any time.
+1. **Draw your tiles** in one picture: a PNG, or an Aseprite file (handy for animated tiles), with every tile the same size in a grid. Not sure what to draw? Open the tileset, choose a terrain's kind, and press **Save … template** (or the ribbon's **Save its template…**): Solis saves a picture beside the tileset with every slot laid out at your tile size, ready to draw over.
+2. **Open the tileset:** double-click it in the Library. A **Library tools · Tileset** tab joins the tab bar after Library and comes to the front: a [contextual tab](concepts.md#the-window), there only while the tileset is open. Its document is the tileset itself (the picture on the left, the chosen terrain's slots on the right, **Try it** under them), its **Terrains** shelf tab lists the terrains beside the slot picked, and its ribbon has **Terrain** (Add, Remove), **Kind** and **Picture** (the tile size and the **Zoom**). **‹ Back to Library**, at the right of the document's tab, goes back and leaves the tileset open.
+3. **Choose the picture** on the Terrains shelf tab, under the terrains. Solis cuts it into tiles at the tile size shown. If the art looks cut differently, it offers the size it found: click it.
+4. **Choose a terrain** on the Terrains shelf tab, and give it a **kind** (the ribbon's **Kind** list, or the tab's own). While it has no tiles, the tab guesses its kind from the picture (pick the top-left tile of its block first) and asks you to confirm. **Kind** at the top right changes it any time.
 5. **Fill its slots** on the right. Each slot shows the neighbours it's for: the terrain's colour where they're the terrain, dark where they're not.
    - Click a tile in the picture, then the slot it's for, or drag the tile onto the slot.
    - Drawn over the template? Pick the template's top-left tile and press **Mark up from the template**: every slot is filled from its place in one go.
@@ -52,13 +52,14 @@ Click a slot, then in Properties set a tile's **Animation**:
 - **the picture's frames** (an Aseprite picture): the same tile in each of its frames, each for its own time.
 
 ## Settings
-In the Tileset tab:
+In the tileset's tab (the Terrains shelf tab and the ribbon):
 
 | Setting | What it does |
 |---|---|
 | Picture | The PNG, JPEG or Aseprite file the art comes from. |
 | Tile size | Each tile's width and height in pixels. Usually the project's tile size (2D settings). |
 | Kind | How the chosen terrain's tiles are chosen: plain, 16-tile, 47-tile, edges or rules. Changing it takes its tiles away (Ctrl + Z brings them back). |
+| Zoom | How big the picture is shown (the ribbon's list, or − and + under the steps). |
 
 In Properties, for a tile in a slot:
 
@@ -73,10 +74,10 @@ For the chosen terrain (no slot picked): its **Name**, **Code** (the character m
 | Action | Shortcut |
 |---|---|
 | Give a tile to a slot | Click the tile in the picture, then the slot; or drag the tile onto the slot |
-| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (pointer over the Tileset tab, or over Properties while it shows the tileset) |
+| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (pointer over the tileset or its Terrains tab, or over Properties while it shows the tileset) |
 
 ## Tips and common problems
-- **Problem:** pink cells on a map. **Why:** a slot those cells need has no tile, or the cells' code isn't a terrain. **Fix:** the Tileset tab dashes the empty slots red; Problems says which map and which slots. Fill them.
+- **Problem:** pink cells on a map. **Why:** a slot those cells need has no tile, or the cells' code isn't a terrain. **Fix:** the tileset's slots dash the empty ones red; Problems says which map and which slots. Fill them.
 - **Problem:** the edges look one tile off. **Why:** the template was marked up from the wrong tile. **Fix:** pick the template's top-left tile in the picture first; the button says where it will start. Ctrl + Z, then try again.
 - **Problem:** the grid lines don't match the art. **Why:** the tile size is different from the picture's. **Fix:** set it on the left, or click the size Solis found.
 - **Problem:** a terrain still shows its flat colour. **Why:** it has no tiles yet (or the tileset has no picture). **Fix:** fill its slots.

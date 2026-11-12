@@ -15,17 +15,17 @@ For one-off sprites (a door, a crop swaying) a plain clip on the Sprite is simpl
 
 ## How to use it
 1. **Make one:** in the Library, open the folder you want it in, then **New > Animator** (right-click in the Library, or **+ New**). Solis makes `animator.solanim` with one state, *Idle*, and opens it. (Rename the file in the Library, as any other.)
-2. **The Animator tab** opens on the **Animate** tab of the tab bar, as a group of its own beside the viewport, with a × on its tab to close it. What you pick in its graph shows on the shelf's **Properties** tab. On the left are the parameters and a preview; on the right, the graph.
+2. **The animator** opens on the **Animate** tab of the tab bar, as a document beside the viewport's (a × on its tab closes it), with its **Preview** as a group of its own on the right. What you pick in its graph shows on the shelf's **Properties** tab; its parameters are the **Parameters** shelf tab. While it is open, Animate's [ribbon](concepts.md#the-window) is the animator's: **State** (Add state, Start here, Delete) and **Preview** (Start again), then the design's cutscene controls as [unfinished parts](unfinished-parts.md).
 3. **Choose its clips:** click empty space in the graph. Properties shows the animator: pick **Clips from**, the sprite sheet (or clips file) whose clips its states play.
-4. **Add states:** right-click empty space > **Add state**. Click a state to change it in Properties:
+4. **Add states:** the ribbon's **Add state**, or right-click empty space > **Add state**. Click a state to change it in Properties:
    - **Name**: what it's called.
    - **Plays**: *one clip*, or *a clip by facing*. With a clip by facing, pick a clip for each direction (**↑ up**, **→ right**, **↓ down**, **← left**); **+ Direction** adds the next one, up to eight with the diagonals. Solis makes a direction parameter, *facing*, the first time.
    - **Speed**, and **Speed by**: a number parameter its speed is multiplied by, so a walk speeds up as the character does.
    - **Start here**: the state the animator starts in, marked **Start ▶** in the graph.
-5. **Add parameters:** the **+** beside *Parameters* adds a number, a switch, a trigger or a direction. Click a name to rename it; right-click it to **Delete** it, or **Start at this value**.
+5. **Add parameters:** on the Parameters shelf tab, the **+** beside *Parameters* adds a number, a switch, a trigger or a direction. Click a name to rename it; right-click it to **Delete** it, or **Start at this value**.
 6. **Join states:** drag from the edge of one state to another, or right-click a state > **Make transition** and click the other. Click the arrow, then in Properties **+ Condition** and choose what must hold: a switch **is on** or **is off**, a trigger **fired**, a number **>** or **<** a value, or **finished** (the state's clip has played all its times). All of a transition's conditions must hold for it to be taken. An arrow from **Any state** can be taken from every state.
-7. **Try it:** the preview always plays. Set the parameters on the left (tick *moving*, turn the *facing* dial, press **Fire** for a trigger) and watch the state glow blue as it changes, the clip playing below.
-8. **Use it:** select an entity with a Sprite, then in Properties **Add component > Animator** and pick the file in **Animator**. Press **Play**: the animator chooses the Sprite's clip and speed every tick. Select the entity while it plays to see its state glow, and its parameters' values on the left.
+7. **Try it:** the preview always plays. Set the parameters on the Parameters tab (tick *moving*, turn the *facing* dial, press **Fire** for a trigger) and watch the state glow blue as it changes, the clip playing below.
+8. **Use it:** select an entity with a Sprite, then in Properties **Add component > Animator** and pick the file in **Animator**. Press **Play**: the animator chooses the Sprite's clip and speed every tick. Select the entity while it plays to see its state glow, and its parameters' values on the Parameters tab.
 
 Every change is saved at once and runs at once, in a game that's playing too. **Ctrl + Z** and **Ctrl + Y** over the tab undo and redo changes to the animator. If the file changes on disk (edited by hand, or by Git), the tab shows it as it is now, as a step **Ctrl + Z** undoes. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
@@ -106,7 +106,7 @@ These work while the pointer is over the Animator tab.
 | Pick states with a box | Drag on empty space |
 | Move picked states | Drag one of them |
 | Join two states | Drag from a state's edge to another |
-| Add a state, Make transition, Start here, Delete | Right-click empty space, a state or an arrow |
+| Add a state, Make transition, Start here, Delete | Right-click empty space, a state or an arrow (Add state, Start here and Delete are on the ribbon too) |
 | Give up an arrow started with Make transition | Esc |
 | Delete a parameter, or start it at the value shown | Right-click its name |
 | Take away what's picked | Delete |

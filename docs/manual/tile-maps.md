@@ -17,15 +17,15 @@ Why values in the map, rather than an entity per plant? A field of a thousand cr
 For a few things that move or think (a scarecrow that turns, a chicken), use [sprites](sprites.md) instead.
 
 ## How to use it
-1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.tileset.lst` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too: change them there, add one with **+ Terrain**, or take one away with **×**. Every change to a tileset is an [undo](undo.md) step of that tileset's, wherever you make it: **Ctrl + Z** with the pointer over Properties while it shows the tileset, or over the Tileset tab, takes it back, so a terrain removed by mistake comes back with its tiles and rules. Dragging a colour is one step, made when you let go. The first terrain fills new maps.
+1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.tileset.lst` with grass, tilled and water, and opens it in **Library tools · Tileset**, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain on the **Terrains** shelf tab to change its name, its **code** (the one character the map file writes for it) and its colour; the ribbon's **Add** adds one. Clicking a tileset in the Library shows its terrains in Properties too: change them there, add one with **+ Terrain**, or take one away with **×**. Every change to a tileset is an [undo](undo.md) step of that tileset's, wherever you make it: **Ctrl + Z** with the pointer over Properties while it shows the tileset, or over the tileset's own tab, takes it back, so a terrain removed by mistake comes back with its tiles and rules. Dragging a colour is one step, made when you let go. The first terrain fills new maps.
 2. **Make a map:** **New > Tile map**. Solis makes `map.tilemap.lst`, 64 × 64 cells of the project's first tileset's first terrain. Click it in the Library to change its **Tileset** and its **Size** (in cells) in Properties.
 3. **Place it:** double-click the map in the Library (it goes where the viewport looks), or drag it into the viewport. Its top-left corner lands on a whole tile, and each cell is one tile across (the tile size in [2D settings](2d-pixel-perfect.md)). The **2D** view shows it best.
-4. **The Map tab** of Home's shelf comes to the front while the map's entity is selected (select it in the Area panel). It shows:
-   - **Layers**, top first. Each has a small picture of its cells, its name (click to rename), **under sprites** or **over sprites**, an eye that shows or hides it here in the editor only (the game always shows it), and **…** to move it up or down or delete it. **+** adds a layer on top.
+4. **The Map tab** of Home's shelf comes to the front while the map's entity is selected (select it in the Area panel), with the **Home tools · Tile map** tab and its ribbon. It shows four columns:
+   - **The map** (its name, and how many cells across and down), and its **Layers**, top first. A click on a layer's row paints on that layer. Each has a small picture of its cells, its name (click to rename), **under sprites** or **over sprites**, an eye that shows or hides it here in the editor only (the game always shows it), and **…** to move it up or down or delete it. **+** in the column's header adds a layer on top.
    - **Terrains**, the tileset's, each with how many cells use it. They're the [tile painter's](painting-tiles.md) palette: click one to paint with it.
-   - **Cell values**. **+** adds one (a switch to start). Change its name, its kind (**number**, **switch** or **choice**) and a choice's options (names with commas between).
+   - **Cell values**. **+** in the column's header adds one (a switch to start). Change its name, its kind (**number**, **switch** or **choice**) and a choice's options (names with commas between).
    - **The cell under the pointer** in the viewport: each layer's terrain and each value.
-5. **See the values on the map:** while the map is selected, the **Values** menu at the top of the viewport lays chosen values over the cells: a watered cell is tinted blue, and a number or a choice is written on its cell when you're zoomed in enough to read it. **Chunks** outlines the map's 32 × 32 chunks.
+5. **See the values on the map:** while the map is selected, the **Values** list in the ribbon's **Show** group lays chosen values over the cells: a watered cell is tinted blue, and a number or a choice is written on its cell when you're zoomed in enough to read it. **Chunks** outlines the map's 32 × 32 chunks, and **Walls** shows what's solid.
 6. **Play:** each placed map is the game's own copy while it runs, so the game can change it and the file stays as it was. Select the map while playing to watch its cells in the Map tab. [Save games](save-games.md) keep the map as the game left it.
 
 Every change in the Map tab is saved at once. **Ctrl + Z** and **Ctrl + Y** over the tab undo and redo them. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
@@ -33,7 +33,7 @@ Every change in the Map tab is saved at once. **Ctrl + Z** and **Ctrl + Y** over
 ### Art and painting
 A terrain is drawn in its colour until its tileset gives it art: then each cell's tile is picked from its neighbours, with smooth edges (see [Tilesets and autotiling](tilesets.md)). Seen from far away, a big map is drawn in its colours again, which is much quicker.
 
-Paint a map's cells with the **tile painter**: while the map is selected, its brush, rectangle, line, fill and eyedropper join the toolbox down the viewport's left edge, and the Map tab's terrain swatches are its palette (see [Painting tiles](painting-tiles.md)). The file is plain text you can also edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing), and cells painted with an exact tile are listed in `exact` blocks.
+Paint a map's cells with the **tile painter**: while the map is selected, its brush, rectangle, line, fill and eyedropper are on the ribbon of the **Home tools · Tile map** tab, and the Map tab's terrain swatches are its palette (see [Painting tiles](painting-tiles.md)). The file is plain text you can also edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing), and cells painted with an exact tile are listed in `exact` blocks.
 
 ### The file
 
@@ -131,7 +131,7 @@ A terrain's settings (right-click its swatch in the Map tab):
 
 | Setting | What it does |
 |---|---|
-| Solid | Nothing with a 2D collider walks into its cells: fences, water, walls. A small wall mark shows on its swatch, and the viewport's **Walls** switch shows the walls it makes. See [Walls and walking in 2D](walls-and-walking.md). |
+| Solid | Nothing with a 2D collider walks into its cells: fences, water, walls. A small wall mark shows on its swatch, and the **Walls** switch on the Tile map ribbon shows the walls it makes. See [Walls and walking in 2D](walls-and-walking.md). |
 
 Value kinds:
 
@@ -145,12 +145,12 @@ Value kinds:
 | Action | Shortcut |
 |---|---|
 | Undo or redo a change in the Map tab, or a painted stroke | Ctrl + Z, Ctrl + Y (pointer over the tab, or a painting tool in use) |
-| Undo or redo a change to a tileset (its terrains, **Solid**) | Ctrl + Z, Ctrl + Y (pointer over Properties while it shows the tileset, or over the Tileset tab) |
+| Undo or redo a change to a tileset (its terrains, **Solid**) | Ctrl + Z, Ctrl + Y (pointer over Properties while it shows the tileset, or over the tileset's tab) |
 | A terrain's settings | Right-click its swatch in the Map tab |
 | The painting tools | B, U, N, G, I (see [Painting tiles](painting-tiles.md)) |
 
 ## Tips and common problems
-- **Problem:** cells are bright pink. **Why:** their code isn't one of the tileset's terrains (the terrain was taken away, or its code changed), or their terrain's art is missing the tile they need. The Map tab counts unknown codes, and Problems names missing tiles. **Fix:** add a terrain with that code, change the cells, or fill the slot in the Tileset tab.
+- **Problem:** cells are bright pink. **Why:** their code isn't one of the tileset's terrains (the terrain was taken away, or its code changed), or their terrain's art is missing the tile they need. The Map tab counts unknown codes, and Problems names missing tiles. **Fix:** add a terrain with that code, change the cells, or fill the slot in the tileset.
 - **Problem:** clicking the map in the viewport selects what's behind it, or nothing. **Why:** clicks on a map are kept for the [tile painter](painting-tiles.md). **Fix:** select the map in the Area panel.
 - **Problem:** the Map tab is gone. **Why:** it shows only while a map is selected. **Fix:** select the map's entity.
 - **Problem:** numbers don't show on the cells. **Why:** cells are too small to write on, or too many are in view. **Fix:** zoom in.
