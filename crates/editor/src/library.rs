@@ -250,6 +250,21 @@ impl Filter {
             Self::Code => matches!(kind, K::Code | K::Text),
         }
     }
+
+    /// The dot before the chip's word: its first kind's colour (none for
+    /// All).
+    pub(crate) fn dot(self) -> Option<Color32> {
+        use LibraryKind as K;
+        let kind = match self {
+            Self::All => return None,
+            Self::Models => K::Model,
+            Self::Sprites => K::SpriteSheet,
+            Self::Maps => K::TileMap,
+            Self::Sounds => K::Sound,
+            Self::Code => K::Code,
+        };
+        Some(kind.color())
+    }
 }
 
 /// One file in the Library.
@@ -354,6 +369,9 @@ pub(crate) enum LibraryRequest {
     Move(String, String),
     /// Make a new folder inside this one.
     NewFolder(String),
+    /// Bring the Library tab to the front (the Place shelf tab's **Open
+    /// Library**).
+    ShowLibraryTab,
     /// Make a new Lust code file in this folder, and open it in the
     /// computer's editor for Lust (E1).
     NewCodeFile(String),

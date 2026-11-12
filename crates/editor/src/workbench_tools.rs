@@ -174,7 +174,10 @@ impl Workbench {
                     );
                     self.open.area_panel.reveal = self.open.document.selection.primary();
                 }
-                ViewportEvent::Drop { asset, at } => self.place_dropped(asset, at, None),
+                ViewportEvent::Drop { asset, at, free } => {
+                    let at = crate::placement::landing(at, &self.viewport.snapping, free);
+                    self.place_dropped(asset, at, None);
+                }
                 ViewportEvent::Box { hits, mode } => {
                     self.open.document.selection = after_box(
                         self.open.document.area(),

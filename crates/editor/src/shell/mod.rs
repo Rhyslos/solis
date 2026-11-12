@@ -293,6 +293,14 @@ impl Workbench {
         self.shell.arrangement(self.shell.tab).shelf_folded
     }
 
+    /// Whether the editor is placing: Home's Place shelf tab is in front
+    /// (the project lead's answer 20). The ribbon takes its build form
+    /// and the toolbox goes.
+    pub fn placing(&self) -> bool {
+        matches!(self.shell.tab, RibbonTab::Home | RibbonTab::Build)
+            && self.shelf_tab() == Some(workspaces::ShelfTab::Place)
+    }
+
     /// The shelf tab in front on the tab in front, if it has a shelf.
     pub fn shelf_tab(&self) -> Option<workspaces::ShelfTab> {
         let tabs = workspaces::built_shelf_tabs(self.shell.tab, self.open_now());

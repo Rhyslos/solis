@@ -66,6 +66,8 @@ pub(crate) enum ViewportEvent {
         asset: reflect::AssetId,
         /// Where in the world: the surface under the mouse, or the ground.
         at: Vec3,
+        /// Ctrl was held: it lands where dropped, never on the grid.
+        free: bool,
     },
 }
 
@@ -83,6 +85,7 @@ pub(crate) enum PickPurpose {
     Drop {
         asset: reflect::AssetId,
         fallback: Vec3,
+        free: bool,
     },
 }
 
@@ -447,11 +450,10 @@ impl Tools {
     pub(crate) fn drop_asset(
         &mut self,
         asset: reflect::AssetId,
-        at: Vec2,
+        (at, free): (Vec2, bool),
         camera: &Camera,
         area: &AreaView,
-        size: Vec2,
-        ppp: f32,
+        (size, ppp): (Vec2, f32),
     ) {
         let ray = camera.ray_through(at, size);
         let fallback = if camera.is_flat() {
@@ -466,7 +468,11 @@ impl Tools {
         let px = pixel_at(at, size, ppp);
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],
-            PickPurpose::Drop { asset, fallback },
+            PickPurpose::Drop {
+                asset,
+                fallback,
+                free,
+            },
             area,
         );
     }
@@ -530,10 +536,16 @@ impl Tools {
             *waited += 1;
             if *waited > PICK_PATIENCE {
                 // A drop still lands, on the ground, rather than being lost.
-                if let PickPurpose::Drop { asset, fallback } = pick.purpose {
+                if let PickPurpose::Drop {
+                    asset,
+                    fallback,
+                    free,
+                } = pick.purpose
+                {
                     self.events.push(ViewportEvent::Drop {
                         asset,
                         at: fallback,
+                        free,
                     });
                 }
                 self.pick = self.next.take();
@@ -555,9 +567,14 @@ impl Tools {
                 hits.extend(markers);
                 ViewportEvent::Box { hits, mode: *mode }
             }
-            PickPurpose::Drop { asset, fallback } => ViewportEvent::Drop {
+            PickPurpose::Drop {
+                asset,
+                fallback,
+                free,
+            } => ViewportEvent::Drop {
                 asset: *asset,
                 at: answer.point.unwrap_or(*fallback),
+                free: *free,
             },
         };
         self.events.push(event);

@@ -49,6 +49,8 @@ pub enum Panel {
     /// The Library's open folder as tiles, on Home's Entity shelf tab
     /// (spec 200).
     Assets,
+    /// How placed things land (spec 270): on Home's Place shelf tab.
+    Placement,
     /// The UI editor's canvas (decision 0089): a screen drawn to pick and
     /// change, in the UI workspace while a screen is open.
     Canvas,
@@ -58,7 +60,7 @@ pub enum Panel {
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -70,6 +72,7 @@ impl Panel {
         Self::Profiler,
         Self::Mixer,
         Self::Assets,
+        Self::Placement,
     ];
 
     /// Panels that come and go with what's open (a clips file), never in
@@ -118,6 +121,7 @@ impl Panel {
             Self::Canvas => "Canvas",
             Self::Elements => "Elements",
             Self::Assets => "Assets",
+            Self::Placement => "Placement",
         }
     }
 
@@ -143,6 +147,7 @@ impl Panel {
             Self::Canvas => Icon::Screen,
             Self::Elements => Icon::Area,
             Self::Assets => Icon::Library,
+            Self::Placement => Icon::Move,
         }
     }
 }

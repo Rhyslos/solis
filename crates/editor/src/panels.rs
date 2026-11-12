@@ -199,6 +199,7 @@ impl PanelViewer<'_> {
             | Panel::Properties
             | Panel::Library
             | Panel::Assets
+            | Panel::Placement
             | Panel::Code
             | Panel::Console
             | Panel::Problems
@@ -226,6 +227,7 @@ impl PanelViewer<'_> {
             | Panel::Properties
             | Panel::Library
             | Panel::Assets
+            | Panel::Placement
             | Panel::Code
             | Panel::Console
             | Panel::Problems
@@ -454,14 +456,19 @@ impl PanelViewer<'_> {
                 self.library_requests.extend(requests);
             }
             Panel::Assets => {
+                // On the Place tab, beside Placement: the placing form.
+                let placing = self.shown.contains(&Panel::Placement);
                 let requests = crate::assets_column::assets(
                     ui,
-                    self.project.is_some(),
+                    (self.project.is_some(), placing),
                     self.library,
                     self.library_state,
                     self.sounds,
                 );
                 self.library_requests.extend(requests);
+            }
+            Panel::Placement => {
+                crate::placement::placement(ui, &mut self.viewport.snapping);
             }
             Panel::Game => {
                 let full = ui.max_rect();

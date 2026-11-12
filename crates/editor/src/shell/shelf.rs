@@ -215,6 +215,17 @@ fn close_mark(ui: &mut Ui, tab: ShelfTab) -> bool {
 /// filters, search, Clear and Copy while it's in front; Home's animation
 /// transport (not built yet).
 fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut PanelViewer<'_>) {
+    if front == Some(ShelfTab::Place) {
+        // What to do, where the design has its hint (spec 264).
+        ui.label(
+            egui::RichText::new(
+                "Drag into the area, or double-click to place where the camera looks",
+            )
+            .font(crate::tokens::text::ui())
+            .color(crate::tokens::text_meta()),
+        );
+        return;
+    }
     if matches!(tab, RibbonTab::Home | RibbonTab::Build) {
         let parts = vec![
             Entry::Unbuilt(UnbuiltId::HomeShelfFrameCounter),

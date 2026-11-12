@@ -114,6 +114,18 @@ pub const CENTER_MIN_H: f32 = 120.0;
 pub const SCENE_COLUMN_W: f32 = 240.0;
 /// The Assets (Library) column's width (spec 207: 280 to 320).
 pub const ASSETS_COLUMN_W: f32 = 300.0;
+/// The Placement column on the Place shelf tab (spec 270: 250 to 280).
+pub const PLACEMENT_COLUMN_W: f32 = 260.0;
+/// How far right of the pointer the placing label starts. Solis's own.
+pub const PLACE_LABEL_OFFSET: f32 = 18.0;
+/// The placing hint strip's height (spec 254).
+pub const PLACE_HINT_H: f32 = 30.0;
+/// The placing hint strip's widest. Solis's own: room for its five keys.
+pub const PLACE_HINT_W: f32 = 600.0;
+/// The Place shelf tab's search field (spec 272). Solis's own width.
+pub const PLACE_SEARCH_W: f32 = 180.0;
+/// The least width of a tile on the Place shelf tab (spec 272).
+pub const PLACE_TILE_MIN_W: f32 = 92.0;
 /// The least width of a shelf column: narrower than this, columns wrap
 /// under each other (spec 1143). Solis's own, from the cards' 180.
 pub const COLUMN_MIN_W: f32 = 180.0;

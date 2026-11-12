@@ -324,6 +324,8 @@ meaning! {
 /// How see-through the pills floating over the viewport are (their fill is
 /// [`field`] at this share).
 pub const PILL_OPACITY: f32 = 0.85;
+/// How much of a tile being dragged out still shows (spec 274: 55%).
+pub const DRAGGED_OPACITY: f32 = 0.55;
 /// How see-through the label box is while placing (its fill is [`ribbon`]
 /// at this share).
 pub const LABEL_BOX_OPACITY: f32 = 0.95;

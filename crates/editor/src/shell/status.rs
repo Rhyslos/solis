@@ -158,7 +158,14 @@ impl Workbench {
         // The line along the top, the bar's whole width (spec 160).
         let whole = ui.max_rect().expand2(vec2(size::ROW_PAD, 0.0));
         tokens::hline(ui.painter(), whole.x_range(), whole.top(), tokens::line());
-        let status = self.status();
+        let mut status = self.status();
+        // While a file is dragged to place: what and how (spec 286).
+        if let Some(dragged) = egui::DragAndDrop::payload::<crate::library::LibraryDrag>(ui.ctx())
+            && dragged.0.kind.placeable()
+        {
+            let ctrl = ui.input(|i| i.modifiers.command);
+            status.snap = placing_words(&dragged.0.name, &self.viewport.snapping, ctrl);
+        }
         ui.horizontal_centered(|ui| {
             ui.spacing_mut().item_spacing.x = size::STATUS_GAP;
             ready(ui, status.code.as_ref());
@@ -234,6 +241,20 @@ pub(crate) fn snap_words(snapping: &crate::transforming::Snapping, two_d: bool) 
         "World"
     };
     format!("Snap {step} \u{b7} {space}")
+}
+
+/// "Placing crate · Snap 0.25 · Grid" while a file is dragged to place:
+/// its name, and what it would snap to.
+pub(crate) fn placing_words(
+    name: &str,
+    snapping: &crate::transforming::Snapping,
+    ctrl: bool,
+) -> String {
+    let how = match crate::placement::snap_word(snapping, ctrl) {
+        "grid" => format!("Snap {} \u{b7} Grid", snapping.grid_step),
+        _ => "Free".to_owned(),
+    };
+    format!("Placing {name} \u{b7} {how}")
 }
 
 /// The dot and its word: Ready while the code is clean (or not checked

@@ -307,6 +307,7 @@ impl Workbench {
                 actions.push(WorkbenchAction::NewFolder(parent.into()));
             }
             LibraryRequest::Delete(path) => actions.push(WorkbenchAction::DeleteFile(path.into())),
+            LibraryRequest::ShowLibraryTab => self.show_tab(crate::shell::RibbonTab::Library),
             LibraryRequest::Import => actions.push(WorkbenchAction::ImportModel),
             LibraryRequest::PlaySound(path) => {
                 actions.push(WorkbenchAction::PlaySound(path.into()));

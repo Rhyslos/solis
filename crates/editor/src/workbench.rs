@@ -899,6 +899,7 @@ impl Workbench {
             self.open.editor_view = Some(key);
         }
         self.viewport.entities = self.open.document.area().len();
+        self.viewport.placing = self.placing();
         self.set_tile_overlay();
         self.prepare_tools();
         self.find_problems();

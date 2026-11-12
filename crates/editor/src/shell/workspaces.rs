@@ -18,6 +18,11 @@ use crate::unbuilt::{Entry, UnbuiltId};
 /// One tab of the shelf.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ShelfTab {
+    /// Placing: the area's entities, how placed things land, and the
+    /// files to drag in (spec 262-276). Its being in front is the
+    /// placing mode (the project lead's answer 20): the ribbon takes its
+    /// build form and the toolbox goes.
+    Place,
     /// The area's entities, the selected one's Properties and the
     /// Library's files (the design's Object tab, in Solis's words).
     Entity,
@@ -91,7 +96,8 @@ macro_rules! column {
 
 impl ShelfTab {
     /// Every shelf tab.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
+        Self::Place,
         Self::Entity,
         Self::Details,
         Self::Code,
@@ -108,6 +114,7 @@ impl ShelfTab {
     /// The tab's name, on the shelf bar and when saved.
     pub fn name(self) -> &'static str {
         match self {
+            Self::Place => "Place",
             Self::Entity => "Entity",
             Self::Details => "Details",
             Self::Code => "Code",
@@ -132,6 +139,11 @@ impl ShelfTab {
         use Panel as P;
         use Width::{Fixed, Rest};
         match self {
+            Self::Place => &[
+                column!("Area", [P::Area], Fixed(size::SCENE_COLUMN_W)),
+                column!("Placement", [P::Placement], Fixed(size::PLACEMENT_COLUMN_W)),
+                column!("Assets", [P::Assets], Rest),
+            ],
             Self::Entity => &[
                 column!("Area", [P::Area], Fixed(size::SCENE_COLUMN_W)),
                 column!("Properties", [P::Properties], Rest, own_header),
@@ -223,6 +235,7 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
     use ShelfTab as S;
     let mut tabs = match tab {
         RibbonTab::Home | RibbonTab::Build => vec![
+            Entry::Built(S::Place),
             Entry::Built(S::Entity),
             Entry::Unbuilt(UnbuiltId::HomeShelfAnimation),
             Entry::Built(S::Console),
@@ -297,9 +310,11 @@ pub const SPLIT_LIMIT: f32 = 0.15;
 impl Arrangement {
     /// The design's standard for `tab`.
     pub fn standard(tab: RibbonTab) -> Self {
+        // Home opens on Entity, the level editor; Place is first on its
+        // shelf bar but is a mode chosen by bringing it to the front.
         let shelf_tab = built_shelf_tabs(tab, OpenNow::default())
-            .first()
-            .copied()
+            .into_iter()
+            .find(|shelf| *shelf != ShelfTab::Place)
             .unwrap_or(ShelfTab::Console);
         Self {
             shelf_tab,
@@ -354,8 +369,11 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
     {
         return Some(Home::Group(index));
     }
+    // The Area and Assets columns are on Place too, but their home is
+    // Entity: showing one doesn't start placing.
     built_shelf_tabs(tab, open)
         .into_iter()
+        .filter(|shelf| *shelf != ShelfTab::Place || panel == Panel::Placement)
         .find(|shelf| shelf.panels().any(|p| p == panel))
         .map(Home::Shelf)
 }

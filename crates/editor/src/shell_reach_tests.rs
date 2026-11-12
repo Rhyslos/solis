@@ -427,5 +427,5 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
         );
         assert_eq!(a.0.shelf_folded(), b.0.shelf_folded(), "{command:?}");
     }
-    assert_eq!(with_keys, 12, "every command with a shortcut was tried");
+    assert_eq!(with_keys, 17, "every command with a shortcut was tried");
 }

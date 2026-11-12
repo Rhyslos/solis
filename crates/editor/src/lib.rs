@@ -55,6 +55,7 @@ mod own_files;
 pub mod panel;
 mod panels;
 pub mod picking;
+mod placement;
 pub mod play;
 pub mod play_changes;
 mod play_input;
@@ -154,6 +155,8 @@ mod open_externally_tests;
 mod picture_support;
 #[cfg(test)]
 mod picture_tests;
+#[cfg(test)]
+mod placing_tests;
 #[cfg(test)]
 mod scale_levels_tests;
 #[cfg(test)]

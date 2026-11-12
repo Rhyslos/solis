@@ -309,7 +309,13 @@ fn a_drop_in_a_flat_view_falls_back_to_the_point_under_the_mouse() {
     let at = front.project(goal, SIZE).unwrap();
     let mut tools = Tools::default();
     let asset = reflect::AssetId::random();
-    tools.drop_asset(asset, at, &front, &AreaView::default(), SIZE, 1.0);
+    tools.drop_asset(
+        asset,
+        (at, false),
+        &front,
+        &AreaView::default(),
+        (SIZE, 1.0),
+    );
     let Some(Pick {
         purpose: PickPurpose::Drop { fallback, .. },
         ..

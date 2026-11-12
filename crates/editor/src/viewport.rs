@@ -409,6 +409,9 @@ pub struct Viewport {
     pub(crate) tile_ms: u64,
     /// When Preview animation was turned on (its clips play from there).
     preview_since: std::cell::Cell<Option<std::time::Instant>>,
+    /// Whether the editor is placing (the Place shelf tab is in front):
+    /// there is no toolbox then (the workbench hands it over each frame).
+    pub(crate) placing: bool,
 }
 
 /// How the viewport is split into views. Saved per computer.
@@ -543,6 +546,7 @@ impl Default for Viewport {
             tile_overlay: crate::tile_view::TileOverlay::default(),
             preview_hour: None,
             tile_ms: 0,
+            placing: false,
             preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
@@ -587,6 +591,7 @@ impl Viewport {
             full: _,
             tile_ms: _,
             preview_since: _,
+            placing: _,
             // The project's: what its area shows, its files, the map
             // selected and the painter's stamp of its cells, and picks and
             // drags under way in any view.
@@ -851,7 +856,7 @@ impl Viewport {
             self.frame_time += (dt - self.frame_time) * FRAME_TIME_SMOOTHING;
         }
         let mut full = ui.max_rect();
-        if self.overlays.tools {
+        if self.overlays.tools && !self.placing {
             // The toolbox down the group's left edge, the views beside it.
             let (column, views) = full.split_left_right_at_x(full.left() + size::TOOLBOX_W);
             self.toolbox(ui, column);
@@ -1023,8 +1028,10 @@ impl Viewport {
             && let (Some(asset), Some(at)) = (dropped.0.id, mouse)
             && dropped.0.kind.placeable()
         {
+            // Ctrl held while dropping places without snapping (answer 25).
+            let free = ui.input(|i| i.modifiers.command);
             self.tools
-                .drop_asset(asset, at, &seen, &self.area, size, ppp);
+                .drop_asset(asset, (at, free), &seen, &self.area, (size, ppp));
         }
         let mut view = self.view(size_px, ppp);
         view.pick = self.tools.send_with(&self.area.pickable);
@@ -1088,15 +1095,9 @@ impl Viewport {
         }
         if let Some(dragged) = response.dnd_hover_payload::<crate::library::LibraryDrag>()
             && dragged.0.kind.placeable()
-            && let Some(at) = ui.input(|i| i.pointer.latest_pos())
+            && let (Some(pointer), Some(at)) = (ui.input(|i| i.pointer.latest_pos()), mouse)
         {
-            painter.text(
-                at + egui::vec2(18.0, 14.0),
-                egui::Align2::LEFT_TOP,
-                format!("Drop to place {}", dragged.0.name),
-                egui::FontId::proportional(12.0),
-                theme::text_strong(),
-            );
+            self.placing_overlay(ui, rect, (pointer, at), &seen, &dragged.0.name);
         }
         if let viewport_tools::Pressing::Gizmo {
             last: Some(change), ..
@@ -1254,6 +1255,35 @@ impl Viewport {
             }
         }
         self.camera.fly(&input);
+    }
+
+    /// While a file is dragged over the view at `rect`: where it would
+    /// land on the ground, the label beside the pointer with that and
+    /// what it snaps to, and the hint strip (spec 244-254).
+    fn placing_overlay(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        (pointer, at): (egui::Pos2, glam::Vec2),
+        seen: &Camera,
+        name: &str,
+    ) {
+        let ctrl = ui.input(|i| i.modifiers.command);
+        let ground = seen
+            .ray_through(at, glam::Vec2::new(rect.width(), rect.height()))
+            .hit_ground(0.0)
+            .map(|p| crate::placement::landing(p, &self.snapping, ctrl));
+        if let Some(spot) = ground {
+            let half = if self.snapping.grid {
+                self.snapping.grid_step / 2.0
+            } else {
+                crate::placement::FOOTPRINT_HALF
+            };
+            crate::placement::footprint(ui, rect, seen, (spot, half));
+        }
+        let snap = crate::placement::snap_word(&self.snapping, ctrl);
+        crate::placement::drag_label(ui, pointer, name, ground, snap);
+        crate::placement::hint_strip(ui, rect);
     }
 
     /// The toolbox in `column`, and the tool it picks.

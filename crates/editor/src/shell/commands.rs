@@ -10,6 +10,7 @@
 use super::RibbonTab;
 use crate::menu_items::MenuCommand;
 use crate::play::PlayState;
+use crate::viewport::Tool;
 use crate::workbench::{Workbench, WorkbenchAction};
 
 /// Why something that replaces or saves the area can't be done while the
@@ -65,6 +66,9 @@ pub(crate) enum ShellCommand {
     FoldShelf,
     HideUnfinished,
     CollapseRibbon,
+    /// Picks one of the toolbox's tools (the build form's Transform
+    /// group, where there is no toolbox).
+    UseTool(crate::viewport::Tool),
     Tab(RibbonTab),
     OpenManual,
     Learn,
@@ -84,7 +88,7 @@ pub(super) use ShellCommand as C;
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 68] = [
+    pub(crate) const ALL: [Self; 73] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -131,6 +135,11 @@ impl ShellCommand {
         C::FoldShelf,
         C::HideUnfinished,
         C::CollapseRibbon,
+        C::UseTool(Tool::Select),
+        C::UseTool(Tool::Move),
+        C::UseTool(Tool::Rotate),
+        C::UseTool(Tool::Scale),
+        C::UseTool(Tool::Transform),
         C::Tab(RibbonTab::File),
         C::Tab(RibbonTab::Home),
         C::Tab(RibbonTab::Library),
@@ -300,6 +309,10 @@ impl ShellCommand {
                 w.hide_unfinished(ctx, hide);
             }
             C::CollapseRibbon => w.set_ribbon_collapsed(!w.shell.collapsed),
+            C::UseTool(tool) => {
+                w.viewport.tool = tool;
+                w.viewport.tile_overlay.paint.tool = None;
+            }
             C::Tab(tab) => w.show_tab(tab),
             C::OpenManual => ctx.open_url(egui::OpenUrl::new_tab(w.manual_url.clone())),
             C::AutoUpdate => {

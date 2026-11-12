@@ -3,6 +3,7 @@
 //! of shortcuts is [`ShellCommand::keys`].
 
 use super::commands::{C, ShellCommand};
+use crate::viewport::Tool;
 use crate::workbench::Workbench;
 
 impl ShellCommand {
@@ -55,6 +56,7 @@ impl ShellCommand {
                 w.auto_update,
             ),
             C::Tab(tab) => format!("{} tab", tab.name()),
+            C::UseTool(tool) => format!("{} tool", tool_word(tool)),
             C::About => format!("About {}", w.info.name),
             other => other.fixed_name().to_owned(),
         }
@@ -122,6 +124,7 @@ impl ShellCommand {
             | C::HideUnfinished
             | C::AutoUpdate
             | C::Tab(_)
+            | C::UseTool(_)
             | C::About => "",
         }
     }
@@ -180,6 +183,11 @@ impl ShellCommand {
             C::SelectAll => "Ctrl+A",
             C::SelectNone => "Esc",
             C::FoldShelf => "Ctrl+Space",
+            C::UseTool(Tool::Select) => "Q",
+            C::UseTool(Tool::Move) => "W",
+            C::UseTool(Tool::Rotate) => "R",
+            C::UseTool(Tool::Scale) => "S",
+            C::UseTool(Tool::Transform) => "T",
             _ => "",
         }
     }
@@ -287,6 +295,17 @@ impl ShellCommand {
             _ => {}
         }
         text
+    }
+}
+
+/// A tool's word, as the build form's Transform group names it.
+fn tool_word(tool: Tool) -> &'static str {
+    match tool {
+        Tool::Select => "Select",
+        Tool::Move => "Move",
+        Tool::Rotate => "Rotate",
+        Tool::Scale => "Scale",
+        Tool::Transform => "All three",
     }
 }
 
