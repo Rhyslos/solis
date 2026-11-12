@@ -143,8 +143,10 @@ impl App {
         }
         self.follow_sprites();
         self.workbench.set_gamepad(self.gamepads.read());
-        // Starts once the code is read; with mistakes in it, says so.
-        let checking = self.game_code.waiting();
+        // Starts once the code is read, and the tile maps and pictures
+        // read on workers have arrived (game code's names come from them);
+        // with mistakes in the code, says so.
+        let checking = self.game_code.waiting() || self.sprites.waiting();
         let failed = self.playtest.as_ref().and_then(|r| r.failed.clone());
         let waiting = match (failed, self.workbench.code_mistakes()) {
             (Some(why), _) => NotPlaying::Cannot(why),

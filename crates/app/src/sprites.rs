@@ -1,6 +1,9 @@
 //! The project's sprite sheets (Phase 9, D2): every Aseprite file read on
 //! a worker and packed into an atlas, again whenever it changes (so saving
 //! in Aseprite shows at once), for the Library, Properties and drawing.
+//! Tile maps and the pictures read whole (tilesets', atlases' and the
+//! screens') go to the same workers: each can be 64 MB, too much to read
+//! and decode on the window's thread (CONTRIBUTING rule 10).
 
 use asset_db::{FileKind, Jobs, Listing};
 use editor::sprite_sheets::{
@@ -25,10 +28,46 @@ fn stamp(path: &Path) -> Stamp {
     Some((meta.len(), meta.modified().ok()))
 }
 
-/// A job number for `path` (the pool tells jobs apart by asset ID).
-fn job_id(path: &Path) -> AssetId {
+/// What a worker reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Kind {
+    /// A sprite sheet ([`read_sheet`]).
+    Sheet,
+    /// A tile map ([`read_tile_map`]).
+    TileMap,
+    /// A picture read whole ([`read_art`]).
+    Art,
+}
+
+/// A worker's read of a file of each [`Kind`].
+enum Read {
+    Sheet(SheetState),
+    TileMap(MapFileState),
+    Art(ArtState),
+}
+
+/// A file waiting for a worker.
+struct Queued {
+    kind: Kind,
+    /// Inside the assets, as the sheets know it.
+    path: String,
+    /// On disk.
+    full: PathBuf,
+    /// How it was when it was asked for: a read of it is taken only while
+    /// that's still what's wanted (not changed, saved by the editor or
+    /// forgotten since).
+    stamp: Stamp,
+}
+
+/// What a worker hands back: the file, the project it was read for and
+/// what was read.
+type Done = (Queued, u64, Read);
+
+/// A job number for `path` read as `kind` (the pool tells jobs apart by
+/// asset ID, and drops an older one's result).
+fn job_id(kind: Kind, path: &Path) -> AssetId {
     let mut hasher = DefaultHasher::new();
-    ("sprite sheet", path).hash(&mut hasher);
+    (kind, path).hash(&mut hasher);
     AssetId(Id::from_raw(hasher.finish() | 1).unwrap_or_else(Id::random))
 }
 
@@ -179,10 +218,30 @@ pub fn read_art(path: &Path) -> ArtState {
     }
 }
 
+/// Reads `full` as `kind` (on a worker). A reader that panics is a
+/// failed read, said in plain words.
+fn read_on_a_worker(kind: Kind, full: &Path) -> Read {
+    let unexpected = || "reading it failed unexpectedly".to_owned();
+    match kind {
+        Kind::Sheet => Read::Sheet(
+            std::panic::catch_unwind(|| read_sheet(full))
+                .unwrap_or_else(|_| SheetState::Failed(unexpected())),
+        ),
+        Kind::TileMap => Read::TileMap(
+            std::panic::catch_unwind(|| read_tile_map(full))
+                .unwrap_or_else(|_| MapFileState::Failed(unexpected())),
+        ),
+        Kind::Art => Read::Art(
+            std::panic::catch_unwind(|| read_art(full))
+                .unwrap_or_else(|_| ArtState::Failed(unexpected())),
+        ),
+    }
+}
+
 /// Every sprite sheet read, and those still to read.
 pub struct Sprites {
     sheets: SpriteSheets,
-    queued: VecDeque<(String, PathBuf)>,
+    queued: VecDeque<Queued>,
     /// Files read or failed, with how they were then.
     tried: HashMap<String, Stamp>,
     /// Clips files read or failed, with how they were then (read at once:
@@ -201,7 +260,7 @@ pub struct Sprites {
     /// Goes up when another project opens: results for the last one are
     /// thrown away.
     generation: u64,
-    jobs: Jobs<(String, u64, SheetState)>,
+    jobs: Jobs<Done>,
     /// Whether anything changed since the editor was last told.
     dirty: bool,
     /// The assets folder of the last listing, for pictures a sprite asks
@@ -248,9 +307,10 @@ impl Sprites {
         &self.sheets
     }
 
-    /// Queues every Aseprite file in `listing` not read yet, or changed
-    /// since, and reads every clips file (`.solframes`) not read yet or
-    /// changed since; forgets those no longer there.
+    /// Queues every Aseprite file and tile map in `listing` not read yet,
+    /// or changed since, and reads every clips file, animator, tileset and
+    /// atlas file (small text) not read yet or changed since; forgets those
+    /// no longer there.
     pub fn want(&mut self, listing: &Listing, assets: &Path) {
         let mut present = HashSet::new();
         let mut paths = HashMap::new();
@@ -328,7 +388,9 @@ impl Sprites {
             } else if file.kind == FileKind::Atlas {
                 self.sheets.atlases.insert(path, read_atlas(&full));
             } else {
-                self.sheets.tile_maps.insert(path, read_tile_map(&full));
+                // The last one read stays until this one's read.
+                self.queue(Kind::TileMap, path, full, now);
+                continue;
             }
             self.dirty = true;
         }
@@ -365,8 +427,7 @@ impl Sprites {
                 .by_path
                 .entry(path.clone())
                 .or_insert(SheetState::Reading);
-            self.queued.retain(|(p, _)| *p != path);
-            self.queued.push_back((path, full));
+            self.queue(Kind::Sheet, path, full, now);
         }
         // Pictures have IDs too (D5), for tilesets to take art from, and
         // for sprites: one a sprite has asked for is read as a sheet of
@@ -382,8 +443,7 @@ impl Sprites {
                 let now = stamp(&full);
                 if self.tried.get(&path) != Some(&now) {
                     self.tried.insert(path.clone(), now);
-                    self.queued.retain(|(p, _)| *p != path);
-                    self.queued.push_back((path, full));
+                    self.queue(Kind::Sheet, path, full, now);
                 }
             }
         }
@@ -399,7 +459,7 @@ impl Sprites {
         self.dirty |= before != self.sheets.by_path.len();
     }
 
-    /// Reads the pictures in `wanted` (paths inside the assets) for the
+    /// Queues the pictures in `wanted` (paths inside the assets) for the
     /// game's screens, as well as tilesets' and atlas files' pictures.
     pub fn want_pictures(&mut self, wanted: impl IntoIterator<Item = String>, assets: &Path) {
         self.ui_wanted = wanted.into_iter().collect();
@@ -407,7 +467,7 @@ impl Sprites {
         self.want_art(&paths, assets);
     }
 
-    /// Reads every picture a read tileset takes its art from, an atlas
+    /// Queues every picture a read tileset takes its art from, an atlas
     /// file crops, or the game's screens show, not read yet or changed
     /// since; forgets those nothing uses.
     fn want_art(&mut self, paths: &HashMap<AssetId, String>, assets: &Path) {
@@ -433,8 +493,8 @@ impl Sprites {
                 continue;
             }
             self.art_tried.insert(path.clone(), now);
-            self.sheets.tile_art.insert(path.clone(), read_art(&full));
-            self.dirty = true;
+            // The last one read stays until this one's read.
+            self.queue(Kind::Art, path.clone(), full, now);
         }
         let before = self.sheets.tile_art.len();
         self.sheets.tile_art.retain(|p, _| wanted.contains(p));
@@ -456,6 +516,9 @@ impl Sprites {
         if let Some(assets) = &self.assets {
             tried.insert(path.to_owned(), stamp(&assets.join(path)));
         }
+        // A read of the file before this save is no longer wanted.
+        self.queued
+            .retain(|q| q.kind != Kind::TileMap || q.path != path);
         self.sheets.put(path, file);
         self.dirty = true;
     }
@@ -474,9 +537,32 @@ impl Sprites {
         self.dirty = true;
     }
 
-    /// Starts the next reads and takes in finished ones. Returns the paths
-    /// read since the last call (the GPU uploads them), and whether the
-    /// editor should be told what's changed.
+    /// Queues `full` (`path` inside the assets, as it is: `stamp`) to be
+    /// read as `kind` on a worker, in place of any read of it queued.
+    fn queue(&mut self, kind: Kind, path: String, full: PathBuf, stamp: Stamp) {
+        self.queued.retain(|q| q.kind != kind || q.path != path);
+        self.queued.push_back(Queued {
+            kind,
+            path,
+            full,
+            stamp,
+        });
+    }
+
+    /// Whether `file`'s read is still what's wanted of that file: it's
+    /// still asked for as it was then.
+    fn still_wanted(&self, file: &Queued) -> bool {
+        let tried = match file.kind {
+            Kind::Sheet => &self.tried,
+            Kind::TileMap => &self.tiles_tried,
+            Kind::Art => &self.art_tried,
+        };
+        tried.get(&file.path) == Some(&file.stamp)
+    }
+
+    /// Starts the next reads and takes in finished ones. Returns the sprite
+    /// sheets read since the last call (the GPU uploads them), and whether
+    /// the editor should be told what's changed.
     pub fn poll(&mut self) -> (Vec<String>, bool) {
         // Pictures a sprite asked for since (they're read as sheets of one
         // frame from now on).
@@ -488,37 +574,47 @@ impl Sprites {
                 continue;
             }
             let full = assets.join(&path);
-            self.tried.insert(path.clone(), stamp(&full));
+            let now = stamp(&full);
+            self.tried.insert(path.clone(), now);
             self.sheets
                 .by_path
                 .insert(path.clone(), SheetState::Reading);
-            self.queued.push_back((path, full));
+            self.queue(Kind::Sheet, path, full, now);
             self.dirty = true;
         }
         while self.jobs.running() < AT_ONCE {
-            let Some((path, full)) = self.queued.pop_front() else {
+            let Some(file) = self.queued.pop_front() else {
                 break;
             };
             let generation = self.generation;
-            self.jobs.start(job_id(&full), move || {
-                let state = std::panic::catch_unwind(|| read_sheet(&full)).unwrap_or_else(|_| {
-                    SheetState::Failed("reading it failed unexpectedly".to_owned())
-                });
-                (path, generation, state)
+            self.jobs.start(job_id(file.kind, &file.full), move || {
+                let read = read_on_a_worker(file.kind, &file.full);
+                (file, generation, read)
             });
         }
         let mut read = Vec::new();
-        for (_, (path, generation, state)) in self.jobs.finished() {
-            if generation != self.generation || !self.tried.contains_key(&path) {
+        for (_, (file, generation, state)) in self.jobs.finished() {
+            if generation != self.generation || !self.still_wanted(&file) {
                 continue;
             }
-            // A failed read keeps the last good sheet, so a half-saved file
-            // never makes sprites vanish.
-            let keep_last = matches!(state, SheetState::Failed(_))
-                && matches!(self.sheets.by_path.get(&path), Some(SheetState::Read(_)));
-            if !keep_last {
-                self.sheets.by_path.insert(path.clone(), state);
-                read.push(path);
+            let path = file.path;
+            match state {
+                Read::Sheet(state) => {
+                    // A failed read keeps the last good sheet, so a
+                    // half-saved file never makes sprites vanish.
+                    let keep_last = matches!(state, SheetState::Failed(_))
+                        && matches!(self.sheets.by_path.get(&path), Some(SheetState::Read(_)));
+                    if !keep_last {
+                        self.sheets.by_path.insert(path.clone(), state);
+                        read.push(path);
+                    }
+                }
+                Read::TileMap(state) => {
+                    self.sheets.tile_maps.insert(path, state);
+                }
+                Read::Art(state) => {
+                    self.sheets.tile_art.insert(path, state);
+                }
             }
             self.dirty = true;
         }
@@ -719,6 +815,7 @@ mod tests {
         s.want(&list, &dir);
         assert!(s.sheets().tile_art.is_empty(), "nothing uses it yet");
         s.want_pictures(["sprites/icon.png".to_string()], &dir);
+        settle(&mut s);
         assert!(matches!(
             s.sheets().tile_art.get("sprites/icon.png"),
             Some(ArtState::Read(art)) if art.size == [4, 2]
@@ -843,6 +940,7 @@ mod tests {
         ]);
         let mut s = Sprites::default();
         s.want(&list, &dir);
+        settle(&mut s);
         assert_eq!(
             s.sheets().paths.get(&png_id).map(String::as_str),
             Some("sprites/tiles.png")
@@ -852,6 +950,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(20));
         std::fs::write(&png, b"not a picture any more").unwrap();
         s.want(&list, &dir);
+        settle(&mut s);
         assert!(matches!(
             s.sheets().tile_art.get("sprites/tiles.png"),
             Some(ArtState::Failed(why)) if why.contains("PNG")
@@ -866,5 +965,146 @@ mod tests {
         s.want(&list, &dir);
         assert!(s.sheets().tile_art.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A tile map's file (`farm.tilemap.lst`) of `size` cells.
+    fn map_text(size: u32) -> String {
+        tiles::map_file::write(&tiles::TileMap::new([size, size], None, Some(b'.'))).unwrap()
+    }
+
+    fn held_map(s: &Sprites, path: &str) -> Option<Arc<tiles::TileMap>> {
+        match s.sheets().tile_maps.get(path) {
+            Some(MapFileState::Read(map, _)) => Some(Arc::clone(map)),
+            _ => None,
+        }
+    }
+
+    /// The review, BUG-31: tile maps and the pictures read whole (each up
+    /// to 64 MB) were read and decoded inside `want` and `want_pictures`,
+    /// on the window's thread. They're queued for a worker now, like
+    /// sprite sheets: asking returns at once, and the files arrive with a
+    /// later `poll`.
+    #[test]
+    fn tile_maps_and_whole_pictures_are_read_on_a_worker_not_where_they_re_asked_for() {
+        let dir = folder("on-a-worker");
+        let (map_id, png_id) = (AssetId::random(), AssetId::random());
+        std::fs::write(dir.join("sprites/farm.tilemap.lst"), map_text(4)).unwrap();
+        std::fs::write(
+            dir.join("sprites/icon.png"),
+            assets::tile_art::png_of([4, 2], &[7; 4 * 2 * 4]).unwrap(),
+        )
+        .unwrap();
+        let list = listing(&[
+            ("sprites/farm.tilemap.lst", map_id),
+            ("sprites/icon.png", png_id),
+        ]);
+        let mut s = Sprites::default();
+        s.want(&list, &dir);
+        s.want_pictures(["sprites/icon.png".to_string()], &dir);
+        assert!(s.sheets().tile_maps.is_empty(), "not read where asked for");
+        assert!(s.sheets().tile_art.is_empty(), "not read where asked for");
+        assert!(s.waiting(), "queued for a worker");
+        settle(&mut s);
+        assert_eq!(
+            held_map(&s, "sprites/farm.tilemap.lst").unwrap().size(),
+            [4, 4]
+        );
+        assert!(matches!(
+            s.sheets().tile_art.get("sprites/icon.png"),
+            Some(ArtState::Read(art)) if art.size == [4, 2]
+        ));
+        // Changed: the last one read stays until the new one is.
+        std::fs::write(dir.join("sprites/farm.tilemap.lst"), map_text(8)).unwrap();
+        s.want(&list, &dir);
+        assert_eq!(
+            held_map(&s, "sprites/farm.tilemap.lst").unwrap().size(),
+            [4, 4]
+        );
+        settle(&mut s);
+        assert_eq!(
+            held_map(&s, "sprites/farm.tilemap.lst").unwrap().size(),
+            [8, 8]
+        );
+        // Gone: forgotten at once, and a read on its way isn't taken.
+        std::fs::write(dir.join("sprites/farm.tilemap.lst"), map_text(2)).unwrap();
+        s.want(&list, &dir);
+        s.want(&listing(&[]), &dir);
+        s.want_pictures([], &dir);
+        settle(&mut s);
+        assert!(s.sheets().tile_maps.is_empty());
+        assert!(s.sheets().tile_art.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A read of a tile map asked for before the editor saved it never
+    /// replaces what was saved (BUG-09 still holds with reads on a worker).
+    #[test]
+    fn a_tile_map_read_asked_for_before_a_save_never_replaces_the_save() {
+        use editor::OwnFile;
+        let dir = folder("read-then-saved");
+        let id = AssetId::random();
+        let file = dir.join("sprites/farm.tilemap.lst");
+        std::fs::write(&file, map_text(4)).unwrap();
+        let list = listing(&[("sprites/farm.tilemap.lst", id)]);
+        let mut s = Sprites::default();
+        s.want(&list, &dir);
+        // Queued and started, but not yet taken in, when the save lands.
+        s.poll();
+        let saved = Arc::new(tiles::TileMap::new([16, 16], None, Some(b'.')));
+        std::fs::write(&file, tiles::map_file::write(&saved).unwrap()).unwrap();
+        s.saved(
+            "sprites/farm.tilemap.lst",
+            OwnFile::TileMap(Arc::clone(&saved)),
+        );
+        settle(&mut s);
+        let held = held_map(&s, "sprites/farm.tilemap.lst").unwrap();
+        assert!(Arc::ptr_eq(&held, &saved), "the save, not the earlier read");
+        // And asking again doesn't read Solis's own save.
+        s.want(&list, &dir);
+        assert!(!s.waiting());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The review, BUG-31: asking for a big tile map and a big picture
+    /// used to read and decode both on the window's thread. The reads
+    /// themselves are timed too: that was the frame's wait before.
+    #[test]
+    #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+    fn scale_check_asking_for_a_big_tile_map_and_picture() {
+        const TARGET_MS: f64 = 1.0;
+        let dir = folder("scale-asking");
+        let (map_id, png_id) = (AssetId::random(), AssetId::random());
+        let map = dir.join("sprites/world.tilemap.lst");
+        std::fs::write(&map, map_text(1024)).unwrap();
+        let png = dir.join("sprites/sky.png");
+        let pixels: Vec<u8> = (0..4096u32 * 4096 * 4).map(|i| (i % 251) as u8).collect();
+        std::fs::write(
+            &png,
+            assets::tile_art::png_of([4096, 4096], &pixels).unwrap(),
+        )
+        .unwrap();
+        let list = listing(&[
+            ("sprites/world.tilemap.lst", map_id),
+            ("sprites/sky.png", png_id),
+        ]);
+        let start = std::time::Instant::now();
+        assert!(matches!(read_tile_map(&map), MapFileState::Read(..)));
+        assert!(matches!(read_art(&png), ArtState::Read(_)));
+        let reads_ms = start.elapsed().as_secs_f64() * 1000.0;
+        let mut s = Sprites::default();
+        let start = std::time::Instant::now();
+        s.want(&list, &dir);
+        s.want_pictures(["sprites/sky.png".to_string()], &dir);
+        s.poll();
+        let ms = start.elapsed().as_secs_f64() * 1000.0;
+        settle(&mut s);
+        assert!(held_map(&s, "sprites/world.tilemap.lst").is_some());
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!(
+            "Scale check: asking for a 1,024 x 1,024 tile map and a 4,096 x 4,096 picture {ms:.3} ms \
+             (target {TARGET_MS} ms; reading them, now on a worker, {reads_ms:.0} ms) {verdict}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(ms <= TARGET_MS, "{ms:.3} ms");
     }
 }

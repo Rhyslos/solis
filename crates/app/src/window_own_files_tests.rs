@@ -1,9 +1,10 @@
 //! Saving the files the editor changes itself (a clips file, an animator,
 //! a tileset, an atlas, a tile map), carried out by the app as the editor
 //! asks (the review, BUG-09): the app's functions called in the order a
-//! frame calls them, with no window, no waiting and no watcher. Every
-//! file here is small text, read where it's asked for, so nothing in
-//! these tests arrives from a worker.
+//! frame calls them, with no window and no watcher. Every file here is
+//! small text, read where it's asked for, but tile maps and pictures,
+//! which arrive from a worker (BUG-31): `read_sprites` waits for them as
+//! the frames would.
 //!
 //! The saves are made by hand, as the editor would ask for them; what the
 //! editor's own tabs and undo steps do with the answers is tested in the
@@ -41,6 +42,17 @@ fn editor_with_project(name: &str) -> (egui::Context, App, PathBuf) {
     app.open_project(&root, true);
     let assets = app.projects.db().expect("opened").project().assets();
     (ctx, app, assets)
+}
+
+/// Takes in what the app's workers read, frame by frame, until nothing is
+/// left to read (at most ten seconds).
+fn read_sprites(app: &mut App) {
+    let start = std::time::Instant::now();
+    app.follow_sprites();
+    while app.sprites.waiting() && start.elapsed().as_secs() < 10 {
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        app.follow_sprites();
+    }
 }
 
 /// Closes the editor and takes its project's folder away.
@@ -234,7 +246,7 @@ fn with_file(name: &str, kind: &Kind) -> (egui::Context, App, PathBuf) {
     assert!(lengths[0] != lengths[1] && lengths[1] != lengths[2] && lengths[0] != lengths[2]);
     std::fs::write(assets.join(kind.file), text(first)).unwrap();
     app.refresh_library();
-    app.follow_sprites();
+    read_sprites(&mut app);
     assert_eq!(
         shown(&app, kind.file).as_ref(),
         Some(first),
@@ -275,7 +287,7 @@ fn a_saved_file_is_the_app_s_at_once_so_nothing_read_later_brings_the_old_one_ba
         )
         .unwrap();
         app.sprites.want_pictures(["icon.png".to_owned()], &assets);
-        app.follow_sprites();
+        read_sprites(&mut app);
         assert_eq!(
             shown(&app, kind.file).as_ref(),
             Some(second),
@@ -285,14 +297,14 @@ fn a_saved_file_is_the_app_s_at_once_so_nothing_read_later_brings_the_old_one_ba
         // The watcher's listing: Solis's own save isn't read again, so
         // there's no read of it for an editor to take for a change.
         app.refresh_library();
-        app.follow_sprites();
+        read_sprites(&mut app);
         let kept = held(app.sprites.sheets(), kind.file).unwrap();
         assert!(same_one(&kept, second), "{}: not read again", kind.file);
         assert_eq!(shown(&app, kind.file).as_ref(), Some(second));
         // A change made outside Solis afterwards is read as ever.
         std::fs::write(&file, text(third)).unwrap();
         app.refresh_library();
-        app.follow_sprites();
+        read_sprites(&mut app);
         assert_eq!(
             shown(&app, kind.file).as_ref(),
             Some(third),
@@ -325,7 +337,7 @@ fn a_save_that_can_t_be_written_is_said_and_the_next_one_writes_the_file() {
         // Nothing took the change for saved: the app's files, and what
         // the editor shows, are the file as it last was.
         assert_eq!(held(app.sprites.sheets(), kind.file).as_ref(), Some(first));
-        app.follow_sprites();
+        read_sprites(&mut app);
         assert_eq!(
             shown(&app, kind.file).as_ref(),
             Some(first),
@@ -336,7 +348,7 @@ fn a_save_that_can_t_be_written_is_said_and_the_next_one_writes_the_file() {
         std::fs::remove_dir(&file).unwrap();
         save(&ctx, &mut app, kind.file, third);
         assert_eq!(on_disk(&file, third).as_ref(), Some(third), "{}", kind.file);
-        app.follow_sprites();
+        read_sprites(&mut app);
         assert_eq!(
             shown(&app, kind.file).as_ref(),
             Some(third),
