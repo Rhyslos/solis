@@ -327,3 +327,100 @@ fn stamps_go_with_their_layers_and_new_cells_get_new_ones() {
     );
     assert!(resized[0] != resized[1] && resized[1] != resized[2]);
 }
+
+/// Each layer's counts, worked out from its cells.
+fn counted(map: &TileMap) -> Vec<[usize; 256]> {
+    (0..map.layers().len())
+        .map(|l| {
+            let mut counts = [0; 256];
+            for &c in map.layer_cells(l).unwrap() {
+                counts[usize::from(c)] += 1;
+            }
+            counts
+        })
+        .collect()
+}
+
+/// Each layer's counts, as the map keeps them.
+fn kept(map: &TileMap) -> Vec<[usize; 256]> {
+    (0..map.layers().len()).map(|l| map.counts(l)).collect()
+}
+
+/// BUG-22: the counts are kept as cells change, not counted when asked:
+/// whatever changes a map, they are what counting its cells gives.
+#[test]
+fn a_map_s_counts_follow_every_change() {
+    let mut map = farm();
+    assert_eq!(map.counts(0)[usize::from(b'.')], 70 * 40);
+    assert_eq!(map.counts(1)[0], 70 * 40, "an empty layer");
+    assert_eq!(map.counts(9), [0; 256], "no such layer");
+    let mut seed = 11u64;
+    let mut next = |most: u32| {
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        (seed >> 33) as u32 % most.max(1)
+    };
+    let mut copies = Vec::new();
+    for step in 0..3_000 {
+        let layers = map.layers().len() as u32;
+        match next(40) {
+            0 => {
+                let _ = map.add_layer(&format!("L{step}"), false);
+            }
+            1 if layers > 1 => {
+                map.remove_layer(next(layers) as usize);
+            }
+            2 => {
+                map.move_layer(next(layers) as usize, next(2) == 0);
+            }
+            3 => {
+                let [w, h] = map.size();
+                map.resize([
+                    (w + next(9)).saturating_sub(4),
+                    (h + next(9)).saturating_sub(4),
+                ]);
+            }
+            4 => copies.push(map.clone()),
+            _ => {
+                let [w, h] = map.size();
+                let code = [0, b'.', b't', b'~'][next(4) as usize];
+                let _ = map.set_code(next(layers) as usize, next(w), next(h), code);
+            }
+        }
+        assert_eq!(kept(&map), counted(&map), "after step {step}");
+    }
+    // Copies keep the counts they had, though the map changed since.
+    assert!(!copies.is_empty());
+    for copy in &copies {
+        assert_eq!(kept(copy), counted(copy));
+    }
+    // A map read from its file has its counts too.
+    let read = crate::map_file::read(&crate::map_file::write(&map).unwrap()).unwrap();
+    assert_eq!(kept(&read.map), counted(&read.map));
+    assert_eq!(kept(&read.map), kept(&map));
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_counting_a_big_map_s_terrains() {
+    // BUG-22: the Map tab's palette counts each terrain's cells on every
+    // layer, every frame it is shown.
+    const TARGET_MS: f64 = 0.05;
+    let mut map = TileMap::new([2048, 2048], None, Some(b'.'));
+    map.add_layer("Paths", false).unwrap();
+    map.set_code(3, 7, 7, b't').unwrap();
+    let start = std::time::Instant::now();
+    let mut grass = 0;
+    for l in 0..map.layers().len() {
+        grass += map.counts(l)[usize::from(b'.')];
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0;
+    assert_eq!(grass, 2048 * 2048);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: counting the terrains of a 2048 × 2048 map's four layers {ms:.3} ms \
+         (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.3} ms");
+}

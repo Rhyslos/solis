@@ -908,3 +908,161 @@ fn scale_check_two_views_and_the_game_panel_of_a_tile_map() {
     );
     assert!(ms <= TARGET_MS, "{ms:.3} ms");
 }
+
+/// A selected 2,048 × 2,048 map seen whole, with a wall in every chunk
+/// and a switch on in a cell of each, for the overlay's scale check.
+fn big_overlay() -> TileOverlay {
+    let side = 2048;
+    let mut map = TileMap::new([side, side], None, Some(b'.'));
+    map.add_value("watered", tiles::ValueKind::Switch).unwrap();
+    for cy in 0..side / tiles::CHUNK {
+        for cx in 0..side / tiles::CHUNK {
+            let (x, y) = (cx * tiles::CHUNK + 3, cy * tiles::CHUNK + 5);
+            map.set_code(1, x, y, b'#').unwrap();
+            map.set_value(0, x, y, tiles::CellValue::Switch(true))
+                .unwrap();
+        }
+    }
+    let mut solid = [false; 256];
+    solid[usize::from(b'#')] = true;
+    TileOverlay {
+        map: Some(ViewTileMap {
+            entity: entity(),
+            transform: Mat4::IDENTITY,
+            map: Arc::new(map),
+        }),
+        values: vec![0],
+        walls: true,
+        solid: Some(solid),
+        ..TileOverlay::default()
+    }
+}
+
+/// Draws `overlay` as a 400-point view through `camera` sees it, as many
+/// frames as asked; gives it back.
+fn overlay_seen(overlay: TileOverlay, camera: crate::camera::Camera, frames: usize) -> TileOverlay {
+    let mut h = egui_kittest::Harness::builder()
+        .with_size(egui::vec2(400.0, 400.0))
+        .build_ui_state(
+            move |ui, o: &mut TileOverlay| {
+                let rect = ui.max_rect();
+                draw_overlay(
+                    ui,
+                    rect,
+                    &camera,
+                    o,
+                    [1.0, 1.0],
+                    None,
+                    crate::theme::Accent::default(),
+                );
+            },
+            overlay,
+        );
+    for _ in 0..frames {
+        h.step();
+    }
+    h.into_state()
+}
+
+/// BUG-22: with Walls on, every chunk of the map was looked through for
+/// its walls every frame, on screen or not. Now only those in view, and
+/// each again only when it changes.
+#[test]
+fn walls_are_found_only_in_chunks_in_view_and_kept() {
+    let mut overlay = big_overlay();
+    // Looking straight down at the corner of the map, 100 cells high.
+    let mut camera = crate::camera::Camera::default().as_kind(crate::camera::ViewKind::TwoD);
+    camera.position.x = 40.0;
+    camera.position.y = -40.0;
+    camera.flat_height = 100.0;
+    overlay = overlay_seen(overlay, camera, 1);
+    let first: Vec<([u32; 2], Arc<Vec<tiles::walls::Rect>>)> = overlay
+        .walls_kept
+        .chunks
+        .iter()
+        .map(|(c, (_, walls))| (*c, Arc::clone(walls)))
+        .collect();
+    // Cells 0 to about 90 across and down: chunks 0 to 2 each way.
+    assert_eq!(first.len(), 9, "the chunks in view, of 4,096");
+    assert!(
+        first
+            .iter()
+            .all(|(c, walls)| c[0] < 3 && c[1] < 3 && walls.len() == 1)
+    );
+    overlay = overlay_seen(overlay, camera, 3);
+    for (chunk, walls) in &first {
+        assert!(
+            Arc::ptr_eq(walls, &overlay.walls_kept.chunks[chunk].1),
+            "{chunk:?} looked through again"
+        );
+    }
+    // A cell made solid (on a copy of the map, as the editor changes
+    // one): the walls in view are found again, the new one with them.
+    let mut changed = (*overlay.map.as_ref().unwrap().map).clone();
+    changed.set_code(0, 40, 40, b'#').unwrap();
+    overlay.map.as_mut().unwrap().map = Arc::new(changed);
+    overlay = overlay_seen(overlay, camera, 1);
+    assert_eq!(overlay.walls_kept.chunks.len(), 9);
+    assert_eq!(overlay.walls_kept.chunks[&[1, 1]].1.len(), 2);
+}
+
+#[test]
+fn values_are_looked_at_only_while_few_enough_cells_are_in_view() {
+    assert_eq!(valued_cells(None), None);
+    let few = Some((0, 255, 0, 255));
+    assert_eq!(valued_cells(few), few, "256 × 256: shown");
+    assert_eq!(
+        valued_cells(Some((0, 256, 0, 255))),
+        None,
+        "one column more"
+    );
+    assert_eq!(
+        valued_cells(Some((0, 2047, 0, 2047))),
+        None,
+        "a big map whole"
+    );
+    assert_eq!(valued_cells(Some((5, 5, 9, 9))), Some((5, 5, 9, 9)));
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_a_big_selected_map_seen_whole_with_its_walls_and_values() {
+    // BUG-22: every frame, the overlay looked for walls in every chunk of
+    // the map, on screen or not, and visited every cell in view for its
+    // values even when there were far too many to show.
+    const TARGET_MS: f64 = 4.0;
+    let mut camera = crate::camera::Camera::default().as_kind(crate::camera::ViewKind::TwoD);
+    camera.position.x = 1024.0;
+    camera.position.y = -1024.0;
+    camera.flat_height = 2100.0;
+    let mut h = egui_kittest::Harness::builder()
+        .with_size(egui::vec2(1200.0, 1200.0))
+        .build_ui_state(
+            move |ui, o: &mut TileOverlay| {
+                let rect = ui.max_rect();
+                draw_overlay(
+                    ui,
+                    rect,
+                    &camera,
+                    o,
+                    [1.0, 1.0],
+                    None,
+                    crate::theme::Accent::default(),
+                );
+            },
+            big_overlay(),
+        );
+    h.step();
+    let frames = 5;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: a 2048 × 2048 tile map selected and seen whole, with its walls and \
+         values shown, a frame {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.2} ms");
+}

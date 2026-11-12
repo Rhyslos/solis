@@ -702,6 +702,53 @@ pub struct TileOverlay {
     pub preview: Vec<[[i64; 2]; 2]>,
     /// The preview empties cells (drawn in red).
     pub preview_erase: bool,
+    /// The walls drawn, by chunk, kept from frame to frame.
+    walls_kept: KeptWalls,
+}
+
+/// The walls drawn over the selected map, by chunk: worked out only for
+/// chunks in view, and again only when one changes (the review, BUG-22:
+/// every chunk of the map was looked through every frame).
+#[derive(Debug, Clone, Default)]
+struct KeptWalls {
+    /// The map they're of.
+    map: Option<EntityId>,
+    /// Each chunk's walls, and the key of what they were made from.
+    chunks: HashMap<[u32; 2], (u64, Arc<Vec<tiles::walls::Rect>>)>,
+}
+
+impl KeptWalls {
+    /// The walls of chunk `chunk` of `m`, of the cells `solid` says.
+    fn of(
+        &mut self,
+        m: &ViewTileMap,
+        solid: &tiles::walls::Solid,
+        chunk: [u32; 2],
+    ) -> Arc<Vec<tiles::walls::Rect>> {
+        if self.map != Some(m.entity) {
+            self.map = Some(m.entity);
+            self.chunks.clear();
+        }
+        // A chunk's cells, on every layer, are as they were while every
+        // layer's stamp and the chunk's revision are.
+        let mut key = reflect::Checksum::new();
+        key.u64(m.map.chunk_revision(chunk));
+        for l in 0..m.map.layers().len() {
+            key.u64(m.map.layer_stamp(l));
+        }
+        for (code, _) in solid.iter().enumerate().filter(|(_, s)| **s) {
+            key.u64(code as u64);
+        }
+        let key = key.finish();
+        match self.chunks.get(&chunk) {
+            Some((k, walls)) if *k == key => Arc::clone(walls),
+            _ => {
+                let walls = Arc::new(tiles::walls::chunk_walls(&m.map, solid, chunk));
+                self.chunks.insert(chunk, (key, Arc::clone(&walls)));
+                walls
+            }
+        }
+    }
 }
 
 /// The most preview rectangles drawn (a long line's cells).
@@ -709,6 +756,22 @@ const MOST_PREVIEWED: usize = 4096;
 
 /// The cells shown most: past this many in view, values aren't written.
 const MOST_LABELLED: u64 = 4000;
+
+/// The most cells in view whose values are shown at all: past this many
+/// (each a few points across), none are looked at, so a big map seen
+/// whole isn't read cell by cell every frame (the review, BUG-22).
+const MOST_VALUED: u64 = 65_536;
+
+/// The cells in view (first and last column, first and last row) whose
+/// values are shown: none past [`MOST_VALUED`].
+fn valued_cells(seen: Option<(u32, u32, u32, u32)>) -> Option<(u32, u32, u32, u32)> {
+    seen.filter(|&(x0, x1, y0, y1)| cells_in(x0, x1, y0, y1) <= MOST_VALUED)
+}
+
+/// How many cells from column `x0` to `x1` and row `y0` to `y1`.
+fn cells_in(x0: u32, x1: u32, y0: u32, y1: u32) -> u64 {
+    u64::from(x1.saturating_sub(x0) + 1) * u64::from(y1.saturating_sub(y0) + 1)
+}
 
 /// Draws the selected map's overlay over the view in `rect` (seen by
 /// `camera`): its values on its cells (a switch as a blue tint, a number
@@ -729,11 +792,8 @@ pub(crate) fn draw_overlay(
         return;
     };
     let size = glam::Vec2::new(rect.width(), rect.height());
-    let to_screen = |p: Vec3| {
-        camera
-            .project(p, size)
-            .map(|s| egui::pos2(rect.min.x + s.x, rect.min.y + s.y))
-    };
+    let project = camera.projector(size);
+    let to_screen = |p: Vec3| project(p).map(|s| egui::pos2(rect.min.x + s.x, rect.min.y + s.y));
     let painter = ui.painter_at(rect);
     let z = m.transform.w_axis.z;
     if let Some(at) = mouse
@@ -783,10 +843,10 @@ pub(crate) fn draw_overlay(
         let [a, b] = cell_corners(m.transform, cell, at);
         Some(egui::Rect::from_two_pos(to_screen(a)?, to_screen(b)?))
     };
-    if let Some((x0, x1, y0, y1)) = seen
+    if let Some((x0, x1, y0, y1)) = valued_cells(seen)
         && !overlay.values.is_empty()
     {
-        let count = u64::from(x1.saturating_sub(x0) + 1) * u64::from(y1.saturating_sub(y0) + 1);
+        let count = cells_in(x0, x1, y0, y1);
         let big_enough = screen_cell([x0, y0]).is_some_and(|r| r.width() >= 18.0);
         let font = egui::FontId::proportional(11.0);
         for y in y0..=y1 {
@@ -842,11 +902,20 @@ pub(crate) fn draw_overlay(
                 0.0,
             )))
         };
+        // Only the chunks in view (every chunk when the view sees past
+        // the horizon).
         let [across, down] = m.map.chunks();
+        let ((cx0, cx1), (cy0, cy1)) = match seen {
+            Some((x0, x1, y0, y1)) => (
+                (x0 / tiles::CHUNK, x1 / tiles::CHUNK + 1),
+                (y0 / tiles::CHUNK, y1 / tiles::CHUNK + 1),
+            ),
+            None => ((0, across), (0, down)),
+        };
         let green = crate::theme::COLLIDER;
-        for cy in 0..down {
-            for cx in 0..across {
-                for r in tiles::walls::chunk_walls(&m.map, solid, [cx, cy]) {
+        for cy in cy0..cy1.min(down) {
+            for cx in cx0..cx1.min(across) {
+                for r in overlay.walls_kept.of(&m, solid, [cx, cy]).iter() {
                     if let (Some(a), Some(b)) = (wall(r.x, r.y), wall(r.x + r.w, r.y + r.h)) {
                         let r = egui::Rect::from_two_pos(a, b);
                         painter.rect_filled(r, 0.0, green.gamma_multiply(0.18));
