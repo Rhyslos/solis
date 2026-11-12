@@ -29,5 +29,12 @@ mlua.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 
+[features]
+# What other crates' tests need of game code (`script::test_support`): time
+# limits no busy machine reaches, for tests that compare one run of a game
+# with another. Only ever a dev-dependency's feature, never in a build of
+# Solis.
+test-support = []
+
 [lints]
 workspace = true

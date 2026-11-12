@@ -782,7 +782,7 @@ enum Job {
     ObjectChecksum,
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
     Limits(crate::luau::Limits),
 }
 
@@ -880,7 +880,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             Done::Phase(phase, host.kept)
         }
         Job::FinishTick => Done::Finished(runtime.finish_tick()),
-        #[cfg(test)]
+        #[cfg(any(test, feature = "test-support"))]
         Job::Limits(limits) => {
             runtime.set_limits(limits);
             Done::Nothing
@@ -1041,7 +1041,7 @@ impl Game {
     /// [`crate::luau::Limits`]): for tests that compare one run with
     /// another, which a tick cut short on a busy machine would make
     /// differ.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
     pub(crate) fn set_limits(&mut self, limits: crate::luau::Limits) {
         let _ = self.all(|_| Job::Limits(limits));
     }

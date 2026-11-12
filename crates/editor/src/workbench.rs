@@ -351,6 +351,10 @@ pub struct Workbench {
     /// How many times Play has started a game (the app's sound starts
     /// afresh with each). It only ever goes up, another project included.
     pub(crate) plays: u64,
+    /// Which real-time limits this test's games keep (TEST-02): a test
+    /// that compares one run with another plays unhurried.
+    #[cfg(test)]
+    pub(crate) unhurried: crate::game_code::Unhurried,
 }
 
 /// What the viewport's view of the area depends on: when it's the same,
@@ -419,6 +423,8 @@ impl Workbench {
             release_pointer: false,
             pad_now: None,
             plays: 0,
+            #[cfg(test)]
+            unhurried: crate::game_code::Unhurried::default(),
             play_only: false,
             may_close: false,
         }

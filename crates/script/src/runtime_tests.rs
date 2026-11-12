@@ -260,6 +260,18 @@ fn a_failing_component_stops_alone_and_says_where_in_the_lust() {
     );
 }
 
+/// Gives `runtime` a call's real limit, and an hour for the rest (the
+/// review's TEST-02): a test of one call that runs too long is about that
+/// call. Were the machine to keep the test off the processor past the
+/// tick's limit too, the tick would be cut short instead, and nothing
+/// would be said of the call.
+fn only_the_call_s_limit(runtime: &Runtime) {
+    runtime.set_limits(crate::luau::Limits {
+        call: crate::luau::TIME_LIMIT,
+        ..crate::luau::Limits::unhurried()
+    });
+}
+
 #[test]
 fn a_loop_that_never_ends_is_stopped_by_the_time_limit() {
     let mut runtime = loaded(
@@ -275,6 +287,7 @@ fn a_loop_that_never_ends_is_stopped_by_the_time_limit() {
          }\n\
          pass Spinner;\nend\n",
     );
+    only_the_call_s_limit(&runtime);
     runtime
         .sync(id(5), "Spinner", &ComponentData::default(), &mut NoHost)
         .unwrap();
@@ -315,6 +328,7 @@ fn a_program_whose_start_fails_or_takes_all_memory_is_refused() {
          pass Hungry;\nend\n",
     );
     runtime.load(&hungry, &mut NoHost).unwrap();
+    only_the_call_s_limit(&runtime);
     runtime
         .sync(id(6), "Hungry", &ComponentData::default(), &mut NoHost)
         .unwrap();

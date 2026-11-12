@@ -6,7 +6,7 @@ Note: the `symbols_have_glyphs` test in `fonts_tests.rs` reads every file in thi
 
 **Start reading at** `workbench.rs` (the whole window), then `document.rs` and `commands.rs` (how the area changes).
 
-Tests: files ending `_tests.rs` hold the tests of the file with the same start (`play_tests.rs` tests `play.rs`). Tests of the whole window are drawn with egui_kittest, without a GPU; `test_support.rs` has their shared helpers: among them `run` and `do_command` (do the command of that name, as the ribbon, a File page or the search does), `ribbon_tab` and `file_item`, so a test never depends on where a thing is drawn.
+Tests: files ending `_tests.rs` hold the tests of the file with the same start (`play_tests.rs` tests `play.rs`). Tests of the whole window are drawn with egui_kittest, without a GPU; `test_support.rs` has their shared helpers: among them `run` and `do_command` (do the command of that name, as the ribbon, a File page or the search does), `ribbon_tab` and `file_item`, so a test never depends on where a thing is drawn; and `unhurried`, which a test that compares one run of a game with another (or waits for whole ticks) calls on its workbench, so a busy machine can't cut a tick short and pause its game (`game_code::Unhurried`, through `script`'s `test-support` feature; never for every test, since the real limits stop code that never ends).
 
 ## The window and its state
 

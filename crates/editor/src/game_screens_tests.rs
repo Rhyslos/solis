@@ -40,6 +40,8 @@ fn program(hud_text: &str, menu: Option<&str>) -> Arc<script::Compiled> {
 /// shown, order)`.
 fn showing(program: Arc<script::Compiled>, screens: &[(&str, bool, i64)]) -> Workbench {
     let mut w = Workbench::new(info());
+    // Its tests wait for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program));
     for (i, (name, shown, order)) in screens.iter().enumerate() {
         let entity = EntityData::new(&format!("Shower {i}")).with(&Screen {

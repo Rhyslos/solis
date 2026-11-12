@@ -656,6 +656,8 @@ fn hero_with_a_score() -> (Workbench, EntityId) {
     };
     let program = std::sync::Arc::new(script::compile(&code).unwrap().unwrap());
     let mut w = Workbench::new(info());
+    // Its tests wait for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program));
     let id = EntityId::random();
     let mut hero = area::EntityData::new("Hero").with(&Transform::default());

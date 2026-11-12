@@ -144,6 +144,7 @@ fn sound_never_changes_the_game() {
     // The same game played twice in one area, with its sounds taken every
     // frame and never: the same world, tick by tick.
     let (mut w, _) = with_a_speaker();
+    unhurried(&mut w);
     w.open.fixed_seed = Some(7);
     let mut run = |take: bool| {
         w.play();

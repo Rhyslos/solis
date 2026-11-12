@@ -595,6 +595,9 @@ fn a_lua_component_joins_properties_and_play_mode() {
 #[test]
 fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
     let mut w = Workbench::new(info());
+    // Each update takes 90 ms, within its 100: a busy machine would stop
+    // one of them, so only the tick's own limit is tried.
+    w.unhurried = crate::game_code::Unhurried::Calls;
     let code = script::Code {
         files: Vec::new(),
         lua: vec![(
@@ -637,9 +640,8 @@ fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
     w.play();
     // A long frame would catch up with several ticks; the first is too
     // slow, so the rest don't run.
-    let start = std::time::Instant::now();
     w.run_game(0.1);
-    assert!(start.elapsed() < std::time::Duration::from_millis(600));
+    assert_eq!(w.world().unwrap().clock().ticks, 1, "one tick of six ran");
     assert!(w.open.playing.as_ref().unwrap().paused);
     assert!(
         w.log_lines()
@@ -1255,6 +1257,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
     // they were spawned in the tick's order).
     let ids = || {
         let mut w = with_drones(HIVE);
+        unhurried(&mut w);
         let mut hive = EntityData::new("Hive");
         hive.components
             .insert("Hive".into(), reflect::ComponentData::default());
@@ -1321,6 +1324,7 @@ fn random_numbers_and_spawns_carry_on_while_the_game_s_speed_is_0_and_after_a_lo
     let hive_id = EntityId(reflect::Id::from_raw(77).unwrap());
     let playing = || {
         let mut w = with_drones(PAUSING_HIVE);
+        unhurried(&mut w);
         w.open.project = Some(crate::library::ProjectInfo {
             name: "Hives".into(),
             root: std::env::temp_dir(),
@@ -1433,6 +1437,9 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
          }\n\
          pass Hive, Drone;\nend\n",
     );
+    // It counts what one whole tick made: a tick cut short would make
+    // fewer.
+    unhurried(&mut w);
     // Seven hives of 1,430 each: more than the most in a tick, with no
     // one update near the time a call may take (on a slow machine, one
     // update making them all ran out of time first).
@@ -1619,6 +1626,7 @@ fn any_frame_rate_gives_the_same_world_at_the_same_tick() {
     // place, to the bit (the simulation's step doesn't follow the frames).
     let at_tick = |fps: f64| {
         let (mut w, id) = with_a_mover();
+        unhurried(&mut w);
         w.play();
         while w.world().unwrap().clock().ticks < 120 {
             let left = 120 - w.world().unwrap().clock().ticks;
@@ -1719,6 +1727,7 @@ fn stagger(w: &mut Workbench, seed: Option<u64>, ticks: u64) -> (f32, u64, u64) 
 #[test]
 fn a_chosen_seed_plays_the_same_twice_and_a_new_one_differently() {
     let mut w = with_a_drunkard();
+    unhurried(&mut w);
     let first = stagger(&mut w, Some(99), 60);
     assert_eq!(stagger(&mut w, Some(99), 60), first, "the same, to the bit");
     let other = stagger(&mut w, Some(100), 60);
@@ -1811,6 +1820,7 @@ fn kicked() -> (Workbench, EntityId) {
 #[test]
 fn game_code_kicks_a_crate_and_physics_slides_it_the_same_every_play() {
     let (mut w, crate_id) = kicked();
+    unhurried(&mut w);
     let run = |w: &mut Workbench| {
         w.open.fixed_seed = Some(1);
         w.play();
@@ -2078,6 +2088,8 @@ const CHURN_LUA: &str = "local C = component(\"Churn\", { { \"value\", \"float\"
 /// `language`, and their values after `ticks`.
 fn churning(language: &str) -> Workbench {
     let mut w = Workbench::new(info());
+    // The languages are compared with each other.
+    unhurried(&mut w);
     match language {
         "Lust" => w.set_program(Some(program(CHURN_LUST))),
         "Lua" => {
@@ -2242,6 +2254,8 @@ const FACER: &str = "component Facer {\n\
 #[test]
 fn game_code_mirrors_a_sprite_with_set_flip() {
     let mut w = Workbench::new(info());
+    // It waits for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program(FACER)));
     let id = EntityId::random();
     let mut data = EntityData::new("Hero")

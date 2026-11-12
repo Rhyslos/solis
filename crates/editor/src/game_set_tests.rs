@@ -240,6 +240,8 @@ fn stage(files: (AssetId, AssetId)) -> Workbench {
     let (animator_file, map_file) = files;
     let asset = |asset| Some(AssetRef { asset, part: None });
     let mut w = Workbench::new(info());
+    // Its games are compared with each other.
+    unhurried(&mut w);
     // No starter area: its entities' IDs are new every time.
     w.open.document = crate::document::Document::new(area::Area::new());
     let sign = EntityData::new("Sign")
