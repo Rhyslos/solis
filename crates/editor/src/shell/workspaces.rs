@@ -135,7 +135,7 @@ impl ShelfTab {
             Self::Entity => &[
                 column!("Area", [P::Area], Fixed(size::SCENE_COLUMN_W)),
                 column!("Properties", [P::Properties], Rest, own_header),
-                column!("Library", [P::Library], Fixed(size::ASSETS_COLUMN_W)),
+                column!("Assets", [P::Assets], Fixed(size::ASSETS_COLUMN_W)),
             ],
             Self::Screen => &[
                 column!("Elements", [P::Elements], Fixed(size::SCENE_COLUMN_W)),

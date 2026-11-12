@@ -475,6 +475,17 @@ pub mod share {
     pub const LIFT: f32 = 0.12;
 }
 
+/// An error's row in the Console: the error colour mixed faintly into
+/// the column.
+pub fn error_row() -> Color32 {
+    mix(ERROR, panel(), share::ERROR_ROW)
+}
+
+/// A warning's row in the Console.
+pub fn warning_row() -> Color32 {
+    mix(WARNING, panel(), share::WARNING_ROW)
+}
+
 /// A selected row of a tree or a list: the accent mixed into a shelf
 /// column.
 pub fn select_row(accent: Accent) -> Color32 {

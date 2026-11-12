@@ -132,6 +132,8 @@ pub const DIVIDER_REACH: f32 = 3.0;
 pub const COLUMN_HEADER_H: f32 = 30.0;
 /// A row's, header's or shelf tab's padding at each side.
 pub const ROW_PAD: f32 = 12.0;
+/// The column of a Console line's level word ("ERROR").
+pub const LOG_LEVEL_W: f32 = 40.0;
 /// How far a tree's children are set in.
 pub const TREE_INDENT: f32 = 28.0;
 /// How much further in each level of the Area column's tree is (from the
@@ -210,6 +212,8 @@ pub const TILE_OUTLINE: f32 = 2.0;
 pub const KIND_DOT: f32 = 7.0;
 /// The least width of a tile in the Library.
 pub const TILE_MIN_W: f32 = 108.0;
+/// The line under an Assets tile for its name (spec 216).
+pub const ASSET_NAME_H: f32 = 14.0;
 /// The width of the names in a list of names and values.
 pub const KEY_COLUMN_W: f32 = 96.0;
 /// The gap between a name and its value.

@@ -113,7 +113,7 @@ fn the_editor_draws_every_panel_without_a_gpu() {
         "Problems",
         "Area",
         "Properties",
-        "Library",
+        "Assets",
     ] {
         assert!(h.query_all_by_label(label).count() >= 1, "{label}");
     }
@@ -1487,6 +1487,8 @@ fn the_library_lists_the_project_and_a_double_click_places() {
     let mut w = Workbench::new(info());
     let mut h = acting(w);
     h.run();
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Library);
+    h.run();
     let _ = h.get_by_label_contains("No project is open");
     w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
@@ -1504,6 +1506,8 @@ fn the_library_lists_the_project_and_a_double_click_places() {
         thumbnail: None,
     }]);
     let mut h = acting(w);
+    h.run();
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Library);
     h.run();
     h.get_by_label("Place Lighthouse").click();
     h.run();
@@ -2421,6 +2425,8 @@ fn a_take_is_added_once_and_only_to_a_readable_event() {
 fn new_sound_event_is_in_the_new_menu() {
     let (w, _) = with_a_sound_event();
     let mut h = acting(w);
+    h.run();
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Library);
     h.run();
     h.get_by_label("+ New").click();
     h.run();

@@ -46,6 +46,9 @@ pub enum Panel {
     /// A picture's crops (decision 0089): beside the viewport while its
     /// atlas file is open.
     AtlasCrop,
+    /// The Library's open folder as tiles, on Home's Entity shelf tab
+    /// (spec 200).
+    Assets,
     /// The UI editor's canvas (decision 0089): a screen drawn to pick and
     /// change, in the UI workspace while a screen is open.
     Canvas,
@@ -55,7 +58,7 @@ pub enum Panel {
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -66,6 +69,7 @@ impl Panel {
         Self::Problems,
         Self::Profiler,
         Self::Mixer,
+        Self::Assets,
     ];
 
     /// Panels that come and go with what's open (a clips file), never in
@@ -113,6 +117,7 @@ impl Panel {
             Self::AtlasCrop => "Atlas Crop",
             Self::Canvas => "Canvas",
             Self::Elements => "Elements",
+            Self::Assets => "Assets",
         }
     }
 
@@ -137,6 +142,7 @@ impl Panel {
             Self::AtlasCrop => Icon::Crops,
             Self::Canvas => Icon::Screen,
             Self::Elements => Icon::Area,
+            Self::Assets => Icon::Library,
         }
     }
 }

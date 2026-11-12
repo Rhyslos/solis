@@ -152,7 +152,8 @@ impl Workbench {
                         self.open.library_state.filter = crate::library::Filter::All;
                     }
                     self.follow_sound_selection(&before);
-                    self.show_panel(Panel::Library);
+                    // On Home's Assets column, ready to drag in.
+                    self.show_panel(Panel::Assets);
                 } else {
                     self.library_request(LibraryRequest::Open(kind, path), actions);
                 }

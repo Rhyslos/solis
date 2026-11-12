@@ -263,6 +263,8 @@ Counts are at the end of this part.
 | `home.shelf.frame-counter` | "0096 / 0240" | PLACEHOLDER | Placeholder mono text "---- / ----" | Shared 10 |
 | `home.object.scene` | **Scene** column: tree, count, selection (spec 205) | EXISTS | `area_panel.rs` `area_tree` | |
 | `home.object.inspector` | **Inspector** column: header, + Component, cards (spec 206-214) | EXISTS | `properties.rs`, `inspector.rs` | |
+| `home.object.model-material` | The Model card's **Material** row (approved additions, round 2, `04-properties-cards`) | PLACEHOLDER | Placeholder field row: a Model has one setting today, the model itself (found while mocking up, round 2) | Shared 7: Materials and shaders |
+| `home.object.model-shadows` | The Model card's **Shadows** row | PLACEHOLDER | Placeholder field row: only the sun casts shadows today, switched on its Light card | not on the roadmap |
 | `home.object.edited-border` | A just-edited value's accent border (spec 121, 211) | PARTLY | The focused field gets it; "just edited" is new and pure interface, built in M5 | |
 | `home.object.label-scrub` | Drag a field's label to scrub (spec 214) | PARTLY | Today the value itself is dragged (`settled.rs`). Label dragging is a new mouse action: decision D15. | |
 | `home.object.card-menu` | Right-click a card: reset, copy, remove (spec 214) | EXISTS | The card's ⋯ menu today (`properties.rs:726`) | |

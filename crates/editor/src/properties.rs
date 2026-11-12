@@ -9,6 +9,7 @@ use crate::models::ModelInfo;
 use crate::panels::empty_note;
 use crate::properties_cards as cards;
 use crate::tokens::{self, size, text};
+use crate::unbuilt::{self, Entry, UnbuiltId};
 use crate::widgets;
 use egui::{RichText, Ui};
 use reflect::{AssetId, EntityId, Value};
@@ -412,6 +413,24 @@ impl Card<'_> {
                     field,
                 },
             });
+        }
+        if component == "Model" {
+            model_rows_to_come(ui);
+        }
+    }
+}
+
+/// The Model card's rows the design has and Solis doesn't yet: a model
+/// has one setting today, the model itself (found while mocking up,
+/// round 2).
+fn model_rows_to_come(ui: &mut Ui) {
+    let rows: Vec<Entry<()>> = vec![
+        Entry::Unbuilt(UnbuiltId::HomeObjectModelMaterial),
+        Entry::Unbuilt(UnbuiltId::HomeObjectModelShadows),
+    ];
+    for entry in unbuilt::filter(rows) {
+        if let Entry::Unbuilt(part) = entry {
+            unbuilt::field_row(ui, part);
         }
     }
 }

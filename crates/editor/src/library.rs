@@ -69,7 +69,7 @@ pub enum LibraryKind {
 
 impl LibraryKind {
     /// What it's called, for tooltips.
-    fn name(self) -> &'static str {
+    pub(crate) fn name(self) -> &'static str {
         match self {
             Self::Model => "Model",
             Self::Assembly => "Assembly",
@@ -921,6 +921,24 @@ struct Picked<'a> {
 const NO_ID_YET: &str =
     "This file has no ID yet, and one is needed to place it. Try again in a moment.";
 
+/// What clicks, double-clicks, drags and right-clicks on `item`'s
+/// `response` ask for, where nothing else is drawn on it (the Assets
+/// column's tiles).
+pub(crate) fn act_on(
+    item: &LibraryItem,
+    response: egui::Response,
+    state: &mut LibraryState,
+    requests: &mut Vec<LibraryRequest>,
+) {
+    let picked = Picked {
+        item,
+        response,
+        place: false,
+        listen: None,
+    };
+    item_actions(picked, state, requests);
+}
+
 /// What clicks, double-clicks, drags and right-clicks on an item ask for.
 fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec<LibraryRequest>) {
     let Picked {
@@ -1111,6 +1129,70 @@ fn tile<'a>(
     let painter = ui.painter();
     let picture = egui::Rect::from_min_size(rect.min, egui::vec2(TILE.x, PICTURE));
     painter.rect_filled(picture, 3.0, theme::field());
+    paint_thumbnail(painter, picture, item, sounds);
+    if item.kind == LibraryKind::SoundEvent {
+        event_badge(ui, item, picture, &response, sounds);
+    }
+    let painter = ui.painter();
+    painter.rect_filled(
+        egui::Rect::from_min_max(
+            egui::pos2(picture.left(), picture.bottom() - 3.0),
+            picture.max,
+        ),
+        0.0,
+        item.colour(),
+    );
+    let name_rect = egui::Rect::from_min_max(egui::pos2(rect.left(), picture.bottom()), rect.max);
+    let galley = ui.painter().layout(
+        item.name.clone(),
+        egui::FontId::proportional(11.5),
+        theme::text(),
+        TILE.x - 4.0,
+    );
+    ui.painter().galley(
+        egui::pos2(name_rect.left() + 2.0, name_rect.top() + 3.0),
+        galley,
+        theme::text(),
+    );
+    if selected {
+        ui.painter().rect_stroke(
+            rect.expand(1.0),
+            4.0,
+            egui::Stroke::new(1.5, accent.colors().light),
+            egui::StrokeKind::Outside,
+        );
+    } else if response.hovered() {
+        ui.painter().rect_stroke(
+            rect.expand(1.0),
+            4.0,
+            egui::Stroke::new(1.0, theme::button_border()),
+            egui::StrokeKind::Outside,
+        );
+    }
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, &item.name)
+    });
+    let response = response.on_hover_text(hint(item));
+    let place = item.kind.placeable() && place_button(ui, item, picture);
+    let listen = listen_button(ui, item, picture, &response, sounds);
+    Picked {
+        item,
+        response,
+        place,
+        listen,
+    }
+}
+
+/// What a file looks like in a tile's square `picture`: a sound's
+/// waveform, a sheet's (or its clips') first frame with how many frames
+/// or clips, a model's or picture's thumbnail, a text file's extension,
+/// or its kind's icon.
+pub(crate) fn paint_thumbnail(
+    painter: &egui::Painter,
+    picture: egui::Rect,
+    item: &LibraryItem,
+    sounds: Sounds<'_>,
+) {
     let waveform = match sounds.states.get(&item.path) {
         Some(SoundState::Read(info)) if item.kind == LibraryKind::Sound => Some(info),
         _ => None,
@@ -1173,57 +1255,6 @@ fn tile<'a>(
             item.kind.icon(),
             item.kind.color(),
         );
-    }
-    if item.kind == LibraryKind::SoundEvent {
-        event_badge(ui, item, picture, &response, sounds);
-    }
-    let painter = ui.painter();
-    painter.rect_filled(
-        egui::Rect::from_min_max(
-            egui::pos2(picture.left(), picture.bottom() - 3.0),
-            picture.max,
-        ),
-        0.0,
-        item.colour(),
-    );
-    let name_rect = egui::Rect::from_min_max(egui::pos2(rect.left(), picture.bottom()), rect.max);
-    let galley = ui.painter().layout(
-        item.name.clone(),
-        egui::FontId::proportional(11.5),
-        theme::text(),
-        TILE.x - 4.0,
-    );
-    ui.painter().galley(
-        egui::pos2(name_rect.left() + 2.0, name_rect.top() + 3.0),
-        galley,
-        theme::text(),
-    );
-    if selected {
-        ui.painter().rect_stroke(
-            rect.expand(1.0),
-            4.0,
-            egui::Stroke::new(1.5, accent.colors().light),
-            egui::StrokeKind::Outside,
-        );
-    } else if response.hovered() {
-        ui.painter().rect_stroke(
-            rect.expand(1.0),
-            4.0,
-            egui::Stroke::new(1.0, theme::button_border()),
-            egui::StrokeKind::Outside,
-        );
-    }
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, &item.name)
-    });
-    let response = response.on_hover_text(hint(item));
-    let place = item.kind.placeable() && place_button(ui, item, picture);
-    let listen = listen_button(ui, item, picture, &response, sounds);
-    Picked {
-        item,
-        response,
-        place,
-        listen,
     }
 }
 

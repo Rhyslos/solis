@@ -198,6 +198,7 @@ impl PanelViewer<'_> {
             | Panel::Area
             | Panel::Properties
             | Panel::Library
+            | Panel::Assets
             | Panel::Code
             | Panel::Console
             | Panel::Problems
@@ -224,6 +225,7 @@ impl PanelViewer<'_> {
             | Panel::Area
             | Panel::Properties
             | Panel::Library
+            | Panel::Assets
             | Panel::Code
             | Panel::Console
             | Panel::Problems
@@ -243,6 +245,20 @@ impl PanelViewer<'_> {
     /// count, so nothing is walked.
     pub(crate) fn column_count(&self, panel: Panel) -> Option<String> {
         (panel == Panel::Area).then(|| self.document.area().len().to_string())
+    }
+
+    /// Quiet words after a shelf column's title, if it has them: the
+    /// Assets column's folder.
+    pub(crate) fn column_note(&self, panel: Panel) -> Option<String> {
+        let project = self.project?;
+        (panel == Panel::Assets).then(|| {
+            let folder = &self.library_state.folder;
+            match folder.rsplit_once('/') {
+                Some((_, last)) => last.to_owned(),
+                None if folder.is_empty() => project.name.clone(),
+                None => folder.clone(),
+            }
+        })
     }
 
     /// The tools `panel` puts in its column's header: the Area column's
@@ -433,6 +449,16 @@ impl PanelViewer<'_> {
                     self.library_state,
                     self.accent,
                     code,
+                    self.sounds,
+                );
+                self.library_requests.extend(requests);
+            }
+            Panel::Assets => {
+                let requests = crate::assets_column::assets(
+                    ui,
+                    self.project.is_some(),
+                    self.library,
+                    self.library_state,
                     self.sounds,
                 );
                 self.library_requests.extend(requests);

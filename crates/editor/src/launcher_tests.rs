@@ -518,6 +518,7 @@ fn right_clicking_the_library_offers_new_everywhere() {
     w.set_library(vec![item("tiles.png", LibraryKind::Texture)]);
     let mut h = harness(w);
     h.run();
+    crate::test_support::ribbon_tab(&mut h, crate::shell::RibbonTab::Library);
     h.get_by_label("+ New").click();
     h.run();
     for label in [
@@ -531,8 +532,8 @@ fn right_clicking_the_library_offers_new_everywhere() {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(
-        h.query_all_by_label("Area").count() >= 2,
-        "the column's header and the item"
+        h.query_all_by_label("Area").count() >= 1,
+        "the New list's item"
     );
     h.get_by_label("Tile map").click();
     h.run();

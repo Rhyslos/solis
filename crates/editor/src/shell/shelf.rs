@@ -350,13 +350,22 @@ fn header(ui: &mut Ui, place: Rect, column: &Column, viewer: &mut PanelViewer<'_
         Sense::hover(),
     );
     named.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Label, true, column.title));
-    painter.text(
+    let title = painter.text(
         pos2(head.left() + size::ROW_PAD, head.center().y),
         Align2::LEFT_CENTER,
         column.title,
         text::header(),
         tokens::text_emphasis(),
     );
+    if let Some(note) = viewer.column_note(column.panels[0]) {
+        painter.text(
+            pos2(title.right() + size::GAP, head.center().y),
+            Align2::LEFT_CENTER,
+            note,
+            text::ui(),
+            tokens::text_meta(),
+        );
+    }
     let mut right = head.right() - size::ROW_PAD;
     if let Some(count) = viewer.column_count(column.panels[0]) {
         let drawn = painter.text(

@@ -11,6 +11,7 @@ pub mod animator_editor;
 mod animator_view;
 mod area_panel;
 pub mod area_view;
+mod assets_column;
 mod atlas_editor;
 mod atlas_view;
 pub mod camera;
