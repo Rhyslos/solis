@@ -1,9 +1,11 @@
-//! The dockable panels.
+//! The panels: each one area of the editor with one job, drawn where
+//! the shell's table puts it (`shell/workspaces.rs`).
 
 use crate::icons::Icon;
 use serde::{Deserialize, Serialize};
 
-/// One dockable panel. Each appears exactly once in a layout.
+/// One panel. Each is in one place on a tab: a document of a group, or a
+/// column of a shelf tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Panel {
     /// The 3D view of the area.
@@ -83,7 +85,7 @@ pub enum Panel {
 }
 
 impl Panel {
-    /// Every panel, in the order the Window menu lists them.
+    /// Every panel that is always somewhere (the rest come with a file).
     pub const ALL: [Self; 15] = [
         Self::Viewport,
         Self::Game,
@@ -103,7 +105,7 @@ impl Panel {
     ];
 
     /// Panels that come and go with what's open (a clips file), never in
-    /// [`Self::ALL`] or the Window menu, and never saved in a layout.
+    /// [`Self::ALL`].
     pub const OPEN_WITH_A_FILE: [Self; 14] = [
         Self::Clips,
         Self::Frames,
