@@ -1,7 +1,6 @@
 //! Opening another project: nothing of the old one is used with the new
 //! one, whatever was open, half done or waiting for an answer.
 
-use crate::layout;
 use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
 use crate::map_tab::MapRequest;
 use crate::panel::Panel;
@@ -121,7 +120,7 @@ fn undo_over_the_map_tab_never_reaches_into_another_project() {
     // project opened (the same paths): Ctrl+Z over the Map tab wrote the
     // first project's old map over the copy's file.
     let ids = Ids::new();
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     open_farm(&mut w, "farm", ids);
     w.place_tile_map(ids.map, None).unwrap();
     w.follow_map_selection();
@@ -134,7 +133,7 @@ fn undo_over_the_map_tab_never_reaches_into_another_project() {
     let mut h = harness(w);
     h.run();
     h.run();
-    assert!(h.state().0.dock.find_tab(&Panel::Map).is_some());
+    assert!(in_view(&h.state().0, Panel::Map));
     h.state_mut().1.actions.clear();
     // With the pointer over the Map tab, Ctrl+Z is the map's.
     let over_the_tab = h.get_by_label("Add a layer").rect().center();
@@ -159,7 +158,7 @@ fn files_open_in_tabs_close_with_their_project() {
     // The review (BUG-07): the Clips and Frames tabs stayed open on the old
     // project's file, and the next change there was saved into the new one.
     let ids = Ids::new();
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     open_farm(&mut w, "farm", ids);
     w.open_frames(CLIPS);
     w.open_tileset(SET);
@@ -176,7 +175,7 @@ fn files_open_in_tabs_close_with_their_project() {
         Panel::Tileset,
         Panel::AtlasCrop,
     ] {
-        assert!(w.dock.find_tab(&panel).is_some(), "{panel:?} open");
+        assert!(has_panel(&w, panel), "{panel:?} open");
     }
 
     open_farm(&mut w, "copy", ids);
@@ -184,9 +183,8 @@ fn files_open_in_tabs_close_with_their_project() {
     assert!(w.open.tilesets.tab().is_none(), "the tileset closed");
     assert!(w.open.atlas_editor.is_none(), "the atlas closed");
     for panel in Panel::OPEN_WITH_A_FILE {
-        assert!(w.dock.find_tab(&panel).is_none(), "{panel:?} closed");
+        assert!(!has_panel(&w, panel), "{panel:?} closed");
     }
-    assert!(layout::is_complete(&w.dock));
     // Drawn, nothing of the old project's is saved into the new one.
     let mut h = harness(w);
     h.run();
@@ -289,6 +287,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         assembly_part_kept,
         quit_asked,
         preview_forgotten,
+        code_uses,
     } = now;
     assert_eq!(project, &fresh.project);
     // The area: a new one, saved nowhere, with nothing to undo or redo.
@@ -349,6 +348,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(screen_from.is_none());
     assert!(assembly_part_kept.borrow().is_none());
     assert_eq!(preview_forgotten, &fresh.preview_forgotten);
+    assert!(code_uses.is_none(), "which code each entity uses");
 }
 
 /// A component the program itself registers (as a plugin would): not any
@@ -363,7 +363,7 @@ fn wobble() -> reflect::ComponentSchema {
 
 /// A workbench as the program starts it, before any project.
 fn started() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.register_component(wobble()).unwrap();
     w
 }
@@ -453,13 +453,10 @@ fn another_project_starts_as_it_would_in_a_workbench_just_started() {
         );
         assert!(w.viewport.area.models.is_empty());
         assert_eq!(w.viewport.entities, 0);
-        // The layouts keep no tab of the old project's files.
-        for dock in std::iter::once(&w.dock).chain(w.other_layouts.values()) {
-            for panel in Panel::OPEN_WITH_A_FILE {
-                assert!(dock.find_tab(&panel).is_none(), "{panel:?}");
-            }
+        // No tab of the old project's files is left.
+        for panel in Panel::OPEN_WITH_A_FILE {
+            assert!(!has_panel(&w, panel), "{panel:?}");
         }
-        assert!(layout::is_complete(&w.dock));
         assert_eq!(w.title(), fresh.title());
         // What is the program's stays: its own component, and the Console.
         assert!(w.open.document.registry.get("Wobble").is_some());
@@ -489,7 +486,7 @@ fn opening_the_open_project_again_changes_nothing() {
     assert!(w.open.document.area().contains(placed));
     assert!(w.open.document.is_dirty());
     assert!(w.open.frames_editor.is_some());
-    assert!(w.dock.find_tab(&Panel::Clips).is_some());
+    assert!(has_panel(&w, Panel::Clips));
     assert!(w.map_file(MAP).is_some());
 }
 

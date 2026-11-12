@@ -10,17 +10,20 @@
 //! (decision 0100). The keys an earlier build wrote for the theme, rounded
 //! panels and the accent are read once more, only while the new key is
 //! missing, to carry the accent over; they are never written again and
-//! never removed, so an earlier build still finds what it saved.
+//! never removed, so an earlier build still finds what it saved. The
+//! same goes for the docked panels' arrangements of builds before the
+//! frame (decision 0104): they aren't carried over, and the Console says
+//! so once.
 
 use super::{
     ACCENT_KEY, AUTO_UPDATE_KEY, CAMERA_KEY, CONSOLE_HISTORY_KEY, FIRST_SIZE, HINTS_KEY,
-    INTERFACE_LOOK_KEY, KNOWN_PROJECTS_KEY, LAYOUT_KEY, LIBRARY_PINNED_KEY, LOOK_KEY,
-    OLD_ACCENT_KEY, OVERLAYS_KEY, RECENT_PROJECTS_KEY, SKIPPED_BUILD_KEY, SNAPPING_KEY, VIEWS_KEY,
-    WORKSPACES_KEY, saved_editor_size,
+    INTERFACE_LOOK_KEY, KNOWN_PROJECTS_KEY, LOOK_KEY, OLD_ACCENT_KEY, OLD_LAYOUT_KEYS,
+    OVERLAYS_KEY, RECENT_PROJECTS_KEY, SHELL_KEY, SKIPPED_BUILD_KEY, SNAPPING_KEY, VIEWS_KEY,
+    saved_editor_size,
 };
 use crate::known_projects::KnownProjects;
 use editor::interface_look::AccentBefore;
-use editor::{AppInfo, Camera, DockState, InterfaceLook, Look, Overlays, Panel, Workbench};
+use editor::{AppInfo, Camera, InterfaceLook, Look, Overlays, ShellState, Workbench};
 use std::path::PathBuf;
 
 /// Everything the editor remembers between runs.
@@ -35,9 +38,9 @@ pub(super) struct Saved {
     pub(super) auto_update: bool,
     /// The build skipped with Skip this version.
     pub(super) skipped: Option<u64>,
-    layout: Option<DockState<Panel>>,
-    workspaces: Option<editor::workspace::Workspaces>,
-    library_pinned: bool,
+    shell: Option<ShellState>,
+    /// Whether an earlier build left a docked panels' arrangement.
+    had_old_layout: bool,
     hints: bool,
     camera: Camera,
     viewport_look: Look,
@@ -75,9 +78,12 @@ impl Saved {
             known: KnownProjects::from_saved(get(storage, KNOWN_PROJECTS_KEY), recent),
             auto_update: get(storage, AUTO_UPDATE_KEY).unwrap_or(true),
             skipped: get::<Option<u64>>(storage, SKIPPED_BUILD_KEY).flatten(),
-            layout: get(storage, LAYOUT_KEY),
-            workspaces: get(storage, WORKSPACES_KEY),
-            library_pinned: get(storage, LIBRARY_PINNED_KEY).unwrap_or(true),
+            shell: get(storage, SHELL_KEY),
+            had_old_layout: storage.is_some_and(|s| {
+                OLD_LAYOUT_KEYS
+                    .iter()
+                    .any(|key| s.get_string(key).is_some())
+            }),
             hints: get(storage, HINTS_KEY).unwrap_or(true),
             camera: get(storage, CAMERA_KEY).unwrap_or_default(),
             viewport_look: get(storage, LOOK_KEY).unwrap_or_default(),
@@ -91,7 +97,7 @@ impl Saved {
     /// The editor as it was left: its panels, its look, its viewport and
     /// its console's history.
     pub(super) fn workbench(&mut self, info: AppInfo) -> Workbench {
-        let mut workbench = Workbench::new(info, self.layout.take())
+        let mut workbench = Workbench::new(info)
             .with_interface_look(self.look)
             .with_overlays(self.overlays)
             .with_snapping(self.snapping)
@@ -107,15 +113,11 @@ impl Saved {
     }
 
     /// Puts back what only applies once the editor (not an exported game)
-    /// is up: the Library's pin, hints, and every workspace's panels.
+    /// is up: hints, and the frame (the tab in front, each tab's shelf and
+    /// split).
     pub(super) fn settle(&mut self, workbench: &mut Workbench) {
-        if !self.library_pinned {
-            workbench.set_library_pinned(false);
-        }
         workbench.set_hints_on(self.hints);
-        if let Some(workspaces) = self.workspaces.take() {
-            workbench.set_workspaces(workspaces);
-        }
+        workbench.restore_shell(self.shell.as_ref(), self.had_old_layout);
     }
 }
 

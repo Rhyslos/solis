@@ -86,13 +86,10 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
         Ok(None) => panic!("no code"),
         Err(problems) => panic!("{}", problems[0]),
     };
-    let mut w = editor::Workbench::new(
-        editor::AppInfo {
-            name: "Test".into(),
-            version: "1.0".into(),
-        },
-        None,
-    );
+    let mut w = editor::Workbench::new(editor::AppInfo {
+        name: "Test".into(),
+        version: "1.0".into(),
+    });
     let (rust, note) = rust_components(&assets);
     assert!(note.is_none(), "the file is the built-in one");
     w.set_rust_components(rust);

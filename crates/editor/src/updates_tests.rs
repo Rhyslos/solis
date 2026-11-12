@@ -37,7 +37,7 @@ fn command(h: &mut egui_kittest::Harness<'static, State>, name: &str) {
 
 #[test]
 fn check_for_updates_asks_the_app_and_the_updates_page_says_how_it_went() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_update(UpdateNotice::UpToDate(41));
     let mut h = window(w);
     h.run();
@@ -52,7 +52,7 @@ fn check_for_updates_asks_the_app_and_the_updates_page_says_how_it_went() {
 
 #[test]
 fn checking_can_t_be_asked_twice_at_once() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_update(UpdateNotice::Downloading(42));
     let ctx = egui::Context::default();
     let check = crate::shell::ShellCommand::CheckForUpdates;
@@ -70,7 +70,7 @@ fn checking_can_t_be_asked_twice_at_once() {
 
 #[test]
 fn checking_when_starting_can_be_turned_off() {
-    let mut h = window(Workbench::new(info(), None));
+    let mut h = window(Workbench::new(info()));
     h.run();
     assert!(h.state().0.auto_update(), "on unless turned off");
     command(&mut h, "Don't check for updates when starting");
@@ -82,7 +82,7 @@ fn checking_when_starting_can_be_turned_off() {
 
 #[test]
 fn restart_to_update_shows_only_when_a_build_is_ready() {
-    let mut h = window(Workbench::new(info(), None));
+    let mut h = window(Workbench::new(info()));
     h.run();
     assert!(h.query_by_label("Restart to update").is_none());
     h.state_mut().0.set_update(UpdateNotice::Ready(43));
@@ -95,7 +95,7 @@ fn restart_to_update_shows_only_when_a_build_is_ready() {
 
 #[test]
 fn a_restart_asks_about_unsaved_work_and_can_be_called_off() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.add_point_light();
     w.set_update(UpdateNotice::Ready(43));
     let mut h = window(w);
@@ -117,7 +117,7 @@ fn a_restart_asks_about_unsaved_work_and_can_be_called_off() {
 
 #[test]
 fn a_restart_without_a_ready_build_is_only_a_close() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.restarting = true;
     assert!(!w.restarting());
     w.set_update(UpdateNotice::Ready(1));
@@ -148,7 +148,7 @@ fn every_notice_reads_as_a_line() {
 #[test]
 fn help_s_check_asks_whether_to_update_and_passes_the_answer_on() {
     use crate::splash::UpdateOffer;
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let offer = UpdateOffer {
         latest: 12,
         current: Some(10),

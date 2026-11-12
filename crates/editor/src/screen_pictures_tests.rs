@@ -71,7 +71,7 @@ fn with_tools(w: &mut Workbench, crops: Option<&[(&str, [u32; 4])]>) {
 
 #[test]
 fn a_picture_named_in_a_screen_that_isn_t_there_is_a_problem_at_its_line() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(&items("image \"sprites/tools.png\";"))));
     w.refresh_screen_pictures();
     let problems = w.picture_problems();
@@ -104,7 +104,7 @@ fn a_picture_named_in_a_screen_that_isn_t_there_is_a_problem_at_its_line() {
 
 #[test]
 fn a_crop_shows_its_part_and_a_missing_one_names_those_there_are() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(&items(
         "image \"sprites/tools.png#Axe\";\n            image \"sprites/tools.png#Spade\";",
     ))));
@@ -142,7 +142,7 @@ fn a_crop_shows_its_part_and_a_missing_one_names_those_there_are() {
 
 #[test]
 fn a_name_worked_out_as_the_game_runs_is_read_shown_and_said_once_if_wrong() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(&items("image chosen;"))));
     w.open
         .document
@@ -238,7 +238,7 @@ fn image_names_are_gathered_from_a_view_within_limits() {
 /// be put where the last were, and the old pictures stayed.
 #[test]
 fn sheets_handed_over_again_get_the_pictures_made_again() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(&items("image \"sprites/tools.png\";"))));
     with_tools(&mut w, None);
     w.refresh_screen_pictures();

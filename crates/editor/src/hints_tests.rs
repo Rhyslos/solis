@@ -3,7 +3,7 @@ use crate::test_support::{harness, info};
 use egui_kittest::kittest::Queryable;
 
 fn fresh() -> Workbench {
-    Workbench::new(info(), None)
+    Workbench::new(info())
 }
 
 #[test]
@@ -79,14 +79,24 @@ fn the_panel_shows_the_hints_or_says_they_are_off() {
 }
 
 #[test]
-fn a_layout_saved_before_hints_gets_them_under_properties() {
-    let mut old = crate::layout::standard();
-    crate::layout::close(&mut old, crate::panel::Panel::Hints);
-    let back = crate::layout::restore(Some(old));
-    let hints = back.find_tab(&crate::panel::Panel::Hints).unwrap();
-    let properties = back.find_tab(&crate::panel::Panel::Properties).unwrap();
-    assert_ne!(hints.node, properties.node, "a group of its own");
-    assert!(crate::layout::is_complete(&back));
+fn hints_sit_under_properties_on_home_s_entity_tab() {
+    let mut h = harness(fresh());
+    h.run();
+    h.run();
+    let w = &h.state().0;
+    let hints = w
+        .shell
+        .drawn_at(crate::panel::Panel::Hints)
+        .expect("in view");
+    let properties = w
+        .shell
+        .drawn_at(crate::panel::Panel::Properties)
+        .expect("in view");
+    assert!(
+        hints.top() > properties.bottom(),
+        "{hints:?} under {properties:?}"
+    );
+    assert_eq!(hints.x_range(), properties.x_range(), "in the same column");
 }
 
 #[test]

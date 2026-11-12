@@ -52,7 +52,7 @@ fn fleet(units: usize) -> Workbench {
         Ok(None) => panic!("no code"),
         Err(problems) => panic!("{}", problems[0]),
     };
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let model = crate_model();
     let asset = model.asset;
     w.open.models.insert(asset, model);

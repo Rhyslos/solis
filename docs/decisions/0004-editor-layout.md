@@ -1,6 +1,6 @@
 # 0004. The editor's layout: Halberd's panels, Unreal's tabs, everything dockable
 
-- **Status:** Accepted; its layout (the top bar, dockable panels) is replaced by [decision 0099](0099-the-g-layout.md) as Shared 1a is built, and its theme by [decision 0100](0100-one-theme-five-accents.md). The tools and their keys and the Fly camera stand.
+- **Status:** Accepted; its layout (the top bar, dockable panels) is replaced by [decision 0099](0099-the-g-layout.md), its docking by [decision 0104](0104-docking-is-solis-s-own.md), and its theme by [decision 0100](0100-one-theme-five-accents.md). The tools and their keys and the Fly camera stand.
 - **Date:** 2026-10-21
 
 ## Problem

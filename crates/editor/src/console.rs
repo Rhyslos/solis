@@ -233,41 +233,52 @@ impl Console {
     }
 }
 
-/// The console: filters by level, a search box, the messages with their
-/// times, and the command line. Returns what the command line asks for.
-pub(crate) fn console(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
-    theme::menu_row_frame().show(ui, |ui| {
-        ui.set_min_width(ui.available_width());
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 4.0;
-            for level in LogLevel::ALL {
-                let on = !console.hidden.contains(&level);
-                if level_filter(ui, level, console.count(level), on).clicked() {
-                    if on {
-                        console.hidden.insert(level);
-                    } else {
-                        console.hidden.remove(&level);
-                    }
-                }
-            }
-            ui.add_space(4.0);
-            // Clear at the right edge, and the search box takes the width
-            // that is left.
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui
-                    .add(egui::Button::new("Clear").min_size(egui::vec2(0.0, 20.0)))
-                    .clicked()
-                {
-                    console.clear();
-                }
-                ui.add(
-                    egui::TextEdit::singleline(&mut console.search)
-                        .hint_text("Search")
-                        .desired_width(ui.available_width().max(40.0)),
-                );
-            });
-        });
+/// The Console's tools, on the shelf bar's right while it's in front
+/// (mock-up round 1, `09-console-shelf`): a filter for each level with
+/// its count, the search, Clear and Copy. Laid out from the right, so
+/// drawn last first.
+pub(crate) fn console_tools(ui: &mut Ui, console: &mut Console) {
+    let copy = crate::widgets::button::icon(ui, Icon::Copy, "Copy")
+        .on_hover_text("Copies the messages shown");
+    if copy.clicked() {
+        let text: Vec<String> = console
+            .shown()
+            .map(|line| format!("{} {} {}", line.time, line.level.name(), line.text))
+            .collect();
+        ui.ctx().copy_text(text.join("\n"));
+    }
+    let clear =
+        crate::widgets::button::icon(ui, Icon::Clear, "Clear").on_hover_text("Clears the Console");
+    if clear.clicked() {
+        console.clear();
+    }
+    let search = ui.add(
+        egui::TextEdit::singleline(&mut console.search)
+            .hint_text("Search")
+            .desired_width(SEARCH_W),
+    );
+    search.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search the Console")
     });
+    for level in LogLevel::ALL.into_iter().rev() {
+        let on = !console.hidden.contains(&level);
+        if level_filter(ui, level, console.count(level), on).clicked() {
+            if on {
+                console.hidden.insert(level);
+            } else {
+                console.hidden.remove(&level);
+            }
+        }
+    }
+}
+
+/// The Console's search field's width on the shelf bar.
+const SEARCH_W: f32 = 180.0;
+
+/// The console: the messages with their times, and the command line
+/// (its filters, search, Clear and Copy are on the shelf bar,
+/// [`console_tools`]). Returns what the command line asks for.
+pub(crate) fn console(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
     // Only the rows in view are laid out, so a full console (2,000
     // messages) costs no more per frame than a short one.
     // The command line along the bottom; the messages fill the rest.

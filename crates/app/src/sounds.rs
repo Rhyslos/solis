@@ -669,13 +669,10 @@ mod tests {
     /// playing "hum".
     fn hum_world(count: usize) -> (editor::Workbench, Vec<reflect::EntityId>) {
         use area::builtin::{AudioSource, Camera, Transform};
-        let mut w = editor::Workbench::new(
-            editor::AppInfo {
-                name: "Test".into(),
-                version: "1.0".into(),
-            },
-            None,
-        );
+        let mut w = editor::Workbench::new(editor::AppInfo {
+            name: "Test".into(),
+            version: "1.0".into(),
+        });
         let mut area = area::Area::new();
         area.spawn(area::EntityData::new("Camera").with(&Camera::default()));
         let ids = (1..=count)
@@ -782,13 +779,10 @@ mod tests {
             &dir,
         );
         settle(&mut s);
-        let mut w = editor::Workbench::new(
-            editor::AppInfo {
-                name: "Test".into(),
-                version: "1.0".into(),
-            },
-            None,
-        );
+        let mut w = editor::Workbench::new(editor::AppInfo {
+            name: "Test".into(),
+            version: "1.0".into(),
+        });
         let mut area = area::Area::new();
         let player = area.spawn(
             area::EntityData::new("Player")
@@ -877,13 +871,10 @@ mod tests {
             Ok(None) => panic!("no code"),
             Err(problems) => panic!("{}", problems[0]),
         };
-        let mut w = editor::Workbench::new(
-            editor::AppInfo {
-                name: "Test".into(),
-                version: "1.0".into(),
-            },
-            None,
-        );
+        let mut w = editor::Workbench::new(editor::AppInfo {
+            name: "Test".into(),
+            version: "1.0".into(),
+        });
         w.set_program(Some(compiled));
         let mut area = area::Area::new();
         area.spawn(area::EntityData::new("Camera").with(&Camera::default()));

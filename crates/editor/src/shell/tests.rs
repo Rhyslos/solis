@@ -4,7 +4,7 @@ use crate::workbench::WorkbenchAction;
 use std::collections::BTreeSet;
 
 fn fresh() -> Workbench {
-    Workbench::new(info(), None)
+    Workbench::new(info())
 }
 
 #[test]
@@ -77,25 +77,39 @@ fn a_hover_text_gives_the_name_the_shortcut_and_the_reason() {
 }
 
 #[test]
-fn each_tab_shows_what_its_workspace_showed() {
+fn each_tab_shows_its_own_documents_and_shelf() {
     let mut h = harness(fresh());
     h.run();
     assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);
-    for (tab, workspace, front) in [
-        (RibbonTab::Animate, Workspace::Animate, None),
-        (RibbonTab::Debug, Workspace::Code, Some(Panel::Profiler)),
-        (RibbonTab::Ui, Workspace::Ui, None),
-        (RibbonTab::Library, Workspace::Level, Some(Panel::Library)),
-        (RibbonTab::Audio, Workspace::Level, Some(Panel::Mixer)),
-        (RibbonTab::Home, Workspace::Level, None),
+    for (tab, documents, shelf) in [
+        (
+            RibbonTab::Animate,
+            vec![Panel::Viewport],
+            ShelfTab::Properties,
+        ),
+        (
+            RibbonTab::Debug,
+            vec![Panel::Game, Panel::Profiler],
+            ShelfTab::Console,
+        ),
+        (RibbonTab::Ui, vec![Panel::Canvas], ShelfTab::Screen),
+        (RibbonTab::Library, vec![Panel::Library], ShelfTab::Details),
+        (RibbonTab::Audio, vec![Panel::Mixer], ShelfTab::Bus),
+        (RibbonTab::Home, vec![Panel::Viewport], ShelfTab::Entity),
     ] {
         ribbon_tab(&mut h, tab);
         h.run();
         let w = &h.state().0;
         assert_eq!(w.ribbon_tab(), tab);
-        assert_eq!(w.workspace(), workspace, "{tab:?}");
-        if let Some(panel) = front {
+        assert_eq!(w.shelf_tab(), Some(shelf), "{tab:?}");
+        for panel in documents {
             assert!(w.in_front.contains(&panel), "{tab:?} shows {panel:?}");
+        }
+        for panel in shelf.panels() {
+            assert!(
+                w.in_front.contains(&panel),
+                "{tab:?}'s shelf shows {panel:?}"
+            );
         }
     }
 }
@@ -116,20 +130,7 @@ fn a_tab_that_isnt_built_cant_be_shown_while_unfinished_parts_are_hidden() {
     assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);
 }
 
-#[test]
-fn a_saved_arrangement_opens_on_the_tab_that_shows_it() {
-    for workspace in Workspace::ALL {
-        let mut w = fresh();
-        let mut saved = w.workspaces();
-        saved.current = workspace;
-        saved.layouts.insert(workspace, workspace.standard());
-        w.set_workspaces(saved);
-        assert_eq!(w.ribbon_tab(), RibbonTab::of_workspace(workspace));
-        assert_eq!(w.workspace(), workspace);
-    }
-}
-
-mod layout {
+mod frame_layout {
     use super::*;
     use crate::test_support::{State, fonts_ready, harness};
     use crate::tokens::size;
@@ -299,8 +300,9 @@ mod layout {
     fn the_chevron_and_a_double_click_collapse_the_ribbon_and_a_click_drops_it() {
         let mut h = harness(fresh());
         h.run();
-        let viewport_top =
-            |h: &egui_kittest::Harness<'static, State>| h.get_by_label("Viewport").rect().top();
+        let viewport_top = |h: &egui_kittest::Harness<'static, State>| {
+            h.state().0.shell.drawn_at(Panel::Viewport).unwrap().top()
+        };
         let open = viewport_top(&h);
         h.get_by_label("Collapse the ribbon").click();
         h.run();
@@ -433,7 +435,7 @@ mod layout {
         h.run();
         assert_eq!(h.state().0.ribbon_tab(), RibbonTab::File);
         assert!(h.query_by_label("Add entity").is_none(), "no ribbon");
-        assert!(h.query_by_label("Viewport").is_none(), "no panels");
+        assert!(h.state().0.panels_shown().is_empty(), "no panels");
         // The column is 220 wide, its items 36 tall, in the design's order.
         let items = [
             "Back to editor",
@@ -479,6 +481,6 @@ mod layout {
         h.key_press(egui::Key::Escape);
         h.run();
         assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);
-        let _ = h.get_by_label("Viewport");
+        assert!(h.state().0.panels_shown().contains(&Panel::Viewport));
     }
 }

@@ -88,7 +88,7 @@ fn with_a_day(hour: f64) -> crate::workbench::Workbench {
         Ok(None) => panic!("no code"),
         Err(problems) => panic!("{}", problems[0]),
     };
-    let mut w = crate::workbench::Workbench::new(info(), None);
+    let mut w = crate::workbench::Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),

@@ -240,7 +240,7 @@ fn moves_in_the_2d_view_land_on_pixels_or_tiles() {
 
 #[test]
 fn a_camera_added_in_the_2d_view_is_a_2d_camera_on_a_whole_pixel_and_is_framed() {
-    let mut w = crate::workbench::Workbench::new(info(), None);
+    let mut w = crate::workbench::Workbench::new(info());
     w.viewport.camera = two_d(Vec3::new(3.01, -1.47, 0.0), 2.0);
     let id = w.add_camera();
     let entity = w.open.document.area().get(id).unwrap();
@@ -274,7 +274,7 @@ fn a_camera_added_in_the_2d_view_is_a_2d_camera_on_a_whole_pixel_and_is_framed()
 
 /// Opens File > Preferences on the 2D page, with a project open or not.
 fn settings_2d(project: bool) -> egui_kittest::Harness<'static, State> {
-    let mut w = crate::workbench::Workbench::new(info(), None);
+    let mut w = crate::workbench::Workbench::new(info());
     if project {
         w.set_project(Some(crate::library::ProjectInfo {
             name: "Farm".into(),
@@ -364,7 +364,7 @@ fn the_2d_page_says_how_the_base_resolution_fits_common_screens() {
     });
     assert!(fill.contains("1440p (×5.33, smoothed)"), "{fill}");
     // Search finds the 2D settings by name and page.
-    let mut w = crate::workbench::Workbench::new(info(), None);
+    let mut w = crate::workbench::Workbench::new(info());
     w.open_settings();
     w.settings_window.as_mut().unwrap().search = "tile".into();
     let mut h = harness(w);

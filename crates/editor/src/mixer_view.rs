@@ -747,7 +747,7 @@ mod tests {
 
     /// A workbench with a project open and the Mixer in front.
     fn with_the_mixer() -> egui_kittest::Harness<'static, State> {
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         w.set_project(Some(crate::ProjectInfo {
             name: "Test".into(),
             root: std::path::PathBuf::from("/nowhere"),
@@ -755,7 +755,7 @@ mod tests {
         }));
         let mut h = harness(w);
         h.run();
-        h.get_by_label("Mixer").click();
+        h.state_mut().0.show_panel(Panel::Mixer);
         h.run();
         h
     }
@@ -773,12 +773,10 @@ mod tests {
     }
 
     #[test]
-    fn the_mixer_sits_with_the_console_and_shows_every_bus() {
+    fn the_mixer_is_the_audio_tab_s_document_and_shows_every_bus() {
         let h = with_the_mixer();
-        let dock = &h.state().0.dock;
-        let path = dock.find_tab(&Panel::Mixer).unwrap();
-        let group = dock[path.surface][path.node].tabs().unwrap().to_vec();
-        assert!(group.contains(&Panel::Console), "{group:?}");
+        assert_eq!(h.state().0.ribbon_tab(), crate::shell::RibbonTab::Audio);
+        assert!(crate::test_support::in_view(&h.state().0, Panel::Mixer));
         for bus in ["Master", "Music", "Effects", "Voice", "Ambience", "UI"] {
             assert!(h.query_by_label(bus).is_some(), "{bus}");
         }
@@ -852,7 +850,7 @@ mod tests {
 
     #[test]
     fn without_a_project_changes_say_where_they_d_be_kept() {
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         let mut actions = Vec::new();
         let mut mixer = Mixer::default();
         mixer.buses[1].volume_db = -3.0;
@@ -870,7 +868,7 @@ mod tests {
 
     #[test]
     fn a_new_mixer_keeps_mute_and_solo_only_on_buses_still_there() {
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         w.mixer_request(MixerRequest::Mute(5), &mut Vec::new());
         w.mixer_request(MixerRequest::Solo(3), &mut Vec::new());
         let mut fewer = Mixer::default();
@@ -901,9 +899,9 @@ mod tests {
 
     #[test]
     fn the_game_panel_mutes_everything() {
-        let mut h = harness(Workbench::new(info(), None));
+        let mut h = harness(Workbench::new(info()));
         h.run();
-        h.get_by_label("Game").click();
+        h.state_mut().0.show_panel(Panel::Game);
         h.run();
         h.get_by_label("Mute the game").click();
         h.run();

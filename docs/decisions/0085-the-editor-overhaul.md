@@ -1,6 +1,6 @@
 # 0085. The editor overhaul, before the game UI editor
 
-- **Status:** Accepted (the project lead, 2026-11-05; carries out 0070's "the editor's look as a whole gets its own mock-ups, as part of the UI overhaul"; builds on 0004). Changed by [decision 0099](0099-the-g-layout.md): workspaces become ribbon tabs, the Library drawer and docking go, and playing is no longer shown by colouring the window (Play becomes Stop, with Pause and Step); its search key, status bar and kept-or-undone play changes stand. "Nothing is shown before it works" is changed by [decision 0101](0101-unfinished-parts-as-placeholders.md).
+- **Status:** Accepted (the project lead, 2026-11-05; carries out 0070's "the editor's look as a whole gets its own mock-ups, as part of the UI overhaul"; builds on 0004). Changed by [decision 0099](0099-the-g-layout.md): workspaces become ribbon tabs, the Library drawer and docking go, and playing is no longer shown by colouring the window (Play becomes Stop, with Pause and Step); its search key, status bar and kept-or-undone play changes stand. "Nothing is shown before it works" is changed by [decision 0101](0101-unfinished-parts-as-placeholders.md). Its Library drawer and workspaces are replaced by [decision 0104](0104-docking-is-solis-s-own.md).
 - **Date:** 2026-11-05
 
 ## Problem

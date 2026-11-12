@@ -9,17 +9,23 @@ Written 2026-11-11, when the project lead paused the work to save usage ("record
 | **M1 The look** (tokens, fonts, one theme, five accents, picture tests) | Merged (pull request 236) |
 | **M2 The kit** (icons, the design's controls, unfinished parts and the setting that hides them) | Merged (pull request 237) |
 | **M3 The top** (tab bar, ribbon, command search, the File page's frame; the menu bar and workspace tabs gone) | Built and merged with the pull request that adds this file |
-| **M4 The middle** (editor groups, the shelf, the status bar; the dock removed) | **Next.** Not started. Its assignment is written out below |
-| M5 to M16 | Not started. Planned in [`shared-1-ui-remake.md`](shared-1-ui-remake.md); all their mock-ups are approved |
+| **M4 The middle** (editor groups, the shelf, the status bar; the dock removed) | Built on the branch `ui/part-a-the-frame`, the first of four pull requests (answer 36); its "As built" notes are in the plan |
+| M5 to M16 | Not started. Planned in [`shared-1-ui-remake.md`](shared-1-ui-remake.md); all their mock-ups are approved. Built as three more pull requests: Part B (M5 to M9), Part C (M10 to M12), Part D (M13 to M16) |
 
-So the editor on `main` has the design's look, its controls, and its tab bar and ribbon above the old docked panels. Shared 1a stands at 3 of 4.
+So, once Part A's pull request is merged, the editor has the design's look, its controls and its whole frame (tab bar, ribbon, editor groups, shelf, status bar), with today's panels inside it. Shared 1a stands at 4 of 4, and its gate is the project lead's to try.
 
 **Also paused: the full code review** of November 2026, with 72 of 119 findings fixed and merged (one more half fixed, 45 open, one left for the UI remake on purpose). Its state is in [`docs/reviews/2026-11-full-review-status.md`](../reviews/2026-11-full-review-status.md). The project lead's instruction (answer 34 in the plan): it does not resume by itself after the UI.
 
-## Before resuming: ask the project lead
+## How it continues (answered)
 
-1. **How to continue** (answer 35 in the plan), as a question to click: milestone by milestone as planned; four pull requests, one a phase; or one pull request. The last two would use a leaner process (no working in-between states, the manual written once at the end), which costs less but bends "one milestone per pull request" and "documentation in every pull request": the project lead's call.
-2. Nothing else is open. All three mock-up rounds and every new key and mouse action are approved (answers 1 to 33 in the plan).
+**Four pull requests, one a part, with the leaner process** (the project lead, 2026-11-12, answer 36 in the plan): each commit builds and passes the editor's tests, the editor needs to be fully usable only at the pull request's end, and the part's manual pages may be written once, at the end. The first, `ui/part-a-the-frame`, finishes Part A with M4. A builder of a later part works on a branch named `ui/part-b-...` and so on, and takes the brief below with that in place of "one milestone".
+
+## What M4 left for later (its builder's own list)
+
+- "**Shelf opens on**" waits for its Preferences setting (M9); the unsaved dot on a document tab (spec 124) isn't drawn yet (M5's Home is the natural place).
+- Animate's **Frames** and **Clips** shelf tabs carry a × that closes the clips file, which the design doesn't draw: M11 gives a clips file its own document.
+- Properties is short in Home's Entity shelf tab (Hints under it, the Area and the Library beside it) until M5 rebuilds it as cards; several tests give the shelf more room for that (`test_support::roomy_shelf`).
+- The window smoke test drags the shelf's grip and the Debug tab's divider now; its positions are for the new frame and haven't been run on the GitHub runners (the Linux jobs are paused, decision 0102).
 
 ## What M3 left for M4 and later (its builder's own list)
 

@@ -64,7 +64,7 @@ fn some_projects() -> Vec<KnownProject> {
 }
 
 fn launcher_with(projects: Vec<KnownProject>) -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_known_projects(projects);
     w.set_this_build(Some(57));
     w.set_manual_url("https://example.com/manual".into());
@@ -282,7 +282,7 @@ fn the_menu_shows_renames_and_copies_and_a_missing_folder_can_be_located() {
 
 #[test]
 fn renaming_the_open_project_changes_its_name_and_nothing_else() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(farm()));
     let revision = w.open.document.revision();
     w.rename_open_project("Farm days");
@@ -393,7 +393,7 @@ fn the_learn_page_offers_the_examples_and_the_manual() {
 
 #[test]
 fn solis_always_starts_on_the_launcher_and_comes_back_to_it() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     assert!(!w.launcher_open());
     w.launch_launcher();
     assert!(w.launcher_open(), "always at launch");
@@ -409,7 +409,7 @@ fn solis_always_starts_on_the_launcher_and_comes_back_to_it() {
 
 #[test]
 fn file_projects_brings_it_back_over_an_open_project_and_esc_goes_back() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(farm()));
     w.set_known_projects(vec![known("Farm", "/projects/farm", Some(1))]);
     w.open_launcher();
@@ -446,7 +446,7 @@ fn file_projects_brings_it_back_over_an_open_project_and_esc_goes_back() {
 
 #[test]
 fn the_first_code_file_is_main_lst_and_later_ones_components() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(farm()));
     let mut actions = Vec::new();
     w.library_request(LibraryRequest::NewCodeFile("crops".into()), &mut actions);
@@ -496,7 +496,7 @@ fn new_code_files_compile_as_they_are() {
 
 #[test]
 fn a_new_area_is_saved_where_it_was_asked_for_and_opened() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(farm()));
     w.set_library(vec![item("levels/area.solarea", LibraryKind::Area)]);
     let mut actions = Vec::new();
@@ -513,7 +513,7 @@ fn a_new_area_is_saved_where_it_was_asked_for_and_opened() {
 
 #[test]
 fn right_clicking_the_library_offers_new_everywhere() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(farm()));
     w.set_library(vec![item("tiles.png", LibraryKind::Texture)]);
     let mut h = harness(w);
@@ -532,7 +532,7 @@ fn right_clicking_the_library_offers_new_everywhere() {
     }
     assert!(
         h.query_all_by_label("Area").count() >= 2,
-        "the tab and the item"
+        "the column's header and the item"
     );
     h.get_by_label("Tile map").click();
     h.run();
@@ -547,7 +547,7 @@ fn right_clicking_the_library_offers_new_everywhere() {
 
 #[test]
 fn what_isn_t_built_isn_t_shown() {
-    let mut h = harness(Workbench::new(info(), None));
+    let mut h = harness(Workbench::new(info()));
     h.run();
     for label in [
         "Build",
@@ -558,31 +558,6 @@ fn what_isn_t_built_isn_t_shown() {
     ] {
         assert!(h.query_by_label(label).is_none(), "{label}");
     }
-}
-
-/// There was once a Layers panel, kept out of sight until it was built.
-/// It is gone (unfinished parts are drawn one way only now), so a layout
-/// saved by a build that had it names a panel this build doesn't know:
-/// it can't be read, and the editor opens in the standard arrangement.
-#[test]
-fn a_layout_saved_with_the_layers_panel_still_opens_the_editor() {
-    use crate::panel::Panel;
-    let saved = ron::to_string(&crate::layout::standard()).unwrap();
-    assert!(saved.contains("Hints"), "{saved}");
-    let with_layers = saved.replacen("Hints", "Layers", 1);
-    // Read as the app reads its settings: what doesn't read is nothing.
-    let read: Option<egui_dock::DockState<Panel>> = ron::from_str(&with_layers).ok();
-    assert!(read.is_none());
-    let restored = crate::layout::restore(read);
-    assert!(crate::layout::is_complete(&restored));
-    let mut h = harness(Workbench::new(info(), None));
-    h.state_mut().0.dock = restored;
-    h.run();
-    for panel in Panel::ALL {
-        assert!(h.state().0.dock.find_tab(&panel).is_some(), "{panel:?}");
-    }
-    // And the same text with every panel it knows does read.
-    assert!(ron::from_str::<egui_dock::DockState<Panel>>(&saved).is_ok());
 }
 
 #[test]

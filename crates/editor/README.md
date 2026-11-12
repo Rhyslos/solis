@@ -6,7 +6,7 @@ The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-
 
 ## Purpose
 
-Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the interface's look (accent, scale, density), the camera, the console), and tell the app what to do through `WorkbenchAction`s.
+Draw the editor with egui, keep its state between frames (the frame's arrangement of each tab, the chosen tool, the interface's look (accent, scale, density), the camera, the console), and tell the app what to do through `WorkbenchAction`s.
 
 **Where things are:**
 
@@ -36,7 +36,7 @@ Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workb
 
 ## Depends on
 
-`reflect` and `area` (the document it edits), `world` (the running game), `sound` (sound events' settings), `ui` (game UI's screens), egui, egui_dock, glam, serde and chrono. Never `render` or `asset_db`: the app connects those.
+`reflect` and `area` (the document it edits), `world` (the running game), `sound` (sound events' settings), `ui` (game UI's screens), egui, glam, serde and chrono. Never `render` or `asset_db`: the app connects those.
 
 ## Status
 

@@ -57,7 +57,7 @@ const MOVER: &str = "fetch \"solis/world\":World;\ncomponent Mover {\n\
 
 /// A workbench with the Mover program and an entity carrying it.
 fn with_a_mover() -> (Workbench, EntityId) {
-    mover_on(Workbench::new(info(), None))
+    mover_on(Workbench::new(info()))
 }
 
 /// `w`, given the Mover program and an entity carrying it.
@@ -91,7 +91,7 @@ fn x_in_game(w: &Workbench, id: EntityId) -> f32 {
 
 #[test]
 fn the_program_s_components_join_the_registry_and_replace_the_last_ones() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(MOVER)));
     let schema = w.open.document.registry.get("Mover").expect("registered");
     assert_eq!(schema.field("speed").unwrap().default, Value::Float(6.0));
@@ -118,7 +118,7 @@ fn the_program_s_components_join_the_registry_and_replace_the_last_ones() {
 
 #[test]
 fn a_component_named_like_a_built_in_one_or_a_failing_start_is_a_problem() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(
         "component Light {\n    has {\n        int on = 1;\n    }\n}\npass Light;\nend\n",
     )));
@@ -322,7 +322,7 @@ fn fields_set_on_several_entities_reach_the_game_when_everything_is_built_again(
 
 #[test]
 fn a_failing_component_is_reported_once_naming_its_entity() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(
         "component Divider {\n    has {\n        int ways = 0;\n    }\n    method update(float dt) {\n        int each = 12 / ways;\n    }\n}\npass Divider;\nend\n",
     )));
@@ -366,7 +366,7 @@ fn scale_check_playing_with_2000_lust_components() {
     // Each of 2,000 entities carries a Lust component that moves it every
     // tick: a frame of play mode runs one tick of all of them.
     const TARGET_MS: f64 = 16.0;
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(MOVER)));
     let spawns: Vec<_> = (0..2_000)
         .map(|i| {
@@ -427,7 +427,7 @@ impl script::RustComponent for Bell {
 
 #[test]
 fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.add_rust_component(script::RustKind {
         schema: reflect::ComponentSchema {
             name: "Bell".into(),
@@ -552,7 +552,7 @@ fn new_code_while_playing_is_swapped_in_and_keeps_where_things_are() {
 
 #[test]
 fn a_lua_component_joins_properties_and_play_mode() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let code = script::Code {
         files: Vec::new(),
         lua: vec![(
@@ -594,7 +594,7 @@ fn a_lua_component_joins_properties_and_play_mode() {
 
 #[test]
 fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let code = script::Code {
         files: Vec::new(),
         lua: vec![(
@@ -667,7 +667,7 @@ fn code_changed_while_playing_keeps_its_components_after_stop() {
 
 #[test]
 fn a_component_named_like_a_built_in_one_doesn_t_run() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(
         "fetch \"solis/world\":World;\ncomponent Light {\n    has {\n        int on = 1;\n    }\n\
          \x20   method update(float dt) {\n        World:say(\"lust light ran\");\n    }\n}\n\
@@ -796,7 +796,7 @@ fn rust_components_run_even_when_the_code_s_start_fails_at_play() {
 
 #[test]
 fn a_lust_component_named_like_a_rust_one_says_so_and_the_rust_one_runs() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_rust_components(vec![ticker()]);
     w.set_program(Some(program(
         "component Ticker {\n    has {\n        int ticks = 0;\n    }\n}\npass Ticker;\nend\n",
@@ -836,7 +836,7 @@ fn a_failure_that_doesn_t_stop_its_component_isn_t_said_to() {
 /// A workbench with `program`'s Lust and `count` entities ("Cart 0" …)
 /// each carrying its `component`, one metre apart.
 fn crowd_with(main: &str, component: &str, count: usize) -> (Workbench, Vec<EntityId>) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(main)));
     let mut ids = Vec::with_capacity(count);
     let spawns: Vec<_> = (0..count)
@@ -1013,7 +1013,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
         )],
         notes: Vec::new(),
     };
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(Arc::new(script::compile(&code).unwrap().unwrap())));
     let mut data = EntityData::new("Guns");
     for gun in ["LustGun", "LuaGun"] {
@@ -1064,7 +1064,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
 
 #[test]
 fn past_the_projectile_limit_the_console_says_so_once() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(
         "fetch \"solis/world\":World;\n\n\
          component Gun {\n\
@@ -1135,7 +1135,7 @@ fn with_drones(main: &str) -> Workbench {
         overrides: Default::default(),
     };
     let asset = reflect::AssetId(reflect::Id::from_raw(901).unwrap());
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(main)));
     w.set_assembly(asset, Arc::new(file));
     w.set_library(vec![crate::library::LibraryItem {
@@ -1680,7 +1680,7 @@ const DRUNKARD: &str = "fetch \"solis/world\":World;\n\n\
 
 /// A workbench with a drunkard (entity 5) in its area.
 fn with_a_drunkard() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(DRUNKARD)));
     let mut data = EntityData::new("Walker").with(&Transform::default());
     data.components
@@ -1756,7 +1756,7 @@ const KICKER: &str = "fetch \"solis/physics\":Physics;\nfetch \"solis/world\":Wo
 /// A workbench with a floor, a crate on it and a kicker, playing.
 fn kicked() -> (Workbench, EntityId) {
     use area::builtin::{Collider, RigidBody};
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(KICKER)));
     let raw = |n| EntityId(reflect::Id::from_raw(n).unwrap());
     let floor = EntityData::new("Floor")
@@ -2077,7 +2077,7 @@ const CHURN_LUA: &str = "local C = component(\"Churn\", { { \"value\", \"float\"
 /// A workbench playing 2,000 entities with a Churn component in
 /// `language`, and their values after `ticks`.
 fn churning(language: &str) -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     match language {
         "Lust" => w.set_program(Some(program(CHURN_LUST))),
         "Lua" => {
@@ -2182,7 +2182,7 @@ fn a_game_code_component_s_card_opens_its_file() {
     use egui_kittest::kittest::Queryable;
     // The card names the file it's written in, and opens it in its
     // program (decision 0085): Ledger, for Lust.
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -2221,7 +2221,7 @@ fn a_game_code_component_s_card_opens_its_file() {
 #[test]
 fn each_code_file_says_how_many_entities_use_its_components() {
     // For the Code panel in the Code workspace (decision 0085).
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     assert!(w.code_uses().is_empty(), "no code yet");
     w.set_program(Some(program(MOVER)));
     assert_eq!(w.code_uses()["main.lst"], "Mover · 0");
@@ -2241,7 +2241,7 @@ const FACER: &str = "component Facer {\n\
 
 #[test]
 fn game_code_mirrors_a_sprite_with_set_flip() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(FACER)));
     let id = EntityId::random();
     let mut data = EntityData::new("Hero")

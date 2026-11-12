@@ -195,7 +195,7 @@ const MOVED: [(&str, &str, Place); 43] = [
 /// An editor in which every old item can be done at some moment: a
 /// project open, something selected, a step to undo, a manual to open.
 fn ready() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -429,6 +429,7 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
             b.0.open.document.history().undo_len(),
             "{command:?}"
         );
+        assert_eq!(a.0.shelf_folded(), b.0.shelf_folded(), "{command:?}");
     }
-    assert_eq!(with_keys, 11, "every command with a shortcut was tried");
+    assert_eq!(with_keys, 12, "every command with a shortcut was tried");
 }

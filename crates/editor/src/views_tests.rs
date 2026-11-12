@@ -307,7 +307,7 @@ fn a_flat_view_has_no_fog_and_adds_cameras_above_the_ground() {
     // from 2.5 km away (fog, lights) nor from the ground (new cameras).
     let expected = v.camera.position + Vec3::Z * v.camera.flat_height;
     assert!(view.camera_position.distance(expected) < 1e-3);
-    let mut w = crate::workbench::Workbench::new(info(), None);
+    let mut w = crate::workbench::Workbench::new(info());
     w.viewport.camera = w.viewport.camera.as_kind(ViewKind::Top);
     let id = w.add_camera();
     let at = w

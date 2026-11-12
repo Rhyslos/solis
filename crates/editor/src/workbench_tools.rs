@@ -246,7 +246,7 @@ impl Workbench {
         // tucked away by it (where the drawer is drawn); else a stroke, a
         // copy held or a painting tool is given up; else a drag; and only
         // then is nothing selected.
-        if escape && !self.drawer_open && !self.paint_escape() && !self.viewport.tools.cancel() {
+        if escape && !self.paint_escape() && !self.viewport.tools.cancel() {
             self.open.document.selection.clear();
         }
         if all {

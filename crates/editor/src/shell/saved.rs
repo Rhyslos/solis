@@ -149,7 +149,7 @@ impl Shell {
 
 /// What the Console says once, the first time this frame opens on
 /// settings that had a panel arrangement from before it.
-pub const NOT_CARRIED_OVER: &str = "The interface is new: your panel arrangement from before \
+pub(crate) const NOT_CARRIED_OVER: &str = "The interface is new: your panel arrangement from before \
                                     wasn't carried over. Each tab now remembers its own shelf \
                                     and split.";
 

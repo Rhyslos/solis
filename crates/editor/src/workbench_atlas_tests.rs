@@ -8,7 +8,7 @@ use crate::workbench::Workbench;
 use std::sync::Arc;
 
 fn with_project() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -29,10 +29,7 @@ fn atlas_crop_makes_the_file_beside_the_picture_and_saves_each_change() {
         LibraryRequest::AtlasCrop("sprites/tools.png".into()),
         &mut actions,
     );
-    assert!(
-        w.dock.find_tab(&Panel::AtlasCrop).is_some(),
-        "the tab opened"
-    );
+    assert!(has_panel(&w, Panel::AtlasCrop), "the tab opened");
     let made = saved(&w);
     assert_eq!(made.len(), 1, "made at once, so the picture is read");
     assert_eq!(made[0].0, "sprites/tools.atlas.lst");
@@ -73,7 +70,7 @@ fn atlas_crop_makes_the_file_beside_the_picture_and_saves_each_change() {
     w.atlas_undo(false);
     assert!(!saved(&w).pop().unwrap().1.contains("Tile_1_0"));
     w.close_atlas();
-    assert!(w.dock.find_tab(&Panel::AtlasCrop).is_none());
+    assert!(!has_panel(&w, Panel::AtlasCrop));
 }
 
 #[test]
@@ -131,7 +128,7 @@ fn the_x_on_its_tab_closes_the_atlas_file() {
     click_the_x(&mut h, Panel::AtlasCrop);
     let w = &h.state().0;
     assert!(w.open.atlas_editor.is_none());
-    assert!(w.dock.find_tab(&Panel::AtlasCrop).is_none());
+    assert!(!has_panel(w, Panel::AtlasCrop));
 }
 
 /// BUG-20: the grid's size dragged for ten frames in the Atlas Crop tab is

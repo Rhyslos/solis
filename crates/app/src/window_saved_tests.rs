@@ -6,6 +6,7 @@
 use super::super::tests::Memory;
 use super::super::{
     ACCENT_KEY, AUTO_UPDATE_KEY, EDITOR_SIZE_KEY, FIRST_SIZE, INTERFACE_LOOK_KEY, OLD_ACCENT_KEY,
+    SHELL_KEY,
 };
 use super::*;
 use editor::theme::{Accent, Density, Scale};
@@ -68,13 +69,28 @@ fn a_first_run_s_settings_start_the_new_look_with_everything_else_kept() {
     assert!(saved.auto_update);
     assert_eq!(saved.skipped, None);
     assert!(workbench.hints_on());
-    assert!(workbench.library_pinned());
     assert_eq!(workbench.camera(), Camera::default());
     assert_eq!(workbench.look(), Look::default());
     assert_eq!(workbench.snapping(), editor::Snapping::default());
     assert_eq!(workbench.overlays(), Overlays::default());
     assert!(workbench.console_history().is_empty());
-    assert_eq!(workbench.workspace(), editor::workspace::Workspace::Level);
+    starts_with_the_standard_frame_and_says_so_once(&workbench);
+}
+
+/// Started from settings with a docked panels' arrangement from before
+/// the frame: every tab is as the design draws it, and the Console says
+/// once that the arrangement wasn't carried over.
+fn starts_with_the_standard_frame_and_says_so_once(workbench: &Workbench) {
+    assert_eq!(workbench.ribbon_tab(), editor::RibbonTab::Home);
+    assert!(!workbench.ribbon_collapsed());
+    assert_eq!(workbench.shelf_tab(), Some(editor::ShelfTab::Entity));
+    assert!(!workbench.shelf_folded());
+    let said = workbench
+        .log_lines()
+        .iter()
+        .filter(|l| l.text.contains("wasn't carried over"))
+        .count();
+    assert_eq!(said, 1);
 }
 
 #[test]
@@ -102,7 +118,6 @@ fn graphite_rounded_panels_and_plum_become_the_one_theme_and_purple() {
     assert_eq!(known.len(), 2);
     assert!(known.iter().any(|k| k.pinned), "the pin");
     assert!(!workbench.hints_on());
-    assert!(!workbench.library_pinned());
     assert_eq!(
         workbench.camera().position,
         glam::Vec3::new(12.0, -7.5, 3.25)
@@ -113,11 +128,11 @@ fn graphite_rounded_panels_and_plum_become_the_one_theme_and_purple() {
     assert_eq!(workbench.snapping().angle_step, 45.0);
     assert_ne!(workbench.overlays(), Overlays::default());
     assert_eq!(workbench.console_history(), ["help", "time 18"]);
-    // The rearranged panels are still where they were put: the dock is
-    // still there in this build.
+    // The rearranged panels (the Animate workspace in use) aren't carried
+    // over: the frame starts as the design draws it, and says so once.
     // (The camera and look above are read through the saved views, which
     // win over the single camera and look of older settings.)
-    assert_eq!(workbench.workspace(), editor::workspace::Workspace::Animate);
+    starts_with_the_standard_frame_and_says_so_once(&workbench);
     assert!(storage.get_string(super::super::VIEWS_KEY).is_some());
 }
 
@@ -141,6 +156,7 @@ fn settings_from_before_the_second_accent_key_start_too() {
     );
     assert_eq!(workbench.console_history(), ["help"]);
     assert!(workbench.hints_on());
+    starts_with_the_standard_frame_and_says_so_once(&workbench);
 }
 
 #[test]
@@ -152,10 +168,12 @@ fn the_old_keys_are_read_once_and_then_left_exactly_as_they_were() {
     ] {
         let mut storage = settings(name);
         let before: HashMap<String, String> = storage.0.clone();
-        let (saved, _) = started(&storage);
+        let (saved, workbench) = started(&storage);
         assert_eq!(storage.0, before, "{name}: reading changed the settings");
-        // The new build saves its look under its own key...
+        // The new build saves its look and its frame under keys of their
+        // own...
         eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &saved.look);
+        eframe::set_value(&mut storage, SHELL_KEY, &workbench.shell_state());
         for (key, value) in &before {
             assert_eq!(storage.0.get(key), Some(value), "{name}: {key} was touched");
         }
@@ -169,6 +187,16 @@ fn the_old_keys_are_read_once_and_then_left_exactly_as_they_were() {
         };
         eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &chosen);
         assert_eq!(Saved::read(Some(&storage)).look, chosen, "{name}");
+        // Nor is the old arrangement: the frame saved is taken in, and
+        // the Console has nothing more to say about it.
+        let (_, again) = started(&storage);
+        assert!(
+            !again
+                .log_lines()
+                .iter()
+                .any(|l| l.text.contains("wasn't carried over")),
+            "{name}: said once only"
+        );
     }
 }
 
@@ -220,8 +248,9 @@ fn no_settings_and_damaged_settings_both_start_as_standard() {
         OLD_ACCENT_KEY,
         AUTO_UPDATE_KEY,
         EDITOR_SIZE_KEY,
-        super::super::LAYOUT_KEY,
-        super::super::WORKSPACES_KEY,
+        super::super::OLD_LAYOUT_KEYS[0],
+        super::super::OLD_LAYOUT_KEYS[1],
+        SHELL_KEY,
         super::super::CAMERA_KEY,
         super::super::KNOWN_PROJECTS_KEY,
         super::super::VIEWS_KEY,

@@ -425,11 +425,21 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 65] = [
+const DRAWN_SO_FAR: [UnbuiltId; 74] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
     UnbuiltId::ShellPlaySimulate,
+    UnbuiltId::ShellStatusBranch,
+    // The shelves' tabs and tools.
+    UnbuiltId::HomeShelfAnimation,
+    UnbuiltId::HomeShelfTransport,
+    UnbuiltId::HomeShelfFrameCounter,
+    UnbuiltId::LibShelfImportQueue,
+    UnbuiltId::AnimShelfSequencer,
+    UnbuiltId::AnimShelfKey,
+    UnbuiltId::DebugShelfHottest,
+    UnbuiltId::DebugShelfMemory,
     // Home's ribbon.
     UnbuiltId::HomeCreateShapes,
     UnbuiltId::HomeCreateTrigger,
@@ -511,7 +521,7 @@ fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
     use crate::settings_window::Page;
     use crate::test_support::{harness, info};
     use crate::workbench::Workbench;
-    let mut h = harness(Workbench::new(info(), None).with_interface_look(look));
+    let mut h = harness(Workbench::new(info()).with_interface_look(look));
     theme::restyle(&h.ctx, look);
     let mut noted = BTreeSet::new();
     let mut described = Vec::new();

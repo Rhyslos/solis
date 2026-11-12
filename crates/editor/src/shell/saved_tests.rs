@@ -77,8 +77,10 @@ fn what_cant_be_used_is_repaired() {
     assert_eq!(home.split, standard.split);
     assert!(home.shelf_folded, "what could be read is kept");
     for height in [0.0, -5.0, 1.0e9, f32::INFINITY] {
-        let mut state = WorkspaceState::default();
-        state.shelf_height = height;
+        let state = WorkspaceState {
+            shelf_height: height,
+            ..WorkspaceState::default()
+        };
         assert_eq!(
             state.restore(RibbonTab::Home).shelf_height,
             standard.shelf_height
@@ -151,7 +153,7 @@ fn random_damage_to_a_saved_frame_never_gives_an_unusable_one() {
 
 #[test]
 fn an_old_arrangement_is_said_once_and_a_saved_frame_is_taken_in() {
-    let mut w = Workbench::new(crate::test_support::info(), None);
+    let mut w = Workbench::new(crate::test_support::info());
     let said = |w: &Workbench| {
         w.log_lines()
             .iter()

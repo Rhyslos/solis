@@ -17,11 +17,9 @@
 
 use crate::console::LogLevel;
 use crate::document::Document;
-use crate::layout;
 use crate::library::{LibraryItem, ProjectInfo};
 use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
-use crate::panel::Panel;
 use crate::properties::AssemblyPart;
 use crate::workbench::{GameKey, PartKey, ViewKey, Workbench, WorkbenchAction};
 use reflect::{AssetId, EntityId};
@@ -30,6 +28,16 @@ use std::collections::{BTreeMap, HashMap};
 /// Everything the editor holds that belongs to the open project (or to
 /// working without one), kept between frames. Another project starts
 /// with a new one ([`Workbench::set_project`]).
+/// Which entities use each code file's components, with the area's
+/// revision, the sources' count and the build of the game's code it was
+/// worked out for.
+pub(crate) type CodeUses = (
+    u64,
+    u64,
+    Option<MadeFrom<script::Compiled>>,
+    std::sync::Arc<BTreeMap<String, String>>,
+);
+
 #[derive(Default)]
 pub(crate) struct ProjectState {
     /// The open project, if any.
@@ -165,6 +173,10 @@ pub(crate) struct ProjectState {
     pub(crate) screen_from: Option<Option<MadeFrom<script::Compiled>>>,
     /// What the open screen can be tied to and send, and the build of the
     /// game's code it's for.
+    /// Which entities use each code file's components (the Library's
+    /// Code view), and the area's revision, the sources' count and the
+    /// build of the game's code it was worked out for.
+    pub(crate) code_uses: Option<CodeUses>,
     pub(crate) screen_game: Option<(
         Option<MadeFrom<script::Compiled>>,
         std::sync::Arc<crate::screen_ties::ScreenGame>,
@@ -224,12 +236,8 @@ impl Workbench {
         };
         self.open.document.registry = registry;
         self.viewport.forget_project();
-        // The tabs of the old project's files close, in every workspace.
-        for dock in std::iter::once(&mut self.dock).chain(self.other_layouts.values_mut()) {
-            for panel in Panel::OPEN_WITH_A_FILE {
-                layout::close(dock, panel);
-            }
-        }
+        // The old project's files closed with it: their documents and
+        // shelf tabs go, as they come with what is open.
         // Whatever was worked out for the old project is worked out again.
         self.sources += 1;
         if let Some(name) = self.open.project.as_ref().map(|p| p.name.clone()) {

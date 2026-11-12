@@ -288,8 +288,11 @@ impl Workbench {
         self.open.document.hold_steps();
         // Nothing held over from before Play.
         self.devices = input::Devices::new();
-        if let Some(found) = self.dock.find_tab(&Panel::Game) {
-            let _ = self.dock.set_active_tab(found);
+        // The Game tab comes to the front of the area's group (the
+        // project lead's answer 10), on Home and on Debug.
+        use crate::shell::RibbonTab;
+        for tab in [RibbonTab::Home, RibbonTab::Build, RibbonTab::Debug] {
+            self.show_in(tab, crate::shell::workspaces::Home::Group(0), Panel::Game);
         }
         let note = if cameras == 0 {
             " There's no camera in the area, so the Game panel shows the editor's view \

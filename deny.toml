@@ -12,7 +12,6 @@ yanked = "deny"
 # "Unmaintained" notices (not vulnerabilities) accepted one by one, with a
 # reason. Remove an entry as soon as the library using it moves on.
 ignore = [
-    { id = "RUSTSEC-2024-0436", reason = "paste: macro helper used only at compile time by egui_dock; no replacement upstream yet" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser: font reading inside winit's Linux window decorations; no replacement upstream yet" },
     { id = "RUSTSEC-2026-0370", reason = "zvariant: Linux screen-reader support inside egui (accesskit, through zbus); unmaintained, not a vulnerability, no replacement upstream yet" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names: as zvariant, Linux screen-reader support inside egui" },

@@ -67,7 +67,7 @@ fn block(at: Vec3, size: Vec3) -> EntityData {
 /// 7.75), a 25 cm step along +X from x = 4, a character at the origin and
 /// a camera with `camera` (a component name and its fields).
 fn level(camera: &str, fields: &[(&str, Value)]) -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program()));
     let mut player = EntityData::new("Player")
         .with(&Transform::default())

@@ -25,13 +25,16 @@ const PREVIEW_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
 /// How often a frame is drawn while nothing happens, to look for changes
 /// on disk and messages from background work.
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
-/// Key under which the panels' arrangement is remembered: a new key
-/// since the editor overhaul's standard layout (decision 0085), so every
-/// editor starts once from it; Reset layout (File > Preferences) brings it back later.
-const LAYOUT_KEY: &str = "panel_layout2";
-/// Key under which every workspace's layout, and the one in use, is
-/// remembered (decision 0085); the layout above is read when it's missing.
-const WORKSPACES_KEY: &str = "workspaces";
+/// Key under which the frame is remembered (decision 0104): the tab in
+/// front, whether the ribbon is collapsed, and each tab's shelf and
+/// split.
+const SHELL_KEY: &str = "shell";
+/// The keys under which builds before the frame kept the docked panels'
+/// arrangement. Never read for what they hold (a dock's tree means
+/// nothing to the frame) and never written or removed, so an earlier
+/// build still finds what it saved; only whether one is there is looked
+/// at, for the Console to say once that it wasn't carried over.
+const OLD_LAYOUT_KEYS: [&str; 2] = ["panel_layout2", "workspaces"];
 /// Key under which the interface's look is remembered: its accent, scale
 /// and density (decision 0100).
 const INTERFACE_LOOK_KEY: &str = "interface_look";
@@ -46,9 +49,6 @@ const OLD_ACCENT_KEY: &str = "accent";
 /// the launcher's size while it's up, and this size again once a project
 /// opens (the project lead, 2026-11-06).
 const EDITOR_SIZE_KEY: &str = "editor_size";
-/// Key under which whether the Library is pinned (docked) rather than a
-/// drawer is remembered (decision 0085).
-const LIBRARY_PINNED_KEY: &str = "library_pinned";
 /// Key under which whether the Hints panel shows hints is remembered.
 const HINTS_KEY: &str = "hints";
 /// Key under which the viewport's corner controls are remembered.
@@ -2191,18 +2191,12 @@ impl eframe::App for App {
             self.flush_log(true);
             return;
         }
-        eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
-        eframe::set_value(storage, WORKSPACES_KEY, &self.workbench.workspaces());
+        eframe::set_value(storage, SHELL_KEY, &self.workbench.shell_state());
         eframe::set_value(storage, HINTS_KEY, &self.workbench.hints_on());
         eframe::set_value(
             storage,
             INTERFACE_LOOK_KEY,
             &self.workbench.interface_look(),
-        );
-        eframe::set_value(
-            storage,
-            LIBRARY_PINNED_KEY,
-            &self.workbench.library_pinned(),
         );
         eframe::set_value(storage, EDITOR_SIZE_KEY, &self.editor_size);
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());

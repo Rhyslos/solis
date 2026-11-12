@@ -147,7 +147,7 @@ impl Kind {
 /// A project with one file of each kind, each open in its editor; and the
 /// project's files as the app has them.
 fn with_files() -> (Workbench, SpriteSheets) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -377,7 +377,7 @@ fn a_new_file_that_couldn_t_be_made_closes_its_tab_and_says_so() {
     w.open.outbox.clear();
     w.file_not_saved(path, "the folder isn't there", store.clone());
     assert!(w.open.animator_editor.is_none());
-    assert!(w.dock.find_tab(&Panel::Animator).is_none());
+    assert!(!crate::test_support::has_panel(&w, Panel::Animator));
     assert_eq!(w.viewport.sheets.held(path), Held::Gone);
     let lines = said(&w);
     assert_eq!(lines.len(), 1, "{lines:?}");

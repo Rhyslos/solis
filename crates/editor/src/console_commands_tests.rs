@@ -210,7 +210,7 @@ fn set_changes_every_selected_entity_in_one_undo_step() {
 /// stopped the program as the viewport drew the light.
 #[test]
 fn set_can_t_give_a_light_a_cone_that_crashes_the_viewport() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let torch = w.add_spotlight();
     for (typed, cone) in [
         ("-5", Light::CONE_RANGE.0),
@@ -572,7 +572,7 @@ fn the_quote_key_is_left_alone_while_typing_elsewhere() {
 
 #[test]
 fn seed_and_checksum_say_what_they_do() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     run(&mut w, "seed");
     assert_eq!(answer(&w), "Each Play has a new seed.");
     run(&mut w, "seed 1234");
@@ -600,7 +600,7 @@ fn seed_and_checksum_say_what_they_do() {
 
 #[test]
 fn ui_test_shows_and_hides_a_sample_hud() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     run(&mut w, "ui test whole");
     let screen = w.ui_test.clone().expect("shown");
     assert_eq!(screen.scale, ui::ScaleRule::WholeSteps);
@@ -627,7 +627,7 @@ fn hero_with_a_score() -> (Workbench, EntityId) {
         notes: Vec::new(),
     };
     let program = std::sync::Arc::new(script::compile(&code).unwrap().unwrap());
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program));
     let id = EntityId::random();
     let mut hero = area::EntityData::new("Hero").with(&Transform::default());

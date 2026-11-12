@@ -302,7 +302,7 @@ fn editor_picture(look: InterfaceLook) -> Option<Picture> {
 
 /// The launcher, drawn for real in the new look.
 fn launcher_picture(look: InterfaceLook) -> Option<Picture> {
-    let mut workbench = Workbench::new(info(), None);
+    let mut workbench = Workbench::new(info());
     workbench.set_this_build(Some(57));
     workbench.launch_launcher();
     let mut harness = editor_window(workbench, look, LAUNCHER_SIZE)?;
@@ -318,23 +318,26 @@ fn the_editor_s_surfaces_are_the_design_s() {
     };
     assert_eq!(picture.size, [1440, 900]);
     // Each surface as the design's first screen has it (the test above
-    // holds that screen to the same tokens). The top is the design's; the
-    // middle is still today's panels, and the points are where they are.
+    // holds that screen to the same tokens): the frame is the design's;
+    // the panels inside it are still today's.
     for (what, point, token) in [
         ("the tab bar", [700.0, 17.0], tokens::app()),
         ("the ribbon", [1150.0, 67.0], tokens::ribbon()),
         ("a tab strip", [200.0, 115.0], tokens::app()),
         ("another tab strip", [800.0, 115.0], tokens::app()),
-        ("a tab behind", [440.0, 108.0], tokens::shelf_bar()),
-        ("the Area panel", [200.0, 500.0], tokens::panel()),
-        ("Properties", [1270.0, 620.0], tokens::panel()),
-        ("the Library", [900.0, 800.0], tokens::panel()),
-        ("Hints", [1270.0, 866.0], tokens::panel()),
         (
-            "the Library's tool row",
-            [700.0, 705.0],
-            tokens::shelf_bar(),
+            "the document tab in front",
+            [5.0, 122.0],
+            tokens::viewport(),
         ),
+        ("the shelf bar", [800.0, 559.0], tokens::shelf_bar()),
+        ("the Area column's header", [150.0, 591.0], tokens::panel()),
+        (
+            "the Properties column's header",
+            [700.0, 591.0],
+            tokens::panel(),
+        ),
+        ("the Library column", [1160.0, 850.0], tokens::panel()),
         ("the search box", [1000.0, 17.0], tokens::ribbon()),
         ("Play", [1336.0, 50.0], tokens::PLAY_FILL),
         ("the status bar", [700.0, 889.0], tokens::code()),

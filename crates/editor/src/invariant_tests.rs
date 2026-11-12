@@ -148,7 +148,7 @@ fn a_crate(at: Vec3) -> EntityData {
 /// The level, not yet playing, with the project's input actions and a
 /// fixed seed.
 fn level() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
         name: "Invariants".into(),
         root: std::env::temp_dir(),

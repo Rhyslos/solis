@@ -121,7 +121,7 @@ fn any_text_is_read_without_trouble() {
 
 #[test]
 fn the_app_is_asked_for_a_text_file_shown_in_properties_only() {
-    let mut w = Workbench::new(crate::test_support::info(), None);
+    let mut w = Workbench::new(crate::test_support::info());
     let item = |path: &str, kind| crate::library::LibraryItem {
         kind,
         name: path.into(),

@@ -66,7 +66,7 @@ fn raw(n: u64) -> EntityId {
 /// A workbench in a project called `project`, with the busy game: a
 /// floor, a crate on it, and the busy entity.
 pub(super) fn busy(project: &str) -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
         name: project.into(),
         root: std::env::temp_dir(),
@@ -729,7 +729,7 @@ fn write_fuzz_seeds() {
 #[test]
 fn a_sound_turned_off_stays_off_after_a_load() {
     use area::builtin::AudioSource;
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
         name: "Radio".into(),
         root: std::path::PathBuf::from("/nowhere"),

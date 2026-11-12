@@ -53,7 +53,7 @@ impl Workbench {
             .collect()
     }
 
-    /// The panels the layout has (a document's tab only while open).
+    /// The panels there are now (a document's only while it's open).
     fn panel_items(&self) -> Vec<SearchItem> {
         [
             Panel::Viewport,
@@ -68,19 +68,12 @@ impl Workbench {
             Panel::Mixer,
         ]
         .into_iter()
-        .filter(|panel| {
-            self.dock.find_tab(panel).is_some()
-                || (*panel == Panel::Library && !self.library_pinned)
-        })
+        .filter(|panel| crate::shell::workspaces::tab_for(*panel, self.open_now()).is_some())
         .map(|panel| SearchItem {
             name: panel.title().to_string(),
             kind: SearchKind::Panel,
             detail: String::new(),
-            keys: if panel == Panel::Library {
-                "Ctrl+Space"
-            } else {
-                ""
-            },
+            keys: "",
             target: SearchTarget::Panel(panel),
         })
         .collect()

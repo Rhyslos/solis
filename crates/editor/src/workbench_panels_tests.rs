@@ -136,8 +136,16 @@ fn hidden_entities_and_their_children_are_not_drawn_and_locked_ones_not_picked()
 fn the_hide_and_lock_switches_appear_on_the_row_and_switch() {
     let (w, _, _, crate_id) = a_room();
     let mut h = harness(w);
-    // The Area panel is on the left (decision 0085), under the ribbon.
-    h.hover_at(egui::pos2(200.0, 226.0));
+    h.run();
+    // The Area column is on the left of Home's Entity shelf tab: its
+    // crate's row, where the pointer shows its switches.
+    let area = body_of(&h, crate::panel::Panel::Area);
+    let row = h
+        .get_all_by_label("Crate")
+        .map(|n| n.rect())
+        .find(|r| area.contains(r.center()))
+        .expect("the crate's row");
+    h.hover_at(egui::pos2(area.right() - 40.0, row.center().y));
     h.run();
     h.get_by_label("Hide Crate").click();
     h.run();
@@ -414,7 +422,7 @@ fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
     data.components
         .insert("Wobble".into(), reflect::ComponentData::default());
     area.insert(odd, data);
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open_area(area, "odd.solarea".into());
     let mut h = harness(w);
     h.run();
@@ -434,7 +442,7 @@ fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
 
 #[test]
 fn mistakes_in_the_game_code_are_listed_first_and_a_click_opens_the_file() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: "/p".into(),
@@ -484,7 +492,7 @@ fn mistakes_in_the_game_code_are_listed_first_and_a_click_opens_the_file() {
 fn components_registered_by_game_code_survive_new_areas_and_projects() {
     // Found by review: each new or opened area started with only the
     // built-in components.
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let schema = reflect::ComponentSchema {
         name: "Wobble".into(),
         help: "Wobbles.".into(),
@@ -521,7 +529,7 @@ fn another_project_starts_without_the_last_ones_assemblies_and_questions() {
 #[test]
 fn the_open_area_follows_its_file_when_the_library_moves_or_deletes_it() {
     use std::path::{Path, PathBuf};
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open_area(
         area::builtin::starter_area(),
         "/p/assets/areas/harbour.solarea".into(),

@@ -208,43 +208,46 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
 /// The shelf's tabs on `tab`, unfinished ones among them, in the shelf
 /// bar's order.
 pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
-    use Entry::{Built as B, Unbuilt as U};
     use ShelfTab as S;
     let mut tabs = match tab {
         RibbonTab::Home | RibbonTab::Build => vec![
-            B(S::Entity),
-            U(UnbuiltId::HomeShelfAnimation),
-            B(S::Console),
-            B(S::Problems),
+            Entry::Built(S::Entity),
+            Entry::Unbuilt(UnbuiltId::HomeShelfAnimation),
+            Entry::Built(S::Console),
+            Entry::Built(S::Problems),
         ],
         RibbonTab::Library => vec![
-            B(S::Details),
-            B(S::Code),
-            U(UnbuiltId::LibShelfImportQueue),
-            U(UnbuiltId::LibSourceHistory),
+            Entry::Built(S::Details),
+            Entry::Built(S::Code),
+            Entry::Unbuilt(UnbuiltId::LibShelfImportQueue),
+            Entry::Unbuilt(UnbuiltId::LibSourceHistory),
         ],
         RibbonTab::Animate => vec![
-            U(UnbuiltId::AnimShelfSequencer),
-            B(S::Properties),
-            U(UnbuiltId::AnimShelfKey),
-            B(S::Console),
+            Entry::Unbuilt(UnbuiltId::AnimShelfSequencer),
+            Entry::Built(S::Properties),
+            Entry::Unbuilt(UnbuiltId::AnimShelfKey),
+            Entry::Built(S::Console),
         ],
-        RibbonTab::Ui => vec![B(S::Screen), B(S::Console)],
-        RibbonTab::Audio => vec![B(S::Bus), U(UnbuiltId::AudioMixerSnapshot), B(S::Console)],
+        RibbonTab::Ui => vec![Entry::Built(S::Screen), Entry::Built(S::Console)],
+        RibbonTab::Audio => vec![
+            Entry::Built(S::Bus),
+            Entry::Unbuilt(UnbuiltId::AudioMixerSnapshot),
+            Entry::Built(S::Console),
+        ],
         RibbonTab::Debug => vec![
-            B(S::Console),
-            B(S::Problems),
-            U(UnbuiltId::DebugShelfHottest),
-            U(UnbuiltId::DebugShelfMemory),
+            Entry::Built(S::Console),
+            Entry::Built(S::Problems),
+            Entry::Unbuilt(UnbuiltId::DebugShelfHottest),
+            Entry::Unbuilt(UnbuiltId::DebugShelfMemory),
         ],
         RibbonTab::File | RibbonTab::Shading | RibbonTab::Vfx => Vec::new(),
     };
     if matches!(tab, RibbonTab::Home | RibbonTab::Build) && open.map {
-        tabs.push(B(S::Map));
+        tabs.push(Entry::Built(S::Map));
     }
     if tab == RibbonTab::Animate && open.clips {
         // A clips file's tabs come first, after the unfinished sequencer.
-        tabs.splice(1..1, [B(S::Frames), B(S::Clips)]);
+        tabs.splice(1..1, [Entry::Built(S::Frames), Entry::Built(S::Clips)]);
     }
     tabs
 }

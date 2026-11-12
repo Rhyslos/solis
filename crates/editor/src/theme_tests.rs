@@ -334,19 +334,13 @@ fn restyling_sets_the_scale_and_the_look_in_use() {
 }
 
 #[test]
-fn the_tab_in_front_stands_out_in_the_dock() {
-    let base = style_with(InterfaceLook::default());
-    for accent in Accent::ALL {
-        let dock = dock_style(&base, accent);
-        // Its name is bright and the others are quieter, and its fill is
-        // lighter than theirs, so colour is never the only cue.
-        let front = contrast(dock.tab.active.text_color, dock.tab.active.bg_fill);
-        let rest = contrast(dock.tab.inactive.text_color, dock.tab.inactive.bg_fill);
-        assert!(front > rest + 3.0, "{front:.2} against {rest:.2}");
-        assert!(rest >= READABLE);
-        assert_ne!(dock.tab.active.bg_fill, dock.tab.inactive.bg_fill);
-        assert_eq!(dock.tab_bar.height, size::DOC_TAB_H);
-        assert_eq!(dock.separator.width, 1.0);
-        assert_eq!(dock.separator.color_dragged, accent.colour());
-    }
+fn the_document_tab_in_front_stands_out() {
+    // The colours the editor groups' tab strips draw with (`shell/groups.rs`):
+    // its name is bright and the others are quieter, and its fill is
+    // lighter than theirs, so colour is never the only cue.
+    let front = contrast(tokens::text_emphasis(), tokens::viewport());
+    let rest = contrast(tokens::text_meta(), tokens::shelf_bar());
+    assert!(front > rest + 3.0, "{front:.2} against {rest:.2}");
+    assert!(rest >= READABLE);
+    assert_ne!(tokens::viewport(), tokens::shelf_bar());
 }
