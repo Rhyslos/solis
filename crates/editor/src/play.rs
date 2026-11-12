@@ -94,6 +94,32 @@ pub(crate) struct Playing {
     /// How the last playback ended: matched on every tick (their count),
     /// or stopped matching by this tick (Phase 8, C4: a project's check).
     pub(crate) replayed: Option<Result<usize, usize>>,
+    /// The fields the user changed in Properties while playing, each with
+    /// its value from before Play (`None` where the entity didn't have
+    /// it): marked there, with a way back (`04-properties-playing.png`).
+    pub(crate) yours: BackToBefore,
+}
+
+/// Fields changed while playing, by entity, component and field, each
+/// with its value from before Play.
+pub(crate) type BackToBefore = BTreeMap<(EntityId, String, String), Option<reflect::Value>>;
+
+impl Playing {
+    /// Notes that the user changed a field while playing, keeping its
+    /// value from before Play the first time. An entity the game made
+    /// has no value from before, and isn't noted.
+    pub(crate) fn note_yours(&mut self, entity: EntityId, component: &str, field: &str) {
+        let Some(was) = self.before.area().get(entity) else {
+            return;
+        };
+        let key = (entity, component.to_owned(), field.to_owned());
+        self.yours.entry(key).or_insert_with(|| {
+            was.components
+                .get(component)
+                .and_then(|c| c.get(field))
+                .cloned()
+        });
+    }
 }
 
 /// What the Console says when 2D physics stopped on something and the
@@ -282,6 +308,7 @@ impl Workbench {
             told_too_many_sounds: false,
             replay: None,
             replayed: None,
+            yours: BTreeMap::new(),
         });
         // Every edit made from here is kept as an undo step until Stop,
         // which makes them again on the copy just kept, for Keep.

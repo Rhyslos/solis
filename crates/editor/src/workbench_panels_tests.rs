@@ -500,7 +500,6 @@ fn mistakes_in_the_game_code_are_listed_first_and_a_click_opens_the_file() {
     h.run();
     h.get_by_label("Problems").click();
     h.run();
-    let _ = h.get_by_label_contains("1 problem in the game's code");
     h.get_by_label("weapons/gun.lst, line 12:5: ammo is an int, but this is text.")
         .click();
     h.run();

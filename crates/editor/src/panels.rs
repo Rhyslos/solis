@@ -62,9 +62,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) mixer: &'a crate::mixer_view::MixerState,
     pub(crate) mixer_requests: &'a mut Vec<crate::mixer_view::MixerRequest>,
     pub(crate) part: Option<&'a AssemblyPart>,
-    /// While playing, the selected entity's game code values as they are
-    /// now, by component.
-    pub(crate) running: Option<&'a BTreeMap<String, reflect::ComponentData>>,
+    /// While playing: the selected entity's game code values as they are
+    /// now, by component, and what the user changed since Play.
+    pub(crate) running: Option<crate::properties::WhilePlaying<'a>>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     /// The manual's address and where game code components are written,
     /// for Properties' **?** and **Open in Ledger** (decision 0085).
@@ -503,7 +503,11 @@ impl PanelViewer<'_> {
             }
             Panel::Problems => {
                 use crate::problems::ProblemClick;
-                match crate::problems::problems_panel(ui, self.code_problems, self.problems) {
+                match crate::problems::problems_panel(
+                    ui,
+                    self.code_problems,
+                    (self.problems, &self.document.name()),
+                ) {
                     Some(ProblemClick::Entity(entity)) => {
                         self.area_state.reveal = Some(entity);
                         self.area_requests.push(AreaRequest::Select(entity));

@@ -48,6 +48,38 @@ pub(crate) fn starter_code(name: &str, path: &str) -> String {
 pub(crate) const MAIN: &str = "main.lst";
 
 impl Workbench {
+    /// F2 and Delete over the Library or the Assets column act on the
+    /// file picked there, not on the selected entity (the project lead's
+    /// answer 25): F2 renames it, Delete moves it to the Recycle Bin, as
+    /// its right-click menu does. Returns whether the keys were the
+    /// files' this frame (the pointer is over one of the two).
+    pub(crate) fn file_keys_over_the_library(
+        &mut self,
+        ui: &egui::Ui,
+        actions: &mut Vec<WorkbenchAction>,
+    ) -> bool {
+        use crate::panel::Panel;
+        if !matches!(self.pointer_over, Some(Panel::Library | Panel::Assets)) {
+            return false;
+        }
+        let (delete, rename) = ui.input(|i| {
+            let plain = |key| i.key_pressed(key) && i.modifiers.is_none();
+            (plain(egui::Key::Delete), plain(egui::Key::F2))
+        });
+        let state = &mut self.open.library_state;
+        let Some(path) = state.selected.clone() else {
+            return true;
+        };
+        if rename {
+            let name = path.rsplit_once('/').map_or(path.as_str(), |(_, n)| n);
+            state.renaming = Some((path.clone(), name.to_owned()));
+        } else if delete {
+            state.selected = None;
+            actions.push(WorkbenchAction::DeleteFile(path.into()));
+        }
+        true
+    }
+
     /// A new code file's path and text (E1): `main.lst` at the top of the
     /// assets if the project has none (game code starts there), otherwise
     /// a free `component.lst` in `folder`.

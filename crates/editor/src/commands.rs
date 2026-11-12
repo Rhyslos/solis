@@ -395,6 +395,9 @@ impl Workbench {
                 field,
                 value,
             } => {
+                if let Some(playing) = &mut self.open.playing {
+                    playing.note_yours(entity, &component, &field);
+                }
                 let label = format!("Change {component}.{field}");
                 let merge = merge_key((entity, &component, &field), gesture);
                 self.command(

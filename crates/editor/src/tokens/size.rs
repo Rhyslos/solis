@@ -147,6 +147,13 @@ pub const FOLD_ICON: f32 = 9.0;
 pub const ROW_ICON: f32 = 12.0;
 /// The room for each of a row's hide and lock switches.
 pub const ROW_SWITCH: f32 = 16.0;
+/// A row of the Problems shelf tab (from the HTML: 26 tall, 14 in from
+/// the sides, a 13 px icon).
+pub const PROBLEM_ROW_H: f32 = 26.0;
+/// How far a Problems row's icon is in from the column's edge.
+pub const PROBLEM_ROW_PAD: f32 = 14.0;
+/// A Problems row's icon.
+pub const PROBLEM_ICON: f32 = 13.0;
 /// A track's or lane's height.
 pub const TRACK_H: f32 = 26.0;
 

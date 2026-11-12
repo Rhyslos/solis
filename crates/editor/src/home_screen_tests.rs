@@ -199,3 +199,145 @@ fn the_console_s_lines_say_their_level_as_a_word() {
         assert!(h.query_by_label(word).is_some(), "{word}");
     }
 }
+
+/// The selected point light's strength.
+fn strength(w: &Workbench, id: reflect::EntityId) -> f64 {
+    w.open.document.area().get(id).unwrap().components["Light"]
+        .get("strength")
+        .and_then(reflect::Value::as_f64)
+        .unwrap()
+}
+
+#[test]
+fn dragging_a_number_s_name_changes_it_as_one_undo_step() {
+    let mut w = Workbench::new(info());
+    roomy_shelf(&mut w);
+    let id = w.add_point_light();
+    let before = strength(&w, id);
+    let steps = w.open.document.history().undo_len();
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    let name = h.get_all_by_label("Strength").next().unwrap().rect();
+    drag_for_frames(&mut h, name.center(), egui::vec2(10.0, 0.0), 3);
+    let after = strength(&h.state().0, id);
+    assert!(after > before, "{before} became {after}");
+    assert_eq!(
+        h.state().0.open.document.history().undo_len(),
+        steps + 1,
+        "the whole drag is one step"
+    );
+    // Leftwards lowers it, never under its least.
+    let name = h.get_all_by_label("Strength").next().unwrap().rect();
+    drag_for_frames(&mut h, name.center(), egui::vec2(-4000.0, 0.0), 3);
+    assert_eq!(strength(&h.state().0, id), 0.0);
+    h.state_mut().0.undo();
+    h.state_mut().0.undo();
+    assert_eq!(strength(&h.state().0, id), before, "undone");
+}
+
+#[test]
+fn a_name_that_is_not_a_number_does_not_drag() {
+    let mut w = Workbench::new(info());
+    roomy_shelf(&mut w);
+    let id = w.add_point_light();
+    let before = w.open.document.area().get(id).cloned();
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    let name = h.get_all_by_label("Shadows").next().unwrap().rect();
+    drag_for_frames(&mut h, name.center(), egui::vec2(20.0, 0.0), 3);
+    assert_eq!(h.state().0.open.document.area().get(id).cloned(), before);
+}
+
+#[test]
+fn a_field_changed_while_playing_is_marked_and_can_go_back() {
+    let mut w = Workbench::new(info());
+    roomy_shelf(&mut w);
+    let id = w.add_point_light();
+    let before = strength(&w, id);
+    w.play();
+    w.apply_property(
+        crate::properties::PropertyRequest::SetField {
+            entity: id,
+            component: "Light".into(),
+            field: "strength".into(),
+            value: reflect::Value::Float(before + 50.0),
+        },
+        1,
+    );
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    assert!(h.query_by_label_contains("1 change so far").is_some());
+    let back = h.get_by_label("Put back Strength");
+    assert!(back.rect().width() > 0.0);
+    back.click();
+    h.run();
+    assert_eq!(strength(&h.state().0, id), before, "back to before Play");
+    h.run();
+    assert!(
+        h.query_by_label("Put back Strength").is_none(),
+        "no mark once it's its value from before again"
+    );
+}
+
+#[test]
+fn f2_and_delete_over_the_assets_act_on_the_picked_file() {
+    let mut w = with_files();
+    let entity = w.add_point_light();
+    let mut h = rest_over(harness(w), Panel::Assets);
+    h.get_by_label("crate").click();
+    h.run();
+    let body = body_of(&h, Panel::Assets);
+    h.hover_at(body.center());
+    h.run();
+    h.key_press(egui::Key::F2);
+    h.run();
+    assert_eq!(
+        h.state().0.open.library_state.renaming,
+        Some(("crate.glb".to_string(), "crate.glb".to_string()))
+    );
+    h.state_mut().0.open.library_state.renaming = None;
+    h.run();
+    h.key_press(egui::Key::Delete);
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::DeleteFile("crate.glb".into()))
+    );
+    assert!(
+        h.state().0.open.document.area().contains(entity),
+        "the entity stays"
+    );
+    // Elsewhere Delete is the entity's still.
+    let viewport = body_of(&h, Panel::Viewport);
+    h.hover_at(viewport.center());
+    h.run();
+    h.run();
+    h.key_press(egui::Key::Delete);
+    h.run();
+    assert!(!h.state().0.open.document.area().contains(entity));
+}
+
+#[test]
+fn problems_are_rows_with_where_in_grey() {
+    let mut w = Workbench::new(info());
+    w.set_code_problems(
+        vec![script::CodeProblem {
+            file: "crane/crane.lst".into(),
+            line: 84,
+            column: 9,
+            message: "Target was destroyed".into(),
+        }],
+        &[],
+    );
+    let mut h = harness(w);
+    h.run();
+    h.get_by_label("Problems").click();
+    h.run();
+    let row = h.get_by_label("crane/crane.lst, line 84:9: Target was destroyed");
+    assert_eq!(row.rect().height(), size::PROBLEM_ROW_H);
+}

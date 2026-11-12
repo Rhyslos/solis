@@ -270,6 +270,9 @@ fn each_key_of_the_area_s_acts_on_it_only_where_the_area_owns_the_keys() {
             h.run();
             let acts = match key {
                 AreaKey::Undo => area_undo,
+                // Over the Library, Delete is the picked file's (the
+                // project lead's answer 25).
+                AreaKey::Delete if panel == Panel::Library => false,
                 _ => area_keys,
             };
             let expected = if acts {

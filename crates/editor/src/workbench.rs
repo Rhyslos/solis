@@ -849,7 +849,7 @@ impl Workbench {
         self.paint_keys(ui);
         self.tool_extra_keys(ui);
         self.undo_keys(ui);
-        self.editing_keys(ui);
+        self.editing_keys(ui, &mut actions);
         self.file_keys(ui, &mut actions);
         self.console_key(ui);
         self.shelf_keys(ui);
@@ -1161,7 +1161,14 @@ impl Workbench {
                 .map(|(path, _)| path.as_str()),
             text_file: self.open.text_file.as_ref(),
             part: part.as_ref(),
-            running: running.as_ref(),
+            running: self
+                .open
+                .playing
+                .as_ref()
+                .map(|p| crate::properties::WhilePlaying {
+                    values: running.as_ref(),
+                    yours: &p.yours,
+                }),
             requests: &mut requests,
             help: crate::properties::Help {
                 manual: &self.manual_url,
@@ -1684,10 +1691,13 @@ impl Workbench {
     /// and F frames it (decided with the project lead, 2026-10-23), where
     /// the keys are the area's: over a tab with a file of its own they are
     /// that tab's, and never reach the area as well. Not while flying.
-    pub(crate) fn editing_keys(&mut self, ui: &Ui) {
+    pub(crate) fn editing_keys(&mut self, ui: &Ui, actions: &mut Vec<WorkbenchAction>) {
         if !self.keys.is_area() || self.viewport.is_flying() {
             return;
         }
+        // Over the Library or the Assets column, F2 and Delete are the
+        // picked file's.
+        let files = self.file_keys_over_the_library(ui, actions);
         let (delete, duplicate, rename, frame) = ui.input_mut(|i| {
             let plain = |i: &egui::InputState, key| i.key_pressed(key) && i.modifiers.is_none();
             (
@@ -1700,13 +1710,14 @@ impl Workbench {
                 plain(i, egui::Key::F),
             )
         });
-        if delete {
+        if delete && !files {
             self.delete_selection();
         }
         if duplicate {
             self.duplicate_selection();
         }
         if rename
+            && !files
             && let Some(id) = self.open.document.selection.primary()
             && let Some(entity) = self.open.document.area().get(id)
         {

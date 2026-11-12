@@ -6,12 +6,16 @@
 //! Hints as the last, quieter card.
 
 use crate::icons::Icon;
+use crate::properties::PropertyRequest;
 use crate::tokens::{self, size, text};
+use crate::unbuilt::{self, Entry, UnbuiltId};
 use crate::widgets::{self, menu};
+use egui::RichText;
 use egui::{
     Align, Align2, CornerRadius, Id, Layout, Rect, Response, Sense, Stroke, StrokeKind, Ui,
     UiBuilder, pos2, vec2,
 };
+use reflect::EntityId;
 
 /// How many cards go side by side in `width`: as many as fit at the
 /// least card width, but never more than there are.
@@ -259,4 +263,86 @@ pub(crate) fn hints_card(ui: &mut Ui, hints: &[String]) -> bool {
         }
     });
     off
+}
+
+/// The Model card's rows the design has and Solis doesn't yet: a model
+/// has one setting today, the model itself (found while mocking up,
+/// round 2).
+pub(crate) fn model_rows_to_come(ui: &mut Ui) {
+    let rows: Vec<Entry<()>> = vec![
+        Entry::Unbuilt(UnbuiltId::HomeObjectModelMaterial),
+        Entry::Unbuilt(UnbuiltId::HomeObjectModelShadows),
+    ];
+    for entry in unbuilt::filter(rows) {
+        if let Entry::Unbuilt(part) = entry {
+            unbuilt::field_row(ui, part);
+        }
+    }
+}
+
+/// A card for a component whose game code isn't there: what it is, and
+/// Remove.
+pub(crate) fn missing_card(
+    ui: &mut Ui,
+    id: EntityId,
+    component: &str,
+    requests: &mut Vec<PropertyRequest>,
+) {
+    ui.label(
+        RichText::new(format!("Missing component: {component}"))
+            .font(text::card_name())
+            .color(tokens::WARNING),
+    )
+    .on_hover_text(
+        "Its script or plugin isn't there. Its values are kept as they are until you remove it.",
+    );
+    if widgets::button::Button::plain("Remove").show(ui).clicked() {
+        requests.push(PropertyRequest::RemoveComponent {
+            entity: id,
+            component: component.to_owned(),
+        });
+    }
+}
+
+/// A game code card's second line: the file it's written in, quiet and
+/// in mono, and **Open code** at the right (only Lust opens in its
+/// program; other code is shown in its folder, and the button says so).
+/// Returns whether the button was clicked.
+pub(crate) fn code_line(ui: &mut Ui, component: &str, file: &str) -> bool {
+    let shown = file.rsplit_once('/').map_or(file, |(_, n)| n);
+    let opens = crate::library::LibraryKind::Code.opens_in_its_program(file);
+    let (words, hint) = if opens {
+        (
+            "Open code",
+            format!("Opens {file}, where {component} is written, in your code editor"),
+        )
+    } else {
+        (
+            "Show in folder",
+            format!("Shows {file}, where {component} is written, in its folder"),
+        )
+    };
+    ui.horizontal(|ui| {
+        ui.label(
+            RichText::new(shown)
+                .font(text::mono_small())
+                .color(tokens::text_meta()),
+        )
+        .on_hover_text(file);
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let button = widgets::button::Button::plain(words)
+                .icon(crate::icons::Icon::External)
+                .show(ui);
+            button.widget_info(|| {
+                egui::WidgetInfo::labeled(
+                    egui::WidgetType::Button,
+                    true,
+                    format!("Open {component}'s code"),
+                )
+            });
+            button.on_hover_text(hint).clicked()
+        })
+        .inner
+    })
+    .inner
 }

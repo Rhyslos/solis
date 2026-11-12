@@ -8,7 +8,7 @@
 //! | Keys | Acted on by |
 //! | --- | --- |
 //! | Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z | The owner's own undo steps |
-//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The area where [`KeyOwner::is_area`]; over a tab with a file of its own, that tab alone, for the keys it has |
+//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The area where [`KeyOwner::is_area`]; over a tab with a file of its own, that tab alone, for the keys it has. Over the Library or the Assets column, F2 and Delete are the picked file's |
 //! | Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Space (the search), `'` (the Console) | The editor, where [`KeyOwner::takes_shortcuts`] (over the Frames tab, Space plays the clip instead) |
 //! | Ctrl+Space (the Library) | The editor, typing or not, where [`KeyOwner::is_editor`] |
 
