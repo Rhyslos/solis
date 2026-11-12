@@ -20,7 +20,7 @@ Clicking on empty sky or ground selects nothing.
 
 **Moving, turning and resizing:**
 1. Select something.
-2. Choose a tool with its key or its button at the bottom of the viewport: **Move (W)**, **Rotate (R)**, **Scale (S)**, or **Transform (T)**, which shows all three. **Select (Q)** shows no gizmo, so clicks only select.
+2. Choose a tool with its key or its button in the toolbox, the column down the viewport's left edge: **Move (W)**, **Rotate (R)**, **Scale (S)**, or **Transform (T)**, which shows all three. **Select (Q)** shows no gizmo, so clicks only select.
 3. A [gizmo](concepts.md#tools) appears on the selection. Drag one of its handles:
    - **Move:** drag an **arrow** to move along that axis, a **square** to move in that flat plane (the blue-sided square slides along the ground), or the **dot in the middle** to move across the screen.
    - **Rotate:** drag a **ring** to turn around that axis (the blue ring turns like a record on a turntable), or the **outer ring** to turn around the line you're looking along.
@@ -36,16 +36,16 @@ When several things are selected, the gizmo sits in the middle of them and they 
 
 ## Settings
 
-These are in the viewport's **bottom-right corner**. Solis remembers them on this computer.
+The axis locks and the axes are the [pills](concepts.md#pill) at the viewport's bottom right; snapping is the ribbon's **Snapping** group on the Home tab. Solis remembers them on this computer, and the [status bar](interface-tour.md) says what moves snap to ("Snap 0.25 · World").
 
 | Setting | What it does |
 |---|---|
-| **X**, **Y**, **Z** | **Lock** an axis: drags leave it alone, and its handles disappear. The letter turns red while locked; click it or press its key again to free it. *Example:* lock **Z**, then drag the middle dot to slide something around without lifting it off the floor. |
-| **World / Object** | Which way the gizmo's arrows point: along the world's axes (X, Y and Z of the whole area), or along the selected entity's own axes (useful for a turned object, to slide it along its own length). |
-| **Grid 1 m** | **Snapping** for moving: lit, moves land on the grid lines, so things line up. The ▴ beside it chooses the step: 1 m, 50 cm, 25 cm or 10 cm. With object axes, moves go in steps of that size instead. |
-| **Angle 15°** | Snapping for turning: lit, turns go in steps. The ▴ chooses 5°, 15°, 45° or 90°. |
-| **Scale 10%** | Snapping for resizing: lit, sizes change in steps of 10%. |
-| **Camera** | The camera's speed step (see [Moving around the viewport](navigating-the-viewport.md)). |
+| **Lock X Y Z** | **Lock** an axis: drags leave it alone, and its handles disappear. The letter is lit in the accent colour while locked; click it or press its key again to free it. *Example:* lock **Z**, then drag the middle dot to slide something around without lifting it off the floor. |
+| **World ▾ / Object ▾** | Which way the gizmo's arrows point: along the world's axes (X, Y and Z of the whole area), or along the selected entity's own axes (useful for a turned object, to slide it along its own length). |
+| **Grid · 1** | **Snapping** for moving: ticked, moves land on the grid lines, so things line up. Click the number (or right-click the row) to choose the step: 1, 0.5, 0.25 or 0.1 m. With object axes, moves go in steps of that size instead. |
+| **Angle · 15°** | Snapping for turning: ticked, turns go in steps. Click the number (or right-click) to choose 5°, 15°, 45° or 90°. |
+| **Scale · 10%** | Snapping for resizing: ticked, sizes change in steps of 10%. |
+| The camera pill | The camera's speed step (see [Moving around the viewport](navigating-the-viewport.md)). |
 
 **Hold Ctrl while dragging** to flip snapping for that one drag: on if it's off, off if it's on. **Hold Shift** to drag ten times more finely, for small adjustments.
 
@@ -68,7 +68,7 @@ These are in the viewport's **bottom-right corner**. Solis remembers them on thi
 ## Tips and common problems
 
 - **Problem:** no gizmo appears. **Why:** the Select tool (Q) is chosen, nothing is selected, or what's selected has no position (the area's Environment, for example). **Fix:** press W, R, S or T, and select something with a Transform.
-- **Problem:** an arrow or ring is missing. **Why:** its axis is locked (its letter is red in the corner), or the arrow points almost straight at you, so it's too short to grab. **Fix:** free the axis, or move the camera a little.
+- **Problem:** an arrow or ring is missing. **Why:** its axis is locked (its letter is lit in the **Lock** pill), or the arrow points almost straight at you, so it's too short to grab. **Fix:** free the axis, or move the camera a little.
 - **Problem:** clicking a part of a placed assembly selects the whole thing. **Why:** copies are selected whole first. **Fix:** click the part again.
 - **Problem:** a turned box stretches oddly when scaled. **Why:** stretching a turned object along the world's axes would skew it, which a Transform can't hold, so Solis keeps the nearest shape without a skew. **Fix:** press **L** for object axes, so it stretches along its own sides.
 - **Tip:** you can't select something hidden behind another model by clicking; select it in the Area panel instead.

@@ -29,7 +29,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - The **chips** above the files (**All**, **Models**, **Sprites**, **Maps**, **Sounds**, **Code**) show only one kind of file, so a busy folder is easy to scan. **All** shows everything, your code files included (the **Code** shelf tab, on the Library tab, lists only code).
 
 **Where the Library is**
-- On **Home**, it is the right-hand column of the shelf's **Entity** tab, under the viewport, so you can drag files from it straight into the area. Drag the shelf's grip up for a bigger Library, and press **Ctrl + Space** to fold the shelf away when you want the viewport bigger. (Older builds had a Library drawer with Pin and Unpin; the shelf takes its place.)
+- On **Home**, the shelf's **Entity** tab has an **Assets** column at its right: the Library's open folder as tiles, with **Import** last, so you can drag files from it straight into the area (or double-click one to place it where the camera looks). The folder is the Library tab's: open another folder there and Assets follows. Drag the shelf's grip up for a bigger column, and press **Ctrl + Space** to fold the shelf away when you want the viewport bigger. (Older builds had a Library drawer with Pin and Unpin; the shelf takes its place.)
 - The **Library** tab of the tab bar shows it filling the window, with the file picked shown on the shelf's **Details** tab and the code files on its **Code** tab.
 - Point at a file to see its full path and what you can do with it.
 

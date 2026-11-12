@@ -21,7 +21,9 @@
 - **Density:** how much room the editor's controls take, set in [Settings](settings.md): Compact, Default or Comfortable. It changes the height of buttons and fields, not the size of text.
 - **Unfinished part:** a place in the editor for a feature that isn't built yet. Solis's interface follows one design, which has room for things that come in later updates; each is shown where it will be, in grey with a small hollow square, and does nothing but say so. One setting hides them all. Other programs call such a thing a *placeholder*. See [Unfinished parts](unfinished-parts.md).
 - **Ribbon:** the band of buttons under the tabs along the top: each tab (Home, Library, Animate and so on) shows its own buttons there, gathered into named groups, with the Play group at its right end. It took the place of the menus. See [Interface tour](interface-tour.md).
-- **Shelf:** the wide band along the bottom of the window, under the editor groups, with tabs of its own on its bar: on Home, **Entity** (the Area tree, Properties and the Library side by side in columns), the Console and Problems. Drag its grip to size it; **Ctrl + Space** folds it to its bar and back. See [Interface tour](interface-tour.md).
+- **Shelf:** the wide band along the bottom of the window, under the editor groups, with tabs of its own on its bar: on Home, **Entity** (the Area tree, Properties and the Assets column side by side), the Console and Problems. Drag its grip to size it; **Ctrl + Space** folds it to its bar and back. See [Interface tour](interface-tour.md).
+- <a id="pill"></a>**Pill:** a small see-through button floating over the viewport, such as **Perspective ▾** or the frame time. Pills keep the picture as large as it can be. See [Moving around the viewport](navigating-the-viewport.md).
+- **Card:** a lifted box holding a few settings that belong together, such as one component in Properties. Cards sit side by side as many as fit.
 - **Status bar:** the thin strip along the very bottom: whether the code is clean, the problems' counts, what's going on, and the version. See [Interface tour](interface-tour.md).
 
 ## The 3D view
@@ -88,7 +90,7 @@
 
 ## Tools
 
-- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform. See [Selecting and moving things](selecting-and-moving.md).
+- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform, chosen in the **toolbox** (the column down the viewport's left edge) or by key. See [Selecting and moving things](selecting-and-moving.md).
 - **Selection:** the entities you're working on. Selected things are outlined in the accent colour in the viewport and highlighted in the Area panel; Properties shows one of them.
 - **Gizmo:** the coloured arrows, rings and boxes drawn on the selection, which you drag to move, turn or resize it. Each handle works along one axis, in its colour.
 - **Pivot:** the point a selection turns and grows around: the middle of the selected entities.

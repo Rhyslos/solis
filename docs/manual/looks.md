@@ -10,7 +10,7 @@
 The look applies to every model in the view at once: a material can't have a look of its own yet.
 
 ## How to use it
-1. At the bottom left of the viewport, click the look button (it shows the look in use, such as **Standard ▴**).
+1. At the top left of the viewport, click the look's pill (it shows the look in use, such as **Standard ▾**).
 2. Choose **Standard**, **Stylized** or **Unlit**. The menu stays open, so you can compare.
 3. For the stylized look, choose how many **Bands of light** (2, 3 or 4), and whether to draw **Outlines**.
 4. Click anywhere else to close the menu. Solis remembers your choice.

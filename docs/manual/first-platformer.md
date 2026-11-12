@@ -20,7 +20,7 @@ A [project](concepts.md#projects) is a folder holding everything your game is ma
 
 1. **File > New project** (or **+ New project** on the launcher), make an empty folder called `Platformer`, and choose it.
 2. Save the empty area: **Ctrl + S**, name it `level`. Solis suggests the `assets/areas` folder; that's fine.
-3. Look in pixels: click **Perspective ▴** at the bottom left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
+3. Look in pixels: click the **Perspective ▾** pill at the top left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
 
 **Why 2D?** A platformer is seen from the side. In Solis, a 2D game lies flat and is seen from straight above, so across the screen is *x* and up the screen is *y*. The project's 2D settings (**File > Project settings**) say 16 pixels make one metre, so one 16-pixel tile is one metre. Every number in this guide is in metres, so think of a metre as a tile.
 
