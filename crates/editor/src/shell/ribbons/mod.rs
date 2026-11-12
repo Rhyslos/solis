@@ -34,7 +34,7 @@ pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
         RibbonTab::Shading => shading::groups(),
         RibbonTab::Animate => animate::groups(w),
         RibbonTab::Vfx => vfx::groups(),
-        RibbonTab::Audio => audio::groups(),
+        RibbonTab::Audio => audio::groups(w),
         RibbonTab::Debug => debug::groups(),
         RibbonTab::Build => build::groups(),
         RibbonTab::Tileset => tileset::groups(w),

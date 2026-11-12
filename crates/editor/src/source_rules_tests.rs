@@ -92,7 +92,7 @@ fn colours_written(code: &str) -> usize {
 /// meter's green, a build's tag), shades or lights what is under it, or
 /// is a grey the design has no name for; each goes, or takes a token,
 /// when its screen is rebuilt to the design.
-const KEPT: [(&str, usize, &str); 12] = [
+const KEPT: [(&str, usize, &str); 11] = [
     (
         "atlas_view.rs",
         3,
@@ -122,11 +122,6 @@ const KEPT: [(&str, usize, &str); 12] = [
         "map_tab.rs",
         2,
         "over a terrain's own colour: the wall mark, a count",
-    ),
-    (
-        "mixer_view.rs",
-        5,
-        "mute red, solo yellow, the meter's green, yellow and red",
     ),
     (
         "panels.rs",

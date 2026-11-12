@@ -71,11 +71,17 @@ pub enum Panel {
     /// The project's pictures for the canvas's Image tool: on the UI
     /// tab's Screen shelf tab (round 3).
     Pictures,
+    /// The bus picked in the mixer, with its ducking: the Audio tab's
+    /// second group (Screen 10, round 3).
+    Bus,
+    /// The project's sound events as a table, and the one picked: the
+    /// Audio tab's Sound events shelf tab.
+    SoundEvents,
 }
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 14] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -88,6 +94,8 @@ impl Panel {
         Self::Mixer,
         Self::Assets,
         Self::Placement,
+        Self::Bus,
+        Self::SoundEvents,
     ];
 
     /// Panels that come and go with what's open (a clips file), never in
@@ -149,6 +157,8 @@ impl Panel {
             Self::Parameters => "Parameters",
             Self::Preview => "Preview",
             Self::Pictures => "Pictures",
+            Self::Bus => "Bus",
+            Self::SoundEvents => "Sound events",
         }
     }
 
@@ -181,6 +191,8 @@ impl Panel {
             Self::Parameters => Icon::Sliders,
             Self::Preview => Icon::Play,
             Self::Pictures => Icon::Picture,
+            Self::Bus => Icon::Sliders,
+            Self::SoundEvents => Icon::SoundEvent,
         }
     }
 }

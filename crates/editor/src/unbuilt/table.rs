@@ -199,7 +199,7 @@ unbuilt! {
     AudioStripInserts: "audio.strip.inserts" => ("Insert", NotPlanned, "A place on a bus's strip for an effect"),
     AudioStripPan: "audio.strip.pan" => ("Pan", NotPlanned, "Moves a bus's sound towards the left or the right"),
     AudioMetersStereo: "audio.meters.stereo" => ("Stereo meters", NotPlanned, "Measures the left and right of a bus apart, holding each one's peak"),
-    AudioEffect: "audio.effect" => ("Bus effect", NotPlanned, "The selected effect's settings, such as an EQ's curve and bands"),
+    AudioEffect: "audio.effect" => ("Bus effects", NotPlanned, "An equaliser, a compressor, reverb and a limiter on a bus, each with its settings"),
     AudioEventUsedBy: "audio.event.used-by" => ("Used by", NotPlanned, "Lists what plays the selected sound event"),
 
     // VFX: a whole screen.

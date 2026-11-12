@@ -91,7 +91,11 @@ fn each_tab_shows_its_own_documents_and_shelf() {
         ),
         (RibbonTab::Ui, vec![Panel::Canvas], ShelfTab::Screen),
         (RibbonTab::Library, vec![Panel::Library], ShelfTab::Details),
-        (RibbonTab::Audio, vec![Panel::Mixer], ShelfTab::Bus),
+        (
+            RibbonTab::Audio,
+            vec![Panel::Mixer, Panel::Bus],
+            ShelfTab::SoundEvents,
+        ),
         (RibbonTab::Home, vec![Panel::Viewport], ShelfTab::Entity),
     ] {
         ribbon_tab(&mut h, tab);

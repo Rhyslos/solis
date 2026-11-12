@@ -103,6 +103,12 @@ impl ShellCommand {
                     .unwrap_or(animation::Direction::Forward);
                 format!("Play the clip {}", d.name())
             }
+            C::MuteGame => on_off(
+                "Mute the game",
+                "Hear the game again",
+                w.open.mixer.listening.all_muted,
+            ),
+            C::HeardAtOnce(n) => format!("Hear {n} sounds at once"),
             other => other.fixed_name().to_owned(),
         }
     }
@@ -174,6 +180,10 @@ impl ShellCommand {
             C::StateDelete => "Delete what is picked in the graph",
             C::PreviewAgain => "Start the preview again",
             C::OpenScreenCode => "Open the screen as code",
+            C::AddBus => "Add a bus",
+            C::AddDuckingRule => "Add a ducking rule",
+            C::RemoveBus => "Remove the bus",
+            C::ClearSolo => "Clear solo",
             // Named by `name`, from what the editor holds.
             C::Undo
             | C::Redo
@@ -208,6 +218,8 @@ impl ShellCommand {
             | C::ScreenText(_)
             | C::SafeArea
             | C::ScreenSnap
+            | C::MuteGame
+            | C::HeardAtOnce(_)
             | C::About => "",
         }
     }
@@ -279,6 +291,12 @@ impl ShellCommand {
             | C::SafeArea
             | C::ScreenSnap
             | C::OpenScreenCode => "UI",
+            C::AddBus
+            | C::AddDuckingRule
+            | C::RemoveBus
+            | C::ClearSolo
+            | C::MuteGame
+            | C::HeardAtOnce(_) => "Audio",
             _ => "Home",
         }
     }
@@ -432,6 +450,17 @@ impl ShellCommand {
             C::SafeArea => "A guide 5% in from each edge: keep text and buttons inside it",
             C::ScreenSnap => "Sizes snap to whole pixels and to other pieces' edges",
             C::OpenScreenCode => "Opens the screen's file in your code editor",
+            C::AddBus => "A new bus inside the one the Bus group shows (or Master)",
+            C::AddDuckingRule => {
+                "Makes the bus shown quieter while another plays: music under voices"
+            }
+            C::RemoveBus => "Buses inside it move up; sound events on it play through Master",
+            C::ClearSolo => "Hears every bus again",
+            C::MuteGame => "Silences the game while you work; the game's sound isn't changed",
+            C::HeardAtOnce(_) => {
+                "How many sounds play at once: when more want to, the most important are heard \
+                 (by their event's priority, then the loudest)"
+            }
             _ => "",
         }
     }

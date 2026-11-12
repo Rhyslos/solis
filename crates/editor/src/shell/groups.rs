@@ -161,6 +161,9 @@ fn tab_strip(
     if RibbonTab::CONTEXT.contains(&tab) && index == 0 {
         back_link(ui, strip, tab.parent(), asks);
     }
+    if documents == [Panel::Bus] {
+        viewer.bus_switch(ui, strip);
+    }
     chosen
 }
 

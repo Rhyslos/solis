@@ -1199,7 +1199,11 @@ impl Workbench {
             self.library_request(request, &mut actions);
         }
         for request in mixer_requests {
-            self.mixer_request(request, &mut actions);
+            if request == crate::mixer_view::MixerRequest::HideUnfinished {
+                self.hide_unfinished(ui.ctx(), true);
+            } else {
+                self.mixer_request(request, &mut actions);
+            }
         }
         self.follow_sound_selection(&picked_before);
         for request in console_requests {

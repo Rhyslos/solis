@@ -176,6 +176,13 @@ impl PanelViewer<'_> {
                     return file(&screen.doc.path);
                 }
             }
+            // The mixer is the project's one mixer file (round 3), and
+            // the Bus group is headed by the bus it shows.
+            Panel::Mixer => return sound::mixer::FILE_NAME.to_owned(),
+            Panel::Bus => {
+                let (_, bus) = crate::mixer_view::with_bus_shown(self.mixer);
+                return format!("{} \u{203a} Bus", bus.name);
+            }
             _ => {}
         }
         let what = match panel {
@@ -212,6 +219,8 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
+            | Panel::Bus
+            | Panel::SoundEvents
             | Panel::Terrains
             | Panel::Crops
             | Panel::Parameters
@@ -246,6 +255,8 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
+            | Panel::Bus
+            | Panel::SoundEvents
             | Panel::Terrains
             | Panel::Crops
             | Panel::Parameters
@@ -288,6 +299,12 @@ impl PanelViewer<'_> {
         {
             self.area_requests.push(AreaRequest::Command(command));
         }
+    }
+
+    /// The Bus group's switch, at the right of its strip.
+    pub(crate) fn bus_switch(&mut self, ui: &mut Ui, strip: egui::Rect) {
+        self.mixer_requests
+            .extend(crate::bus_view::switch(ui, strip, self.mixer));
     }
 
     /// Draws `panel`'s contents filling `ui`.
@@ -446,11 +463,6 @@ impl PanelViewer<'_> {
                     }
                     return;
                 }
-                if let Some((bus, _)) = self.mixer.shown {
-                    let requests = crate::mixer_view::bus_properties(ui, self.mixer, bus);
-                    self.mixer_requests.extend(requests);
-                    return;
-                }
                 let requests = properties(
                     ui,
                     self.document,
@@ -520,8 +532,22 @@ impl PanelViewer<'_> {
                 }
             }
             Panel::Mixer => {
-                let requests = crate::mixer_view::mixer_panel(ui, self.mixer, self.playing);
+                let requests = crate::mixer_console::console(ui, self.mixer);
                 self.mixer_requests.extend(requests);
+            }
+            Panel::Bus => {
+                let requests = crate::bus_view::bus(ui, self.mixer);
+                self.mixer_requests.extend(requests);
+            }
+            Panel::SoundEvents => {
+                let (mixer, library) = crate::sound_events_view::sound_events(
+                    ui,
+                    self.mixer,
+                    self.sounds,
+                    self.library,
+                );
+                self.mixer_requests.extend(mixer);
+                self.library_requests.extend(library);
             }
             Panel::Profiler => {
                 egui::ScrollArea::vertical()

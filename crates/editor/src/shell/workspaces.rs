@@ -41,8 +41,8 @@ pub enum ShelfTab {
     Properties,
     /// The open screen's pieces and the one picked.
     Screen,
-    /// The bus picked in the mixer.
-    Bus,
+    /// The project's sound events, and the one picked.
+    SoundEvents,
     /// Messages from the editor, the build and the game.
     Console,
     /// Mistakes found in the game's code and areas.
@@ -112,7 +112,7 @@ impl ShelfTab {
         Self::Parameters,
         Self::Properties,
         Self::Screen,
-        Self::Bus,
+        Self::SoundEvents,
         Self::Console,
         Self::Problems,
         Self::Map,
@@ -132,7 +132,7 @@ impl ShelfTab {
             Self::Parameters => "Parameters",
             Self::Properties => "Properties",
             Self::Screen => "Screen",
-            Self::Bus => "Bus",
+            Self::SoundEvents => "Sound events",
             Self::Console => "Console",
             Self::Problems => "Problems",
             Self::Map => "Map",
@@ -170,9 +170,7 @@ impl ShelfTab {
                     Fixed(size::ASSETS_COLUMN_W - 50.0)
                 ),
             ],
-            Self::Details | Self::Properties | Self::Bus => {
-                &[column!("Properties", [P::Properties], Rest)]
-            }
+            Self::Details | Self::Properties => &[column!("Properties", [P::Properties], Rest)],
             Self::Code => &[column!("Code", [P::Code], Rest)],
             Self::Frames => &[
                 column!("Clips", [P::Clips], Fixed(size::SCENE_COLUMN_W + 60.0)),
@@ -180,6 +178,7 @@ impl ShelfTab {
             ],
             Self::Clip => &[column!("Clip", [P::Clip], Rest)],
             Self::Parameters => &[column!("Parameters", [P::Parameters], Rest)],
+            Self::SoundEvents => &[column!("Sound events", [P::SoundEvents], Rest)],
             Self::Console => &[column!("Console", [P::Console], Rest)],
             Self::Problems => &[column!("Problems", [P::Problems], Rest)],
             Self::Map => &[column!("Map", [P::Map], Rest)],
@@ -244,7 +243,7 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         }
         RibbonTab::Animate if open.clips => vec![vec![P::Viewport]],
         RibbonTab::Ui => vec![vec![P::Canvas]],
-        RibbonTab::Audio => vec![vec![P::Mixer]],
+        RibbonTab::Audio => vec![vec![P::Mixer], vec![P::Bus]],
         RibbonTab::Debug => vec![vec![P::Game, P::Viewport], vec![P::Profiler]],
         RibbonTab::File
         | RibbonTab::Shading
@@ -285,7 +284,7 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
             Entry::Built(S::Problems),
         ],
         RibbonTab::Audio => vec![
-            Entry::Built(S::Bus),
+            Entry::Built(S::SoundEvents),
             Entry::Unbuilt(UnbuiltId::AudioMixerSnapshot),
             Entry::Built(S::Console),
         ],
@@ -383,6 +382,7 @@ impl Arrangement {
             shelf_folded: false,
             split: match tab {
                 RibbonTab::Library => size::SPLIT_LIBRARY,
+                RibbonTab::Audio => size::SPLIT_AUDIO,
                 _ => size::SPLIT,
             },
             front: [None, None],

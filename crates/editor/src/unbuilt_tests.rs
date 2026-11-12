@@ -425,7 +425,7 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 101] = [
+const DRAWN_SO_FAR: [UnbuiltId; 103] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
@@ -525,6 +525,9 @@ const DRAWN_SO_FAR: [UnbuiltId; 101] = [
     UnbuiltId::AudioFxCompress,
     UnbuiltId::AudioFxReverb,
     UnbuiltId::AudioFxLimiter,
+    // Audio's strips.
+    UnbuiltId::AudioStripInserts,
+    UnbuiltId::AudioStripPan,
     // VFX: its ribbon and its page.
     UnbuiltId::VfxEmitterAdd,
     UnbuiltId::VfxEmitterDuplicate,
