@@ -112,15 +112,16 @@ fn hints_are_the_last_card_in_properties_on_home_s_entity_tab() {
 #[test]
 fn settings_turns_hints_off_and_reset_turns_them_on() {
     let mut w = fresh();
-    w.open_settings();
+    w.show_settings(crate::file_pages::Tab::General);
     let mut h = harness(w);
     // Reset restyles the editor, whose headings need its fonts.
     h.ctx.set_fonts(crate::theme::fonts());
     h.run();
-    h.get_by_label("Show hints").click();
+    h.get_by_role_and_label(egui::accesskit::Role::CheckBox, "Show hints")
+        .click();
     h.run();
     assert!(!h.state().0.hints_on());
-    h.get_by_label("Reset this page").click();
+    h.get_by_label("Reset to defaults").click();
     h.run();
     assert!(h.state().0.hints_on());
 }

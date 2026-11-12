@@ -16,7 +16,7 @@ The frame round the editor, as the project lead's design has it ([decision 0099]
 | `controls.rs` | How a working control is drawn: the large button and the one light one, the small row, words alone, and the list a control opens from its small arrow or a right-click ([decision 0103](../../../../docs/decisions/0103-todays-keys-stay.md)). |
 | [`ribbons/`](ribbons/README.md) | One small table per tab. |
 | `play_group.rs` | The Play group: Play, or Stop with Pause and Step while the game runs, and Simulate (unfinished). |
-| `file_page.rs` | The File tab: the column of items (through the filter) and the page area, which shows the launcher's page in front. |
+| `file_page.rs` | The File tab: the column of items (through the filter) and the page area, which shows the page in front (`file_pages`); until a project is open, Back to editor reads Carry on without a project. |
 | `create.rs` | The two kinds of entity the Create group makes that the editor had no one-step way to make: a sprite and a reverb zone. |
 | `tests.rs`, `middle_tests.rs`, `saved_tests.rs`, `status_tests.rs`, `picture_tests.rs`, `middle_picture_tests.rs` | The commands' table; the tabs and what each shows; the ribbon's and the middle's measured layout against the tokens; scrolling, collapsing, lists, the Play group, the File page, the grip, the divider, folding and the document tabs, used as a person uses them; the saved frame, read back, repaired and fuzzed; the status bar's words; and the frame's colours sampled from frames drawn for real, each tab against its approved picture. The two picture files also have ignored tests that write the top on each screen, and each tab at 1440 × 900 and 1100 × 700 beside the design's, to a folder to look at. |
 

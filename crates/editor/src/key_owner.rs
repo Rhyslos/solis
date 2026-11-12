@@ -99,7 +99,7 @@ impl Workbench {
             return KeyOwner::Question;
         }
         if open
-            .input_window
+            .input_page
             .as_ref()
             .is_some_and(|window| window.listening.is_some())
         {

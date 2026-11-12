@@ -1,14 +1,13 @@
 //! The File tab (specification, Screen 7): a page in place of the
 //! ribbon and the editor, with a column of items down its left side.
 //!
-//! This is the frame. Its items already work, by showing what the
-//! editor has today: the launcher's three pages in the page area, and
-//! the Settings and Input actions windows over it. The pages are rebuilt
-//! to the design one at a time later.
+//! Recent projects, Learn, Updates and About are pages of their own
+//! (`file_pages`); Solis starts on Recent projects. Until a project is
+//! open, Back to editor reads "Carry on without a project".
 
 use super::{RibbonTab, ShellCommand};
+use crate::file_pages::Page;
 use crate::icons::{self, Icon};
-use crate::launcher::Page;
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, Entry, UnbuiltId};
 use crate::widgets::{self, words};
@@ -55,10 +54,13 @@ pub(crate) fn blocks() -> Vec<((), Vec<Entry<Row>>)> {
                 item(
                     Icon::Gear,
                     "Project settings",
-                    FileItem::Do(C::ProjectSettings),
+                    FileItem::Show(Page::ProjectSettings),
                 ),
-                item(Icon::Gamepad, "Input", FileItem::Do(C::InputActions)),
-                item(Icon::Sliders, "Preferences", FileItem::Do(C::Preferences)),
+                item(
+                    Icon::Sliders,
+                    "Preferences",
+                    FileItem::Show(Page::Preferences),
+                ),
                 Entry::Unbuilt(UnbuiltId::FilePlugins),
             ],
         ),
@@ -67,7 +69,7 @@ pub(crate) fn blocks() -> Vec<((), Vec<Entry<Row>>)> {
             vec![
                 item(Icon::Book, "Learn", FileItem::Show(Page::Learn)),
                 item(Icon::Refresh, "Updates", FileItem::Show(Page::Updates)),
-                item(Icon::Info, "About", FileItem::Do(C::About)),
+                item(Icon::Info, "About", FileItem::Show(Page::About)),
                 item(Icon::Exit, "Exit", FileItem::Do(C::Exit)),
             ],
         ),
@@ -82,11 +84,11 @@ impl Workbench {
             self.shell.before_file = self.shell.tab;
             // The projects are read afresh each time File opens.
             self.open.outbox.push(WorkbenchAction::ListProjects);
-            self.launcher.focus_search = true;
+            self.file_pages.focus_search = true;
         }
         self.shell.tab = RibbonTab::File;
         self.shell.dropped = false;
-        self.launcher.page = page;
+        self.file_pages.page = page;
     }
 
     /// Leaves the File tab for the tab that was in front before it.
@@ -101,9 +103,10 @@ impl Workbench {
     pub(crate) fn file_page(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         // Esc leaves File, as Back to editor does; while a project is
         // being renamed it only calls that off.
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && self.open.unsaved_prompt.is_none() {
-            if self.launcher.renaming.is_some() {
-                self.launcher.renaming = None;
+        let ask_first = self.open.unsaved_prompt.is_some() || self.open.play_changes.is_some();
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !ask_first {
+            if self.file_pages.renaming.is_some() {
+                self.file_pages.renaming = None;
             } else if !self.search.open {
                 self.back_to_editor();
                 return;
@@ -130,7 +133,7 @@ impl Workbench {
                     tokens::line(),
                 );
             });
-        if self.launcher_page(ui, actions) {
+        if self.file_page_body(ui, actions) {
             self.back_to_editor();
         }
         match clicked {
@@ -157,14 +160,21 @@ impl Workbench {
                     }
                     Entry::Built(row) => row,
                 };
-                let front = what == FileItem::Show(self.launcher.page);
+                let front = what == FileItem::Show(self.file_pages.page);
                 let (why_not, hover) = match what {
                     FileItem::Do(command) => (command.why_not(self), command.hover_text(self)),
+                    FileItem::Back if self.open.project.is_none() => {
+                        (None, "The editor, with no project open (Esc)".to_string())
+                    }
                     FileItem::Back => (
                         None,
                         format!("Back to {} (Esc)", self.shell.before_file.name()),
                     ),
                     FileItem::Show(_) => (None, String::new()),
+                };
+                let label = match what {
+                    FileItem::Back if self.open.project.is_none() => "Carry on without a project",
+                    _ => label,
                 };
                 let response = file_item(ui, icon, label, front, why_not.is_none());
                 let response = if hover.is_empty() {
@@ -175,6 +185,9 @@ impl Workbench {
                 if response.clicked() && why_not.is_none() {
                     clicked = Some(what);
                 }
+                if what == FileItem::Show(Page::Updates) && self.update.newer_build().is_some() {
+                    new_badge(ui, response.rect);
+                }
                 if what == FileItem::Back {
                     ui.add_space(size::FILE_MENU_BACK_GAP);
                 }
@@ -182,6 +195,32 @@ impl Workbench {
         }
         clicked
     }
+}
+
+/// The small "New" at the right of Updates while a newer build is out.
+fn new_badge(ui: &Ui, item: Rect) {
+    let font = text::ribbon_small();
+    let width = widgets::width_of(ui, "New", font.clone()) + 2.0 * size::GAP;
+    let badge = Rect::from_center_size(
+        pos2(
+            item.right() - size::FILE_MENU_ITEM_PAD - width / 2.0,
+            item.center().y,
+        ),
+        vec2(width, size::STATUS_DOT * 3.0),
+    );
+    ui.painter().rect_filled(
+        badge,
+        CornerRadius::same(size::radius::SMALL),
+        crate::interface_look::accent_fill(),
+    );
+    words(
+        ui,
+        badge,
+        Align2::CENTER_CENTER,
+        "New",
+        font,
+        tokens::ON_ACCENT,
+    );
 }
 
 /// The line between two blocks of the column.

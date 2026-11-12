@@ -37,6 +37,33 @@ pub struct InterfaceLook {
     /// ([decision 0101](../../../docs/decisions/0101-unfinished-parts-as-placeholders.md)).
     /// Read by everything that draws an unfinished part (`unbuilt.rs`).
     pub hide_unfinished: bool,
+    /// Which shelf tab comes to the front when something is selected
+    /// (Preferences › Appearance). Builds before it had none: they read
+    /// the standard, which keeps the shelf as it is.
+    pub shelf_opens_on: ShelfOpensOn,
+}
+
+/// Which shelf tab comes to the front when something is selected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ShelfOpensOn {
+    /// The tab in front stays in front (as the editor always did).
+    #[default]
+    AsItIs,
+    /// The Entity tab, with Properties.
+    Entity,
+}
+
+impl ShelfOpensOn {
+    /// Every choice, in the list's order.
+    pub const ALL: [Self; 2] = [Self::AsItIs, Self::Entity];
+
+    /// Its words in the list.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::AsItIs => "The tab in front",
+            Self::Entity => "Entity",
+        }
+    }
 }
 
 impl Default for InterfaceLook {
@@ -47,6 +74,7 @@ impl Default for InterfaceLook {
             density: Density::default(),
             ribbon_labels: true,
             hide_unfinished: false,
+            shelf_opens_on: ShelfOpensOn::AsItIs,
         }
     }
 }

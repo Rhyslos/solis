@@ -76,11 +76,9 @@ const MOVED: [(&str, &str, Place); 43] = [
     ("Edit > Rename", "Rename", Place::Search),
     ("Edit > Select all", "Select all", Place::Search),
     ("Edit > Select nothing", "Select nothing", Place::Search),
-    (
-        "Edit > Input actions…",
-        "Input actions…",
-        Place::File("Input"),
-    ),
+    // On Project settings' Input sub-tab, which the search opens too
+    // (the File column's own Input item went with the window, M9).
+    ("Edit > Input actions…", "Input actions…", Place::Search),
     (
         "Edit > Settings…",
         "Preferences",
@@ -245,7 +243,7 @@ fn every_old_menu_item_is_a_command_that_can_be_done_and_the_search_lists_it() {
 /// one entity in the area Select all selects what already is, a step
 /// moves the game on by a tick (`play_tests.rs` watches that), and the
 /// panels of an untouched arrangement are already where Reset layout
-/// puts them (`settings_window_tests.rs` moves one first).
+/// puts them (`file_pages/settings_tests.rs` moves one first).
 const QUIET: [&str; 5] = [
     "Rename",
     "Open the manual ↗",
@@ -262,14 +260,13 @@ fn snapshot(w: &Workbench) -> impl std::fmt::Debug + use<> {
             w.open.document.selection.primary(),
             w.play_state(),
             w.ribbon_tab(),
-            w.launcher.page,
+            w.file_pages.page,
         ),
         (
-            w.settings_window.as_ref().map(|s| s.page),
-            w.open.input_window.is_some(),
-            w.open.export_window.is_some(),
+            (w.file_pages.prefs_tab, w.file_pages.project_tab),
+            w.open.input_page.is_some(),
+            w.open.export.is_some(),
             w.viewport.overlays,
-            w.about_open,
             w.open.outbox.len(),
             // Leaving the area asks about unsaved changes first.
             w.open.unsaved_prompt.is_some(),
@@ -325,7 +322,7 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                 h.run();
                 h.run();
                 assert!(
-                    h.query_by_label(words).is_some(),
+                    h.query_all_by_label(words).next().is_some(),
                     "{was}: File has {words:?}"
                 );
             }
@@ -337,21 +334,43 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
 fn the_file_page_s_items_do_what_the_menus_did() {
     let mut h = harness(ready());
     h.run();
+    // Preferences, Project settings and its Input are pages now, not
+    // windows: everything the windows held is on them.
+    use crate::file_pages::{Page, Tab};
     crate::test_support::file_item(&mut h, "Preferences");
-    assert!(h.state().0.settings_window.is_some());
-    h.state_mut().0.settings_window = None;
-    crate::test_support::file_item(&mut h, "Project settings");
-    assert_eq!(
-        h.state().0.settings_window.as_ref().map(|s| s.page),
-        Some(crate::settings_window::Page::TwoD)
+    assert_eq!(h.state().0.file_pages.page, Page::Preferences);
+    for tab in ["Appearance", "Viewport", "Shortcuts", "General"] {
+        h.get_by_role_and_label(egui::accesskit::Role::Button, tab)
+            .click();
+        h.run();
+    }
+    assert!(
+        h.query_all_by_label("Hide unfinished parts")
+            .next()
+            .is_some()
     );
-    h.state_mut().0.settings_window = None;
-    crate::test_support::file_item(&mut h, "Input");
-    assert!(h.state().0.open.input_window.is_some());
-    h.state_mut().0.open.input_window = None;
+    crate::test_support::file_item(&mut h, "Project settings");
+    assert_eq!(h.state().0.file_pages.page, Page::ProjectSettings);
+    for (tab, shows) in [
+        ("2D", "Base resolution"),
+        ("Build", "Game's name"),
+        ("Input", "Jump"),
+    ] {
+        h.get_by_role_and_label(egui::accesskit::Role::Button, tab)
+            .click();
+        h.run();
+        assert!(
+            h.query_all_by_label_contains(shows).next().is_some(),
+            "{tab}: {shows}"
+        );
+    }
+    assert_eq!(h.state().0.file_pages.project_tab, Tab::Input);
     crate::test_support::file_item(&mut h, "About");
-    assert!(h.state().0.about_open);
-    h.state_mut().0.about_open = false;
+    assert_eq!(h.state().0.file_pages.page, crate::file_pages::Page::About);
+    assert!(
+        h.query_by_label("Open LICENSE").is_some(),
+        "About is a page"
+    );
     crate::test_support::file_item(&mut h, "Save all");
     assert!(h.state().1.actions.contains(&WorkbenchAction::SaveArea));
     crate::test_support::file_item(&mut h, "Back to editor");

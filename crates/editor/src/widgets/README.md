@@ -11,6 +11,7 @@ Every control follows the accent, the density and the interface scale through th
 | `toggle.rs` | The switch: 32 x 18, its knob at the right on the accent when on. |
 | `checkbox.rs` | The checkbox: a 12 x 12 rounded square, filled with the accent and ticked when on. |
 | `segmented.rs` | The segmented control: choices side by side in a dark well, the chosen one lifted. |
+| `sub_tab.rs` | A File page's sub-tab (Preferences' General, Appearance…): its word, brighter with the accent's line under it while in front. |
 | `swatch.rs` | A row of colour swatches, the chosen one ringed in its own colour (the accent's choices). |
 | `chip.rs` | Chips, in the three sizes the design draws them (the Library's kinds, the Place tab's filters, the input page's contexts), with a kind's dot. |
 | `pill.rs` | The see-through pill that floats over the viewport. |

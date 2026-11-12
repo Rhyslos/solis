@@ -132,7 +132,7 @@ impl Picture {
 }
 
 /// The repository's top folder.
-fn repository() -> PathBuf {
+pub(crate) fn repository() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..")
 }
 

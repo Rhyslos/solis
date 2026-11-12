@@ -163,11 +163,14 @@ impl Workbench {
         );
         let ui = &mut strip;
         ui.spacing_mut().item_spacing.x = 0.0;
+        // Until a project is open, Recent projects is where to be: the
+        // other tabs are dimmed (they still carry on without one).
+        let dim = self.open.project.is_none() && self.shell.tab == RibbonTab::File;
         for (tab, entries) in tabs() {
             let front = self.shell.tab == tab;
             let response = match entries.first() {
                 Some(Entry::Unbuilt(id)) => unbuilt_tab(ui, *id, front),
-                _ => ribbon_tab(ui, tab, front),
+                _ => ribbon_tab(ui, tab, front, dim && tab != RibbonTab::File),
             };
             if response.double_clicked() && tab != RibbonTab::File {
                 toggled = true;
@@ -222,6 +225,21 @@ impl Workbench {
     /// after an area that has changes.
     fn path(&self, ui: &mut Ui) {
         let font = text::row();
+        if self.open.project.is_none() && self.shell.tab == RibbonTab::File {
+            let words_w = width_of(ui, NO_PROJECT, font.clone());
+            let height = ui.available_height();
+            let (rect, response) = ui.allocate_exact_size(vec2(words_w, height), Sense::hover());
+            response.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Label, true, NO_PROJECT));
+            words(
+                ui,
+                rect,
+                Align2::LEFT_CENTER,
+                NO_PROJECT,
+                font,
+                tokens::text_meta(),
+            );
+            return;
+        }
         let area = self.open.document.name();
         let project = self.open.project.as_ref().map(|p| p.name.as_str());
         let dot = if self.open.document.is_dirty() {
@@ -360,8 +378,11 @@ fn front_shape(rect: Rect) -> Shape {
     ])
 }
 
-/// One of the ribbon's tabs.
-fn ribbon_tab(ui: &mut Ui, tab: RibbonTab, front: bool) -> Response {
+/// What the bar's right end says while no project is open.
+const NO_PROJECT: &str = "No project open";
+
+/// One of the ribbon's tabs; `dim` while no project is open.
+fn ribbon_tab(ui: &mut Ui, tab: RibbonTab, front: bool, dim: bool) -> Response {
     let font = if front {
         text::tab_active()
     } else {
@@ -379,6 +400,8 @@ fn ribbon_tab(ui: &mut Ui, tab: RibbonTab, front: bool) -> Response {
             tokens::text_emphasis()
         } else if response.hovered() {
             tokens::text_primary()
+        } else if dim {
+            tokens::text_faint()
         } else {
             tokens::text_label()
         };

@@ -288,6 +288,7 @@ fn damaged_looks_and_accents_never_stop_the_editor_starting() {
             density: Density::Comfortable,
             ribbon_labels: false,
             hide_unfinished: true,
+            shelf_opens_on: editor::interface_look::ShelfOpensOn::Entity,
         };
         eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &look);
         storage.get_string(INTERFACE_LOOK_KEY).unwrap()

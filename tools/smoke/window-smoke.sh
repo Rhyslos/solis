@@ -70,7 +70,7 @@ launch() {
     # The first frames are drawn (software rendering is slow).
     settle
     xdotool windowfocus --sync "$WINDOW_ID" 2>/dev/null || true
-    # Solis always starts on the launcher (decision 0090): Esc carries on
+    # Solis always starts on File › Recent projects (decision 0105): Esc carries on
     # without a project, into the editor.
     xdotool key --window "$WINDOW_ID" Escape 2>/dev/null || true
     settle

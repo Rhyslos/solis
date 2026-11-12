@@ -68,7 +68,17 @@ fn box_shape(ui: &Ui, rect: Rect, focused: bool) -> egui::epaint::RectShape {
 /// the keyboard is in it. The box is painted after its contents are laid
 /// out (its border depends on them) but under them.
 fn boxed<R>(ui: &mut Ui, width: f32, inside: impl FnOnce(&mut Ui) -> (R, bool)) -> (Rect, R) {
-    let (rect, _) = ui.allocate_exact_size(vec2(width, size::field_h()), Sense::hover());
+    boxed_at(ui, vec2(width, size::field_h()), inside)
+}
+
+/// A field's box of any `wanted` size (a page's search is taller than a
+/// row's field), as [`boxed`].
+fn boxed_at<R>(
+    ui: &mut Ui,
+    wanted: egui::Vec2,
+    inside: impl FnOnce(&mut Ui) -> (R, bool),
+) -> (Rect, R) {
+    let (rect, _) = ui.allocate_exact_size(wanted, Sense::hover());
     let under = ui.painter().add(egui::Shape::Noop);
     let room = rect.shrink2(vec2(size::FIELD_PAD, 0.0));
     let mut child = ui.new_child(
@@ -105,6 +115,48 @@ pub fn text_field(ui: &mut Ui, name: &str, value: &mut String, hint: &str, width
                 .frame(Frame::NONE)
                 .margin(Margin::ZERO)
                 .font(text::ribbon_small())
+                .text_color(tokens::text_primary())
+                .hint_text(RichText::new(hint).color(tokens::text_meta()))
+                .desired_width(f32::INFINITY),
+        );
+        named(
+            ui,
+            &response,
+            egui::WidgetType::TextEdit,
+            name,
+            value.as_str(),
+        );
+        let focused = response.has_focus();
+        (response, focused)
+    });
+    response
+}
+
+/// A page's search: a magnifying glass, then a field for words, `width`
+/// wide and as tall as the page's header buttons, showing `hint` while
+/// empty. `name` is what a screen reader says.
+pub fn search_field(
+    ui: &mut Ui,
+    name: &str,
+    value: &mut String,
+    hint: &str,
+    width: f32,
+) -> Response {
+    let wanted = vec2(width, size::PAGE_BUTTON_H + 2.0);
+    let (_, response) = boxed_at(ui, wanted, |ui| {
+        let (spot, _) =
+            ui.allocate_exact_size(vec2(size::ICON_SMALL, size::ICON_SMALL), Sense::hover());
+        crate::icons::icon(
+            ui.painter(),
+            spot,
+            crate::icons::Icon::Search,
+            tokens::text_meta(),
+        );
+        let response = ui.add(
+            egui::TextEdit::singleline(value)
+                .frame(Frame::NONE)
+                .margin(Margin::ZERO)
+                .font(text::page_subtitle())
                 .text_color(tokens::text_primary())
                 .hint_text(RichText::new(hint).color(tokens::text_meta()))
                 .desired_width(f32::INFINITY),
@@ -179,6 +231,22 @@ pub fn number_field(
 ) -> Response {
     framed(ui, width, axis, |ui| {
         let response = ui.add(egui::DragValue::new(value).speed(speed));
+        named(
+            ui,
+            &response,
+            egui::WidgetType::DragValue,
+            name,
+            &value.to_string(),
+        );
+        response
+    })
+}
+
+/// A field for a whole number, as [`number_field`] with no decimals
+/// shown: a size in pixels, a count.
+pub fn whole_number_field(ui: &mut Ui, name: &str, value: &mut f64, width: f32) -> Response {
+    framed(ui, width, None, |ui| {
+        let response = ui.add(egui::DragValue::new(value).speed(0.25).fixed_decimals(0));
         named(
             ui,
             &response,

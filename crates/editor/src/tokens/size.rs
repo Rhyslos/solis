@@ -320,6 +320,31 @@ pub const SETTING_FIELD_W: f32 = 200.0;
 pub const PROJECT_CARD_MIN_W: f32 = 240.0;
 /// A project card's thumbnail: its height.
 pub const PROJECT_THUMB_H: f32 = 140.0;
+/// The gap between project cards, and between the cards on Learn.
+pub const PROJECT_CARD_GAP: f32 = 16.0;
+/// A project card's words: their padding, top and bottom, sides.
+pub const PROJECT_CARD_PAD: [f32; 2] = [12.0, 14.0];
+/// The gap between the lines of a project card's words.
+pub const PROJECT_CARD_LINE_GAP: f32 = 5.0;
+/// The letter that stands for a project's picture (the approved
+/// additions, round 2), until projects have pictures.
+pub const PROJECT_LETTER: f32 = 48.0;
+/// The search in a File page's header: its width (round 2's pictures;
+/// the design's own is 260, before Sort by joined it).
+pub const PAGE_SEARCH_W: f32 = 220.0;
+/// A template's tile: its width (round 2: eight fit one row at 1440 px).
+pub const TEMPLATE_W: f32 = 126.0;
+/// A template's tile: the box over its name.
+pub const TEMPLATE_BOX_H: f32 = 84.0;
+/// The gap between template tiles.
+pub const TEMPLATE_GAP: f32 = 14.0;
+/// The gap between a template's box and its name.
+pub const TEMPLATE_NAME_GAP: f32 = 8.0;
+/// A File page's column beside its settings (Updates' notes, a page's
+/// "changed from defaults" card): its width.
+pub const PAGE_SIDE_W: f32 = 320.0;
+/// The gap between a File page's settings and the column beside them.
+pub const PAGE_SIDE_GAP: f32 = 32.0;
 
 /// The mark on a part that isn't built yet: a hollow square, this wide.
 pub const UNBUILT_MARK: f32 = 5.0;

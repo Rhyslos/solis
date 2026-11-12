@@ -704,6 +704,10 @@ impl Workbench {
 mod tests;
 
 #[cfg(test)]
+#[path = "new_files_tests.rs"]
+mod new_files_tests;
+
+#[cfg(test)]
 mod opening_tests {
     use super::*;
     use crate::test_support::info;

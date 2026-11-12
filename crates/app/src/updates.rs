@@ -210,15 +210,13 @@ impl Updates {
                     });
                     None
                 } else if !updater::should_offer(build, self.skipped, false) {
-                    // Skipped: no bar for it in the launcher.
+                    // Skipped: no notice for it on File › Updates.
                     workbench.hide_update_bar(build);
                     None
                 } else if installed {
                     Some((
                         LogLevel::Info,
-                        format!(
-                            "Build {build} of {name} is out: Update now in the launcher gets it."
-                        ),
+                        format!("Build {build} of {name} is out: File › Updates gets it."),
                     ))
                 } else {
                     Some((
@@ -294,6 +292,25 @@ impl Updates {
 /// The page listing every build.
 pub fn releases_page() -> String {
     format!("https://github.com/{}/releases", branding::UPDATE_REPO)
+}
+
+/// Where a file the program carries is (File › About and Updates): the
+/// installed copy's own, beside the program, when it is there; otherwise
+/// the repository's, online.
+pub fn program_file(file: editor::ProgramFile) -> String {
+    let (here, online) = match file {
+        editor::ProgramFile::Licence => ("LICENSE", "blob/main/LICENSE"),
+        editor::ProgramFile::Notices => ("THIRD-PARTY-NOTICES.txt", "tree/main/licenses"),
+        editor::ProgramFile::Changes => ("CHANGELOG.md", "blob/main/CHANGELOG.md"),
+    };
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|folder| folder.join(here)))
+        .filter(|path| path.is_file());
+    match beside {
+        Some(path) => path.display().to_string(),
+        None => format!("https://github.com/{}/{online}", branding::UPDATE_REPO),
+    }
 }
 
 /// Starts the pending installer, if any; called once the window is gone.

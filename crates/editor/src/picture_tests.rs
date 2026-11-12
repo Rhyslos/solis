@@ -289,7 +289,6 @@ fn assert_flat(picture: &Picture, what: &str, point: [f32; 2], scale: f32) {
 }
 
 const EDITOR_SIZE: [f32; 2] = [1440.0, 900.0];
-const LAUNCHER_SIZE: [f32; 2] = [1100.0, 700.0];
 
 /// Today's editor with the sample project open, drawn for real in the
 /// new look.
@@ -300,12 +299,27 @@ fn editor_picture(look: InterfaceLook) -> Option<Picture> {
     Some(drawn(&mut harness))
 }
 
-/// The launcher, drawn for real in the new look.
-fn launcher_picture(look: InterfaceLook) -> Option<Picture> {
+/// Recent projects as Solis starts on it, drawn for real in the new look,
+/// with four projects (one of them gone) as round 2's picture has them.
+fn recent_projects_picture(look: InterfaceLook) -> Option<Picture> {
     let mut workbench = Workbench::new(info());
     workbench.set_this_build(Some(57));
-    workbench.launch_launcher();
-    let mut harness = editor_window(workbench, look, LAUNCHER_SIZE)?;
+    let project = |name: &str, saved_by, problem: Option<&str>| crate::KnownProject {
+        root: format!("D:/Projects/{name}").into(),
+        name: name.into(),
+        problem: problem.map(str::to_string),
+        pinned: saved_by == Some(57),
+        last_opened: None,
+        saved_by,
+    };
+    workbench.set_known_projects(vec![
+        project("Harbor_Prototype", Some(57), None),
+        project("Glacier_Sim", Some(52), None),
+        project("Moon_Base", Some(60), None),
+        project("Tiny_Tactics", None, Some("Folder not found")),
+    ]);
+    workbench.start_on_recent_projects();
+    let mut harness = editor_window(workbench, look, EDITOR_SIZE)?;
     harness.run();
     harness.run();
     Some(drawn(&mut harness))
@@ -372,27 +386,27 @@ fn an_open_menu_is_on_the_ribbon_s_grey() {
 }
 
 #[test]
-fn the_launcher_s_surfaces_are_the_file_page_s() {
-    let Some(picture) = launcher_picture(InterfaceLook::default()) else {
+fn recent_projects_surfaces_are_the_file_page_s() {
+    let Some(picture) = recent_projects_picture(InterfaceLook::default()) else {
         return;
     };
-    assert_eq!(picture.size, [1100, 700]);
+    assert_eq!(picture.size, [1440, 900]);
     // As the design's Recent projects screen: the menu column on the
     // ribbon's grey, the page on the shelf bar's.
     for (what, point, token) in [
-        ("the sidebar", [110.0, 400.0], tokens::ribbon()),
-        ("the page", [630.0, 500.0], tokens::shelf_bar()),
+        ("the File column", [110.0, 800.0], tokens::ribbon()),
+        ("the page", [900.0, 800.0], tokens::shelf_bar()),
         (
             "the page in front's row",
-            [130.0, 90.0],
+            [200.0, 113.0],
             tokens::group_gap(),
         ),
-        ("+ New project", [980.0, 35.0], Accent::Blue.colour()),
+        ("New project", [1290.0, 86.0], Accent::Blue.colour()),
     ] {
         assert_flat(&picture, what, point, 1.0);
         assert_eq!(picture.at(point, 1.0), token, "{what} at {point:?}");
     }
-    matches_approved("launcher", &picture);
+    matches_approved("recent-projects", &picture);
 }
 
 #[test]
@@ -402,18 +416,18 @@ fn another_accent_recolours_what_is_chosen_and_nothing_else() {
         ..InterfaceLook::default()
     };
     let (Some(blue), Some(teal)) = (
-        launcher_picture(look(Accent::Blue)),
-        launcher_picture(look(Accent::Teal)),
+        recent_projects_picture(look(Accent::Blue)),
+        recent_projects_picture(look(Accent::Teal)),
     ) else {
         return;
     };
-    assert_eq!(teal.at([980.0, 35.0], 1.0), Accent::Teal.colour());
-    assert_flat(&teal, "+ New project", [980.0, 35.0], 1.0);
+    assert_eq!(teal.at([1290.0, 86.0], 1.0), Accent::Teal.colour());
+    assert_flat(&teal, "New project", [1290.0, 86.0], 1.0);
     // The neutral surfaces are the same pixels in both.
     for point in [
-        [110.0, 400.0],
-        [130.0, 90.0],
-        [630.0, 500.0],
+        [110.0, 800.0],
+        [200.0, 113.0],
+        [900.0, 800.0],
         [300.0, 650.0],
     ] {
         assert_eq!(blue.at(point, 1.0), teal.at(point, 1.0), "{point:?}");
@@ -427,16 +441,16 @@ fn the_interface_scale_draws_the_same_editor_with_more_pixels() {
         scale: Scale::from(150),
         ..InterfaceLook::default()
     };
-    let Some(picture) = launcher_picture(look) else {
+    let Some(picture) = recent_projects_picture(look) else {
         return;
     };
     // The window is as many pixels as before; each point is a pixel and a
     // half, so the same surfaces are where they were times 1.5 (as far
     // as the smaller room allows: the sidebar keeps its width in points).
-    assert_eq!(picture.size, [1100, 700]);
-    assert_eq!(picture.at([110.0, 400.0], 1.0), tokens::ribbon());
-    assert_eq!(picture.at([130.0, 90.0], 1.5), tokens::group_gap());
-    assert_eq!(picture.at([900.0, 600.0], 1.0), tokens::shelf_bar());
+    assert_eq!(picture.size, [1440, 900]);
+    assert_eq!(picture.at([110.0, 840.0], 1.0), tokens::ribbon());
+    assert_eq!(picture.at([200.0, 113.0], 1.5), tokens::group_gap());
+    assert_eq!(picture.at([1420.0, 845.0], 1.0), tokens::shelf_bar());
     crate::interface_look::use_look(InterfaceLook::default());
 }
 
@@ -455,13 +469,13 @@ fn the_side_by_side_sheet() {
     design
         .beside(&editor, 24, tokens::text_meta())
         .write(&folder.join("level-editor-design-and-editor.png"));
-    let Some(launcher) = launcher_picture(InterfaceLook::default()) else {
+    let Some(recent) = recent_projects_picture(InterfaceLook::default()) else {
         return;
     };
     let design = design_file_page().halved();
     design
-        .beside(&launcher, 24, tokens::text_meta())
-        .write(&folder.join("recent-projects-design-and-launcher.png"));
+        .beside(&recent, 24, tokens::text_meta())
+        .write(&folder.join("recent-projects-design-and-editor.png"));
 }
 
 fn design_file_page() -> Picture {
@@ -472,7 +486,7 @@ fn design_file_page() -> Picture {
 /// the editor.
 fn appearance_picture(look: InterfaceLook) -> Option<Picture> {
     let mut workbench = sample_project();
-    workbench.open_settings();
+    workbench.show_settings(crate::file_pages::Tab::Appearance);
     let mut harness = editor_window(workbench, look, EDITOR_SIZE)?;
     harness.run();
     harness.run();
@@ -503,4 +517,70 @@ fn the_appearance_page_beside_the_design_s_preferences() {
         hidden.write(&folder.join("appearance-hidden.png"));
     }
     crate::interface_look::use_look(InterfaceLook::default());
+}
+
+/// Writes each File page beside the approved picture of it (round 2), so
+/// a reviewer can look at them side by side. Run with `--ignored` and
+/// `SOLIS_PICTURE_SHEET` set to the folder to write into.
+#[test]
+#[ignore = "writes pictures to look at; needs SOLIS_PICTURE_SHEET and a graphics driver"]
+fn the_file_pages_sheet() {
+    use crate::file_pages::{Page, Tab};
+    let folder = std::env::var_os("SOLIS_PICTURE_SHEET").expect("SOLIS_PICTURE_SHEET");
+    let folder = std::path::Path::new(&folder);
+    type Shown = (&'static str, &'static str, fn(&mut Workbench));
+    let pages: [Shown; 10] = [
+        ("learn", "10-file-learn.png", |w| {
+            w.show_file_page(Page::Learn)
+        }),
+        ("updates", "10-file-updates.png", |w| {
+            w.set_update(crate::updates::UpdateNotice::Available(58));
+            w.show_file_page(Page::Updates);
+        }),
+        ("about", "10-file-about.png", |w| {
+            w.show_file_page(Page::About)
+        }),
+        ("prefs-general", "11-prefs-general.png", |w| {
+            w.show_settings(Tab::General)
+        }),
+        ("prefs-viewport", "11-prefs-viewport.png", |w| {
+            w.show_settings(Tab::Viewport)
+        }),
+        ("prefs-shortcuts", "11-prefs-shortcuts.png", |w| {
+            w.show_settings(Tab::Shortcuts)
+        }),
+        ("project-general", "12-project-settings-general.png", |w| {
+            w.show_settings(Tab::Project)
+        }),
+        ("project-2d", "12-project-settings-2d-a.png", |w| {
+            w.show_settings(Tab::TwoD)
+        }),
+        ("project-build", "12-project-settings-build.png", |w| {
+            w.open_export()
+        }),
+        ("project-input", "13-project-settings-input.png", |w| {
+            w.open_input_page()
+        }),
+    ];
+    for (name, approved, show) in pages {
+        let mut workbench = sample_project();
+        workbench.set_this_build(Some(57));
+        show(&mut workbench);
+        let Some(mut harness) = editor_window(workbench, InterfaceLook::default(), EDITOR_SIZE)
+        else {
+            return;
+        };
+        harness.run();
+        harness.run();
+        let picture = drawn(&mut harness);
+        let mock_up = Picture::read(
+            &crate::picture_support::repository()
+                .join("docs/design/g-layout/additions/round-2")
+                .join(approved),
+        )
+        .expect("the approved picture");
+        mock_up
+            .beside(&picture, 24, tokens::text_meta())
+            .write(&folder.join(format!("{name}-mock-up-and-editor.png")));
+    }
 }

@@ -29,6 +29,7 @@ pub mod pill;
 pub mod rows;
 pub mod segmented;
 pub mod slider;
+pub mod sub_tab;
 pub mod swatch;
 pub mod tile;
 pub mod toggle;

@@ -67,7 +67,7 @@ fn harness(w: Workbench) -> egui_kittest::Harness<'static, State> {
 #[test]
 fn an_exported_game_shows_only_the_game_and_closes_when_its_code_quits() {
     let w = quitter(true);
-    assert!(w.play_only() && !w.launcher.open, "no launcher");
+    assert!(w.play_only() && !w.file_page_open(), "no File page");
     assert!(w.code_ready());
     let mut h = harness(w);
     h.run();

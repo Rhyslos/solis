@@ -363,12 +363,12 @@ impl ShellCommand {
             return;
         }
         match self {
-            C::RecentProjects => w.show_file_page(crate::launcher::Page::Projects),
-            C::Learn => w.show_file_page(crate::launcher::Page::Learn),
-            C::Updates => w.show_file_page(crate::launcher::Page::Updates),
-            C::ProjectSettings => w.open_project_settings(),
-            C::InputActions => w.open_input_window(),
-            C::Preferences => w.open_settings(),
+            C::RecentProjects => w.show_recent_projects(),
+            C::Learn => w.show_file_page(crate::file_pages::Page::Learn),
+            C::Updates => w.show_file_page(crate::file_pages::Page::Updates),
+            C::ProjectSettings => w.show_settings(w.file_pages.project_tab),
+            C::InputActions => w.open_input_page(),
+            C::Preferences => w.show_settings(w.file_pages.prefs_tab),
             C::AddSprite => {
                 w.add_sprite();
             }
@@ -422,7 +422,7 @@ impl ShellCommand {
                 w.auto_update ^= true;
                 actions.push(WorkbenchAction::SetAutoUpdate(w.auto_update));
             }
-            C::About => w.about_open = true,
+            C::About => w.show_file_page(crate::file_pages::Page::About),
             _ => {}
         }
     }

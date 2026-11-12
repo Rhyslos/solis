@@ -145,6 +145,20 @@ pub fn card_name() -> FontId {
     named(13.0, SEMIBOLD)
 }
 
+/// The letter standing for a project's picture on its card.
+pub fn project_letter() -> FontId {
+    named(size_letter(), BOLD)
+}
+
+fn size_letter() -> f32 {
+    super::size::PROJECT_LETTER
+}
+
+/// A template's name under its tile: 12 / 500.
+pub fn template_name() -> FontId {
+    medium_at(UI_SIZE)
+}
+
 /// A details title, and the headings egui draws: 14 / 600.
 pub fn heading() -> FontId {
     named(HEADING_SIZE, SEMIBOLD)

@@ -45,9 +45,8 @@ const ACCENT_KEY: &str = "accent2";
 /// The accent as saved before that: amber there was the standard of its
 /// day, so it reads as the standard. Read once, likewise; never written.
 const OLD_ACCENT_KEY: &str = "accent";
-/// Key under which the editor window's size is remembered: the window is
-/// the launcher's size while it's up, and this size again once a project
-/// opens (the project lead, 2026-11-06).
+/// Key under which the editor window's size is remembered: the window
+/// opens at it, on Recent projects (decision 0105).
 const EDITOR_SIZE_KEY: &str = "editor_size";
 /// Key under which whether the Hints card shows hints is remembered.
 const HINTS_KEY: &str = "hints";
@@ -76,9 +75,6 @@ const AUTO_UPDATE_KEY: &str = "auto_update";
 const SKIPPED_BUILD_KEY: &str = "skipped_build";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
-/// The window's size while the launcher is up (the project lead,
-/// 2026-11-06: a small window to pick a project in).
-const LAUNCHER_SIZE: [f32; 2] = [1100.0, 700.0];
 /// The smallest the window may get while staying usable.
 const MIN_SIZE: [f32; 2] = [960.0, 600.0];
 
@@ -135,22 +131,17 @@ struct App {
     messages: Option<crate::logger::Messages>,
     /// Checking for, downloading and installing newer builds.
     updates: crate::updates::Updates,
-    /// Copying a project or looking for projects, for the launcher.
+    /// Copying a project or looking for projects, for Recent projects.
     tidying: crate::known_projects::Tidying,
     /// Starting up behind the splash screen, until the editor opens.
     startup: Option<crate::startup::Startup>,
-    /// File > Exit (or the launcher's close) asked to quit: the window's
-    /// close isn't turned into going back to the launcher.
+    /// File › Exit (or closing the window on a File page) asked to quit:
+    /// the window's close isn't turned into going back to Recent projects.
     quitting: bool,
-    /// The editor window's size while a project's open, to grow back to
-    /// from the launcher's.
+    /// The editor window's size as last left, to open at next time.
     editor_size: [f32; 2],
-    /// Whether the window was the launcher's size last frame.
-    launcher_sized: Option<bool>,
-    /// Growing to the editor's size: the size asked for, and the frames
-    /// waited. The editor isn't drawn meanwhile, so its floating panels
-    /// aren't pushed inside the launcher's smaller window.
-    settling: Option<([f32; 2], u32)>,
+    /// Whether the window has been given its size yet (the first frame).
+    sized: bool,
     /// When the splash appeared.
     began: std::time::Instant,
     /// The logo, for the splash.
@@ -236,8 +227,7 @@ impl App {
             startup: playtest.is_none().then_some(startup),
             quitting: false,
             editor_size: saved.editor_size,
-            launcher_sized: None,
-            settling: None,
+            sized: false,
             began: std::time::Instant::now(),
             logo: load_logo(&cc.egui_ctx),
             playtest: None,
@@ -260,9 +250,10 @@ impl App {
             "https://github.com/{}/tree/main/docs/manual",
             branding::UPDATE_REPO
         ));
-        // Solis always opens on the launcher, and a project opens from it
-        // (the project lead, 2026-11-06): the last project isn't reopened.
-        app.workbench.launch_launcher();
+        // Solis always opens on Recent projects, and a project opens from
+        // it (decision 0105, keeping 0090's promises): the last project
+        // isn't reopened.
+        app.workbench.start_on_recent_projects();
         saved.settle(&mut app.workbench);
         for path in imports {
             app.import(&path);
@@ -271,14 +262,14 @@ impl App {
     }
 
     /// Opens (or, with `create`, makes) the project in `root`.
-    /// Reads every project Solis knows afresh, for the launcher and File >
+    /// Reads every project Solis knows afresh, for File ›
     /// Recent projects.
     fn list_projects(&mut self) {
         let rows = self.projects.known_mut().rows();
         self.workbench.set_known_projects(rows);
     }
 
-    /// Gives the project in `root` a new name (the launcher's Rename…).
+    /// Gives the project in `root` a new name (a card's Rename… on Recent projects).
     fn rename_project(&mut self, root: &Path, name: &str) {
         match asset_db::tidy::rename(root, name) {
             Ok(name) => {
@@ -290,11 +281,11 @@ impl App {
                     self.workbench.rename_open_project(&name);
                 }
                 self.workbench
-                    .launcher_notice(format!("Renamed to {name}. Its folder keeps its name."));
+                    .projects_notice(format!("Renamed to {name}. Its folder keeps its name."));
             }
             Err(why) => self
                 .workbench
-                .launcher_notice(format!("Couldn't rename it: {why}.")),
+                .projects_notice(format!("Couldn't rename it: {why}.")),
         }
         self.list_projects();
     }
@@ -303,18 +294,18 @@ impl App {
     fn copy_project(&mut self, from: PathBuf, to: PathBuf) {
         if self.tidying.busy() {
             self.workbench
-                .launcher_notice("Wait for the copy or scan going on to finish.");
+                .projects_notice("Wait for the copy or scan going on to finish.");
             return;
         }
         let name = match asset_db::Project::summary(&from) {
             Ok(summary) => format!("{} copy", summary.name),
             Err(why) => {
                 self.workbench
-                    .launcher_notice(format!("Couldn't copy it: {why}."));
+                    .projects_notice(format!("Couldn't copy it: {why}."));
                 return;
             }
         };
-        self.workbench.launcher_notice(format!(
+        self.workbench.projects_notice(format!(
             "Copying {} to {}…",
             file_name(&from),
             to.display()
@@ -328,13 +319,13 @@ impl App {
         match asset_db::Project::summary(new) {
             Ok(summary) => {
                 self.projects.known_mut().relocate(old, new);
-                self.workbench.launcher_notice(format!(
+                self.workbench.projects_notice(format!(
                     "Found {} in {}.",
                     summary.name,
                     new.display()
                 ));
             }
-            Err(why) => self.workbench.launcher_notice(format!(
+            Err(why) => self.workbench.projects_notice(format!(
                 "{} isn't that project's folder: {why}.",
                 new.display()
             )),
@@ -346,11 +337,11 @@ impl App {
     fn scan_for_projects(&mut self, folder: PathBuf) {
         if self.tidying.busy() {
             self.workbench
-                .launcher_notice("Wait for the copy or scan going on to finish.");
+                .projects_notice("Wait for the copy or scan going on to finish.");
             return;
         }
         self.workbench
-            .launcher_notice(format!("Looking for projects in {}…", folder.display()));
+            .projects_notice(format!("Looking for projects in {}…", folder.display()));
         self.tidying.scan(folder);
     }
 
@@ -400,7 +391,7 @@ impl App {
             }
         };
         self.workbench.log(LogLevel::Info, note.clone());
-        self.workbench.launcher_notice(note);
+        self.workbench.projects_notice(note);
         self.list_projects();
     }
 
@@ -951,6 +942,12 @@ impl App {
                 WorkbenchAction::DownloadUpdate => {
                     self.updates.download(&mut self.workbench, ctx);
                 }
+                WorkbenchAction::OpenProgramFile(file) => {
+                    if let Err(why) = opener::open(crate::updates::program_file(file)) {
+                        self.workbench
+                            .log(LogLevel::Warning, format!("Couldn't open it: {why}."));
+                    }
+                }
                 WorkbenchAction::OpenUpdatePage => {
                     if let Err(why) = opener::open(crate::updates::releases_page()) {
                         self.workbench.log(
@@ -985,7 +982,7 @@ impl App {
                 WorkbenchAction::ShowProject(root) => {
                     if let Err(why) = open_externally(External::Folder(&root)) {
                         self.workbench
-                            .launcher_notice(format!("Couldn't show {}: {why}.", root.display()));
+                            .projects_notice(format!("Couldn't show {}: {why}.", root.display()));
                     }
                 }
                 WorkbenchAction::RenameProject(root, name) => self.rename_project(&root, &name),
@@ -1747,25 +1744,14 @@ impl App {
 }
 
 impl App {
-    /// Sizes the window for what's showing: the launcher's small size
-    /// while it's up, the editor's own size (as last left) otherwise,
-    /// centred each time it changes.
+    /// Gives the window its size as last left, centred, on the first
+    /// frame; then remembers its size as it's changed (not while
+    /// maximized: the size to come back to).
     fn fit_window(&mut self, ctx: &egui::Context) {
-        let launcher = self.workbench.launcher_open();
-        if let Some((size, frames)) = self.settling {
-            let now = ctx.input(|i| i.viewport().inner_rect).map(|r| r.size());
-            let there =
-                now.is_some_and(|n| (n.x - size[0]).abs() < 2.0 && (n.y - size[1]).abs() < 2.0);
-            self.settling = (!there && frames < 30 && !launcher).then_some((size, frames + 1));
-            ctx.request_repaint();
-        }
-        if self.launcher_sized == Some(launcher) {
-            // While the editor shows, its size is remembered as it's
-            // changed (not while maximized: the size to come back to).
+        if self.sized {
             let (inner, maximized) =
                 ctx.input(|i| (i.viewport().inner_rect, i.viewport().maximized));
-            if !launcher
-                && maximized != Some(true)
+            if maximized != Some(true)
                 && let Some(rect) = inner
                 && rect.width() >= MIN_SIZE[0]
                 && rect.height() >= MIN_SIZE[1]
@@ -1774,24 +1760,13 @@ impl App {
             }
             return;
         }
-        // The very first frame, whatever size the window opened at; then
-        // only when the launcher comes or goes.
-        let first = self.launcher_sized.is_none();
-        self.launcher_sized = Some(launcher);
-        let size = if launcher {
-            LAUNCHER_SIZE
-        } else {
-            self.editor_size
-        };
-        if !launcher && !first {
-            self.settling = Some((size, 0));
-        }
-        ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
+        self.sized = true;
+        let size = self.editor_size;
         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
             size[0], size[1],
         )));
-        // Centred for its new size (egui's own centring goes by the size
-        // it has now).
+        // Centred for its size (egui's own centring goes by the size it
+        // has now).
         if let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) {
             let at = (monitor - egui::vec2(size[0], size[1])) / 2.0;
             ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
@@ -2079,14 +2054,14 @@ impl eframe::App for App {
             }
         }
         if ctx.input(|i| i.viewport().close_requested()) {
-            // Closing the editor goes back to the launcher (the project
-            // stays open behind it); closing the launcher, File > Exit or
+            // Closing the editor goes back to Recent projects (the project
+            // stays open behind it); closing a File page, File › Exit or
             // Restart to update quits, asking about unsaved work first.
             let quit =
-                self.quitting || self.workbench.launcher_open() || self.workbench.restarting();
+                self.quitting || self.workbench.file_page_open() || self.workbench.restarting();
             if !quit {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                self.workbench.back_to_launcher();
+                self.workbench.show_recent_projects();
             } else if !self.workbench.close_requested() {
                 self.quitting = false;
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -2140,12 +2115,6 @@ impl eframe::App for App {
             Some(gpu) => gpu,
             None => &mut self.no_gpu,
         };
-        if self.settling.is_some() {
-            // Growing to the editor's size: drawn once it's there.
-            ui.painter()
-                .rect_filled(ui.max_rect(), 0.0, editor::theme::background());
-            return;
-        }
         let actions = self.workbench.show(ui, renderer);
         // What this frame's ticks asked to hear.
         self.game_audio
@@ -2384,7 +2353,6 @@ mod tests {
             eframe::set_value(&mut storage, EDITOR_SIZE_KEY, &odd);
             assert_eq!(saved_editor_size(&storage), FIRST_SIZE, "{odd:?}");
         }
-        const { assert!(LAUNCHER_SIZE[0] >= MIN_SIZE[0] && LAUNCHER_SIZE[1] >= MIN_SIZE[1]) };
     }
 
     /// The known projects as the settings in `storage` hold them.

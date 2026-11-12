@@ -30,8 +30,9 @@ pub(crate) mod sheet;
 mod table;
 
 pub use draw::{
-    RowKind, card, chip, column, field_row, icon_button, link, menu_item, ribbon_big, ribbon_row,
-    ribbon_row_width, setting_row, shelf_tab, status_item, sub_tab, tab, tool,
+    RowKind, card, chip, column, corner, field_row, icon_button, link, menu_item, ribbon_big,
+    ribbon_row, ribbon_row_width, setting_row, shelf_tab, status_item, sub_tab, tab, template,
+    tool,
 };
 pub use page::{PageAnswer, page};
 pub use table::{ALL, UnbuiltId};

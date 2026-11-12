@@ -65,16 +65,15 @@ pub enum WorkbenchAction {
     NewProject,
     /// Open a project from a folder the user picks (File > Open…).
     OpenProject,
-    /// Open the project in this folder (File > Recent projects, the
-    /// launcher).
+    /// Open the project in this folder (File › Recent projects).
     OpenRecent(std::path::PathBuf),
-    /// Read the projects Solis knows afresh, for the launcher.
+    /// Read the projects Solis knows afresh, for Recent projects.
     ListProjects,
-    /// Pin (true) or unpin a project in the launcher's list.
+    /// Pin (true) or unpin a project in the list on Recent projects.
     PinProject(std::path::PathBuf, bool),
-    /// Forget a project in the launcher's list; its files stay.
+    /// Forget a project in the list on Recent projects; its files stay.
     ForgetProject(std::path::PathBuf),
-    /// Show a project's folder in Explorer (the launcher's ⋯).
+    /// Show a project's folder in Explorer (a card on Recent projects).
     ShowProject(std::path::PathBuf),
     /// Give the project in this folder a new name (its folder keeps its
     /// name).
@@ -235,6 +234,9 @@ pub enum WorkbenchAction {
     /// Open the page to download the newer build by hand (the update
     /// question, for a copy that wasn't installed).
     OpenUpdatePage,
+    /// Open a file the program carries (File › About and Updates): the
+    /// installed copy's own, or the repository's online.
+    OpenProgramFile(crate::file_pages::ProgramFile),
     /// The update question was answered Open without updating: skip this
     /// build from now on when it's given (Skip this version).
     SkipUpdate(Option<u64>),
@@ -261,24 +263,22 @@ pub struct Workbench {
     pub(crate) console: Console,
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
-    pub(crate) about_open: bool,
-    /// The launcher (decision 0086).
-    pub(crate) launcher: crate::launcher::Launcher,
-    /// The projects Solis knows, for the launcher (the app reads them).
-    pub(crate) known_projects: Vec<crate::launcher::KnownProject>,
-    /// This copy's build number, for the launcher's marks.
+    /// The File tab's own pages: which is in front, and how Recent
+    /// projects is searched and ordered.
+    pub(crate) file_pages: crate::file_pages::FilePages,
+    /// The projects Solis knows, for Recent projects (the app reads them).
+    pub(crate) known_projects: Vec<crate::file_pages::KnownProject>,
+    /// This copy's build number, for the project cards and About.
     pub(crate) this_build: Option<u64>,
-    /// Where the manual is, for the launcher's Learn page.
+    /// Where the manual is, for Learn and About.
     pub(crate) manual_url: String,
     /// How long the game's sound took last frame (the Profiler's Sound).
     pub(crate) sound_spent: std::time::Duration,
-    /// The Settings window, while it's open (File > Preferences).
-    pub(crate) settings_window: Option<crate::settings_window::SettingsWindow>,
     /// The Documents folder, for exports to go in by default.
     pub(crate) documents: Option<std::path::PathBuf>,
     /// How updating is going, as the app last said.
     pub(crate) update: crate::updates::UpdateNotice,
-    /// What the newer build found brings (the launcher's Updates page).
+    /// What the newer build found brings (File › Updates).
     pub(crate) release_notes: Option<crate::updates::ReleaseNotes>,
     /// Whether updates are checked when Solis starts.
     pub(crate) auto_update: bool,
@@ -388,13 +388,11 @@ impl Workbench {
             viewport: Viewport::default(),
             console: Console::default(),
             files_hovering: false,
-            about_open: false,
-            launcher: Default::default(),
+            file_pages: Default::default(),
             known_projects: Vec::new(),
             this_build: None,
             manual_url: String::new(),
             sound_spent: std::time::Duration::ZERO,
-            settings_window: None,
             documents: None,
             update: Default::default(),
             release_notes: None,
@@ -823,17 +821,6 @@ impl Workbench {
         // The Environment's Preview time (decision 0092), set in
         // Properties: the viewport shows the area at that hour.
         self.viewport.preview_hour = self.preview_hour(ui.ctx());
-        // The launcher, while it's up, is all there is.
-        if self.launcher(ui, &mut actions) {
-            // Asked over the launcher too: a game stopped by going to it
-            // never leaves its question unseen behind it.
-            self.play_changes_window(ui);
-            self.prompts(ui, &mut actions);
-            self.about(ui);
-            self.update_question(ui.ctx(), &mut actions);
-            actions.append(&mut self.open.outbox);
-            return actions;
-        }
         self.refresh_sheet_pictures(ui.ctx());
         self.viewport.idle = !self.wants_frames(ui.ctx());
         if ui.input(|i| i.pointer.any_pressed()) {
@@ -1229,13 +1216,9 @@ impl Workbench {
         if self.files_hovering {
             drop_hint(ui, self.accent);
         }
-        self.about(ui);
         self.play_changes_window(ui);
         // What waited for Keep or Undo all (a quit, say) goes on now.
         actions.append(&mut self.open.outbox);
-        self.input_actions_window(ui.ctx());
-        self.settings(ui.ctx(), &mut actions);
-        self.export_window(ui.ctx(), &mut actions);
         self.prompts(ui, &mut actions);
         self.update_question(ui.ctx(), &mut actions);
         self.hold_while_playing(&mut actions);
@@ -1727,25 +1710,6 @@ impl Workbench {
         if frame {
             self.frame_selection();
         }
-    }
-
-    fn about(&mut self, ui: &mut Ui) {
-        let mut open = self.about_open;
-        egui::Window::new(format!("About {}", self.info.name))
-            .open(&mut open)
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ui.ctx(), |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.heading(&self.info.name);
-                    ui.label(format!("Version {}", self.info.version));
-                    ui.add_space(8.0);
-                    ui.label("A free, open-source 3D game engine.");
-                    ui.label("Free software under the MIT licence.");
-                });
-            });
-        self.about_open = open;
     }
 }
 

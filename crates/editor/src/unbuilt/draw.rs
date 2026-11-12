@@ -128,6 +128,64 @@ pub fn ribbon_big(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> Response {
     finish(ui, response, part)
 }
 
+/// A part of something real that isn't built: only the mark, in the top
+/// right corner of `rect` (a project card's picture). The mark and the
+/// room round it can be pointed at and clicked.
+pub fn corner(ui: &mut Ui, rect: Rect, id: UnbuiltId) -> Response {
+    let part = begin(ui, id);
+    let reach = size::UNBUILT_MARK + 2.0 * size::UNBUILT_CORNER;
+    let spot = Rect::from_min_size(
+        pos2(
+            rect.right() - reach - size::UNBUILT_CORNER,
+            rect.top() + size::UNBUILT_CORNER,
+        ),
+        vec2(reach, reach),
+    );
+    corner_mark(ui, rect, 2.0 * size::UNBUILT_CORNER);
+    let response = ui.interact(
+        spot,
+        ui.id()
+            .with(("unbuilt corner", id, rect.min.x as i32, rect.min.y as i32)),
+        Sense::click(),
+    );
+    finish(ui, response, part)
+}
+
+/// A template's tile that isn't built: its icon, fainter, in the tile's
+/// box with the mark in the corner, and its name under it.
+pub fn template(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> Response {
+    let part = begin(ui, id);
+    let name_h = widgets::line_height(ui, &text::template_name());
+    let height = size::TEMPLATE_BOX_H + size::TEMPLATE_NAME_GAP + name_h;
+    let (rect, response) = ui.allocate_exact_size(vec2(size::TEMPLATE_W, height), Sense::click());
+    if ui.is_rect_visible(rect) {
+        let tile = Rect::from_min_size(rect.min, vec2(size::TEMPLATE_W, size::TEMPLATE_BOX_H));
+        let radius = size::radius::CARD;
+        ui.painter()
+            .rect_filled(tile, CornerRadius::same(radius), tokens::panel());
+        widgets::border(ui, tile, radius, tokens::field_border());
+        let spot = Rect::from_center_size(
+            tile.center(),
+            vec2(size::RIBBON_BIG_ICON, size::RIBBON_BIG_ICON),
+        );
+        icons::icon(ui.painter(), spot, icon, icon_ink());
+        corner_mark(ui, tile, 2.0 * size::UNBUILT_CORNER);
+        let words_at = Rect::from_min_max(
+            pos2(rect.left(), tile.bottom() + size::TEMPLATE_NAME_GAP),
+            rect.right_bottom(),
+        );
+        words(
+            ui,
+            words_at,
+            Align2::LEFT_TOP,
+            part.name,
+            text::template_name(),
+            ink(),
+        );
+    }
+    finish(ui, response, part)
+}
+
 /// What a small ribbon row is, apart from its name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RowKind {

@@ -1,6 +1,6 @@
-//! File > Preferences: the window, its pages and its search; the
-//! Appearance page, drawn with the design's own controls; and Hide
-//! unfinished parts, with the one unfinished part today's editor shows.
+//! File › Preferences: its sub-tabs and its search; the Appearance and
+//! General tabs, drawn with the design's own controls; and Hide
+//! unfinished parts.
 
 use super::*;
 use crate::panel::Panel;
@@ -8,19 +8,22 @@ use crate::test_support::*;
 use egui::accesskit::Role;
 use egui_kittest::kittest::{By, NodeT as _, Queryable};
 
-/// Opens Preferences (the Settings window), as File, Preferences and
-/// the search do.
+/// Opens Preferences, as File, Preferences and the search do, on its
+/// Appearance tab.
 fn opened() -> egui_kittest::Harness<'static, State> {
     let mut h = harness(Workbench::new(info()));
     h.run();
     run(&mut h, "Preferences");
+    assert_eq!(h.state().0.file_pages.page, Page::Preferences);
+    h.get_by_role_and_label(Role::Button, "Appearance").click();
+    h.run();
     h
 }
 
 #[test]
-fn edit_settings_opens_the_window_on_appearance() {
+fn preferences_is_a_page_with_appearance_among_its_tabs() {
     let h = opened();
-    assert!(h.state().0.settings_window.is_some());
+    assert_eq!(h.state().0.file_pages.prefs_tab, Tab::Appearance);
     assert!(
         h.query_by_role_and_label(Role::Label, "Accent colour")
             .is_some()
@@ -56,8 +59,8 @@ fn choosing_an_accent_changes_the_editor_s_colour() {
         style.visuals.selection.bg_fill,
         crate::tokens::select_row(Accent::Purple)
     );
-    // Reset this page puts the standard one back.
-    h.get_by_label("Reset this page").click();
+    // Reset to defaults puts the standard one back.
+    h.get_by_label("Reset to defaults").click();
     h.run();
     assert_eq!(h.state().0.accent(), Accent::default());
 }
@@ -109,14 +112,9 @@ fn interface_scale_draws_everything_larger_and_reset_puts_it_back() {
     assert!((narrow * 1.5 - wide).abs() < 1.0, "{wide} then {narrow}");
     // The accent kept its choice.
     assert_eq!(h.state().0.accent(), Accent::default());
-    // The Settings window never outgrows the editor's: with less room
-    // its page scrolls, so the foot of the page is scrolled to.
-    let screen = h.ctx.content_rect();
-    let window = h.get_by_role_and_label(Role::Window, "Settings").rect();
-    assert!(screen.contains_rect(window), "{window:?} in {screen:?}");
-    h.get_by_label("Reset this page").scroll_to_me();
+    h.get_by_label("Reset to defaults").scroll_to_me();
     h.run();
-    h.get_by_label("Reset this page").click();
+    h.get_by_label("Reset to defaults").click();
     h.run();
     h.run();
     assert_eq!(
@@ -151,7 +149,7 @@ fn density_makes_buttons_and_fields_taller_or_shorter() {
     pick(&mut h, "Comfortable");
     h.run();
     assert_eq!(height(&h), 28.0);
-    h.get_by_label("Reset this page").click();
+    h.get_by_label("Reset to defaults").click();
     h.run();
     h.run();
     assert_eq!(height(&h), 24.0);
@@ -166,17 +164,17 @@ fn reset_this_page_leaves_the_switches_of_other_pages_alone() {
         ribbon_labels: false,
         ..theme::InterfaceLook::default()
     });
-    w.open_settings();
+    w.show_settings(Tab::Appearance);
     let mut h = harness(w);
     h.ctx.set_fonts(theme::fonts());
     h.run();
-    h.get_by_label("Reset this page").click();
+    h.get_by_label("Reset to defaults").click();
     h.run();
     let look = h.state().0.interface_look();
     assert_eq!(look.accent, Accent::default());
-    // Hide unfinished parts is on this page, so it goes back too; the
-    // ribbon's labels aren't, and keep their choice.
-    assert!(!look.hide_unfinished);
+    // Hide unfinished parts is on General, and the ribbon's labels on no
+    // tab: both keep their choice.
+    assert!(look.hide_unfinished);
     assert!(!look.ribbon_labels);
     theme::restyle(&h.ctx, theme::InterfaceLook::default());
 }
@@ -184,7 +182,8 @@ fn reset_this_page_leaves_the_switches_of_other_pages_alone() {
 #[test]
 fn reset_layout_puts_the_tab_s_middle_back() {
     let mut h = opened();
-    let tab = h.state().0.ribbon_tab();
+    // The tab File was opened from.
+    let tab = crate::shell::RibbonTab::Home;
     let standard = h.state().0.shell.arrangement(tab);
     {
         let w = &mut h.state_mut().0;
@@ -200,13 +199,13 @@ fn reset_layout_puts_the_tab_s_middle_back() {
 #[test]
 fn the_search_box_narrows_the_settings() {
     let mut w = Workbench::new(info());
-    w.open_settings();
-    w.settings_window.as_mut().unwrap().search = "layout".into();
+    w.show_settings(Tab::General);
+    w.file_pages.settings_search = "layout".into();
     let mut h = harness(w);
     h.run();
-    assert!(h.query_by_label("Reset layout").is_some());
+    assert!(h.query_by_label("Reset layout").is_some(), "found on another tab");
     assert!(h.query_all_by_label("Accent colour").next().is_none());
-    h.state_mut().0.settings_window.as_mut().unwrap().search = "zebra".into();
+    h.state_mut().0.file_pages.settings_search = "zebra".into();
     h.run();
     assert!(h.query_by_label("No setting matches that.").is_some());
 }
@@ -235,8 +234,10 @@ fn search_finds_settings_by_name_hint_or_page() {
     assert!(Setting::Accent.matches("colour"));
     assert!(Setting::Layout.matches("panel"));
     assert!(Setting::Layout.matches("appearance"));
+    assert!(Setting::BaseResolution.matches("2d pixels"));
+    assert!(Setting::GameName.matches("build saves"));
     assert!(Setting::Scale.matches("scale"));
-    assert!(Setting::Scale.matches("larger"));
+    assert!(Setting::Scale.matches("sharp"));
     assert!(Setting::Density.matches("compact"));
     // Every word must be found.
     assert!(Setting::Accent.matches("accent colour"));
@@ -245,128 +246,79 @@ fn search_finds_settings_by_name_hint_or_page() {
 }
 
 #[test]
-fn every_setting_is_on_a_listed_page() {
+fn every_setting_is_on_a_listed_tab_and_drawn_there() {
+    use crate::unbuilt::Entry;
+    let tabs: Vec<Tab> = Tab::preferences()
+        .into_iter()
+        .chain(Tab::project())
+        .filter_map(|e| match e {
+            Entry::Built(tab) => Some(tab),
+            Entry::Unbuilt(_) => None,
+        })
+        .collect();
     for setting in Setting::ALL {
-        assert!(Page::ALL.contains(&setting.page()), "{}", setting.name());
+        let tab = setting.tab();
+        assert!(tabs.contains(&tab), "{}", setting.name());
+        let on_it = tab
+            .sections()
+            .into_iter()
+            .flat_map(|(_, rows)| rows)
+            .any(|row| row == Entry::Built(setting));
+        assert!(on_it, "{} is in its tab's sections", setting.name());
     }
 }
 
-/// The Settings window on Appearance, in the editor's own fonts and
-/// standard look, as the app shows it.
-fn appearance() -> egui_kittest::Harness<'static, State> {
-    let mut h = opened();
-    theme::restyle(&h.ctx, theme::InterfaceLook::default());
+
+/// Preferences on `tab`, in the editor's own fonts and standard look.
+fn on(tab: Tab, look: theme::InterfaceLook) -> egui_kittest::Harness<'static, State> {
+    let mut w = Workbench::new(info()).with_interface_look(look);
+    w.show_settings(tab);
+    let mut h = harness(w);
+    h.ctx.set_fonts(theme::fonts());
+    theme::restyle(&h.ctx, look);
+    h.run();
     h.run();
     h
 }
 
-/// The unfinished parts in the Settings window: not the frame's own
-/// (the tab bar's and the ribbon's above it, the shelf bar's and the
-/// status bar's under it).
-fn unbuilt_in_the_window<'h>(
-    h: &'h egui_kittest::Harness<'static, State>,
-) -> Vec<egui_kittest::Node<'h>> {
-    use crate::tokens::size;
-    use crate::unbuilt::{UnbuiltId, get};
-    let frame: Vec<&str> = [
-        UnbuiltId::ShellStatusBranch,
-        UnbuiltId::HomeShelfAnimation,
-        UnbuiltId::HomeShelfTransport,
-        UnbuiltId::HomeShelfFrameCounter,
-        UnbuiltId::HomeToolPose,
-        UnbuiltId::HomeToolMotionPath,
-        UnbuiltId::HomeToolAddKey,
-        UnbuiltId::HomeToolMeasure,
-    ]
-    .into_iter()
-    .map(|id| get(id).name)
-    .collect();
-    h.query_all(
-        By::new()
-            .predicate(|node| node.description().as_deref() == Some(crate::unbuilt::DESCRIPTION)),
-    )
-    .filter(|node| node.rect().top() >= size::TAB_BAR_H + size::RIBBON_H)
-    .filter(|node| {
-        let label = node.accesskit_node().label().unwrap_or_default();
-        !frame.contains(&label.as_str())
-    })
-    .collect()
-}
-
-/// The names of everything in the window described as not built yet.
-fn described_as_unbuilt(h: &egui_kittest::Harness<'static, State>) -> Vec<String> {
-    unbuilt_in_the_window(h)
-        .iter()
-        .map(|node| node.accesskit_node().label().unwrap_or_default())
-        .collect()
-}
-
-/// The one unfinished part on the page.
-fn unbuilt_row<'h>(h: &'h egui_kittest::Harness<'static, State>) -> egui_kittest::Node<'h> {
-    let mut parts = unbuilt_in_the_window(h);
-    assert_eq!(parts.len(), 1, "one unfinished part on the page");
-    parts.remove(0)
-}
-
 #[test]
-fn the_appearance_page_is_laid_out_as_the_design_s_settings_are() {
+fn the_appearance_tab_is_laid_out_as_the_design_s_settings_are() {
     use crate::tokens::size;
-    let h = appearance();
-    // Small capitals over each section.
+    let h = on(Tab::Appearance, theme::InterfaceLook::default());
     for caps in ["THEME", "LAYOUT"] {
         assert!(h.query_by_label(caps).is_some(), "{caps}");
     }
-    // Each control is the design's own, at the design's size.
     let rect_of = |role: Role, name: &str| h.get_by_role_and_label(role, name).rect();
-    let toggle = rect_of(Role::CheckBox, "Show hints");
-    assert_eq!([toggle.width(), toggle.height()], size::TOGGLE);
-    let hide = rect_of(Role::CheckBox, "Hide unfinished parts");
-    assert_eq!([hide.width(), hide.height()], size::TOGGLE);
     let swatch = rect_of(Role::RadioButton, "Blue");
     assert_eq!([swatch.width(), swatch.height()], [size::SWATCH; 2]);
-    assert_eq!(
-        rect_of(Role::RadioButton, "Default").height(),
-        size::SEGMENT_H
-    );
+    assert_eq!(rect_of(Role::RadioButton, "Default").height(), size::SEGMENT_H);
     let scale = rect_of(Role::ComboBox, "Interface scale");
-    assert_eq!(
-        [scale.width(), scale.height()],
-        [size::SETTING_FIELD_W, 24.0]
-    );
+    assert_eq!([scale.width(), scale.height()], [size::SETTING_FIELD_W, 24.0]);
     let reset = rect_of(Role::Button, "Reset layout");
     assert_eq!(reset.height(), size::PAGE_BUTTON_H);
     // Every row's control ends at the same right edge, the names start
     // at the same left edge, and the rows come in the design's order.
     let purple = rect_of(Role::RadioButton, "Purple");
-    for control in [toggle, hide, scale, reset] {
+    for control in [scale, reset, rect_of(Role::ComboBox, "Shelf opens on")] {
         assert_eq!(control.right(), purple.right());
     }
-    let names: Vec<egui::Rect> = [
-        "Accent colour",
-        "Interface scale",
-        "Density",
-        "Panel layout",
-        "Hints",
-        "Hide unfinished parts",
-    ]
-    .iter()
-    .map(|name| rect_of(Role::Label, name))
-    .collect();
+    let names: Vec<egui::Rect> = ["Accent colour", "Interface scale", "Density", "Shelf opens on", "Panel layout"]
+        .iter()
+        .map(|name| rect_of(Role::Label, name))
+        .collect();
     for pair in names.windows(2) {
         assert_eq!(pair[0].left(), pair[1].left());
         assert!(pair[0].top() < pair[1].top());
     }
-    // A name is to the left of its control, with room between.
     assert!(names[1].right() + size::SETTING_COLUMN_GAP <= scale.left());
     theme::restyle(&h.ctx, theme::InterfaceLook::default());
 }
 
 #[test]
-fn the_page_is_used_from_the_keyboard() {
+fn the_tabs_are_used_from_the_keyboard() {
     use egui::Key;
-    let mut h = appearance();
-    h.get_by_role_and_label(Role::CheckBox, "Show hints")
-        .focus();
+    let mut h = on(Tab::General, theme::InterfaceLook::default());
+    h.get_by_role_and_label(Role::CheckBox, "Show hints").focus();
     h.run();
     assert!(h.state().0.hints_on());
     h.key_press(Key::Space);
@@ -375,24 +327,19 @@ fn the_page_is_used_from_the_keyboard() {
     h.key_press(Key::Enter);
     h.run();
     assert!(h.state().0.hints_on());
-    // The arrow keys move along the accents and the densities.
+    h.state_mut().0.show_settings(Tab::Appearance);
+    h.run();
     h.get_by_role_and_label(Role::RadioButton, "Blue").focus();
     h.run();
     h.key_press(Key::ArrowRight);
     h.run();
     assert_eq!(h.state().0.accent(), Accent::Grey);
-    h.get_by_role_and_label(Role::RadioButton, "Default")
-        .focus();
+    h.get_by_role_and_label(Role::RadioButton, "Default").focus();
     h.run();
     h.key_press(Key::ArrowLeft);
     h.run();
-    assert_eq!(
-        h.state().0.interface_look().density,
-        theme::Density::Compact
-    );
-    // And step the scale without opening its list.
-    h.get_by_role_and_label(Role::ComboBox, "Interface scale")
-        .focus();
+    assert_eq!(h.state().0.interface_look().density, theme::Density::Compact);
+    h.get_by_role_and_label(Role::ComboBox, "Interface scale").focus();
     h.run();
     h.key_press(Key::ArrowDown);
     h.run();
@@ -402,105 +349,104 @@ fn the_page_is_used_from_the_keyboard() {
 
 #[test]
 fn code_editor_split_is_shown_as_a_part_that_is_not_built_yet() {
-    use crate::unbuilt::{self, UnbuiltId};
-    let mut h = appearance();
-    assert_eq!(described_as_unbuilt(&h), ["Code editor split"]);
+    use crate::unbuilt::{self, UnbuiltId, get};
+    let mut h = on(Tab::Appearance, theme::InterfaceLook::default());
     assert!(unbuilt::drawn(&h.ctx).contains(&UnbuiltId::PrefsCodeSplit));
-    // It stands last in the Layout section, a row like the others.
-    let row = unbuilt_row(&h).rect();
-    let hide = h
-        .get_by_role_and_label(Role::CheckBox, "Hide unfinished parts")
-        .rect();
-    assert!(row.top() > hide.bottom());
-    assert_eq!(row.right(), hide.right());
-    // A click changes nothing and says so at the right of the status bar.
+    let row = h.get_by_label(get(UnbuiltId::PrefsCodeSplit).name).rect();
+    let layout = h.get_by_role_and_label(Role::Button, "Reset layout").rect();
+    assert!(row.top() > layout.bottom(), "last in Layout");
     let before = h.state().0.interface_look();
-    unbuilt_row(&h).click();
+    h.get_by_label(get(UnbuiltId::PrefsCodeSplit).name).click();
     h.step();
     h.step();
     let words = "Code editor split isn't built yet (not planned yet)";
     assert!(h.query_by_label(words).is_some());
     assert_eq!(h.state().0.interface_look(), before);
-    for _ in 0..14 {
-        h.step();
-    }
-    assert!(
-        h.query_by_label(words).is_none(),
-        "the words go by themselves"
-    );
     theme::restyle(&h.ctx, theme::InterfaceLook::default());
 }
 
 #[test]
-fn hide_unfinished_parts_takes_it_away_and_shows_it_again() {
-    let mut h = appearance();
-    let tops = |h: &egui_kittest::Harness<'static, State>| -> Vec<f32> {
-        ["Hints", "Hide unfinished parts"]
-            .iter()
-            .map(|name| h.get_by_role_and_label(Role::Label, name).rect().top())
-            .collect()
-    };
-    let before = tops(&h);
-    h.get_by_role_and_label(Role::CheckBox, "Hide unfinished parts")
-        .click();
+fn hide_unfinished_parts_takes_them_away_and_shows_them_again() {
+    use crate::unbuilt::{self, UnbuiltId};
+    let mut h = on(Tab::General, theme::InterfaceLook::default());
+    assert!(unbuilt::drawn(&h.ctx).contains(&UnbuiltId::PrefsTabInput), "a sub-tab");
+    let hints = h.get_by_role_and_label(Role::Label, "Show hints").rect().top();
+    h.get_by_role_and_label(Role::CheckBox, "Hide unfinished parts").click();
     h.run();
     h.run();
     assert!(h.state().0.interface_look().hide_unfinished);
-    assert!(crate::unbuilt::hidden());
-    assert!(described_as_unbuilt(&h).is_empty());
-    assert!(crate::unbuilt::drawn(&h.ctx).is_empty());
-    assert!(h.query_by_label("Code editor split").is_none());
-    // Everything that works is where it was.
-    assert_eq!(tops(&h), before);
-    // The switch shows it is on, and turns it off again.
-    let switch = h.get_by_role_and_label(Role::CheckBox, "Hide unfinished parts");
-    assert_eq!(
-        switch.accesskit_node().toggled(),
-        Some(egui::accesskit::Toggled::True)
-    );
-    switch.click();
+    assert!(unbuilt::drawn(&h.ctx).is_empty());
+    assert!(h.query_by_label("How an unfinished part looks").is_none());
+    assert_eq!(h.get_by_role_and_label(Role::Label, "Show hints").rect().top(), hints);
+    h.get_by_role_and_label(Role::CheckBox, "Hide unfinished parts").click();
     h.run();
     h.run();
     assert!(!h.state().0.interface_look().hide_unfinished);
-    assert_eq!(described_as_unbuilt(&h), ["Code editor split"]);
-    theme::restyle(&h.ctx, theme::InterfaceLook::default());
-}
-
-#[test]
-fn an_editor_started_with_them_hidden_never_draws_one() {
-    let mut w = Workbench::new(info()).with_interface_look(theme::InterfaceLook {
-        hide_unfinished: true,
-        ..theme::InterfaceLook::default()
-    });
-    w.open_settings();
-    let mut h = harness(w);
-    h.ctx.set_fonts(theme::fonts());
-    h.run();
-    h.run();
-    assert!(described_as_unbuilt(&h).is_empty());
-    assert!(crate::unbuilt::drawn(&h.ctx).is_empty());
-    assert!(h.query_by_role_and_label(Role::Label, "Hints").is_some());
+    assert!(unbuilt::drawn(&h.ctx).contains(&UnbuiltId::PrefsTabInput));
     theme::restyle(&h.ctx, theme::InterfaceLook::default());
 }
 
 #[test]
 fn searching_the_settings_finds_the_switch_and_never_an_unfinished_part() {
-    let mut w = Workbench::new(info());
-    w.open_settings();
-    w.settings_window.as_mut().unwrap().search = "unfinished".into();
-    let mut h = harness(w);
-    h.ctx.set_fonts(theme::fonts());
+    let mut h = on(Tab::Appearance, theme::InterfaceLook::default());
+    h.state_mut().0.file_pages.settings_search = "unfinished".into();
     h.run();
     h.run();
-    assert!(
-        h.query_by_role_and_label(Role::CheckBox, "Hide unfinished parts")
-            .is_some()
-    );
-    h.state_mut().0.settings_window.as_mut().unwrap().search = "code editor".into();
+    assert!(h.query_by_role_and_label(Role::CheckBox, "Hide unfinished parts").is_some());
+    h.state_mut().0.file_pages.settings_search = "code editor".into();
     h.run();
     assert!(h.query_by_label("No setting matches that.").is_some());
-    assert!(described_as_unbuilt(&h).is_empty());
     assert!(Setting::HideUnfinished.matches("hide"));
-    assert!(Setting::HideUnfinished.matches("grey mark"));
     theme::restyle(&h.ctx, theme::InterfaceLook::default());
+}
+
+#[test]
+fn the_viewport_tab_changes_what_the_viewport_shows() {
+    let mut h = on(Tab::Viewport, theme::InterfaceLook::default());
+    assert!(h.state().0.viewport.overlays.stats);
+    h.get_by_role_and_label(Role::CheckBox, "Frame time and frame rate").click();
+    h.run();
+    assert!(!h.state().0.viewport.overlays.stats);
+    h.get_all_by_role_and_label(Role::RadioButton, "Tiles").next().unwrap().click();
+    h.run();
+    assert_eq!(
+        h.state().0.viewport.snapping.pixel_snap,
+        crate::transforming::PixelSnap::Tiles
+    );
+    h.get_by_role_and_label(Role::RadioButton, "Stylized").click();
+    h.run();
+    assert_eq!(h.state().0.viewport.look.kind, crate::look::LookKind::Stylized);
+    h.get_by_label("Reset to defaults").click();
+    h.run();
+    assert!(h.state().0.viewport.overlays.stats);
+    assert_eq!(h.state().0.viewport.look.kind, crate::look::LookKind::Standard);
+    theme::restyle(&h.ctx, theme::InterfaceLook::default());
+}
+
+#[test]
+fn shelf_opens_on_entity_brings_it_to_the_front_when_something_is_selected() {
+    use crate::interface_look::ShelfOpensOn;
+    use crate::shell::{RibbonTab, workspaces::ShelfTab};
+    let (w, crate_id) = with_a_crate();
+    let mut h = harness(w.with_interface_look(theme::InterfaceLook {
+        shelf_opens_on: ShelfOpensOn::Entity,
+        ..theme::InterfaceLook::default()
+    }));
+    h.run();
+    h.state_mut().0.show_panel(Panel::Console);
+    h.state_mut().0.open.document.selection.clear();
+    h.run();
+    h.state_mut().0.open.document.selection.select(crate_id);
+    h.run();
+    assert_eq!(h.state().0.shell.arrangement(RibbonTab::Home).shelf_tab, ShelfTab::Entity);
+    // As it is (the standard): the Console stays.
+    let mut look = h.state().0.interface_look();
+    look.shelf_opens_on = ShelfOpensOn::AsItIs;
+    h.state_mut().0.interface = look;
+    h.state_mut().0.show_panel(Panel::Console);
+    h.state_mut().0.open.document.selection.clear();
+    h.run();
+    h.state_mut().0.open.document.selection.select(crate_id);
+    h.run();
+    assert_eq!(h.state().0.shell.arrangement(RibbonTab::Home).shelf_tab, ShelfTab::Console);
 }

@@ -26,6 +26,7 @@ pub struct Button<'a> {
     icon: Option<Icon>,
     header: bool,
     wide: bool,
+    after: bool,
 }
 
 impl<'a> Button<'a> {
@@ -36,6 +37,7 @@ impl<'a> Button<'a> {
             icon: None,
             header: false,
             wide: false,
+            after: false,
         }
     }
 
@@ -57,6 +59,13 @@ impl<'a> Button<'a> {
     /// With an icon before its word.
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
+        self
+    }
+
+    /// With an icon after its word: "Open the manual ↗".
+    pub fn icon_after(mut self, icon: Icon) -> Self {
+        self.icon = Some(icon);
+        self.after = true;
         self
     }
 
@@ -116,13 +125,20 @@ impl<'a> Button<'a> {
             border(ui, rect, radius, tokens::strong_line());
         }
         let mut left = rect.center().x - content / 2.0;
+        let icon_left = if self.after {
+            left + content - size::ICON_SMALL
+        } else {
+            left
+        };
         if let Some(icon) = self.icon {
             let spot = Rect::from_center_size(
-                egui::pos2(left + size::ICON_SMALL / 2.0, rect.center().y),
+                egui::pos2(icon_left + size::ICON_SMALL / 2.0, rect.center().y),
                 vec2(size::ICON_SMALL, size::ICON_SMALL),
             );
             icons::icon(ui.painter(), spot, icon, ink);
-            left += icon_w;
+            if !self.after {
+                left += icon_w;
+            }
         }
         let room = Rect::from_min_max(egui::pos2(left, rect.top()), rect.right_bottom());
         words(ui, room, Align2::LEFT_CENTER, self.label, font, ink);
