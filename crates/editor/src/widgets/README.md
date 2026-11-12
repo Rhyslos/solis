@@ -19,7 +19,8 @@ Every control follows the accent, the density and the interface scale through th
 | `slider.rs` | The slider: a thin track filled with the accent up to a round light knob. |
 | `tile.rs` | A tile: a square thumbnail over a name (cut off with "...") and a kind with its dot; chosen, it takes the accent. |
 | `rows.rs` | `setting_row` (a name and a line about it on the left, the control in a 260 px column at the right, a hairline under), `key_value`, `section_caps` and `column_header`. |
-| `field.rs` | The field (24 tall, its border the accent while the keyboard is in it): `text_field`, `number_field` (with an axis letter) and `dropdown`, which is meant to be the one drop-down everywhere. The editing inside is egui's own. |
+| `field.rs` | The field (24 tall, its border the accent while the keyboard is in it or it is dragged): `text_field`, `number_field` (with an axis letter), `framed` (the box round any of egui's editing, as Properties' fields use it) and `dropdown`, which is meant to be the one drop-down everywhere. The editing inside is egui's own. |
+| `menu.rs` | The rows of the design's menus: `item` (with quiet words after it, a key), `choice` and `check` (a check mark while in force), `caps` (small capitals over a group) and `line`. They go inside egui's own menus. |
 | `dashed.rs` | A dashed outline round a rounded rectangle, which egui can't draw itself. |
 | `sheet.rs` | Test only: the widget sheet, one page with every control in each of its states. |
 | `tests.rs` | Each control measured against the tokens, found by its name, pressed, and driven from the keyboard. |

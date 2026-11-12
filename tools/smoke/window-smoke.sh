@@ -154,14 +154,13 @@ echo "Sky at (300, 156): $R $G $B (expected a dark neutral grey)"
     fail "the sky is tinted, not neutral: ($R, $G, $B)"
 grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 
-# 2. W picks the Move tool: its button in the tool bar lights up. Only
-#    the buttons themselves are compared: the bar is a little see-through
-#    (the design's pill), so the viewport moving behind and around it must
-#    not count.
+# 2. W picks the Move tool: its button in the toolbox (the column down
+#    the viewport's left edge) lights up. Only the toolbox's transform
+#    tools are compared, so the viewport moving beside it doesn't count.
 xdotool key --window "$WINDOW_ID" w || true
 shot move-tool
-TOOL_CHANGE="$(changed_pixels first move-tool 160x26+635+${TOOLS_Y:-508})"
-echo "Pixels changed in the tool bar by pressing W: $TOOL_CHANGE"
+TOOL_CHANGE="$(changed_pixels first move-tool 34x180+5+${TOOLS_Y:-136})"
+echo "Pixels changed in the toolbox by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
 # 3. Fly: hold the right mouse button in the viewport, turn a little and
@@ -183,8 +182,8 @@ shot flown
 FLY_CHANGE="$(changed_pixels move-tool flown 800x370+280+140)"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
 [ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
-TOOL_AFTER="$(changed_pixels move-tool flown 160x26+635+${TOOLS_Y:-508})"
-echo "Pixels changed in the tool bar by flying: $TOOL_AFTER"
+TOOL_AFTER="$(changed_pixels move-tool flown 34x180+5+${TOOLS_Y:-136})"
+echo "Pixels changed in the toolbox by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 
 # Drags with the left button from ($1, $2) by ($3, $4), in steps.

@@ -49,7 +49,7 @@ const OLD_ACCENT_KEY: &str = "accent";
 /// the launcher's size while it's up, and this size again once a project
 /// opens (the project lead, 2026-11-06).
 const EDITOR_SIZE_KEY: &str = "editor_size";
-/// Key under which whether the Hints panel shows hints is remembered.
+/// Key under which whether the Hints card shows hints is remembered.
 const HINTS_KEY: &str = "hints";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
