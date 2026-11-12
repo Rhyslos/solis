@@ -5,7 +5,9 @@
 use super::group;
 use crate::icons::Icon;
 use crate::shell::ShellCommand as C;
-use crate::shell::ribbon::{Group, Shape, big, big_list, row, row_list, switch, unbuilt_at};
+use crate::shell::ribbon::{
+    Group, Shape, Steps, big, big_list, row, row_list, switch, switch_with_steps, unbuilt_at,
+};
 use crate::unbuilt::{Entry, RowKind, UnbuiltId};
 use crate::workbench::Workbench;
 
@@ -61,8 +63,16 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
         group!(
             None,
             [
-                switch(format!("Grid · {}", snapping.grid_step), C::SnapToGrid),
-                switch(format!("Angle · {}°", snapping.angle_step), C::SnapAngles),
+                switch_with_steps(
+                    format!("Grid · {}", snapping.grid_step),
+                    C::SnapToGrid,
+                    Steps::Grid,
+                ),
+                switch_with_steps(
+                    format!("Angle · {}°", snapping.angle_step),
+                    C::SnapAngles,
+                    Steps::Angle,
+                ),
                 switch("Scale · 10%", C::SnapScale),
             ]
         ),

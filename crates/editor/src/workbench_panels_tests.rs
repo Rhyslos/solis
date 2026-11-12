@@ -380,8 +380,9 @@ fn components_are_added_to_and_removed_from_several_at_once() {
 }
 
 #[test]
-fn the_area_panel_s_edit_menu_has_the_selection_commands() {
-    let (w, _, _, _) = a_room();
+fn a_right_click_on_a_row_selects_it_and_opens_its_menu_of_commands() {
+    let (w, _, _, crate_id) = a_room();
+    let crate_name = w.open.document.area().get(crate_id).unwrap().name.clone();
     let mut h = harness(w);
     h.run();
     // The same things the search does by name.
@@ -397,21 +398,57 @@ fn the_area_panel_s_edit_menu_has_the_selection_commands() {
             "{item}"
         );
     }
-    let menus = h.query_all_by_label("Edit").count();
-    let mut found = 0;
-    for i in 0..menus {
-        h.query_all_by_label("Edit").nth(i).unwrap().click();
-        h.run();
-        if h.query_by_label_contains("Select nothing").is_some() {
-            found += 1;
-            for item in ["Duplicate", "Delete", "Rename", "Select all"] {
-                assert!(h.query_by_label_contains(item).is_some(), "{item}");
-            }
-        }
-        h.key_press(egui::Key::Escape);
-        h.run();
+    let before = h.state().0.open.document.area().len();
+    h.get_by_label(&crate_name).click_secondary();
+    h.run();
+    h.run();
+    assert!(h.state().0.open.document.selection.contains(crate_id));
+    for item in [
+        "Rename",
+        "Duplicate",
+        "Delete",
+        "Add entity",
+        "Add point light",
+        "Add spotlight",
+        "Add camera",
+        "Create assembly from selection",
+        "Select all",
+        "Select nothing",
+    ] {
+        // (Add entity is the ribbon's Empty's name too.)
+        assert!(h.query_all_by_label(item).next().is_some(), "{item}");
     }
-    assert!(found >= 1, "in the Area panel: {found}");
+    h.get_by_label("Duplicate").click();
+    h.run();
+    h.run();
+    assert_eq!(
+        h.state().0.open.document.area().len(),
+        before + 1,
+        "a copy was made"
+    );
+}
+
+#[test]
+fn the_area_header_searches_folds_and_unhides() {
+    let (mut w, room, _, crate_id) = a_room();
+    w.open.area_panel.hidden.insert(crate_id);
+    let mut h = harness(w);
+    h.run();
+    h.get_by_label("Fold everything").click();
+    h.run();
+    assert!(h.state().0.open.area_panel.collapsed.contains(&room));
+    h.get_by_label("More of the Area column").click();
+    h.run();
+    h.get_by_label("Show everything hidden").click();
+    h.run();
+    assert!(h.state().0.open.area_panel.hidden.is_empty());
+    h.get_by_label("Search the area by name").click();
+    h.run();
+    h.get_by_label("Search the area").type_text("point");
+    h.run();
+    h.run();
+    assert_eq!(h.state().0.open.area_panel.search, "point");
+    assert!(listed(&h, "Point light 1"));
 }
 
 #[test]

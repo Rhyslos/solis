@@ -35,14 +35,14 @@ impl ShellCommand {
                 "Stop snapping scale",
                 w.viewport.snapping.scale,
             ),
-            C::ViewportTools => switch(w.viewport.overlays.tools, "the viewport's tools"),
+            C::ViewportTools => switch(w.viewport.overlays.tools, "the toolbox"),
             C::ViewportSnapping => switch(
                 w.viewport.overlays.snapping,
-                "the viewport's grid, angle and camera speed",
+                "the viewport's axis locks and camera speed",
             ),
             C::ViewportStats => switch(
                 w.viewport.overlays.stats,
-                "the viewport's frame rate and entity count",
+                "the viewport's frame time and frame rate",
             ),
             C::ProfilerCpu => switch(!w.profiler.hide_cpu, "the CPU's times in the Profiler"),
             C::ProfilerGpu => switch(!w.profiler.hide_gpu, "the GPU's times in the Profiler"),
@@ -216,8 +216,8 @@ impl ShellCommand {
                 "Saves the selected entity, and everything under it, as an assembly in the project, \
                  and turns it into a copy of it"
             }
-            C::SnapToGrid => "Moves land on the grid. Its step is chosen in the viewport's corner",
-            C::SnapAngles => "Turns go in steps. The step is chosen in the viewport's corner",
+            C::SnapToGrid => "Moves land on the grid. A click on its step chooses another",
+            C::SnapAngles => "Turns go in steps. A click on the step chooses another",
             C::SnapScale => "Scaling goes in steps of 10%",
             C::Step => "Runs the paused game for one tick",
             C::LoadSave => {

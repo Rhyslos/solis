@@ -85,6 +85,14 @@ pub const TOOLBOX_W: f32 = 44.0;
 pub const TOOL_BUTTON: f32 = 34.0;
 /// A toolbox button's icon.
 pub const TOOL_ICON: f32 = 15.0;
+/// Space above the toolbox's first tool and below its last (from the HTML).
+pub const TOOLBOX_PAD: f32 = 6.0;
+/// Space between the toolbox's tools (from the HTML).
+pub const TOOL_GAP: f32 = 2.0;
+/// How long the line between kinds of tool is (from the HTML).
+pub const TOOL_DIVIDER: f32 = 22.0;
+/// Space above and below that line (from the HTML).
+pub const TOOL_DIVIDER_GAP: f32 = 4.0;
 
 /// The shelf bar's height.
 pub const SHELF_BAR_H: f32 = 34.0;
@@ -126,11 +134,33 @@ pub const COLUMN_HEADER_H: f32 = 30.0;
 pub const ROW_PAD: f32 = 12.0;
 /// How far a tree's children are set in.
 pub const TREE_INDENT: f32 = 28.0;
+/// How much further in each level of the Area column's tree is (from the
+/// approved additions, round 2).
+pub const TREE_LEVEL: f32 = 18.0;
+/// The room before a tree row for its fold arrow.
+pub const TREE_FOLD_W: f32 = 14.0;
+/// The fold arrow itself.
+pub const FOLD_ICON: f32 = 9.0;
+/// An icon on a list row (an entity's kind, its hide and lock switches).
+pub const ROW_ICON: f32 = 12.0;
+/// The room for each of a row's hide and lock switches.
+pub const ROW_SWITCH: f32 = 16.0;
 /// A track's or lane's height.
 pub const TRACK_H: f32 = 26.0;
 
 /// A field's padding at each side.
 pub const FIELD_PAD: f32 = 7.0;
+/// The column of names before a card's fields (Solis's own: the design's
+/// names are a word or two).
+pub const FIELD_LABEL_W: f32 = 84.0;
+/// Room before a field's name for the changed-from-its-start dot.
+pub const FIELD_DOT_W: f32 = 8.0;
+/// That dot.
+pub const FIELD_DOT: f32 = 5.0;
+/// The narrowest a card's field gets.
+pub const FIELD_MIN_W: f32 = 60.0;
+/// Room after a field for its way back ("↺ 1000").
+pub const FIELD_AFTER_W: f32 = 64.0;
 /// The gap between a field's parts, and between small controls.
 pub const GAP: f32 = 6.0;
 /// The gap between rows of controls.
@@ -143,6 +173,18 @@ pub const ICON_SMALL: f32 = 14.0;
 pub const PILL_H: f32 = 24.0;
 /// A floating pill's padding at each side.
 pub const PILL_PAD: f32 = 8.0;
+/// Space between pills side by side (from the HTML).
+pub const PILL_GAP: f32 = 6.0;
+/// How far pills sit from the view's edges (from the HTML).
+pub const PILL_MARGIN: f32 = 8.0;
+/// Space between a pill's icon or word and what follows it.
+pub const PILL_ICON_GAP: f32 = 6.0;
+/// The narrowest a pill's list is.
+pub const PILL_MENU_W: f32 = 180.0;
+/// An axis lock's button inside its pill.
+pub const LOCK_BUTTON: f32 = 18.0;
+/// Space between axis locks.
+pub const LOCK_GAP: f32 = 2.0;
 /// The status bar's height.
 pub const STATUS_BAR_H: f32 = 24.0;
 /// The gap between the status bar's parts.
@@ -286,6 +328,15 @@ pub const FILE_MENU_ITEM_GAP: f32 = 10.0;
 pub const MENU_PAD: f32 = 4.0;
 /// The height of a row in a menu or a drop-down list. Solis's own.
 pub const MENU_ROW_H: f32 = 24.0;
+/// The small capitals over a group of a menu's rows (from the approved
+/// additions, round 2).
+pub const MENU_CAPS_H: f32 = 20.0;
+/// Room before a menu row's words for its check mark.
+pub const MENU_CHECK_W: f32 = 21.0;
+/// A menu row's check mark.
+pub const MENU_CHECK_ICON: f32 = 11.0;
+/// Room at a menu row's right for quiet words after it (a key, a count).
+pub const MENU_AFTER_W: f32 = 24.0;
 /// A scroll bar's width. Solis's own.
 pub const SCROLL_BAR: f32 = 8.0;
 /// The width of every border and separator, before the hairline rule.

@@ -905,7 +905,6 @@ impl Workbench {
         self.refresh_screen_pictures();
         self.refresh_screen();
         let code_problems = self.all_code_problems().into_owned();
-        let menu = crate::menu_items::MenuState::of(self);
         let copied: Vec<String> = self
             .open
             .copied
@@ -1018,7 +1017,8 @@ impl Workbench {
                 },
             });
         // The hints for what's selected (decision 0085), while they show.
-        let hints = (self.hints && self.in_front.contains(&Panel::Hints)).then(|| self.hints());
+        let hints =
+            (self.hints && self.in_front.contains(&Panel::Properties)).then(|| self.hints());
         let hints_off = !self.hints;
         let atlas_problem = self.atlas_picture().1;
         let frames = self.open.frames_editor.as_mut().map(|editor| {
@@ -1121,7 +1121,6 @@ impl Workbench {
         let mut viewer = PanelViewer {
             area_state: &mut self.open.area_panel,
             copied: &copied,
-            menu: &menu,
             viewport: &mut self.viewport,
             renderer: &mut renderer,
             console: &mut self.console,
@@ -1143,11 +1142,7 @@ impl Workbench {
             folders: &self.open.folders,
             library_state: &mut self.open.library_state,
             library_requests: &mut library_requests,
-            hints: if hints_off {
-                None
-            } else {
-                Some(hints.as_deref().unwrap_or(&[]))
-            },
+            hints: if hints_off { None } else { hints.as_deref() },
             sounds: crate::library::Sounds {
                 states: &self.open.sounds,
                 events: &self.open.sound_events,

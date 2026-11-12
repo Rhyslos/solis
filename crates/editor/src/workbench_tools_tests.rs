@@ -344,11 +344,11 @@ fn x_y_z_lock_axes_and_l_switches_to_object_axes() {
 }
 
 #[test]
-fn the_corner_buttons_switch_snapping_and_locks() {
+fn the_ribbon_and_the_pills_switch_snapping_and_locks() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    h.get_by_label("Grid 1 m").click();
+    h.get_by_label("Grid · 1").click();
     h.run();
     h.get_by_label("Lock Y").click();
     h.run();
@@ -382,7 +382,7 @@ fn the_select_tool_shows_no_gizmo_and_others_do_on_a_selection() {
 }
 
 #[test]
-fn clicking_a_corner_button_never_clicks_the_viewport_behind_it() {
+fn clicking_a_pill_or_the_toolbox_never_clicks_the_viewport_behind_it() {
     let (mut w, id) = with_a_crate();
     w.open.document.selection.select_only(id);
     let mut h = harness(w);
@@ -393,10 +393,11 @@ fn clicking_a_corner_button_never_clicks_the_viewport_behind_it() {
     assert_eq!(h.state().0.tool(), Tool::Move);
     assert_eq!(h.state().0.selection(), Some(id), "still selected");
     assert!(h.state().1.asked.is_empty(), "no pick asked for");
-    h.get_by_label("Grid 1 m").click();
+    h.get_by_label("Lock X").click();
     h.run();
     h.run();
     assert_eq!(h.state().0.selection(), Some(id), "still selected");
+    assert!(h.state().1.asked.is_empty(), "no pick asked for");
 }
 
 #[test]

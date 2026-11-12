@@ -124,7 +124,7 @@ fn choosing_2d_shows_the_tile_grid_and_the_2d_corner() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    h.query_all_by_label("Perspective ▴")
+    h.query_all_by_label("Perspective ▾")
         .next()
         .unwrap()
         .click();
@@ -138,8 +138,8 @@ fn choosing_2d_shows_the_tile_grid_and_the_2d_corner() {
     assert_eq!(view.grid_step, 1.0, "16-pixel tiles at 16 pixels a metre");
     for label in [
         "Grid 16 px",
-        "Snap: whole pixels ▴",
-        "Zoom 200% ▴",
+        "Snap: Whole pixels ▾",
+        "Zoom 200% ▾",
         "Lock X",
         "Lock Y",
     ] {
@@ -158,13 +158,13 @@ fn choosing_2d_shows_the_tile_grid_and_the_2d_corner() {
     let view = h.state().1.views.last().unwrap().clone();
     assert_eq!(view.grid_step, 2.0);
     // The zoom menu sets the zoom.
-    h.get_by_label("Zoom 200% ▴").click();
+    h.get_by_label("Zoom 200% ▾").click();
     h.run();
     h.get_by_label("400%").click();
     h.run();
     assert_eq!(h.state().0.camera().zoom, 4.0);
     // And the snap menu what moves land on.
-    h.get_by_label("Snap: whole pixels ▴").click();
+    h.get_by_label("Snap: Whole pixels ▾").click();
     h.run();
     h.get_by_label("Tiles").click();
     h.run();

@@ -27,6 +27,9 @@ pub enum Axis {
 }
 
 impl Axis {
+    /// X, Y and Z, in order.
+    pub const ALL: [Self; 3] = [Self::X, Self::Y, Self::Z];
+
     fn letter(self) -> &'static str {
         match self {
             Self::X => "X",
@@ -129,17 +132,16 @@ fn named(ui: &Ui, response: &Response, kind: egui::WidgetType, name: &str, value
     });
 }
 
-/// A field for a number, `width` wide, in the mono font, with `axis`'s
-/// letter before it. The number is typed, or dragged left and right;
-/// `speed` is how much a point of dragging changes it. `name` is what
-/// the number is, for screen readers and tests.
-pub fn number_field(
+/// The design's field box, `width` wide, round whatever `add` puts in
+/// it (egui's own editing, drawn without its frame), with `axis`'s
+/// letter first if it is one. The border turns to the accent while the
+/// keyboard is in it or it is being dragged. Numbers are in the mono
+/// font. Returns what `add` returned.
+pub fn framed(
     ui: &mut Ui,
-    name: &str,
-    value: &mut f64,
-    axis: Option<Axis>,
-    speed: f64,
     width: f32,
+    axis: Option<Axis>,
+    add: impl FnOnce(&mut Ui) -> Response,
 ) -> Response {
     let (_, response) = boxed(ui, width, |ui| {
         if let Some(axis) = axis {
@@ -155,6 +157,27 @@ pub fn number_field(
         ui.style_mut().override_font_id = Some(text::mono());
         ui.visuals_mut().override_text_color = Some(tokens::text_primary());
         ui.spacing_mut().button_padding = vec2(0.0, 0.0);
+        ui.spacing_mut().interact_size = vec2(0.0, 0.0);
+        let response = add(ui);
+        let focused = response.has_focus() || response.dragged();
+        (response, focused)
+    });
+    response
+}
+
+/// A field for a number, `width` wide, in the mono font, with `axis`'s
+/// letter before it. The number is typed, or dragged left and right;
+/// `speed` is how much a point of dragging changes it. `name` is what
+/// the number is, for screen readers and tests.
+pub fn number_field(
+    ui: &mut Ui,
+    name: &str,
+    value: &mut f64,
+    axis: Option<Axis>,
+    speed: f64,
+    width: f32,
+) -> Response {
+    framed(ui, width, axis, |ui| {
         let response = ui.add(egui::DragValue::new(value).speed(speed));
         named(
             ui,
@@ -163,10 +186,8 @@ pub fn number_field(
             name,
             &value.to_string(),
         );
-        let focused = response.has_focus() || response.dragged();
-        (response, focused)
-    });
-    response
+        response
+    })
 }
 
 /// A drop-down field `width` wide showing `chosen`'s word, with the

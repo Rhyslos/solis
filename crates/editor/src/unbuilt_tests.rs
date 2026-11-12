@@ -425,7 +425,7 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 74] = [
+const DRAWN_SO_FAR: [UnbuiltId; 78] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
@@ -436,6 +436,11 @@ const DRAWN_SO_FAR: [UnbuiltId; 74] = [
     UnbuiltId::HomeShelfTransport,
     UnbuiltId::HomeShelfFrameCounter,
     UnbuiltId::LibShelfImportQueue,
+    // Home's toolbox.
+    UnbuiltId::HomeToolPose,
+    UnbuiltId::HomeToolMotionPath,
+    UnbuiltId::HomeToolAddKey,
+    UnbuiltId::HomeToolMeasure,
     UnbuiltId::AnimShelfSequencer,
     UnbuiltId::AnimShelfKey,
     UnbuiltId::DebugShelfHottest,

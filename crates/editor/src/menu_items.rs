@@ -1,10 +1,10 @@
-//! The Area panel's own Edit and Entity menus: each draws its items and
-//! returns the [`MenuCommand`] picked, and [`Workbench::run`] carries it
-//! out. The editor's commands (`shell/commands.rs`) run the same ones, so
-//! a thing is done one way wherever it is asked for.
+//! The commands of the Area column's menus (its header's ⋯ and a row's
+//! right-click menu, drawn in `area_panel.rs`): each returns the
+//! [`MenuCommand`] picked, and [`Workbench::run`] carries it out. The
+//! editor's commands (`shell/commands.rs`) run the same ones, so a thing
+//! is done one way wherever it is asked for.
 
 use crate::workbench::{Workbench, WorkbenchAction};
-use egui::Ui;
 
 /// Something picked from a menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,158 +24,6 @@ pub(crate) enum MenuCommand {
     CreateAssembly,
     ExpandAll,
     CollapseAll,
-}
-
-/// What the menus need to know to show their items enabled or not.
-#[derive(Debug, Clone, Default)]
-pub(crate) struct MenuState {
-    /// "Undo Move", if there is something to undo.
-    pub(crate) undo: Option<String>,
-    /// "Redo Move", if there is something to redo.
-    pub(crate) redo: Option<String>,
-    /// Whether anything is selected.
-    pub(crate) selection: bool,
-}
-
-impl MenuState {
-    /// The workbench's state for its menus.
-    pub(crate) fn of(workbench: &Workbench) -> Self {
-        let history = workbench.open.document.history();
-        Self {
-            undo: history.undo_label().map(|l| format!("Undo {l}")),
-            redo: history.redo_label().map(|l| format!("Redo {l}")),
-            selection: workbench.open.document.selection.primary().is_some(),
-        }
-    }
-}
-
-/// One item: a button with its shortcut, closing the menu when clicked.
-fn item(
-    ui: &mut Ui,
-    enabled: bool,
-    text: &str,
-    shortcut: &str,
-    hint: &str,
-    command: MenuCommand,
-    picked: &mut Option<MenuCommand>,
-) {
-    let mut button = egui::Button::new(text);
-    if !shortcut.is_empty() {
-        button = button.shortcut_text(shortcut);
-    }
-    let mut response = ui.add_enabled(enabled, button);
-    if !hint.is_empty() {
-        response = response.on_hover_text(hint);
-    }
-    if response.clicked() {
-        *picked = Some(command);
-        ui.close();
-    }
-}
-
-/// The Edit menu's items.
-pub(crate) fn edit_items(ui: &mut Ui, state: &MenuState) -> Option<MenuCommand> {
-    let mut picked = None;
-    let p = &mut picked;
-    item(
-        ui,
-        state.undo.is_some(),
-        state.undo.as_deref().unwrap_or("Undo"),
-        "Ctrl+Z",
-        "",
-        MenuCommand::Undo,
-        p,
-    );
-    item(
-        ui,
-        state.redo.is_some(),
-        state.redo.as_deref().unwrap_or("Redo"),
-        "Ctrl+Y",
-        "",
-        MenuCommand::Redo,
-        p,
-    );
-    ui.separator();
-    let s = state.selection;
-    item(ui, s, "Duplicate", "Ctrl+D", "", MenuCommand::Duplicate, p);
-    item(ui, s, "Delete", "Delete", "", MenuCommand::Delete, p);
-    item(ui, s, "Rename", "F2", "", MenuCommand::Rename, p);
-    ui.separator();
-    item(
-        ui,
-        true,
-        "Select all",
-        "Ctrl+A",
-        "",
-        MenuCommand::SelectAll,
-        p,
-    );
-    item(
-        ui,
-        s,
-        "Select nothing",
-        "Esc",
-        "",
-        MenuCommand::SelectNone,
-        p,
-    );
-    picked
-}
-
-/// The Entity menu's items.
-pub(crate) fn entity_items(ui: &mut Ui, state: &MenuState) -> Option<MenuCommand> {
-    let mut picked = None;
-    let p = &mut picked;
-    item(
-        ui,
-        true,
-        "Add entity",
-        "",
-        "An empty entity, at the point the camera looks at",
-        MenuCommand::AddEntity,
-        p,
-    );
-    ui.separator();
-    item(
-        ui,
-        true,
-        "Add point light",
-        "",
-        "A bulb shining every way, placed above where the camera looks",
-        MenuCommand::AddPointLight,
-        p,
-    );
-    item(
-        ui,
-        true,
-        "Add spotlight",
-        "",
-        "A cone of light at the camera, shining where it looks",
-        MenuCommand::AddSpotlight,
-        p,
-    );
-    ui.separator();
-    item(
-        ui,
-        state.selection,
-        "Create assembly from selection",
-        "",
-        "Saves the selected entity, and everything under it, as an assembly in the project, \
-         and turns it into a copy of it",
-        MenuCommand::CreateAssembly,
-        p,
-    );
-    ui.separator();
-    item(
-        ui,
-        true,
-        "Add camera",
-        "",
-        "A camera where you're looking from: the game looks through the first one in the area",
-        MenuCommand::AddCamera,
-        p,
-    );
-    picked
 }
 
 impl Workbench {

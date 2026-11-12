@@ -1,12 +1,11 @@
-//! The Hints panel (the editor overhaul's O7, decision 0085): a few plain
-//! sentences about what's selected and what you can do with it, so a
-//! newcomer always has a next step. It can be turned off in Settings >
-//! Appearance once you know your way around.
+//! Hints (the editor overhaul's O7, decision 0085): a few plain sentences
+//! about what's selected and what you can do with it, so a newcomer
+//! always has a next step. They are the last card in Properties
+//! (`properties_cards::hints_card`); the card's "Turn hints off", or File ›
+//! Preferences, turns them off once you know your way around.
 
 use crate::play::PlayState;
-use crate::theme;
 use crate::workbench::Workbench;
-use egui::{RichText, Ui};
 
 /// What one of the engine's components is for, in a sentence, and what to
 /// try with it.
@@ -118,43 +117,6 @@ impl Workbench {
     pub fn set_hints_on(&mut self, on: bool) {
         self.hints = on;
     }
-}
-
-/// Draws the Hints panel: `hints`, the first strong, then where they come
-/// from; or, turned off, how to turn them on.
-pub(crate) fn hints_panel(ui: &mut Ui, hints: Option<&[String]>) {
-    egui::Frame::new()
-        .inner_margin(egui::Margin::same(10))
-        .show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
-            let Some(hints) = hints else {
-                ui.label(
-                    RichText::new("Hints are off. Turn them on in File > Preferences.")
-                        .color(theme::text_weak()),
-                );
-                return;
-            };
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                for (n, hint) in hints.iter().enumerate() {
-                    let colour = if n == 0 {
-                        theme::text_strong()
-                    } else {
-                        theme::text()
-                    };
-                    ui.label(RichText::new(hint).color(colour));
-                    ui.add_space(6.0);
-                }
-                ui.add_space(6.0);
-                ui.label(
-                    RichText::new(
-                        "Hints show here for what's selected. Turn them off in File > Preferences \
-                         > Appearance.",
-                    )
-                    .color(theme::text_weak())
-                    .size(11.5),
-                );
-            });
-        });
 }
 
 #[cfg(test)]

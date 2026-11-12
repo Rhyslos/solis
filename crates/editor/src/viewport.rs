@@ -1,10 +1,6 @@
-//! The viewport panel: the 3D image, and the controls drawn over it in its
-//! corners ([decision 0004](../../../docs/decisions/0004-editor-layout.md)):
-//!
-//! - top right: frame rate and entity count;
-//! - bottom left: ≡ (what to show), Perspective, Lit and Show;
-//! - bottom centre: the tools;
-//! - bottom right: grid, angle and camera speed.
+//! The viewport panel: the 3D image, the toolbox down its left edge
+//! (`toolbox.rs`) and the pills drawn over each view (`viewport_pills.rs`;
+//! spec 177-182).
 //!
 //! The image itself comes from a [`ViewportRenderer`], so this crate never
 //! touches the GPU and runs in tests without one.
@@ -12,12 +8,12 @@
 use crate::area_view::{AreaView, ViewLight, ViewModel};
 use crate::camera::{Camera, FlyInput, ViewKind};
 use crate::icons;
-use crate::look::{Look, LookKind};
+use crate::look::Look;
 use crate::theme::{self, Accent};
 use crate::tokens::size;
 use crate::transforming::Snapping;
 use crate::viewport_tools::{self, PickAnswer, ToolInput, Tools};
-use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
+use egui::{Align, Color32, Layout, Rect, Sense, Ui, UiBuilder, vec2};
 use glam::{Mat4, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -362,8 +358,6 @@ pub struct Viewport {
     pub tool: Tool,
     /// Which corner controls are shown.
     pub overlays: Overlays,
-    /// Whether the ≡ menu is open.
-    menu_open: bool,
     /// The time per frame, smoothed, in seconds.
     frame_time: f32,
     /// Whether nothing is moving, so frames are only drawn when something
@@ -413,11 +407,6 @@ pub struct Viewport {
     pub(crate) preview_hour: Option<f64>,
     /// The time animated tiles show, in milliseconds (the editor's clock).
     pub(crate) tile_ms: u64,
-    /// The tool bar's width last frame, with the painting tools.
-    paint_bar_width: f32,
-    /// The snapping corner's width last frame, which the tool bar keeps
-    /// clear of.
-    snapping_width: f32,
     /// When Preview animation was turned on (its clips play from there).
     preview_since: std::cell::Cell<Option<std::time::Instant>>,
 }
@@ -483,7 +472,6 @@ struct Pane {
     covered: Vec<Rect>,
     flying_from: Option<egui::Pos2>,
     wheel_carry: f32,
-    menu_open: bool,
 }
 
 impl Default for Pane {
@@ -496,7 +484,6 @@ impl Default for Pane {
             covered: Vec::new(),
             flying_from: None,
             wheel_carry: 0.0,
-            menu_open: false,
         }
     }
 }
@@ -536,7 +523,6 @@ impl Default for Viewport {
             camera: Camera::default(),
             tool: Tool::Select,
             overlays: Overlays::default(),
-            menu_open: false,
             frame_time: 1.0 / 60.0,
             idle: false,
             flying_from: None,
@@ -557,8 +543,6 @@ impl Default for Viewport {
             tile_overlay: crate::tile_view::TileOverlay::default(),
             preview_hour: None,
             tile_ms: 0,
-            paint_bar_width: 0.0,
-            snapping_width: 0.0,
             preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
@@ -589,7 +573,6 @@ impl Viewport {
             camera: _,
             tool: _,
             overlays: _,
-            menu_open: _,
             frame_time: _,
             idle: _,
             look: _,
@@ -603,8 +586,6 @@ impl Viewport {
             active: _,
             full: _,
             tile_ms: _,
-            paint_bar_width: _,
-            snapping_width: _,
             preview_since: _,
             // The project's: what its area shows, its files, the map
             // selected and the painter's stamp of its cells, and picks and
@@ -640,7 +621,6 @@ impl Viewport {
         std::mem::swap(&mut self.covered, &mut pane.covered);
         std::mem::swap(&mut self.flying_from, &mut pane.flying_from);
         std::mem::swap(&mut self.wheel_carry, &mut pane.wheel_carry);
-        std::mem::swap(&mut self.menu_open, &mut pane.menu_open);
     }
 
     /// Makes view `i` the one in use: its camera, look and tools move
@@ -707,11 +687,6 @@ impl Viewport {
             Some(i) if self.layout != ViewLayout::One => vec![(i, rect)],
             _ => self.layout.rects(rect),
         }
-    }
-
-    /// Whether the ≡ menu is open.
-    pub fn menu_open(&self) -> bool {
-        self.menu_open
     }
 
     /// Whether the right mouse button is held on the viewport, so W A S D,
@@ -875,7 +850,13 @@ impl Viewport {
         if !self.idle && dt.is_finite() && dt > 0.0 && dt < IDLE_GAP {
             self.frame_time += (dt - self.frame_time) * FRAME_TIME_SMOOTHING;
         }
-        let full = ui.max_rect();
+        let mut full = ui.max_rect();
+        if self.overlays.tools {
+            // The toolbox down the group's left edge, the views beside it.
+            let (column, views) = full.split_left_right_at_x(full.left() + size::TOOLBOX_W);
+            self.toolbox(ui, column);
+            full = views;
+        }
         self.full = full;
         let shown = self.shown(full);
         // The view to use from now: the one being dragged or flown in, or
@@ -966,9 +947,6 @@ impl Viewport {
                 .request_repaint_after(std::time::Duration::from_millis(40));
         }
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
-        if response.clicked() {
-            self.menu_open = false;
-        }
         // While painting a tile map (D6), the left and right buttons
         // paint and empty: the middle button and the wheel still move.
         let painting = in_use && self.tile_overlay.paint.painting();
@@ -1133,129 +1111,51 @@ impl Viewport {
                 theme::text_strong(),
             );
         }
-        let inner = rect.shrink(8.0);
-        let corner = |ui: &mut Ui, salt: &str, layout: Layout| {
-            ui.new_child(
-                UiBuilder::new()
-                    .id_salt(("viewport corner", salt))
-                    .max_rect(inner)
-                    .layout(layout),
-            )
-        };
-        // With one view, as in the mockup: frame rate top right, tools
-        // bottom centre, snapping bottom right. With several, each view is
-        // too narrow for a full bottom row, so the view in use has its
-        // tools top left, snapping top right and frame rate bottom right.
-        // One view too narrow for its bottom row (the painting tools
-        // beside the view and snapping controls) is crowded: snapping
-        // goes top right and the frame rate bottom right, as with several.
+        // The pills over the view (spec 182): the view's own at the top
+        // left; the frame rate and the locks, space and camera speed on
+        // the view in use only.
         let mut covered: Vec<Rect> = tile_bar.into_iter().collect();
-        let mut bottom_left = corner(ui, "view", Layout::bottom_up(Align::Min));
-        self.view_controls(&mut bottom_left, several);
-        covered.push(bottom_left.min_rect());
-        // The tool bar's size: the transform tools', or with a map
-        // selected the width the bar took last frame (it has the painting
-        // tools too).
-        let size = if self.tile_overlay.paint.allowed {
-            vec2(self.paint_bar_width.max(TOOL_BAR_SIZE.x), TOOL_BAR_SIZE.y)
-        } else {
-            TOOL_BAR_SIZE
-        };
-        let room = inner.right() - bottom_left.min_rect().right() - self.snapping_width - 24.0;
-        let crowded = several || (self.overlays.tools && room < size.x);
+        covered.push(self.top_left_pills(ui, rect, several));
         if self.overlays.stats && in_use {
-            let layout = if crowded {
-                Layout::bottom_up(Align::Max)
-            } else {
-                Layout::top_down(Align::Max)
-            };
-            let mut stats = corner(ui, "stats", layout);
-            self.stats(&mut stats, crowded);
-            covered.push(stats.min_rect());
+            covered.push(self.stats_pill(ui, rect));
         }
-        if self.overlays.tools && in_use {
-            // A centred layout would stretch the bar, so it gets a rect of
-            // exactly its own width.
-            let bar = if several {
-                Rect::from_min_size(inner.min, size)
-            } else {
-                // Centred, but moved left of the snapping corner (as
-                // wide as last frame) when the painting tools make it
-                // wide, never over the view controls.
-                let half = size.x / 2.0;
-                let right = if crowded {
-                    inner.right() - 8.0
-                } else {
-                    inner.right() - self.snapping_width - 8.0
-                };
-                let left = bottom_left.min_rect().right() + 8.0;
-                let x = inner.center().x.min(right - half).max(left + half);
-                Rect::from_center_size(egui::pos2(x, inner.bottom() - size.y / 2.0), size)
-            };
-            let mut bar_ui = ui.new_child(
+        if in_use && self.tile_overlay.paint.allowed {
+            // A selected map's painting options, until its own tab on the
+            // ribbon takes them (milestone M10).
+            let mut options = ui.new_child(
                 UiBuilder::new()
-                    .id_salt(("viewport corner", "tools"))
-                    .max_rect(bar)
-                    .layout(Layout::left_to_right(Align::Center)),
+                    .id_salt(("viewport corner", "paint options"))
+                    .max_rect(rect.shrink(size::PILL_MARGIN))
+                    .layout(Layout::left_to_right(Align::Max)),
             );
-            self.tools(&mut bar_ui, accent);
-            if self.tile_overlay.paint.allowed {
-                self.paint_bar_width = bar_ui.min_rect().width();
-            }
-            covered.push(bar_ui.min_rect());
+            theme::overlay_frame().show(&mut options, |ui| {
+                ui.horizontal(|ui| {
+                    crate::tile_paint::paint_options(ui, &mut self.tile_overlay.paint)
+                });
+            });
+            covered.push(options.min_rect());
         }
-        let mut snapping_height = 0.0;
+        let mut bottom = rect;
         if self.overlays.snapping && in_use {
-            let layout = if crowded {
-                Layout::top_down(Align::Max)
+            let pills = if two_d {
+                self.pixel_pills(ui, rect)
             } else {
-                Layout::bottom_up(Align::Max)
+                self.space_pills(ui, rect)
             };
-            let mut corner_ui = corner(ui, "snapping", layout);
-            if two_d {
-                viewport_tools::pixel_corner(
-                    &mut corner_ui,
-                    &mut self.snapping,
-                    &mut self.camera.zoom,
-                    self.pixels,
-                    accent,
-                    !crowded,
-                );
-            } else {
-                viewport_tools::snapping_corner(
-                    &mut corner_ui,
-                    &mut self.snapping,
-                    accent,
-                    self.camera.speed,
-                    !crowded,
-                );
-            }
-            // Measured where it would sit on the bottom row, so a view
-            // crowded once isn't crowded for good.
-            if !crowded {
-                self.snapping_width = corner_ui.min_rect().width();
-            }
-            snapping_height = corner_ui.min_rect().height();
-            covered.push(corner_ui.min_rect());
+            bottom.max.y = pills.top() - size::PILL_GAP + size::PILL_MARGIN;
+            covered.push(pills);
         }
         if in_use
             && self.tile_overlay.paint.painting()
             && let Some(stamp) = &self.tile_overlay.paint.stamp
         {
-            // The copy held: its buttons beside the snapping corner
-            // (above it, or below it when it's top right).
-            let mut stamp_ui = if crowded {
-                let mut stamp_ui = corner(ui, "stamp", Layout::top_down(Align::Max));
-                stamp_ui.add_space(snapping_height + 6.0);
-                stamp_ui
-            } else {
-                let above = covered
-                    .last()
-                    .map_or(0.0, |r| inner.bottom() - r.top() + 6.0);
-                let mut stamp_ui = corner(ui, "stamp", Layout::bottom_up(Align::Max));
-                stamp_ui.add_space(above);
-                stamp_ui
-            };
+            // The copy held: its buttons above the bottom-right pills.
+            let mut stamp_ui = ui.new_child(
+                UiBuilder::new()
+                    .id_salt(("viewport corner", "stamp"))
+                    .max_rect(bottom.shrink(size::PILL_MARGIN))
+                    .layout(Layout::bottom_up(Align::Max)),
+            );
             let asked = crate::tile_paint::stamp_bar(&mut stamp_ui, stamp);
             if asked.is_some() {
                 self.tile_overlay.turn_asked = asked;
@@ -1292,7 +1192,6 @@ impl Viewport {
             && response.is_pointer_button_down_on();
         if starting {
             self.flying_from = pointer.or(Some(response.rect.center()));
-            self.menu_open = false;
             // Keys now steer the camera, not a text field.
             ctx.memory_mut(|m| {
                 if let Some(id) = m.focused() {
@@ -1357,219 +1256,18 @@ impl Viewport {
         self.camera.fly(&input);
     }
 
-    /// The frame rate and counts. `upwards` for a corner that builds
-    /// upwards (the lines go in last first, so they still read down).
-    fn stats(&self, ui: &mut Ui, upwards: bool) {
-        let s = if self.entities == 1 { "y" } else { "ies" };
-        let mut lines = vec![
-            if self.idle {
-                // Nothing moves, so nothing is drawn until something does.
-                "Idle".to_string()
-            } else {
-                format!(
-                    "{:.0} fps · {:.1} ms",
-                    self.frames_per_second(),
-                    self.frame_time * 1000.0
-                )
-            },
-            format!("{} entit{s}", crate::models::grouped(self.entities)),
-        ];
-        if self.area.triangles > 0 {
-            lines.push(format!(
-                "{} triangles",
-                crate::models::grouped(self.area.triangles)
-            ));
-        }
-        let layout = if upwards {
-            lines.reverse();
-            Layout::bottom_up(Align::Max)
-        } else {
-            Layout::top_down(Align::Max)
-        };
-        theme::overlay_frame()
-            .inner_margin(egui::Margin::symmetric(8, 4))
-            .show(ui, |ui| {
-                ui.with_layout(layout, |ui| {
-                    for line in lines {
-                        ui.label(RichText::new(line).monospace().size(11.0));
-                    }
-                });
-            });
-    }
-
-    fn view_controls(&mut self, ui: &mut Ui, several: bool) {
-        // Bottom-up: the row of buttons first, the ≡ menu above it.
-        ui.horizontal(|ui| {
-            let menu = ui
-                .add(egui::Button::new("≡").selected(self.menu_open))
-                .on_hover_text("What the viewport shows, and how many views");
-            if menu.clicked() {
-                self.menu_open = !self.menu_open;
+    /// The toolbox in `column`, and the tool it picks.
+    fn toolbox(&mut self, ui: &mut Ui, column: Rect) {
+        let paint = &mut self.tile_overlay.paint;
+        match crate::toolbox::toolbox(ui, column, self.tool, paint) {
+            Some(crate::toolbox::Picked::Tool(tool)) => {
+                self.tool = tool;
+                paint.tool = None;
             }
-            let kind = self.camera.kind;
-            let mut chosen = None;
-            up_menu(ui, format!("{} ▴", kind.name()), |ui| {
-                for each in ViewKind::ALL {
-                    let hint = match each {
-                        ViewKind::Perspective => "As the eye sees: fly with the right mouse button",
-                        ViewKind::Top => {
-                            "Flat, from above: right or middle drag slides, the wheel zooms"
-                        }
-                        ViewKind::Front => "Flat, from the front (looking north)",
-                        ViewKind::Right => "Flat, from the right (looking west)",
-                        ViewKind::TwoD => {
-                            "Flat, in pixels: for 2D games. Slides like the other flat views; the \
-                             wheel zooms in whole steps, so pixels stay sharp"
-                        }
-                    };
-                    let label: egui::WidgetText = if each == ViewKind::TwoD {
-                        ui.separator();
-                        let mut job = egui::text::LayoutJob::default();
-                        let style = ui.style().clone();
-                        for text in [
-                            RichText::new(format!("{}  ", each.name())),
-                            RichText::new("flat, in pixels")
-                                .color(theme::text_weak())
-                                .size(11.0),
-                        ] {
-                            text.append_to(
-                                &mut job,
-                                &style,
-                                egui::FontSelection::Default,
-                                Align::Center,
-                            );
-                        }
-                        job.into()
-                    } else {
-                        each.name().into()
-                    };
-                    if ui
-                        .add(egui::Button::new(label).selected(each == kind))
-                        .on_hover_text(hint)
-                        .clicked()
-                    {
-                        chosen = Some(each);
-                        ui.close();
-                    }
-                }
-            });
-            if let Some(kind) = chosen {
-                self.camera = self.camera.as_kind(kind);
-            }
-            let look = &mut self.look;
-            up_menu(ui, format!("{} ▴", look.kind.name()), |ui| {
-                look_menu(ui, look)
-            });
-            let alone = self.maximized == Some(self.active);
-            if several || alone {
-                let (text, hint) = if alone {
-                    ("All views", "Show every view again")
-                } else {
-                    ("Maximise", "Show this view alone, filling the viewport")
-                };
-                if ui.button(text).on_hover_text(hint).clicked() {
-                    self.maximized = if alone { None } else { Some(self.active) };
-                }
-            }
-        });
-        if self.menu_open {
-            theme::overlay_frame()
-                .inner_margin(egui::Margin::same(8))
-                .show(ui, |ui| {
-                    ui.set_min_width(220.0);
-                    self.menu(ui);
-                });
+            Some(crate::toolbox::Picked::Paint(tool)) => paint.tool = Some(tool),
+            None => {}
         }
     }
-
-    /// The ≡ menu's contents: the layout of views, and what to show.
-    /// The ≡ menu's contents: the layout of views, and what to show.
-    /// The corner builds upwards, so they're added last first.
-    fn menu(&mut self, ui: &mut Ui) {
-        ui.checkbox(&mut self.overlays.preview_animation, "Preview animation")
-            .on_hover_text(
-                "Sprites play their clips while you edit. Off: each shows its clip's frame at \
-                 its Clip time, and the editor rests. The game always animates.",
-            );
-        ui.label(RichText::new("While you edit").color(theme::text_weak()));
-        ui.add_space(6.0);
-        ui.checkbox(&mut self.overlays.stats, "Frame rate and entity count");
-        ui.checkbox(&mut self.overlays.snapping, "Grid, angle and camera speed");
-        ui.checkbox(&mut self.overlays.tools, "Tools");
-        ui.label(RichText::new("Show in the viewport").color(theme::text_weak()));
-        ui.add_space(6.0);
-        for layout in ViewLayout::ALL.into_iter().rev() {
-            if ui.radio(self.layout == layout, layout.name()).clicked() {
-                self.layout = layout;
-                self.maximized = None;
-            }
-        }
-        ui.label(RichText::new("Views").color(theme::text_weak()));
-    }
-
-    fn tools(&mut self, ui: &mut Ui, accent: Accent) {
-        theme::overlay_frame().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = TOOL_GAP;
-                let paint = &mut self.tile_overlay.paint;
-                let painting = paint.painting();
-                for tool in Tool::ALL {
-                    if tool_button(ui, tool, !painting && self.tool == tool, accent).clicked() {
-                        self.tool = tool;
-                        paint.tool = None;
-                    }
-                }
-                if paint.allowed
-                    && let Some(tool) = crate::tile_paint::paint_bar(ui, paint, accent)
-                {
-                    paint.tool = Some(tool);
-                }
-            });
-        });
-    }
-}
-
-/// A menu that opens upwards from its button (the ▴ says so), since the
-/// buttons sit at the bottom of the viewport. It stays open while its
-/// settings are changed, and closes on a click elsewhere.
-fn up_menu(ui: &mut Ui, title: impl Into<egui::WidgetText>, content: impl FnOnce(&mut Ui)) {
-    let response = ui.add(egui::Button::new(title));
-    egui::Popup::menu(&response)
-        .align(egui::RectAlign::TOP_START)
-        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-        .show(content);
-}
-
-/// The look menu: the three looks, and the stylized look's settings.
-fn look_menu(ui: &mut Ui, look: &mut Look) {
-    for kind in LookKind::ALL {
-        if ui
-            .add(egui::Button::new(kind.name()).selected(look.kind == kind))
-            .on_hover_text(kind.hint())
-            .clicked()
-        {
-            look.kind = kind;
-        }
-    }
-    ui.separator();
-    let stylized = look.kind == LookKind::Stylized;
-    ui.add_enabled_ui(stylized, |ui| {
-        ui.label(RichText::new("Stylized look").color(theme::text_weak()));
-        ui.horizontal(|ui| {
-            ui.label("Bands of light");
-            for bands in Look::BANDS {
-                if ui
-                    .add(egui::Button::new(bands.to_string()).selected(look.bands == bands))
-                    .clicked()
-                {
-                    look.bands = bands;
-                }
-            }
-        });
-        ui.checkbox(&mut look.outlines, "Outlines");
-    })
-    .response
-    .on_disabled_hover_text("Choose Stylized to change these");
 }
 
 /// How the hidden pointer is held while looking around: macOS can only
@@ -1610,49 +1308,6 @@ fn wheel_notches(ui: &Ui, carry: f32) -> (f32, f32) {
     (whole, total - whole)
 }
 
-/// One tool button's size.
-const TOOL_BUTTON: Vec2 = vec2(30.0, 26.0);
-/// Space between tool buttons.
-const TOOL_GAP: f32 = 2.0;
-/// The tool bar's frame: margin plus border, each side.
-const TOOL_BAR_EDGE: f32 = 4.0;
-/// The whole tool bar's size.
-const TOOL_BAR_SIZE: Vec2 = vec2(
-    Tool::ALL.len() as f32 * TOOL_BUTTON.x
-        + (Tool::ALL.len() - 1) as f32 * TOOL_GAP
-        + 2.0 * TOOL_BAR_EDGE,
-    TOOL_BUTTON.y + 2.0 * TOOL_BAR_EDGE,
-);
-
-/// One tool's icon button, filled with the accent when chosen.
-fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(TOOL_BUTTON, Sense::click());
-    let response = response.on_hover_text(tool.hint());
-    let fill = if chosen {
-        accent.colors().fill
-    } else if response.hovered() {
-        theme::hover()
-    } else {
-        Color32::TRANSPARENT
-    };
-    ui.painter().rect_filled(rect, 3.0, fill);
-    let color = if chosen {
-        theme::on_accent()
-    } else {
-        theme::text_strong()
-    };
-    icons::icon(
-        ui.painter(),
-        Rect::from_center_size(rect.center(), Vec2::splat(size::TOOL_ICON)),
-        tool.icon(),
-        color,
-    );
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::Button, true, chosen, tool.hint())
-    });
-    response
-}
-
 /// Where `ground` (a point on the ground, in metres) is, in the game's
 /// pixels, and the map cell under it if a map is selected:
 /// `x 192 · y 64 px · cell 12, 4`. In a 2D game, down the screen is down
@@ -1672,6 +1327,9 @@ pub(crate) fn cursor_readout(
         None => place,
     }
 }
+
+#[path = "viewport_pills.rs"]
+mod pills;
 
 #[cfg(test)]
 #[path = "views_tests.rs"]

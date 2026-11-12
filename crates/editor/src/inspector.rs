@@ -6,6 +6,8 @@
 
 use crate::models::ModelInfo;
 use crate::sprite_sheets::SpriteSheets;
+use crate::tokens::{self, size, text};
+use crate::widgets;
 use egui::{RichText, Ui};
 use glam::{EulerRot, Quat};
 use reflect::{AssetId, ComponentData, ComponentSchema, FieldInfo, FieldKind, Offer, Value};
@@ -54,18 +56,38 @@ fn row_marked<R>(
     ui.horizontal(|ui| {
         let text = if changed {
             RichText::new(label)
+                .font(text::row())
                 .strong()
-                .color(crate::theme::text_strong())
+                .color(tokens::text_primary())
         } else {
-            RichText::new(label).color(crate::theme::text_weak())
+            RichText::new(label)
+                .font(text::row())
+                .color(tokens::text_label())
         };
         let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
-        let label = ui.add_sized(egui::vec2(88.0, 18.0), egui::Label::new(text).truncate());
-        let (dot, _) = ui.allocate_exact_size(egui::vec2(8.0, 18.0), egui::Sense::hover());
+        // The changed-from-its-start dot goes before the name, as the
+        // design's settings mark it.
+        let (dot, _) = ui.allocate_exact_size(
+            egui::vec2(size::FIELD_DOT_W, size::field_h()),
+            egui::Sense::hover(),
+        );
+        let label = ui
+            .allocate_ui_with_layout(
+                egui::vec2(size::FIELD_LABEL_W - size::FIELD_DOT_W, size::field_h()),
+                egui::Layout::left_to_right(egui::Align::Center),
+                |ui| {
+                    ui.set_min_width(ui.available_width());
+                    ui.add(egui::Label::new(text).truncate())
+                },
+            )
+            .inner;
         ui.spacing_mut().item_spacing.x = spacing;
         if moved {
-            ui.painter()
-                .circle_filled(dot.center(), 2.5, crate::theme::accent_fill());
+            ui.painter().circle_filled(
+                dot.center(),
+                size::FIELD_DOT / 2.0,
+                crate::interface_look::accent_fill(),
+            );
         }
         if !help.is_empty() {
             label.on_hover_text(help);
@@ -164,7 +186,22 @@ pub(crate) fn fields(
         ui.push_id(id, |ui| {
             let (set, revert, apply, reset) =
                 row_marked(ui, &field.label, field.hint.help, changed, moved, |ui| {
-                    let set = field_widget(ui, field, value, (models, sheets, data), area, mixed);
+                    // The field fills the card, less room for the way back.
+                    let after = if moved || changed {
+                        size::FIELD_AFTER_W
+                    } else {
+                        0.0
+                    };
+                    let room = (ui.available_width() - after).max(size::FIELD_MIN_W);
+                    let set = ui
+                        .allocate_ui_with_layout(
+                            egui::vec2(room, size::field_h()),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                field_widget(ui, field, value, (models, sheets, data), area, mixed)
+                            },
+                        )
+                        .inner;
                     if let Value::Asset(Some(used)) = value {
                         shared_by(ui, area, used.asset);
                     }
@@ -410,23 +447,35 @@ fn field_widget(
             if mixed.whole {
                 drag = drag.custom_formatter(|_, _| "—".to_string());
             }
-            whole(ui.add(drag).changed().then_some(Value::Int(n)))
+            let width = ui.available_width();
+            whole(
+                widgets::field::framed(ui, width, None, |ui| ui.add(drag))
+                    .changed()
+                    .then_some(Value::Int(n)),
+            )
         }
         FieldKind::Float => {
             let mut v = value.as_f64().unwrap_or(0.0);
-            whole(number(ui, &mut v, field, mixed.whole).then_some(Value::Float(v)))
+            let width = ui.available_width();
+            whole(number(ui, &mut v, field, (mixed.whole, None, width)).then_some(Value::Float(v)))
         }
         FieldKind::Text => {
             let mut text = match value {
                 Value::Text(t) if !mixed.whole => t.clone(),
                 _ => String::new(),
             };
-            let edit = egui::TextEdit::singleline(&mut text).hint_text(if mixed.whole {
-                "—"
-            } else {
-                ""
-            });
-            whole(ui.add(edit).changed().then_some(Value::Text(text)))
+            let edit = egui::TextEdit::singleline(&mut text)
+                .frame(egui::Frame::NONE)
+                .margin(egui::Margin::ZERO)
+                .font(text::ribbon_small())
+                .desired_width(f32::INFINITY)
+                .hint_text(if mixed.whole { "—" } else { "" });
+            let width = ui.available_width();
+            whole(
+                widgets::field::framed(ui, width, None, |ui| ui.add(edit))
+                    .changed()
+                    .then_some(Value::Text(text)),
+            )
         }
         FieldKind::Choice(options) => {
             let current = match value {
@@ -435,38 +484,29 @@ fn field_widget(
             };
             let mut chosen = None;
             let shown = if mixed.whole { "—" } else { current.as_str() };
-            egui::ComboBox::from_id_salt("choice")
-                .selected_text(shown)
-                .show_ui(ui, |ui| {
-                    for option in options {
-                        let picked = *option == current && !mixed.whole;
-                        if ui.selectable_label(picked, option).clicked()
-                            && (*option != current || mixed.whole)
-                        {
-                            chosen = Some(Value::Text(option.clone()));
-                        }
+            let width = ui.available_width();
+            let button = widgets::field::dropdown_button(ui, &field.label, shown, width);
+            egui::Popup::menu(&button).width(width).show(|ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+                for option in options {
+                    let picked = *option == current && !mixed.whole;
+                    if widgets::menu::choice(ui, option, picked).clicked()
+                        && (*option != current || mixed.whole)
+                    {
+                        chosen = Some(Value::Text(option.clone()));
                     }
-                });
+                }
+            });
             whole(chosen)
         }
         FieldKind::Vec3 => {
             let mut v = value.as_floats::<3>().unwrap_or([0.0; 3]).map(f64::from);
-            let mut part = None;
-            for (i, c) in v.iter_mut().enumerate() {
-                if number(ui, c, field, mixed.parts[i]) {
-                    part = Some((i, *c));
-                }
-            }
+            let part = three_numbers(ui, &mut v, field, mixed.parts);
             part.map(|p| (Value::floats(&v.map(|c| c as f32)), Some(p)))
         }
         FieldKind::Rotation => {
             let mut degrees = degrees_of(value);
-            let mut part = None;
-            for (i, c) in degrees.iter_mut().enumerate() {
-                if number(ui, c, field, mixed.parts[i]) {
-                    part = Some((i, *c));
-                }
-            }
+            let part = three_numbers(ui, &mut degrees, field, mixed.parts);
             part.map(|p| (rotation_of(degrees), Some(p)))
         }
         FieldKind::Color => {
@@ -889,10 +929,35 @@ fn entity_picker(ui: &mut Ui, value: &Value, area: &area::Area, mixed: bool) -> 
     chosen.filter(|v| mixed || *v != *value)
 }
 
-/// A number field: drags within the hint's range, but never changes a
-/// value that's outside it just by being shown (decision 0019). A value
-/// that differs between the selected entities (`mixed`) shows as "—".
-fn number(ui: &mut Ui, value: &mut f64, field: &FieldInfo, mixed: bool) -> bool {
+/// Three numbers side by side, each with its axis letter, sharing the
+/// room. Returns which changed, and to what.
+fn three_numbers(
+    ui: &mut Ui,
+    values: &mut [f64; 3],
+    field: &FieldInfo,
+    mixed: [bool; 3],
+) -> Option<(usize, f64)> {
+    let gap = ui.spacing().item_spacing.x;
+    let width = ((ui.available_width() - 2.0 * gap) / 3.0).max(size::FIELD_MIN_W / 3.0);
+    let mut part = None;
+    for (i, (c, axis)) in values.iter_mut().zip(widgets::field::Axis::ALL).enumerate() {
+        if number(ui, c, field, (mixed[i], Some(axis), width)) {
+            part = Some((i, *c));
+        }
+    }
+    part
+}
+
+/// A number field `width` wide, with `axis`'s letter if it is one of
+/// three: drags within the hint's range, but never changes a value
+/// that's outside it just by being shown (decision 0019). A value that
+/// differs between the selected entities (`mixed`) shows as "—".
+fn number(
+    ui: &mut Ui,
+    value: &mut f64,
+    field: &FieldInfo,
+    (mixed, axis, width): (bool, Option<widgets::field::Axis>, f32),
+) -> bool {
     let mut drag = egui::DragValue::new(value)
         .speed(field.hint.speed.unwrap_or(0.1))
         .max_decimals(3)
@@ -904,7 +969,7 @@ fn number(ui: &mut Ui, value: &mut f64, field: &FieldInfo, mixed: bool) -> bool 
     if let Some((low, high)) = field.hint.range {
         drag = drag.range(low..=high);
     }
-    ui.add(drag).changed()
+    widgets::field::framed(ui, width, axis, |ui| ui.add(drag)).changed()
 }
 
 #[cfg(test)]

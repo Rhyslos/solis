@@ -96,7 +96,7 @@ fn the_shelf_and_the_status_bar_are_the_design_s_colours() {
         // A column's header, right of its title.
         (
             "a column's header",
-            [200.0, columns + size::COLUMN_HEADER_H / 2.0],
+            [100.0, columns + size::COLUMN_HEADER_H / 2.0],
             tokens::panel(),
         ),
         // Between the version and the context, and left of the counts.

@@ -92,9 +92,11 @@ fn four_views_draw_four_images_each_with_its_own_kind() {
         ]
     );
     assert!(views.iter().all(|v| v.editor_lines));
-    // Only the view in use has the tool bar.
+    // One toolbox for the group, and each view its own pill.
     assert_eq!(h.query_all_by_label("Move (W)").count(), 1);
-    assert_eq!(h.query_all_by_label("Maximise").count(), 4);
+    for pill in ["Perspective ▾", "Top ▾", "Front ▾", "Right ▾"] {
+        assert_eq!(h.query_all_by_label(pill).count(), 1, "{pill}");
+    }
 }
 
 #[test]
@@ -105,9 +107,9 @@ fn a_click_in_a_view_makes_it_the_one_in_use_and_f_frames_there() {
     click(&mut h, front.center(), egui::Modifiers::NONE);
     assert_eq!(h.state().0.viewport.active(), 2);
     assert_eq!(h.state().0.camera().kind, ViewKind::Front);
-    // The tool bar moved there.
-    let bar = h.get_by_label("Move (W)").rect();
-    assert!(front.contains(bar.center()), "{bar:?} in {front:?}");
+    // The locks moved there.
+    let locks = h.get_by_label("Lock X").rect();
+    assert!(front.contains(locks.center()), "{locks:?} in {front:?}");
     // F (with the crate selected) frames the view in use only.
     let id = h
         .state()
@@ -188,11 +190,9 @@ fn maximise_shows_one_view_and_all_views_brings_them_back() {
     let (mut h, rects) = four();
     let (_, right) = rects[3];
     click(&mut h, right.center(), egui::Modifiers::NONE);
-    let maximise = h
-        .query_all_by_label("Maximise")
-        .find(|n| right.contains(n.rect().center()))
-        .unwrap();
-    maximise.click();
+    h.get_by_label("Right ▾").click();
+    h.run();
+    h.get_by_label("Maximise").click();
     h.run();
     h.run();
     assert_eq!(h.state().0.viewport.maximized, Some(3));
@@ -203,6 +203,8 @@ fn maximise_shows_one_view_and_all_views_brings_them_back() {
     h.state_mut().1.views.clear();
     h.run();
     assert!(h.state().1.views.iter().all(|v| v.image == 3));
+    h.get_by_label("Right ▾").click();
+    h.run();
     h.get_by_label("All views").click();
     h.run();
     assert_eq!(h.state().0.viewport.maximized, None);
@@ -213,18 +215,14 @@ fn the_menus_choose_the_layout_and_each_views_kind() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    // The viewport's ≡ (the panels have their own).
-    let full = h.state().0.viewport.full;
-    h.query_all_by_label("≡")
-        .find(|n| full.contains(n.rect().center()))
-        .unwrap()
-        .click();
+    // How many views is under the view's own pill.
+    h.get_by_label("Perspective ▾").click();
     h.run();
     h.get_by_label("Two side by side").click();
     h.run();
     assert_eq!(h.state().0.viewport.layout, ViewLayout::SideBySide);
     // The first view becomes a flat one from its own menu.
-    let menu = h.query_all_by_label("Perspective ▴").next().unwrap();
+    let menu = h.query_all_by_label("Perspective ▾").next().unwrap();
     menu.click();
     h.run();
     h.get_by_label("Front").click();

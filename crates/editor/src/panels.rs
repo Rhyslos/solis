@@ -7,7 +7,6 @@ use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
 use crate::key_owner::KeyOwner;
 use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
-use crate::menu_items::MenuState;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{AssemblyPart, PropertyRequest, properties};
@@ -22,7 +21,6 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) area_state: &'a mut AreaPanelState,
     /// The components whose values were copied, by name.
     pub(crate) copied: &'a [String],
-    pub(crate) menu: &'a MenuState,
     pub(crate) viewport: &'a mut Viewport,
     pub(crate) renderer: &'a mut dyn ViewportRenderer,
     pub(crate) console: &'a mut Console,
@@ -52,7 +50,7 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) folders: &'a [String],
     pub(crate) library_state: &'a mut LibraryState,
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
-    /// What the Hints panel says (none: hints are off).
+    /// What the Hints card says (none: hints are off).
     pub(crate) hints: Option<&'a [String]>,
     /// The sound files measured, and the one playing.
     pub(crate) sounds: crate::library::Sounds<'a>,
@@ -205,8 +203,7 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
-            | Panel::Map
-            | Panel::Hints => false,
+            | Panel::Map => false,
         }
     }
 
@@ -232,8 +229,7 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
-            | Panel::Map
-            | Panel::Hints => {}
+            | Panel::Map => {}
         }
     }
 
@@ -247,6 +243,16 @@ impl PanelViewer<'_> {
     /// count, so nothing is walked.
     pub(crate) fn column_count(&self, panel: Panel) -> Option<String> {
         (panel == Panel::Area).then(|| self.document.area().len().to_string())
+    }
+
+    /// The tools `panel` puts in its column's header: the Area column's
+    /// search, Fold everything and ⋯.
+    pub(crate) fn column_tools(&mut self, ui: &mut Ui, panel: Panel) {
+        if panel == Panel::Area
+            && let Some(command) = crate::area_panel::header_tools(ui, self.area_state)
+        {
+            self.area_requests.push(AreaRequest::Command(command));
+        }
     }
 
     /// Draws `panel`'s contents filling `ui`.
@@ -266,14 +272,8 @@ impl PanelViewer<'_> {
         }
         match tab {
             Panel::Area => {
-                let requests = area_tree(
-                    ui,
-                    self.document,
-                    self.models,
-                    self.accent,
-                    self.area_state,
-                    self.menu,
-                );
+                let requests =
+                    area_tree(ui, self.document, self.models, self.accent, self.area_state);
                 self.area_requests.extend(requests);
             }
             Panel::Properties => {
@@ -420,7 +420,7 @@ impl PanelViewer<'_> {
                     (self.models, self.sounds.sheets),
                     self.copied,
                     self.running,
-                    self.help,
+                    (self.help, self.hints),
                 );
                 self.requests.extend(requests);
             }
@@ -466,7 +466,6 @@ impl PanelViewer<'_> {
                     self.console_requests.push(request);
                 }
             }
-            Panel::Hints => crate::hints::hints_panel(ui, self.hints),
             Panel::Mixer => {
                 let requests = crate::mixer_view::mixer_panel(ui, self.mixer, self.playing);
                 self.mixer_requests.extend(requests);

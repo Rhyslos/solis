@@ -268,8 +268,9 @@ fn the_readout_says_how_far_and_how_much() {
         readout(Change::Scale(Vec3::new(2.0, 1.0, 1.0))),
         "× 2.00  1.00  1.00"
     );
-    assert_eq!(grid_text(0.25), "25 cm");
-    assert_eq!(grid_text(1.0), "1 m");
+    use crate::shell::ribbon::Steps;
+    assert_eq!(Steps::Grid.words(0.25), "0.25 m");
+    assert_eq!(Steps::Angle.words(15.0), "15°");
 }
 
 #[test]

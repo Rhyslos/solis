@@ -173,7 +173,10 @@ fn renaming_still_works_from_the_name_field() {
     h.run();
     let name = h.get_by_label("Name");
     name.click();
-    name.type_text("!");
+    h.run();
+    h.key_press(egui::Key::End);
+    h.run();
+    h.get_by_label("Name").type_text("!");
     h.run();
     assert!(
         h.state()

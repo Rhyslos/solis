@@ -143,13 +143,12 @@ fn clicking_a_tool_button_picks_it() {
 }
 
 #[test]
-fn the_viewport_menu_hides_the_tool_bar() {
+fn the_show_pill_hides_the_toolbox() {
     let mut h = harness();
     h.run();
-    h.get_by_role_and_label(egui::accesskit::Role::Button, "≡")
-        .click();
+    h.get_by_label("Show ▾").click();
     h.run();
-    h.get_by_label("Tools").click();
+    h.get_by_label("Toolbox").click();
     h.run();
     assert!(!h.state().overlays().tools);
     assert!(h.query_by_label("Move (W)").is_none());
@@ -282,7 +281,7 @@ fn the_wheel_changes_speed_while_flying_and_moves_otherwise() {
     h.run();
     assert_eq!(h.state().camera().speed, start.speed + 1);
     assert_eq!(h.state().camera().position, after_wheel.position);
-    let _ = h.get_by_label(&(start.speed + 1).to_string());
+    let _ = h.get_by_label(&format!("Camera speed {}", start.speed + 1));
 }
 
 #[test]
@@ -405,17 +404,18 @@ fn scale_check_editor_frame() {
 fn the_look_menu_switches_the_look() {
     let mut h = harness();
     h.run();
-    h.get_by_label("Standard ▴").click();
+    h.get_by_label("Standard ▾").click();
     h.run();
     h.get_by_label("Stylized").click();
     h.run();
     assert_eq!(h.state().look().kind, crate::look::LookKind::Stylized);
-    // The menu stays open while its settings change, and the button now
+    // The menu stays open while its settings change, and the pill now
     // names the look.
-    let _ = h.get_by_label("Stylized ▴");
-    h.get_by_label("2").click();
+    let _ = h.get_by_label("Stylized ▾");
+    let bands = h.state().look().bands;
+    h.get_by_label("Bands of light").click();
     h.run();
-    assert_eq!(h.state().look().bands, 2);
+    assert_ne!(h.state().look().bands, bands, "the next number of bands");
     h.get_by_label("Outlines").click();
     h.run();
     assert!(!h.state().look().outlines);
@@ -470,11 +470,15 @@ fn an_imported_model_becomes_an_entity() {
 }
 
 #[test]
-fn the_cross_in_the_area_panel_deletes_a_model() {
+fn the_row_menu_in_the_area_column_deletes_a_model() {
     let (w, id) = with_a_model();
     let mut h = acting(w);
     h.run();
-    h.get_by_label("Remove Crate").click();
+    h.get_by_label("Crate").click_secondary();
+    h.run();
+    h.run();
+    h.get_by_label("Delete").click();
+    h.run();
     h.run();
     assert!(!h.state().0.document().area().contains(id));
     // The model stays loaded (an undo can bring it back).
@@ -839,7 +843,8 @@ fn the_environment_is_shown_in_properties() {
     h.get_all_by_label("Environment").next().unwrap().click();
     h.run();
     let _ = h.get_by_label("Exposure");
-    let _ = h.get_by_label("Tone mapping");
+    // Its name and its list, which is called by it.
+    assert_eq!(h.query_all_by_label("Tone mapping").count(), 2);
 }
 
 #[test]
@@ -1236,7 +1241,7 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
     assert!(h.state().document().area().get(id).unwrap().has("Health"));
     // Its fields are drawn from its schema, with no code for it.
     let _ = h.get_by_label("Max HP");
-    let _ = h.get_by_label("Team");
+    assert!(h.query_all_by_label("Team").next().is_some());
     h.state_mut().apply_property(
         PropertyRequest::SetField {
             entity: id,

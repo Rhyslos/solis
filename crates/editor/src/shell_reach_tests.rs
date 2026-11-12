@@ -91,19 +91,15 @@ const MOVED: [(&str, &str, Place); 43] = [
         "Project settings",
         Place::File("Project settings"),
     ),
-    (
-        "View > Viewport tools",
-        "Hide the viewport's tools",
-        Place::Search,
-    ),
+    ("View > Viewport tools", "Hide the toolbox", Place::Search),
     (
         "View > Grid, angle and camera speed",
-        "Hide the viewport's grid, angle and camera speed",
+        "Hide the viewport's axis locks and camera speed",
         Place::Search,
     ),
     (
         "View > Frame rate and entity count",
-        "Hide the viewport's frame rate and entity count",
+        "Hide the viewport's frame time and frame rate",
         Place::Search,
     ),
     (

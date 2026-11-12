@@ -143,11 +143,17 @@ fn lifted(fill: Color32, response: &Response) -> Color32 {
 /// A dashed "add" button, such as "+ Component": an outline of dashes
 /// round quiet words.
 pub fn dashed(ui: &mut Ui, label: &str) -> Response {
+    dashed_as(ui, label, label)
+}
+
+/// A dashed button showing `label` whose name, for screen readers and
+/// tests, is `name` ("Add component" for "+ Component").
+pub fn dashed_as(ui: &mut Ui, label: &str, name: &str) -> Response {
     let font = text::medium_at(text::SMALL_SIZE);
     let width = width_of(ui, label, font.clone()) + 2.0 * size::DASHED_BUTTON_PAD;
     let (rect, response) =
         ui.allocate_exact_size(vec2(width, size::DASHED_BUTTON_H), Sense::click());
-    response.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label));
+    response.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), name));
     if ui.is_rect_visible(rect) {
         let ink = if response.hovered() {
             tokens::text_primary()

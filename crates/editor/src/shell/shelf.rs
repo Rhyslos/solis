@@ -252,7 +252,7 @@ fn columns(
     // The 1 px gaps between columns show this.
     ui.painter().rect_filled(content, 0.0, tokens::line());
     for (column, place) in columns.iter().zip(places(content, columns)) {
-        let body = if columns.len() > 1 {
+        let body = if columns.len() > 1 && !column.own_header {
             header(ui, place, column, viewer)
         } else {
             place
@@ -335,9 +335,10 @@ fn places(content: Rect, columns: &[Column]) -> Vec<Rect> {
         .collect()
 }
 
-/// A column's 30 px header: its title, and a count on the right where it
-/// has one. Returns the body under it.
-fn header(ui: &Ui, place: Rect, column: &Column, viewer: &PanelViewer<'_>) -> Rect {
+/// A column's 30 px header: its title, a count on the right where it has
+/// one, and its panel's own tools left of the count. Returns the body
+/// under it.
+fn header(ui: &mut Ui, place: Rect, column: &Column, viewer: &mut PanelViewer<'_>) -> Rect {
     let head = place.with_max_y(place.top() + size::COLUMN_HEADER_H);
     let painter = ui.painter();
     painter.rect_filled(head, 0.0, tokens::panel());
@@ -356,14 +357,28 @@ fn header(ui: &Ui, place: Rect, column: &Column, viewer: &PanelViewer<'_>) -> Re
         text::header(),
         tokens::text_emphasis(),
     );
+    let mut right = head.right() - size::ROW_PAD;
     if let Some(count) = viewer.column_count(column.panels[0]) {
-        painter.text(
-            pos2(head.right() - size::ROW_PAD, head.center().y),
+        let drawn = painter.text(
+            pos2(right, head.center().y),
             Align2::RIGHT_CENTER,
             count,
             text::header(),
             tokens::text_meta(),
         );
+        right = drawn.left() - size::GAP;
     }
+    let tools = Rect::from_min_max(
+        pos2(head.left() + size::ROW_PAD, head.top()),
+        pos2(right, head.bottom() - 1.0),
+    );
+    let mut tools_ui = ui.new_child(
+        UiBuilder::new()
+            .id_salt(("column tools", column.title))
+            .max_rect(tools)
+            .layout(egui::Layout::right_to_left(egui::Align::Center)),
+    );
+    tools_ui.spacing_mut().item_spacing.x = 0.0;
+    viewer.column_tools(&mut tools_ui, column.panels[0]);
     place.with_min_y(head.bottom())
 }

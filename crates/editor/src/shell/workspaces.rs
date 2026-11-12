@@ -64,6 +64,9 @@ pub struct Column {
     pub panels: &'static [Panel],
     /// How wide it is.
     pub width: Width,
+    /// Whether its panel draws its own header in the header's place
+    /// (Properties: the entity's name, + Component and ⋯, spec 199).
+    pub own_header: bool,
 }
 
 /// A column, as a constant (so a tab's columns are a constant table).
@@ -73,6 +76,15 @@ macro_rules! column {
             title: $title,
             panels: &[$($panel),*],
             width: $width,
+            own_header: false,
+        }
+    };
+    ($title:expr, [$($panel:expr),*], $width:expr, own_header) => {
+        Column {
+            title: $title,
+            panels: &[$($panel),*],
+            width: $width,
+            own_header: true,
         }
     };
 }
@@ -122,7 +134,7 @@ impl ShelfTab {
         match self {
             Self::Entity => &[
                 column!("Area", [P::Area], Fixed(size::SCENE_COLUMN_W)),
-                column!("Properties", [P::Properties, P::Hints], Rest),
+                column!("Properties", [P::Properties], Rest, own_header),
                 column!("Library", [P::Library], Fixed(size::ASSETS_COLUMN_W)),
             ],
             Self::Screen => &[

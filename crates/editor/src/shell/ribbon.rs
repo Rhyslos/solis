@@ -42,10 +42,13 @@ pub(crate) enum Control {
         command: ShellCommand,
         lit: bool,
     },
-    /// A switch: a row with a box, ticked while it is on.
+    /// A switch: a row with a box, ticked while it is on. With `steps`,
+    /// the value after its "·" opens the list of steps (spec 172:
+    /// "clicking the value edits the step"), as a right-click does.
     Switch {
         label: String,
         command: ShellCommand,
+        steps: Option<Steps>,
     },
     /// Opens a list from its small arrow or a right-click. With a
     /// command of its own, a plain click does that; without one, a
@@ -113,8 +116,75 @@ pub(crate) fn switch(label: impl Into<String>, command: ShellCommand) -> Slot {
     let control = Control::Switch {
         label: label.into(),
         command,
+        steps: None,
     };
     (Shape::Row(RowKind::Check), vec![Entry::Built(control)])
+}
+
+/// A small row with a box to tick and a step to choose (Snapping).
+pub(crate) fn switch_with_steps(
+    label: impl Into<String>,
+    command: ShellCommand,
+    steps: Steps,
+) -> Slot {
+    let control = Control::Switch {
+        label: label.into(),
+        command,
+        steps: Some(steps),
+    };
+    (Shape::Row(RowKind::Check), vec![Entry::Built(control)])
+}
+
+/// Which snapping step a switch's list chooses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Steps {
+    /// The grid's, in metres.
+    Grid,
+    /// Turning's, in degrees.
+    Angle,
+}
+
+impl Steps {
+    /// The steps to choose from.
+    pub(crate) fn all(self) -> &'static [f32] {
+        match self {
+            Self::Grid => &crate::transforming::GRID_STEPS,
+            Self::Angle => &crate::transforming::ANGLE_STEPS,
+        }
+    }
+
+    /// A step as the list says it: "0.25 m", "15°".
+    pub(crate) fn words(self, step: f32) -> String {
+        match self {
+            Self::Grid => format!("{step} m"),
+            Self::Angle => format!("{step}°"),
+        }
+    }
+
+    /// The step in force.
+    pub(crate) fn of(self, snapping: &crate::transforming::Snapping) -> f32 {
+        match self {
+            Self::Grid => snapping.grid_step,
+            Self::Angle => snapping.angle_step,
+        }
+    }
+
+    /// Puts `step` in force.
+    pub(crate) fn set(self, snapping: &mut crate::transforming::Snapping, step: f32) {
+        match self {
+            Self::Grid => snapping.grid_step = step,
+            Self::Angle => snapping.angle_step = step,
+        }
+    }
+}
+
+/// What was chosen on the ribbon.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum Picked {
+    /// A control's command.
+    Command(ShellCommand),
+    /// A snapping step.
+    Step(Steps, f32),
 }
 
 /// A small row that opens a list.
@@ -230,14 +300,9 @@ pub(crate) fn groups_drawn(ctx: &egui::Context) -> Vec<(Option<&'static str>, Re
         .unwrap_or_default()
 }
 
-/// Draws `groups` and, at the far right, `play`, in `band`. Returns the
-/// command of the control clicked.
-pub(crate) fn ribbon(
-    ui: &mut Ui,
-    w: &Workbench,
-    groups: &[Group],
-    play: &Group,
-) -> Option<ShellCommand> {
+/// Draws `groups` and, at the far right, `play`, in `band`. Returns what
+/// was chosen.
+pub(crate) fn ribbon(ui: &mut Ui, w: &Workbench, groups: &[Group], play: &Group) -> Option<Picked> {
     let band = ui.max_rect();
     ui.painter().rect_filled(band, 0.0, tokens::ribbon());
     let laid: Vec<(&Group, Vec<Column>)> = groups.iter().map(|g| (g, columns(ui, g))).collect();
@@ -326,7 +391,7 @@ fn draw_group(
     group: &Group,
     columns: &[Column],
     n: usize,
-) -> Option<ShellCommand> {
+) -> Option<Picked> {
     let [pad_top, pad_side, pad_foot] = size::RIBBON_GROUP_PAD;
     let label_h = if group.label.is_some() {
         size::RIBBON_GROUP_LABEL_H
@@ -392,7 +457,7 @@ fn draw_slot(
     id: egui::Id,
     shape: Shape,
     entry: &Entry<Control>,
-) -> Option<ShellCommand> {
+) -> Option<Picked> {
     let control = match entry {
         Entry::Unbuilt(part) => {
             let mut place = ui.new_child(UiBuilder::new().max_rect(spot));
@@ -411,11 +476,29 @@ fn draw_slot(
             controls::fact(ui, spot, id, words);
             None
         }
-        (Control::Switch { label, command }, _) => {
+        (
+            Control::Switch {
+                label,
+                command,
+                steps,
+            },
+            _,
+        ) => {
             let look = Look::of(*command, w, false);
-            controls::row(ui, spot, id, label, RowKind::Check, &look)
-                .clicked()
-                .then_some(*command)
+            match steps {
+                None => controls::row(ui, spot, id, label, RowKind::Check, &look)
+                    .clicked()
+                    .then_some(Picked::Command(*command)),
+                Some(steps) => controls::switch_with_steps(
+                    ui,
+                    spot,
+                    id,
+                    (label, *command),
+                    *steps,
+                    &look,
+                    w.viewport.snapping,
+                ),
+            }
         }
         (
             Control::Do {
@@ -431,7 +514,7 @@ fn draw_slot(
                 Shape::Light(icon) => controls::big(ui, spot, id, icon, label, &look, true).0,
                 Shape::Row(kind) => controls::row(ui, spot, id, label, kind, &look),
             };
-            response.clicked().then_some(*command)
+            response.clicked().then_some(Picked::Command(*command))
         }
         (
             Control::List {
@@ -440,7 +523,9 @@ fn draw_slot(
                 items,
             },
             _,
-        ) => controls::with_list(ui, w, spot, id, shape, label, *command, items),
+        ) => {
+            controls::with_list(ui, w, spot, id, shape, label, *command, items).map(Picked::Command)
+        }
     }
 }
 
@@ -489,9 +574,16 @@ impl Workbench {
                 self.shell.dropped = false;
             }
         }
-        if let Some(command) = picked {
-            self.shell.dropped = false;
-            command.run(self, ui.ctx(), actions);
+        match picked {
+            Some(Picked::Command(command)) => {
+                self.shell.dropped = false;
+                command.run(self, ui.ctx(), actions);
+            }
+            Some(Picked::Step(steps, step)) => {
+                self.shell.dropped = false;
+                steps.set(&mut self.viewport.snapping, step);
+            }
+            None => {}
         }
     }
 }

@@ -331,7 +331,7 @@ fn the_editor_s_surfaces_are_the_design_s() {
             tokens::viewport(),
         ),
         ("the shelf bar", [800.0, 559.0], tokens::shelf_bar()),
-        ("the Area column's header", [150.0, 591.0], tokens::panel()),
+        ("the Area column's header", [100.0, 591.0], tokens::panel()),
         (
             "the Properties column's header",
             [700.0, 591.0],

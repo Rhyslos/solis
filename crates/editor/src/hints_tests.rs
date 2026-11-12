@@ -67,36 +67,46 @@ fn every_engine_component_has_a_hint() {
 }
 
 #[test]
-fn the_panel_shows_the_hints_or_says_they_are_off() {
+fn the_card_shows_the_hints_and_goes_when_they_are_off() {
     let mut h = harness(fresh());
-    // Worked out once the panel is known to be in front.
+    // Worked out once Properties is known to be in front.
     h.run();
     h.run();
     assert!(h.query_by_label_contains("Select something").is_some());
     h.state_mut().0.set_hints_on(false);
     h.run();
-    assert!(h.query_by_label_contains("Hints are off").is_some());
+    assert!(h.query_by_label_contains("Select something").is_none());
+    assert!(h.query_by_label("Turn hints off").is_none());
 }
 
 #[test]
-fn hints_sit_under_properties_on_home_s_entity_tab() {
+fn turn_hints_off_on_the_card_turns_them_off_and_says_where_they_come_back() {
     let mut h = harness(fresh());
     h.run();
     h.run();
-    let w = &h.state().0;
-    let hints = w
-        .shell
-        .drawn_at(crate::panel::Panel::Hints)
-        .expect("in view");
-    let properties = w
+    h.get_by_label("Turn hints off").click();
+    h.run();
+    h.run();
+    assert!(!h.state().0.hints_on());
+    assert!(
+        h.query_by_label_contains("File \u{203a} Preferences turns them back on")
+            .is_some()
+    );
+}
+
+#[test]
+fn hints_are_the_last_card_in_properties_on_home_s_entity_tab() {
+    let mut h = harness(fresh());
+    h.run();
+    h.run();
+    let card = h.get_by_label("Turn hints off").rect();
+    let properties = h
+        .state()
+        .0
         .shell
         .drawn_at(crate::panel::Panel::Properties)
         .expect("in view");
-    assert!(
-        hints.top() > properties.bottom(),
-        "{hints:?} under {properties:?}"
-    );
-    assert_eq!(hints.x_range(), properties.x_range(), "in the same column");
+    assert!(properties.contains_rect(card), "{card:?} in {properties:?}");
 }
 
 #[test]

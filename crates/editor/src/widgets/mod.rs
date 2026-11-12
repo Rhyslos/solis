@@ -24,6 +24,7 @@ pub mod chip;
 pub mod dashed;
 pub mod field;
 pub mod keycap;
+pub mod menu;
 pub mod pill;
 pub mod rows;
 pub mod segmented;

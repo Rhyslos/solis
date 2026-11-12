@@ -108,7 +108,7 @@ fn nothing_changes_colour_while_the_game_runs_but_play_becoming_stop() {
     for point in [
         [700.0, 17.0],
         [700.0, 889.0],
-        [1.0, 450.0],
+        [1.0, 700.0],
         [1438.0, 450.0],
         [700.0, 1.0],
     ] {

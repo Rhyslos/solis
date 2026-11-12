@@ -273,6 +273,10 @@ fn unbuilt_in_the_window<'h>(
         UnbuiltId::HomeShelfAnimation,
         UnbuiltId::HomeShelfTransport,
         UnbuiltId::HomeShelfFrameCounter,
+        UnbuiltId::HomeToolPose,
+        UnbuiltId::HomeToolMotionPath,
+        UnbuiltId::HomeToolAddKey,
+        UnbuiltId::HomeToolMeasure,
     ]
     .into_iter()
     .map(|id| get(id).name)
