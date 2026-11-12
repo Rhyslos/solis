@@ -90,11 +90,36 @@ pub const TOOL_ICON: f32 = 15.0;
 pub const SHELF_BAR_H: f32 = 34.0;
 /// The shelf's drag grip: its size.
 pub const SHELF_GRIP: [f32; 2] = [36.0, 4.0];
-/// The shelf's standard height, bar and all. Solis's own: the design
-/// gives a range.
+/// The shelf's standard height under its bar. Solis's own: the design
+/// gives a range (290 to 360), and this one leaves the center 442 tall
+/// in a 1440 × 900 window, inside the design's 400 to 470.
 pub const SHELF_H: f32 = 300.0;
-/// The shelf's standard height on the Animate tab.
+/// The shelf's standard height on the Animate tab (spec 418).
 pub const SHELF_H_ANIMATE: f32 = 360.0;
+/// The shelf's least height under its bar, when the grip is dragged.
+/// Solis's own.
+pub const SHELF_MIN_H: f32 = 80.0;
+/// The least height the center keeps when the grip is dragged up.
+/// Solis's own.
+pub const CENTER_MIN_H: f32 = 120.0;
+/// The Scene (Area) column's width (spec 205: 220 to 240).
+pub const SCENE_COLUMN_W: f32 = 240.0;
+/// The Assets (Library) column's width (spec 207: 280 to 320).
+pub const ASSETS_COLUMN_W: f32 = 300.0;
+/// The least width of a shelf column: narrower than this, columns wrap
+/// under each other (spec 1143). Solis's own, from the cards' 180.
+pub const COLUMN_MIN_W: f32 = 180.0;
+/// The standard split between two editor groups: the first one's share.
+pub const SPLIT: f32 = 0.5;
+/// The Library's split when a tileset or a picture's crops open beside
+/// it.
+pub const SPLIT_LIBRARY: f32 = 0.4;
+/// The least width of an editor group side by side: narrower than this,
+/// the groups stack (spec 1145). Solis's own.
+pub const GROUP_MIN_W: f32 = 360.0;
+/// How far either side of a divider (the 1 px line between groups, the
+/// shelf's top edge) a drag takes hold. Solis's own.
+pub const DIVIDER_REACH: f32 = 3.0;
 /// A shelf column header's height.
 pub const COLUMN_HEADER_H: f32 = 30.0;
 /// A row's, header's or shelf tab's padding at each side.

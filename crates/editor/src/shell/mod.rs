@@ -24,9 +24,15 @@ pub(crate) mod file_page;
 mod play_group;
 pub(crate) mod ribbon;
 mod ribbons;
+pub(crate) mod saved;
 pub(crate) mod tab_bar;
+pub mod workspaces;
 
 pub(crate) use commands::ShellCommand;
+pub use saved::{ShellState, WorkspaceState};
+use std::collections::BTreeMap;
+use workspaces::Arrangement;
+pub use workspaces::ShelfTab;
 
 use crate::layout;
 use crate::panel::Panel;
@@ -161,6 +167,12 @@ pub struct Shell {
     /// While collapsed: whether a click on a tab has dropped the ribbon
     /// down over the center.
     pub(crate) dropped: bool,
+    /// What each tab remembers of its middle; a tab not here is as the
+    /// design draws it.
+    pub(crate) arrangements: BTreeMap<RibbonTab, Arrangement>,
+    /// Where each panel was drawn in the last frame: its body, under its
+    /// tab or header.
+    pub(crate) drawn: Vec<(Panel, egui::Rect)>,
 }
 
 impl Default for Shell {
@@ -170,6 +182,8 @@ impl Default for Shell {
             before_file: RibbonTab::Home,
             collapsed: false,
             dropped: false,
+            arrangements: BTreeMap::new(),
+            drawn: Vec::new(),
         }
     }
 }
@@ -185,6 +199,29 @@ impl Shell {
     /// down.
     pub(crate) fn ribbon_in_band(&self) -> bool {
         !self.collapsed && self.tab != RibbonTab::File
+    }
+
+    /// What `tab` remembers of its middle.
+    pub(crate) fn arrangement(&self, tab: RibbonTab) -> Arrangement {
+        self.arrangements
+            .get(&tab)
+            .copied()
+            .unwrap_or_else(|| Arrangement::standard(tab))
+    }
+
+    /// What `tab` remembers of its middle, to change.
+    pub(crate) fn arrangement_mut(&mut self, tab: RibbonTab) -> &mut Arrangement {
+        self.arrangements
+            .entry(tab)
+            .or_insert_with(|| Arrangement::standard(tab))
+    }
+
+    /// Where `panel`'s body was drawn in the last frame, if it was.
+    pub(crate) fn drawn_at(&self, panel: Panel) -> Option<egui::Rect> {
+        self.drawn
+            .iter()
+            .find(|(p, _)| *p == panel)
+            .map(|(_, rect)| *rect)
     }
 }
 
