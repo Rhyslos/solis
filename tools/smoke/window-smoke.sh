@@ -126,10 +126,11 @@ ended_within() {
 # File > Exit with the mouse, then wait for the program to end.
 quit() {
     # The File tab is the first tab after the logo; Exit is the last item
-    # of the File page's column.
+    # of the File page's column, under Learn, Updates and About (the
+    # column's own sizes are FILE_MENU_* in crates/editor/src/tokens/size.rs).
     xdotool mousemove "${FILE_TAB_X:-64}" "${FILE_TAB_Y:-19}" click 1
     settle
-    xdotool mousemove "${EXIT_X:-110}" "${EXIT_Y:-570}" click 1
+    xdotool mousemove "${EXIT_X:-110}" "${EXIT_Y:-534}" click 1
     # With unsaved changes (an imported model), Solis asks first: answer
     # Don't save, in the middle of the window.
     if ! ended_within 3; then
