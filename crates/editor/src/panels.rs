@@ -147,6 +147,8 @@ pub(crate) struct FramesOut {
     pub(crate) screen_said: Option<String>,
     /// The Canvas or Elements tab was closed: close the screen.
     pub(crate) screen_closed: bool,
+    /// A click on the Profiler's frame-time graph picked this frame.
+    pub(crate) frame_picked: Option<u64>,
 }
 
 impl PanelViewer<'_> {
@@ -550,9 +552,9 @@ impl PanelViewer<'_> {
                 self.library_requests.extend(library);
             }
             Panel::Profiler => {
-                egui::ScrollArea::vertical()
-                    .auto_shrink(false)
-                    .show(ui, |ui| crate::profiler::profiler_panel(ui, self.profiler));
+                if let Some(frame) = crate::profiler_view::profiler_panel(ui, self.profiler) {
+                    self.frames_out.frame_picked = Some(frame);
+                }
             }
             Panel::Problems => {
                 use crate::problems::ProblemClick;

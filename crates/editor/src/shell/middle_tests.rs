@@ -154,29 +154,29 @@ fn ctrl_space_folds_the_shelf_and_works_while_typing() {
 #[test]
 fn two_groups_side_by_side_share_the_room_and_stack_when_narrow() {
     let mut w = Workbench::new(info());
-    w.show_tab(RibbonTab::Debug);
+    w.show_tab(RibbonTab::Audio);
     let mut h = window(1440.0, 900.0, w);
-    let game = body(&h, Panel::Game);
-    let profiler = body(&h, Panel::Profiler);
-    assert_eq!(profiler.left(), game.right() + 1.0, "a 1 px divider");
-    assert_eq!(game.top(), profiler.top());
+    let mixer = body(&h, Panel::Mixer);
+    let bus = body(&h, Panel::Bus);
+    assert_eq!(bus.left(), mixer.right() + 1.0, "a 1 px divider");
+    assert_eq!(mixer.top(), bus.top());
     // The divider's drag moves the split, within its limits.
     let divider = h.get_by_label("Group divider").rect().center();
     drag(&mut h, divider, vec2(-300.0, 0.0));
-    let split = h.state().0.shell.arrangement(RibbonTab::Debug).split;
+    let split = h.state().0.shell.arrangement(RibbonTab::Audio).split;
     assert!(split < 0.4, "{split}");
     let divider = h.get_by_label("Group divider").rect().center();
     drag(&mut h, divider, vec2(-2000.0, 0.0));
-    let split = h.state().0.shell.arrangement(RibbonTab::Debug).split;
+    let split = h.state().0.shell.arrangement(RibbonTab::Audio).split;
     assert_eq!(split, super::workspaces::SPLIT_LIMIT);
     // Too narrow for two side by side: they stack.
     let mut w = Workbench::new(info());
-    w.show_tab(RibbonTab::Debug);
+    w.show_tab(RibbonTab::Audio);
     let h = window(2.0 * size::GROUP_MIN_W - 40.0, 900.0, w);
-    let game = body(&h, Panel::Game);
-    let profiler = body(&h, Panel::Profiler);
-    assert_eq!(profiler.top(), game.bottom() + 1.0 + size::DOC_TAB_H);
-    assert_eq!(profiler.left(), game.left());
+    let mixer = body(&h, Panel::Mixer);
+    let bus = body(&h, Panel::Bus);
+    assert_eq!(bus.top(), mixer.bottom() + 1.0 + size::DOC_TAB_H);
+    assert_eq!(bus.left(), mixer.left());
 }
 
 #[test]
@@ -263,7 +263,7 @@ fn each_tab_remembers_its_shelf_its_height_and_its_split_across_a_restart() {
     h.run();
     let grip = h.get_by_label("Shelf grip").rect().center();
     drag(&mut h, grip, vec2(0.0, -60.0));
-    crate::test_support::ribbon_tab(&mut h, RibbonTab::Debug);
+    crate::test_support::ribbon_tab(&mut h, RibbonTab::Audio);
     h.run();
     let divider = h.get_by_label("Group divider").rect().center();
     drag(&mut h, divider, vec2(200.0, 0.0));
@@ -274,13 +274,13 @@ fn each_tab_remembers_its_shelf_its_height_and_its_split_across_a_restart() {
     let mut w = Workbench::new(info());
     w.restore_shell(Some(&back), false);
     let before = &h.state().0.shell;
-    for tab in [RibbonTab::Home, RibbonTab::Debug] {
+    for tab in [RibbonTab::Home, RibbonTab::Audio] {
         let (a, b) = (before.arrangement(tab), w.shell.arrangement(tab));
         assert_eq!(a.shelf_tab, b.shelf_tab, "{tab:?}");
         assert_eq!(a.shelf_height, b.shelf_height, "{tab:?}");
         assert_eq!(a.split, b.split, "{tab:?}");
     }
-    assert_eq!(w.ribbon_tab(), RibbonTab::Debug);
+    assert_eq!(w.ribbon_tab(), RibbonTab::Audio);
     assert!(w.ribbon_collapsed());
     assert_eq!(
         w.shell.arrangement(RibbonTab::Home).shelf_tab,

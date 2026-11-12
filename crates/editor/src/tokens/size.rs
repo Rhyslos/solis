@@ -396,6 +396,23 @@ pub const TABLE_HEADER_H: f32 = 28.0;
 /// The Sound events tab's detail column: its share of the shelf.
 pub const EVENT_DETAIL_SHARE: f32 = 0.5;
 
+/// The Profiler's line over its graph: the frame shown.
+pub const PROFILER_TOP_H: f32 = 24.0;
+/// The frame-time graph's height (spec 467).
+pub const FRAME_GRAPH_H: f32 = 100.0;
+/// The room at the graph's left for "60 fps" and "30 fps".
+pub const FRAME_GRAPH_LABEL_W: f32 = 52.0;
+/// The timeline's column of lane names (spec 477).
+pub const LANE_LABEL_W: f32 = 110.0;
+/// A lane of the timeline, and its ruler (spec 479).
+pub const LANE_H: f32 = 26.0;
+/// A block on a lane: its inset from the lane's top and foot.
+pub const LANE_BLOCK_INSET: f32 = 3.0;
+/// The Statistics column beside the timeline (spec 491).
+pub const STATS_W: f32 = 320.0;
+/// A statistic's bar under its row (CPU, GPU).
+pub const STATS_BAR_H: f32 = 3.0;
+
 /// The mark on a part that isn't built yet: a hollow square, this wide.
 pub const UNBUILT_MARK: f32 = 5.0;
 /// The gap between an unbuilt part's words and its mark.

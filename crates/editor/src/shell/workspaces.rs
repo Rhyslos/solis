@@ -244,7 +244,9 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         RibbonTab::Animate if open.clips => vec![vec![P::Viewport]],
         RibbonTab::Ui => vec![vec![P::Canvas]],
         RibbonTab::Audio => vec![vec![P::Mixer], vec![P::Bus]],
-        RibbonTab::Debug => vec![vec![P::Game, P::Viewport], vec![P::Profiler]],
+        // The Profiler fills the middle (round 3); the Game beside it is
+        // the one the Debug tab looks into.
+        RibbonTab::Debug => vec![vec![P::Profiler, P::Game]],
         RibbonTab::File
         | RibbonTab::Shading
         | RibbonTab::Vfx

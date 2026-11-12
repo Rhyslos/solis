@@ -137,7 +137,6 @@ unbuilt! {
     DebugToolsDebugger: "debug.tools.debugger" => ("Debugger", NotPlanned, "Stops game code at a line and steps through it"),
     DebugToolsMemory: "debug.tools.memory" => ("Memory", NotPlanned, "Shows what the game's memory is spent on"),
     DebugTimelineThreads: "debug.timeline.threads" => ("Thread lanes", NotPlanned, "Shows each thread's work in a lane of its own, block by named block"),
-    DebugStatsDrawCalls: "debug.stats.draw-calls" => ("Draw calls", NotPlanned, "Counts how many times the frame asked the graphics card to draw"),
     DebugStatsMemory: "debug.stats.memory" => ("Memory used", NotPlanned, "Shows how much memory the game is using"),
     DebugShelfHottest: "debug.shelf.hottest" => ("Hottest functions", NotPlanned, "Lists the functions of game code that take the most time"),
     DebugShelfMemory: "debug.shelf.memory" => ("Memory snapshot", NotPlanned, "Lists everything in the game's memory at one moment"),

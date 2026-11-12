@@ -25,6 +25,8 @@ mod commands_many;
 pub mod console;
 mod console_commands;
 mod day_colours;
+#[cfg(test)]
+mod debug_screen_tests;
 pub mod document;
 mod elements_view;
 pub mod export_dialog;
@@ -65,6 +67,7 @@ mod play_input;
 pub mod play_only;
 pub mod problems;
 pub mod profiler;
+mod profiler_view;
 mod project_state;
 mod properties;
 mod properties_cards;

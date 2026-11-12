@@ -163,6 +163,9 @@ impl Workbench {
     /// After the tabs are drawn: saves a change, and closes the file if a
     /// tab was closed.
     pub(crate) fn frames_tabs_done(&mut self, out: crate::panels::FramesOut) {
+        if let Some(frame) = out.frame_picked {
+            self.profiler.picked = Some(frame);
+        }
         if out.changed {
             self.save_frames();
         }

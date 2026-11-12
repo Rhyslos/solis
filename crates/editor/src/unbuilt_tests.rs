@@ -425,7 +425,7 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 103] = [
+const DRAWN_SO_FAR: [UnbuiltId; 105] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
@@ -488,6 +488,9 @@ const DRAWN_SO_FAR: [UnbuiltId; 103] = [
     UnbuiltId::DebugShowMemory,
     UnbuiltId::DebugToolsDebugger,
     UnbuiltId::DebugToolsMemory,
+    // Debug's profiler.
+    UnbuiltId::DebugTimelineThreads,
+    UnbuiltId::DebugStatsMemory,
     // File's column, and Recent projects.
     UnbuiltId::FilePlugins,
     UnbuiltId::RecentCardThumbnail,
