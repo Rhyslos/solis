@@ -13,10 +13,11 @@
 //! take a path from anywhere on the computer: the user chose it there, in
 //! the system's own window or by dropping a file.
 
-use asset_db::{AssetDb, Change, FileKind, Listing, Project, Watcher};
+use asset_db::{AssetDb, Change, FileKind, Listing, Project, Scanned, Watcher};
 use editor::{LibraryItem, LibraryKind, ProjectInfo};
 use reflect::AssetId;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{Receiver, TryRecvError};
 
 /// The most projects File > Recent projects lists.
 pub const MAX_RECENT: usize = 8;
@@ -32,6 +33,11 @@ pub struct Projects {
     /// Whether the assets folder changed since last asked (any file, not
     /// only assets: the Library lists them all).
     changed: bool,
+    /// A look at the assets folder running on a worker (it can take
+    /// seconds in a big project: CONTRIBUTING rule 10).
+    scanning: Option<Receiver<Scanned>>,
+    /// Whether the folder changed again while that look ran.
+    again: bool,
 }
 
 /// What opening a project found.
@@ -114,6 +120,9 @@ impl Projects {
         let watching = watcher.is_some();
         self.db = Some(db);
         self.watcher = watcher;
+        // A look at the last project's folder is no longer wanted.
+        self.scanning = None;
+        self.again = false;
         Ok(Opened {
             info,
             notes,
@@ -152,31 +161,68 @@ impl Projects {
         self.db.as_ref().map(|db| db.project().root())
     }
 
-    /// What changed in the assets folder since last asked, with notes in
-    /// plain words. Never waits: with nothing reported by the watcher,
-    /// the folder isn't looked at.
+    /// What changed in the assets folder, found by the last look at it
+    /// that has finished, with notes in plain words. Never waits: the
+    /// folder is looked at on a worker when the watcher reports a change,
+    /// and what it found is handed back by a later call.
     pub fn poll(&mut self) -> (Vec<Change>, Vec<String>) {
-        let changed = self.watcher.as_ref().is_some_and(Watcher::changed);
+        let mut found = (Vec::new(), Vec::new());
+        if let Some(scanning) = &self.scanning {
+            match scanning.try_recv() {
+                Ok(scanned) => {
+                    self.scanning = None;
+                    self.changed = true;
+                    if let Some(taken) = self.db.as_mut().and_then(|db| db.take(scanned)) {
+                        found = taken;
+                    }
+                }
+                Err(TryRecvError::Empty) => {}
+                // The look ended without an answer: the next change
+                // starts another.
+                Err(TryRecvError::Disconnected) => self.scanning = None,
+            }
+        }
+        self.again |= self.watcher.as_ref().is_some_and(Watcher::changed);
         // A new file left waiting for its sidecar is looked at again once
         // it has settled, even if nothing else happens.
-        let due = self
-            .db
-            .as_ref()
-            .and_then(AssetDb::look_again_at)
-            .is_some_and(|at| std::time::Instant::now() >= at);
-        if !changed && !due {
-            return (Vec::new(), Vec::new());
+        self.again |= self.scanning.is_none()
+            && self
+                .db
+                .as_ref()
+                .and_then(AssetDb::look_again_at)
+                .is_some_and(|at| std::time::Instant::now() >= at);
+        if self.again && self.scanning.is_none() {
+            self.start_scan();
         }
-        self.changed = true;
-        self.rescan()
+        found
     }
 
-    /// Whether a new file is waiting for its sidecar, to be looked at
-    /// again shortly.
+    /// Starts a look at the assets folder on a worker.
+    fn start_scan(&mut self) {
+        let Some(db) = self.db.as_mut() else {
+            return;
+        };
+        let scan = db.scan();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let started = std::thread::Builder::new()
+            .name("assets scan".into())
+            .spawn(move || {
+                let _ = sender.send(scan.run());
+            });
+        if started.is_ok() {
+            self.scanning = Some(receiver);
+            self.again = false;
+        }
+    }
+
+    /// Whether the assets folder is being looked at, or a new file is
+    /// waiting for its sidecar, to be looked at again shortly.
     pub fn waiting(&self) -> bool {
-        self.db
-            .as_ref()
-            .is_some_and(|db| db.look_again_at().is_some())
+        self.scanning.is_some()
+            || self
+                .db
+                .as_ref()
+                .is_some_and(|db| db.look_again_at().is_some())
     }
 
     /// Whether anything in the assets folder changed since last asked.
@@ -190,7 +236,9 @@ impl Projects {
         self.db.as_ref().map_or(Ok(()), |db| db.adopt(path))
     }
 
-    /// Looks at the whole assets folder again.
+    /// Looks at the whole assets folder again, now (after Solis changed
+    /// it, to know the new file's ID at once). A look on a worker begun
+    /// before it is out of date, and dropped.
     pub fn rescan(&mut self) -> (Vec<Change>, Vec<String>) {
         self.db
             .as_mut()
@@ -638,6 +686,89 @@ mod tests {
         let f = std::env::temp_dir().join(format!("solis-app-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&f);
         f
+    }
+
+    /// Polls `projects` frame by frame until a look finds something (at
+    /// most ten seconds): what it found, the longest a poll took, and
+    /// whether a poll came back empty while the folder was being looked
+    /// at.
+    fn poll_until_found(projects: &mut Projects) -> (Vec<Change>, f64, bool) {
+        let start = std::time::Instant::now();
+        let (mut longest, mut looked_on_a_worker) = (0.0_f64, false);
+        while start.elapsed().as_secs() < 10 {
+            let frame = std::time::Instant::now();
+            let (changes, _) = projects.poll();
+            longest = longest.max(frame.elapsed().as_secs_f64() * 1000.0);
+            if !changes.is_empty() {
+                return (changes, longest, looked_on_a_worker);
+            }
+            looked_on_a_worker |= projects.scanning.is_some();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        (Vec::new(), longest, looked_on_a_worker)
+    }
+
+    /// The review, BUG-32: when the watcher said the assets changed, the
+    /// frame looked at the whole folder itself (walking it, reading every
+    /// sidecar, hashing new files). The look runs on a worker now, and
+    /// what it found comes back with a later frame.
+    #[test]
+    fn a_change_in_the_assets_is_looked_at_on_a_worker() {
+        let root = folder("scan-worker");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut projects = Projects::default();
+        projects
+            .open(&root, true, assets::Limits::default())
+            .unwrap();
+        let file = root.join("assets/crate.glb");
+        std::fs::write(&file, assets::sample::sample_glb()).unwrap();
+        projects.adopt(&file).unwrap();
+        let (changes, _, looked_on_a_worker) = poll_until_found(&mut projects);
+        let id = projects.db().and_then(|db| db.id_at(&file));
+        assert_eq!(
+            changes,
+            id.map(Change::Added).into_iter().collect::<Vec<_>>()
+        );
+        assert!(looked_on_a_worker, "the frame never looked itself");
+        assert!(
+            projects.take_changed(),
+            "the Library lists the folder again"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// The review, BUG-32: a new 256 MB sound settled in the assets. Its
+    /// first look hashes it whole; that was the frame's wait before.
+    #[test]
+    #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+    fn scale_check_a_big_new_file_in_the_assets() {
+        const TARGET_MS: f64 = 1.0;
+        let root = folder("scale-scan");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut projects = Projects::default();
+        projects
+            .open(&root, true, assets::Limits::default())
+            .unwrap();
+        let file = root.join("assets/music.wav");
+        let big = std::fs::File::create(&file).unwrap();
+        big.set_len(256 << 20).unwrap(); // sparse: nothing is written
+        let long_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(60);
+        big.set_modified(long_ago).unwrap();
+        drop(big);
+        let (changes, ms, _) = poll_until_found(&mut projects);
+        assert_eq!(changes.len(), 1, "{changes:?}");
+        // The same look made here and now, as the frame used to.
+        std::fs::remove_file(root.join("assets/music.wav.solmeta")).unwrap();
+        let start = std::time::Instant::now();
+        projects.rescan();
+        let look_ms = start.elapsed().as_secs_f64() * 1000.0;
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!(
+            "Scale check: the longest frame's part while a new 256 MB file is looked at {ms:.3} ms \
+             (target {TARGET_MS} ms; the look itself, now on a worker, {look_ms:.0} ms) {verdict}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(ms <= TARGET_MS, "{ms:.3} ms");
     }
 
     #[test]
