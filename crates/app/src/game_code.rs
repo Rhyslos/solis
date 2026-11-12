@@ -37,7 +37,8 @@ type Attempt = Result<Result<Option<script::Compiled>, Vec<CodeProblem>>, script
 /// A worker's answer: the notes describing the engine gave, the code's
 /// hash, what was read, and what became of its check (nothing when the
 /// code is what the last reported check found: it isn't compiled again).
-type Answer = (Vec<String>, u64, Code, Option<Attempt>);
+/// Nothing at all when the worker crashed.
+type Answer = Option<(Vec<String>, u64, Code, Option<Attempt>)>;
 
 /// How the code is checked, and whether a check that was given up on is
 /// still running: `script`'s own, but for tests, which mustn't start a
@@ -356,13 +357,18 @@ impl GameCode {
         let started = std::thread::Builder::new()
             .name("game code".into())
             .spawn(move || {
-                let described = Self::describe_with(&assets, &made_by, &animation);
-                let code = script::gather(&assets);
-                let found = hash(&code);
-                // Most changes in the assets aren't code (a model, the
-                // area saved): then there's nothing to compile.
-                let compiled = (last != Some(found)).then(|| check(&code));
-                let _ = sender.send((described, found, code, compiled));
+                // A crash is answered too, so it's said and the next
+                // change is checked (the review, BUG-33).
+                let answer = std::panic::catch_unwind(|| {
+                    let described = Self::describe_with(&assets, &made_by, &animation);
+                    let code = script::gather(&assets);
+                    let found = hash(&code);
+                    // Most changes in the assets aren't code (a model, the
+                    // area saved): then there's nothing to compile.
+                    let compiled = (last != Some(found)).then(|| check(&code));
+                    (described, found, code, compiled)
+                });
+                let _ = sender.send(answer.ok());
             });
         if started.is_ok() {
             self.running = Some((receiver, Instant::now(), folder));
@@ -400,39 +406,31 @@ impl GameCode {
             }
         }
         let (receiver, started, _) = self.running.as_ref()?;
-        let (described, found, code, compiled) = match receiver.try_recv() {
-            Ok(done) => done,
+        let answer = match receiver.try_recv() {
+            Ok(answer) => answer,
+            // Stuck: stop waiting (the worker is left to end on its own).
             Err(std::sync::mpsc::TryRecvError::Empty) if started.elapsed() > GIVE_UP => {
-                // Stuck: stop waiting (the worker is left to end on its
-                // own), say so, and let the next change be checked.
-                self.running = None;
-                self.last = None;
-                if let Some(assets) = self.again.take() {
-                    self.check(assets);
-                }
-                return Some(Checked {
-                    problems: vec![CodeProblem {
-                        file: script::code::ENTRY.to_string(),
-                        line: 0,
-                        column: 0,
-                        message: format!(
-                            "checking the game's code took more than {} s, so Solis stopped \
-                             waiting. This is a bug in Lust ({}); please report it with the \
-                             code that caused it. Saving a change checks the code again.",
-                            GIVE_UP.as_secs(),
-                            script::LUST_VERSION
-                        ),
-                    }],
-                    notes: Vec::new(),
-                    program: None,
-                });
+                return Some(self.stopped(format!(
+                    "checking the game's code took more than {} s, so {} stopped waiting. \
+                     This is a bug in Lust ({}); please report it with the code that caused \
+                     it. Saving a change checks the code again.",
+                    GIVE_UP.as_secs(),
+                    crate::branding::APP_NAME,
+                    script::LUST_VERSION
+                )));
             }
             Err(std::sync::mpsc::TryRecvError::Empty) => return None,
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                // The worker stopped without an answer: try again later.
-                self.running = None;
-                return None;
-            }
+            // The worker ended without a word: it crashed, as below.
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => None,
+        };
+        let Some((described, found, code, compiled)) = answer else {
+            return Some(self.stopped(format!(
+                "checking the game's code failed unexpectedly, so it wasn't checked. This is \
+                 a bug in {} or in Lust ({}); please report it with the code that caused it. \
+                 Saving a change checks the code again.",
+                crate::branding::APP_NAME,
+                script::LUST_VERSION
+            )));
         };
         let (_, _, checked_folder) = self.running.take()?;
         if described != self.told {
@@ -470,6 +468,27 @@ impl GameCode {
             notes: code.notes,
             program,
         })
+    }
+
+    /// The check running ended without an answer (`why`): it's said as the
+    /// code's problem, the last program that worked stays, and the next
+    /// change is checked (a change already waiting starts now).
+    fn stopped(&mut self, why: String) -> Checked {
+        self.running = None;
+        self.last = None;
+        if let Some(assets) = self.again.take() {
+            self.check(assets);
+        }
+        Checked {
+            problems: vec![CodeProblem {
+                file: script::code::ENTRY.to_string(),
+                line: 0,
+                column: 0,
+                message: why,
+            }],
+            notes: Vec::new(),
+            program: None,
+        }
     }
 }
 
@@ -913,5 +932,86 @@ mod fast_changes {
             "Scale check: a Lust edit saved to running in play mode {ms:.0} ms (target {TARGET_MS} ms) {verdict}"
         );
         assert!(ms <= TARGET_MS, "a Lust edit took {ms:.0} ms");
+    }
+}
+
+#[cfg(test)]
+mod crashed {
+    use super::*;
+
+    /// A stand-in for the compiler with a bug that panics.
+    fn crashes(_code: &Code) -> Attempt {
+        panic!("a bug in the compiler (a stand-in for the test)")
+    }
+
+    fn checking(code: &mut GameCode) -> Option<Checked> {
+        let start = Instant::now();
+        while code.waiting() && start.elapsed().as_secs() < 30 {
+            if let Some(done) = code.poll() {
+                return Some(done);
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        None
+    }
+
+    /// The review, BUG-33: a panic on the game code's worker was silent.
+    /// The editor showed no problem and kept the old program, and an
+    /// exported game, with no program and no mistakes, said "Starting"
+    /// for ever. Now it's said as the code's problem, and the next change
+    /// is checked.
+    #[test]
+    fn a_crash_while_checking_is_said_and_the_next_change_is_checked() {
+        let assets = std::env::temp_dir()
+            .join(format!("solis-game-code-{}", std::process::id()))
+            .join("crashed")
+            .join("assets");
+        let _ = std::fs::remove_dir_all(&assets);
+        std::fs::create_dir_all(&assets).unwrap();
+        std::fs::write(assets.join("main.lst"), "end\n").unwrap();
+        let mut code = GameCode {
+            checker: Checker {
+                check: crashes,
+                unfinished: || false,
+            },
+            ..GameCode::default()
+        };
+        code.check(assets.clone());
+        let said = checking(&mut code).expect("the crash is said");
+        assert_eq!(said.problems.len(), 1);
+        assert!(
+            said.problems[0].message.contains("failed unexpectedly"),
+            "{}",
+            said.problems[0].message
+        );
+        assert!(said.program.is_none(), "the last program that worked stays");
+        assert!(!code.waiting());
+        // The same code again is checked again (it was never checked).
+        code.check(assets.clone());
+        assert!(checking(&mut code).is_some(), "said again");
+        let _ = std::fs::remove_dir_all(assets.parent().unwrap());
+    }
+
+    /// A worker that ends without a word is a crash too, and a change
+    /// that waited behind its check is checked at once.
+    #[test]
+    fn a_worker_gone_without_an_answer_is_said_and_what_waited_starts() {
+        let assets = std::env::temp_dir()
+            .join(format!("solis-game-code-{}", std::process::id()))
+            .join("gone")
+            .join("assets");
+        let _ = std::fs::remove_dir_all(&assets);
+        std::fs::create_dir_all(&assets).unwrap();
+        let mut code = GameCode::default();
+        let (sender, receiver) = channel::<Answer>();
+        drop(sender);
+        code.running = Some((receiver, Instant::now(), PathBuf::new()));
+        code.again = Some(assets.clone());
+        let said = code.poll().expect("said");
+        assert!(said.problems[0].message.contains("failed unexpectedly"));
+        assert!(code.waiting(), "the change that waited is being checked");
+        assert!(code.again.is_none());
+        checking(&mut code);
+        let _ = std::fs::remove_dir_all(assets.parent().unwrap());
     }
 }
