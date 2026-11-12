@@ -413,6 +413,9 @@ pub const STATS_W: f32 = 320.0;
 /// A statistic's bar under its row (CPU, GPU).
 pub const STATS_BAR_H: f32 = 3.0;
 
+/// The shared dialog card's padding (mock-up round 1, `10-dialog-*`).
+pub const DIALOG_PAD: f32 = 20.0;
+
 /// The mark on a part that isn't built yet: a hollow square, this wide.
 pub const UNBUILT_MARK: f32 = 5.0;
 /// The gap between an unbuilt part's words and its mark.

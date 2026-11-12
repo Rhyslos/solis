@@ -170,23 +170,20 @@ impl Workbench {
             return;
         };
         let labels = changes.labels.clone();
-        let mut answer = None;
-        egui::Modal::new(egui::Id::new("play changes")).show(ui.ctx(), |ui| {
-            ui.set_width(380.0);
-            ui.label(
-                RichText::new("Keep the changes made while playing?")
-                    .strong()
-                    .size(15.0)
-                    .color(theme::text_strong()),
-            );
-            ui.add_space(4.0);
+        use crate::widgets::dialog::{Answer, dialog};
+        let answers = [
+            Answer::left("Undo all").hint("The area as it was before Play"),
+            Answer::main("Keep").hint(
+                "Your changes, each still undoable with Ctrl + Z. What the game did isn't kept",
+            ),
+        ];
+        let words = |ui: &mut egui::Ui| {
             ui.label(format!(
                 "You made {} to the area while the game ran:",
                 count(labels.len(), "change")
             ));
-            ui.add_space(4.0);
             for label in labels.iter().take(LISTED) {
-                ui.label(RichText::new(format!("•  {label}")).color(theme::text()));
+                ui.label(RichText::new(format!("\u{2022}  {label}")).color(theme::text()));
             }
             if labels.len() > LISTED {
                 ui.label(
@@ -194,30 +191,15 @@ impl Workbench {
                         .color(theme::text_weak()),
                 );
             }
-            ui.add_space(10.0);
-            ui.horizontal(|ui| {
-                let colors = self.accent.colors();
-                let keep = ui
-                    .add(
-                        egui::Button::new(RichText::new("Keep").color(theme::on_accent()).strong())
-                            .fill(colors.fill)
-                            .min_size(egui::vec2(90.0, 26.0)),
-                    )
-                    .on_hover_text(
-                        "Your changes, each still undoable with Ctrl + Z. What the game did isn't \
-                         kept",
-                    );
-                if keep.clicked() {
-                    answer = Some(true);
-                }
-                let undo = ui
-                    .add(egui::Button::new("Undo all").min_size(egui::vec2(90.0, 26.0)))
-                    .on_hover_text("The area as it was before Play");
-                if undo.clicked() {
-                    answer = Some(false);
-                }
-            });
-        });
+        };
+        let answer = dialog(
+            ui.ctx(),
+            "play changes",
+            "Keep the changes made while playing?",
+            words,
+            &answers,
+        )
+        .map(|index| index == 1);
         match answer {
             Some(true) => self.keep_play_changes(),
             Some(false) => self.undo_play_changes(),

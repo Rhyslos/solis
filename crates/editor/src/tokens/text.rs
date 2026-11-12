@@ -174,6 +174,11 @@ pub fn tile_kind() -> FontId {
     regular(10.5)
 }
 
+/// A dialog card's title: 15 / 600 (mock-up round 1, `10-dialog-*`).
+pub fn dialog_title() -> FontId {
+    named(15.0, SEMIBOLD)
+}
+
 /// A strip's routing under its name: 10 / 400 (spec 766).
 pub fn strip_routing() -> FontId {
     regular(RIBBON_LABEL_SIZE)
