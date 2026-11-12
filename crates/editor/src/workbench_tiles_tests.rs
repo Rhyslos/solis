@@ -43,7 +43,7 @@ pub(crate) fn farm_map(tileset: AssetId) -> TileMap {
 /// A workbench with a project holding `farm.tileset.lst` and
 /// `farm.tilemap.lst`; the map's and tileset's asset IDs.
 pub(crate) fn with_map() -> (Workbench, AssetId, AssetId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -104,15 +104,12 @@ fn placing_a_map_selects_it_and_opens_the_map_tab_beside_properties() {
     let [tx, ty] = w.open.pixels.tile_size();
     assert_eq!((at.x / tx).fract(), 0.0);
     assert_eq!((at.y / ty).fract(), 0.0);
-    // The tab beside Properties, as drawn in mock-up A.
+    // Home's Map shelf tab, in front.
     let mut h = harness(w);
     h.run();
     h.run();
     let w = &h.state().0;
-    let path = w.dock.find_tab(&Panel::Map).expect("open");
-    let tabs = w.dock[path.surface][path.node].tabs().unwrap().to_vec();
-    assert!(tabs.contains(&Panel::Properties), "{tabs:?}");
-    assert!(layout::is_complete(&w.dock));
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Map));
     for label in [
         "Add a layer",
         "Add a value",
@@ -126,7 +123,7 @@ fn placing_a_map_selects_it_and_opens_the_map_tab_beside_properties() {
     h.state_mut().0.open.document.selection.clear();
     h.run();
     h.run();
-    assert!(h.state().0.dock.find_tab(&Panel::Map).is_none());
+    assert!(!has_panel(&h.state().0, crate::panel::Panel::Map));
 }
 
 #[test]
@@ -402,7 +399,7 @@ fn new_tilesets_and_maps_are_made_saved_and_shown_with_free_names() {
 
 #[test]
 fn a_map_with_no_tileset_says_how_to_get_one() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.new_tile_map("");
     let made = w.map_file("map.tilemap.lst").unwrap();
     assert_eq!(made.tileset, None);

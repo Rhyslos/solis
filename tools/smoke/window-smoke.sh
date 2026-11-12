@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Window smoke test: opens the real editor on a virtual screen and checks
 # what a script can: the window opens, the viewport is drawn in the right
-# colours, a tool key picks a tool, the camera flies (right mouse and W), a
-# panel can be dragged to a new place, File > Exit quits, the next launch
-# puts the panel and the camera back where they were, and (with
-# SAMPLE_MODEL set) an imported model is drawn.
+# colours, a tool key picks a tool, the camera flies (right mouse and W),
+# the shelf's grip and the editor groups' divider can be dragged, File >
+# Exit quits, the next launch puts the tab, the split and the camera back
+# where they were, and (with SAMPLE_MODEL set) an imported model is drawn.
 #
 # Usage (needs Xvfb, xdotool, ImageMagick and a GPU driver, such as Mesa's
 # software one):
@@ -14,10 +14,10 @@
 # crates/app/src/branding.rs); CI passes it in, so this script never names
 # the program. Screenshots land in the output folder for looking at in CI.
 #
-# Positions are for the tab bar and ribbon along the top (decision 0099)
-# over the standard arrangement of panels (decision 0085: Area on the left,
-# Properties on the right, the Library and Console along the bottom) on a
-# 1440x900 screen.
+# Positions are for the design's frame (decisions 0099 and 0104) on a
+# 1440x900 screen: the tab bar and ribbon along the top, the area's group
+# under them (its tab strip at 100, the viewport from 130 to 542), the
+# shelf's bar at 542 and its columns under it, the status bar at 876.
 #
 # Nothing here waits a fixed time for the program: it waits until the
 # screen has stopped changing (`settle`), or until the program has ended.
@@ -160,7 +160,7 @@ grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 #    not count.
 xdotool key --window "$WINDOW_ID" w || true
 shot move-tool
-TOOL_CHANGE="$(changed_pixels first move-tool 160x26+578+${TOOLS_Y:-622})"
+TOOL_CHANGE="$(changed_pixels first move-tool 160x26+635+${TOOLS_Y:-508})"
 echo "Pixels changed in the tool bar by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
@@ -180,48 +180,63 @@ sleep 1.5
 xdotool keyup w
 xdotool mouseup 3
 shot flown
-FLY_CHANGE="$(changed_pixels move-tool flown 800x400+280+150)"
+FLY_CHANGE="$(changed_pixels move-tool flown 800x370+280+140)"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
 [ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
-TOOL_AFTER="$(changed_pixels move-tool flown 160x26+578+${TOOLS_Y:-622})"
+TOOL_AFTER="$(changed_pixels move-tool flown 160x26+635+${TOOLS_Y:-508})"
 echo "Pixels changed in the tool bar by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 
-# 4. Drag the Console tab onto the right-hand column, below Properties.
-CONSOLE_Y="${CONSOLE_TAB_Y:-674}"
-xdotool mousemove 147 "$CONSOLE_Y"
-sleep 0.3
-xdotool mousedown 1
-for i in $(seq 1 20); do
-    xdotool mousemove $((147 + i * 56)) $((CONSOLE_Y - i * 3))
-    sleep 0.1
-done
+# Drags with the left button from ($1, $2) by ($3, $4), in steps.
+drag() {
+    xdotool mousemove "$1" "$2"
+    sleep 0.3
+    xdotool mousedown 1
+    for i in $(seq 1 20); do
+        xdotool mousemove $(($1 + i * $3 / 20)) $(($2 + i * $4 / 20))
+        sleep 0.05
+    done
+    settle
+    xdotool mouseup 1
+}
+
+# 4. Drag the shelf's grip up: the shelf grows and the viewport shrinks.
+drag "${GRIP_X:-28}" "${GRIP_Y:-559}" 0 -100
+shot grown
+GROW_CHANGE="$(changed_pixels flown grown 1440x200+0+400)"
+echo "Pixels changed by dragging the shelf's grip: $GROW_CHANGE"
+[ "$GROW_CHANGE" -gt 5000 ] || fail "dragging the shelf's grip moved nothing"
+
+# 5. On the Debug tab (the game beside the Profiler), drag the divider
+#    between the two groups to the left.
+xdotool mousemove "${DEBUG_TAB_X:-537}" "${DEBUG_TAB_Y:-19}" click 1
 settle
-xdotool mouseup 1
+shot debug
+drag "${DIVIDER_X:-720}" "${DIVIDER_Y:-300}" -200 0
 shot dragged
-DRAG_CHANGE="$(changed_pixels flown dragged)"
-echo "Pixels changed by dragging the Console: $DRAG_CHANGE"
-[ "$DRAG_CHANGE" -gt 5000 ] || fail "dragging the Console tab moved nothing"
+SPLIT_CHANGE="$(changed_pixels debug dragged 1440x400+0+100)"
+echo "Pixels changed by dragging the divider: $SPLIT_CHANGE"
+[ "$SPLIT_CHANGE" -gt 5000 ] || fail "dragging the groups' divider moved nothing"
 
-# 5. Quit, and the layout was saved.
+# 6. Quit, and the frame was saved under its own key.
 quit
-SAVED="$(grep -rl "panel_layout" "$TEST_HOME" 2>/dev/null | head -1 || true)"
-[ -n "$SAVED" ] || fail "the panel layout was not saved"
-echo "Layout saved in: ${SAVED#"$TEST_HOME"/}"
+SAVED="$(grep -rl '"shell"' "$TEST_HOME" 2>/dev/null | head -1 || true)"
+[ -n "$SAVED" ] || fail "the frame was not saved"
+echo "Frame saved in: ${SAVED#"$TEST_HOME"/}"
 
-# 6. The next launch puts the Console back where it was dragged and the
-#    camera where it flew: the screen matches the dragged one, not the
-#    first one.
+# 7. The next launch opens on Debug with the divider where it was dragged
+#    (and the camera where it flew): the screen matches the dragged one,
+#    not the first one.
 launch
 shot reopened
 SAME="$(changed_pixels dragged reopened)"
 FIRST="$(changed_pixels first reopened)"
-echo "Pixels different from the dragged layout: $SAME; from the first launch: $FIRST"
-[ "$SAME" -lt "$FIRST" ] || fail "the dragged layout was not restored"
-[ "$SAME" -lt 20000 ] || fail "the reopened editor does not match the dragged layout"
+echo "Pixels different from the dragged frame: $SAME; from the first launch: $FIRST"
+[ "$SAME" -lt "$FIRST" ] || fail "the dragged frame was not restored"
+[ "$SAME" -lt 20000 ] || fail "the reopened editor does not match the dragged frame"
 quit
 
-# 7. Importing a model: start with --import and the sample model (a
+# 8. Importing a model: start with --import and the sample model (a
 #    checker cube on a red base; SAMPLE_MODEL names the file, made with
 #    `cargo run -p assets --example sample -- sample.glb`). The camera
 #    frames it, so red fills part of the middle of the viewport.

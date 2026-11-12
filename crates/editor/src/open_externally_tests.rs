@@ -13,7 +13,7 @@ use crate::workbench::{Workbench, WorkbenchAction};
 const ASSETS: &str = "/projects/farm/assets";
 
 fn with_a_project() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -119,7 +119,7 @@ fn open_code_never_asks_for_anything_outside_the_assets_folder() {
 
 #[test]
 fn open_code_without_a_project_says_where_the_code_is_and_asks_for_nothing() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.apply_property(PropertyRequest::OpenCode("kit/mover.lst".into()), 0);
     assert!(w.open.outbox.is_empty());
     assert!(

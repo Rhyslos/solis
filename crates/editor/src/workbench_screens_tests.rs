@@ -5,9 +5,9 @@
 use crate::library::{LibraryKind, LibraryRequest, ProjectInfo};
 use crate::panel::Panel;
 use crate::screen_doc::tests::MENU;
+use crate::shell::RibbonTab;
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};
-use crate::workspace::Workspace;
 use egui_kittest::kittest::Queryable;
 use std::sync::Arc;
 
@@ -36,7 +36,7 @@ pub(crate) fn opened() -> Workbench {
 /// A workbench with a project whose `ui/pauseMenu.lst` is `menu`, the
 /// screen open.
 pub(crate) fn opened_with(menu: &str) -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -69,11 +69,10 @@ fn saved(w: &Workbench) -> Vec<String> {
 }
 
 #[test]
-fn a_screen_s_file_opens_on_the_canvas_in_the_ui_workspace() {
+fn a_screen_s_file_opens_on_the_canvas_on_the_ui_tab() {
     let mut w = opened();
-    assert_eq!(w.workspace(), Workspace::Ui);
-    assert!(w.dock.find_tab(&Panel::Canvas).is_some());
-    assert!(w.dock.find_tab(&Panel::Elements).is_some());
+    assert_eq!(w.ribbon_tab(), RibbonTab::Ui);
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Screen));
     w.refresh_screen();
     let doc = w.open.screen_doc.as_ref().unwrap();
     assert_eq!(
@@ -94,17 +93,17 @@ fn a_screen_s_file_opens_on_the_canvas_in_the_ui_workspace() {
             .iter()
             .any(|a| matches!(a, WorkbenchAction::OpenExternally(p) if p.ends_with("main.lst")))
     );
-    // Leaving UI and coming back keeps the canvas there, not elsewhere.
-    w.switch_workspace(Workspace::Level);
-    assert!(w.dock.find_tab(&Panel::Canvas).is_none());
-    w.switch_workspace(Workspace::Ui);
-    assert!(w.dock.find_tab(&Panel::Canvas).is_some());
+    // The canvas is the UI tab's alone: Home doesn't show it.
+    let open = w.open_now();
+    assert!(crate::shell::workspaces::home_of(RibbonTab::Home, open, Panel::Canvas).is_none());
+    assert!(crate::shell::workspaces::home_of(RibbonTab::Ui, open, Panel::Canvas).is_some());
 }
 
 #[test]
 fn the_canvas_draws_the_screen_and_properties_changes_the_piece_picked() {
     let mut w = opened();
     w.open.screen_doc.as_mut().unwrap().picked = vec![vec![0, 0, 0]];
+    roomy_shelf(&mut w);
     let mut h = harness(w);
     h.run();
     let views = &h.state().1.views;
@@ -116,7 +115,9 @@ fn the_canvas_draws_the_screen_and_properties_changes_the_piece_picked() {
     assert_eq!(canvas.ui.len(), 1);
     assert_eq!(canvas.ui[0].name, "PauseMenu");
     assert!(canvas.ui[0].view.is_some());
-    // Properties shows the title.
+    // Properties shows the title, from the frame after the canvas was
+    // first in view.
+    h.run();
     h.get_by_label_contains("ui/pauseMenu.lst, line 10");
     assert!(h.query_by_label("Text size").is_some());
     // Elements lists the pieces, and the loop as code.
@@ -310,36 +311,32 @@ fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
     assert!(!w.open.screen_doc.as_ref().unwrap().redraw);
 }
 
-/// A workbench with a clips file and a screen both open, in the UI
-/// workspace: Clips, Frames, Canvas and Elements all there.
+/// A workbench with a clips file and a screen both open, on the UI tab:
+/// Clips, Frames, Canvas and Elements all there.
 fn with_clips_and_a_screen() -> Workbench {
     let (mut w, _, _) = crate::workbench_frames::tests::with_clips();
     w.set_program(Some(program(MENU)));
     w.open_frames("walker.solframes");
     assert!(w.open_screen("ui/pauseMenu.lst", None));
-    for panel in [Panel::Clips, Panel::Frames, Panel::Canvas, Panel::Elements] {
-        assert!(w.dock.find_tab(&panel).is_some(), "{panel:?} is open");
+    for panel in Panel::FRAMES_TABS {
+        assert!(has_panel(&w, panel), "{panel:?} is open");
     }
+    assert!(w.open.screen_doc.is_some());
     w
 }
 
-/// BUG-26: the × on Canvas or Elements closes the screen and both its
-/// tabs, and leaves the clips file open with its undo steps.
+/// BUG-26: the × on the Canvas's tab closes the screen, and leaves the
+/// clips file open with its undo steps. (Elements is a column of the
+/// shelf's Screen tab now, with no × of its own.)
 #[test]
-fn the_x_on_canvas_or_elements_closes_the_screen_and_not_the_clips_file() {
-    for closed in [Panel::Canvas, Panel::Elements] {
+fn the_x_on_the_canvas_closes_the_screen_and_not_the_clips_file() {
+    for closed in [Panel::Canvas] {
         let mut w = with_clips_and_a_screen();
         assert!(w.open.frames_editor.as_mut().unwrap().set_speed(2.0));
         let mut h = harness(w);
         click_the_x(&mut h, closed);
         let w = &mut h.state_mut().0;
         assert!(w.open.screen_doc.is_none(), "{closed:?}: the screen closed");
-        for panel in [Panel::Canvas, Panel::Elements] {
-            assert!(
-                w.dock.find_tab(&panel).is_none(),
-                "{closed:?}: {panel:?} went with it"
-            );
-        }
         let clips = w
             .open
             .frames_editor
@@ -347,14 +344,13 @@ fn the_x_on_canvas_or_elements_closes_the_screen_and_not_the_clips_file() {
             .expect("the clips file is open");
         assert!(clips.undo(), "{closed:?}: with its undo steps");
         for panel in Panel::FRAMES_TABS {
-            assert!(w.dock.find_tab(&panel).is_some(), "{closed:?}: {panel:?}");
+            assert!(has_panel(w, panel), "{closed:?}: {panel:?}");
         }
-        // Gone for good: no tab comes back with the workspace, and the
-        // file opens on the canvas again when asked.
-        w.switch_workspace(Workspace::Level);
-        w.switch_workspace(Workspace::Ui);
-        assert!(w.dock.find_tab(&Panel::Canvas).is_none());
-        assert!(w.dock.find_tab(&Panel::Elements).is_none());
+        // Gone for good, and the file opens on the canvas again when
+        // asked.
+        w.show_tab(RibbonTab::Home);
+        w.show_tab(RibbonTab::Ui);
+        assert!(w.open.screen_doc.is_none());
         let mut actions = Vec::new();
         w.library_request(
             LibraryRequest::Open(LibraryKind::Code, "ui/pauseMenu.lst".into()),
@@ -382,16 +378,10 @@ fn the_x_on_clips_or_frames_closes_the_clips_file_and_not_the_screen() {
             "{closed:?}: the file closed"
         );
         for panel in Panel::FRAMES_TABS {
-            assert!(
-                w.dock.find_tab(&panel).is_none(),
-                "{closed:?}: {panel:?} went with it"
-            );
+            assert!(!has_panel(w, panel), "{closed:?}: {panel:?} went with it");
         }
         let doc = w.open.screen_doc.as_mut().expect("the screen is open");
         assert!(doc.undo(), "{closed:?}: with its undo steps");
-        for panel in [Panel::Canvas, Panel::Elements] {
-            assert!(w.dock.find_tab(&panel).is_some(), "{closed:?}: {panel:?}");
-        }
     }
 }
 
@@ -419,21 +409,22 @@ fn a_screen_closed_was_saved_as_it_was_changed() {
     assert!(w.open.unsaved_prompt.is_none(), "nothing asked");
 }
 
-/// A screen opened while already in the UI workspace gets both its tabs.
+/// A screen opened while the UI tab is already in front shows on the
+/// canvas, with its pieces on the shelf.
 #[test]
-fn a_screen_opened_in_the_ui_workspace_gets_elements_too() {
-    let mut w = Workbench::new(info(), None);
+fn a_screen_opened_on_the_ui_tab_gets_elements_too() {
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
         assets: "/projects/farm/assets".into(),
     }));
     w.set_program(Some(program(MENU)));
-    w.switch_workspace(Workspace::Ui);
-    assert!(w.dock.find_tab(&Panel::Elements).is_none());
+    w.show_tab(RibbonTab::Ui);
+    w.show_panel(Panel::Console);
     assert!(w.open_screen("ui/pauseMenu.lst", None));
-    assert!(w.dock.find_tab(&Panel::Canvas).is_some());
-    assert!(w.dock.find_tab(&Panel::Elements).is_some());
+    assert_eq!(w.ribbon_tab(), RibbonTab::Ui);
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Screen));
 }
 
 /// A screen that stops being one closes with its tabs, wherever they are.
@@ -441,8 +432,8 @@ fn a_screen_opened_in_the_ui_workspace_gets_elements_too() {
 fn a_file_that_isn_t_a_screen_any_more_takes_its_tabs_with_it() {
     let mut w = opened();
     w.refresh_screen();
-    // Left in the UI workspace's layout while another is in use.
-    w.switch_workspace(Workspace::Level);
+    // Closed while another tab is in front.
+    w.show_tab(RibbonTab::Home);
     let code = script::Code {
         files: vec![("main.lst".to_string(), "end\n".to_string())],
         lua: Vec::new(),
@@ -455,9 +446,8 @@ fn a_file_that_isn_t_a_screen_any_more_takes_its_tabs_with_it() {
     w.set_program(Some(plain));
     w.refresh_screen();
     assert!(w.open.screen_doc.is_none());
-    w.switch_workspace(Workspace::Ui);
-    assert!(w.dock.find_tab(&Panel::Canvas).is_none());
-    assert!(w.dock.find_tab(&Panel::Elements).is_none());
+    w.show_tab(RibbonTab::Ui);
+    assert!(w.open.screen_doc.is_none());
 }
 
 /// The review, BUG-10: what the open screen can be tied to was kept for
@@ -525,7 +515,7 @@ fn starts() -> u32 {
 /// time, for the same build of the code and the same result.
 #[test]
 fn a_screen_whose_view_stops_is_tried_once_for_each_build_of_the_code() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),

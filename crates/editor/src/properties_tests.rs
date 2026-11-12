@@ -67,9 +67,11 @@ fn every_engine_component_has_a_manual_page_that_exists() {
 
 /// A workbench with a point light selected.
 fn with_a_lamp() -> (Workbench, EntityId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let id = w.add_point_light();
     w.select(id);
+    // Room for the whole of the light's card and the component list.
+    crate::test_support::roomy_shelf(&mut w);
     (w, id)
 }
 
@@ -189,7 +191,7 @@ fn renaming_still_works_from_the_name_field() {
 
 #[test]
 fn a_file_used_by_several_entities_says_so() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let model = crate_model();
     let a = w.add_model(model.clone(), &[], 0.1, &[]);
     let b = w.add_model(model, &[], 0.1, &[]);

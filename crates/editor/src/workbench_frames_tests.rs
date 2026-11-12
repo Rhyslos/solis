@@ -13,7 +13,7 @@ use reflect::AssetId;
 /// two frames, no tags) and `walker.solframes` playing it, with a clip
 /// made here, "wave", of both frames.
 pub(crate) fn with_clips() -> (Workbench, AssetId, AssetId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -85,34 +85,23 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
         "wave",
         "the clip played first"
     );
-    let beside = |w: &Workbench, panel, other| {
-        let path = w.dock.find_tab(&panel).expect("open");
-        w.dock[path.surface][path.node]
-            .tabs()
-            .unwrap()
-            .contains(&other)
-    };
-    assert!(beside(&w, Panel::Clips, Panel::Properties));
-    assert!(beside(&w, Panel::Frames, Panel::Library));
-    assert!(
-        layout::is_complete(&w.dock),
-        "they don't count as missing panels"
-    );
+    // The Animate tab, with its Frames shelf tab in front.
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Animate);
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Frames));
     let mut h = harness(w);
     h.run();
     h.run();
-    assert!(h.query_by_label("wave").is_some(), "the Clips tab lists it");
     assert!(
         h.query_by_label("Frame 1 of wave").is_some(),
         "the Frames tab shows it"
     );
-    // A saved layout never keeps them.
-    let restored = layout::restore(Some(h.state().0.dock.clone()));
-    assert!(restored.find_tab(&Panel::Clips).is_none());
+    h.state_mut().0.show_panel(Panel::Clips);
+    h.run();
+    assert!(h.query_by_label("wave").is_some(), "the Clips tab lists it");
     h.state_mut().0.close_frames();
     let w = &h.state().0;
     assert!(w.open.frames_editor.is_none());
-    assert!(w.dock.find_tab(&Panel::Frames).is_none());
+    assert!(!has_panel(w, Panel::Frames));
 }
 
 #[test]
@@ -216,6 +205,7 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
 fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
     let (mut w, _, _) = with_clips();
     w.open_frames("walker.solframes");
+    w.show_panel(Panel::Clips);
     let mut h = harness(w);
     h.run();
     h.run();
@@ -358,7 +348,7 @@ fn a_clips_file_gone_from_the_project_closes_its_tabs() {
     w.set_sprite_sheets(store);
     assert!(w.open.frames_editor.is_none());
     for panel in Panel::FRAMES_TABS {
-        assert!(w.dock.find_tab(&panel).is_none(), "{panel:?}");
+        assert!(!has_panel(&w, panel), "{panel:?}");
     }
     let last = w.console.lines().last().unwrap();
     assert_eq!(
@@ -381,16 +371,17 @@ fn opening_the_clips_file_already_open_keeps_its_editor_and_undo_steps() {
     assert!(editor.set_speed(2.0));
     editor.zoom = 500.0;
     w.save_frames();
-    // Double-clicked in the Library again, with a tab closed meanwhile.
-    layout::close(&mut w.dock, Panel::Frames);
+    // Double-clicked in the Library again, from another tab.
+    w.show_tab(crate::shell::RibbonTab::Home);
     let mut actions = Vec::new();
     w.library_request(
         LibraryRequest::Open(LibraryKind::SpriteClips, CLIPS.into()),
         &mut actions,
     );
     for panel in Panel::FRAMES_TABS {
-        assert!(w.dock.find_tab(&panel).is_some(), "{panel:?} is open");
+        assert!(has_panel(&w, panel), "{panel:?} is open");
     }
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Animate);
     let editor = w.open.frames_editor.as_ref().unwrap();
     assert_eq!(editor.zoom, 500.0, "the same editor");
     assert_eq!(editor.can_undo_redo(), (true, false), "with its undo step");

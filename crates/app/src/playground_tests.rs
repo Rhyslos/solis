@@ -85,13 +85,10 @@ fn the_playground_is_made_as_a_project_and_plays() {
     assert_eq!(project.name(), NAME);
     let assets = project.assets();
     let compiled = compiled(&assets);
-    let mut w = editor::Workbench::new(
-        editor::AppInfo {
-            name: "Test".into(),
-            version: "1.0".into(),
-        },
-        None,
-    );
+    let mut w = editor::Workbench::new(editor::AppInfo {
+        name: "Test".into(),
+        version: "1.0".into(),
+    });
     w.set_program(Some(std::sync::Arc::new(compiled)));
     for name in [
         "CharacterController",
@@ -190,13 +187,10 @@ fn entity_fields_survive_the_area_opening_before_the_code_is_checked() {
     make(&root).unwrap();
     let assets = Project::open(&root).unwrap().assets();
     let compiled = compiled(&assets);
-    let mut w = editor::Workbench::new(
-        editor::AppInfo {
-            name: "Test".into(),
-            version: "1.0".into(),
-        },
-        None,
-    );
+    let mut w = editor::Workbench::new(editor::AppInfo {
+        name: "Test".into(),
+        version: "1.0".into(),
+    });
     // The area first, as the app does.
     let text = std::fs::read_to_string(assets.join(AREA)).unwrap();
     let area = area::text::read(&text, &w.document().registry).unwrap();
@@ -234,13 +228,10 @@ fn footsteps_follow_ground_covered_and_never_while_still() {
     let _ = std::fs::remove_dir_all(&root);
     make(&root).unwrap();
     let assets = Project::open(&root).unwrap().assets();
-    let mut w = editor::Workbench::new(
-        editor::AppInfo {
-            name: "Test".into(),
-            version: "1.0".into(),
-        },
-        None,
-    );
+    let mut w = editor::Workbench::new(editor::AppInfo {
+        name: "Test".into(),
+        version: "1.0".into(),
+    });
     w.set_program(Some(std::sync::Arc::new(compiled(&assets))));
     // A walker carried 10 m along the ground in 3 s (the platform's
     // code moves it), and one standing still.

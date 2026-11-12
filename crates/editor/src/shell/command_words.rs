@@ -48,6 +48,7 @@ impl ShellCommand {
             C::ProfilerGpu => switch(!w.profiler.hide_gpu, "the GPU's times in the Profiler"),
             C::HideUnfinished => switch(!w.interface_look().hide_unfinished, "unfinished parts"),
             C::CollapseRibbon if w.shell.collapsed => "Show the ribbon".to_owned(),
+            C::FoldShelf if w.shelf_folded() => "Unfold the shelf".to_owned(),
             C::AutoUpdate => on_off(
                 "Check for updates when starting",
                 "Don't check for updates when starting",
@@ -95,8 +96,7 @@ impl ShellCommand {
             C::PlayAndRecord => "Play and record inputs",
             C::ReplayRecording => "Replay a recording…",
             C::ResetLayout => "Reset layout",
-            C::PinLibrary => "Pin the Library",
-            C::UnpinLibrary => "Unpin the Library",
+            C::FoldShelf => "Fold the shelf",
             C::CollapseRibbon => "Collapse the ribbon",
             C::OpenManual => "Open the manual ↗",
             C::Learn => "Learn",
@@ -148,7 +148,7 @@ impl ShellCommand {
             | C::AutoUpdate
             | C::About
             | C::Exit => "File",
-            C::ImportModel | C::PinLibrary | C::UnpinLibrary => "Library",
+            C::ImportModel => "Library",
             C::ExportPlaytest => "Build",
             C::LoadSave
             | C::PlayAndRecord
@@ -157,7 +157,7 @@ impl ShellCommand {
             | C::ProfilerGpu => "Debug",
             C::Play | C::Pause | C::Step | C::Stop => "Play",
             C::ViewportTools | C::ViewportSnapping | C::ViewportStats => "Viewport",
-            C::ResetLayout | C::HideUnfinished | C::CollapseRibbon => "Preferences",
+            C::ResetLayout | C::HideUnfinished | C::CollapseRibbon | C::FoldShelf => "Preferences",
             C::Tab(_) => "Tabs",
             _ => "Home",
         }
@@ -179,6 +179,7 @@ impl ShellCommand {
             C::Rename => "F2",
             C::SelectAll => "Ctrl+A",
             C::SelectNone => "Esc",
+            C::FoldShelf => "Ctrl+Space",
             _ => "",
         }
     }
@@ -232,6 +233,9 @@ impl ShellCommand {
             }
             C::ResetLayout => "Puts this tab's panels back where they started",
             C::CollapseRibbon => "Leaves only the tabs, giving the ribbon's room to the editor",
+            C::FoldShelf => {
+                "Folds the shelf to its bar, giving its room to the editor, or opens it again"
+            }
             C::OpenManual => "The user manual, in your web browser",
             C::Learn => "The examples, the first steps and the manual",
             C::AddSampleArea => {

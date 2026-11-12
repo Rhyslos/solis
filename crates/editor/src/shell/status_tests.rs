@@ -2,7 +2,7 @@ use super::*;
 use crate::test_support::info;
 
 fn fresh() -> Workbench {
-    Workbench::new(info(), None)
+    Workbench::new(info())
 }
 
 #[test]

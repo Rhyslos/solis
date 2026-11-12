@@ -23,21 +23,23 @@ fn info() -> AppInfo {
 
 #[test]
 fn the_title_names_program_version_and_area() {
-    let w = Workbench::new(info(), None);
+    let w = Workbench::new(info());
     assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled area");
 }
 
 #[test]
-fn a_new_workbench_uses_the_default_layout() {
-    let w = Workbench::new(info(), None);
-    assert!(layout::is_complete(w.layout()));
+fn a_new_workbench_starts_on_home_as_the_design_draws_it() {
+    let w = Workbench::new(info());
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Home);
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Entity));
+    assert!(!w.shelf_folded());
     assert_eq!(w.tool(), Tool::Select);
     assert_eq!(w.accent(), Accent::Blue);
 }
 
 #[test]
 fn the_console_keeps_a_limited_number_of_messages() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     for i in 0..(CONSOLE_LIMIT + 10) {
         w.log(LogLevel::Info, format!("line {i}"));
     }
@@ -73,7 +75,7 @@ fn the_console_filters_by_level_and_search() {
 
 /// The whole editor in a test window, with no GPU behind the viewport.
 fn harness() -> egui_kittest::Harness<'static, Workbench> {
-    harness_with(Workbench::new(info(), None))
+    harness_with(Workbench::new(info()))
 }
 
 /// [`harness`], showing `workbench`.
@@ -103,10 +105,19 @@ fn harness_with(workbench: Workbench) -> egui_kittest::Harness<'static, Workbenc
 fn the_editor_draws_every_panel_without_a_gpu() {
     let mut h = harness();
     h.run();
-    for label in ["Viewport", "Area", "Properties", "Console", "Library"] {
-        let _ = h.get_by_label(label);
+    // The area's document tab, the shelf's tabs and the Entity tab's
+    // columns.
+    for label in [
+        "Entity",
+        "Console",
+        "Problems",
+        "Area",
+        "Properties",
+        "Library",
+    ] {
+        assert!(h.query_all_by_label(label).count() >= 1, "{label}");
     }
-    let _ = h.get_by_label("Untitled area");
+    let _ = h.get_all_by_label("Untitled area").next().expect("its tab");
     let _ = h.get_by_label("No 3D view: testing");
 }
 
@@ -316,7 +327,7 @@ fn tool_keys_still_work_after_flying() {
 
 #[test]
 fn console_messages_carry_the_time() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.log(LogLevel::Info, "hello");
     let time = &w.log_lines()[0].time;
     let parts: Vec<_> = time.split(':').collect();
@@ -331,8 +342,8 @@ fn console_messages_carry_the_time() {
 #[test]
 fn a_level_filter_hides_and_shows_its_messages() {
     let mut h = harness();
-    // The Console shares the bottom with the Library, in front.
-    crate::layout::bring_to_front(&mut h.state_mut().dock, crate::panel::Panel::Console);
+    // The Console is a shelf tab of its own, behind Entity.
+    h.state_mut().show_panel(crate::panel::Panel::Console);
     h.state_mut().log(LogLevel::Warning, "Shader slow to build");
     h.run();
     assert!(h.query_by_label("Shader slow to build").is_some());
@@ -345,12 +356,16 @@ fn a_level_filter_hides_and_shows_its_messages() {
 }
 
 #[test]
-fn every_panel_has_a_named_tab_and_the_bar_has_its_buttons() {
+fn every_panel_can_be_shown_and_the_bar_has_its_buttons() {
     let mut h = harness();
     h.run();
     for panel in Panel::ALL {
-        let _ = h.get_by_label(panel.title());
+        h.state_mut().show_panel(panel);
+        h.run();
+        assert!(h.state().panels_shown().contains(&panel), "{panel:?}");
     }
+    h.state_mut().show_tab(crate::shell::RibbonTab::Home);
+    h.run();
     // Play is the Play group's one button until the game runs.
     assert_eq!(h.query_all_by_label("Play").count(), 1);
     for button in ["Step one tick", "Stop", "Pause"] {
@@ -440,7 +455,7 @@ fn crate_info() -> ModelInfo {
 }
 
 fn with_a_model() -> (Workbench, EntityId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let id = w.add_model(crate_info(), &[], 0.1, &[]);
     (w, id)
 }
@@ -488,11 +503,11 @@ fn delete_in_properties_deletes_the_selected_entity() {
 
 #[test]
 fn the_console_clears_and_searches_from_its_panel() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.log(LogLevel::Warning, "Texture too big");
     w.log(LogLevel::Info, "Imported crate");
-    // The Console shares the bottom with the Library, in front.
-    crate::layout::bring_to_front(&mut w.dock, crate::panel::Panel::Console);
+    // The Console is a shelf tab of its own, behind Entity.
+    w.show_panel(crate::panel::Panel::Console);
     let mut h = acting(w);
     h.run();
     assert!(h.query_by_label("Texture too big").is_some());
@@ -507,10 +522,10 @@ fn a_console_message_clicked_is_shown_in_full() {
     // The user test: long messages were cut off at the panel's edge, with
     // nothing saying the rest could be read.
     let long = format!("A long message {}the end", "and more ".repeat(60));
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.log(LogLevel::Warning, long.clone());
-    // The Console shares the bottom with the Library, in front.
-    crate::layout::bring_to_front(&mut w.dock, crate::panel::Panel::Console);
+    // The Console is a shelf tab of its own, behind Entity.
+    w.show_panel(crate::panel::Panel::Console);
     let mut h = acting(w);
     h.run();
     h.get_by_label(&long).click();
@@ -536,7 +551,7 @@ fn a_console_message_clicked_is_shown_in_full() {
 
 #[test]
 fn help_offers_the_sample_area() {
-    let mut h = acting(Workbench::new(info(), None));
+    let mut h = acting(Workbench::new(info()));
     h.run();
     let ctx = h.ctx.clone();
     let asked = do_command(&mut h.state_mut().0, &ctx, "Add the sample area");
@@ -592,7 +607,7 @@ fn the_ribbon_s_light_button_adds_lights_shown_in_area_and_properties() {
 
 #[test]
 fn add_entity_adds_an_empty_one_at_the_focus() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let before = w.document().area().len();
     let id = w.add_entity();
     assert_eq!(w.document().area().len(), before + 1);
@@ -619,7 +634,7 @@ fn the_sun_is_selected_from_the_area_panel() {
 
 #[test]
 fn lights_from_a_file_join_the_model_and_leave_with_it() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let bulb = FileLight {
         name: "Bulb".into(),
         kind: FileLightKind::Point,
@@ -697,7 +712,7 @@ fn a_file_s_spotlight_with_any_cone_angles_is_placed_safely() {
             });
         }
     }
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let model = w.add_model(crate_info(), &[], 0.1, &lights);
     let area = w.document().area();
     let children = area.children(Some(model));
@@ -733,7 +748,7 @@ fn a_file_s_spotlight_with_any_cone_angles_is_placed_safely() {
 
 #[test]
 fn a_sun_from_a_file_sets_the_area_sun() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let suns = |w: &Workbench| {
         w.document()
             .area()
@@ -775,7 +790,7 @@ fn a_sun_from_a_file_sets_the_area_sun() {
 
 #[test]
 fn fields_change_through_property_requests() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let env = w.document().area().with::<Environment>().next().unwrap().0;
     w.apply_property(
         PropertyRequest::SetField {
@@ -829,7 +844,7 @@ fn the_environment_is_shown_in_properties() {
 
 #[test]
 fn a_component_nobody_knows_is_kept_and_can_be_removed() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let id = w.add_entity();
     w.open
         .document
@@ -844,6 +859,7 @@ fn a_component_nobody_knows_is_kept_and_can_be_removed() {
             None,
         )
         .unwrap();
+    crate::test_support::roomy_shelf(&mut w);
     let mut h = harness_with(w);
     h.run();
     let _ = h.get_by_label("Missing component: Wobble");
@@ -873,7 +889,7 @@ fn set_strength(id: EntityId, value: f64) -> PropertyRequest {
 
 #[test]
 fn a_drag_undoes_in_one_step_with_ctrl_z_and_redoes_from_the_edit_menu() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let lamp = w.add_point_light();
     // One drag: the same gesture, many values.
     for v in [1100.0, 1200.0, 1300.0] {
@@ -912,7 +928,7 @@ fn a_drag_undoes_in_one_step_with_ctrl_z_and_redoes_from_the_edit_menu() {
 
 #[test]
 fn separate_drags_are_separate_steps() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let lamp = w.add_point_light();
     w.apply_property(set_strength(lamp, 1100.0), 1);
     w.apply_property(set_strength(lamp, 1200.0), 2);
@@ -927,7 +943,7 @@ fn separate_drags_are_separate_steps() {
 
 #[test]
 fn an_import_is_one_step_with_its_lights_and_sun() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let start = w.document().area().clone();
     let lights = [
         FileLight {
@@ -964,7 +980,7 @@ fn an_import_is_one_step_with_its_lights_and_sun() {
 
 #[test]
 fn delete_undoes_with_everything_under_it() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let bulb = FileLight {
         name: "Bulb".into(),
         kind: FileLightKind::Point,
@@ -990,7 +1006,7 @@ fn delete_undoes_with_everything_under_it() {
 
 /// A workbench with three lights in a row at the top level.
 fn three_lights() -> (Workbench, [EntityId; 3]) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let a = w.add_point_light();
     let b = w.add_point_light();
     let c = w.add_spotlight();
@@ -1153,7 +1169,7 @@ fn f2_renames_in_the_area_panel_and_ctrl_d_duplicates() {
 #[test]
 fn f_frames_the_selection() {
     let (mut w, _) = with_a_model();
-    let far = Workbench::new(info(), None).camera().focus() + Vec3::new(50.0, 0.0, 0.0);
+    let far = Workbench::new(info()).camera().focus() + Vec3::new(50.0, 0.0, 0.0);
     w.viewport.camera.frame(far, far + Vec3::ONE);
     let model = w.document().area().depth_first()[0];
     let model = w
@@ -1195,7 +1211,7 @@ fn health_schema() -> reflect::ComponentSchema {
 
 #[test]
 fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.register_component(health_schema()).unwrap();
     assert!(
         w.register_component(health_schema()).is_err(),
@@ -1256,7 +1272,7 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
 /// An area of `count` entities: models, lights and empties, some under
 /// others, as a scale check's worth of a level.
 fn crowded(count: usize) -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let info = crate_info();
     let asset = info.asset;
     w.open.models.insert(asset, info);
@@ -1463,11 +1479,11 @@ fn a_crowded_area_still_lists_and_inspects() {
 
 #[test]
 fn the_library_lists_the_project_and_a_double_click_places() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let mut h = acting(w);
     h.run();
     let _ = h.get_by_label_contains("No project is open");
-    w = Workbench::new(info(), None);
+    w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -1491,7 +1507,7 @@ fn the_library_lists_the_project_and_a_double_click_places() {
 
 #[test]
 fn the_file_page_asks_for_a_new_project_or_another_one() {
-    let mut h = acting(Workbench::new(info(), None));
+    let mut h = acting(Workbench::new(info()));
     h.run();
     crate::test_support::file_item(&mut h, "New project");
     assert!(h.state().1.contains(&WorkbenchAction::NewProject));
@@ -1525,7 +1541,7 @@ fn opening_another_project_starts_a_new_area_and_reloads_swap_models() {
 
 #[test]
 fn the_tab_and_title_show_unsaved_changes_and_saving_clears_them() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     assert!(!w.document().is_dirty());
     w.add_point_light();
     assert!(w.document().is_dirty());
@@ -1534,7 +1550,8 @@ fn the_tab_and_title_show_unsaved_changes_and_saving_clears_them() {
     assert_eq!(w.title(), "Test Engine 9.9.9 · harbour");
     let mut h = harness_with(w);
     h.run();
-    let _ = h.get_by_label("harbour");
+    // On the area's document tab, and in the tab bar's path.
+    assert!(h.query_all_by_label("harbour").count() >= 1);
     // Undo after saving is a change; redo is back at the save.
     h.state_mut().undo();
     assert!(h.state().document().is_dirty());
@@ -1544,7 +1561,7 @@ fn the_tab_and_title_show_unsaved_changes_and_saving_clears_them() {
 
 #[test]
 fn ctrl_s_saves_and_ctrl_shift_s_saves_as() {
-    let mut h = acting(Workbench::new(info(), None));
+    let mut h = acting(Workbench::new(info()));
     h.run();
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::S);
     h.run();
@@ -1570,7 +1587,7 @@ fn ctrl_s_saves_and_ctrl_shift_s_saves_as() {
 
 #[test]
 fn leaving_unsaved_changes_asks_first() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.add_point_light();
     let mut h = acting(w);
     h.run();
@@ -1599,7 +1616,7 @@ fn leaving_unsaved_changes_asks_first() {
 
 #[test]
 fn an_area_changed_on_disk_reloads_as_one_undoable_step() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let start = w.document().area().clone();
     w.open_area(start.clone(), "/levels/harbour.solarea".into());
     let mut changed = start.clone();
@@ -1617,7 +1634,7 @@ fn an_area_changed_on_disk_reloads_as_one_undoable_step() {
 
 #[test]
 fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open_area(
         area::builtin::starter_area(),
         "/levels/harbour.solarea".into(),
@@ -1650,7 +1667,7 @@ fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
 fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
     // The review of Phase 9, BUG-12: a crate and a shelf written inside
     // each other, and seven more entities each inside itself.
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let mut area = area::Area::new();
     let moved = |name: &str, x: f32| {
         area::EntityData::new(name).with(&Transform {
@@ -1734,7 +1751,7 @@ fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round(
     let mut lost = area::EntityData::new("Lost");
     lost.parent = Some(EntityId::random());
     let lost = area.spawn(lost);
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open_area(area, "/levels/ring.solarea".into());
     let game = world::World::from_area(w.document().area());
     for (id, data) in w.document().area().iter() {
@@ -1798,7 +1815,7 @@ fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
         overrides: Default::default(),
     };
     let asset = AssetId(reflect::Id::from_raw(901).unwrap());
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_assembly(asset, std::sync::Arc::new(file));
     w.place_assembly(asset);
     let root = w.selection().unwrap();
@@ -2019,7 +2036,7 @@ fn a_duplicated_copy_is_still_a_copy() {
 
 #[test]
 fn a_selection_becomes_an_assembly_and_a_copy_of_it() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let post = w.add_entity();
     let lamp = w.add_point_light();
     w.reparent(&[lamp], Some(post));
@@ -2110,7 +2127,7 @@ fn a_model_unpacks_into_its_parts() {
 fn an_entity_field_shows_a_name_and_picks_from_the_area() {
     // The user test: an entity field showed a long ID and couldn't be set
     // in Properties at all.
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.register_component(reflect::ComponentSchema {
         name: "Follow".into(),
         help: "Follows something.".into(),
@@ -2139,6 +2156,7 @@ fn an_entity_field_shows_a_name_and_picks_from_the_area() {
         2,
     );
     w.select(follower);
+    crate::test_support::roomy_shelf(&mut w);
     let mut h = harness_with(w);
     h.run();
     // None, as a word; the list offers the area's entities by name.
@@ -2166,7 +2184,7 @@ fn an_entity_field_shows_a_name_and_picks_from_the_area() {
 
 #[test]
 fn a_sound_picked_in_the_library_shows_in_properties_and_plays() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -2231,7 +2249,7 @@ fn a_sound_picked_in_the_library_shows_in_properties_and_plays() {
 
 #[test]
 fn a_sound_that_couldnt_be_read_says_why_in_properties() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -2256,7 +2274,7 @@ fn a_sound_that_couldnt_be_read_says_why_in_properties() {
 }
 
 fn with_a_sound_event() -> (Workbench, AssetId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -2289,6 +2307,8 @@ fn with_a_sound_event() -> (Workbench, AssetId) {
             notes: vec!["line 9: \"reverb\" isn't a sound event setting, so it's skipped".into()],
         },
     )]));
+    // Its page in Properties is long: room to reach the whole of it.
+    crate::test_support::roomy_shelf(&mut w);
     (w, grass)
 }
 

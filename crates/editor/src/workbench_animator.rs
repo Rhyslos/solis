@@ -8,7 +8,6 @@
 use crate::animator_editor::AnimatorEditor;
 use crate::animator_view::AnimatorUi;
 use crate::console::LogLevel;
-use crate::layout;
 use crate::own_files::OwnFile;
 use crate::panel::Panel;
 use crate::sprite_sheets::{AnimatorState, SpriteSheets};
@@ -67,11 +66,11 @@ impl Workbench {
             .as_ref()
             .is_some_and(|e| e.path == path)
         {
-            layout::open_first_beside(&mut self.dock, Panel::Animator, Panel::Viewport);
+            self.show_panel(Panel::Animator);
             return;
         }
         self.open.animator_editor = Some(AnimatorEditor::new(path.to_owned(), file));
-        layout::open_first_beside(&mut self.dock, Panel::Animator, Panel::Viewport);
+        self.show_panel(Panel::Animator);
     }
 
     /// Makes a new animator file in `folder` (inside the assets), with one
@@ -112,7 +111,6 @@ impl Workbench {
     /// Closes the animator file open, and its tab.
     pub(crate) fn close_animator(&mut self) {
         self.open.animator_editor = None;
-        layout::close(&mut self.dock, Panel::Animator);
     }
 
     /// Moves the preview on by `seconds` (it always plays, decision 0057).

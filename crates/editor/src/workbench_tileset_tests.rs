@@ -14,7 +14,7 @@ use reflect::AssetId;
 /// A project with `farm.tileset.lst` (tilled 16-tile, its art on
 /// `tiles.png`, every slot but 6), `tiles.png` read and `farm.tilemap.lst`.
 fn with_tileset() -> (Workbench, AssetId, AssetId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -82,7 +82,7 @@ fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
 }
 
 #[test]
-fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
+fn double_clicking_a_tileset_opens_it_beside_the_library() {
     let (mut w, _, _) = with_tileset();
     let mut actions = Vec::new();
     w.library_request(
@@ -90,10 +90,12 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
         &mut actions,
     );
     assert!(w.open.tilesets.tab().is_some());
-    let path = w.dock.find_tab(&Panel::Tileset).expect("open");
-    let tabs = w.dock[path.surface][path.node].tabs().unwrap().to_vec();
-    assert_eq!(tabs[0], Panel::Tileset);
-    assert!(tabs.contains(&Panel::Viewport));
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Library);
+    assert_eq!(
+        crate::shell::workspaces::groups(w.ribbon_tab(), w.open_now()),
+        [vec![Panel::Library], vec![Panel::Tileset]],
+        "a group of its own, beside the Library"
+    );
     let mut h = harness(w);
     h.run();
     h.run();
@@ -108,9 +110,7 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label_contains("1 missing").is_some());
-    // A saved layout never keeps it, and its tab's × closes it.
-    let restored = layout::restore(Some(h.state().0.dock.clone()));
-    assert!(restored.find_tab(&Panel::Tileset).is_none());
+    // Its tab's × closes it.
     crate::test_support::click_the_x(&mut h, Panel::Tileset);
     h.run();
     h.run();
@@ -558,7 +558,7 @@ fn the_x_on_its_tab_closes_the_tileset() {
     click_the_x(&mut h, Panel::Tileset);
     let w = &h.state().0;
     assert!(w.open.tilesets.tab().is_none());
-    assert!(w.dock.find_tab(&Panel::Tileset).is_none());
+    assert!(!has_panel(w, Panel::Tileset));
 }
 
 /// The review, BUG-10: the Tileset tab's texture of its picture went by

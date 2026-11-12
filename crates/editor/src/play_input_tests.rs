@@ -56,7 +56,7 @@ const WALKER_ID: u64 = 7;
 
 /// A workbench with a walker in its area.
 fn with_a_walker() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(WALKER)));
     let mut data = EntityData::new("Walker").with(&Transform::default());
     data.components
@@ -282,7 +282,7 @@ fn recording_needs_a_project_and_starts_from_play() {
 
 #[test]
 fn the_input_actions_window_binds_what_is_pressed_and_saves() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
         name: "Test".into(),
         root: std::env::temp_dir(),

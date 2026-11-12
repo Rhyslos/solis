@@ -50,7 +50,7 @@ fn program(main: &str) -> Arc<script::Compiled> {
 
 /// A workbench with a speaker and a camera 10 m behind it.
 fn with_a_speaker() -> (Workbench, EntityId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(SPEAKER)));
     // Fixed IDs: a checksum includes them.
     let (speaker, camera) = (
@@ -180,7 +180,7 @@ fn the_listener_turns_with_the_camera() {
 #[test]
 fn the_first_listener_hearing_now_hears_or_else_the_camera() {
     use area::builtin::{Camera, Listener};
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let camera = w.add_entity();
     let off = w.add_entity();
     let on = w.add_entity();
@@ -273,7 +273,7 @@ const WALKER: &str = "fetch \"solis/world\":World;\n\
 fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
     use crate::library::{LibraryItem, LibraryKind};
     use crate::sprite_sheets::{FramesState, SheetState, SpriteSheets};
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program(WALKER)));
     // The test sheet (two frames), and a clips file whose "walk" plays
     // them once, 50 ms each, a footstep on the second.

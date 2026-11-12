@@ -1,11 +1,10 @@
-//! Drawing each docked panel's contents, and the bits panels share: the
+//! Drawing each panel's contents (the shell decides where), and the bits panels share: the
 //! small menu row under a title, a quiet note for a panel with nothing
 //! to show, and the hint shown while files are dragged over the window.
 
 use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
-use crate::icons;
 use crate::key_owner::KeyOwner;
 use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
 use crate::menu_items::MenuState;
@@ -14,17 +13,11 @@ use crate::panel::Panel;
 use crate::properties::{AssemblyPart, PropertyRequest, properties};
 use crate::theme::{self, Accent};
 use crate::viewport::{Viewport, ViewportRenderer};
-use egui::{Color32, Id, RichText, Ui, WidgetText};
-use egui_dock::TabViewer;
+use egui::{Color32, Id, RichText, Ui};
 use reflect::AssetId;
 use std::collections::{BTreeMap, HashSet};
 
-/// Where egui_dock starts a tab's text, from the tab's left edge.
-pub(crate) const TAB_TEXT_INSET: f32 = 8.0;
-/// Room left before a tab's name for its icon.
-pub(crate) const TAB_ICON_SPACE: f32 = 18.0;
-
-/// Draws each docked panel.
+/// Draws each panel, wherever the shell puts it.
 pub(crate) struct PanelViewer<'a> {
     pub(crate) area_state: &'a mut AreaPanelState,
     /// The components whose values were copied, by name.
@@ -59,8 +52,6 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) folders: &'a [String],
     pub(crate) library_state: &'a mut LibraryState,
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
-    /// Set when the docked Library's Unpin was clicked.
-    pub(crate) library_pin_clicked: &'a mut bool,
     /// What the Hints panel says (none: hints are off).
     pub(crate) hints: Option<&'a [String]>,
     /// The sound files measured, and the one playing.
@@ -162,109 +153,105 @@ pub(crate) struct FramesOut {
     pub(crate) screen_closed: bool,
 }
 
-impl TabViewer for PanelViewer<'_> {
-    type Tab = Panel;
-
-    fn id(&mut self, tab: &mut Panel) -> Id {
-        Id::new(("panel", *tab))
-    }
-
-    fn title(&mut self, tab: &mut Panel) -> WidgetText {
-        // Room before the name for the panel's icon, drawn in
-        // `on_tab_button`. The colour comes from the dock style (bright in
-        // front, quieter behind).
-        let mut job = egui::text::LayoutJob::default();
-        job.append(
-            tab.title(),
-            TAB_ICON_SPACE,
-            egui::TextFormat {
-                font_id: egui::FontId::proportional(theme::TEXT_SIZE),
-                color: Color32::PLACEHOLDER,
-                ..Default::default()
-            },
-        );
-        // The clips file's name, and the clip chosen.
-        let what = if *tab == Panel::Map {
-            self.map.as_ref().map(|m| m.name.clone())
-        } else if *tab == Panel::Tileset {
-            self.tileset
+impl PanelViewer<'_> {
+    /// The words on `panel`'s document tab: the area's name on the
+    /// viewport's, and a file's name after the panel's where it shows one
+    /// ("Animator \u{b7} walk").
+    pub(crate) fn tab_title(&self, panel: Panel) -> String {
+        if panel == Panel::Viewport {
+            return self.document.name();
+        }
+        let what = match panel {
+            Panel::Map => self.map.as_ref().map(|m| m.name.clone()),
+            Panel::Tileset => self
+                .tileset
                 .as_ref()
-                .map(|t| crate::sprite_sheets::name_of(&t.editor.path))
-        } else if *tab == Panel::Animator {
-            self.animator
+                .map(|t| crate::sprite_sheets::name_of(&t.editor.path)),
+            Panel::Animator => self
+                .animator
                 .as_ref()
-                .map(|a| crate::sprite_sheets::name_of(&a.editor.path))
-        } else {
-            self.frames.as_ref().map(|f| match tab {
-                Panel::Clips => crate::sprite_sheets::name_of(&f.editor.path),
-                _ => f.editor.clip.clone(),
-            })
+                .map(|a| crate::sprite_sheets::name_of(&a.editor.path)),
+            Panel::AtlasCrop => self
+                .atlas
+                .as_ref()
+                .map(|(editor, ..)| crate::sprite_sheets::name_of(&editor.path)),
+            Panel::Canvas => self
+                .screen
+                .as_ref()
+                .map(|s| crate::sprite_sheets::name_of(&s.doc.path)),
+            _ => None,
         };
-        if tab.comes_with_a_file()
-            && let Some(what) = what.filter(|w| !w.is_empty())
-        {
-            job.append(
-                &format!("· {what}"),
-                5.0,
-                egui::TextFormat {
-                    font_id: egui::FontId::proportional(theme::TEXT_SIZE),
-                    color: theme::text_weak(),
-                    ..Default::default()
-                },
-            );
-        }
-        let problems = self.problems.len() + self.code_problems.len();
-        if *tab == Panel::Problems && problems > 0 {
-            job.append(
-                &problems.to_string(),
-                6.0,
-                egui::TextFormat {
-                    font_id: egui::FontId::proportional(theme::TEXT_SIZE),
-                    color: theme::WARNING,
-                    ..Default::default()
-                },
-            );
-        }
-        job.into()
-    }
-
-    fn on_tab_button(&mut self, tab: &mut Panel, response: &egui::Response) {
-        // Name the tab for screen readers (and tests).
-        let in_front = self.in_front.contains(tab);
-        response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::Button, true, in_front, tab.title())
-        });
-        let painter = response.ctx.layer_painter(response.layer_id);
-        // The icon, in colour on the front tab and quiet behind it.
-        let color = match (in_front, *tab) {
-            (true, Panel::Library) => theme::FOLDER,
-            (true, _) => self.accent.colors().light,
-            (false, _) => theme::text_weak(),
-        };
-        let size = 12.0;
-        icons::icon(
-            &painter,
-            egui::Rect::from_min_size(
-                egui::pos2(
-                    response.rect.left() + TAB_TEXT_INSET,
-                    response.rect.center().y - size / 2.0,
-                ),
-                egui::vec2(size, size),
-            ),
-            tab.icon(),
-            color,
-        );
-        // The tab in front is underlined in the accent colour.
-        if in_front {
-            painter.hline(
-                response.rect.x_range(),
-                response.rect.bottom() - 1.0,
-                egui::Stroke::new(2.0, self.accent.colors().fill),
-            );
+        match what.filter(|w| !w.is_empty()) {
+            Some(what) => format!("{} \u{b7} {what}", panel.title()),
+            None => panel.title().to_owned(),
         }
     }
 
-    fn ui(&mut self, ui: &mut Ui, tab: &mut Panel) {
+    /// Whether `panel` shows a file of its own that its × closes now.
+    pub(crate) fn closes_a_file(&self, panel: Panel) -> bool {
+        match panel {
+            Panel::Clips | Panel::Frames => self.frames.is_some(),
+            Panel::Animator => self.animator.is_some(),
+            Panel::Tileset => self.tileset.is_some(),
+            Panel::AtlasCrop => self.atlas.is_some(),
+            Panel::Canvas | Panel::Elements => self.screen.is_some(),
+            Panel::Viewport
+            | Panel::Game
+            | Panel::Area
+            | Panel::Properties
+            | Panel::Library
+            | Panel::Code
+            | Panel::Console
+            | Panel::Problems
+            | Panel::Profiler
+            | Panel::Mixer
+            | Panel::Map
+            | Panel::Hints => false,
+        }
+    }
+
+    /// Closes the file `panel` shows (its ×). Every panel is named, with
+    /// no arm for "the rest": a new one doesn't build until it's decided
+    /// what its × closes.
+    pub(crate) fn close(&mut self, panel: Panel) {
+        match panel {
+            // Either tab closes the clips file, and the other goes with it.
+            Panel::Clips | Panel::Frames => self.frames_out.closed = true,
+            Panel::Animator => self.frames_out.animator_closed = true,
+            Panel::Tileset => self.frames_out.tileset_closed = true,
+            Panel::AtlasCrop => self.frames_out.atlas_closed = true,
+            Panel::Canvas | Panel::Elements => self.frames_out.screen_closed = true,
+            // These have no × (`closes_a_file`): nothing closes them.
+            Panel::Viewport
+            | Panel::Game
+            | Panel::Area
+            | Panel::Properties
+            | Panel::Library
+            | Panel::Code
+            | Panel::Console
+            | Panel::Problems
+            | Panel::Profiler
+            | Panel::Mixer
+            | Panel::Map
+            | Panel::Hints => {}
+        }
+    }
+
+    /// How many problems there are, for the Problems tab's name.
+    pub(crate) fn problem_count(&self) -> usize {
+        self.problems.len() + self.code_problems.len()
+    }
+
+    /// The count a shelf column's header shows for `panel`, if it has
+    /// one: the area's entities over the Area column. The area keeps its
+    /// count, so nothing is walked.
+    pub(crate) fn column_count(&self, panel: Panel) -> Option<String> {
+        (panel == Panel::Area).then(|| self.document.area().len().to_string())
+    }
+
+    /// Draws `panel`'s contents filling `ui`.
+    pub(crate) fn draw_panel(&mut self, ui: &mut Ui, panel: Panel) {
+        let tab = &panel;
         self.shown.insert(*tab);
         // Noted here for every panel alike, and nowhere else.
         if ui.rect_contains_pointer(ui.max_rect()) {
@@ -274,9 +261,6 @@ impl TabViewer for PanelViewer<'_> {
             let full = ui.max_rect();
             let mut view_ui = ui.new_child(egui::UiBuilder::new().max_rect(full));
             self.viewport.show(&mut view_ui, self.renderer, self.accent);
-            if self.playing {
-                playing_border(ui, full, self.accent);
-            }
             ui.advance_cursor_after_rect(full);
             return;
         }
@@ -450,10 +434,6 @@ impl TabViewer for PanelViewer<'_> {
                     self.accent,
                     code,
                     self.sounds,
-                    (
-                        (!code).then_some(crate::library::Pin::Docked),
-                        &mut *self.library_pin_clicked,
-                    ),
                 );
                 self.library_requests.extend(requests);
             }
@@ -475,9 +455,6 @@ impl TabViewer for PanelViewer<'_> {
                         .cloned()
                         .collect(),
                 );
-                if self.playing {
-                    playing_border(ui, full, self.accent);
-                }
                 if crate::mixer_view::game_mute_button(ui, full, self.mixer.listening.all_muted) {
                     self.mixer_requests
                         .push(crate::mixer_view::MixerRequest::MuteAll);
@@ -637,51 +614,6 @@ impl TabViewer for PanelViewer<'_> {
             Panel::Viewport => {}
         }
     }
-
-    fn is_closeable(&self, tab: &Panel) -> bool {
-        // The Map tab comes and goes with the selection, not a file.
-        tab.comes_with_a_file() && *tab != Panel::Map
-    }
-
-    fn on_close(&mut self, tab: &mut Panel) -> egui_dock::widgets::tab_viewer::OnCloseResponse {
-        use egui_dock::widgets::tab_viewer::OnCloseResponse;
-        // Every panel is named, with no arm for "the rest": a new one
-        // doesn't build until it's decided what its × closes.
-        match *tab {
-            // Either tab closes the clips file, and the other goes with it.
-            Panel::Clips | Panel::Frames => self.frames_out.closed = true,
-            Panel::Animator => self.frames_out.animator_closed = true,
-            Panel::Tileset => self.frames_out.tileset_closed = true,
-            Panel::AtlasCrop => self.frames_out.atlas_closed = true,
-            // Either tab closes the screen, and the other goes with it.
-            Panel::Canvas | Panel::Elements => self.frames_out.screen_closed = true,
-            // These have no × (`is_closeable`): nothing closes them.
-            Panel::Viewport
-            | Panel::Game
-            | Panel::Area
-            | Panel::Properties
-            | Panel::Library
-            | Panel::Code
-            | Panel::Console
-            | Panel::Problems
-            | Panel::Profiler
-            | Panel::Mixer
-            | Panel::Map
-            | Panel::Hints => return OnCloseResponse::Ignore,
-        }
-        OnCloseResponse::Close
-    }
-}
-
-/// The border around the viewport and the Game panel while the game
-/// runs, so it's plain that the area goes back on Stop.
-fn playing_border(ui: &Ui, rect: egui::Rect, accent: Accent) {
-    ui.painter().rect_stroke(
-        rect,
-        0.0,
-        egui::Stroke::new(2.0, accent.colors().light),
-        egui::StrokeKind::Inside,
-    );
 }
 
 /// Shown while files are dragged over the window: where they'll go.

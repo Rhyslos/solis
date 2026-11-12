@@ -14,7 +14,7 @@ use reflect::EntityId;
 /// A workbench whose area is saved (nothing unsaved), playing, with one
 /// edit of the user's made while playing: the lamp.
 fn playing_with_an_edit() -> (Workbench, EntityId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open.document.mark_saved("harbour.solarea".into());
     w.play();
     let lamp = w.add_point_light();
@@ -166,7 +166,7 @@ fn a_quit_handed_straight_to_the_app_while_playing_waits_too() {
     w.undo_play_changes();
     assert_eq!(handed_over(&mut w), [WorkbenchAction::Quit]);
     // With no edit of the user's it closes as before.
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.play();
     let mut actions = vec![WorkbenchAction::Quit];
     w.hold_while_playing(&mut actions);
@@ -265,7 +265,7 @@ fn edits_made_while_the_unsaved_question_was_up_are_asked_about_too() {
     // Closing the window while playing with unsaved changes from before
     // Play asks about those and leaves the game running. An edit made
     // then, and the question answered: the edit was lost with the game.
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.add_spotlight();
     w.play();
     assert!(!w.close_requested());
@@ -298,7 +298,7 @@ fn the_sample_projects_ask_about_unsaved_changes_like_any_other_project() {
     // They put another project and area in the open one's place, so they
     // go through the same check.
     for action in leaving() {
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         w.add_point_light();
         let mut actions = Vec::new();
         w.request(action.clone(), &mut actions);

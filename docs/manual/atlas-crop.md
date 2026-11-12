@@ -10,7 +10,7 @@ For a sprite that plays clips, use [sprites](sprites.md) and [sprite animation](
 
 ## How to use it
 
-1. In the Library, right-click a picture (a PNG, JPEG or Aseprite file) and choose **Atlas Crop…**. The **Atlas Crop** tab opens beside the viewport, showing the picture, and Solis makes a file beside it to keep the crops: `sprites/tools.png` gets `sprites/tools.atlas.lst`.
+1. In the Library, right-click a picture (a PNG, JPEG or Aseprite file) and choose **Atlas Crop…**. The **Atlas Crop** tab opens on the **Library** tab, beside the Library, showing the picture, and Solis makes a file beside it to keep the crops: `sprites/tools.png` gets `sprites/tools.atlas.lst`.
 2. Set the **Grid** to the size the pictures are drawn on (16 × 16 for most pixel art). Crops snap to it, so a quick drag catches a whole tile.
 3. **Drag on the picture** to draw a crop. It's named `Crop`, `Crop2`… at first: type a better name in **Name** and press **Rename** (or Enter). A name starts with a letter and holds only letters, digits and `_`.
 4. Or press **Crop every tile**: a crop for every grid cell with something drawn in it, named by its column and row (`Tile_3_0`).

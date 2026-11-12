@@ -47,7 +47,6 @@ egui = "0.36"
 # Reads fonts for game UI's text (decision 0084); the same version egui uses.
 ab_glyph = "0.2.32"
 # Dockable panels (decision 0004).
-egui_dock = { version = "0.21", features = ["serde"] }
 # Reading glTF models: the JSON and binary layout only. Buffers and
 # images are read by Solis itself, with size limits (crates/assets).
 gltf = { version = "1.4", default-features = false, features = ["names", "utils", "KHR_lights_punctual"] }

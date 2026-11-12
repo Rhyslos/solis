@@ -1,7 +1,6 @@
 //! Helpers shared by the editor's whole-window tests: a test window, a
 //! stand-in renderer that answers picks, and small areas to work on.
 
-use crate::layout;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::viewport::{ViewportRenderer, ViewportView};
@@ -107,7 +106,7 @@ pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, St
                 let actions = workbench.show(ui, picker);
                 picker.actions.extend(actions);
             },
-            (Workbench::new(info(), None), Picker::default()),
+            (Workbench::new(info()), Picker::default()),
         )
         .tap(|h| h.state_mut().0 = workbench)
 }
@@ -176,23 +175,29 @@ pub(crate) fn file_item<S>(h: &mut egui_kittest::Harness<'_, S>, label: &str) {
     h.run();
 }
 
-/// Draws the editor with `panel` in front and the pointer resting over
-/// the middle of it.
+/// Draws the editor with `panel` in view (on its tab, in front of its
+/// group or on its shelf tab) and the pointer resting over the middle of
+/// it.
 pub(crate) fn rest_over(
     mut h: egui_kittest::Harness<'static, State>,
     panel: Panel,
 ) -> egui_kittest::Harness<'static, State> {
     h.run();
-    layout::bring_to_front(&mut h.state_mut().0.dock, panel);
+    h.state_mut().0.show_panel(panel);
     h.run();
-    let path = h.state().0.dock.find_tab(&panel).expect("the tab is open");
-    let body = h.state().0.dock[path.surface][path.node]
-        .get_leaf()
-        .expect("a tab group")
-        .viewport;
+    let body = body_of(&h, panel);
     h.hover_at(body.center());
     h.run();
     h
+}
+
+/// Where `panel`'s body was drawn in the last frame. Fails if it wasn't.
+pub(crate) fn body_of(h: &egui_kittest::Harness<'static, State>, panel: Panel) -> egui::Rect {
+    h.state()
+        .0
+        .shell
+        .drawn_at(panel)
+        .unwrap_or_else(|| panic!("{panel:?} is in view"))
 }
 
 /// Every rectangle the last frame drew: where, its fill and its border's
@@ -243,7 +248,7 @@ pub(crate) fn crate_model() -> ModelInfo {
 
 /// A workbench with a crate placed at the origin, nothing selected.
 pub(crate) fn with_a_crate() -> (Workbench, EntityId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let id = w.add_model(crate_model(), &[], 0.1, &[]);
     w.open.document.selection.clear();
     (w, id)
@@ -283,28 +288,21 @@ pub(crate) fn click(
     h.run();
 }
 
-/// Clicks the × on `panel`'s tab, as the mouse does.
+/// Clicks the × that closes `panel`'s file (on its document tab, or on
+/// its shelf tab), as the mouse does.
 pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: Panel) {
     use egui_kittest::kittest::Queryable;
+    h.state_mut().0.show_panel(panel);
     h.run();
     h.run();
-    // The tab is the thing of that name above its panel's body.
-    let path = h.state().0.dock.find_tab(&panel).expect("the tab is open");
-    let body = h.state().0.dock[path.surface][path.node]
-        .get_leaf()
-        .expect("a tab group")
-        .viewport;
-    let tab = h
-        .get_all_by_label(panel.title())
-        .map(|n| n.rect())
-        .find(|r| r.bottom() <= body.top() + 1.0 && body.x_range().contains(r.center().x))
-        .expect("the tab is drawn");
-    // The × sits at the tab's right end.
-    click(
-        h,
-        egui::pos2(tab.right() - 11.0, tab.center().y),
-        egui::Modifiers::NONE,
-    );
+    // "Close Clips", or "Close Tileset · farm" for a document's tab.
+    let name = format!("Close {}", panel.title());
+    let x = h
+        .get_all_by_label_contains(&name)
+        .next()
+        .unwrap_or_else(|| panic!("{name} is drawn"))
+        .rect();
+    click(h, x.center(), egui::Modifiers::NONE);
     h.run();
 }
 
@@ -373,11 +371,41 @@ pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<area::text::AreaFile>
 
 /// A workbench with the lamp post known and one copy placed.
 pub(crate) fn with_a_lamp_post() -> (Workbench, AssetId, EntityId, EntityId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let (asset, file) = lamp_post_file();
     w.set_assembly(asset, file);
     w.place_assembly(asset);
     let root = w.selection().unwrap();
     let lamp = area::assembly::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
     (w, asset, root, lamp)
+}
+
+/// Whether `panel` has a place now: a panel that comes with a file only
+/// while its file is open (and the Map while a tile map is selected).
+/// The canvas and Elements are always the UI tab's, so for them it is
+/// whether a screen is open on them.
+pub(crate) fn has_panel(w: &Workbench, panel: Panel) -> bool {
+    match panel {
+        Panel::Canvas | Panel::Elements => w.open.screen_doc.is_some(),
+        _ => crate::shell::workspaces::tab_for(panel, w.open_now()).is_some(),
+    }
+}
+
+/// Gives the shelf of every tab the most room it can have in the test
+/// window, for tests that click far down a column (Properties shares
+/// Home's shelf with the Area and the Library).
+pub(crate) fn roomy_shelf(w: &mut Workbench) {
+    for tab in crate::shell::RibbonTab::ALL {
+        w.shell.arrangement_mut(tab).shelf_height = ROOMY_SHELF;
+    }
+}
+
+/// The shelf's height in [`roomy_shelf`]: as tall as the test window lets
+/// it be, the center keeping its least.
+const ROOMY_SHELF: f32 = 600.0;
+
+/// Whether `panel` was drawn in the last frame: in front of its group,
+/// or on the shelf tab in front.
+pub(crate) fn in_view(w: &Workbench, panel: Panel) -> bool {
+    w.shell.drawn_at(panel).is_some()
 }

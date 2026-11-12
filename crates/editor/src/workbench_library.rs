@@ -7,6 +7,7 @@ use crate::library::{LibraryKind, LibraryRequest};
 use crate::workbench::{Workbench, WorkbenchAction};
 use glam::Vec3;
 use reflect::{AssetId, EntityId};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 /// The Lust a new code file starts with (E1): one component, named
@@ -598,6 +599,62 @@ pub fn plain_relative(path: &str) -> bool {
             .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
+impl Workbench {
+    /// For each code file, the components written in it and how many
+    /// entities in the area use each: `Player · 1, Crop · 12`, or the
+    /// components alone when none is used. For the Code panel, so it shows
+    /// what each file does in this area.
+    pub(crate) fn code_uses(&self) -> BTreeMap<String, String> {
+        let Some(program) = &self.open.program else {
+            return BTreeMap::new();
+        };
+        let mut by_file: BTreeMap<String, Vec<(String, usize)>> = BTreeMap::new();
+        for (component, (file, _)) in &program.places {
+            let users = self
+                .open
+                .document
+                .area()
+                .iter()
+                .filter(|(_, e)| e.has(component))
+                .count();
+            by_file
+                .entry(file.clone())
+                .or_default()
+                .push((component.clone(), users));
+        }
+        by_file
+            .into_iter()
+            .map(|(file, components)| {
+                let words: Vec<String> = components
+                    .into_iter()
+                    .map(|(name, users)| format!("{name} · {users}"))
+                    .collect();
+                (file, words.join(", "))
+            })
+            .collect()
+    }
+
+    /// [`Self::code_uses`], worked out again only when the area, the
+    /// game's code or what's known of it changed (review finding BUG-28:
+    /// the Library is on Home's shelf now, so it is in view nearly
+    /// always, and the area isn't walked every frame for it).
+    pub(crate) fn code_uses_now(&mut self) -> std::sync::Arc<BTreeMap<String, String>> {
+        let revision = self.open.document.revision();
+        let program = self.open.program.as_ref();
+        if let Some((rev, sources, built, uses)) = &self.open.code_uses
+            && *rev == revision
+            && *sources == self.sources
+            && crate::made_from::MadeFrom::same(built.as_ref(), program)
+        {
+            return std::sync::Arc::clone(uses);
+        }
+        let uses = std::sync::Arc::new(self.code_uses());
+        let built = program.map(crate::made_from::MadeFrom::new);
+        self.open.code_uses = Some((revision, self.sources, built, std::sync::Arc::clone(&uses)));
+        uses
+    }
+}
+
 #[cfg(test)]
 #[path = "workbench_library_tests.rs"]
 mod tests;
@@ -608,7 +665,7 @@ mod opening_tests {
     use crate::test_support::info;
 
     fn opened(kind: LibraryKind, path: &str) -> PathBuf {
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         let assets = std::env::temp_dir().join("solis-library-open");
         w.open.project = Some(crate::library::ProjectInfo {
             name: "Opening".into(),
@@ -654,7 +711,7 @@ mod opening_tests {
     fn a_path_outside_the_assets_folder_is_never_opened() {
         // The third security audit: a problem's file comes from an error's
         // text, so a click could open a network share in Explorer.
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         let assets = std::env::temp_dir().join("solis-library-open");
         w.open.project = Some(crate::library::ProjectInfo {
             name: "Opening".into(),
@@ -685,7 +742,7 @@ mod opening_tests {
     fn opening_lust_says_once_which_program_opens_it() {
         // The user test: double-clicking main.lst opened an unexpected
         // program, with no word on why.
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         let assets = std::env::temp_dir().join("solis-library-open");
         w.open.project = Some(crate::library::ProjectInfo {
             name: "Opening".into(),

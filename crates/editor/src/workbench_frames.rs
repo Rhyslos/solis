@@ -7,7 +7,6 @@
 use crate::console::LogLevel;
 use crate::frames_editor::FramesEditor;
 use crate::frames_view::FramesUi;
-use crate::layout;
 use crate::own_files::OwnFile;
 use crate::panel::Panel;
 use crate::sprite_sheets::{FramesState, SpriteSheets};
@@ -112,8 +111,7 @@ impl Workbench {
                 .unwrap_or_default();
             self.open.frames_editor = Some(FramesEditor::new(path.to_owned(), file, &clips));
         }
-        layout::open_beside(&mut self.dock, Panel::Clips, Panel::Properties);
-        layout::open_beside(&mut self.dock, Panel::Frames, Panel::Library);
+        self.show_panel(Panel::Frames);
     }
 
     /// Makes a clips file beside the Aseprite file at `sheet_path` (or
@@ -139,9 +137,6 @@ impl Workbench {
     /// Closes the clips file open, and its tabs.
     pub(crate) fn close_frames(&mut self) {
         self.open.frames_editor = None;
-        for panel in Panel::FRAMES_TABS {
-            layout::close(&mut self.dock, panel);
-        }
     }
 
     /// Moves the open clip on by `seconds` while it's playing in the
@@ -175,11 +170,7 @@ impl Workbench {
         if out.changed {
             self.save_frames();
         }
-        // A tab closed in the dock: the other goes too.
-        let one_gone = Panel::FRAMES_TABS
-            .iter()
-            .any(|p| self.dock.find_tab(p).is_none());
-        if self.open.frames_editor.is_some() && (out.closed || one_gone) {
+        if self.open.frames_editor.is_some() && out.closed {
             self.close_frames();
         }
         if let Some(said) = &out.screen_said {
@@ -199,9 +190,7 @@ impl Workbench {
                 actions,
             );
         }
-        // Either of the screen's tabs closed: the screen closes and the
-        // other goes too. (Unlike a clips file's, its tabs are only in the
-        // UI workspace's layout, so a tab not being here says nothing.)
+        // The canvas's × closes the screen.
         if out.screen_closed {
             self.close_screen();
         }
@@ -211,9 +200,7 @@ impl Workbench {
         if let Some(said) = &out.atlas_said {
             self.log(crate::console::LogLevel::Info, said.clone());
         }
-        if self.open.atlas_editor.is_some()
-            && (out.atlas_closed || self.dock.find_tab(&Panel::AtlasCrop).is_none())
-        {
+        if self.open.atlas_editor.is_some() && out.atlas_closed {
             self.close_atlas();
         }
         self.open.tilesets.in_properties = out.properties_tileset;
@@ -223,17 +210,13 @@ impl Workbench {
         if let Some(kind) = out.tileset_template {
             self.save_template(kind);
         }
-        if self.open.tilesets.tab().is_some()
-            && (out.tileset_closed || self.dock.find_tab(&Panel::Tileset).is_none())
-        {
+        if self.open.tilesets.tab().is_some() && out.tileset_closed {
             self.close_tileset();
         }
         if out.animator_changed {
             self.save_animator();
         }
-        if self.open.animator_editor.is_some()
-            && (out.animator_closed || self.dock.find_tab(&Panel::Animator).is_none())
-        {
+        if self.open.animator_editor.is_some() && out.animator_closed {
             self.close_animator();
         }
     }

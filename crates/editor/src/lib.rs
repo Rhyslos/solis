@@ -1,5 +1,6 @@
-//! The editor's interface: the top bar, the dockable panels, the viewport's
-//! controls and the theme ([decision 0004](../../../docs/decisions/0004-editor-layout.md)).
+//! The editor's interface: the frame (tab bar, ribbon, editor groups,
+//! shelf and status bar, [decision 0099](../../../docs/decisions/0099-the-g-layout.md)),
+//! the panels inside it, the viewport's controls and the theme.
 //!
 //! Layer 2 (editor). Games never need this crate. It never touches the
 //! window, the GPU or files: it returns actions for the app to carry out,
@@ -41,9 +42,7 @@ mod inspector;
 pub mod interface_look;
 mod key_owner;
 pub mod launcher;
-pub mod layout;
 pub mod library;
-pub mod library_drawer;
 pub mod look;
 mod made_from;
 mod map_tab;
@@ -79,7 +78,6 @@ pub mod sound_view;
 pub mod splash;
 pub mod sprite_parallax;
 pub mod sprite_sheets;
-pub mod status_bar;
 #[cfg(test)]
 mod test_support;
 pub mod text_view;
@@ -105,13 +103,11 @@ mod workbench_screens;
 mod workbench_tiles;
 mod workbench_tileset;
 mod workbench_tools;
-pub mod workspace;
 
 pub use area_view::{AreaView, ViewLight, ViewModel};
 pub use camera::{Camera, FlyInput, ViewKind};
 pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
-pub use egui_dock::DockState;
 pub use game_sound::{GameSound, Hearer, SoundMode};
 pub use interface_look::InterfaceLook;
 pub use launcher::KnownProject;
@@ -123,6 +119,7 @@ pub use own_files::OwnFile;
 pub use panel::Panel;
 pub use play::PlayState;
 pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back, save_reads};
+pub use shell::{RibbonTab, ShelfTab, ShellState};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use transforming::Snapping;

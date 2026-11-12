@@ -7,9 +7,7 @@
 //! (`workbench_tileset.rs`), from here too.
 
 use crate::console::LogLevel;
-use crate::layout;
 use crate::own_files::OwnFile;
-use crate::panel::Panel;
 use crate::sprite_sheets::MapFileState;
 use crate::workbench::Workbench;
 use glam::Vec3;
@@ -329,17 +327,13 @@ impl Workbench {
         Some((id, path.clone()))
     }
 
-    /// Opens the Map tab beside Properties while a map is selected, and
-    /// closes it otherwise (each frame, before the panels are drawn).
+    /// Notes the map of the entity selected, if it has one: the Map shelf
+    /// tab is there while it does (each frame, before the panels are
+    /// drawn).
     pub(crate) fn follow_map_selection(&mut self) {
         let selected = self.selected_map_path().map(|(_, p)| p);
         if selected != self.open.map_edits.path {
             self.open.map_edits.hovered = None;
-        }
-        match (&selected, self.dock.find_tab(&Panel::Map)) {
-            (Some(_), None) => layout::open_beside(&mut self.dock, Panel::Map, Panel::Properties),
-            (None, Some(_)) => layout::close(&mut self.dock, Panel::Map),
-            _ => {}
         }
         self.open.map_edits.path = selected;
     }

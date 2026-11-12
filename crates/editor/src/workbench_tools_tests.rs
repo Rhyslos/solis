@@ -425,7 +425,7 @@ fn a_selected_collider_is_outlined_as_its_shape() {
 
 #[test]
 fn a_selected_reverb_zone_is_outlined_in_sound_s_colour() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let id = w.add_entity();
     w.apply_property(
         crate::properties::PropertyRequest::AddComponent {
@@ -454,7 +454,7 @@ fn a_selected_reverb_zone_is_outlined_in_sound_s_colour() {
 #[test]
 fn a_selected_sprite_is_outlined_round_its_picture() {
     use crate::sprite_sheets::{SheetState, SpriteSheets};
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let sheet = reflect::AssetId::random();
     let mut sheets = SpriteSheets::default();
     sheets.by_path.insert(

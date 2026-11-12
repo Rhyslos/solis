@@ -285,9 +285,11 @@ impl Workbench {
         );
     }
 
-    /// Puts every panel of the workspace in use back where it started.
+    /// Puts the middle of the tab in front back as the design draws it:
+    /// its shelf tab, the shelf's height and fold, its split.
     pub fn reset_layout(&mut self) {
-        self.reset_workspace();
+        let tab = self.shell.tab;
+        self.shell.arrangements.remove(&tab);
     }
 
     /// Draws the Settings window, if it's open.

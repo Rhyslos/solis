@@ -21,7 +21,7 @@ How many tiles you need depends on the terrain's **[kind](concepts.md#2d)**:
 
 ## How to use it
 1. **Draw your tiles** in one picture: a PNG, or an Aseprite file (handy for animated tiles), with every tile the same size in a grid. Not sure what to draw? Open the tileset, choose a terrain's kind, and press **Save … template**: Solis saves a picture beside the tileset with every slot laid out at your tile size, ready to draw over.
-2. **Open the tileset:** double-click it in the Library. The **Tileset** tab opens beside the viewport.
+2. **Open the tileset:** double-click it in the Library. The **Library** tab comes to the front with the **Tileset** beside the Library, as a group of its own (and a **Library tools · Tileset** tab joins the tab bar); its terrains show on the shelf's **Details** tab.
 3. **Choose the picture** on the left. Solis cuts it into tiles at the tile size shown. If the art looks cut differently, it offers the size it found: click it.
 4. **Choose a terrain** on the left, and give it a **kind**. While it has no tiles, the tab guesses its kind from the picture (pick the top-left tile of its block first) and asks you to confirm. **Kind** at the top right changes it any time.
 5. **Fill its slots** on the right. Each slot shows the neighbours it's for: the terrain's colour where they're the terrain, dark where they're not.

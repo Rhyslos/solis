@@ -11,7 +11,7 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0001-builds-on-demand.md` | Builds ran on demand, not on every update | Replaced by 0018 |
 | `0002-engine-in-rust-games-in-lust.md` | The engine is Rust; games are Lust | Accepted |
 | `0003-games-in-rust-lust-or-lua.md` | Games can be written in Lust, Rust or Lua | Accepted (extends 0002) |
-| `0004-editor-layout.md` | The editor's layout: panels and tabs, everything dockable | Accepted; layout replaced by 0099, theme by 0100 |
+| `0004-editor-layout.md` | The editor's layout: panels and tabs, everything dockable | Accepted; layout replaced by 0099, docking by 0104, theme by 0100 |
 | `0005-netcode-in-layers.md` | Netcode in layers: the shared parts built in, the model optional | Accepted |
 | `0006-git-built-in.md` | Git built into the editor, for teams | Accepted |
 | `0007-mit-licence-and-separate-from-aventail.md` | MIT licence, and a project separate from Aventail (whose code may be adapted) | Accepted |
@@ -92,7 +92,7 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0082-the-2d-follow-camera-and-cells-at-places.md` | The kit's FollowCamera2D, and turning places into a map's cells and back | Accepted |
 | `0083-game-ui-on-any-screen.md` | Game UI's anchors, scale rules and screen previews; pictures cut from sheets | Accepted |
 | `0084-game-ui-text.md` | Game UI text: `ab_glyph` and single-channel distance images in one atlas, instead of the plan's `parley` and `fdsm` | Accepted (carries out 0083's text) |
-| `0085-the-editor-overhaul.md` | The editor overhaul from the 4 November mock-up, in seven milestones before the game UI editor | Accepted (carries out 0070's UI overhaul; builds on 0004); changed by 0099 and 0101 |
+| `0085-the-editor-overhaul.md` | The editor overhaul from the 4 November mock-up, in seven milestones before the game UI editor | Accepted (carries out 0070's UI overhaul; builds on 0004); changed by 0099, 0101 and 0104 |
 | `0086-the-launcher.md` | The launcher inside Solis: projects (pin, search, sort, rename, copy, scan, the build each was saved with), Learn and Updates | Accepted (grows 0070's start page; builds on 0043 and 0045); changed by 0099 |
 | `0087-screens-through-the-engine.md` | Screens are Lust's own views read through the engine (objects, `Ui:entity()`, a reading method per component); no new Lust words | Accepted (replaces the game UI plan's choices 3 and 4) |
 | `0088-menus-send-events.md` | Menus: buttons send events into the next tick's input; `showScreen` and `hideScreen` on the entity, screens as project states | Accepted (builds on 0087) |
@@ -110,4 +110,5 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0101-unfinished-parts-as-placeholders.md` | Unfinished parts are shown in place as quiet placeholders with a hollow square mark, and one setting, Hide unfinished parts, hides them all | Accepted (changes 0070 and 0085) |
 | `0102-linux-checks-paused.md` | The Linux checks on GitHub are paused: lints, tests and docs run on Windows, formatting and licences stay on Linux, the window test is run by hand | Accepted (changes 0018) |
 | `0103-todays-keys-stay.md` | Today's keys stay (Q W R S T, Space opens the search); the design's keys only for new things; the wheel scrolls the ribbon sideways; a Create button's list opens from its small arrow or a right-click, never a long press | Accepted (builds on 0099; keeps 0085's search key) |
+| `0104-docking-is-solis-s-own.md` | Docking is Solis's own: each tab's middle is fixed (editor groups and a shelf of columns, as the design draws them), drawn by the editor's own code; egui_dock goes; saved arrangements from before aren't carried over; the Library drawer goes and Ctrl + Space folds the shelf | Accepted (carries out 0099; replaces 0004's docking and 0085's drawer and workspaces) |
 | `0089-atlas-crop-and-the-ui-editor.md` | Atlas Crop (pictures cut from sheets, `.atlas.lst`), the UI editor's approved layout, and screens' looks, pictures and text size | Accepted (renames 0083's Cut out pictures; builds on 0087 and 0088) |

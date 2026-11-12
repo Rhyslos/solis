@@ -7,7 +7,6 @@
 use crate::atlas_editor::AtlasEditor;
 use crate::atlas_view::AtlasPicture;
 use crate::console::LogLevel;
-use crate::layout;
 use crate::own_files::OwnFile;
 use crate::panel::Panel;
 use crate::sprite_sheets::{ArtState, AtlasState};
@@ -50,14 +49,13 @@ impl Workbench {
                 self.save_open_atlas();
             }
         }
-        layout::open_first_beside(&mut self.dock, Panel::AtlasCrop, Panel::Viewport);
+        self.show_panel(Panel::AtlasCrop);
     }
 
     /// Closes the atlas open, and its tab.
     pub(crate) fn close_atlas(&mut self) {
         self.open.atlas_editor = None;
         self.open.atlas_texture = None;
-        layout::close(&mut self.dock, Panel::AtlasCrop);
     }
 
     /// Saves the open atlas, and keeps it as read.

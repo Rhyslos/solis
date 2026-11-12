@@ -216,7 +216,7 @@ pub(crate) fn sample_project() -> Workbench {
         .find_map(|line| line.strip_prefix("name = "))
         .map(|name| name.trim().trim_matches('"').to_string())
         .expect("the sample project has a name");
-    let mut workbench = Workbench::new(crate::test_support::info(), None);
+    let mut workbench = Workbench::new(crate::test_support::info());
     workbench.set_project(Some(ProjectInfo {
         name,
         root: root.clone(),

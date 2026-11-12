@@ -26,13 +26,11 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - On the left, the **folder tree**: click a folder to see what's in it. (**View > Folder tree** puts it away to make room.)
 - On the right, that folder's files as **thumbnails**, each with a coloured stripe saying what kind of file it is: blue for models, gold for assemblies, green for areas, purple for pictures. **View > List** shows them as a list instead. The line above them (*Harbour › props*) shows where you are; click a part of it to go back up.
 - **Search the project** (top right) finds files by name in every folder.
-- The **chips** above the files (**All**, **Models**, **Sprites**, **Maps**, **Sounds**, **Code**) show only one kind of file, so a busy folder is easy to scan. **All** shows everything, your code files included (the **Code** panel lists only code).
+- The **chips** above the files (**All**, **Models**, **Sprites**, **Maps**, **Sounds**, **Code**) show only one kind of file, so a busy folder is easy to scan. **All** shows everything, your code files included (the **Code** shelf tab, on the Library tab, lists only code).
 
-**Keep the Library out of the way (the drawer)**
-- The Library starts **pinned**: a panel along the bottom. Click **Unpin** (top right of the Library) and it leaves the layout, so the viewport gets that space.
-- Then **Ctrl + Space** pops it up over the bottom of the editor whenever you want it, as in Unreal Engine. It tucks itself away again when you press Ctrl + Space or Esc, click outside it, place or open a file from it, or drag a file out of it (so you can drop the file in the viewport behind).
-- **Pin** in the drawer docks it again. Solis remembers which you chose.
-- With the Library pinned, Ctrl + Space brings it to the front of the bottom panels.
+**Where the Library is**
+- On **Home**, it is the right-hand column of the shelf's **Entity** tab, under the viewport, so you can drag files from it straight into the area. Drag the shelf's grip up for a bigger Library, and press **Ctrl + Space** to fold the shelf away when you want the viewport bigger. (Older builds had a Library drawer with Pin and Unpin; the shelf takes its place.)
+- The **Library** tab of the tab bar shows it filling the window, with the file picked shown on the shelf's **Details** tab and the code files on its **Code** tab.
 - Point at a file to see its full path and what you can do with it.
 
 **Place a model or assembly**

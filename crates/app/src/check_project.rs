@@ -569,13 +569,10 @@ pub(crate) fn workbench_for(
     if !input::Recording::is_plain_area_path(area_path) || !area_file.starts_with(&assets) {
         return Err(format!("its area, {area_path}, isn't in the assets"));
     }
-    let mut w = editor::Workbench::new(
-        editor::AppInfo {
-            name: crate::branding::APP_NAME.to_string(),
-            version: made_by.to_string(),
-        },
-        None,
-    );
+    let mut w = editor::Workbench::new(editor::AppInfo {
+        name: crate::branding::APP_NAME.to_string(),
+        version: made_by.to_string(),
+    });
     w.set_project(Some(editor::ProjectInfo {
         name: db.project().name().to_string(),
         root: root.to_path_buf(),

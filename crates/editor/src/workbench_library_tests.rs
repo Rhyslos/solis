@@ -30,7 +30,7 @@ fn item(path: &str, kind: LibraryKind, id: Option<AssetId>) -> LibraryItem {
 /// A workbench with a project holding a crate, a rock in a folder, an
 /// area, a picture and some code; the Library in front.
 fn with_a_project() -> (Workbench, AssetId, AssetId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -80,8 +80,7 @@ fn the_library_shows_one_folder_and_the_tree_opens_others() {
 #[test]
 fn the_code_panel_lists_code() {
     let (mut w, _, _) = with_a_project();
-    let path = w.dock.find_tab(&Panel::Code).unwrap();
-    let _ = w.dock.set_active_tab(path);
+    w.show_panel(Panel::Code);
     let mut h = harness(w);
     h.run();
     assert!(shown(&h, "turret"));
@@ -298,7 +297,7 @@ fn dropping_a_file_on_a_folder_moves_it_there() {
 
 #[test]
 fn without_a_project_the_library_says_how_to_make_one() {
-    let mut h = harness(Workbench::new(info(), None));
+    let mut h = harness(Workbench::new(info()));
     h.run();
     let _ = h.get_by_label_contains("No project is open");
 }
@@ -450,6 +449,7 @@ fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
 fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
     let (mut w, id) = with_a_sprite_sheet();
     let placed = w.place_sprite(id, None).expect("placed");
+    roomy_shelf(&mut w);
     let mut h = harness(w);
     h.run();
     h.run();
@@ -531,7 +531,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
             | K::Text
             | K::Other => (1, 0),
         };
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         w.set_project(Some(ProjectInfo {
             name: "Harbour".into(),
             root: "/projects/harbour".into(),
@@ -560,7 +560,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
 #[test]
 fn place_is_greyed_for_a_file_with_no_id_yet() {
     use egui_kittest::kittest::NodeT;
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -598,4 +598,20 @@ fn place_is_greyed_for_a_file_with_no_id_yet() {
     h.run();
     assert!(placed(&h));
     assert!(h.query_by_label("Place").is_none());
+}
+
+#[test]
+fn chips_narrow_the_library() {
+    let mut h = crate::test_support::harness(Workbench::new(crate::test_support::info()));
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Library);
+    h.run();
+    for chip in ["All", "Models", "Sprites", "Maps", "Sounds", "Code"] {
+        let _ = h.get_by_label(&format!("{chip} files"));
+    }
+    h.get_by_label("Sprites files").click();
+    h.run();
+    assert_eq!(
+        h.state().0.open.library_state.filter,
+        crate::library::Filter::Sprites
+    );
 }

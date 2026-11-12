@@ -303,7 +303,7 @@ fn the_game_panel_draws_through_the_camera_without_editor_lines() {
     assert!(game.models.iter().all(|m| m.pick == 0), "nothing picked");
     let _ = crate_id;
     // The viewport still draws, with its lines.
-    h.get_by_label("Viewport").click();
+    h.state_mut().0.show_panel(crate::panel::Panel::Viewport);
     h.run();
     let viewport = h.state().1.views.last().unwrap();
     assert_eq!(viewport.image, VIEWPORT_IMAGE);
@@ -628,7 +628,7 @@ mod spawns_that_cannot_be_made {
     /// A workbench that knows `files` as assemblies, each in the Library
     /// under its name.
     fn knowing(files: Vec<(AssetId, &str, AreaFile)>) -> Workbench {
-        let mut w = Workbench::new(info(), None);
+        let mut w = Workbench::new(info());
         let mut library = Vec::new();
         for (asset, name, file) in files {
             w.set_assembly(asset, Arc::new(file));

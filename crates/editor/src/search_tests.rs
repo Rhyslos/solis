@@ -3,7 +3,7 @@ use crate::test_support::{harness, info};
 use egui_kittest::kittest::Queryable;
 
 fn fresh() -> Workbench {
-    Workbench::new(info(), None)
+    Workbench::new(info())
 }
 
 #[test]
@@ -139,11 +139,7 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
     w.do_search(SearchTarget::Entity(lamp), &ctx, &mut actions);
     assert_eq!(w.selection(), Some(lamp));
     w.do_search(SearchTarget::Panel(Panel::Console), &ctx, &mut actions);
-    let path = w.dock.find_tab(&Panel::Console).unwrap();
-    assert_eq!(
-        w.dock[path.surface][path.node].tabs().unwrap()[path.tab.0],
-        Panel::Console
-    );
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Console));
     // An entity since deleted is ignored.
     w.delete_selection();
     w.do_search(SearchTarget::Entity(lamp), &ctx, &mut actions);
@@ -166,7 +162,6 @@ fn tabs_can_be_switched_from_the_search() {
     let ctx = egui::Context::default();
     w.do_search(debug.target, &ctx, &mut Vec::new());
     assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Debug);
-    assert_eq!(w.workspace(), crate::workspace::Workspace::Code);
     let names: Vec<String> = w.search_items().into_iter().map(|i| i.name).collect();
     assert!(
         !names.contains(&"Debug tab".to_string()),
@@ -250,7 +245,6 @@ fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_no
         w.open.library_state.folder = "notes".into();
         w.open.library_state.search = "plan".into();
         w.open.library_state.filter = crate::library::Filter::Sounds;
-        w.set_library_pinned(false);
         let actions = choose(&mut w, path);
         assert_eq!(actions, [], "{path}: nothing is asked of the app");
         assert_eq!(w.open.library_state.selected.as_deref(), Some(path));
@@ -264,7 +258,11 @@ fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_no
             crate::library::Filter::All,
             "{path}: no chip hides it"
         );
-        assert!(w.drawer_open, "{path}: the Library comes up");
+        assert_eq!(
+            w.shelf_tab(),
+            Some(crate::shell::ShelfTab::Entity),
+            "{path}: the Library comes up"
+        );
     }
 }
 
@@ -314,8 +312,8 @@ fn choosing_any_other_file_opens_it_only_if_its_kind_may_open_in_another_program
 fn enter_on_a_model_in_the_search_shows_it_in_the_library_and_opens_nothing() {
     let mut w = with_files();
     w.open.library_state.folder = "notes".into();
-    // Another tab is in front of the Library, which is pinned.
-    crate::layout::bring_to_front(&mut w.dock, Panel::Console);
+    // Another shelf tab is in front of the one with the Library.
+    w.show_panel(Panel::Console);
     let mut h = harness(w);
     h.run();
     h.key_press(egui::Key::Space);

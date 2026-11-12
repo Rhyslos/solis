@@ -62,8 +62,7 @@ pub(crate) enum ShellCommand {
     ProfilerCpu,
     ProfilerGpu,
     ResetLayout,
-    PinLibrary,
-    UnpinLibrary,
+    FoldShelf,
     HideUnfinished,
     CollapseRibbon,
     Tab(RibbonTab),
@@ -85,7 +84,7 @@ pub(super) use ShellCommand as C;
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 69] = [
+    pub(crate) const ALL: [Self; 68] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -129,8 +128,7 @@ impl ShellCommand {
         C::ProfilerCpu,
         C::ProfilerGpu,
         C::ResetLayout,
-        C::PinLibrary,
-        C::UnpinLibrary,
+        C::FoldShelf,
         C::HideUnfinished,
         C::CollapseRibbon,
         C::Tab(RibbonTab::File),
@@ -202,8 +200,7 @@ impl ShellCommand {
                     w.why_not_play().map(str::to_owned)
                 }
             }
-            C::PinLibrary => when(!w.library_pinned, "The Library is pinned"),
-            C::UnpinLibrary => when(w.library_pinned, "The Library isn't pinned"),
+            C::FoldShelf => when(!w.shell.covers_center(), "This tab has no shelf"),
             C::Tab(tab) => {
                 if tab == w.shell.tab {
                     Some(format!("{} is the tab in front", tab.name()))
@@ -297,8 +294,7 @@ impl ShellCommand {
             C::ProfilerCpu => w.profiler.hide_cpu ^= true,
             C::ProfilerGpu => w.profiler.hide_gpu ^= true,
             C::ResetLayout => w.reset_layout(),
-            C::PinLibrary => w.set_library_pinned(true),
-            C::UnpinLibrary => w.set_library_pinned(false),
+            C::FoldShelf => w.fold_shelf(!w.shelf_folded()),
             C::HideUnfinished => {
                 let hide = !w.interface_look().hide_unfinished;
                 w.hide_unfinished(ctx, hide);

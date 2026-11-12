@@ -425,20 +425,8 @@ const PICTURE: f32 = 72.0;
 const ROW: f32 = 21.0;
 const TREE_WIDTH: f32 = 150.0;
 
-/// Whether the Library is pinned (docked as a panel) or a drawer, for its
-/// pin button.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Pin {
-    /// Docked: the button unpins it.
-    Docked,
-    /// Popped up as a drawer: the button pins it.
-    Drawer,
-}
-
 /// The Library panel (or, with `code`, the Code panel: code files only,
-/// as a list). Returns what was asked for; `pin` is where it is, for its
-/// pin button (`None` for the Code panel), and `pin_clicked` says it was
-/// clicked.
+/// as a list). Returns what was asked for.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn library(
     ui: &mut Ui,
@@ -448,18 +436,9 @@ pub(crate) fn library(
     accent: Accent,
     code: bool,
     sounds: Sounds<'_>,
-    (pin, pin_clicked): (Option<Pin>, &mut bool),
 ) -> Vec<LibraryRequest> {
     let mut requests = Vec::new();
-    *pin_clicked |= menu_row(
-        ui,
-        state,
-        code,
-        project.is_some(),
-        accent,
-        pin,
-        &mut requests,
-    );
+    menu_row(ui, state, code, project.is_some(), accent, &mut requests);
     let Some(project) = project else {
         note(
             ui,
@@ -659,10 +638,8 @@ fn menu_row(
     code: bool,
     open: bool,
     accent: Accent,
-    pin: Option<Pin>,
     requests: &mut Vec<LibraryRequest>,
-) -> bool {
-    let mut pin_clicked = false;
+) {
     theme::menu_row_frame().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
         ui.horizontal_wrapped(|ui| {
@@ -733,38 +710,6 @@ fn menu_row(
                 });
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if let Some(pin) = pin {
-                    let (words, name, hover) = match pin {
-                        Pin::Docked => (
-                            "Unpin",
-                            "Unpin the Library",
-                            "Makes the Library a drawer: Ctrl + Space pops it up over the \
-                             editor and it tucks away again, so the viewport gets its space",
-                        ),
-                        Pin::Drawer => (
-                            "Pin",
-                            "Pin the Library",
-                            "Docks the Library as a panel again, along the bottom",
-                        ),
-                    };
-                    let button = ui
-                        .add(
-                            egui::Button::new(
-                                RichText::new(words).size(12.0).color(theme::text_weak()),
-                            )
-                            .frame(false),
-                        )
-                        .on_hover_text(hover);
-                    button.widget_info(|| {
-                        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name)
-                    });
-                    ui.label(
-                        RichText::new("Ctrl + Space")
-                            .size(11.0)
-                            .color(theme::text_weak()),
-                    );
-                    pin_clicked = button.clicked();
-                }
                 let search = ui.add(
                     egui::TextEdit::singleline(&mut state.search)
                         .hint_text("Search the project")
@@ -781,7 +726,6 @@ fn menu_row(
             });
         });
     });
-    pin_clicked
 }
 
 /// The folder tree: the assets folder and every folder in it.

@@ -311,7 +311,7 @@ mod tests {
     use super::*;
 
     fn workbench() -> Workbench {
-        Workbench::new(crate::app_info(), None)
+        Workbench::new(crate::app_info())
     }
 
     /// A copy at build 10, installed or run from a build's zip.

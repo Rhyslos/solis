@@ -826,13 +826,10 @@ mod fast_changes {
         std::fs::write(assets.join("main.lst"), MOVER).unwrap();
         let mut code = GameCode::default();
         code.check(assets.clone());
-        let mut w = editor::Workbench::new(
-            editor::AppInfo {
-                name: "Test".into(),
-                version: "1.0".into(),
-            },
-            None,
-        );
+        let mut w = editor::Workbench::new(editor::AppInfo {
+            name: "Test".into(),
+            version: "1.0".into(),
+        });
         let start = std::time::Instant::now();
         while start.elapsed().as_secs() < 30 {
             if let Some(checked) = code.poll() {

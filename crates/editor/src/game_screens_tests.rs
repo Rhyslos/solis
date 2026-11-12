@@ -39,7 +39,7 @@ fn program(hud_text: &str, menu: Option<&str>) -> Arc<script::Compiled> {
 /// A workbench with the program and an entity showing each `(screen,
 /// shown, order)`.
 fn showing(program: Arc<script::Compiled>, screens: &[(&str, bool, i64)]) -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_program(Some(program));
     for (i, (name, shown, order)) in screens.iter().enumerate() {
         let entity = EntityData::new(&format!("Shower {i}")).with(&Screen {
@@ -149,7 +149,7 @@ fn a_screen_that_fails_keeps_its_last_picture_and_is_said_once() {
 fn the_screens_names_are_offered_for_a_screen_component() {
     let w = showing(program(&hud("text \"x\";"), None), &[]);
     assert_eq!(w.screen_names(), vec!["Hud".to_string()]);
-    assert!(Workbench::new(info(), None).screen_names().is_empty());
+    assert!(Workbench::new(info()).screen_names().is_empty());
 }
 
 /// Game code that hides the menu when its button says so and shows the

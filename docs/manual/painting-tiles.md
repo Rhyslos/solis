@@ -8,7 +8,7 @@ A [tile map](tile-maps.md) is a grid of [terrains](concepts.md#2d): grass, tille
 Painting is for the map file, the world as the game starts. While the game runs, the map is the game's own copy, so painting is off then; game code changes cells as you play.
 
 ## How to use it
-1. **Select the map's entity** (in the Area panel). The painting tools join the tool bar at the bottom of the viewport, after Select, Move, Rotate, Scale and Transform, and the **Map** tab opens beside Properties.
+1. **Select the map's entity** (in the Area panel). The painting tools join the tool bar at the bottom of the viewport, after Select, Move, Rotate, Scale and Transform, and the **Map** tab of Home's shelf comes to the front (and a **Home tools · Tile map** tab joins the tab bar).
 2. **Choose a tool** on the tool bar or with its key: **Brush (B)**, **Rectangle (U)**, **Line (N)**, **Fill (G)** or **Eyedropper (I)**. Q, W, R, S or T goes back to the transform tools.
 3. **Choose what to paint:** click a terrain's swatch under **Terrains** in the Map tab. The outlined swatch is the one painted. Clicking a swatch takes the brush if no painting tool is in use.
 4. **Choose the layer** in the tool bar's layer menu (**Ground** to start). Paint fences and flowers on Decoration so the ground under them stays grass.

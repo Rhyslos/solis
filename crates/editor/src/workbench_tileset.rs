@@ -8,7 +8,6 @@
 
 use crate::console::LogLevel;
 use crate::key_owner::KeyOwner;
-use crate::layout;
 use crate::made_from::MadeFrom;
 use crate::map_tab::TerrainEdit;
 use crate::own_files::{Followed, OwnFile, Told, follow};
@@ -158,7 +157,7 @@ impl Workbench {
         }
         if self.tileset_editor(path).is_some() {
             self.open.tilesets.tab = Some(path.to_owned());
-            layout::open_first_beside(&mut self.dock, Panel::Tileset, Panel::Viewport);
+            self.show_panel(Panel::Tileset);
         }
     }
 
@@ -166,7 +165,6 @@ impl Workbench {
     /// the file's, not the tab's.
     pub(crate) fn close_tileset(&mut self) {
         self.open.tilesets.tab = None;
-        layout::close(&mut self.dock, Panel::Tileset);
     }
 
     /// Changes the tileset at `path` with `change`, as one undo step of

@@ -1,7 +1,7 @@
-//! The whole editor window: the frame's top (the tab bar and ribbon,
-//! `shell/`, [decision 0099](../../../docs/decisions/0099-the-g-layout.md))
-//! and, under it, the docked panels
-//! ([decision 0004](../../../docs/decisions/0004-editor-layout.md)).
+//! The whole editor window, inside the frame of
+//! [decision 0099](../../../docs/decisions/0099-the-g-layout.md)
+//! (`shell/`): the tab bar and ribbon, the editor groups and the shelf
+//! that hold the panels, and the status bar.
 //!
 //! The workbench never touches the window, the GPU or files itself: it
 //! returns [`WorkbenchAction`]s for the app to carry out, and draws the
@@ -14,7 +14,6 @@ use crate::console::CONSOLE_LIMIT;
 use crate::console::{Console, LogLevel, LogLine};
 use crate::document::Document;
 use crate::key_owner::KeyOwner;
-use crate::layout;
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
@@ -24,7 +23,6 @@ use crate::project_state::ProjectState;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
-use egui_dock::{DockArea, DockState};
 use reflect::{AssetId, EntityId};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -254,7 +252,6 @@ pub struct Workbench {
     /// project is used with another. What is declared below is the
     /// program's and the user's, and stays.
     pub(crate) open: ProjectState,
-    pub(crate) dock: DockState<Panel>,
     pub(crate) accent: Accent,
     /// The interface's scale, density and switches (decision 0100). Its
     /// accent is `accent` above, which the drawing code reads; the two
@@ -306,24 +303,16 @@ pub struct Workbench {
     pub(crate) gesture: u64,
     /// Whether the Console has said which program opens Lust files.
     pub(crate) told_how_lust_opens: bool,
-    /// Whether the Library is docked (pinned) or a drawer (decision 0085).
-    pub(crate) library_pinned: bool,
-    /// Whether the Library's drawer is popped up (unpinned only).
-    pub(crate) drawer_open: bool,
     /// Whether the Hints panel shows hints (Settings > Appearance).
     pub(crate) hints: bool,
-    /// The workspace in use (decision 0085).
-    pub(crate) workspace: crate::workspace::Workspace,
-    /// The other workspaces' layouts, as last left.
-    pub(crate) other_layouts: BTreeMap<crate::workspace::Workspace, DockState<Panel>>,
     /// One search for everything (decision 0085).
     pub(crate) search: crate::search::SearchState,
-    /// The frame: the tab in front, the ribbon, the File page (decision
-    /// 0099).
+    /// The frame: the tab in front, the ribbon, each tab's groups and
+    /// shelf, the File page (decision 0099).
     pub(crate) shell: crate::shell::Shell,
     /// The program's logo, for the top bar (the app hands it over).
     pub(crate) logo: Option<egui::TextureId>,
-    /// The docked panel the pointer rested over when the last frame was
+    /// The panel the pointer rested over when the last frame was
     /// drawn, if any: what [`Workbench::key_owner`] works the keys' owner
     /// out from.
     pub(crate) pointer_over: Option<Panel>,
@@ -389,13 +378,11 @@ pub(crate) struct GameKey {
 }
 
 impl Workbench {
-    /// A workbench with a saved panel layout, if it is usable (otherwise the
-    /// default one), and a new area.
-    pub fn new(info: AppInfo, saved_layout: Option<DockState<Panel>>) -> Self {
+    /// A workbench with a new area, its frame as the design draws it.
+    pub fn new(info: AppInfo) -> Self {
         Self {
             info,
             open: ProjectState::default(),
-            dock: layout::restore(saved_layout),
             accent: Accent::default(),
             interface: theme::InterfaceLook::default(),
             viewport: Viewport::default(),
@@ -418,11 +405,7 @@ impl Workbench {
             in_front: HashSet::new(),
             gesture: 0,
             told_how_lust_opens: false,
-            library_pinned: true,
-            drawer_open: false,
             hints: true,
-            workspace: crate::workspace::Workspace::Level,
-            other_layouts: BTreeMap::new(),
             search: crate::search::SearchState::default(),
             shell: crate::shell::Shell::default(),
             logo: None,
@@ -665,11 +648,6 @@ impl Workbench {
         }
     }
 
-    /// The panel layout, for saving.
-    pub fn layout(&self) -> &DockState<Panel> {
-        &self.dock
-    }
-
     /// The accent colour, for saving.
     pub fn accent(&self) -> Accent {
         self.accent
@@ -874,25 +852,21 @@ impl Workbench {
         self.editing_keys(ui);
         self.file_keys(ui, &mut actions);
         self.console_key(ui);
-        self.library_keys(ui);
+        self.shelf_keys(ui);
         self.search_key(ui);
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
-        egui::Panel::bottom("status_bar")
-            .frame(theme::status_bar_frame())
-            .exact_size(crate::status_bar::HEIGHT)
-            .show(ui, |ui| self.status_bar(ui));
+        self.status_bar(ui, &mut actions);
         // The tab bar and the ribbon; a File page or an unfinished
         // screen stands where the panels would be.
         let page = self.top(ui, &mut actions);
-        let style = theme::dock_style(ui.style().as_ref(), self.accent);
+        self.follow_selection();
         self.play_frames(ui.input(|i| f64::from(i.stable_dt)));
         self.play_animator(ui.input(|i| f64::from(i.stable_dt)));
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
         let mut library_requests = Vec::new();
-        let mut library_pin_clicked = false;
         let mut mixer_requests = Vec::new();
         let picked_before = self.open.library_state.selected.clone();
         self.drop_stale_sound();
@@ -925,7 +899,6 @@ impl Workbench {
             self.open.editor_view = Some(key);
         }
         self.viewport.entities = self.open.document.area().len();
-        self.follow_map_selection();
         self.set_tile_overlay();
         self.prepare_tools();
         self.find_problems();
@@ -983,6 +956,16 @@ impl Workbench {
         self.tileset_texture(ui.ctx());
         self.atlas_texture_now(ui.ctx());
         let live = self.live_animator();
+        // Which entities use each code file's components, for the Code
+        // panel and the Library (decision 0085): only worked out while
+        // either is in view, and then only when the area changed.
+        let code_uses =
+            if self.in_front.contains(&Panel::Code) || self.in_front.contains(&Panel::Library) {
+                self.code_uses_now()
+            } else {
+                std::sync::Arc::default()
+            };
+        let open_now = self.open_now();
         let mut map_requests = Vec::new();
         let map_shown = self.map_shown();
         let map_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
@@ -1034,14 +1017,6 @@ impl Workbench {
                     accent: self.accent.colors().fill,
                 },
             });
-        // Which entities use each code file's components, for the Code
-        // panel (decision 0085): only worked out while it's in front.
-        let code_uses =
-            if self.in_front.contains(&Panel::Code) || self.in_front.contains(&Panel::Library) {
-                self.code_uses()
-            } else {
-                BTreeMap::new()
-            };
         // The hints for what's selected (decision 0085), while they show.
         let hints = (self.hints && self.in_front.contains(&Panel::Hints)).then(|| self.hints());
         let hints_off = !self.hints;
@@ -1143,97 +1118,83 @@ impl Workbench {
                 self.accent.colors().fill,
             )
         });
-        let editor = (!page).then(|| {
-            theme::dock_frame().show(ui, |ui| {
-                DockArea::new(&mut self.dock)
-                    .style(style)
-                    .tab_context_menus(false)
-                    .show_close_buttons(true)
-                    .show_add_buttons(false)
-                    .show_leaf_close_all_buttons(false)
-                    .show_leaf_collapse_buttons(true)
-                    .show_inside(
-                        ui,
-                        &mut PanelViewer {
-                            area_state: &mut self.open.area_panel,
-                            copied: &copied,
-                            menu: &menu,
-                            viewport: &mut self.viewport,
-                            renderer: &mut renderer,
-                            console: &mut self.console,
-                            console_requests: &mut console_requests,
-                            problems: &self.open.problems.list,
-                            code_problems: &code_problems,
-                            game: game.as_ref().map(|(_, scene)| scene),
-                            ui_test: self.ui_test.clone(),
-                            game_screens: &self.open.game_screens.pictures,
-                            playing,
-                            game_input: self.game_input,
-                            pixels: self.open.pixels,
-                            game_out: &mut game_out,
-                            document: &self.open.document,
-                            models: &self.open.models,
-                            area_requests: &mut area_requests,
-                            project: self.open.project.as_ref(),
-                            library: &self.open.library,
-                            folders: &self.open.folders,
-                            library_state: &mut self.open.library_state,
-                            library_requests: &mut library_requests,
-                            library_pin_clicked: &mut library_pin_clicked,
-                            hints: if hints_off {
-                                None
-                            } else {
-                                Some(hints.as_deref().unwrap_or(&[]))
-                            },
-                            sounds: crate::library::Sounds {
-                                states: &self.open.sounds,
-                                events: &self.open.sound_events,
-                                preview: self.open.preview.as_ref(),
-                                mixer: &self.open.mixer.mixer,
-                                sheets: &sheets,
-                                sheet_pictures: &self.open.sheet_pictures,
-                                code_uses: &code_uses,
-                            },
-                            mixer: &self.open.mixer,
-                            mixer_requests: &mut mixer_requests,
-                            sound_shown: self
-                                .open
-                                .sound_shown
-                                .as_ref()
-                                .map(|(path, _)| path.as_str()),
-                            text_file: self.open.text_file.as_ref(),
-                            part: part.as_ref(),
-                            running: running.as_ref(),
-                            requests: &mut requests,
-                            help: crate::properties::Help {
-                                manual: &self.manual_url,
-                                places: self.open.program.as_ref().map(|p| &p.places),
-                            },
-                            accent: self.accent,
-                            in_front: &self.in_front,
-                            shown: &mut shown,
-                            profiler: &self.profiler,
-                            frames,
-                            frames_out: &mut frames_out,
-                            animator,
-                            tileset,
-                            atlas,
-                            map,
-                            map_requests: &mut map_requests,
-                            screen,
-                            keys: self.keys,
-                        },
-                    );
-            })
-        });
-        if library_pin_clicked {
-            self.set_library_pinned(false);
-        }
-        if let Some(editor) = editor {
-            self.library_drawer(ui, editor.response.rect, &sheets, &mut library_requests);
-        }
+        let mut viewer = PanelViewer {
+            area_state: &mut self.open.area_panel,
+            copied: &copied,
+            menu: &menu,
+            viewport: &mut self.viewport,
+            renderer: &mut renderer,
+            console: &mut self.console,
+            console_requests: &mut console_requests,
+            problems: &self.open.problems.list,
+            code_problems: &code_problems,
+            game: game.as_ref().map(|(_, scene)| scene),
+            ui_test: self.ui_test.clone(),
+            game_screens: &self.open.game_screens.pictures,
+            playing,
+            game_input: self.game_input,
+            pixels: self.open.pixels,
+            game_out: &mut game_out,
+            document: &self.open.document,
+            models: &self.open.models,
+            area_requests: &mut area_requests,
+            project: self.open.project.as_ref(),
+            library: &self.open.library,
+            folders: &self.open.folders,
+            library_state: &mut self.open.library_state,
+            library_requests: &mut library_requests,
+            hints: if hints_off {
+                None
+            } else {
+                Some(hints.as_deref().unwrap_or(&[]))
+            },
+            sounds: crate::library::Sounds {
+                states: &self.open.sounds,
+                events: &self.open.sound_events,
+                preview: self.open.preview.as_ref(),
+                mixer: &self.open.mixer.mixer,
+                sheets: &sheets,
+                sheet_pictures: &self.open.sheet_pictures,
+                code_uses: &code_uses,
+            },
+            mixer: &self.open.mixer,
+            mixer_requests: &mut mixer_requests,
+            sound_shown: self
+                .open
+                .sound_shown
+                .as_ref()
+                .map(|(path, _)| path.as_str()),
+            text_file: self.open.text_file.as_ref(),
+            part: part.as_ref(),
+            running: running.as_ref(),
+            requests: &mut requests,
+            help: crate::properties::Help {
+                manual: &self.manual_url,
+                places: self.open.program.as_ref().map(|p| &p.places),
+            },
+            accent: self.accent,
+            in_front: &self.in_front,
+            shown: &mut shown,
+            profiler: &self.profiler,
+            frames,
+            frames_out: &mut frames_out,
+            animator,
+            tileset,
+            atlas,
+            map,
+            map_requests: &mut map_requests,
+            screen,
+            keys: self.keys,
+        };
+        let asks = if page {
+            self.shell.drawn.clear();
+            Default::default()
+        } else {
+            crate::shell::middle(ui, &mut self.shell, open_now, &mut viewer)
+        };
         self.in_front = shown;
         self.pointer_over = frames_out.pointer_over;
+        self.doc_asks(asks, ui.ctx(), &mut actions);
         self.frames_tabs_done(frames_out, &mut actions);
         self.map_requests_done(map_requests);
         self.tile_overlay_done();
@@ -1347,9 +1308,7 @@ impl Workbench {
     /// Brings the Console to the front and puts the keyboard in its
     /// command line.
     pub(crate) fn open_command_line(&mut self) {
-        if let Some(found) = self.dock.find_tab(&crate::panel::Panel::Console) {
-            let _ = self.dock.set_active_tab(found);
-        }
+        self.show_panel(Panel::Console);
         self.console.focus = true;
     }
 

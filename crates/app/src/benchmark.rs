@@ -242,13 +242,10 @@ mod play_tests {
             Ok(None) => panic!("no code"),
             Err(problems) => panic!("{}", problems[0]),
         };
-        let mut w = editor::Workbench::new(
-            editor::AppInfo {
-                name: "Test".into(),
-                version: "1.0".into(),
-            },
-            None,
-        );
+        let mut w = editor::Workbench::new(editor::AppInfo {
+            name: "Test".into(),
+            version: "1.0".into(),
+        });
         w.set_program(Some(std::sync::Arc::new(compiled)));
         let registry = w.document().registry.clone();
         let fighter = area::text::read_file(

@@ -61,7 +61,7 @@ fn farmer(sheet: AssetId) -> AnimatorFile {
 /// a clips file with the clip "wave" (`walker.solframes`) and
 /// `farmer.solanim`.
 fn with_animator() -> (Workbench, AssetId, AssetId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -126,7 +126,7 @@ fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
 }
 
 #[test]
-fn it_opens_first_beside_the_viewport_as_drawn_in_the_mock_up() {
+fn it_opens_beside_the_viewport_on_the_animate_tab() {
     let (mut w, _, _) = with_animator();
     let mut actions = Vec::new();
     w.library_request(
@@ -134,11 +134,12 @@ fn it_opens_first_beside_the_viewport_as_drawn_in_the_mock_up() {
         &mut actions,
     );
     assert!(w.open.animator_editor.is_some());
-    let path = w.dock.find_tab(&Panel::Animator).expect("open");
-    let tabs = w.dock[path.surface][path.node].tabs().unwrap().to_vec();
-    assert_eq!(tabs[0], Panel::Animator, "first in its group");
-    assert!(tabs.contains(&Panel::Viewport));
-    assert!(layout::is_complete(&w.dock));
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Animate);
+    assert_eq!(
+        crate::shell::workspaces::groups(w.ribbon_tab(), w.open_now()),
+        [vec![Panel::Viewport], vec![Panel::Animator]],
+        "a group of its own, beside the viewport"
+    );
     let mut h = harness(w);
     h.run();
     h.run();
@@ -157,16 +158,13 @@ fn it_opens_first_beside_the_viewport_as_drawn_in_the_mock_up() {
         h.query_by_label_contains("2 states · 2 transitions · 1 parameters")
             .is_some()
     );
-    // A saved layout never keeps it.
-    let restored = layout::restore(Some(h.state().0.dock.clone()));
-    assert!(restored.find_tab(&Panel::Animator).is_none());
     // Its tab's × closes it.
     crate::test_support::click_the_x(&mut h, Panel::Animator);
     h.run();
     h.run();
     let w = &h.state().0;
     assert!(w.open.animator_editor.is_none());
-    assert!(w.dock.find_tab(&Panel::Animator).is_none());
+    assert!(!has_panel(w, Panel::Animator));
 }
 
 #[test]
@@ -260,7 +258,7 @@ fn a_file_changed_on_disk_is_taken_in_and_one_gone_closes() {
     sheets.animators.clear();
     w.set_sprite_sheets(sheets);
     assert!(w.open.animator_editor.is_none());
-    assert!(w.dock.find_tab(&Panel::Animator).is_none());
+    assert!(!has_panel(&w, Panel::Animator));
 }
 
 #[test]
@@ -351,7 +349,7 @@ fn it_runs_in_the_game_and_the_selected_entity_s_state_is_live() {
     );
     // The tab shows the game's values (read-only) and lights its state
     // (Play brought the Game panel to the front of the group).
-    layout::bring_to_front(&mut w.dock, Panel::Animator);
+    w.show_panel(Panel::Animator);
     let mut h = harness(w);
     h.run();
     h.run();
@@ -402,5 +400,5 @@ fn the_x_on_its_tab_closes_the_animator_file() {
     click_the_x(&mut h, Panel::Animator);
     let w = &h.state().0;
     assert!(w.open.animator_editor.is_none());
-    assert!(w.dock.find_tab(&Panel::Animator).is_none());
+    assert!(!has_panel(w, Panel::Animator));
 }

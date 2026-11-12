@@ -9,13 +9,13 @@ The canvas never takes your file away from you. It changes only the letters it h
 
 ## How to use it
 1. In the Library, open the `ui` folder and **double-click a screen's file** (`pauseMenu`). Solis switches to the **UI** tab and draws the screen on the **Canvas**.
-2. **Pick a piece**: click it on the canvas, or its row in **Elements** on the left. Shift-click (Ctrl-click in Elements) picks more; drag a box round pieces on an empty part of the canvas to pick everything inside it.
-3. **Change it in Properties** on the right: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
+2. **Pick a piece**: click it on the canvas, or its row in **Elements**, on the shelf under the canvas. Shift-click (Ctrl-click in Elements) picks more; drag a box round pieces on an empty part of the canvas to pick everything inside it.
+3. **Change it in Properties**, beside Elements on the shelf's **Screen** tab: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
 4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. A piece inside a `canvas` goes exactly where you drag it instead: an outline follows the pointer, and the piece is moved there when you let go (one `Ctrl + Z` puts it back). In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.
 5. **Size it**: pick one piece and drag the small square on its right edge, bottom edge or corner.
 6. Check the screen on other screen sizes with the size list at the top left (Full HD, 4K, ultrawide, a phone), and with players' bigger text with **Text 150%** and **200%** beside it. The dashed line is the **safe area**: keep text and buttons inside it, since some TVs cut the edges off.
 7. **Open as code** (top right) opens the file in your code editor, for anything the canvas doesn't edit.
-8. **Close the screen:** the **×** on the **Canvas** or the **Elements** tab closes both. Nothing is lost: every change was saved as you made it. Double-click the file in the Library to open it again.
+8. **Close the screen:** the **×** on the **Canvas** tab closes it. Nothing is lost: every change was saved as you made it. Double-click the file in the Library to open it again.
 
 ### Drawing new pieces
 The bar along the canvas's bottom holds the tools: **Select** (picking and moving, as above), **Box**, **Ellipse**, **Line**, **Pen**, **Text**, **Image** and **Button**. Keys `1` to `7` pick them while the pointer is over the canvas, and `E` opens them all in a ring at the pointer, so your hand never leaves the canvas.

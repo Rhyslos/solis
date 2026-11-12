@@ -107,7 +107,7 @@ fn exports_go_in_a_dated_folder_in_documents() {
 
 /// A workbench with a project holding two areas, the farm open.
 fn farm() -> Workbench {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Farm: the game".into(),
         root: "/projects/farm".into(),
@@ -174,7 +174,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
 
 #[test]
 fn without_a_project_there_s_nothing_to_export() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open_export();
     assert!(w.open.export_window.is_none());
     assert!(

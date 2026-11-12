@@ -29,7 +29,7 @@ const SCREEN: &str = "ui/pauseMenu.lst";
 /// crop, a screen), none of them open yet, and an area of a Barrel and a
 /// Crate, the Crate selected. Returns the map's ID with it.
 fn farm() -> (Workbench, AssetId) {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
         root: "/projects/farm".into(),
@@ -532,24 +532,6 @@ fn a_key_pressed_to_be_bound_is_bound_and_does_nothing_else() {
     h.run();
     assert_eq!(jumps(&h), bound + 1, "bound to Jump");
     assert_eq!(area_now(&h.state().0), before, "and nothing deleted");
-}
-
-#[test]
-fn esc_with_the_library_s_drawer_up_tucks_it_away_and_keeps_the_selection() {
-    let (mut w, _) = farm();
-    w.set_library_pinned(false);
-    w.drawer_open = true;
-    let mut h = harness(w);
-    h.run();
-    let before = area_now(&h.state().0);
-    h.key_press(egui::Key::Escape);
-    h.run();
-    assert!(!h.state().0.drawer_open(), "tucked away");
-    assert_eq!(area_now(&h.state().0), before, "the selection is kept");
-    // With the drawer away, Esc is the area's again.
-    h.key_press(egui::Key::Escape);
-    h.run();
-    assert_eq!(area_now(&h.state().0).selected, 0);
 }
 
 #[test]

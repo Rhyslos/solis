@@ -6,7 +6,7 @@ use egui_kittest::kittest::Queryable;
 
 /// The window open on a project's ready-made actions.
 fn opened() -> egui_kittest::Harness<'static, State> {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
         name: "Test".into(),
         root: std::env::temp_dir(),

@@ -4,7 +4,7 @@ use crate::test_support::{harness, info};
 use egui_kittest::kittest::Queryable;
 
 fn fresh() -> Workbench {
-    Workbench::new(info(), None)
+    Workbench::new(info())
 }
 
 #[test]

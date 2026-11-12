@@ -133,12 +133,7 @@ impl Workbench {
     ) {
         match target {
             SearchTarget::Command(command) => command.run(self, ctx, actions),
-            SearchTarget::Panel(Panel::Library) if !self.library_pinned => {
-                self.drawer_open = true;
-            }
-            SearchTarget::Panel(panel) => {
-                crate::layout::bring_to_front(&mut self.dock, panel);
-            }
+            SearchTarget::Panel(panel) => self.show_panel(panel),
             SearchTarget::Entity(id) => {
                 if self.open.document.area().contains(id) {
                     self.select(id);
@@ -157,11 +152,7 @@ impl Workbench {
                         self.open.library_state.filter = crate::library::Filter::All;
                     }
                     self.follow_sound_selection(&before);
-                    if self.library_pinned {
-                        crate::layout::bring_to_front(&mut self.dock, Panel::Library);
-                    } else {
-                        self.drawer_open = true;
-                    }
+                    self.show_panel(Panel::Library);
                 } else {
                     self.library_request(LibraryRequest::Open(kind, path), actions);
                 }

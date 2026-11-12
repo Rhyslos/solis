@@ -10,7 +10,7 @@ use crate::panel::Panel;
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, Entry, UnbuiltId};
 use crate::widgets::{self, width_of, words};
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 use egui::{
     Align, Align2, CornerRadius, Layout, Rect, Response, Sense, Shape, Ui, UiBuilder, WidgetInfo,
     pos2, vec2,
@@ -67,10 +67,9 @@ impl Workbench {
     /// The tabs that come with what is open now.
     pub(crate) fn context_tabs(&self) -> Vec<ContextTab> {
         let open = &self.open;
-        let has = |panel| self.dock.find_tab(&panel).is_some();
         [
             (
-                open.map_edits.path.is_some() && has(Panel::Map),
+                open.map_edits.path.is_some(),
                 ContextTab {
                     after: RibbonTab::Home,
                     prefix: "Home tools",
@@ -103,7 +102,7 @@ impl Workbench {
     }
 
     /// Draws the tab bar across the top of `ui`.
-    pub(crate) fn tab_bar(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
+    pub(crate) fn tab_bar(&mut self, ui: &mut Ui) {
         egui::Panel::top("tab bar")
             .frame(
                 egui::Frame::new()
@@ -116,7 +115,7 @@ impl Workbench {
                 let bar = ui.max_rect();
                 let left = self.logo_tile(ui, bar) + size::LOGO_GAP + size::TAB_BAR_GAP;
                 let tabs_end = self.tabs(ui, bar, left);
-                let right_start = self.right_end(ui, bar, actions);
+                let right_start = self.right_end(ui, bar);
                 let between = Rect::from_min_max(
                     pos2(tabs_end + size::TAB_BAR_GAP, bar.top()),
                     pos2(right_start - size::TAB_BAR_GAP, bar.bottom()),
@@ -190,8 +189,7 @@ impl Workbench {
             self.set_ribbon_collapsed(!self.shell.collapsed);
         }
         if let Some(extra) = bring {
-            self.show_tab(extra.after);
-            crate::layout::bring_to_front(&mut self.dock, extra.panel);
+            self.show_panel(extra.panel);
         }
         end
     }
@@ -199,7 +197,7 @@ impl Workbench {
     /// The bar's right end, laid out from the right: the chevron, the
     /// project and area, and Restart to update while a new build waits.
     /// Returns where it starts.
-    fn right_end(&mut self, ui: &mut Ui, bar: Rect, actions: &mut Vec<WorkbenchAction>) -> f32 {
+    fn right_end(&mut self, ui: &mut Ui, bar: Rect) -> f32 {
         let mut side = ui.new_child(
             UiBuilder::new()
                 .max_rect(bar)
@@ -217,7 +215,6 @@ impl Workbench {
             self.set_ribbon_collapsed(!collapsed);
         }
         self.path(ui);
-        self.restart_button(ui, actions);
         ui.min_rect().left()
     }
 

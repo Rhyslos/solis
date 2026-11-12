@@ -30,7 +30,7 @@ fn quitting_at(play_only: bool, tick: u32) -> Workbench {
         Ok(None) => panic!("no code"),
         Err(problems) => panic!("{}", problems[0]),
     };
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     if play_only {
         w.set_play_only();
     }
@@ -146,7 +146,7 @@ fn esc_is_the_game_s_in_an_exported_game() {
 
 #[test]
 fn code_with_mistakes_says_why_the_game_can_t_start() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.set_play_only();
     w.set_code_problems(
         vec![script::CodeProblem {
@@ -170,7 +170,7 @@ fn code_with_mistakes_says_why_the_game_can_t_start() {
 
 #[test]
 fn an_exported_game_s_log_keeps_up_while_the_console_lets_old_lines_go() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     let (_, mut seen) = w.log_since(0);
     let mut written = Vec::new();
     for i in 0..5_000 {

@@ -361,12 +361,12 @@ pub fn top_bar_frame() -> Frame {
         .stroke(Stroke::new(size::LINE, line()))
 }
 
-/// The frame of the status bar along the bottom (decision 0085).
+/// The frame of the status bar along the bottom (spec 160): its fill and
+/// its padding. Its one line, along the top, is drawn by the status bar.
 pub fn status_bar_frame() -> Frame {
     Frame::new()
         .fill(tokens::code())
         .inner_margin(Margin::symmetric(size::ROW_PAD as i8, 0))
-        .stroke(Stroke::new(size::LINE, line()))
 }
 
 /// The frame of the small menu row under a panel's title.
@@ -385,72 +385,10 @@ pub fn overlay_frame() -> Frame {
         .inner_margin(Margin::same(3))
 }
 
-/// The frame of the area the panels are docked in.
-pub fn dock_frame() -> Frame {
-    Frame::new()
-        .fill(background())
-        .inner_margin(Margin::same(0))
-}
-
 /// Padding inside the panels other than the viewport.
 pub fn panel_margin() -> Margin {
     Margin::symmetric(8, 6)
 }
-
-/// The docked panels' look, in the design's colours for a strip of
-/// document tabs: the strip on the window's grey, a tab at rest on the
-/// shelf bar's, the tab in front on the viewport's, a hairline between
-/// panels, and the drop overlay in the accent colour. The front tab's
-/// underline is drawn by the workbench, which knows which tab is in front.
-pub fn dock_style(base: &Style, accent: Accent) -> egui_dock::Style {
-    let accent = accent.colour();
-    let mut s = egui_dock::Style::from_egui(base);
-    s.dock_area_padding = None;
-    s.main_surface_border_stroke = Stroke::NONE;
-    s.separator.width = size::LINE;
-    s.separator.extra = MIN_PANEL_SIZE;
-    s.separator.color_idle = line();
-    s.separator.color_hovered = tokens::stronger_line();
-    s.separator.color_dragged = accent;
-    s.tab_bar.bg_fill = tokens::app();
-    s.tab_bar.height = size::DOC_TAB_H;
-    s.tab_bar.hline_color = line();
-    s.tab_bar.corner_radius = CornerRadius::ZERO;
-    s.tab.tab_body.bg_fill = panel();
-    // No padding around tab bodies, so the viewport fills its panel edge to
-    // edge; the other panels add their own (see `panel_margin`).
-    s.tab.tab_body.inner_margin = Margin::ZERO;
-    s.tab.tab_body.stroke = Stroke::NONE;
-    s.tab.tab_body.corner_radius = CornerRadius::ZERO;
-    s.tab.hline_below_active_tab_name = false;
-    for tab in [
-        &mut s.tab.active,
-        &mut s.tab.focused,
-        &mut s.tab.active_with_kb_focus,
-        &mut s.tab.focused_with_kb_focus,
-    ] {
-        tab.bg_fill = tokens::viewport();
-        tab.text_color = tokens::text_primary();
-        tab.outline_color = Color32::TRANSPARENT;
-        tab.corner_radius = CornerRadius::ZERO;
-    }
-    for tab in [&mut s.tab.inactive, &mut s.tab.inactive_with_kb_focus] {
-        tab.bg_fill = tokens::shelf_bar();
-        tab.text_color = tokens::text_meta();
-        tab.outline_color = Color32::TRANSPARENT;
-        tab.corner_radius = CornerRadius::ZERO;
-    }
-    s.tab.hovered.bg_fill = tokens::shelf_bar();
-    s.tab.hovered.text_color = tokens::text_primary();
-    s.tab.hovered.outline_color = Color32::TRANSPARENT;
-    s.overlay.selection_color = accent.gamma_multiply(0.35);
-    s.overlay.button_color = text_weak();
-    s
-}
-
-/// The smallest a panel can be dragged to, in logical pixels: a title bar
-/// and a little room.
-pub const MIN_PANEL_SIZE: f32 = 60.0;
 
 /// WCAG contrast ratio between two opaque colours (1 to 21).
 pub fn contrast(a: Color32, b: Color32) -> f32 {

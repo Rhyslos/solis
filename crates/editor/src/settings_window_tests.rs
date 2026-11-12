@@ -11,7 +11,7 @@ use egui_kittest::kittest::{By, NodeT as _, Queryable};
 /// Opens Preferences (the Settings window), as File, Preferences and
 /// the search do.
 fn opened() -> egui_kittest::Harness<'static, State> {
-    let mut h = harness(Workbench::new(info(), None));
+    let mut h = harness(Workbench::new(info()));
     h.run();
     run(&mut h, "Preferences");
     h
@@ -160,7 +160,7 @@ fn density_makes_buttons_and_fields_taller_or_shorter() {
 
 #[test]
 fn reset_this_page_leaves_the_switches_of_other_pages_alone() {
-    let mut w = Workbench::new(info(), None).with_interface_look(theme::InterfaceLook {
+    let mut w = Workbench::new(info()).with_interface_look(theme::InterfaceLook {
         accent: Accent::Teal,
         hide_unfinished: true,
         ribbon_labels: false,
@@ -182,28 +182,24 @@ fn reset_this_page_leaves_the_switches_of_other_pages_alone() {
 }
 
 #[test]
-fn reset_layout_puts_the_panels_back() {
+fn reset_layout_puts_the_tab_s_middle_back() {
     let mut h = opened();
-    let console = h.state().0.dock.find_tab(&Panel::Console).unwrap();
-    h.state_mut().0.dock.remove_tab(console);
-    h.state_mut().0.dock.push_to_first_leaf(Panel::Console);
+    let tab = h.state().0.ribbon_tab();
+    let standard = h.state().0.shell.arrangement(tab);
+    {
+        let w = &mut h.state_mut().0;
+        w.show_panel(Panel::Console);
+        w.fold_shelf(true);
+        w.shell.arrangement_mut(tab).shelf_height = 410.0;
+    }
     h.get_all_by_label("Reset layout").next().unwrap().click();
     h.run();
-    // Every panel is back in its standard tab group.
-    let dock = &h.state().0.dock;
-    let standard = crate::layout::standard();
-    for panel in Panel::ALL {
-        let group = |d: &egui_dock::DockState<Panel>| {
-            let path = d.find_tab(&panel).unwrap();
-            d[path.surface][path.node].tabs().unwrap().to_vec()
-        };
-        assert_eq!(group(dock), group(&standard), "{panel:?}");
-    }
+    assert_eq!(h.state().0.shell.arrangement(tab), standard);
 }
 
 #[test]
 fn the_search_box_narrows_the_settings() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open_settings();
     w.settings_window.as_mut().unwrap().search = "layout".into();
     let mut h = harness(w);
@@ -217,7 +213,7 @@ fn the_search_box_narrows_the_settings() {
 
 #[test]
 fn reset_layout_is_a_command_and_there_are_no_presets() {
-    let mut h = harness(Workbench::new(info(), None));
+    let mut h = harness(Workbench::new(info()));
     h.run();
     let names: Vec<String> = h
         .state()
@@ -264,17 +260,32 @@ fn appearance() -> egui_kittest::Harness<'static, State> {
     h
 }
 
-/// The unfinished parts under the tab bar and the ribbon (which have
-/// unfinished parts of their own): the ones in the window.
+/// The unfinished parts in the Settings window: not the frame's own
+/// (the tab bar's and the ribbon's above it, the shelf bar's and the
+/// status bar's under it).
 fn unbuilt_in_the_window<'h>(
     h: &'h egui_kittest::Harness<'static, State>,
 ) -> Vec<egui_kittest::Node<'h>> {
     use crate::tokens::size;
+    use crate::unbuilt::{UnbuiltId, get};
+    let frame: Vec<&str> = [
+        UnbuiltId::ShellStatusBranch,
+        UnbuiltId::HomeShelfAnimation,
+        UnbuiltId::HomeShelfTransport,
+        UnbuiltId::HomeShelfFrameCounter,
+    ]
+    .into_iter()
+    .map(|id| get(id).name)
+    .collect();
     h.query_all(
         By::new()
             .predicate(|node| node.description().as_deref() == Some(crate::unbuilt::DESCRIPTION)),
     )
     .filter(|node| node.rect().top() >= size::TAB_BAR_H + size::RIBBON_H)
+    .filter(|node| {
+        let label = node.accesskit_node().label().unwrap_or_default();
+        !frame.contains(&label.as_str())
+    })
     .collect()
 }
 
@@ -453,7 +464,7 @@ fn hide_unfinished_parts_takes_it_away_and_shows_it_again() {
 
 #[test]
 fn an_editor_started_with_them_hidden_never_draws_one() {
-    let mut w = Workbench::new(info(), None).with_interface_look(theme::InterfaceLook {
+    let mut w = Workbench::new(info()).with_interface_look(theme::InterfaceLook {
         hide_unfinished: true,
         ..theme::InterfaceLook::default()
     });
@@ -470,7 +481,7 @@ fn an_editor_started_with_them_hidden_never_draws_one() {
 
 #[test]
 fn searching_the_settings_finds_the_switch_and_never_an_unfinished_part() {
-    let mut w = Workbench::new(info(), None);
+    let mut w = Workbench::new(info());
     w.open_settings();
     w.settings_window.as_mut().unwrap().search = "unfinished".into();
     let mut h = harness(w);
