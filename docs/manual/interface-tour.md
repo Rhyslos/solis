@@ -7,9 +7,9 @@ When finding your way around, or making the layout suit your screen.
 
 ## How to use it
 
-This page follows what you see, in the order you meet it: the launcher Solis starts on, then the editor from its tab bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in [Settings](settings.md).
+This page follows what you see, in the order you meet it: Recent projects, the File page Solis starts on, then the editor from its tab bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in [Settings](settings.md).
 
-**The [launcher](launcher.md)** is what Solis always starts on. **Projects** lists your projects (pinned ones first, with **Search projects** and **Sort by**), beside **+ New project**, **Open project…** and **Scan a folder…**; **Learn** has four examples to start from, the first steps and a link to this manual; **Updates** shows the build you have and the newest one. Double-click a project and the editor opens with it. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. Its pages are also on the **File** tab (see below), and **Esc** leaves the launcher for the editor. See [The launcher](launcher.md).
+**[Recent projects](launcher.md)** is what Solis always starts on, in its full window: the **File** tab's first page. Your projects are cards (pinned ones first, with **Search projects**, **Sort by**, **Open… ▾** and **New project**); double-click one and the editor opens with it. Under them, **Start from a template**: an empty project or one of the four examples. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. Until a project is open the other tabs are dimmed; **Esc**, or **Carry on without a project**, opens the editor with none. See [Projects](launcher.md).
 
 **The tab bar** is the dark strip along the very top. From left to right:
 - **The logo**, in a small light tile.
@@ -47,7 +47,7 @@ Each of Home, Animate, UI and Debug remembers how you arranged its panels, separ
 
 | Item | What it does |
 |---|---|
-| Recent projects | Every project Solis knows, to open one ([The launcher](launcher.md) has the same page). |
+| Recent projects | Every project Solis knows, as cards, and templates to start from: where Solis starts ([Projects](launcher.md)). |
 | New project, Open… | Make a project in a folder, or open one ([Projects and the Library](projects-and-the-library.md)). |
 | Save all | Saves the open area. Every other file saves as you change it. |
 | Project settings | This project's settings: its 2D sizes ([Settings](settings.md)). |
@@ -143,7 +143,7 @@ See [Keyboard shortcuts](keyboard-shortcuts.md) for the rest.
 - **Problem:** Properties is cramped beside the Area tree and the Library. **Why:** they share Home's shelf, until the screen is rebuilt. **Fix:** drag the shelf's grip up for more room; it's remembered.
 
 ## Related
-- [The launcher](launcher.md): the page Solis starts on.
+- [Projects](launcher.md): Recent projects, the page Solis starts on, and Learn, Updates and About.
 - [Projects and the Library](projects-and-the-library.md): the Library.
 - [Play mode](play-mode.md): Play, Pause, Step and Stop.
 - [Concepts](concepts.md): panel, tab, ribbon, editor group, shelf, layout, workspace, accent colour.

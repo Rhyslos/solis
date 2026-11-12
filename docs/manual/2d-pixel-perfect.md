@@ -43,7 +43,7 @@ This page covers the groundwork: setting a project up for 2D, looking at it in p
 - The 2D view's frame and the Game panel show the same thing, so you can line up a scene in the editor and know what the player will see.
 
 ## Related
-- [Settings](settings.md): the Settings window, and the This project pages.
+- [Settings](settings.md): Preferences, and Project settings with its 2D tab.
 - [Moving around the viewport](navigating-the-viewport.md): the other views.
 - [Play mode](play-mode.md): cameras and the Game panel.
 - [Concepts](concepts.md#2d): base resolution, pixels per unit, pixel-perfect, whole steps.

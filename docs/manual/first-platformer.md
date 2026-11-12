@@ -18,7 +18,7 @@ Each step says *why* as well as *what*, so you can change things and make the ga
 ### 1. Make a project and an area
 A [project](concepts.md#projects) is a folder holding everything your game is made of. An [area](concepts.md#the-area) is one level (or menu, or room) in it.
 
-1. **File > New project** (or **+ New project** on the launcher), make an empty folder called `Platformer`, and choose it.
+1. **File > New project** (or **New project** on Recent projects), make an empty folder called `Platformer`, and choose it.
 2. Save the empty area: **Ctrl + S**, name it `level`. Solis suggests the `assets/areas` folder; that's fine.
 3. Look in pixels: click the **Perspective ▾** pill at the top left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
 
@@ -118,7 +118,7 @@ end
 
 **What the code says, line by line:**
 - Lines starting with `--` are comments: notes for people, which Lust skips.
-- `fetch` brings in names from another file. `Input` reads the player's controls, and `Action` holds their names: `Action.Move` is WASD or the arrow keys (or a gamepad's stick), `Action.Jump` is Space (or the gamepad's A). Players can change these keys in **File > Input** without touching your code.
+- `fetch` brings in names from another file. `Input` reads the player's controls, and `Action` holds their names: `Action.Move` is WASD or the arrow keys (or a gamepad's stick), `Action.Jump` is Space (or the gamepad's A). Players can change these keys in **File › Project settings › Input** without touching your code.
 - `component Hero` is a new kind of component. Everything in `has` is a **field**: a value each hero keeps, shown in Properties so you can change it there. `fall` is how fast the hero is going up (more than 0) or down (less than 0), in metres a second.
 - `update(float dt)` runs every tick. `dt` is how long a tick is, in seconds (about 1/60). Multiplying a speed by `dt` turns "metres a second" into "metres this tick", so the game runs the same speed on every computer.
 - `is …? then { … }` is Lust's *if*: the code in the braces runs only when the question is true.

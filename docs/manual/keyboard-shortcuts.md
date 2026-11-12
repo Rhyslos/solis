@@ -29,7 +29,7 @@ Plain clicks on buttons and menus aren't listed. This page is for the keys, and 
 
 While the game has them, every key is the game's and the editor's shortcuts are off. In an [exported game](playtest-export.md), the game has them from the start, Esc included, and Alt + Enter really switches the window.
 
-**The game's own keys.** A game's controls are named [input actions](input.md), and these are the keys the ready-made ones start with. They're only a start: change them, and add your own, in **File > Input**.
+**The game's own keys.** A game's controls are named [input actions](input.md), and these are the keys the ready-made ones start with. They're only a start: change them, and add your own, in **File › Project settings › Input**.
 
 | Action | Keyboard and mouse | Gamepad |
 |---|---|---|
@@ -49,7 +49,7 @@ While the game has them, every key is the game's and the editor's shortcuts are 
 
 The [playground](characters-and-cameras.md#how-to-use-it) adds two of its own: it saves on F6 and loads on F7.
 
-In **File > Input**, after clicking **+** to bind an input, the next key, mouse button, wheel notch or gamepad button you press is the one bound; Esc gives up instead. That key is only bound: it doesn't also do what it usually does in the editor, so pressing Delete to bind it deletes nothing.
+In **File › Project settings › Input**, after clicking **+ Add binding**, the next key, mouse button, wheel notch or gamepad button you press is the one bound; Esc gives up instead. That key is only bound: it doesn't also do what it usually does in the editor, so pressing Delete to bind it deletes nothing.
 
 ## Tools (when the right mouse button isn't held)
 
@@ -239,7 +239,10 @@ See [Projects and the Library](projects-and-the-library.md).
 
 | Action | Shortcut |
 |---|---|
-| Place a model, assembly, sprite sheet or tile map where the camera looks; open any other file | Double-click it |
+| Place a model, assembly, sprite sheet or tile map where the camera looks | Double-click it in the shelf's Assets or Place column; in the Library tab a double-click only picks it (**Place** on the ribbon places it) |
+| Open any other file (an area, a picture in its program) | Double-click it |
+| Drop without snapping to the grid, this once | Hold Ctrl as you let go |
+| Rename or delete the file picked | F2, Delete, with the pointer over the Library or the Assets column |
 | Place a model, assembly, sprite, picture or tile map where you point | Drag it into the viewport |
 | Place one under an entity | Drag it onto the entity in the Area panel |
 | Move a file to another folder | Drag it onto the folder in the tree |
@@ -277,16 +280,28 @@ See [Projects and the Library](projects-and-the-library.md).
 
 See [The Console](console.md).
 
-## The launcher
+## Recent projects
 
-The launcher is what Solis starts on, and the **File** tab shows its pages again; see [The launcher](launcher.md).
+File › Recent projects is what Solis starts on; see [Projects](launcher.md).
 
 | Action | Shortcut |
 |---|---|
-| Open the project picked | Enter, or double-click it |
-| Move along the list | Up, Down |
-| Back to the editor | Esc |
+| Open the project picked | Enter, or double-click its card |
+| Walk the cards | Left, Right, Up, Down |
+| A card's menu (Open, Pin, Show in Explorer, Rename…, Make a copy…, Remove from list) | Right-click it |
+| Back to the editor, or carry on without a project | Esc |
 | In Rename…: keep the new name, or leave it as it was | Enter, Esc |
+
+## Project settings › Input
+
+See [Input](input.md).
+
+| Action | Shortcut |
+|---|---|
+| Pick an action; pick one of its bindings | Click its row; click the binding in its card |
+| Clear the picked binding | Backspace (its × does the same) |
+| Bind the next key, mouse button or gamepad button pressed | **+ Add binding**, then press it (Backspace too is bound then) |
+| Give up binding | Esc |
 
 ## Editor groups and the shelf
 

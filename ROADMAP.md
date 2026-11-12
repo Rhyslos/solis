@@ -261,11 +261,11 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 
 ## Shared 1b: The everyday screens
 
-- **Home: the level editor.**
-- **Home: placing.**
-- **The Library.**
-- **File: projects, Learn and updates.**
-- **File: Preferences, Project settings and Input.**
+- **Home: the level editor.** *Built.*
+- **Home: placing.** *Built.*
+- **The Library.** *Built.*
+- **File: projects, Learn and updates** ([decision 0105](docs/decisions/0105-solis-starts-on-the-file-page.md)). *Built.*
+- **File: Preferences, Project settings and Input.** *Built.*
 
 **Gate:** build a small area, place things from the shelf, change a setting and a key, and open another project, all on screens that match their pictures.
 

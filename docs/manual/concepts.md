@@ -21,6 +21,8 @@
 - **Density:** how much room the editor's controls take, set in [Settings](settings.md): Compact, Default or Comfortable. It changes the height of buttons and fields, not the size of text.
 - **Unfinished part:** a place in the editor for a feature that isn't built yet. Solis's interface follows one design, which has room for things that come in later updates; each is shown where it will be, in grey with a small hollow square, and does nothing but say so. One setting hides them all. Other programs call such a thing a *placeholder*. See [Unfinished parts](unfinished-parts.md).
 - **Ribbon:** the band of buttons under the tabs along the top: each tab (Home, Library, Animate and so on) shows its own buttons there, gathered into named groups, with the Play group at its right end. It took the place of the menus. See [Interface tour](interface-tour.md).
+- **File page:** what the **File** tab shows in place of the ribbon and the editor: a column of items down the left (Recent projects, New project, Open…, Project settings, Preferences, Learn, Updates, About, Exit) and the page chosen beside it. Solis starts on File › Recent projects. **Esc** or **Back to editor** leaves it. See [Projects](launcher.md) and [Settings](settings.md).
+- **Placing:** Home with its **Place** shelf tab in front: the ribbon in its building form and the files that can be placed on the shelf, ready to drag into the area. See [Projects and the Library](projects-and-the-library.md).
 - **Shelf:** the wide band along the bottom of the window, under the editor groups, with tabs of its own on its bar: on Home, **Entity** (the Area tree, Properties and the Assets column side by side), the Console and Problems. Drag its grip to size it; **Ctrl + Space** folds it to its bar and back. See [Interface tour](interface-tour.md).
 - <a id="pill"></a>**Pill:** a small see-through button floating over the viewport, such as **Perspective ▾** or the frame time. Pills keep the picture as large as it can be. See [Moving around the viewport](navigating-the-viewport.md).
 - **Card:** a lifted box holding a few settings that belong together, such as one component in Properties. Cards sit side by side as many as fit.
@@ -51,7 +53,7 @@
 
 - **Lust data file:** a Lust file that only holds values, read by Solis without running anything. Everything Solis makes (tile maps, tilesets, and the rest as they move over) is one, named for what it holds: `farm.tilemap.lst`. See [Backups and upgrades](backups-and-upgrades.md).
 - **Project:** a folder holding one game: its assets, settings and areas. See [Projects and the Library](projects-and-the-library.md).
-- **Launcher:** the page listing your projects, where you open, pin and tidy them, and find the examples. See [The launcher](launcher.md).
+- **Recent projects:** the File page Solis starts on, listing your projects as cards, where you open, pin and tidy them, and start from a template. It was once called the launcher. See [Projects](launcher.md).
 - **Build:** one numbered version of Solis, made from the code at one moment (build 57, then 58). Installed copies update from one build to the next; each project remembers the build that last opened it.
 - **Asset:** a file the game uses: a model, a picture, a sound, an assembly, code.
 - **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.

@@ -20,7 +20,7 @@ New to game engines? Start with [Concepts](concepts.md), then build [your first 
 - [Saving areas: files Git can merge](saving-areas.md)
 - [Assemblies: build once, place everywhere](assemblies.md)
 - [Play mode: run the area as a game, and Stop puts everything back](play-mode.md)
-- [The launcher: your projects, the examples, and where to begin](launcher.md)
+- [Projects: Recent projects, Learn, Updates and About](launcher.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Backups and upgrades: older files keep opening, and a copy is kept before they change](backups-and-upgrades.md)
 - [Checking a project before updating: does this build still play my game the same?](checking-a-project.md)
