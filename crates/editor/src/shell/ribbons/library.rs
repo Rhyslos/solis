@@ -8,25 +8,25 @@ use crate::icons::Icon;
 use crate::library::Filter;
 use crate::shell::ShellCommand as C;
 use crate::shell::commands::NewFile;
-use crate::shell::ribbon::{Control, Group, Shape, big, big_list, switch, unbuilt_at};
+use crate::shell::ribbon::{Control, Group, Shape, big, big_list, item, switch, unbuilt_at};
 use crate::unbuilt::{Entry, RowKind, UnbuiltId};
 use crate::workbench::Workbench;
 
 pub(super) fn groups(w: &Workbench) -> Vec<Group> {
     let create = Control::List {
-        label: "Create",
+        label: "Create".into(),
         command: None,
         items: NewFile::ALL
             .into_iter()
-            .map(|new| Entry::Built((new.word(), C::NewInLibrary(new))))
+            .map(|new| item(new.word(), C::NewInLibrary(new)))
             .collect(),
     };
     let types = Control::List {
-        label: type_words(w.open.library_state.filter),
+        label: type_words(w.open.library_state.filter).into(),
         command: None,
         items: Filter::ALL
             .into_iter()
-            .map(|filter| Entry::Built((filter.name(), C::LibraryFilter(filter))))
+            .map(|filter| item(filter.name(), C::LibraryFilter(filter)))
             .collect(),
     };
     vec![
@@ -38,7 +38,7 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
                     "Import",
                     C::ImportModel,
                     vec![
-                        Entry::Built(("Import model…", C::ImportModel)),
+                        item("Import model…", C::ImportModel),
                         Entry::Unbuilt(UnbuiltId::LibImportAnyKind),
                     ],
                 ),

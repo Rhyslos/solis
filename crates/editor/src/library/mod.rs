@@ -160,7 +160,7 @@ pub(crate) enum LibraryRequest {
     NewTileMap(String),
     /// Change a tileset's terrains, asked for in its Properties (path, the
     /// change).
-    EditTileset(String, crate::map_tab::TerrainEdit),
+    EditTileset(String, crate::tile_properties::TerrainEdit),
     /// Change a tile map file's tileset or size in Properties (path,
     /// tileset, size).
     ShapeTileMap(String, Option<AssetId>, [u32; 2]),

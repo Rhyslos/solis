@@ -45,7 +45,7 @@ fn every_tool_has_its_own_key_apart_from_the_transform_tools() {
     keys.sort_by_key(|k| k.name());
     keys.dedup();
     assert_eq!(keys.len(), all);
-    assert!(PaintTool::Fill.hint().starts_with("Fill (G)"));
+    assert!(PaintTool::Fill.what().starts_with("Click"));
 }
 
 #[test]

@@ -143,8 +143,6 @@ pub(crate) struct FramesOut {
     pub(crate) atlas_said: Option<String>,
     /// The screen on the canvas changed: save it.
     pub(crate) screen_changed: bool,
-    /// Open the screen's file as code.
-    pub(crate) screen_code: bool,
     /// What the canvas has to say in the Console.
     pub(crate) screen_said: Option<String>,
     /// The Canvas or Elements tab was closed: close the screen.
@@ -159,24 +157,33 @@ impl PanelViewer<'_> {
         if panel == Panel::Viewport {
             return self.document.name();
         }
+        // A LIBRARY TOOLS document, and a screen on the canvas, is called
+        // by its file's name alone (round 3: "harbour.tileset", "hud.lst").
+        let file = |path: &str| path.rsplit('/').next().unwrap_or(path).to_owned();
+        match panel {
+            Panel::Tileset => {
+                if let Some(t) = &self.tileset {
+                    return file(&t.editor.path);
+                }
+            }
+            Panel::AtlasCrop => {
+                if let Some((editor, ..)) = &self.atlas {
+                    return file(&editor.atlas.picture);
+                }
+            }
+            Panel::Canvas => {
+                if let Some(screen) = &self.screen {
+                    return file(&screen.doc.path);
+                }
+            }
+            _ => {}
+        }
         let what = match panel {
             Panel::Map => self.map.as_ref().map(|m| m.name.clone()),
-            Panel::Tileset => self
-                .tileset
-                .as_ref()
-                .map(|t| crate::sprite_sheets::name_of(&t.editor.path)),
             Panel::Animator => self
                 .animator
                 .as_ref()
                 .map(|a| crate::sprite_sheets::name_of(&a.editor.path)),
-            Panel::AtlasCrop => self
-                .atlas
-                .as_ref()
-                .map(|(editor, ..)| crate::sprite_sheets::name_of(&editor.path)),
-            Panel::Canvas => self
-                .screen
-                .as_ref()
-                .map(|s| crate::sprite_sheets::name_of(&s.doc.path)),
             _ => None,
         };
         match what.filter(|w| !w.is_empty()) {
@@ -188,11 +195,11 @@ impl PanelViewer<'_> {
     /// Whether `panel` shows a file of its own that its × closes now.
     pub(crate) fn closes_a_file(&self, panel: Panel) -> bool {
         match panel {
-            Panel::Clips | Panel::Frames => self.frames.is_some(),
+            Panel::Clips | Panel::Frames | Panel::Clip => self.frames.is_some(),
             Panel::Animator => self.animator.is_some(),
             Panel::Tileset => self.tileset.is_some(),
             Panel::AtlasCrop => self.atlas.is_some(),
-            Panel::Canvas | Panel::Elements => self.screen.is_some(),
+            Panel::Canvas | Panel::Elements | Panel::Pictures => self.screen.is_some(),
             Panel::Viewport
             | Panel::Game
             | Panel::Area
@@ -205,6 +212,10 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
+            | Panel::Terrains
+            | Panel::Crops
+            | Panel::Parameters
+            | Panel::Preview
             | Panel::Map => false,
         }
     }
@@ -215,11 +226,13 @@ impl PanelViewer<'_> {
     pub(crate) fn close(&mut self, panel: Panel) {
         match panel {
             // Either tab closes the clips file, and the other goes with it.
-            Panel::Clips | Panel::Frames => self.frames_out.closed = true,
+            Panel::Clips | Panel::Frames | Panel::Clip => self.frames_out.closed = true,
             Panel::Animator => self.frames_out.animator_closed = true,
             Panel::Tileset => self.frames_out.tileset_closed = true,
             Panel::AtlasCrop => self.frames_out.atlas_closed = true,
-            Panel::Canvas | Panel::Elements => self.frames_out.screen_closed = true,
+            Panel::Canvas | Panel::Elements | Panel::Pictures => {
+                self.frames_out.screen_closed = true;
+            }
             // These have no × (`closes_a_file`): nothing closes them.
             Panel::Viewport
             | Panel::Game
@@ -233,6 +246,10 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
+            | Panel::Terrains
+            | Panel::Crops
+            | Panel::Parameters
+            | Panel::Preview
             | Panel::Map => {}
         }
     }
@@ -368,8 +385,9 @@ impl PanelViewer<'_> {
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                let asked =
-                                    crate::map_tab::tileset_properties(ui, path, set, notes);
+                                let asked = crate::tile_properties::tileset_properties(
+                                    ui, path, set, notes,
+                                );
                                 self.library_requests.extend(asked.into_iter().map(|edit| {
                                     LibraryRequest::EditTileset(path.to_owned(), edit)
                                 }));
@@ -383,9 +401,11 @@ impl PanelViewer<'_> {
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                if let Some((tileset, size)) = crate::map_tab::map_file_properties(
-                                    ui, path, map, &tilesets, notes,
-                                ) {
+                                if let Some((tileset, size)) =
+                                    crate::tile_properties::map_file_properties(
+                                        ui, path, map, &tilesets, notes,
+                                    )
+                                {
                                     self.library_requests.push(LibraryRequest::ShapeTileMap(
                                         path.to_owned(),
                                         tileset,
@@ -529,37 +549,75 @@ impl PanelViewer<'_> {
                     None => {}
                 }
             }
-            Panel::Clips | Panel::Frames => {
+            Panel::Clips | Panel::Frames | Panel::Clip => {
                 let Some(frames) = &mut self.frames else {
                     empty_note(ui, "No clips file is open.");
                     return;
                 };
-                let changed = if *tab == Panel::Clips {
-                    egui::ScrollArea::vertical()
-                        .auto_shrink(false)
-                        .show(ui, |ui| crate::frames_view::clips_tab(ui, frames))
-                        .inner
-                } else {
-                    crate::frames_view::frames_tab(ui, frames, self.keys == KeyOwner::Frames)
+                let changed = match tab {
+                    Panel::Frames => {
+                        crate::frames_view::frames_tab(ui, frames, self.keys == KeyOwner::Frames)
+                    }
+                    Panel::Clips => scrolled(ui, "clips list", |ui| {
+                        crate::frames_view::clips_list(ui, frames)
+                    }),
+                    _ => scrolled(ui, "clip settings", |ui| {
+                        crate::frames_view::clip_tab(ui, frames)
+                    }),
                 };
                 self.frames_out.changed |= changed;
+            }
+            Panel::Parameters | Panel::Preview => {
+                let Some(animator) = &mut self.animator else {
+                    empty_note(ui, "No animator is open.");
+                    return;
+                };
+                if *tab == Panel::Parameters {
+                    self.frames_out.animator_changed |= scrolled(ui, "animator parameters", |ui| {
+                        crate::animator_view::parameters(ui, animator)
+                    });
+                } else {
+                    scrolled(ui, "animator preview", |ui| {
+                        crate::animator_view::preview(ui, animator);
+                        false
+                    });
+                }
             }
             Panel::Map => {
                 let Some(map) = &self.map else {
                     empty_note(ui, "Select an entity with a Tile Map to see its map here.");
                     return;
                 };
+                let asked = crate::map_tab::map_tab(ui, map);
+                self.map_requests.extend(asked);
+            }
+            Panel::Terrains => {
+                let Some(tileset) = &mut self.tileset else {
+                    empty_note(ui, "No tileset is open.");
+                    return;
+                };
                 egui::ScrollArea::vertical()
-                    .id_salt("map tab")
+                    .id_salt("tileset terrains")
                     .auto_shrink(false)
                     .show(ui, |ui| {
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                let asked = crate::map_tab::map_tab(ui, map);
-                                self.map_requests.extend(asked);
+                                self.frames_out.tileset_changed |=
+                                    crate::tileset_view::terrains(ui, tileset);
                             });
                     });
+            }
+            Panel::Crops => {
+                let Some((editor, picture, _)) = &mut self.atlas else {
+                    empty_note(ui, "No picture's crops are open.");
+                    return;
+                };
+                let out = crate::atlas_view::crops_tab(ui, editor, picture.as_ref());
+                self.frames_out.atlas_changed |= out.changed;
+                if out.said.is_some() {
+                    self.frames_out.atlas_said = out.said;
+                }
             }
             Panel::Tileset => {
                 let Some(tileset) = &mut self.tileset else {
@@ -589,7 +647,6 @@ impl PanelViewer<'_> {
                         fonts: screen.fonts,
                         pictures: screen.pictures.clone(),
                         accent: self.accent.colors().fill,
-                        picture_files: &screen.picture_files,
                         readable: &screen.game.readable,
                         keys: self.keys == KeyOwner::Canvas,
                     },
@@ -598,7 +655,16 @@ impl PanelViewer<'_> {
                     self.frames_out.screen_said = out.said;
                 }
                 self.frames_out.screen_changed |= out.changed;
-                self.frames_out.screen_code |= out.open_code;
+            }
+            Panel::Pictures => {
+                let Some(screen) = &mut self.screen else {
+                    empty_note(ui, "No screen is open.");
+                    return;
+                };
+                scrolled(ui, "screen pictures", |ui| {
+                    crate::elements_view::pictures(ui, screen.doc, &screen.picture_files);
+                    false
+                });
             }
             Panel::Elements => {
                 let Some(screen) = &mut self.screen else {
@@ -626,7 +692,7 @@ impl PanelViewer<'_> {
                 let out = crate::atlas_view::atlas_tab(
                     ui,
                     editor,
-                    picture.take(),
+                    picture.as_ref(),
                     problem.as_deref(),
                     self.accent.colors().fill,
                     self.keys == KeyOwner::Atlas,
@@ -650,6 +716,20 @@ impl PanelViewer<'_> {
             Panel::Viewport => {}
         }
     }
+}
+
+/// `contents` in a column that scrolls, inside the panels' margin.
+fn scrolled(ui: &mut Ui, salt: &str, contents: impl FnOnce(&mut Ui) -> bool) -> bool {
+    egui::ScrollArea::vertical()
+        .id_salt(salt)
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            egui::Frame::new()
+                .inner_margin(theme::panel_margin())
+                .show(ui, contents)
+                .inner
+        })
+        .inner
 }
 
 /// Shown while files are dragged over the window: where they'll go.

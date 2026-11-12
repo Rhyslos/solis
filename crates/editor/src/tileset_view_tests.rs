@@ -89,7 +89,17 @@ fn harness(with_picture: bool) -> Harness<'static, State> {
                     s.out.changed |= changed;
                     s.saves += usize::from(changed);
                 } else {
-                    let out = tileset_tab(ui, &mut t);
+                    // The Terrains shelf tab's column at the left, the
+                    // document beside it, as LIBRARY TOOLS · Tileset has
+                    // them (round 3).
+                    let full = ui.max_rect();
+                    let (left, right) = full.split_left_right_at_x(full.left() + 220.0);
+                    let mut shelf = ui.new_child(egui::UiBuilder::new().max_rect(left));
+                    let changed = terrains(&mut shelf, &mut t);
+                    s.out.changed |= changed;
+                    s.saves += usize::from(changed);
+                    let mut document = ui.new_child(egui::UiBuilder::new().max_rect(right));
+                    let out = tileset_tab(&mut document, &mut t);
                     s.out.changed |= out.changed;
                     s.saves += usize::from(out.changed);
                     if out.save_template.is_some() {

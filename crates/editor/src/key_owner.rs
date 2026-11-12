@@ -112,16 +112,28 @@ impl Workbench {
             return KeyOwner::Page;
         }
         let own = match self.pointer_over {
-            Some(Panel::Clips) if open.frames_editor.is_some() => Some(KeyOwner::Clips),
+            Some(Panel::Clips | Panel::Clip) if open.frames_editor.is_some() => {
+                Some(KeyOwner::Clips)
+            }
             Some(Panel::Frames) if open.frames_editor.is_some() => Some(KeyOwner::Frames),
-            Some(Panel::Animator) if open.animator_editor.is_some() => Some(KeyOwner::Animator),
-            Some(Panel::Tileset) if open.tilesets.tab().is_some() => Some(KeyOwner::Tileset),
+            Some(Panel::Animator | Panel::Parameters | Panel::Preview)
+                if open.animator_editor.is_some() =>
+            {
+                Some(KeyOwner::Animator)
+            }
+            Some(Panel::Tileset | Panel::Terrains) if open.tilesets.tab().is_some() => {
+                Some(KeyOwner::Tileset)
+            }
             Some(Panel::Properties) if open.tilesets.in_properties.is_some() => {
                 Some(KeyOwner::TilesetProperties)
             }
-            Some(Panel::AtlasCrop) if open.atlas_editor.is_some() => Some(KeyOwner::Atlas),
+            Some(Panel::AtlasCrop | Panel::Crops) if open.atlas_editor.is_some() => {
+                Some(KeyOwner::Atlas)
+            }
             Some(Panel::Canvas) if open.screen_doc.is_some() => Some(KeyOwner::Canvas),
-            Some(Panel::Elements) if open.screen_doc.is_some() => Some(KeyOwner::Elements),
+            Some(Panel::Elements | Panel::Pictures) if open.screen_doc.is_some() => {
+                Some(KeyOwner::Elements)
+            }
             _ => None,
         };
         own.unwrap_or_else(|| {

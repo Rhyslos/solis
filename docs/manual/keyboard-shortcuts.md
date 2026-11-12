@@ -82,11 +82,11 @@ See [Selecting and moving things](selecting-and-moving.md).
 
 ## The Frames tab (a clips file open)
 
-The keys work while the pointer is over the Frames tab (undo and redo over the Clips tab too); see [Animating sprites](sprite-animation.md).
+The keys work while the pointer is over the Frames tab (undo and redo over the Clip tab too); see [Animating sprites](sprite-animation.md).
 
 | Action | Shortcut |
 |---|---|
-| Rename a clip (clips made here) | Double-click it in the Clips tab (Enter keeps the name, Esc leaves it) |
+| Rename a clip (clips made here) | Double-click it in the Frames tab's list of clips (Enter keeps the name, Esc leaves it) |
 | Pick a frame; several | Click; Ctrl + click, or Shift + click for a run |
 | Move picked frames (clips made here) | Drag them |
 | Take picked frames out (clips made here) | Delete |
@@ -164,7 +164,7 @@ These work while the pointer is over the Map tab; see [Tile maps](tile-maps.md).
 
 ## Painting tiles (a tile map selected)
 
-These work in the viewport while a tile map's entity is selected; see [Painting tiles](painting-tiles.md).
+These work in the viewport while a tile map's entity is selected; the same tools are on the ribbon of **Home tools · Tile map**, and the keys of the tool in use show along the foot of the view. See [Painting tiles](painting-tiles.md).
 
 | Action | Shortcut |
 |---|---|

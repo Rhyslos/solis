@@ -260,33 +260,30 @@ fn the_overlay_menu_asks_for_values_and_chunks_and_finds_the_cell() {
     let mut h = egui_kittest::Harness::builder()
         .with_size(egui::vec2(400.0, 400.0))
         .build_ui_state(
-            move |ui, o: &mut (TileOverlay, Option<egui::Rect>)| {
+            move |ui, o: &mut TileOverlay| {
                 let rect = ui.max_rect();
                 let mouse = camera.project(
                     Vec3::new(1.5, -1.5, 0.0),
                     glam::Vec2::new(rect.width(), rect.height()),
                 );
-                o.1 = draw_overlay(
+                draw_overlay(
                     ui,
                     rect,
                     &camera,
-                    &mut o.0,
+                    o,
                     [1.0, 1.0],
                     mouse,
                     crate::theme::Accent::default(),
                 );
-                // What the workbench does each frame.
-                o.0.asked.retain(|_| false);
             },
-            (overlay, None),
+            overlay,
         );
     h.run();
-    assert_eq!(h.state().0.hovered, Some([1, 1]));
-    assert!(h.state().1.is_some(), "the menu's place is given back");
-    assert!(h.query_by_label("Values: growth ▾").is_some());
-    h.get_by_label("Chunks").click();
-    h.run_steps(1);
-    assert!(h.state().0.chunks_asked);
+    assert_eq!(h.state().hovered, Some([1, 1]));
+    // What is shown is chosen on the ribbon now: nothing over the view
+    // to click (round 3).
+    assert!(h.query_by_label_contains("Values").is_none());
+    assert!(h.query_by_label("Chunks").is_none());
 }
 
 #[test]
@@ -294,24 +291,22 @@ fn no_map_selected_no_overlay() {
     let mut h = egui_kittest::Harness::builder()
         .with_size(egui::vec2(200.0, 200.0))
         .build_ui_state(
-            |ui, o: &mut (TileOverlay, bool)| {
+            |ui, o: &mut TileOverlay| {
                 let rect = ui.max_rect();
-                o.1 = draw_overlay(
+                draw_overlay(
                     ui,
                     rect,
                     &crate::camera::Camera::default(),
-                    &mut o.0,
+                    o,
                     [1.0, 1.0],
                     Some(glam::Vec2::ONE),
                     crate::theme::Accent::default(),
-                )
-                .is_some();
+                );
             },
-            (TileOverlay::default(), true),
+            TileOverlay::default(),
         );
     h.run();
-    assert!(!h.state().1);
-    assert_eq!(h.state().0.hovered, None);
+    assert_eq!(h.state().hovered, None);
 }
 
 /// Sheets whose tileset (`id`) has art on a 2 × 1 picture of 4-pixel

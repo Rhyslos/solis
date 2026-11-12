@@ -11,6 +11,7 @@ use super::RibbonTab;
 use crate::library::Filter;
 use crate::menu_items::MenuCommand;
 use crate::play::PlayState;
+use crate::tile_paint::{PaintTool, Turn};
 use crate::viewport::Tool;
 use crate::workbench::{Workbench, WorkbenchAction};
 
@@ -82,6 +83,71 @@ pub(crate) enum ShellCommand {
     /// Places the file picked in the Library where the camera looks, on
     /// Home (Use › Place).
     PlacePicked,
+    /// Picks one of a tile map's painting tools (HOME TOOLS · Tile map).
+    PaintWith(crate::tile_paint::PaintTool),
+    /// Paints on the selected map's layer of this index.
+    PaintOnLayer(usize),
+    /// Places exact tiles, or autotiled ones again.
+    PaintExact,
+    /// Shows the selected map's meaning (`true`) or its art.
+    MapMeaning(bool),
+    /// Lays the selected map's value of this index over it, or stops.
+    ShowValue(usize),
+    /// Outlines the selected map's chunks, or stops.
+    MapChunks,
+    /// Shows what's solid on the selected map, or stops.
+    MapWalls,
+    /// Flips or turns the copy held.
+    TurnCopy(crate::tile_paint::Turn),
+    /// Puts the copy held away.
+    PutCopyAway,
+    /// Adds a terrain to the open tileset (LIBRARY TOOLS · Tileset).
+    TerrainAdd,
+    /// Removes the open tileset's chosen terrain.
+    TerrainRemove,
+    /// Makes the chosen terrain this kind.
+    TerrainKind(tiles::TileKind),
+    /// Saves the chosen terrain's kind's template beside the tileset.
+    SaveTemplate,
+    /// Shows the tileset's picture this many times its size.
+    TilesetZoom(u8),
+    /// A crop for every grid cell with something drawn in it
+    /// (LIBRARY TOOLS · Picture).
+    CropEveryTile,
+    /// Deletes the crop picked.
+    CropDelete,
+    /// Shows the picture this many times its size.
+    CropsZoom(u8),
+    /// A new clip in the open clips file (Animate › Clip).
+    ClipNew,
+    /// A copy of the chosen clip.
+    ClipCopy,
+    /// Deletes the chosen clip (or forgets what was added to a tag).
+    ClipDelete,
+    /// Takes the frames picked out of the chosen clip.
+    FramesTakeOut,
+    /// Plays the chosen clip in the direction of this index of
+    /// `ribbons::animate::DIRECTIONS`.
+    ClipDirection(u8),
+    /// Adds a state to the open animator (Animate › State).
+    StateAdd,
+    /// Makes the state picked the one the animator starts in.
+    StateStartHere,
+    /// Deletes the state or transition picked.
+    StateDelete,
+    /// Starts the animator's preview again.
+    PreviewAgain,
+    /// Shows the screen on the canvas at the size of this preset of
+    /// `ui::presets::PRESETS` (UI › Screen).
+    ScreenSize(u8),
+    /// Shows the screen's text at this size, in percent.
+    ScreenText(u16),
+    /// Shows the safe area on the canvas, or stops.
+    SafeArea,
+    /// Snaps sizes and places on the canvas, or stops.
+    ScreenSnap,
+    /// Opens the screen's file in the code editor.
+    OpenScreenCode,
     Tab(RibbonTab),
     OpenManual,
     Learn,
@@ -154,7 +220,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 89] = [
+    pub(crate) const ALL: [Self; 131] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -222,6 +288,48 @@ impl ShellCommand {
         C::LibraryFilter(Filter::Sounds),
         C::LibraryFilter(Filter::Code),
         C::PlacePicked,
+        C::PaintWith(PaintTool::Brush),
+        C::PaintWith(PaintTool::Rectangle),
+        C::PaintWith(PaintTool::Line),
+        C::PaintWith(PaintTool::Fill),
+        C::PaintWith(PaintTool::Eyedropper),
+        C::PaintExact,
+        C::MapMeaning(false),
+        C::MapMeaning(true),
+        C::MapChunks,
+        C::MapWalls,
+        C::TurnCopy(Turn::FlipX),
+        C::TurnCopy(Turn::FlipY),
+        C::TurnCopy(Turn::Rotate),
+        C::PutCopyAway,
+        C::TerrainAdd,
+        C::TerrainRemove,
+        C::TerrainKind(tiles::TileKind::Plain),
+        C::TerrainKind(tiles::TileKind::Dual16),
+        C::TerrainKind(tiles::TileKind::Edges),
+        C::TerrainKind(tiles::TileKind::Blob47),
+        C::TerrainKind(tiles::TileKind::Rules),
+        C::SaveTemplate,
+        C::CropEveryTile,
+        C::CropDelete,
+        C::ClipNew,
+        C::ClipCopy,
+        C::ClipDelete,
+        C::FramesTakeOut,
+        C::ClipDirection(0),
+        C::ClipDirection(1),
+        C::ClipDirection(2),
+        C::ClipDirection(3),
+        C::StateAdd,
+        C::StateStartHere,
+        C::StateDelete,
+        C::PreviewAgain,
+        C::ScreenText(100),
+        C::ScreenText(150),
+        C::ScreenText(200),
+        C::SafeArea,
+        C::ScreenSnap,
+        C::OpenScreenCode,
         C::Tab(RibbonTab::File),
         C::Tab(RibbonTab::Home),
         C::Tab(RibbonTab::Library),
@@ -297,6 +405,42 @@ impl ShellCommand {
                 w.picked_placeable().is_some(),
                 "Pick a model, an assembly, a sprite sheet or a tile map in the Library first",
             ),
+            C::PaintWith(_)
+            | C::PaintOnLayer(_)
+            | C::PaintExact
+            | C::MapMeaning(_)
+            | C::ShowValue(_)
+            | C::MapChunks
+            | C::MapWalls => w.why_not_paint(),
+            C::TurnCopy(_) | C::PutCopyAway => when(
+                w.viewport.tile_overlay.paint.stamp.is_some(),
+                "Copy some cells with the Eyedropper first",
+            ),
+            C::TerrainAdd
+            | C::TerrainRemove
+            | C::TerrainKind(_)
+            | C::SaveTemplate
+            | C::TilesetZoom(_)
+            | C::CropEveryTile
+            | C::CropDelete
+            | C::CropsZoom(_) => w.why_not_library_tool(self),
+            C::ClipNew
+            | C::ClipCopy
+            | C::ClipDelete
+            | C::FramesTakeOut
+            | C::ClipDirection(_)
+            | C::StateAdd
+            | C::StateStartHere
+            | C::StateDelete
+            | C::PreviewAgain => w.why_not_animate(self),
+            C::ScreenSize(_)
+            | C::ScreenText(_)
+            | C::SafeArea
+            | C::ScreenSnap
+            | C::OpenScreenCode => when(
+                w.open.screen_doc.is_some(),
+                "Open a screen from the Library first",
+            ),
             C::Tab(tab) => {
                 if tab == w.shell.tab {
                     Some(format!("{} is the tab in front", tab.name()))
@@ -340,6 +484,11 @@ impl ShellCommand {
             C::LibraryList => w.open.library_state.list,
             C::LibraryFolders => w.open.library_state.folders_shown,
             C::LibraryFilter(filter) => w.open.library_state.filter == filter,
+            C::PaintExact => w.viewport.tile_overlay.paint.exact,
+            C::MapChunks => w.open.map_edits.chunks,
+            C::MapWalls => w.open.map_edits.walls,
+            C::SafeArea => w.open.screen_doc.as_ref().is_some_and(|d| d.safe_area),
+            C::ScreenSnap => w.open.screen_doc.as_ref().is_some_and(|d| d.snap),
             _ => return None,
         })
     }
@@ -415,6 +564,51 @@ impl ShellCommand {
             C::UseTool(tool) => {
                 w.viewport.tool = tool;
                 w.viewport.tile_overlay.paint.tool = None;
+            }
+            C::PaintWith(_)
+            | C::PaintOnLayer(_)
+            | C::PaintExact
+            | C::MapMeaning(_)
+            | C::ShowValue(_)
+            | C::MapChunks
+            | C::MapWalls
+            | C::TurnCopy(_)
+            | C::PutCopyAway => w.run_paint_command(self),
+            C::TerrainAdd
+            | C::TerrainRemove
+            | C::TerrainKind(_)
+            | C::SaveTemplate
+            | C::TilesetZoom(_)
+            | C::CropEveryTile
+            | C::CropDelete
+            | C::CropsZoom(_) => w.run_library_tool(self),
+            C::ClipNew
+            | C::ClipCopy
+            | C::ClipDelete
+            | C::FramesTakeOut
+            | C::ClipDirection(_)
+            | C::StateAdd
+            | C::StateStartHere
+            | C::StateDelete
+            | C::PreviewAgain => w.run_animate(self),
+            C::ScreenSize(_) | C::ScreenText(_) | C::SafeArea | C::ScreenSnap => {
+                if let Some(doc) = &mut w.open.screen_doc {
+                    match self {
+                        C::ScreenSize(i) => doc.preset = usize::from(i),
+                        C::ScreenText(percent) => doc.text_percent = percent,
+                        C::SafeArea => doc.safe_area ^= true,
+                        _ => doc.snap ^= true,
+                    }
+                }
+            }
+            C::OpenScreenCode => {
+                if let Some(path) = w.open.screen_doc.as_ref().map(|d| d.path.clone()) {
+                    let open = crate::library::LibraryRequest::Open(
+                        crate::library::LibraryKind::Code,
+                        path,
+                    );
+                    w.library_request(open, actions);
+                }
             }
             C::Tab(tab) => w.show_tab(tab),
             C::OpenManual => ctx.open_url(egui::OpenUrl::new_tab(w.manual_url.clone())),

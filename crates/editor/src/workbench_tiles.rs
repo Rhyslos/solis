@@ -432,21 +432,9 @@ impl Workbench {
         self.change_tileset(&path, |editor| editor.set_solid(code, solid));
     }
 
-    /// Takes in what the menu over the viewport asked for this frame.
+    /// Takes in the cell the viewport found under the pointer this frame.
     pub(crate) fn tile_overlay_done(&mut self) {
-        let overlay = &mut self.viewport.tile_overlay;
-        for (name, on) in std::mem::take(&mut overlay.asked) {
-            self.open.map_edits.shown_values.retain(|n| *n != name);
-            if on {
-                self.open.map_edits.shown_values.push(name);
-            }
-        }
-        if std::mem::take(&mut overlay.chunks_asked) {
-            self.open.map_edits.chunks = !self.open.map_edits.chunks;
-        }
-        if std::mem::take(&mut overlay.walls_asked) {
-            self.open.map_edits.walls = !self.open.map_edits.walls;
-        }
+        let overlay = &self.viewport.tile_overlay;
         self.open.map_edits.hovered = overlay
             .hovered
             .zip(overlay.map.as_ref())
@@ -470,6 +458,7 @@ impl Workbench {
                     }
                 }
                 MapRequest::SetSolid(code, solid) => self.set_terrain_solid(&path, code, solid),
+                MapRequest::PaintOnLayer(layer) => paint.layer = layer,
                 MapRequest::PaintPiece(piece) => {
                     paint.piece = Some(piece);
                     paint.exact = true;

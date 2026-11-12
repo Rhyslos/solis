@@ -126,8 +126,11 @@ fn the_canvas_draws_the_screen_and_properties_changes_the_piece_picked() {
     assert!(h.query_by_label_contains("‹code› loop 2").is_some());
     // Bold, ticked in Properties, is saved.
     h.state_mut().1.actions.clear();
+    // (The ribbon's Safe area and Snap are switches too: the first box
+    // under the ribbon is Properties'.)
     h.get_all_by_role(egui::accesskit::Role::CheckBox)
-        .next()
+        .filter(|b| b.rect().top() > crate::tokens::size::TAB_BAR_H + crate::tokens::size::RIBBON_H)
+        .min_by(|a, b| a.rect().top().total_cmp(&b.rect().top()))
         .unwrap()
         .click();
     h.run();
@@ -395,15 +398,11 @@ fn a_screen_closed_was_saved_as_it_was_changed() {
     assert!(doc.set_style("size", Some("40")));
     let text = doc.text.clone();
     // The change and the × in the same frame: saved, then closed.
-    let mut actions = Vec::new();
-    w.frames_tabs_done(
-        crate::panels::FramesOut {
-            screen_changed: true,
-            screen_closed: true,
-            ..Default::default()
-        },
-        &mut actions,
-    );
+    w.frames_tabs_done(crate::panels::FramesOut {
+        screen_changed: true,
+        screen_closed: true,
+        ..Default::default()
+    });
     assert_eq!(saved(&w), vec![text]);
     assert!(w.open.screen_doc.is_none());
     assert!(w.open.unsaved_prompt.is_none(), "nothing asked");

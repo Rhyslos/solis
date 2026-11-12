@@ -13,7 +13,7 @@ use reflect::AssetId;
 
 /// A project with `farm.tileset.lst` (tilled 16-tile, its art on
 /// `tiles.png`, every slot but 6), `tiles.png` read and `farm.tilemap.lst`.
-fn with_tileset() -> (Workbench, AssetId, AssetId) {
+pub(crate) fn with_tileset() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
@@ -82,7 +82,7 @@ fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
 }
 
 #[test]
-fn double_clicking_a_tileset_opens_it_beside_the_library() {
+fn double_clicking_a_tileset_opens_it_in_library_tools() {
     let (mut w, _, _) = with_tileset();
     let mut actions = Vec::new();
     w.library_request(
@@ -90,12 +90,14 @@ fn double_clicking_a_tileset_opens_it_beside_the_library() {
         &mut actions,
     );
     assert!(w.open.tilesets.tab().is_some());
-    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Library);
+    // LIBRARY TOOLS · Tileset, its own tab with the tileset as its
+    // document and its terrains on the shelf (round 3).
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Tileset);
     assert_eq!(
         crate::shell::workspaces::groups(w.ribbon_tab(), w.open_now()),
-        [vec![Panel::Library], vec![Panel::Tileset]],
-        "a group of its own, beside the Library"
+        [vec![Panel::Tileset]],
     );
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Terrains));
     let mut h = harness(w);
     h.run();
     h.run();
@@ -115,8 +117,9 @@ fn double_clicking_a_tileset_opens_it_beside_the_library() {
     h.run();
     h.run();
     assert!(h.state().0.open.tilesets.tab().is_none());
-    // And the tab that came with it goes.
+    // And the tab that came with it goes: the Library is in front again.
     assert!(h.query_by_label("Library tools · Tileset").is_none());
+    assert_eq!(h.state().0.ribbon_tab(), crate::shell::RibbonTab::Library);
 }
 
 #[test]
@@ -316,7 +319,7 @@ fn a_terrain_removed_in_properties_comes_back_whole_with_ctrl_z() {
 }
 
 /// Asks for `edit` as the tileset's Properties does.
-fn edit_in_properties(w: &mut Workbench, edit: crate::map_tab::TerrainEdit) {
+fn edit_in_properties(w: &mut Workbench, edit: crate::tile_properties::TerrainEdit) {
     let mut actions = Vec::new();
     w.library_request(
         LibraryRequest::EditTileset(FARM_SET.into(), edit),
@@ -335,7 +338,7 @@ fn take_saved(w: &mut Workbench) -> Vec<String> {
 
 #[test]
 fn each_change_in_properties_is_one_undo_step_that_puts_the_file_back_exactly() {
-    use crate::map_tab::TerrainEdit;
+    use crate::tile_properties::TerrainEdit;
     let (mut w, set_id, whole) = with_rules();
     let water = w.viewport.sheets.tileset(set_id).unwrap().terrains[2].id;
     let set_it = |name: Option<&str>, code, colour| TerrainEdit::Set {
@@ -403,7 +406,7 @@ fn dragging_a_terrain_s_colour_in_properties_is_one_step_and_one_save() {
                 let Some(TilesetState::Read(set, notes)) = sheets.tilesets.get(FARM_SET) else {
                     return;
                 };
-                for edit in crate::map_tab::tileset_properties(ui, FARM_SET, set, notes) {
+                for edit in crate::tile_properties::tileset_properties(ui, FARM_SET, set, notes) {
                     edit_in_properties(w, edit);
                 }
             },
@@ -450,7 +453,7 @@ fn a_change_in_properties_is_undone_over_the_tileset_tab_and_the_other_way_round
     // Removed in Properties while the tab is open on the same file: the
     // tab shows it at once, and Ctrl+Z over the tab brings it back.
     w.open_tileset(FARM_SET);
-    edit_in_properties(&mut w, crate::map_tab::TerrainEdit::Remove(water));
+    edit_in_properties(&mut w, crate::tile_properties::TerrainEdit::Remove(water));
     assert_eq!(w.open.tilesets.tab().unwrap().file.terrains.len(), 2);
     let mut h = rest_over(harness(w), Panel::Tileset);
     let from = h.state().1.actions.len();
@@ -516,7 +519,7 @@ fn solid_set_in_the_map_tab_is_a_step_of_the_tileset_s() {
 fn a_tileset_s_steps_follow_its_file_on_disk_and_go_with_it() {
     let (mut w, set_id, whole) = with_rules();
     let water = w.viewport.sheets.tileset(set_id).unwrap().terrains[2].id;
-    edit_in_properties(&mut w, crate::map_tab::TerrainEdit::Remove(water));
+    edit_in_properties(&mut w, crate::tile_properties::TerrainEdit::Remove(water));
     let without = take_saved(&mut w).remove(0);
     // Solis's own save read back is no step; the file changed by hand is
     // one, though no tab shows it.

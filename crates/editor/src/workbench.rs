@@ -983,6 +983,7 @@ impl Workbench {
                         .stamp
                         .as_ref()
                         .map(|s| s.size),
+                    layer: self.viewport.tile_overlay.paint.layer,
                     picture: tileset
                         .as_ref()
                         .and_then(|t| t.picture)
@@ -1089,10 +1090,9 @@ impl Workbench {
             });
         let atlas = self.open.atlas_editor.as_mut().map(|editor| {
             let picture = self.open.atlas_texture.as_ref().and_then(|(art, texture)| {
-                Some(crate::atlas_view::AtlasPicture {
+                (!art.frames.is_empty()).then_some(crate::atlas_view::AtlasPicture {
                     texture,
                     size: art.size,
-                    rgba: art.frames.first()?,
                 })
             });
             (editor, picture, atlas_problem)
@@ -1185,7 +1185,7 @@ impl Workbench {
         self.in_front = shown;
         self.pointer_over = frames_out.pointer_over;
         self.doc_asks(asks, ui.ctx(), &mut actions);
-        self.frames_tabs_done(frames_out, &mut actions);
+        self.frames_tabs_done(frames_out);
         self.map_requests_done(map_requests);
         self.tile_overlay_done();
         self.paint_frame();

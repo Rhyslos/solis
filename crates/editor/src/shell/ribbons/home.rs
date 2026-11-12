@@ -9,7 +9,7 @@ use super::group;
 use crate::icons::Icon;
 use crate::shell::ShellCommand as C;
 use crate::shell::ribbon::{
-    Control, Group, Shape, Steps, big, big_list, row, row_list, switch, switch_with_steps,
+    Control, Group, Shape, Steps, big, big_list, item, row, row_list, switch, switch_with_steps,
     unbuilt_at,
 };
 use crate::unbuilt::{Entry, RowKind, UnbuiltId};
@@ -113,7 +113,7 @@ fn create(label: &'static str) -> Group {
                 "Model",
                 C::ImportModel,
                 vec![
-                    Entry::Built(("Import model…", C::ImportModel)),
+                    item("Import model…", C::ImportModel),
                     Entry::Unbuilt(UnbuiltId::HomeCreateShapes),
                 ],
             ),
@@ -123,8 +123,8 @@ fn create(label: &'static str) -> Group {
                 "Light",
                 C::AddPointLight,
                 vec![
-                    Entry::Built(("Point light", C::AddPointLight)),
-                    Entry::Built(("Spotlight", C::AddSpotlight)),
+                    item("Point light", C::AddPointLight),
+                    item("Spotlight", C::AddSpotlight),
                 ],
             ),
             big(Icon::Camera, "Camera", C::AddCamera),
@@ -136,8 +136,8 @@ fn create(label: &'static str) -> Group {
             row_list(
                 "More",
                 vec![
-                    Entry::Built(("Reverb zone", C::AddReverbZone)),
-                    Entry::Built(("Assembly from selection", C::CreateAssembly)),
+                    item("Reverb zone", C::AddReverbZone),
+                    item("Assembly from selection", C::CreateAssembly),
                 ],
             ),
         ]

@@ -72,6 +72,37 @@ impl ShellCommand {
                 other => format!("Show only {}", other.name().to_lowercase()),
             },
             C::About => format!("About {}", w.info.name),
+            C::PaintWith(_)
+            | C::PaintOnLayer(_)
+            | C::PaintExact
+            | C::MapMeaning(_)
+            | C::ShowValue(_)
+            | C::MapChunks
+            | C::MapWalls => tile_map_name(self, w),
+            C::TerrainKind(kind) => format!("Make the terrain {}", kind.word()),
+            C::TilesetZoom(zoom) => format!("Show the tileset at {}%", u32::from(zoom) * 100),
+            C::CropsZoom(zoom) => format!("Show the picture at {}%", u32::from(zoom) * 100),
+            C::ScreenSize(i) => match ui::presets::PRESETS.get(usize::from(i)) {
+                Some(p) => format!("Show the screen at {} × {}", p.size[0], p.size[1]),
+                None => "Show the screen at another size".to_owned(),
+            },
+            C::ScreenText(percent) => format!("Show the screen's text at {percent}%"),
+            C::SafeArea => switch(
+                w.open.screen_doc.as_ref().is_some_and(|d| d.safe_area),
+                "the screen's safe area",
+            ),
+            C::ScreenSnap => on_off(
+                "Snap on the canvas",
+                "Stop snapping on the canvas",
+                w.open.screen_doc.as_ref().is_some_and(|d| d.snap),
+            ),
+            C::ClipDirection(i) => {
+                let d = crate::shell::ribbons::animate::DIRECTIONS
+                    .get(usize::from(i))
+                    .copied()
+                    .unwrap_or(animation::Direction::Forward);
+                format!("Play the clip {}", d.name())
+            }
             other => other.fixed_name().to_owned(),
         }
     }
@@ -125,6 +156,24 @@ impl ShellCommand {
             C::CheckForUpdates => "Check for updates",
             C::Exit => "Exit",
             C::PlacePicked => "Place the picked file",
+            C::TurnCopy(crate::tile_paint::Turn::FlipX) => "Flip the copy left and right",
+            C::TurnCopy(crate::tile_paint::Turn::FlipY) => "Flip the copy top and bottom",
+            C::TurnCopy(crate::tile_paint::Turn::Rotate) => "Turn the copy a quarter",
+            C::PutCopyAway => "Put the copy away",
+            C::TerrainAdd => "Add a terrain",
+            C::TerrainRemove => "Remove the chosen terrain",
+            C::SaveTemplate => "Save the terrain's template",
+            C::CropEveryTile => "Crop every tile",
+            C::CropDelete => "Delete the picked crop",
+            C::ClipNew => "New clip",
+            C::ClipCopy => "Copy the clip",
+            C::ClipDelete => "Delete the clip",
+            C::FramesTakeOut => "Take the frames picked out",
+            C::StateAdd => "Add a state",
+            C::StateStartHere => "Start in the state picked",
+            C::StateDelete => "Delete what is picked in the graph",
+            C::PreviewAgain => "Start the preview again",
+            C::OpenScreenCode => "Open the screen as code",
             // Named by `name`, from what the editor holds.
             C::Undo
             | C::Redo
@@ -144,6 +193,21 @@ impl ShellCommand {
             | C::LibraryList
             | C::LibraryFolders
             | C::LibraryFilter(_)
+            | C::PaintWith(_)
+            | C::PaintOnLayer(_)
+            | C::PaintExact
+            | C::MapMeaning(_)
+            | C::ShowValue(_)
+            | C::MapChunks
+            | C::MapWalls
+            | C::TerrainKind(_)
+            | C::TilesetZoom(_)
+            | C::CropsZoom(_)
+            | C::ClipDirection(_)
+            | C::ScreenSize(_)
+            | C::ScreenText(_)
+            | C::SafeArea
+            | C::ScreenSnap
             | C::About => "",
         }
     }
@@ -186,6 +250,35 @@ impl ShellCommand {
             C::ViewportTools | C::ViewportSnapping | C::ViewportStats => "Viewport",
             C::ResetLayout | C::HideUnfinished | C::CollapseRibbon | C::FoldShelf => "Preferences",
             C::Tab(_) => "Tabs",
+            C::PaintWith(_)
+            | C::PaintOnLayer(_)
+            | C::PaintExact
+            | C::MapMeaning(_)
+            | C::ShowValue(_)
+            | C::MapChunks
+            | C::MapWalls
+            | C::TurnCopy(_)
+            | C::PutCopyAway => "Tile map",
+            C::TerrainAdd
+            | C::TerrainRemove
+            | C::TerrainKind(_)
+            | C::SaveTemplate
+            | C::TilesetZoom(_) => "Tileset",
+            C::CropEveryTile | C::CropDelete | C::CropsZoom(_) => "Picture",
+            C::ClipNew
+            | C::ClipCopy
+            | C::ClipDelete
+            | C::FramesTakeOut
+            | C::ClipDirection(_)
+            | C::StateAdd
+            | C::StateStartHere
+            | C::StateDelete
+            | C::PreviewAgain => "Animate",
+            C::ScreenSize(_)
+            | C::ScreenText(_)
+            | C::SafeArea
+            | C::ScreenSnap
+            | C::OpenScreenCode => "UI",
             _ => "Home",
         }
     }
@@ -300,6 +393,45 @@ impl ShellCommand {
                 "Places the picked file where the camera looks on Home. A double-click in the \
                  Library only picks a file"
             }
+            C::PaintWith(tool) => tool.what(),
+            C::PaintExact => {
+                "Places the tile chosen under the Map tab's terrains, not the one autotiling \
+                 picks (hold Ctrl while painting for the same)"
+            }
+            C::MapMeaning(_) => {
+                "Art: as the game draws it. Meaning: each terrain in its colour (Tab)"
+            }
+            C::MapChunks => "Outlines the map's chunks of 32 × 32 cells, which save and draw apart",
+            C::MapWalls => {
+                "Shows the walls 2D physics makes of the map's solid cells. Right-click a terrain \
+                 in the Map tab to make it solid"
+            }
+            C::PutCopyAway => "Paints the terrain again (Esc)",
+            C::TerrainAdd => "Something a cell can be: grass, water, a wall",
+            C::SaveTemplate => {
+                "A picture of the chosen kind's slots at the tileset's tile size, beside it: draw \
+                 each tile over its slot, then Mark up from the template"
+            }
+            C::CropEveryTile => {
+                "A crop for every grid cell with something drawn in it, named by its column and row"
+            }
+            C::CropDelete => "Delete",
+            C::ClipNew => "A new clip of your own, made from the sheet's frames",
+            C::ClipCopy => {
+                "A copy of the clip to change here (an Aseprite tag's frames stay Aseprite's)"
+            }
+            C::ClipDelete => {
+                "Deletes a clip of your own; for an Aseprite tag, forgets what was added here"
+            }
+            C::FramesTakeOut => "Takes the frames picked on the Frames tab out of the clip",
+            C::StateAdd => "A state that plays a clip, to join to the others",
+            C::ScreenSize(_) => "The screen size the canvas shows: check the screen on each",
+            C::ScreenText(_) => {
+                "The player's text size: check the screen still fits when players make text bigger"
+            }
+            C::SafeArea => "A guide 5% in from each edge: keep text and buttons inside it",
+            C::ScreenSnap => "Sizes snap to whole pixels and to other pieces' edges",
+            C::OpenScreenCode => "Opens the screen's file in your code editor",
             _ => "",
         }
     }
@@ -334,6 +466,34 @@ fn tool_word(tool: Tool) -> &'static str {
         Tool::Rotate => "Rotate",
         Tool::Scale => "Scale",
         Tool::Transform => "All three",
+    }
+}
+
+/// The name of a command of HOME TOOLS · Tile map, from what the
+/// painter and the selected map hold.
+fn tile_map_name(command: ShellCommand, w: &Workbench) -> String {
+    let switch = |on: bool, what: &str| format!("{} {what}", if on { "Hide" } else { "Show" });
+    let paint = &w.viewport.tile_overlay.paint;
+    let edits = &w.open.map_edits;
+    match command {
+        C::PaintWith(tool) => format!("{} tool", tool.name()),
+        C::PaintOnLayer(i) => match paint.layers.get(i) {
+            Some(layer) => format!("Paint on {layer}"),
+            None => "Paint on another layer".to_owned(),
+        },
+        C::PaintExact => on_off("Place exact tiles", "Place autotiled tiles", paint.exact),
+        C::MapMeaning(true) => "Show the map's meaning".to_owned(),
+        C::MapMeaning(false) => "Show the map's art".to_owned(),
+        C::ShowValue(i) => match w.map_value_names().get(i) {
+            Some(name) => switch(
+                edits.shown_values.contains(name),
+                &format!("{name} on the map"),
+            ),
+            None => "Show a value on the map".to_owned(),
+        },
+        C::MapChunks => switch(edits.chunks, "the map's chunks"),
+        C::MapWalls => switch(edits.walls, "what's solid on the map"),
+        other => other.fixed_name().to_owned(),
     }
 }
 

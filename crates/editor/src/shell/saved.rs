@@ -120,7 +120,8 @@ impl Shell {
         if self.tab == RibbonTab::File {
             self.before_file
         } else if self.tab.is_built() {
-            self.tab
+            // A contextual tab's file isn't open again at the next start.
+            self.tab.parent()
         } else {
             RibbonTab::Home
         }

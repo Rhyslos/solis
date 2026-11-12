@@ -2,6 +2,7 @@
 //! they show, and what a click asks for.
 
 use super::*;
+use crate::tile_properties::{TerrainEdit, map_file_properties, tileset_properties};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use reflect::{AssetId, Id};
@@ -54,9 +55,13 @@ fn tab_painting(
     exact: bool,
 ) -> Harness<'static, TabState> {
     Harness::builder()
-        .with_size(vec2(360.0, 720.0))
+        .with_size(vec2(1440.0, 400.0))
         .build_ui_state(
             move |ui, s: &mut TabState| {
+                // The columns' headers are in the editor's own fonts.
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 let shown = MapUi {
                     name: "farm".into(),
                     map: &s.0,
@@ -69,6 +74,7 @@ fn tab_painting(
                         exact,
                         piece: None,
                         stamp: None,
+                        layer: 0,
                         picture: None,
                         ms: 0,
                         accent: Color32::GOLD,
@@ -86,8 +92,7 @@ fn it_shows_layers_terrains_with_counts_values_and_the_cell() {
     let mut h = tab(map(), Some(set()), Some([1, 1]), HashSet::new());
     h.run();
     for label in [
-        "farm",
-        "8 × 6 cells",
+        "farm · Tile map · 8 × 6 cells",
         "Show Ground",
         "Show Decoration",
         "Show Above",

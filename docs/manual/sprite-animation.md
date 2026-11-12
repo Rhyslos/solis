@@ -13,14 +13,16 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 1. **Tag your frames in Aseprite** and save. In Solis, click the file in the Library: Properties lists its tags.
 2. **Play a clip on a sprite:** select a sprite and pick a **Clip** in its Sprite component. Press **Play**: it plays at its frame times. To see it move while you edit, open the viewport's **≡** menu and tick **Preview animation**.
 3. **Open the clips:** in the Aseprite file's Properties, press **Edit clips…**. Solis makes `walker.solframes` beside `walker.aseprite` (or opens the one there) and opens two tabs:
-   - **Clips**, a tab of the shelf on the **Animate** tab (the clips file opens there, on its **Frames** shelf tab; an × after either tab closes the file): every clip, with how long it is and where it comes from (*Aseprite* or *made here*). Click one to choose it. Below the list: its **Speed**, **Direction** and how many times it **Plays**, and **Plays first**.
-   - **Frames**, at the bottom: the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The blue line is where it's playing; the lane below shows its events.
+   - **Frames**, a tab of the shelf on the **Animate** tab (the clips file opens there; an × after the Frames or Clip tab closes the file). On its left, **Clips**: every clip, with how long it is and where it comes from (*Aseprite* or *made here*). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The blue line is where it's playing; the lane below shows its events.
+   - **Clip**, the next shelf tab: the chosen clip's **Speed**, **Direction**, how many times it **Plays**, and **Plays first**. A clip's settings have a tab of their own so the frames keep the shelf's whole width.
+
+   While a clips file is open, Animate's [ribbon](concepts.md#the-window) is the clips file's: **Clip** (New, Copy, Delete), **Frames** (Take out), and how the clip plays (Plays, Speed, and a **Direction** list for a clip of your own). The design's cutscene controls after them (Keys, Step, Linear, Smooth, Tracks) are [unfinished parts](unfinished-parts.md).
 4. **Watch it:** press **▶** (or **Space** over the Frames tab). **⏮** goes back to the start, **■** stops, **⏭** goes to the last frame. **−** and **+** zoom the ruler.
 5. **Give a frame an event:** click the frame, then type a name in **event**, or pick a sound event from **◆ ▾**. When the clip reaches that frame:
    - a sound event of the same name (`footstep`, or its path, `sfx/footstep`) plays on the sprite by itself, with no code;
    - game code on the entity hears `CueReached`, with the event as one of the project's names (`Cue.Footstep`).
    Events typed in Aseprite (a cel's user data) work the same way.
-6. **Make a clip of your own:** **＋ Clip** makes an empty one; **⧉ Copy** copies the chosen clip (a tag's copy can then be changed here). In the Frames tab, **＋ Add frames ▾** shows the sheet's frames: click one to add it after the picked frame. Double-click a clip of your own to rename it.
+6. **Make a clip of your own:** the ribbon's **New** makes an empty one; **Copy** copies the chosen clip (a tag's copy can then be changed here). In the Frames tab, **＋ Add frames ▾** shows the sheet's frames: click one to add it after the picked frame. Double-click a clip of your own to rename it.
 7. **Change frames of your own clips:** click a frame to pick it (Ctrl+click or Shift+click for several), then set its **time**, drag it to a new place, or press **Delete** to take it out.
 8. **Close the file:** the **×** on either tab closes both.
 
@@ -84,7 +86,7 @@ The Sprite component's clip settings:
 | Clip time | How far into the clip it is, in seconds. Give a crowd of copies different times so they don't all step in step. |
 | Frame | The frame shown when no clip plays. |
 
-A clip's settings in the Clips tab:
+A clip's settings in the Clip tab:
 
 | Setting | What it does |
 |---|---|
@@ -96,7 +98,7 @@ A clip's settings in the Clips tab:
 ## Shortcuts
 | Action | Shortcut |
 |---|---|
-| Rename a clip (your own clips) | Double-click it in the Clips tab (`Enter` keeps the name, `Esc` leaves it) |
+| Rename a clip (your own clips) | Double-click it in the Frames tab's list of clips (`Enter` keeps the name, `Esc` leaves it) |
 | Pick a frame | Click it |
 | Pick several frames | `Ctrl` + click, or `Shift` + click for a run |
 | Move picked frames (your own clips) | Drag them |
@@ -106,7 +108,7 @@ A clip's settings in the Clips tab:
 
 ## Tips and common problems
 - **Problem:** sprites don't move in the viewport. **Why:** the editor rests unless something changes. **Fix:** tick **Preview animation** in the viewport's **≡** menu, or press **Play**.
-- **Problem:** a tag's frames can't be moved, timed or taken out. **Why:** a tag's frames are Aseprite's, so saving there keeps both in step. **Fix:** change them in Aseprite, or **⧉ Copy** the clip to change the copy here.
+- **Problem:** a tag's frames can't be moved, timed or taken out. **Why:** a tag's frames are Aseprite's, so saving there keeps both in step. **Fix:** change them in Aseprite, or **Copy** the clip (on the ribbon) to change the copy here.
 - **Problem:** an event doesn't play a sound. **Why:** no sound event has its name. **Fix:** name it after the sound event (`footstep` or `sfx/footstep`), or pick one from **◆ ▾**.
 - **Problem:** a whole field of crops sways in step. **Fix:** give each a slightly different **Clip time**.
 - **Problem:** two footsteps in a ping-pong walk. **Why:** a ping-pong shows its middle frames twice a pass, there and back. **Fix:** put the event on the first or last frame, or use **Forward** for walks.

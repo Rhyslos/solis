@@ -120,8 +120,8 @@ const KEPT: [(&str, usize, &str); 12] = [
     ),
     (
         "map_tab.rs",
-        3,
-        "over a terrain's own colour: the wall mark, a count; the base layer's amber",
+        2,
+        "over a terrain's own colour: the wall mark, a count",
     ),
     (
         "mixer_view.rs",

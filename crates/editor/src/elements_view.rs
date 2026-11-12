@@ -305,6 +305,27 @@ fn rows(
     }
 }
 
+/// The project's pictures, for the canvas's Image tool (round 3,
+/// `07-ui-editor-a.png`): a click on one chooses it and takes the tool.
+pub(crate) fn pictures(ui: &mut Ui, doc: &mut crate::screen_doc::ScreenDoc, files: &[String]) {
+    if files.is_empty() {
+        ui.label(RichText::new("No pictures in the project yet.").color(crate::theme::text_weak()));
+        return;
+    }
+    for file in files {
+        let chosen = doc.picture.as_deref() == Some(file.as_str());
+        if ui
+            .selectable_label(chosen, file)
+            .on_hover_text("Draw this picture with the Image tool")
+            .clicked()
+        {
+            doc.picture = Some(file.clone());
+            doc.tool = crate::canvas_tools::CanvasTool::Image;
+            doc.pen.clear();
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "elements_view_tests.rs"]
 mod tests;

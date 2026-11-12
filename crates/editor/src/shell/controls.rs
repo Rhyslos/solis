@@ -345,7 +345,7 @@ pub(crate) fn with_list(
                 Entry::Built((words_shown, command)) => match command.why_not(w) {
                     None => {
                         if ui
-                            .button(words_shown)
+                            .button(words_shown.as_ref())
                             .on_hover_text(command.hover_text(w))
                             .clicked()
                         {
@@ -354,7 +354,7 @@ pub(crate) fn with_list(
                         }
                     }
                     Some(_) => {
-                        let faint = RichText::new(words_shown).color(tokens::text_faint());
+                        let faint = RichText::new(words_shown.as_ref()).color(tokens::text_faint());
                         ui.add(egui::Label::new(faint).selectable(false))
                             .on_hover_text(command.hover_text(w));
                     }

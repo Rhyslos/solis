@@ -3,6 +3,7 @@
 //! sprites, undo over the tabs, closing, and the layout without them.
 
 use super::*;
+use crate::WorkbenchAction;
 use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
 use crate::sprite_sheets::SheetState;
 use crate::test_support::*;
@@ -110,14 +111,10 @@ fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
     w.open_frames("walker.solframes");
     let editor = w.open.frames_editor.as_mut().unwrap();
     assert!(editor.set_speed(2.0));
-    let mut actions = Vec::new();
-    w.frames_tabs_done(
-        crate::panels::FramesOut {
-            changed: true,
-            ..Default::default()
-        },
-        &mut actions,
-    );
+    w.frames_tabs_done(crate::panels::FramesOut {
+        changed: true,
+        ..Default::default()
+    });
     let texts = saved(&w.open.outbox);
     assert_eq!(texts.len(), 1);
     assert!(texts[0].contains("clip1 = [\"wave\", 2.0"), "{}", texts[0]);
@@ -205,7 +202,8 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
 fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
     let (mut w, _, _) = with_clips();
     w.open_frames("walker.solframes");
-    w.show_panel(Panel::Clips);
+    // A clip's settings are its own Clip shelf tab (round 3).
+    w.show_panel(Panel::Clip);
     let mut h = harness(w);
     h.run();
     h.run();

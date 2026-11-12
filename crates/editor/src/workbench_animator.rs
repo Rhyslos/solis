@@ -71,6 +71,8 @@ impl Workbench {
         }
         self.open.animator_editor = Some(AnimatorEditor::new(path.to_owned(), file));
         self.show_panel(Panel::Animator);
+        // What is picked in its graph, on the shelf (round 3).
+        self.show_panel(Panel::Properties);
     }
 
     /// Makes a new animator file in `folder` (inside the assets), with one
@@ -170,4 +172,4 @@ impl Workbench {
 
 #[cfg(test)]
 #[path = "workbench_animator_tests.rs"]
-mod tests;
+pub(crate) mod tests;

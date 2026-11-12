@@ -10,11 +10,11 @@ For a sprite that plays clips, use [sprites](sprites.md) and [sprite animation](
 
 ## How to use it
 
-1. In the Library, right-click a picture (a PNG, JPEG or Aseprite file) and choose **Atlas Crop…**. The **Atlas Crop** tab opens on the **Library** tab, beside the Library, showing the picture, and Solis makes a file beside it to keep the crops: `sprites/tools.png` gets `sprites/tools.atlas.lst`.
-2. Set the **Grid** to the size the pictures are drawn on (16 × 16 for most pixel art). Crops snap to it, so a quick drag catches a whole tile.
-3. **Drag on the picture** to draw a crop. It's named `Crop`, `Crop2`… at first: type a better name in **Name** and press **Rename** (or Enter). A name starts with a letter and holds only letters, digits and `_`.
-4. Or press **Crop every tile**: a crop for every grid cell with something drawn in it, named by its column and row (`Tile_3_0`).
-5. Click a crop to pick it; **Delete crop** (or Delete with the pointer over the tab) removes it. Every change is saved at once, and **Ctrl+Z** over the tab undoes it. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
+1. In the Library, right-click a picture (a PNG, JPEG or Aseprite file) and choose **Atlas Crop…**. A **Library tools · Picture** tab opens after Library in the tab bar (a [contextual tab](concepts.md#the-window): it is there only while the picture's crops are open), with the picture as its document and its crops on the **Crops** shelf tab. Solis makes a file beside the picture to keep the crops: `sprites/tools.png` gets `sprites/tools.atlas.lst`. **‹ Back to Library**, at the right of the document's tab, goes back to the Library and leaves the crops open.
+2. Set the **Grid** at the top of the Crops tab to the size the pictures are drawn on (16 × 16 for most pixel art); the ribbon's **Grid** group says it too. Crops snap to it, so a quick drag catches a whole tile.
+3. **Drag on the picture** to draw a crop. It's named `Crop`, `Crop2`… at first: type a better name in **Name**, in the Crops tab's right-hand column, and press **Rename** (or Enter). A name starts with a letter and holds only letters, digits and `_`.
+4. Or press **Every tile** in the ribbon's **Crop** group: a crop for every grid cell with something drawn in it, named by its column and row (`Tile_3_0`).
+5. Click a crop, on the picture or in the Crops list (its size and place beside its name), to pick it; the ribbon's **Delete**, **Delete crop** or the Delete key over the picture removes it. **Zoom** in the ribbon's Grid group shows the picture at a chosen size (the wheel zooms too). Every change is saved at once, and **Ctrl+Z** over the tab undoes it. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 6. Later, double-click the `.atlas.lst` file in the Library to open its picture's crops again.
 
 Game code names each crop by its picture's path and its name, from `solis/project.lst`: `fetch "solis/project":Picture;` then `Picture.Sprites.Tools.Axe` for `sprites/tools.png`'s Axe. A [screen](screens.md) shows one with `image "sprites/tools.png#Axe";`: the picture's path, `#`, and the crop's name.
@@ -23,7 +23,8 @@ Game code names each crop by its picture's path and its name, from `solis/projec
 
 | Setting | What it does |
 |---|---|
-| Grid | The size, in the picture's pixels, crops snap to when drawn and that **Crop every tile** cuts by. |
+| Grid | The size, in the picture's pixels, crops snap to when drawn and that **Every tile** cuts by. |
+| Zoom | How big the picture is shown (the ribbon's list, or the wheel). |
 | Name | The picked crop's name, as game code uses it. |
 
 ## Shortcuts
@@ -32,16 +33,16 @@ Game code names each crop by its picture's path and its name, from `solis/projec
 |---|---|
 | Draw a crop | Drag with the left button on the picture |
 | Pick a crop | Click it |
-| Delete the picked crop | `Delete`, with the pointer over the tab |
+| Delete the picked crop | `Delete`, with the pointer over the picture or the Crops tab |
 | Zoom | Mouse wheel over the picture |
 | Move the picture | Drag with the middle button |
-| Undo, redo | `Ctrl + Z`, `Ctrl + Y` (pointer over the tab) |
+| Undo, redo | `Ctrl + Z`, `Ctrl + Y` (pointer over the picture or the Crops tab) |
 
 ## Tips and common problems
 
 - **Problem:** the tab says the picture isn't in the project. **Why:** an atlas file belongs to the picture beside it, by its file name, and that picture was moved or renamed. **Fix:** move the `.atlas.lst` file beside the picture, or rename it to match (`tools.png` and `tools.atlas.lst`).
 - **Problem:** a crop isn't offered to game code. **Why:** its name, or a folder or picture name in its path, can't be a Lust name (the Console says which). **Fix:** rename it: start with a letter, and use only letters, digits and `_`.
-- **Problem:** Crop every tile made fewer crops than there are cells. **Why:** empty cells (every pixel see-through) are left out, and so are cells a crop already covers exactly. That's on purpose.
+- **Problem:** Every tile made fewer crops than there are cells. **Why:** empty cells (every pixel see-through) are left out, and so are cells a crop already covers exactly. That's on purpose.
 
 ## Related
 

@@ -50,6 +50,9 @@ pub const RIBBON_GROUP_PAD: [f32; 3] = [4.0, 10.0, 2.0];
 pub const RIBBON_GAP: f32 = 2.0;
 /// A large ribbon button's size.
 pub const RIBBON_BIG: [f32; 2] = [50.0, 44.0];
+/// The room either side of a large button's word when the word is
+/// wider than the button. Solis's own.
+pub const RIBBON_BIG_WORD_PAD: f32 = 6.0;
 /// A large ribbon button's icon.
 pub const RIBBON_BIG_ICON: f32 = 18.0;
 /// The gap between a large ribbon button's icon and its label.
@@ -112,6 +115,9 @@ pub const SHELF_MIN_H: f32 = 80.0;
 pub const CENTER_MIN_H: f32 = 120.0;
 /// The Scene (Area) column's width (spec 205: 220 to 240).
 pub const SCENE_COLUMN_W: f32 = 240.0;
+/// A tileset's Terrains column on its shelf tab (round 3,
+/// `02-tileset-editor.png`: the list and the chosen terrain).
+pub const TERRAINS_COLUMN_W: f32 = 630.0;
 /// The Assets (Library) column's width (spec 207: 280 to 320).
 pub const ASSETS_COLUMN_W: f32 = 300.0;
 /// The Placement column on the Place shelf tab (spec 270: 250 to 280).
