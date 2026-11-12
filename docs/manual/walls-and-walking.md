@@ -21,7 +21,7 @@ Three parts work together:
 
 **Walk a character**
 1. Select your player's entity (one with a [Sprite](sprites.md), say).
-2. In **Properties**, choose **Add component > Collider2D**. Leave its shape a **Circle** (circles slide round corners best) and set its **Radius** to about a third of the sprite's width. Set **Up** to put the circle at its feet. A green outline shows it in the viewport.
+2. In **Properties**, choose **+ Component › Collider2D**. Leave its shape a **Circle** (circles slide round corners best) and set its **Radius** to about a third of the sprite's width. Set **Up** to put the circle at its feet. A green outline shows it in the viewport.
 3. Tick **Character**.
 4. Fetch the kit's walker in your game code (`main.lst`):
 
@@ -30,7 +30,7 @@ Three parts work together:
    end
    ```
 
-5. Save, then in **Properties** choose **Add component > TopDownController**.
+5. Save, then in **Properties** choose **+ Component › TopDownController**.
 6. Press **Play** and walk with WASD or the arrow keys. It stops at solid tiles and other colliders and slides along them.
 
 **Walk an NPC from your own code**
@@ -80,7 +80,7 @@ When an entity with a Collider2D is despawned, its collider goes with it at once
 | Across, Up | Where the shape's middle is from the entity's place, in pixels. Raise a character's circle to its feet so its head can overlap things above it, as top-down games do. |
 | Character | Ticked: game code walks it (`walk`, or the TopDownController) and it slides along what's in its way. Unticked: solid and still. |
 
-Pixels become metres with the project's 2D settings (**File > Project settings**, pixels per unit).
+Pixels become metres with the project's 2D settings (**File › Project settings**, pixels per unit).
 
 **TopDownController**
 

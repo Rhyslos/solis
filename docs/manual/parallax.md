@@ -13,7 +13,7 @@ Top-down games rarely need it: everything there is about the same distance from 
 **A background**
 1. Draw the layer in Aseprite: a line of hills, say, as wide as you like. For a layer that repeats, make its left and right edges meet.
 2. Drag it from the Library into the viewport, so it's a sprite. Put it where it should be in the game's first picture: around where your game's camera starts.
-3. In **Properties**, choose **Add component > Parallax**.
+3. In **Properties**, choose **+ Component › Parallax**.
 4. Set **Scroll across** and **Scroll up**: 0.2 for faraway mountains, 0.5 for hills, 0.8 for trees just behind the action. Leave **Repeat across** ticked so the hills never run out.
 5. Press **Play** and move your character. The hills move slower than the ground.
 

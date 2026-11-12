@@ -19,7 +19,7 @@
 2. Type a command, such as `select Crate`, and press **Enter**. The Console repeats it after a `›`, then answers: what it found, or, if something's wrong, why (in red).
 3. The command line keeps the keyboard, ready for the next command. Press **Esc** or click elsewhere to leave it.
 4. **Up** and **Down** bring back earlier commands. Solis remembers the last 100, even after it's closed.
-5. **Tab** finishes what you're typing: a command's name, an entity's name after `select`, or a component's setting after `get` and `set`. If several fit, they're listed above the command line; type a little more and press Tab again.
+5. **Tab** finishes what you're typing: a command's name, an entity's name after `select`, or a component's setting after `get` and `set`. If several fit, they're listed at the right of the command line, after a **Tab** key; type a little more and press Tab again.
 
 Names never care about capitals. A name with spaces goes in quotes: `select "Point light 1"`.
 

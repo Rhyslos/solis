@@ -8,7 +8,7 @@ Every area in Solis is built the same way, so once you know this you can underst
 - An **entity** is one thing: the sun, a lamp, an imported model, the sky. On its own it is only a name.
 - **Components** make it something. A **Transform** gives it a place in the world, a **Light** makes it shine, a **Model** draws an imported model, an **Environment** sets the sky and fog, a **Camera** is what the game looks through ([Play mode](play-mode.md)), and a **RigidBody** and a **Collider** make it take part in [physics](physics.md).
 
-A lamp is just an entity with a Transform and a Light. Give a model a Light (**Add component > Light**) and it shines like a lamp too. Your game's own code adds components of its own ([Game code](game-code.md#components)), shown the same way.
+A lamp is just an entity with a Transform and a Light. Give a model a Light (**+ Component › Light**) and it shines like a lamp too. Your game's own code adds components of its own ([Game code](game-code.md#components)), shown the same way.
 
 ## How to use it
 
@@ -22,7 +22,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 **Shared files:** a file several entities use, such as a model or sprite sheet, says **shared by 3** beside it. Changing the file itself (in Aseprite, say) changes all of them, so this tells you before you do.
 
 **Add an entity**
-- **Home > Empty** adds an empty one (only a Transform) at the point the camera looks at. **Light** beside it adds a point light, and its small arrow lists the spotlight ([lights](lights.md)); **Camera**, **Sprite** and **Tile map** are there too; importing a model adds an entity for it.
+- **Home › Empty** adds an empty one (only a Transform) at the point the camera looks at. **Light** beside it adds a point light, and its small arrow lists the spotlight ([lights](lights.md)); **Camera**, **Sprite** and **Tile map** are there too; importing a model adds an entity for it.
 
 **Add or remove a component**
 - Click **+ Component** at the top right of Properties, type part of a name to narrow the list, and pick one (or press Enter for the first): a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings. The list is in two groups: **Built in** (Solis's own) and **Game code** (the ready-made kit's and your own); point at one to see what it does.
@@ -36,7 +36,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 **Find, fold, hide and lock** in the Area column
 - **Search** (the magnifier in the Area column's header): a field opens under the header; type part of a name to list only the entities called that, with what they belong to. **Esc** empties and closes it.
 - **▾ / ▸** before an entity with children folds them away or shows them again. The header's fold button folds everything; its **⋯** has **Unfold everything**, **Fold everything**, **Show everything hidden** and **Unlock everything**. Selecting something in the viewport unfolds the way to it, so you can see it in the list.
-- Point at a row to see its two switches on the right: the **eye** hides the entity in the editor (it isn't drawn, and nor is anything under it), and the **padlock** locks it, so clicks in the viewport pass through it to what's behind (handy for a floor you keep clicking by mistake). The switches stay showing while they're on. **View > Show everything hidden** and **Unlock everything** turn them all off.
+- Point at a row to see its two switches on the right: the **eye** hides the entity in the editor (it isn't drawn, and nor is anything under it), and the **padlock** locks it, so clicks in the viewport pass through it to what's behind (handy for a floor you keep clicking by mistake). The switches stay showing while they're on. **View › Show everything hidden** and **Unlock everything** turn them all off.
 - Hiding and locking are only how you see the area while you work: they aren't saved in the area, aren't undo steps, and don't change the game.
 
 **Copy settings from one entity to another**
@@ -82,8 +82,8 @@ The **Transform** every placed entity has:
 - **Problem:** Properties says **Missing component**. **Why:** the area uses a component Solis doesn't know, such as one from game code that isn't there. **Fix:** nothing is lost: its values are kept as they are. Click **Remove** if you don't need it.
 - **Problem:** my entities are gone after closing Solis. **Why:** the area wasn't saved. **Fix:** save with **Ctrl + S** ([Saving areas](saving-areas.md)); Solis asks before closing with unsaved changes.
 - **Problem:** I dragged an entity onto another and nothing happened. **Why:** an entity can't go under itself or its own children (that would make a loop).
-- **Problem:** something is missing from the viewport. **Why:** it (or something it belongs to) is hidden with the eye in the Area panel. **Fix:** View > Show everything hidden.
-- **Problem:** clicking something in the viewport selects what's behind it. **Why:** it's locked (the padlock). **Fix:** click its padlock, or View > Unlock everything.
+- **Problem:** something is missing from the viewport. **Why:** it (or something it belongs to) is hidden with the eye in the Area panel. **Fix:** **Show everything hidden**, in the Area column's **⋯** menu.
+- **Problem:** clicking something in the viewport selects what's behind it. **Why:** it's locked (the padlock). **Fix:** click its padlock, or **Unlock everything** in the Area column's **⋯** menu.
 - Every change here can be undone with **Ctrl + Z** ([Undo and redo](undo.md)).
 
 ## Related

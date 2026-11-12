@@ -6,14 +6,14 @@
 
 When you want someone else to try your game: a friend, a tester, or yourself on another computer. They get a folder with a program named after your game. Double-clicking it starts the game straight away, filling its window, with no launcher, no editor and nothing to install.
 
-It's a **playtest** build, made in seconds, because the game's Lust and Lua code runs as it does when you press Play. A finished release with an installer comes later (Phase 18). Until then, a game's own Rust code isn't built into an export.
+It's a **playtest** build, made in seconds, because the game's Lust and Lua code runs as it does when you press Play. A finished release with an installer comes later (the Build tab shows its place: Targets, Build, Installer and Your Rust code are [unfinished parts](unfinished-parts.md)). Until then, a game's own Rust code isn't built into an export.
 
 ## How to use it
 
 1. Open your project, and save the area your game starts in.
-2. Choose **Export for playtesting…** on the Home ribbon's Project group or the Build tab (or search for it). It opens **File › Project settings › Build**.
+2. Click **Build** in the tab bar (or **Build** in the Home ribbon's Project group, or search for **Export for playtesting…**). The Build tab is **Export for playtesting** as a page, with the [Console](console.md) on the shelf under it. The same settings are also in **File › Project settings › Build**.
 3. Check the settings (see the table below). They start from your project's name and the open area, and next time from what you chose last. The name, area and window are remembered with the project. The folder is remembered by Solis on this computer, so a project you got from someone else never decides where its export goes.
-4. Click **Export** at the end of the Export row. The card beside the settings and the [Console](console.md) say where it went. Click **Open folder** to see it.
+4. Click **Export** at the end of the Export row. The card beside the settings and the Console say where it went. Click **Open folder** on the card, or on the Build tab's ribbon, to see it.
 5. Zip that folder (in Windows Explorer, right-click it, then **Send to > Compressed (zipped) folder**) and send the zip.
 
 Your friend unzips it (all of it, somewhere they can write, such as their Documents) and double-clicks **`<Game>.exe`** inside. Double-clicking it inside the zip doesn't work: Windows takes only the program out, without the game beside it.
@@ -60,9 +60,9 @@ In an exported game, every key is the game's, Esc included.
 - **Problem:** you exported to a folder on another computer (`\\server\share\…`), and next time the page suggests Documents. **Why:** only a folder on this computer's own drives is suggested again, so opening the page never reaches for another computer. **Fix:** type or choose the network folder each time.
 - **Problem:** the game says "The game's files can't be read", or "The game stopped". **Why:** the `game` folder is missing or damaged, or it's somewhere the game can't write (the first start writes a cache into `game/`). **Fix:** unzip the whole export again, somewhere like Documents. The message names the log with more.
 - **Problem:** the export is big. **Why:** it holds the program and everything in the project's assets, used or not. **Fix:** move files the game doesn't use out of the assets.
-- **Problem:** Windows warns about the program when your friend opens it. **Why:** it isn't signed, as programs from big companies are. **Fix:** they choose **More info > Run anyway**. Send builds only to people who trust you.
+- **Problem:** Windows warns about the program when your friend opens it. **Why:** it isn't signed, as programs from big companies are. **Fix:** they choose **More info › Run anyway**. Send builds only to people who trust you.
 - **Problem:** saves from an older build are gone. **Why:** the game's name changed, so the saves folder did too. **Fix:** keep the name the same.
-- **Problem:** Rust components of your own don't run. **Why:** building a game's own Rust code comes with the full export (Phase 18). **Fix:** use Lust or Lua for now.
+- **Problem:** Rust components of your own don't run. **Why:** building a game's own Rust code comes with the full export (**Your Rust code** on the Build tab's ribbon, not built yet). **Fix:** use Lust or Lua for now.
 
 ## Related
 

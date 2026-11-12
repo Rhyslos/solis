@@ -18,19 +18,19 @@ Each step says *why* as well as *what*, so you can change things and make the ga
 ### 1. Make a project and an area
 A [project](concepts.md#projects) is a folder holding everything your game is made of. An [area](concepts.md#the-area) is one level (or menu, or room) in it.
 
-1. **File > New project** (or **New project** on Recent projects), make an empty folder called `Platformer`, and choose it.
+1. **File › New project** (or **New project** on Recent projects), make an empty folder called `Platformer`, and choose it.
 2. Save the empty area: **Ctrl + S**, name it `level`. Solis suggests the `assets/areas` folder; that's fine.
 3. Look in pixels: click the **Perspective ▾** pill at the top left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
 
-**Why 2D?** A platformer is seen from the side. In Solis, a 2D game lies flat and is seen from straight above, so across the screen is *x* and up the screen is *y*. The project's 2D settings (**File > Project settings**) say 16 pixels make one metre, so one 16-pixel tile is one metre. Every number in this guide is in metres, so think of a metre as a tile.
+**Why 2D?** A platformer is seen from the side. In Solis, a 2D game lies flat and is seen from straight above, so across the screen is *x* and up the screen is *y*. The project's 2D settings (**File › Project settings**) say 16 pixels make one metre, so one 16-pixel tile is one metre. Every number in this guide is in metres, so think of a metre as a tile.
 
 ### 2. Build the level from tiles
 A [tile map](tile-maps.md) is a grid of cells, each painted with a [terrain](concepts.md#2d). Terrains come from a **tileset**. We need two: *sky* (empty air) and *ground* (solid).
 
-1. **Make the tileset:** right-click an empty spot in the Library and choose **New > Tileset**. Solis makes one with three terrains (grass, tilled, water) and opens it in the **Tileset** tab.
+1. **Make the tileset:** right-click an empty spot in the Library and choose **New › Tileset**. Solis makes one with three terrains (grass, tilled, water) and opens it in the **Tileset** tab.
 2. **Turn grass into sky:** choose *grass*, and in **Properties** rename it `sky` and make its colour light blue. The first terrain fills every new map, which is why the sky goes first.
 3. **Turn tilled into ground:** rename it `ground` and make it brown. Leave water as it is.
-4. **Make the map:** **New > Tile map** in the Library. It's filled with sky. Click it in the Library and, in Properties, set its **Size** to 60 across and 17 up: 17 tiles is about one screen high.
+4. **Make the map:** **New › Tile map** in the Library. It's filled with sky. Click it in the Library and, in Properties, set its **Size** to 60 across and 17 up: 17 tiles is about one screen high.
 5. **Place it:** double-click the map in the Library. It appears in the viewport, where you're looking.
 6. **Select it** in the Area panel. The **Map** tab opens beside Properties, and the painting tools appear at the bottom of the viewport.
 7. **Make ground solid:** in the Map tab, under **Terrains**, **right-click** ground's swatch and tick **Solid**. Solid cells are walls and floors: nothing with a body passes into them.
@@ -49,7 +49,7 @@ Both appear in the Library. A picture becomes a [sprite](sprites.md) when you pl
 
 ### 4. Place the hero and give it a body
 1. **Drag `hero.png` into the viewport**, into the sky just above the floor. An entity called *hero* appears, with a **Sprite** component showing the picture.
-2. With it selected, in **Properties** choose **Add component > Collider2D**. This gives it a shape for [2D physics](walls-and-walking.md), drawn as a green outline.
+2. With it selected, in **Properties** choose **+ Component › Collider2D**. This gives it a shape for [2D physics](walls-and-walking.md), drawn as a green outline.
 3. Set its **Shape** to **Box**, **Width** 12 and **Height** 16 (in pixels), and **Up** 8 so the box sits on the hero's feet instead of being cut in half by them.
 4. Tick **Character**. A character is moved by game code and stops at walls and floors instead of passing through them.
 
@@ -60,7 +60,7 @@ If you press **Play** now, nothing happens yet: the hero has a body, but nothing
 ### 5. Write the hero's code
 Game code in Solis is written in [Lust](game-code.md). A **component** you write in Lust works like Solis's own: you add it to an entity, set its fields in Properties, and its `update` runs every [tick](concepts.md#game-code) while the game plays (60 times a second).
 
-1. Right-click in the Library and choose **New > Lust code file**. The first one is always `main.lst`, at the top of `assets`: your game's code starts there. It opens in your code editor (Ledger).
+1. Right-click in the Library and choose **New › Lust code file**. The first one is always `main.lst`, at the top of `assets`: your game's code starts there. It opens in your code editor (Ledger).
 2. Make a second one the same way. It's called `component.lst`; right-click it, choose **Rename…** and call it `hero.lst`.
 3. Replace everything in `hero.lst` with this, and save:
 
@@ -129,9 +129,9 @@ end
 **Why `main.lst` fetches `hero.lst`:** Lust reads `main.lst` first, then each file it fetches, and each file *those* fetch. A file nothing reaches isn't part of the game. For a big game, `main.lst` stays short and fetches a few files that each fetch their own; this is how code stays tidy as it grows.
 
 ### 6. Make it play
-1. Select the hero. In Properties, choose **Add component > Hero**. Its four fields appear.
-2. Add a camera: **Home > Camera**. In the 2D view it's a 2D camera, and a dashed frame labelled **Game screen** shows what it sees.
-3. With the camera selected, **Add component > FollowCamera2D**. This is a ready-made component from Solis's kit. Set its **target** to the hero and its **bounds** to the map's entity, so it follows the hero and never shows past the map's edges.
+1. Select the hero. In Properties, choose **+ Component › Hero**. Its four fields appear.
+2. Add a camera: **Home › Camera**. In the 2D view it's a 2D camera, and a dashed frame labelled **Game screen** shows what it sees.
+3. With the camera selected, **+ Component › FollowCamera2D**. This is a ready-made component from Solis's kit. Set its **target** to the hero and its **bounds** to the map's entity, so it follows the hero and never shows past the map's edges.
 4. Save (**Ctrl + S**) and press **Play**. Click the Game panel so it gets the keys.
 5. Run with **A** and **D** (or the arrows), jump with **Space**. Press **Stop** when you're done: everything goes back to how it was before Play.
 
@@ -177,7 +177,7 @@ end
 fetch "coin":[Coin];
 ```
 
-3. Drag `coin.png` into the viewport, somewhere the hero can reach (on a platform, say). **Add component > Coin**, and set its **player** to the hero.
+3. Drag `coin.png` into the viewport, somewhere the hero can reach (on a platform, say). **+ Component › Coin**, and set its **player** to the hero.
 4. **Make more coins:** select the coin and press **Ctrl + D** to duplicate it, then drag the copy somewhere else. Copies keep their Coin and its player.
 5. Play. Touch a coin: it vanishes, and the [Console](console.md) says *Got a coin!*
 
@@ -223,7 +223,7 @@ The fields of the two components you wrote:
 ## Tips and common problems
 - **Problem:** the hero falls through the floor. **Why:** the ground terrain isn't solid, or the hero's Collider2D isn't ticked Character. **Fix:** right-click ground's swatch in the Map tab and tick Solid (press **Walls** to check), and check the Collider2D.
 - **Problem:** nothing happens when I press keys. **Why:** the Game panel doesn't have the keys, or the hero has no Hero component. **Fix:** click inside the Game panel while playing; check Properties for Hero; check [Problems](problems.md) for mistakes in the code.
-- **Problem:** Hero or Coin isn't in the Add component menu. **Why:** the code has a mistake, or `main.lst` doesn't fetch the file (a file nothing fetches isn't part of the game). **Fix:** look in Problems, and check the `fetch` lines in `main.lst`.
+- **Problem:** Hero or Coin isn't in the **+ Component** list. **Why:** the code has a mistake, or `main.lst` doesn't fetch the file (a file nothing fetches isn't part of the game). **Fix:** look in Problems, and check the `fetch` lines in `main.lst`.
 - **Problem:** the Game panel shows only sky. **Why:** the camera isn't following, or is looking somewhere else. **Fix:** check the camera's FollowCamera2D **target** is the hero.
 - **Problem:** the hero sometimes won't jump. **Why:** it only jumps from the floor, and you pressed Space while it was still in the air. **Fix:** that's how it's meant to work; for a more forgiving jump, see the idea below.
 - **Problem:** the hero's feet sink into the floor or float above it. **Why:** the box isn't lined up with the picture. **Fix:** set the Collider2D's **Up** to half its **Height**.
