@@ -11,11 +11,11 @@ This page covers the groundwork: setting a project up for 2D, looking at it in p
 
 ## How to use it
 1. **Set the project's 2D settings:** **File > Preferences**, then **2D** under *This project*. The standard ones suit most pixel-art games: 480 × 270, 16 pixels to a metre and 16-pixel tiles. They're saved in the project (`pixels.solpix`), so everyone working on it shares them.
-2. **Look in pixels:** in the viewport, the **Perspective ▴** button at the bottom left, then **2D**. The view looks straight down at the ground. The grid is the tile size, and the corner shows the zoom. Beside the pointer, a small readout says where it is in the game's pixels (`x 192 · y 64 px`, with y counting down the picture as in pixel-art programs) and, with a tile map selected, the cell under it (`cell 12, 4`), so you can place things exactly without counting grid lines.
+2. **Look in pixels:** in the viewport, the **Perspective ▾** pill at the top left, then **2D**. The view looks straight down at the ground. The grid is the tile size, and the corner shows the zoom. Beside the pointer, a small readout says where it is in the game's pixels (`x 192 · y 64 px`, with y counting down the picture as in pixel-art programs) and, with a tile map selected, the cell under it (`cell 12, 4`), so you can place things exactly without counting grid lines.
    - **Hold the right or middle button and drag** to slide the view.
    - **Turn the wheel** to zoom in or out one whole step at a time (100%, 200%, 300%…), towards the pointer. At whole steps every pixel of your game is the same size on screen, so nothing blurs.
 3. **Add a 2D camera:** with the 2D view in use, **Home > Camera**. It goes over the middle of the view, on a whole pixel, as a 2D camera. A dashed frame shows what it sees, labelled **Game screen** for the camera the game looks through (the first camera in the area). To turn an existing camera into one, set its **View** to **2D** in Properties.
-4. **Move things on whole pixels:** in the 2D view, moves land on whole pixels of your game by themselves, so nothing rests between two pixels and looks smeared. **Snap ▴** in the bottom-right corner changes that to whole tiles, or off. Hold **Ctrl** while dragging to flip it for one move.
+4. **Move things on whole pixels:** in the 2D view, moves land on whole pixels of your game by themselves, so nothing rests between two pixels and looks smeared. **Snap ▾** in the bottom-right corner changes that to whole tiles, or off. Hold **Ctrl** while dragging to flip it for one move.
 5. **Press Play.** The Game panel draws the game at its base resolution and scales it up to fill the panel in whole steps, with black bars round the edge if the panel doesn't divide evenly. Move the 2D camera (game code moves it like any entity) and the picture slides smoothly, without shimmering.
 
 ## Settings
@@ -43,7 +43,7 @@ This page covers the groundwork: setting a project up for 2D, looking at it in p
 - The 2D view's frame and the Game panel show the same thing, so you can line up a scene in the editor and know what the player will see.
 
 ## Related
-- [Settings](settings.md): the Settings window, and the This project pages.
+- [Settings](settings.md): Preferences, and Project settings with its 2D tab.
 - [Moving around the viewport](navigating-the-viewport.md): the other views.
 - [Play mode](play-mode.md): cameras and the Game panel.
 - [Concepts](concepts.md#2d): base resolution, pixels per unit, pixel-perfect, whole steps.

@@ -554,7 +554,9 @@ fn the_quote_key_is_left_alone_while_typing_elsewhere() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    // The first text box (a search box), not the command line.
+    // The first text box (the Area column's search), not the command line.
+    h.get_by_label("Search the area by name").click();
+    h.run();
     h.query_all_by_role(egui::accesskit::Role::TextInput)
         .next()
         .unwrap()

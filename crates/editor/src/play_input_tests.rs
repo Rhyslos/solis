@@ -288,18 +288,13 @@ fn the_input_actions_window_binds_what_is_pressed_and_saves() {
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
     });
-    w.open_input_window();
+    w.open_input_page();
     let mut h = harness(w);
     h.run();
     // Jump's +: listening, as its button starts (Jump is the third
     // action); the click itself isn't bound, so a frame or two pass.
-    h.state_mut()
-        .0
-        .open
-        .input_window
-        .as_mut()
-        .unwrap()
-        .listening = Some((2, crate::input_window::Slot::Inputs, 0));
+    h.state_mut().0.open.input_page.as_mut().unwrap().listening =
+        Some((2, crate::file_pages::Slot::Inputs, 0));
     h.run();
     h.run();
     h.run();

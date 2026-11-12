@@ -72,7 +72,7 @@ fn the_five_bands_have_the_design_s_heights_at_both_sizes() {
         let margin = h.get_by_label("File tab").rect().bottom() - size::TAB_BAR_H;
         let viewport = body(&h, Panel::Viewport);
         let area = body(&h, Panel::Area);
-        let library = body(&h, Panel::Library);
+        let library = body(&h, Panel::Assets);
         let properties = body(&h, Panel::Properties);
         let ribbon_foot = margin + size::TAB_BAR_H + size::RIBBON_H;
         assert_eq!(viewport.top(), ribbon_foot + size::DOC_TAB_H, "{width}");
@@ -135,7 +135,9 @@ fn ctrl_space_folds_the_shelf_and_works_while_typing() {
     h.run();
     assert!(!h.state().0.shelf_folded());
     // While typing in a field, too, and nothing is typed.
-    h.get_by_label("Search the Library").focus();
+    h.get_by_label("Search the area by name").click();
+    h.run();
+    h.get_by_label("Search the area").focus();
     h.run();
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
@@ -182,7 +184,7 @@ fn columns_wrap_under_each_other_when_narrow() {
     let h = window(700.0, 900.0, Workbench::new(info()));
     let area = body(&h, Panel::Area);
     let properties = body(&h, Panel::Properties);
-    let library = body(&h, Panel::Library);
+    let library = body(&h, Panel::Assets);
     assert_eq!(area.left(), properties.left());
     assert!(properties.top() > area.bottom(), "{area:?} {properties:?}");
     assert!(library.top() > properties.bottom());

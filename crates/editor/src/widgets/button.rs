@@ -26,6 +26,7 @@ pub struct Button<'a> {
     icon: Option<Icon>,
     header: bool,
     wide: bool,
+    after: bool,
 }
 
 impl<'a> Button<'a> {
@@ -36,6 +37,7 @@ impl<'a> Button<'a> {
             icon: None,
             header: false,
             wide: false,
+            after: false,
         }
     }
 
@@ -57,6 +59,13 @@ impl<'a> Button<'a> {
     /// With an icon before its word.
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
+        self
+    }
+
+    /// With an icon after its word: "Open the manual ↗".
+    pub fn icon_after(mut self, icon: Icon) -> Self {
+        self.icon = Some(icon);
+        self.after = true;
         self
     }
 
@@ -116,13 +125,20 @@ impl<'a> Button<'a> {
             border(ui, rect, radius, tokens::strong_line());
         }
         let mut left = rect.center().x - content / 2.0;
+        let icon_left = if self.after {
+            left + content - size::ICON_SMALL
+        } else {
+            left
+        };
         if let Some(icon) = self.icon {
             let spot = Rect::from_center_size(
-                egui::pos2(left + size::ICON_SMALL / 2.0, rect.center().y),
+                egui::pos2(icon_left + size::ICON_SMALL / 2.0, rect.center().y),
                 vec2(size::ICON_SMALL, size::ICON_SMALL),
             );
             icons::icon(ui.painter(), spot, icon, ink);
-            left += icon_w;
+            if !self.after {
+                left += icon_w;
+            }
         }
         let room = Rect::from_min_max(egui::pos2(left, rect.top()), rect.right_bottom());
         words(ui, room, Align2::LEFT_CENTER, self.label, font, ink);
@@ -143,11 +159,17 @@ fn lifted(fill: Color32, response: &Response) -> Color32 {
 /// A dashed "add" button, such as "+ Component": an outline of dashes
 /// round quiet words.
 pub fn dashed(ui: &mut Ui, label: &str) -> Response {
+    dashed_as(ui, label, label)
+}
+
+/// A dashed button showing `label` whose name, for screen readers and
+/// tests, is `name` ("Add component" for "+ Component").
+pub fn dashed_as(ui: &mut Ui, label: &str, name: &str) -> Response {
     let font = text::medium_at(text::SMALL_SIZE);
     let width = width_of(ui, label, font.clone()) + 2.0 * size::DASHED_BUTTON_PAD;
     let (rect, response) =
         ui.allocate_exact_size(vec2(width, size::DASHED_BUTTON_H), Sense::click());
-    response.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label));
+    response.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), name));
     if ui.is_rect_visible(rect) {
         let ink = if response.hovered() {
             tokens::text_primary()

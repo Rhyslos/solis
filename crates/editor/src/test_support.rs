@@ -171,7 +171,12 @@ pub(crate) fn file_item<S>(h: &mut egui_kittest::Harness<'_, S>, label: &str) {
     h.run();
     h.get_by_label("File tab").click();
     h.run();
-    h.get_by_label(label).click();
+    // The column's item: a page may have a button of the same name
+    // (Recent projects' New project), always to the column's right.
+    h.get_all_by_label(label)
+        .min_by(|a, b| a.rect().left().total_cmp(&b.rect().left()))
+        .expect("the File column has it")
+        .click();
     h.run();
 }
 

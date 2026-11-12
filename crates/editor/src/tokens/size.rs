@@ -85,6 +85,14 @@ pub const TOOLBOX_W: f32 = 44.0;
 pub const TOOL_BUTTON: f32 = 34.0;
 /// A toolbox button's icon.
 pub const TOOL_ICON: f32 = 15.0;
+/// Space above the toolbox's first tool and below its last (from the HTML).
+pub const TOOLBOX_PAD: f32 = 6.0;
+/// Space between the toolbox's tools (from the HTML).
+pub const TOOL_GAP: f32 = 2.0;
+/// How long the line between kinds of tool is (from the HTML).
+pub const TOOL_DIVIDER: f32 = 22.0;
+/// Space above and below that line (from the HTML).
+pub const TOOL_DIVIDER_GAP: f32 = 4.0;
 
 /// The shelf bar's height.
 pub const SHELF_BAR_H: f32 = 34.0;
@@ -106,6 +114,18 @@ pub const CENTER_MIN_H: f32 = 120.0;
 pub const SCENE_COLUMN_W: f32 = 240.0;
 /// The Assets (Library) column's width (spec 207: 280 to 320).
 pub const ASSETS_COLUMN_W: f32 = 300.0;
+/// The Placement column on the Place shelf tab (spec 270: 250 to 280).
+pub const PLACEMENT_COLUMN_W: f32 = 260.0;
+/// How far right of the pointer the placing label starts. Solis's own.
+pub const PLACE_LABEL_OFFSET: f32 = 18.0;
+/// The placing hint strip's height (spec 254).
+pub const PLACE_HINT_H: f32 = 30.0;
+/// The placing hint strip's widest. Solis's own: room for its five keys.
+pub const PLACE_HINT_W: f32 = 600.0;
+/// The Place shelf tab's search field (spec 272). Solis's own width.
+pub const PLACE_SEARCH_W: f32 = 180.0;
+/// The least width of a tile on the Place shelf tab (spec 272).
+pub const PLACE_TILE_MIN_W: f32 = 92.0;
 /// The least width of a shelf column: narrower than this, columns wrap
 /// under each other (spec 1143). Solis's own, from the cards' 180.
 pub const COLUMN_MIN_W: f32 = 180.0;
@@ -124,13 +144,44 @@ pub const DIVIDER_REACH: f32 = 3.0;
 pub const COLUMN_HEADER_H: f32 = 30.0;
 /// A row's, header's or shelf tab's padding at each side.
 pub const ROW_PAD: f32 = 12.0;
+/// The column of a Console line's level word ("ERROR").
+pub const LOG_LEVEL_W: f32 = 40.0;
 /// How far a tree's children are set in.
 pub const TREE_INDENT: f32 = 28.0;
+/// How much further in each level of the Area column's tree is (from the
+/// approved additions, round 2).
+pub const TREE_LEVEL: f32 = 18.0;
+/// The room before a tree row for its fold arrow.
+pub const TREE_FOLD_W: f32 = 14.0;
+/// The fold arrow itself.
+pub const FOLD_ICON: f32 = 9.0;
+/// An icon on a list row (an entity's kind, its hide and lock switches).
+pub const ROW_ICON: f32 = 12.0;
+/// The room for each of a row's hide and lock switches.
+pub const ROW_SWITCH: f32 = 16.0;
+/// A row of the Problems shelf tab (from the HTML: 26 tall, 14 in from
+/// the sides, a 13 px icon).
+pub const PROBLEM_ROW_H: f32 = 26.0;
+/// How far a Problems row's icon is in from the column's edge.
+pub const PROBLEM_ROW_PAD: f32 = 14.0;
+/// A Problems row's icon.
+pub const PROBLEM_ICON: f32 = 13.0;
 /// A track's or lane's height.
 pub const TRACK_H: f32 = 26.0;
 
 /// A field's padding at each side.
 pub const FIELD_PAD: f32 = 7.0;
+/// The column of names before a card's fields (Solis's own: the design's
+/// names are a word or two).
+pub const FIELD_LABEL_W: f32 = 84.0;
+/// Room before a field's name for the changed-from-its-start dot.
+pub const FIELD_DOT_W: f32 = 8.0;
+/// That dot.
+pub const FIELD_DOT: f32 = 5.0;
+/// The narrowest a card's field gets.
+pub const FIELD_MIN_W: f32 = 60.0;
+/// Room after a field for its way back ("↺ 1000").
+pub const FIELD_AFTER_W: f32 = 64.0;
 /// The gap between a field's parts, and between small controls.
 pub const GAP: f32 = 6.0;
 /// The gap between rows of controls.
@@ -143,6 +194,18 @@ pub const ICON_SMALL: f32 = 14.0;
 pub const PILL_H: f32 = 24.0;
 /// A floating pill's padding at each side.
 pub const PILL_PAD: f32 = 8.0;
+/// Space between pills side by side (from the HTML).
+pub const PILL_GAP: f32 = 6.0;
+/// How far pills sit from the view's edges (from the HTML).
+pub const PILL_MARGIN: f32 = 8.0;
+/// Space between a pill's icon or word and what follows it.
+pub const PILL_ICON_GAP: f32 = 6.0;
+/// The narrowest a pill's list is.
+pub const PILL_MENU_W: f32 = 180.0;
+/// An axis lock's button inside its pill.
+pub const LOCK_BUTTON: f32 = 18.0;
+/// Space between axis locks.
+pub const LOCK_GAP: f32 = 2.0;
 /// The status bar's height.
 pub const STATUS_BAR_H: f32 = 24.0;
 /// The gap between the status bar's parts.
@@ -168,6 +231,8 @@ pub const TILE_OUTLINE: f32 = 2.0;
 pub const KIND_DOT: f32 = 7.0;
 /// The least width of a tile in the Library.
 pub const TILE_MIN_W: f32 = 108.0;
+/// The line under an Assets tile for its name (spec 216).
+pub const ASSET_NAME_H: f32 = 14.0;
 /// The width of the names in a list of names and values.
 pub const KEY_COLUMN_W: f32 = 96.0;
 /// The gap between a name and its value.
@@ -255,6 +320,31 @@ pub const SETTING_FIELD_W: f32 = 200.0;
 pub const PROJECT_CARD_MIN_W: f32 = 240.0;
 /// A project card's thumbnail: its height.
 pub const PROJECT_THUMB_H: f32 = 140.0;
+/// The gap between project cards, and between the cards on Learn.
+pub const PROJECT_CARD_GAP: f32 = 16.0;
+/// A project card's words: their padding, top and bottom, sides.
+pub const PROJECT_CARD_PAD: [f32; 2] = [12.0, 14.0];
+/// The gap between the lines of a project card's words.
+pub const PROJECT_CARD_LINE_GAP: f32 = 5.0;
+/// The letter that stands for a project's picture (the approved
+/// additions, round 2), until projects have pictures.
+pub const PROJECT_LETTER: f32 = 48.0;
+/// The search in a File page's header: its width (round 2's pictures;
+/// the design's own is 260, before Sort by joined it).
+pub const PAGE_SEARCH_W: f32 = 220.0;
+/// A template's tile: its width (round 2: eight fit one row at 1440 px).
+pub const TEMPLATE_W: f32 = 126.0;
+/// A template's tile: the box over its name.
+pub const TEMPLATE_BOX_H: f32 = 84.0;
+/// The gap between template tiles.
+pub const TEMPLATE_GAP: f32 = 14.0;
+/// The gap between a template's box and its name.
+pub const TEMPLATE_NAME_GAP: f32 = 8.0;
+/// A File page's column beside its settings (Updates' notes, a page's
+/// "changed from defaults" card): its width.
+pub const PAGE_SIDE_W: f32 = 320.0;
+/// The gap between a File page's settings and the column beside them.
+pub const PAGE_SIDE_GAP: f32 = 32.0;
 
 /// The mark on a part that isn't built yet: a hollow square, this wide.
 pub const UNBUILT_MARK: f32 = 5.0;
@@ -286,6 +376,15 @@ pub const FILE_MENU_ITEM_GAP: f32 = 10.0;
 pub const MENU_PAD: f32 = 4.0;
 /// The height of a row in a menu or a drop-down list. Solis's own.
 pub const MENU_ROW_H: f32 = 24.0;
+/// The small capitals over a group of a menu's rows (from the approved
+/// additions, round 2).
+pub const MENU_CAPS_H: f32 = 20.0;
+/// Room before a menu row's words for its check mark.
+pub const MENU_CHECK_W: f32 = 21.0;
+/// A menu row's check mark.
+pub const MENU_CHECK_ICON: f32 = 11.0;
+/// Room at a menu row's right for quiet words after it (a key, a count).
+pub const MENU_AFTER_W: f32 = 24.0;
 /// A scroll bar's width. Solis's own.
 pub const SCROLL_BAR: f32 = 8.0;
 /// The width of every border and separator, before the hairline rule.

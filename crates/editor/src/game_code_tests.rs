@@ -2014,7 +2014,7 @@ fn properties_shows_game_code_s_values_as_they_are_while_playing() {
     let mut h = harness(w);
     h.run();
     assert!(
-        h.query_by_label_contains("game code's values are shown as they are now")
+        h.query_by_label_contains("What the game changes goes back by itself")
             .is_some()
     );
     assert!(

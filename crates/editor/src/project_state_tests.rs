@@ -230,7 +230,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         project,
         document,
         models,
-        export_window,
+        export,
         last_export,
         last_export_folder,
         library,
@@ -272,7 +272,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         game_components,
         editor_view,
         bindings,
-        input_window,
+        input_page,
         fixed_seed,
         game_screens,
         screen_pictures,
@@ -303,7 +303,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert_eq!(known(document), known(&fresh.document), "the components");
     assert!(models.is_empty() && library.is_empty() && folders.is_empty());
     assert!(assemblies.is_empty() && cue_sounds.is_empty());
-    assert!(export_window.is_none() && last_export.is_none());
+    assert!(export.is_none() && last_export.is_none());
     assert_eq!(last_export_folder, &None);
     assert_eq!(outbox, &Vec::new(), "nothing still to be carried out");
     assert_eq!(unsaved_prompt, &None);
@@ -340,7 +340,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(told_code_notes.is_empty() && rust_components.is_empty());
     assert_eq!(editor_view, &None);
     assert_eq!(bindings, &fresh.bindings);
-    assert!(input_window.is_none());
+    assert!(input_page.is_none());
     assert_eq!(fixed_seed, &None);
     assert!(game_screens.pictures.is_empty() && game_screens.sent.is_empty());
     same(screen_pictures, &fresh.screen_pictures, "screens' pictures");
@@ -416,7 +416,7 @@ fn work_on_the_farm(w: &mut Workbench, ids: Ids) {
     // The Library, windows, a seed.
     w.pick_in_library(MAP);
     w.open_export();
-    w.open_input_window();
+    w.open_input_page();
     w.open.fixed_seed = Some(5);
     // A play with an edit, stopped: Keep or Undo all waits.
     w.play();

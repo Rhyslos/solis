@@ -1,10 +1,11 @@
-//! File > Input in the whole window: when a change is saved.
+//! File › Project settings › Input in the whole window: when a change
+//! is saved.
 
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui_kittest::kittest::Queryable;
 
-/// The window open on a project's ready-made actions.
+/// The page open on a project's ready-made actions.
 fn opened() -> egui_kittest::Harness<'static, State> {
     let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
@@ -12,7 +13,10 @@ fn opened() -> egui_kittest::Harness<'static, State> {
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
     });
-    w.open_input_window();
+    w.open_input_page();
+    // Look, picked in the table: its card has the speeds.
+    let look = w.bindings().actions.iter().position(|a| a.is_motion());
+    w.open.input_page.as_mut().unwrap().picked = look;
     let mut h = harness(w);
     h.run();
     h.run();
@@ -91,14 +95,12 @@ fn a_typed_speed_is_saved_on_enter() {
     assert_eq!(look(&h).mouse_speed, 0.4);
 }
 
-/// The window's other controls each save once, on their click.
+/// The page's other controls each save once, on their click.
 #[test]
 fn a_click_in_the_window_saves_once() {
     let mut h = opened();
     h.state_mut().1.actions.clear();
-    h.get_all_by_label(input::MOUSE_WHEEL)
-        .next()
-        .unwrap()
+    h.get_by_role_and_label(egui::accesskit::Role::CheckBox, input::MOUSE_WHEEL)
         .click();
     h.run();
     h.run();

@@ -104,7 +104,7 @@ Pixels become metres with the project's 2D settings (**File > Project settings**
 |---|---|
 | Walk (with the TopDownController) | `W A S D`, the arrow keys, or a controller's left stick |
 
-Change them in **File > Input** (the Move action). A project with its own input actions file from before keeps its keys: add the arrows to Move there if you want them.
+Change them in **File › Project settings › Input** (the Move action). A project with its own input actions file from before keeps its keys: add the arrows to Move there if you want them.
 
 ## Tips and common problems
 - **Problem:** the character walks through a fence. **Why:** the fence's terrain isn't solid, or the character has no Collider2D ticked Character. **Fix:** right-click the fence's swatch and tick Solid; press Walls to check it shows.

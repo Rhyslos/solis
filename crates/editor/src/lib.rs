@@ -11,6 +11,7 @@ pub mod animator_editor;
 mod animator_view;
 mod area_panel;
 pub mod area_view;
+mod assets_column;
 mod atlas_editor;
 mod atlas_view;
 pub mod camera;
@@ -24,6 +25,8 @@ mod day_colours;
 pub mod document;
 mod elements_view;
 pub mod export_dialog;
+mod field_rows;
+pub mod file_pages;
 mod fonts;
 pub mod frames_editor;
 mod frames_view;
@@ -37,11 +40,9 @@ pub mod gizmo;
 mod graph_canvas;
 pub mod hints;
 pub mod icons;
-mod input_window;
 mod inspector;
 pub mod interface_look;
 mod key_owner;
-pub mod launcher;
 pub mod library;
 pub mod look;
 mod made_from;
@@ -53,6 +54,7 @@ mod own_files;
 pub mod panel;
 mod panels;
 pub mod picking;
+mod placement;
 pub mod play;
 pub mod play_changes;
 mod play_input;
@@ -61,6 +63,8 @@ pub mod problems;
 pub mod profiler;
 mod project_state;
 mod properties;
+mod properties_cards;
+mod properties_header;
 mod save_game;
 pub mod screen;
 mod screen_doc;
@@ -68,8 +72,6 @@ mod screen_pictures;
 mod screen_props;
 mod screen_ties;
 mod search;
-mod settings_appearance;
-mod settings_window;
 mod settled;
 mod sheet_view;
 pub mod shell;
@@ -87,6 +89,7 @@ pub mod tile_view;
 mod tileset_editor;
 mod tileset_view;
 pub mod tokens;
+mod toolbox;
 pub mod transforming;
 pub mod unbuilt;
 pub mod updates;
@@ -108,9 +111,9 @@ pub use area_view::{AreaView, ViewLight, ViewModel};
 pub use camera::{Camera, FlyInput, ViewKind};
 pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
+pub use file_pages::{KnownProject, ProgramFile};
 pub use game_sound::{GameSound, Hearer, SoundMode};
 pub use interface_look::InterfaceLook;
-pub use launcher::KnownProject;
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
 pub use mixer_view::MixerState;
@@ -136,17 +139,23 @@ pub use workbench_library::plain_relative;
 #[cfg(test)]
 mod game_set_tests;
 #[cfg(test)]
+mod home_screen_tests;
+#[cfg(test)]
 mod invariant_tests;
 #[cfg(test)]
 mod kit_tests;
 #[cfg(test)]
 mod kit_topdown_tests;
 #[cfg(test)]
+mod library_screen_tests;
+#[cfg(test)]
 mod open_externally_tests;
 #[cfg(test)]
 mod picture_support;
 #[cfg(test)]
 mod picture_tests;
+#[cfg(test)]
+mod placing_tests;
 #[cfg(test)]
 mod scale_levels_tests;
 #[cfg(test)]

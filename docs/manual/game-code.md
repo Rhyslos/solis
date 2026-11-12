@@ -426,7 +426,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/input` | `vec3 Input:axis(Action action)` | An axis action's x and y. |
 | `solis/input` | `string Input:binding(Action action)` | The key that sets an action off, for "Press F". |
 | `solis/input` | `Input:rebind(Action action, string input)` | Binds a new input to an action, from the next tick. |
-| `solis/project` | `state Action` | The project's input actions (`Action.Jump`), from File > Input. |
+| `solis/project` | `state Action` | The project's input actions (`Action.Jump`), from File › Project settings › Input. |
 | `solis/physics` | `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | What a line meets first: `found`, `distance`, `entity` and `normal` ([Physics](physics.md)). |
 | any entity | `vec3 position()` | Where the entity is in the world, in metres. |
 | any entity | `moveTo(vec3 place)` | Puts the entity at a place in the world. |

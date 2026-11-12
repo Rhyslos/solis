@@ -174,13 +174,13 @@ fn a_quit_handed_straight_to_the_app_while_playing_waits_too() {
 }
 
 #[test]
-fn the_question_is_asked_over_the_launcher() {
-    // Closing the editor's window with a project open goes back to the
-    // launcher, stopping the game: the question was raised behind the
-    // launcher, never drawn, and another project opened under it.
+fn the_question_is_asked_over_recent_projects() {
+    // Closing the editor's window with a project open goes back to
+    // Recent projects, stopping the game: the question must be drawn
+    // over the page, never left unseen while another project opens.
     let (mut w, lamp) = playing_with_an_edit();
-    w.back_to_launcher();
-    assert!(w.launcher_open());
+    w.show_recent_projects();
+    assert!(w.file_page_open());
     assert_eq!(w.play_state(), PlayState::Editing);
     let mut h = harness(w);
     h.run();

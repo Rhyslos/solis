@@ -7,9 +7,9 @@ When finding your way around, or making the layout suit your screen.
 
 ## How to use it
 
-This page follows what you see, in the order you meet it: the launcher Solis starts on, then the editor from its tab bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in [Settings](settings.md).
+This page follows what you see, in the order you meet it: Recent projects, the File page Solis starts on, then the editor from its tab bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in [Settings](settings.md).
 
-**The [launcher](launcher.md)** is what Solis always starts on. **Projects** lists your projects (pinned ones first, with **Search projects** and **Sort by**), beside **+ New project**, **Open project…** and **Scan a folder…**; **Learn** has four examples to start from, the first steps and a link to this manual; **Updates** shows the build you have and the newest one. Double-click a project and the editor opens with it. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. Its pages are also on the **File** tab (see below), and **Esc** leaves the launcher for the editor. See [The launcher](launcher.md).
+**[Recent projects](launcher.md)** is what Solis always starts on, in its full window: the **File** tab's first page. Your projects are cards (pinned ones first, with **Search projects**, **Sort by**, **Open… ▾** and **New project**); double-click one and the editor opens with it. Under them, **Start from a template**: an empty project or one of the four examples. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. Until a project is open the other tabs are dimmed; **Esc**, or **Carry on without a project**, opens the editor with none. See [Projects](launcher.md).
 
 **The tab bar** is the dark strip along the very top. From left to right:
 - **The logo**, in a small light tile.
@@ -47,7 +47,7 @@ Each of Home, Animate, UI and Debug remembers how you arranged its panels, separ
 
 | Item | What it does |
 |---|---|
-| Recent projects | Every project Solis knows, to open one ([The launcher](launcher.md) has the same page). |
+| Recent projects | Every project Solis knows, as cards, and templates to start from: where Solis starts ([Projects](launcher.md)). |
 | New project, Open… | Make a project in a folder, or open one ([Projects and the Library](projects-and-the-library.md)). |
 | Save all | Saves the open area. Every other file saves as you change it. |
 | Project settings | This project's settings: its 2D sizes ([Settings](settings.md)). |
@@ -78,7 +78,7 @@ What each tab shows:
 
 | Tab | Editor groups | Shelf tabs |
 |---|---|---|
-| Home | The area (its viewport); a **Game** tab beside it, brought to the front, while the game runs | **Entity**: the Area tree, Properties (with Hints under it) and the Library, side by side · Animation (not built yet) · **Console** · **Problems** (with how many) · **Map**, while an entity with a tile map is selected |
+| Home | The area (its viewport, with the toolbox down its left edge); a **Game** tab beside it, brought to the front, while the game runs | **Entity**: the Area tree, Properties (its components as cards, Hints the last) and Assets, side by side · Animation (not built yet) · **Console** · **Problems** (with how many) · **Map**, while an entity with a tile map is selected |
 | Library | The Library; a **Tileset** or a picture's crops (**Atlas Crop**) beside it while one is open | **Details**: Properties, showing the file picked · **Code**: the game's code files and what uses each · Import queue and History (not built yet) |
 | Animate | The viewport; an **Animator** beside it while one is open | Sequencer (not built yet) · **Frames** and **Clips** while a clips file is open (each with a × that closes it) · **Properties**: the animator's state picked, or the entity selected · Key (not built yet) · **Console** |
 | UI | The **Canvas** (a × closes the screen open on it) | **Screen**: Elements (the screen's pieces) and Properties (the piece picked) · **Console** |
@@ -86,16 +86,16 @@ What each tab shows:
 | Debug | The **Game** (and the viewport behind it) beside the **Profiler** | **Console** · **Problems** · Hottest functions and Memory snapshot (not built yet) |
 | Build | As Home | As Home |
 
-The panels inside are today's, each until its screen is rebuilt to the design:
+The panels inside follow the design on Home; the other tabs' panels are today's, each until its screen is rebuilt to the design:
 
 | Panel | Where | What it's for |
 |---|---|---|
 | Viewport | The area's tab on Home and Animate | The 3D world, in one, two or four views (flat ones too). See [Moving around the viewport](navigating-the-viewport.md). |
 | Game | Beside the area while playing; Debug | The running game, through its camera, when you press Play. See [Play mode](play-mode.md). |
-| Area | Home › Entity, left | Every [entity](entities.md) in the area, as a tree, with its count in the header: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
-| Properties | Home › Entity, middle; and the Details, Properties, Screen and Bus shelf tabs | The selected entity's name and [components](entities.md), each in a card with its settings, a **?** for its manual page and a **⋯** for rarer actions; the **⋯** beside the name has **Move here**, copying and pasting, and **Delete**. Some things take its place while you work on them: a sound or sprite sheet picked in the Library, a bus picked in the Mixer, the piece picked on the UI canvas, a tileset's terrains, an animator's state. |
-| Hints | Under Properties on Home › Entity | A few plain sentences about what's selected and what you can do with it; with nothing selected, how to start. Turn hints off in **File > Preferences** once you know your way around. |
-| Library | Home › Entity, right; and the whole Library tab | The open [project](projects-and-the-library.md)'s files: models, assemblies, pictures and sounds. Double-click a model or assembly, or click its +, to place it. Right-click anywhere in it, or use **+ New**, to make a code file, folder, area, tile map, tileset, animator or sound event. |
+| Area | Home › Entity, left | Every [entity](entities.md) in the area, as a tree, with its count in the header. The header's magnifier searches by name, the next button folds everything, and **⋯** unfolds everything, shows what's hidden and unlocks what's locked. Point at a row for its eye (hide) and lock; right-click it for Rename, Duplicate, Delete, Add…, Create assembly and Select all or nothing. |
+| Properties | Home › Entity, middle; and the Details, Properties, Screen and Bus shelf tabs | Along its top the selected entity: its name (click and type to rename it), what it is and what it's under, **+ Component**, and **⋯** for rarer actions. Below, each [component](entities.md) is a card with its settings, side by side as many as fit; a card's **?** opens its manual page and its **⋯** (or a right-click on the card) copies, pastes, resets or removes it. The last card is **Hints**: a few plain sentences about what's selected and what you can do with it. **Turn hints off** on it once you know your way around; **File › Preferences** turns them back on. |
+| Assets | Home › Entity, right | The Library's open folder as tiles, with **Import** last. Drag a tile into the viewport to place it, double-click it to place it where the camera looks, right-click it for the Library's menu. |
+| Library | The Library tab | The open [project](projects-and-the-library.md)'s files: models, assemblies, pictures and sounds. Double-click a model or assembly, or click its +, to place it. Right-click anywhere in it, or use **+ New**, to make a code file, folder, area, tile map, tileset, animator or sound event. |
 | Code | Library › Code | The project's game code files in Lust, Rust or Lua. See [Game code](game-code.md). |
 | Console | A shelf tab on Home, Animate, UI, Audio and Debug | Messages from the editor and the engine, and a command line. See [The Console](console.md). |
 | Problems | A shelf tab on Home and Debug | Mistakes found in the game's code and in the area, such as a missing model. See [Problems](problems.md). |
@@ -106,7 +106,7 @@ The panels inside are today's, each until its screen is rebuilt to the design:
 **The status bar** along the bottom says what's happening, so you don't have to go looking:
 - On the left, a green dot and **Ready** while the game's code is clean (Solis checks it when the project opens and each time you save a code file; hover to see when it last did), or, in red, how many mistakes it has.
 - Beside it, the branch and its changes (not built yet), then the problems as two coloured counts: red for mistakes in the game's code, amber for problems in the area. Click them to open the [Problems](problems.md) tab.
-- On the right: **Playing** or **Paused** while the game runs; **Saved**, **Unsaved changes** or **Not saved yet** for the open area ([Saving areas](saving-areas.md)); the area's name, whether the viewport shows it in 2D or 3D, and for 2D the game's size in pixels (`farm · 2D · 480 × 270`, from **File > Project settings**); then Solis's version, and **Restart to update** once an update has downloaded. For three seconds after you click a part that isn't built yet, the words before the version say so instead ([Unfinished parts](unfinished-parts.md)).
+- On the right: **Playing** or **Paused** while the game runs; **Saved**, **Unsaved changes** or **Not saved yet** for the open area ([Saving areas](saving-areas.md)); the area's name, whether the viewport shows it in 2D or 3D, and for 2D the game's size in pixels (`farm · 2D · 480 × 270`, from **File > Project settings**); what moves snap to and which way the gizmo points (**Snap 0.25 · World**, or **Snap off**); then Solis's version, and **Restart to update** once an update has downloaded. For three seconds after you click a part that isn't built yet, the words before the version say so instead ([Unfinished parts](unfinished-parts.md)).
 
 **From an older build:** panels used to be dragged anywhere and the Library could be a drawer. Neither is so now, and an arrangement you made before isn't carried over: every tab starts as the design draws it, and the Console says so once.
 
@@ -115,7 +115,7 @@ The panels inside are today's, each until its screen is rebuilt to the design:
 |---|---|
 | Reset layout (in the search, and in **File > Preferences**) | Puts the tab you're on back as it started: its shelf tab, the shelf's height, unfolded, and the split between its groups ([Settings](settings.md)). |
 | File > Preferences | The editor's own settings, such as its accent colour: see [Settings](settings.md). |
-| The viewport's ≡ menu | Switches the viewport's corner controls on and off (the search does too). |
+| The viewport's **Show ▾** pill | Switches the frame time, the axis locks and camera speed, and the toolbox on and off (the search does too). |
 
 ## Shortcuts
 | Action | Shortcut |
@@ -143,7 +143,7 @@ See [Keyboard shortcuts](keyboard-shortcuts.md) for the rest.
 - **Problem:** Properties is cramped beside the Area tree and the Library. **Why:** they share Home's shelf, until the screen is rebuilt. **Fix:** drag the shelf's grip up for more room; it's remembered.
 
 ## Related
-- [The launcher](launcher.md): the page Solis starts on.
+- [Projects](launcher.md): Recent projects, the page Solis starts on, and Learn, Updates and About.
 - [Projects and the Library](projects-and-the-library.md): the Library.
 - [Play mode](play-mode.md): Play, Pause, Step and Stop.
 - [Concepts](concepts.md): panel, tab, ribbon, editor group, shelf, layout, workspace, accent colour.

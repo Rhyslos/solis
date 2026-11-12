@@ -3,7 +3,7 @@
 > Your game's controls as named actions: Move, Look, Jump, Sprint, Interact, the cameras' Pan, Turn, Zoom and Drag, the menus' MenuMove, MenuChoose, MenuBack and Pause, and any you add, from the keyboard, mouse or a gamepad, and rebindable.
 
 ## When to use it
-Whenever the player controls something. Game code never asks "is W down?"; it asks "is the player moving?" (`Input:axis(Action.Move)`) or "did they press Jump?" (`Input:pressed(Action.Jump)`). Which keys and buttons mean Jump is set in one place, the **Input actions** window, so:
+Whenever the player controls something. Game code never asks "is W down?"; it asks "is the player moving?" (`Input:axis(Action.Move)`) or "did they press Jump?" (`Input:pressed(Action.Jump)`). Which keys and buttons mean Jump is set in one place, **File › Project settings › Input**, so:
 - a gamepad works without extra code (the A button is bound to Jump too);
 - players can change the keys (rebinding) without changing your game;
 - a play's input can be recorded and played back exactly, which is how you check the game always comes out the same.
@@ -37,12 +37,15 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 
 While a screen with buttons is shown, only the four menu actions reach game code: Jump on Space doesn't also jump while Space chooses a button. A project whose input actions file is from before them still gets them while playing.
 
-**Changing them: File > Input**
-1. Each action shows its inputs. Click **×** beside one to unbind it.
-2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels). Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+Left`; turn the mouse wheel to bind a notch up or down.
-3. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, the mouse's movement, or the mouse wheel). One that goes with the mouse or the wheel has a **Mouse speed** and a **Stick and key speed**.
-4. Type a name under the list and choose **Add button** or **Add axis** for a new action (letters, digits and _, starting with a capital: `OpenMap`, `Fire_2`, so game code can name it `Action.OpenMap`).
-5. **Add the ready-made actions it's missing** appears in projects made before the cameras: it adds the ones it lacks (Pan, Turn, Zoom and Drag; MenuMove, MenuChoose, MenuBack and Pause) and changes nothing else. **Restore the ready-made actions** puts all the ready-made ones back as they were, leaving your own.
+**Changing them: File › Project settings › Input**
+1. The table lists every action: its name, whether it's a **Button** or an **Axis**, its keyboard and mouse inputs as keys, and its gamepad's. **All devices**, **Keyboard & mouse** and **Gamepad** over the table show one kind or both; **Find action or key** narrows the rows.
+2. Click an action's row to pick it: its card at the right lists its bindings, each with the device it's on. Click a binding to pick it, then **Backspace** clears it; its **×** does the same.
+3. **+ Add binding** (on an axis: **+ Up**, **+ Down**, **+ Left**, **+ Right**), then press the key, mouse button or gamepad button to bind. **Esc** calls it off; while it waits, Backspace is a key you can bind like any other. Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+Left`; turn the mouse wheel to bind a notch up or down.
+4. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, the mouse's movement, or the mouse wheel), ticked under **Whole axis**. One that goes with the mouse or the wheel has a **Mouse speed** and a **Stick and key speed**. **Button** and **Axis** at the top of the card change which it is; **Remove the action** takes it away.
+5. **Add action ▾**: type a name and choose **Add button** or **Add axis** (letters, digits and _, starting with a capital: `OpenMap`, `Fire_2`, so game code can name it `Action.OpenMap`).
+6. **Add the ready-made actions it's missing** appears in projects made before the cameras: it adds the ones it lacks (Pan, Turn, Zoom and Drag; MenuMove, MenuChoose, MenuBack and Pause) and changes nothing else. **Restore the ready-made actions** puts all the ready-made ones back as they were, leaving your own.
+
+**Clashes.** The ready-made actions share some keys on purpose: the arrows are Move, Pan and MenuMove, and Space is Jump and MenuChoose. When an action of your own shares a key with another, both are marked with ⚠ and the key in amber, and a line under the table says which: both fire on one press. Contexts, Fires on, Buffer, the stick's dead zone and Invert look Y are [unfinished parts](unfinished-parts.md).
 
 **Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+Left` and Pan on `Left`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+Up` bound) still pans while Alt is held.
 
@@ -102,15 +105,17 @@ A replay that stops matching means the game came out differently from the same i
 |---|---|
 | Give the game the mouse and keys | Click the Game panel while playing |
 | Give them back to the editor | Esc |
-| Give up binding an input (after **+** in File > Input) | Esc |
+| Give up binding an input (after **+ Add binding**) | Esc |
+| Clear the picked binding | Backspace |
+| Pick an action | Click its row |
 
 While the game has them, every key is the game's: the editor's shortcuts are off.
 
 ## Tips and common problems
 - **Problem:** my character doesn't move when I press W. **Why:** the editor has the keys. **Fix:** click the Game panel first; its corner says when the game has the mouse and keys.
 - **Problem:** pressing W while playing picked the move tool. **Why:** the same: the game didn't have the keys. **Fix:** click the Game panel.
-- **Problem:** `Input:pressed(Action.Jump)` is never true. **Why:** the action has no inputs. **Fix:** check File > Input.
-- **Problem:** the Console says an input action "can't be named in game code". **Why:** game code names actions as Lust names, which start with a capital and hold letters, digits and `_` (`OpenMap`, `Fire_2`), and aren't all capitals. **Fix:** rename it in File > Input.
+- **Problem:** `Input:pressed(Action.Jump)` is never true. **Why:** the action has no inputs. **Fix:** check File › Project settings › Input.
+- **Problem:** the Console says an input action "can't be named in game code". **Why:** game code names actions as Lust names, which start with a capital and hold letters, digits and `_` (`OpenMap`, `Fire_2`), and aren't all capitals. **Fix:** rename it in File › Project settings › Input.
 - **Problem:** Esc does nothing in my game. **Why:** in the editor, Esc gives the mouse and keys back, so a game can't use it there. **Fix:** give the action another key as well, to try it in the editor (the ready-made **Pause** is on P). In an [exported game](playtest-export.md) every key is the game's, Esc included.
 - **Problem:** the Console says the input actions couldn't be read. **Why:** `input.solinput` was changed by hand and has a mistake. **Fix:** the Console says what; fix it, or change any action in the window, which writes it again.
 - **Problem:** the Console says the input actions file had a mistake and was kept as `input.solinput.bak`. **Why:** the file couldn't be read, so the ready-made actions were used; changing anything in the window writes the file again, so Solis kept yours first. **Fix:** copy what you need from the `.bak` file, then delete it.

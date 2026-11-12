@@ -7,7 +7,6 @@ use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
 use crate::key_owner::KeyOwner;
 use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
-use crate::menu_items::MenuState;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{AssemblyPart, PropertyRequest, properties};
@@ -22,7 +21,6 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) area_state: &'a mut AreaPanelState,
     /// The components whose values were copied, by name.
     pub(crate) copied: &'a [String],
-    pub(crate) menu: &'a MenuState,
     pub(crate) viewport: &'a mut Viewport,
     pub(crate) renderer: &'a mut dyn ViewportRenderer,
     pub(crate) console: &'a mut Console,
@@ -52,7 +50,7 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) folders: &'a [String],
     pub(crate) library_state: &'a mut LibraryState,
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
-    /// What the Hints panel says (none: hints are off).
+    /// What the Hints card says (none: hints are off).
     pub(crate) hints: Option<&'a [String]>,
     /// The sound files measured, and the one playing.
     pub(crate) sounds: crate::library::Sounds<'a>,
@@ -64,9 +62,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) mixer: &'a crate::mixer_view::MixerState,
     pub(crate) mixer_requests: &'a mut Vec<crate::mixer_view::MixerRequest>,
     pub(crate) part: Option<&'a AssemblyPart>,
-    /// While playing, the selected entity's game code values as they are
-    /// now, by component.
-    pub(crate) running: Option<&'a BTreeMap<String, reflect::ComponentData>>,
+    /// While playing: the selected entity's game code values as they are
+    /// now, by component, and what the user changed since Play.
+    pub(crate) running: Option<crate::properties::WhilePlaying<'a>>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     /// The manual's address and where game code components are written,
     /// for Properties' **?** and **Open in Ledger** (decision 0085).
@@ -200,13 +198,14 @@ impl PanelViewer<'_> {
             | Panel::Area
             | Panel::Properties
             | Panel::Library
+            | Panel::Assets
+            | Panel::Placement
             | Panel::Code
             | Panel::Console
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
-            | Panel::Map
-            | Panel::Hints => false,
+            | Panel::Map => false,
         }
     }
 
@@ -227,13 +226,14 @@ impl PanelViewer<'_> {
             | Panel::Area
             | Panel::Properties
             | Panel::Library
+            | Panel::Assets
+            | Panel::Placement
             | Panel::Code
             | Panel::Console
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
-            | Panel::Map
-            | Panel::Hints => {}
+            | Panel::Map => {}
         }
     }
 
@@ -247,6 +247,30 @@ impl PanelViewer<'_> {
     /// count, so nothing is walked.
     pub(crate) fn column_count(&self, panel: Panel) -> Option<String> {
         (panel == Panel::Area).then(|| self.document.area().len().to_string())
+    }
+
+    /// Quiet words after a shelf column's title, if it has them: the
+    /// Assets column's folder.
+    pub(crate) fn column_note(&self, panel: Panel) -> Option<String> {
+        let project = self.project?;
+        (panel == Panel::Assets).then(|| {
+            let folder = &self.library_state.folder;
+            match folder.rsplit_once('/') {
+                Some((_, last)) => last.to_owned(),
+                None if folder.is_empty() => project.name.clone(),
+                None => folder.clone(),
+            }
+        })
+    }
+
+    /// The tools `panel` puts in its column's header: the Area column's
+    /// search, Fold everything and ⋯.
+    pub(crate) fn column_tools(&mut self, ui: &mut Ui, panel: Panel) {
+        if panel == Panel::Area
+            && let Some(command) = crate::area_panel::header_tools(ui, self.area_state)
+        {
+            self.area_requests.push(AreaRequest::Command(command));
+        }
     }
 
     /// Draws `panel`'s contents filling `ui`.
@@ -266,14 +290,8 @@ impl PanelViewer<'_> {
         }
         match tab {
             Panel::Area => {
-                let requests = area_tree(
-                    ui,
-                    self.document,
-                    self.models,
-                    self.accent,
-                    self.area_state,
-                    self.menu,
-                );
+                let requests =
+                    area_tree(ui, self.document, self.models, self.accent, self.area_state);
                 self.area_requests.extend(requests);
             }
             Panel::Properties => {
@@ -420,7 +438,7 @@ impl PanelViewer<'_> {
                     (self.models, self.sounds.sheets),
                     self.copied,
                     self.running,
-                    self.help,
+                    (self.help, self.hints),
                 );
                 self.requests.extend(requests);
             }
@@ -436,6 +454,21 @@ impl PanelViewer<'_> {
                     self.sounds,
                 );
                 self.library_requests.extend(requests);
+            }
+            Panel::Assets => {
+                // On the Place tab, beside Placement: the placing form.
+                let placing = self.shown.contains(&Panel::Placement);
+                let requests = crate::assets_column::assets(
+                    ui,
+                    (self.project.is_some(), placing),
+                    self.library,
+                    self.library_state,
+                    self.sounds,
+                );
+                self.library_requests.extend(requests);
+            }
+            Panel::Placement => {
+                crate::placement::placement(ui, &mut self.viewport.snapping);
             }
             Panel::Game => {
                 let full = ui.max_rect();
@@ -466,7 +499,6 @@ impl PanelViewer<'_> {
                     self.console_requests.push(request);
                 }
             }
-            Panel::Hints => crate::hints::hints_panel(ui, self.hints),
             Panel::Mixer => {
                 let requests = crate::mixer_view::mixer_panel(ui, self.mixer, self.playing);
                 self.mixer_requests.extend(requests);
@@ -478,7 +510,11 @@ impl PanelViewer<'_> {
             }
             Panel::Problems => {
                 use crate::problems::ProblemClick;
-                match crate::problems::problems_panel(ui, self.code_problems, self.problems) {
+                match crate::problems::problems_panel(
+                    ui,
+                    self.code_problems,
+                    (self.problems, &self.document.name()),
+                ) {
                     Some(ProblemClick::Entity(entity)) => {
                         self.area_state.reveal = Some(entity);
                         self.area_requests.push(AreaRequest::Select(entity));

@@ -151,6 +151,9 @@ pub struct Shell {
     /// Whether a tile map was selected when the last frame was drawn:
     /// selecting one brings its Map tab to the front.
     pub(crate) seen_map: bool,
+    /// The entity selected when the last frame was drawn: selecting
+    /// another brings the shelf tab Preferences names to the front.
+    pub(crate) seen_selected: Option<reflect::EntityId>,
 }
 
 impl Default for Shell {
@@ -163,6 +166,7 @@ impl Default for Shell {
             arrangements: BTreeMap::new(),
             drawn: Vec::new(),
             seen_map: false,
+            seen_selected: None,
         }
     }
 }
@@ -219,7 +223,7 @@ impl Workbench {
             return;
         }
         if tab == RibbonTab::File {
-            self.show_file_page(self.launcher.page);
+            self.show_file_page(self.file_pages.page);
             return;
         }
         self.shell.tab = tab;
@@ -293,6 +297,14 @@ impl Workbench {
         self.shell.arrangement(self.shell.tab).shelf_folded
     }
 
+    /// Whether the editor is placing: Home's Place shelf tab is in front
+    /// (the project lead's answer 20). The ribbon takes its build form
+    /// and the toolbox goes.
+    pub fn placing(&self) -> bool {
+        matches!(self.shell.tab, RibbonTab::Home | RibbonTab::Build)
+            && self.shelf_tab() == Some(workspaces::ShelfTab::Place)
+    }
+
     /// The shelf tab in front on the tab in front, if it has a shelf.
     pub fn shelf_tab(&self) -> Option<workspaces::ShelfTab> {
         let tabs = workspaces::built_shelf_tabs(self.shell.tab, self.open_now());
@@ -325,6 +337,20 @@ impl Workbench {
     /// its own it would take the Console away from a command that
     /// selects.)
     pub(crate) fn follow_selection(&mut self) {
+        let selected = self.open.document.selection.primary();
+        let was = std::mem::replace(&mut self.shell.seen_selected, selected);
+        if selected.is_some()
+            && selected != was
+            && self.interface_look().shelf_opens_on == crate::interface_look::ShelfOpensOn::Entity
+        {
+            for tab in [RibbonTab::Home, RibbonTab::Build] {
+                self.show_in(
+                    tab,
+                    Home::Shelf(workspaces::ShelfTab::Entity),
+                    Panel::Properties,
+                );
+            }
+        }
         self.follow_map_selection();
         let has_map = self.open.map_edits.path.is_some();
         let had_map = std::mem::replace(&mut self.shell.seen_map, has_map);

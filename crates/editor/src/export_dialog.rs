@@ -1,7 +1,8 @@
-//! Build > Export ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
-//! the window asking for the game's name, the area it starts in, the
-//! folder and the window, and [`Playtest`], what an exported game reads to
-//! know them (and what a project remembers for next time).
+//! Export for playtesting ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
+//! what File › Project settings › Build asks (the game's name, the area it
+//! starts in, the window and the folder; `file_pages/build.rs` draws it),
+//! and [`Playtest`], what an exported game reads to know them (and what a
+//! project remembers for next time).
 //!
 //! Nothing here looks at the disk. A project's files come from other
 //! people, and so may the folder remembered from last time if the saved
@@ -10,8 +11,7 @@
 //! the app looks at it once Export is pressed (a test checks this file
 //! for calls that would).
 
-use crate::workbench::{Workbench, WorkbenchAction};
-use egui::Ui;
+use crate::workbench::Workbench;
 use std::path::{Component, Path, PathBuf};
 
 /// The first line of a playtest file.
@@ -200,22 +200,23 @@ pub struct ExportRequest {
     pub suggested: bool,
 }
 
-/// Build > Export, while it's open.
+/// Export for playtesting as File › Project settings › Build shows it,
+/// from the first time it is shown for the open project.
 #[derive(Debug, Clone, Default)]
-pub(crate) struct ExportWindow {
-    playtest: Playtest,
-    folder: String,
-    /// The folder as the window filled it in itself: while `folder` still
+pub(crate) struct ExportForm {
+    pub(crate) playtest: Playtest,
+    pub(crate) folder: String,
+    /// The folder as the page filled it in itself: while `folder` still
     /// says this, the export may go beside it ([`ExportRequest::suggested`]).
-    suggested: String,
+    pub(crate) suggested: String,
     /// What happened to the last export: where it went, or why it didn't.
-    done: Option<Result<PathBuf, String>>,
+    pub(crate) done: Option<Result<PathBuf, String>>,
     /// Exporting now.
-    busy: bool,
+    pub(crate) busy: bool,
 }
 
 /// The window sizes offered, as the game's Resolution steps through them.
-fn sizes() -> &'static [[u32; 2]] {
+pub(crate) fn sizes() -> &'static [[u32; 2]] {
     &script::settings::RESOLUTIONS
 }
 
@@ -239,9 +240,16 @@ impl Workbench {
         self.documents = folder;
     }
 
-    /// Opens Build > Export: the game named after the
-    /// project, starting in the open area, unless it was exported before.
+    /// Opens Export for playtesting: File › Project settings › Build,
+    /// filled in afresh.
     pub fn open_export(&mut self) {
+        self.prepare_export();
+        self.show_settings(crate::file_pages::Tab::Build);
+    }
+
+    /// Fills in Export for playtesting: the game named after the project,
+    /// starting in the open area, unless it was exported before.
+    pub(crate) fn prepare_export(&mut self) {
         let Some(project) = &self.open.project else {
             self.log(
                 crate::LogLevel::Warning,
@@ -284,7 +292,7 @@ impl Workbench {
                 .unwrap_or_default(),
         };
         let folder = folder.display().to_string();
-        self.open.export_window = Some(ExportWindow {
+        self.open.export = Some(ExportForm {
             playtest,
             suggested: folder.clone(),
             folder,
@@ -294,7 +302,7 @@ impl Workbench {
     }
 
     /// The project's areas, inside the assets.
-    fn areas(&self) -> Vec<String> {
+    pub(crate) fn areas(&self) -> Vec<String> {
         let mut areas: Vec<String> = self
             .open
             .library
@@ -306,9 +314,9 @@ impl Workbench {
         areas
     }
 
-    /// The folder chosen with the window's "…" button.
+    /// The folder chosen with the Build page's "…" button.
     pub fn set_export_folder(&mut self, folder: PathBuf) {
-        if let Some(window) = &mut self.open.export_window {
+        if let Some(window) = &mut self.open.export {
             window.folder = folder.display().to_string();
         }
     }
@@ -329,7 +337,7 @@ impl Workbench {
                 format!("The export didn't finish: {why}."),
             ),
         }
-        if let Some(window) = &mut self.open.export_window {
+        if let Some(window) = &mut self.open.export {
             window.busy = false;
             // Exporting again goes in a folder of its own, beside this
             // one.
@@ -340,214 +348,6 @@ impl Workbench {
             window.done = Some(outcome);
         }
     }
-
-    /// Draws Build > Export, if it's open.
-    pub(crate) fn export_window(
-        &mut self,
-        ctx: &egui::Context,
-        actions: &mut Vec<WorkbenchAction>,
-    ) {
-        let Some(mut window) = self.open.export_window.take() else {
-            return;
-        };
-        let areas = self.areas();
-        let program = self.info.name.clone();
-        let accent = self.accent.colors().fill;
-        let unsaved = self.open.document.is_dirty();
-        let mut open = true;
-        let mut close = false;
-        egui::Window::new("Export for playtesting")
-            .open(&mut open)
-            .collapsible(false)
-            .resizable(false)
-            .pivot(egui::Align2::CENTER_CENTER)
-            .default_pos(ctx.content_rect().center())
-            .default_width(560.0)
-            .show(ctx, |ui| {
-                close = contents(ui, &mut window, &areas, &program, accent, unsaved, actions);
-            });
-        if open && !close {
-            self.open.export_window = Some(window);
-        }
-    }
-}
-
-/// The window's insides; true when it should close.
-fn contents(
-    ui: &mut Ui,
-    window: &mut ExportWindow,
-    areas: &[String],
-    program: &str,
-    accent: egui::Color32,
-    unsaved: bool,
-    actions: &mut Vec<WorkbenchAction>,
-) -> bool {
-    let name = game_name(&window.playtest.name);
-    ui.label(format!(
-        "A folder to zip and send. Your friend runs {name}.exe inside it: no {program} needed."
-    ));
-    ui.add_space(8.0);
-    let mut close = false;
-    egui::Grid::new("export grid")
-        .num_columns(2)
-        .spacing([12.0, 8.0])
-        .show(ui, |ui| {
-            ui.label("Game's name");
-            ui.add(egui::TextEdit::singleline(&mut window.playtest.name).desired_width(280.0))
-                .on_hover_text("The program's name, the window's title and the saves folder's");
-            ui.end_row();
-            ui.label("Starts in");
-            egui::ComboBox::from_id_salt("export area")
-                .selected_text(if window.playtest.area.is_empty() {
-                    "No area: save one first"
-                } else {
-                    window.playtest.area.trim_end_matches(".solarea")
-                })
-                .width(280.0)
-                .show_ui(ui, |ui| {
-                    for area in areas {
-                        ui.selectable_value(
-                            &mut window.playtest.area,
-                            area.clone(),
-                            area.trim_end_matches(".solarea"),
-                        );
-                    }
-                });
-            ui.end_row();
-            ui.label("Into the folder");
-            ui.horizontal(|ui| {
-                ui.add(egui::TextEdit::singleline(&mut window.folder).desired_width(280.0))
-                    .on_hover_text(
-                        "Made for the export. A folder that has files in already isn't used: \
-                         the suggested one gets a number, (2), and one you chose is refused",
-                    );
-                if ui.button("…").on_hover_text("Choose the folder").clicked() {
-                    actions.push(WorkbenchAction::ChooseExportFolder);
-                }
-            });
-            ui.end_row();
-            ui.label("Window");
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_id_salt("export window")
-                    .selected_text(if window.playtest.fullscreen {
-                        "Fullscreen"
-                    } else {
-                        "Windowed"
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut window.playtest.fullscreen, false, "Windowed");
-                        ui.selectable_value(&mut window.playtest.fullscreen, true, "Fullscreen");
-                    });
-                let [w, h] = window.playtest.size;
-                egui::ComboBox::from_id_salt("export size")
-                    .selected_text(format!("{w} × {h}"))
-                    .show_ui(ui, |ui| {
-                        for size in sizes() {
-                            ui.selectable_value(
-                                &mut window.playtest.size,
-                                *size,
-                                format!("{} × {}", size[0], size[1]),
-                            );
-                        }
-                    });
-            });
-            ui.end_row();
-            ui.label("");
-            ui.scope(|ui| {
-                ui.set_max_width(330.0);
-                ui.add(
-                    egui::Label::new(
-                        egui::RichText::new(
-                            "How it starts. Players change these in your game's menu, or \
-                             Alt+Enter for fullscreen, and their choice is kept.",
-                        )
-                        .weak(),
-                    )
-                    .wrap(),
-                );
-            });
-            ui.end_row();
-        });
-    ui.add_space(8.0);
-    egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        ui.label(format!(
-            "Packs: the program, your code (Lust and Lua), areas, sprites, sounds, screens. Saves, \
-             the player's settings and a crash log go in the player's Saved Games/{name} folder."
-        ));
-    });
-    if unsaved {
-        ui.add_space(6.0);
-        ui.colored_label(
-            crate::theme::WARNING,
-            "The open area has changes that aren't saved: the export holds it as last saved. \
-             Save it first (Ctrl+S) to include them.",
-        );
-    }
-    match &window.done {
-        Some(Ok(folder)) => {
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                ui.label(format!("Exported to {}.", folder.display()));
-                if ui.button("Open folder").clicked() {
-                    actions.push(WorkbenchAction::ShowFolder(folder.clone()));
-                }
-            });
-        }
-        Some(Err(why)) => {
-            ui.add_space(6.0);
-            ui.colored_label(crate::theme::ERROR, format!("Not exported: {why}."));
-        }
-        None => {}
-    }
-    ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let ready = usable_area(&window.playtest.area)
-                && !window.folder.trim().is_empty()
-                && !window.busy;
-            let export = ui.add_enabled(
-                ready,
-                egui::Button::new(
-                    egui::RichText::new(if window.busy {
-                        "Exporting…"
-                    } else {
-                        "Export"
-                    })
-                    .color(crate::theme::on_accent()),
-                )
-                .fill(accent),
-            );
-            let export = if window.busy {
-                export.on_disabled_hover_text("Exporting: wait for it to finish")
-            } else if !usable_area(&window.playtest.area) {
-                export.on_disabled_hover_text("Choose the area the game starts in first")
-            } else {
-                export.on_disabled_hover_text("Choose a folder to export to first")
-            };
-            if export.clicked() {
-                window.playtest.name = game_name(&window.playtest.name);
-                window.busy = true;
-                window.done = None;
-                actions.push(WorkbenchAction::ExportPlaytest(ExportRequest {
-                    playtest: window.playtest.clone(),
-                    folder: PathBuf::from(window.folder.trim()),
-                    suggested: window.folder == window.suggested,
-                }));
-            }
-            let done = window.done.as_ref().is_some_and(Result::is_ok);
-            let shut = if window.busy {
-                ui.button("Close")
-                    .on_hover_text("The export carries on: the Console says when it's done")
-            } else {
-                ui.button(if done { "Close" } else { "Cancel" })
-            };
-            if shut.clicked() {
-                close = true;
-            }
-        });
-    });
-    close
 }
 
 #[cfg(test)]

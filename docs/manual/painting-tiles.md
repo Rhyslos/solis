@@ -8,10 +8,10 @@ A [tile map](tile-maps.md) is a grid of [terrains](concepts.md#2d): grass, tille
 Painting is for the map file, the world as the game starts. While the game runs, the map is the game's own copy, so painting is off then; game code changes cells as you play.
 
 ## How to use it
-1. **Select the map's entity** (in the Area panel). The painting tools join the tool bar at the bottom of the viewport, after Select, Move, Rotate, Scale and Transform, and the **Map** tab of Home's shelf comes to the front (and a **Home tools · Tile map** tab joins the tab bar).
-2. **Choose a tool** on the tool bar or with its key: **Brush (B)**, **Rectangle (U)**, **Line (N)**, **Fill (G)** or **Eyedropper (I)**. Q, W, R, S or T goes back to the transform tools.
+1. **Select the map's entity** (in the Area panel). The painting tools join the toolbox down the viewport's left edge, under Select, Move, Rotate, Scale and Transform, and the **Map** tab of Home's shelf comes to the front (and a **Home tools · Tile map** tab joins the tab bar).
+2. **Choose a tool** in the toolbox or with its key: **Brush (B)**, **Rectangle (U)**, **Line (N)**, **Fill (G)** or **Eyedropper (I)**. Q, W, R, S or T goes back to the transform tools.
 3. **Choose what to paint:** click a terrain's swatch under **Terrains** in the Map tab. The outlined swatch is the one painted. Clicking a swatch takes the brush if no painting tool is in use.
-4. **Choose the layer** in the tool bar's layer menu (**Ground** to start). Paint fences and flowers on Decoration so the ground under them stays grass.
+4. **Choose the layer** in the painting options at the view's bottom left (**Ground** to start). Paint fences and flowers on Decoration so the ground under them stays grass.
 5. **Paint in the viewport** (the **2D** view is easiest):
    - **Brush:** drag over cells to paint them. Every cell the pointer crosses is painted, however fast you drag.
    - **Rectangle:** drag from one corner to the other. The cells show while you drag and are painted when you let go.
@@ -37,17 +37,17 @@ While you hold a copy:
 ### Exact tiles
 Autotiling picks each cell's tile from its neighbours. Sometimes you want one particular tile instead: a cracked stone, a corner that breaks the rule. An **[exact tile](concepts.md#2d)** is a cell that shows one tile as it is.
 
-1. Turn on **Exact** in the tool bar (or hold **Ctrl** while painting).
+1. Turn on **Exact** in the painting options (or hold **Ctrl** while painting).
 2. The Map tab shows the painted terrain's tiles under the swatches. Click the one to place. To start, it's the tile for the middle of a patch.
 3. Paint. The cell keeps that tile; its neighbours still see its terrain, so their edges still join it.
 
 Painting the cell again without Exact makes it autotiled again. Exact tiles are art only: the game reads the terrain, never the tile.
 
 ### Art or meaning
-**Tab**, or the tool bar's **Art** menu, switches the selected map between its **art** and its **meaning**: each terrain in its flat colour, which is what the game reads. Meaning is handy for checking that a path of tiles really is all one terrain.
+**Tab**, or the painting options' **Art** menu, switches the selected map between its **art** and its **meaning**: each terrain in its flat colour, which is what the game reads. Meaning is handy for checking that a path of tiles really is all one terrain.
 
 ## Settings
-The tool bar, while a map is selected:
+The toolbox and the painting options, while a map is selected:
 
 | Setting | What it does |
 |---|---|
@@ -72,7 +72,7 @@ The tool bar, while a map is selected:
 
 ## Tips and common problems
 - **Problem:** on a very big map, what you just painted disappears when you let go, and the Console says the map *wasn't changed*. **Why:** with that stroke the map's file would be too big for Solis to open again, so the stroke isn't kept; the map is as it was before it. **Fix:** see [Tile maps](tile-maps.md#tips-and-common-problems) for how much a map can hold and what to do.
-- **Problem:** the painting tools aren't on the tool bar. **Why:** they show only while a tile map's entity is selected, and the game isn't running. **Fix:** select the map in the Area panel; stop the game.
+- **Problem:** the painting tools aren't in the toolbox. **Why:** they show only while a tile map's entity is selected, and the game isn't running. **Fix:** select the map in the Area panel; stop the game.
 - **Problem:** right-dragging empties cells instead of sliding the view. **Why:** while a painting tool is in use, the right button empties. **Fix:** slide with the middle button, or press Q for Select.
 - **Problem:** the fill painted more than expected. **Why:** the fill follows every cell of the same terrain joined by its sides, on the layer painted. **Fix:** Ctrl + Z, then break the field with a line first.
 - **Problem:** painting does nothing. **Why:** the map has no tileset (nothing to paint with), or the layer painted is hidden. **Fix:** choose a tileset in the map file's Properties; check the layer menu and the Map tab's eyes.

@@ -3,10 +3,11 @@
 //! control opens from its small arrow or a right-click.
 
 use super::ShellCommand;
-use super::ribbon::{ListItem, Shape};
+use super::ribbon::{ListItem, Picked, Shape, Steps};
 use crate::icons::{self, Icon};
 use crate::interface_look;
 use crate::tokens::{self, size, text};
+use crate::transforming::Snapping;
 use crate::unbuilt::{self, Entry, RowKind};
 use crate::widgets::{self, checkbox, width_of, words};
 use crate::workbench::Workbench;
@@ -207,6 +208,49 @@ pub(crate) fn row(
     }
 }
 
+/// A switch with a step (Snapping's Grid and Angle): a click on the box
+/// or the name switches it; a click on the value after "·", or a
+/// right-click anywhere on it, opens the list of steps.
+pub(crate) fn switch_with_steps(
+    ui: &mut Ui,
+    spot: Rect,
+    id: Id,
+    (label, command): (&str, ShellCommand),
+    steps: Steps,
+    look: &Look,
+    snapping: Snapping,
+) -> Option<Picked> {
+    let response = row(ui, spot, id, label, RowKind::Check, look);
+    // Where the value starts: after the box, the name and the "·".
+    let name = label.split_once(" · ").map_or(label, |(name, _)| name);
+    let value_from = spot.left()
+        + size::RIBBON_ROW_PAD
+        + size::CHECKBOX
+        + size::GAP
+        + width_of(ui, &format!("{name} · "), text::ribbon_small());
+    let on_value = ui
+        .input(|input| input.pointer.interact_pos())
+        .is_some_and(|at| at.x >= value_from);
+    let open = (response.clicked() && on_value) || response.secondary_clicked();
+    let mut picked = None;
+    Popup::menu(&response)
+        .open_memory(open.then_some(SetOpenCommand::Toggle))
+        .show(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            let now = steps.of(&snapping);
+            for &step in steps.all() {
+                if widgets::menu::choice(ui, &steps.words(step), step == now).clicked() {
+                    picked = Some(Picked::Step(steps, step));
+                    ui.close();
+                }
+            }
+        });
+    if response.clicked() && !on_value {
+        picked = Some(Picked::Command(command));
+    }
+    picked
+}
+
 /// Words alone in `spot`: they say something and do nothing.
 pub(crate) fn fact(ui: &mut Ui, spot: Rect, id: Id, text_shown: &str) {
     let response = ui.interact(spot, id, Sense::hover());
@@ -272,7 +316,9 @@ pub(crate) fn with_list(
                 tokens::text_label()
             };
             list_arrow(ui, middle, ink);
-            let clicked = arrow.clicked();
+            // A button that is only a list (the Library's Create) opens
+            // it on a plain click too.
+            let clicked = arrow.clicked() || (command.is_none() && response.clicked());
             arrow.on_hover_text("Lists the other kinds. A right-click on the button does too.");
             (response, clicked)
         }

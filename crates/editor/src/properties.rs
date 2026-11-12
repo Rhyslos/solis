@@ -7,7 +7,9 @@ use crate::document::Document;
 use crate::inspector::{self, FieldChange};
 use crate::models::ModelInfo;
 use crate::panels::empty_note;
-use crate::theme;
+use crate::properties_cards as cards;
+use crate::properties_header as head;
+use crate::tokens::{self, size, text};
 use egui::{RichText, Ui};
 use reflect::{AssetId, EntityId, Value};
 use std::collections::BTreeMap;
@@ -120,6 +122,8 @@ pub(crate) enum PropertyRequest {
     /// computer's program for it (Ledger, for Lust): its path inside the
     /// assets.
     OpenCode(String),
+    /// Turn hints off (the Hints card's "Turn hints off").
+    HintsOff,
     /// Put a component's fields back to their starting values.
     ResetComponent {
         /// The entities.
@@ -152,6 +156,17 @@ pub(crate) struct Help<'a> {
     pub places: Option<&'a BTreeMap<String, (String, u32)>>,
 }
 
+/// While the game plays: game code's values as they are now (for the
+/// one entity shown, while Properties is in front), and the fields the
+/// user changed since Play, each with its value from before.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct WhilePlaying<'a> {
+    /// The selected entity's game code values now, by component.
+    pub values: Option<&'a BTreeMap<String, reflect::ComponentData>>,
+    /// What the user changed since Play.
+    pub yours: &'a crate::play::BackToBefore,
+}
+
 /// The manual page about one of the engine's components, or the kit's.
 pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
     Some(match component {
@@ -179,26 +194,6 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
     })
 }
 
-/// A component's icon and its colour, for its card.
-fn component_icon(component: &str, game_code: bool) -> Option<(crate::icons::Icon, egui::Color32)> {
-    use crate::icons::Icon;
-    use theme::kind;
-    Some(match component {
-        "Model" => (Icon::Model, kind::MODEL),
-        "Light" => (Icon::Light, kind::SUN),
-        "Environment" => (Icon::AreaFile, kind::ENVIRONMENT),
-        "Camera" => (Icon::Camera, kind::CAMERA),
-        "AudioSource" | "Listener" | "ReverbZone" => (Icon::Sound, kind::SOUND),
-        "Sprite" | "Parallax" => (Icon::Sprite, kind::SPRITE),
-        "Animator" => (Icon::Animator, kind::SOUND_EVENT),
-        "TileMap" => (Icon::TileMap, kind::AREA),
-        "Screen" => (Icon::Screen, kind::PICTURE),
-        "Transform" => (Icon::Properties, theme::text()),
-        _ if game_code => (Icon::Code, kind::CODE),
-        _ => return None,
-    })
-}
-
 /// The Properties panel. `part` is set when the selected entity comes from
 /// a placed assembly; `copied` names the components whose values were
 /// copied (for Paste). With several entities selected, it shows the
@@ -212,19 +207,34 @@ pub(crate) fn properties(
         &crate::sprite_sheets::SpriteSheets,
     ),
     copied: &[String],
-    running: Option<&BTreeMap<String, reflect::ComponentData>>,
-    help: Help<'_>,
+    playing: Option<WhilePlaying<'_>>,
+    (help, hints): (Help<'_>, Option<&[String]>),
 ) -> Vec<PropertyRequest> {
     let mut requests = Vec::new();
+    let mut strip = head::header_strip(ui);
     let Some((id, entity)) = document
         .selection
         .primary()
         .and_then(|id| document.area().get(id).map(|e| (id, e)))
     else {
+        strip.label(
+            RichText::new("Properties")
+                .font(text::header())
+                .color(tokens::text_emphasis()),
+        );
         empty_note(
             ui,
-            "Nothing selected. Pick something in the viewport or the Area panel.",
+            "Nothing selected. Pick something in the viewport or the Area column.",
         );
+        if let Some(hints) = hints {
+            egui::Frame::new()
+                .inner_margin(egui::Margin::same(size::CARD_GAP as i8))
+                .show(ui, |ui| {
+                    if cards::hints_card(ui, hints) {
+                        requests.push(PropertyRequest::HintsOff);
+                    }
+                });
+        }
         return requests;
     };
     // The one Properties shows first, then the rest of the selection.
@@ -244,80 +254,28 @@ pub(crate) fn properties(
             .filter(|r| r.part.is_none())
             .and_then(|r| models.get(&r.asset))
             .is_some_and(|info| !info.nodes.is_empty());
+    let menu = head::EntityMenu {
+        selected: &selected,
+        copied: !copied.is_empty(),
+        move_here: !many && entity.has("Transform"),
+        unpack: whole_model,
+    };
+    requests.extend(head::header(&mut strip, document, (id, entity), &menu));
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .show(ui, |ui| {
             egui::Frame::new()
-                .inner_margin(theme::panel_margin())
+                .inner_margin(egui::Margin::same(size::CARD_GAP as i8))
                 .show(ui, |ui| {
-                    // The name (or how many are selected), with the
-                    // entity's ⋯ menu: rare actions live there, so the
-                    // panel shows values (decision 0085).
-                    ui.horizontal(|ui| {
-                        let menu = EntityMenu {
-                            selected: &selected,
-                            copied: !copied.is_empty(),
-                            move_here: !many && entity.has("Transform"),
-                            unpack: whole_model,
-                        };
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            entity_menu(ui, &menu, &mut requests);
-                            if many {
-                                ui.with_layout(
-                                    egui::Layout::left_to_right(egui::Align::Center),
-                                    |ui| {
-                                        ui.add(
-                                            egui::Label::new(
-                                                RichText::new(format!(
-                                                    "{} entities selected: what they all have \
-                                                     is shown, and a change applies to each.",
-                                                    selected.len()
-                                                ))
-                                                .color(theme::text_weak()),
-                                            )
-                                            .wrap(),
-                                        );
-                                    },
-                                );
-                            } else {
-                                let mut name = entity.name.clone();
-                                let field = ui.add(
-                                    egui::TextEdit::singleline(&mut name)
-                                        .desired_width(ui.available_width())
-                                        .font(egui::TextStyle::Body),
-                                );
-                                field.widget_info(|| {
-                                    egui::WidgetInfo::labeled(
-                                        egui::WidgetType::TextEdit,
-                                        true,
-                                        "Name",
-                                    )
-                                });
-                                if field
-                                    .on_hover_text("What the Area panel calls it")
-                                    .changed()
-                                {
-                                    requests.push(PropertyRequest::Rename { entity: id, name });
-                                }
-                            }
-                        });
-                    });
+                    ui.spacing_mut().item_spacing.y = size::CARD_GAP;
                     if !many {
                         if let Some(part) = part {
-                            assembly_note(ui, id, part, &mut requests);
+                            head::assembly_note(ui, id, part, &mut requests);
                         }
-                        if running.is_some_and(|r| !r.is_empty()) {
-                            ui.label(
-                                RichText::new(
-                                    "Playing: game code's values are shown as they are now. A \
-                                     change here reaches the game, and Stop asks whether to keep \
-                                     it; what the game changed goes back.",
-                                )
-                                .color(theme::text_weak()),
-                            );
+                        if let Some(playing) = playing {
+                            head::playing_note(ui, playing.yours.len());
                         }
                     }
-                    ui.add_space(4.0);
                     // Transform first, as in every engine; the rest by name.
                     // With several selected, only what every one has.
                     let mut names: Vec<&String> = entity
@@ -332,525 +290,198 @@ pub(crate) fn properties(
                         })
                         .collect();
                     names.sort_by_key(|n| (n.as_str() != "Transform", n.as_str()));
-                    for component in names {
-                        // While playing, game code's values as they are now.
-                        let data = running
-                            .filter(|_| !many)
-                            .and_then(|r| r.get(component))
-                            .unwrap_or(&entity.components[component]);
-                        ui.add_space(6.0);
-                        card(ui, |ui| match document.registry.get(component) {
-                            Some(schema) => {
-                                let place = help.places.and_then(|p| p.get(component));
-                                let header = component_header(
-                                    ui,
-                                    component,
-                                    &schema.help,
-                                    copied.contains(component),
-                                    place.map(|(file, _)| file.as_str()),
-                                    help.manual,
-                                );
-                                match header {
-                                    Some(HeaderAction::OpenCode) => {
-                                        if let Some((file, _)) = place {
-                                            requests.push(PropertyRequest::OpenCode(file.clone()));
-                                        }
-                                    }
-                                    Some(action) => {
-                                        requests
-                                            .extend(header_request(action, &selected, component));
-                                    }
-                                    None => {}
-                                }
-                                let assembly = part
-                                    .filter(|_| !many)
-                                    .and_then(|p| p.expected.as_ref())
-                                    .and_then(|e| e.components.get(component));
-                                let others: Vec<&reflect::ComponentData> = selected[1..]
-                                    .iter()
-                                    .filter_map(|&e| document.area().get(e))
-                                    .filter_map(|d| d.components.get(component))
-                                    .collect();
-                                for change in inspector::fields(
-                                    ui,
-                                    schema,
-                                    data,
-                                    assembly,
-                                    &others,
-                                    (models, sheets),
-                                    document.area(),
-                                ) {
-                                    let (entity, component) = (id, component.clone());
-                                    requests.push(match change {
-                                        FieldChange::Set { field, value, part } if many => {
-                                            PropertyRequest::SetFieldMany {
-                                                entities: selected.clone(),
-                                                component,
-                                                field,
-                                                value,
-                                                part,
-                                            }
-                                        }
-                                        FieldChange::Set { field, value, .. } => {
-                                            PropertyRequest::SetField {
-                                                entity,
-                                                component,
-                                                field,
-                                                value,
-                                            }
-                                        }
-                                        FieldChange::Revert(field) => {
-                                            PropertyRequest::RevertField {
-                                                entity,
-                                                component,
-                                                field,
-                                            }
-                                        }
-                                        FieldChange::Apply(field) => PropertyRequest::ApplyField {
-                                            entity,
-                                            component,
-                                            field,
-                                        },
-                                    });
-                                }
-                            }
-                            None => {
-                                ui.label(
-                                    RichText::new(format!("Missing component: {component}"))
-                                        .color(theme::WARNING),
-                                )
-                                .on_hover_text(
-                                    "Its script or plugin isn't there. Its values are kept as \
-                                     they are until you remove it.",
-                                );
-                                if ui.button("Remove").clicked() {
-                                    requests.push(PropertyRequest::RemoveComponent {
-                                        entity: id,
-                                        component: component.clone(),
-                                    });
-                                }
-                            }
+                    let card = Card {
+                        document,
+                        selected: &selected,
+                        part,
+                        assets: (models, sheets),
+                        copied,
+                        playing: playing.filter(|_| !many),
+                        help,
+                    };
+                    let slots = cards::across(ui.available_width(), names.len());
+                    for row in names.chunks(slots) {
+                        cards::card_row(ui, row[0], (row.len(), slots), |ui, i, background| {
+                            card.draw(ui, row[i], background, &mut requests);
                         });
                     }
-                    ui.add_space(8.0);
-                    if let Some(component) = add_component_menu(ui, document, &selected) {
-                        requests.push(if many {
-                            PropertyRequest::AddComponentMany {
-                                entities: selected.clone(),
-                                component,
-                            }
-                        } else {
-                            PropertyRequest::AddComponent {
-                                entity: id,
-                                component,
-                            }
-                        });
+                    if let Some(hints) = hints
+                        && cards::hints_card(ui, hints)
+                    {
+                        requests.push(PropertyRequest::HintsOff);
                     }
                 });
         });
     requests
 }
 
-/// What a component's header was asked to do.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HeaderAction {
-    Remove,
-    Copy,
-    Paste,
-    Reset,
-    /// Open the file it's written in.
-    OpenCode,
+/// What drawing a component's card needs.
+struct Card<'a> {
+    document: &'a Document,
+    /// The selected entities; the first is the one Properties shows.
+    selected: &'a [EntityId],
+    part: Option<&'a AssemblyPart>,
+    assets: (
+        &'a BTreeMap<AssetId, ModelInfo>,
+        &'a crate::sprite_sheets::SpriteSheets,
+    ),
+    copied: &'a [String],
+    /// While playing (one entity): game code's values as they are now,
+    /// and what the user changed since Play.
+    playing: Option<WhilePlaying<'a>>,
+    help: Help<'a>,
 }
 
-/// The request for a header action on `component` of the `selected`
-/// entities (the first is the one Properties shows); none for opening its
-/// file, which needs the file.
-fn header_request(
-    action: HeaderAction,
+impl Card<'_> {
+    /// Draws `component`'s card contents: its title row, for game code
+    /// the file it's written in, then its fields.
+    fn draw(
+        &self,
+        ui: &mut Ui,
+        component: &str,
+        background: &egui::Response,
+        requests: &mut Vec<PropertyRequest>,
+    ) {
+        let id = self.selected[0];
+        let many = self.selected.len() > 1;
+        let area = self.document.area();
+        let Some(entity) = area.get(id) else {
+            return;
+        };
+        let Some(schema) = self.document.registry.get(component) else {
+            cards::missing_card(ui, id, component, requests);
+            return;
+        };
+        let data = self
+            .playing
+            .and_then(|p| p.values)
+            .and_then(|r| r.get(component))
+            .unwrap_or(&entity.components[component]);
+        // The fields changed since Play, with their values from before.
+        let yours: BTreeMap<&str, Option<&Value>> = self
+            .playing
+            .into_iter()
+            .flat_map(|p| p.yours.iter())
+            .filter(|((e, c, _), _)| *e == id && c == component)
+            .map(|((_, _, field), was)| (field.as_str(), was.as_ref()))
+            .collect();
+        let place = self.help.places.and_then(|p| p.get(component));
+        let has = cards::MenuHas {
+            name: component,
+            can_paste: self.copied.iter().any(|c| c == component),
+            code: place.is_some(),
+            help: place.is_none()
+                && !self.help.manual.is_empty()
+                && manual_page(component).is_some(),
+        };
+        match cards::title_row(ui, has, &schema.help, background) {
+            Some(cards::CardAsk::Help) => {
+                if let Some(page) = manual_page(component) {
+                    let address = format!("{}/{page}", self.help.manual);
+                    ui.ctx().open_url(egui::OpenUrl::new_tab(address));
+                }
+            }
+            Some(cards::CardAsk::Menu(cards::CardMenu::OpenCode)) => {
+                if let Some((file, _)) = place {
+                    requests.push(PropertyRequest::OpenCode(file.clone()));
+                }
+            }
+            Some(cards::CardAsk::Menu(row)) => {
+                requests.extend(header_request(row, self.selected, component));
+            }
+            None => {}
+        }
+        if let Some((file, _)) = place
+            && cards::code_line(ui, component, file)
+        {
+            requests.push(PropertyRequest::OpenCode(file.clone()));
+        }
+        let assembly = self
+            .part
+            .filter(|_| !many)
+            .and_then(|p| p.expected.as_ref())
+            .and_then(|e| e.components.get(component));
+        let others: Vec<&reflect::ComponentData> = self.selected[1..]
+            .iter()
+            .filter_map(|&e| area.get(e))
+            .filter_map(|d| d.components.get(component))
+            .collect();
+        for change in inspector::fields(
+            ui,
+            schema,
+            data,
+            (assembly, &yours),
+            &others,
+            self.assets,
+            area,
+        ) {
+            let component = component.to_owned();
+            requests.push(match change {
+                FieldChange::Set { field, value, part } if many => PropertyRequest::SetFieldMany {
+                    entities: self.selected.to_vec(),
+                    component,
+                    field,
+                    value,
+                    part,
+                },
+                FieldChange::Set { field, value, .. } => PropertyRequest::SetField {
+                    entity: id,
+                    component,
+                    field,
+                    value,
+                },
+                FieldChange::Revert(field) => PropertyRequest::RevertField {
+                    entity: id,
+                    component,
+                    field,
+                },
+                FieldChange::Apply(field) => PropertyRequest::ApplyField {
+                    entity: id,
+                    component,
+                    field,
+                },
+            });
+        }
+        if component == "Model" {
+            cards::model_rows_to_come(ui);
+        }
+    }
+}
+
+/// The request for a row of `component`'s card menu, on the `selected`
+/// entities (the first is the one Properties shows); none for opening
+/// its code, which needs the file.
+pub(crate) fn header_request(
+    row: cards::CardMenu,
     selected: &[EntityId],
     component: &str,
 ) -> Option<PropertyRequest> {
+    use cards::CardMenu as M;
     let entities = selected.to_vec();
     let component = component.to_string();
-    Some(match action {
-        HeaderAction::Remove if entities.len() == 1 => PropertyRequest::RemoveComponent {
+    Some(match row {
+        M::Remove if entities.len() == 1 => PropertyRequest::RemoveComponent {
             entity: entities[0],
             component,
         },
-        HeaderAction::Remove => PropertyRequest::RemoveComponentMany {
+        M::Remove => PropertyRequest::RemoveComponentMany {
             entities,
             component,
         },
-        HeaderAction::Copy => PropertyRequest::CopyComponents {
+        M::Copy => PropertyRequest::CopyComponents {
             entity: entities[0],
             only: Some(component),
         },
-        HeaderAction::Paste => PropertyRequest::PasteComponents {
+        M::Paste => PropertyRequest::PasteComponents {
             entities,
             only: Some(component),
         },
-        HeaderAction::Reset => PropertyRequest::ResetComponent {
+        M::Reset => PropertyRequest::ResetComponent {
             entities,
             component,
         },
-        HeaderAction::OpenCode => return None,
+        M::OpenCode => return None,
     })
-}
-
-/// A component's card: a softly lit box with a border, filling the width.
-fn card(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
-    egui::Frame::new()
-        .fill(theme::menu_row())
-        .stroke(egui::Stroke::new(1.0, theme::button_border()))
-        .corner_radius(6.0)
-        .inner_margin(egui::Margin::symmetric(8, 6))
-        .show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
-            add(ui);
-        });
-}
-
-/// A small text button with no frame, named `name` for screen readers.
-fn quiet_button(ui: &mut Ui, text: RichText, name: &str, hover: &str) -> egui::Response {
-    let button = ui
-        .add(egui::Button::new(text).frame(false))
-        .on_hover_text(hover);
-    button.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
-    button
-}
-
-/// A component's header: its icon and name (and, for game code, the file
-/// it's written in), then on the right its ⋯ menu (copy, paste, reset,
-/// remove) and a way to read more: **?** opens its manual page, or
-/// **Open in Ledger ↗** the game code it's written in (**Show in folder ↗**
-/// for code that isn't Lust, which is never opened in another program).
-/// Returns what was asked for.
-fn component_header(
-    ui: &mut Ui,
-    name: &str,
-    help: &str,
-    can_paste: bool,
-    file: Option<&str>,
-    manual: &str,
-) -> Option<HeaderAction> {
-    ui.horizontal(|ui| {
-        if let Some((icon, colour)) = component_icon(name, file.is_some()) {
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(14.0, 14.0), egui::Sense::hover());
-            crate::icons::icon(ui.painter(), rect, icon, colour);
-        }
-        ui.label(RichText::new(name).strong().color(theme::text_strong()))
-            .on_hover_text(help);
-        if let Some(file) = file {
-            let shown = file.rsplit_once('/').map_or(file, |(_, n)| n);
-            ui.label(RichText::new(shown).color(theme::text_weak()).size(12.0))
-                .on_hover_text(file);
-        }
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let mut picked = None;
-            let menu = ui.menu_button(RichText::new("⋯").color(theme::text_weak()), |ui| {
-                if ui.button("Copy values").clicked() {
-                    picked = Some(HeaderAction::Copy);
-                    ui.close();
-                }
-                if ui
-                    .add_enabled(can_paste, egui::Button::new("Paste values"))
-                    .on_disabled_hover_text(format!("Copy a {name}'s values first"))
-                    .clicked()
-                {
-                    picked = Some(HeaderAction::Paste);
-                    ui.close();
-                }
-                if ui
-                    .button("Reset to defaults")
-                    .on_hover_text("Puts every setting back to its starting value")
-                    .clicked()
-                {
-                    picked = Some(HeaderAction::Reset);
-                    ui.close();
-                }
-                ui.separator();
-                let remove = ui.button(format!("Remove {name}"));
-                if remove.clicked() {
-                    picked = Some(HeaderAction::Remove);
-                    ui.close();
-                }
-            });
-            menu.response.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("{name} menu"))
-            });
-            menu.response
-                .on_hover_text("Copy, paste or reset its values, or remove it");
-            if let Some(file) = file {
-                // Only Lust opens in another program; a Lua or Rust file is
-                // shown in its folder (the Library's rule), and the button
-                // says which.
-                let opens = crate::library::LibraryKind::Code.opens_in_its_program(file);
-                let (words, hint) = if opens {
-                    (
-                        "Open in Ledger ↗",
-                        format!("Opens {file}, where {name} is written, in its program"),
-                    )
-                } else {
-                    (
-                        "Show in folder ↗",
-                        format!("Shows {file}, where {name} is written, in its folder"),
-                    )
-                };
-                let open = quiet_button(
-                    ui,
-                    RichText::new(words)
-                        .color(ui.visuals().hyperlink_color)
-                        .size(12.0),
-                    &format!("Open {name}'s code"),
-                    &hint,
-                );
-                if open.clicked() {
-                    picked = Some(HeaderAction::OpenCode);
-                }
-            } else if let Some(page) = manual_page(name).filter(|_| !manual.is_empty()) {
-                let more = quiet_button(
-                    ui,
-                    RichText::new("?").color(theme::text_weak()),
-                    &format!("About {name}"),
-                    &format!("Opens the manual's page about {name}"),
-                );
-                if more.clicked() {
-                    ui.ctx()
-                        .open_url(egui::OpenUrl::new_tab(format!("{manual}/{page}")));
-                }
-            }
-            picked
-        })
-        .inner
-    })
-    .inner
-}
-
-/// What the entity's ⋯ menu offers.
-struct EntityMenu<'a> {
-    /// The selected entities (the first is the one Properties shows).
-    selected: &'a [EntityId],
-    /// Whether some components' values were copied.
-    copied: bool,
-    /// Whether it can be moved to where the camera looks.
-    move_here: bool,
-    /// Whether it's a whole model that can be split into parts.
-    unpack: bool,
-}
-
-/// The entity's ⋯ menu, beside its name: Move here, Unpack, copying and
-/// pasting every component's values, and Delete.
-fn entity_menu(ui: &mut Ui, menu: &EntityMenu<'_>, requests: &mut Vec<PropertyRequest>) {
-    let one = (menu.selected.len() == 1).then(|| menu.selected[0]);
-    let shown = ui.menu_button(RichText::new("⋯").color(theme::text_weak()), |ui| {
-        if let Some(id) = one.filter(|_| menu.move_here)
-            && ui
-                .button("Move here")
-                .on_hover_text(
-                    "Moves it to where the camera looks (a spotlight to the camera, shining \
-                     the same way)",
-                )
-                .clicked()
-        {
-            requests.push(PropertyRequest::MoveHere(id));
-            ui.close();
-        }
-        if let Some(id) = one.filter(|_| menu.unpack)
-            && ui
-                .button("Unpack")
-                .on_hover_text(
-                    "Splits the model into one entity per part, so each can be moved or \
-                     changed on its own",
-                )
-                .clicked()
-        {
-            requests.push(PropertyRequest::Unpack(id));
-            ui.close();
-        }
-        if let Some(entity) = one
-            && ui
-                .button("Copy components")
-                .on_hover_text("Copies the values of every component it has")
-                .clicked()
-        {
-            requests.push(PropertyRequest::CopyComponents { entity, only: None });
-            ui.close();
-        }
-        if ui
-            .add_enabled(menu.copied, egui::Button::new("Paste components"))
-            .on_hover_text("Gives the selection the copied components' values, adding any it lacks")
-            .on_disabled_hover_text("Copy an entity's components first")
-            .clicked()
-        {
-            requests.push(PropertyRequest::PasteComponents {
-                entities: menu.selected.to_vec(),
-                only: None,
-            });
-            ui.close();
-        }
-        if let Some(id) = one {
-            ui.separator();
-            if ui
-                .button("Delete")
-                .on_hover_text("Deletes it and everything belonging to it")
-                .clicked()
-            {
-                requests.push(PropertyRequest::Delete(id));
-                ui.close();
-            }
-        }
-    });
-    shown
-        .response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Entity menu"));
-    shown
-        .response
-        .on_hover_text("Move here, copy and paste components, delete");
-}
-
-/// The Add component button, filling the width: it opens a list of every
-/// registered component one of `selected` doesn't have yet, with a search
-/// box at the top to narrow it as you type. Returns the one picked.
-fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -> Option<String> {
-    let mut picked = None;
-    let button = ui.add(
-        egui::Button::new(RichText::new("+  Add component…").color(theme::text()))
-            .min_size(egui::vec2(ui.available_width(), 26.0)),
-    );
-    button
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Add component"));
-    let button =
-        button.on_hover_text("Gives it another component, such as a Light: type to search");
-    let search_id = ui.id().with("add component search");
-    let opened = button.clicked();
-    egui::Popup::menu(&button)
-        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-        .show(|ui| {
-            ui.set_width(240.0);
-            let mut query: String = ui.data(|d| d.get_temp(search_id)).unwrap_or_default();
-            if opened {
-                query.clear();
-            }
-            let field = ui.add(
-                egui::TextEdit::singleline(&mut query)
-                    .hint_text("Search components")
-                    .desired_width(240.0),
-            );
-            field.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search components")
-            });
-            if opened {
-                field.request_focus();
-            }
-            ui.data_mut(|d| d.insert_temp(search_id, query.clone()));
-            let wanted = query.trim().to_lowercase();
-            let mut first = None;
-            egui::ScrollArea::vertical()
-                .max_height(320.0)
-                .max_width(240.0)
-                .show(ui, |ui| {
-                    let mut any = false;
-                    // In two groups: Solis's own, then the game's code (the
-                    // ready-made kit's and yours), each by name.
-                    let builtin = area::builtin::registry().ok();
-                    let is_builtin =
-                        |name: &str| builtin.as_ref().is_some_and(|r| r.get(name).is_some());
-                    for (heading, own) in [("Built in", true), ("Game code", false)] {
-                        let mut headed = false;
-                        for schema in document.registry.iter() {
-                            if is_builtin(&schema.name) != own
-                                || !schema.name.to_lowercase().contains(&wanted)
-                            {
-                                continue;
-                            }
-                            let everyone_has = selected.iter().all(|&e| {
-                                document.area().get(e).is_none_or(|d| d.has(&schema.name))
-                            });
-                            if everyone_has {
-                                continue;
-                            }
-                            if !headed {
-                                headed = true;
-                                if any {
-                                    ui.separator();
-                                }
-                                ui.label(
-                                    RichText::new(heading).color(theme::text_weak()).size(11.0),
-                                );
-                            }
-                            any = true;
-                            first.get_or_insert_with(|| schema.name.clone());
-                            if ui
-                                .button(&schema.name)
-                                .on_hover_text(&schema.help)
-                                .clicked()
-                            {
-                                picked = Some(schema.name.clone());
-                            }
-                        }
-                    }
-                    if !any {
-                        let words = if wanted.is_empty() {
-                            "It has every component there is.".to_string()
-                        } else {
-                            format!("No component it lacks is called “{}”.", query.trim())
-                        };
-                        ui.label(RichText::new(words).color(theme::text_weak()));
-                    }
-                });
-            // Enter takes the first one shown.
-            if picked.is_none()
-                && !wanted.is_empty()
-                && field.lost_focus()
-                && ui.input(|i| i.key_pressed(egui::Key::Enter))
-            {
-                picked = first;
-            }
-            if picked.is_some() {
-                ui.close();
-            }
-        });
-    picked
-}
-
-/// Which assembly the entity comes from, with Unpack on a copy's root, or
-/// a warning when its part is gone from the assembly.
-fn assembly_note(
-    ui: &mut Ui,
-    id: EntityId,
-    part: &AssemblyPart,
-    requests: &mut Vec<PropertyRequest>,
-) {
-    ui.horizontal(|ui| {
-        if part.expected.is_none() && !part.root {
-            ui.label(
-                RichText::new(format!("This part is gone from {}.", part.name)).color(theme::WARNING),
-            )
-            .on_hover_text(
-                "Its changes are kept, in case the part comes back. Remove it if you don't need \
-                 them.",
-            );
-            if ui.button("Remove").clicked() {
-                requests.push(PropertyRequest::Delete(id));
-            }
-            return;
-        }
-        let text = if part.root {
-            format!("A copy of {}", part.name)
-        } else {
-            format!("Part of {}", part.name)
-        };
-        ui.label(RichText::new(text).color(theme::text_weak()))
-            .on_hover_text("Bold settings differ from the assembly: ↺ puts one back, ↑ makes it the assembly's");
-        if part.root
-            && ui
-                .button("Unpack")
-                .on_hover_text("Turns this copy into plain entities, no longer following the assembly")
-                .clicked()
-        {
-            requests.push(PropertyRequest::Unpack(id));
-        }
-    });
 }
 
 #[cfg(test)]

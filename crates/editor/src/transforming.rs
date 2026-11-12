@@ -72,6 +72,9 @@ pub struct Snapping {
     pub locked: [bool; 3],
     /// What moves land on in the 2D view.
     pub pixel_snap: PixelSnap,
+    /// Files dropped into the area land where pointed, never on the grid
+    /// (the Place shelf tab's Align to: Free).
+    pub place_free: bool,
 }
 
 impl Default for Snapping {
@@ -85,6 +88,7 @@ impl Default for Snapping {
             object_axes: false,
             locked: [false; 3],
             pixel_snap: PixelSnap::Pixels,
+            place_free: false,
         }
     }
 }

@@ -61,6 +61,8 @@ unbuilt! {
     HomeShelfAnimation: "home.shelf.animation" => ("Animation", Shared10, "The selected entity's animation: its tracks, its keys and each key's details"),
     HomeShelfTransport: "home.shelf.transport" => ("Animation transport", Shared10, "Plays the animation and steps to the key before or after"),
     HomeShelfFrameCounter: "home.shelf.frame-counter" => ("Frame counter", Shared10, "Shows which frame of the animation is on screen"),
+    HomeObjectModelMaterial: "home.object.model-material" => ("Material", Shared7, "Gives a model a material of your own in place of the one its file brings"),
+    HomeObjectModelShadows: "home.object.model-shadows" => ("Shadows", NotPlanned, "Lets a model cast shadows of its own, not only from the sun"),
     HomeConsoleLineLink: "home.console.line-link" => ("Line link", Shared6, "Opens the game code line a Console message came from"),
 
     // Home: placing.

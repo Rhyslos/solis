@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::test_support::{harness, info, ribbon_tab};
+use crate::workbench::WorkbenchAction;
 use egui_kittest::kittest::Queryable;
 
 #[test]
@@ -133,7 +134,7 @@ fn farm() -> Workbench {
 fn the_window_starts_from_the_project_and_the_open_area() {
     let mut w = farm();
     w.open_export();
-    let window = w.open.export_window.as_ref().unwrap();
+    let window = w.open.export.as_ref().unwrap();
     assert_eq!(window.playtest.name, "Farm the game");
     assert_eq!(window.playtest.area, "areas/farm.solarea");
     let folder = PathBuf::from(&window.folder);
@@ -152,7 +153,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     }));
     w.set_last_export_folder(Some(local("/elsewhere/Farm playtest 2026-01-01")));
     w.open_export();
-    let window = w.open.export_window.as_ref().unwrap();
+    let window = w.open.export.as_ref().unwrap();
     assert_eq!(window.playtest.area, "areas/town.solarea");
     assert!(window.playtest.fullscreen);
     let folder = PathBuf::from(&window.folder);
@@ -167,7 +168,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     }));
     w.open_export();
     assert_eq!(
-        w.open.export_window.as_ref().unwrap().playtest.area,
+        w.open.export.as_ref().unwrap().playtest.area,
         "areas/farm.solarea"
     );
 }
@@ -176,7 +177,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
 fn without_a_project_there_s_nothing_to_export() {
     let mut w = Workbench::new(info());
     w.open_export();
-    assert!(w.open.export_window.is_none());
+    assert!(w.open.export.is_none());
     assert!(
         w.log_lines()
             .last()
@@ -192,7 +193,8 @@ fn export_asks_the_app_and_says_where_it_went() {
     w.open_export();
     let mut h = harness(w);
     h.run();
-    h.get_by_label("Export").click();
+    h.get_by_role_and_label(egui::accesskit::Role::Button, "Export")
+        .click();
     h.run();
     let asked: Vec<_> = h
         .state()
@@ -241,13 +243,13 @@ fn home_s_build_button_and_the_build_tab_open_export_for_playtesting() {
     // Home, Project, Build.
     h.get_by_label("Export for playtesting…").click();
     h.run();
-    assert!(h.state().0.open.export_window.is_some());
-    h.state_mut().0.open.export_window = None;
+    assert!(h.state().0.open.export.is_some());
+    h.state_mut().0.open.export = None;
     // The Build tab's own button.
     ribbon_tab(&mut h, crate::shell::RibbonTab::Build);
     h.get_by_label("Export for playtesting…").click();
     h.run();
-    assert!(h.state().0.open.export_window.is_some());
+    assert!(h.state().0.open.export.is_some());
 }
 
 #[test]
@@ -291,7 +293,7 @@ fn a_project_s_file_never_chooses_the_folder() {
         let mut w = farm();
         w.set_last_export(Some(read));
         w.open_export();
-        let window = w.open.export_window.as_ref().unwrap();
+        let window = w.open.export.as_ref().unwrap();
         assert_eq!(
             Path::new(&window.folder).parent(),
             Some(Path::new("/home/me/Documents/Farm exports")),
@@ -329,7 +331,7 @@ fn only_a_whole_path_on_this_computer_is_remembered() {
         w.set_last_export_folder(Some(bad.clone()));
         assert_eq!(w.open.last_export_folder, None, "{}", bad.display());
         w.open_export();
-        let window = w.open.export_window.as_ref().unwrap();
+        let window = w.open.export.as_ref().unwrap();
         assert!(
             window.folder.starts_with("/home/me/Documents"),
             "{}",
@@ -390,15 +392,15 @@ fn opening_the_window_never_looks_at_the_disk() {
         "a folder of this computer's"
     );
     w.open_export();
-    let first = PathBuf::from(&w.open.export_window.as_ref().unwrap().folder);
+    let first = PathBuf::from(&w.open.export.as_ref().unwrap().folder);
     assert_eq!(first.parent(), Some(dir.as_path()));
     std::fs::create_dir_all(&first).unwrap();
     std::fs::write(first.join("Farm.exe"), "x").unwrap();
     w.open_export();
-    let second = w.open.export_window.as_ref().unwrap().folder.clone();
+    let second = w.open.export.as_ref().unwrap().folder.clone();
     // And when an export ends: the next goes beside it, found out later.
     w.export_finished(Ok(first.clone()));
-    let after = w.open.export_window.as_ref().unwrap().folder.clone();
+    let after = w.open.export.as_ref().unwrap().folder.clone();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(!second.ends_with(" (2)"), "{second}");
     assert_eq!(PathBuf::from(after), first);
@@ -435,7 +437,8 @@ fn only_the_window_s_own_folder_may_be_numbered() {
     w.set_export_folder("/home/me/Documents".into());
     let mut h = harness(w);
     h.run();
-    h.get_by_label("Export").click();
+    h.get_by_role_and_label(egui::accesskit::Role::Button, "Export")
+        .click();
     h.run();
     let asked = |h: &egui_kittest::Harness<'_, crate::test_support::State>| {
         let actions = h.state().1.actions.iter();
@@ -455,7 +458,8 @@ fn only_the_window_s_own_folder_may_be_numbered() {
         .0
         .export_finished(Err("it already has files in it".into()));
     h.run();
-    h.get_by_label("Export").click();
+    h.get_by_role_and_label(egui::accesskit::Role::Button, "Export")
+        .click();
     h.run();
     assert!(!asked(&h).last().unwrap().suggested);
     // Made: exporting again goes beside where that one went.
@@ -463,7 +467,8 @@ fn only_the_window_s_own_folder_may_be_numbered() {
         .0
         .export_finished(Ok("/home/me/Documents/out".into()));
     h.run();
-    h.get_by_label("Export").click();
+    h.get_by_role_and_label(egui::accesskit::Role::Button, "Export")
+        .click();
     h.run();
     let again = asked(&h).last().unwrap().clone();
     assert_eq!(again.folder, Path::new("/home/me/Documents/out"));

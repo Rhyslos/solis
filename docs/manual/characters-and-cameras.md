@@ -50,7 +50,7 @@ It has sounds too ([Sound events](sound-events.md)): footsteps as the character 
 | Turn | Alt + left or right arrow | right stick |
 | Zoom | mouse wheel, Page Up and Page Down | right and left triggers |
 
-These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Zoom**, so players can rebind them in **File > Input**. A project made before these cameras existed doesn't have them yet: the Input actions window offers to add them.
+These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Zoom**, so you can rebind them in **File › Project settings › Input**. A project made before these cameras existed doesn't have them yet: the Input page offers to add them.
 
 **Moving a character from your own code**
 
@@ -139,7 +139,7 @@ The fields at the bottom of each (`fall`, `yaw`, `pitch`) are how it's moving ri
 | Sprint | Shift (left stick click) |
 | Save and load, in the playground | F6 and F7 |
 
-All of these are the game's only while it has the mouse and keys (click the Game panel); see [Input](input.md). The kit's actions (Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag) are always named in game code, so the kit works in a project that hasn't made them all; one your project hasn't made in **File > Input** is never pressed.
+All of these are the game's only while it has the mouse and keys (click the Game panel); see [Input](input.md). The kit's actions (Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag) are always named in game code, so the kit works in a project that hasn't made them all; one your project hasn't made in **File › Project settings › Input** is never pressed.
 
 ## Tips and common problems
 - **Problem:** the character doesn't move. **Why:** the game doesn't have the keys, or there's no ground under it (it fell). **Fix:** click the Game panel; give the floor a Collider.

@@ -33,7 +33,7 @@ Every change in the Map tab is saved at once. **Ctrl + Z** and **Ctrl + Y** over
 ### Art and painting
 A terrain is drawn in its colour until its tileset gives it art: then each cell's tile is picked from its neighbours, with smooth edges (see [Tilesets and autotiling](tilesets.md)). Seen from far away, a big map is drawn in its colours again, which is much quicker.
 
-Paint a map's cells with the **tile painter**: while the map is selected, its brush, rectangle, line, fill and eyedropper join the tool bar at the bottom of the viewport, and the Map tab's terrain swatches are its palette (see [Painting tiles](painting-tiles.md)). The file is plain text you can also edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing), and cells painted with an exact tile are listed in `exact` blocks.
+Paint a map's cells with the **tile painter**: while the map is selected, its brush, rectangle, line, fill and eyedropper join the toolbox down the viewport's left edge, and the Map tab's terrain swatches are its palette (see [Painting tiles](painting-tiles.md)). The file is plain text you can also edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing), and cells painted with an exact tile are listed in `exact` blocks.
 
 ### The file
 

@@ -8,8 +8,8 @@
 //! the viewport saw this frame. The workbench does the painting
 //! (`workbench_paint.rs`), each stroke one undo step.
 
-use crate::theme::{self, Accent};
-use egui::{Color32, Rect, RichText, Sense, Ui, vec2};
+use crate::theme;
+use egui::{RichText, Ui};
 use reflect::Id;
 use tiles::paint::Stamp;
 use tiles::{TileKind, Tileset};
@@ -194,58 +194,10 @@ pub fn exact_piece(set: &Tileset, code: u8, chosen: Option<Id>) -> Option<Id> {
         .map(|p| p.id)
 }
 
-/// The painting tools on the viewport's tool bar, then Exact, Art or
-/// Meaning, and the layer painted. Changes `paint`; gives back the tool
-/// clicked, if one was.
-pub(crate) fn paint_bar(
-    ui: &mut Ui,
-    paint: &mut PaintSettings,
-    accent: Accent,
-) -> Option<PaintTool> {
-    let mut clicked = None;
-    let (rect, _) = ui.allocate_exact_size(vec2(7.0, 22.0), Sense::hover());
-    ui.painter().line_segment(
-        [rect.center_top(), rect.center_bottom()],
-        egui::Stroke::new(1.0, theme::text_weak()),
-    );
-    for tool in PaintTool::ALL {
-        let chosen = paint.tool == Some(tool);
-        let (rect, response) = ui.allocate_exact_size(vec2(28.0, 26.0), Sense::click());
-        let response = response.on_hover_text(tool.hint());
-        let fill = if chosen {
-            accent.colors().fill
-        } else if response.hovered() {
-            theme::hover()
-        } else {
-            Color32::TRANSPARENT
-        };
-        ui.painter().rect_filled(rect, 3.0, fill);
-        let colour = if chosen {
-            theme::on_accent()
-        } else {
-            theme::text_strong()
-        };
-        crate::icons::icon(
-            ui.painter(),
-            Rect::from_center_size(rect.center() - vec2(2.0, 1.0), vec2(15.0, 15.0)),
-            tool.icon(),
-            colour,
-        );
-        ui.painter().text(
-            rect.right_bottom() - vec2(3.0, 1.0),
-            egui::Align2::RIGHT_BOTTOM,
-            tool.key().name(),
-            egui::FontId::proportional(8.0),
-            colour.gamma_multiply(0.8),
-        );
-        response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::Button, true, chosen, tool.name())
-        });
-        if response.clicked() {
-            clicked = Some(tool);
-        }
-    }
-    ui.add_space(2.0);
+/// A selected map's painting options, drawn over the view while it is
+/// selected (its painting tools are in the toolbox): Exact, Art or
+/// Meaning, and the layer painted. Changes `paint`.
+pub(crate) fn paint_options(ui: &mut Ui, paint: &mut PaintSettings) {
     let exact = ui
         .add(egui::Button::new("Exact").selected(paint.exact))
         .on_hover_text(
@@ -293,7 +245,6 @@ pub(crate) fn paint_bar(
         })
         .response
         .on_hover_text("The layer painted");
-    clicked
 }
 
 /// The stamp's buttons, while one is held: flip it either way, turn it,

@@ -4,11 +4,15 @@
 //! values the user typed or dragged, and the caller applies them (as undo
 //! steps, decision 0022).
 
+pub(crate) use crate::field_rows::fields;
+use crate::field_rows::row_marked;
 use crate::models::ModelInfo;
 use crate::sprite_sheets::SpriteSheets;
+use crate::tokens::{size, text};
+use crate::widgets;
 use egui::{RichText, Ui};
 use glam::{EulerRot, Quat};
-use reflect::{AssetId, ComponentData, ComponentSchema, FieldInfo, FieldKind, Offer, Value};
+use reflect::{AssetId, ComponentData, FieldInfo, FieldKind, Offer, Value};
 use std::collections::BTreeMap;
 
 /// What the user did to a field this frame.
@@ -37,42 +41,7 @@ const EULER: EulerRot = EulerRot::ZXY;
 
 /// A labelled row: the field's name on the left, its widget after it.
 pub(crate) fn row<R>(ui: &mut Ui, label: &str, help: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
-    row_marked(ui, label, help, false, false, add)
-}
-
-/// A row whose name is bold when `changed` (a placed assembly's copy that
-/// differs from the assembly), with a dot after it when `moved` (its value
-/// isn't the standard one, decision 0085).
-fn row_marked<R>(
-    ui: &mut Ui,
-    label: &str,
-    help: &str,
-    changed: bool,
-    moved: bool,
-    add: impl FnOnce(&mut Ui) -> R,
-) -> R {
-    ui.horizontal(|ui| {
-        let text = if changed {
-            RichText::new(label)
-                .strong()
-                .color(crate::theme::text_strong())
-        } else {
-            RichText::new(label).color(crate::theme::text_weak())
-        };
-        let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
-        let label = ui.add_sized(egui::vec2(88.0, 18.0), egui::Label::new(text).truncate());
-        let (dot, _) = ui.allocate_exact_size(egui::vec2(8.0, 18.0), egui::Sense::hover());
-        ui.spacing_mut().item_spacing.x = spacing;
-        if moved {
-            ui.painter()
-                .circle_filled(dot.center(), 2.5, crate::theme::accent_fill());
-        }
-        if !help.is_empty() {
-            label.on_hover_text(help);
-        }
-        add(ui)
-    })
-    .inner
+    row_marked(ui, (label, help), (false, false, false), add).0
 }
 
 /// Whether a field's value differs between the selected entities: the
@@ -135,112 +104,6 @@ pub(crate) fn rotation_of(degrees: [f64; 3]) -> Value {
     Value::quat(Quat::from_euler(EULER, z, x, y))
 }
 
-/// Draws every field of `schema` with its value in `data`, and returns what
-/// the user did. Fields `data` doesn't have show their starting value. With
-/// `assembly` (the component as the entity's assembly has it), fields that
-/// differ are bold, with Revert and Apply buttons. `others` are the same
-/// component on the other selected entities: values that differ show as
-/// "—".
-pub(crate) fn fields(
-    ui: &mut Ui,
-    schema: &ComponentSchema,
-    data: &ComponentData,
-    assembly: Option<&ComponentData>,
-    others: &[&ComponentData],
-    (models, sheets): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets),
-    area: &area::Area,
-) -> Vec<FieldChange> {
-    let mut changes = Vec::new();
-    for field in &schema.fields {
-        let value = data.get(&field.name).unwrap_or(&field.default);
-        let mixed = Mixed::of(field, value, others);
-        let changed =
-            assembly.is_some_and(|a| a.get(&field.name).unwrap_or(&field.default) != value);
-        // Not its standard value: a dot, and a way back (decision 0085).
-        // An assembly's copy shows how it differs from the assembly
-        // instead.
-        let moved = !changed && !mixed.whole && moved_from_default(field, value);
-        let id = ui.id().with((&schema.name, &field.name));
-        ui.push_id(id, |ui| {
-            let (set, revert, apply, reset) =
-                row_marked(ui, &field.label, field.hint.help, changed, moved, |ui| {
-                    let set = field_widget(ui, field, value, (models, sheets, data), area, mixed);
-                    if let Value::Asset(Some(used)) = value {
-                        shared_by(ui, area, used.asset);
-                    }
-                    if moved {
-                        let back = ui
-                            .add(
-                                egui::Button::new(
-                                    RichText::new(format!("↺ {}", short(&field.default)))
-                                        .color(crate::theme::text_weak())
-                                        .size(12.0),
-                                )
-                                .frame(false),
-                            )
-                            .on_hover_text("Back to its standard value");
-                        let name = format!("Reset {}", field.label);
-                        back.widget_info(|| {
-                            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name)
-                        });
-                        return (set, false, false, back.clicked());
-                    }
-                    if !changed {
-                        return (set, false, false, false);
-                    }
-                    let small = |ui: &mut Ui, text: &str, hover: &str, name: String| {
-                        let button = ui
-                            .add(
-                                egui::Button::new(
-                                    RichText::new(text).color(crate::theme::text_weak()),
-                                )
-                                .frame(false),
-                            )
-                            .on_hover_text(hover);
-                        button.widget_info(|| {
-                            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name)
-                        });
-                        button.clicked()
-                    };
-                    let revert = small(
-                        ui,
-                        "↺",
-                        "Back to the assembly's value",
-                        format!("Revert {}", field.label),
-                    );
-                    let apply = small(
-                        ui,
-                        "↑",
-                        "Make this the assembly's value, for every copy",
-                        format!("Apply {}", field.label),
-                    );
-                    (set, revert, apply, false)
-                });
-            if reset {
-                changes.push(FieldChange::Set {
-                    field: field.name.clone(),
-                    value: field.default.clone(),
-                    part: None,
-                });
-            }
-            if let Some((value, part)) = set {
-                changes.push(FieldChange::Set {
-                    field: field.name.clone(),
-                    value,
-                    part,
-                });
-            }
-            if revert {
-                changes.push(FieldChange::Revert(field.name.clone()));
-            }
-            if apply {
-                changes.push(FieldChange::Apply(field.name.clone()));
-            }
-        });
-    }
-    changes
-}
-
 /// Whether a field's value isn't its standard one, for the kinds where
 /// that's worth a dot: a number, a switch, words, a choice or a colour. A
 /// place, a turn or a picked file starts empty and is meant to be set, so
@@ -300,7 +163,7 @@ pub(crate) fn users_of(area: &area::Area, asset: AssetId) -> usize {
 
 /// "shared by 3" after a file used by more than one entity, so changing
 /// the file isn't a surprise (decision 0085).
-fn shared_by(ui: &mut Ui, area: &area::Area, asset: AssetId) {
+pub(crate) fn shared_by(ui: &mut Ui, area: &area::Area, asset: AssetId) {
     let users = users_of(area, asset);
     if users > 1 {
         egui::Frame::new()
@@ -325,7 +188,7 @@ fn shared_by(ui: &mut Ui, area: &area::Area, asset: AssetId) {
 /// One field's widget; `Some` with the new value when the user changed it
 /// (and, for three numbers, which one). Values that differ between the
 /// selected entities (`mixed`) show as "—".
-fn field_widget(
+pub(crate) fn field_widget(
     ui: &mut Ui,
     field: &FieldInfo,
     value: &Value,
@@ -410,23 +273,35 @@ fn field_widget(
             if mixed.whole {
                 drag = drag.custom_formatter(|_, _| "—".to_string());
             }
-            whole(ui.add(drag).changed().then_some(Value::Int(n)))
+            let width = ui.available_width();
+            whole(
+                widgets::field::framed(ui, width, None, |ui| ui.add(drag))
+                    .changed()
+                    .then_some(Value::Int(n)),
+            )
         }
         FieldKind::Float => {
             let mut v = value.as_f64().unwrap_or(0.0);
-            whole(number(ui, &mut v, field, mixed.whole).then_some(Value::Float(v)))
+            let width = ui.available_width();
+            whole(number(ui, &mut v, field, (mixed.whole, None, width)).then_some(Value::Float(v)))
         }
         FieldKind::Text => {
             let mut text = match value {
                 Value::Text(t) if !mixed.whole => t.clone(),
                 _ => String::new(),
             };
-            let edit = egui::TextEdit::singleline(&mut text).hint_text(if mixed.whole {
-                "—"
-            } else {
-                ""
-            });
-            whole(ui.add(edit).changed().then_some(Value::Text(text)))
+            let edit = egui::TextEdit::singleline(&mut text)
+                .frame(egui::Frame::NONE)
+                .margin(egui::Margin::ZERO)
+                .font(text::ribbon_small())
+                .desired_width(f32::INFINITY)
+                .hint_text(if mixed.whole { "—" } else { "" });
+            let width = ui.available_width();
+            whole(
+                widgets::field::framed(ui, width, None, |ui| ui.add(edit))
+                    .changed()
+                    .then_some(Value::Text(text)),
+            )
         }
         FieldKind::Choice(options) => {
             let current = match value {
@@ -435,38 +310,29 @@ fn field_widget(
             };
             let mut chosen = None;
             let shown = if mixed.whole { "—" } else { current.as_str() };
-            egui::ComboBox::from_id_salt("choice")
-                .selected_text(shown)
-                .show_ui(ui, |ui| {
-                    for option in options {
-                        let picked = *option == current && !mixed.whole;
-                        if ui.selectable_label(picked, option).clicked()
-                            && (*option != current || mixed.whole)
-                        {
-                            chosen = Some(Value::Text(option.clone()));
-                        }
+            let width = ui.available_width();
+            let button = widgets::field::dropdown_button(ui, &field.label, shown, width);
+            egui::Popup::menu(&button).width(width).show(|ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+                for option in options {
+                    let picked = *option == current && !mixed.whole;
+                    if widgets::menu::choice(ui, option, picked).clicked()
+                        && (*option != current || mixed.whole)
+                    {
+                        chosen = Some(Value::Text(option.clone()));
                     }
-                });
+                }
+            });
             whole(chosen)
         }
         FieldKind::Vec3 => {
             let mut v = value.as_floats::<3>().unwrap_or([0.0; 3]).map(f64::from);
-            let mut part = None;
-            for (i, c) in v.iter_mut().enumerate() {
-                if number(ui, c, field, mixed.parts[i]) {
-                    part = Some((i, *c));
-                }
-            }
+            let part = three_numbers(ui, &mut v, field, mixed.parts);
             part.map(|p| (Value::floats(&v.map(|c| c as f32)), Some(p)))
         }
         FieldKind::Rotation => {
             let mut degrees = degrees_of(value);
-            let mut part = None;
-            for (i, c) in degrees.iter_mut().enumerate() {
-                if number(ui, c, field, mixed.parts[i]) {
-                    part = Some((i, *c));
-                }
-            }
+            let part = three_numbers(ui, &mut degrees, field, mixed.parts);
             part.map(|p| (rotation_of(degrees), Some(p)))
         }
         FieldKind::Color => {
@@ -889,10 +755,35 @@ fn entity_picker(ui: &mut Ui, value: &Value, area: &area::Area, mixed: bool) -> 
     chosen.filter(|v| mixed || *v != *value)
 }
 
-/// A number field: drags within the hint's range, but never changes a
-/// value that's outside it just by being shown (decision 0019). A value
-/// that differs between the selected entities (`mixed`) shows as "—".
-fn number(ui: &mut Ui, value: &mut f64, field: &FieldInfo, mixed: bool) -> bool {
+/// Three numbers side by side, each with its axis letter, sharing the
+/// room. Returns which changed, and to what.
+fn three_numbers(
+    ui: &mut Ui,
+    values: &mut [f64; 3],
+    field: &FieldInfo,
+    mixed: [bool; 3],
+) -> Option<(usize, f64)> {
+    let gap = ui.spacing().item_spacing.x;
+    let width = ((ui.available_width() - 2.0 * gap) / 3.0).max(size::FIELD_MIN_W / 3.0);
+    let mut part = None;
+    for (i, (c, axis)) in values.iter_mut().zip(widgets::field::Axis::ALL).enumerate() {
+        if number(ui, c, field, (mixed[i], Some(axis), width)) {
+            part = Some((i, *c));
+        }
+    }
+    part
+}
+
+/// A number field `width` wide, with `axis`'s letter if it is one of
+/// three: drags within the hint's range, but never changes a value
+/// that's outside it just by being shown (decision 0019). A value that
+/// differs between the selected entities (`mixed`) shows as "—".
+fn number(
+    ui: &mut Ui,
+    value: &mut f64,
+    field: &FieldInfo,
+    (mixed, axis, width): (bool, Option<widgets::field::Axis>, f32),
+) -> bool {
     let mut drag = egui::DragValue::new(value)
         .speed(field.hint.speed.unwrap_or(0.1))
         .max_decimals(3)
@@ -904,7 +795,7 @@ fn number(ui: &mut Ui, value: &mut f64, field: &FieldInfo, mixed: bool) -> bool 
     if let Some((low, high)) = field.hint.range {
         drag = drag.range(low..=high);
     }
-    ui.add(drag).changed()
+    widgets::field::framed(ui, width, axis, |ui| ui.add(drag)).changed()
 }
 
 #[cfg(test)]

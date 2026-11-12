@@ -92,7 +92,7 @@ fn colours_written(code: &str) -> usize {
 /// meter's green, a build's tag), shades or lights what is under it, or
 /// is a grey the design has no name for; each goes, or takes a token,
 /// when its screen is rebuilt to the design.
-const KEPT: [(&str, usize, &str); 13] = [
+const KEPT: [(&str, usize, &str); 12] = [
     (
         "atlas_view.rs",
         3,
@@ -117,11 +117,6 @@ const KEPT: [(&str, usize, &str); 13] = [
         "graph_canvas.rs",
         4,
         "the live state's blue and a condition's amber chip; a node's name and border",
-    ),
-    (
-        "launcher.rs",
-        21,
-        "a build's green, amber or red tag, each project's letter tile, the amber note",
     ),
     (
         "map_tab.rs",

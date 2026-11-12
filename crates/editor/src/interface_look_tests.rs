@@ -11,6 +11,7 @@ fn changed() -> InterfaceLook {
         density: Density::Compact,
         ribbon_labels: false,
         hide_unfinished: true,
+        shelf_opens_on: ShelfOpensOn::Entity,
     }
 }
 
@@ -22,6 +23,11 @@ fn the_standard_look_is_the_design_s() {
     assert_eq!(look.density, Density::Default);
     assert!(look.ribbon_labels, "the ribbon shows its buttons' names");
     assert!(!look.hide_unfinished, "unfinished parts show at first");
+    assert_eq!(
+        look.shelf_opens_on,
+        ShelfOpensOn::AsItIs,
+        "the shelf stays as it is, as it always did"
+    );
 }
 
 #[test]

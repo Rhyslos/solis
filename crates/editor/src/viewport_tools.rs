@@ -11,8 +11,8 @@ use crate::camera::Camera;
 use crate::gizmo::{Change, Drag, Gizmo, Handle, Shape};
 use crate::picking::PickMode;
 use crate::theme::{self, Accent};
-use crate::transforming::{ANGLE_STEPS, GRID_STEPS, PixelSnap, Snapping};
-use egui::{Align, Color32, Layout, Pos2, Rect, RichText, Stroke, Ui};
+use crate::transforming::Snapping;
+use egui::{Color32, Pos2, Rect, Stroke, Ui};
 use glam::{Mat4, Vec2, Vec3};
 use reflect::EntityId;
 
@@ -66,6 +66,8 @@ pub(crate) enum ViewportEvent {
         asset: reflect::AssetId,
         /// Where in the world: the surface under the mouse, or the ground.
         at: Vec3,
+        /// Ctrl was held: it lands where dropped, never on the grid.
+        free: bool,
     },
 }
 
@@ -83,6 +85,7 @@ pub(crate) enum PickPurpose {
     Drop {
         asset: reflect::AssetId,
         fallback: Vec3,
+        free: bool,
     },
 }
 
@@ -447,11 +450,10 @@ impl Tools {
     pub(crate) fn drop_asset(
         &mut self,
         asset: reflect::AssetId,
-        at: Vec2,
+        (at, free): (Vec2, bool),
         camera: &Camera,
         area: &AreaView,
-        size: Vec2,
-        ppp: f32,
+        (size, ppp): (Vec2, f32),
     ) {
         let ray = camera.ray_through(at, size);
         let fallback = if camera.is_flat() {
@@ -466,7 +468,11 @@ impl Tools {
         let px = pixel_at(at, size, ppp);
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],
-            PickPurpose::Drop { asset, fallback },
+            PickPurpose::Drop {
+                asset,
+                fallback,
+                free,
+            },
             area,
         );
     }
@@ -530,10 +536,16 @@ impl Tools {
             *waited += 1;
             if *waited > PICK_PATIENCE {
                 // A drop still lands, on the ground, rather than being lost.
-                if let PickPurpose::Drop { asset, fallback } = pick.purpose {
+                if let PickPurpose::Drop {
+                    asset,
+                    fallback,
+                    free,
+                } = pick.purpose
+                {
                     self.events.push(ViewportEvent::Drop {
                         asset,
                         at: fallback,
+                        free,
                     });
                 }
                 self.pick = self.next.take();
@@ -555,9 +567,14 @@ impl Tools {
                 hits.extend(markers);
                 ViewportEvent::Box { hits, mode: *mode }
             }
-            PickPurpose::Drop { asset, fallback } => ViewportEvent::Drop {
+            PickPurpose::Drop {
+                asset,
+                fallback,
+                free,
+            } => ViewportEvent::Drop {
                 asset: *asset,
                 at: answer.point.unwrap_or(*fallback),
+                free: *free,
             },
         };
         self.events.push(event);
@@ -776,271 +793,6 @@ pub(crate) fn readout(change: Change) -> String {
             }
         }
     }
-}
-
-/// Grid, angle and scale snapping, the axis locks and world or object
-/// axes, and the camera speed: the viewport's bottom-right corner, in two
-/// rows so it stays clear of the tools in the middle.
-pub(crate) fn snapping_corner(
-    ui: &mut Ui,
-    snapping: &mut Snapping,
-    accent: Accent,
-    camera_speed: u8,
-    upwards: bool,
-) {
-    // In a bottom corner the rows build upwards; in a top one, downwards.
-    let layout = if upwards {
-        Layout::bottom_up(Align::Max)
-    } else {
-        Layout::top_down(Align::Max)
-    };
-    // Each row hugs the edge the corner builds from.
-    let row = Layout::right_to_left(if upwards { Align::Max } else { Align::Min });
-    ui.with_layout(layout, |ui| {
-        ui.spacing_mut().item_spacing.y = 3.0;
-        // Bottom row, laid out from the right edge, so the boxes go in
-        // backwards: Grid, Angle, Scale, Camera.
-        ui.with_layout(row, |ui| {
-            ui.spacing_mut().item_spacing.x = 3.0;
-            theme::overlay_frame()
-                .inner_margin(egui::Margin::symmetric(8, 4))
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(camera_speed.to_string())
-                                .color(accent.colors().light)
-                                .strong(),
-                        );
-                        ui.label("Camera");
-                    })
-                    .response
-                    .on_hover_text("Camera speed: hold the right mouse button and turn the wheel");
-                });
-            theme::overlay_frame().show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 2.0;
-                    toggle(
-                        ui,
-                        &mut snapping.scale,
-                        "Scale 10%",
-                        "Scaling goes in 10% steps",
-                        accent,
-                    );
-                    step_menu(ui, &mut snapping.angle_step, &ANGLE_STEPS, |s| {
-                        format!("{s:.0}°")
-                    });
-                    toggle(
-                        ui,
-                        &mut snapping.angle,
-                        &format!("Angle {:.0}°", snapping.angle_step),
-                        "Turning goes in steps (hold Ctrl while dragging to flip this)",
-                        accent,
-                    );
-                    step_menu(ui, &mut snapping.grid_step, &GRID_STEPS, grid_text);
-                    toggle(
-                        ui,
-                        &mut snapping.grid,
-                        &format!("Grid {}", grid_text(snapping.grid_step)),
-                        "Moves land on the grid (hold Ctrl while dragging to flip this)",
-                        accent,
-                    );
-                });
-            });
-        });
-        // The row above: X, Y, Z locks and world or object axes.
-        ui.with_layout(row, |ui| {
-            theme::overlay_frame().show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 2.0;
-                    let axes = if snapping.object_axes {
-                        "Object"
-                    } else {
-                        "World"
-                    };
-                    toggle(
-                        ui,
-                        &mut snapping.object_axes,
-                        axes,
-                        "The gizmo follows the world's axes or the entity's own (L)",
-                        accent,
-                    );
-                    for (i, name) in ["Z", "Y", "X"].into_iter().enumerate() {
-                        let axis = 2 - i;
-                        lock_button(ui, &mut snapping.locked[axis], name);
-                    }
-                });
-            });
-        });
-    });
-}
-
-/// The 2D view's corner: the tile grid, what moves snap to, the zoom, and
-/// the X and Y locks (Phase 9, D1). `upwards` as for [`snapping_corner`].
-pub(crate) fn pixel_corner(
-    ui: &mut Ui,
-    snapping: &mut Snapping,
-    zoom: &mut f32,
-    pixels: area::pixels::PixelSettings,
-    accent: Accent,
-    upwards: bool,
-) {
-    let layout = if upwards {
-        Layout::bottom_up(Align::Max)
-    } else {
-        Layout::top_down(Align::Max)
-    };
-    let row = Layout::right_to_left(if upwards { Align::Max } else { Align::Min });
-    ui.with_layout(layout, |ui| {
-        ui.spacing_mut().item_spacing.y = 3.0;
-        // Bottom row, from the right edge: Zoom, Snap, Grid.
-        ui.with_layout(row, |ui| {
-            ui.spacing_mut().item_spacing.x = 3.0;
-            theme::overlay_frame().show(ui, |ui| {
-                let percent = |z: f32| format!("{:.0}%", z * 100.0);
-                let button = ui
-                    .add(egui::Button::new(format!("Zoom {} ▴", percent(*zoom))))
-                    .on_hover_text(
-                        "Screen pixels to each of the game's: whole steps keep pixels sharp. \
-                         The wheel steps through them",
-                    );
-                egui::Popup::menu(&button)
-                    .align(egui::RectAlign::TOP_END)
-                    .show(|ui| {
-                        for &step in crate::camera::ZOOM_STEPS.iter().rev() {
-                            if ui
-                                .add(egui::Button::new(percent(step)).selected(*zoom == step))
-                                .clicked()
-                            {
-                                *zoom = step;
-                            }
-                        }
-                    });
-            });
-            theme::overlay_frame().show(ui, |ui| {
-                let on = snapping.pixel_snap != PixelSnap::Off;
-                let text = format!("Snap: {} ▴", snapping.pixel_snap.name());
-                let label = if on {
-                    RichText::new(text).color(theme::on_accent())
-                } else {
-                    RichText::new(text)
-                };
-                let mut button = egui::Button::new(label).min_size(egui::vec2(0.0, 20.0));
-                if on {
-                    button = button.fill(accent.colors().fill);
-                }
-                let button = ui.add(button).on_hover_text(
-                    "What moves land on: whole pixels (so nothing rests between pixels), whole \
-                     tiles, or anywhere. Hold Ctrl while dragging to flip it",
-                );
-                egui::Popup::menu(&button)
-                    .align(egui::RectAlign::TOP_END)
-                    .show(|ui| {
-                        for mode in PixelSnap::ALL.into_iter().rev() {
-                            let name = mode.name();
-                            let mut text = name[..1].to_uppercase();
-                            text.push_str(&name[1..]);
-                            if ui
-                                .add(egui::Button::new(text).selected(snapping.pixel_snap == mode))
-                                .clicked()
-                            {
-                                snapping.pixel_snap = mode;
-                            }
-                        }
-                    });
-            });
-            theme::overlay_frame()
-                .inner_margin(egui::Margin::symmetric(8, 4))
-                .show(ui, |ui| {
-                    let [w, h] = pixels.tile;
-                    let text = if w == h {
-                        format!("Grid {w} px")
-                    } else {
-                        format!("Grid {w} × {h} px")
-                    };
-                    ui.label(text)
-                        .on_hover_text("The tile size: File > Project settings changes it");
-                });
-        });
-        // The row above: the X and Y locks (2D moves across the ground).
-        ui.with_layout(row, |ui| {
-            theme::overlay_frame().show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 2.0;
-                    for (i, name) in ["Y", "X"].into_iter().enumerate() {
-                        lock_button(ui, &mut snapping.locked[1 - i], name);
-                    }
-                });
-            });
-        });
-    });
-}
-
-/// A grid step as text: "1 m", "50 cm".
-fn grid_text(step: f32) -> String {
-    if step >= 1.0 {
-        format!("{step:.0} m")
-    } else {
-        format!("{:.0} cm", step * 100.0)
-    }
-}
-
-/// A button that switches `on`, filled with the accent while on.
-fn toggle(ui: &mut Ui, on: &mut bool, text: &str, hint: &str, accent: Accent) {
-    let label = if *on {
-        RichText::new(text).color(theme::on_accent())
-    } else {
-        RichText::new(text)
-    };
-    let mut button = egui::Button::new(label).min_size(egui::vec2(0.0, 20.0));
-    if *on {
-        button = button.fill(accent.colors().fill);
-    }
-    let response = ui.add(button).on_hover_text(hint);
-    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, *on, text));
-    if response.clicked() {
-        *on = !*on;
-    }
-}
-
-/// An axis lock: the axis's letter, red while locked.
-fn lock_button(ui: &mut Ui, locked: &mut bool, name: &str) {
-    let text = if *locked {
-        RichText::new(name).color(Color32::WHITE).strong()
-    } else {
-        RichText::new(name)
-    };
-    let mut button = egui::Button::new(text).min_size(egui::vec2(20.0, 20.0));
-    if *locked {
-        button = button.fill(theme::axis::X.gamma_multiply(0.8));
-    }
-    let hint = format!("Lock {name}: drags leave it alone ({name})");
-    let response = ui.add(button).on_hover_text(&hint);
-    let label = format!("Lock {name}");
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::Button, true, *locked, &label)
-    });
-    if response.clicked() {
-        *locked = !*locked;
-    }
-}
-
-/// A small ▴ menu choosing one of `steps`.
-fn step_menu(ui: &mut Ui, value: &mut f32, steps: &[f32], text: impl Fn(f32) -> String) {
-    let response = ui
-        .add(egui::Button::new("▴").min_size(egui::vec2(14.0, 20.0)))
-        .on_hover_text("Choose the step");
-    egui::Popup::menu(&response)
-        .align(egui::RectAlign::TOP_START)
-        .show(|ui| {
-            for &step in steps {
-                if ui
-                    .add(egui::Button::new(text(step)).selected(*value == step))
-                    .clicked()
-                {
-                    *value = step;
-                }
-            }
-        });
 }
 
 #[cfg(test)]

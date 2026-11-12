@@ -215,6 +215,17 @@ fn close_mark(ui: &mut Ui, tab: ShelfTab) -> bool {
 /// filters, search, Clear and Copy while it's in front; Home's animation
 /// transport (not built yet).
 fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut PanelViewer<'_>) {
+    if front == Some(ShelfTab::Place) {
+        // What to do, where the design has its hint (spec 264).
+        ui.label(
+            egui::RichText::new(
+                "Drag into the area, or double-click to place where the camera looks",
+            )
+            .font(crate::tokens::text::ui())
+            .color(crate::tokens::text_meta()),
+        );
+        return;
+    }
     if matches!(tab, RibbonTab::Home | RibbonTab::Build) {
         let parts = vec![
             Entry::Unbuilt(UnbuiltId::HomeShelfFrameCounter),
@@ -237,6 +248,21 @@ fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut Pane
     if front == Some(ShelfTab::Console) {
         crate::console::console_tools(ui, viewer.console);
     }
+    if tab == RibbonTab::Library && viewer.project.is_some() {
+        // "48 items · 1 selected" (spec 315): the folder shown.
+        let state = &viewer.library_state;
+        let items = viewer
+            .library
+            .iter()
+            .filter(|item| item.folder() == state.folder)
+            .count();
+        let picked = usize::from(state.selected.is_some());
+        ui.label(
+            egui::RichText::new(format!("{items} items \u{b7} {picked} selected"))
+                .font(crate::tokens::text::ui())
+                .color(crate::tokens::text_meta()),
+        );
+    }
 }
 
 /// The front shelf tab's columns in `content`, side by side, or under
@@ -252,7 +278,7 @@ fn columns(
     // The 1 px gaps between columns show this.
     ui.painter().rect_filled(content, 0.0, tokens::line());
     for (column, place) in columns.iter().zip(places(content, columns)) {
-        let body = if columns.len() > 1 {
+        let body = if columns.len() > 1 && !column.own_header {
             header(ui, place, column, viewer)
         } else {
             place
@@ -335,9 +361,10 @@ fn places(content: Rect, columns: &[Column]) -> Vec<Rect> {
         .collect()
 }
 
-/// A column's 30 px header: its title, and a count on the right where it
-/// has one. Returns the body under it.
-fn header(ui: &Ui, place: Rect, column: &Column, viewer: &PanelViewer<'_>) -> Rect {
+/// A column's 30 px header: its title, a count on the right where it has
+/// one, and its panel's own tools left of the count. Returns the body
+/// under it.
+fn header(ui: &mut Ui, place: Rect, column: &Column, viewer: &mut PanelViewer<'_>) -> Rect {
     let head = place.with_max_y(place.top() + size::COLUMN_HEADER_H);
     let painter = ui.painter();
     painter.rect_filled(head, 0.0, tokens::panel());
@@ -349,21 +376,44 @@ fn header(ui: &Ui, place: Rect, column: &Column, viewer: &PanelViewer<'_>) -> Re
         Sense::hover(),
     );
     named.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Label, true, column.title));
-    painter.text(
+    let title = painter.text(
         pos2(head.left() + size::ROW_PAD, head.center().y),
         Align2::LEFT_CENTER,
         column.title,
         text::header(),
         tokens::text_emphasis(),
     );
-    if let Some(count) = viewer.column_count(column.panels[0]) {
+    if let Some(note) = viewer.column_note(column.panels[0]) {
         painter.text(
-            pos2(head.right() - size::ROW_PAD, head.center().y),
+            pos2(title.right() + size::GAP, head.center().y),
+            Align2::LEFT_CENTER,
+            note,
+            text::ui(),
+            tokens::text_meta(),
+        );
+    }
+    let mut right = head.right() - size::ROW_PAD;
+    if let Some(count) = viewer.column_count(column.panels[0]) {
+        let drawn = painter.text(
+            pos2(right, head.center().y),
             Align2::RIGHT_CENTER,
             count,
             text::header(),
             tokens::text_meta(),
         );
+        right = drawn.left() - size::GAP;
     }
+    let tools = Rect::from_min_max(
+        pos2(head.left() + size::ROW_PAD, head.top()),
+        pos2(right, head.bottom() - 1.0),
+    );
+    let mut tools_ui = ui.new_child(
+        UiBuilder::new()
+            .id_salt(("column tools", column.title))
+            .max_rect(tools)
+            .layout(egui::Layout::right_to_left(egui::Align::Center)),
+    );
+    tools_ui.spacing_mut().item_spacing.x = 0.0;
+    viewer.column_tools(&mut tools_ui, column.panels[0]);
     place.with_min_y(head.bottom())
 }

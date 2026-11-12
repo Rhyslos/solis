@@ -84,6 +84,9 @@ pub struct Status {
     pub playing: Option<Part>,
     /// The area's name, 2D or 3D, and a 2D game's size.
     pub area: String,
+    /// What moves snap to and which axes the gizmo follows: "Snap 0.25 ·
+    /// World" (spec 233).
+    pub snap: String,
 }
 
 impl Workbench {
@@ -134,6 +137,10 @@ impl Workbench {
             saved,
             playing,
             area,
+            snap: snap_words(
+                &self.viewport.snapping,
+                self.viewport.camera.kind == crate::camera::ViewKind::TwoD,
+            ),
         }
     }
 
@@ -151,7 +158,14 @@ impl Workbench {
         // The line along the top, the bar's whole width (spec 160).
         let whole = ui.max_rect().expand2(vec2(size::ROW_PAD, 0.0));
         tokens::hline(ui.painter(), whole.x_range(), whole.top(), tokens::line());
-        let status = self.status();
+        let mut status = self.status();
+        // While a file is dragged to place: what and how (spec 286).
+        if let Some(dragged) = egui::DragAndDrop::payload::<crate::library::LibraryDrag>(ui.ctx())
+            && dragged.0.kind.placeable()
+        {
+            let ctrl = ui.input(|i| i.modifiers.command);
+            status.snap = placing_words(&dragged.0.name, &self.viewport.snapping, ctrl);
+        }
         ui.horizontal_centered(|ui| {
             ui.spacing_mut().item_spacing.x = size::STATUS_GAP;
             ready(ui, status.code.as_ref());
@@ -168,9 +182,10 @@ impl Workbench {
                 self.restart_button(ui, actions);
                 let version = format!("v{}", self.info.version);
                 words(ui, &version, text::mono(), tokens::text_label());
+                words(ui, &status.snap, text::ribbon_small(), tokens::text_label());
                 // For three seconds after a click on a part that isn't
                 // built, the context says so instead.
-                if let Some(said) = unbuilt::said(ui.ctx()) {
+                if let Some(said) = unbuilt::said(ui.ctx()).or_else(|| told(ui.ctx())) {
                     part(ui, &Part::new(said, tokens::text_label()));
                     return;
                 }
@@ -182,6 +197,64 @@ impl Workbench {
             });
         });
     }
+}
+
+/// Words the status bar says for a moment in place of the context, as
+/// for a click on an unfinished part: "Hints are off: File › Preferences
+/// turns them back on".
+pub(crate) fn tell(ctx: &egui::Context, words: impl Into<String>) {
+    let at = ctx.input(|input| input.time);
+    let told = (words.into(), at);
+    ctx.data_mut(|data| data.insert_temp(told_id(), told));
+    ctx.request_repaint();
+}
+
+fn told_id() -> egui::Id {
+    egui::Id::new("status bar told")
+}
+
+/// What [`tell`] said, for three seconds after.
+pub(crate) fn told(ctx: &egui::Context) -> Option<String> {
+    let (words, at) = ctx.data(|data| data.get_temp::<(String, f64)>(told_id()))?;
+    let left = unbuilt::SAID_FOR - (ctx.input(|input| input.time) - at);
+    if left <= 0.0 || left > unbuilt::SAID_FOR {
+        return None;
+    }
+    ctx.request_repaint_after(std::time::Duration::from_secs_f64(left));
+    Some(words)
+}
+
+/// "Snap 0.25 · World", "Snap off · Object", or in the 2D view "Snap
+/// whole pixels".
+pub(crate) fn snap_words(snapping: &crate::transforming::Snapping, two_d: bool) -> String {
+    if two_d {
+        return format!("Snap {}", snapping.pixel_snap.name());
+    }
+    let step = if snapping.grid {
+        snapping.grid_step.to_string()
+    } else {
+        "off".to_owned()
+    };
+    let space = if snapping.object_axes {
+        "Object"
+    } else {
+        "World"
+    };
+    format!("Snap {step} \u{b7} {space}")
+}
+
+/// "Placing crate · Snap 0.25 · Grid" while a file is dragged to place:
+/// its name, and what it would snap to.
+pub(crate) fn placing_words(
+    name: &str,
+    snapping: &crate::transforming::Snapping,
+    ctrl: bool,
+) -> String {
+    let how = match crate::placement::snap_word(snapping, ctrl) {
+        "grid" => format!("Snap {} \u{b7} Grid", snapping.grid_step),
+        _ => "Free".to_owned(),
+    };
+    format!("Placing {name} \u{b7} {how}")
 }
 
 /// The dot and its word: Ready while the code is clean (or not checked

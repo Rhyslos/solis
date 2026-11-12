@@ -17,7 +17,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 2. **Properties** shows its **Name** and each of its components in a card of its own, Transform first, with their settings. Point at a setting's name to see what it does.
 3. Each card's **?** opens this manual's page about that component. A component from your game code shows the file it's written in instead, with **Open in Ledger ↗** to open that file in the program you write code in. A component written in Lua says **Show in folder ↗** and shows its file in its folder for you to open from your editor. Why? Solis only ever opens pictures, text and Lust in another program: a downloaded project's `.lua` file, opened by a program on your computer that runs Lua, would run outside Solis's sandbox (see [Projects and the Library](projects-and-the-library.md)).
 
-**What's been changed:** a small blue dot after a setting's name means it isn't the component's standard value (what it starts with). Beside the setting, **↺** and the standard value (`↺ 1000`) put it back, as one step Ctrl + Z undoes. Why? So you can see at a glance what you've tuned, and undo an experiment without remembering the old number. Places, turns and picked files aren't marked: they start empty and are meant to be set. (A component that came set up for a job, such as the Sun's Light, shows dots on what makes it a sun.)
+**What's been changed:** a small dot in the accent colour before a setting's name means it isn't the component's standard value (what it starts with). Beside the setting, **↺** and the standard value (`↺ 1000`) put it back, as one step Ctrl + Z undoes. Why? So you can see at a glance what you've tuned, and undo an experiment without remembering the old number. Places, turns and picked files aren't marked: they start empty and are meant to be set. (A component that came set up for a job, such as the Sun's Light, shows dots on what makes it a sun.)
 
 **Shared files:** a file several entities use, such as a model or sprite sheet, says **shared by 3** beside it. Changing the file itself (in Aseprite, say) changes all of them, so this tells you before you do.
 
@@ -25,17 +25,17 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 - **Home > Empty** adds an empty one (only a Transform) at the point the camera looks at. **Light** beside it adds a point light, and its small arrow lists the spotlight ([lights](lights.md)); **Camera**, **Sprite** and **Tile map** are there too; importing a model adds an entity for it.
 
 **Add or remove a component**
-- Click **+ Add component…** at the bottom of Properties, type part of a name to narrow the list, and pick one (or press Enter for the first): a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings. The list is in two groups: **Built in** (Solis's own) and **Game code** (the ready-made kit's and your own); point at one to see what it does.
+- Click **+ Component** at the top right of Properties, type part of a name to narrow the list, and pick one (or press Enter for the first): a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings. The list is in two groups: **Built in** (Solis's own) and **Game code** (the ready-made kit's and your own); point at one to see what it does.
 - A setting that points at another entity (a camera's **target**, say) shows that entity's name. Click it for a list of the area's entities, with a box to find one by name, and **None** to point at nothing.
-- A card's **⋯** has **Remove**, which takes the component off. Game code's own components appear in the same list.
+- A card's **⋯** (or a right-click anywhere on the card) has **Remove**, which takes the component off. Game code's own components appear in the same list.
 
 **Select several**
 - **Click** one to select just it. **Ctrl + click** adds one to the selection, or takes it out. **Shift + click** selects every row from the one you picked first to this one.
 - With one selected, Properties shows it. **With several selected**, Properties shows the components they all have. A setting that differs between them shows **—**; change it and every one of them gets the new value, as one step Ctrl + Z undoes. Change one number of a position or rotation (say Z), and only that number changes on each, so they keep their own X and Y.
 
-**Find, fold, hide and lock** in the Area panel
-- **Search** (top right of the Area panel): type part of a name to list only the entities called that, with what they belong to.
-- **▾ / ▸** before an entity with children folds them away or shows them again. **View > Fold everything** and **Unfold everything** do it for all. Selecting something in the viewport unfolds the way to it, so you can see it in the list.
+**Find, fold, hide and lock** in the Area column
+- **Search** (the magnifier in the Area column's header): a field opens under the header; type part of a name to list only the entities called that, with what they belong to. **Esc** empties and closes it.
+- **▾ / ▸** before an entity with children folds them away or shows them again. The header's fold button folds everything; its **⋯** has **Unfold everything**, **Fold everything**, **Show everything hidden** and **Unlock everything**. Selecting something in the viewport unfolds the way to it, so you can see it in the list.
 - Point at a row to see its two switches on the right: the **eye** hides the entity in the editor (it isn't drawn, and nor is anything under it), and the **padlock** locks it, so clicks in the viewport pass through it to what's behind (handy for a floor you keep clicking by mistake). The switches stay showing while they're on. **View > Show everything hidden** and **Unlock everything** turn them all off.
 - Hiding and locking are only how you see the area while you work: they aren't saved in the area, aren't undo steps, and don't change the game.
 
@@ -44,12 +44,12 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 - The **⋯** beside the entity's name has **Copy components**, which copies all of them at once, and **Paste components**, which gives them to everything selected.
 
 **Rename, move, copy or delete**
-- Type in **Name**, press **F2**, or **double-click** it in the Area panel to rename it (Enter to keep, Esc to cancel).
+- Click its name at the top of Properties and type, press **F2**, or **double-click** it in the Area column (or choose **Rename** in its right-click menu) to rename it (Enter to keep, Esc to cancel).
 - Change **Position** under Transform, or choose **Move here** in the **⋯** beside its name to bring it to where the camera looks.
 - **Ctrl + D** duplicates the selection, with everything under each one, and selects the copies.
 - **Unpack** (in the **⋯** beside a model's name, or beside a placed [assembly](assemblies.md)'s note) splits it into separate entities.
-- **Delete** (the key, the **⋯** beside its name in Properties, or **Edit > Delete** in the Area panel's own menu) removes the selection and everything under it. In the Area panel, models also have a × that does the same.
-- The Area panel has **Edit** and **Entity** menus of its own, close to hand: the same things as the Home tab's ribbon and the search do.
+- **Delete** (the key, the **⋯** beside its name in Properties, or **Delete** in a row's right-click menu in the Area column) removes the selection and everything under it.
+- **Right-click a row** in the Area column for its menu, close to hand: Rename, Duplicate, Delete; Add entity, point light, spotlight or camera; Create assembly from selection; Select all and Select nothing. The row right-clicked is selected first, so the menu acts on it. These are the same things the Home tab's ribbon and the search do.
 - **F** points the camera at the selection.
 
 **Parents and children** ([concepts](concepts.md#the-area)): drag an entity in the Area panel onto another to put it under that one; it then moves, turns and is deleted with its parent. Drag it onto the empty space below the list to make it stand alone again. It stays exactly where it is in the world either way: only its numbers change, because a child's Position is measured from its parent. Lights brought in with a model start under it. Dragging one of several selected entities moves them all.

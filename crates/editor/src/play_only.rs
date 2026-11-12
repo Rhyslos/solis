@@ -20,11 +20,11 @@ pub enum NotPlaying {
 }
 
 impl Workbench {
-    /// Makes this an exported game's workbench: no launcher, and only the
+    /// Makes this an exported game's workbench: no File page, and only the
     /// game shows.
     pub fn set_play_only(&mut self) {
         self.play_only = true;
-        self.launcher.open = false;
+        self.back_to_editor();
     }
 
     /// Whether this is an exported game's workbench.

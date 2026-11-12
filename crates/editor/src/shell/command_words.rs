@@ -3,6 +3,7 @@
 //! of shortcuts is [`ShellCommand::keys`].
 
 use super::commands::{C, ShellCommand};
+use crate::viewport::Tool;
 use crate::workbench::Workbench;
 
 impl ShellCommand {
@@ -35,14 +36,14 @@ impl ShellCommand {
                 "Stop snapping scale",
                 w.viewport.snapping.scale,
             ),
-            C::ViewportTools => switch(w.viewport.overlays.tools, "the viewport's tools"),
+            C::ViewportTools => switch(w.viewport.overlays.tools, "the toolbox"),
             C::ViewportSnapping => switch(
                 w.viewport.overlays.snapping,
-                "the viewport's grid, angle and camera speed",
+                "the viewport's axis locks and camera speed",
             ),
             C::ViewportStats => switch(
                 w.viewport.overlays.stats,
-                "the viewport's frame rate and entity count",
+                "the viewport's frame time and frame rate",
             ),
             C::ProfilerCpu => switch(!w.profiler.hide_cpu, "the CPU's times in the Profiler"),
             C::ProfilerGpu => switch(!w.profiler.hide_gpu, "the GPU's times in the Profiler"),
@@ -55,6 +56,21 @@ impl ShellCommand {
                 w.auto_update,
             ),
             C::Tab(tab) => format!("{} tab", tab.name()),
+            C::UseTool(tool) => format!("{} tool", tool_word(tool)),
+            C::NewInLibrary(new) => format!("New in the Library: {}", new.word()),
+            C::LibraryList => on_off(
+                "Show the Library as a list",
+                "Show the Library as tiles",
+                w.open.library_state.list,
+            ),
+            C::LibraryFolders => switch(
+                w.open.library_state.folders_shown,
+                "the Library's folder tree",
+            ),
+            C::LibraryFilter(filter) => match filter {
+                crate::library::Filter::All => "Show every kind of file".to_owned(),
+                other => format!("Show only {}", other.name().to_lowercase()),
+            },
             C::About => format!("About {}", w.info.name),
             other => other.fixed_name().to_owned(),
         }
@@ -108,6 +124,7 @@ impl ShellCommand {
             C::Updates => "Updates",
             C::CheckForUpdates => "Check for updates",
             C::Exit => "Exit",
+            C::PlacePicked => "Place the picked file",
             // Named by `name`, from what the editor holds.
             C::Undo
             | C::Redo
@@ -122,6 +139,11 @@ impl ShellCommand {
             | C::HideUnfinished
             | C::AutoUpdate
             | C::Tab(_)
+            | C::UseTool(_)
+            | C::NewInLibrary(_)
+            | C::LibraryList
+            | C::LibraryFolders
+            | C::LibraryFilter(_)
             | C::About => "",
         }
     }
@@ -148,7 +170,12 @@ impl ShellCommand {
             | C::AutoUpdate
             | C::About
             | C::Exit => "File",
-            C::ImportModel => "Library",
+            C::ImportModel
+            | C::NewInLibrary(_)
+            | C::LibraryList
+            | C::LibraryFolders
+            | C::LibraryFilter(_)
+            | C::PlacePicked => "Library",
             C::ExportPlaytest => "Build",
             C::LoadSave
             | C::PlayAndRecord
@@ -180,6 +207,11 @@ impl ShellCommand {
             C::SelectAll => "Ctrl+A",
             C::SelectNone => "Esc",
             C::FoldShelf => "Ctrl+Space",
+            C::UseTool(Tool::Select) => "Q",
+            C::UseTool(Tool::Move) => "W",
+            C::UseTool(Tool::Rotate) => "R",
+            C::UseTool(Tool::Scale) => "S",
+            C::UseTool(Tool::Transform) => "T",
             _ => "",
         }
     }
@@ -216,8 +248,8 @@ impl ShellCommand {
                 "Saves the selected entity, and everything under it, as an assembly in the project, \
                  and turns it into a copy of it"
             }
-            C::SnapToGrid => "Moves land on the grid. Its step is chosen in the viewport's corner",
-            C::SnapAngles => "Turns go in steps. The step is chosen in the viewport's corner",
+            C::SnapToGrid => "Moves land on the grid. A click on its step chooses another",
+            C::SnapAngles => "Turns go in steps. A click on the step chooses another",
             C::SnapScale => "Scaling goes in steps of 10%",
             C::Step => "Runs the paused game for one tick",
             C::LoadSave => {
@@ -264,6 +296,10 @@ impl ShellCommand {
                  one (even one you skipped)"
             }
             C::Exit => "Closes the editor, asking about unsaved work first",
+            C::PlacePicked => {
+                "Places the picked file where the camera looks on Home. A double-click in the \
+                 Library only picks a file"
+            }
             _ => "",
         }
     }
@@ -287,6 +323,17 @@ impl ShellCommand {
             _ => {}
         }
         text
+    }
+}
+
+/// A tool's word, as the build form's Transform group names it.
+fn tool_word(tool: Tool) -> &'static str {
+    match tool {
+        Tool::Select => "Select",
+        Tool::Move => "Move",
+        Tool::Rotate => "Rotate",
+        Tool::Scale => "Scale",
+        Tool::Transform => "All three",
     }
 }
 

@@ -6,10 +6,10 @@
 
 use crate::icons::{self, Icon};
 use crate::models::ModelInfo;
-use crate::theme;
+use crate::tokens::{self, size, text};
 use area::Area;
 use area::builtin::Model;
-use egui::{RichText, Ui};
+use egui::Ui;
 use reflect::{AssetId, EntityId, Registry};
 use std::collections::{BTreeMap, HashSet};
 
@@ -362,12 +362,14 @@ pub(crate) enum ProblemClick {
 }
 
 /// The Problems panel: mistakes in the game's code first, then those in
-/// the area, each with its icon. Clicking one asks to open its file or
-/// select its entity.
+/// the area, one row each in the design's look (spec 228-230): the
+/// level's icon, what's wrong, and in grey where (the file and line, or
+/// the area's name). Clicking one asks to open its file or select its
+/// entity.
 pub(crate) fn problems_panel(
     ui: &mut Ui,
     code: &[script::CodeProblem],
-    problems: &[Problem],
+    (problems, area): (&[Problem], &str),
 ) -> Option<ProblemClick> {
     if problems.is_empty() && code.is_empty() {
         crate::panels::empty_note(ui, "No problems found in the area or the game's code.");
@@ -375,36 +377,38 @@ pub(crate) fn problems_panel(
     }
     let mut clicked = None;
     egui::Frame::new()
-        .inner_margin(egui::Margin::symmetric(6, 4))
+        .inner_margin(egui::Margin::symmetric(0, size::ROW_GAP as i8 * 2))
         .show(ui, |ui| {
-            let count = |n: usize, place: &str, what: &str| {
-                let s = if n == 1 { "" } else { "s" };
-                format!("{n} problem{s} in {place}. Click one to {what}.")
-            };
-            let mut heading = Vec::new();
-            if !code.is_empty() {
-                heading.push(count(code.len(), "the game's code", "open its file"));
-            }
-            if !problems.is_empty() {
-                heading.push(count(problems.len(), "the area", "select its entity"));
-            }
-            ui.label(RichText::new(heading.join(" ")).color(theme::text_weak()));
-            ui.add_space(4.0);
+            ui.spacing_mut().item_spacing.y = 0.0;
             let rows = code.len() + problems.len();
             egui::ScrollArea::vertical().auto_shrink(false).show_rows(
                 ui,
-                ROW,
+                size::PROBLEM_ROW_H,
                 rows,
                 |ui, range| {
                     for i in range {
                         if let Some(mistake) = code.get(i) {
-                            if problem_row(ui, &mistake.to_string()).clicked() {
+                            let row = ProblemRow {
+                                icon: (Icon::Error, tokens::ERROR),
+                                text: &mistake.message,
+                                place: &code_place(mistake),
+                                whole: &mistake.to_string(),
+                                hint: "Click to open its file",
+                            };
+                            if row.show(ui).clicked() {
                                 clicked = Some(ProblemClick::File(mistake.file.clone()));
                             }
-                        } else if let Some(problem) = problems.get(i - code.len())
-                            && problem_row(ui, &problem.text).clicked()
-                        {
-                            clicked = Some(ProblemClick::Entity(problem.entity));
+                        } else if let Some(problem) = problems.get(i - code.len()) {
+                            let row = ProblemRow {
+                                icon: (Icon::Warning, tokens::WARNING),
+                                text: &problem.text,
+                                place: area,
+                                whole: &problem.text,
+                                hint: "Click to select its entity",
+                            };
+                            if row.show(ui).clicked() {
+                                clicked = Some(ProblemClick::Entity(problem.entity));
+                            }
                         }
                     }
                 },
@@ -413,43 +417,84 @@ pub(crate) fn problems_panel(
     clicked
 }
 
-/// The height of one problem's row.
-const ROW: f32 = 20.0;
-
-fn problem_row(ui: &mut Ui, text: &str) -> egui::Response {
-    let (rect, response) =
-        ui.allocate_exact_size(egui::vec2(ui.available_width(), ROW), egui::Sense::click());
-    let response = response.on_hover_text(text);
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
-    if response.hovered() {
-        ui.painter().rect_filled(rect, 3.0, theme::hover());
+/// Where a mistake in the code is, in a few words: "player.lust:84".
+fn code_place(mistake: &script::CodeProblem) -> String {
+    let file = mistake
+        .file
+        .rsplit_once('/')
+        .map_or(mistake.file.as_str(), |(_, name)| name);
+    match mistake.line {
+        0 => file.to_owned(),
+        line => format!("{file}:{line}"),
     }
-    let size = 11.0;
-    icons::icon(
-        ui.painter(),
-        egui::Rect::from_min_size(
-            egui::pos2(rect.left() + 4.0, rect.center().y - size / 2.0),
-            egui::vec2(size, size),
-        ),
-        Icon::Warning,
-        theme::WARNING,
-    );
-    // Painted rather than a label, so the row is one thing to a screen
-    // reader: its button.
-    let left = rect.left() + 4.0 + size + 6.0;
-    let mut job = egui::text::LayoutJob::simple_singleline(
-        text.to_string(),
-        egui::TextStyle::Body.resolve(ui.style()),
-        theme::text(),
-    );
-    job.wrap = egui::text::TextWrapping::truncate_at_width((rect.right() - left).max(0.0));
-    let galley = ui.painter().layout_job(job);
-    ui.painter().galley(
-        egui::pos2(left, rect.center().y - galley.size().y / 2.0),
-        galley,
-        theme::text(),
-    );
-    response
+}
+
+/// One problem's row.
+struct ProblemRow<'a> {
+    /// The level's icon and its colour.
+    icon: (Icon, egui::Color32),
+    /// What's wrong.
+    text: &'a str,
+    /// Where, in grey after it.
+    place: &'a str,
+    /// The whole problem, for the row's hover text and its name to a
+    /// screen reader.
+    whole: &'a str,
+    /// What a click does.
+    hint: &'a str,
+}
+
+impl ProblemRow<'_> {
+    fn show(&self, ui: &mut Ui) -> egui::Response {
+        let (rect, response) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), size::PROBLEM_ROW_H),
+            egui::Sense::click(),
+        );
+        let response = response.on_hover_text(format!("{}\n{}", self.whole, self.hint));
+        let whole = self.whole.to_owned();
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &whole));
+        if response.hovered() {
+            ui.painter().rect_filled(rect, 0.0, tokens::row_hover());
+        }
+        let left = rect.left() + size::PROBLEM_ROW_PAD;
+        let (icon, colour) = self.icon;
+        icons::icon(
+            ui.painter(),
+            egui::Rect::from_center_size(
+                egui::pos2(left + size::PROBLEM_ICON / 2.0, rect.center().y),
+                egui::Vec2::splat(size::PROBLEM_ICON),
+            ),
+            icon,
+            colour,
+        );
+        // Painted rather than labels, so the row is one thing to a screen
+        // reader: its button.
+        let mut job = egui::text::LayoutJob::default();
+        let format = |font, color| egui::TextFormat {
+            font_id: font,
+            color,
+            ..Default::default()
+        };
+        job.append(self.text, 0.0, format(text::ui(), tokens::text_body()));
+        if !self.place.is_empty() {
+            job.append(
+                self.place,
+                size::CARD_INNER_GAP,
+                format(text::ui(), tokens::text_meta()),
+            );
+        }
+        let words = left + size::PROBLEM_ICON + size::CARD_INNER_GAP;
+        job.wrap = egui::text::TextWrapping::truncate_at_width(
+            (rect.right() - size::PROBLEM_ROW_PAD - words).max(0.0),
+        );
+        let galley = ui.painter().layout_job(job);
+        ui.painter().galley(
+            egui::pos2(words, rect.center().y - galley.size().y / 2.0),
+            galley,
+            tokens::text_body(),
+        );
+        response
+    }
 }
 
 #[cfg(test)]

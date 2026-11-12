@@ -229,8 +229,8 @@ fn inline(ui: &mut Ui, words: &str, size: f32, colour: Color32) {
                 ..TextFormat::simple(FontId::monospace(size - 1.0), colour)
             },
             Style::Link => TextFormat {
-                underline: egui::Stroke::new(1.0, theme::kind::NOTES),
-                ..TextFormat::simple(FontId::proportional(size), theme::kind::NOTES)
+                underline: egui::Stroke::new(1.0, crate::tokens::LINK),
+                ..TextFormat::simple(FontId::proportional(size), crate::tokens::LINK)
             },
         };
         job.append(&text, 0.0, format);

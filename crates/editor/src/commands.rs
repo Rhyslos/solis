@@ -395,6 +395,9 @@ impl Workbench {
                 field,
                 value,
             } => {
+                if let Some(playing) = &mut self.open.playing {
+                    playing.note_yours(entity, &component, &field);
+                }
                 let label = format!("Change {component}.{field}");
                 let merge = merge_key((entity, &component, &field), gesture);
                 self.command(
@@ -498,6 +501,7 @@ impl Workbench {
                 entities,
                 component,
             } => self.reset_component(&entities, &component),
+            PropertyRequest::HintsOff => self.hints = false,
         }
     }
 
@@ -924,7 +928,6 @@ impl Workbench {
             AreaRequest::Select(id) => self.select(id),
             AreaRequest::Toggle(id) => self.open.document.selection.toggle(id),
             AreaRequest::SelectRange(id) => self.select_range(id),
-            AreaRequest::Delete(id) => self.delete(id),
             AreaRequest::Reparent { entity, onto } => {
                 // Dragging one of several selected moves them all.
                 let moving = if self.open.document.selection.contains(entity) {

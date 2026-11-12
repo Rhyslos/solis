@@ -4,6 +4,7 @@
 
 use crate::icons::{self, Icon};
 use crate::theme;
+use crate::tokens::{self, size, text};
 use egui::{Align, Color32, Layout, RichText, Ui};
 use std::collections::HashSet;
 
@@ -36,6 +37,15 @@ impl LogLevel {
             Self::Info => Icon::Info,
             Self::Warning => Icon::Warning,
             Self::Error => Icon::Error,
+        }
+    }
+
+    /// The word before a line of this level (spec 226).
+    fn word(self) -> &'static str {
+        match self {
+            Self::Info => "INFO",
+            Self::Warning => "WARN",
+            Self::Error => "ERROR",
         }
     }
 
@@ -521,16 +531,14 @@ fn console_line(ui: &mut Ui, line: &LogLine, chosen: bool) -> egui::Response {
         egui::vec2(ui.available_width(), CONSOLE_ROW),
         egui::Sense::click(),
     );
+    // The design's rows (spec 226): an error's row faintly red; the one
+    // being read, or pointed at, lifted.
     if chosen || response.hovered() {
-        ui.painter().rect_filled(
-            row,
-            2.0,
-            ui.visuals()
-                .widgets
-                .hovered
-                .weak_bg_fill
-                .gamma_multiply(if chosen { 1.0 } else { 0.5 }),
-        );
+        ui.painter().rect_filled(row, 0.0, tokens::row_hover());
+    } else if line.level == LogLevel::Error {
+        ui.painter().rect_filled(row, 0.0, tokens::error_row());
+    } else if line.level == LogLevel::Warning {
+        ui.painter().rect_filled(row, 0.0, tokens::warning_row());
     }
     let response = response.on_hover_text("Click to read it in full");
     let mut row_ui = ui.new_child(
@@ -541,19 +549,33 @@ fn console_line(ui: &mut Ui, line: &LogLine, chosen: bool) -> egui::Response {
     let ui = &mut row_ui;
     ui.label(
         RichText::new(&line.time)
-            .monospace()
-            .color(theme::text_time()),
+            .font(text::mono_small())
+            .color(tokens::text_faint()),
     );
-    let size = 11.0;
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
-    icons::icon(ui.painter(), rect, line.level.icon(), line.level.color());
+    // The level as a word, in its colour, in a column of its own.
+    let (word, _) = ui.allocate_exact_size(
+        egui::vec2(size::LOG_LEVEL_W, CONSOLE_ROW),
+        egui::Sense::hover(),
+    );
+    crate::widgets::words(
+        ui,
+        word,
+        egui::Align2::LEFT_CENTER,
+        line.level.word(),
+        text::mono_bold(),
+        line.level.color(),
+    );
     // One row per message: a long one is cut short, and shows in full when
     // pointed at.
+    let ink = match line.level {
+        LogLevel::Info => tokens::text_body(),
+        _ => line.level.color(),
+    };
     ui.add(
         egui::Label::new(
             RichText::new(&line.text)
-                .monospace()
-                .color(line.level.color()),
+                .font(text::mono_small())
+                .color(ink),
         )
         .truncate()
         .selectable(false),

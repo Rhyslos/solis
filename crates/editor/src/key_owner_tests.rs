@@ -270,6 +270,9 @@ fn each_key_of_the_area_s_acts_on_it_only_where_the_area_owns_the_keys() {
             h.run();
             let acts = match key {
                 AreaKey::Undo => area_undo,
+                // Over the Library, Delete is the picked file's (the
+                // project lead's answer 25).
+                AreaKey::Delete if panel == Panel::Library => false,
                 _ => area_keys,
             };
             let expected = if acts {
@@ -513,7 +516,7 @@ fn space_plays_the_clip_over_the_frames_tab_and_opens_the_search_elsewhere() {
 fn a_key_pressed_to_be_bound_is_bound_and_does_nothing_else() {
     // Delete pressed to bind it to Jump deleted the selected entity too.
     let (mut w, _) = farm();
-    w.open_input_window();
+    w.open_input_page();
     let mut h = harness(w);
     h.run();
     let jumps = |h: &Harness<'static, State>| {
@@ -523,8 +526,8 @@ fn a_key_pressed_to_be_bound_is_bound_and_does_nothing_else() {
     let (before, bound) = (area_now(&h.state().0), jumps(&h));
     // Jump's + (the third action); the click itself isn't bound, so a
     // frame or two pass first.
-    let window = h.state_mut().0.open.input_window.as_mut().unwrap();
-    window.listening = Some((2, crate::input_window::Slot::Inputs, 0));
+    let window = h.state_mut().0.open.input_page.as_mut().unwrap();
+    window.listening = Some((2, crate::file_pages::Slot::Inputs, 0));
     for _ in 0..3 {
         h.run();
     }
@@ -546,9 +549,9 @@ fn a_tab_has_the_keys_only_while_its_file_is_open() {
     assert_eq!(w.key_owner(&ctx), KeyOwner::Canvas);
     // A key being bound comes before wherever the pointer rests, and the
     // game having the keys before everything.
-    w.open_input_window();
-    let window = w.open.input_window.as_mut().unwrap();
-    window.listening = Some((2, crate::input_window::Slot::Inputs, 0));
+    w.open_input_page();
+    let window = w.open.input_page.as_mut().unwrap();
+    window.listening = Some((2, crate::file_pages::Slot::Inputs, 0));
     assert_eq!(w.key_owner(&ctx), KeyOwner::Binding);
     w.game_input = true;
     assert_eq!(w.key_owner(&ctx), KeyOwner::Game);

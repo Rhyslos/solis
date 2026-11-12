@@ -1,16 +1,20 @@
-//! The Area panel: the area's entities as a tree. Clicking one selects
-//! it and shows it in Properties. Its menu row has the Edit and Entity
-//! menus, folding the tree, and a search box; each row can be folded,
-//! hidden and locked.
+//! The Area column: the area's entities as a tree (spec 197; the
+//! approved additions, round 2, `05-area-column*.png`). Clicking one
+//! selects it and shows it in Properties. The column's header holds the
+//! search, Fold everything and a ⋯ menu; a right-click on a row opens its
+//! menu; each row can be folded, and shows its hide and lock switches
+//! while pointed at (or while they're on).
 
 use crate::document::Document;
 use crate::icons::{self, Icon};
-use crate::menu_items::{self, MenuCommand, MenuState};
+use crate::menu_items::MenuCommand;
 use crate::models::ModelInfo;
 use crate::theme::{self, Accent};
+use crate::tokens::{self, size, text};
+use crate::widgets;
 use area::EntityData;
 use area::builtin::{Light, LightKind, Model};
-use egui::{Align, Color32, Layout, RichText, Ui};
+use egui::{Color32, Rect, Ui};
 use reflect::{AssetId, EntityId};
 use std::collections::{BTreeMap, HashSet};
 
@@ -29,6 +33,8 @@ pub(crate) struct AreaPanelState {
     pub(crate) locked: HashSet<EntityId>,
     /// An entity to scroll to and unfold the way to, once.
     pub(crate) reveal: Option<EntityId>,
+    /// Whether the search field is open under the header.
+    pub(crate) searching: bool,
 }
 
 impl AreaPanelState {
@@ -57,8 +63,8 @@ impl AreaPanelState {
     }
 }
 
-/// How far each level of the tree is indented.
-const INDENT: f32 = 14.0;
+/// How faint a hidden entity's icon is.
+const DIM: f32 = 0.4;
 
 /// An entity row's hide and lock switches: on for the entity itself, and
 /// whether it's hidden or locked by a parent.
@@ -76,114 +82,142 @@ enum Toggle {
     Lock,
 }
 
-/// One row of the Area panel: an icon, a name, a quiet note on the
-/// right, highlighted when selected, a × when `remove` names what it
-/// removes, and hide and lock switches when `toggles` is given (shown
-/// while the row is pointed at, or while they're on). Returns the row's
-/// response, whether × was clicked, and which switch was.
-#[allow(clippy::too_many_arguments)]
+/// One row of the Area column, 24 tall: an icon, the name, a quiet note
+/// after it, the accent-mixed fill when selected, and the hide and lock
+/// switches at the right (shown while the row is pointed at, or while
+/// they're on). Returns the row's response and which switch was clicked.
 fn area_row(
     ui: &mut Ui,
     (icon, icon_color): (Icon, Color32),
-    name: &str,
-    note: &str,
+    (name, note): (&str, &str),
     selected: bool,
     accent: Accent,
-    remove: Option<&str>,
-    toggles: Option<Toggles>,
-) -> (egui::Response, bool, Option<Toggle>) {
+    toggles: Toggles,
+) -> (egui::Response, Option<Toggle>) {
     let (row, response) = ui.allocate_exact_size(
-        egui::vec2(ui.available_width(), ROW_HEIGHT),
+        egui::vec2(ui.available_width(), size::row_h()),
         egui::Sense::click_and_drag(),
     );
     response.widget_info(|| {
         egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, name)
     });
+    // The fill reaches the column's edges, as the design's does.
+    let full = row.with_min_x(ui.max_rect().left() - size::GAP);
     if selected {
         ui.painter()
-            .rect_filled(row, 3.0, crate::tokens::select_row(accent));
+            .rect_filled(full, 0.0, crate::tokens::select_row(accent));
     } else if response.hovered() {
-        ui.painter().rect_filled(row, 3.0, theme::hover());
+        ui.painter().rect_filled(full, 0.0, tokens::row_hover());
     }
-    let mut row_ui = ui.new_child(
-        egui::UiBuilder::new()
-            .max_rect(row.shrink2(egui::vec2(4.0, 0.0)))
-            .layout(Layout::left_to_right(Align::Center)),
+    let dim = toggles.shown.hidden;
+    let icon_rect = Rect::from_center_size(
+        egui::pos2(row.left() + size::ICON_SMALL / 2.0, row.center().y),
+        egui::vec2(size::ROW_ICON, size::ROW_ICON),
     );
-    let ui = &mut row_ui;
-    let dim = toggles.is_some_and(|t| t.shown.hidden);
-    let (icon_rect, _) = ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
     icons::icon(
         ui.painter(),
         icon_rect,
         icon,
         if dim {
-            icon_color.gamma_multiply(0.4)
+            icon_color.gamma_multiply(DIM)
         } else {
             icon_color
         },
     );
-    ui.add_space(4.0);
-    let label = if dim {
-        RichText::new(name).color(theme::text_weak())
+    let ink = if selected {
+        tokens::text_emphasis()
+    } else if dim {
+        tokens::text_meta()
     } else {
-        RichText::new(name)
+        tokens::text_body()
     };
-    // Room on the right for the switches and ×, so a long name stops short.
-    let right = 18.0 * 3.0 + 40.0;
-    ui.allocate_ui_with_layout(
-        egui::vec2((ui.available_width() - right).max(20.0), ROW_HEIGHT),
-        Layout::left_to_right(Align::Center),
-        |ui| {
-            ui.set_min_width(ui.available_width());
-            ui.add(egui::Label::new(label).truncate().selectable(false));
-        },
-    );
-    let mut removed = false;
-    let mut toggled = None;
     let pointed = ui.rect_contains_pointer(row);
-    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-        if let Some(what) = remove {
-            let button = ui
-                .add(egui::Button::new(RichText::new("×").color(theme::text_weak())).frame(false))
-                .on_hover_text(format!("Remove {what} from the area"));
-            button.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Remove {what}"))
-            });
-            removed = button.clicked();
+    let switches_w = 2.0 * (size::ROW_SWITCH + size::GAP);
+    let words_room = Rect::from_min_max(
+        egui::pos2(icon_rect.right() + size::GAP + 2.0, row.top()),
+        egui::pos2(row.right() - switches_w, row.bottom()),
+    );
+    let drawn = widgets::words(
+        ui,
+        words_room,
+        egui::Align2::LEFT_CENTER,
+        name,
+        text::row(),
+        ink,
+    );
+    if !note.is_empty() {
+        let after = words_room.with_min_x(drawn.right() + size::GAP);
+        widgets::words(
+            ui,
+            after,
+            egui::Align2::LEFT_CENTER,
+            note,
+            text::tile_kind(),
+            tokens::text_meta(),
+        );
+    }
+    let mut toggled = None;
+    let mut x = row.right();
+    let t = toggles;
+    for (which, on, by_parent, icon_on, icon_off, label, hint) in [
+        (
+            Toggle::Hide,
+            t.hidden,
+            t.shown.hidden,
+            Icon::Hidden,
+            Icon::Eye,
+            format!("Hide {name}"),
+            "Hidden: not drawn in the editor (nor what's under it); the game still shows it",
+        ),
+        (
+            Toggle::Lock,
+            t.locked,
+            t.shown.locked,
+            Icon::Lock,
+            Icon::Lock,
+            format!("Lock {name}"),
+            "Locked: clicks in the viewport pass through it (and what's under it)",
+        ),
+    ] {
+        let spot = Rect::from_min_max(
+            egui::pos2(x - size::ROW_SWITCH, row.top()),
+            egui::pos2(x, row.bottom()),
+        );
+        x -= size::ROW_SWITCH + size::GAP;
+        if !(pointed || on || by_parent) {
+            continue;
         }
-        if let Some(t) = toggles {
-            if (pointed || t.locked || t.shown.locked)
-                && switch(ui, t.locked, t.shown.locked, Icon::Lock, &format!("Lock {name}"), "Locked: clicks in the viewport pass through it (and what's under it)")
-            {
-                toggled = Some(Toggle::Lock);
-            }
-            if (pointed || t.hidden || t.shown.hidden)
-                && switch(ui, t.hidden, t.shown.hidden, Icon::Hidden, &format!("Hide {name}"), "Hidden: not drawn in the editor (nor what's under it); the game still shows it")
-            {
-                toggled = Some(Toggle::Hide);
-            }
+        let icon = if on || by_parent { icon_on } else { icon_off };
+        if switch(ui, spot, (on, by_parent), icon, &label, hint) {
+            toggled = Some(which);
         }
-        ui.add(egui::Label::new(RichText::new(note).color(theme::text_weak())).selectable(false));
-    });
-    (response, removed, toggled)
+    }
+    (response, toggled)
 }
 
-/// A small switch for hiding or locking: bright while on, faint while on
-/// only because of a parent, weak otherwise. Returns whether it was
-/// clicked.
-fn switch(ui: &mut Ui, on: bool, by_parent: bool, icon: Icon, name: &str, hint: &str) -> bool {
-    let (rect, response) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::click());
+/// A small switch for hiding or locking, in `spot`: bright while on,
+/// faint while on only because of a parent, quiet otherwise. Returns
+/// whether it was clicked.
+fn switch(
+    ui: &mut Ui,
+    spot: Rect,
+    (on, by_parent): (bool, bool),
+    icon: Icon,
+    name: &str,
+    hint: &str,
+) -> bool {
+    let response = ui.interact(spot, ui.id().with(name), egui::Sense::click());
     let color = if on {
-        theme::text_strong()
+        tokens::text_primary()
     } else if by_parent {
-        theme::text_weak().gamma_multiply(0.6)
+        tokens::text_faint()
     } else if response.hovered() {
-        theme::text()
+        tokens::text_primary()
     } else {
-        theme::text_weak()
+        tokens::text_meta()
     };
-    icons::icon(ui.painter(), rect.shrink(2.0), icon, color);
+    let square = Rect::from_center_size(spot.center(), egui::vec2(size::ROW_ICON, size::ROW_ICON));
+    icons::icon(ui.painter(), square, icon, color);
     let response = response.on_hover_text(hint);
     response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, on, name));
     response.clicked()
@@ -248,8 +282,6 @@ pub(crate) enum AreaRequest {
     /// Select every row from the last one picked to this one
     /// (Shift+click).
     SelectRange(EntityId),
-    /// Delete this entity and everything below it.
-    Delete(EntityId),
     /// Move an entity (and the rest of the selection, if it's selected)
     /// under another, or to the top level with `None` (drag and drop).
     Reparent {
@@ -297,21 +329,21 @@ fn stop_renaming(ctx: &egui::Context) {
     ctx.data_mut(|d| d.remove::<(EntityId, String, bool)>(rename_key()));
 }
 
-/// The Area panel: every entity, as a tree. Click to select, Ctrl+click to
-/// add or remove, Shift+click for a range, drag onto another to put it
+/// The Area column: every entity, as a tree. Click to select, Ctrl+click
+/// to add or remove, Shift+click for a range, drag onto another to put it
 /// under that one, or onto empty space to move it to the top level;
-/// double-click to rename. Returns what the user asked for.
+/// double-click to rename; right-click for the row's menu. Returns what
+/// the user asked for.
 pub(crate) fn area_tree(
     ui: &mut Ui,
     document: &Document,
     models: &BTreeMap<AssetId, ModelInfo>,
     accent: Accent,
     state: &mut AreaPanelState,
-    menu: &MenuState,
 ) -> Vec<AreaRequest> {
     let mut requests = Vec::new();
-    if let Some(command) = menu_row(ui, state, menu) {
-        requests.push(AreaRequest::Command(command));
+    if state.searching || !state.search.is_empty() {
+        search_row(ui, state);
     }
     if let Some(id) = state.reveal {
         // Unfold the way to it, so its row is there to scroll to.
@@ -325,39 +357,35 @@ pub(crate) fn area_tree(
         .take()
         .and_then(|id| rows.iter().position(|(r, _)| *r == id));
     let (hidden, locked) = state.in_effect(document);
+    let row_h = size::row_h();
     egui::Frame::new()
-        .inner_margin(egui::Margin::symmetric(6, 4))
+        .inner_margin(egui::Margin::symmetric(
+            size::GAP as i8,
+            size::ROW_GAP as i8,
+        ))
         .show(ui, |ui| {
-            let note = if models.is_empty() {
-                "To see a model, use Library > Import, or drop a .gltf or .glb file onto \
-                 the window. Home > Light adds a lamp."
-            } else {
-                "Save the area with Ctrl+S; it's a text file Git can merge."
-            };
             // Only the rows in view are drawn, so thousands of entities
             // cost no more than a screenful (CONTRIBUTING.md, rule 18).
-            let mut scroll = egui::ScrollArea::vertical()
-                .auto_shrink(false)
-                .max_height((ui.available_height() - NOTE_HEIGHT).max(ROW_HEIGHT));
+            let mut scroll = egui::ScrollArea::vertical().auto_shrink(false);
             if let Some(index) = scroll_to {
                 // Its row in the middle of the list.
-                let at = index as f32 * (ROW_HEIGHT + ROW_GAP);
-                scroll = scroll.vertical_scroll_offset((at - 4.0 * ROW_HEIGHT).max(0.0));
+                let at = index as f32 * row_h;
+                scroll = scroll.vertical_scroll_offset((at - 4.0 * row_h).max(0.0));
             }
             let parents: HashSet<EntityId> = document
                 .area()
                 .iter()
                 .filter_map(|(_, e)| e.parent)
                 .collect();
-            let out = scroll.show_rows(ui, ROW_HEIGHT, rows.len(), |ui, range| {
-                ui.spacing_mut().item_spacing.y = ROW_GAP;
+            let out = scroll.show_rows(ui, row_h, rows.len(), |ui, range| {
+                ui.spacing_mut().item_spacing.y = 0.0;
                 for &(id, depth) in &rows[range] {
                     let Some(entity) = document.area().get(id) else {
                         continue;
                     };
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 2.0;
-                        ui.add_space(depth as f32 * INDENT);
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        ui.add_space(depth as f32 * size::TREE_LEVEL);
                         fold_button(ui, id, parents.contains(&id), state);
                         let shown = Shown {
                             hidden: hidden.contains(&id),
@@ -365,8 +393,7 @@ pub(crate) fn area_tree(
                         };
                         entity_row(
                             ui,
-                            document,
-                            models,
+                            (document, models),
                             accent,
                             (id, entity),
                             shown,
@@ -376,8 +403,13 @@ pub(crate) fn area_tree(
                     });
                 }
             });
-            if rows.is_empty() && !state.search.is_empty() {
-                ui.label(RichText::new("Nothing has that name.").color(theme::text_weak()));
+            if rows.is_empty() {
+                let note = if state.search.is_empty() {
+                    "Nothing here yet. Home \u{203a} Create adds an entity, a light or a camera."
+                } else {
+                    "Nothing has that name."
+                };
+                crate::panels::empty_note(ui, note);
             }
             // Dropping anywhere in the list but on a row moves to the top
             // level.
@@ -392,16 +424,133 @@ pub(crate) fn area_tree(
                     onto: None,
                 });
             }
-            ui.label(RichText::new(note).color(theme::text_weak()).size(11.0));
         });
     requests
 }
 
-/// Height of one row, and the gap between rows.
-const ROW_HEIGHT: f32 = 21.0;
-const ROW_GAP: f32 = 1.0;
-/// Room kept under the list for its note.
-const NOTE_HEIGHT: f32 = 40.0;
+/// The search field under the header, while the search is open. Esc
+/// empties and closes it.
+fn search_row(ui: &mut Ui, state: &mut AreaPanelState) {
+    let opening = state.searching && state.search.is_empty();
+    egui::Frame::new()
+        .inner_margin(egui::Margin::symmetric(size::GAP as i8, size::GAP as i8))
+        .show(ui, |ui| {
+            let width = ui.available_width();
+            let field = widgets::field::text_field(
+                ui,
+                "Search the area",
+                &mut state.search,
+                "Search by name",
+                width,
+            );
+            if opening && !field.has_focus() && !field.lost_focus() {
+                field.request_focus();
+            }
+            if field.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                state.search.clear();
+                state.searching = false;
+            }
+        });
+}
+
+/// The tools in the Area column's header, from the right: the ⋯ menu,
+/// Fold everything and the search. Returns a menu command picked.
+pub(crate) fn header_tools(ui: &mut Ui, state: &mut AreaPanelState) -> Option<MenuCommand> {
+    let mut picked = None;
+    let more = widgets::button::icon(ui, Icon::More, "More of the Area column")
+        .on_hover_text("Fold or unfold everything; show or unlock everything");
+    egui::Popup::menu(&more).show(|ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        if widgets::menu::item(ui, "Unfold everything", "").clicked() {
+            picked = Some(MenuCommand::ExpandAll);
+            ui.close();
+        }
+        if widgets::menu::item(ui, "Fold everything", "").clicked() {
+            picked = Some(MenuCommand::CollapseAll);
+            ui.close();
+        }
+        widgets::menu::line(ui);
+        let any_hidden = !state.hidden.is_empty();
+        let show = ui.add_enabled_ui(any_hidden, |ui| {
+            widgets::menu::item(ui, "Show everything hidden", "")
+        });
+        if show
+            .inner
+            .on_disabled_hover_text("Nothing is hidden")
+            .clicked()
+        {
+            state.hidden.clear();
+            ui.close();
+        }
+        let any_locked = !state.locked.is_empty();
+        let unlock = ui.add_enabled_ui(any_locked, |ui| {
+            widgets::menu::item(ui, "Unlock everything", "")
+        });
+        if unlock
+            .inner
+            .on_disabled_hover_text("Nothing is locked")
+            .clicked()
+        {
+            state.locked.clear();
+            ui.close();
+        }
+    });
+    if widgets::button::icon(ui, Icon::FoldAll, "Fold everything")
+        .on_hover_text("Folds every entity with others under it")
+        .clicked()
+    {
+        picked = Some(MenuCommand::CollapseAll);
+    }
+    let search = widgets::button::icon(ui, Icon::Search, "Search the area by name")
+        .on_hover_text("Lists only the entities whose names have the words typed");
+    if search.clicked() {
+        state.searching = !state.searching;
+        if !state.searching {
+            state.search.clear();
+        }
+    }
+    picked
+}
+
+/// A row's right-click menu (the approved additions, round 2,
+/// `05-area-column-menu.png`): the commands the old Edit and Entity menus
+/// had. The row right-clicked is selected, so each has something to act
+/// on.
+fn row_menu(ui: &mut Ui) -> Option<MenuCommand> {
+    use MenuCommand as M;
+    ui.spacing_mut().item_spacing.y = 0.0;
+    let groups: [&[(&str, &str, MenuCommand)]; 4] = [
+        &[
+            ("Rename", "F2", M::Rename),
+            ("Duplicate", "Ctrl+D", M::Duplicate),
+            ("Delete", "Delete", M::Delete),
+        ],
+        &[
+            ("Add entity", "", M::AddEntity),
+            ("Add point light", "", M::AddPointLight),
+            ("Add spotlight", "", M::AddSpotlight),
+            ("Add camera", "", M::AddCamera),
+        ],
+        &[("Create assembly from selection", "", M::CreateAssembly)],
+        &[
+            ("Select all", "Ctrl+A", M::SelectAll),
+            ("Select nothing", "Esc", M::SelectNone),
+        ],
+    ];
+    let mut picked = None;
+    for (n, group) in groups.iter().enumerate() {
+        if n > 0 {
+            widgets::menu::line(ui);
+        }
+        for &(words, key, command) in *group {
+            if widgets::menu::item(ui, words, key).clicked() {
+                picked = Some(command);
+                ui.close();
+            }
+        }
+    }
+    picked
+}
 
 /// Every entity with how deep it sits, in the order the panel lists them:
 /// depth-first, parents before children, leaving out what's folded away.
@@ -468,105 +617,29 @@ fn tree_rows(
     rows
 }
 
-/// The panel's menu row: the Edit, View and Entity menus, and the
-/// search box. Returns the menu command picked.
-fn menu_row(ui: &mut Ui, state: &mut AreaPanelState, menu: &MenuState) -> Option<MenuCommand> {
-    let mut picked = None;
-    theme::menu_row_frame().show(ui, |ui| {
-        ui.set_min_width(ui.available_width());
-        egui::MenuBar::new().ui(ui, |ui| {
-            ui.spacing_mut().item_spacing.x = 8.0;
-            if let Some(c) = ui
-                .menu_button("Edit", |ui| menu_items::edit_items(ui, menu))
-                .inner
-                .flatten()
-            {
-                picked = Some(c);
-            }
-            if let Some(c) = ui
-                .menu_button("View", |ui| {
-                    let mut c = None;
-                    if ui.button("Unfold everything").clicked() {
-                        c = Some(MenuCommand::ExpandAll);
-                        ui.close();
-                    }
-                    if ui.button("Fold everything").clicked() {
-                        c = Some(MenuCommand::CollapseAll);
-                        ui.close();
-                    }
-                    ui.separator();
-                    if ui
-                        .add_enabled(
-                            !state.hidden.is_empty(),
-                            egui::Button::new("Show everything hidden"),
-                        )
-                        .on_disabled_hover_text("Nothing is hidden")
-                        .clicked()
-                    {
-                        state.hidden.clear();
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(
-                            !state.locked.is_empty(),
-                            egui::Button::new("Unlock everything"),
-                        )
-                        .on_disabled_hover_text("Nothing is locked")
-                        .clicked()
-                    {
-                        state.locked.clear();
-                        ui.close();
-                    }
-                    c
-                })
-                .inner
-                .flatten()
-            {
-                picked = Some(c);
-            }
-            if let Some(c) = ui
-                .menu_button("Entity", |ui| menu_items::entity_items(ui, menu))
-                .inner
-                .flatten()
-            {
-                picked = Some(c);
-            }
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let search = ui.add(
-                    egui::TextEdit::singleline(&mut state.search)
-                        .hint_text("Search")
-                        .desired_width(ui.available_width().clamp(40.0, 160.0)),
-                );
-                search.widget_info(|| {
-                    egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "Search the area")
-                });
-            });
-        });
-    });
-    picked
-}
-
 /// The ▸ or ▾ before a row with children, which folds them away or
 /// shows them; room for one otherwise.
 fn fold_button(ui: &mut Ui, id: EntityId, has_children: bool, state: &mut AreaPanelState) {
-    let (rect, response) =
-        ui.allocate_exact_size(egui::vec2(12.0, ROW_HEIGHT), egui::Sense::click());
+    let (rect, response) = ui.allocate_exact_size(
+        egui::vec2(size::TREE_FOLD_W, size::row_h()),
+        egui::Sense::click(),
+    );
     if !has_children {
         return;
     }
     let folded = state.collapsed.contains(&id);
     let color = if response.hovered() {
-        theme::text_strong()
+        tokens::text_primary()
     } else {
-        theme::text_weak()
+        tokens::text_meta()
     };
-    ui.painter().text(
-        rect.center(),
-        egui::Align2::CENTER_CENTER,
-        if folded { "▸" } else { "▾" },
-        egui::FontId::proportional(11.0),
-        color,
-    );
+    let icon = if folded {
+        Icon::ChevronRight
+    } else {
+        Icon::ChevronDown
+    };
+    let mark = Rect::from_center_size(rect.center(), egui::vec2(size::FOLD_ICON, size::FOLD_ICON));
+    icons::icon(ui.painter(), mark, icon, color);
     let name = if folded { "Unfold" } else { "Fold" };
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     if response.clicked() {
@@ -590,8 +663,7 @@ struct Shown {
 #[allow(clippy::too_many_arguments)]
 fn entity_row(
     ui: &mut Ui,
-    document: &Document,
-    models: &BTreeMap<AssetId, ModelInfo>,
+    (document, models): (&Document, &BTreeMap<AssetId, ModelInfo>),
     accent: Accent,
     (id, entity): (EntityId, &EntityData),
     shown: Shown,
@@ -626,22 +698,29 @@ fn entity_row(
         return;
     }
     let (icon, color, note) = looks(entity, models);
-    let removable = entity.has("Model").then_some(entity.name.as_str());
     let toggles = Toggles {
         hidden: state.hidden.contains(&id),
         locked: state.locked.contains(&id),
         shown,
     };
-    let (response, remove, toggled) = area_row(
+    let selected = document.selection.contains(id);
+    let (response, toggled) = area_row(
         ui,
         (icon, color),
-        &entity.name,
-        &note,
-        document.selection.contains(id),
+        (&entity.name, &note),
+        selected,
         accent,
-        removable,
-        Some(toggles),
+        toggles,
     );
+    if response.secondary_clicked() && !selected {
+        // The menu acts on the selection: the row pointed at becomes it.
+        requests.push(AreaRequest::Select(id));
+    }
+    response.context_menu(|ui| {
+        if let Some(command) = row_menu(ui) {
+            requests.push(AreaRequest::Command(command));
+        }
+    });
     let switched = match toggled {
         Some(Toggle::Hide) => Some(&mut state.hidden),
         Some(Toggle::Lock) => Some(&mut state.locked),
@@ -686,9 +765,7 @@ fn entity_row(
         );
     }
     let modifiers = ui.input(|i| i.modifiers);
-    if remove {
-        requests.push(AreaRequest::Delete(id));
-    } else if response.double_clicked() {
+    if response.double_clicked() {
         begin_rename(ui.ctx(), id, &entity.name);
     } else if response.clicked() {
         requests.push(if modifiers.command {

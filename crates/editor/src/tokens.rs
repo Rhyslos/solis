@@ -324,6 +324,8 @@ meaning! {
 /// How see-through the pills floating over the viewport are (their fill is
 /// [`field`] at this share).
 pub const PILL_OPACITY: f32 = 0.85;
+/// How much of a tile being dragged out still shows (spec 274: 55%).
+pub const DRAGGED_OPACITY: f32 = 0.55;
 /// How see-through the label box is while placing (its fill is [`ribbon`]
 /// at this share).
 pub const LABEL_BOX_OPACITY: f32 = 0.95;
@@ -473,6 +475,17 @@ pub mod share {
     /// How much lighter a filled button is under the pointer (of
     /// white). Solis's own.
     pub const LIFT: f32 = 0.12;
+}
+
+/// An error's row in the Console: the error colour mixed faintly into
+/// the column.
+pub fn error_row() -> Color32 {
+    mix(ERROR, panel(), share::ERROR_ROW)
+}
+
+/// A warning's row in the Console.
+pub fn warning_row() -> Color32 {
+    mix(WARNING, panel(), share::WARNING_ROW)
 }
 
 /// A selected row of a tree or a list: the accent mixed into a shelf

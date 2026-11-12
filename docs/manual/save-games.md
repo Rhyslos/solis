@@ -31,7 +31,7 @@ pass QuickSave;
 end
 ```
 
-Add the QuickSave and QuickLoad actions in **File > Input** and bind them to keys of your choice ([Input](input.md)).
+Add the QuickSave and QuickLoad actions in **File › Project settings › Input** and bind them to keys of your choice ([Input](input.md)).
 
 - A **slot** is a save's name: letters, digits, `_` and `-` (`quick`, `slot_1`, `before-boss`), but not a name Windows keeps for a device (`CON`, `NUL`, `PRN`, `AUX`, `COM1`, `LPT1` and so on). Saving to a slot that has a save replaces it. A project keeps at most 100 saves, and 2 GB of them together; past that, game code can replace one but not add more (the Console says so).
 - Both happen at the **end of the tick**, after every component's `update`, like moves ([what game code sees](game-code.md#components)). A load replaces the whole game, so nothing else runs in that frame after it.

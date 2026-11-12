@@ -425,7 +425,7 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 74] = [
+const DRAWN_SO_FAR: [UnbuiltId; 101] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
@@ -436,6 +436,11 @@ const DRAWN_SO_FAR: [UnbuiltId; 74] = [
     UnbuiltId::HomeShelfTransport,
     UnbuiltId::HomeShelfFrameCounter,
     UnbuiltId::LibShelfImportQueue,
+    // Home's toolbox.
+    UnbuiltId::HomeToolPose,
+    UnbuiltId::HomeToolMotionPath,
+    UnbuiltId::HomeToolAddKey,
+    UnbuiltId::HomeToolMeasure,
     UnbuiltId::AnimShelfSequencer,
     UnbuiltId::AnimShelfKey,
     UnbuiltId::DebugShelfHottest,
@@ -483,10 +488,34 @@ const DRAWN_SO_FAR: [UnbuiltId; 74] = [
     UnbuiltId::DebugShowMemory,
     UnbuiltId::DebugToolsDebugger,
     UnbuiltId::DebugToolsMemory,
-    // File's column.
+    // File's column, and Recent projects.
     UnbuiltId::FilePlugins,
+    UnbuiltId::RecentCardThumbnail,
+    UnbuiltId::RecentTemplateFirstPerson,
+    UnbuiltId::RecentTemplateTopDown,
+    UnbuiltId::RecentTemplatePlatformer,
+    UnbuiltId::RecentTemplateAll,
     // Preferences.
+    UnbuiltId::PrefsTabInput,
+    UnbuiltId::PrefsTabSourceControl,
     UnbuiltId::PrefsCodeSplit,
+    UnbuiltId::PrefsShortcutsEdit,
+    // Project settings, and its Input.
+    UnbuiltId::ProjTabPhysics,
+    UnbuiltId::ProjTabAudio,
+    UnbuiltId::ProjTabPlatforms,
+    UnbuiltId::ProjTabPlugins,
+    UnbuiltId::ProjCompany,
+    UnbuiltId::ProjVersion,
+    UnbuiltId::ProjIcon,
+    UnbuiltId::ProjEditorStart,
+    UnbuiltId::ProjFrameRate,
+    UnbuiltId::ProjVersionControl,
+    UnbuiltId::InputContexts,
+    UnbuiltId::InputTrigger,
+    UnbuiltId::InputBuffer,
+    UnbuiltId::InputDeadZone,
+    UnbuiltId::InputInvertY,
     // Audio's ribbon.
     UnbuiltId::AudioMixerSend,
     UnbuiltId::AudioMixerSnapshot,
@@ -513,15 +542,30 @@ const DRAWN_SO_FAR: [UnbuiltId; 74] = [
     UnbuiltId::VfxPreview,
 ];
 
-/// Walks the editor in `look`: every workspace, each page of the
-/// Settings window, and the launcher. Gives every unfinished part noted
+/// Walks the editor in `look`, with a project open: every workspace,
+/// each sub-tab of Preferences and Project settings, and Recent
+/// projects. Gives every unfinished part noted
 /// as drawn on the way, and the name of everything on screen described
 /// as not built.
 fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
-    use crate::settings_window::Page;
+    use crate::file_pages::Tab;
     use crate::test_support::{harness, info};
     use crate::workbench::Workbench;
-    let mut h = harness(Workbench::new(info()).with_interface_look(look));
+    let mut w = Workbench::new(info()).with_interface_look(look);
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Farm".into(),
+        root: "/projects/farm".into(),
+        assets: "/projects/farm/assets".into(),
+    }));
+    w.set_known_projects(vec![crate::KnownProject {
+        root: "/projects/farm".into(),
+        name: "Farm".into(),
+        problem: None,
+        pinned: false,
+        last_opened: None,
+        saved_by: None,
+    }]);
+    let mut h = harness(w);
     theme::restyle(&h.ctx, look);
     let mut noted = BTreeSet::new();
     let mut described = Vec::new();
@@ -552,13 +596,20 @@ fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
         }
     }
     h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);
-    for page in [Page::Appearance, Page::TwoD] {
-        h.state_mut().0.open_settings();
-        h.state_mut().0.settings_window.as_mut().unwrap().page = page;
+    for tab in [
+        Tab::General,
+        Tab::Appearance,
+        Tab::Viewport,
+        Tab::Shortcuts,
+        Tab::Project,
+        Tab::TwoD,
+        Tab::Input,
+        Tab::Build,
+    ] {
+        h.state_mut().0.show_settings(tab);
         look_around(&mut h);
     }
-    h.state_mut().0.settings_window = None;
-    h.state_mut().0.launch_launcher();
+    h.state_mut().0.start_on_recent_projects();
     look_around(&mut h);
     described.sort();
     described.dedup();

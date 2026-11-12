@@ -58,6 +58,7 @@ fn the_library_shows_one_folder_and_the_tree_opens_others() {
     let (w, _, _) = with_a_project();
     let mut h = harness(w);
     h.run();
+    crate::test_support::ribbon_tab(&mut h, crate::shell::RibbonTab::Library);
     assert!(shown(&h, "crate") && shown(&h, "docks"));
     assert!(!shown(&h, "rock"), "inside a folder");
     // Code shows too (decision 0085), and the Code chip shows only it.
@@ -97,6 +98,7 @@ fn placing_models_and_opening_areas() {
     w.place_dropped(crate_id, Vec3::ONE, None);
     let mut h = harness(w);
     h.run();
+    crate::test_support::ribbon_tab(&mut h, crate::shell::RibbonTab::Library);
     h.get_by_label("Place crate").click();
     h.run();
     open(&mut h, "docks");
@@ -287,6 +289,7 @@ fn dropping_a_file_on_a_folder_moves_it_there() {
     let (w, _, _) = with_a_project();
     let mut h = harness(w);
     h.run();
+    crate::test_support::ribbon_tab(&mut h, crate::shell::RibbonTab::Library);
     let folder = h.get_by_label("Folder props").rect().center();
     drag(&mut h, "crate", folder);
     assert!(h.state().1.actions.contains(&WorkbenchAction::MoveFile {
@@ -540,12 +543,21 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
         w.set_library(vec![item("thing.file", kind, Some(AssetId::random()))]);
         let mut h = harness(w);
         h.run();
+        // Home's Place shelf tab has the word too.
+        let tabs = h.query_all_by_label("Place").count();
         h.get_all_by_label("thing")
             .next()
             .unwrap()
             .click_secondary();
         h.run();
-        let offered = |label: &str| h.query_all_by_label(label).count();
+        let offered = |label: &str| {
+            let count = h.query_all_by_label(label).count();
+            if label == "Place" {
+                count - tabs
+            } else {
+                count
+            }
+        };
         assert_eq!(
             (offered("Open"), offered("Place")),
             (open, place),
@@ -574,7 +586,8 @@ fn place_is_greyed_for_a_file_with_no_id_yet() {
     h.run();
     h.get_by_label("fresh").click_secondary();
     h.run();
-    let place = h.get_by_label("Place");
+    // The menu's, not Home's Place shelf tab.
+    let place = h.get_all_by_label("Place").last().unwrap();
     assert!(place.accesskit_node().is_disabled());
     place.click();
     h.run();
@@ -591,13 +604,14 @@ fn place_is_greyed_for_a_file_with_no_id_yet() {
     h.run();
     h.get_by_label("crate").click_secondary();
     h.run();
-    let place = h.get_by_label("Place");
+    // The menu's, not Home's Place shelf tab.
+    let place = h.get_all_by_label("Place").last().unwrap();
     assert!(!place.accesskit_node().is_disabled());
     place.click();
     h.run();
     h.run();
     assert!(placed(&h));
-    assert!(h.query_by_label("Place").is_none());
+    assert_eq!(h.query_all_by_label("Place").count(), 1, "the menu closed");
 }
 
 #[test]

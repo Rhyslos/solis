@@ -47,7 +47,7 @@ pub(crate) struct ProjectState {
     /// What the editor knows about the imported models, by asset.
     pub(crate) models: BTreeMap<AssetId, ModelInfo>,
     /// Build > Export, while it's open (decision 0093).
-    pub(crate) export_window: Option<crate::export_dialog::ExportWindow>,
+    pub(crate) export: Option<crate::export_dialog::ExportForm>,
     /// How the open project was last exported, to start from.
     pub(crate) last_export: Option<crate::export_dialog::Playtest>,
     /// Where the open project was last exported on this computer, if the
@@ -156,7 +156,7 @@ pub(crate) struct ProjectState {
     /// without a project.
     pub(crate) bindings: input::Bindings,
     /// Whether the Input actions window is open.
-    pub(crate) input_window: Option<crate::input_window::InputWindow>,
+    pub(crate) input_page: Option<crate::file_pages::InputPage>,
     /// The seed every Play starts the game's random numbers from, if one
     /// was chosen (`seed` in the Console); otherwise each Play has a new
     /// one. Chosen for one game, so another project starts without it.
@@ -214,8 +214,8 @@ impl Workbench {
     /// the Console, and the components the program itself registered.
     pub fn set_project(&mut self, project: Option<ProjectInfo>) {
         if project.is_some() {
-            // A project is open: the launcher has done its job.
-            self.launcher.open = false;
+            // A project is open: Recent projects has done its job.
+            self.back_to_editor();
         }
         if project == self.open.project {
             return;

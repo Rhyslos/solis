@@ -124,7 +124,7 @@ fn choosing_2d_shows_the_tile_grid_and_the_2d_corner() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    h.query_all_by_label("Perspective ▴")
+    h.query_all_by_label("Perspective ▾")
         .next()
         .unwrap()
         .click();
@@ -138,8 +138,8 @@ fn choosing_2d_shows_the_tile_grid_and_the_2d_corner() {
     assert_eq!(view.grid_step, 1.0, "16-pixel tiles at 16 pixels a metre");
     for label in [
         "Grid 16 px",
-        "Snap: whole pixels ▴",
-        "Zoom 200% ▴",
+        "Snap: Whole pixels ▾",
+        "Zoom 200% ▾",
         "Lock X",
         "Lock Y",
     ] {
@@ -158,13 +158,13 @@ fn choosing_2d_shows_the_tile_grid_and_the_2d_corner() {
     let view = h.state().1.views.last().unwrap().clone();
     assert_eq!(view.grid_step, 2.0);
     // The zoom menu sets the zoom.
-    h.get_by_label("Zoom 200% ▴").click();
+    h.get_by_label("Zoom 200% ▾").click();
     h.run();
     h.get_by_label("400%").click();
     h.run();
     assert_eq!(h.state().0.camera().zoom, 4.0);
     // And the snap menu what moves land on.
-    h.get_by_label("Snap: whole pixels ▴").click();
+    h.get_by_label("Snap: Whole pixels ▾").click();
     h.run();
     h.get_by_label("Tiles").click();
     h.run();
@@ -282,10 +282,9 @@ fn settings_2d(project: bool) -> egui_kittest::Harness<'static, State> {
             assets: std::env::temp_dir().join("solis-two-d-settings/assets"),
         }));
     }
-    w.open_settings();
+    w.show_settings(crate::file_pages::Tab::TwoD);
     let mut h = harness(w);
     h.run();
-    h.get_by_label("2D").click();
     h.run();
     h
 }
@@ -303,28 +302,27 @@ fn saved(h: &egui_kittest::Harness<'_, State>) -> Vec<PixelSettings> {
 }
 
 #[test]
-fn the_2d_settings_page_changes_and_saves_the_project_s_settings() {
+fn the_2d_settings_tab_changes_and_saves_the_project_s_settings() {
+    use egui::accesskit::Role;
     let mut h = settings_2d(true);
     for label in [
         "Base resolution",
         "Pixels per unit",
         "Tile size",
         "Scaling to the screen",
-        "This project",
     ] {
-        assert!(h.query_by_label(label).is_some(), "{label}");
+        assert!(h.query_all_by_label(label).next().is_some(), "{label}");
     }
-    // A common size from the menu.
-    let combos = || egui::accesskit::Role::ComboBox;
-    h.get_all_by_role(combos()).next().unwrap().click();
+    // A common size from the list.
+    h.get_by_role_and_label(Role::ComboBox, "Base resolution")
+        .click();
     h.run();
     h.get_by_label("640 × 360").click();
     h.run();
     assert_eq!(h.state().0.pixels().base, [640, 360]);
     // Scaling.
-    h.get_all_by_role(combos()).nth(1).unwrap().click();
-    h.run();
-    h.get_by_label("Fill the screen").click();
+    h.get_by_role_and_label(Role::RadioButton, "Fill the screen")
+        .click();
     h.run();
     assert_eq!(h.state().0.pixels().scaling, Scaling::Fill);
     let saves = saved(&h);
@@ -332,43 +330,51 @@ fn the_2d_settings_page_changes_and_saves_the_project_s_settings() {
     assert_eq!(saves.last().unwrap().scaling, Scaling::Fill);
     // The viewport's 2D view follows at once.
     assert_eq!(h.state().0.viewport.pixels.base, [640, 360]);
-    // Reset this page: the standard ones, saved.
-    h.get_by_label("Reset this page").click();
-    h.run();
+    // Changed from the standard: counted in the heading, dotted, and
+    // each puts back with its Reset.
+    assert!(h.query_by_label("2 changed from defaults").is_some());
+    for _ in 0..2 {
+        let at = h.get_all_by_label("Reset").next().unwrap().rect().center();
+        crate::test_support::click(&mut h, at, egui::Modifiers::NONE);
+        h.run();
+    }
     assert_eq!(h.state().0.pixels(), PixelSettings::default());
     assert_eq!(*saved(&h).last().unwrap(), PixelSettings::default());
+    assert!(h.query_by_label_contains("changed from defaults").is_none());
 }
 
 #[test]
 fn without_a_project_the_2d_settings_can_t_be_changed() {
-    let mut h = settings_2d(false);
+    let h = settings_2d(false);
     assert!(
-        h.query_by_label("These belong to a project: open or make one to change them.")
+        h.query_all_by_label("Open a project first")
+            .next()
             .is_some()
     );
-    h.get_by_label("Reset this page").click();
-    h.run();
     assert!(saved(&h).is_empty());
 }
 
 #[test]
-fn the_2d_page_says_how_the_base_resolution_fits_common_screens() {
-    let fits = crate::settings_window::fits(PixelSettings::default());
+fn the_2d_tab_says_how_the_base_resolution_fits_common_screens() {
+    use crate::file_pages::fits;
+    let lines = fits(PixelSettings::default());
     assert_eq!(
-        fits,
-        "480 × 270 on 1080p (×4), 1440p (×5 with bars) and 4K (×8)."
+        lines[0],
+        ("1920 × 1080".to_string(), "4 times, exactly".to_string())
     );
-    let fill = crate::settings_window::fits(PixelSettings {
+    assert_eq!(lines[1].1, "5 times, with bars");
+    assert_eq!(lines[2].1, "8 times, exactly");
+    let fill = fits(PixelSettings {
         scaling: Scaling::Fill,
         ..PixelSettings::default()
     });
-    assert!(fill.contains("1440p (×5.33, smoothed)"), "{fill}");
-    // Search finds the 2D settings by name and page.
+    assert_eq!(fill[1].1, "5.33 times, the rest smoothed");
+    // Search finds the 2D settings by name and tab.
     let mut w = crate::workbench::Workbench::new(info());
-    w.open_settings();
-    w.settings_window.as_mut().unwrap().search = "tile".into();
+    w.show_settings(crate::file_pages::Tab::Project);
+    w.file_pages.settings_search = "tile".into();
     let mut h = harness(w);
     h.run();
-    assert!(h.query_by_label("Tile size").is_some());
-    assert!(h.query_by_label("Accent colour").is_none());
+    assert!(h.query_all_by_label("Tile size").next().is_some());
+    assert!(h.query_by_label("Project name").is_none());
 }

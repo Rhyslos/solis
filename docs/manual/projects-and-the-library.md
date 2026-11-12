@@ -16,39 +16,43 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 1. **File > New project** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
 2. Solis makes `project.solis`, an `assets` folder, and a hidden `.solis` folder for its cache. If you use Git, it also adds `.gitignore` and `.gitattributes` files set up for games.
 
-**Open a project:** **File > Open…** and choose the project's folder, or pick it from **File > Recent projects** (the [launcher](launcher.md)'s list of projects). Solis doesn't open the last project again when it starts: it always starts on the launcher, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
+**Open a project:** **File > Open…** and choose the project's folder, or pick it from **File > Recent projects** ([Projects](launcher.md)). Solis doesn't open the last project again when it starts: it always starts on Recent projects, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
 
 **Opening another project starts afresh.** Everything of the project you leave goes with it: its area, the files open in tabs (Clips, Frames, Animator, Map, Tileset, Atlas Crop, the UI canvas) and their undo steps, components' values you copied, and a `seed` chosen in the Console. Nothing of one project can then be saved into another by mistake, which matters most with a copy of a project, whose files have the same names. What's yours stays as it is: the layout, the cameras, the theme and the Console's messages.
 
 **Add models:** **Library > Import**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project's assets and placed in the area. You can also put files straight into the assets folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
 
 **Find your way around the Library**
-- On the left, the **folder tree**: click a folder to see what's in it. (**View > Folder tree** puts it away to make room.)
-- On the right, that folder's files as **thumbnails**, each with a coloured stripe saying what kind of file it is: blue for models, gold for assemblies, green for areas, purple for pictures. **View > List** shows them as a list instead. The line above them (*Harbour › props*) shows where you are; click a part of it to go back up.
-- **Search the project** (top right) finds files by name in every folder.
-- The **chips** above the files (**All**, **Models**, **Sprites**, **Maps**, **Sounds**, **Code**) show only one kind of file, so a busy folder is easy to scan. **All** shows everything, your code files included (the **Code** shelf tab, on the Library tab, lists only code).
+- The Library tab's **ribbon** holds what you do with files: **Add** (**Import** with its list, **Create** for anything New makes, **Folder**), **View** (**List** for a list in place of tiles, **Show folders** for the folder tree), **Filter** (**Type: All ▾**: one group of kinds at a time) and **Use** (**Place**: puts the picked file where the camera looks, and brings Home to the front). Tags, Missing references, Source control and Show in area are [unfinished parts](unfinished-parts.md).
+- With **Show folders** on, the **folder tree** is on the left: click a folder to see what's in it. The line above the files (*Harbour › props*) shows where you are; click a part of it to go back up.
+- The folder's files are **tiles** that fill the width: each a square for its picture, then its name, and a coloured dot and word saying what kind of file it is. The colours are the design's: models cyan, assemblies blue, pictures and sprite sheets coral, clips and animators purple, sounds amber, tilesets and tile maps green; sound events, code files and areas keep the colours they had, and text files are one light blue. The picked tile is tinted with the accent and outlined inside. The shelf bar's right end counts the folder's items and how many are picked.
+- **Search the project**, beside the chips, finds files by name in every folder.
+- The **chips** (**All**, **Models**, **Sprites**, **Maps**, **Sounds**, **Code**, each with its kind's dot) show only one kind of file, so a busy folder is easy to scan. **All** shows everything, your code files included (the **Code** shelf tab, on the Library tab, lists only code).
 
 **Where the Library is**
-- On **Home**, it is the right-hand column of the shelf's **Entity** tab, under the viewport, so you can drag files from it straight into the area. Drag the shelf's grip up for a bigger Library, and press **Ctrl + Space** to fold the shelf away when you want the viewport bigger. (Older builds had a Library drawer with Pin and Unpin; the shelf takes its place.)
+- On **Home**, the shelf's **Entity** tab has an **Assets** column at its right: the Library's open folder as tiles, with **Import** last, so you can drag files from it straight into the area (or double-click one to place it where the camera looks). The **Place** shelf tab (Home's first) is for placing: see below. The folder is the Library tab's: open another folder there and Assets follows. Drag the shelf's grip up for a bigger column, and press **Ctrl + Space** to fold the shelf away when you want the viewport bigger. (Older builds had a Library drawer with Pin and Unpin; the shelf takes its place.)
 - The **Library** tab of the tab bar shows it filling the window, with the file picked shown on the shelf's **Details** tab and the code files on its **Code** tab.
 - Point at a file to see its full path and what you can do with it.
 
 **Place a model or assembly**
 - **Drag it from the Library into the viewport**: it goes on whatever surface is under the mouse when you let go (a table, the floor), or on the ground. In a flat Front or Right view, dropped on empty space, it goes exactly where you point, at that height. It's selected, ready to move.
 - **Drag it onto an entity in the Area panel**: it goes under that entity, at its place.
-- Or **double-click** it (or click the **+** on its picture) to place it where the camera looks.
+- Or **double-click** it in the shelf's Assets or Place column to place it where the camera looks. In the Library tab a double-click only picks a file that would be placed (so a stray double-click never drops something in the area); use **Place** on the ribbon, or drag it.
+
+**Placing, with the Place shelf tab**
+Bringing Home's **Place** shelf tab to the front is placing: the ribbon shows its building form (**Place**, Snapping, **Paint** and **Transform**, which holds the five tools while the toolbox is put away), and the shelf shows the Area, **Placement** and the files that can be placed (**Favourites** and **Recent** are unfinished; **All**, **Models**, **Sprites**, **Maps**, and **Find something to place**, which looks in every folder). While you drag a file over the viewport, a square in the accent shows where it will land, a label says what it is and where ("crate", "x 2.75 y -13.25 · grid"), and a strip at the bottom says how. With the ribbon's **Grid** on and **Align to: Grid**, it lands on the grid's step; **Free** never snaps, and holding **Ctrl** as you drop doesn't snap that once. Choosing **Entity** (or selecting something) leaves placing.
 
 **Open things:** double-click an **area** to open it (Solis asks first if yours has unsaved changes). Double-click a picture to open it in its own program (your picture editor, say); to put it in the world as a [sprite](sprites.md), drag it into the viewport instead. Any other file, one Solis doesn't know, opens its folder instead of the file itself, and its name is shown in full with its ending: a file called `brick.png.exe` is a program pretending to be a picture, and opening it would run it. Projects you download or are sent can hold anything, so Solis never runs what's in them.
 
-**Make new things:** right-click anywhere in the Library (empty space, a folder or a file) and choose **New**, or use the **+ New** button above it. Everything is made in the folder shown (or the one you right-clicked):
+**Make new things:** right-click anywhere in the Library (empty space, a folder or a file) and choose **New**, or use **Create** on the Library ribbon. Everything is made in the folder shown (or the one you right-clicked):
 - **Lust code file**: your game's code. The first one is `main.lst`, at the top of the assets, because game code starts there; later ones are `component.lst`, ready to fetch from `main.lst`. Each starts with a component and opens in the program your computer uses for `.lst` files (Ledger, once it's installed). See [Game code](game-code.md).
 - **Folder**: "New folder".
 - **Area**: an empty level, saved there and opened (Solis asks first if yours has unsaved changes). See [Saving areas](saving-areas.md).
 - **Tile map**, **Tileset**, **Animator** and **Sound event**: see [Tile maps](tile-maps.md), [Tilesets and autotiling](tilesets.md), [Animators](animators.md) and [Sound events](sound-events.md).
 
-**Text files** (`.md` and `.txt` notes, and data in `.json`, `.csv`, `.toml` and `.ron`) show in the Library with their extension as their icon: notes in light blue, JSON in green, tables in pink, settings in grey-blue. Click one and Properties shows it, read only: a Markdown file's headings, lists, quotes, code and **bold** as they read, the others as plain text (up to 512 KB and the first 3,000 lines). **Open in its program** (or a double-click) opens it in the program your computer uses for that kind of file, such as Ledger for Markdown, to edit it there; Properties shows the change as soon as you save. They're under the **Code** chip too.
+**Text files** (`.md` and `.txt` notes, and data in `.json`, `.csv`, `.toml` and `.ron`) show in the Library in one light blue. Click one and Properties shows it, read only: a Markdown file's headings, lists, quotes, code and **bold** as they read, the others as plain text (up to 512 KB and the first 3,000 lines). **Open in its program** (or a double-click) opens it in the program your computer uses for that kind of file, such as Ledger for Markdown, to edit it there; Properties shows the change as soon as you save. They're under the **Code** chip too.
 
-**Import model…** above the Library brings in a model, like **Library > Import**. It's greyed until a project is open, since the model is copied into it.
+**Import** on the Library ribbon brings in a model. It's greyed until a project is open, since the model is copied into it.
 
 **Organise files** (right-click a file or folder):
 - **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name. A name must work on every computer: at most 100 characters, none of `< > : " / \ | ? *`, and not a name Windows keeps for a device (`CON`, `NUL`, `COM1` …); the Console says why if it isn't.
@@ -56,6 +60,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - **New**: makes something new in that folder (see below).
 - **Open** or **Place** (a sprite's clips file and a picture offer both): **Open** does what a double-click on that file does, and **Place** puts it in the area. **Place** is greyed on a file Solis hasn't given its ID yet, such as one copied in a moment ago: try again shortly.
 - **Show in Explorer** opens the folder in your system's file browser.
+- With the pointer over the Library or the Assets column, **F2** renames and **Delete** deletes the file picked there (anywhere else they act on the selected entity).
 - **Delete** moves the file (or folder) to the **Recycle Bin**, with its ID file, so you can get it back. Anything in the area still using it keeps showing it until Solis restarts.
 
 A `.gltf` model reads the files beside it, so it can't be moved to another folder on its own: move its whole folder instead. Renaming it in place is fine.
