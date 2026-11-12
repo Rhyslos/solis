@@ -170,4 +170,4 @@ impl Workbench {
 
 #[cfg(test)]
 #[path = "workbench_animator_tests.rs"]
-mod tests;
+pub(crate) mod tests;

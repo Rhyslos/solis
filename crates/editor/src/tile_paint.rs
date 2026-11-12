@@ -1,15 +1,13 @@
-//! The tile painter (Phase 9, D6), as the project lead chose it (mock-up
-//! B): while a tile map is selected, its tools join the viewport's tool
-//! bar after the transform tools, with Exact, Art or Meaning, and the
-//! layer painted; the Map tab's terrain swatches are the palette.
+//! The tile painter (Phase 9, D6): while a tile map is selected, its
+//! tools, Exact, Art or Meaning and the layer painted are on the ribbon
+//! of HOME TOOLS · Tile map (the approved additions, round 3); the Map
+//! tab's terrain swatches are the palette.
 //!
 //! This module holds what the viewport and the Map tab share: the tools
 //! and their keys, the painter's settings, and the pointer and buttons
 //! the viewport saw this frame. The workbench does the painting
 //! (`workbench_paint.rs`), each stroke one undo step.
 
-use crate::theme;
-use egui::{RichText, Ui};
 use reflect::Id;
 use tiles::paint::Stamp;
 use tiles::{TileKind, Tileset};
@@ -74,16 +72,15 @@ impl PaintTool {
         }
     }
 
-    /// What its button says when pointed at.
-    pub fn hint(self) -> String {
-        let what = match self {
-            Self::Brush => "drag to paint, right-drag to empty",
-            Self::Rectangle => "drag a rectangle to paint",
-            Self::Line => "drag a straight line to paint",
-            Self::Fill => "click to paint the whole patch of one terrain",
-            Self::Eyedropper => "drag over cells to copy them, then paint with the copy",
-        };
-        format!("{} ({}): {what}", self.name(), self.key().name())
+    /// What it does, in a few words.
+    pub fn what(self) -> &'static str {
+        match self {
+            Self::Brush => "Drag to paint, right-drag to empty",
+            Self::Rectangle => "Drag a rectangle to paint",
+            Self::Line => "Drag a straight line to paint",
+            Self::Fill => "Click to paint the whole patch of one terrain",
+            Self::Eyedropper => "Drag over cells to copy them, then paint with the copy",
+        }
     }
 }
 
@@ -121,6 +118,31 @@ impl PaintSettings {
         self.allowed && self.tool.is_some()
     }
 
+    /// The keys of the tool in use, for the hint over the view: the
+    /// copy's while one is held. None while nothing paints.
+    pub(crate) fn hint_keys(&self) -> Option<&'static [(&'static str, &'static str)]> {
+        if !self.painting() {
+            return None;
+        }
+        Some(if self.stamp.is_some() {
+            &[
+                ("Drag", "paint the copy"),
+                ("X", "flip across"),
+                ("Y", "flip down"),
+                ("Z", "turn"),
+                ("Esc", "put it away"),
+            ]
+        } else {
+            &[
+                ("Drag", "paint"),
+                ("Right-drag", "empty"),
+                ("Alt click", "pick a terrain"),
+                ("Ctrl", "exact tile"),
+                ("Esc", "give up"),
+            ]
+        })
+    }
+
     /// The terrain painted on `set`: the one chosen if the tileset has
     /// it, otherwise its first.
     pub fn code_on(&self, set: Option<&Tileset>) -> Option<u8> {
@@ -156,7 +178,7 @@ pub struct PaintInput {
 }
 
 /// How a stamp is turned, asked for by a key or a button.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Turn {
     /// Left and right swapped (X).
     FlipX,
@@ -192,93 +214,6 @@ pub fn exact_piece(set: &Tileset, code: u8, chosen: Option<Id>) -> Option<Id> {
         .and_then(|s| set.pieces.iter().filter(mine).find(|p| p.slot == s))
         .or_else(|| set.pieces.iter().find(mine))
         .map(|p| p.id)
-}
-
-/// A selected map's painting options, drawn over the view while it is
-/// selected (its painting tools are in the toolbox): Exact, Art or
-/// Meaning, and the layer painted. Changes `paint`.
-pub(crate) fn paint_options(ui: &mut Ui, paint: &mut PaintSettings) {
-    let exact = ui
-        .add(egui::Button::new("Exact").selected(paint.exact))
-        .on_hover_text(
-            "Place the exact tile chosen in the Map tab, not the one autotiling picks \
-             (hold Ctrl while painting for the same)",
-        );
-    if exact.clicked() {
-        paint.exact = !paint.exact;
-    }
-    let shown = if paint.meaning { "Meaning" } else { "Art" };
-    egui::ComboBox::from_id_salt("paint view")
-        .selected_text(shown)
-        .width(66.0)
-        .show_ui(ui, |ui| {
-            for (meaning, text) in [(false, "Art"), (true, "Meaning")] {
-                if ui
-                    .selectable_label(paint.meaning == meaning, text)
-                    .on_hover_text(if meaning {
-                        "Each terrain in its colour: what the game reads (Tab)"
-                    } else {
-                        "The tileset's art, as the game draws it (Tab)"
-                    })
-                    .clicked()
-                {
-                    paint.meaning = meaning;
-                }
-            }
-        })
-        .response
-        .on_hover_text("What the selected map shows: its art, or its meaning (Tab)");
-    let layer = paint.layers.get(paint.layer).cloned().unwrap_or_default();
-    egui::ComboBox::from_id_salt("paint layer")
-        .selected_text(RichText::new(layer))
-        .width(64.0)
-        .show_ui(ui, |ui| {
-            // Top first, as the Map tab lists them.
-            for i in (0..paint.layers.len()).rev() {
-                if ui
-                    .selectable_label(paint.layer == i, &paint.layers[i])
-                    .clicked()
-                {
-                    paint.layer = i;
-                }
-            }
-        })
-        .response
-        .on_hover_text("The layer painted");
-}
-
-/// The stamp's buttons, while one is held: flip it either way, turn it,
-/// or put it away. Gives back what was asked for (`None` in the outer
-/// option for nothing; `Some(None)` to drop it).
-pub(crate) fn stamp_bar(ui: &mut Ui, stamp: &Stamp) -> Option<Option<Turn>> {
-    let mut asked = None;
-    theme::overlay_frame().show(ui, |ui| {
-        // The corner it sits in builds rows from the right, so its parts
-        // go in last first: they read "Copy 3 × 2  X  Y  Z  ×".
-        ui.horizontal(|ui| {
-            if ui
-                .button("×")
-                .on_hover_text("Put the copy away and paint the terrain again (Esc)")
-                .clicked()
-            {
-                asked = Some(None);
-            }
-            for (text, turn, hint) in [
-                ("Z", Turn::Rotate, "Turn a quarter clockwise (Z)"),
-                ("Y", Turn::FlipY, "Flip top and bottom (Y)"),
-                ("X", Turn::FlipX, "Flip left and right (X)"),
-            ] {
-                if ui.button(text).on_hover_text(hint).clicked() {
-                    asked = Some(Some(turn));
-                }
-            }
-            ui.label(
-                RichText::new(format!("Copy {} × {}", stamp.size[0], stamp.size[1]))
-                    .color(theme::text_weak()),
-            );
-        });
-    });
-    asked
 }
 
 #[cfg(test)]

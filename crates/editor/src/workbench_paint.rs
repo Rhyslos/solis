@@ -196,7 +196,7 @@ impl Workbench {
     }
 
     /// Flips or turns the copy held.
-    fn turn_stamp(&mut self, turn: Turn) {
+    pub(crate) fn turn_stamp(&mut self, turn: Turn) {
         if let Some(stamp) = &mut self.viewport.tile_overlay.paint.stamp {
             match turn {
                 Turn::FlipX => stamp.flip_x(),
@@ -216,12 +216,6 @@ impl Workbench {
     pub(crate) fn paint_frame(&mut self) {
         let overlay = &mut self.viewport.tile_overlay;
         let input: PaintInput = std::mem::take(&mut overlay.input);
-        if let Some(asked) = overlay.turn_asked.take() {
-            match asked {
-                Some(turn) => self.turn_stamp(turn),
-                None => self.viewport.tile_overlay.paint.stamp = None,
-            }
-        }
         let path = self.paint_path();
         let painting = self.viewport.tile_overlay.paint.painting();
         // A stroke whose map is no longer the one painted is given up.

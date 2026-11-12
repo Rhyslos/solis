@@ -16,6 +16,7 @@ use crate::unbuilt::{self, Entry, RowKind};
 use crate::widgets::width_of;
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui::{Align2, Rect, Sense, Ui, UiBuilder, pos2, vec2};
+use std::borrow::Cow;
 
 /// The shape a control has on the ribbon, built or not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,7 +31,12 @@ pub(crate) enum Shape {
 
 /// One thing in a control's list of kinds: its words there and what it
 /// does.
-pub(crate) type ListItem = Entry<(&'static str, ShellCommand)>;
+pub(crate) type ListItem = Entry<(Cow<'static, str>, ShellCommand)>;
+
+/// One thing in a list: its words there and what it does.
+pub(crate) fn item(words: impl Into<Cow<'static, str>>, command: ShellCommand) -> ListItem {
+    Entry::Built((words.into(), command))
+}
 
 /// A control that works.
 #[derive(Debug, Clone, PartialEq)]
@@ -54,7 +60,7 @@ pub(crate) enum Control {
     /// command of its own, a plain click does that; without one, a
     /// click opens the list too.
     List {
-        label: &'static str,
+        label: Cow<'static, str>,
         command: Option<ShellCommand>,
         items: Vec<ListItem>,
     },
@@ -94,7 +100,7 @@ pub(crate) fn big_list(
     items: Vec<ListItem>,
 ) -> Slot {
     let control = Control::List {
-        label,
+        label: label.into(),
         command: Some(command),
         items,
     };
@@ -188,9 +194,9 @@ pub(crate) enum Picked {
 }
 
 /// A small row that opens a list.
-pub(crate) fn row_list(label: &'static str, items: Vec<ListItem>) -> Slot {
+pub(crate) fn row_list(label: impl Into<Cow<'static, str>>, items: Vec<ListItem>) -> Slot {
     let control = Control::List {
-        label,
+        label: label.into(),
         command: None,
         items,
     };
@@ -235,7 +241,8 @@ struct Column {
 fn row_width(ui: &Ui, kind: RowKind, entry: &Entry<Control>) -> f32 {
     let label = match entry {
         Entry::Unbuilt(id) => return unbuilt::ribbon_row_width(ui, *id, kind),
-        Entry::Built(Control::Do { label, .. } | Control::List { label, .. }) => label,
+        Entry::Built(Control::Do { label, .. }) => label,
+        Entry::Built(Control::List { label, .. }) => label.as_ref(),
         Entry::Built(Control::Switch { label, .. }) => label.as_str(),
         Entry::Built(Control::Fact(words)) => words.as_str(),
     };
@@ -274,8 +281,18 @@ fn columns(ui: &Ui, group: &Group) -> Vec<Column> {
                 stacking = true;
             }
             Shape::Big(_) | Shape::Light(_) => {
+                // A working button whose word is longer than the button
+                // ("Eyedropper") is widened to show it whole.
+                let word = match entry {
+                    Entry::Built(Control::Do { label, .. }) => Some(*label),
+                    Entry::Built(Control::List { label, .. }) => Some(label.as_ref()),
+                    _ => None,
+                };
+                let words_w = word.map_or(0.0, |w| {
+                    width_of(ui, w, text::ribbon_label()) + 2.0 * size::RIBBON_BIG_WORD_PAD
+                });
                 columns.push(Column {
-                    width: size::RIBBON_BIG[0],
+                    width: size::RIBBON_BIG[0].max(words_w),
                     slots: vec![slot.clone()],
                 });
                 stacking = false;
@@ -538,11 +555,19 @@ impl Workbench {
             return;
         }
         let groups = filtered(super::ribbons::of(self.shell.tab, self));
-        let play = super::play_group::group(self);
-        let play = filtered(vec![play]).pop().unwrap_or(Group {
+        // LIBRARY TOOLS ribbons have no Play group, as the design's
+        // Mesh ribbon (round 3).
+        let empty = Group {
             label: None,
             slots: Vec::new(),
-        });
+        };
+        let play = if super::RibbonTab::CONTEXT.contains(&self.shell.tab) {
+            empty
+        } else {
+            filtered(vec![super::play_group::group(self)])
+                .pop()
+                .unwrap_or(empty)
+        };
         let mut picked = None;
         if self.shell.ribbon_in_band() {
             egui::Panel::top("ribbon")

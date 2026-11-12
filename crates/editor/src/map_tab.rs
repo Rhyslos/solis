@@ -43,6 +43,8 @@ pub(crate) struct PaintShown<'a> {
     pub(crate) piece: Option<reflect::Id>,
     /// A copy is held: it's painted instead of a terrain.
     pub(crate) stamp: Option<[u32; 2]>,
+    /// The layer painted on, by index.
+    pub(crate) layer: usize,
     /// The tileset's picture, to show its tiles.
     pub(crate) picture: Option<crate::tileset_view::Picture<'a>>,
     /// The time animated tiles show.
@@ -76,13 +78,15 @@ pub(crate) enum MapRequest {
     PaintWith(u8),
     /// Place this piece as an exact tile.
     PaintPiece(reflect::Id),
+    /// Paint on this layer (a click on its row).
+    PaintOnLayer(usize),
     /// Make this terrain (by code) solid, or not: saved in its tileset
     /// (decision 0071).
     SetSolid(u8, bool),
 }
 
 /// A terrain's colour, or the missing colour.
-fn terrain_colour(set: Option<&Tileset>, code: u8) -> Color32 {
+pub(crate) fn terrain_colour(set: Option<&Tileset>, code: u8) -> Color32 {
     match set.and_then(|t| t.by_code(char::from(code))) {
         Some(t) => {
             let [r, g, b] = t.colour.map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as u8);
@@ -173,53 +177,120 @@ pub(crate) fn name_field(
     }
 }
 
-/// The Map tab. Gives back what was asked for.
+/// The Map tab (the approved additions, round 3,
+/// `01-tile-map-painting-a.png`): four columns, the map's layers, its
+/// tileset's terrains as the painter's palette, its cell values, and the
+/// cell under the pointer. Gives back what was asked for.
 pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
-    let mut asked = Vec::new();
+    use crate::widgets::columns::{Part, Wide, columns};
     let map = m.map;
-    ui.horizontal(|ui| {
-        ui.label(RichText::new(&m.name).strong());
-        ui.label(
-            RichText::new(format!("{} × {} cells", map.size()[0], map.size()[1]))
-                .color(theme::text_weak()),
-        );
-    });
-    ui.add_space(6.0);
-    // Layers, top first as they're drawn.
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Layers").color(theme::text_weak()));
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let add = ui
-                .add_enabled(
-                    map.layers().len() < tiles::map::MAX_LAYERS,
-                    egui::Button::new("+"),
-                )
-                .on_hover_text("Add a layer on top")
-                .on_disabled_hover_text(format!(
-                    "A map has at most {} layers",
-                    tiles::map::MAX_LAYERS
-                ));
-            add.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Add a layer")
-            });
-            if add.clicked() {
-                asked.push(MapRequest::AddLayer);
-            }
+    let [w, h] = map.size();
+    let terrains = m.tileset.map_or_else(
+        || "no tileset".to_owned(),
+        |set| format!("{} terrains", set.terrains.len()),
+    );
+    let cell = m
+        .hovered
+        .map_or_else(String::new, |[x, y]| format!("x {x}, y {y}"));
+    let parts = [
+        Part::new(
+            &m.name,
+            format!("Tile map \u{b7} {w} \u{d7} {h} cells"),
+            Wide::Fixed(LAYERS_W),
+        ),
+        Part::new("Terrains", terrains, Wide::Rest),
+        Part::new(
+            "Cell values",
+            map.values().len().to_string(),
+            Wide::Fixed(VALUES_W),
+        ),
+        Part::new("Cell", cell, Wide::Fixed(CELL_W)),
+    ];
+    let mut asked = Vec::new();
+    let mut tools_asked = Vec::new();
+    columns(
+        ui,
+        &parts,
+        |ui, index| match index {
+            0 => add_button(ui, &mut tools_asked, AddWhat::Layer, map),
+            2 => add_button(ui, &mut tools_asked, AddWhat::Value, map),
+            _ => {}
+        },
+        |ui, index| match index {
+            0 => layers(ui, m, &mut asked),
+            1 => palette(ui, m, &mut asked),
+            2 => values(ui, map, &mut asked),
+            _ => cell_now(ui, m),
+        },
+    );
+    asked.extend(tools_asked);
+    asked
+}
+
+/// The layers column's width, and the values' and the cell's (round 3).
+const LAYERS_W: f32 = 290.0;
+const VALUES_W: f32 = 300.0;
+const CELL_W: f32 = 210.0;
+
+/// What a column's + adds.
+#[derive(Clone, Copy)]
+enum AddWhat {
+    Layer,
+    Value,
+}
+
+/// A column header's +: a layer on top, or a value every cell has.
+fn add_button(ui: &mut Ui, asked: &mut Vec<MapRequest>, what: AddWhat, map: &TileMap) {
+    let (room, name, hint, most) = match what {
+        AddWhat::Layer => (
+            map.layers().len() < tiles::map::MAX_LAYERS,
+            "Add a layer",
+            "Add a layer on top",
+            format!("A map has at most {} layers", tiles::map::MAX_LAYERS),
+        ),
+        AddWhat::Value => (
+            map.values().len() < tiles::map::MAX_VALUES,
+            "Add a value",
+            "Add a value every cell has (a switch to start)",
+            format!("A map has at most {} values", tiles::map::MAX_VALUES),
+        ),
+    };
+    let add = ui
+        .add_enabled(room, egui::Button::new("+").frame(false))
+        .on_hover_text(hint)
+        .on_disabled_hover_text(most);
+    add.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+    if add.clicked() {
+        asked.push(match what {
+            AddWhat::Layer => MapRequest::AddLayer,
+            AddWhat::Value => MapRequest::AddValue,
         });
-    });
+    }
+}
+
+/// The map's layers, top first as they're drawn: a click on a row paints
+/// on that layer (the project lead's answer 31).
+fn layers(ui: &mut Ui, m: &MapUi<'_>, asked: &mut Vec<MapRequest>) {
+    let map = m.map;
     for (i, layer) in map.layers().iter().enumerate().rev() {
-        egui::Frame::new()
-            .fill(if i == 0 {
-                Color32::from_rgb(0x3a, 0x2e, 0x18)
+        let painted = m.paint.layer == i;
+        // The row's click is put under its controls: it is noted before
+        // them, where the row was last drawn (one frame behind).
+        let place = ui.id().with(("layer row", layer.id));
+        let was: Option<egui::Rect> = ui.data(|d| d.get_temp(place));
+        let row = was.map(|rect| ui.interact(rect, place, egui::Sense::click()));
+        let drawn = egui::Frame::new()
+            .fill(if painted {
+                crate::interface_look::selected()
             } else {
-                theme::field()
+                Color32::TRANSPARENT
             })
             .corner_radius(4.0)
             .inner_margin(4.0)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     layer_thumb(ui, map, i, m.tileset);
-                    if let Some(name) = name_field(ui, ("layer", layer.id), &layer.name, 96.0) {
+                    if let Some(name) = name_field(ui, ("layer", layer.id), &layer.name, 70.0) {
                         asked.push(MapRequest::SetLayer(i, name, layer.over));
                     }
                     egui::ComboBox::from_id_salt(("over", layer.id))
@@ -228,7 +299,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                         } else {
                             "under sprites"
                         })
-                        .width(104.0)
+                        .width(92.0)
                         .show_ui(ui, |ui| {
                             for (over, text) in [(false, "under sprites"), (true, "over sprites")] {
                                 if ui.selectable_label(layer.over == over, text).clicked()
@@ -281,18 +352,29 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                     .on_hover_text("Move or delete this layer");
                 });
             });
+        ui.data_mut(|d| d.insert_temp(place, drawn.response.rect));
+        let Some(row) = row else {
+            continue;
+        };
+        let row = row.on_hover_text("Click to paint on this layer");
+        row.widget_info(|| {
+            egui::WidgetInfo::selected(
+                egui::WidgetType::Button,
+                true,
+                painted,
+                format!("Paint on {}", layer.name),
+            )
+        });
+        if row.clicked() && !painted {
+            asked.push(MapRequest::PaintOnLayer(i));
+        }
     }
-    ui.add_space(8.0);
-    // Terrains, with how many cells use each (every layer together): the
-    // painter's palette.
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Terrains").color(theme::text_weak()));
-        ui.label(
-            RichText::new("(click one to paint with it; the outlined one is painted)")
-                .small()
-                .color(theme::text_weak()),
-        );
-    });
+}
+
+/// The tileset's terrains, with how many cells use each (every layer
+/// together): the painter's palette.
+fn palette(ui: &mut Ui, m: &MapUi<'_>, asked: &mut Vec<MapRequest>) {
+    let map = m.map;
     let mut counts = [0usize; 256];
     for l in 0..map.layers().len() {
         for (total, n) in counts.iter_mut().zip(map.counts(l)) {
@@ -387,7 +469,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                     .color(theme::text_weak()),
                 );
             } else if m.paint.exact {
-                exact_tiles(ui, set, m, &mut asked);
+                exact_tiles(ui, set, m, asked);
             }
             let missing: usize = (1..256)
                 .filter(|&c| set.by_code(char::from(c as u8)).is_none())
@@ -403,32 +485,13 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
             }
         }
     }
-    ui.add_space(8.0);
-    // Cell values.
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Cell values").color(theme::text_weak()));
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let add = ui
-                .add_enabled(
-                    map.values().len() < tiles::map::MAX_VALUES,
-                    egui::Button::new("+"),
-                )
-                .on_hover_text("Add a value every cell has (a switch to start)")
-                .on_disabled_hover_text(format!(
-                    "A map has at most {} values",
-                    tiles::map::MAX_VALUES
-                ));
-            add.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Add a value")
-            });
-            if add.clicked() {
-                asked.push(MapRequest::AddValue);
-            }
-        });
-    });
+}
+
+/// The values every cell has: name, kind, and a choice's options.
+fn values(ui: &mut Ui, map: &TileMap, asked: &mut Vec<MapRequest>) {
     for (i, v) in map.values().iter().enumerate() {
         ui.horizontal(|ui| {
-            if let Some(name) = name_field(ui, ("value", v.id), &v.name, 80.0) {
+            if let Some(name) = name_field(ui, ("value", v.id), &v.name, 70.0) {
                 asked.push(MapRequest::RenameValue(i, name));
             }
             egui::ComboBox::from_id_salt(("kind", v.id))
@@ -453,7 +516,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                 let r = ui
                     .add(
                         egui::TextEdit::singleline(&mut text)
-                            .desired_width(110.0)
+                            .desired_width(80.0)
                             .hint_text("wheat, corn"),
                     )
                     .on_hover_text("Its options, by name, with commas between");
@@ -497,8 +560,11 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                 .color(theme::text_weak()),
         );
     }
-    ui.add_space(8.0);
-    // The cell under the pointer.
+}
+
+/// The cell under the pointer: every layer's terrain and every value.
+fn cell_now(ui: &mut Ui, m: &MapUi<'_>) {
+    let map = m.map;
     match m.hovered {
         None => {
             ui.label(
@@ -508,7 +574,6 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
             );
         }
         Some([x, y]) => {
-            ui.label(RichText::new(format!("Cell · x {x}, y {y}")).color(theme::text_weak()));
             egui::Frame::new()
                 .fill(theme::field())
                 .corner_radius(4.0)
@@ -548,17 +613,15 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                 });
         }
     }
-    ui.add_space(6.0);
-    ui.label(
-        RichText::new(if m.playing {
-            "While playing, the map is the game's: watch a cell change as the game changes it."
-        } else {
-            "Changes save at once; Ctrl+Z over this tab (or while painting) undoes them. Paint with the brush, rectangle, line, fill and eyedropper at the bottom of the viewport (B, U, N, G, I)."
-        })
-        .small()
-        .color(theme::text_weak()),
-    );
-    asked
+    if m.playing {
+        ui.label(
+            RichText::new(
+                "While playing, the map is the game's: watch a cell change as the game changes it.",
+            )
+            .small()
+            .color(theme::text_weak()),
+        );
+    }
 }
 
 /// The painted terrain's tiles, to choose the one an exact tile shows.
@@ -627,202 +690,6 @@ fn exact_tiles(ui: &mut Ui, set: &Tileset, m: &MapUi<'_>, asked: &mut Vec<MapReq
             }
         }
     });
-}
-
-/// A change to a tileset's terrains, asked for in its Properties. The
-/// workbench makes it through the tileset's editor, as one undo step.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum TerrainEdit {
-    /// Add a terrain.
-    Add,
-    /// Take this terrain away, with its tiles and rules.
-    Remove(reflect::Id),
-    /// Change this terrain's name, code or colour (`None` keeps it).
-    Set {
-        id: reflect::Id,
-        name: Option<String>,
-        code: Option<char>,
-        colour: Option<[f32; 3]>,
-    },
-}
-
-/// A tileset's Properties (clicked in the Library): its terrains, each
-/// with its colour, name and code. Gives back the changes asked for.
-pub(crate) fn tileset_properties(
-    ui: &mut Ui,
-    path: &str,
-    set: &Tileset,
-    notes: &[String],
-) -> Vec<TerrainEdit> {
-    let mut asked = Vec::new();
-    let name = path.rsplit_once('/').map_or(path, |(_, n)| n);
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("▦").color(theme::kind::SPRITE));
-        ui.label(RichText::new(name).strong());
-    });
-    ui.label(RichText::new("Terrains (what a cell can be)").color(theme::text_weak()));
-    for t in &set.terrains {
-        let set_it = |name, code, colour| TerrainEdit::Set {
-            id: t.id,
-            name,
-            code,
-            colour,
-        };
-        ui.horizontal(|ui| {
-            // Once the mouse is let go: a drag in the picker is one undo
-            // step and one save, not one a frame.
-            let colour = crate::settled::settled_colour(ui, ("terrain", t.id), t.colour);
-            if colour.is_some() {
-                asked.push(set_it(None, None, colour));
-            }
-            let name = name_field(ui, ("terrain", t.id), &t.name, 110.0);
-            if name.is_some() {
-                asked.push(set_it(name, None, None));
-            }
-            let id = ui.id().with(("code", t.id));
-            let mut code: String = ui
-                .data(|d| d.get_temp(id))
-                .unwrap_or_else(|| t.code.to_string());
-            let r = ui
-                .add(
-                    egui::TextEdit::singleline(&mut code)
-                        .desired_width(18.0)
-                        .char_limit(1),
-                )
-                .on_hover_text("The one character the map file writes for it");
-            if r.has_focus() {
-                ui.data_mut(|d| d.insert_temp(id, code.clone()));
-            } else {
-                ui.data_mut(|d| d.remove::<String>(id));
-                if let Some(c) = code.chars().next()
-                    && r.lost_focus()
-                    && c != t.code
-                {
-                    asked.push(set_it(None, Some(c), None));
-                }
-            }
-            let x = ui.small_button("×").on_hover_text(
-                "Take this terrain away, with its tiles and rules (maps keep its code, drawn \
-                     pink). Ctrl+Z here brings it back.",
-            );
-            x.widget_info(|| {
-                egui::WidgetInfo::labeled(
-                    egui::WidgetType::Button,
-                    true,
-                    format!("Remove {}", t.name),
-                )
-            });
-            if x.clicked() {
-                asked.push(TerrainEdit::Remove(t.id));
-            }
-        });
-    }
-    let can_add = set.terrains.len() < tiles::tileset::MAX_TERRAINS;
-    if ui
-        .add_enabled(can_add, egui::Button::new("+ Terrain"))
-        .on_disabled_hover_text(format!(
-            "A tileset has at most {} terrains",
-            tiles::tileset::MAX_TERRAINS
-        ))
-        .clicked()
-    {
-        asked.push(TerrainEdit::Add);
-    }
-    ui.label(
-        RichText::new("Its name, the character the map file writes for it, and its colour. The first fills new maps. Double-click the tileset in the Library to give its terrains art in the Tileset tab.")
-            .small()
-            .color(theme::text_weak()),
-    );
-    for note in notes {
-        ui.label(RichText::new(note).small().color(theme::WARNING));
-    }
-    asked
-}
-
-/// A map file's Properties (clicked in the Library): its tileset and
-/// size. Gives back the tileset and size chosen, if changed.
-pub(crate) fn map_file_properties(
-    ui: &mut Ui,
-    path: &str,
-    map: &TileMap,
-    tilesets: &[(String, reflect::AssetId)],
-    notes: &[String],
-) -> Option<(Option<reflect::AssetId>, [u32; 2])> {
-    let mut out = None;
-    let name = path.rsplit_once('/').map_or(path, |(_, n)| n);
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("▦").color(theme::kind::SPRITE));
-        ui.label(RichText::new(name).strong());
-    });
-    crate::inspector::row(ui, "Tileset", "The terrains its cells can be.", |ui| {
-        let shown = match map.tileset {
-            None => "None".to_owned(),
-            Some(id) => tilesets
-                .iter()
-                .find(|(_, i)| *i == id)
-                .map_or_else(|| format!("Missing tileset {id}"), |(n, _)| n.clone()),
-        };
-        egui::ComboBox::from_id_salt(("map tileset", path))
-            .selected_text(shown)
-            .show_ui(ui, |ui| {
-                for (n, id) in tilesets {
-                    if ui.selectable_label(map.tileset == Some(*id), n).clicked()
-                        && map.tileset != Some(*id)
-                    {
-                        out = Some((Some(*id), map.size()));
-                    }
-                }
-                if tilesets.is_empty() {
-                    ui.label("No tilesets yet: right-click in the Library > New > Tileset.");
-                }
-            });
-    });
-    crate::inspector::row(
-        ui,
-        "Size",
-        "Its width and height in cells; cells past a smaller size are taken away.",
-        |ui| {
-            let [w, h] = map.size();
-            let max = f64::from(tiles::map::MAX_SIDE);
-            let a = crate::settled::settled_whole_drag(
-                ui,
-                ("map w", path),
-                f64::from(w),
-                1.0..=max,
-                0.2,
-                "",
-            );
-            ui.label(RichText::new("×").color(theme::text_weak()));
-            let b = crate::settled::settled_whole_drag(
-                ui,
-                ("map h", path),
-                f64::from(h),
-                1.0..=max,
-                0.2,
-                "",
-            );
-            ui.label(RichText::new("cells").color(theme::text_weak()));
-            if a.is_some() || b.is_some() {
-                out = Some((
-                    map.tileset,
-                    [a.map_or(w, |v| v as u32), b.map_or(h, |v| v as u32)],
-                ));
-            }
-        },
-    );
-    ui.label(
-        RichText::new(format!(
-            "{} layers · {} values. Select an entity placing it to change its layers and values in the Map tab.",
-            map.layers().len(),
-            map.values().len()
-        ))
-        .small()
-        .color(theme::text_weak()),
-    );
-    for note in notes {
-        ui.label(RichText::new(note).small().color(theme::WARNING));
-    }
-    out
 }
 
 #[cfg(test)]

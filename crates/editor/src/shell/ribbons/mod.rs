@@ -12,7 +12,10 @@ mod build;
 mod debug;
 mod home;
 mod library;
+mod picture;
 mod shading;
+mod tile_map;
+mod tileset;
 mod vfx;
 
 use super::RibbonTab;
@@ -23,6 +26,7 @@ use crate::workbench::Workbench;
 pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
     match tab {
         RibbonTab::File | RibbonTab::Ui => Vec::new(),
+        RibbonTab::Home | RibbonTab::Build if w.map_tools_in_front() => tile_map::groups(w),
         RibbonTab::Home => home::groups(w),
         RibbonTab::Library => library::groups(w),
         RibbonTab::Shading => shading::groups(),
@@ -31,6 +35,8 @@ pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
         RibbonTab::Audio => audio::groups(),
         RibbonTab::Debug => debug::groups(),
         RibbonTab::Build => build::groups(),
+        RibbonTab::Tileset => tileset::groups(w),
+        RibbonTab::Picture => picture::groups(w),
     }
 }
 

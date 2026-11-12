@@ -7,7 +7,7 @@ use crate::test_support::*;
 use crate::workbench::Workbench;
 use std::sync::Arc;
 
-fn with_project() -> Workbench {
+pub(crate) fn with_project() -> Workbench {
     let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Farm".into(),

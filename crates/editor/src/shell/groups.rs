@@ -146,7 +146,25 @@ fn tab_strip(
     if area_group {
         plus(ui, pos2(x, strip.top()), (tab, index), asks);
     }
+    if RibbonTab::CONTEXT.contains(&tab) && index == 0 {
+        back_link(ui, strip, tab.parent(), asks);
+    }
     chosen
+}
+
+/// "‹ Back to Library" at the right of a LIBRARY TOOLS document's strip
+/// (round 3): its parent tab in front again, the file still open.
+fn back_link(ui: &mut Ui, strip: Rect, parent: RibbonTab, asks: &mut DocAsks) {
+    let mut side = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt(("back to", parent))
+            .max_rect(strip.shrink2(vec2(size::ROW_PAD, 0.0)))
+            .layout(egui::Layout::right_to_left(egui::Align::Center)),
+    );
+    let words = format!("\u{2039} Back to {}", parent.name());
+    if crate::widgets::button::link(&mut side, &words).clicked() {
+        asks.commands.push(ShellCommand::Tab(parent));
+    }
 }
 
 /// One document tab at `at`: the name, and a × when it closes a file.

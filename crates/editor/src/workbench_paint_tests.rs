@@ -219,8 +219,8 @@ fn alt_picks_a_terrain_and_the_eyedropper_copies_cells_to_paint_with() {
         "the brush takes the copy"
     );
     assert_eq!(paint.stamp.as_ref().map(|s| s.size), Some([2, 1]));
-    // Flipped (X), then painted: tilled then grass.
-    w.viewport.tile_overlay.turn_asked = Some(Some(Turn::FlipX));
+    // Flipped (the ribbon's Flip X), then painted: tilled then grass.
+    w.run_paint_command(crate::shell::ShellCommand::TurnCopy(Turn::FlipX));
     drag(&mut w, &[[20, 20]], false);
     assert_eq!(row(&w, 20, 19..23), ".t..");
     // Esc puts the copy away, then the tool.
@@ -284,20 +284,29 @@ fn esc_gives_a_stroke_up_and_playing_stops_painting() {
 }
 
 #[test]
-fn the_tool_bar_and_keys_choose_the_painting_tools_while_a_map_is_selected() {
+fn the_ribbon_and_keys_choose_the_painting_tools_while_a_map_is_selected() {
     let (w, _, _) = with_map();
     let mut h = harness(w);
     h.run();
-    assert!(h.query_by_label("Brush").is_none(), "no map selected");
+    assert!(h.query_by_label("Brush tool").is_none(), "no map selected");
     let (mut w, map, _) = with_map();
     w.place_tile_map(map, None).unwrap();
     let mut h = harness(w);
     h.run();
     h.run();
-    for label in ["Brush", "Rectangle", "Line", "Fill", "Eyedropper", "Exact"] {
+    // On HOME TOOLS · Tile map's ribbon (round 3), in front with the Map
+    // shelf tab.
+    for label in [
+        "Brush tool",
+        "Rectangle tool",
+        "Line tool",
+        "Fill tool",
+        "Eyedropper tool",
+        "Exact",
+    ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
-    h.get_by_label("Fill").click();
+    h.get_by_label("Fill tool").click();
     h.run();
     assert_eq!(
         h.state().0.viewport.tile_overlay.paint.tool,

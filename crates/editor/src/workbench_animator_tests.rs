@@ -60,7 +60,7 @@ fn farmer(sheet: AssetId) -> AnimatorFile {
 /// A workbench with a project holding the test sheet (`walker.aseprite`),
 /// a clips file with the clip "wave" (`walker.solframes`) and
 /// `farmer.solanim`.
-fn with_animator() -> (Workbench, AssetId, AssetId) {
+pub(crate) fn with_animator() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),

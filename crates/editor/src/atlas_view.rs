@@ -1,7 +1,9 @@
-//! The Atlas Crop tab (decision 0089): a picture with its crops drawn on
-//! it. Drag on the picture to draw a crop (snapped to the grid), click one
-//! to pick it; the list beside names them. The wheel zooms and the middle
-//! button drags the picture, as in the viewport.
+//! LIBRARY TOOLS · Picture (decision 0089; the approved additions, round
+//! 3, `03-picture-crops.png`): the picture with its crops drawn on it, as
+//! the tab's document, and the Crops shelf tab that lists them. Drag on
+//! the picture to draw a crop (snapped to the grid), click one to pick
+//! it; the list names them. The wheel zooms and the middle button drags
+//! the picture, as in the viewport. Crop every tile is on the ribbon.
 
 use crate::atlas_editor::AtlasEditor;
 use crate::settled::settled_whole_drag;
@@ -9,14 +11,12 @@ use crate::theme;
 use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2};
 
 /// The picture as the tab draws it.
+#[derive(Clone, Copy)]
 pub(crate) struct AtlasPicture<'a> {
     /// Its texture.
     pub(crate) texture: &'a egui::TextureHandle,
     /// Its size, in pixels.
     pub(crate) size: [u32; 2],
-    /// Its pixels (straight RGBA, rows from the top), to tell an empty
-    /// tile from a drawn one.
-    pub(crate) rgba: &'a [u8],
 }
 
 /// What the tab asks of the workbench.
@@ -39,13 +39,12 @@ pub(crate) fn filled(rgba: &[u8], size: [u32; 2], rect: [u32; 4]) -> bool {
     })
 }
 
-/// Draws the tab: the list on the left, the picture on the right. Delete
-/// takes the picked crop out while the keys are the tab's (`keys`: the
-/// pointer rests over it and nothing is being typed).
+/// The picture with its crops, filling `ui`. Delete removes the crop
+/// picked while `keys` are the tab's.
 pub(crate) fn atlas_tab(
     ui: &mut Ui,
     editor: &mut AtlasEditor,
-    picture: Option<AtlasPicture<'_>>,
+    picture: Option<&AtlasPicture<'_>>,
     problem: Option<&str>,
     accent: Color32,
     keys: bool,
@@ -55,39 +54,64 @@ pub(crate) fn atlas_tab(
         out.changed = true;
     }
     let full = ui.max_rect();
-    let list_width = 230.0_f32.min(full.width() * 0.4);
-    let list = Rect::from_min_size(full.min, Vec2::new(list_width, full.height()));
-    let canvas = Rect::from_min_max(Pos2::new(list.max.x + 1.0, full.min.y), full.max);
-    let mut left = ui.new_child(egui::UiBuilder::new().max_rect(list.shrink(8.0)));
-    crop_list(&mut left, editor, picture.as_ref(), &mut out);
-    ui.painter()
-        .vline(list.max.x, full.y_range(), Stroke::new(1.0, theme::line()));
-    let mut right = ui.new_child(egui::UiBuilder::new().max_rect(canvas));
-    match (&picture, problem) {
-        (Some(picture), _) => picture_canvas(&mut right, editor, picture, accent, &mut out),
+    let mut canvas = ui.new_child(egui::UiBuilder::new().max_rect(full));
+    match (picture, problem) {
+        (Some(picture), _) => picture_canvas(&mut canvas, editor, picture, accent, &mut out),
         (None, Some(why)) => {
-            crate::panels::empty_note(&mut right, why);
+            crate::panels::empty_note(&mut canvas, why);
         }
         (None, None) => {
-            crate::panels::empty_note(&mut right, "Reading the picture…");
+            crate::panels::empty_note(&mut canvas, "Reading the picture…");
         }
     }
     ui.advance_cursor_after_rect(full);
     out
 }
 
-/// The grid, Crop every tile, and the crops by name.
-fn crop_list(
+/// The Crops shelf tab: the grid and every crop as a table (its name,
+/// size and place), and the crop picked: its name to change, its size
+/// and place, and how game code and a screen name it.
+pub(crate) fn crops_tab(
     ui: &mut Ui,
     editor: &mut AtlasEditor,
     picture: Option<&AtlasPicture<'_>>,
-    out: &mut AtlasOut,
-) {
-    ui.label(RichText::new(&editor.atlas.picture).strong());
+) -> AtlasOut {
+    use crate::widgets::columns::{Part, Wide, columns};
+    let mut out = AtlasOut::default();
+    let picked_name = editor
+        .picked
+        .and_then(|i| editor.atlas.crops.get(i))
+        .map(|c| c.name.clone());
+    let parts = [
+        Part::new("Crops", editor.atlas.crops.len().to_string(), Wide::Rest),
+        Part::new(
+            picked_name.unwrap_or_else(|| "No crop picked".to_owned()),
+            "Crop",
+            Wide::Fixed(PICKED_W),
+        ),
+    ];
+    columns(
+        ui,
+        &parts,
+        |_, _| {},
+        |ui, index| match index {
+            0 => crop_list(ui, editor, &mut out),
+            _ => picked_crop(ui, editor, picture, &mut out),
+        },
+    );
+    out
+}
+
+/// A crop's row in the list.
+const CROP_ROW_H: f32 = 26.0;
+
+/// How wide the picked crop's column is.
+const PICKED_W: f32 = 520.0;
+
+/// The grid and the crops, one row each.
+fn crop_list(ui: &mut Ui, editor: &mut AtlasEditor, out: &mut AtlasOut) {
     ui.horizontal(|ui| {
-        ui.label("Grid");
-        // Each counts once it's let go: a drag is one undo step and one
-        // save.
+        ui.label(RichText::new("Grid").color(theme::text_weak()));
         let [w, h] = editor.atlas.grid;
         let a = settled_whole_drag(ui, "grid w", f64::from(w), 1.0..=4096.0, 1.0, " px");
         ui.label("×");
@@ -97,65 +121,114 @@ fn crop_list(
             out.changed |= editor.set_grid(grid);
         }
     });
-    if let Some(picture) = picture
-        && ui
-            .button("Crop every tile")
-            .on_hover_text(
-                "A crop for every grid cell with something drawn in it, named by its column and \
-                 row.",
-            )
-            .clicked()
-    {
-        let (rgba, size) = (picture.rgba, picture.size);
-        let added = editor.crop_every_tile(size, &|r| filled(rgba, size, r));
-        out.changed |= added > 0;
-        out.said = Some(format!("Atlas Crop: added {added} crops."));
-    }
-    ui.separator();
     if editor.atlas.crops.is_empty() {
         ui.label(
-            RichText::new("Drag on the picture to crop out a part of it.")
-                .color(theme::text_weak()),
+            RichText::new(
+                "Drag on the picture to crop out a part of it, or Crop › Every tile on the ribbon.",
+            )
+            .color(theme::text_weak()),
         );
     }
+    // A table: the crop's name, then its size and place in mono, as
+    // round 3 draws it.
     let mut picked = editor.picked;
-    egui::ScrollArea::vertical()
-        .auto_shrink(false)
-        .max_height((ui.available_height() - 110.0).max(60.0))
-        .show(ui, |ui| {
-            for (i, crop) in editor.atlas.crops.iter().enumerate() {
-                let [x, y, w, h] = crop.rect;
-                let row = ui.selectable_label(
-                    picked == Some(i),
-                    format!("{}   {w}×{h} at {x}, {y}", crop.name),
-                );
-                if row.clicked() {
-                    picked = Some(i);
-                }
-            }
+    for (i, crop) in editor.atlas.crops.iter().enumerate() {
+        let [x, y, w, h] = crop.rect;
+        let (rect, row) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), CROP_ROW_H), Sense::click());
+        let chosen = picked == Some(i);
+        row.widget_info(|| {
+            egui::WidgetInfo::selected(egui::WidgetType::Button, true, chosen, &crop.name)
         });
+        let painter = ui.painter();
+        if chosen {
+            painter.rect_filled(rect, 0.0, crate::interface_look::selected());
+        } else if row.hovered() {
+            painter.rect_filled(rect, 0.0, crate::tokens::hover());
+        }
+        let middle = rect.center().y;
+        let text = |at: f32, words: String, font| {
+            painter.text(
+                Pos2::new(at, middle),
+                egui::Align2::LEFT_CENTER,
+                words,
+                font,
+                crate::tokens::text_body(),
+            );
+        };
+        text(
+            rect.left() + 4.0,
+            crop.name.clone(),
+            crate::tokens::text::row(),
+        );
+        let mono = crate::tokens::text::mono_small;
+        text(rect.right() - 180.0, format!("{w} \u{d7} {h}"), mono());
+        text(rect.right() - 90.0, format!("{x}, {y}"), mono());
+        if row.clicked() {
+            picked = Some(i);
+        }
+    }
     if picked != editor.picked {
         editor.pick(picked);
     }
-    if editor.picked.is_some() {
-        ui.separator();
-        ui.horizontal(|ui| {
-            ui.label("Name");
-            let field = ui.text_edit_singleline(&mut editor.naming);
-            if field.lost_focus() || ui.button("Rename").clicked() {
-                match editor.rename() {
-                    Ok(changed) => out.changed |= changed,
-                    Err(why) => out.said = Some(why),
-                }
+}
+
+/// The crop picked: its name, size and place, and how it is named.
+fn picked_crop(
+    ui: &mut Ui,
+    editor: &mut AtlasEditor,
+    picture: Option<&AtlasPicture<'_>>,
+    out: &mut AtlasOut,
+) {
+    let Some(crop) = editor
+        .picked
+        .and_then(|i| editor.atlas.crops.get(i))
+        .cloned()
+    else {
+        ui.label(
+            RichText::new("Click a crop on the picture or in the list.").color(theme::text_weak()),
+        );
+        return;
+    };
+    let [x, y, w, h] = crop.rect;
+    ui.horizontal(|ui| {
+        ui.label("Name");
+        let field = ui.text_edit_singleline(&mut editor.naming);
+        if field.lost_focus() || ui.button("Rename").clicked() {
+            match editor.rename() {
+                Ok(changed) => out.changed |= changed,
+                Err(why) => out.said = Some(why),
             }
-        });
-        if ui.button("Delete crop").clicked() && editor.delete_picked() {
-            out.changed = true;
         }
+    });
+    crate::widgets::rows::key_value(ui, "Size", &format!("{w} × {h} px"));
+    crate::widgets::rows::key_value(ui, "At", &format!("{x}, {y}"));
+    if let Some(p) = picture {
+        let side = 96.0_f32;
+        let (rect, _) = ui.allocate_exact_size(Vec2::splat(side), Sense::hover());
+        let size = Vec2::new(p.size[0] as f32, p.size[1] as f32);
+        let uv = Rect::from_min_max(
+            Pos2::new(x as f32 / size.x, y as f32 / size.y),
+            Pos2::new((x + w) as f32 / size.x, (y + h) as f32 / size.y),
+        );
+        let scale = (side / w.max(h).max(1) as f32).min(side);
+        let shown = Rect::from_center_size(rect.center(), Vec2::new(w as f32, h as f32) * scale);
+        ui.painter()
+            .image(p.texture.id(), shown, uv, Color32::WHITE);
+    }
+    ui.label(
+        RichText::new(
+            "A name starts with a letter and holds only letters, digits and _. The picture itself \
+             is never changed.",
+        )
+        .small()
+        .color(theme::text_weak()),
+    );
+    if ui.button("Delete crop").clicked() && editor.delete_picked() {
+        out.changed = true;
     }
 }
 
-/// The picture, its grid and its crops; drawing and picking.
 fn picture_canvas(
     ui: &mut Ui,
     editor: &mut AtlasEditor,

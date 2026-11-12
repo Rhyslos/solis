@@ -101,6 +101,16 @@ impl Workbench {
         .collect()
     }
 
+    /// Whether `extra` is the tab in front: its ribbon is the one shown.
+    pub(crate) fn context_in_front(&self, extra: ContextTab) -> bool {
+        match extra.panel {
+            Panel::Map => self.map_tools_in_front(),
+            Panel::Tileset => self.shell.tab == RibbonTab::Tileset,
+            Panel::AtlasCrop => self.shell.tab == RibbonTab::Picture,
+            panel => self.in_front.contains(&panel),
+        }
+    }
+
     /// Draws the tab bar across the top of `ui`.
     pub(crate) fn tab_bar(&mut self, ui: &mut Ui) {
         egui::Panel::top("tab bar")
@@ -167,7 +177,11 @@ impl Workbench {
         // other tabs are dimmed (they still carry on without one).
         let dim = self.open.project.is_none() && self.shell.tab == RibbonTab::File;
         for (tab, entries) in tabs() {
-            let front = self.shell.tab == tab;
+            // A tab whose tools tab is in front isn't drawn in front itself.
+            let front = self.shell.tab == tab
+                && !context
+                    .iter()
+                    .any(|extra| extra.after == tab && self.context_in_front(*extra));
             let response = match entries.first() {
                 Some(Entry::Unbuilt(id)) => unbuilt_tab(ui, *id, front),
                 _ => ribbon_tab(ui, tab, front, dim && tab != RibbonTab::File),
@@ -178,7 +192,7 @@ impl Workbench {
                 clicked = Some(tab);
             }
             for extra in context.iter().filter(|extra| extra.after == tab) {
-                let shown = self.in_front.contains(&extra.panel);
+                let shown = self.context_in_front(*extra);
                 if context_tab(ui, *extra, shown).clicked() {
                     bring = Some(*extra);
                 }

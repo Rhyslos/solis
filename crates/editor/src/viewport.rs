@@ -13,7 +13,7 @@ use crate::theme::{self, Accent};
 use crate::tokens::size;
 use crate::transforming::Snapping;
 use crate::viewport_tools::{self, PickAnswer, ToolInput, Tools};
-use egui::{Align, Color32, Layout, Rect, Sense, Ui, UiBuilder, vec2};
+use egui::{Color32, Rect, Sense, Ui, UiBuilder, vec2};
 use glam::{Mat4, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -881,10 +881,6 @@ impl Viewport {
         let overlay = &mut self.tile_overlay;
         overlay.hovered = None;
         overlay.pointer = None;
-        overlay.asked.clear();
-        overlay.chunks_asked = false;
-        overlay.walls_asked = false;
-        overlay.turn_asked = None;
         overlay.input = crate::tile_paint::PaintInput::default();
         let mut next = self.active;
         if !busy
@@ -1064,7 +1060,7 @@ impl Viewport {
             draw_screens(ui, rect, &self.area.screens, &seen, self.pixels);
         }
         viewport_tools::draw_cameras(ui, rect, &self.area.cameras, &seen);
-        let tile_bar = crate::tile_view::draw_overlay(
+        crate::tile_view::draw_overlay(
             ui,
             rect,
             &seen,
@@ -1115,53 +1111,21 @@ impl Viewport {
         // The pills over the view (spec 182): the view's own at the top
         // left; the frame rate and the locks, space and camera speed on
         // the view in use only.
-        let mut covered: Vec<Rect> = tile_bar.into_iter().collect();
-        covered.push(self.top_left_pills(ui, rect, several));
+        let mut covered = vec![self.top_left_pills(ui, rect, several)];
         if self.overlays.stats && in_use {
             covered.push(self.stats_pill(ui, rect));
         }
-        if in_use && self.tile_overlay.paint.allowed {
-            // A selected map's painting options, until its own tab on the
-            // ribbon takes them (milestone M10).
-            let mut options = ui.new_child(
-                UiBuilder::new()
-                    .id_salt(("viewport corner", "paint options"))
-                    .max_rect(rect.shrink(size::PILL_MARGIN))
-                    .layout(Layout::left_to_right(Align::Max)),
-            );
-            theme::overlay_frame().show(&mut options, |ui| {
-                ui.horizontal(|ui| {
-                    crate::tile_paint::paint_options(ui, &mut self.tile_overlay.paint)
-                });
-            });
-            covered.push(options.min_rect());
-        }
-        let mut bottom = rect;
         if self.overlays.snapping && in_use {
             let pills = if two_d {
                 self.pixel_pills(ui, rect)
             } else {
                 self.space_pills(ui, rect)
             };
-            bottom.max.y = pills.top() - size::PILL_GAP + size::PILL_MARGIN;
             covered.push(pills);
         }
-        if in_use
-            && self.tile_overlay.paint.painting()
-            && let Some(stamp) = &self.tile_overlay.paint.stamp
-        {
-            // The copy held: its buttons above the bottom-right pills.
-            let mut stamp_ui = ui.new_child(
-                UiBuilder::new()
-                    .id_salt(("viewport corner", "stamp"))
-                    .max_rect(bottom.shrink(size::PILL_MARGIN))
-                    .layout(Layout::bottom_up(Align::Max)),
-            );
-            let asked = crate::tile_paint::stamp_bar(&mut stamp_ui, stamp);
-            if asked.is_some() {
-                self.tile_overlay.turn_asked = asked;
-            }
-            covered.push(stamp_ui.min_rect());
+        if in_use && let Some(keys) = self.tile_overlay.paint.hint_keys() {
+            // The painter's keys, over the view's foot (round 3).
+            covered.push(crate::widgets::pill::key_hints(ui, rect, keys));
         }
         self.covered = covered;
     }
@@ -1289,13 +1253,9 @@ impl Viewport {
     /// The toolbox in `column`, and the tool it picks.
     fn toolbox(&mut self, ui: &mut Ui, column: Rect) {
         let paint = &mut self.tile_overlay.paint;
-        match crate::toolbox::toolbox(ui, column, self.tool, paint) {
-            Some(crate::toolbox::Picked::Tool(tool)) => {
-                self.tool = tool;
-                paint.tool = None;
-            }
-            Some(crate::toolbox::Picked::Paint(tool)) => paint.tool = Some(tool),
-            None => {}
+        if let Some(tool) = crate::toolbox::toolbox(ui, column, self.tool, paint) {
+            self.tool = tool;
+            paint.tool = None;
         }
     }
 }

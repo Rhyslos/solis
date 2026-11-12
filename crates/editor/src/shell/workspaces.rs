@@ -48,6 +48,10 @@ pub enum ShelfTab {
     /// The selected tile map's layers, terrains and values, while one is
     /// selected.
     Map,
+    /// The open tileset's terrains, the one chosen and its slot picked.
+    Terrains,
+    /// The open picture's crops and the one picked.
+    Crops,
 }
 
 /// How wide a shelf column is.
@@ -96,7 +100,7 @@ macro_rules! column {
 
 impl ShelfTab {
     /// Every shelf tab.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 14] = [
         Self::Place,
         Self::Entity,
         Self::Details,
@@ -109,6 +113,8 @@ impl ShelfTab {
         Self::Console,
         Self::Problems,
         Self::Map,
+        Self::Terrains,
+        Self::Crops,
     ];
 
     /// The tab's name, on the shelf bar and when saved.
@@ -126,6 +132,8 @@ impl ShelfTab {
             Self::Console => "Console",
             Self::Problems => "Problems",
             Self::Map => "Map",
+            Self::Terrains => "Terrains",
+            Self::Crops => "Crops",
         }
     }
 
@@ -162,6 +170,11 @@ impl ShelfTab {
             Self::Console => &[column!("Console", [P::Console], Rest)],
             Self::Problems => &[column!("Problems", [P::Problems], Rest)],
             Self::Map => &[column!("Map", [P::Map], Rest)],
+            Self::Terrains => &[
+                column!("Terrains", [P::Terrains], Fixed(size::TERRAINS_COLUMN_W)),
+                column!("Slot", [P::Properties], Rest),
+            ],
+            Self::Crops => &[column!("Crops", [P::Crops], Rest)],
         }
     }
 
@@ -209,17 +222,19 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
             vec![area]
         }
         RibbonTab::Library => vec![vec![P::Library]],
+        RibbonTab::Tileset if open.tileset => vec![vec![P::Tileset]],
+        RibbonTab::Picture if open.atlas => vec![vec![P::AtlasCrop]],
         RibbonTab::Animate => vec![vec![P::Viewport]],
         RibbonTab::Ui => vec![vec![P::Canvas]],
         RibbonTab::Audio => vec![vec![P::Mixer]],
         RibbonTab::Debug => vec![vec![P::Game, P::Viewport], vec![P::Profiler]],
-        RibbonTab::File | RibbonTab::Shading | RibbonTab::Vfx => Vec::new(),
+        RibbonTab::File
+        | RibbonTab::Shading
+        | RibbonTab::Vfx
+        | RibbonTab::Tileset
+        | RibbonTab::Picture => Vec::new(),
     };
     let second: Vec<Panel> = match tab {
-        RibbonTab::Library => [(open.tileset, P::Tileset), (open.atlas, P::AtlasCrop)]
-            .into_iter()
-            .filter_map(|(there, panel)| there.then_some(panel))
-            .collect(),
         RibbonTab::Animate if open.animator => vec![P::Animator],
         _ => Vec::new(),
     };
@@ -265,7 +280,21 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
             Entry::Unbuilt(UnbuiltId::DebugShelfHottest),
             Entry::Unbuilt(UnbuiltId::DebugShelfMemory),
         ],
-        RibbonTab::File | RibbonTab::Shading | RibbonTab::Vfx => Vec::new(),
+        RibbonTab::Tileset if open.tileset => vec![
+            Entry::Built(S::Terrains),
+            Entry::Built(S::Console),
+            Entry::Built(S::Problems),
+        ],
+        RibbonTab::Picture if open.atlas => vec![
+            Entry::Built(S::Crops),
+            Entry::Built(S::Console),
+            Entry::Built(S::Problems),
+        ],
+        RibbonTab::File
+        | RibbonTab::Shading
+        | RibbonTab::Vfx
+        | RibbonTab::Tileset
+        | RibbonTab::Picture => Vec::new(),
     };
     if matches!(tab, RibbonTab::Home | RibbonTab::Build) && open.map {
         tabs.push(Entry::Built(S::Map));
@@ -312,7 +341,12 @@ impl Arrangement {
     pub fn standard(tab: RibbonTab) -> Self {
         // Home opens on Entity, the level editor; Place is first on its
         // shelf bar but is a mode chosen by bringing it to the front.
-        let shelf_tab = built_shelf_tabs(tab, OpenNow::default())
+        let everything = OpenNow {
+            tileset: true,
+            atlas: true,
+            ..OpenNow::default()
+        };
+        let shelf_tab = built_shelf_tabs(tab, everything)
             .into_iter()
             .find(|shelf| *shelf != ShelfTab::Place)
             .unwrap_or(ShelfTab::Console);
@@ -381,9 +415,11 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
 /// The ribbon tab that shows `panel` when the one in front doesn't: the
 /// first, in this order, that has it.
 pub fn tab_for(panel: Panel, open: OpenNow) -> Option<RibbonTab> {
-    const ORDER: [RibbonTab; 6] = [
+    const ORDER: [RibbonTab; 8] = [
         RibbonTab::Home,
         RibbonTab::Library,
+        RibbonTab::Tileset,
+        RibbonTab::Picture,
         RibbonTab::Animate,
         RibbonTab::Ui,
         RibbonTab::Audio,
@@ -395,112 +431,5 @@ pub fn tab_for(panel: Panel, open: OpenNow) -> Option<RibbonTab> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const EVERYTHING: OpenNow = OpenNow {
-        playing: true,
-        animator: true,
-        tileset: true,
-        atlas: true,
-        clips: true,
-        map: true,
-    };
-
-    #[test]
-    fn every_panel_has_a_home_with_everything_open() {
-        for panel in Panel::ALL.into_iter().chain(Panel::OPEN_WITH_A_FILE) {
-            assert!(
-                tab_for(panel, EVERYTHING).is_some(),
-                "{panel:?} has no place"
-            );
-        }
-    }
-
-    #[test]
-    fn a_panel_is_in_one_place_per_tab() {
-        for tab in RibbonTab::ALL {
-            let mut seen = Vec::new();
-            for panel in groups(tab, EVERYTHING).into_iter().flatten() {
-                assert!(!seen.contains(&panel), "{panel:?} twice on {tab:?}");
-                seen.push(panel);
-            }
-            for shelf in built_shelf_tabs(tab, EVERYTHING) {
-                for panel in shelf.panels() {
-                    assert!(
-                        !groups(tab, EVERYTHING).concat().contains(&panel),
-                        "{panel:?} is both a document and on the shelf of {tab:?}"
-                    );
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn documents_come_and_go_with_what_is_open() {
-        let none = OpenNow::default();
-        assert_eq!(groups(RibbonTab::Home, none), [vec![Panel::Viewport]]);
-        let playing = OpenNow {
-            playing: true,
-            ..none
-        };
-        assert_eq!(
-            groups(RibbonTab::Home, playing),
-            [vec![Panel::Viewport, Panel::Game]]
-        );
-        assert_eq!(groups(RibbonTab::Library, none).len(), 1);
-        let tileset = OpenNow {
-            tileset: true,
-            ..none
-        };
-        assert_eq!(
-            groups(RibbonTab::Library, tileset),
-            [vec![Panel::Library], vec![Panel::Tileset]]
-        );
-        assert!(groups(RibbonTab::File, EVERYTHING).is_empty());
-        assert!(!built_shelf_tabs(RibbonTab::Home, none).contains(&ShelfTab::Map));
-        let map = OpenNow { map: true, ..none };
-        assert!(built_shelf_tabs(RibbonTab::Home, map).contains(&ShelfTab::Map));
-    }
-
-    #[test]
-    fn names_are_their_own_and_read_back() {
-        for tab in ShelfTab::ALL {
-            assert_eq!(ShelfTab::named(tab.name()), Some(tab));
-        }
-        assert_eq!(ShelfTab::named("Object"), None);
-    }
-
-    #[test]
-    fn each_tab_starts_on_its_first_working_shelf_tab() {
-        assert_eq!(
-            Arrangement::standard(RibbonTab::Home).shelf_tab,
-            ShelfTab::Entity
-        );
-        assert_eq!(
-            Arrangement::standard(RibbonTab::Library).shelf_tab,
-            ShelfTab::Details
-        );
-        assert_eq!(
-            Arrangement::standard(RibbonTab::Debug).shelf_tab,
-            ShelfTab::Console
-        );
-    }
-
-    #[test]
-    fn the_front_falls_back_to_the_first_there_is() {
-        let mut a = Arrangement::standard(RibbonTab::Home);
-        a.front[0] = Some(Panel::Game);
-        assert_eq!(a.front_of(0, &[Panel::Viewport]), Some(Panel::Viewport));
-        assert_eq!(
-            a.front_of(0, &[Panel::Viewport, Panel::Game]),
-            Some(Panel::Game)
-        );
-        assert_eq!(a.front_of(1, &[]), None);
-        a.shelf_tab = ShelfTab::Map;
-        assert_eq!(
-            a.shelf_tab_of(&[ShelfTab::Entity, ShelfTab::Console]),
-            Some(ShelfTab::Entity)
-        );
-    }
-}
+#[path = "workspaces_tests.rs"]
+mod tests;

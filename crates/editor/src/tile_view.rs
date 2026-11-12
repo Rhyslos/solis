@@ -617,16 +617,9 @@ pub struct TileOverlay {
     pub hidden: std::collections::HashSet<reflect::Id>,
     /// The cell under the pointer, found while drawing.
     pub hovered: Option<[u32; 2]>,
-    /// The values asked for from the menu over the view this frame (by
-    /// name, on or off), and the chunks switch.
-    pub asked: Vec<(String, bool)>,
-    /// The chunks switch pressed this frame.
-    pub chunks_asked: bool,
     /// Whether what's solid is shown: the walls 2D physics makes of the
     /// map's solid cells (decision 0071).
     pub walls: bool,
-    /// The walls switch pressed this frame.
-    pub walls_asked: bool,
     /// Which codes the map's tileset makes solid.
     pub solid: Option<tiles::walls::Solid>,
     /// The tile painter's settings (D6).
@@ -641,8 +634,6 @@ pub struct TileOverlay {
     pub preview: Vec<[[i64; 2]; 2]>,
     /// The preview empties cells (drawn in red).
     pub preview_erase: bool,
-    /// A stamp button pressed this frame: a turn, or `None` to drop it.
-    pub turn_asked: Option<Option<crate::tile_paint::Turn>>,
 }
 
 /// The most preview rectangles drawn (a long line's cells).
@@ -653,10 +644,9 @@ const MOST_LABELLED: u64 = 4000;
 
 /// Draws the selected map's overlay over the view in `rect` (seen by
 /// `camera`): its values on its cells (a switch as a blue tint, a number
-/// or a choice as text), its walls (what's solid), its chunks, and an outline round the cell under
-/// `mouse` (from the view's top left), which it notes; and the menu that
-/// chooses what's shown, at the top of the view, whose place it gives
-/// back (a press there is the menu's, never the view's).
+/// or a choice as text), its walls (what's solid), its chunks, and an
+/// outline round the cell under `mouse` (from the view's top left), which
+/// it notes. What is shown is chosen on HOME TOOLS · Tile map's ribbon.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_overlay(
     ui: &mut egui::Ui,
@@ -666,8 +656,10 @@ pub(crate) fn draw_overlay(
     cell: [f32; 2],
     mouse: Option<glam::Vec2>,
     accent: crate::theme::Accent,
-) -> Option<egui::Rect> {
-    let m = overlay.map.clone()?;
+) {
+    let Some(m) = overlay.map.clone() else {
+        return;
+    };
     let size = glam::Vec2::new(rect.width(), rect.height());
     let to_screen = |p: Vec3| {
         camera
@@ -887,56 +879,6 @@ pub(crate) fn draw_overlay(
             egui::StrokeKind::Inside,
         );
     }
-    // The menu over the view: which values, and the chunks.
-    let names: Vec<String> = m.map.values().iter().map(|v| v.name.clone()).collect();
-    let shown: Vec<&str> = overlay
-        .values
-        .iter()
-        .filter_map(|&v| names.get(v).map(String::as_str))
-        .collect();
-    let label = if shown.is_empty() {
-        "Values: none ▾".to_owned()
-    } else {
-        format!("Values: {} ▾", shown.join(", "))
-    };
-    let mut bar = ui.new_child(
-        egui::UiBuilder::new().max_rect(egui::Rect::from_center_size(
-            egui::pos2(rect.center().x, rect.top() + 18.0),
-            egui::vec2(rect.width().min(480.0), 24.0),
-        )),
-    );
-    bar.horizontal(|ui| {
-        ui.menu_button(label, |ui| {
-            if names.is_empty() {
-                ui.label("This map has no values yet: add them in the Map tab.");
-            }
-            for (i, n) in names.iter().enumerate() {
-                let mut on = overlay.values.contains(&i);
-                if ui.checkbox(&mut on, n).changed() {
-                    overlay.asked.push((n.clone(), on));
-                }
-            }
-        });
-        let chunks = ui.add(egui::Button::new("Chunks").selected(overlay.chunks));
-        if chunks
-            .on_hover_text("Outline the map's chunks of 32 × 32 cells, which save and draw apart")
-            .clicked()
-        {
-            overlay.chunks_asked = true;
-        }
-        let walls = ui.add(egui::Button::new("Walls").selected(overlay.walls));
-        let tip = if overlay.solid.is_some() {
-            "Show what's solid: the walls 2D physics makes of the map's solid cells, merged \
-             into a few rectangles"
-        } else {
-            "Show what's solid. Nothing is yet: right-click a terrain in the Map tab and tick \
-             Solid"
-        };
-        if walls.on_hover_text(tip).clicked() {
-            overlay.walls_asked = true;
-        }
-    });
-    Some(bar.min_rect())
 }
 
 #[cfg(test)]

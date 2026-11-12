@@ -300,8 +300,17 @@ pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: 
     h.state_mut().0.show_panel(panel);
     h.run();
     h.run();
-    // "Close Clips", or "Close Tileset · farm" for a document's tab.
-    let name = format!("Close {}", panel.title());
+    // "Close Clips", or "Close Animator · walk" for a document's tab; a
+    // LIBRARY TOOLS document is called by its file's name.
+    let file = |path: &str| path.rsplit('/').next().unwrap_or(path).to_owned();
+    let open = &h.state().0.open;
+    let title = match panel {
+        Panel::Tileset => open.tilesets.tab().map(|t| file(&t.path)),
+        Panel::AtlasCrop => open.atlas_editor.as_ref().map(|e| file(&e.atlas.picture)),
+        _ => None,
+    }
+    .unwrap_or_else(|| panel.title().to_owned());
+    let name = format!("Close {title}");
     let x = h
         .get_all_by_label_contains(&name)
         .next()

@@ -21,6 +21,7 @@ pub mod button;
 pub mod card;
 pub mod checkbox;
 pub mod chip;
+pub mod columns;
 pub mod dashed;
 pub mod field;
 pub mod keycap;

@@ -85,6 +85,7 @@ mod test_support;
 pub mod text_view;
 pub mod theme;
 pub mod tile_paint;
+mod tile_properties;
 pub mod tile_view;
 mod tileset_editor;
 mod tileset_view;
@@ -101,8 +102,10 @@ mod workbench_animator;
 mod workbench_atlas;
 mod workbench_frames;
 mod workbench_library;
+mod workbench_library_tools;
 mod workbench_paint;
 mod workbench_screens;
+mod workbench_tile_tools;
 mod workbench_tiles;
 mod workbench_tileset;
 mod workbench_tools;
@@ -162,3 +165,5 @@ mod scale_levels_tests;
 mod shell_reach_tests;
 #[cfg(test)]
 mod source_rules_tests;
+#[cfg(test)]
+mod two_d_screen_tests;

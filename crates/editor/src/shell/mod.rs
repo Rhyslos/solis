@@ -71,6 +71,12 @@ pub enum RibbonTab {
     Debug,
     /// Exporting the game.
     Build,
+    /// LIBRARY TOOLS · Tileset: a tileset open from the Library, there
+    /// only while one is (a contextual tab, after Library).
+    Tileset,
+    /// LIBRARY TOOLS · Picture: a picture's crops open from the Library,
+    /// there only while they are.
+    Picture,
 }
 
 impl RibbonTab {
@@ -88,6 +94,18 @@ impl RibbonTab {
         Self::Build,
     ];
 
+    /// The contextual tabs: each comes with a file open from its parent
+    /// tab and goes with it (the approved additions, round 3).
+    pub const CONTEXT: [Self; 2] = [Self::Tileset, Self::Picture];
+
+    /// The tab a contextual tab belongs to; any other tab is its own.
+    pub fn parent(self) -> Self {
+        match self {
+            Self::Tileset | Self::Picture => Self::Library,
+            other => other,
+        }
+    }
+
     /// The tab's name.
     pub fn name(self) -> &'static str {
         match self {
@@ -101,6 +119,8 @@ impl RibbonTab {
             Self::Audio => "Audio",
             Self::Debug => "Debug",
             Self::Build => "Build",
+            Self::Tileset => "Tileset",
+            Self::Picture => "Picture",
         }
     }
 
@@ -119,6 +139,8 @@ impl RibbonTab {
                 "Testing the game: where each frame's time goes, the Console and Problems"
             }
             Self::Build => "Exporting the game for someone to play",
+            Self::Tileset => "The tileset open: its picture, terrains and slots",
+            Self::Picture => "The picture's crops: parts of it named for game code and screens",
         }
     }
 
@@ -305,6 +327,14 @@ impl Workbench {
             && self.shelf_tab() == Some(workspaces::ShelfTab::Place)
     }
 
+    /// Whether HOME TOOLS · Tile map is the tab in front: a tile map is
+    /// selected and its Map shelf tab is in front (round 3). The ribbon
+    /// is the map's tools then, as Place in front is the build form.
+    pub(crate) fn map_tools_in_front(&self) -> bool {
+        matches!(self.shell.tab, RibbonTab::Home | RibbonTab::Build)
+            && self.shelf_tab() == Some(workspaces::ShelfTab::Map)
+    }
+
     /// The shelf tab in front on the tab in front, if it has a shelf.
     pub fn shelf_tab(&self) -> Option<workspaces::ShelfTab> {
         let tabs = workspaces::built_shelf_tabs(self.shell.tab, self.open_now());
@@ -390,6 +420,16 @@ impl Workbench {
         if !self.shell.tab.is_built() && self.interface_look().hide_unfinished {
             self.show_tab(RibbonTab::Home);
         }
+        // A contextual tab goes with its file: its parent takes its place.
+        let open = self.open_now();
+        let gone = match self.shell.tab {
+            RibbonTab::Tileset => !open.tileset,
+            RibbonTab::Picture => !open.atlas,
+            _ => false,
+        };
+        if gone {
+            self.shell.tab = self.shell.tab.parent();
+        }
     }
 
     /// Collapses the ribbon to its tabs, or brings it back.
@@ -407,6 +447,15 @@ impl Workbench {
     /// drops down over the center until something on it is chosen or the
     /// pointer leaves it.
     pub(crate) fn tab_clicked(&mut self, tab: RibbonTab) {
+        if tab == self.shell.tab && self.map_tools_in_front() {
+            // Home again, from its tile map's tools: the Entity tab.
+            self.show_in(
+                tab,
+                Home::Shelf(workspaces::ShelfTab::Entity),
+                Panel::Properties,
+            );
+            return;
+        }
         let again = self.shell.tab == tab;
         self.show_tab(tab);
         if self.shell.collapsed && self.shell.tab != RibbonTab::File {

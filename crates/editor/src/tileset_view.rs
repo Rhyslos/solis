@@ -173,15 +173,17 @@ fn dashed(ui: &Ui, rect: Rect, colour: Color32) {
 }
 
 /// The Tileset tab.
+/// LIBRARY TOOLS · Tileset's document (round 3, `02-tileset-editor.png`):
+/// the picture with its grid and the steps, and beside it what the chosen
+/// terrain's kind needs with Try it under it. The terrains are on the
+/// Terrains shelf tab ([`terrains`]).
 pub(crate) fn tileset_tab(ui: &mut Ui, t: &mut TilesetUi<'_>) -> TilesetOut {
     let mut out = TilesetOut::default();
     let full = ui.max_rect();
-    let left = Rect::from_min_size(full.min, vec2(220.0, full.height()));
-    let right_w = (full.width() * 0.32).clamp(300.0, 380.0);
+    let right_w = (full.width() * 0.4).clamp(300.0, 580.0);
     let right = Rect::from_min_max(pos2(full.max.x - right_w, full.min.y), full.max);
-    let middle = Rect::from_min_max(pos2(left.max.x, full.min.y), pos2(right.min.x, full.max.y));
+    let middle = Rect::from_min_max(full.min, pos2(right.min.x, full.max.y));
     let line = Stroke::new(1.0, theme::line());
-    ui.painter().vline(left.max.x, full.y_range(), line);
     ui.painter().vline(right.min.x, full.y_range(), line);
     let mut column = |rect: Rect, salt: &str, add: &mut dyn FnMut(&mut Ui)| {
         let mut child = ui.new_child(
@@ -194,9 +196,6 @@ pub(crate) fn tileset_tab(ui: &mut Ui, t: &mut TilesetUi<'_>) -> TilesetOut {
             .auto_shrink(false)
             .show(&mut child, |ui| add(ui));
     };
-    column(left, "tileset terrains", &mut |ui| {
-        out.changed |= terrains(ui, t)
-    });
     column(middle, "tileset picture", &mut |ui| {
         out.changed |= picture_column(ui, t)
     });
@@ -206,8 +205,8 @@ pub(crate) fn tileset_tab(ui: &mut Ui, t: &mut TilesetUi<'_>) -> TilesetOut {
     out
 }
 
-/// The terrains, the picture and its tile size.
-fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
+/// The terrains, the picture and its tile size: the Terrains shelf tab.
+pub(crate) fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
         ui.label(RichText::new("Terrains").color(theme::text_weak()));

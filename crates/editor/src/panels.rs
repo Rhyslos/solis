@@ -159,20 +159,28 @@ impl PanelViewer<'_> {
         if panel == Panel::Viewport {
             return self.document.name();
         }
+        // A LIBRARY TOOLS document is called by its file's name alone
+        // (round 3: "harbour.tileset", "items.png").
+        let file = |path: &str| path.rsplit('/').next().unwrap_or(path).to_owned();
+        match panel {
+            Panel::Tileset => {
+                if let Some(t) = &self.tileset {
+                    return file(&t.editor.path);
+                }
+            }
+            Panel::AtlasCrop => {
+                if let Some((editor, ..)) = &self.atlas {
+                    return file(&editor.atlas.picture);
+                }
+            }
+            _ => {}
+        }
         let what = match panel {
             Panel::Map => self.map.as_ref().map(|m| m.name.clone()),
-            Panel::Tileset => self
-                .tileset
-                .as_ref()
-                .map(|t| crate::sprite_sheets::name_of(&t.editor.path)),
             Panel::Animator => self
                 .animator
                 .as_ref()
                 .map(|a| crate::sprite_sheets::name_of(&a.editor.path)),
-            Panel::AtlasCrop => self
-                .atlas
-                .as_ref()
-                .map(|(editor, ..)| crate::sprite_sheets::name_of(&editor.path)),
             Panel::Canvas => self
                 .screen
                 .as_ref()
@@ -205,6 +213,8 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
+            | Panel::Terrains
+            | Panel::Crops
             | Panel::Map => false,
         }
     }
@@ -233,6 +243,8 @@ impl PanelViewer<'_> {
             | Panel::Problems
             | Panel::Profiler
             | Panel::Mixer
+            | Panel::Terrains
+            | Panel::Crops
             | Panel::Map => {}
         }
     }
@@ -368,8 +380,9 @@ impl PanelViewer<'_> {
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                let asked =
-                                    crate::map_tab::tileset_properties(ui, path, set, notes);
+                                let asked = crate::tile_properties::tileset_properties(
+                                    ui, path, set, notes,
+                                );
                                 self.library_requests.extend(asked.into_iter().map(|edit| {
                                     LibraryRequest::EditTileset(path.to_owned(), edit)
                                 }));
@@ -383,9 +396,11 @@ impl PanelViewer<'_> {
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                if let Some((tileset, size)) = crate::map_tab::map_file_properties(
-                                    ui, path, map, &tilesets, notes,
-                                ) {
+                                if let Some((tileset, size)) =
+                                    crate::tile_properties::map_file_properties(
+                                        ui, path, map, &tilesets, notes,
+                                    )
+                                {
                                     self.library_requests.push(LibraryRequest::ShapeTileMap(
                                         path.to_owned(),
                                         tileset,
@@ -549,17 +564,36 @@ impl PanelViewer<'_> {
                     empty_note(ui, "Select an entity with a Tile Map to see its map here.");
                     return;
                 };
+                let asked = crate::map_tab::map_tab(ui, map);
+                self.map_requests.extend(asked);
+            }
+            Panel::Terrains => {
+                let Some(tileset) = &mut self.tileset else {
+                    empty_note(ui, "No tileset is open.");
+                    return;
+                };
                 egui::ScrollArea::vertical()
-                    .id_salt("map tab")
+                    .id_salt("tileset terrains")
                     .auto_shrink(false)
                     .show(ui, |ui| {
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                let asked = crate::map_tab::map_tab(ui, map);
-                                self.map_requests.extend(asked);
+                                self.frames_out.tileset_changed |=
+                                    crate::tileset_view::terrains(ui, tileset);
                             });
                     });
+            }
+            Panel::Crops => {
+                let Some((editor, picture, _)) = &mut self.atlas else {
+                    empty_note(ui, "No picture's crops are open.");
+                    return;
+                };
+                let out = crate::atlas_view::crops_tab(ui, editor, picture.as_ref());
+                self.frames_out.atlas_changed |= out.changed;
+                if out.said.is_some() {
+                    self.frames_out.atlas_said = out.said;
+                }
             }
             Panel::Tileset => {
                 let Some(tileset) = &mut self.tileset else {
@@ -626,7 +660,7 @@ impl PanelViewer<'_> {
                 let out = crate::atlas_view::atlas_tab(
                     ui,
                     editor,
-                    picture.take(),
+                    picture.as_ref(),
                     problem.as_deref(),
                     self.accent.colors().fill,
                     self.keys == KeyOwner::Atlas,

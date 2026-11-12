@@ -56,6 +56,12 @@ pub enum Panel {
     Canvas,
     /// The open screen's pieces as a tree, beside the canvas.
     Elements,
+    /// The open tileset's terrains, and the one chosen: on LIBRARY TOOLS
+    /// · Tileset's Terrains shelf tab (round 3).
+    Terrains,
+    /// The open picture's crops, and the one picked: on LIBRARY TOOLS ·
+    /// Picture's Crops shelf tab (round 3).
+    Crops,
 }
 
 impl Panel {
@@ -77,7 +83,7 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`] or the Window menu, and never saved in a layout.
-    pub const OPEN_WITH_A_FILE: [Self; 8] = [
+    pub const OPEN_WITH_A_FILE: [Self; 10] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
@@ -86,6 +92,8 @@ impl Panel {
         Self::AtlasCrop,
         Self::Canvas,
         Self::Elements,
+        Self::Terrains,
+        Self::Crops,
     ];
 
     /// The tabs a clips file opens (and closes) together.
@@ -122,6 +130,8 @@ impl Panel {
             Self::Elements => "Elements",
             Self::Assets => "Assets",
             Self::Placement => "Placement",
+            Self::Terrains => "Terrains",
+            Self::Crops => "Crops",
         }
     }
 
@@ -148,6 +158,8 @@ impl Panel {
             Self::Elements => Icon::Area,
             Self::Assets => Icon::Library,
             Self::Placement => Icon::Move,
+            Self::Terrains => Icon::Tileset,
+            Self::Crops => Icon::Crops,
         }
     }
 }

@@ -9,10 +9,10 @@
 use crate::console::LogLevel;
 use crate::key_owner::KeyOwner;
 use crate::made_from::MadeFrom;
-use crate::map_tab::TerrainEdit;
 use crate::own_files::{Followed, OwnFile, Told, follow};
 use crate::panel::Panel;
 use crate::sprite_sheets::{ArtState, SpriteSheets, TilesetState};
+use crate::tile_properties::TerrainEdit;
 use crate::tileset_editor::TilesetEditor;
 use crate::tileset_view::{Picture, TilesetUi};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -342,4 +342,4 @@ impl Workbench {
 
 #[cfg(test)]
 #[path = "workbench_tileset_tests.rs"]
-mod tests;
+pub(crate) mod tests;

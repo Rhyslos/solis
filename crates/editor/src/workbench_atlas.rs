@@ -120,13 +120,12 @@ impl Workbench {
     /// What the tab draws the picture from, or why it can't.
     pub(crate) fn atlas_picture(&self) -> (Option<AtlasPicture<'_>>, Option<String>) {
         if let Some((art, texture)) = &self.open.atlas_texture
-            && let Some(rgba) = art.frames.first()
+            && !art.frames.is_empty()
         {
             return (
                 Some(AtlasPicture {
                     texture,
                     size: art.size,
-                    rgba,
                 }),
                 None,
             );
@@ -149,4 +148,4 @@ impl Workbench {
 
 #[cfg(test)]
 #[path = "workbench_atlas_tests.rs"]
-mod tests;
+pub(crate) mod tests;

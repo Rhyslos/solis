@@ -10,7 +10,7 @@ use crate::map_tab::MapRequest;
 use crate::sprite_sheets::{SpriteSheets, TilesetState};
 use crate::test_support::*;
 use crate::workbench::WorkbenchAction;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 use tiles::{CellValue, ValueKind};
 
 /// grass `.`, tilled `t`, water `~`.
@@ -333,16 +333,19 @@ fn hiding_a_layer_is_the_editor_s_alone() {
 }
 
 #[test]
-fn the_viewport_s_menu_chooses_the_values_laid_over_and_the_chunks() {
+fn the_ribbon_chooses_the_values_laid_over_and_the_chunks() {
+    use crate::shell::ShellCommand as C;
     let (mut w, map, _) = with_map();
     let placed = w.place_tile_map(map, None).unwrap();
     w.follow_map_selection();
     w.set_tile_overlay();
     assert!(w.viewport.tile_overlay.values.is_empty());
-    let overlay = &mut w.viewport.tile_overlay;
-    overlay.asked = vec![("watered".into(), true), ("growth".into(), true)];
-    overlay.chunks_asked = true;
-    overlay.hovered = Some([5, 5]);
+    let names = w.map_value_names();
+    let index = |name: &str| names.iter().position(|n| n == name).unwrap();
+    w.run_paint_command(C::ShowValue(index("watered")));
+    w.run_paint_command(C::ShowValue(index("growth")));
+    w.run_paint_command(C::MapChunks);
+    w.viewport.tile_overlay.hovered = Some([5, 5]);
     w.tile_overlay_done();
     assert_eq!(w.open.map_edits.shown_values, ["watered", "growth"]);
     assert!(w.open.map_edits.chunks);
@@ -351,15 +354,17 @@ fn the_viewport_s_menu_chooses_the_values_laid_over_and_the_chunks() {
     assert_eq!(w.viewport.tile_overlay.values, [2, 1]);
     assert!(w.viewport.tile_overlay.chunks);
     // Off again.
-    w.viewport.tile_overlay.asked = vec![("watered".into(), false)];
-    w.tile_overlay_done();
+    w.run_paint_command(C::ShowValue(index("watered")));
     assert_eq!(w.open.map_edits.shown_values, ["growth"]);
-    // Drawn in the whole editor, with the cell inspector in the tab.
+    // Drawn in the whole editor: on the tile map's ribbon, with the Map
+    // tab in front.
     let mut h = harness(w);
     h.run();
     h.run();
     assert!(h.query_by_label_contains("Values: growth").is_some());
-    assert!(h.query_by_label("Chunks").is_some());
+    assert!(
+        h.get_by_label("Chunks").accesskit_node().toggled() == Some(egui::accesskit::Toggled::True)
+    );
 }
 
 #[test]
@@ -445,7 +450,7 @@ fn properties_change_a_map_file_s_tileset_and_size() {
     w.library_request(
         LibraryRequest::EditTileset(
             "farm.tileset.lst".into(),
-            crate::map_tab::TerrainEdit::Set {
+            crate::tile_properties::TerrainEdit::Set {
                 id: grass,
                 name: Some("meadow".into()),
                 code: None,
@@ -524,15 +529,16 @@ fn a_terrain_made_solid_is_saved_in_its_tileset_and_its_walls_shown() {
     w.set_tile_overlay();
     assert!(!w.viewport.tile_overlay.walls);
     assert!(w.viewport.tile_overlay.solid.unwrap()[b'~' as usize]);
-    w.viewport.tile_overlay.walls_asked = true;
-    w.tile_overlay_done();
+    w.run_paint_command(crate::shell::ShellCommand::MapWalls);
     assert!(w.open.map_edits.walls);
     w.set_tile_overlay();
     assert!(w.viewport.tile_overlay.walls);
     let mut h = harness(w);
     h.run();
     h.run();
-    assert!(h.query_by_label("Walls").is_some());
+    assert!(
+        h.get_by_label("Walls").accesskit_node().toggled() == Some(egui::accesskit::Toggled::True)
+    );
     // Nothing solid: nothing to show.
     let w = &mut h.state_mut().0;
     w.map_requests_done(vec![crate::map_tab::MapRequest::SetSolid(b'~', false)]);
