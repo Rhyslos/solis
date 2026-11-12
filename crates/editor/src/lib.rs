@@ -139,6 +139,8 @@ pub use workbench_library::plain_relative;
 #[cfg(test)]
 mod game_set_tests;
 #[cfg(test)]
+mod home_screen_tests;
+#[cfg(test)]
 mod invariant_tests;
 #[cfg(test)]
 mod kit_tests;
