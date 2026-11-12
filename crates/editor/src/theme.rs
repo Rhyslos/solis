@@ -64,10 +64,6 @@ pub fn button_border() -> Color32 {
 pub fn hover() -> Color32 {
     tokens::hover()
 }
-/// A hovered button's border.
-pub fn hover_border() -> Color32 {
-    tokens::stronger_line()
-}
 /// A button being pressed.
 pub fn pressed() -> Color32 {
     tokens::pressed()
@@ -118,9 +114,6 @@ pub const COLLIDER: Color32 = Color32::from_rgb(0x6e, 0xd8, 0x8a);
 /// Play, whatever the accent: the one light button. [`on_accent`] reads
 /// on it.
 pub const GO: Color32 = tokens::PLAY_FILL;
-/// The launcher's bar that says a new build is ready: a card, which the
-/// launcher borders with the accent.
-pub const UPDATE: Color32 = tokens::NEUTRAL_DARK.card;
 
 /// The console's levels, whatever the accent: the fill of a level's filter
 /// button while that level is shown. White text reads on each.
@@ -354,14 +347,6 @@ pub fn visuals(accent: Accent) -> Visuals {
     v
 }
 
-/// The frame of the top bar.
-pub fn top_bar_frame() -> Frame {
-    Frame::new()
-        .fill(tokens::app())
-        .inner_margin(Margin::symmetric(6, 0))
-        .stroke(Stroke::new(size::LINE, line()))
-}
-
 /// The frame of the status bar along the bottom (spec 160): its fill and
 /// its padding. Its one line, along the top, is drawn by the status bar.
 pub fn status_bar_frame() -> Frame {
@@ -375,15 +360,6 @@ pub fn menu_row_frame() -> Frame {
     Frame::new()
         .fill(menu_row())
         .inner_margin(Margin::symmetric(8, 3))
-}
-
-/// The frame of the panels drawn over the viewport: the design's pill.
-pub fn overlay_frame() -> Frame {
-    Frame::new()
-        .fill(overlay())
-        .stroke(Stroke::new(size::LINE, tokens::pill_border()))
-        .corner_radius(CornerRadius::same(size::radius::CONTROL))
-        .inner_margin(Margin::same(3))
 }
 
 /// Padding inside the panels other than the viewport.

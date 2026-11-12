@@ -35,6 +35,7 @@ pub(crate) mod saved;
 mod shelf;
 pub mod status;
 pub(crate) mod tab_bar;
+mod tab_drag;
 pub mod workspaces;
 
 pub(crate) use commands::ShellCommand;
@@ -82,6 +83,9 @@ pub enum RibbonTab {
     /// LIBRARY TOOLS · Picture: a picture's crops open from the Library,
     /// there only while they are.
     Picture,
+    /// LIBRARY TOOLS · Model: the model viewer (not built yet), there
+    /// while a model is looked at from the Library's right-click menu.
+    Model,
 }
 
 impl RibbonTab {
@@ -101,12 +105,12 @@ impl RibbonTab {
 
     /// The contextual tabs: each comes with a file open from its parent
     /// tab and goes with it (the approved additions, round 3).
-    pub const CONTEXT: [Self; 2] = [Self::Tileset, Self::Picture];
+    pub const CONTEXT: [Self; 3] = [Self::Tileset, Self::Picture, Self::Model];
 
     /// The tab a contextual tab belongs to; any other tab is its own.
     pub fn parent(self) -> Self {
         match self {
-            Self::Tileset | Self::Picture => Self::Library,
+            Self::Tileset | Self::Picture | Self::Model => Self::Library,
             other => other,
         }
     }
@@ -126,6 +130,7 @@ impl RibbonTab {
             Self::Build => "Build",
             Self::Tileset => "Tileset",
             Self::Picture => "Picture",
+            Self::Model => "Model",
         }
     }
 
@@ -146,13 +151,14 @@ impl RibbonTab {
             Self::Build => "Exporting the game for someone to play",
             Self::Tileset => "The tileset open: its picture, terrains and slots",
             Self::Picture => "The picture's crops: parts of it named for game code and screens",
+            Self::Model => "A model on its own, in the model viewer",
         }
     }
 
     /// Whether the tab's screen is built. One that isn't is drawn as an
     /// unfinished part: its tab, its ribbon and one page in the middle.
     pub fn is_built(self) -> bool {
-        !matches!(self, Self::Shading | Self::Vfx)
+        !matches!(self, Self::Shading | Self::Vfx | Self::Model)
     }
 }
 
@@ -181,6 +187,9 @@ pub struct Shell {
     /// The entity selected when the last frame was drawn: selecting
     /// another brings the shelf tab Preferences names to the front.
     pub(crate) seen_selected: Option<reflect::EntityId>,
+    /// The model the model viewer was opened on (its file), while its
+    /// tab is in front: it goes when another tab is chosen.
+    pub(crate) viewing_model: Option<String>,
 }
 
 impl Default for Shell {
@@ -194,6 +203,7 @@ impl Default for Shell {
             drawn: Vec::new(),
             seen_map: false,
             seen_selected: None,
+            viewing_model: None,
         }
     }
 }
@@ -227,7 +237,6 @@ impl Shell {
     }
 
     /// Where `panel`'s body was drawn in the last frame, if it was.
-    #[cfg(test)]
     pub(crate) fn drawn_at(&self, panel: Panel) -> Option<egui::Rect> {
         self.drawn
             .iter()
@@ -293,9 +302,17 @@ impl Workbench {
     /// Puts `panel` in front at `home` on `tab`, whether or not `tab` is
     /// in front.
     pub(crate) fn show_in(&mut self, tab: RibbonTab, home: Home, panel: Panel) {
+        let open = self.open_now();
         let arrangement = self.shell.arrangement_mut(tab);
         match home {
-            Home::Group(index) => {
+            Home::Group(_) => {
+                // Its group as arranged now: a dragged tab may have moved
+                // it to the other.
+                let index = arrangement
+                    .arranged(tab, open)
+                    .iter()
+                    .position(|docs| docs.contains(&panel))
+                    .unwrap_or(0);
                 if let Some(front) = arrangement.front.get_mut(index) {
                     *front = Some(panel);
                 }
@@ -328,16 +345,14 @@ impl Workbench {
     /// (the project lead's answer 20). The ribbon takes its build form
     /// and the toolbox goes.
     pub fn placing(&self) -> bool {
-        matches!(self.shell.tab, RibbonTab::Home | RibbonTab::Build)
-            && self.shelf_tab() == Some(workspaces::ShelfTab::Place)
+        self.shell.tab == RibbonTab::Home && self.shelf_tab() == Some(workspaces::ShelfTab::Place)
     }
 
     /// Whether HOME TOOLS · Tile map is the tab in front: a tile map is
     /// selected and its Map shelf tab is in front (round 3). The ribbon
     /// is the map's tools then, as Place in front is the build form.
     pub(crate) fn map_tools_in_front(&self) -> bool {
-        matches!(self.shell.tab, RibbonTab::Home | RibbonTab::Build)
-            && self.shelf_tab() == Some(workspaces::ShelfTab::Map)
+        self.shell.tab == RibbonTab::Home && self.shelf_tab() == Some(workspaces::ShelfTab::Map)
     }
 
     /// The shelf tab in front on the tab in front, if it has a shelf.
@@ -378,21 +393,21 @@ impl Workbench {
             && selected != was
             && self.interface_look().shelf_opens_on == crate::interface_look::ShelfOpensOn::Entity
         {
-            for tab in [RibbonTab::Home, RibbonTab::Build] {
-                self.show_in(
-                    tab,
-                    Home::Shelf(workspaces::ShelfTab::Entity),
-                    Panel::Properties,
-                );
-            }
+            self.show_in(
+                RibbonTab::Home,
+                Home::Shelf(workspaces::ShelfTab::Entity),
+                Panel::Properties,
+            );
         }
         self.follow_map_selection();
         let has_map = self.open.map_edits.path.is_some();
         let had_map = std::mem::replace(&mut self.shell.seen_map, has_map);
         if has_map && !had_map {
-            for tab in [RibbonTab::Home, RibbonTab::Build] {
-                self.show_in(tab, Home::Shelf(workspaces::ShelfTab::Map), Panel::Map);
-            }
+            self.show_in(
+                RibbonTab::Home,
+                Home::Shelf(workspaces::ShelfTab::Map),
+                Panel::Map,
+            );
         }
     }
 
@@ -433,8 +448,14 @@ impl Workbench {
         let gone = match self.shell.tab {
             RibbonTab::Tileset => !open.tileset,
             RibbonTab::Picture => !open.atlas,
+            RibbonTab::Model => self.shell.viewing_model.is_none(),
             _ => false,
         };
+        // The model viewer is looked into, not kept open: it goes once
+        // another tab is in front.
+        if self.shell.tab != RibbonTab::Model {
+            self.shell.viewing_model = None;
+        }
         if gone {
             self.shell.tab = self.shell.tab.parent();
         }
@@ -487,23 +508,67 @@ impl Workbench {
             RibbonTab::File => self.file_page(ui, actions),
             RibbonTab::Shading => self.unbuilt_screen(ui, RibbonTab::Shading),
             RibbonTab::Vfx => self.unbuilt_screen(ui, RibbonTab::Vfx),
+            RibbonTab::Model => self.unbuilt_screen(ui, RibbonTab::Model),
             _ => return false,
         }
         true
     }
 
-    /// A whole screen that isn't built: its one page, where the panels
-    /// would be.
+    /// A whole screen that isn't built (D2; round 3's `11-unbuilt-*`):
+    /// its one page where the groups would be, and under it its shelf
+    /// folded to its bar, the shelf's tabs as unfinished parts.
     fn unbuilt_screen(&mut self, ui: &mut egui::Ui, tab: RibbonTab) {
         use crate::icons::Icon;
-        use crate::unbuilt::UnbuiltId;
+        use crate::unbuilt::{Entry, UnbuiltId};
+        let shelf: Vec<Entry<()>> = match tab {
+            RibbonTab::Shading => vec![
+                Entry::Unbuilt(UnbuiltId::ShadingShelfParameters),
+                Entry::Unbuilt(UnbuiltId::ShadingShelfNode),
+                Entry::Unbuilt(UnbuiltId::ShadingShelfPalette),
+                Entry::Unbuilt(UnbuiltId::ShadingShelfInstances),
+            ],
+            RibbonTab::Vfx => vec![
+                Entry::Unbuilt(UnbuiltId::VfxShelfModule),
+                Entry::Unbuilt(UnbuiltId::VfxShelfParameters),
+                Entry::Unbuilt(UnbuiltId::VfxShelfPerformance),
+            ],
+            _ => vec![
+                Entry::Unbuilt(UnbuiltId::MeshShelfOverview),
+                Entry::Unbuilt(UnbuiltId::MeshShelfLods),
+                Entry::Unbuilt(UnbuiltId::MeshShelfMaterials),
+                Entry::Unbuilt(UnbuiltId::MeshShelfCollision),
+                Entry::Unbuilt(UnbuiltId::MeshShelfSockets),
+                Entry::Unbuilt(UnbuiltId::MeshShelfImport),
+            ],
+        };
+        egui::Panel::bottom("unbuilt shelf")
+            .frame(
+                egui::Frame::new()
+                    .fill(crate::tokens::shelf_bar())
+                    .inner_margin(egui::Margin::symmetric(
+                        crate::tokens::size::ROW_PAD as i8,
+                        0,
+                    )),
+            )
+            .exact_size(crate::tokens::size::SHELF_BAR_H)
+            .show_separator_line(false)
+            .show(ui, |ui| {
+                ui.horizontal_centered(|ui| {
+                    for entry in crate::unbuilt::filter(shelf) {
+                        if let Entry::Unbuilt(part) = entry {
+                            crate::unbuilt::shelf_tab(ui, part);
+                        }
+                    }
+                });
+            });
         let answer = egui::CentralPanel::default()
             .frame(egui::Frame::new())
             .show(ui, |ui| match tab {
                 RibbonTab::Shading => {
                     crate::unbuilt::page(ui, UnbuiltId::ShadingGraph, Icon::Material)
                 }
-                _ => crate::unbuilt::page(ui, UnbuiltId::VfxPreview, Icon::Sun),
+                RibbonTab::Vfx => crate::unbuilt::page(ui, UnbuiltId::VfxPreview, Icon::Sun),
+                _ => crate::unbuilt::page(ui, UnbuiltId::MeshTab, Icon::Model),
             })
             .inner;
         if answer.hide {

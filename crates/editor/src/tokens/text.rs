@@ -174,6 +174,26 @@ pub fn tile_kind() -> FontId {
     regular(10.5)
 }
 
+/// A dialog card's title: 15 / 600 (mock-up round 1, `10-dialog-*`).
+pub fn dialog_title() -> FontId {
+    named(15.0, SEMIBOLD)
+}
+
+/// A strip's routing under its name: 10 / 400 (spec 766).
+pub fn strip_routing() -> FontId {
+    regular(RIBBON_LABEL_SIZE)
+}
+
+/// The numbers of a fader's scale: mono 9 / 400 (spec 770).
+pub fn fader_scale() -> FontId {
+    FontId::new(9.0, FontFamily::Monospace)
+}
+
+/// The M and S on a mixer strip: 11 / 700 (spec 773).
+pub fn strip_button() -> FontId {
+    named(SMALL_SIZE, BOLD)
+}
+
 /// Capital letters set a little apart: how wide the gaps are, as a share
 /// of the text's size.
 #[derive(Debug, Clone, Copy, PartialEq)]

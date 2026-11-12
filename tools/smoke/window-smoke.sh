@@ -207,14 +207,14 @@ GROW_CHANGE="$(changed_pixels flown grown 1440x200+0+400)"
 echo "Pixels changed by dragging the shelf's grip: $GROW_CHANGE"
 [ "$GROW_CHANGE" -gt 5000 ] || fail "dragging the shelf's grip moved nothing"
 
-# 5. On the Debug tab (the game beside the Profiler), drag the divider
-#    between the two groups to the left.
-xdotool mousemove "${DEBUG_TAB_X:-537}" "${DEBUG_TAB_Y:-19}" click 1
+# 5. On the Audio tab (the mixer beside the Bus group, split 60 / 40),
+#    drag the divider between the two groups to the left.
+xdotool mousemove "${AUDIO_TAB_X:-481}" "${AUDIO_TAB_Y:-19}" click 1
 settle
-shot debug
-drag "${DIVIDER_X:-720}" "${DIVIDER_Y:-300}" -200 0
+shot audio
+drag "${DIVIDER_X:-864}" "${DIVIDER_Y:-300}" -200 0
 shot dragged
-SPLIT_CHANGE="$(changed_pixels debug dragged 1440x400+0+100)"
+SPLIT_CHANGE="$(changed_pixels audio dragged 1440x400+0+100)"
 echo "Pixels changed by dragging the divider: $SPLIT_CHANGE"
 [ "$SPLIT_CHANGE" -gt 5000 ] || fail "dragging the groups' divider moved nothing"
 
@@ -224,7 +224,7 @@ SAVED="$(grep -rl '"shell"' "$TEST_HOME" 2>/dev/null | head -1 || true)"
 [ -n "$SAVED" ] || fail "the frame was not saved"
 echo "Frame saved in: ${SAVED#"$TEST_HOME"/}"
 
-# 7. The next launch opens on Debug with the divider where it was dragged
+# 7. The next launch opens on Audio with the divider where it was dragged
 #    (and the camera where it flew): the screen matches the dragged one,
 #    not the first one.
 launch

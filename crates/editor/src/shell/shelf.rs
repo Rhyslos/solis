@@ -226,7 +226,7 @@ fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut Pane
         );
         return;
     }
-    if matches!(tab, RibbonTab::Home | RibbonTab::Build) {
+    if tab == RibbonTab::Home {
         let parts = vec![
             Entry::Unbuilt(UnbuiltId::HomeShelfFrameCounter),
             Entry::Unbuilt(UnbuiltId::HomeShelfTransport),
@@ -247,6 +247,25 @@ fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut Pane
     }
     if front == Some(ShelfTab::Console) {
         crate::console::console_tools(ui, viewer.console);
+    }
+    if tab == RibbonTab::Audio && front == Some(ShelfTab::SoundEvents) {
+        // Who is ducking whom while the game plays (round 3).
+        let ducking = viewer.mixer.ducking_now();
+        let words = match (viewer.playing, ducking.is_empty()) {
+            (false, _) => "Meters move while the game plays".to_owned(),
+            (true, true) => "Playing".to_owned(),
+            (true, false) => format!("Playing \u{b7} {}", ducking.join(", ")),
+        };
+        let ink = if viewer.playing {
+            crate::tokens::WARNING
+        } else {
+            crate::tokens::text_meta()
+        };
+        ui.label(
+            egui::RichText::new(words)
+                .font(crate::tokens::text::ui())
+                .color(ink),
+        );
     }
     if tab == RibbonTab::Library && viewer.project.is_some() {
         // "48 items · 1 selected" (spec 315): the folder shown.

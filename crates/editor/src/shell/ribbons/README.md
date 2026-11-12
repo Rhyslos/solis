@@ -12,9 +12,10 @@ Each tab's ribbon as a small table of groups: what is on it, in what shape, and 
 | `picture.rs` | LIBRARY TOOLS · Picture | Crop (Every tile, Delete), Grid (its size, Zoom). No Play group. |
 | `animate.rs` | Animate | By what is open: a clips file's Clip (New, Copy, Delete), Frames (Take out) and playback (Plays, Speed, Direction); an animator's State (Add state, Start here, Delete) and Preview (Start again); then the design's sequencer controls, all unfinished. |
 | `ui.rs` | UI | Screen (the size, Text %, Safe area, Snap), Code (Open as code). |
-| `audio.rs` | Audio | Nothing yet: the design's mixer controls the engine has nothing behind. |
+| `audio.rs` | Audio | Mixer (Bus), Bus (Add rule, Remove), Clear solo, Mute the game, Heard at once; Send, Snapshot, Meters, Listen from and Effects unfinished. |
 | `debug.rs` | Debug | The Profiler's CPU and GPU switches, how many frames it keeps, and the Session group (Load save, Play and record inputs, Replay a recording…). |
-| `build.rs` | Build | Export (for playtesting). |
+| `build.rs` | Build | Playtest (Export, Open folder); Targets and Full export unfinished. |
 | `shading.rs`, `vfx.rs` | Shading, VFX | Whole unfinished screens. |
+| `model.rs` | LIBRARY TOOLS · Model | The model viewer, a whole unfinished screen but for Use › Place. |
 
 The Play group is not in these tables: it is the same on every tab ([`../play_group.rs`](../play_group.rs)).

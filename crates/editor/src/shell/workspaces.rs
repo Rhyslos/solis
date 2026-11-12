@@ -41,8 +41,8 @@ pub enum ShelfTab {
     Properties,
     /// The open screen's pieces and the one picked.
     Screen,
-    /// The bus picked in the mixer.
-    Bus,
+    /// The project's sound events, and the one picked.
+    SoundEvents,
     /// Messages from the editor, the build and the game.
     Console,
     /// Mistakes found in the game's code and areas.
@@ -112,7 +112,7 @@ impl ShelfTab {
         Self::Parameters,
         Self::Properties,
         Self::Screen,
-        Self::Bus,
+        Self::SoundEvents,
         Self::Console,
         Self::Problems,
         Self::Map,
@@ -132,7 +132,7 @@ impl ShelfTab {
             Self::Parameters => "Parameters",
             Self::Properties => "Properties",
             Self::Screen => "Screen",
-            Self::Bus => "Bus",
+            Self::SoundEvents => "Sound events",
             Self::Console => "Console",
             Self::Problems => "Problems",
             Self::Map => "Map",
@@ -170,9 +170,7 @@ impl ShelfTab {
                     Fixed(size::ASSETS_COLUMN_W - 50.0)
                 ),
             ],
-            Self::Details | Self::Properties | Self::Bus => {
-                &[column!("Properties", [P::Properties], Rest)]
-            }
+            Self::Details | Self::Properties => &[column!("Properties", [P::Properties], Rest)],
             Self::Code => &[column!("Code", [P::Code], Rest)],
             Self::Frames => &[
                 column!("Clips", [P::Clips], Fixed(size::SCENE_COLUMN_W + 60.0)),
@@ -180,6 +178,7 @@ impl ShelfTab {
             ],
             Self::Clip => &[column!("Clip", [P::Clip], Rest)],
             Self::Parameters => &[column!("Parameters", [P::Parameters], Rest)],
+            Self::SoundEvents => &[column!("Sound events", [P::SoundEvents], Rest)],
             Self::Console => &[column!("Console", [P::Console], Rest)],
             Self::Problems => &[column!("Problems", [P::Problems], Rest)],
             Self::Map => &[column!("Map", [P::Map], Rest)],
@@ -227,7 +226,9 @@ pub struct OpenNow {
 pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
     use Panel as P;
     let groups: Vec<Vec<Panel>> = match tab {
-        RibbonTab::Home | RibbonTab::Build => {
+        // Export for playtesting is Build's page (round 3).
+        RibbonTab::Build => vec![vec![P::Export]],
+        RibbonTab::Home => {
             let mut area = vec![P::Viewport];
             if open.playing {
                 area.push(P::Game);
@@ -244,14 +245,17 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         }
         RibbonTab::Animate if open.clips => vec![vec![P::Viewport]],
         RibbonTab::Ui => vec![vec![P::Canvas]],
-        RibbonTab::Audio => vec![vec![P::Mixer]],
-        RibbonTab::Debug => vec![vec![P::Game, P::Viewport], vec![P::Profiler]],
+        RibbonTab::Audio => vec![vec![P::Mixer], vec![P::Bus]],
+        // The Profiler fills the middle (round 3); the Game beside it is
+        // the one the Debug tab looks into.
+        RibbonTab::Debug => vec![vec![P::Profiler, P::Game]],
         RibbonTab::File
         | RibbonTab::Shading
         | RibbonTab::Vfx
         | RibbonTab::Animate
         | RibbonTab::Tileset
-        | RibbonTab::Picture => Vec::new(),
+        | RibbonTab::Picture
+        | RibbonTab::Model => Vec::new(),
     };
     groups
 }
@@ -261,7 +265,12 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
 pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
     use ShelfTab as S;
     let mut tabs = match tab {
-        RibbonTab::Home | RibbonTab::Build => vec![
+        RibbonTab::Build => vec![
+            Entry::Built(S::Console),
+            Entry::Built(S::Problems),
+            Entry::Unbuilt(UnbuiltId::BuildLog),
+        ],
+        RibbonTab::Home => vec![
             Entry::Built(S::Place),
             Entry::Built(S::Entity),
             Entry::Unbuilt(UnbuiltId::HomeShelfAnimation),
@@ -285,7 +294,7 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
             Entry::Built(S::Problems),
         ],
         RibbonTab::Audio => vec![
-            Entry::Built(S::Bus),
+            Entry::Built(S::SoundEvents),
             Entry::Unbuilt(UnbuiltId::AudioMixerSnapshot),
             Entry::Built(S::Console),
         ],
@@ -309,9 +318,10 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
         | RibbonTab::Shading
         | RibbonTab::Vfx
         | RibbonTab::Tileset
-        | RibbonTab::Picture => Vec::new(),
+        | RibbonTab::Picture
+        | RibbonTab::Model => Vec::new(),
     };
-    if matches!(tab, RibbonTab::Home | RibbonTab::Build) && open.map {
+    if tab == RibbonTab::Home && open.map {
         tabs.push(Entry::Built(S::Map));
     }
     if tab == RibbonTab::Animate {
@@ -354,6 +364,13 @@ pub struct Arrangement {
     pub split: f32,
     /// The document in front of each group, if one was chosen.
     pub front: [Option<Panel>; 2],
+    /// A document dragged to one half of the center, standing alone in
+    /// a group there (`true`: the right half), the rest beside it (the
+    /// project lead's answer 25). Kept while the editor runs.
+    pub alone: Option<(Panel, bool)>,
+    /// The groups were joined by dragging a tab onto another group's
+    /// strip: every document in one group.
+    pub merged: bool,
 }
 
 /// The split's limits: neither group gets less than this share.
@@ -383,10 +400,36 @@ impl Arrangement {
             shelf_folded: false,
             split: match tab {
                 RibbonTab::Library => size::SPLIT_LIBRARY,
+                RibbonTab::Audio => size::SPLIT_AUDIO,
                 _ => size::SPLIT,
             },
             front: [None, None],
+            alone: None,
+            merged: false,
         }
+    }
+
+    /// The groups of `tab` with `open` open, as this arrangement has
+    /// them: the table's, joined into one, or with one document alone in
+    /// a half of its own.
+    pub fn arranged(&self, tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
+        let groups = groups(tab, open);
+        let all: Vec<Panel> = groups.concat();
+        if all.len() < 2 {
+            return groups;
+        }
+        if let Some((panel, right)) = self.alone.filter(|(p, _)| all.contains(p)) {
+            let rest: Vec<Panel> = all.into_iter().filter(|p| *p != panel).collect();
+            return if right {
+                vec![rest, vec![panel]]
+            } else {
+                vec![vec![panel], rest]
+            };
+        }
+        if self.merged {
+            return vec![all];
+        }
+        groups
     }
 
     /// The document in front of group `index` of `documents`: the one
@@ -438,7 +481,7 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
 /// The ribbon tab that shows `panel` when the one in front doesn't: the
 /// first, in this order, that has it.
 pub fn tab_for(panel: Panel, open: OpenNow) -> Option<RibbonTab> {
-    const ORDER: [RibbonTab; 8] = [
+    const ORDER: [RibbonTab; 9] = [
         RibbonTab::Home,
         RibbonTab::Library,
         RibbonTab::Tileset,
@@ -447,6 +490,7 @@ pub fn tab_for(panel: Panel, open: OpenNow) -> Option<RibbonTab> {
         RibbonTab::Ui,
         RibbonTab::Audio,
         RibbonTab::Debug,
+        RibbonTab::Build,
     ];
     ORDER
         .into_iter()

@@ -148,6 +148,20 @@ pub(crate) enum ShellCommand {
     ScreenSnap,
     /// Opens the screen's file in the code editor.
     OpenScreenCode,
+    /// A new bus inside the one the Bus group shows (Audio › Mixer).
+    AddBus,
+    /// A new ducking rule on the bus shown (Audio › Bus).
+    AddDuckingRule,
+    /// Removes the bus shown (never Master).
+    RemoveBus,
+    /// Unsolos every bus (Audio › Monitor).
+    ClearSolo,
+    /// Mutes the game's sound, or hears it again.
+    MuteGame,
+    /// How many sounds play at once: this many.
+    HeardAtOnce(u16),
+    /// Shows the last export's folder (Build › Playtest).
+    OpenExportFolder,
     Tab(RibbonTab),
     OpenManual,
     Learn,
@@ -220,7 +234,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 131] = [
+    pub(crate) const ALL: [Self; 137] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -330,6 +344,12 @@ impl ShellCommand {
         C::SafeArea,
         C::ScreenSnap,
         C::OpenScreenCode,
+        C::AddBus,
+        C::AddDuckingRule,
+        C::RemoveBus,
+        C::ClearSolo,
+        C::MuteGame,
+        C::OpenExportFolder,
         C::Tab(RibbonTab::File),
         C::Tab(RibbonTab::Home),
         C::Tab(RibbonTab::Library),
@@ -375,6 +395,13 @@ impl ShellCommand {
             | C::MakeBenchmark
             | C::MakePlayground => when(!playing, STOP_FIRST),
             C::ExportPlaytest => when(project, "Open a project first"),
+            C::OpenExportFolder => when(
+                w.open
+                    .export
+                    .as_ref()
+                    .is_some_and(|form| matches!(form.done, Some(Ok(_)))),
+                "Export once first: this opens the folder it made",
+            ),
             C::NewTileMap => when(
                 project,
                 "Tile maps are kept in a project: open or make one first",
@@ -433,6 +460,12 @@ impl ShellCommand {
             | C::StateStartHere
             | C::StateDelete
             | C::PreviewAgain => w.why_not_animate(self),
+            C::AddBus
+            | C::AddDuckingRule
+            | C::RemoveBus
+            | C::ClearSolo
+            | C::MuteGame
+            | C::HeardAtOnce(_) => w.why_not_audio(self),
             C::ScreenSize(_)
             | C::ScreenText(_)
             | C::SafeArea
@@ -489,6 +522,7 @@ impl ShellCommand {
             C::MapWalls => w.open.map_edits.walls,
             C::SafeArea => w.open.screen_doc.as_ref().is_some_and(|d| d.safe_area),
             C::ScreenSnap => w.open.screen_doc.as_ref().is_some_and(|d| d.snap),
+            C::MuteGame => w.open.mixer.listening.all_muted,
             _ => return None,
         })
     }
@@ -591,6 +625,12 @@ impl ShellCommand {
             | C::StateStartHere
             | C::StateDelete
             | C::PreviewAgain => w.run_animate(self),
+            C::AddBus
+            | C::AddDuckingRule
+            | C::RemoveBus
+            | C::ClearSolo
+            | C::MuteGame
+            | C::HeardAtOnce(_) => w.run_audio(self, actions),
             C::ScreenSize(_) | C::ScreenText(_) | C::SafeArea | C::ScreenSnap => {
                 if let Some(doc) = &mut w.open.screen_doc {
                     match self {
@@ -617,6 +657,11 @@ impl ShellCommand {
                 actions.push(WorkbenchAction::SetAutoUpdate(w.auto_update));
             }
             C::About => w.show_file_page(crate::file_pages::Page::About),
+            C::OpenExportFolder => {
+                if let Some(Some(Ok(folder))) = w.open.export.as_ref().map(|f| f.done.clone()) {
+                    actions.push(WorkbenchAction::ShowFolder(folder));
+                }
+            }
             _ => {}
         }
     }

@@ -279,10 +279,10 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 
 ## Shared 1d: The rest, finished
 
-- **Audio.**
-- **Debug.**
-- **The unbuilt screens, the Build tab and dragging tabs.**
-- **Finish:** the manual, the old code out, the review.
+- **Audio.** *Built.*
+- **Debug.** *Built.*
+- **The unbuilt screens, the Build tab and dragging tabs.** *Built.*
+- **Finish:** the manual, the old code out, the review. *Built, all but the review and the scale check, which the project lead paused (answer 34): both are owed before the gate.*
 
 **Gate:** the project lead works in the new editor for an evening and wouldn't go back.
 

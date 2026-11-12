@@ -140,6 +140,9 @@ pub const SPLIT: f32 = 0.5;
 /// The Library's split when a tileset or a picture's crops open beside
 /// it.
 pub const SPLIT_LIBRARY: f32 = 0.4;
+/// The mixer's share of the Audio tab's center, beside the Bus group
+/// (spec 760: about 60%).
+pub const SPLIT_AUDIO: f32 = 0.6;
 /// The least width of an editor group side by side: narrower than this,
 /// the groups stack (spec 1145). Solis's own.
 pub const GROUP_MIN_W: f32 = 360.0;
@@ -351,6 +354,67 @@ pub const TEMPLATE_NAME_GAP: f32 = 8.0;
 pub const PAGE_SIDE_W: f32 = 320.0;
 /// The gap between a File page's settings and the column beside them.
 pub const PAGE_SIDE_GAP: f32 = 32.0;
+
+/// A mixer strip's width (spec 765).
+pub const STRIP_W: f32 = 104.0;
+/// The gap between mixer strips, and the console's padding (spec 764:
+/// 8 apart, 10 in).
+pub const STRIP_GAP: f32 = 8.0;
+/// The mixer console's padding round its strips.
+pub const STRIP_PAD: f32 = 10.0;
+/// A strip's header: its name over its routing (spec 766).
+pub const STRIP_HEADER_H: f32 = 40.0;
+/// A strip's slot row (an insert, the pan): its height (spec 767).
+pub const STRIP_SLOT_H: f32 = 20.0;
+/// A strip's slot row: its margin at each side.
+pub const STRIP_SLOT_MARGIN: f32 = 6.0;
+/// The least height of a strip's fader and meters (spec 770).
+pub const FADER_MIN_H: f32 = 120.0;
+/// A fader's cap (spec 770: 26 × 16).
+pub const FADER_CAP: [f32; 2] = [26.0, 16.0];
+/// A fader's track: its width.
+pub const FADER_TRACK: f32 = 3.0;
+/// Where a fader's track sits, from the strip's left edge.
+pub const FADER_X: f32 = 38.0;
+/// Where the dB scale's numbers end, from the strip's left edge.
+pub const FADER_SCALE_X: f32 = 76.0;
+/// A level meter's bar: its width (spec 771).
+pub const METER_W: f32 = 5.0;
+/// The gap between a strip's two meter bars.
+pub const METER_GAP: f32 = 2.0;
+/// A meter's peak line: its height.
+pub const METER_PEAK: f32 = 2.0;
+/// The share of a meter's range above which it tops out in amber
+/// (spec 771).
+pub const METER_HOT: f32 = 0.86;
+/// A strip's M and S buttons: their height (spec 773).
+pub const STRIP_BUTTON_H: f32 = 22.0;
+/// A sound events table's row (spec 800).
+pub const TABLE_ROW_H: f32 = 26.0;
+/// A sound events table's header row.
+pub const TABLE_HEADER_H: f32 = 28.0;
+/// The Sound events tab's detail column: its share of the shelf.
+pub const EVENT_DETAIL_SHARE: f32 = 0.5;
+
+/// The Profiler's line over its graph: the frame shown.
+pub const PROFILER_TOP_H: f32 = 24.0;
+/// The frame-time graph's height (spec 467).
+pub const FRAME_GRAPH_H: f32 = 100.0;
+/// The room at the graph's left for "60 fps" and "30 fps".
+pub const FRAME_GRAPH_LABEL_W: f32 = 52.0;
+/// The timeline's column of lane names (spec 477).
+pub const LANE_LABEL_W: f32 = 110.0;
+/// A lane of the timeline, and its ruler (spec 479).
+pub const LANE_H: f32 = 26.0;
+/// A block on a lane: its inset from the lane's top and foot.
+pub const LANE_BLOCK_INSET: f32 = 3.0;
+/// The Statistics column beside the timeline (spec 491).
+pub const STATS_W: f32 = 320.0;
+/// A statistic's bar under its row (CPU, GPU).
+pub const STATS_BAR_H: f32 = 3.0;
+
+/// The shared dialog card's padding (mock-up round 1, `10-dialog-*`).
+pub const DIALOG_PAD: f32 = 20.0;
 
 /// The mark on a part that isn't built yet: a hollow square, this wide.
 pub const UNBUILT_MARK: f32 = 5.0;

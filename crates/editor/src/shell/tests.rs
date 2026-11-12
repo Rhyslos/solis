@@ -84,14 +84,14 @@ fn each_tab_shows_its_own_documents_and_shelf() {
     for (tab, documents, shelf) in [
         // Nothing open: the sequencer's page, and the Console (round 3).
         (RibbonTab::Animate, vec![], ShelfTab::Console),
-        (
-            RibbonTab::Debug,
-            vec![Panel::Game, Panel::Profiler],
-            ShelfTab::Console,
-        ),
+        (RibbonTab::Debug, vec![Panel::Profiler], ShelfTab::Console),
         (RibbonTab::Ui, vec![Panel::Canvas], ShelfTab::Screen),
         (RibbonTab::Library, vec![Panel::Library], ShelfTab::Details),
-        (RibbonTab::Audio, vec![Panel::Mixer], ShelfTab::Bus),
+        (
+            RibbonTab::Audio,
+            vec![Panel::Mixer, Panel::Bus],
+            ShelfTab::SoundEvents,
+        ),
         (RibbonTab::Home, vec![Panel::Viewport], ShelfTab::Entity),
     ] {
         ribbon_tab(&mut h, tab);

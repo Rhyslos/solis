@@ -395,7 +395,23 @@ fn the_setting_in_use_is_what_filter_reads() {
 /// no control of their own to draw: the plan's inventory says "not
 /// drawn" of each. They are in the table so they are counted and
 /// planned, and the walk below doesn't expect to meet them.
-const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
+const NOTHING_TO_DRAW: [(UnbuiltId, &str); 12] = [
+    (
+        UnbuiltId::ShadingPreview,
+        "a group of an unbuilt screen, which is one page card (D2)",
+    ),
+    (
+        UnbuiltId::VfxStack,
+        "a group of an unbuilt screen, which is one page card (D2)",
+    ),
+    (
+        UnbuiltId::MeshViewport,
+        "a group of an unbuilt screen, which is one page card (D2)",
+    ),
+    (
+        UnbuiltId::MeshUv,
+        "a group of an unbuilt screen, which is one page card (D2)",
+    ),
     (
         UnbuiltId::HomeViewMotionCurve,
         "a drawing over the viewport, not a control",
@@ -425,12 +441,53 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 101] = [
+const DRAWN_SO_FAR: [UnbuiltId; 144] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
     UnbuiltId::ShellPlaySimulate,
     UnbuiltId::ShellStatusBranch,
+    // The unbuilt screens' shelves, and the model viewer.
+    UnbuiltId::ShadingShelfParameters,
+    UnbuiltId::ShadingShelfNode,
+    UnbuiltId::ShadingShelfPalette,
+    UnbuiltId::ShadingShelfInstances,
+    UnbuiltId::VfxShelfModule,
+    UnbuiltId::VfxShelfParameters,
+    UnbuiltId::VfxShelfPerformance,
+    UnbuiltId::MeshTab,
+    UnbuiltId::MeshViewLit,
+    UnbuiltId::MeshViewUnlit,
+    UnbuiltId::MeshViewWire,
+    UnbuiltId::MeshViewNormals,
+    UnbuiltId::MeshViewUvCheck,
+    UnbuiltId::MeshShowBounds,
+    UnbuiltId::MeshShowPivot,
+    UnbuiltId::MeshShowCollision,
+    UnbuiltId::MeshLightPreset,
+    UnbuiltId::MeshLightRotate,
+    UnbuiltId::MeshLightBackground,
+    UnbuiltId::MeshLodAuto,
+    UnbuiltId::MeshLodPick,
+    UnbuiltId::MeshLodDensity,
+    UnbuiltId::MeshToolsReimport,
+    UnbuiltId::MeshToolsPivot,
+    UnbuiltId::MeshToolsShot,
+    UnbuiltId::MeshUseShowInLevel,
+    UnbuiltId::MeshShelfOverview,
+    UnbuiltId::MeshShelfLods,
+    UnbuiltId::MeshShelfMaterials,
+    UnbuiltId::MeshShelfCollision,
+    UnbuiltId::MeshShelfSockets,
+    UnbuiltId::MeshShelfImport,
+    // Build.
+    UnbuiltId::BuildTargets,
+    UnbuiltId::BuildTargetWindows,
+    UnbuiltId::BuildTargetPlatforms,
+    UnbuiltId::BuildFull,
+    UnbuiltId::BuildInstaller,
+    UnbuiltId::BuildRustCode,
+    UnbuiltId::BuildLog,
     // The shelves' tabs and tools.
     UnbuiltId::HomeShelfAnimation,
     UnbuiltId::HomeShelfTransport,
@@ -488,6 +545,9 @@ const DRAWN_SO_FAR: [UnbuiltId; 101] = [
     UnbuiltId::DebugShowMemory,
     UnbuiltId::DebugToolsDebugger,
     UnbuiltId::DebugToolsMemory,
+    // Debug's profiler.
+    UnbuiltId::DebugTimelineThreads,
+    UnbuiltId::DebugStatsMemory,
     // File's column, and Recent projects.
     UnbuiltId::FilePlugins,
     UnbuiltId::RecentCardThumbnail,
@@ -525,6 +585,9 @@ const DRAWN_SO_FAR: [UnbuiltId; 101] = [
     UnbuiltId::AudioFxCompress,
     UnbuiltId::AudioFxReverb,
     UnbuiltId::AudioFxLimiter,
+    // Audio's strips.
+    UnbuiltId::AudioStripInserts,
+    UnbuiltId::AudioStripPan,
     // VFX: its ribbon and its page.
     UnbuiltId::VfxEmitterAdd,
     UnbuiltId::VfxEmitterDuplicate,
@@ -595,6 +658,13 @@ fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
             h.run();
         }
     }
+    // The model viewer, from a model's right-click in the Library.
+    let mut asked = Vec::new();
+    h.state_mut().0.library_request(
+        crate::library::LibraryRequest::ViewModel("props/crate.glb".into()),
+        &mut asked,
+    );
+    look_around(&mut h);
     h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);
     for tab in [
         Tab::General,

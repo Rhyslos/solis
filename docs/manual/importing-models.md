@@ -10,7 +10,7 @@ An imported model becomes an [entity](entities.md) in the area, where its file p
 ## How to use it
 
 **From the menu:**
-1. Choose **Library > Import**.
+1. Choose **Library › Import**.
 2. Pick a `.glb` or `.gltf` file and press **Open**.
 
 **By dragging:** drag a `.glb` or `.gltf` file from your file explorer onto the Solis window. While you drag, the window shows where it will go; let go anywhere.
@@ -21,7 +21,7 @@ Then:
 - With a [project](projects-and-the-library.md) open, the file is first copied into the project's assets folder (with the `.bin` and images a `.gltf` reads), so the project keeps it; it then also appears in the **Library**.
 - The model appears in the **Area** panel as one [entity](entities.md), however many parts the file has (they keep their places inside it). **Unpack** in Properties splits it into one entity per part when you need them ([Assemblies](assemblies.md)). A mesh used many times in the file is stored once, with its triangle count. The **×** at the end of its row deletes it from the area. Select it to see its Transform and Model in Properties.
 
-**Exporting from Blender:** File > Export > glTF 2.0, choose **glTF Binary (.glb)**, and keep **+Y Up** ticked (the standard). Solis turns glTF's "Y is up" into its own "Z is up" for you, so the model stands upright.
+**Exporting from Blender:** File › Export › glTF 2.0, choose **glTF Binary (.glb)**, and keep **+Y Up** ticked (the standard). Solis turns glTF's "Y is up" into its own "Z is up" for you, so the model stands upright.
 
 **Exporting from Aventail:** export as glTF (Aventail's manual, "Export and import", explains how). Kits exported from Aventail import the same way.
 

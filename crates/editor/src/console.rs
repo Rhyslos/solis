@@ -407,29 +407,22 @@ fn command_line(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
             console.newer();
         }
     }
-    if !console.choices.is_empty() {
-        ui.horizontal(|ui| {
-            ui.add_space(8.0);
-            ui.add(
-                egui::Label::new(
-                    RichText::new(console.choices.join("   "))
-                        .monospace()
-                        .color(theme::text_weak()),
-                )
-                .truncate(),
-            );
-        });
-    }
     theme::menu_row_frame().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
         ui.horizontal(|ui| {
             ui.label(RichText::new("›").monospace().color(theme::text_weak()));
+            // Tab's choices at the right of the line (round 1,
+            // `09-console-shelf`; round 3, `09-debug-profiler`).
+            let choices = choices_width(ui, &console.choices);
             let output = egui::TextEdit::singleline(&mut console.input)
                 .id(id)
                 .font(egui::TextStyle::Monospace)
                 .hint_text("Type a command (help lists them); ' jumps here")
-                .desired_width(ui.available_width())
+                .desired_width((ui.available_width() - choices).max(0.0))
                 .show(ui);
+            if !console.choices.is_empty() {
+                show_choices(ui, &console.choices);
+            }
             let response = output.response;
             if response.changed() {
                 console.choices.clear();
@@ -458,6 +451,40 @@ fn command_line(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
         });
     });
     request
+}
+
+/// How much room Tab's choices take at the right of the command line.
+fn choices_width(ui: &Ui, choices: &[String]) -> f32 {
+    if choices.is_empty() {
+        return 0.0;
+    }
+    let words = choices.join("  ");
+    crate::widgets::width_of(ui, &words, crate::tokens::text::mono_small())
+        + crate::tokens::size::KEYCAP * 2.0
+        + crate::tokens::size::GAP * 3.0
+}
+
+/// Tab's choices, after a Tab keycap: the first as it would complete,
+/// the rest fainter.
+fn show_choices(ui: &mut Ui, choices: &[String]) {
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        for (i, choice) in choices.iter().enumerate().rev() {
+            let ink = if i == 0 {
+                crate::tokens::text_primary()
+            } else {
+                crate::tokens::text_meta()
+            };
+            ui.add(
+                egui::Label::new(
+                    RichText::new(choice)
+                        .font(crate::tokens::text::mono_small())
+                        .color(ink),
+                )
+                .selectable(false),
+            );
+        }
+        crate::widgets::keycap::keycap(ui, "Tab", crate::widgets::keycap::KeycapState::Bound);
+    });
 }
 
 /// The height of one console row, as in the mockup.

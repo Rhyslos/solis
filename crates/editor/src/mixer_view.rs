@@ -1,44 +1,31 @@
-//! The Mixer panel and a bus in Properties (Phase 7, S4; decision 0056),
-//! as mocked up with the project lead: a strip per bus (its name, a meter
-//! while sound plays, a fader, its volume, mute and solo), Master first;
-//! clicking a strip shows the bus in Properties, with what it's inside,
-//! its volume and its ducking rules.
+//! The Audio tab's state (Phase 7, S4; decision 0056; Screen 10 and
+//! round 3's `08-audio-mixer.png`): the project's buses, mute and solo,
+//! the meters, the bus the Bus group shows and the sound event picked on
+//! the shelf. The console of strips is `mixer_console.rs`, the Bus group
+//! `bus_view.rs`, the Sound events shelf tab `sound_events_view.rs`; each
+//! draws from this and asks for changes as `MixerRequest`s.
 //!
 //! The buses are the project's (`mixer.solmix`, read and written by the
 //! app). An edit is saved once the mouse button is let go
 //! (`WorkbenchAction::SaveMixer`), so dragging a fader saves once. Mute
 //! and solo aren't saved: they're for listening while working. None of it
 //! is an undo step: it's the project's sound, not the area.
-//!
-//! Colours that mean something keep theirs (decision 0060): mute is red,
-//! solo yellow, and meters green, then yellow, then red near full.
 
 use crate::document::Selection;
 use crate::theme;
-use egui::{Color32, RichText, Ui};
-use sound::mixer::{
-    Bus, Ducking, Listening, MASTER, MAX_FADE_S, MAX_RULES, MOST_DUCKING_DB, Mixer, SILENT_DB,
-    VOLUME_RANGE_DB,
-};
+use egui::Ui;
+use sound::mixer::{Listening, MASTER, Mixer, SILENT_DB};
 
-/// Mute's colour while on.
-const MUTE: Color32 = Color32::from_rgb(0xa3, 0x33, 0x33);
-/// Solo's colour while on.
-const SOLO: Color32 = Color32::from_rgb(0x9a, 0x86, 0x10);
-/// A meter's colours: comfortable, getting loud, too loud.
-const METER_LOW: Color32 = Color32::from_rgb(0x4c, 0xaf, 0x6e);
-const METER_MID: Color32 = Color32::from_rgb(0xd8, 0xb8, 0x3a);
-const METER_HIGH: Color32 = Color32::from_rgb(0xe0, 0x55, 0x4c);
 /// How fast a meter falls back, in decibels a second, so a peak can be
 /// seen.
 const METER_FALL_DB_PER_S: f32 = 24.0;
-/// A strip's width.
-const STRIP_WIDTH: f32 = 62.0;
-/// A fader's height.
-const FADER_HEIGHT: f32 = 84.0;
+/// How long a meter's peak line holds before it falls (spec 811: "about
+/// a second").
+const PEAK_HOLD_S: f32 = 1.0;
 
 /// The Mixer's state in the editor: the project's buses, mute and solo,
-/// what the meters show, and the bus Properties shows, if any.
+/// what the meters show, the bus the Bus group shows and the sound event
+/// picked.
 #[derive(Debug, Clone, Default)]
 pub struct MixerState {
     /// The project's buses.
@@ -47,27 +34,35 @@ pub struct MixerState {
     pub(crate) listening: Listening,
     /// What each meter shows, in decibels (falling back after a peak).
     pub(crate) meters: Vec<f32>,
+    /// Each meter's peak line, in decibels, and how long it has held.
+    pub(crate) held: Vec<(f32, f32)>,
     /// Each bus's ducking now, in decibels, while the game plays.
     pub(crate) ducked: Vec<f32>,
-    /// The bus Properties shows, and the area's selection then (a new
-    /// selection shows that instead).
+    /// The bus picked, and the area's selection then (a new selection on
+    /// another tab forgets it; the Bus group then shows Master).
     pub(crate) shown: Option<(usize, Selection)>,
+    /// The Bus group shows the bus's effects (unfinished) in place of
+    /// its ducking.
+    pub(crate) effects: bool,
+    /// The sound event picked in the Sound events shelf tab (its path).
+    pub(crate) event: Option<String>,
 }
 
 impl MixerState {
     /// Takes the meters' newest peaks (amplitudes, 1 full scale) and each
     /// bus's ducking, `dt` seconds after the last: a meter jumps up to a
-    /// peak and falls back slowly.
+    /// peak and falls back slowly; its peak line holds a second first.
     pub(crate) fn update_meters(&mut self, peaks: &[f32], ducked: &[f32], dt: f32) {
         let n = self.mixer.buses.len();
         self.meters.resize(n, SILENT_DB);
-        let fall = METER_FALL_DB_PER_S
-            * if dt.is_finite() {
-                dt.clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-        for (i, shown) in self.meters.iter_mut().enumerate() {
+        self.held.resize(n, (SILENT_DB, 0.0));
+        let dt = if dt.is_finite() {
+            dt.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let fall = METER_FALL_DB_PER_S * dt;
+        for (i, (shown, held)) in self.meters.iter_mut().zip(&mut self.held).enumerate() {
             let peak = peaks.get(i).copied().unwrap_or(0.0);
             let db = if peak.is_finite() && peak > 0.0 {
                 (20.0 * peak.log10()).max(SILENT_DB)
@@ -75,6 +70,13 @@ impl MixerState {
                 SILENT_DB
             };
             *shown = db.max(*shown - fall).max(SILENT_DB);
+            if *shown >= held.0 {
+                *held = (*shown, 0.0);
+            } else if held.1 + dt < PEAK_HOLD_S {
+                held.1 += dt;
+            } else {
+                held.0 = (held.0 - fall).max(*shown);
+            }
         }
         self.ducked = ducked.to_vec();
         self.ducked.resize(n, 0.0);
@@ -82,14 +84,48 @@ impl MixerState {
 
     /// Whether a meter is still moving (so the editor keeps drawing).
     pub(crate) fn meters_moving(&self) -> bool {
-        self.meters.iter().any(|m| *m > SILENT_DB) || self.ducked.iter().any(|d| *d < 0.0)
+        self.meters.iter().any(|m| *m > SILENT_DB)
+            || self.held.iter().any(|(h, _)| *h > SILENT_DB)
+            || self.ducked.iter().any(|d| *d < 0.0)
+    }
+
+    /// The meter of bus `at` now, and its peak line, in decibels.
+    pub(crate) fn meter(&self, at: usize) -> (f32, f32) {
+        let level = self.meters.get(at).copied().unwrap_or(SILENT_DB);
+        let held = self.held.get(at).map_or(level, |(h, _)| *h).max(level);
+        (level, held)
+    }
+
+    /// The bus the Bus group shows: the one picked, or Master.
+    pub(crate) fn bus_shown(&self) -> usize {
+        self.shown
+            .as_ref()
+            .map(|(at, _)| *at)
+            .filter(|at| *at < self.mixer.buses.len())
+            .unwrap_or(0)
+    }
+
+    /// The buses with ducking working on them now, as "Voice ducking
+    /// Music", for the shelf bar while the game plays.
+    pub(crate) fn ducking_now(&self) -> Vec<String> {
+        self.mixer
+            .buses
+            .iter()
+            .zip(&self.ducked)
+            .filter(|(_, d)| **d < -0.05)
+            .flat_map(|(bus, _)| {
+                bus.ducking
+                    .iter()
+                    .map(move |r| format!("{} ducking {}", r.while_bus, bus.name))
+            })
+            .collect()
     }
 }
 
-/// What a click or drag in the Mixer or a bus's Properties asks for.
+/// What a click or drag in the Audio tab asks for.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum MixerRequest {
-    /// Show this bus in Properties.
+    /// Show this bus in the Bus group.
     Select(usize),
     /// The buses changed; `save` once the mouse is let go.
     Changed {
@@ -102,496 +138,43 @@ pub(crate) enum MixerRequest {
     Mute(usize),
     /// Solo or unsolo a bus.
     Solo(usize),
-    /// Mute or unmute everything (the Game panel's button).
+    /// Unsolo every bus.
+    ClearSolo,
+    /// Mute or unmute everything (the Game tab's button, and Monitor's
+    /// Mute the game).
     MuteAll,
+    /// A click on a meter: its peak line drops to the level now.
+    ResetPeak(usize),
+    /// The Bus group shows the effects side (`true`) or the ducking.
+    ShowEffects(bool),
+    /// Pick this sound event in the Sound events shelf tab.
+    PickEvent(String),
+    /// The Effects side's page asked for unfinished parts to be hidden
+    /// (the window's own work: it needs the window).
+    HideUnfinished,
 }
 
-/// The Mixer panel. Returns what was asked for.
-pub(crate) fn mixer_panel(ui: &mut Ui, state: &MixerState, playing: bool) -> Vec<MixerRequest> {
-    let mut requests = Vec::new();
-    theme::menu_row_frame().show(ui, |ui| {
-        ui.set_min_width(ui.available_width());
-        ui.horizontal(|ui| {
-            if ui
-                .button("Add bus")
-                .on_hover_text("A new bus inside the one shown in Properties (or Master)")
-                .clicked()
-            {
-                let mut mixer = state.mixer.clone();
-                let inside = state
-                    .shown
-                    .as_ref()
-                    .and_then(|(i, _)| mixer.buses.get(*i))
-                    .map_or(MASTER.to_owned(), |b| b.name.clone());
-                if let Some(at) = mixer.add_bus(&inside) {
-                    requests.push(MixerRequest::Changed { mixer, save: true });
-                    requests.push(MixerRequest::Select(at));
-                }
-            }
-            ui.separator();
-            ui.label(RichText::new("Heard at once").color(theme::text_weak()))
-                .on_hover_text(
-                    "How many sounds play at once: when more want to, the most important \
-                     are heard (by their event's priority, then the loudest)",
-                );
-            let mut voices = state.mixer.voices;
-            let (lo, hi) = sound::voices::VOICES_RANGE;
-            let field = ui.add(egui::DragValue::new(&mut voices).range(lo..=hi).speed(1));
-            let let_go = field.drag_stopped() || field.lost_focus();
-            if (field.changed() && voices != state.mixer.voices) || let_go {
-                let mut mixer = state.mixer.clone();
-                mixer.voices = voices;
-                let save = let_go || (!field.dragged() && !field.has_focus());
-                requests.push(MixerRequest::Changed { mixer, save });
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.label(RichText::new(status(state, playing)).color(theme::text_weak()));
-            });
-        });
-    });
-    egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-        ui.horizontal_top(|ui| {
-            ui.spacing_mut().item_spacing.x = 2.0;
-            for i in 0..state.mixer.buses.len() {
-                strip(ui, state, i, &mut requests);
-                if i == 0 {
-                    ui.separator();
-                }
-            }
-        });
-    });
-    requests
+/// The bus a new bus goes inside, a rule is added to, or Remove removes:
+/// the one the Bus group shows.
+pub(crate) fn with_bus_shown(state: &MixerState) -> (usize, &sound::mixer::Bus) {
+    let at = state.bus_shown();
+    (at, &state.mixer.buses[at])
 }
 
-/// The line at the top right: playing or not, and who's ducking whom.
-fn status(state: &MixerState, playing: bool) -> String {
-    if !playing {
-        return "Meters move while the game plays".to_owned();
-    }
-    let ducking: Vec<String> = state
-        .mixer
-        .buses
-        .iter()
-        .zip(&state.ducked)
-        .filter(|(_, d)| **d < -0.05)
-        .flat_map(|(bus, _)| {
-            bus.ducking
-                .iter()
-                .map(move |r| format!("{} ducking {}", r.while_bus, bus.name))
-        })
-        .collect();
-    if ducking.is_empty() {
-        "Playing".to_owned()
-    } else {
-        format!("Playing · {}", ducking.join(", "))
-    }
-}
-
-/// One bus's strip.
-fn strip(ui: &mut Ui, state: &MixerState, i: usize, requests: &mut Vec<MixerRequest>) {
-    let bus = &state.mixer.buses[i];
-    let selected = state.shown.as_ref().is_some_and(|(s, _)| *s == i);
-    let frame = egui::Frame::new()
-        .inner_margin(egui::Margin::symmetric(2, 4))
-        .corner_radius(3)
-        .fill(if selected {
-            theme::hover()
-        } else {
-            Color32::TRANSPARENT
-        });
-    frame.show(ui, |ui| {
-        ui.set_width(STRIP_WIDTH);
-        ui.vertical_centered(|ui| {
-            let name = RichText::new(&bus.name).color(if i == 0 {
-                theme::text_strong()
-            } else {
-                theme::text()
-            });
-            if ui
-                .add(
-                    egui::Label::new(name)
-                        .truncate()
-                        .sense(egui::Sense::click()),
-                )
-                .on_hover_text(&bus.name)
-                .clicked()
-            {
-                requests.push(MixerRequest::Select(i));
-            }
-            ui.horizontal(|ui| {
-                let muted = state.listening.muted.contains(&bus.name);
-                if toggle(ui, "M", muted, MUTE, &format!("Mute {}", bus.name)) {
-                    requests.push(MixerRequest::Mute(i));
-                }
-                if i > 0 {
-                    let soloed = state.listening.soloed.contains(&bus.name);
-                    let hint = format!("Solo {}: hear only it while any bus is soloed", bus.name);
-                    if toggle(ui, "S", soloed, SOLO, &hint) {
-                        requests.push(MixerRequest::Solo(i));
-                    }
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.add_space(8.0);
-                // The fader as tall as the meter beside it.
-                ui.spacing_mut().slider_width = FADER_HEIGHT;
-                meter(ui, state.meters.get(i).copied().unwrap_or(SILENT_DB));
-                let mut volume = bus.volume_db;
-                let fader = ui
-                    .add(
-                        egui::Slider::new(&mut volume, VOLUME_RANGE_DB.0..=VOLUME_RANGE_DB.1)
-                            .vertical()
-                            .show_value(false),
-                    )
-                    .on_hover_text(format!(
-                        "{}'s volume (double-click puts it back to 0 dB)",
-                        bus.name
-                    ));
-                // Sliders only sense dragging: clicks too, for the
-                // double-click.
-                let fader = fader.interact(egui::Sense::click());
-                if fader.double_clicked() {
-                    // Back to 0 dB, as in most sound programs.
-                    let mut mixer = state.mixer.clone();
-                    mixer.buses[i].volume_db = 0.0;
-                    requests.push(MixerRequest::Changed { mixer, save: true });
-                } else {
-                    fader_changed(state, i, volume, &fader, requests);
-                }
-            });
-            let mut volume = bus.volume_db;
-            let field = ui.add(
-                egui::DragValue::new(&mut volume)
-                    .range(VOLUME_RANGE_DB.0..=VOLUME_RANGE_DB.1)
-                    .speed(0.1)
-                    .fixed_decimals(1)
-                    .suffix(" dB"),
-            );
-            fader_changed(state, i, volume, &field, requests);
-            let ducked = state.ducked.get(i).copied().unwrap_or(0.0);
-            let note = if ducked < -0.05 {
-                format!("ducked {ducked:.0}")
-            } else {
-                String::new()
-            };
-            if !note.is_empty() {
-                ui.label(RichText::new(note).color(theme::WARNING).size(10.5));
-            }
-        });
-    });
-}
-
-/// A change to bus `i`'s fader from `response`: kept while dragging,
-/// saved once let go.
-fn fader_changed(
-    state: &MixerState,
-    i: usize,
-    volume: f32,
-    response: &egui::Response,
-    requests: &mut Vec<MixerRequest>,
-) {
-    let changed = response.changed() && volume != state.mixer.buses[i].volume_db;
-    let let_go = response.drag_stopped() || response.lost_focus();
-    if !changed && !let_go {
-        return;
-    }
+/// A new bus inside the one shown (or Master), picked: the ribbon's Bus.
+pub(crate) fn add_bus(state: &MixerState) -> Vec<MixerRequest> {
     let mut mixer = state.mixer.clone();
-    mixer.buses[i].volume_db = volume;
-    let save = let_go || (changed && !response.dragged() && !response.has_focus());
-    requests.push(MixerRequest::Changed { mixer, save });
-}
-
-/// A small on/off button, filled with `color` while on.
-fn toggle(ui: &mut Ui, text: &str, on: bool, color: Color32, hint: &str) -> bool {
-    let button = egui::Button::new(RichText::new(text).color(if on {
-        Color32::WHITE
-    } else {
-        theme::text_weak()
-    }))
-    .min_size(egui::vec2(20.0, 17.0))
-    .fill(if on { color } else { theme::field() });
-    let response = ui.add(button).on_hover_text(hint);
-    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, on, hint));
-    response.clicked()
-}
-
-/// A meter: a bar as tall as the level, green, then yellow from -12 dB,
-/// red from -3 dB.
-fn meter(ui: &mut Ui, db: f32) {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(6.0, FADER_HEIGHT), egui::Sense::hover());
-    let painter = ui.painter();
-    painter.rect_filled(rect, 1.0, theme::line());
-    let share = |db: f32| ((db - SILENT_DB) / -SILENT_DB).clamp(0.0, 1.0);
-    let top = rect.bottom() - rect.height() * share(db);
-    for (from, to, color) in [
-        (SILENT_DB, -12.0, METER_LOW),
-        (-12.0, -3.0, METER_MID),
-        (-3.0, 0.0, METER_HIGH),
-    ] {
-        let low = rect.bottom() - rect.height() * share(from);
-        let high = rect.bottom() - rect.height() * share(to);
-        let y_top = high.max(top);
-        if y_top < low {
-            painter.rect_filled(
-                egui::Rect::from_x_y_ranges(rect.x_range(), y_top..=low),
-                0.0,
-                color,
-            );
-        }
+    let inside = mixer
+        .buses
+        .get(state.bus_shown())
+        .map_or(MASTER.to_owned(), |b| b.name.clone());
+    match mixer.add_bus(&inside) {
+        Some(at) => vec![
+            MixerRequest::Changed { mixer, save: true },
+            MixerRequest::Select(at),
+        ],
+        None => Vec::new(),
     }
-}
-
-/// A bus in Properties: its name, what it's inside, its volume, and its
-/// ducking rules. Returns what was asked for.
-pub(crate) fn bus_properties(ui: &mut Ui, state: &MixerState, at: usize) -> Vec<MixerRequest> {
-    let mut requests = Vec::new();
-    let Some(bus) = state.mixer.buses.get(at) else {
-        return requests;
-    };
-    egui::ScrollArea::vertical()
-        .auto_shrink(false)
-        .show(ui, |ui| {
-            egui::Frame::new()
-                .inner_margin(theme::panel_margin())
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(&bus.name).heading());
-                        ui.label(RichText::new("· bus").color(theme::text_weak()));
-                    });
-                    ui.add_space(4.0);
-                    egui::Grid::new(("bus", at))
-                        .num_columns(2)
-                        .spacing([12.0, 6.0])
-                        .show(ui, |ui| {
-                            identity_rows(ui, state, at, bus, &mut requests);
-                        });
-                    ui.add_space(6.0);
-                    ui.separator();
-                    ui.label(RichText::new("Ducking").strong());
-                    ui.label(
-                        RichText::new(format!(
-                            "{} gets quieter while another bus plays: music under voices.",
-                            bus.name
-                        ))
-                        .color(theme::text_weak())
-                        .size(11.0),
-                    );
-                    for (r, rule) in bus.ducking.iter().enumerate() {
-                        rule_rows(ui, state, at, r, rule, &mut requests);
-                    }
-                    if bus.ducking.len() < MAX_RULES
-                        && state.mixer.buses.len() > 1
-                        && ui.button("Add a ducking rule").clicked()
-                    {
-                        let mut mixer = state.mixer.clone();
-                        let other = mixer
-                            .buses
-                            .iter()
-                            .find(|b| b.name != bus.name && b.name != MASTER)
-                            .map_or(MASTER.to_owned(), |b| b.name.clone());
-                        mixer.buses[at].ducking.push(Ducking {
-                            while_bus: other,
-                            ..Ducking::default()
-                        });
-                        requests.push(MixerRequest::Changed { mixer, save: true });
-                    }
-                    let ducked = state.ducked.get(at).copied().unwrap_or(0.0);
-                    if ducked < -0.05 {
-                        ui.add_space(4.0);
-                        ui.label(
-                            RichText::new(format!("Right now: {ducked:.0} dB"))
-                                .color(theme::WARNING),
-                        );
-                    }
-                    if at > 0 {
-                        ui.add_space(10.0);
-                        if ui
-                            .button("Remove bus")
-                            .on_hover_text(
-                                "Buses inside it move up; sound events on it play through Master",
-                            )
-                            .clicked()
-                        {
-                            let mut mixer = state.mixer.clone();
-                            mixer.remove_bus(at);
-                            requests.push(MixerRequest::Changed { mixer, save: true });
-                        }
-                    }
-                });
-        });
-    requests
-}
-
-/// The name, Inside and Volume rows.
-fn identity_rows(
-    ui: &mut Ui,
-    state: &MixerState,
-    at: usize,
-    bus: &Bus,
-    requests: &mut Vec<MixerRequest>,
-) {
-    ui.label(RichText::new("Name").color(theme::text_weak()));
-    if at == 0 {
-        ui.label(MASTER)
-            .on_hover_text("Master is the top bus, and keeps its name");
-    } else {
-        let id = ui.id().with(("bus-name", at));
-        let mut text = ui
-            .data(|d| d.get_temp::<String>(id))
-            .unwrap_or_else(|| bus.name.clone());
-        let field = ui.add(egui::TextEdit::singleline(&mut text).desired_width(140.0));
-        if field.changed() {
-            ui.data_mut(|d| d.insert_temp(id, text.clone()));
-        }
-        if field.lost_focus() {
-            ui.data_mut(|d| d.remove::<String>(id));
-            let mut mixer = state.mixer.clone();
-            if text.trim() != bus.name && mixer.rename_bus(at, &text) {
-                requests.push(MixerRequest::Changed { mixer, save: true });
-            }
-        }
-    }
-    ui.end_row();
-    if at > 0 {
-        ui.label(RichText::new("Inside").color(theme::text_weak()));
-        egui::ComboBox::from_id_salt(("bus-inside", at))
-            .selected_text(&bus.inside)
-            .show_ui(ui, |ui| {
-                for (i, other) in state.mixer.buses.iter().enumerate() {
-                    // Not itself, nor a bus inside it (that would be a loop).
-                    if state.mixer.is_within(i, at)
-                        || (state.mixer.depth(i) >= sound::mixer::MAX_DEPTH)
-                    {
-                        continue;
-                    }
-                    if ui
-                        .selectable_label(other.name == bus.inside, &other.name)
-                        .clicked()
-                        && other.name != bus.inside
-                    {
-                        let mut mixer = state.mixer.clone();
-                        mixer.buses[at].inside.clone_from(&other.name);
-                        // Read back through the file's tidying, so the
-                        // list keeps each bus after its parent.
-                        let text = sound::mixer::write(&mixer);
-                        if let Ok(read) = sound::mixer::read(&text) {
-                            requests.push(MixerRequest::Changed {
-                                mixer: read.mixer,
-                                save: true,
-                            });
-                        }
-                    }
-                }
-            });
-        ui.end_row();
-    }
-    ui.label(RichText::new("Volume").color(theme::text_weak()));
-    let mut volume = bus.volume_db;
-    let field = ui.add(
-        egui::DragValue::new(&mut volume)
-            .range(VOLUME_RANGE_DB.0..=VOLUME_RANGE_DB.1)
-            .speed(0.1)
-            .fixed_decimals(1)
-            .suffix(" dB"),
-    );
-    fader_changed(state, at, volume, &field, requests);
-    ui.end_row();
-}
-
-/// One ducking rule's rows.
-fn rule_rows(
-    ui: &mut Ui,
-    state: &MixerState,
-    at: usize,
-    r: usize,
-    rule: &Ducking,
-    requests: &mut Vec<MixerRequest>,
-) {
-    let mut changed: Option<(Ducking, bool)> = None;
-    egui::Grid::new(("bus-rule", at, r))
-        .num_columns(2)
-        .spacing([12.0, 4.0])
-        .show(ui, |ui| {
-            ui.label(RichText::new("Quieter while").color(theme::text_weak()));
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_id_salt(("bus-rule-while", at, r))
-                    .selected_text(&rule.while_bus)
-                    .show_ui(ui, |ui| {
-                        for (i, other) in state.mixer.buses.iter().enumerate() {
-                            if i == at {
-                                continue;
-                            }
-                            if ui
-                                .selectable_label(other.name == rule.while_bus, &other.name)
-                                .clicked()
-                            {
-                                let mut new = rule.clone();
-                                new.while_bus.clone_from(&other.name);
-                                changed = Some((new, true));
-                            }
-                        }
-                    });
-                if ui
-                    .small_button("×")
-                    .on_hover_text("Remove this rule")
-                    .clicked()
-                {
-                    let mut mixer = state.mixer.clone();
-                    mixer.buses[at].ducking.remove(r);
-                    requests.push(MixerRequest::Changed { mixer, save: true });
-                }
-            });
-            ui.end_row();
-            let number = |ui: &mut Ui, label: &str, value: f32, range, suffix: &str| {
-                ui.label(RichText::new(label).color(theme::text_weak()));
-                let mut v = value;
-                let field = ui.add(
-                    egui::DragValue::new(&mut v)
-                        .range(range)
-                        .speed(0.05)
-                        .fixed_decimals(1)
-                        .suffix(suffix),
-                );
-                ui.end_row();
-                let let_go = field.drag_stopped() || field.lost_focus();
-                (field.changed() && v != value)
-                    .then_some((v, let_go || (!field.dragged() && !field.has_focus())))
-                    .or_else(|| let_go.then_some((v, true)))
-            };
-            if let Some((v, save)) = number(ui, "By", rule.by_db, MOST_DUCKING_DB..=0.0, " dB") {
-                changed = Some((
-                    Ducking {
-                        by_db: v,
-                        ..rule.clone()
-                    },
-                    save,
-                ));
-            }
-            if let Some((v, save)) = number(ui, "Fade down", rule.down_s, 0.0..=MAX_FADE_S, " s") {
-                changed = Some((
-                    Ducking {
-                        down_s: v,
-                        ..rule.clone()
-                    },
-                    save,
-                ));
-            }
-            if let Some((v, save)) = number(ui, "Fade back", rule.back_s, 0.0..=MAX_FADE_S, " s") {
-                changed = Some((
-                    Ducking {
-                        back_s: v,
-                        ..rule.clone()
-                    },
-                    save,
-                ));
-            }
-        });
-    if let Some((new, save)) = changed {
-        let mut mixer = state.mixer.clone();
-        mixer.buses[at].ducking[r] = new;
-        requests.push(MixerRequest::Changed { mixer, save });
-    }
-    ui.add_space(4.0);
 }
 
 impl crate::Workbench {
@@ -669,15 +252,27 @@ impl crate::Workbench {
                 &self.open.mixer.mixer,
                 at,
             ),
+            MixerRequest::ClearSolo => self.open.mixer.listening.soloed.clear(),
             MixerRequest::MuteAll => {
                 self.open.mixer.listening.all_muted = !self.open.mixer.listening.all_muted;
             }
+            MixerRequest::ResetPeak(at) => {
+                let level = self.open.mixer.meter(at).0;
+                if let Some(held) = self.open.mixer.held.get_mut(at) {
+                    *held = (level, 0.0);
+                }
+            }
+            MixerRequest::ShowEffects(effects) => self.open.mixer.effects = effects,
+            MixerRequest::PickEvent(path) => self.open.mixer.event = Some(path),
+            // Done by the frame, which has the window (`Workbench::show`).
+            MixerRequest::HideUnfinished => {}
         }
     }
 }
 
-/// The Game panel's mute button, in its top right corner: a speaker,
-/// crossed out in red while everything is muted. Returns whether it was
+/// The Game tab's mute button, in its top right corner: a speaker,
+/// crossed out in amber (mute's colour, spec 784) while everything is
+/// muted. Returns whether it was
 /// clicked.
 pub(crate) fn game_mute_button(ui: &mut Ui, panel: egui::Rect, muted: bool) -> bool {
     let size = egui::vec2(26.0, 22.0);
@@ -719,7 +314,7 @@ pub(crate) fn game_mute_button(ui: &mut Ui, panel: egui::Rect, muted: bool) -> b
                 rect.left_bottom() + egui::vec2(6.0, -5.0),
                 rect.right_top() + egui::vec2(-6.0, 5.0),
             ],
-            egui::Stroke::new(2.0, MUTE),
+            egui::Stroke::new(2.0, crate::tokens::WARNING),
         );
     }
     response.clicked()
@@ -778,7 +373,7 @@ mod tests {
         assert_eq!(h.state().0.ribbon_tab(), crate::shell::RibbonTab::Audio);
         assert!(crate::test_support::in_view(&h.state().0, Panel::Mixer));
         for bus in ["Master", "Music", "Effects", "Voice", "Ambience", "UI"] {
-            assert!(h.query_by_label(bus).is_some(), "{bus}");
+            assert!(h.query_all_by_label(bus).next().is_some(), "{bus}");
         }
         assert!(
             h.query_by_label("Meters move while the game plays")
@@ -803,15 +398,15 @@ mod tests {
     }
 
     #[test]
-    fn clicking_a_bus_shows_it_in_properties_and_add_bus_saves() {
+    fn clicking_a_bus_shows_it_in_the_bus_group_and_add_bus_saves() {
         let mut h = with_the_mixer();
         h.get_by_label("Music").click();
         h.run();
         assert_eq!(h.state().0.open.mixer.shown.as_ref().map(|s| s.0), Some(1));
         assert!(h.query_by_label("Quieter while").is_some());
         assert!(h.query_by_label("Remove bus").is_some());
-        // A new bus goes inside the one shown.
-        h.get_by_label("Add bus").click();
+        // A new bus goes inside the one shown (the ribbon's Bus).
+        h.get_by_label("Add a bus").click();
         h.run();
         let saves = saved(&mut h);
         assert_eq!(saves.len(), 1);

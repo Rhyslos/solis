@@ -8,10 +8,11 @@
 - A single sound you only ever play once, such as one piece of music, still works best as an event with one take: the event holds its settings.
 
 ## How to use it
-1. **Make one:** in the **Library**, **New > Sound event** (right-click in the Library, or **+ New**). It's made in the folder shown, called "New sound event", and shown in Properties. Rename it like any file (right-click > **Rename…**), say to `footstep`.
+1. **Make one:** in the **Library**, **New › Sound event** (right-click in the Library, or **+ New**). It's made in the folder shown, called "New sound event", and shown in Details (Properties). Rename it like any file (right-click › **Rename…**), say to `footstep`.
 2. **Add takes:** drag sound files from the Library onto the event's tile, or into the **Takes** list in Properties. Five to eight takes of a footstep is plenty. The tile shows how many it has (×5).
 3. **Listen:** press **Play** in Properties, or point at the event's tile and click its **▶**. Each press picks a different take, pitch and volume, never the same take twice in a row, and the line under Play says what it picked. Press it a few times to hear the variety.
-4. **Change how it sounds:** edit the settings below in Properties. Each change is saved to the event's `.solsound` file as soon as you let go of the mouse. To take a take out, click the **×** at the end of its row (the sound file itself stays in the project).
+4. **Every event in one place:** the **Audio** tab's **Sound events** shelf tab lists every sound event in the project, with its bus, volume, where it's heard and how many takes; click one to change and play it beside the list, as in the Library's Details.
+5. **Change how it sounds:** edit the settings below in Properties. Each change is saved to the event's `.solsound` file as soon as you let go of the mouse. To take a take out, click the **×** at the end of its row (the sound file itself stays in the project).
 
 ## Settings
 | Setting | What it does |
@@ -29,7 +30,7 @@
 
 ## Sounds that keep playing
 
-An engine's hum, a campfire, a radio: add an **AudioSource** to the entity (Properties > Add component > AudioSource), and type the sound event's name in **Sound event**, its file in assets without `.solsound` (`sfx/engine`). It plays over and over while the game runs, following the entity, from Play (or when game code makes the entity) until the entity goes. **Playing** switches it off and on, and game code does the same with `setSoundPlaying` ([Game code: Sounds](game-code.md#sounds)). **Volume** makes it louder or quieter on top of the event's own.
+An engine's hum, a campfire, a radio: add an **AudioSource** to the entity (Properties › **+ Component** › AudioSource), and type the sound event's name in **Sound event**, its file in assets without `.solsound` (`sfx/engine`). It plays over and over while the game runs, following the entity, from Play (or when game code makes the entity) until the entity goes. **Playing** switches it off and on, and game code does the same with `setSoundPlaying` ([Game code: Sounds](game-code.md#sounds)). **Volume** makes it louder or quieter on top of the event's own.
 
 Thousands of them are fine: only the most important are heard at once (the [Mixer](mixer.md)'s **Heard at once**), and the rest rest. A resting one isn't mixed at all, but it keeps its place in the sound: walk up to a campfire that was resting and it carries on where it would have been, not from the start. A save game keeps whether each was on or off.
 

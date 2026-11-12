@@ -1,9 +1,11 @@
-//! The dockable panels.
+//! The panels: each one area of the editor with one job, drawn where
+//! the shell's table puts it (`shell/workspaces.rs`).
 
 use crate::icons::Icon;
 use serde::{Deserialize, Serialize};
 
-/// One dockable panel. Each appears exactly once in a layout.
+/// One panel. Each is in one place on a tab: a document of a group, or a
+/// column of a shelf tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Panel {
     /// The 3D view of the area.
@@ -71,11 +73,20 @@ pub enum Panel {
     /// The project's pictures for the canvas's Image tool: on the UI
     /// tab's Screen shelf tab (round 3).
     Pictures,
+    /// The bus picked in the mixer, with its ducking: the Audio tab's
+    /// second group (Screen 10, round 3).
+    Bus,
+    /// The project's sound events as a table, and the one picked: the
+    /// Audio tab's Sound events shelf tab.
+    SoundEvents,
+    /// Export for playtesting as a page: the Build tab's middle (round
+    /// 3, `10-build-tab`). The workbench draws it where the shell puts it.
+    Export,
 }
 
 impl Panel {
-    /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 12] = [
+    /// Every panel that is always somewhere (the rest come with a file).
+    pub const ALL: [Self; 15] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -88,10 +99,13 @@ impl Panel {
         Self::Mixer,
         Self::Assets,
         Self::Placement,
+        Self::Bus,
+        Self::SoundEvents,
+        Self::Export,
     ];
 
     /// Panels that come and go with what's open (a clips file), never in
-    /// [`Self::ALL`] or the Window menu, and never saved in a layout.
+    /// [`Self::ALL`].
     pub const OPEN_WITH_A_FILE: [Self; 14] = [
         Self::Clips,
         Self::Frames,
@@ -149,6 +163,9 @@ impl Panel {
             Self::Parameters => "Parameters",
             Self::Preview => "Preview",
             Self::Pictures => "Pictures",
+            Self::Bus => "Bus",
+            Self::SoundEvents => "Sound events",
+            Self::Export => "Export for playtesting",
         }
     }
 
@@ -181,6 +198,9 @@ impl Panel {
             Self::Parameters => Icon::Sliders,
             Self::Preview => Icon::Play,
             Self::Pictures => Icon::Picture,
+            Self::Bus => Icon::Sliders,
+            Self::SoundEvents => Icon::SoundEvent,
+            Self::Export => Icon::Build,
         }
     }
 }

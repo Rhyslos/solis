@@ -33,7 +33,7 @@ There are none. Old backups are tidied away by themselves:
 - A file you save from inside `.solis/backups/` (to look at an old one) is saved as it is, with no backup of its own: Solis never tidies away a backup you're working in.
 - **Problem:** you want the old file back. **Why:** an upgrade changed something you didn't expect. **Fix:** copy the file from `.solis/backups/<date and time>/` back over the new one, or use Git to go back. To open it in its old layout, use the Solis build that saved it (the last ten are kept on the Releases page; see [Installing and updating](installing-and-updating.md)).
 - **Problem:** the backups are gone. **Why:** `.solis/` is also Solis's [cache](concepts.md#projects); deleting the whole folder deletes the backups with it. **Fix:** nothing is lost while the project is in Git: its history has every committed version. Deleting `.solis/cache` alone keeps them.
-- **Problem:** the Console says *"this … file was saved by a newer version"*. **Why:** someone saved it with a newer Solis. **Fix:** update Solis (File > Updates > Check now).
+- **Problem:** the Console says *"this … file was saved by a newer version"*. **Why:** someone saved it with a newer Solis. **Fix:** update Solis (File › Updates › Check now).
 - The backups folder isn't committed to Git (new projects' `.gitignore` leaves out `.solis/`), so each computer keeps its own.
 
 ## Related

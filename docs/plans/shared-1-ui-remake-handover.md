@@ -4,6 +4,10 @@ Written 2026-11-11, when the project lead paused the work to save usage ("record
 
 ## Where it stands
 
+**2026-11-12: the remake is finished.** All four parts are built (Part D, M13 to M16, is the last pull request); what each milestone left for later is listed in one place at the top of the plan. **What the project lead asked next (answer 34): stop and wait.** Nothing else starts after the UI: the paused code review (and the phase's own review and scale check, owed before Shared 1d's gate) does not resume and the next phase does not begin until the project lead says so.
+
+The table below is how it stood when the work was paused on 2026-11-11.
+
 | Milestone | State |
 | --- | --- |
 | **M1 The look** (tokens, fonts, one theme, five accents, picture tests) | Merged (pull request 236) |

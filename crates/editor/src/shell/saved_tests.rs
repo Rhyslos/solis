@@ -31,6 +31,8 @@ fn a_frame_reads_back_as_it_was_saved() {
             shelf_folded: true,
             split: crate::tokens::size::SPLIT,
             front: [None, None],
+            alone: None,
+            merged: false,
         }
     );
     assert_eq!(restored.arrangement(RibbonTab::Debug).split, 0.3);

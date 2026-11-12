@@ -13,14 +13,14 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 ## How to use it
 
 **Make a project**
-1. **File > New project** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
+1. **File › New project** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
 2. Solis makes `project.solis`, an `assets` folder, and a hidden `.solis` folder for its cache. If you use Git, it also adds `.gitignore` and `.gitattributes` files set up for games.
 
-**Open a project:** **File > Open…** and choose the project's folder, or pick it from **File > Recent projects** ([Projects](launcher.md)). Solis doesn't open the last project again when it starts: it always starts on Recent projects, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
+**Open a project:** **File › Open…** and choose the project's folder, or pick it from **File › Recent projects** ([Projects](launcher.md)). Solis doesn't open the last project again when it starts: it always starts on Recent projects, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
 
 **Opening another project starts afresh.** Everything of the project you leave goes with it: its area, the files open in tabs (Clips, Frames, Animator, Map, Tileset, Atlas Crop, the UI canvas) and their undo steps, components' values you copied, and a `seed` chosen in the Console. Nothing of one project can then be saved into another by mistake, which matters most with a copy of a project, whose files have the same names. What's yours stays as it is: the layout, the cameras, the theme and the Console's messages.
 
-**Add models:** **Library > Import**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project's assets and placed in the area. You can also put files straight into the assets folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
+**Add models:** **Library › Import**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project's assets and placed in the area. You can also put files straight into the assets folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
 
 **Find your way around the Library**
 - The Library tab's **ribbon** holds what you do with files: **Add** (**Import** with its list, **Create** for anything New makes, **Folder**), **View** (**List** for a list in place of tiles, **Show folders** for the folder tree), **Filter** (**Type: All ▾**: one group of kinds at a time) and **Use** (**Place**: puts the picked file where the camera looks, and brings Home to the front). Tags, Missing references, Source control and Show in area are [unfinished parts](unfinished-parts.md).

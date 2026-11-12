@@ -240,11 +240,11 @@ impl Workbench {
         self.documents = folder;
     }
 
-    /// Opens Export for playtesting: File › Project settings › Build,
-    /// filled in afresh.
+    /// Opens Export for playtesting: the Build tab's page (also File ›
+    /// Project settings › Build), filled in afresh.
     pub fn open_export(&mut self) {
         self.prepare_export();
-        self.show_settings(crate::file_pages::Tab::Build);
+        self.show_tab(crate::shell::RibbonTab::Build);
     }
 
     /// Fills in Export for playtesting: the game named after the project,

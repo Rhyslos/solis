@@ -6,6 +6,27 @@ Written 2026-11-11 from reading the code and the design, before anything was bui
 
 **What was asked** (the project lead, 2026-11-11): remake all of Solis's interface to this design; where the engine lacks a feature the design shows, put a placeholder page or element; and one setting hides everything that doesn't work yet.
 
+**Where it stands (2026-11-12): the remake is built.** All sixteen milestones are built (M1 to M4 in Part A, M5 to M9 in Part B, M10 to M12 in Part C, M13 to M16 in Part D, each part one pull request, answer 36). **Owed before Shared 1d's gate:** the end-of-phase code review (decision 0027: three reviewers over everything since M1) and the scale check with a case for the shell; the project lead paused both (answer 34), and after the UI nothing else starts until they say so. The hand-over file says the same: [`shared-1-ui-remake-handover.md`](shared-1-ui-remake-handover.md).
+
+### What the remake left for later, in one place
+
+Gathered from the "As built" notes of M1 to M16 below, for a later phase to pick up. None of it blocks using the editor; each is a difference from the design or a piece the notes chose not to build.
+
+- **The kit and the look (M1, M2):** egui's own checkbox and focused field inside today's panels can't take the design's shapes through `theme.rs` (each screen uses the kit's own instead); `InterfaceLook::ribbon_labels` has no effect yet; the theme still re-exports the old colour names over the tokens (`theme::text()` and the rest, used in about 50 files): moving each file onto `tokens` is mechanical work left as it is.
+- **The top (M3):** three small looks to show the project lead (the small list arrow on Model and Light; "Trigger zone" not fitting its 50 px button; File's column no longer has Input, done in M9); no test samples the top of the window against the design's own pictures 01 and 06.
+- **The middle (M4):** the unsaved dot on a document tab (spec 124) is only in the tab bar's path; the window smoke test's positions for the new frame haven't run on GitHub's runners (the Linux jobs are paused, decision 0102).
+- **Home (M5):** the 10,000-entity frame-time case for the scale check; dropping a tile on a card's field (`home.object.assign-drop`); the "just edited" border (`home.object.edited-border`); BUG-27 (the text view parses Markdown every frame); the Game tab's pills; the measured layout of the pills and cards against spec 183-216; Screen 1's sampled colours and side-by-side sheet.
+- **Placing (M6):** the ghost's bounds box, the snap guides and drag trail; the Area column's "(placing)" row and its footer (`place.scene.target`); lights as tiles to place.
+- **Library (M7):** Back and Up and the breadcrumb's folder list; a Used by shelf tab; Details' preview box and facts in two columns; `library/` split further (`browser.rs`, `grid.rs`, `list.rs`, `details.rs`, `menus.rs`); rename in place; a folder of 5,000 files' frame time.
+- **File pages (M8, M9):** the splash's dead update question (DEBT-01); Screen 7's sampled colours beyond four; the settings search marking the words it matched; settings as results in the command search (`shell.search.settings`); Input's Test input card and status-bar count; Preferences' and Project settings' status-bar words; Screens 8, 12 and 13's sampled colours and approved pictures.
+- **Tile maps, tilesets, crops (M10):** the Map tab's Tileset and Size rows and "Open the tileset"; the swatch beside the terrain in hand; the terrains' colour column and the terrain's settings as their own column; a Rules shelf tab; the numbered step pills and the picture's file and size pills; "13 of 15 filled"; Mark up from the template on the ribbon; the hint pills over the tileset and the picture; the crop preview's sizes and its "In game code / In a screen" rows; the Crops tab's tools on the shelf bar; six small new icons; `tileset_view.rs` split by group; BUG-22.
+- **Animate (M11):** a clips file as a document of its own; the transport on the shelf bar; Events and Frames › Add on the ribbon; "Clip · greet" and "State · Walk" as shelf tab names; Transition and Fit; the graph in the node graph's tokens; the Playback group as unfinished parts; BUG-21.
+- **Game screens (M12):** Preview values and the zoom on the ribbon (they stay over the canvas); the canvas's size and zoom pills; Properties as the design's cards; the Pictures column as tiles; the Elements count; the status bar's words.
+- **Audio (M13):** the Sound events table's **Playing** column and the shelf bar's "9 of 64 heard" (the app counts what plays; the editor isn't told yet); the meter pair shows the bus's one level on both bars (left and right apart is `audio.meters.stereo`, not drawn); the Effects segment of the Bus group's switch has no hollow mark; the Bus group's header is a document tab ("Music › Bus"), not the design's breadcrumb; the event's detail is today's one column, not the design's three; a strip has no keyboard focus.
+- **Debug (M14):** the Profiler's blocks in the design's culprit colours beyond Game code; hovering a bar for its frame; a range of frames; the dashed budget line inside the timeline; the Console's completions shown only after Tab (not as you type).
+- **The rest (M15):** a dragged tab's arrangement isn't saved between runs; the Build page's "Exported to" line as the design's green bar (it's on the card); the model viewer's page has no line about the model (triangles, levels of detail); with the window narrow, Build's card column goes under the settings.
+- **Finish (M16):** the review and the scale check (above); the unfinished parts' walk (`unbuilt_tests.rs`, `DRAWN_SO_FAR`) meets 144 of the table's 180 parts; 12 have nothing to draw (listed with why), and 24 are drawn only in a state the walk doesn't make (Home's Place tab, a Model card, a sound event picked, the Bus group's Effects side, Animate with a file open): the walk should open those too, then the list becomes the whole table less the twelve; coverage and mutation testing of `shell/`, `widgets/` and `unbuilt.rs`; every screen's approved picture renewed and the side-by-side sheets of all thirteen screens for the gate.
+
 ## What the project lead has decided
 
 Every answer so far, with its date. These override the plan's own recommendations: where a recommendation was overruled, the milestone sections below already say what was decided, and section 7 marks each decision as settled or still open. The decisions are recorded in [0099](../decisions/0099-the-g-layout.md) (the G layout), [0100](../decisions/0100-one-theme-five-accents.md) (one theme, five accents) and [0101](../decisions/0101-unfinished-parts-as-placeholders.md) (placeholders, and the setting that hides them).
@@ -606,6 +627,12 @@ All three need mock-up round 3 approved before they start (Inventory a.4). Until
 
 #### M13. Audio (Screen 10, spec 745-826)
 
+**As built (2026-11-12, in the pull request for Part D; a lean pass)** (the code wins):
+
+- **Files.** `mixer_view.rs` keeps the state and requests (`MixerState` gained the peak lines, the Bus group's switch and the event picked); `mixer_console.rs` (the strips), `bus_view.rs` (the Bus group), `sound_events_view.rs` (the shelf tab), `workbench_audio_tools.rs` (the ribbon's commands: `AddBus`, `AddDuckingRule`, `RemoveBus`, `ClearSolo`, `MuteGame`, `HeardAtOnce`), `audio_screen_tests.rs`. `Panel::Bus` and `Panel::SoundEvents` are new; `ShelfTab::Bus` became `ShelfTab::SoundEvents` (a saved "Bus" falls back to the first tab). A bus is no longer shown in Properties.
+- **The middle:** the mixer (its tab `mixer.solmix`) and the Bus group ("Music › Bus", with the Ducking / Effects switch at its strip's right; Effects is `audio.effect`'s page, renamed "Bus effects"), split 60 / 40 (`SPLIT_AUDIO`). Strips are 104 px, Master last; the scale is Solis's range, +12 to -60 dB, linear. Mute is amber and solo the accent (decision 0100 gave meaning colours the design's values); the meters grey, amber above 86% of their range, with a peak line held a second.
+- **Not built:** listed at the top of this plan (the Playing column, stereo meters and the rest).
+
 **Built.** The mixer console to the design: strips of 104 px with header and routing, fader with its dB scale and cap, the meter pair, readout, M and S, the selected and muted looks. The right group: **Bus** with the Ducking / Effects switch (Ducking real, Effects a placeholder page). The **Sound events** shelf tab: the table (event, bus, volume, where heard, playing) and the detail column with Preview, waveform, takes and fields. Monitor's "Clear solo" and "Mute the game".
 
 **Replaces or changes.** `mixer_view.rs` (912: split into strip, console, bus), `sound_event_view.rs` (467), `sound_view.rs` (368), `game_sound.rs` (the playing counts the table reads), `shell/ribbons/audio.rs`.
@@ -625,6 +652,12 @@ All three need mock-up round 3 approved before they start (Inventory a.4). Until
 **Size.** 1,000 + 600 − 500; about 10 files; 2 sessions.
 
 #### M14. Debug (Screen 6, spec 453-529)
+
+**As built (2026-11-12, in the pull request for Part D; a lean pass)** (the code wins):
+
+- **Files.** `profiler.rs` keeps the frames (numbered now, with `picked` and `shown`); `profiler_view.rs` draws them; `debug_screen_tests.rs`. The stage colours went (decision 0100: the design's greys), and with them `profiler.rs`'s and `mixer_view.rs`'s lines in the source rules' list of colours written as numbers.
+- **Debug's middle** is the Profiler, with the Game as a second document in the same group (round 3 draws the Profiler alone; the Game stays reachable there, and Play no longer brings it in front of the Profiler). The two-group tests moved to Audio.
+- **Draw calls are counted** (round 3 found it): `debug.stats.draw-calls` left the table and the inventory. The Console's Tab choices sit at the right of the command line after a Tab keycap.
 
 **Built.** The frame-time graph (bars, budget lines, the picked frame), the frame timeline (the CPU's stages and the GPU's as two lanes of blocks on a time ruler), Statistics rows with their bars, the Console as this tab's first shelf tab with the completions shown at the right of the command line, Show › CPU and GPU, and the Session group (Load a save…, Play and record inputs, Replay a recording…).
 
@@ -646,6 +679,13 @@ All three need mock-up round 3 approved before they start (Inventory a.4). Until
 
 #### M15. The unbuilt screens, the Build tab, and dragging tabs
 
+**As built (2026-11-12, in the pull request for Part D; a lean pass)** (the code wins):
+
+- **Build:** `Panel::Export`, a page document with no tab strip, drawn by the workbench where the shell puts it (`Workbench::build_page` in `file_pages/build.rs`, the same rows as Project settings › Build). Its shelf is Console, Problems and Build log (unfinished). Build no longer mirrors Home. Ribbon: Export, Open folder (`OpenExportFolder`), and Targets and Full export as unfinished parts with six new ids (`build.target.windows`, `.platforms`, `build.full`, `build.installer`, `build.rust-code`, `build.log`; table and inventory). **Export for playtesting…** now opens the Build tab.
+- **Unbuilt screens:** Shading, VFX and the model viewer draw their shelf bar of unfinished tabs under the page. The model viewer is `RibbonTab::Model` (contextual, after Library, `is_built` false), opened by **Open in the model viewer** on a model's right-click (`LibraryRequest::ViewModel`), there while it is in front (`Shell::viewing_model`). Its ribbon (`shell/ribbons/model.rs`) is the table's Mesh parts with one real button, Place. The screens' groups (`shading.preview`, `vfx.stack`, `mesh.viewport`, `mesh.uv`) are folded into the one page card (D2) and listed as having nothing to draw.
+- **Dragging tabs:** `shell/tab_drag.rs`; the `Arrangement` gained `alone` and `merged` (not saved: kept while the editor runs), and `Arrangement::arranged` gives the groups as arranged.
+- **The dialog card:** `widgets/dialog.rs`, used by Unsaved changes, Changed on disk and Keep or Undo all.
+
 **Built.** Shading (Screen 4), VFX (Screen 11) and the model viewer (Screen 9) as the design's ribbons and shelf tabs drawn through `unbuilt`, each with one placeholder page; the model viewer's contextual tab opened from a model's right-click. The **Build** tab with Export for playtesting as its real page and a placeholder for targets. Dragging a document tab to split or merge groups.
 
 **Replaces or changes.** `export_dialog.rs` (555: its window becomes a page; `Playtest`, `ExportRequest` and the rule that it never looks at the disk stay), `shell/groups.rs`, `shell/ribbons/shading.rs`, `vfx.rs`, `mesh.rs`, `build.rs`.
@@ -665,6 +705,12 @@ All three need mock-up round 3 approved before they start (Inventory a.4). Until
 **Size.** 900 + 600 − 300; about 12 files; 2 sessions.
 
 #### M16. Finish: the manual, the old code out, the review, the gate
+
+**As built (2026-11-12, in the pull request for Part D; a lean pass)** (the code wins):
+
+- **The manual:** `interface-tour.md` is the tour of the finished window; `mixer.md`, `profiler.md`, `playtest-export.md`, `unfinished-parts.md`, `sound-events.md`, `console.md`, `play-mode.md`, `keyboard-shortcuts.md` and `concepts.md` were brought in line, and every page's old menu paths read as the new places. The manual uses no screenshots, so none were described in words.
+- **Old code out:** the theme's unused frames and colours (`top_bar_frame`, `overlay_frame`, `hover_border`, `UPDATE`); the compiler and the reach tests find nothing else unused. The theme's re-exported colour names stay (top of this plan).
+- **Not done here, by the project lead's answer 34:** the review and the scale check, owed before the gate.
 
 **Built.** The whole-manual pass: `interface-tour.md` and `keyboard-shortcuts.md` rewritten from nothing; every page read against the editor (41 of the 55 pages mention menus or panels); every screenshot retaken; `SUMMARY.md`; `concepts.md`. The leftovers removed: `theme`'s re-exported old colour names (every file now uses `tokens`), unused icons, `Panel` variants nothing shows, the old settings keys' readers that no fixture needs. Documents: `README.md` (the progress tracker's Shared 1 rows), `ROADMAP.md`, `ARCHITECTURE.md` (the frame, the shell, how a frame runs), `DESIGN.md` §13 and §17, `crates/editor/README.md` and `src/README.md`, `CONTRIBUTING.md` (the window test's steps), `RENAMING.md` (checked), `CHANGELOG.md`. Then the phase's review (decision 0027: three reviewers over everything since M1, fixes grouped by kind), the scale check with a new case for the shell (a full ribbon, a full shelf, 10,000 entities), coverage and mutation testing of `shell/`, `widgets/` and `unbuilt.rs`, and the gate.
 

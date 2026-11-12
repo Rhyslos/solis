@@ -66,7 +66,7 @@ This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws th
   end
   ```
 
-  The copy is the component as the last tick left it: its methods work (`health:fraction()`), and changing it changes nothing in the game. The turret sample (**Make the sample game…** (press **Space** and type it, or use **File > Learn**)) has this health bar over its drone.
+  The copy is the component as the last tick left it: its methods work (`health:fraction()`), and changing it changes nothing in the game. The turret sample (**Make the sample game…** (press **Space** and type it, or use **File › Learn**)) has this health bar over its drone.
 
   **Lua and Rust components, and Solis's own** (Transform, Sprite, Camera, AudioSource and the rest) are read the same way. Solis describes each one to screens as a Lust component of its fields, so fetch it from `solis/screen` instead of from a file of yours:
 

@@ -10,7 +10,7 @@ Most games need none of this: with no Listener, the game hears through its camer
 Who hears what never changes the game: it only decides what's played on this computer, so a recording replays the same, and a multiplayer game (later, with netcode) sends no sound over the network.
 
 ## How to use it
-1. Select the camera or the character the game should hear from, and **Add component > Listener** in Properties.
+1. Select the camera or the character the game should hear from, and **+ Component › Listener** in Properties.
 2. Leave **Hears now** on. If a level has several listeners (a player and a spectator camera), this computer hears through the first with **Hears now** on.
 3. Give it **Groups** if some sounds are for groups: names with commas between, such as `Team Red, Radio`.
 4. In a [sound event](sound-events.md)'s Properties, set **Heard by**:

@@ -403,7 +403,7 @@ The tab is real because sprite clips and animators live there (a.4). Everything 
 | `debug.tools.memory` | Tools › **Memory** | PLACEHOLDER | Placeholder large button | not on the roadmap |
 | `debug.graph` | Frame-time graph: bars, budget lines, the frame label (spec 467-473) | PARTLY | `profiler.rs:305` draws the kept frames as bars with the 60 fps line. Selecting a frame or a range is new: unbuilt piece `debug.graph.select`, built in M14 if the samples allow it (they do: `Profiler::history`). | |
 | `debug.timeline` | Frame timeline by thread (spec 475-489) | PARTLY | One lane of the CPU's stages (game code, world, preparing, drawing, sound, editor) and one of the GPU's. Unbuilt piece: `debug.timeline.threads` (Physics, Render and worker lanes, named blocks). | not on the roadmap |
-| `debug.stats` | Statistics: CPU, GPU, draw calls, memory (spec 491-500) | PARTLY | CPU and GPU times, entities, components, projectiles, levels of detail. Unbuilt pieces: `debug.stats.draw-calls`, `debug.stats.memory`. | not on the roadmap |
+| `debug.stats` | Statistics: CPU, GPU, draw calls, memory (spec 491-500) | PARTLY | CPU and GPU times, draw calls (counted today: round 3 found it; M14 took the piece out of the table), triangles, entities, components, projectiles, levels of detail. Unbuilt piece: `debug.stats.memory`. | not on the roadmap |
 | `debug.shelf.console` | Shelf tab **Console**, level filters with counts, command line (spec 504-519) | EXISTS | `console.rs`, `console_commands.rs` (history with Up and Down, Tab finishes a name) | |
 | `debug.console.hint` | The completions shown at the right of the command line (spec 518) | PARTLY | Tab completes today; showing the choices is new, built in M14 | |
 | `debug.shelf.hottest` | Shelf tab **Hottest functions** (spec 504) | PLACEHOLDER | Placeholder shelf tab | not on the roadmap |
@@ -596,7 +596,13 @@ The contextual tab is real (b.0); this user of it is not. Double-clicking a mode
 | id | Element | Mark | Driven by, or what the placeholder shows | Filled in |
 | --- | --- | --- | --- | --- |
 | `build.export` | Export for playtesting (Solis's own) | EXISTS | `export_dialog.rs`, `app/src/playtest.rs`. **NEEDS MOCK-UP.** | |
-| `build.targets` | Build targets, platforms, the build log (spec 1183) | PLACEHOLDER | Placeholder page beside the export | Shared 11 |
+| `build.targets` | Build targets, platforms, the build log (spec 1183) | PLACEHOLDER | A card beside Export for playtesting on the Build tab (round 3, `10-build-tab`) | Shared 11 |
+| `build.target.windows` | Build › Targets › Windows (round 3) | PLACEHOLDER | A ribbon button (M15 gave Build's unfinished parts ids of their own) | Shared 11 |
+| `build.target.platforms` | Build › Targets › Platforms (round 3) | PLACEHOLDER | A ribbon button | Shared 11 |
+| `build.full` | Build › Full export › Build (round 3) | PLACEHOLDER | A ribbon button | Shared 11 |
+| `build.installer` | Build › Full export › Installer (round 3) | PLACEHOLDER | A ribbon button | Shared 11 |
+| `build.rust-code` | Build › Full export › Your Rust code (round 3) | PLACEHOLDER | A ribbon row to tick | Shared 11 |
+| `build.log` | Build's Build log shelf tab (round 3) | PLACEHOLDER | A shelf tab; what an export says goes to the Console | Shared 11 |
 | `cross.show-in-library` | A placed entity › Show in library (spec 1097) | EXISTS | `Workbench::pick_in_library` | |
 | `cross.code-links` | Every link that would open code opens it in the user's code editor (spec 1105) | EXISTS | `WorkbenchAction::OpenExternally`, `app/src/external.rs`; the line number isn't passed (unbuilt piece `home.console.line-link`) | |
 | `cross.bake-now` | Problems › "Bake now" (spec 1099) | PLACEHOLDER | Not drawn (the problem it belongs to can't arise) | 3D 5 |

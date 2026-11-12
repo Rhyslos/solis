@@ -261,12 +261,30 @@ See [Projects and the Library](projects-and-the-library.md).
 | Put under another entity | Drag onto it |
 | Make it stand alone | Drag onto empty space |
 
-## Properties and the Mixer
+## Properties
 
 | Action | Shortcut |
 |---|---|
-| Add the first component found (after typing part of its name in **+ Add component…**) | Enter |
-| Put a [Mixer](mixer.md) fader back to 0 dB | Double-click it |
+| Add the first component found (after typing part of its name in **+ Component**) | Enter |
+
+## Audio: the mixer
+
+| Action | Shortcut |
+|---|---|
+| Move a fader | Drag it up or down |
+| Move a fader finely | Shift while dragging |
+| Put a fader back to 0 dB | Double-click it |
+| Drop a meter's peak line to the level now | Click the meter |
+
+See [The Mixer](mixer.md).
+
+## Debug: the Profiler
+
+| Action | Shortcut |
+|---|---|
+| Pick a frame for the timeline | Click its bar in the frame-time graph |
+
+See [The Profiler](profiler.md).
 
 ## The Console's command line
 
@@ -275,7 +293,7 @@ See [Projects and the Library](projects-and-the-library.md).
 | Jump to the command line | ' (the key next to Æ on a Norwegian keyboard) |
 | Run the command | Enter |
 | Earlier and later commands | Up, Down |
-| Finish a name | Tab |
+| Finish a name (the choices show at the line's right) | Tab |
 | Leave the command line | Esc |
 
 See [The Console](console.md).
@@ -314,10 +332,13 @@ Panels stay where each tab's screen puts them; these size the screen, and each t
 | New area, Open area… | The **+** after the area's tab |
 | Save, Save as…, Close others, Show in the Library | Right-click the area's tab |
 | Give one of two groups more room | Drag the line between them |
+| Give a document a group of its own, on one half of the middle | Drag its tab onto that half |
+| Join two groups | Drag a tab onto the other group's tabs |
+| Put a dragged tab back | Esc, while dragging |
 | Bring a shelf tab to the front (opening a folded shelf) | Click it |
 | Make the shelf taller or shorter | Drag the grip at its bar's left, or the bar's top edge |
 | Fold the shelf to its bar, or open it again | Ctrl + Space (while typing too) |
-| Close a clips file | The **×** after the Frames or Clips shelf tab |
+| Close a clips file | The **×** after the Frames or Clip shelf tab |
 
 See the [Interface tour](interface-tour.md).
 

@@ -233,7 +233,12 @@ fn export_asks_the_app_and_says_where_it_went() {
         .0
         .export_finished(Err("the disk is full".into()));
     h.run();
-    assert!(h.query_by_label_contains("the disk is full").is_some());
+    // On the page, and in the Console in front on Build's shelf.
+    assert!(
+        h.query_all_by_label_contains("the disk is full")
+            .next()
+            .is_some()
+    );
 }
 
 #[test]

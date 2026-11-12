@@ -1,12 +1,11 @@
-//! The Profiler panel (Phase 5): where each frame's time goes. The CPU's
+//! The Profiler (Phase 5): where each frame's time goes. The CPU's
 //! share is split into what the editor does each frame (game code, the
 //! game's world, preparing what to draw, handing it to the GPU, and the
 //! rest of the editor), and the GPU's own passes are timed where the card
 //! can (`ViewportRenderer::take_report`). Counts say how much was drawn.
+//! This keeps the frames; `profiler_view.rs` draws them.
 
-use crate::theme;
 use crate::viewport::{DrawReport, ViewportRenderer, ViewportView};
-use egui::{Color32, RichText, Sense, Stroke, Ui, vec2};
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
@@ -51,17 +50,6 @@ impl Stage {
             Self::Editor => "Editor",
         }
     }
-
-    fn color(self) -> Color32 {
-        match self {
-            Self::GameCode => Color32::from_rgb(0xe0, 0x9a, 0x3e),
-            Self::World => Color32::from_rgb(0x5f, 0xa8, 0xd3),
-            Self::Prepare => Color32::from_rgb(0x8c, 0xc0, 0x6a),
-            Self::Draw => Color32::from_rgb(0xc5, 0x7a, 0xd6),
-            Self::Sound => Color32::from_rgb(0x1d, 0x9e, 0x75),
-            Self::Editor => Color32::from_rgb(0x7f, 0x86, 0x91),
-        }
-    }
 }
 
 /// One frame, as the panel shows it.
@@ -97,6 +85,12 @@ pub struct Profiler {
     pub(crate) hide_cpu: bool,
     /// Whether the GPU's times are left out of the panel (Debug, Show).
     pub(crate) hide_gpu: bool,
+    /// How many frames have ended since the editor started: the newest
+    /// frame's number.
+    counted: u64,
+    /// The frame picked in the frame-time graph, by its number (the
+    /// newest is shown when none is, or when it's no longer kept).
+    pub(crate) picked: Option<u64>,
 }
 
 impl Profiler {
@@ -134,6 +128,23 @@ impl Profiler {
             components,
             entities,
         });
+        self.counted += 1;
+    }
+
+    /// The number of the frame kept at `index` (0 the oldest).
+    pub fn number_of(&self, index: usize) -> u64 {
+        self.counted - self.history.len() as u64 + index as u64 + 1
+    }
+
+    /// The frame the timeline shows, with its number: the one picked
+    /// while it's kept, else the newest.
+    pub fn shown(&self) -> Option<(u64, &Sample)> {
+        let oldest = self.number_of(0);
+        let picked = self
+            .picked
+            .filter(|n| *n >= oldest && *n <= self.counted)
+            .map(|n| (n, &self.history[(n - oldest) as usize]));
+        picked.or_else(|| self.history.back().map(|s| (self.counted, s)))
     }
 
     /// The frames remembered, oldest first.
@@ -200,95 +211,9 @@ impl ViewportRenderer for Timed<'_> {
     }
 }
 
-/// The frames averaged in the panel's numbers: about a second at 60 fps.
-const AVERAGED: usize = 60;
-
-/// Draws the Profiler panel.
-pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
-    let Some(average) = profiler.average(AVERAGED) else {
-        ui.label(
-            RichText::new(
-                "Nothing measured yet. Each frame the editor draws is measured here: \
-                 press Play, or move around the viewport.",
-            )
-            .color(theme::text_weak()),
-        );
-        return;
-    };
-    let total = average.cpu_total();
-    let fps = if total > 0.0 { 1000.0 / total } else { 0.0 };
-    ui.label(
-        RichText::new(format!(
-            "The CPU takes {total:.2} ms a frame ({fps:.0} frames a second at most), \
-             averaged over the last {} frames.",
-            profiler.history.len().min(AVERAGED)
-        ))
-        .strong(),
-    );
-    if !profiler.hide_cpu {
-        graph(ui, profiler);
-        ui.horizontal_wrapped(|ui| {
-            for (stage, ms) in Stage::ALL.iter().zip(average.cpu) {
-                let (rect, _) = ui.allocate_exact_size(vec2(10.0, 10.0), Sense::hover());
-                ui.painter().rect_filled(rect, 2.0, stage.color());
-                ui.label(format!("{} {ms:.2} ms", stage.name()));
-                ui.add_space(8.0);
-            }
-        });
-        ui.add_space(4.0);
-    }
-    let gpu = match (average.drawn.gpu, average.drawn.gpu_timing) {
-        (Some(t), _) => format!(
-            "The GPU takes {:.2} ms a frame: shadows {:.2} ms, models {:.2} ms, the last \
-             pass {:.2} ms.",
-            t.shadows + t.models + t.last_pass,
-            t.shadows,
-            t.models,
-            t.last_pass
-        ),
-        (None, Some(false)) => {
-            "The GPU's own times aren't measured on this graphics card (it doesn't offer \
-             timestamps)."
-                .to_string()
-        }
-        (None, _) => "The GPU's own times arrive once something is drawn.".to_string(),
-    };
-    if !profiler.hide_gpu {
-        ui.label(gpu);
-    }
-    let d = average.drawn;
-    ui.label(
-        RichText::new(format!(
-            "Drawn: {} model copies in view ({} casting shadows), {} triangles, in {} draw \
-             calls; {} sent to the graphics card. {} entities; {} game components running.",
-            thousands(d.instances),
-            thousands(d.casting),
-            thousands(d.triangles),
-            thousands(d.batches),
-            amount(d.sent_bytes),
-            thousands(average.entities as u64),
-            thousands(average.components as u64),
-        ))
-        .color(theme::text_weak()),
-    );
-    if d.bolts > 0 {
-        ui.label(
-            RichText::new(format!("Projectiles drawn: {}.", thousands(d.bolts)))
-                .color(theme::text_weak()),
-        );
-    }
-    if d.lods[1..].iter().any(|&n| n > 0) {
-        ui.label(RichText::new(lod_text(&d.lods)).color(theme::text_weak()))
-            .on_hover_text(
-                "Far away, simpler versions of models are drawn (levels of detail): level 1 is \
-                 about half the triangles, 2 a quarter, 3 an eighth",
-            );
-    }
-}
-
 /// How many copies were drawn at each level of detail: "Levels of detail:
 /// 1,200 in full, 3,400 at level 1, 50 at level 3".
-fn lod_text(lods: &[u64; 5]) -> String {
+pub(crate) fn lod_text(lods: &[u64; 5]) -> String {
     let parts: Vec<String> = lods
         .iter()
         .enumerate()
@@ -302,7 +227,7 @@ fn lod_text(lods: &[u64; 5]) -> String {
 }
 
 /// A number of bytes as people say it: 512 bytes, 3.4 kB, 12.0 MB.
-fn amount(bytes: u64) -> String {
+pub(crate) fn amount(bytes: u64) -> String {
     match bytes {
         0..1_000 => format!("{bytes} bytes"),
         1_000..1_000_000 => format!("{:.1} kB", bytes as f64 / 1e3),
@@ -310,52 +235,8 @@ fn amount(bytes: u64) -> String {
     }
 }
 
-/// The frames as stacked bars, newest on the right, with lines at 60
-/// and 30 frames a second.
-fn graph(ui: &mut Ui, profiler: &Profiler) {
-    let height = 90.0;
-    let width = ui.available_width().max(60.0);
-    let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
-    let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 2.0, theme::field());
-    let tallest = profiler
-        .history()
-        .map(Sample::cpu_total)
-        .fold(1000.0 / 30.0 * 1.2, f64::max);
-    let y = |ms: f64| rect.bottom() - (ms / tallest) as f32 * rect.height();
-    let bar = rect.width() / KEPT as f32;
-    let first = KEPT - profiler.history.len();
-    for (i, sample) in profiler.history().enumerate() {
-        let x = rect.left() + (first + i) as f32 * bar;
-        let mut below = 0.0;
-        for (stage, ms) in Stage::ALL.iter().zip(sample.cpu) {
-            let top = below + ms;
-            painter.rect_filled(
-                egui::Rect::from_min_max(egui::pos2(x, y(top)), egui::pos2(x + bar, y(below))),
-                0.0,
-                stage.color(),
-            );
-            below = top;
-        }
-    }
-    for (ms, label) in [(1000.0 / 60.0, "60 fps"), (1000.0 / 30.0, "30 fps")] {
-        let at = y(ms);
-        painter.line_segment(
-            [egui::pos2(rect.left(), at), egui::pos2(rect.right(), at)],
-            Stroke::new(1.0, theme::text_weak().gamma_multiply(0.6)),
-        );
-        painter.text(
-            egui::pos2(rect.left() + 4.0, at - 2.0),
-            egui::Align2::LEFT_BOTTOM,
-            label,
-            egui::FontId::proportional(10.0),
-            theme::text_weak(),
-        );
-    }
-}
-
 /// `12,345,678`.
-fn thousands(n: u64) -> String {
+pub(crate) fn thousands(n: u64) -> String {
     let text = n.to_string();
     let mut out = String::new();
     for (i, c) in text.chars().enumerate() {

@@ -22,7 +22,7 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 
 **Add a lamp**
 1. Fly the camera to where the light should be ([Moving around the viewport](navigating-the-viewport.md)).
-2. Choose **Home > Light** to place a bulb 2 m above the point the camera looks at, or **Home > Light**'s small arrow, then **Spotlight** to place a spotlight at the camera, shining where the camera looks (like holding a torch).
+2. Choose **Home › Light** to place a bulb 2 m above the point the camera looks at, or **Home › Light**'s small arrow, then **Spotlight** to place a spotlight at the camera, shining where the camera looks (like holding a torch).
 3. The lamp appears as a small cross in its colour (a spotlight also has a line the way it shines). It's listed in the Area panel and selected, with its settings in Properties.
 4. To move it, fly somewhere else and choose **Move here** in the **⋯** beside its name in Properties. **Delete**, in the same menu, removes it.
 
@@ -61,7 +61,7 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 - **Problem:** things far from the camera have no shadows. **Why:** the sun's shadows reach 200 m from the camera. The shadow map covers only what the view shows within that distance, so its detail goes where you're looking, however big the area. **Fix:** move closer; at that distance, shadows are too small to see anyway.
 - **Problem:** shadows look blurry. **Why:** the shadow map covers everything in view up to 200 m away, so looking out over a wide area spreads its pixels further. **Fix:** look from closer, or from higher up so less ground is in view.
 - **Problem:** a spotlight's cone isn't the number written in the area file. **Why:** an [area file](saving-areas.md) is text, so a number can be typed into it by hand or left there by a merge. A light only works with a cone from 1° to 89°, a soft edge from 0° to 89°, and a strength and range that aren't below 0, so a number outside that is read as the nearest one that works (a cone of -5 shines as 1°). **Fix:** set the number you meant in Properties.
-- **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** undo (Ctrl + Z), or add an entity and give it a Light (**Add component > Light**) with **Kind** set to Sun.
+- **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** undo (Ctrl + Z), or add an entity and give it a Light (**+ Component › Light**) with **Kind** set to Sun.
 
 ## Related
 - [Looks](looks.md): both the standard and stylized looks are lit; the unlit look ignores light.

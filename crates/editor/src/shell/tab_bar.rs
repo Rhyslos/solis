@@ -54,6 +54,9 @@ pub(crate) struct ContextTab {
     pub(crate) name: &'static str,
     /// The panel that shows the file.
     pub(crate) panel: Panel,
+    /// The tab it brings to the front, for one whose screen is a page
+    /// (the model viewer): it has no panel to show.
+    pub(crate) opens: Option<RibbonTab>,
 }
 
 impl ContextTab {
@@ -75,6 +78,7 @@ impl Workbench {
                     prefix: "Home tools",
                     name: "Tile map",
                     panel: Panel::Map,
+                    opens: None,
                 },
             ),
             (
@@ -84,6 +88,7 @@ impl Workbench {
                     prefix: "Library tools",
                     name: "Tileset",
                     panel: Panel::Tileset,
+                    opens: None,
                 },
             ),
             (
@@ -93,6 +98,17 @@ impl Workbench {
                     prefix: "Library tools",
                     name: "Picture",
                     panel: Panel::AtlasCrop,
+                    opens: None,
+                },
+            ),
+            (
+                self.shell.viewing_model.is_some() && !crate::unbuilt::hidden(),
+                ContextTab {
+                    after: RibbonTab::Library,
+                    prefix: "Library tools",
+                    name: "Model",
+                    panel: Panel::Library,
+                    opens: Some(RibbonTab::Model),
                 },
             ),
         ]
@@ -103,6 +119,9 @@ impl Workbench {
 
     /// Whether `extra` is the tab in front: its ribbon is the one shown.
     pub(crate) fn context_in_front(&self, extra: ContextTab) -> bool {
+        if let Some(tab) = extra.opens {
+            return self.shell.tab == tab;
+        }
         match extra.panel {
             Panel::Map => self.map_tools_in_front(),
             Panel::Tileset => self.shell.tab == RibbonTab::Tileset,
@@ -206,7 +225,10 @@ impl Workbench {
             self.set_ribbon_collapsed(!self.shell.collapsed);
         }
         if let Some(extra) = bring {
-            self.show_panel(extra.panel);
+            match extra.opens {
+                Some(tab) => self.show_tab(tab),
+                None => self.show_panel(extra.panel),
+            }
         }
         end
     }

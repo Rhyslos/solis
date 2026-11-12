@@ -1185,6 +1185,13 @@ impl Workbench {
         self.in_front = shown;
         self.pointer_over = frames_out.pointer_over;
         self.doc_asks(asks, ui.ctx(), &mut actions);
+        if let Some(rect) = self.shell.drawn_at(Panel::Export) {
+            let mut asked = Vec::new();
+            self.build_page(ui, rect, &mut asked);
+            for action in asked {
+                self.request(action, &mut actions);
+            }
+        }
         self.frames_tabs_done(frames_out);
         self.map_requests_done(map_requests);
         self.tile_overlay_done();
@@ -1199,7 +1206,11 @@ impl Workbench {
             self.library_request(request, &mut actions);
         }
         for request in mixer_requests {
-            self.mixer_request(request, &mut actions);
+            if request == crate::mixer_view::MixerRequest::HideUnfinished {
+                self.hide_unfinished(ui.ctx(), true);
+            } else {
+                self.mixer_request(request, &mut actions);
+            }
         }
         self.follow_sound_selection(&picked_before);
         for request in console_requests {
@@ -1590,28 +1601,31 @@ impl Workbench {
     fn prompts(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         if let Some(waiting) = self.open.unsaved_prompt.clone() {
             let name = self.open.document.name();
-            let mut answer = None;
-            egui::Window::new("Unsaved changes")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ui.ctx(), |ui| {
-                    ui.label(format!("{name} has changes that aren't saved."));
-                    ui.add_space(8.0);
-                    ui.horizontal(|ui| {
-                        if ui.button("Save").clicked() {
-                            answer = Some(true);
-                        }
-                        if ui.button("Don't save").clicked() {
-                            answer = Some(false);
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.open.unsaved_prompt = None;
-                            // A cancelled restart is no restart.
-                            self.restarting = false;
-                        }
-                    });
-                });
+            use crate::widgets::dialog::{Answer, dialog};
+            let words = format!("{name} has changes that aren't saved.");
+            let answers = [
+                Answer::left("Don't save"),
+                Answer::right("Cancel"),
+                Answer::main("Save"),
+            ];
+            let picked = dialog(
+                ui.ctx(),
+                "unsaved changes",
+                "Unsaved changes",
+                |ui| drop(ui.label(words)),
+                &answers,
+            );
+            let answer = match picked {
+                Some(0) => Some(false),
+                Some(2) => Some(true),
+                Some(_) => {
+                    self.open.unsaved_prompt = None;
+                    // A cancelled restart is no restart.
+                    self.restarting = false;
+                    None
+                }
+                None => None,
+            };
             if let Some(save) = answer {
                 self.open.unsaved_prompt = None;
                 // Saving or leaving waits for Stop, which puts the area
@@ -1638,30 +1652,23 @@ impl Workbench {
         // Asked after the game stops: loading it now would only be undone.
         if self.open.pending_reload.is_some() && self.open.playing.is_none() {
             let name = self.open.document.name();
-            let mut answer = None;
-            egui::Window::new("Changed on disk")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ui.ctx(), |ui| {
-                    ui.label(format!(
-                        "{name}'s file changed on disk (perhaps a Git pull), and you have \
-                         changes that aren't saved."
-                    ));
-                    ui.add_space(8.0);
-                    ui.horizontal(|ui| {
-                        if ui.button("Keep mine").clicked() {
-                            answer = Some(false);
-                        }
-                        if ui
-                            .button("Load the file")
-                            .on_hover_text("Ctrl+Z brings yours back")
-                            .clicked()
-                        {
-                            answer = Some(true);
-                        }
-                    });
-                });
+            use crate::widgets::dialog::{Answer, dialog};
+            let words = format!(
+                "{name}'s file changed on disk (perhaps a Git pull), and you have changes that \
+                 aren't saved."
+            );
+            let answers = [
+                Answer::right("Keep mine"),
+                Answer::main("Load the file").hint("Ctrl+Z brings yours back"),
+            ];
+            let answer = dialog(
+                ui.ctx(),
+                "changed on disk",
+                "Changed on disk",
+                |ui| drop(ui.label(words)),
+                &answers,
+            )
+            .map(|index| index == 1);
             if let Some(load) = answer
                 && let Some(area) = self.open.pending_reload.take()
                 && load

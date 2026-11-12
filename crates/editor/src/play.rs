@@ -316,11 +316,13 @@ impl Workbench {
         // Nothing held over from before Play.
         self.devices = input::Devices::new();
         // The Game tab comes to the front of the area's group (the
-        // project lead's answer 10), on Home and on Debug.
+        // project lead's answer 10). Debug keeps its Profiler in front.
         use crate::shell::RibbonTab;
-        for tab in [RibbonTab::Home, RibbonTab::Build, RibbonTab::Debug] {
-            self.show_in(tab, crate::shell::workspaces::Home::Group(0), Panel::Game);
-        }
+        self.show_in(
+            RibbonTab::Home,
+            crate::shell::workspaces::Home::Group(0),
+            Panel::Game,
+        );
         let note = if cameras == 0 {
             " There's no camera in the area, so the Game panel shows the editor's view \
              (Home > Camera adds one)."
