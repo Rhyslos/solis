@@ -24,11 +24,18 @@ pub const EXTENSIONS: [&str; 2] = ["gltf", "glb"];
 
 /// Reads the glTF model at `path`, and any files it refers to beside it.
 pub fn load(path: &Path, limits: &Limits) -> Result<Model, ImportError> {
-    let bytes = read_limited(path, limits.max_file_bytes)?;
+    let bytes = read_model_file(path, limits)?;
     let name = path
         .file_stem()
         .map_or_else(|| "Model".to_string(), |s| s.to_string_lossy().into_owned());
     load_bytes(&bytes, path.parent(), &name, limits)
+}
+
+/// The bytes of the model file at `path` (an ordinary file within the
+/// limits), as [`load`] reads them: for reading a file once and both
+/// hashing and importing what was read ([`load_bytes`]).
+pub fn read_model_file(path: &Path, limits: &Limits) -> Result<Vec<u8>, ImportError> {
+    read_limited(path, limits.max_file_bytes)
 }
 
 /// Reads a glTF model from `bytes`. `folder` is where files it refers to
@@ -61,21 +68,35 @@ pub fn load_bytes(
 /// images, beside it), so a project can copy them with it and notice when
 /// they change. Files it would refuse to read aren't listed.
 pub fn referenced_files(path: &Path, limits: &Limits) -> Result<Vec<PathBuf>, ImportError> {
-    let bytes = read_limited(path, limits.max_file_bytes)?;
-    let parsed = std::panic::catch_unwind(|| gltf::Gltf::from_slice(&bytes))
+    referenced_files_in(&read_model_file(path, limits)?, path.parent())
+}
+
+/// [`referenced_files`] of a model already read (`bytes`), whose files
+/// are looked for in `folder`.
+pub fn referenced_files_in(
+    bytes: &[u8],
+    folder: Option<&Path>,
+) -> Result<Vec<PathBuf>, ImportError> {
+    let parsed = std::panic::catch_unwind(|| gltf::Gltf::from_slice(bytes))
         .map_err(|_| ImportError::Damaged("its structure couldn't be read".into()))?
         .map_err(|e| ImportError::NotGltf(describe_gltf_error(&e)))?;
-    let folder = path.parent();
-    let buffers = parsed.document.buffers().filter_map(|b| match b.source() {
-        gltf::buffer::Source::Uri(uri) => Some(uri),
-        gltf::buffer::Source::Bin => None,
-    });
-    let images = parsed.document.images().filter_map(|i| match i.source() {
-        gltf::image::Source::Uri { uri, .. } => Some(uri),
-        gltf::image::Source::View { .. } => None,
-    });
+    // The gltf crate can panic on a damaged file while its parts are read
+    // (an image with neither an address nor a view): caught and reported,
+    // as in `load_bytes`.
+    let uris = std::panic::catch_unwind(|| {
+        let buffers = parsed.document.buffers().filter_map(|b| match b.source() {
+            gltf::buffer::Source::Uri(uri) => Some(uri.to_owned()),
+            gltf::buffer::Source::Bin => None,
+        });
+        let images = parsed.document.images().filter_map(|i| match i.source() {
+            gltf::image::Source::Uri { uri, .. } => Some(uri.to_owned()),
+            gltf::image::Source::View { .. } => None,
+        });
+        buffers.chain(images).collect::<Vec<String>>()
+    })
+    .map_err(|_| ImportError::Damaged("part of it couldn't be read".into()))?;
     let mut files = Vec::new();
-    for uri in buffers.chain(images) {
+    for uri in &uris {
         if let Address::File(file) = resolve(uri, folder)?
             && !files.contains(&file)
         {
