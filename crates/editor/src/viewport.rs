@@ -773,6 +773,7 @@ impl Viewport {
                 .as_ref()
                 .filter(|_| self.tile_overlay.paint.meaning)
                 .map(|m| m.entity),
+            crate::tile_view::Viewer::View(self.active),
         );
         ViewportView {
             size_px,

@@ -67,6 +67,7 @@ fn layers_under_come_first_and_over_last_hidden_ones_left_out() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     assert_eq!(pics.len(), 3);
     assert_eq!(batches.len(), 3);
@@ -85,7 +86,16 @@ fn layers_under_come_first_and_over_last_hidden_ones_left_out() {
     assert_eq!(s.rect, [0.0, 0.0, 4.0, 4.0]);
     // Hidden in the editor: not drawn.
     let hidden = HashSet::from([map.layers()[0].id]);
-    let (pics, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &hidden, &|_| None, 0, None);
+    let (pics, batches) = pictures.draw(
+        &maps,
+        &sheets,
+        [1.0, 1.0],
+        &hidden,
+        &|_| None,
+        0,
+        None,
+        Viewer::View(0),
+    );
     assert_eq!((pics.len(), batches.len()), (2, 2));
 }
 
@@ -110,6 +120,7 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     let (again, _) = pictures.draw(
         &view(&map),
@@ -119,6 +130,7 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     for (a, b) in first.iter().zip(&again) {
         assert!(Arc::ptr_eq(a, b), "kept");
@@ -132,6 +144,7 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     assert!(Arc::ptr_eq(&first[0], &changed[0]), "Ground unchanged");
     assert!(
@@ -149,6 +162,7 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     assert!(pictures.made.lock().unwrap().is_empty());
 }
@@ -177,6 +191,7 @@ fn another_map_or_tileset_just_like_the_last_is_never_taken_for_it() {
                 &|_| None,
                 0,
                 None,
+                Viewer::View(0),
             )
             .0
     };
@@ -380,6 +395,7 @@ fn with_art_a_map_is_drawn_tile_by_tile_and_its_tiles_animate() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     assert_eq!(pics.len(), 1, "one atlas, no layer pictures");
     assert_eq!(batches.len(), 1, "the empty layers draw nothing");
@@ -400,6 +416,7 @@ fn with_art_a_map_is_drawn_tile_by_tile_and_its_tiles_animate() {
         &|_| None,
         150,
         None,
+        Viewer::View(0),
     );
     assert_eq!(batches[0].sprites[0].rect, [4.0, 0.0, 4.0, 4.0]);
 }
@@ -427,6 +444,7 @@ fn a_picture_read_again_gets_an_atlas_of_its_own_and_its_tiles_are_made_again() 
             &|_| None,
             0,
             None,
+            Viewer::View(0),
         )
     };
     let (first, first_batches) = draw(&sheets);
@@ -479,7 +497,16 @@ fn only_chunks_in_view_are_drawn_and_far_away_maps_are_coloured() {
     // A view of the map's first few cells: the chunk there and those
     // beside it.
     let near = |_| Some([Vec2::new(0.0, -10.0), Vec2::new(10.0, 0.0)]);
-    let (_, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &near, 0, None);
+    let (_, batches) = pictures.draw(
+        &maps,
+        &sheets,
+        [1.0, 1.0],
+        &HashSet::new(),
+        &near,
+        0,
+        None,
+        Viewer::View(0),
+    );
     let drawn: usize = batches.iter().map(|b| b.sprites.len()).sum();
     assert_eq!(drawn, 4 * 1024, "2 × 2 chunks");
     // Above the horizon (everything may show): 361 chunks is too many to
@@ -492,6 +519,7 @@ fn only_chunks_in_view_are_drawn_and_far_away_maps_are_coloured() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     assert!(pics.iter().all(|p| p.size == [600, 600]));
     assert_eq!(batches.iter().map(|b| b.sprites.len()).sum::<usize>(), 3);
@@ -517,6 +545,7 @@ fn missing_tiles_are_pink_and_terrains_without_art_their_colour() {
         &|_| None,
         0,
         None,
+        Viewer::View(0),
     );
     let all: Vec<&ViewSprite> = batches.iter().flat_map(|b| b.sprites.iter()).collect();
     let white = |s: &&&ViewSprite| s.rect[1] == 8.0;
@@ -594,6 +623,7 @@ fn a_layer_s_tiles_are_kept_while_nothing_they_show_changes() {
                 &|_| None,
                 ms,
                 None,
+                Viewer::View(0),
             )
             .1
     };
@@ -608,6 +638,153 @@ fn a_layer_s_tiles_are_kept_while_nothing_they_show_changes() {
     map.set_code(0, 1, 1, b'?').unwrap();
     let changed = draw(&pictures, &map, 150);
     assert!(!Arc::ptr_eq(&first[0].sprites, &changed[0].sprites));
+}
+
+/// Sheets whose tileset has a picture with one piece that doesn't move,
+/// for tests of what's kept.
+fn sheets_with_still_art() -> (SpriteSheets, AssetId) {
+    let (id, mut set) = tileset();
+    let png = AssetId::random();
+    set.picture = Some(png);
+    set.tile = [4, 4];
+    set.pieces.push(tiles::Piece {
+        id: Id::random(),
+        terrain: set.terrains[0].id,
+        slot: 0,
+        at: [0, 0],
+        weight: 1.0,
+        animation: tiles::Animation::None,
+    });
+    let mut sheets = sheets_with(id, set);
+    sheets.tile_art.insert(
+        "tiles.png".into(),
+        crate::sprite_sheets::ArtState::Read(Arc::new(assets::tile_art::TileArt {
+            size: [8, 4],
+            frames: vec![vec![9; 8 * 4 * 4]],
+            durations: vec![100],
+        })),
+    );
+    sheets.paths.insert(png, "tiles.png".into());
+    (sheets, id)
+}
+
+/// The ground a view sees: `x` metres along the map's top edge, ten
+/// metres square.
+fn ground_at(x: f32) -> impl Fn(f32) -> Option<[Vec2; 2]> {
+    move |_| Some([Vec2::new(x, -10.0), Vec2::new(x + 10.0, 0.0)])
+}
+
+/// Each chunk's tiles as kept now.
+fn chunk_tiles_kept(pictures: &TilePictures) -> HashMap<ChunkId, Arc<Vec<Placed>>> {
+    lock(&pictures.chunks)
+        .iter()
+        .map(|((id, _), tiles)| (*id, Arc::clone(tiles)))
+        .collect()
+}
+
+/// BUG-19: every view of the viewport and the Game panel draw with one
+/// cache, one after another each frame, and each draw kept only what it
+/// had drawn itself. Two views of one map threw out each other's tiles,
+/// so every frame each view's chunks were autotiled, sorted and made into
+/// sprites again.
+#[test]
+fn views_drawn_one_after_another_keep_each_other_s_tiles() {
+    let (sheets, id) = sheets_with_still_art();
+    let maps = [ViewTileMap {
+        entity: entity(),
+        transform: Mat4::IDENTITY,
+        map: Arc::new(TileMap::new([320, 320], Some(id), Some(b'.'))),
+    }];
+    let pictures = TilePictures::default();
+    let (left, right) = (ground_at(0.0), ground_at(200.0));
+    let draw = |ground: &dyn Fn(f32) -> Option<[Vec2; 2]>, viewer| {
+        let (_, batches) = pictures.draw(
+            &maps,
+            &sheets,
+            [1.0, 1.0],
+            &HashSet::new(),
+            ground,
+            0,
+            None,
+            viewer,
+        );
+        Arc::clone(&batches[0].sprites)
+    };
+    // One frame: two views and the Game panel, each seeing its own part.
+    let first = [
+        draw(&left, Viewer::View(0)),
+        draw(&right, Viewer::View(1)),
+        draw(&|_| None, Viewer::Game),
+    ];
+    let kept = chunk_tiles_kept(&pictures);
+    assert_eq!(
+        kept.len(),
+        3 * 100,
+        "every chunk of each layer: the Game panel sees them all"
+    );
+    // The next frames: nothing changed, so nothing is made again.
+    for _ in 0..3 {
+        let again = [
+            draw(&left, Viewer::View(0)),
+            draw(&right, Viewer::View(1)),
+            draw(&|_| None, Viewer::Game),
+        ];
+        for (view, (a, b)) in first.iter().zip(&again).enumerate() {
+            assert!(Arc::ptr_eq(a, b), "view {view}'s sprites kept");
+        }
+        let now = chunk_tiles_kept(&pictures);
+        assert_eq!(now.len(), kept.len());
+        for (chunk, tiles) in &kept {
+            assert!(Arc::ptr_eq(tiles, &now[chunk]), "{chunk:?} autotiled again");
+        }
+    }
+}
+
+/// What a view drew with is let go once it stops drawing (a view hidden,
+/// the Game panel closed), and what no view draws any more is let go at
+/// once.
+#[test]
+fn a_viewer_that_stops_drawing_lets_go_of_its_tiles() {
+    let (sheets, id) = sheets_with_still_art();
+    let maps = [ViewTileMap {
+        entity: entity(),
+        transform: Mat4::IDENTITY,
+        map: Arc::new(TileMap::new([320, 320], Some(id), Some(b'.'))),
+    }];
+    let pictures = TilePictures::default();
+    let (left, right) = (ground_at(0.0), ground_at(200.0));
+    let draw = |ground: &dyn Fn(f32) -> Option<[Vec2; 2]>, viewer| {
+        let _ = pictures.draw(
+            &maps,
+            &sheets,
+            [1.0, 1.0],
+            &HashSet::new(),
+            ground,
+            0,
+            None,
+            viewer,
+        );
+    };
+    let columns = |p: &TilePictures| {
+        let mut c: Vec<u32> = chunk_tiles_kept(p).keys().map(|k| k.2[0]).collect();
+        c.sort_unstable();
+        c.dedup();
+        c
+    };
+    draw(&left, Viewer::View(0));
+    draw(&right, Viewer::View(1));
+    assert_eq!(columns(&pictures), [0, 1, 5, 6, 7], "both views' chunks");
+    assert_eq!(lock(&pictures.layers).len(), 2 * 3, "each view's layers");
+    // View 0 looks elsewhere: what it saw before goes, view 1's stays.
+    draw(&ground_at(100.0), Viewer::View(0));
+    assert_eq!(columns(&pictures), [2, 3, 4, 5, 6, 7]);
+    // View 1 hidden: kept only while it might still draw again.
+    for _ in 1..FORGET_AFTER {
+        draw(&ground_at(100.0), Viewer::View(0));
+    }
+    assert_eq!(columns(&pictures), [2, 3, 4]);
+    assert_eq!(lock(&pictures.layers).len(), 3);
+    assert_eq!(lock(&pictures.viewers).used.len(), 1);
 }
 
 #[test]
@@ -657,6 +834,7 @@ fn scale_check_a_tile_map_in_view_frame_after_frame() {
             &|_| None,
             0,
             None,
+            Viewer::View(0),
         )
     };
     let (_, first) = draw();
@@ -671,6 +849,62 @@ fn scale_check_a_tile_map_in_view_frame_after_frame() {
     println!(
         "Scale check: a {side} × {side} tile map in view, a frame with nothing changed {ms:.3} ms \
          (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.3} ms");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_two_views_and_the_game_panel_of_a_tile_map() {
+    // BUG-19: views drawn one after another threw out each other's tiles,
+    // so each view made its tiles again every frame. A millisecond a view.
+    const TARGET_MS: f64 = 3.0;
+    let (sheets, id) = sheets_with_still_art();
+    // Three views side by side, each as many chunks as are drawn tile by
+    // tile (with the one more each way), each full.
+    let side = 32 * 48;
+    let mut map = TileMap::new([side, side], Some(id), Some(b'.'));
+    map.set_code(1, 3, 3, b'.').unwrap();
+    let maps = [ViewTileMap {
+        entity: entity(),
+        transform: Mat4::IDENTITY,
+        map: Arc::new(map),
+    }];
+    let pictures = TilePictures::default();
+    let seen = 13.0 * 32.0;
+    let views = [
+        (0.0, Viewer::View(0)),
+        (512.0, Viewer::View(1)),
+        (1024.0, Viewer::Game),
+    ];
+    let frame = || {
+        let mut tiles = 0;
+        for &(x, viewer) in &views {
+            let (_, batches) = pictures.draw(
+                &maps,
+                &sheets,
+                [1.0, 1.0],
+                &HashSet::new(),
+                &|_| Some([Vec2::new(x, -seen), Vec2::new(x + seen, 0.0)]),
+                0,
+                None,
+                viewer,
+            );
+            tiles += batches.iter().map(|b| b.sprites.len()).sum::<usize>();
+        }
+        tiles
+    };
+    let tiles = frame();
+    assert!(tiles >= 3 * 200 * 1024, "{tiles}");
+    let start = std::time::Instant::now();
+    for _ in 0..10 {
+        let _ = frame();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / 10.0;
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: two views and the Game panel of a {side} × {side} tile map, each seeing \
+         its own part, a frame with nothing changed {ms:.3} ms (target {TARGET_MS} ms) {verdict}"
     );
     assert!(ms <= TARGET_MS, "{ms:.3} ms");
 }

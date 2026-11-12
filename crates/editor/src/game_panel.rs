@@ -298,6 +298,7 @@ pub(crate) fn game_panel(
         &|z| crate::tile_view::ground_in_view(view_projection, z),
         (scene.seconds.max(0.0) * 1000.0) as u64,
         None,
+        crate::tile_view::Viewer::Game,
     );
     // Through a 2D camera, sprites land on whole pixels; tile maps'
     // layers under and over them; parallax layers follow the camera the
