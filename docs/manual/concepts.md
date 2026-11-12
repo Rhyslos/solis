@@ -9,18 +9,20 @@
 
 ## The window
 
-- **Panel:** one area of the editor with one job, such as the Viewport or the Console. Every panel has a **tab** with its name.
-- **Tab group:** panels that share one space. Click a tab to bring that panel to the front; the front tab is underlined in the accent colour.
-- **Docking:** dragging a panel's tab to a new place. Drop it on the edge of another panel to put them side by side, or in the middle to make them one tab group. See [Interface tour](interface-tour.md).
-- **Layout:** where all the panels are. Solis remembers yours; **Reset layout** (in the search, and in **File > Preferences**) puts them back as they started.
+- **Panel:** one area of the editor with one job, such as the Viewport or the Console. Each lives in a fixed place: a document in an editor group, or a column of a shelf tab.
+- **Editor group:** the top part of the middle of the window: a strip of document tabs (the area, the running game, an animator) over the one in front. A tab can show two groups side by side, with a line between them you can drag. See [Interface tour](interface-tour.md).
+- **Document:** what an editor group shows, with a tab of its own: the area, the Game, an animator, a tileset, a screen. A document that is a file has a **×** that closes it.
+- **Docking:** in some programs, dragging panels to any place you like. Solis doesn't do that: each tab's screen is laid out as its design draws it, and you size its parts instead (the shelf's height, the split between groups).
+- **Layout:** how a tab's screen is sized: the shelf tab in front, the shelf's height and whether it's folded, the split between its groups. Each tab remembers its own; **Reset layout** (in the search, and in **File > Preferences**) puts the tab you're on back as it started.
 - **Tab bar:** the dark strip along the top of the window: the logo, the tabs (File, Home, Library and so on), the search box, the open project and area, and the chevron that collapses the ribbon. See [Interface tour](interface-tour.md).
-- **Workspace:** a whole layout for one kind of work, switched with the tabs in the tab bar: **Home** for building areas, **Animate** for sprites, **Debug** for testing game code and **UI** for game screens. Each remembers how you arranged its panels, and Reset layout puts back only the one you're in. See [Interface tour](interface-tour.md).
+- **Workspace:** what one tab of the tab bar shows for one kind of work: **Home** for building areas, **Library** for files, **Animate** for sprites, **UI** for game screens, **Audio** for the mixer, **Debug** for testing game code. Each has its own editor groups and shelf, and remembers its own layout. See [Interface tour](interface-tour.md).
 - **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Everything else is a neutral grey, so the accent is easy to spot. Blue unless you pick another of the five in [Settings](settings.md). Colours that mean something keep their own: Play (Stop, while the game runs) is the one light button, and errors are red.
 - **Interface scale:** how large the whole editor is drawn, as a percentage, set in [Settings](settings.md). At 150% every button, word and gap is half as large again. It's for screens whose pixels are too small to read at 100%; it doesn't change your game.
 - **Density:** how much room the editor's controls take, set in [Settings](settings.md): Compact, Default or Comfortable. It changes the height of buttons and fields, not the size of text.
 - **Unfinished part:** a place in the editor for a feature that isn't built yet. Solis's interface follows one design, which has room for things that come in later updates; each is shown where it will be, in grey with a small hollow square, and does nothing but say so. One setting hides them all. Other programs call such a thing a *placeholder*. See [Unfinished parts](unfinished-parts.md).
 - **Ribbon:** the band of buttons under the tabs along the top: each tab (Home, Library, Animate and so on) shows its own buttons there, gathered into named groups, with the Play group at its right end. It took the place of the menus. See [Interface tour](interface-tour.md).
-- **Shelf:** in the editor's new interface, the wide panel along the bottom, with tabs of its own: what's selected and its properties, the Console, Problems and more, side by side in columns. It takes the place of the panels docked round the viewport. It isn't in the editor yet: the new interface arrives a part at a time, and this page will say when.
+- **Shelf:** the wide band along the bottom of the window, under the editor groups, with tabs of its own on its bar: on Home, **Entity** (the Area tree, Properties and the Library side by side in columns), the Console and Problems. Drag its grip to size it; **Ctrl + Space** folds it to its bar and back. See [Interface tour](interface-tour.md).
+- **Status bar:** the thin strip along the very bottom: whether the code is clean, the problems' counts, what's going on, and the version. See [Interface tour](interface-tour.md).
 
 ## The 3D view
 

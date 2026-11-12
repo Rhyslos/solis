@@ -195,7 +195,7 @@ These work in the viewport while a tile map's entity is selected; see [Painting 
 | Rename | F2 |
 | Point the camera at the selection | F |
 | Search for anything to do, any file, entity or panel (with nothing being typed) | Space |
-| Pop the Library drawer up or away (or bring the pinned Library to the front) | Ctrl + Space |
+| Fold the shelf to its bar, or open it again | Ctrl + Space |
 
 All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md).
 
@@ -239,8 +239,6 @@ See [Projects and the Library](projects-and-the-library.md).
 
 | Action | Shortcut |
 |---|---|
-| Pop the Library drawer up or away (or bring the pinned Library to the front) | Ctrl + Space (while typing too) |
-| Tuck the drawer away (that Esc doesn't also select nothing) | Esc, or click outside it |
 | Place a model, assembly, sprite sheet or tile map where the camera looks; open any other file | Double-click it |
 | Place a model, assembly, sprite, picture or tile map where you point | Drag it into the viewport |
 | Place one under an entity | Drag it onto the entity in the Area panel |
@@ -290,12 +288,21 @@ The launcher is what Solis starts on, and the **File** tab shows its pages again
 | Back to the editor | Esc |
 | In Rename…: keep the new name, or leave it as it was | Enter, Esc |
 
-## Panels
+## Editor groups and the shelf
 
-| Action | Shortcut |
+Panels stay where each tab's screen puts them; these size the screen, and each tab remembers what you did.
+
+| Action | Mouse or key |
 |---|---|
-| Move a panel | Drag it by its tab |
-| Make a panel bigger or smaller | Drag the line between two panels |
+| Bring a document to the front of its group | Click its tab |
+| Close a file's document (an animator, a tileset, a picture's crops, a screen) | Its **×** |
+| New area, Open area… | The **+** after the area's tab |
+| Save, Save as…, Close others, Show in the Library | Right-click the area's tab |
+| Give one of two groups more room | Drag the line between them |
+| Bring a shelf tab to the front (opening a folded shelf) | Click it |
+| Make the shelf taller or shorter | Drag the grip at its bar's left, or the bar's top edge |
+| Fold the shelf to its bar, or open it again | Ctrl + Space (while typing too) |
+| Close a clips file | The **×** after the Frames or Clips shelf tab |
 
 See the [Interface tour](interface-tour.md).
 

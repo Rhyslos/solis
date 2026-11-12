@@ -67,53 +67,53 @@ Each of Home, Animate, UI and Debug remembers how you arranged its panels, separ
 
 Up and Down choose, **Enter** does it, **Esc** closes. Why? You don't have to remember which tab something is on: type what you want. Some things have no button yet and are done from the search alone (or by their keys): **New area**, **Open area…**, **Save area as…**, **Duplicate**, **Delete**, **Rename**, **Select all**, **Select nothing**, **Reset layout**, **Open the manual ↗**, **Add the sample area**, **Check for updates**, and showing or hiding the viewport's corner controls. Things that can't be done right now (Pause while editing, Delete with nothing selected) aren't listed. In the Frames tab, Space still plays and stops the clip, so point somewhere else first.
 
-**The panels** fill the middle of the window. On the Home tab they start with the Area panel on the left, the viewport in the middle, Properties on the right with Hints under it, and the Library, Console, Problems, Mixer, Profiler and Code as tabs along the bottom. Why there? The things you pick (in the Area) and what you change about them (in Properties) sit either side of what you're looking at, and everything else shares the bottom so the viewport stays big.
+**The middle of the window** is the same on every tab: one or two [editor groups](concepts.md#the-window) on top, the [shelf](concepts.md#the-window) under them, the status bar along the bottom. Why the same everywhere? Each tab of the tab bar is one kind of work, and its screen keeps your things in the same places: what you're working on big in the middle, the tools and lists for it on the shelf below. Panels don't move between places; every tab remembers how you sized it.
 
-| Panel | Shares a space with | What it's for |
+- **Editor groups** hold *documents*: the area, the running game, an animator, a tileset. Each group has a strip of tabs along its top (the one in front is lighter, with a thin accent line on top); click one to bring it to the front. A tab for a file has a **×** that closes the file; nothing asks whether to save, because those files save as you change them. When a tab shows two groups side by side, drag the thin line between them to give one more room; when the window is too narrow for both, they sit one above the other.
+- **The area's tab** carries a **+**: **New area** and **Open area…**. Right-click the tab for **Save**, **Save as…**, **Close others** and **Show in the Library**. (Close is there but greyed: one area is open at a time, so open or make another in its place.)
+- **The shelf** has its own tabs along its bar. Click one to show it; its contents sit side by side as columns, each with a header, and fall under each other when the window is narrow. Drag the grip at the bar's left (or the bar's top edge) up or down to make the shelf taller or shorter, and press **Ctrl + Space** to fold it down to its bar and back, even while you're typing. At the bar's right are tools for the tab in front: the Console's level filters, search, **Clear** and **Copy** while the Console is there.
+- **What each tab remembers:** the shelf tab in front, the shelf's height and whether it's folded, and the split between its groups, as you left them, also after closing Solis. **Reset layout** puts the tab you're on back as it started.
+
+What each tab shows:
+
+| Tab | Editor groups | Shelf tabs |
 |---|---|---|
-| Viewport | Game | The 3D world, in one, two or four views (flat ones too). See [Moving around the viewport](navigating-the-viewport.md). |
-| Game | Viewport | The running game, through its camera, when you press Play. See [Play mode](play-mode.md). |
-| Area | | Every [entity](entities.md) in the area, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
-| Properties | | The selected entity's name and [components](entities.md), each in a card with its settings, a **?** for its manual page and a **⋯** for rarer actions; the **⋯** beside the name has **Move here**, copying and pasting, and **Delete**. Some things take its place while you work on them: a sound or sprite sheet chosen in the Library, a bus chosen in the Mixer, or the piece picked on the UI canvas. |
-| Hints | (under Properties) | A few plain sentences about what's selected and what you can do with it, such as where a game code component's file is and that saving it in Ledger updates the game at once; with nothing selected, how to start. Turn hints off in **File > Preferences** once you know your way around. |
-| Library | Console, Problems, Mixer, Profiler, Code | The open [project](projects-and-the-library.md)'s files: models, assemblies, pictures and sounds. Double-click a model or assembly, or click its +, to place it. Right-click anywhere in it, or use **+ New**, to make a code file, folder, area, tile map, tileset, animator or sound event. |
-| Console | Library, and the rest along the bottom | Messages from the editor and the engine, and a command line. See [The Console](console.md). |
-| Problems | Library, and the rest along the bottom | Mistakes found in the game's code and in the area, such as a missing model; a number on the tab says how many. See [Problems](problems.md). |
-| Mixer | Library, and the rest along the bottom | The project's buses: a fader, meter, mute and solo each, and ducking. See [The Mixer](mixer.md). |
-| Profiler | Library, and the rest along the bottom | Where each frame's time goes: game code, the world, drawing, the editor, and the graphics card. See [The Profiler](profiler.md). |
-| Code | Library, and the rest along the bottom | The project's game code files in Lust, Rust or Lua. See [Game code](game-code.md). |
+| Home | The area (its viewport); a **Game** tab beside it, brought to the front, while the game runs | **Entity**: the Area tree, Properties (with Hints under it) and the Library, side by side · Animation (not built yet) · **Console** · **Problems** (with how many) · **Map**, while an entity with a tile map is selected |
+| Library | The Library; a **Tileset** or a picture's crops (**Atlas Crop**) beside it while one is open | **Details**: Properties, showing the file picked · **Code**: the game's code files and what uses each · Import queue and History (not built yet) |
+| Animate | The viewport; an **Animator** beside it while one is open | Sequencer (not built yet) · **Frames** and **Clips** while a clips file is open (each with a × that closes it) · **Properties**: the animator's state picked, or the entity selected · Key (not built yet) · **Console** |
+| UI | The **Canvas** (a × closes the screen open on it) | **Screen**: Elements (the screen's pieces) and Properties (the piece picked) · **Console** |
+| Audio | The **Mixer** | **Bus**: Properties, showing the bus picked · Snapshot (not built yet) · **Console** |
+| Debug | The **Game** (and the viewport behind it) beside the **Profiler** | **Console** · **Problems** · Hottest functions and Memory snapshot (not built yet) |
+| Build | As Home | As Home |
 
-**Panels that come with a file.** Some panels are there only while what they show is open, so they don't take room the rest of the time. Most have a × on their tab to close them; the Map tab has none, and goes when you select something else. Tabs that show the same file close together: the × on **Clips** or **Frames** closes the clips file and both tabs, and the × on **Canvas** or **Elements** closes the screen and both of those, leaving every other open file alone. Nothing asks whether to save, because each change to these files is saved as you make it.
+The panels inside are today's, each until its screen is rebuilt to the design:
 
-| Panel | When it's there | What it's for |
+| Panel | Where | What it's for |
 |---|---|---|
-| Clips and Frames | While a clips file is open | A sprite sheet's clips, and the chosen clip's frames along a time ruler. See [Animating sprites](sprite-animation.md). |
-| Animator | While an animator is open | Its states and the ways between them, as a graph. See [Animators](animators.md). |
-| Map | While an entity with a tile map is selected | The map's layers and the terrains to paint with. See [Painting tiles](painting-tiles.md). |
-| Tileset | While a tileset is open | Its terrains, their art and its rules. See [Tilesets and autotiling](tilesets.md). |
-| Atlas Crop | While a picture's crops are open | The pictures cut out of one sheet. See [Atlas Crop](atlas-crop.md). |
-| Canvas and Elements | On the UI tab, while a screen is open | The screen drawn to pick and change, and its pieces as a tree. See [The UI editor](ui-editor.md). |
-
-**The Library as a drawer:** the Library starts pinned, as a panel along the bottom. Click **Unpin** in it and it leaves the layout, so the viewport gets that room; **Ctrl + Space** then pops it up over the editor whenever you want it, and **Pin** docks it again. With the Library pinned, Ctrl + Space brings it to the front. See [Projects and the Library](projects-and-the-library.md).
+| Viewport | The area's tab on Home and Animate | The 3D world, in one, two or four views (flat ones too). See [Moving around the viewport](navigating-the-viewport.md). |
+| Game | Beside the area while playing; Debug | The running game, through its camera, when you press Play. See [Play mode](play-mode.md). |
+| Area | Home › Entity, left | Every [entity](entities.md) in the area, as a tree, with its count in the header: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
+| Properties | Home › Entity, middle; and the Details, Properties, Screen and Bus shelf tabs | The selected entity's name and [components](entities.md), each in a card with its settings, a **?** for its manual page and a **⋯** for rarer actions; the **⋯** beside the name has **Move here**, copying and pasting, and **Delete**. Some things take its place while you work on them: a sound or sprite sheet picked in the Library, a bus picked in the Mixer, the piece picked on the UI canvas, a tileset's terrains, an animator's state. |
+| Hints | Under Properties on Home › Entity | A few plain sentences about what's selected and what you can do with it; with nothing selected, how to start. Turn hints off in **File > Preferences** once you know your way around. |
+| Library | Home › Entity, right; and the whole Library tab | The open [project](projects-and-the-library.md)'s files: models, assemblies, pictures and sounds. Double-click a model or assembly, or click its +, to place it. Right-click anywhere in it, or use **+ New**, to make a code file, folder, area, tile map, tileset, animator or sound event. |
+| Code | Library › Code | The project's game code files in Lust, Rust or Lua. See [Game code](game-code.md). |
+| Console | A shelf tab on Home, Animate, UI, Audio and Debug | Messages from the editor and the engine, and a command line. See [The Console](console.md). |
+| Problems | A shelf tab on Home and Debug | Mistakes found in the game's code and in the area, such as a missing model. See [Problems](problems.md). |
+| Mixer | Audio | The project's buses: a fader, meter, mute and solo each, and ducking. See [The Mixer](mixer.md). |
+| Profiler | Debug | Where each frame's time goes. See [The Profiler](profiler.md). |
+| Clips and Frames, Animator, Map, Tileset, Atlas Crop, Canvas and Elements | While their file is open (the Map while a tile map is selected) | See [Animating sprites](sprite-animation.md), [Animators](animators.md), [Painting tiles](painting-tiles.md), [Tilesets and autotiling](tilesets.md), [Atlas Crop](atlas-crop.md) and [The UI editor](ui-editor.md). Opening the file brings its tab to the front. |
 
 **The status bar** along the bottom says what's happening, so you don't have to go looking:
-- **Code checked**, or how many mistakes the game's code has. Solis checks the code when the project opens and each time you save a code file; hover to see when it last did.
-- **No problems**, or how many there are. Click it to open the [Problems](problems.md) panel.
-- **Saved**, **Unsaved changes** or **Not saved yet**, for the open area ([Saving areas](saving-areas.md)).
-- On the right: **Playing** or **Paused** while the game runs, then the area's name, whether the viewport shows it in 2D or 3D, and for 2D the game's size in pixels (`farm · 2D · 480 × 270`, from **File > Project settings**). For three seconds after you click a part that isn't built yet, those last words say so instead ([Unfinished parts](unfinished-parts.md)).
+- On the left, a green dot and **Ready** while the game's code is clean (Solis checks it when the project opens and each time you save a code file; hover to see when it last did), or, in red, how many mistakes it has.
+- Beside it, the branch and its changes (not built yet), then the problems as two coloured counts: red for mistakes in the game's code, amber for problems in the area. Click them to open the [Problems](problems.md) tab.
+- On the right: **Playing** or **Paused** while the game runs; **Saved**, **Unsaved changes** or **Not saved yet** for the open area ([Saving areas](saving-areas.md)); the area's name, whether the viewport shows it in 2D or 3D, and for 2D the game's size in pixels (`farm · 2D · 480 × 270`, from **File > Project settings**); then Solis's version, and **Restart to update** once an update has downloaded. For three seconds after you click a part that isn't built yet, the words before the version say so instead ([Unfinished parts](unfinished-parts.md)).
 
-**Rearranging panels ([docking](concepts.md#the-window)):**
-1. Drag a panel by its tab.
-2. As you drag, a highlighted area shows where it will land. Drop it on the edge of another panel to put the two side by side, or in the middle to add it to that panel's tab group.
-3. Drag the thin line between two panels to make one bigger.
-4. The ▼ at the left of a panel's tab row folds the panel away; click it again to unfold.
-
-Your layout is remembered next time. (When this layout became the standard one, every editor started from it once; your own arrangement from before is gone, so drag panels back if you liked them elsewhere.) If the saved layout is ever damaged (a crash while saving, a hand edit), Solis starts with the standard one instead.
+**From an older build:** panels used to be dragged anywhere and the Library could be a drawer. Neither is so now, and an arrangement you made before isn't carried over: every tab starts as the design draws it, and the Console says so once.
 
 ## Settings
 | Setting | What it does |
 |---|---|
-| Reset layout (in the search, and in **File > Preferences**) | Puts this tab's panels back where they started ([Settings](settings.md)). There are no other ready-made layouts: drag panels to make your own, and it's remembered. |
+| Reset layout (in the search, and in **File > Preferences**) | Puts the tab you're on back as it started: its shelf tab, the shelf's height, unfolded, and the split between its groups ([Settings](settings.md)). |
 | File > Preferences | The editor's own settings, such as its accent colour: see [Settings](settings.md). |
 | The viewport's ≡ menu | Switches the viewport's corner controls on and off (the search does too). |
 
@@ -128,17 +128,22 @@ Your layout is remembered next time. (When this layout became the standard one, 
 | Collapse the ribbon, or bring it back | Double-click a tab, or the chevron |
 | Scroll a ribbon that doesn't fit | The mouse wheel, over the ribbon |
 | List the other kinds a Create button makes | Its small arrow, or a right-click |
-| Pop the Library drawer up or away (or bring the pinned Library to the front) | `Ctrl + Space` |
+| Fold the shelf to its bar, or open it again (while typing too) | `Ctrl + Space` |
+| Make the shelf taller or shorter | Drag its grip, or its bar's top edge |
+| Give one of two groups more room | Drag the line between them |
+| New area, Open area… | The **+** after the area's tab |
+| Save, Save as…, Close others, Show in the Library | Right-click the area's tab |
 
 See [Keyboard shortcuts](keyboard-shortcuts.md) for the rest.
 
 ## Tips and common problems
-- **Problem:** a panel has disappeared. **Why:** it may be folded away, or behind another tab. **Fix:** press **Space** and type its name, look for its tab in each tab group, or press **Space** and choose **Reset layout**.
+- **Problem:** a panel has disappeared. **Why:** it lives on another tab, on a shelf tab not in front, or the shelf is folded. **Fix:** press **Space** and type its name: choosing it brings its tab and shelf tab to the front. **Ctrl + Space** unfolds the shelf.
 - **Problem:** a menu from an older build is gone (File, Edit, Entity, Help). **Why:** the tabs and the ribbon took the menu bar's place. **Fix:** press **Space** and type what you want: the list says where it lives now.
-- **Problem:** the Library isn't among the bottom tabs. **Why:** it's unpinned, so it's a drawer. **Fix:** press **Ctrl + Space** to pop it up, and click **Pin** in it to dock it again.
+- **Problem:** the panels are where an older build didn't have them. **Why:** the middle of the window is the design's now, and panels don't move. **Fix:** see the table above for where each one lives; **Space** and its name finds it.
+- **Problem:** Properties is cramped beside the Area tree and the Library. **Why:** they share Home's shelf, until the screen is rebuilt. **Fix:** drag the shelf's grip up for more room; it's remembered.
 
 ## Related
 - [The launcher](launcher.md): the page Solis starts on.
-- [Projects and the Library](projects-and-the-library.md): the Library and its drawer.
+- [Projects and the Library](projects-and-the-library.md): the Library.
 - [Play mode](play-mode.md): Play, Pause, Step and Stop.
-- [Concepts](concepts.md): panel, tab, ribbon, docking, layout, workspace, accent colour.
+- [Concepts](concepts.md): panel, tab, ribbon, editor group, shelf, layout, workspace, accent colour.

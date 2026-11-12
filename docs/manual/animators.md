@@ -15,7 +15,7 @@ For one-off sprites (a door, a crop swaying) a plain clip on the Sprite is simpl
 
 ## How to use it
 1. **Make one:** in the Library, open the folder you want it in, then **New > Animator** (right-click in the Library, or **+ New**). Solis makes `animator.solanim` with one state, *Idle*, and opens it. (Rename the file in the Library, as any other.)
-2. **The Animator tab** opens first beside the Viewport, with a × on its tab to close it (click the **Viewport** tab beside it to go back to the area). On the left are the parameters and a preview; on the right, the graph.
+2. **The Animator tab** opens on the **Animate** tab of the tab bar, as a group of its own beside the viewport, with a × on its tab to close it. What you pick in its graph shows on the shelf's **Properties** tab. On the left are the parameters and a preview; on the right, the graph.
 3. **Choose its clips:** click empty space in the graph. Properties shows the animator: pick **Clips from**, the sprite sheet (or clips file) whose clips its states play.
 4. **Add states:** right-click empty space > **Add state**. Click a state to change it in Properties:
    - **Name**: what it's called.
