@@ -13,8 +13,9 @@ Every control follows the accent, the density and the interface scale through th
 | `segmented.rs` | The segmented control: choices side by side in a dark well, the chosen one lifted. |
 | `sub_tab.rs` | A File page's sub-tab (Preferences' General, Appearance…): its word, brighter with the accent's line under it while in front. |
 | `swatch.rs` | A row of colour swatches, the chosen one ringed in its own colour (the accent's choices). |
+| `columns.rs` | Columns side by side inside one shelf tab, each under the shelf's 30 px header with its title, note and tools (the 2D editors' shelf tabs). |
 | `chip.rs` | Chips, in the three sizes the design draws them (the Library's kinds, the Place tab's filters, the input page's contexts), with a kind's dot. |
-| `pill.rs` | The see-through pill that floats over the viewport. |
+| `pill.rs` | The see-through pill that floats over the viewport, and the hint of a tool's keys along a view's foot (`key_hints`). |
 | `card.rs` | A card: the lifted box with a title that holds a few rows. |
 | `keycap.rs` | A keycap: bound, in conflict (amber), or waiting for a key (the accent, dashed). |
 | `slider.rs` | The slider: a thin track filled with the accent up to a round light knob. |

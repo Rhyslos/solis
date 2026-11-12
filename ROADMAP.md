@@ -271,9 +271,9 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 
 ## Shared 1c: 2D and its editors
 
-- **Tile maps, tilesets and pictures' crops.**
-- **Animate: sprite clips and animators.**
-- **Game screens.**
+- **Tile maps, tilesets and pictures' crops.** *Built.*
+- **Animate: sprite clips and animators.** *Built.*
+- **Game screens.** *Built.*
 
 **Gate:** paint a map, edit a tileset, change a clip and an animator, and lay out a screen, each as its approved mock-up.
 
