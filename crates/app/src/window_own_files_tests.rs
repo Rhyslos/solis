@@ -18,7 +18,7 @@ use editor::sprite_sheets::{
 use std::sync::Arc;
 
 /// The editor with a new, empty project open in a folder of its own.
-fn editor_with_project(name: &str) -> (egui::Context, App, PathBuf) {
+pub(super) fn editor_with_project(name: &str) -> (egui::Context, App, PathBuf) {
     let root = std::env::temp_dir().join(format!("solis-own-files-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();
@@ -56,7 +56,7 @@ fn read_sprites(app: &mut App) {
 }
 
 /// Closes the editor and takes its project's folder away.
-fn close(app: App) {
+pub(super) fn close(app: App) {
     let root = app.projects.root().map(Path::to_path_buf);
     drop(app);
     if let Some(root) = root {

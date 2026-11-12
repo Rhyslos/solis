@@ -105,13 +105,11 @@ struct App {
     to_place: HashSet<AssetId>,
     /// The Library's thumbnails.
     thumbnails: crate::thumbnails::Thumbnails,
-    /// The game's code, checked on a worker.
+    /// The game's code, described and checked on a worker.
     game_code: crate::game_code::GameCode,
     /// The last note on the project's `armour.rs` (changes to it don't
     /// run until Phase 18), to say it again only when it changes.
     rust_note: Option<String>,
-    /// The program and version, for the files describing the engine.
-    made_by: String,
     /// What's in the assets folder, as the Library last showed it.
     listing: asset_db::Listing,
     /// Assemblies that couldn't be read ahead for the Library's listing:
@@ -208,11 +206,14 @@ impl App {
             projects: Projects::with_known(std::mem::take(&mut saved.known), copy.build),
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
-            game_code: crate::game_code::GameCode::default(),
-            rust_note: None,
             // Without the build number, so the engine's files in a project
             // don't change with every update.
-            made_by: format!("{} {}", info.name, env!("CARGO_PKG_VERSION")),
+            game_code: crate::game_code::GameCode::new(format!(
+                "{} {}",
+                info.name,
+                env!("CARGO_PKG_VERSION")
+            )),
+            rust_note: None,
             listing: asset_db::Listing::default(),
             unreadable: HashSet::new(),
             area_files: AreaFiles::default(),
@@ -462,10 +463,6 @@ impl App {
                          show when the project is opened again.",
                     );
                 }
-                // The engine described to game code, then the code checked.
-                for note in self.game_code.describe_opened(&assets, &self.made_by) {
-                    self.workbench.log(LogLevel::Warning, note);
-                }
                 // Rust components built into Solis that this project uses
                 // (the turret sample's), until Phase 18 builds a game's own.
                 let (rust, note) = crate::sample_game::rust_components(&assets);
@@ -474,6 +471,7 @@ impl App {
                     self.workbench.log(LogLevel::Warning, note.clone());
                 }
                 self.rust_note = note;
+                // The engine described to game code, then the code checked.
                 self.game_code.check(assets);
                 self.refresh_library();
                 self.list_projects();
@@ -630,7 +628,8 @@ impl App {
     }
 
     /// Acts on what changed in the project's assets folder: models in use
-    /// that changed are read again and swapped in.
+    /// that changed are read again and swapped in. The caller lists the
+    /// folder again for the Library (`refresh_library`), once.
     fn follow_changes(&mut self, changes: Vec<Change>, notes: Vec<String>) {
         for note in notes {
             self.workbench.log(LogLevel::Warning, note);
@@ -693,7 +692,29 @@ impl App {
         if changes.iter().any(|c| matches!(c, Change::Added(_))) {
             self.load_area_models();
         }
+    }
+
+    /// Acts on a change in the assets folder that a look at it found
+    /// (the review, BUG-53: the folder was listed once here and once in
+    /// `follow_changes`, and walked twice more to describe the engine, all
+    /// on the window's thread). The Library lists it again, once; the
+    /// engine is described again and the code checked, on a worker.
+    fn assets_changed(&mut self) {
         self.refresh_library();
+        // A code file may have changed: checked again on a worker, and
+        // reported only if the code is different.
+        if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+            // armour.rs changed: say that its changes don't run.
+            let (_, note) = crate::sample_game::rust_components(&assets);
+            if note != self.rust_note
+                && let Some(note) = &note
+            {
+                self.workbench.log(LogLevel::Warning, note.clone());
+            }
+            self.rust_note = note;
+            // An assembly added or renamed changes the project's names.
+            self.game_code.check(assets);
+        }
     }
 
     /// Takes in sprite sheets just read (Phase 9, D2): each is uploaded to
@@ -735,9 +756,6 @@ impl App {
         if self.game_code.set_animation(names)
             && let Some(assets) = self.projects.db().map(|db| db.project().assets())
         {
-            for note in self.game_code.describe_again(&assets, &self.made_by) {
-                self.workbench.log(LogLevel::Warning, note);
-            }
             self.game_code.check(assets);
         }
     }
@@ -1096,9 +1114,6 @@ impl App {
                         // The actions are names game code uses: written again
                         // into solis/project.lst, and the code checked with them.
                         if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
-                            for note in self.game_code.describe_again(&assets, &self.made_by) {
-                                self.workbench.log(LogLevel::Warning, note);
-                            }
                             self.game_code.check(assets);
                         }
                         match saved {
@@ -1129,9 +1144,6 @@ impl App {
                         let saved = crate::play_files::save_mixer(&root, &mixer);
                         // The buses are names game code uses (Bus.Music).
                         if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
-                            for note in self.game_code.describe_again(&assets, &self.made_by) {
-                                self.workbench.log(LogLevel::Warning, note);
-                            }
                             self.game_code.check(assets);
                         }
                         match saved {
@@ -1473,10 +1485,12 @@ impl App {
         let (changes, notes) = self.projects.rescan();
         let Some(id) = self.projects.db().and_then(|db| db.id_at(&path)) else {
             self.follow_changes(changes, notes);
+            self.refresh_library();
             return;
         };
         self.workbench.set_assembly(id, std::sync::Arc::new(file));
         self.follow_changes(changes, notes);
+        self.refresh_library();
         self.workbench.make_copy(root, id);
         self.workbench.log(
             LogLevel::Info,
@@ -1974,24 +1988,7 @@ impl eframe::App for App {
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);
         if self.projects.take_changed() {
-            self.refresh_library();
-            // A code file may have changed: checked again on a worker, and
-            // reported only if the code is different.
-            if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
-                // armour.rs changed: say that its changes don't run.
-                let (_, note) = crate::sample_game::rust_components(&assets);
-                if note != self.rust_note
-                    && let Some(note) = &note
-                {
-                    self.workbench.log(LogLevel::Warning, note.clone());
-                }
-                self.rust_note = note;
-                // An assembly added or renamed changes the project's names.
-                for note in self.game_code.describe_again(&assets, &self.made_by) {
-                    self.workbench.log(LogLevel::Warning, note);
-                }
-                self.game_code.check(assets);
-            }
+            self.assets_changed();
         }
         if let Some(checked) = self.game_code.poll() {
             self.workbench
@@ -1999,6 +1996,9 @@ impl eframe::App for App {
             if let Some(program) = checked.program {
                 self.workbench.set_program(program);
             }
+        }
+        for note in self.game_code.take_notes() {
+            self.workbench.log(LogLevel::Warning, note);
         }
         if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
             self.show_library();
@@ -2304,6 +2304,47 @@ mod tests {
 
     use super::*;
     use eframe::Storage as _;
+
+    /// The review, BUG-53: a change in the assets folder listed it twice
+    /// and walked it twice more to describe the engine to game code, all
+    /// on the window's thread. Now it's listed once, and the engine is
+    /// described on the game code's worker. Both are timed, in a project
+    /// of 10,000 files.
+    #[test]
+    #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+    fn scale_check_a_change_in_a_project_of_10000_files() {
+        const TARGET_MS: f64 = 50.0;
+        let (_ctx, mut app, assets) = super::own_files_tests::editor_with_project("scale-change");
+        for folder in 0..100 {
+            let folder = assets.join(format!("folder {folder}"));
+            std::fs::create_dir_all(&folder).unwrap();
+            for file in 0..100 {
+                std::fs::write(folder.join(format!("notes {file}.txt")), "").unwrap();
+            }
+        }
+        let runs = 5;
+        let made_by = "Test 1.0";
+        let start = std::time::Instant::now();
+        for _ in 0..runs {
+            // What the frame did with one change before.
+            app.refresh_library();
+            app.refresh_library();
+            crate::game_code::GameCode::describe(&assets, made_by);
+        }
+        let before_ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(runs);
+        let start = std::time::Instant::now();
+        for _ in 0..runs {
+            app.assets_changed();
+        }
+        let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(runs);
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!(
+            "Scale check: a change in the assets folder of 10,000 files, the frame's part {ms:.1} ms \
+             (target {TARGET_MS} ms; it was {before_ms:.1} ms) {verdict}"
+        );
+        super::own_files_tests::close(app);
+        assert!(ms <= TARGET_MS, "{ms:.1} ms");
+    }
 
     #[test]
     fn the_same_folder_is_recognised_however_its_written() {

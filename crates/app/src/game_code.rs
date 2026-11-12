@@ -1,10 +1,12 @@
-//! The game's code, looked after on a worker (CONTRIBUTING rule 10): the
-//! files describing the engine to Lust written into a project when it
-//! opens, and the project's Lust read and checked whenever something in
-//! its assets changes, and turned into Lua for the editor to run. Only a
-//! check that found different code reports. Code that couldn't be checked,
-//! because an earlier check never finished and is still running
-//! (`script::try_compile`), is checked by itself when that one ends.
+//! The game's code, looked after on a worker (CONTRIBUTING rule 10):
+//! whenever something in the project's assets changes, the files
+//! describing the engine and the project's names to Lust are written again
+//! (walking the assets for its assemblies, sound events and screens), and
+//! then its Lust is read, checked and turned into Lua for the editor to
+//! run. Only a check that found different code reports. Code that couldn't
+//! be checked, because an earlier check never finished and is still
+//! running (`script::try_compile`), is checked by itself when that one
+//! ends.
 
 use script::{Code, CodeProblem};
 use std::hash::{Hash, Hasher};
@@ -32,10 +34,10 @@ pub struct Checked {
 /// wasn't started (`script::try_compile`).
 type Attempt = Result<Result<Option<script::Compiled>, Vec<CodeProblem>>, script::NotStarted>;
 
-/// A worker's answer: the code's hash, what was read, and what became of
-/// its check (nothing when the code is what the last reported check
-/// found: it isn't compiled again).
-type Answer = (u64, Code, Option<Attempt>);
+/// A worker's answer: the notes describing the engine gave, the code's
+/// hash, what was read, and what became of its check (nothing when the
+/// code is what the last reported check found: it isn't compiled again).
+type Answer = (Vec<String>, u64, Code, Option<Attempt>);
 
 /// How the code is checked, and whether a check that was given up on is
 /// still running: `script`'s own, but for tests, which mustn't start a
@@ -69,8 +71,12 @@ pub struct GameCode {
     /// that one ends.
     held: Option<(u64, PathBuf)>,
     checker: Checker,
-    /// The notes [`GameCode::describe_again`] last gave.
+    /// The program and version the engine's files are written by.
+    made_by: String,
+    /// The notes describing the engine last gave, and those not yet taken
+    /// ([`GameCode::take_notes`]): each is said only when they change.
     told: Vec<String>,
+    to_say: Vec<String>,
     /// The sprites' clips (`sheet/clip` paths) and cues, for the project
     /// file, and the animators, as the editor last read them.
     animation: Animation,
@@ -183,6 +189,15 @@ fn asset_paths(assets: &Path, ext: &str) -> Vec<String> {
 const MAX_ASSEMBLY_NAMES: usize = 10_000;
 
 impl GameCode {
+    /// The game code of the program and version `made_by`, which writes
+    /// the files describing the engine.
+    pub fn new(made_by: impl Into<String>) -> Self {
+        Self {
+            made_by: made_by.into(),
+            ..Self::default()
+        }
+    }
+
     /// Writes the files describing the engine (`assets/solis/*.lst`) if
     /// they're missing or different. `made_by` names the program and
     /// version. Returns notes on any that couldn't be written.
@@ -309,33 +324,24 @@ impl GameCode {
         notes
     }
 
-    /// [`GameCode::describe`]'s notes, kept to say only when they change.
-    pub fn describe_again(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
-        let notes = Self::describe_with(assets, made_by, &self.animation);
-        if notes == self.told {
-            return Vec::new();
-        }
-        self.told.clone_from(&notes);
-        notes
-    }
-
-    /// [`GameCode::describe`] for a project just opened: every note said.
-    pub fn describe_opened(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
-        self.animation = Animation::default();
-        self.told = Self::describe(assets, made_by);
-        self.told.clone()
+    /// What describing the engine said since last asked, when it changed
+    /// (the names game code can't use, files that couldn't be written).
+    pub fn take_notes(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.to_say)
     }
 
     /// Takes the sprites' clips and cues as the editor has read them;
-    /// whether they changed (then describe again and check the code).
+    /// whether they changed (then check the code again).
     pub fn set_animation(&mut self, animation: Animation) -> bool {
         let changed = self.animation != animation;
         self.animation = animation;
         changed
     }
 
-    /// Reads and checks the code in `assets` on a worker; if a check is
-    /// running, another starts when it ends.
+    /// Describes the engine and the project's names to Lust in `assets`
+    /// (they may have changed with them: an assembly added, the input
+    /// actions saved), then reads and checks the code there, all on a
+    /// worker; if a check is running, another starts when it ends.
     pub fn check(&mut self, assets: PathBuf) {
         if self.running.is_some() {
             self.again = Some(assets);
@@ -344,16 +350,19 @@ impl GameCode {
         let (sender, receiver) = channel();
         let last = self.last;
         let check = self.checker.check;
+        let made_by = self.made_by.clone();
+        let animation = self.animation.clone();
         let folder = assets.clone();
         let started = std::thread::Builder::new()
             .name("game code".into())
             .spawn(move || {
+                let described = Self::describe_with(&assets, &made_by, &animation);
                 let code = script::gather(&assets);
                 let found = hash(&code);
                 // Most changes in the assets aren't code (a model, the
                 // area saved): then there's nothing to compile.
                 let compiled = (last != Some(found)).then(|| check(&code));
-                let _ = sender.send((found, code, compiled));
+                let _ = sender.send((described, found, code, compiled));
             });
         if started.is_ok() {
             self.running = Some((receiver, Instant::now(), folder));
@@ -361,12 +370,16 @@ impl GameCode {
     }
 
     /// Another project opened: what the last one's checks found is
-    /// forgotten, and one still running is left to finish unheard.
+    /// forgotten, and one still running is left to finish unheard. The
+    /// next check's notes on describing the engine are all said.
     pub fn forget(&mut self) {
         self.running = None;
         self.again = None;
         self.last = None;
         self.held = None;
+        self.animation = Animation::default();
+        self.told.clear();
+        self.to_say.clear();
     }
 
     /// Whether a check is running.
@@ -387,7 +400,7 @@ impl GameCode {
             }
         }
         let (receiver, started, _) = self.running.as_ref()?;
-        let (found, code, compiled) = match receiver.try_recv() {
+        let (described, found, code, compiled) = match receiver.try_recv() {
             Ok(done) => done,
             Err(std::sync::mpsc::TryRecvError::Empty) if started.elapsed() > GIVE_UP => {
                 // Stuck: stop waiting (the worker is left to end on its
@@ -422,6 +435,10 @@ impl GameCode {
             }
         };
         let (_, _, checked_folder) = self.running.take()?;
+        if described != self.told {
+            self.to_say.extend(described.iter().cloned());
+            self.told = described;
+        }
         if let Some(assets) = self.again.take() {
             self.check(assets);
         }
@@ -476,11 +493,14 @@ fn hash(code: &Code) -> u64 {
 mod tests {
     use super::*;
 
+    /// A project's assets folder of its own: checking the code reads the
+    /// input actions and buses beside it, which another test may write.
     fn folder(name: &str) -> PathBuf {
-        let path = std::env::temp_dir()
+        let root = std::env::temp_dir()
             .join(format!("solis-game-code-{}", std::process::id()))
             .join(name);
-        let _ = std::fs::remove_dir_all(&path);
+        let _ = std::fs::remove_dir_all(&root);
+        let path = root.join("assets");
         std::fs::create_dir_all(&path).unwrap();
         path
     }
@@ -494,6 +514,15 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         None
+    }
+
+    /// Checks the code in `assets` and waits for the check: what
+    /// describing the engine said on its way, if it's new.
+    fn notes_of_a_check(code: &mut GameCode, assets: &Path) -> Vec<String> {
+        code.check(assets.to_path_buf());
+        finished(code);
+        assert!(!code.waiting());
+        code.take_notes()
     }
 
     #[test]
@@ -529,8 +558,11 @@ mod tests {
         ] {
             std::fs::write(assets.join(file), "").unwrap();
         }
-        let mut code = GameCode::default();
-        let notes = code.describe_opened(&assets, "Test 1.0");
+        // The review, BUG-53: the engine is described on the check's
+        // worker, not on the window's thread, and what it says comes back
+        // with the check.
+        let mut code = GameCode::new("Test 1.0");
+        let notes = notes_of_a_check(&mut code, &assets);
         assert_eq!(notes.len(), 1, "{notes:?}");
         assert!(notes[0].contains("big-ship"));
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
@@ -539,10 +571,10 @@ mod tests {
             "{project}"
         );
         // The same again: nothing new to say. A new assembly joins.
-        assert!(code.describe_again(&assets, "Test 1.0").is_empty());
+        assert!(notes_of_a_check(&mut code, &assets).is_empty());
         std::fs::write(assets.join("ships/freighter.solassembly"), "").unwrap();
         assert!(
-            code.describe_again(&assets, "Test 1.0").is_empty(),
+            notes_of_a_check(&mut code, &assets).is_empty(),
             "the same note isn't said again"
         );
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
@@ -560,7 +592,7 @@ mod tests {
             .actions
             .push(input::Action::button("openMap2", &["N"]));
         std::fs::write(assets.parent().unwrap().join(input::FILE), bindings.write()).unwrap();
-        let notes = code.describe_again(&assets, "Test 1.0");
+        let notes = notes_of_a_check(&mut code, &assets);
         assert!(
             notes.iter().any(|n| n.contains("\"openMap2\"")),
             "{notes:?}"
@@ -570,7 +602,7 @@ mod tests {
         // Sound events and the Mixer's buses.
         std::fs::create_dir_all(assets.join("sfx")).unwrap();
         std::fs::write(assets.join("sfx/footstep.solsound"), "").unwrap();
-        code.describe_again(&assets, "Test 1.0");
+        notes_of_a_check(&mut code, &assets);
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
         assert!(
             project.contains("state Sound = [Sfx [Footstep]];"),
@@ -580,6 +612,9 @@ mod tests {
             project.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{project}"
         );
+        // Another project: its notes are all said, even the same ones.
+        code.forget();
+        assert_eq!(notes_of_a_check(&mut code, &assets).len(), 2);
     }
 
     #[test]
@@ -716,7 +751,8 @@ mod unfinished {
     fn code_not_checked_while_a_check_never_finishes_is_checked_by_itself_when_it_ends() {
         let assets = std::env::temp_dir()
             .join(format!("solis-game-code-{}", std::process::id()))
-            .join("unfinished");
+            .join("unfinished")
+            .join("assets");
         let _ = std::fs::remove_dir_all(&assets);
         std::fs::create_dir_all(&assets).unwrap();
         std::fs::write(assets.join("main.lst"), "end\n").unwrap();

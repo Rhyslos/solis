@@ -131,6 +131,9 @@ impl App {
                 self.workbench.set_program(program);
             }
         }
+        for note in self.game_code.take_notes() {
+            self.workbench.log(LogLevel::Warning, note);
+        }
         self.collect_imports();
         if self.sounds.poll() {
             self.workbench.set_sounds(self.sounds.states());
