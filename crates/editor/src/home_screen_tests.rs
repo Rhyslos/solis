@@ -27,9 +27,11 @@ fn as_many_cards_go_across_as_fit_at_their_least_width() {
 
 #[test]
 fn the_status_bar_says_what_moves_snap_to() {
-    let mut snapping = Snapping::default();
-    snapping.grid = true;
-    snapping.grid_step = 0.25;
+    let mut snapping = Snapping {
+        grid: true,
+        grid_step: 0.25,
+        ..Snapping::default()
+    };
     assert_eq!(snap_words(&snapping, false), "Snap 0.25 \u{b7} World");
     snapping.grid = false;
     snapping.object_axes = true;

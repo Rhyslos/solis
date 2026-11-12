@@ -60,7 +60,7 @@ impl Workbench {
         let selected: Vec<_> = self.open.document.selection.iter().collect();
         match selected.as_slice() {
             [] => hints.push(
-                "Select something in the viewport or the Area panel to see what it is and what you \
+                "Select something in the viewport or the Area column to see what it is and what you \
                  can do with it. Press Space to search for any action, file or entity."
                     .to_string(),
             ),
