@@ -141,8 +141,167 @@ fn the_app_is_asked_for_a_text_file_shown_in_properties_only() {
             .text_file
             .as_ref()
             .map(|(p, r)| (p.as_str(), r.clone())),
-        Some(("notes/plan.md", Ok("# Plan".to_owned())))
+        Some((
+            "notes/plan.md",
+            Ok(ShownText::of("notes/plan.md", "# Plan"))
+        ))
     );
     w.open.sound_shown = Some(("birdsong.ogg".into(), w.open.document.selection.clone()));
     assert_eq!(w.text_file_wanted(), None);
+}
+
+/// A Markdown note of one long paragraph of emphasised words: the marks
+/// it never uses (code, links, strong) were looked for from each word on
+/// to the paragraph's end, for every word.
+fn long_note(words: usize) -> String {
+    format!("# Notes\n\n{}\n", "*a* ".repeat(words))
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_a_long_markdown_note_in_properties() {
+    // BUG-27: the note was read into blocks and runs again every frame,
+    // and reading a paragraph's marks took the square of its length.
+    const TARGET_MS: f64 = 4.0;
+    let text = long_note(20_000);
+    let read: TextShown = Ok(ShownText::of("notes/long.md", &text));
+    let mut h = egui_kittest::Harness::builder()
+        .with_size(egui::vec2(400.0, 800.0))
+        .build_ui(move |ui| {
+            let _ = text_properties(ui, "notes/long.md", Some(&read));
+        });
+    h.step();
+    let frames = 3;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: a Markdown note of {} KB in Properties, a frame {ms:.2} ms (target \
+         {TARGET_MS} ms) {verdict}",
+        text.len() / 1024
+    );
+    assert!(ms <= TARGET_MS, "{ms:.2} ms");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_reading_a_long_paragraph_s_marks() {
+    // BUG-27: each turn looked for each mark from where it was to the
+    // paragraph's end, so a mark never used cost the square of its length.
+    const TARGET_MS: f64 = 20.0;
+    let paragraph = "*a* ".repeat(131_072);
+    let start = std::time::Instant::now();
+    let runs = inline_runs(&paragraph);
+    let ms = start.elapsed().as_secs_f64() * 1000.0;
+    assert_eq!(runs.len(), 2 * 131_072);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: reading the marks of a 512 KB paragraph {ms:.2} ms (target {TARGET_MS} \
+         ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.2} ms");
+}
+
+/// `inline_runs` as it was before it became one pass (the review,
+/// BUG-27): what it gives must not change.
+fn inline_runs_as_before(text: &str) -> Vec<(Style, String)> {
+    let mut runs: Vec<(Style, String)> = Vec::new();
+    let mut push = |style: Style, words: &str| {
+        if words.is_empty() {
+            return;
+        }
+        match runs.last_mut() {
+            Some((last, so_far)) if *last == style => so_far.push_str(words),
+            _ => runs.push((style, words.to_owned())),
+        }
+    };
+    let mut rest = text;
+    while !rest.is_empty() {
+        let found = [
+            ("`", "`", Style::Code),
+            ("**", "**", Style::Strong),
+            ("__", "__", Style::Strong),
+            ("*", "*", Style::Emphasis),
+            ("_", "_", Style::Emphasis),
+            ("[", "](", Style::Link),
+        ]
+        .iter()
+        .filter_map(|(open, close, style)| {
+            let at = rest.find(open)?;
+            let inside = &rest[at + open.len()..];
+            let end = inside.find(close)?;
+            (end > 0).then_some((at, *open, *close, *style, end))
+        })
+        .min_by_key(|(at, open, ..)| (*at, std::cmp::Reverse(open.len())));
+        let Some((at, open, close, style, end)) = found else {
+            push(Style::Plain, rest);
+            break;
+        };
+        push(Style::Plain, &rest[..at]);
+        let inside = &rest[at + open.len()..at + open.len() + end];
+        let mut after = &rest[at + open.len() + end + close.len()..];
+        if style == Style::Link {
+            // The address, up to its ")", isn't shown.
+            after = after.find(')').map_or(after, |i| &after[i + 1..]);
+        }
+        push(style, inside);
+        rest = after;
+    }
+    runs
+}
+
+/// BUG-27: the one pass reads every mix of marks exactly as the reading
+/// it replaced did.
+#[test]
+fn inline_marks_read_in_one_pass_as_before() {
+    let pieces = [
+        "`", "**", "__", "*", "_", "[", "](", ")", "a", " ", "é", "x*", "](b)", "`c`",
+    ];
+    let mut seed = 3u64;
+    for _ in 0..20_000 {
+        let mut text = String::new();
+        for _ in 0..(seed % 30) {
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            text.push_str(pieces[(seed >> 33) as usize % pieces.len()]);
+        }
+        assert_eq!(inline_runs(&text), inline_runs_as_before(&text), "{text:?}");
+    }
+}
+
+#[test]
+fn a_text_file_is_made_ready_to_show_once() {
+    // Markdown: its blocks, each with its words' runs.
+    let note = ShownText::of(
+        "notes/Plan.MD",
+        "# A *plan*\n\n- one `two`\n```\n*not*\n```",
+    );
+    assert_eq!((note.lines, note.empty, note.more), (6, false, false));
+    let Body::Markdown(blocks) = &note.body else {
+        panic!("{note:?}");
+    };
+    assert_eq!(
+        blocks,
+        &[
+            (
+                Block::Heading(1, "A *plan*".into()),
+                inline_runs("A *plan*")
+            ),
+            (
+                Block::Item(0, "•".into(), "one `two`".into()),
+                inline_runs("one `two`")
+            ),
+            (Block::Code("*not*".into()), Vec::new()),
+        ]
+    );
+    // Anything else as it is; the lines past MAX_LINES left out.
+    let long = "x\n".repeat(MAX_LINES + 5);
+    let data = ShownText::of("data/table.csv", &long);
+    assert_eq!((data.lines, data.more), (MAX_LINES + 5, true));
+    assert_eq!(data.body, Body::Plain(first_lines(&long).0));
+    assert!(ShownText::of("a.txt", " \n\t").empty);
 }
