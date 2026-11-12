@@ -20,7 +20,7 @@ use kira::track::{TrackBuilder, TrackHandle};
 use kira::{AudioManager, AudioManagerSettings, Decibels, Frame, PlaybackRate, Tween};
 use std::fs::File;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// How long a stopped preview takes to fade out.
@@ -59,6 +59,15 @@ impl Preview {
 
     pub(crate) fn stop(&mut self) {
         self.stop_over(STOP_FADE);
+    }
+
+    /// Why it couldn't be played, once: a streamed sound's file is opened
+    /// as it starts playing ([`LaterStream`]).
+    pub(crate) fn pop_error(&mut self) -> Option<ReadError> {
+        match self {
+            Self::Memory(_) => None,
+            Self::Stream(h) => h.pop_error(),
+        }
     }
 
     /// Stops it with a fade this long.
@@ -156,7 +165,9 @@ impl SoundDevice {
     }
 
     /// Previews a clip on the Editor track, stopping any preview first.
-    /// Silent devices do nothing.
+    /// Silent devices do nothing. A long sound's file is opened as it
+    /// starts playing, away from the frame: one that can't be is said by
+    /// [`SoundDevice::preview_failure`].
     pub fn preview(&mut self, clip: &Clip) -> Result<(), String> {
         self.preview_varied(clip, 0.0, 1.0)
     }
@@ -196,8 +207,7 @@ impl SoundDevice {
                 )
             }
             Samples::Streamed(path) => {
-                let stream = FileStream::open(path, clip.info).map_err(|e| e.to_string())?;
-                let data = StreamingSoundData::from_decoder(stream)
+                let data = StreamingSoundData::from_decoder(LaterStream::new(path, clip.info))
                     .volume(volume)
                     .playback_rate(rate);
                 Preview::Stream(
@@ -216,6 +226,15 @@ impl SoundDevice {
         if let Some(mut preview) = self.preview.take() {
             preview.stop();
         }
+    }
+
+    /// Why the preview couldn't be played, if it couldn't, once: a long
+    /// sound's file is opened as it starts playing, away from the frame.
+    pub fn preview_failure(&mut self) -> Option<String> {
+        self.preview
+            .as_mut()
+            .and_then(Preview::pop_error)
+            .map(|why| why.to_string())
     }
 
     /// Whether a preview is playing.
@@ -301,6 +320,93 @@ impl kira::sound::streaming::Decoder for FileStream {
         let at = self.decoder.seek(index as u64)?;
         self.at = at;
         Ok(usize::try_from(at).unwrap_or(index))
+    }
+}
+
+/// A long sound, read from its file as it plays: opened when Kira first
+/// asks it for frames, on Kira's own decoding thread, not where the sound
+/// is started. Opening checks the file as carefully as when it was
+/// measured, which for an Ogg file walks every page of it
+/// ([`crate::vorbis_check`]): far too slow for the frame (the review,
+/// BUG-35). A file that can't be opened says why once (Kira hands it to
+/// the sound's handle, and stops the sound) and is silence after.
+pub(crate) struct LaterStream {
+    path: PathBuf,
+    info: ClipInfo,
+    state: Opening,
+}
+
+/// Where a [`LaterStream`] is.
+enum Opening {
+    /// Not opened yet: it will start at this frame.
+    Waiting(u64),
+    Open(FileStream),
+    /// It couldn't be opened: silence, from this frame to the end.
+    Failed(u64),
+}
+
+impl LaterStream {
+    /// The file at `path`, measured as `info`, to open when it plays.
+    pub(crate) fn new(path: &Path, info: ClipInfo) -> Self {
+        Self {
+            path: path.to_path_buf(),
+            info,
+            state: Opening::Waiting(0),
+        }
+    }
+
+    /// Opens the file at the frame it was asked to start at.
+    fn open(&self, from: u64) -> Result<FileStream, ReadError> {
+        use kira::sound::streaming::Decoder as _;
+        let mut stream = FileStream::open(&self.path, self.info)?;
+        if from > 0 {
+            stream.seek(usize::try_from(from).unwrap_or(usize::MAX))?;
+        }
+        Ok(stream)
+    }
+}
+
+impl kira::sound::streaming::Decoder for LaterStream {
+    type Error = ReadError;
+
+    fn sample_rate(&self) -> u32 {
+        self.info.sample_rate
+    }
+
+    fn num_frames(&self) -> usize {
+        usize::try_from(self.info.frames).unwrap_or(usize::MAX)
+    }
+
+    fn decode(&mut self) -> Result<Vec<Frame>, Self::Error> {
+        if let Opening::Waiting(from) = self.state {
+            match self.open(from) {
+                Ok(stream) => self.state = Opening::Open(stream),
+                Err(why) => {
+                    self.state = Opening::Failed(from);
+                    return Err(why);
+                }
+            }
+        }
+        match &mut self.state {
+            Opening::Open(stream) => stream.decode(),
+            // Up to the measured length, as Kira asks until then.
+            Opening::Waiting(at) | Opening::Failed(at) => {
+                let left = self.info.frames.saturating_sub(*at).min(4096);
+                *at += left;
+                Ok(vec![Frame::ZERO; usize::try_from(left).unwrap_or(4096)])
+            }
+        }
+    }
+
+    fn seek(&mut self, index: usize) -> Result<usize, Self::Error> {
+        match &mut self.state {
+            Opening::Open(stream) => stream.seek(index),
+            // Kira takes this as where the frames it's handed next start.
+            Opening::Waiting(at) | Opening::Failed(at) => {
+                *at = (index as u64).min(self.info.frames);
+                Ok(usize::try_from(*at).unwrap_or(index))
+            }
+        }
     }
 }
 

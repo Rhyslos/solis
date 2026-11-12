@@ -780,6 +780,58 @@ mod game_sounds {
         assert_eq!(device.game_sounds_playing(), 1);
     }
 
+    /// What Kira's decoding thread says of the game's streamed sounds,
+    /// waited for (at most ten seconds).
+    fn failures(device: &mut SoundDevice) -> Vec<String> {
+        let start = std::time::Instant::now();
+        while start.elapsed().as_secs() < 10 {
+            let failed = device.take_game_sound_failures();
+            if !failed.is_empty() {
+                return failed;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        Vec::new()
+    }
+
+    /// The review, BUG-35: starting a streamed sound (music, a long loop)
+    /// opened its file where it was played, from the frame, and opening an
+    /// Ogg file walks every page of it. The file is opened on Kira's
+    /// decoding thread now, so starting it never touches the file, and
+    /// why one couldn't be opened is said afterwards.
+    #[test]
+    fn a_streamed_game_sound_opens_its_file_away_from_the_frame() {
+        let dir = test_dir("game-stream-later");
+        let path = dir.join("long.ogg");
+        std::fs::copy(data("tone_mono_44k.ogg"), &path).unwrap();
+        let (info, _) = crate::measure_file(&path).unwrap();
+        // Gone since it was measured: playing it doesn't look.
+        std::fs::remove_file(&path).unwrap();
+        let mut device = SoundDevice::for_tests();
+        device
+            .play_game_sound(
+                &Clip::streamed(&path, info),
+                &pick(),
+                Placement::Flat,
+                Voice::on_bus(2),
+            )
+            .expect("started without opening the file");
+        let failed = failures(&mut device);
+        assert_eq!(failed.len(), 1, "said once: {failed:?}");
+        assert!(failed[0].starts_with("couldn't read it"), "{}", failed[0]);
+        assert!(device.take_game_sound_failures().is_empty());
+        // The editor's preview of it too.
+        device.preview(&Clip::streamed(&path, info)).unwrap();
+        let start = std::time::Instant::now();
+        let mut said = None;
+        while said.is_none() && start.elapsed().as_secs() < 10 {
+            said = device.preview_failure();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(said.is_some_and(|why| why.starts_with("couldn't read it")));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn too_many_at_once_are_refused_and_silent_devices_do_nothing() {
         let mut device = SoundDevice::for_tests();
@@ -1013,6 +1065,45 @@ fn a_streamed_ogg_starts_again_from_the_beginning() {
     let mut from_start = Vec::new();
     assert!(fresh.next_chunk(&mut from_start).unwrap());
     assert_eq!(from_start, first);
+}
+
+/// A stream opened as it plays starts where Kira asked before it was
+/// opened, and one that can't be opened says why once, then is silence to
+/// its measured length, so Kira's decoding ends as it would.
+#[test]
+fn a_stream_opened_as_it_plays_starts_where_asked_or_says_why_once() {
+    use kira::sound::streaming::Decoder as _;
+    let dir = test_dir("stream-later");
+    let path = dir.join("long.wav");
+    let samples: Vec<i32> = (0..8_000).map(|i| i % 1_000).collect();
+    std::fs::write(&path, wav_int(8_000, 1, 16, &samples)).unwrap();
+    let (info, _) = crate::measure_file(&path).unwrap();
+    let mut whole = crate::device::FileStream::open(&path, info).unwrap();
+    let mut from_start = Vec::new();
+    while from_start.len() < 8_000 {
+        let chunk = whole.decode().unwrap();
+        assert!(!chunk.is_empty());
+        from_start.extend(chunk);
+    }
+    let mut later = crate::device::LaterStream::new(&path, info);
+    assert_eq!(later.seek(3_000).unwrap(), 3_000, "before it's opened");
+    let first = later.decode().unwrap();
+    assert_eq!(first[..10], from_start[3_000..3_010]);
+    // Gone: said once, then silence to the measured length.
+    let mut gone = crate::device::LaterStream::new(&dir.join("gone.wav"), info);
+    assert_eq!(gone.seek(5_000).unwrap(), 5_000);
+    assert!(matches!(gone.decode(), Err(ReadError::Io(_))));
+    let mut total = 0;
+    for _ in 0..100 {
+        let chunk = gone.decode().unwrap();
+        if chunk.is_empty() {
+            break;
+        }
+        assert!(chunk.iter().all(|f| *f == kira::Frame::ZERO));
+        total += chunk.len();
+    }
+    assert_eq!(total, 3_000);
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

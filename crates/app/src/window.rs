@@ -2084,6 +2084,9 @@ impl eframe::App for App {
         let assets = self.projects.db().map(|db| db.project().assets());
         self.text_files
             .follow(&mut self.workbench, assets.as_deref());
+        if let Some(note) = self.sounds.failure(self.sound.device()) {
+            self.workbench.log(LogLevel::Warning, note);
+        }
         let preview = self.sounds.preview(self.sound.device());
         self.workbench.set_preview(preview);
         self.updates.frame(&mut self.workbench);
