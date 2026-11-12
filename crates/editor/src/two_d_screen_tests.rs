@@ -137,3 +137,52 @@ fn each_2d_screen_beside_its_mock_up() {
             .write(&folder.join(format!("part-c-{name}.png")));
     }
 }
+
+#[test]
+fn each_2d_editor_s_ribbon_is_commands_the_search_finds() {
+    use crate::shell::ShellCommand as C;
+    use crate::tile_paint::PaintTool;
+    // Nothing moved to a ribbon is out of reach: each is a command that
+    // can be done with its file open, and the search lists it by name.
+    let mut tile_map = tile_map();
+    tile_map.follow_map_selection();
+    tile_map.set_tile_overlay();
+    let mut animator = animator();
+    let state = animator
+        .open
+        .animator_editor
+        .as_ref()
+        .and_then(|e| e.file.states.first().map(|s| s.id));
+    if let Some(editor) = &mut animator.open.animator_editor {
+        editor.pick_state(state, false);
+    }
+    for (w, commands) in [
+        (
+            tile_map,
+            vec![C::PaintWith(PaintTool::Fill), C::MapChunks, C::PaintExact],
+        ),
+        (
+            tileset(),
+            vec![C::TerrainAdd, C::TerrainRemove, C::SaveTemplate],
+        ),
+        (crops(), vec![C::CropDelete]),
+        (clips(), vec![C::ClipNew, C::ClipCopy]),
+        (
+            animator,
+            vec![C::StateAdd, C::StateStartHere, C::PreviewAgain],
+        ),
+        (
+            screen_open(),
+            vec![C::SafeArea, C::ScreenSnap, C::OpenScreenCode],
+        ),
+    ] {
+        for command in commands {
+            assert_eq!(command.why_not(&w), None, "{command:?}");
+            let name = command.name(&w);
+            assert!(
+                w.search_items().iter().any(|item| item.name == name),
+                "the search lists {name}"
+            );
+        }
+    }
+}
