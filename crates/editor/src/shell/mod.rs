@@ -35,6 +35,7 @@ pub(crate) mod saved;
 mod shelf;
 pub mod status;
 pub(crate) mod tab_bar;
+mod tab_drag;
 pub mod workspaces;
 
 pub(crate) use commands::ShellCommand;
@@ -301,9 +302,17 @@ impl Workbench {
     /// Puts `panel` in front at `home` on `tab`, whether or not `tab` is
     /// in front.
     pub(crate) fn show_in(&mut self, tab: RibbonTab, home: Home, panel: Panel) {
+        let open = self.open_now();
         let arrangement = self.shell.arrangement_mut(tab);
         match home {
-            Home::Group(index) => {
+            Home::Group(_) => {
+                // Its group as arranged now: a dragged tab may have moved
+                // it to the other.
+                let index = arrangement
+                    .arranged(tab, open)
+                    .iter()
+                    .position(|docs| docs.contains(&panel))
+                    .unwrap_or(0);
                 if let Some(front) = arrangement.front.get_mut(index) {
                     *front = Some(panel);
                 }

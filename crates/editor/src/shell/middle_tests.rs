@@ -287,3 +287,43 @@ fn each_tab_remembers_its_shelf_its_height_and_its_split_across_a_restart() {
         ShelfTab::Console
     );
 }
+
+#[test]
+fn a_dragged_tab_splits_to_a_half_joins_on_a_strip_and_esc_puts_it_back() {
+    let mut w = Workbench::new(info());
+    w.show_tab(RibbonTab::Debug);
+    let mut h = window(1440.0, 900.0, w);
+    let groups = |h: &Harness| {
+        let w = &h.state().0;
+        w.shell
+            .arrangement(RibbonTab::Debug)
+            .arranged(RibbonTab::Debug, w.open_now())
+    };
+    assert_eq!(groups(&h), [vec![Panel::Profiler, Panel::Game]]);
+    // The Game's tab to the right half: alone in a group there.
+    let game = doc_tab(&h, "Game").center();
+    let center = body(&h, Panel::Profiler);
+    let right = egui::pos2(center.right() - 100.0, center.center().y);
+    drag(&mut h, game, right - game);
+    assert_eq!(groups(&h), [vec![Panel::Profiler], vec![Panel::Game]]);
+    // Onto the Profiler's strip: one group again.
+    let game = doc_tab(&h, "Game").center();
+    let profiler = doc_tab(&h, "Profiler").center();
+    drag(&mut h, game, profiler - game);
+    assert_eq!(groups(&h), [vec![Panel::Profiler, Panel::Game]]);
+    // Esc while dragging puts it back where it was.
+    let game = doc_tab(&h, "Game").center();
+    h.hover_at(game);
+    h.run();
+    h.drag_at(game);
+    h.run();
+    for step in 1..=5 {
+        h.hover_at(game + (right - game) * step as f32 / 5.0);
+        h.run();
+    }
+    h.key_press(egui::Key::Escape);
+    h.run();
+    h.drop_at(right);
+    h.run();
+    assert_eq!(groups(&h), [vec![Panel::Profiler, Panel::Game]]);
+}

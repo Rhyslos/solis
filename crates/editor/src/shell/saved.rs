@@ -96,6 +96,8 @@ impl WorkspaceState {
             shelf_folded: self.shelf_folded,
             split,
             front: [None, None],
+            alone: None,
+            merged: false,
         }
     }
 }

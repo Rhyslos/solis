@@ -364,6 +364,13 @@ pub struct Arrangement {
     pub split: f32,
     /// The document in front of each group, if one was chosen.
     pub front: [Option<Panel>; 2],
+    /// A document dragged to one half of the center, standing alone in
+    /// a group there (`true`: the right half), the rest beside it (the
+    /// project lead's answer 25). Kept while the editor runs.
+    pub alone: Option<(Panel, bool)>,
+    /// The groups were joined by dragging a tab onto another group's
+    /// strip: every document in one group.
+    pub merged: bool,
 }
 
 /// The split's limits: neither group gets less than this share.
@@ -397,7 +404,32 @@ impl Arrangement {
                 _ => size::SPLIT,
             },
             front: [None, None],
+            alone: None,
+            merged: false,
         }
+    }
+
+    /// The groups of `tab` with `open` open, as this arrangement has
+    /// them: the table's, joined into one, or with one document alone in
+    /// a half of its own.
+    pub fn arranged(&self, tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
+        let groups = groups(tab, open);
+        let all: Vec<Panel> = groups.concat();
+        if all.len() < 2 {
+            return groups;
+        }
+        if let Some((panel, right)) = self.alone.filter(|(p, _)| all.contains(p)) {
+            let rest: Vec<Panel> = all.into_iter().filter(|p| *p != panel).collect();
+            return if right {
+                vec![rest, vec![panel]]
+            } else {
+                vec![vec![panel], rest]
+            };
+        }
+        if self.merged {
+            return vec![all];
+        }
+        groups
     }
 
     /// The document in front of group `index` of `documents`: the one

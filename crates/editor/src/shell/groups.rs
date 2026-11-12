@@ -10,7 +10,7 @@
 //! Library), as mock-up round 1 drew them; a document that comes with a
 //! file has a × that closes the file.
 
-use super::workspaces::{OpenNow, SPLIT_LIMIT, groups};
+use super::workspaces::{OpenNow, SPLIT_LIMIT};
 use super::{RibbonTab, Shell, ShellCommand};
 use crate::icons::{self, Icon};
 use crate::panel::Panel;
@@ -40,7 +40,7 @@ pub(crate) fn center(
     viewer: &mut PanelViewer<'_>,
 ) -> DocAsks {
     let tab = shell.tab;
-    let documents = groups(tab, open);
+    let documents = shell.arrangement(tab).arranged(tab, open);
     let mut asks = DocAsks::default();
     let side_by_side = rect.width() >= 2.0 * size::GROUP_MIN_W;
     let places = match documents.len() {
@@ -58,6 +58,7 @@ pub(crate) fn center(
         1 => vec![rect],
         _ => split(ui, rect, shell, side_by_side),
     };
+    let mut strips = Vec::new();
     for (index, (docs, place)) in documents.iter().zip(places).enumerate() {
         let front = shell.arrangement(tab).front_of(index, docs);
         // A page (Build's Export for playtesting) has no tab strip.
@@ -67,6 +68,7 @@ pub(crate) fn center(
             size::DOC_TAB_H
         };
         let strip = place.with_max_y(place.top() + strip_h);
+        strips.push(strip);
         let body = place.with_min_y(strip.bottom());
         let chosen = if strip_h > 0.0 {
             tab_strip(ui, strip, (tab, index), docs, front, viewer, &mut asks)
@@ -89,6 +91,7 @@ pub(crate) fn center(
         viewer.draw_panel(&mut body_ui, front);
         shell.drawn.push((front, body));
     }
+    super::tab_drag::follow(ui, rect, &strips, &documents, shell, tab);
     asks
 }
 
@@ -159,6 +162,9 @@ fn tab_strip(
         if response.clicked() {
             chosen = Some(*panel);
         }
+        if response.drag_started() {
+            super::tab_drag::start(ui, *panel);
+        }
         if close {
             viewer.close(*panel);
         }
@@ -212,7 +218,11 @@ fn doc_tab(
     };
     let width = 2.0 * size::DOC_TAB_PAD + words.size().x + close_w;
     let rect = Rect::from_min_size(at, vec2(width, size::DOC_TAB_H));
-    let response = ui.interact(rect, Id::new(("document tab", title)), Sense::click());
+    let response = ui.interact(
+        rect,
+        Id::new(("document tab", title)),
+        Sense::click_and_drag(),
+    );
     response.widget_info(|| WidgetInfo::selected(egui::WidgetType::Button, true, front, title));
     let painter = ui.painter();
     let (fill, ink) = if front {
