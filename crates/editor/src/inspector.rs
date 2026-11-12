@@ -148,23 +148,10 @@ pub(crate) fn short(value: &Value) -> String {
     }
 }
 
-/// How many entities in `area` use the file `asset`.
-pub(crate) fn users_of(area: &area::Area, asset: AssetId) -> usize {
-    area.iter()
-        .filter(|(_, entity)| {
-            entity.components.values().any(|c| {
-                c.fields
-                    .values()
-                    .any(|v| matches!(v, Value::Asset(Some(r)) if r.asset == asset))
-            })
-        })
-        .count()
-}
-
-/// "shared by 3" after a file used by more than one entity, so changing
-/// the file isn't a surprise (decision 0085).
-pub(crate) fn shared_by(ui: &mut Ui, area: &area::Area, asset: AssetId) {
-    let users = users_of(area, asset);
+/// "shared by 3" after a file used by more than one entity (`users`,
+/// from `Document::asset_users`), so changing the file isn't a surprise
+/// (decision 0085).
+pub(crate) fn shared_by(ui: &mut Ui, users: usize) {
     if users > 1 {
         egui::Frame::new()
             .stroke(egui::Stroke::new(1.0, crate::theme::button_border()))

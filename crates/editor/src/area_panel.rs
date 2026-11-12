@@ -35,6 +35,48 @@ pub(crate) struct AreaPanelState {
     pub(crate) reveal: Option<EntityId>,
     /// Whether the search field is open under the header.
     pub(crate) searching: bool,
+    /// The rows as last listed, and what they were listed from.
+    rows_kept: Option<KeptRows>,
+}
+
+/// The Area column's rows (each entity and how deep it is) and what they
+/// were listed from: the area's tree (held, so it can't be another's), the
+/// entities folded, what's searched for and, while searching, the area's
+/// revision (names change without the tree). Listed again only when one
+/// changes (the review, BUG-28: every frame listed the whole tree).
+#[derive(Debug, Clone)]
+struct KeptRows {
+    tree: std::sync::Arc<area::Tree>,
+    collapsed: HashSet<EntityId>,
+    search: String,
+    revision: Option<u64>,
+    rows: std::sync::Arc<Vec<(EntityId, usize)>>,
+}
+
+impl AreaPanelState {
+    /// The rows of `document`'s tree as this shows it, listed again only
+    /// when what they're listed from changes.
+    fn rows(&mut self, document: &Document) -> std::sync::Arc<Vec<(EntityId, usize)>> {
+        let tree = document.tree();
+        let revision = (!self.search.trim().is_empty()).then(|| document.revision());
+        if let Some(kept) = &self.rows_kept
+            && std::sync::Arc::ptr_eq(&kept.tree, &tree)
+            && kept.revision == revision
+            && kept.search == self.search
+            && kept.collapsed == self.collapsed
+        {
+            return std::sync::Arc::clone(&kept.rows);
+        }
+        let rows = std::sync::Arc::new(tree_rows(document.area(), &tree, self));
+        self.rows_kept = Some(KeptRows {
+            tree,
+            collapsed: self.collapsed.clone(),
+            search: self.search.clone(),
+            revision,
+            rows: std::sync::Arc::clone(&rows),
+        });
+        rows
+    }
 }
 
 impl AreaPanelState {
@@ -351,7 +393,8 @@ pub(crate) fn area_tree(
             state.collapsed.remove(&parent);
         }
     }
-    let rows = tree_rows(document.area(), &document.tree(), state);
+    let rows = state.rows(document);
+    let tree = document.tree();
     let scroll_to = state
         .reveal
         .take()
@@ -372,11 +415,6 @@ pub(crate) fn area_tree(
                 let at = index as f32 * row_h;
                 scroll = scroll.vertical_scroll_offset((at - 4.0 * row_h).max(0.0));
             }
-            let parents: HashSet<EntityId> = document
-                .area()
-                .iter()
-                .filter_map(|(_, e)| e.parent)
-                .collect();
             let out = scroll.show_rows(ui, row_h, rows.len(), |ui, range| {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 for &(id, depth) in &rows[range] {
@@ -386,7 +424,8 @@ pub(crate) fn area_tree(
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 0.0;
                         ui.add_space(depth as f32 * size::TREE_LEVEL);
-                        fold_button(ui, id, parents.contains(&id), state);
+                        let parent = !tree.children(Some(id)).is_empty();
+                        fold_button(ui, id, parent, state);
                         let shown = Shown {
                             hidden: hidden.contains(&id),
                             locked: locked.contains(&id),
@@ -833,5 +872,96 @@ mod tests {
         let mut part = root.clone();
         part.origin.as_mut().unwrap().path = vec![EntityId::random()];
         assert_eq!(color_of(&part), theme::kind::OTHER);
+    }
+}
+
+#[cfg(test)]
+mod rows_tests {
+    use super::*;
+    use area::Edit;
+    use std::sync::Arc;
+
+    /// A document with a room holding a lamp, and a box.
+    fn room() -> (Document, EntityId, EntityId) {
+        let mut d = Document::default();
+        let (room, lamp) = (EntityId::random(), EntityId::random());
+        let mut lit = EntityData::new("Lamp");
+        lit.parent = Some(room);
+        d.edit(
+            "Add",
+            vec![
+                Edit::Spawn {
+                    entities: vec![(room, EntityData::new("Room")), (lamp, lit)],
+                },
+                Edit::Spawn {
+                    entities: vec![(EntityId::random(), EntityData::new("Box"))],
+                },
+            ],
+            None,
+            None,
+        )
+        .unwrap();
+        (d, room, lamp)
+    }
+
+    /// BUG-28: the Area column listed the whole tree again every frame.
+    #[test]
+    fn the_rows_are_listed_again_only_when_what_they_show_changes() {
+        let (mut d, room, lamp) = room();
+        let mut state = AreaPanelState::default();
+        let rows = state.rows(&d);
+        assert!(rows.iter().any(|&(id, depth)| id == lamp && depth == 1));
+        for _ in 0..3 {
+            assert!(Arc::ptr_eq(&rows, &state.rows(&d)), "kept");
+        }
+        // Renaming changes the area, not its tree: still kept.
+        d.edit(
+            "Rename",
+            vec![Edit::Rename {
+                entity: lamp,
+                name: "Light".into(),
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(Arc::ptr_eq(&rows, &state.rows(&d)));
+        // Folding the room: listed again, without the lamp.
+        state.collapsed.insert(room);
+        let folded = state.rows(&d);
+        assert!(!folded.iter().any(|&(id, _)| id == lamp));
+        assert!(Arc::ptr_eq(&folded, &state.rows(&d)));
+        // Searching: what's found, and again when a name changes.
+        state.search = "lig".into();
+        let found = state.rows(&d);
+        assert_eq!(
+            found.iter().map(|&(id, _)| id).collect::<Vec<_>>(),
+            [room, lamp]
+        );
+        assert!(Arc::ptr_eq(&found, &state.rows(&d)));
+        d.edit(
+            "Rename",
+            vec![Edit::Rename {
+                entity: lamp,
+                name: "Lamp".into(),
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(state.rows(&d).is_empty(), "nothing called that now");
+        // A new entity: listed again.
+        state.search.clear();
+        let before = state.rows(&d);
+        d.edit(
+            "Add",
+            vec![Edit::Spawn {
+                entities: vec![(EntityId::random(), EntityData::new("Crate"))],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(state.rows(&d).len(), before.len() + 1);
     }
 }

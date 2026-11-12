@@ -413,7 +413,7 @@ impl Card<'_> {
             (assembly, &yours),
             &others,
             self.assets,
-            area,
+            (area, &self.document.asset_users()),
         ) {
             let component = component.to_owned();
             requests.push(match change {

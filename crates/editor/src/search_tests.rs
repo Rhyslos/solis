@@ -1,6 +1,7 @@
 use super::*;
 use crate::test_support::{harness, info};
 use egui_kittest::kittest::Queryable;
+use std::sync::Arc;
 
 fn fresh() -> Workbench {
     Workbench::new(info())
@@ -427,4 +428,49 @@ fn an_open_search_reads_the_area_once_until_it_changes() {
             .iter()
             .any(|i| i.kind == SearchKind::Entity && i.name == name)
     );
+}
+
+/// BUG-28: an open search copied and scored every entity and file every
+/// frame. They're scored once for what's typed, and the results are
+/// what scoring everything gives.
+#[test]
+fn the_area_and_files_are_scored_once_for_what_is_typed() {
+    let mut w = with_files();
+    let lamps = (0..300)
+        .map(|i| area::Edit::Spawn {
+            entities: vec![(
+                EntityId::random(),
+                area::EntityData::new(&format!("Lamp {i}")),
+            )],
+        })
+        .collect();
+    w.open.document.edit("Lamps", lamps, None, None).unwrap();
+    w.open_search();
+    let names = |items: Vec<SearchItem>| -> Vec<String> {
+        items
+            .into_iter()
+            .map(|i| format!("{} {}", i.name, i.detail))
+            .collect()
+    };
+    for query in ["", "lamp", "lamp 1", "ship", "s", "save", "zzz", "  "] {
+        w.search.query = query.into();
+        let everything = w.search_items();
+        let scored: Vec<SearchItem> = results(&everything, query).into_iter().cloned().collect();
+        assert_eq!(names(w.search_results()), names(scored), "{query:?}");
+    }
+    let mut h = harness(w);
+    h.state_mut().0.search.query = "lamp 2".into();
+    h.run();
+    let best = h.state().0.best_kept().expect("scored when typed");
+    assert!(best.iter().all(|i| i.name.starts_with("Lamp 2")));
+    for _ in 0..5 {
+        h.run();
+    }
+    assert!(
+        Arc::ptr_eq(&best, &h.state().0.best_kept().unwrap()),
+        "kept while nothing changed"
+    );
+    h.state_mut().0.search.query = "lamp 3".into();
+    h.run();
+    assert!(!Arc::ptr_eq(&best, &h.state().0.best_kept().unwrap()));
 }

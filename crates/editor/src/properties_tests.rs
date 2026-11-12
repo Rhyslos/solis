@@ -3,7 +3,7 @@
 //! "shared by", and searching for a component to add.
 
 use super::*;
-use crate::inspector::{moved_from_default, short, users_of};
+use crate::inspector::{moved_from_default, short};
 use crate::test_support::*;
 use crate::workbench::Workbench;
 use egui_kittest::kittest::Queryable;
@@ -208,7 +208,7 @@ fn a_file_used_by_several_entities_says_so() {
         .asset
         .unwrap()
         .asset;
-    assert_eq!(users_of(w.document().area(), asset), 2);
+    assert_eq!(w.document().asset_users().get(&asset), Some(&2));
     w.select(b);
     let mut h = harness(w);
     h.run();

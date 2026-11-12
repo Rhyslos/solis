@@ -114,11 +114,17 @@ pub struct Document {
     /// Where every entity is in the world, for one revision: see
     /// [`Self::world_matrices`].
     world: RefCell<Option<(u64, Placed)>>,
+    /// How many entities use each file, for one revision: see
+    /// [`Self::asset_users`].
+    users: RefCell<Option<(u64, AssetUsers)>>,
 }
 
 /// Where every entity is in the world, shared: see
 /// [`Document::world_matrices`].
 pub type Placed = Arc<HashMap<EntityId, Mat4>>;
+
+/// How many entities use each file, shared: see [`Document::asset_users`].
+pub type AssetUsers = Arc<HashMap<reflect::AssetId, usize>>;
 
 /// Fields set by hand, by entity and component: see [`Changes::set`].
 pub type FieldsSet = BTreeMap<(EntityId, String), BTreeSet<String>>;
@@ -232,6 +238,7 @@ impl Document {
             shape: next_revision(),
             tree: RefCell::new(None),
             world: RefCell::new(None),
+            users: RefCell::new(None),
         }
     }
 
@@ -391,6 +398,37 @@ impl Document {
         let world = Arc::new(self.tree().world_matrices(&self.area));
         *self.world.borrow_mut() = Some((self.revision, Arc::clone(&world)));
         world
+    }
+
+    /// How many entities use each file (in any field of any component),
+    /// worked out once per [`Self::revision`]: Properties says "shared by"
+    /// after every file field, and walking the whole area for each, every
+    /// frame, took milliseconds in a big area (the review, BUG-28).
+    pub fn asset_users(&self) -> AssetUsers {
+        if let Some((revision, users)) = &*self.users.borrow()
+            && *revision == self.revision
+        {
+            return Arc::clone(users);
+        }
+        let mut users: HashMap<reflect::AssetId, usize> = HashMap::new();
+        let mut uses = Vec::new();
+        for (_, entity) in self.area.iter() {
+            uses.clear();
+            uses.extend(entity.components.values().flat_map(|c| {
+                c.fields.values().filter_map(|v| match v {
+                    reflect::Value::Asset(Some(r)) => Some(r.asset),
+                    _ => None,
+                })
+            }));
+            uses.sort_unstable();
+            uses.dedup();
+            for &asset in &uses {
+                *users.entry(asset).or_default() += 1;
+            }
+        }
+        let users = Arc::new(users);
+        *self.users.borrow_mut() = Some((self.revision, Arc::clone(&users)));
+        users
     }
 
     /// Where `id` is in the world (identity for an entity not in the
@@ -631,6 +669,57 @@ mod tests {
         d.undo().unwrap().unwrap();
         assert!(d.tree().order().contains(&id));
         assert_eq!(d.world_matrix(id).w_axis.x, 1.0);
+    }
+
+    /// BUG-28: Properties asked how many entities use a file by walking
+    /// the whole area, for every file field, every frame.
+    #[test]
+    fn who_uses_each_file_is_counted_once_per_change() {
+        use area::builtin::{Model, Sprite};
+        let mut d = Document::default();
+        let (crate_model, sheet) = (reflect::AssetId::random(), reflect::AssetId::random());
+        let model = |asset| Model {
+            asset: Some(reflect::AssetRef { asset, part: None }),
+        };
+        let a = EntityId::random();
+        let both = EntityData::new("Both")
+            .with(&model(crate_model))
+            .with(&Sprite {
+                sheet: Some(reflect::AssetRef {
+                    asset: sheet,
+                    part: None,
+                }),
+                ..Sprite::default()
+            });
+        d.edit(
+            "Add",
+            [
+                (a, EntityData::new("A").with(&model(crate_model))),
+                (EntityId::random(), both),
+                (EntityId::random(), EntityData::new("None")),
+            ]
+            .into_iter()
+            .map(|one| Edit::Spawn {
+                entities: vec![one],
+            })
+            .collect(),
+            None,
+            None,
+        )
+        .unwrap();
+        let users = d.asset_users();
+        assert_eq!(users.get(&crate_model), Some(&2));
+        assert_eq!(users.get(&sheet), Some(&1));
+        assert!(
+            Arc::ptr_eq(&users, &d.asset_users()),
+            "kept, not counted again"
+        );
+        // A change: counted again.
+        d.edit("Delete", vec![Edit::Despawn { root: a }], None, None)
+            .unwrap();
+        assert_eq!(d.asset_users().get(&crate_model), Some(&1));
+        d.undo().unwrap().unwrap();
+        assert_eq!(d.asset_users().get(&crate_model), Some(&2));
     }
 
     #[test]
