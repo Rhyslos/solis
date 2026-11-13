@@ -3,7 +3,7 @@
 > Preferences, the editor's own settings, and Project settings, the open project's: two File pages, each with sub-tabs and one search.
 
 ## When to use it
-When you want to change how the editor itself looks or behaves (its accent colour, how large it's drawn, what the viewport shows, putting the shelf back as it started, or hiding the parts that aren't built yet), or a setting that belongs to the whole project, such as its 2D resolution, its game's controls or how it is exported.
+When you want to change how the editor itself looks or behaves (its accent colour, how large it's drawn, what the viewport shows, where Home's lists sit, putting the shelf back as it started, or hiding the parts that aren't built yet), or a setting that belongs to the whole project, such as its 2D resolution, its game's controls or how it is exported.
 
 - **Preferences** are yours, kept on this computer. They aren't saved in the area or the project.
 - **Project settings** are saved in the open project's folder, in small text files Git can merge, so they travel with it to other computers and other people. They need a project open.
@@ -28,7 +28,8 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 | Appearance › Interface scale | How large everything is drawn: **100%** to **200%**. Raise it when text is too small, common on a laptop or a very sharp (4K) screen. Everything grows together, and thin lines stay crisp. It doesn't change your game. |
 | Appearance › Density | How tall buttons, fields and drop-down lists are: **Compact** (22 pixels at 100%), **Default** (24) or **Comfortable** (28). Text stays the same size. |
 | Appearance › Shelf opens on | Which [shelf](concepts.md#the-window) tab comes to the front when you select something: **The tab in front** (the standard: the shelf stays as it is) or **Entity** (Properties comes to the front every time you pick something). |
-| Appearance › Panel layout | **Reset layout** puts the tab you came from back as it started: the shelf on its first tab, at its standard height and unfolded, and the groups sharing the room evenly. |
+| Appearance › Panel layout | Where Home's three lists sit ([panel layout](concepts.md#the-window)): **Area left, Assets bottom** (the standard: the Area list and Properties as tall columns at the sides, Assets a strip under the area), **Area and Assets on the left**, **Area left, Assets right**, or **The shelf (as designed)** (all three on the shelf's Entity tab). It changes at once, so try each; see [Interface tour](interface-tour.md). With a layout other than the shelf, **Shelf opens on › Entity** does nothing: Properties is always in view. |
+| Appearance › Sizes | **Reset layout** puts the tab you came from back as it started: the shelf on its first tab, unfolded, and every border you dragged (the shelf's height, the split between groups, the columns and the Assets strip) at its standard size, in every panel layout. To put back one border only, double-click it. |
 | Appearance › Code editor split | An [unfinished part](unfinished-parts.md): it will show game code next to the viewport. Today, game code opens in your own code editor ([Game code](game-code.md)). |
 | Viewport › Frame time and frame rate | The pill at the top right of the viewport. |
 | Viewport › Axis locks, axes and camera speed | The pills at the bottom right: Lock X Y Z, World or Object, and the camera's speed. |
@@ -61,7 +62,8 @@ A number you drag is saved once, when you let go.
 - **Problem:** a setting is faint, has a small square after its name, and its switch won't move. **Why:** it's an [unfinished part](unfinished-parts.md). **Fix:** rest the pointer on it to read what it will do; switch on **General › Hide unfinished parts** if you'd rather not see it.
 - **Problem:** Project settings says **Open a project first**. **Why:** its settings belong to a project, and none is open. **Fix:** open or make one (**File › Recent projects**).
 - **Problem:** the Console says `pixels.solpix` had a mistake. **Why:** the file was edited by hand and can't be read. **Fix:** the standard 2D settings are used meanwhile; change anything on the 2D tab and the file is written again, with the damaged one kept beside it as `pixels.solpix.bak`.
-- **Problem:** the shelf is so tall (or folded) that what you want isn't in sight. **Why:** its height and fold are remembered per tab. **Fix:** **Ctrl + Space** unfolds it; **Reset layout** puts it back.
+- **Problem:** the shelf is so tall (or folded) that what you want isn't in sight. **Why:** its height and fold are remembered per tab. **Fix:** **Ctrl + Space** unfolds it; double-click its grip, or **Reset layout**, puts it back.
+- **Problem:** after an update, Home's Area list and Properties are columns beside the area, not on the shelf. **Why:** that is the new standard panel layout. **Fix:** choose **The shelf (as designed)** under **Appearance › Panel layout** to have them back on the shelf.
 - **Problem:** I can't find the Settings window, or File › Input. **Why:** they became these pages. **Fix:** Preferences and Project settings are in the File column; Input is a sub-tab of Project settings.
 
 ## Related

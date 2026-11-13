@@ -229,7 +229,7 @@ The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/009
 
 **The order:**
 
-1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)).
+1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)).
 2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
 3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes).
 4. **2D 1 and 2D 2:** 2D complete.
@@ -290,8 +290,8 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 
 Added 13 November 2026 by the project lead, after trying the remade interface: the Area and Assets lists out of the compact bottom shelf, into a more usual layout, and every edge between panels draggable ([decision 0109](docs/decisions/0109-layouts-as-a-setting.md)).
 
-- **Layouts as a setting:** three layouts (Area left and Assets along the bottom; Area and Assets stacked on the left; Area left and Assets right) and today's shelf, chosen in Preferences, so the project lead can try them before picking one.
-- **Every edge resizable:** every border between panels and columns can be dragged, each tab remembers its sizes, and a double-click puts a border back.
+- **Layouts as a setting:** three layouts (Area left and Assets along the bottom; Area and Assets stacked on the left; Area left and Assets right) and today's shelf, chosen in Preferences, so the project lead can try them before picking one. *Built.*
+- **Every edge resizable:** every border between panels and columns can be dragged, each tab remembers its sizes, and a double-click puts a border back. *Built.*
 
 **Gate:** each layout can be chosen and works on every tab, every border drags and is remembered after a restart, and the editor's frame stays inside the scale check's targets.
 

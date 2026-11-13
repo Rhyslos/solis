@@ -14,10 +14,13 @@
 # crates/app/src/branding.rs); CI passes it in, so this script never names
 # the program. Screenshots land in the output folder for looking at in CI.
 #
-# Positions are for the design's frame (decisions 0099 and 0104) on a
-# 1440x900 screen: the tab bar and ribbon along the top, the area's group
-# under them (its tab strip at 100, the viewport from 130 to 542), the
-# shelf's bar at 542 and its columns under it, the status bar at 876.
+# Positions are for the design's frame (decisions 0099 and 0104) in the
+# standard panel layout (decision 0109) on a 1440x900 screen: the tab bar
+# and ribbon along the top; the Area list from x 0 to 240 and Properties
+# from 1100 to 1440, down to the shelf; the area's group between them
+# (its tab strip at 100, the viewport from 130 to 491, its toolbox from
+# x 241), the Assets strip under it from 492; the shelf's bar at 682 and
+# the status bar at 876. On Audio the shelf's bar is at 542.
 #
 # Nothing here waits a fixed time for the program: after each step it
 # waits until the screen shows what the step does (`wait_for`: the File
@@ -159,10 +162,18 @@ pixel() {
     convert "$OUT/$3.png" -format "%[fx:int(255*p{$1,$2}.r)] %[fx:int(255*p{$1,$2}.g)] %[fx:int(255*p{$1,$2}.b)]" info:
 }
 
+# A point of the viewport's sky: near its top, clear of its pills.
+SKY_X="${SKY_X:-700}"
+SKY_Y="${SKY_Y:-200}"
+# The toolbox's transform tools: a region (WxH+X+Y) left of the view.
+TOOLS="34x180+${TOOLS_X:-246}+${TOOLS_Y:-136}"
+# Most of the viewport, clear of its toolbox.
+VIEW="800x340+280+140"
+
 # The viewport's sky is drawn: near its top, not black.
 sky_drawn() {
     local _r _g b
-    read -r _r _g b <<<"$(pixel 300 156 now)"
+    read -r _r _g b <<<"$(pixel "$SKY_X" "$SKY_Y" now)"
     [ "$b" -ge 15 ]
 }
 
@@ -220,8 +231,8 @@ shot first
 # 1. The viewport is drawn: near its top is the sky, a dark neutral grey
 #    (the design's backdrop: no tint, red, green and blue the same). A
 #    wrong colour setting shows as black or washed out.
-read -r R G B <<<"$(pixel 300 156 first)"
-echo "Sky at (300, 156): $R $G $B (expected a dark neutral grey)"
+read -r R G B <<<"$(pixel "$SKY_X" "$SKY_Y" first)"
+echo "Sky at ($SKY_X, $SKY_Y): $R $G $B (expected a dark neutral grey)"
 [ "$B" -ge 15 ] && [ "$B" -le 80 ] || fail "the sky is not a dark grey: ($R, $G, $B)"
 [ $((R > B ? R - B : B - R)) -le 4 ] && [ $((G > B ? G - B : B - G)) -le 4 ] ||
     fail "the sky is tinted, not neutral: ($R, $G, $B)"
@@ -231,9 +242,9 @@ grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 #    the viewport's left edge) lights up. Only the toolbox's transform
 #    tools are compared, so the viewport moving beside it doesn't count.
 xdotool key --window "$WINDOW_ID" w || true
-wait_for differs first 100 "34x180+5+${TOOLS_Y:-136}" || true
+wait_for differs first 100 "$TOOLS" || true
 shot move-tool
-TOOL_CHANGE="$(changed_pixels first move-tool 34x180+5+${TOOLS_Y:-136})"
+TOOL_CHANGE="$(changed_pixels first move-tool "$TOOLS")"
 echo "Pixels changed in the toolbox by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
@@ -252,12 +263,12 @@ xdotool keydown w
 sleep 1.5
 xdotool keyup w
 xdotool mouseup 3
-wait_for differs move-tool 5000 800x370+280+140 || true
+wait_for differs move-tool 5000 "$VIEW" || true
 shot flown
-FLY_CHANGE="$(changed_pixels move-tool flown 800x370+280+140)"
+FLY_CHANGE="$(changed_pixels move-tool flown "$VIEW")"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
 [ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
-TOOL_AFTER="$(changed_pixels move-tool flown 34x180+5+${TOOLS_Y:-136})"
+TOOL_AFTER="$(changed_pixels move-tool flown "$TOOLS")"
 echo "Pixels changed in the toolbox by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 
@@ -277,9 +288,9 @@ drag() {
 }
 
 # 4. Drag the shelf's grip up: the shelf grows and the viewport shrinks.
-drag "${GRIP_X:-28}" "${GRIP_Y:-559}" 0 -100
+drag "${GRIP_X:-28}" "${GRIP_Y:-699}" 0 -100
 shot grown
-GROW_CHANGE="$(changed_pixels flown grown 1440x200+0+400)"
+GROW_CHANGE="$(changed_pixels flown grown 1440x300+0+450)"
 echo "Pixels changed by dragging the shelf's grip: $GROW_CHANGE"
 [ "$GROW_CHANGE" -gt 5000 ] || fail "dragging the shelf's grip moved nothing"
 
@@ -315,7 +326,7 @@ quit
 # Red pixels (the sample's base) in the middle of the viewport, in the
 # picture `$1`.
 red_pixels() {
-    convert "$OUT/$1.png" -crop 600x400+250+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:
+    convert "$OUT/$1.png" -crop 600x320+370+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:
 }
 model_drawn() { [ "$(red_pixels now)" -gt 2000 ]; }
 
