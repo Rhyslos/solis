@@ -50,6 +50,14 @@ triple_buffer = { path = "../patches/triple_buffer" }
 [profile.release]
 debug = 1
 
+# What every target shares (src/lib.rs): named for its job, not the
+# program, so the targets never spell the program's name.
+[lib]
+name = "fuzz_support"
+path = "src/lib.rs"
+doc = false
+bench = false
+
 [[bin]]
 name = "save_game"
 path = "fuzz_targets/save_game.rs"
@@ -208,6 +216,13 @@ bench = false
 [[bin]]
 name = "screen_source"
 path = "fuzz_targets/screen_source.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "playtest_file"
+path = "fuzz_targets/playtest_file.rs"
 test = false
 doc = false
 bench = false

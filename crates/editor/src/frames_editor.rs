@@ -10,6 +10,7 @@
 //! once on every sprite playing the file; Ctrl+Z and Ctrl+Y over either
 //! tab undo and redo the file's changes.
 
+use crate::file_history::FileHistory;
 use animation::frames_file::{self, FramesFile, OwnClip, TagChange};
 use animation::{Clip, ClipFrame, ClipSet, Direction};
 use assets::sprite_sheet::SpriteSheet;
@@ -43,8 +44,7 @@ pub struct FramesEditor {
     pub renaming: Option<(String, String)>,
     /// The Clips tab's search.
     pub search: String,
-    undo: Vec<FramesFile>,
-    redo: Vec<FramesFile>,
+    history: FileHistory<FramesFile>,
 }
 
 /// The standard zoom: a 100 ms frame 100 points wide.
@@ -73,8 +73,7 @@ impl FramesEditor {
             zoom: STANDARD_ZOOM,
             renaming: None,
             search: String::new(),
-            undo: Vec::new(),
-            redo: Vec::new(),
+            history: FileHistory::new(UNDO_LIMIT),
         }
     }
 
@@ -86,42 +85,33 @@ impl FramesEditor {
     /// Changes the file with `change`, kept for undo. Returns whether it
     /// changed (and so must be saved).
     pub fn change(&mut self, change: impl FnOnce(&mut FramesFile)) -> bool {
-        let before = self.file.clone();
-        change(&mut self.file);
-        if self.file == before {
-            return false;
-        }
-        self.undo.push(before);
-        if self.undo.len() > UNDO_LIMIT {
-            self.undo.remove(0);
-        }
-        self.redo.clear();
-        true
+        self.history.change(&mut self.file, |f| {
+            change(f);
+            true
+        })
     }
 
     /// Undoes the last change. Returns whether there was one.
     pub fn undo(&mut self) -> bool {
-        let Some(before) = self.undo.pop() else {
-            return false;
-        };
-        self.redo.push(std::mem::replace(&mut self.file, before));
-        self.selected.clear();
-        true
+        let undone = self.history.undo(&mut self.file);
+        if undone {
+            self.selected.clear();
+        }
+        undone
     }
 
     /// Redoes the last change undone. Returns whether there was one.
     pub fn redo(&mut self) -> bool {
-        let Some(after) = self.redo.pop() else {
-            return false;
-        };
-        self.undo.push(std::mem::replace(&mut self.file, after));
-        self.selected.clear();
-        true
+        let redone = self.history.redo(&mut self.file);
+        if redone {
+            self.selected.clear();
+        }
+        redone
     }
 
     /// Whether there's a change to undo, and one to redo.
     pub fn can_undo_redo(&self) -> (bool, bool) {
-        (!self.undo.is_empty(), !self.redo.is_empty())
+        (self.history.can_undo(), self.history.can_redo())
     }
 
     /// Chooses the clip called `name`: back to its start, nothing picked.

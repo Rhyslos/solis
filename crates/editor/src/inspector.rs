@@ -190,21 +190,32 @@ pub(crate) fn field_widget(
     // What the schema says to offer (Phase 9, D2).
     match (&field.kind, field.hint.offers) {
         (FieldKind::Asset, Offer::Assets("sprite sheet")) => {
-            return whole(sheet_picker(ui, value, sheets, mixed.whole));
+            return whole(asset_picker(
+                ui,
+                (&field.label, value, mixed.whole),
+                &sheets.listed(),
+                (
+                    "sprite sheet",
+                    "No sprite sheets yet: put an Aseprite file in the project.",
+                ),
+            ));
         }
         (FieldKind::Text, Offer::SlicesOf(sheet_field)) => {
             let sheet = match data.get(sheet_field) {
                 Some(Value::Asset(Some(r))) => sheets.get(r.asset),
                 _ => None,
             };
-            return whole(slice_picker(ui, value, sheet.map(|s| &**s), mixed.whole));
+            return whole(slice_picker(
+                ui,
+                (&field.label, value, mixed.whole),
+                sheet.map(|s| &**s),
+            ));
         }
         (FieldKind::Asset, Offer::Assets("animator")) => {
             return whole(asset_picker(
                 ui,
-                value,
+                (&field.label, value, mixed.whole),
                 &sheets.listed_animators(),
-                mixed.whole,
                 (
                     "animator",
                     "No animators yet: right-click in the Library > New > Animator.",
@@ -214,9 +225,8 @@ pub(crate) fn field_widget(
         (FieldKind::Asset, Offer::Assets("tile map")) => {
             return whole(asset_picker(
                 ui,
-                value,
+                (&field.label, value, mixed.whole),
                 &sheets.listed_tiles(true),
-                mixed.whole,
                 (
                     "tile map",
                     "No tile maps yet: right-click in the Library > New > Tile map.",
@@ -228,20 +238,32 @@ pub(crate) fn field_widget(
                 Some(Value::Asset(Some(r))) => sheets.animator_file(r.asset),
                 _ => None,
             };
-            return whole(state_picker(ui, value, file.map(|f| &**f), mixed.whole));
+            return whole(state_picker(
+                ui,
+                (&field.label, value, mixed.whole),
+                file.map(|f| &**f),
+            ));
         }
         (FieldKind::Text, Offer::DayColours) => {
             return whole(crate::day_colours::day_colours(ui, value, mixed.whole));
         }
         (FieldKind::Text, Offer::Screens) => {
-            return whole(screen_picker(ui, value, &sheets.screens, mixed.whole));
+            return whole(screen_picker(
+                ui,
+                (&field.label, value, mixed.whole),
+                &sheets.screens,
+            ));
         }
         (FieldKind::Text, Offer::ClipsOf(sheet_field)) => {
             let clips = match data.get(sheet_field) {
                 Some(Value::Asset(Some(r))) => sheets.clips(r.asset),
                 _ => None,
             };
-            return whole(clip_picker(ui, value, clips.map(|c| &**c), mixed.whole));
+            return whole(clip_picker(
+                ui,
+                (&field.label, value, mixed.whole),
+                clips.map(|c| &**c),
+            ));
         }
         _ => {}
     }
@@ -360,321 +382,241 @@ pub(crate) fn field_widget(
             ui.label(text);
             None
         }
-        FieldKind::Entity => whole(entity_picker(ui, value, area, mixed.whole)),
+        FieldKind::Entity => whole(entity_picker(ui, (&field.label, value, mixed.whole), area)),
     }
 }
 
-/// A sprite sheet field: the sheet's name, and the project's sheets (or
-/// None) to pick another from.
-fn sheet_picker(ui: &mut Ui, value: &Value, sheets: &SpriteSheets, mixed: bool) -> Option<Value> {
-    let current = match value {
-        Value::Asset(Some(r)) => Some(r.asset),
-        _ => None,
-    };
-    let listed = sheets.listed();
-    let shown = if mixed {
-        "—".to_owned()
-    } else {
-        match current {
-            None => "None".to_owned(),
-            Some(id) => listed
-                .iter()
-                .find(|(_, i)| *i == id)
-                .map_or_else(|| format!("Missing sheet {id}"), |(n, _)| n.clone()),
-        }
-    };
-    let mut chosen = None;
-    egui::ComboBox::from_id_salt("sheet")
-        .selected_text(shown)
-        .height(320.0)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(current.is_none() && !mixed, "None")
-                .clicked()
-            {
-                chosen = Some(Value::Asset(None));
-            }
-            for (name, id) in &listed {
-                if ui
-                    .selectable_label(current == Some(*id) && !mixed, name)
-                    .clicked()
-                {
-                    chosen = Some(Value::Asset(Some(reflect::AssetRef {
-                        asset: *id,
-                        part: None,
-                    })));
-                }
-            }
-            if listed.is_empty() {
-                ui.label(
-                    RichText::new("No sprite sheets yet: put an Aseprite file in the project.")
-                        .color(crate::theme::text_weak()),
-                );
-            }
-        });
-    chosen
+/// Which row of a picker's list a field's value is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Row {
+    /// The first row: what an empty value means ("None", "Its start").
+    Empty,
+    /// One of the names listed, by its place.
+    Listed(usize),
+    /// Neither: values that differ between the entities selected, or a
+    /// name no longer listed.
+    Other,
 }
 
-/// An asset field offering the files `listed` (animators, tile maps),
-/// with `none` said when there are none (`what` names them).
+/// A field offering a list of names to pick from (a sheet, an animator, a
+/// tile map, a screen, a state, a slice, a clip): one drop-down for them
+/// all, the kit's.
+struct Picker<'a> {
+    /// The field's name, for screen readers.
+    label: &'a str,
+    /// The first row: what an empty value means.
+    empty: &'a str,
+    /// The names to pick from.
+    names: Vec<&'a str>,
+    /// The row the value is now.
+    now: Row,
+    /// What the box says when the value is none of the rows.
+    other: String,
+    /// Quiet words ending the list: how to make the first one.
+    note: Option<&'a str>,
+    /// Shown under the field: the value names something that isn't there.
+    warning: Option<String>,
+}
+
+impl Picker<'_> {
+    /// Draws it; the row picked, if another.
+    fn show(&self, ui: &mut Ui) -> Option<Row> {
+        let mut choices = Vec::with_capacity(self.names.len() + 1);
+        choices.push((Row::Empty, self.empty));
+        choices.extend(
+            self.names
+                .iter()
+                .enumerate()
+                .map(|(i, n)| (Row::Listed(i), *n)),
+        );
+        let shown = match self.now {
+            Row::Empty => self.empty,
+            Row::Listed(i) => self.names[i],
+            Row::Other => self.other.as_str(),
+        };
+        let list = widgets::field::List {
+            shown,
+            note: self.note,
+            width: ui.available_width(),
+        };
+        let mut chosen = self.now;
+        let changed = widgets::field::dropdown_showing(ui, self.label, &mut chosen, &choices, list);
+        if let Some(warning) = &self.warning {
+            ui.label(RichText::new(warning).color(crate::theme::WARNING));
+        }
+        changed.then_some(chosen)
+    }
+}
+
+/// An asset field offering the files `listed` (sprite sheets, animators,
+/// tile maps), or None; `note` says how to make one when there are none
+/// (`what` names them).
 fn asset_picker(
     ui: &mut Ui,
-    value: &Value,
+    (label, value, mixed): (&str, &Value, bool),
     listed: &[(String, AssetId)],
-    mixed: bool,
-    (what, none): (&str, &str),
+    (what, note): (&str, &str),
 ) -> Option<Value> {
     let current = match value {
         Value::Asset(Some(r)) => Some(r.asset),
         _ => None,
     };
-    let shown = if mixed {
-        "—".to_owned()
-    } else {
-        match current {
-            None => "None".to_owned(),
-            Some(id) => listed
-                .iter()
-                .find(|(_, i)| *i == id)
-                .map_or_else(|| format!("Missing {what} {id}"), |(n, _)| n.clone()),
-        }
+    let (now, other) = match current {
+        _ if mixed => (Row::Other, "—".to_owned()),
+        None => (Row::Empty, String::new()),
+        Some(id) => match listed.iter().position(|(_, i)| *i == id) {
+            Some(at) => (Row::Listed(at), String::new()),
+            None => (Row::Other, format!("Missing {what} {id}")),
+        },
     };
-    let mut chosen = None;
-    egui::ComboBox::from_id_salt(what)
-        .selected_text(shown)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(current.is_none() && !mixed, "None")
-                .clicked()
-            {
-                chosen = Some(Value::Asset(None));
-            }
-            for (name, id) in listed {
-                if ui
-                    .selectable_label(current == Some(*id) && !mixed, name)
-                    .clicked()
-                {
-                    chosen = Some(Value::Asset(Some(reflect::AssetRef {
-                        asset: *id,
-                        part: None,
-                    })));
-                }
-            }
-            if listed.is_empty() {
-                ui.label(RichText::new(none).color(crate::theme::text_weak()));
-            }
-        });
-    chosen
+    let picked = Picker {
+        label,
+        empty: "None",
+        names: listed.iter().map(|(n, _)| n.as_str()).collect(),
+        now,
+        other,
+        note: listed.is_empty().then_some(note),
+        warning: None,
+    }
+    .show(ui)?;
+    match picked {
+        Row::Empty => Some(Value::Asset(None)),
+        Row::Listed(at) => Some(Value::Asset(Some(reflect::AssetRef {
+            asset: listed[at].1,
+            part: None,
+        }))),
+        Row::Other => None,
+    }
+}
+
+/// A text field offering `names` (a screen's, a state's, a slice's, a
+/// clip's), with `empty` for an empty text. When the names are known
+/// (`not_one`, the words after a name that isn't among them), a name not
+/// listed is warned about under the field.
+fn text_picker(
+    ui: &mut Ui,
+    (label, value, mixed): (&str, &Value, bool),
+    (empty, names): (&str, Vec<&str>),
+    note: Option<&str>,
+    not_one: Option<&str>,
+) -> Option<Value> {
+    let current = match value {
+        Value::Text(t) => t.as_str(),
+        _ => "",
+    };
+    let at = names.iter().position(|n| *n == current);
+    let (now, other) = if mixed {
+        (Row::Other, "—".to_owned())
+    } else if current.is_empty() {
+        (Row::Empty, String::new())
+    } else {
+        at.map_or((Row::Other, current.to_owned()), |at| {
+            (Row::Listed(at), String::new())
+        })
+    };
+    let warning = not_one
+        .filter(|_| !current.is_empty() && at.is_none())
+        .map(|words| format!("\"{current}\" {words}"));
+    let picker = Picker {
+        label,
+        empty,
+        names,
+        now,
+        other,
+        note,
+        warning,
+    };
+    match picker.show(ui)? {
+        Row::Empty => Some(Value::Text(String::new())),
+        Row::Listed(at) => Some(Value::Text(picker.names[at].to_owned())),
+        Row::Other => None,
+    }
+}
+
+/// A Screen's choice of the game's screens (decision 0087).
+fn screen_picker(ui: &mut Ui, field: (&str, &Value, bool), screens: &[String]) -> Option<Value> {
+    let names = screens.iter().map(String::as_str).collect();
+    let note = "No screens yet: make a Lust file in the ui folder (ui/hud.lst), holding an \
+                assembly with a view.";
+    text_picker(
+        ui,
+        field,
+        ("None", names),
+        screens.is_empty().then_some(note),
+        Some("isn't one of the game's screens"),
+    )
 }
 
 /// A state name field: the animator's states (and its start, for none).
-/// A Screen's choice of the game's screens (decision 0087).
-fn screen_picker(ui: &mut Ui, value: &Value, screens: &[String], mixed: bool) -> Option<Value> {
-    let current = match value {
-        Value::Text(t) => t.as_str(),
-        _ => "",
-    };
-    let shown = if mixed {
-        "—".to_owned()
-    } else if current.is_empty() {
-        "None".to_owned()
-    } else {
-        current.to_owned()
-    };
-    let mut chosen = None;
-    egui::ComboBox::from_id_salt("game screen")
-        .selected_text(shown)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(current.is_empty() && !mixed, "None")
-                .clicked()
-            {
-                chosen = Some(Value::Text(String::new()));
-            }
-            for name in screens {
-                if ui
-                    .selectable_label(current == name && !mixed, name)
-                    .clicked()
-                {
-                    chosen = Some(Value::Text(name.clone()));
-                }
-            }
-            if screens.is_empty() {
-                ui.label(
-                    RichText::new(
-                        "No screens yet: make a Lust file in the ui folder (ui/hud.lst), \
-                         holding an assembly with a view.",
-                    )
-                    .color(crate::theme::text_weak()),
-                );
-            }
-        });
-    if !current.is_empty() && !screens.iter().any(|s| s == current) {
-        ui.label(
-            RichText::new(format!("\"{current}\" isn't one of the game's screens"))
-                .color(crate::theme::WARNING),
-        );
-    }
-    chosen
-}
-
 fn state_picker(
     ui: &mut Ui,
-    value: &Value,
+    field: (&str, &Value, bool),
     file: Option<&animation::AnimatorFile>,
-    mixed: bool,
 ) -> Option<Value> {
-    let current = match value {
-        Value::Text(t) => t.as_str(),
-        _ => "",
-    };
-    let none = match file.and_then(animation::AnimatorFile::entry_state) {
+    let empty = match file.and_then(animation::AnimatorFile::entry_state) {
         Some(s) => format!("Its start ({})", s.name),
         None => "Its start".to_owned(),
     };
-    let shown = if mixed {
-        "—".to_owned()
-    } else if current.is_empty() {
-        none.clone()
-    } else {
-        current.to_owned()
-    };
-    let mut chosen = None;
-    egui::ComboBox::from_id_salt("animator state")
-        .selected_text(shown)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(current.is_empty() && !mixed, none)
-                .clicked()
-            {
-                chosen = Some(Value::Text(String::new()));
-            }
-            for state in file.map_or(&[][..], |f| &f.states) {
-                if ui
-                    .selectable_label(current == state.name && !mixed, &state.name)
-                    .clicked()
-                {
-                    chosen = Some(Value::Text(state.name.clone()));
-                }
-            }
-            if !current.is_empty()
-                && file.is_some_and(|f| !f.states.iter().any(|s| s.name == current))
-            {
-                ui.label(
-                    RichText::new(format!("\"{current}\" isn't one of its states"))
-                        .color(crate::theme::WARNING),
-                );
-            }
-        });
-    chosen
+    let names = file
+        .map_or(&[][..], |f| &f.states)
+        .iter()
+        .map(|s| s.name.as_str());
+    text_picker(
+        ui,
+        field,
+        (&empty, names.collect()),
+        None,
+        file.map(|_| "isn't one of its states"),
+    )
 }
 
 /// A slice name field: the sheet's slices (and "bottom middle", for
 /// none) to pick from.
 fn slice_picker(
     ui: &mut Ui,
-    value: &Value,
+    field: (&str, &Value, bool),
     sheet: Option<&assets::sprite_sheet::SpriteSheet>,
-    mixed: bool,
 ) -> Option<Value> {
-    const NONE: &str = "Bottom middle";
-    let current = match value {
-        Value::Text(t) => t.as_str(),
-        _ => "",
-    };
-    let shown = if mixed {
-        "—"
-    } else if current.is_empty() {
-        NONE
-    } else {
-        current
-    };
-    let mut chosen = None;
-    egui::ComboBox::from_id_salt("slice")
-        .selected_text(shown)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(current.is_empty() && !mixed, NONE)
-                .clicked()
-            {
-                chosen = Some(Value::Text(String::new()));
-            }
-            for slice in sheet.map_or(&[][..], |s| &s.slices) {
-                if ui
-                    .selectable_label(current == slice.name && !mixed, &slice.name)
-                    .clicked()
-                {
-                    chosen = Some(Value::Text(slice.name.clone()));
-                }
-            }
-            if !current.is_empty() && sheet.is_some_and(|s| s.slice(current).is_none()) {
-                ui.label(
-                    RichText::new(format!("\"{current}\" isn't a slice of this sheet"))
-                        .color(crate::theme::WARNING),
-                );
-            }
-        });
-    chosen
+    let names = sheet
+        .map_or(&[][..], |s| &s.slices)
+        .iter()
+        .map(|s| s.name.as_str());
+    text_picker(
+        ui,
+        field,
+        ("Bottom middle", names.collect()),
+        None,
+        sheet.map(|_| "isn't a slice of this sheet"),
+    )
 }
 
 /// A clip name field (Phase 9, D3): the sheet's or clips file's clips to
 /// pick from, and its first clip (or the still Frame) for none.
 fn clip_picker(
     ui: &mut Ui,
-    value: &Value,
+    field: (&str, &Value, bool),
     clips: Option<&animation::ClipSet>,
-    mixed: bool,
 ) -> Option<Value> {
-    let current = match value {
-        Value::Text(t) => t.as_str(),
-        _ => "",
-    };
     let first = clips
         .and_then(|c| c.first.and_then(|i| c.clips.get(i)))
         .map(|c| c.name.as_str());
-    let none = match first {
+    let empty = match first {
         Some(name) => format!("First ({name})"),
         None => "None (the Frame)".to_owned(),
     };
-    let shown = if mixed {
-        "—".to_owned()
-    } else if current.is_empty() {
-        none.clone()
-    } else {
-        current.to_owned()
-    };
-    let mut chosen = None;
-    egui::ComboBox::from_id_salt("clip")
-        .selected_text(shown)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(current.is_empty() && !mixed, none)
-                .clicked()
-            {
-                chosen = Some(Value::Text(String::new()));
-            }
-            for clip in clips.map_or(&[][..], |c| &c.clips) {
-                if ui
-                    .selectable_label(current == clip.name && !mixed, &clip.name)
-                    .clicked()
-                {
-                    chosen = Some(Value::Text(clip.name.clone()));
-                }
-            }
-            if clips.is_some_and(|c| c.clips.is_empty()) {
-                ui.label(
-                    RichText::new("No clips: tag runs of frames in Aseprite.")
-                        .color(crate::theme::text_weak()),
-                );
-            }
-            if !current.is_empty() && clips.is_some_and(|c| c.get(current).is_none()) {
-                ui.label(
-                    RichText::new(format!("\"{current}\" isn't one of its clips"))
-                        .color(crate::theme::WARNING),
-                );
-            }
-        });
-    chosen
+    let names = clips
+        .map_or(&[][..], |c| &c.clips)
+        .iter()
+        .map(|c| c.name.as_str());
+    text_picker(
+        ui,
+        field,
+        (&empty, names.collect()),
+        clips
+            .is_some_and(|c| c.clips.is_empty())
+            .then_some("No clips: tag runs of frames in Aseprite."),
+        clips.map(|_| "isn't one of its clips"),
+    )
 }
 
 /// The most entities an entity field's list shows at once: type to find
@@ -682,8 +624,13 @@ fn clip_picker(
 const MAX_LISTED: usize = 200;
 
 /// An entity field: the entity's name, and a list to pick another (or
-/// None) from, with a box to find one by name in a big area.
-fn entity_picker(ui: &mut Ui, value: &Value, area: &area::Area, mixed: bool) -> Option<Value> {
+/// None) from, with a box to find one by name in a big area. Built from
+/// the kit's drop-down pieces, since its list has the box at the top.
+fn entity_picker(
+    ui: &mut Ui,
+    (label, value, mixed): (&str, &Value, bool),
+    area: &area::Area,
+) -> Option<Value> {
     let current = match value {
         Value::Entity(Some(id)) => Some(*id),
         _ => None,
@@ -701,51 +648,51 @@ fn entity_picker(ui: &mut Ui, value: &Value, area: &area::Area, mixed: bool) -> 
     let find_id = ui.id().with("find");
     let mut find: String = ui.data(|d| d.get_temp(find_id)).unwrap_or_default();
     let mut chosen = None;
-    let combo = egui::ComboBox::from_id_salt("entity")
-        .selected_text(shown)
-        .height(320.0)
-        .show_ui(ui, |ui| {
-            ui.add(
-                egui::TextEdit::singleline(&mut find)
-                    .hint_text("Find by name")
-                    .desired_width(180.0),
-            );
-            if ui
-                .selectable_label(current.is_none() && !mixed, "None")
-                .clicked()
-            {
-                chosen = Some(Value::Entity(None));
-            }
-            let wanted = find.to_lowercase();
-            let mut listed = 0usize;
-            let mut more = false;
-            for (id, entity) in area.iter() {
-                if !wanted.is_empty() && !entity.name.to_lowercase().contains(&wanted) {
-                    continue;
+    let width = ui.available_width();
+    let button = widgets::field::dropdown_button(ui, label, &shown, width);
+    egui::Popup::menu(&button).width(width).show(|ui| {
+        ui.add(
+            egui::TextEdit::singleline(&mut find)
+                .hint_text("Find by name")
+                .desired_width(f32::INFINITY),
+        );
+        egui::ScrollArea::vertical()
+            .max_height(widgets::field::LIST_MAX_H)
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+                if widgets::field::list_row(ui, "None", current.is_none() && !mixed).clicked() {
+                    chosen = Some(Value::Entity(None));
                 }
-                if listed == MAX_LISTED {
-                    more = true;
-                    break;
+                let wanted = find.to_lowercase();
+                let mut listed = 0usize;
+                let mut more = false;
+                for (id, entity) in area.iter() {
+                    if !wanted.is_empty() && !entity.name.to_lowercase().contains(&wanted) {
+                        continue;
+                    }
+                    if listed == MAX_LISTED {
+                        more = true;
+                        break;
+                    }
+                    listed += 1;
+                    let picked = current == Some(id) && !mixed;
+                    if widgets::field::list_row(ui, &entity.name, picked)
+                        .on_hover_text(id.to_string())
+                        .clicked()
+                    {
+                        chosen = Some(Value::Entity(Some(id)));
+                    }
                 }
-                listed += 1;
-                let picked = current == Some(id) && !mixed;
-                if ui
-                    .selectable_label(picked, &entity.name)
-                    .on_hover_text(id.to_string())
-                    .clicked()
-                {
-                    chosen = Some(Value::Entity(Some(id)));
+                if more {
+                    widgets::field::list_note(
+                        ui,
+                        &format!("Only the first {MAX_LISTED}: type to find others."),
+                    );
                 }
-            }
-            if more {
-                ui.label(
-                    RichText::new(format!("Only the first {MAX_LISTED}: type to find others."))
-                        .color(crate::theme::text_weak()),
-                );
-            }
-        });
+            });
+    });
     if let Some(id) = current {
-        combo.response.on_hover_text(id.to_string());
+        button.on_hover_text(id.to_string());
     }
     ui.data_mut(|d| d.insert_temp(find_id, find));
     chosen.filter(|v| mixed || *v != *value)
@@ -799,6 +746,111 @@ fn number(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable as _;
+
+    /// A text field offering "feet" and "head" (a sheet's slices), holding
+    /// `value` (for several entities, if `mixed`); what's picked is kept.
+    fn slices(value: &str, mixed: bool) -> Harness<'static, (Value, Vec<Value>)> {
+        Harness::builder()
+            .with_size(egui::vec2(300.0, 300.0))
+            .build_ui_state(
+                move |ui, (value, picked): &mut (Value, Vec<Value>)| {
+                    let names = vec!["feet", "head"];
+                    let field = ("Pivot", &*value, mixed);
+                    let not_one = Some("isn't a slice of this sheet");
+                    if let Some(v) = text_picker(ui, field, ("Bottom middle", names), None, not_one)
+                    {
+                        picked.push(v);
+                    }
+                },
+                (Value::Text(value.into()), Vec::new()),
+            )
+    }
+
+    fn shown(h: &Harness<'_, (Value, Vec<Value>)>) -> Option<String> {
+        h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Pivot")
+            .value()
+    }
+
+    #[test]
+    fn a_picker_is_the_kit_s_drop_down_saying_what_it_holds() {
+        let mut h = slices("feet", false);
+        h.run();
+        assert_eq!(shown(&h).as_deref(), Some("feet"));
+        let mut h = slices("", false);
+        h.run();
+        assert_eq!(
+            shown(&h).as_deref(),
+            Some("Bottom middle"),
+            "empty is its first row"
+        );
+        let mut h = slices("feet", true);
+        h.run();
+        assert_eq!(shown(&h).as_deref(), Some("—"), "values that differ");
+    }
+
+    #[test]
+    fn a_name_that_isn_t_listed_is_shown_and_warned_about() {
+        let mut h = slices("tail", false);
+        h.run();
+        assert_eq!(shown(&h).as_deref(), Some("tail"));
+        h.get_by_label("\"tail\" isn't a slice of this sheet");
+    }
+
+    #[test]
+    fn a_row_picked_is_the_new_value_and_the_same_one_is_no_change() {
+        let mut h = slices("feet", false);
+        h.run();
+        h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Pivot")
+            .click();
+        h.run();
+        h.get_by_label("head").click();
+        h.run();
+        assert_eq!(h.state().1, [Value::Text("head".into())]);
+        h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Pivot")
+            .click();
+        h.run();
+        h.get_by_label("Bottom middle").click();
+        h.run();
+        assert_eq!(h.state().1.last(), Some(&Value::Text(String::new())));
+    }
+
+    #[test]
+    fn with_values_that_differ_any_row_picked_sets_them_all() {
+        let mut h = slices("feet", true);
+        h.run();
+        h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Pivot")
+            .click();
+        h.run();
+        h.get_by_label("feet").click();
+        h.run();
+        assert_eq!(h.state().1, [Value::Text("feet".into())]);
+    }
+
+    #[test]
+    fn an_asset_no_longer_listed_says_it_is_missing() {
+        let gone = AssetId::random();
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(300.0, 300.0))
+            .build_ui(move |ui| {
+                let value = Value::Asset(Some(reflect::AssetRef {
+                    asset: gone,
+                    part: None,
+                }));
+                let field = ("Sheet", &value, false);
+                asset_picker(ui, field, &[], ("sprite sheet", "No sprite sheets yet."));
+            });
+        h.run();
+        let shown = h
+            .get_by_role_and_label(egui::accesskit::Role::ComboBox, "Sheet")
+            .value();
+        assert_eq!(shown, Some(format!("Missing sprite sheet {gone}")));
+        h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Sheet")
+            .click();
+        h.run();
+        h.get_by_label("No sprite sheets yet.");
+    }
 
     #[test]
     fn rotations_read_back_through_degrees() {

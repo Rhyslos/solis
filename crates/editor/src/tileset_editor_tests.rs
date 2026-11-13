@@ -196,3 +196,17 @@ fn a_file_changed_on_disk_is_taken_in_as_one_step() {
     assert!(e.set_picture(None, [0, 9999]));
     assert_eq!(e.file.tile, [1, tiles::tileset::MAX_TILE]);
 }
+
+#[test]
+fn keeps_the_newest_hundred_undo_steps() {
+    let mut e = editor();
+    for n in 1..=150 {
+        assert!(e.change(|f| f.tile = [n, n]));
+    }
+    let mut steps = 0;
+    while e.undo() {
+        steps += 1;
+    }
+    assert_eq!(steps, MAX_UNDO);
+    assert_eq!(e.file.tile, [50, 50], "the oldest steps went first");
+}

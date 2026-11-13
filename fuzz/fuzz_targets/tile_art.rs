@@ -4,7 +4,7 @@
 //! tiles weighed without panicking.
 #![no_main]
 libfuzzer_sys::fuzz_target!(|data: &[u8]| {
-    solis_fuzz_quiet();
+    fuzz_support::quiet_caught_panics();
     let Some((&first, bytes)) = data.split_first() else {
         return;
     };
@@ -25,10 +25,3 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     let _ = tiles::autotile::guess_kind(fill, [0, 0], grid);
     let _ = tiles::autotile::mark_up(tiles::TileKind::Blob47, [0, 0], |at| fill(at).0);
 });
-
-/// Panics Solis catches on purpose aren't failures: only one that escapes
-/// Solis is, and libFuzzer still sees that one.
-fn solis_fuzz_quiet() {
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| std::panic::set_hook(Box::new(|_| {})));
-}

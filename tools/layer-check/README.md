@@ -12,7 +12,7 @@ Read the root `Cargo.toml`, every crate in `crates/` and the dependency register
 - each crate depends only on the program's own crates in its own layer or below, and only on ones that exist;
 - each crate uses the workspace lints;
 - each crate has a `README.md` with `## Purpose` and `## Must never`;
-- every outside library a crate uses is in the register, used only in the crates it allows, and every row of the register is still used (decision 0052).
+- every outside library a crate uses is in the register, used only in the crates it allows, every row of the register is still used, and every library a crate declares is named in its code (decision 0052).
 
 The program's own crates are the `[workspace.dependencies]` entries whose `path` points into `crates/`.
 

@@ -11,13 +11,15 @@ Solis is built on other people's libraries, which saves years of work. Each libr
    - how deep it reaches;
    - an **exit plan**: what Solis does if the library goes bad.
 
-   A test (`tools/layer-check`, run by CI) fails if a crate uses a library that isn't listed, uses one in a crate the register doesn't allow, or if the register lists a library or a use that no longer exists.
+   A test (`tools/layer-check`, run by CI) fails if a crate uses a library that isn't listed, uses one in a crate the register doesn't allow, if the register lists a library or a use that no longer exists, or if a crate declares a library its code never names (a forgotten line in a `Cargo.toml` would otherwise keep a row looking used).
 2. **Walls.** A library is used in as few crates as possible, ideally one, behind Solis's own types, so replacing it means rewriting one crate, not the engine. The "allowed in" column is the wall, and the test holds it.
 3. **Licences are checked on every build.** `cargo deny check` (CI, `deny.toml`) fails if any library, including the libraries libraries use, has a licence that isn't on the allowed list.
    - **A library can't slip into another licence unnoticed:** if an update changes its licence to one not allowed, the update fails.
    - **The version Solis uses keeps its licence:** a library that changes its licence can usually only do so for new versions, and the version already published stays under the licence it was published with. Solis stays on the last good version and replaces the library in its own time. This is general understanding, not legal advice.
 4. **Exact versions, from known places.**
    - `Cargo.lock` pins every version, and nothing updates on its own. Dependabot proposes updates as pull requests, checked like any change.
+   - **Holds are enforced, not remembered.** A version held back on purpose is denied in `deny.toml`'s `[bans]`, with the reason, so an update past it fails the checks; Dependabot skips it too (`.github/dependabot.yml`, `ignore`). Today that's game code's Luau source, held at 0.740 (`luau0-src` 0.22.0) because mlua 0.12.2 can't start a newer one.
+   - **Libraries that speak glam move together.** Solis's `glam` is held at the version Rapier and Kira use (0.33), so it's built once and a vector crosses into physics or sound unchanged. `deny.toml` fails on a second glam, and Dependabot brings glam, Rapier and Kira as one update (the `maths` group).
    - **One lock file.** The fuzzing workspace (`fuzz/`) needs a lock file of its own, and nothing in Cargo keeps two in step, so it isn't kept in the repository: `tools/ci/fuzz-lock.sh` writes it from `Cargo.lock` whenever the fuzzers are built. What the fuzzers vet is then what ships, and a version held back in `Cargo.lock` is held back for them too ([fuzz/README.md](../fuzz/README.md#the-lock-file)).
    - Libraries come only from the official registry, or from the project lead's own Lust repository pinned to one commit (`deny.toml`, `[sources]`).
    - Removed ("yanked") versions fail the check.
@@ -59,13 +61,12 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `image` | Reads PNG and JPEG textures (only those: `assets/src/picture.rs` checks a file's first bytes, whatever formats other libraries switch on) | MIT OR Apache-2.0 | assets, app (tests) | walled | Use smaller PNG and JPEG readers, or fork |
 | `kira` | Plays and mixes sound: tracks, effects, sound placed in 3D (decision 0056) | MIT OR Apache-2.0 | sound | walled | Fork it (MIT or Apache-2.0), or mix ourselves on top of `cpal` underneath; only the sound crate changes |
 | `lewton` | Decodes Ogg Vorbis sound (its headers and packets, handed to it by Solis; its own file reader isn't used) | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |
-| `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render, sound, updater | shared | A few lines of Solis's own logging |
+| `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render | shared | A few lines of Solis's own logging |
 | `lust` | Lust, the project lead's language (Solis's game code, and reading the data files Solis makes, decision 0081) | MIT | area, script | shared | Ours: the project lead's own repository, pinned to one commit |
 | `meshopt` | Makes levels of detail (simpler meshes for far away) | MIT OR Apache-2.0 | assets | walled | Write a simplifier (quadric error, a known method), or fork; meshoptimizer underneath is MIT |
 | `mint` | Hands places and turns to Kira (the shared maths types it takes) | MIT | sound | walled | Kira's own; would go with it |
 | `mlua` | Runs Lua and Luau game code, sandboxed | MIT | script | walled | Fork it (MIT), or bind to Luau ourselves (Luau is MIT); only the script crate changes |
 | `notify` | Notices when files change on disk | CC0-1.0 | asset_db | walled | Ask Windows directly (`ReadDirectoryChangesW`), or check files on a timer |
-| `notify-debouncer-mini` | Groups bursts of file changes into one | MIT OR Apache-2.0 | asset_db | walled | Group them ourselves (a short timer) |
 | `ogg` | Reads the Ogg pages a Vorbis file is packed in, so Solis can check its headers before `lewton` reads them and hand `lewton` the sound a packet at a time | BSD-3-Clause | sound | walled | Read Ogg pages ourselves (a simple, public format) |
 | `opener` | Opens web pages and folders | MIT OR Apache-2.0 | app | walled | Ask Windows directly (`ShellExecute`) |
 | `percent-encoding` | Decodes `%20`-style names in model files | MIT OR Apache-2.0 | assets | walled | Write it (a few lines) |
@@ -94,7 +95,7 @@ When a library Solis needs depends on something whose licence isn't allowed, and
 
 | Stands in for | Needed by | Original licence | What it does | Stand-in uses |
 | --- | --- | --- | --- | --- |
-| `triple_buffer` | `kira` | MPL-2.0 | Hands the newest command to the audio thread without waiting | `crossbeam-utils` (MIT OR Apache-2.0), already in Solis through other libraries |
+| `triple_buffer` | `kira` | MPL-2.0 | Hands the newest command to the audio thread without waiting | Nothing: Rust's standard library only |
 
 If the library drops the dependency, or changes what it uses, the patch is removed or updated; `cargo deny check` fails if the original ever comes back.
 

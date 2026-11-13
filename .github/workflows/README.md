@@ -35,7 +35,7 @@ The folder above has no README of its own, because GitHub would show a README th
 
 | File | What it does |
 | --- | --- |
-| `../dependabot.yml` | Opens grouped pull requests weekly for outdated Rust libraries and GitHub Actions. It reads the main `Cargo.lock`, the only lock file kept: the fuzzers' is written from it ([fuzz/README.md](../../fuzz/README.md#the-lock-file)). |
+| `../dependabot.yml` | Opens grouped pull requests weekly for outdated Rust libraries and GitHub Actions, skipping versions held back on purpose (each also denied in `deny.toml`). It reads the main `Cargo.lock`, the only lock file kept: the fuzzers' is written from it ([fuzz/README.md](../../fuzz/README.md#the-lock-file)). |
 | `../pull_request_template.md` | The form every pull request fills in: what changed, test results, documentation updated, how to test. |
 
 **Read next:** ARCHITECTURE.md, "Checks", and CONTRIBUTING.md, "Pull requests".

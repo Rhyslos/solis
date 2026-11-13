@@ -6,43 +6,67 @@
 //! Solis stays permissive (decision 0056). It was written for Solis from
 //! the interface alone.
 //!
-//! How it works: the value lives in a `crossbeam_utils::atomic::AtomicCell`
-//! (copied whole, never torn), with a counter beside it that is odd while
-//! a write is in progress (a "seqlock"). The reader takes a value only if
-//! the counter was even and unchanged across the copy, so it never sees a
-//! value twice or out of order. Neither side blocks: a reader that keeps
-//! meeting writes in progress gives up for this call and picks the value
-//! up next time.
+//! How it works: three slots, each owned by one side at a time: the
+//! writer's, the reader's and one in the middle. The writer fills its own
+//! slot, then swaps it for the middle one in one atomic step, marking the
+//! middle new. The reader, finding the middle marked new, swaps its own
+//! slot for it the same way and copies the value out. Only a slot's owner
+//! ever touches it, so its lock is always free and taking it is a single
+//! step that never waits; the lock is there only because the workspace
+//! has no `unsafe` code to share a slot without one. A value too wide for
+//! one atomic operation therefore never goes through a lock another
+//! thread could be holding, as it would in an atomic cell.
 
-use crossbeam_utils::atomic::AtomicCell;
 use std::fmt;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 
-/// How many times a read retries while a write is in progress before
-/// giving up for this call.
-const READ_TRIES: usize = 8;
+/// The bits of `Shared::middle` that say which slot is in the middle.
+const SLOT: u8 = 0b011;
+/// The bit of `Shared::middle` set while the middle slot holds a value
+/// the reader hasn't taken.
+const NEW: u8 = 0b100;
 
 /// What the writer and reader share.
 struct Shared<T> {
-    value: AtomicCell<T>,
-    /// Odd while a write is in progress; goes up by 2 with each write.
-    sequence: AtomicU64,
+    slots: [Mutex<T>; 3],
+    /// The middle slot's index, and `NEW`.
+    middle: AtomicU8,
+}
+
+impl<T> Shared<T> {
+    /// Slot `index`, taken by its owner. `None` only if the other side
+    /// were using it, which ownership rules out; the caller then gives up
+    /// for this call instead of waiting.
+    fn own(&self, index: u8) -> Option<MutexGuard<'_, T>> {
+        match self.slots.get(usize::from(index))?.try_lock() {
+            Ok(slot) => Some(slot),
+            // Nothing can panic while a slot is held (a copy in or out),
+            // but if something did, the value is still whole.
+            Err(TryLockError::Poisoned(held)) => Some(held.into_inner()),
+            Err(TryLockError::WouldBlock) => None,
+        }
+    }
 }
 
 /// Makes a writer and reader pair, starting with `initial`.
 pub fn triple_buffer<T: Copy + Send>(initial: &T) -> (Input<T>, Output<T>) {
     let shared = Arc::new(Shared {
-        value: AtomicCell::new(*initial),
-        sequence: AtomicU64::new(0),
+        slots: [
+            Mutex::new(*initial),
+            Mutex::new(*initial),
+            Mutex::new(*initial),
+        ],
+        middle: AtomicU8::new(1),
     });
     (
         Input {
             shared: Arc::clone(&shared),
+            own: 0,
         },
         Output {
             shared,
-            seen: 0,
+            own: 2,
             local: *initial,
         },
     )
@@ -51,14 +75,20 @@ pub fn triple_buffer<T: Copy + Send>(initial: &T) -> (Input<T>, Output<T>) {
 /// The writing end.
 pub struct Input<T: Copy + Send> {
     shared: Arc<Shared<T>>,
+    /// The slot the writer owns.
+    own: u8,
 }
 
 impl<T: Copy + Send> Input<T> {
     /// Writes a new value, replacing any the reader hasn't taken yet.
     pub fn write(&mut self, value: T) {
-        self.shared.sequence.fetch_add(1, Ordering::AcqRel);
-        self.shared.value.store(value);
-        self.shared.sequence.fetch_add(1, Ordering::Release);
+        let Some(mut slot) = self.shared.own(self.own) else {
+            return;
+        };
+        *slot = value;
+        drop(slot);
+        let was = self.shared.middle.swap(self.own | NEW, Ordering::AcqRel);
+        self.own = was & SLOT;
     }
 }
 
@@ -71,8 +101,8 @@ impl<T: Copy + Send> fmt::Debug for Input<T> {
 /// The reading end.
 pub struct Output<T: Copy + Send> {
     shared: Arc<Shared<T>>,
-    /// The write last taken.
-    seen: u64,
+    /// The slot the reader owns.
+    own: u8,
     /// The value last taken.
     local: T,
 }
@@ -81,23 +111,18 @@ impl<T: Copy + Send> Output<T> {
     /// Takes the newest value if there's one not yet taken. Returns
     /// whether it did.
     pub fn update(&mut self) -> bool {
-        for _ in 0..READ_TRIES {
-            let before = self.shared.sequence.load(Ordering::Acquire);
-            if before % 2 == 1 {
-                std::hint::spin_loop();
-                continue;
-            }
-            if before == self.seen {
-                return false;
-            }
-            let value = self.shared.value.load();
-            if self.shared.sequence.load(Ordering::Acquire) == before {
-                self.local = value;
-                self.seen = before;
-                return true;
-            }
+        if self.shared.middle.load(Ordering::Acquire) & NEW == 0 {
+            return false;
         }
-        false
+        let was = self.shared.middle.swap(self.own, Ordering::AcqRel);
+        self.own = was & SLOT;
+        match self.shared.own(self.own) {
+            Some(slot) => {
+                self.local = *slot;
+                true
+            }
+            None => false,
+        }
     }
 
     /// The value last taken.
@@ -166,6 +191,64 @@ mod tests {
             }
         }
         writer.join().unwrap();
+    }
+
+    /// The writer stopped by the system halfway through a write: its slot
+    /// is held. The reader must neither wait nor see the half-written
+    /// value, and gets what was written before.
+    #[test]
+    fn a_reader_never_waits_on_a_writer_stopped_mid_write() {
+        let (mut input, mut output) = triple_buffer(&[0_u64; 8]);
+        input.write([1; 8]);
+        let shared = Arc::clone(&input.shared);
+        let _writing = shared.slots[usize::from(input.own)].lock().unwrap();
+        assert!(output.update());
+        assert_eq!(*output.output_buffer(), [1; 8]);
+        assert!(!output.update());
+        assert_eq!(*output.read(), [1; 8]);
+    }
+
+    /// The reader stopped halfway through taking a value: its slot is
+    /// held. The writer must not wait, and the newest write still arrives.
+    #[test]
+    fn a_writer_never_waits_on_a_reader_stopped_mid_read() {
+        let (mut input, mut output) = triple_buffer(&0_u32);
+        let shared = Arc::clone(&output.shared);
+        {
+            let _reading = shared.slots[usize::from(output.own)].lock().unwrap();
+            for v in 1..=5 {
+                input.write(v);
+            }
+        }
+        assert_eq!(*output.read(), 5);
+    }
+
+    /// Whatever the order of writes and reads, the three slots stay one
+    /// each: the writer's, the reader's and the middle.
+    #[test]
+    fn each_slot_has_one_owner() {
+        let (mut input, mut output) = triple_buffer(&0_u32);
+        // A fixed pattern of writes and reads (a xorshift sequence from a
+        // fixed start, so the test is the same every run).
+        let mut state = 0x2545_f491_u32;
+        let mut last_written = 0;
+        for step in 1..=10_000_u32 {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            if state.is_multiple_of(3) {
+                if output.update() {
+                    assert_eq!(*output.output_buffer(), last_written);
+                }
+            } else {
+                input.write(step);
+                last_written = step;
+            }
+            let middle = input.shared.middle.load(Ordering::Acquire) & SLOT;
+            let mut owners = [input.own, output.own, middle];
+            owners.sort_unstable();
+            assert_eq!(owners, [0, 1, 2], "step {step}");
+        }
     }
 
     #[test]

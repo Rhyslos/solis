@@ -967,8 +967,8 @@ fn colliders_in_range(physics: &Physics, smallest: f32) -> bool {
     physics.state.colliders.iter().all(|(_, c)| {
         let at = c
             .position_wrt_parent()
-            .map_or(Vec3::ZERO, |p| from_rp(p.translation));
-        let size = from_rp(c.shape().compute_local_aabb().extents());
+            .map_or(Vec3::ZERO, |p| p.translation);
+        let size = c.shape().compute_local_aabb().extents();
         at.is_finite()
             && at.abs().max_element() <= MAX_PLACE
             && size.is_finite()
@@ -1009,11 +1009,11 @@ fn a_collider_s_centre_and_size_are_held_in_range_after_scaling() {
     let entry = &physics.state.by_entity[&id(3)];
     let made = &physics.state.colliders[entry.collider.unwrap()];
     assert_eq!(
-        from_rp(made.position_wrt_parent().unwrap().translation),
+        made.position_wrt_parent().unwrap().translation,
         Vec3::new(MAX_PLACE, 0.0, -MAX_PLACE)
     );
     assert_eq!(
-        from_rp(made.shape().compute_local_aabb().extents()),
+        made.shape().compute_local_aabb().extents(),
         Vec3::splat(2.0 * MAX_SIZE)
     );
     run(&mut physics, 5);

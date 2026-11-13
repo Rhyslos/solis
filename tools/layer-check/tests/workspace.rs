@@ -114,3 +114,42 @@ fn every_library_is_in_the_dependency_register() {
         report.join("\n")
     );
 }
+
+/// Every outside library a crate declares is named somewhere in its code, so
+/// a line left in a Cargo.toml can't keep a register row looking used.
+#[test]
+fn every_declared_library_is_used_in_code() {
+    let root = workspace_root();
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).unwrap();
+    let internal = layer_check::internal_crate_names(&manifest).unwrap();
+    let mut report = Vec::new();
+    for entry in std::fs::read_dir(root.join("crates")).unwrap() {
+        let dir = entry.unwrap().path();
+        let Ok(text) = std::fs::read_to_string(dir.join("Cargo.toml")) else {
+            continue;
+        };
+        let mut sources = String::new();
+        add_rust_sources(&dir, &mut sources).unwrap();
+        let problems = layer_check::deps::unnamed_libraries(&text, &internal, &sources).unwrap();
+        report.extend(problems.iter().map(ToString::to_string));
+    }
+    assert!(
+        report.is_empty(),
+        "libraries declared but not used:\n{}",
+        report.join("\n")
+    );
+}
+
+/// Appends every `.rs` file under `dir` to `out`.
+fn add_rust_sources(dir: &Path, out: &mut String) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            add_rust_sources(&path, out)?;
+        } else if path.extension().is_some_and(|e| e == "rs") {
+            out.push_str(&std::fs::read_to_string(&path)?);
+            out.push('\n');
+        }
+    }
+    Ok(())
+}

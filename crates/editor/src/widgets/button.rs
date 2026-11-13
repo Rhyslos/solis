@@ -22,6 +22,7 @@ enum Kind {
 #[derive(Debug, Clone, Copy)]
 pub struct Button<'a> {
     label: &'a str,
+    name: Option<&'a str>,
     kind: Kind,
     icon: Option<Icon>,
     header: bool,
@@ -33,6 +34,7 @@ impl<'a> Button<'a> {
     fn new(label: &'a str, kind: Kind) -> Self {
         Self {
             label,
+            name: None,
             kind,
             icon: None,
             header: false,
@@ -66,6 +68,13 @@ impl<'a> Button<'a> {
     pub fn icon_after(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
         self.after = true;
+        self
+    }
+
+    /// Called `name` by screen readers and tests, where its word alone
+    /// wouldn't say what it does ("Play the sound" for "Play").
+    pub fn named(mut self, name: &'a str) -> Self {
+        self.name = Some(name);
         self
     }
 
@@ -104,7 +113,11 @@ impl<'a> Button<'a> {
         };
         let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::click());
         response.widget_info(|| {
-            WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), self.label)
+            WidgetInfo::labeled(
+                egui::WidgetType::Button,
+                ui.is_enabled(),
+                self.name.unwrap_or(self.label),
+            )
         });
         if !ui.is_rect_visible(rect) {
             return response;

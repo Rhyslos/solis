@@ -163,14 +163,6 @@ impl Default for FlatState {
     }
 }
 
-fn to_rp(v: Vec2) -> rp::Vector {
-    rp::Vector::new(v.x, v.y)
-}
-
-fn from_rp(v: rp::Vector) -> Vec2 {
-    Vec2::new(v.x, v.y)
-}
-
 impl FlatState {
     /// Nothing in 2D physics: no entities and no walls.
     pub fn is_empty(&self) -> bool {
@@ -200,7 +192,7 @@ impl FlatState {
     pub fn place(&self, id: EntityId) -> Option<Vec2> {
         let entry = self.by_entity.get(&id)?;
         let c = self.colliders.get(entry.collider)?;
-        Some(from_rp(c.translation()) - entry.spec.center())
+        Some(c.translation() - entry.spec.center())
     }
 
     /// How many wall rectangles every map makes together.
@@ -217,8 +209,8 @@ impl FlatState {
             .filter_map(|h| {
                 let c = self.colliders.get(*h)?;
                 let half = c.shape().as_cuboid()?.half_extents;
-                let mid = from_rp(c.translation());
-                Some((mid - from_rp(half), mid + from_rp(half)))
+                let mid = c.translation();
+                Some((mid - half, mid + half))
             })
             .collect()
     }
@@ -277,11 +269,11 @@ impl FlatState {
                 &self.colliders,
                 filter,
             );
-            let pose = rp::Pose::from_translation(to_rp(at));
+            let pose = rp::Pose::from_translation(at);
             // Rapier's maths failing on something out of range stops the
             // move, never crashes.
             let Ok(hit) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                queries.cast_shape(&pose, to_rp(left), &*shape, options)
+                queries.cast_shape(&pose, left, &*shape, options)
             })) else {
                 break;
             };
@@ -296,7 +288,7 @@ impl FlatState {
             };
             // The hit thing's surface faces the mover: keep only the part
             // of what's left along it.
-            let normal = from_rp(hit.normal1).normalize_or_zero();
+            let normal = hit.normal1.normalize_or_zero();
             let rest = left * (1.0 - t);
             let into = rest.dot(normal);
             if into >= -1.0e-7 {
@@ -404,7 +396,7 @@ impl Flat {
         self.remove(id);
         let state = self.state_mut();
         let made = rp::ColliderBuilder::new(collider.rapier())
-            .translation(to_rp(place + collider.center()))
+            .translation(place + collider.center())
             .user_data(u128::from(id.0.raw()))
             .build();
         let handle = state.colliders.insert(made);
@@ -447,7 +439,7 @@ impl Flat {
             return;
         };
         if let Some(c) = state.colliders.get_mut(entry.collider) {
-            c.set_translation(to_rp(place + entry.spec.center()));
+            c.set_translation(place + entry.spec.center());
         }
     }
 
@@ -476,7 +468,7 @@ impl Flat {
             .map(|(lo, hi)| {
                 let half = (*hi - *lo) * 0.5;
                 let wall = rp::ColliderBuilder::cuboid(half.x, half.y)
-                    .translation(to_rp(*lo + half))
+                    .translation(*lo + half)
                     .user_data(u128::from(map.0.raw()))
                     .build();
                 state.colliders.insert(wall)
@@ -604,7 +596,7 @@ impl Flat {
                 .state
                 .colliders
                 .get(entry.collider)
-                .map(|c| from_rp(c.translation()))
+                .map(|c| c.translation())
             else {
                 continue;
             };
@@ -637,7 +629,7 @@ impl Flat {
             }
             if end != start {
                 if let Some(c) = state.colliders.get_mut(entry.collider) {
-                    c.set_translation(to_rp(end));
+                    c.set_translation(end);
                 }
                 self.moved.push(*id);
                 last_moved = Some(*id);

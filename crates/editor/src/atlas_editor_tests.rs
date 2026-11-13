@@ -74,3 +74,17 @@ fn every_tile_is_one_undo_step_and_so_is_a_file_changed_on_disk() {
     assert!(e.undo(), "taking it in is a step");
     assert_eq!(e.atlas, on_disk);
 }
+
+#[test]
+fn keeps_the_newest_two_hundred_undo_steps() {
+    let mut e = editor();
+    for n in 100..350 {
+        assert!(e.set_grid([n, n]));
+    }
+    let mut steps = 0;
+    while e.undo() {
+        steps += 1;
+    }
+    assert_eq!(steps, MAX_UNDO);
+    assert_eq!(e.atlas.grid, [149, 149], "the oldest steps went first");
+}

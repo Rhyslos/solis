@@ -32,14 +32,14 @@ When it resumes: check each open finding against the code first. The UI remake r
 | TEST-03 | 3 | The window smoke test waits by sleeping fixed times | `tools/smoke/window-smoke.sh:65` | Fixed (`d43ea7436`) |
 | TEST-04 | 2 | Short wall-clock budgets asserted in ordinary tests | `crates/reflect/src/id.rs:297, crates/editor/src/workbench_paint_tests.rs:77, crates/app/src/sprites.rs:539` | Fixed (`126f12ba2`) |
 | DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | Fixed (`bad651bdc`) |
-| DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | **Open** |
-| DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | **Open** |
-| DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | **Open** |
-| DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | **Open** |
-| DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | **Open** |
+| DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | Fixed (`7a5c99ad8`) |
+| DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | Fixed (`6d25460dd`) |
+| DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | Fixed (`b8dd78e20`) |
+| DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | Fixed (`c06ec2c8f`) |
+| DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | Fixed (`b425f4e91`) |
 | DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
-| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | **Open** |
-| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | **Open** |
+| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | Fixed (`0ff3c3678`) |
+| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | Fixed (`7d813adad`) |
 | DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
 | DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
 | DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
@@ -49,7 +49,7 @@ When it resumes: check each open finding against the code first. The UI remake r
 | DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
 | DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
 | DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | **Open** |
-| CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | **Half open:** part a fixed (`06af30cfe`), part b open |
+| CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | Fixed (`06af30cfe`, `c93355610`) |
 | DOC-01 | 4 | Crate READMEs' "Depends on" sections no longer match Cargo.toml | `crates/script, editor, app, area, asset_db READMEs` | **Open** |
 | DOC-02 | 4 | ARCHITECTURE.md has eight statements the code has overtaken | `ARCHITECTURE.md:20,27,59,62,110,112,114,136` | **Open** |
 | DOC-05 | 3 | Source-folder READMEs miss files and name functions that don't exist | `crates/editor/src, script/src, tiles/src, world/src, physics/src, animation/src, area/src/builtin READMEs` | **Open** |
@@ -133,14 +133,14 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | TEST-03 | 3 | The window smoke test waits by sleeping fixed times | `tools/smoke/window-smoke.sh:65` | Fixed (`d43ea7436`) |
 | TEST-04 | 2 | Short wall-clock budgets asserted in ordinary tests | `crates/reflect/src/id.rs:297, crates/editor/src/workbench_paint_tests.rs:77, crates/app/src/sprites.rs:539` | Fixed (`126f12ba2`) |
 | DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | Fixed (`bad651bdc`) |
-| DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | **Open** |
-| DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | **Open** |
-| DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | **Open** |
-| DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | **Open** |
-| DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | **Open** |
+| DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | Fixed (`7a5c99ad8`) |
+| DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | Fixed (`6d25460dd`) |
+| DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | Fixed (`b8dd78e20`) |
+| DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | Fixed (`c06ec2c8f`) |
+| DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | Fixed (`b425f4e91`) |
 | DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
-| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | **Open** |
-| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | **Open** |
+| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | Fixed (`0ff3c3678`) |
+| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | Fixed (`7d813adad`) |
 | DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
 | DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
 | DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
@@ -151,7 +151,7 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
 | DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
 | DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | **Open** |
-| CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | **Half open:** part a fixed (`06af30cfe`), part b open |
+| CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | Fixed (`06af30cfe`, `c93355610`) |
 | CI-02 | 6 | The weekly whole-game invariants job cannot fail | `.github/workflows/deep-checks.yml:113` | Fixed (`ccb0ac84a`) |
 | CI-03 | 3 | The release pipeline installs unpinned tools | `.github/workflows/windows-exe.yml:98` | Fixed (`1728e3def`) |
 | CI-04 | 2 | The updater's network tests are ignored and nothing runs them | `crates/updater/src/tests.rs:473` | Fixed (`2ebb5be5b`) |
@@ -183,6 +183,7 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | NEW-01 | 4 | Characters moved together end somewhere else than moved one by one (the property test found a case): one standing in another was carried by it | `crates/physics/src/lib.rs (plan_one's platform ray)` | Fixed (`b6318533c`) |
 | TEST-07 | 3 | The window smoke test's import step looks for the model on a tab with no 3D view, and its Don't save click misses | `tools/smoke/window-smoke.sh (step 8)` | Fixed (`305a4b356`) |
 | TEST-08 | 3 | The window smoke test counts two empty (all-black) screens as settled | `tools/smoke/window-smoke.sh (settle)` | Fixed (`122c19de9`) |
+| NEW-06 | 5 | The save_game fuzz target no longer compiled (it still passed the old second argument to `Workbench::new`), so the weekly fuzzing of save games would fail | `fuzz/fuzz_targets/save_game.rs:13` | Fixed (`da1afe7b9`) |
 
 ## Notes from the fixes
 

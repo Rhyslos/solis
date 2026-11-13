@@ -402,8 +402,8 @@ proptest! {
 fn colliders_in_range(flat: &Flat, place: Vec2) -> bool {
     flat.state.by_entity.values().all(|entry| {
         let c = &flat.state.colliders[entry.collider];
-        let off = from_rp(c.translation()) - place;
-        let size = from_rp(c.shape().compute_local_aabb().extents());
+        let off = c.translation() - place;
+        let size = c.shape().compute_local_aabb().extents();
         off.is_finite()
             && off.abs().max_element() <= 1000.0
             && size.is_finite()
@@ -426,10 +426,7 @@ fn a_collider_s_centre_and_size_are_held_in_range_in_2d_too() {
     flat.add(id(1), place, far, true);
     assert!(colliders_in_range(&flat, place));
     let made = &flat.state.colliders[flat.state.by_entity[&id(1)].collider];
-    assert_eq!(
-        from_rp(made.translation()),
-        place + Vec2::new(1000.0, -1000.0)
-    );
+    assert_eq!(made.translation(), place + Vec2::new(1000.0, -1000.0));
     assert_eq!(flat.state().place(id(1)), Some(place));
     flat.move_characters(&[(id(1), Vec2::new(0.1, 0.0))], 1.0 / 60.0);
     assert_eq!(flat.state().wall_count(), 1, "2D physics carries on");

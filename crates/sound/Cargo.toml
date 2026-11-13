@@ -22,7 +22,6 @@ hound.workspace = true
 lewton.workspace = true
 mint.workspace = true
 ogg.workspace = true
-log.workspace = true
 
 [dev-dependencies]
 reflect = { workspace = true, features = ["test-support"] }

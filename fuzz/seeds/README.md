@@ -15,6 +15,7 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | `mixer/` | Bus files (`.solmix`): the standard buses, nested ones with ducking, and one whose buses are inside each other in a loop. |
 | `model/` | The sample models (`.glb`), a cube whose 64 extra buffers all claim the file's binary part (refused), and a triangle with a corner placed past what numbers can hold (refused; the file the fuzzer found, issue #157, made small). |
 | `pixels/` | 2D settings files (`.solpix`): the standard ones, ones that fill the window, and ones with values the reader must put right or skip. |
+| `playtest_file/` | Playtest files: a usual one, one the reader puts right (Windows line endings, a name with characters a file can't have, a window too big and too small, and the `folder` line older copies held), and one it refuses (an area outside the assets). |
 | `project_file/` | A small project file. |
 | `recording/` | Recordings of play (`.solrec`): a long one, and short ones of formats 1 and 2, so the upgrader is fuzzed too. |
 | `save_game/` | Save games (`.solsave`): the current version and versions 1 and 2, so the upgraders are fuzzed too, and one with a single very long line (thousands of words where a body has sixteen), which the reader refuses without listing them all. |
@@ -27,4 +28,4 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | `tileset/` | Tilesets: the fixtures of version 1 and of version 2 (`.soltileset`; art, every kind, rules) and of version 4 (`.tileset.lst`), and a hostile one from `crates/tiles/tests/data` that the reader refuses (two classes with one name, which it never finished reading: the file the fuzzer's first run found, made small). |
 | `update_answer/` | A release answer and its checksum file, joined by a 0x01 byte. |
 
-Most are made by [`../make-seeds.sh`](../make-seeds.sh) from the crates' tests, the sample models, the samples and the example files in `tests/fixtures`; run it again after a file format changes. `mixer/`, `pixels/`, `sound_event/`, `text_file/` and `area_file/parent-loops.solarea` were written by hand, and the script leaves them alone. What each fuzzing run finds goes in `fuzz/corpus/`, which isn't committed.
+Most are made by [`../make-seeds.sh`](../make-seeds.sh) from the crates' tests, the sample models, the samples and the example files in `tests/fixtures`; run it again after a file format changes. `mixer/`, `pixels/`, `playtest_file/`, `sound_event/`, `text_file/` and `area_file/parent-loops.solarea` were written by hand, and the script leaves them alone. What each fuzzing run finds goes in `fuzz/corpus/`, which isn't committed.

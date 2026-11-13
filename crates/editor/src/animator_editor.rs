@@ -7,6 +7,7 @@
 //! (names unique, transitions only between states that exist, conditions
 //! on parameters that exist) and makes one undo step.
 
+use crate::file_history::FileHistory;
 use animation::animator_file::{self, MAX_PARAMETERS, MAX_STATES, MAX_TRANSITIONS};
 use animation::{
     Animator, AnimatorFile, ClipSet, Condition, Facing, ParamValue, Parameter, ParameterKind,
@@ -53,8 +54,7 @@ pub(crate) struct AnimatorEditor {
     pub(crate) picked: Picked,
     /// The graph canvas's place and drag.
     pub(crate) canvas: crate::graph_canvas::GraphCanvas,
-    undo: Vec<AnimatorFile>,
-    redo: Vec<AnimatorFile>,
+    history: FileHistory<AnimatorFile>,
     /// The file ready to run, for the preview.
     pub(crate) running: Animator,
     /// The preview's run: its state and the parameters set beside the
@@ -77,8 +77,7 @@ impl AnimatorEditor {
             file,
             picked: Picked::Nothing,
             canvas: crate::graph_canvas::GraphCanvas::default(),
-            undo: Vec::new(),
-            redo: Vec::new(),
+            history: FileHistory::new(MAX_UNDO),
             running,
             preview,
             preview_clip: String::new(),
@@ -95,18 +94,11 @@ impl AnimatorEditor {
     /// Makes one undo step from the file as it was before `change`, if
     /// `change` changed it.
     fn change(&mut self, change: impl FnOnce(&mut AnimatorFile) -> bool) -> bool {
-        let before = self.file.clone();
-        if !change(&mut self.file) || self.file == before {
-            self.file = before;
-            return false;
+        let changed = self.history.change(&mut self.file, change);
+        if changed {
+            self.file_changed();
         }
-        self.undo.push(before);
-        if self.undo.len() > MAX_UNDO {
-            self.undo.remove(0);
-        }
-        self.redo.clear();
-        self.file_changed();
-        true
+        changed
     }
 
     /// After any change to the file: run it again, keeping the preview's
@@ -137,22 +129,20 @@ impl AnimatorEditor {
 
     /// Undoes the last change. Whether there was one.
     pub(crate) fn undo(&mut self) -> bool {
-        let Some(before) = self.undo.pop() else {
-            return false;
-        };
-        self.redo.push(std::mem::replace(&mut self.file, before));
-        self.file_changed();
-        true
+        let undone = self.history.undo(&mut self.file);
+        if undone {
+            self.file_changed();
+        }
+        undone
     }
 
     /// Redoes the last change undone. Whether there was one.
     pub(crate) fn redo(&mut self) -> bool {
-        let Some(after) = self.redo.pop() else {
-            return false;
-        };
-        self.undo.push(std::mem::replace(&mut self.file, after));
-        self.file_changed();
-        true
+        let redone = self.history.redo(&mut self.file);
+        if redone {
+            self.file_changed();
+        }
+        redone
     }
 
     /// The file changed on disk (edited by hand, or by Git): taken as it

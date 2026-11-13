@@ -3,7 +3,7 @@
 //! packed into a sheet whose frames draw back the same.
 #![no_main]
 libfuzzer_sys::fuzz_target!(|data: &[u8]| {
-    solis_fuzz_quiet();
+    fuzz_support::quiet_caught_panics();
     let limits = assets::aseprite::AseLimits {
         max_side: 256,
         max_frames: 64,
@@ -34,10 +34,3 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
         }
     }
 });
-
-/// Panics Solis catches on purpose aren't failures: only one that escapes
-/// Solis is, and libFuzzer still sees that one.
-fn solis_fuzz_quiet() {
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| std::panic::set_hook(Box::new(|_| {})));
-}
