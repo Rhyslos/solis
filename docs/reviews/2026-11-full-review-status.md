@@ -38,8 +38,8 @@ When it resumes: check each open finding against the code first. The UI remake r
 | DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | Fixed (`c06ec2c8f`) |
 | DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | Fixed (`b425f4e91`) |
 | DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
-| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | **Open** |
-| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | **Open** |
+| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | Fixed (`0ff3c3678`) |
+| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | Fixed (`7d813adad`) |
 | DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
 | DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
 | DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
@@ -139,8 +139,8 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | Fixed (`c06ec2c8f`) |
 | DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | Fixed (`b425f4e91`) |
 | DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
-| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | **Open** |
-| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | **Open** |
+| DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | Fixed (`0ff3c3678`) |
+| DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | Fixed (`7d813adad`) |
 | DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
 | DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
 | DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
@@ -183,6 +183,7 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | NEW-01 | 4 | Characters moved together end somewhere else than moved one by one (the property test found a case): one standing in another was carried by it | `crates/physics/src/lib.rs (plan_one's platform ray)` | Fixed (`b6318533c`) |
 | TEST-07 | 3 | The window smoke test's import step looks for the model on a tab with no 3D view, and its Don't save click misses | `tools/smoke/window-smoke.sh (step 8)` | Fixed (`305a4b356`) |
 | TEST-08 | 3 | The window smoke test counts two empty (all-black) screens as settled | `tools/smoke/window-smoke.sh (settle)` | Fixed (`122c19de9`) |
+| NEW-06 | 5 | The save_game fuzz target no longer compiled (it still passed the old second argument to `Workbench::new`), so the weekly fuzzing of save games would fail | `fuzz/fuzz_targets/save_game.rs:13` | Fixed (`da1afe7b9`) |
 
 ## Notes from the fixes
 
