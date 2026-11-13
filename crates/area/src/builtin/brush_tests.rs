@@ -274,3 +274,79 @@ fn the_version_3_example_is_what_this_build_writes() {
     }
     assert_eq!(text::write(&area, &registry(), &|_| None), blockout);
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_a_5000_face_brush_written_read_and_cut_into_triangles() {
+    // What a change to a big brush costs before it's drawn: its values
+    // written (as an edit does), read back, and cut into flat triangles.
+    // The editor's whole path is `editor`'s scale check of the same name.
+    const TARGET_MS: f64 = 8.0;
+    let cube = mesh::Primitive::Cube(mesh::CubeParams {
+        size: glam::Vec3::splat(100.0),
+        segments: [29, 29, 29],
+    })
+    .mesh();
+    let faces = cube.face_count();
+    let brush = Brush {
+        mesh: Arc::new(cube),
+        ..Brush::default()
+    };
+    let runs = 10;
+    let start = std::time::Instant::now();
+    for _ in 0..runs {
+        let data = brush.to_data();
+        let back = Brush::from_data(&data);
+        assert_eq!(back.mesh.face_count(), faces);
+        assert_eq!(mesh::flat_triangles(&back.mesh).len(), faces * 2);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(runs);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: a brush of {faces} faces written, read and cut into triangles {ms:.2} ms \
+         (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "a big brush takes {ms:.2} ms");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_an_area_of_10000_box_brushes_read() {
+    // Opening an area of 10,000 box brushes, each its own size: the file
+    // read, and every brush's mesh made from its values.
+    const TARGET_MS: f64 = 1_000.0;
+    let mut area = Area::new();
+    for i in 0..10_000 {
+        let size = glam::Vec3::new(
+            1.0 + (i % 100) as f32 * 0.01,
+            1.0 + (i / 100) as f32 * 0.01,
+            1.0,
+        );
+        let brush = Brush {
+            mesh: Arc::new(Shape::Box.build(&ShapeSettings {
+                size,
+                ..Shape::Box.standard()
+            })),
+            ..Brush::default()
+        };
+        area.spawn(EntityData::new("Box").with(&brush));
+    }
+    let text = text::write(&area, &registry(), &|_| None);
+    let start = std::time::Instant::now();
+    let read = text::read(&text, &registry()).unwrap();
+    let read_ms = start.elapsed().as_secs_f64() * 1000.0;
+    let start = std::time::Instant::now();
+    let faces: usize = read.with::<Brush>().map(|(_, b)| b.mesh.face_count()).sum();
+    let made_ms = start.elapsed().as_secs_f64() * 1000.0;
+    assert_eq!(faces, 60_000);
+    let ms = read_ms + made_ms;
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: an area of 10,000 box brushes ({} KB) read {read_ms:.0} ms, their meshes \
+         made {made_ms:.0} ms (target {TARGET_MS} ms) {verdict}",
+        text.len() / 1024
+    );
+    assert!(ms <= TARGET_MS);
+}

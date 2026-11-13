@@ -31,6 +31,7 @@ run -p world scale_check
 run -p tiles scale_check
 run -p ui scale_check
 run -p physics scale_check
+run -p area scale_check
 run -p render --test gpu scale_check
 if [ "$failed" -ne 0 ]; then
     echo "Something missed its target (marked SLOW above), or a check failed."

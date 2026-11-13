@@ -109,3 +109,58 @@ fn a_brush_made_solid_while_playing_joins_physics() {
     assert_eq!(world.physics().state().len(), 2);
     assert!(world.component_data(id(1), Brush::NAME).is_some());
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_playing_on_10000_solid_brushes() {
+    // Play with 10,000 box brushes, each its own size: the world built
+    // (every brush a physics surface), then ticks of physics with a
+    // character walking over them.
+    const BUILD_MS: f64 = 1_000.0;
+    const TICK_MS: f64 = 4.0;
+    let mut area = Area::new();
+    for i in 0..10_000u64 {
+        let size = Vec3::new(
+            1.0 + (i % 100) as f32 * 0.01,
+            1.0 + (i / 100) as f32 * 0.01,
+            1.0,
+        );
+        let brush = Brush {
+            mesh: std::sync::Arc::new(mesh::Shape::Box.build(&mesh::ShapeSettings {
+                size,
+                ..mesh::Shape::Box.standard()
+            })),
+            ..Brush::default()
+        };
+        area.insert(
+            id(10 + i),
+            EntityData::new("Box")
+                .with(&at((i % 100) as f32 * 3.0, (i / 100) as f32 * 3.0, -1.0))
+                .with(&brush),
+        );
+    }
+    area.insert(
+        id(2),
+        EntityData::new("Walker")
+            .with(&at(0.0, 0.0, 2.0))
+            .with(&CharacterBody::default()),
+    );
+    let start = std::time::Instant::now();
+    let mut world = World::from_area(&area);
+    let build_ms = start.elapsed().as_secs_f64() * 1000.0;
+    assert_eq!(world.physics().state().len(), 10_001);
+    let ticks = 120;
+    let start = std::time::Instant::now();
+    walk(&mut world, Vec3::new(3.0, 0.0, 0.0), ticks);
+    let tick_ms = start.elapsed().as_secs_f64() * 1000.0 / ticks as f64;
+    let verdict = |ms: f64, target: f64| if ms <= target { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: Play with 10,000 solid brushes: the world built {build_ms:.0} ms (target \
+         {BUILD_MS} ms) {}; a tick of physics, a character walking on them {tick_ms:.2} ms \
+         (target {TICK_MS} ms) {}",
+        verdict(build_ms, BUILD_MS),
+        verdict(tick_ms, TICK_MS)
+    );
+    assert!(build_ms <= BUILD_MS && tick_ms <= TICK_MS);
+}
