@@ -67,6 +67,114 @@ enum Drag {
     Size { right: bool, bottom: bool },
 }
 
+/// The screen as the canvas draws it, its pieces matched to the file and
+/// each one's box in pixels, and what it was made from: made again only
+/// when one of those changes (the second review pass: every frame copied
+/// the view twice, matched it to the file again, laid the screen out a
+/// second time for the boxes and found each box's piece by going through
+/// them all).
+#[derive(Debug, Clone)]
+pub(crate) struct KeptDrawing {
+    text: String,
+    view: ui::view::Node,
+    behind: bool,
+    hidden: std::collections::HashSet<Vec<usize>>,
+    size_px: [u32; 2],
+    text_percent: u16,
+    pictures: Option<Arc<ui::Pictures>>,
+    screen: Arc<ui::Screen>,
+    /// Each matched piece: its place in the file, in the view, and its box.
+    pieces: Vec<(Vec<usize>, Vec<usize>, [f32; 4])>,
+    /// Pieces made by code: their boxes.
+    code: Vec<[f32; 4]>,
+}
+
+impl KeptDrawing {
+    /// Whether it was made from `doc` as it is now, at `size_px`.
+    fn is_of(
+        &self,
+        doc: &ScreenDoc,
+        size_px: [u32; 2],
+        pictures: &Option<Arc<ui::Pictures>>,
+    ) -> bool {
+        let same_pictures = match (&self.pictures, pictures) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (a, b) => a.is_none() && b.is_none(),
+        };
+        same_pictures
+            && self.size_px == size_px
+            && self.behind == doc.behind
+            && self.text_percent == doc.text_percent
+            && self.hidden == doc.hidden
+            && doc.view.as_ref() == Some(&self.view)
+            && self.text == doc.text
+    }
+
+    /// The screen of `doc` (whose view is `view`) as drawn at `size_px`:
+    /// hidden pieces see-through.
+    fn new(
+        doc: &ScreenDoc,
+        view: &ui::view::Node,
+        size_px: [u32; 2],
+        pictures: Option<Arc<ui::Pictures>>,
+        fonts: &mut ui::Fonts,
+    ) -> Self {
+        let matches = doc.matches();
+        let mut drawn_view = view.clone();
+        for (file, seen) in &matches {
+            if doc.hidden.contains(file)
+                && let Some(node) = node_at_mut(&mut drawn_view, seen)
+            {
+                node.styles
+                    .push(("opacity".into(), ui::view::Style::Number(0.0)));
+            }
+        }
+        let screen = Arc::new(ui::Screen {
+            name: doc.screen.clone(),
+            design: ui::view::design_of(&drawn_view),
+            scale: ui::ScaleRule::Grow,
+            elements: Vec::new(),
+            view: Some(drawn_view),
+            looks: ui::view::Looks {
+                text_percent: doc.text_percent,
+                ..Default::default()
+            },
+            pictures: pictures.clone(),
+            ui_size: 1.0,
+            look: ui::ScreenLook::default(),
+        });
+        // Each place in the view, to the place in the file it came from
+        // (the first, as the list has them).
+        let mut file_of = std::collections::HashMap::new();
+        for (file, seen) in &matches {
+            file_of.entry(seen.as_slice()).or_insert(file);
+        }
+        let mut pieces = Vec::new();
+        let mut code = Vec::new();
+        for (path, r) in ui::layout::boxes(&screen, size_px, None, fonts) {
+            if path.is_empty() {
+                continue;
+            }
+            match file_of.get(path.as_slice()) {
+                Some(file) => pieces.push(((*file).clone(), path, r)),
+                None => code.push(r),
+            }
+        }
+        Self {
+            text: doc.text.clone(),
+            view: view.clone(),
+            behind: doc.behind,
+            hidden: doc.hidden.clone(),
+            size_px,
+            text_percent: doc.text_percent,
+            pictures,
+            screen,
+            pieces,
+            code,
+        }
+    }
+}
+
 /// The screen as drawn, with each piece's box in points.
 struct Drawn {
     /// The screen's rect on the canvas.
@@ -255,7 +363,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
     }
     let size = Vec2::new(pw, ph) * zoom;
     let rect = Rect::from_center_size(area.center() + doc.pan, size);
-    let Some(view) = doc.view.clone() else {
+    let Some(view) = &doc.view else {
         let why = doc
             .view_problem
             .clone()
@@ -263,36 +371,23 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
         crate::panels::empty_note(ui, &why);
         return;
     };
-    // The view as drawn: hidden pieces see-through.
-    let matches = doc.matches();
-    let mut drawn_view = view.clone();
-    for (file, seen) in &matches {
-        if doc.hidden.contains(file)
-            && let Some(node) = node_at_mut(&mut drawn_view, seen)
-        {
-            node.styles
-                .push(("opacity".into(), ui::view::Style::Number(0.0)));
-        }
-    }
     let ppp = ui.ctx().pixels_per_point();
     let size_px = [
         (size.x * ppp).round().clamp(1.0, 8192.0) as u32,
         (size.y * ppp).round().clamp(1.0, 8192.0) as u32,
     ];
-    let screen = Arc::new(ui::Screen {
-        name: doc.screen.clone(),
-        design: ui::view::design_of(&drawn_view),
-        scale: ui::ScaleRule::Grow,
-        elements: Vec::new(),
-        view: Some(drawn_view),
-        looks: ui::view::Looks {
-            text_percent: doc.text_percent,
-            ..Default::default()
-        },
-        pictures,
-        ui_size: 1.0,
-        look: ui::ScreenLook::default(),
-    });
+    if !doc
+        .drawn
+        .as_ref()
+        .is_some_and(|kept| kept.is_of(doc, size_px, &pictures))
+    {
+        let kept = KeptDrawing::new(doc, view, size_px, pictures, fonts);
+        doc.drawn = Some(kept);
+    }
+    let Some(kept) = &doc.drawn else {
+        return;
+    };
+    let screen = Arc::clone(&kept.screen);
     let image = canvas_image(size_px, Arc::clone(&screen));
     match renderer.render(&image) {
         Ok(texture) => {
@@ -325,30 +420,22 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
         dashed(&painter, rect.shrink2(inset), Color32::from_white_alpha(60));
     }
     // Each piece's box, in points.
-    let boxes = ui::layout::boxes(&screen, size_px, None, fonts);
     let to_points = |r: [f32; 4]| {
         Rect::from_min_max(
             rect.min + Vec2::new(r[0], r[1]) / ppp,
             rect.min + Vec2::new(r[2], r[3]) / ppp,
         )
     };
-    let mut drawn = Drawn {
+    let drawn = Drawn {
         rect,
         design_per_point: screen.design[1] / rect.height().max(1.0),
-        pieces: Vec::new(),
-        code: Vec::new(),
+        pieces: kept
+            .pieces
+            .iter()
+            .map(|(file, seen, r)| (file.clone(), seen.clone(), to_points(*r)))
+            .collect(),
+        code: kept.code.iter().map(|r| to_points(*r)).collect(),
     };
-    for (path, r) in &boxes {
-        if path.is_empty() {
-            continue;
-        }
-        match matches.iter().find(|(_, seen)| seen == path) {
-            Some((file, seen)) => drawn
-                .pieces
-                .push((file.clone(), seen.clone(), to_points(*r))),
-            None => drawn.code.push(to_points(*r)),
-        }
-    }
     // While the tool ring is open, a click is for it alone.
     let ring_open = ui.data(|d| {
         d.get_temp::<Pos2>(egui::Id::new("canvas tool ring"))

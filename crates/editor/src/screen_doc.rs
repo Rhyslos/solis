@@ -66,6 +66,8 @@ pub(crate) struct ScreenDoc {
     pub(crate) redraw: bool,
     /// The player's text size the canvas previews, in percent.
     pub(crate) text_percent: u16,
+    /// The screen as the canvas last drew it, and what from.
+    pub(crate) drawn: Option<crate::canvas_view::KeptDrawing>,
     undo: Vec<String>,
     redo: Vec<String>,
     /// The file's texts that are Solis's own, oldest first: the one it was
@@ -198,6 +200,7 @@ impl ScreenDoc {
             preview: Default::default(),
             redraw: false,
             text_percent: 100,
+            drawn: None,
             undo: Vec::new(),
             redo: Vec::new(),
         }
