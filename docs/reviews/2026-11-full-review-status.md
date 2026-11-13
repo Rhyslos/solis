@@ -37,15 +37,15 @@ When it resumes: check each open finding against the code first. The UI remake r
 | DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | Fixed (`b8dd78e20`) |
 | DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | Fixed (`c06ec2c8f`) |
 | DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | Fixed (`b425f4e91`) |
-| DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
+| DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | Fixed (`e2c25b852`) |
 | DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | Fixed (`0ff3c3678`) |
 | DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | Fixed (`7d813adad`) |
-| DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
+| DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | Fixed (`c119dd1b4`) |
 | DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
-| DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
+| DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | Fixed (`aea9004cc`) |
 | DEBT-07 | 4 | run_game is one 485-line function; play.rs and save_game.rs are twice the size guide | `crates/editor/src/play.rs:460` | **Open** |
 | DEBT-09 | 4 | viewport.rs (1,742 lines) and the editor views are far past the size guide | `crates/editor/src/viewport.rs:887` | **Open** |
-| DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | **Open** |
+| DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | Fixed (`2e9971081`) |
 | DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
 | DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
 | DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | **Open** |
@@ -138,15 +138,15 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | Fixed (`b8dd78e20`) |
 | DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | Fixed (`c06ec2c8f`) |
 | DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | Fixed (`b425f4e91`) |
-| DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | **Open** |
+| DEBT-01 | 4 | The splash's update question is dead code, and its docs describe it as live | `crates/app/src/startup.rs:96` | Fixed (`e2c25b852`) |
 | DEBT-02 | 4 | Four copies of snapshot undo that have drifted apart | `crates/editor/src/tileset_editor.rs:125, frames_editor.rs:88, atlas_editor.rs:54, animator_editor.rs:99` | Fixed (`0ff3c3678`) |
 | DEBT-03 | 4 | Six copies of the same drop-down in the inspector | `crates/editor/src/inspector.rs:506` | Fixed (`7d813adad`) |
-| DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | **Open** |
+| DEBT-04 | 5 | Game code's natives are kept in three hand-synced places, one an 860-line function | `crates/script/src/host.rs:486` | Fixed (`c119dd1b4`) |
 | DEBT-05 | 5 | Workbench does everything: 108 fields, impl blocks in 34 files, a 430-line show | `crates/editor/src/workbench.rs:267` | **Open** |
-| DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | **Open** |
+| DEBT-06 | 4 | world/src/lib.rs is one 1,699-line file around one type | `crates/world/src/lib.rs:108` | Fixed (`aea9004cc`) |
 | DEBT-07 | 4 | run_game is one 485-line function; play.rs and save_game.rs are twice the size guide | `crates/editor/src/play.rs:460` | **Open** |
 | DEBT-09 | 4 | viewport.rs (1,742 lines) and the editor views are far past the size guide | `crates/editor/src/viewport.rs:887` | **Open** |
-| DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | **Open** |
+| DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | Fixed (`2e9971081`) |
 | DEBT-08 | 4 | The editor's panel files and functions are several times the size limit (launcher, library, search, properties) | `crates/editor/src/library.rs, launcher.rs, search.rs` | Left for the UI remake, on purpose |
 | DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
 | DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
