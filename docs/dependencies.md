@@ -95,7 +95,7 @@ When a library Solis needs depends on something whose licence isn't allowed, and
 
 | Stands in for | Needed by | Original licence | What it does | Stand-in uses |
 | --- | --- | --- | --- | --- |
-| `triple_buffer` | `kira` | MPL-2.0 | Hands the newest command to the audio thread without waiting | `crossbeam-utils` (MIT OR Apache-2.0), already in Solis through other libraries |
+| `triple_buffer` | `kira` | MPL-2.0 | Hands the newest command to the audio thread without waiting | Nothing: Rust's standard library only |
 
 If the library drops the dependency, or changes what it uses, the patch is removed or updated; `cargo deny check` fails if the original ever comes back.
 

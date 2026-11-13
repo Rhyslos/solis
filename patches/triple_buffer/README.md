@@ -20,7 +20,7 @@ Stand in for `triple_buffer` (MPL-2.0), so every dependency stays permissive (de
 
 ## Depends on
 
-`crossbeam-utils` (MIT or Apache-2.0), already in the build through other libraries.
+Nothing: Rust's standard library only.
 
 ## Status
 

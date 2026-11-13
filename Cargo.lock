@@ -4755,9 +4755,6 @@ dependencies = [
 [[package]]
 name = "triple_buffer"
 version = "9.0.0"
-dependencies = [
- "crossbeam-utils",
-]
 
 [[package]]
 name = "ttf-parser"

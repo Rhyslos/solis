@@ -78,8 +78,6 @@ rapier2d = { version = "0.36", features = ["enhanced-determinism"] }
 # Sound (decision 0056): Kira for playback and mixing, without its own
 # file readers (symphonia is MPL-2.0); Solis decodes WAV and Ogg itself.
 kira = { version = "0.12.5", default-features = false, features = ["cpal"] }
-# Used by patches/triple_buffer, the permissive stand-in Kira is given.
-crossbeam-utils = "0.8"
 # Reading WAV files.
 hound = "3.5"
 # Reading Ogg Vorbis files.
