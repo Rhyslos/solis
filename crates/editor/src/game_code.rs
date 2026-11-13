@@ -73,6 +73,7 @@ impl Workbench {
             self.open.told_code_notes = notes;
         }
         self.open.program = chunk;
+        self.open.program_given = true;
         // The screens a Screen can show (decision 0087).
         let screens = self.screen_names();
         if self.viewport.sheets.screens != screens {

@@ -1,7 +1,10 @@
 //! The open area as the editor holds it: the area document, the
 //! registry of components, what's selected, and the undo history.
-//! The area only ever changes through [`Document::edit`], so every change
-//! can be undone ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
+//! The user's changes to the area all go through [`Document::edit`], so
+//! every one can be undone ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
+//! The running game's go through [`Document::edit_by_game`] and
+//! [`Document::replace_by_game`], never as undo steps: Stop puts the area
+//! back.
 
 use area::builtin::{Model, Sprite, Transform};
 use area::{Area, Edit, EditError, History, MergeKey, Tree};

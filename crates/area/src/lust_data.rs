@@ -1,7 +1,7 @@
 //! Lust data files ([decision 0081](../../../docs/decisions/0081-what-solis-makes-is-lust.md)):
 //! what Solis makes (tile maps, tilesets, and the rest as they move over)
 //! is written as an ordinary Lust file whose top level holds only `lock`
-//! values, and read back with Lust's own reader (`lust::read_values`),
+//! values, and read back with Lust's own reader (`lust::read_values_with`),
 //! which runs nothing and checks every type, class, field and option:
 //!
 //! ```text

@@ -269,6 +269,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         playing,
         code_problems,
         program,
+        program_given,
         game_components,
         editor_view,
         bindings,
@@ -336,6 +337,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(playing.is_none() && game_scene.is_none());
     assert!(game_sounds.is_empty() && !quit_asked);
     assert!(code_problems.is_empty() && program.is_none());
+    assert!(!program_given, "the new project's code is checked again");
     assert!(game_components.is_empty() && left_out.is_empty());
     assert!(told_code_notes.is_empty() && rust_components.is_empty());
     assert_eq!(editor_view, &None);

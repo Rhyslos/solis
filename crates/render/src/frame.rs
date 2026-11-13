@@ -22,7 +22,8 @@ pub const GRID_REACH_PER_DISTANCE: f32 = 3.0;
 /// Everything that changes from frame to frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FrameParams {
-    /// World-to-screen transform (depth 0 at near, 1 at far).
+    /// World-to-screen transform, depth reversed (1 at near, 0 at far), as
+    /// every pipeline draws it.
     pub view_projection: Mat4,
     /// Where the camera is.
     pub camera_position: Vec3,

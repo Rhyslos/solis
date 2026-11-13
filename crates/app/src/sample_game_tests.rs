@@ -184,7 +184,7 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
             .iter()
             .any(|l| l.text.starts_with("You quit the game"))
     );
-    // A changed armour.rs is noted: changes don't run until Phase 18.
+    // A changed armour.rs is noted: changes don't run until the full export.
     std::fs::write(assets.join("armour.rs"), "// mine\n").unwrap();
     assert!(rust_components(&assets).1.is_some());
 }

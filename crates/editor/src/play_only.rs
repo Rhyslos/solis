@@ -37,10 +37,13 @@ impl Workbench {
         self.open.quit_asked
     }
 
-    /// Whether the game's code is read and ready (or there's none): an
-    /// exported game starts then.
+    /// Whether the game's code is checked and its program (none, when
+    /// there's no code) handed over: an exported game starts then. A game
+    /// with no code of its own plays too, as it does in the editor; this
+    /// once waited for a program, so it never started (the full review's
+    /// NEW-10).
     pub fn code_ready(&self) -> bool {
-        self.open.program.is_some()
+        self.open.program_given
     }
 
     /// Why an exported game can't start, if its code has mistakes: the

@@ -11,8 +11,9 @@
 //! draws one standing lower on screen a hair nearer, from its feet. Only
 //! see-through
 //! sprites are blended, drawn last, back to front. The colours are drawn
-//! exactly: never lit or tone mapped (lamps and day and night on sprites
-//! come in D9).
+//! exactly, never tone mapped, and lit by the day's tint and the lamps
+//! only when the area asks for it (`Environment::sprite_light`, decision
+//! 0092).
 
 use bytemuck::{Pod, Zeroable};
 

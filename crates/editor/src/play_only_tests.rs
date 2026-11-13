@@ -168,6 +168,23 @@ fn code_with_mistakes_says_why_the_game_can_t_start() {
     );
 }
 
+/// NEW-10: with no code of its own, a game's code is ready once checked
+/// (no program to wait for), and it plays.
+#[test]
+fn a_game_with_no_code_is_ready_once_checked_and_plays() {
+    let mut w = Workbench::new(info());
+    w.set_play_only();
+    let mut area = area::Area::new();
+    area.spawn(area::EntityData::new("Rock"));
+    w.open_area(area, std::path::PathBuf::from("farm.solarea"));
+    assert!(!w.code_ready(), "not checked yet");
+    w.set_program(None);
+    assert!(w.code_ready());
+    let ctx = egui::Context::default();
+    w.start_play_only(&ctx);
+    assert!(w.open.playing.is_some());
+}
+
 #[test]
 fn an_exported_game_s_log_keeps_up_while_the_console_lets_old_lines_go() {
     let mut w = Workbench::new(info());

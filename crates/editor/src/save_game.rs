@@ -471,7 +471,7 @@ impl Workbench {
         })
     }
 
-    /// The running game as a save's text (game code's `saveGame`; the app
+    /// The running game as a save's text (game code's `Saves:saveTo`; the app
     /// writes it to the project's `saves` folder), or `None` (and why, in
     /// the Console). A tick's saves share one: physics is built again
     /// once.

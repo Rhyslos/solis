@@ -19,7 +19,7 @@
 //! - [`animator`]: an animator made ready to run, and one entity's place
 //!   in it, stepped once a tick.
 //!
-//! 3D skeletons' clips (Phase 16) will use the same time and event rules
+//! 3D skeletons' clips (3D 1 in ROADMAP.md) will use the same time and event rules
 //! and the same state machine.
 
 pub mod animator;

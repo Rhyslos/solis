@@ -1,31 +1,22 @@
-//! A tile map file (`.soltilemap`, Phase 9, D4): a map saved as readable
-//! text in chunks of 32 × 32 cells, so a Git diff shows exactly the cells
-//! that changed. Its tileset, its size, a block per layer and per value
-//! (by stable random IDs), then each chunk's rows of terrain codes per
-//! layer (a space for an empty cell), and each chunk's values where they
-//! aren't at their start:
-//!
-//! ```text
-//! -- A tile map. Written by Solis; safe to edit by hand.
-//! tilemap version 1;
-//!
-//! tileset = "1BWHNR3RV8PYY";
-//! size = [60, 40];
-//!
-//! layer 3KD8V0Q2MX7TA { name = "Ground"; over = false; }
-//! value 7PQ2B5N8WK1ZC { name = "crop"; kind = "choice"; options = ["wheat", "corn"]; }
-//!
-//! cells 3KD8V0Q2MX7TA.0.0 { rows = ["....tttt", "....tttt"]; }
-//! values 0.0 { crop = [[4, 0, "wheat"]]; growth = [[4, 0, 2]]; watered = [[4, 0]]; }
-//! exact 3KD8V0Q2MX7TA.0.0 { cells = [[4, 1, "5GQ1D9W7XK2PB"]]; }
-//! ```
+//! A tile map file (`farm.tilemap.lst`, Phase 9, D4): a map saved as
+//! readable text in chunks of 32 x 32 cells, so a Git diff shows exactly
+//! the cells that changed. Its tileset, its size, a list of layers and of
+//! values (by stable random IDs), then each layer's chunks of rows of
+//! terrain codes (a space for an empty cell), each chunk's exact tiles,
+//! and each value's cells where they aren't at their start. Since version
+//! 3 it's a Lust data file (decision 0081), written and read by
+//! [`crate::map_lust`], whose docs show the layout; older maps
+//! (`farm.soltilemap`, versions 1 and 2: `tilemap version 2;` and a block
+//! per layer, value and chunk) are still read, and moved to Lust when a
+//! project opens. Either way this module makes the map, with one set of
+//! checks.
 //!
 //! A chunk with every cell empty, or every value at its start, is left
 //! out. The art isn't stored: it's worked out from the terrains, except
-//! for exact tiles (version 2, D6): cells painted to show one piece of the
-//! tileset as it is, each [x, y, piece's ID] within the chunk. Read as a
-//! hostile file: within limits, a part it can't use skipped with a note;
-//! a code the tileset hasn't is kept (Problems says so).
+//! for exact tiles (D6): cells painted to show one piece of the tileset as
+//! it is. Read as a hostile file: within limits, a part it can't use
+//! skipped with a note; a code the tileset hasn't is kept (Problems says
+//! so).
 
 use crate::map::{
     CHUNK, CellValue, MAX_LAYERS, MAX_OPTIONS, MAX_SIDE, MAX_VALUES, TileMap, ValueKind,

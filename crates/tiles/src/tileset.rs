@@ -1,40 +1,35 @@
-//! A tileset (`.soltileset`, Phase 9, D4 and D5): the terrains a tile
-//! map's cells can be (grass, tilled, water, fence), each with the
+//! A tileset (`ground.tileset.lst`, Phase 9, D4 and D5): the terrains a
+//! tile map's cells can be (grass, tilled, water, fence), each with the
 //! one-character code a map file writes for it, a colour, and how its art
 //! is chosen from its neighbours (its kind); the picture the art comes
 //! from (a PNG or an Aseprite file, cut into tiles of one size); which of
 //! the picture's tiles fills each of a terrain's slots (its pieces, more
 //! than one to a slot for variations, some animated); and, for a terrain
-//! of its own rules, those rules. A settings file in the Lust style with a
-//! block per terrain, piece and rule, each by a stable random ID, so two
-//! people's changes merge:
+//! of its own rules, those rules. A Lust data file (version 4, decision
+//! 0081) with a list each of terrains, pieces and rules, each by a stable
+//! random ID, so two people's changes merge (comments saying what each
+//! part is follow the first line):
 //!
 //! ```text
 //! -- A tileset. Written by Solis; safe to edit by hand.
-//! tileset version 3;
+//! fetch "solis/data/tileset":[Tileset, Terrain, Piece, Rule];
 //!
-//! picture = "6QK3C0F1M8E2Z";
-//! tile = [16, 16];
-//!
-//! terrain 5RT0M2C8K1V4D {
-//!     name = "tilled";
-//!     code = "t";
-//!     colour = [0.42, 0.29, 0.18];
-//!     kind = "16-tile";
-//! }
-//!
-//! terrain 8F2K0Q7M1T3WX {
-//!     name = "fence";
-//!     code = "#";
-//!     solid = true;
-//! }
-//!
-//! piece 2H7W1Q0R3S4T5 {
-//!     terrain = "5RT0M2C8K1V4D";
-//!     slot = 15;
-//!     at = [3, 1];
-//! }
+//! lock int version = 4;
+//! lock Tileset tileset = new Tileset { picture = "6QK3C0F1M8E2Z", tile = [16, 16] };
+//! lock Terrain array terrains = [
+//!     new Terrain { id = "5RT0M2C8K1V4D", name = "tilled", code = "t", colour = [0.42, 0.29, 0.18], kind = "16-tile" },
+//!     new Terrain { id = "8F2K0Q7M1T3WX", name = "fence", code = "#", colour = [0.54, 0.48, 0.35], kind = "edges", solid = true },
+//! ];
+//! lock Piece array pieces = [
+//!     new Piece { id = "2H7W1Q0R3S4T5", terrain = "5RT0M2C8K1V4D", slot = 15, at = [3, 1] },
+//! ];
+//! lock Rule array rules = [];
+//! end
 //! ```
+//!
+//! Older tilesets (`ground.soltileset`, versions 1 to 3: `tileset version
+//! 3;` and a block per terrain, piece and rule) are still read, and moved
+//! to Lust when a project opens.
 //!
 //! The first terrain is what a new map's ground is filled with. Read as a
 //! hostile file: within limits, anything it can't use skipped with a note.
@@ -472,7 +467,8 @@ fn pair(v: &Value, least: u32, most: u32) -> Option<[u32; 2]> {
     }
 }
 
-/// Reads a tileset (version 1 or 2).
+/// Reads a tileset: a Lust data file (version 4), or an older one
+/// (versions 1 to 3).
 pub fn read(text: &str) -> Result<ReadTileset, TilesetError> {
     if text.len() > MAX_BYTES {
         return Err(TilesetError {

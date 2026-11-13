@@ -1,8 +1,7 @@
 //! Models on the GPU: an [`assets::Model`] uploaded once into vertex and
 //! index buffers, textures and per-material settings, then drawn every
 //! frame in the chosen look (standard, stylized or unlit; see
-//! `viewport.wgsl`), lit by a fixed sun and the sky until real lights
-//! arrive in milestone 4.
+//! `viewport.wgsl`), lit by the sun, the sky and the lamps (`lighting.rs`).
 
 use crate::renderer::{DEPTH_FORMAT, HDR_FORMAT};
 use assets::{AlphaMode, Material, Model, Texture, Wrap};

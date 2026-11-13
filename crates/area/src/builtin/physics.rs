@@ -352,7 +352,7 @@ impl Component for Collider {
     }
 }
 
-/// A character moved by game code (`moveCharacter`): a standing capsule,
+/// A character moved by game code (`entity:walk`): a standing capsule,
 /// feet at the entity's origin, that climbs steps and slopes, slides
 /// along walls, pushes crates and rides moving platforms. It takes the
 /// place of a RigidBody and Collider on the same entity.

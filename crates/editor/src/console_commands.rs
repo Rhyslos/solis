@@ -123,7 +123,7 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "ui",
         usage: "ui test [grow | keep | whole] | ui test off",
-        help: "Shows a sample HUD over the Game panel, laid out by a scale rule (grow with the screen, keep its size, or whole steps for pixel art), to see how game UI fits the panel's size; `ui test off` hides it. Until screens are made in Lust.",
+        help: "Shows a sample HUD over the Game panel, laid out by a scale rule (grow with the screen, keep its size, or whole steps for pixel art), to see how game UI fits the panel's size; `ui test off` hides it.",
     },
     CommandInfo {
         name: "checksum",
@@ -625,7 +625,8 @@ impl Workbench {
         ))
     }
 
-    /// `seed`, `seed 1234` or `seed new`.
+    /// `ui test` (with a scale rule: `grow`, `keep` or `whole`) or `ui test
+    /// off`.
     fn ui_command(&mut self, args: &[String]) -> Result<String, String> {
         let words: Vec<&str> = args.iter().map(String::as_str).collect();
         let rule = match words.as_slice() {
@@ -646,6 +647,7 @@ impl Workbench {
         ))
     }
 
+    /// `seed`, `seed 1234` or `seed new`.
     fn seed_command(&mut self, args: &[String]) -> Result<String, String> {
         match args {
             [] => {

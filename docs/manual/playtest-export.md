@@ -55,6 +55,7 @@ In an exported game, every key is the game's, Esc included.
 ## Tips and common problems
 
 - **Problem:** the game says "The game can't start: its code has mistakes." **Why:** the exported code doesn't compile. **Fix:** fix the mistakes in the Problems panel, then export again.
+- **A game needs no code of its own.** A level made only of the editor's own components (sprites, physics, animators, sounds) exports and plays as it does when you press **Play**. The files Solis writes in `assets/solis/`, which describe the engine to game code, don't count as your code.
 - **Problem:** "already has files in it". **Why:** exports never mix with, or replace, anything, and a folder you chose yourself is never swapped for another. **Fix:** choose a new folder, or empty that one.
 - **Problem:** after updating Solis, the page suggests a folder in Documents again, not beside your last export. **Why:** where a game went used to be written in the project's own folder. A project can come from someone else, so that file could point your export at a folder of their choosing, even one on another computer. Solis now remembers it itself, on this computer, and no longer reads it from the project. **Fix:** choose your folder once more; it's remembered from then on.
 - **Problem:** you exported to a folder on another computer (`\\server\share\…`), and next time the page suggests Documents. **Why:** only a folder on this computer's own drives is suggested again, so opening the page never reaches for another computer. **Fix:** type or choose the network folder each time.

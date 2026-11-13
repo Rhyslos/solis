@@ -1,7 +1,7 @@
 // Armour, the drone's second component, written in Rust: each hit dents
-// a plate, and it tells the drone how many are left. (Until Solis builds
-// a game's own Rust, in Phase 10, this file is compiled into Solis itself
-// and offered only in the turret sample.)
+// a plate, and it tells the drone how many are left. (Until the full
+// export builds a game's own Rust, this file is compiled into the program
+// itself and offered only in the turret sample.)
 
 use reflect::{ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
 use script::{Context, Event, RustComponent, RustKind};

@@ -6,9 +6,11 @@
 //! `hound` and `lewton`, within limits ([`read`]), so every dependency
 //! stays permissive and every file is read as if it were hostile.
 //!
-//! Phase 7, S1: reading sound files, an overview of each for drawing its
-//! waveform, the sound device, and the editor's preview. Sound events,
-//! game code's sounds, buses and reverb come in later milestones.
+//! What it holds: reading sound files ([`read`]) and an overview of each
+//! for drawing its waveform, the sound device and the editor's preview,
+//! sound events ([`event`]), the game's sounds around a listener
+//! ([`game`], [`voices`]), buses and ducking ([`mixer`]), and reverb zones
+//! ([`reverb`]).
 //!
 //! Sound never changes the game: nothing here reads or writes game
 //! state.

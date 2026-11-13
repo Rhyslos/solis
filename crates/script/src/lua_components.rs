@@ -10,7 +10,7 @@
 //! })
 //!
 //! function Spinner:update(dt)
-//!     solis.say(solis.nameOf(self.me) .. " spins")
+//!     solis.World:say(solis.entity.name(self.me) .. " spins")
 //! end
 //!
 //! function Spinner:on_Hit(by, damage)

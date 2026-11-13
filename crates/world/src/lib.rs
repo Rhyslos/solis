@@ -6,8 +6,8 @@
 //! Play is pressed: the same entities in `hecs`, with the built-in
 //! components as Rust types and anything else kept as plain values, laid
 //! out for a game to run over quickly. Stepping it moves its clock on in
-//! fixed ticks and works out where everything is in the world; game code
-//! joins the ticks in Phase 4.
+//! fixed ticks and works out where everything is in the world; game code,
+//! physics, projectiles and sprites move things on each tick.
 //!
 //! The world never changes the area: stopping throws it away.
 

@@ -50,20 +50,21 @@ pub enum Change {
     Push(EntityId, Vec3),
     /// `setVelocity`: set how fast the entity's body moves.
     Velocity(EntityId, Vec3),
-    /// `moveCharacter`: move the character this far (metres), as far as
-    /// it can.
+    /// `entity:walk`: move the character this far (metres), as far as it
+    /// can.
     Character(EntityId, Vec3),
-    /// `rebind`: bind this input to this action, from the next tick.
+    /// `Input:rebind`: bind this input to this action, from the next tick.
     Rebind(String, String),
-    /// `saveGame`: save the game in this slot, at the end of the tick.
+    /// `Saves:saveTo`: save the game in this slot, at the end of the tick.
     Save(String),
-    /// `loadGame`: load the game saved in this slot, at the end of the
-    /// tick.
+    /// `Saves:loadFrom`: load the game saved in this slot, at the end of
+    /// the tick.
     Load(String),
-    /// `playSound…`: play the sound event named here, from there; and
+    /// `Audio:play`, `Audio:playAt` or `entity:playSound`: play the sound
+    /// event named here, from there; and
     /// the entity whose code asked (who caused it, for "Heard by").
     Sound(String, crate::host::SoundAt, Option<EntityId>),
-    /// `stopSoundsOn`: stop the sounds on this entity.
+    /// `entity:stopSounds`: stop the sounds on this entity.
     StopSounds(EntityId),
     /// `setSoundPlaying`: turn this entity's `AudioSource` on or off.
     SoundPlaying(EntityId, bool),
@@ -76,7 +77,7 @@ pub enum Change {
     Setting(crate::settings::Setting),
     /// `Window:quit()`: close the game (decision 0093).
     Quit,
-    /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
+    /// `Audio:setVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
     /// `animate` (or, with `true`, `animateFromStart`): play this clip on the

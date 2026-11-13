@@ -1,8 +1,8 @@
 //! The engine described to Lust ([decision 0016](../../../docs/decisions/0016-how-lust-joins-solis.md)):
-//! plain Lust files, `solis/world.lst` and `solis/entity.lst`, whose
-//! `native` methods have their bodies in Solis. A game uses them with
-//! Lust's ordinary `get "solis/world":[say];`, and Lust checks every call
-//! against them. They're made from [`NATIVES`], so they always match the
+//! plain Lust files, `solis/world.lst`, `solis/entity.lst` and the rest,
+//! whose `native` methods have their bodies in Solis. A game uses them with
+//! Lust's ordinary `fetch "solis/world":World;` and calls `World:say(…)`,
+//! and Lust checks every call against them. They're made from [`NATIVES`], so they always match the
 //! Solis that wrote them.
 
 /// One native method: the file it's in, and its Lust, with a line saying

@@ -15,7 +15,7 @@ Wire the engine and the editor together. It owns the window and the GPU device, 
 
 ## Depends on
 
-`editor`, `render`, `ui`, `assets`, `asset_db`, `input`, `updater`, `sound`, eframe, rfd (the system's Open window), opener, log, and on Windows gilrs (gamepads).
+`editor`, `render`, `ui`, `assets`, `asset_db`, `input`, `updater`, `sound`, `script` (compiling game code), `animation` and `tiles` (reading and saving their files), `area` and `reflect`, eframe, rfd (the system's Open window), opener, log, rayon, glam, bytemuck, serde, and on Windows gilrs (gamepads) and, to build, winresource (the program file's icon).
 
 ## Status
 

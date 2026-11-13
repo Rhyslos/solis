@@ -26,7 +26,7 @@ Know every asset in a project (models, assemblies: `.solassembly`, and sounds: `
 
 ## Depends on
 
-`assets`, `reflect`, serde and toml, notify, glam.
+`assets`, `reflect`, serde and toml, notify, glam, trash (deleting to the Recycle Bin) and chrono (the date and time a backup's folder is named by).
 
 ## Status
 

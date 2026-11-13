@@ -5,17 +5,22 @@
 //! The file is text, a line per tick:
 //!
 //! ```text
-//! solis recording 1
+//! solis recording 3
 //! seed 12345
+//! area areas/farm.solarea
 //! start 0f3a…
 //! 0 w 9c1d… g 77ab… Move=h,3f800000,0 Jump=hp
+//! s 5A329QT768NJB Resumed
 //! 1 w 1e2f…
 //! ```
 //!
-//! Each tick: its number, the world's checksum (`w`), game code's when
-//! it was taken (`g`), and each busy action: `h`, `p`, `r` for held,
-//! pressed and released, and an axis's two numbers as their exact bits
-//! (hex), so playing back is exact.
+//! After the seed, the area the play started in (version 2). Each tick:
+//! its number, the world's checksum (`w`), game code's when it was taken
+//! (`g`), and each busy action: `h`, `p`, `r` for held, pressed and
+//! released, and an axis's two numbers as their exact bits (hex), so
+//! playing back is exact. A line starting `s` after a tick is an event a
+//! screen's button sent in it (version 3): the entity, the event and its
+//! values.
 
 use crate::{ActionState, Frame};
 use glam::Vec2;
