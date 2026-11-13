@@ -82,22 +82,101 @@ fn broken_fonts_and_nonsense_sizes_are_safe() {
     assert_eq!(f.place(0, &long, 10.0, [0.0, 0.0], None).len(), MAX_LETTERS);
 }
 
+/// Every letter Inter has, big: more than the atlas holds.
+fn every_letter() -> String {
+    (0x20u32..0x2500).filter_map(char::from_u32).collect()
+}
+
+/// The atlas's pixels inside `rect`, row by row.
+fn atlas_part(f: &Fonts, rect: [u16; 4]) -> Vec<u8> {
+    let side = ATLAS_SIDE as usize;
+    let [l, t, r, b] = rect.map(usize::from);
+    (t..b)
+        .flat_map(|y| f.atlas.pixels[y * side + l..y * side + r].iter().copied())
+        .collect()
+}
+
 #[test]
-fn a_full_atlas_says_so_and_carries_on() {
+fn a_full_atlas_says_so_and_makes_room_the_next_frame() {
     let mut f = fonts();
-    // Every letter Inter has, big: more than fit.
-    let all: String = (0x20u32..0x2500).filter_map(char::from_u32).collect();
-    let _ = f.place(0, &all, 20.0, [0.0, 0.0], None);
+    f.begin_frame();
+    let _ = f.place(0, &every_letter(), 20.0, [0.0, 0.0], None);
     assert!(f.full);
-    // The next text starts the atlas again, so its letters show (they
-    // used to be lost for good).
-    // An arrow, near the end, was one that didn't fit.
+    // That frame showed every letter in the atlas, so nothing is let go
+    // yet: an arrow, near the end, still doesn't fit.
+    f.begin_frame();
+    let placed = f.place(0, "→ still fine", 20.0, [0.0, 0.0], None);
+    assert_eq!(placed.len(), "stillfine".chars().count());
+    // This frame showed only these letters: the next lets go of the
+    // rest, so the arrow gets a place (it used to be lost for good).
+    f.begin_frame();
     let placed = f.place(0, "→ still fine", 20.0, [0.0, 0.0], None);
     assert_eq!(
         placed.len(),
         "→stillfine".chars().count(),
         "every letter has a place"
     );
+}
+
+#[test]
+fn letters_placed_in_a_frame_keep_their_place_when_the_atlas_fills() {
+    // A frame's text is laid out a piece at a time, and drawn after: the
+    // atlas must not change under letters already placed (it used to be
+    // wiped by the next piece of text once it filled).
+    let mut f = fonts();
+    f.begin_frame();
+    let big = f.place(0, &every_letter(), 20.0, [0.0, 0.0], None);
+    assert!(f.full);
+    let before: Vec<Vec<u8>> = big.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    let revision = f.atlas.revision;
+    let score = f.place(0, "Score 120", 24.0, [0.0, 0.0], None);
+    assert_eq!(score.len(), "Score120".chars().count());
+    let after: Vec<Vec<u8>> = big.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    assert!(
+        before == after,
+        "the letters placed this frame are where they were"
+    );
+    assert_eq!(f.atlas.revision, revision);
+}
+
+#[test]
+fn a_frame_that_needs_more_letters_than_fit_makes_none_again() {
+    // Every frame wants more letters than fit: they are left out, and
+    // the atlas stays as it is, rather than being made again (and sent
+    // to the card again) every frame.
+    let mut f = fonts();
+    let all = every_letter();
+    f.begin_frame();
+    let first = f.place(0, &all, 20.0, [0.0, 0.0], None);
+    let revision = f.atlas.revision;
+    for _ in 0..3 {
+        f.begin_frame();
+        let again = f.place(0, &all, 20.0, [0.0, 0.0], None);
+        assert_eq!(f.atlas.revision, revision, "nothing made again");
+        assert!(again == first, "the same letters in the same places");
+    }
+}
+
+#[test]
+fn making_room_keeps_the_letters_last_shown_as_they_were() {
+    let mut f = fonts();
+    f.begin_frame();
+    let _ = f.place(0, &every_letter(), 20.0, [0.0, 0.0], None);
+    // A frame showing a score, and an arrow that doesn't fit.
+    f.begin_frame();
+    let score = f.place(0, "Score 120", 24.0, [0.0, 0.0], None);
+    assert!(f.place(0, "→", 24.0, [0.0, 0.0], None).is_empty());
+    let before: Vec<Vec<u8>> = score.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    // The next frame lets go of every other letter: the score's are
+    // moved together, their images as they were, and the arrow fits.
+    f.begin_frame();
+    let moved = f.place(0, "Score 120", 24.0, [0.0, 0.0], None);
+    let after: Vec<Vec<u8>> = moved.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    assert!(before == after, "copied, not changed");
+    for (was, now) in score.iter().zip(&moved) {
+        assert_eq!(was.rect, now.rect, "on the screen where they were");
+    }
+    assert_eq!(f.place(0, "→", 24.0, [0.0, 0.0], None).len(), 1);
 }
 
 #[test]

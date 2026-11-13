@@ -89,6 +89,13 @@ impl GpuViewport {
         }
     }
 
+    /// Starts a frame, before any view is drawn: game UI's letter atlas
+    /// changes only between frames, so letters placed while drawing one
+    /// keep their place in it until it's drawn.
+    pub fn begin_frame(&mut self) {
+        self.fonts.begin_frame();
+    }
+
     /// Draws `model` from a three-quarter view into a small image of its
     /// own for the Library, and returns the egui texture showing it. The
     /// model is uploaded only for this and let go straight after.

@@ -86,18 +86,36 @@ impl Atlas {
 }
 
 /// The fonts a game's UI uses, and their letters' distance images.
+///
+/// Call [`Self::begin_frame`] once a frame, before laying out any text:
+/// the atlas changes only then, so every letter placed during a frame
+/// keeps its place in the atlas until the frame is drawn.
 #[derive(Debug, Clone)]
 pub struct Fonts {
     fonts: Vec<FontArc>,
-    letters: HashMap<(usize, GlyphId), Option<Letter>>,
+    /// Each letter made (none for one with no outline, a space), and the
+    /// frame it was last placed in.
+    letters: HashMap<(usize, GlyphId), Option<(Letter, u64)>>,
     /// The atlas the letters are in.
     pub atlas: Atlas,
     /// Whether a letter didn't fit (the atlas is full): said once.
     pub full: bool,
-    /// Whether the atlas filled since text was last placed: it starts
-    /// again empty before the next, so letters wanted now get room (the
-    /// stability review: a full atlas used to lose new letters for good).
+    /// Whether a letter didn't fit this frame: the next frame makes room,
+    /// letting go of letters the frame didn't show (the stability review:
+    /// a full atlas used to lose new letters for good).
     start_again: bool,
+    /// The frame being laid out, counted by [`Self::begin_frame`].
+    frame: u64,
+}
+
+/// What making a letter came to.
+enum Made {
+    /// Its distance image, in the atlas.
+    Letter(Letter),
+    /// It has no outline (a space): nothing to draw.
+    Blank,
+    /// The atlas has no room for it this frame.
+    NoRoom,
 }
 
 impl Fonts {
@@ -128,6 +146,7 @@ impl Fonts {
                 atlas: Atlas::default(),
                 full: false,
                 start_again: false,
+                frame: 0,
             },
             notes,
         )
@@ -143,29 +162,112 @@ impl Fonts {
         self.fonts.is_empty()
     }
 
-    /// The letter `id` of font `font`, its distance image made the first
-    /// time it's asked for. None for a letter with no outline (a space)
-    /// or when the atlas is full.
-    fn letter(&mut self, font: usize, id: GlyphId) -> Option<Letter> {
-        if let Some(found) = self.letters.get(&(font, id)) {
-            return *found;
+    /// Starts a frame: when a letter didn't fit during the last one, the
+    /// atlas makes room by letting go of every letter that frame didn't
+    /// place, moving the rest together (copied, not made again). When the
+    /// last frame placed every letter in the atlas, it needs more than fit:
+    /// the atlas stays as it is, and the letters that don't fit are left
+    /// out (nothing is made again every frame).
+    pub fn begin_frame(&mut self) {
+        if std::mem::take(&mut self.start_again) {
+            self.make_room();
         }
-        let made = self.make(font, id);
-        self.letters.insert((font, id), made);
-        made
+        self.frame += 1;
     }
 
-    fn make(&mut self, font: usize, id: GlyphId) -> Option<Letter> {
-        let f = self.fonts.get(font)?;
+    /// Lets go of the letters the frame just ended didn't place, and packs
+    /// the rest into a new atlas, in their old order.
+    fn make_room(&mut self) {
+        let shown = self.frame;
+        let mut kept: Vec<((usize, GlyphId), Letter)> = self
+            .letters
+            .iter()
+            .filter_map(|(&key, made)| {
+                made.filter(|(_, used)| *used == shown)
+                    .map(|(l, _)| (key, l))
+            })
+            .collect();
+        let in_atlas = self.letters.values().filter(|made| made.is_some()).count();
+        if kept.len() == in_atlas {
+            return;
+        }
+        // Top to bottom, left to right: the order they were packed in.
+        kept.sort_by_key(|(_, l)| [l.atlas[1], l.atlas[0]]);
+        let revision = self.atlas.revision + 1;
+        let old = std::mem::replace(
+            &mut self.atlas,
+            Atlas {
+                revision,
+                ..Atlas::default()
+            },
+        );
+        self.letters.retain(|_, made| made.is_none());
+        for (key, letter) in kept {
+            let [l, t, r, b] = letter.atlas.map(u32::from);
+            let (w, h) = (r - l, b - t);
+            let Some([x, y]) = self.atlas.room(w, h) else {
+                continue;
+            };
+            for row in 0..h {
+                let from = ((t + row) * ATLAS_SIDE + l) as usize;
+                let to = ((y + row) * ATLAS_SIDE + x) as usize;
+                self.atlas.pixels[to..to + w as usize]
+                    .copy_from_slice(&old.pixels[from..from + w as usize]);
+            }
+            let moved = Letter {
+                atlas: [x as u16, y as u16, (x + w) as u16, (y + h) as u16],
+                ..letter
+            };
+            self.letters.insert(key, Some((moved, shown)));
+        }
+    }
+
+    /// The letter `id` of font `font`, its distance image made the first
+    /// time it's asked for. None for a letter with no outline (a space)
+    /// or when the atlas has no room for it this frame.
+    fn letter(&mut self, font: usize, id: GlyphId) -> Option<Letter> {
+        let frame = self.frame;
+        if let Some(found) = self.letters.get_mut(&(font, id)) {
+            return found.as_mut().map(|(letter, used)| {
+                *used = frame;
+                *letter
+            });
+        }
+        match self.make(font, id) {
+            Made::Letter(letter) => {
+                self.letters.insert((font, id), Some((letter, frame)));
+                Some(letter)
+            }
+            Made::Blank => {
+                self.letters.insert((font, id), None);
+                None
+            }
+            // Not remembered: tried again once the atlas has made room.
+            Made::NoRoom => None,
+        }
+    }
+
+    fn make(&mut self, font: usize, id: GlyphId) -> Made {
+        let Some(f) = self.fonts.get(font) else {
+            return Made::Blank;
+        };
         let glyph = id.with_scale(SDF_SIZE);
-        let outlined = f.outline_glyph(glyph)?;
+        let Some(outlined) = f.outline_glyph(glyph) else {
+            return Made::Blank;
+        };
         let bounds = outlined.px_bounds();
         let pad = SPREAD.ceil() as i32 + 1;
         let (bw, bh) = (bounds.width().ceil() as i32, bounds.height().ceil() as i32);
         if bw <= 0 || bh <= 0 || bw > 512 || bh > 512 {
-            return None;
+            return Made::Blank;
         }
         let (w, h) = (bw + 2 * pad, bh + 2 * pad);
+        // Room first: a full atlas costs no distance image.
+        let Some([ax, ay]) = self.atlas.room(w as u32, h as u32) else {
+            self.full = true;
+            self.start_again = true;
+            return Made::NoRoom;
+        };
         let mut cover = vec![0.0_f32; (w * h) as usize];
         outlined.draw(|x, y, c| {
             let (x, y) = (x as i32 + pad, y as i32 + pad);
@@ -174,18 +276,13 @@ impl Fonts {
             }
         });
         let sdf = distance_image(&cover, w as usize, h as usize);
-        let Some([ax, ay]) = self.atlas.room(w as u32, h as u32) else {
-            self.full = true;
-            self.start_again = true;
-            return None;
-        };
         for y in 0..h as u32 {
             let row = ((ay + y) * ATLAS_SIDE + ax) as usize;
             let from = (y * w as u32) as usize;
             self.atlas.pixels[row..row + w as usize].copy_from_slice(&sdf[from..from + w as usize]);
         }
         self.atlas.revision += 1;
-        Some(Letter {
+        Made::Letter(Letter {
             atlas: [
                 ax as u16,
                 ay as u16,
@@ -235,14 +332,6 @@ impl Fonts {
         at: [f32; 2],
         crisp: Option<f32>,
     ) -> Vec<Placed> {
-        if std::mem::take(&mut self.start_again) {
-            let revision = self.atlas.revision + 1;
-            self.atlas = Atlas {
-                revision,
-                ..Atlas::default()
-            };
-            self.letters.clear();
-        }
         let font = font.min(self.fonts.len().saturating_sub(1));
         let Some(f) = self.fonts.get(font).cloned() else {
             return Vec::new();
