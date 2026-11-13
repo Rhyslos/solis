@@ -4,7 +4,13 @@ The game's fast storage while it runs (decision 0024). The area (`area::Area`) i
 
 | File | What it does | Main items |
 | --- | --- | --- |
-| `lib.rs` | Everything about the world: building it from an area, adding and removing entities while playing, the game's clock and time of day (decision 0092), stepping physics, and finding things. Start here. | `World`, `Clock`, `Id`, `Name`, `Parent`, `Global`, `Values` |
+| `lib.rs` | The `World` and the components every entity has, and finding things in it: entities by name or ID, their components and values. Start here; what the world does is in the files below, each an `impl World` of its own. | `World`, `Clock`, `Id`, `Name`, `Parent`, `Global`, `Values` |
+| `building.rs` | Building the world from an area, and adding, removing and updating entities in it while the game plays; each entity's components as the world keeps them (`components_of`). | `World::from_area`, `World::rebuild`, `World::update` |
+| `clock.rs` | The game's clock in whole ticks, its speed, how far between two ticks, the time of day (decision 0092) and the random seed. | `World::step`, `World::set_speed`, `World::set_time_of_day` |
+| `placing.rs` | Where everything is: places worked out from parents', set and changed while playing, settled after physics, and read now or between two ticks for drawing. | `World::set_transform`, `World::settle`, `World::placed_between` |
+| `physics_3d.rs` | 3D physics in the running game: bodies joining as entities do, game code's pushes and moves, a step a tick, and its state for saves. | `World::step_physics`, `World::physics_states` |
+| `screens_and_sounds.rs` | The screens entities show and the sounds they play, as the running game sets them. | `World::set_screen`, `World::audio_sources` |
+| `checksum.rs` | One number for everything the game has set, for telling whether a replay matches. | `World::checksum` |
 | `projectiles.rs` | Thousands of small, fast things that aren't entities (lasers, bolts), each with a place, speed, time left and colour, moved in jobs every tick. | `Projectiles`, `Projectile`, `Shot` |
 | `animators.rs` | Animators in the running game (Phase 9, D3b): each entity's run stepped every tick before sprites, its sprite's clip and speed set, game code's settings and jumps, values for saves and the checksum. Tests in `animators_tests.rs`, with the scale case of 10,000 animators. | `Animators`, `value_words`, `value_of_words` |
 | `tile_maps.rs` | Tile maps in the running game (Phase 9, D4): each entity's copy of its map file, started and restarted from its file, changed cell by cell, in the checksum and saves. Tests in `tile_maps_tests.rs`. | `MapFiles`, `World::set_tile_maps`, `World::tile_map`, `World::set_tile`, `World::set_cell_value` |

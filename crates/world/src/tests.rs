@@ -1,9 +1,9 @@
 //! Building worlds from areas, stepping them, and finding things in them.
 
 use super::*;
-use area::EntityData;
+use area::{Area, EntityData};
 use glam::Vec3;
-use reflect::Value;
+use reflect::{Component, Value};
 
 fn at(x: f32, y: f32, z: f32) -> Transform {
     Transform {
