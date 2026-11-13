@@ -25,6 +25,7 @@ ui.workspace = true
 
 [dev-dependencies]
 pollster.workspace = true
+mesh.workspace = true
 
 [lints]
 workspace = true

@@ -154,6 +154,9 @@ pub(crate) struct ProjectState {
     pub(crate) game_components: std::collections::BTreeSet<String>,
     /// What the viewport's `AreaView` was last worked out for.
     pub(crate) editor_view: Option<ViewKey>,
+    /// The area's brushes cut into triangles to draw (Tools 1a, B1), made
+    /// again only when a brush changes.
+    pub(crate) brushes: crate::brushes::BrushModels,
     /// The project's input actions (decision 0037), from its
     /// `input.solinput` (`Workbench::set_bindings`); the ready-made ones
     /// without a project.

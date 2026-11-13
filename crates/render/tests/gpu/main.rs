@@ -8,6 +8,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::print_stderr)]
 
 mod backdrop;
+mod brushes;
 mod culling;
 mod environment;
 mod frames;

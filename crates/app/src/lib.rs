@@ -8,6 +8,7 @@
 pub mod area_file;
 pub mod benchmark;
 pub mod branding;
+mod brush_uploads;
 pub mod check_project;
 pub mod cli;
 mod external;

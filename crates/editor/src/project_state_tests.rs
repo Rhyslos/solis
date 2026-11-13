@@ -272,6 +272,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         program_given,
         game_components,
         editor_view,
+        brushes,
         bindings,
         input_page,
         fixed_seed,
@@ -341,6 +342,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(game_components.is_empty() && left_out.is_empty());
     assert!(told_code_notes.is_empty() && rust_components.is_empty());
     assert_eq!(editor_view, &None);
+    assert_eq!(brushes.iter().count(), 0, "no brushes of the last project");
     assert_eq!(bindings, &fresh.bindings);
     assert!(input_page.is_none());
     assert_eq!(fixed_seed, &None);

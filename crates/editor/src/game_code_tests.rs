@@ -1047,7 +1047,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     // The Game panel draws them.
     let scene = crate::game_panel::GameScene::of(
         &playing.world,
-        &w.open.models,
+        (&w.open.models, &w.open.brushes),
         crate::play::PlayState::Playing,
     );
     assert_eq!(scene.bolts.len(), 12);

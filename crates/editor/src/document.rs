@@ -111,6 +111,9 @@ pub struct Document {
     /// A number that changes whenever what Problems checks does: see
     /// [`Self::shape`].
     shape: u64,
+    /// A number that changes whenever a brush may have: see
+    /// [`Self::brushes`].
+    brushes: u64,
     /// The area's tree, kept until entities are added, deleted or given
     /// another parent: see [`Self::tree`].
     tree: RefCell<Option<Arc<Tree>>>,
@@ -239,6 +242,7 @@ impl Document {
                 ..Changes::default()
             },
             shape: next_revision(),
+            brushes: next_revision(),
             tree: RefCell::new(None),
             world: RefCell::new(None),
             users: RefCell::new(None),
@@ -381,6 +385,15 @@ impl Document {
         self.shape
     }
 
+    /// A number standing for the area's brushes (Tools 1a, B1): it changes
+    /// with every edit that may change one (a Brush's field, a component
+    /// added or taken off, entities added or deleted, an undo), but not
+    /// with moving, turning or resizing, so a drag never makes brushes'
+    /// triangles again.
+    pub fn brushes(&self) -> u64 {
+        self.brushes
+    }
+
     /// The area's tree: children in order, tree order, the first of some
     /// entities. Worked out once, and again only after entities are
     /// added, deleted or given another parent.
@@ -450,6 +463,7 @@ impl Document {
         self.revision = next_revision();
         if !values_only {
             self.shape = next_revision();
+            self.brushes = self.shape;
         }
         if !same_tree {
             *self.tree.get_mut() = None;
@@ -489,9 +503,15 @@ impl Document {
                 Edit::Spawn { .. } | Edit::Despawn { .. } | Edit::Reparent { .. }
             )
         });
+        let brushes = edits.iter().any(|e| {
+            matches!(e, Edit::SetField { component, .. } if component == area::builtin::Brush::NAME)
+        });
         self.history
             .apply(&mut self.area, label, edits, merge, before, after.clone())?;
         self.changed(values_only, same_tree);
+        if brushes {
+            self.brushes = next_revision();
+        }
         self.changes.entities.extend(changes.entities);
         self.changes.moved.extend(changes.moved);
         self.changes.everything |= changes.everything;

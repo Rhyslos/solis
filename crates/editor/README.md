@@ -36,7 +36,7 @@ Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workb
 
 ## Depends on
 
-`reflect` and `area` (the document it edits), `world` (the running game), `script` (compiling and describing game code), `physics` (a save's bodies), `input` (actions, bindings and recordings), `sound` (sound events' settings), `ui` (game UI's screens), `animation` (clips, animators and atlases), `tiles` (tilesets and tile maps), `assets` (sprite sheets and tile art), egui, glam, bytemuck, serde, chrono and rayon. Never `render` or `asset_db`: the app connects those.
+`reflect` and `area` (the document it edits), `mesh` (brushes' triangles), `world` (the running game), `script` (compiling and describing game code), `physics` (a save's bodies), `input` (actions, bindings and recordings), `sound` (sound events' settings), `ui` (game UI's screens), `animation` (clips, animators and atlases), `tiles` (tilesets and tile maps), `assets` (sprite sheets and tile art), egui, glam, bytemuck, serde, chrono and rayon. Never `render` or `asset_db`: the app connects those.
 
 ## Status
 

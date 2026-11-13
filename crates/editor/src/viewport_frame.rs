@@ -29,6 +29,8 @@ pub struct ViewportView {
     pub ground: [f32; 3],
     /// The models to draw, with their pick numbers.
     pub models: Vec<ViewModel>,
+    /// The brushes to draw, with their pick numbers (Tools 1a, B1).
+    pub brushes: Vec<crate::brushes::ViewBrush>,
     /// How models are shaded.
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.
@@ -277,6 +279,7 @@ impl Viewport {
             sky_horizon: rgb(theme::backdrop::horizon()),
             ground: rgb(theme::backdrop::ground()),
             models: self.area.models.clone(),
+            brushes: self.area.brushes.clone(),
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
             sun: self.area.sun,

@@ -16,6 +16,7 @@ mod atlas_editor;
 mod atlas_view;
 #[cfg(test)]
 mod audio_screen_tests;
+pub mod brushes;
 mod bus_view;
 pub mod camera;
 mod canvas_tools;
@@ -124,6 +125,7 @@ mod workbench_tileset;
 mod workbench_tools;
 
 pub use area_view::{AreaView, ViewLight, ViewModel};
+pub use brushes::{BrushModel, ViewBrush};
 pub use camera::{Camera, FlyInput, ViewKind};
 pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};

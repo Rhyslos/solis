@@ -55,6 +55,8 @@ pub struct ViewModel {
 pub struct AreaView {
     /// The models to draw.
     pub models: Vec<ViewModel>,
+    /// The brushes to draw (Tools 1a, B1).
+    pub brushes: Vec<crate::brushes::ViewBrush>,
     /// The entity behind each pick number (number 1 is the first).
     pub pickable: Vec<reflect::EntityId>,
     /// Entities that can't be picked (locked in the Area panel).
@@ -308,6 +310,62 @@ impl AreaView {
             })
             .collect();
         view
+    }
+
+    /// Adds the area's brushes (`brushes`, made from the same area), placed
+    /// by `world`, leaving out `hidden` ones and making `locked` ones
+    /// impossible to pick, in the area's order.
+    pub(crate) fn add_brushes(
+        &mut self,
+        area: &Area,
+        brushes: &crate::brushes::BrushModels,
+        world: &HashMap<reflect::EntityId, glam::Mat4>,
+        (hidden, locked): (&HashSet<reflect::EntityId>, &HashSet<reflect::EntityId>),
+    ) {
+        for (id, _) in area.iter() {
+            let Some(model) = brushes.get(id) else {
+                continue;
+            };
+            if hidden.contains(&id) {
+                continue;
+            }
+            let pick = if locked.contains(&id) {
+                0
+            } else {
+                self.pickable.push(id);
+                self.pickable.len() as u32
+            };
+            self.triangles += model.triangles;
+            self.brushes.push(crate::brushes::ViewBrush {
+                entity: id,
+                model: std::sync::Arc::clone(model),
+                transform: world.get(&id).copied().unwrap_or_default(),
+                pick,
+            });
+        }
+    }
+
+    /// Adds the running `world`'s brushes, each `t` of the way between the
+    /// last tick and the next, drawn with `brushes`' models (the editor's,
+    /// made from the area the game started from: game code doesn't change
+    /// a brush's shape). None can be picked.
+    pub(crate) fn add_world_brushes(
+        &mut self,
+        world: &world::World,
+        brushes: &crate::brushes::BrushModels,
+        t: f32,
+    ) {
+        for (id, _, transform) in world.placed_between::<area::builtin::Brush>(t) {
+            if let Some(model) = brushes.get(id) {
+                self.triangles += model.triangles;
+                self.brushes.push(crate::brushes::ViewBrush {
+                    entity: id,
+                    model: std::sync::Arc::clone(model),
+                    transform,
+                    pick: 0,
+                });
+            }
+        }
     }
 
     fn add_model(
