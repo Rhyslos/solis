@@ -217,32 +217,31 @@ mod tests {
         }
     }
 
-    /// The names Lust's and Lua's natives are lent under: each
-    /// `natives.raw_set(` followed by its name.
-    fn lent_names(source: &str) -> Vec<String> {
-        // Not the file's tests, which lend made-up natives of their own.
-        let source = source.split("#[cfg(test)]").next().unwrap_or_default();
-        let mut names: Vec<String> = source
-            .split("natives.raw_set(")
-            .skip(1)
-            .filter_map(|after| {
-                let start = after.find('"')? + 1;
-                let end = start + after[start..].find('"')?;
-                // Only a name straight after the call, not one further on.
-                let name = &after[start..end];
-                // `send_event` is Lua's `solis.send` underneath, never called by name.
-                (after[..start - 1].trim().is_empty() && name != "send_event")
-                    .then(|| name.to_owned())
+    /// The keys of the natives table as Lust is lent it, asked of a real
+    /// Luau, so a native lent by any route counts: each native's key,
+    /// without the old names renamed natives are lent under too
+    /// (`describe::RENAMED`).
+    fn lent_names() -> Vec<String> {
+        let luau = crate::luau::Luau::new().unwrap();
+        let lust = luau.lua.create_table().unwrap();
+        let mut host = crate::host::NoHost;
+        let mut names: Vec<String> =
+            crate::host::with_natives(&luau, Some(&lust), &mut host, None, |_| {
+                let natives: mlua::Table = lust.raw_get("LUST_NATIVES")?;
+                natives
+                    .pairs::<String, mlua::Value>()
+                    .map(|pair| pair.map(|(key, _)| key))
+                    .collect()
             })
-            .collect();
+            .unwrap();
+        names.retain(|name| !RENAMED.iter().any(|r| r.old == name));
         names.sort();
-        names.dedup();
         names
     }
 
     #[test]
     fn every_native_is_lent_to_lust_and_lua() {
-        let lent = lent_names(include_str!("host.rs"));
+        let lent = lent_names();
         for native in NATIVES {
             assert!(
                 lent.iter().any(|n| *n == native.key()),
