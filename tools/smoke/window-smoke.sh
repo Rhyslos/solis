@@ -77,15 +77,22 @@ launch() {
 }
 
 # Waits until the screen has stopped changing: two pictures of it in a row
-# are the same and aren't empty. Gives up after 40 tries (the picture then
-# is whatever the screen shows, and the check that follows says what is
-# wrong with it).
+# are the same and aren't empty. An empty picture (one colour all over, as
+# before the window is first drawn) never counts: two black screens in a
+# row looked settled, and the next check ran on a black screen (the
+# review, TEST-08). Gives up after 40 tries (the picture then is whatever
+# the screen shows, and the check that follows says what is wrong with
+# it).
 settle() {
     local last="" now
     for _ in $(seq 1 40); do
-        now="$(import -window root rgb:- 2>/dev/null | md5sum | cut -d' ' -f1)"
-        if [ -n "$last" ] && [ "$now" = "$last" ]; then return 0; fi
-        last="$now"
+        import -window root "$OUT/settle.png" 2>/dev/null || rm -f "$OUT/settle.png"
+        if [ -s "$OUT/settle.png" ] &&
+            [ "$(convert "$OUT/settle.png" -format '%[fx:standard_deviation>0]' info:)" = 1 ]; then
+            now="$(md5sum <"$OUT/settle.png")"
+            if [ "$now" = "$last" ]; then return 0; fi
+            last="$now"
+        fi
         sleep 0.25
     done
     echo "The screen was still changing after 40 looks; carrying on."
