@@ -37,6 +37,26 @@ pub(crate) struct AreaPanelState {
     pub(crate) searching: bool,
     /// The rows as last listed, and what they were listed from.
     rows_kept: Option<KeptRows>,
+    /// What's hidden and locked in effect as last worked out, and what it
+    /// was worked out from.
+    effect_kept: Option<KeptEffect>,
+}
+
+/// Every entity hidden and every entity locked, counting those under a
+/// hidden or locked one.
+pub(crate) type InEffect = (HashSet<EntityId>, HashSet<EntityId>);
+
+/// What's hidden and locked in effect, and what it was worked out from:
+/// the area's tree (held, so it can't be another's; it changes whenever a
+/// parent does) and the switches. Worked out again only when one changes
+/// (the second review pass: once anything was hidden or locked, every
+/// frame went through every entity, twice).
+#[derive(Debug, Clone)]
+struct KeptEffect {
+    tree: std::sync::Arc<area::Tree>,
+    hidden: HashSet<EntityId>,
+    locked: HashSet<EntityId>,
+    in_effect: std::sync::Arc<InEffect>,
 }
 
 /// The Area column's rows (each entity and how deep it is) and what they
@@ -81,18 +101,39 @@ impl AreaPanelState {
 
 impl AreaPanelState {
     /// Every entity hidden or locked, counting those under a hidden or
-    /// locked one: (hidden, locked).
+    /// locked one: (hidden, locked). Worked out again only when the tree
+    /// or the switches change.
     pub(crate) fn in_effect(
-        &self,
+        &mut self,
         document: &crate::document::Document,
-    ) -> (HashSet<EntityId>, HashSet<EntityId>) {
+    ) -> std::sync::Arc<InEffect> {
         if self.hidden.is_empty() && self.locked.is_empty() {
-            return Default::default();
+            return std::sync::Arc::default();
         }
+        let tree = document.tree();
+        if let Some(kept) = &self.effect_kept
+            && std::sync::Arc::ptr_eq(&kept.tree, &tree)
+            && kept.hidden == self.hidden
+            && kept.locked == self.locked
+        {
+            return std::sync::Arc::clone(&kept.in_effect);
+        }
+        let in_effect = std::sync::Arc::new(self.worked_out(document, &tree));
+        self.effect_kept = Some(KeptEffect {
+            tree,
+            hidden: self.hidden.clone(),
+            locked: self.locked.clone(),
+            in_effect: std::sync::Arc::clone(&in_effect),
+        });
+        in_effect
+    }
+
+    /// [`Self::in_effect`], worked out from `tree`, parents first.
+    fn worked_out(&self, document: &crate::document::Document, tree: &area::Tree) -> InEffect {
         let area = document.area();
         let mut hidden = HashSet::new();
         let mut locked = HashSet::new();
-        for &id in document.tree().order() {
+        for &id in tree.order() {
             let parent = area.get(id).and_then(|e| e.parent);
             if self.hidden.contains(&id) || parent.is_some_and(|p| hidden.contains(&p)) {
                 hidden.insert(id);
@@ -399,7 +440,8 @@ pub(crate) fn area_tree(
         .reveal
         .take()
         .and_then(|id| rows.iter().position(|(r, _)| *r == id));
-    let (hidden, locked) = state.in_effect(document);
+    let in_effect = state.in_effect(document);
+    let (hidden, locked) = &*in_effect;
     let row_h = size::row_h();
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(

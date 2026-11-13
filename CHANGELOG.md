@@ -212,6 +212,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Hiding or locking something in a big area no longer slows every frame.** Once anything was hidden or locked, the Area column and the viewport's outlines went through every entity each frame to find what's under it; that's now worked out only when something changes.
 - **Searching a big project's Library is quicker, and thousands of folders don't slow it.** The Library and the Assets column lowered every file's name each frame while you searched, and the folder tree drew every folder; names are now lowered once, and only the folders in sight are drawn.
 - **A tileset with moving tiles no longer keeps the editor busy from another tab.** With one open anywhere, the whole editor redrew 25 times a second; now it does only while the Tileset tab is in front. An open clips file no longer sorts every picture's name every frame either: its lists are made when you open them.
 - **A picture with thousands of crops no longer slows the editor.** The Picture tab drew every crop in its list and on the picture each frame, even those out of sight; now it draws only the ones you can see.

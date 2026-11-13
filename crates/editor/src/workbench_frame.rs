@@ -372,14 +372,15 @@ impl Workbench {
             locked: self.open.area_panel.locked.clone(),
         };
         if self.open.editor_view.as_ref() != Some(&key) {
-            let (hidden, locked) = self.open.area_panel.in_effect(&self.open.document);
+            let in_effect = self.open.area_panel.in_effect(&self.open.document);
+            let (hidden, locked) = &*in_effect;
             self.viewport.area = AreaView::of_placed(
                 self.open.document.area(),
                 &self.open.document.tree(),
                 &self.open.document.world_matrices(),
                 &self.open.models,
-                &hidden,
-                &locked,
+                hidden,
+                locked,
             );
             self.open.editor_view = Some(key);
         }
