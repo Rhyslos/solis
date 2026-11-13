@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **"Too many model copies to draw" is said once, not every frame.** Like the same warning about sprites, it comes again only when they fit and later stop fitting.
 - **Two characters starting on the very same spot no longer fly off and sink through the floor when they walk.** They're pushed apart gently instead, and walk on side by side.
 - **A tileset's and a picture's tabs keep their shelf between runs.** The shelf tab in front and whether it was folded were saved but never put back.
 - **The Library follows files that keep changing.** A program writing into the assets folder more often than every 0.3 seconds kept Solis from noticing anything until it stopped; changes are now noticed at least every 2 seconds while it goes on.
