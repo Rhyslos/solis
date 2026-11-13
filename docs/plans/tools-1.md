@@ -1,6 +1,6 @@
 # Tools 1: shape brushes and world sculpting
 
-**Status:** planned on 2026-11-13 from the project lead's answers; the mock-ups are approved (below); nothing is built yet. Decisions [0108](../decisions/0108-shape-brushes-and-sculpting-come-next.md) (the order) and [0111](../decisions/0111-tools-1-brushes-and-ground.md) (what the tools are).
+**Status:** planned on 2026-11-13 from the project lead's answers; the mock-ups are approved (below). B1 is built (see "As built" below). Decisions [0108](../decisions/0108-shape-brushes-and-sculpting-come-next.md) (the order) and [0111](../decisions/0111-tools-1-brushes-and-ground.md) (what the tools are).
 
 ## What the project lead asked
 
@@ -45,6 +45,10 @@ Tools 1 is too big for one phase (CLAUDE.md: two to six milestones), so it is tw
 | **G3 Blocky and Sharp** | The other two looks, chosen per ground, switching at once. |
 | **G4 Painting** | Materials painted with the same brush, from a palette on the shelf; blended where they meet; drawn without stretching on steep and overhanging ground. |
 | **G5 Speed, game code, the gate** | Scale cases (the biggest ground the scale target names, sculpting it, walking 2,000 units over it); game code asking the ground questions (its height, a ray against it), following the game-code rules (decision 0065); the manual. **Gate:** a level of brushes on a sculpted, painted ground with a cave, in each look, played, saved and reopened, at the scale check's targets. |
+
+### As built
+
+- **B1** (2026-11-13): the `mesh` crate (Aventail's mesh trimmed to the n-gon mesh, topology, attribute layers, builder, triangulation, shading, primitives, extrude and inset), the seven shapes (`mesh::Shape`, settings within limits), the `Brush` component (made as, Solid, the mesh as three lists of numbers; counts checked before anything is made; area files' version 3), brushes cut into flat triangles only when the document's brush revision changes and shared when equal, solid as a still triangle surface in physics, and **Create › More › Box brush** until B2's list. Left for B2 onward: the list and drawing out (the other shapes can't be added from the editor yet); changing **Made as** doesn't rebuild the mesh; a damaged brush reads as empty without a Problems entry; each face's material slot is saved but every face draws the plain material (B5); a change to one brush fingerprints every brush once (about 10,000 boxes' worth in the scale check), which B3's editing drags may want narrowed to the brushes an edit touches.
 
 ## Mock-ups (approved 2026-11-13)
 
