@@ -128,10 +128,10 @@ fn the_app_is_asked_for_a_text_file_shown_in_properties_only() {
         path: path.into(),
         ..crate::library::LibraryItem::default()
     };
-    w.open.library = vec![
+    w.open.library = crate::library::LibraryFiles::from(vec![
         item("notes/plan.md", LibraryKind::Text),
         item("birdsong.ogg", LibraryKind::Sound),
-    ];
+    ]);
     assert_eq!(w.text_file_wanted(), None);
     w.open.sound_shown = Some(("notes/plan.md".into(), w.open.document.selection.clone()));
     assert_eq!(w.text_file_wanted(), Some("notes/plan.md"));

@@ -4,7 +4,7 @@ The Library panel ([decision 0021](../../../../docs/decisions/0021-asset-databas
 
 | File | What it does | Main items |
 | --- | --- | --- |
-| `mod.rs` | The panel itself: the open project (`ProjectInfo`), each file as the editor knows it (`LibraryItem`), the folder tree, tiles and list, dragging to place or move, double-clicking to open, the right-click menu and what each of its choices does (`act_on`), and the thumbnails drawn. Start here. | `library`, `LibraryItem`, `LibraryState`, `LibraryRequest`, `act_on` |
+| `mod.rs` | The panel itself: the open project (`ProjectInfo`), each file as the editor knows it (`LibraryItem`), the project's files with their names lowered once for searching (`LibraryFiles`), the folder tree, tiles and list, dragging to place or move, double-clicking to open, the right-click menu and what each of its choices does (`act_on`), and the thumbnails drawn. Start here. | `library`, `LibraryItem`, `LibraryFiles`, `LibraryState`, `LibraryRequest`, `act_on` |
 | `kinds.rs` | The kinds of file the Library knows, what each can do, and the groups of kinds its chips show. | `LibraryKind`, `Filter` |
 
 `mod.rs` is far past the size guide; it is left as it is on purpose, since the editor's interface is being remade (review finding DEBT-08).
