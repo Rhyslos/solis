@@ -10,7 +10,7 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
         name: "Fuzz".into(),
         version: "0.0.0".into(),
     };
-    let mut w = editor::workbench::Workbench::new(info, None);
+    let mut w = editor::workbench::Workbench::new(info);
     w.load_game(text, "fuzz.solsave");
     for _ in 0..3 {
         w.play_for(1.0 / 60.0);
