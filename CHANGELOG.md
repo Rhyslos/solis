@@ -212,6 +212,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Opening Preferences, About or another File page no longer freezes the window while the projects are checked.** Each visit to File read every known project's files, for seconds with one on an unplugged drive; the projects are now read only when Recent projects is shown.
 - **The game-screen canvas keeps up with big screens.** Every frame it copied the screen, matched its pieces to the file and laid it out a second time to find each piece's box; it now does that only when the screen, what's hidden or the canvas's size changes.
 - **Hiding or locking something in a big area no longer slows every frame.** Once anything was hidden or locked, the Area column and the viewport's outlines went through every entity each frame to find what's under it; that's now worked out only when something changes.
 - **Searching a big project's Library is quicker, and thousands of folders don't slow it.** The Library and the Assets column lowered every file's name each frame while you searched, and the folder tree drew every folder; names are now lowered once, and only the folders in sight are drawn.

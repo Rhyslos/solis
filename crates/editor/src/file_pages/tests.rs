@@ -480,6 +480,38 @@ fn with_no_project_the_other_tabs_are_dimmed_and_say_so() {
     assert!(h.query_by_label(subtitle).is_some());
 }
 
+/// The second review pass: every visit to File read every known
+/// project's files, on Preferences and About too. Now they're read only
+/// when Recent projects is shown, and kept otherwise.
+#[test]
+fn the_projects_are_read_only_when_recent_projects_is_shown() {
+    let mut w = Workbench::new(info());
+    w.set_known_projects(vec![known("Farm", "/projects/farm", Some(1))]);
+    let reads = |w: &mut Workbench| {
+        std::mem::take(&mut w.open.outbox)
+            .iter()
+            .filter(|a| **a == WorkbenchAction::ListProjects)
+            .count()
+    };
+    w.show_file_page(Page::Preferences);
+    assert_eq!(reads(&mut w), 0, "Preferences reads nothing");
+    w.show_file_page(Page::About);
+    assert_eq!(reads(&mut w), 0);
+    w.show_file_page(Page::Projects);
+    assert_eq!(reads(&mut w), 1, "Recent projects reads them");
+    w.show_file_page(Page::Projects);
+    assert_eq!(reads(&mut w), 0, "already shown");
+    assert_eq!(w.known_projects.len(), 1, "the rows are kept");
+    // Back to the editor and in again on Recent projects: read again.
+    w.back_to_editor();
+    w.show_recent_projects();
+    assert_eq!(reads(&mut w), 1);
+    w.back_to_editor();
+    w.show_file_page(Page::Preferences);
+    w.show_file_page(Page::Projects);
+    assert_eq!(reads(&mut w), 1, "from Preferences to Recent projects");
+}
+
 #[test]
 fn recent_projects_comes_back_over_an_open_project_and_esc_goes_back() {
     let mut w = Workbench::new(info());
