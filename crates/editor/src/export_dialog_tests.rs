@@ -383,8 +383,7 @@ fn remembered_folders_survive_being_damaged() {
 /// window that looked would say "(2)".
 #[test]
 fn opening_the_window_never_looks_at_the_disk() {
-    let dir = std::env::temp_dir().join(format!("solis-export-open-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir = reflect::test_support::TempFolder::new("export-open").unwrap();
     let mut w = farm();
     w.set_last_export(Some(Playtest {
         name: "Farm".into(),
@@ -398,7 +397,7 @@ fn opening_the_window_never_looks_at_the_disk() {
     );
     w.open_export();
     let first = PathBuf::from(&w.open.export.as_ref().unwrap().folder);
-    assert_eq!(first.parent(), Some(dir.as_path()));
+    assert_eq!(first.parent(), Some(dir.path()));
     std::fs::create_dir_all(&first).unwrap();
     std::fs::write(first.join("Farm.exe"), "x").unwrap();
     w.open_export();
@@ -406,7 +405,6 @@ fn opening_the_window_never_looks_at_the_disk() {
     // And when an export ends: the next goes beside it, found out later.
     w.export_finished(Ok(first.clone()));
     let after = w.open.export.as_ref().unwrap().folder.clone();
-    let _ = std::fs::remove_dir_all(&dir);
     assert!(!second.ends_with(" (2)"), "{second}");
     assert_eq!(PathBuf::from(after), first);
 }
