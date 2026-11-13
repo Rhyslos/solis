@@ -54,7 +54,7 @@ These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Z
 
 **Moving a character from your own code**
 
-`walk(wanted)` moves the component's character by `wanted` metres (`target:walk(wanted)` moves another), as far as it can: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. It happens at the end of the [tick](concepts.md#game-code), after physics has had game code's other changes. Call it once a tick with speed times `dt`, plus your own falling. Always multiply by `dt`: it's the tick's length at the game's speed, so the character slows down and stops with `World:setGameSpeed` like everything else. A `walk` without `dt` ignores the game's speed.
+`walk(wanted)` moves the component's character by `wanted` metres (`target:walk(wanted)` moves another), as far as it can: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. Two characters standing in one another (spawned on one spot, say) are pushed apart gently as they walk, rather than stuck together. It happens at the end of the [tick](concepts.md#game-code), after physics has had game code's other changes. Call it once a tick with speed times `dt`, plus your own falling. Always multiply by `dt`: it's the tick's length at the game's speed, so the character slows down and stops with `World:setGameSpeed` like everything else. A `walk` without `dt` ignores the game's speed.
 
 ```
 fetch "solis/input":Input;

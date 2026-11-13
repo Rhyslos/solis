@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Two characters starting on the very same spot no longer fly off and sink through the floor when they walk.** They're pushed apart gently instead, and walk on side by side.
 - **A tileset's and a picture's tabs keep their shelf between runs.** The shelf tab in front and whether it was folded were saved but never put back.
 - **The Library follows files that keep changing.** A program writing into the assets folder more often than every 0.3 seconds kept Solis from noticing anything until it stopped; changes are now noticed at least every 2 seconds while it goes on.
 - **Making an assembly, a sound event or bringing in a model no longer freezes the window while the assets folder is being looked at.** Solis waited for the look going on in the background to finish (over a second in a big project); now the new file gets its ID at once and the look after it shows it in the Library.

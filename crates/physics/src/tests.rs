@@ -917,6 +917,55 @@ fn characters_standing_in_one_another_end_alike_moved_together_or_not() {
     );
 }
 
+/// N-10 (seen by a probe while fixing NEW-01): two characters starting on
+/// the very same spot, both walking the same way, flew apart (some 70 m
+/// in 2 s) and sank through the floor. Pushed apart, they end beside one
+/// another near where walking takes them, still on the floor.
+#[test]
+fn two_characters_on_one_spot_walking_stay_together_on_the_floor() {
+    let dt = 1.0 / 60.0;
+    for speed in [Vec3::new(1.5, 0.0, 0.0), Vec3::new(0.0, -1.0, 0.0)] {
+        let mut physics = with_floor();
+        let pair = [id(2), id(3)];
+        for who in pair {
+            assert!(physics.add_character(
+                who,
+                (Vec3::ZERO, Quat::IDENTITY),
+                CharacterSpec::default()
+            ));
+        }
+        let mut fall = [0.0f32; 2];
+        for _ in 0..120 {
+            let moves: Vec<(EntityId, Vec3)> = pair
+                .iter()
+                .zip(&mut fall)
+                .map(|(who, fall)| {
+                    let grounded = physics.state().character(*who).unwrap().grounded;
+                    *fall = if grounded { 0.0 } else { *fall + GRAVITY * dt };
+                    (*who, (speed + Vec3::Z * *fall) * dt)
+                })
+                .collect();
+            physics.move_characters(&moves, dt);
+            physics.step(dt);
+        }
+        let walked_to = speed * 2.0;
+        let feet: Vec<Vec3> = pair
+            .iter()
+            .map(|who| physics.state().pose(*who).unwrap().0)
+            .collect();
+        for at in &feet {
+            assert!(at.z > -0.05, "{speed}: on the floor, not through it: {at}");
+            let off = (*at - walked_to).truncate().length();
+            assert!(
+                off < 1.0,
+                "{speed}: near where it walked to ({walked_to}): {at}"
+            );
+        }
+        let apart = (feet[0] - feet[1]).truncate().length();
+        assert!(apart > 0.3, "{speed}: pushed apart: {apart}");
+    }
+}
+
 // The hardening milestone's mutation testing found these untested.
 
 #[test]
