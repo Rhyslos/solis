@@ -229,7 +229,7 @@ The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/009
 
 **The order:**
 
-1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish.
+1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)).
 2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
 3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes).
 4. **2D 1 and 2D 2:** 2D complete.
@@ -285,6 +285,30 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 - **Finish:** the manual, the old code out, the review. *Built, all but the review and the scale check, which the project lead paused (answer 34): both are owed before the gate.*
 
 **Gate:** the project lead works in the new editor for an evening and wouldn't go back.
+
+## Shared 1e: Layouts and resizing
+
+Added 13 November 2026 by the project lead, after trying the remade interface: the Area and Assets lists out of the compact bottom shelf, into a more usual layout, and every edge between panels draggable ([decision 0109](docs/decisions/0109-layouts-as-a-setting.md)).
+
+- **Layouts as a setting:** three layouts (Area left and Assets along the bottom; Area and Assets stacked on the left; Area left and Assets right) and today's shelf, chosen in Preferences, so the project lead can try them before picking one.
+- **Every edge resizable:** every border between panels and columns can be dragged, each tab remembers its sizes, and a double-click puts a border back.
+
+**Gate:** each layout can be chosen and works on every tab, every border drags and is remembered after a restart, and the editor's frame stays inside the scale check's targets.
+
+## The second pass's 27 problems
+
+The problems found by the full review's second pass ([the report](docs/reviews/2026-11-full-review-second-pass.md)), fixed in pull requests grouped by kind: stability and correctness, speed (with scale cases), and the small mismatches.
+
+## Tools 1: Shape brushes and world sculpting
+
+Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)). Mocked up and planned before it's built; every tool has a scale case.
+
+- **Shape brushes:** simple shapes (a box, a wedge, a cylinder, stairs and the like) made in the editor to build a level with. **B** over the 3D or 2D view opens the brush list, each **B** moves down it, **Space** confirms while it's open, **Esc** closes it; with a tile map picked, B stays the tile Brush.
+- **World sculpting:** shaping the ground by painting on it (raise, lower, smooth, flatten), fast enough for big worlds.
+
+**Gate:** a level blocked out with brushes on sculpted ground, played, saved and reopened, at the scale check's targets.
+
+---
 
 ## Shared 2: Game code: finding and making things
 
@@ -517,7 +541,7 @@ Was Phase 19.
 
 ## Not in 0.1
 
-Open-world streaming and terrain, the full Solstice toolkit, rollback netcode, advanced animation (IK, root motion), Linux and macOS (decision 0012).
+Open-world streaming, terrain's texture painting and scattering, the full Solstice toolkit, rollback netcode, advanced animation (IK, root motion), Linux and macOS (decision 0012).
 
 **Not planned at all** ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)): photo mode and screenshots, and store features built in (Steam's achievements, cloud saves, Workshop): those are for each game's developer, not the engine.
 

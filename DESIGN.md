@@ -198,7 +198,7 @@ wgpu, lightweight, built for medium-poly, stylized games. **AMD first, when a ch
 - **Game state above areas:** state that outlives an area (a campaign, a save), with loading an area and returning as a normal operation.
 - **Zones** stream in and out by distance, each owning its memory (§3).
 - **Large worlds** need a floating origin, so precision holds far from the centre.
-- **Terrain:** heightmaps, texture painting, and scattering of grass, trees and rocks. Needed for open worlds.
+- **Terrain:** heightmaps, texture painting, and scattering of grass, trees and rocks. Needed for open worlds. Sculpting the ground (heightmaps) comes first, with Tools 1 (decision 0108).
 
 ---
 
@@ -433,3 +433,4 @@ Both sides review each other's pull requests.
 - 2026-11-12: [0105](docs/decisions/0105-solis-starts-on-the-file-page.md): Solis starts in its full window on File › Recent projects; the small launcher window goes, and 0090's promises stay (the projects first at every start, nothing reopened by itself). The projects are cards; the blank project and the four examples are templates (the design's others unfinished, no VR / XR); Learn, Updates and About are File pages, and a newer build is marked on Updates and in the status bar.
 - 2026-11-12: [0106](docs/decisions/0106-lust-alpha-67-tweens-vec2-and-colour.md): Lust moves from alpha 59 to 67; game code's `vec2` is a two-number kind of its own and its `colour` is Solis's colour, with its see-through kept as a fourth number when it isn't solid; each core moves its tweens (`tickTweens`) after the game-wide objects and before the components' updates, the objects staying closed to tweens; a failing tween is said once.
 - 2026-11-13: [0107](docs/decisions/0107-game-ui-fonts-read-with-skrifa.md): game UI's fonts are read with `skrifa`, egui's own font reader, and each letter's outline drawn by `ab_glyph_rasterizer`, instead of `ab_glyph` (0084), which was no longer in egui and brought the unmaintained `ttf-parser` into the Windows build. Letters come out as before; `ttf-parser` stays only in the Linux build's window decorations.
+- 2026-11-13: [0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md): shape brushes and world sculpting are built next, after the layouts as a setting (0109) and the second pass's 27 problems, ahead of the rest of 2D; B over the view opens the brush list and moves down it, Space confirms while it's open, Esc closes it, and B stays the tile Brush while a tile map is picked; sculpting the ground leaves "Not in 0.1".
