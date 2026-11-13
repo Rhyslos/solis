@@ -1,10 +1,12 @@
 # The full review of November 2026: where each finding stands
 
-The review of the whole engine ([the findings](2026-11-full-review.md)) found 119 problems; one agent fixed each, and a lead reviewer read each fix. **It was paused on 2026-11-11 with 72 fixed and merged, one half fixed, 45 open and one left for the UI remake on purpose** (pull requests 228, 230 to 234), when the project lead moved the work to the editor's UI remake, and it does not resume by itself (the project lead, 2026-11-11: "after the UI update is done, i would like for you to stop working on the next updates and fixes"). What was planned after the fixes, and is **not done**: a second review pass over what the fixes changed, and a short final report for the project lead with every new find scored 1 to 10.
+The review of the whole engine ([the findings](2026-11-full-review.md)) found 114 problems, and nine more turned up while they were being fixed: this file tracks all 123. One agent fixed each, and a lead reviewer read each fix. It was paused on 2026-11-11, when the project lead moved the work to the editor's UI remake, and **resumed on 2026-11-12**. **Every finding is now dealt with: 120 fixed, two fixed in part (DEBT-05 and DEBT-09, the rest of each left for a decision or the UI remake) and one left for the UI remake on purpose (DEBT-08).** The fixes are in pull requests 228 and 230 to 249, and in the one with this update (DOC-01, DOC-02 and DOC-04 to DOC-07). What was planned after the fixes, and is **not done**: a second review pass over what the fixes changed, and a short final report for the project lead with every new find scored 1 to 10.
 
-When it resumes: check each open finding against the code first. The UI remake rewrites much of the editor's interface, so an open editor finding may be gone, moved or changed.
+Before the second pass: the UI remake rewrites much of the editor's interface, so check what a fix in the editor changed against the code as it is then.
 
-## Open (45, and one half open)
+## Open (none; two fixed in part)
+
+The findings that were open when the review paused, and how each was dealt with since.
 
 | Finding | Severity | What | Where it was | State |
 | --- | --- | --- | --- | --- |
@@ -46,13 +48,13 @@ When it resumes: check each open finding against the code first. The UI remake r
 | DEBT-07 | 4 | run_game is one 485-line function; play.rs and save_game.rs are twice the size guide | `crates/editor/src/play.rs:460` | Fixed (`a56d96986`) |
 | DEBT-09 | 4 | viewport.rs (1,742 lines) and the editor views are far past the size guide | `crates/editor/src/viewport.rs:887` | Fixed in part (`760dbf025`): viewport.rs, graph_canvas and camera.rs; tileset_view, canvas_view, animator_view, tile_view and frames_view left for the UI remake |
 | DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | Fixed (`2e9971081`) |
-| DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
-| DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
-| DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | **Open** |
+| DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | Fixed (`1cc7c4fb1`) |
+| DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | Fixed (`4140345d1`) |
+| DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | Fixed (`2469ba67c`) |
 | CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | Fixed (`06af30cfe`, `c93355610`) |
-| DOC-01 | 4 | Crate READMEs' "Depends on" sections no longer match Cargo.toml | `crates/script, editor, app, area, asset_db READMEs` | **Open** |
-| DOC-02 | 4 | ARCHITECTURE.md has eight statements the code has overtaken | `ARCHITECTURE.md:20,27,59,62,110,112,114,136` | **Open** |
-| DOC-05 | 3 | Source-folder READMEs miss files and name functions that don't exist | `crates/editor/src, script/src, tiles/src, world/src, physics/src, animation/src, area/src/builtin READMEs` | **Open** |
+| DOC-01 | 4 | Crate READMEs' "Depends on" sections no longer match Cargo.toml | `crates/script, editor, app, area, asset_db READMEs` | Fixed (`f9472626c`) |
+| DOC-02 | 4 | ARCHITECTURE.md has eight statements the code has overtaken | `ARCHITECTURE.md:20,27,59,62,110,112,114,136` | Fixed (`e61908853`) |
+| DOC-05 | 3 | Source-folder READMEs miss files and name functions that don't exist | `crates/editor/src, script/src, tiles/src, world/src, physics/src, animation/src, area/src/builtin READMEs` | Fixed (`d8481bd89`) |
 | TEST-06 | 2 | Tests leave their temporary folders behind (over 10,000 in /tmp after a day of runs) | `tests across crates that make solis-* folders in the temp dir` | Fixed (`5f0ac87fb`, the editor's test in `11c433532`) |
 
 DEBT-08 (files too large in the editor's interface) is left for the UI remake on purpose: its milestones split those files as they rebuild them.
@@ -148,18 +150,18 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | DEBT-09 | 4 | viewport.rs (1,742 lines) and the editor views are far past the size guide | `crates/editor/src/viewport.rs:887` | Fixed in part (`760dbf025`): viewport.rs, graph_canvas and camera.rs; tileset_view, canvas_view, animator_view, tile_view and frames_view left for the UI remake |
 | DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | Fixed (`2e9971081`) |
 | DEBT-08 | 4 | The editor's panel files and functions are several times the size limit (launcher, library, search, properties) | `crates/editor/src/library.rs, launcher.rs, search.rs` | Left for the UI remake, on purpose |
-| DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | **Open** |
-| DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | **Open** |
-| DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | **Open** |
+| DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | Fixed (`1cc7c4fb1`) |
+| DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | Fixed (`4140345d1`) |
+| DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | Fixed (`2469ba67c`) |
 | CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | Fixed (`06af30cfe`, `c93355610`) |
 | CI-02 | 6 | The weekly whole-game invariants job cannot fail | `.github/workflows/deep-checks.yml:113` | Fixed (`ccb0ac84a`) |
 | CI-03 | 3 | The release pipeline installs unpinned tools | `.github/workflows/windows-exe.yml:98` | Fixed (`1728e3def`) |
 | CI-04 | 2 | The updater's network tests are ignored and nothing runs them | `crates/updater/src/tests.rs:473` | Fixed (`2ebb5be5b`) |
 | CI-05 | 3 | The fuzzers' lock file is ungoverned and out of step with the main one | `fuzz/Cargo.lock, .github/dependabot.yml` | Fixed (`b40e02648`) |
-| DOC-01 | 4 | Crate READMEs' "Depends on" sections no longer match Cargo.toml | `crates/script, editor, app, area, asset_db READMEs` | **Open** |
-| DOC-02 | 4 | ARCHITECTURE.md has eight statements the code has overtaken | `ARCHITECTURE.md:20,27,59,62,110,112,114,136` | **Open** |
+| DOC-01 | 4 | Crate READMEs' "Depends on" sections no longer match Cargo.toml | `crates/script, editor, app, area, asset_db READMEs` | Fixed (`f9472626c`) |
+| DOC-02 | 4 | ARCHITECTURE.md has eight statements the code has overtaken | `ARCHITECTURE.md:20,27,59,62,110,112,114,136` | Fixed (`e61908853`) |
 | DOC-03 | 4 | The README's Status paragraph is stuck at Phase 1, and no top-level folder is described | `README.md:7` | Fixed (`df907ff62`) |
-| DOC-05 | 3 | Source-folder READMEs miss files and name functions that don't exist | `crates/editor/src, script/src, tiles/src, world/src, physics/src, animation/src, area/src/builtin READMEs` | **Open** |
+| DOC-05 | 3 | Source-folder READMEs miss files and name functions that don't exist | `crates/editor/src, script/src, tiles/src, world/src, physics/src, animation/src, area/src/builtin READMEs` | Fixed (`d8481bd89`) |
 | DOC-08 | 5 | The manual's interface tour still describes the editor from before the overhaul | `docs/manual/interface-tour.md:11-41` | Fixed (`903d02f68`) |
 | DOC-09 | 5 | The manual says Solis reopens the last project; it never does | `docs/manual/projects-and-the-library.md:19` | Fixed (`fbd18c07c`) |
 | DOC-10 | 4 | The manual says Properties shows starting values while playing; it shows live values | `docs/manual/game-code.md:73` | Fixed (`381399738`) |
