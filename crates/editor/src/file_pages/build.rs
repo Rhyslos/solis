@@ -7,13 +7,12 @@
 
 use super::settings::Setting;
 use super::{plain, sentence};
-use crate::export_dialog::{ExportRequest, game_name, usable_area};
+use crate::export_dialog::{game_name, usable_area};
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, UnbuiltId};
 use crate::widgets::{self, button::Button, field, segmented::segmented};
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui::Ui;
-use std::path::PathBuf;
 
 impl Workbench {
     /// The control of one of Build's settings (and of General's Game
@@ -31,6 +30,7 @@ impl Workbench {
         let Some(form) = &mut self.open.export else {
             return;
         };
+        let mut export_now = false;
         match setting {
             Setting::GameName => {
                 field::text_field(
@@ -92,9 +92,7 @@ impl Workbench {
                 segmented(ui, "Window", &mut form.playtest.fullscreen, &modes);
             }
             Setting::ExportFolder => {
-                let ready = usable_area(&form.playtest.area)
-                    && !form.folder.trim().is_empty()
-                    && !form.busy;
+                let ready = form.ready();
                 let label = if form.busy { "Exporting…" } else { "Export" };
                 let export = ui
                     .add_enabled_ui(ready, |ui| Button::primary(label).show(ui))
@@ -106,16 +104,7 @@ impl Workbench {
                 } else {
                     export.on_disabled_hover_text("Choose a folder to export to first")
                 };
-                if export.clicked() {
-                    form.playtest.name = game_name(&form.playtest.name);
-                    form.busy = true;
-                    form.done = None;
-                    asked.push(WorkbenchAction::ExportPlaytest(ExportRequest {
-                        playtest: form.playtest.clone(),
-                        folder: PathBuf::from(form.folder.trim()),
-                        suggested: form.folder == form.suggested,
-                    }));
-                }
+                export_now = export.clicked();
                 if widgets::button::icon(ui, crate::icons::Icon::FolderOpen, "Choose the folder")
                     .clicked()
                 {
@@ -134,6 +123,9 @@ impl Workbench {
                 );
             }
             _ => {}
+        }
+        if export_now && let Some(request) = self.export_from_form() {
+            asked.push(WorkbenchAction::ExportPlaytest(request));
         }
     }
 

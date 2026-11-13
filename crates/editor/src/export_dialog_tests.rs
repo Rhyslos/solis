@@ -152,7 +152,8 @@ fn the_window_starts_from_the_project_and_the_open_area() {
         size: [1600, 900],
     }));
     w.set_last_export_folder(Some(local("/elsewhere/Farm playtest 2026-01-01")));
-    w.open_export();
+    // A form filled in afresh (opening the page again keeps the one there).
+    w.prepare_export();
     let window = w.open.export.as_ref().unwrap();
     assert_eq!(window.playtest.area, "areas/town.solarea");
     assert!(window.playtest.fullscreen);
@@ -166,7 +167,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
         area: "areas/gone.solarea".into(),
         ..Playtest::default()
     }));
-    w.open_export();
+    w.prepare_export();
     assert_eq!(
         w.open.export.as_ref().unwrap().playtest.area,
         "areas/farm.solarea"
@@ -255,6 +256,42 @@ fn home_s_build_button_and_the_build_tab_open_export_for_playtesting() {
     h.get_by_label("Export for playtesting…").click();
     h.run();
     assert!(h.state().0.open.export.is_some());
+}
+
+/// N-09: the Build tab's big Export exports what the page's form says
+/// (it filled the form in afresh instead, losing the name typed), and
+/// Home's Build button keeps what was typed.
+#[test]
+fn build_s_ribbon_export_exports_the_form_as_typed() {
+    let mut w = farm();
+    w.open_export();
+    w.open.export.as_mut().unwrap().playtest.name = "Harvest".into();
+    let mut h = harness(w);
+    h.run();
+    ribbon_tab(&mut h, crate::shell::RibbonTab::Home);
+    h.get_by_label("Export for playtesting…").click();
+    h.run();
+    let form = h.state().0.open.export.as_ref().unwrap();
+    assert_eq!(form.playtest.name, "Harvest", "kept, not filled in afresh");
+    assert!(!form.busy);
+    h.get_by_label("Export for playtesting…").click();
+    h.run();
+    h.run();
+    let asked: Vec<_> = h
+        .state()
+        .1
+        .actions
+        .iter()
+        .filter_map(|a| match a {
+            WorkbenchAction::ExportPlaytest(r) => Some(r.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(asked.len(), 1, "exported once");
+    assert_eq!(asked[0].playtest.name, "Harvest");
+    let form = h.state().0.open.export.as_ref().unwrap();
+    assert!(form.busy, "busy until done");
+    assert_eq!(form.playtest.name, "Harvest");
 }
 
 #[test]

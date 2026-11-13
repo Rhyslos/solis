@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The Build tab's big Export button exports.** It filled the export form in afresh instead: the game's name you typed was lost and **Open folder** greyed out. It now exports what the page shows, as the page's own **Export** does, and Home's **Build** keeps what you typed there.
 - **Pressing Enter to keep a project's new name no longer opens it as well.** On Recent projects, Enter in **Rename…** renamed the project and also opened the card picked behind it.
 - **Removing a bus no longer picks the next one, and a second click on Remove no longer deletes it.** The bus picked was kept by its place in the list, so after Remove the next bus was picked, and the buses read again in another order moved your edits to another bus. Picks are now kept by name, and Master is shown after Remove. Project settings › Input keeps its picked action and the one waiting for a key by name too, so a key is never bound to another action when the file changes.
 - **The area's keys no longer act on an area you can't see.** On the Library, Audio, Debug and Build tabs, Delete, Ctrl + D, Ctrl + Z, Esc and the area's other keys changed the area behind them (a crate deleted while you meant a bus). They now rest there, except over the Area list and Properties; over the Library, F2 and Delete still rename and delete the picked file.
