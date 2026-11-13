@@ -156,13 +156,13 @@ fn a_change_in_the_tab_is_saved_at_once_and_undone_and_redone() {
     assert!(the_map(&w).value_named("age").is_none());
     // A change that changes nothing isn't a step: renaming to a name in
     // use, or a layer over the top.
-    let steps = w.open.map_edits.undo.len();
+    let steps = w.open.map_edits.history.steps().0;
     w.map_requests_done(vec![
         MapRequest::RenameValue(0, "watered".into()),
         MapRequest::MoveLayer(3, true),
         MapRequest::SetLayer(1, "Ground".into(), false),
     ]);
-    assert_eq!(w.open.map_edits.undo.len(), steps);
+    assert_eq!(w.open.map_edits.history.steps().0, steps);
 }
 
 /// How long the file of the map at `path` is, as it's saved now.
@@ -204,7 +204,7 @@ fn a_change_that_would_make_a_map_too_big_to_open_again_is_refused() {
     assert_eq!(saves[0].1.len(), edge);
     let opened = tiles::map_file::read(&saves[0].1).unwrap();
     assert_eq!(opened.map, *at_the_edge);
-    assert_eq!(w.open.map_edits.undo.len(), 1);
+    assert_eq!(w.open.map_edits.history.steps().0, 1);
     assert_eq!(last_warning(&w), None);
     // One step past, each way a map grows: refused as it's made. Nothing
     // is saved, the map is as it was, and the undo steps are as they were.
@@ -247,8 +247,8 @@ fn a_change_that_would_make_a_map_too_big_to_open_again_is_refused() {
         assert!(!made, "{what}");
         assert!(Arc::ptr_eq(&the_map(&w), &at_the_edge), "{what}");
         assert!(saved_maps(&w.open.outbox).is_empty(), "{what}");
-        assert_eq!(w.open.map_edits.undo.len(), 1, "{what}");
-        assert!(w.open.map_edits.redo.is_empty(), "{what}");
+        assert_eq!(w.open.map_edits.history.steps().0, 1, "{what}");
+        assert_eq!(w.open.map_edits.history.steps().1, 0, "{what}");
         assert_eq!(w.log_lines().len(), said + n + 1, "{what}");
         let why = last_warning(&w).expect(what);
         assert!(
@@ -260,14 +260,14 @@ fn a_change_that_would_make_a_map_too_big_to_open_again_is_refused() {
     }
     // A change that leaves the file no bigger is still made, at the edge.
     assert!(w.change_map(path, |m| m.set_code(0, 2, 2, b'~').unwrap_or(false)));
-    assert_eq!(w.open.map_edits.undo.len(), 2);
+    assert_eq!(w.open.map_edits.history.steps().0, 2);
     assert_eq!(file_len(&w), edge);
     // And undo goes back through every step, to the map as it began.
     w.map_undo(false, true);
     assert_eq!(*the_map(&w), *at_the_edge);
     w.map_undo(false, true);
     assert_eq!(*the_map(&w), *start);
-    assert!(w.open.map_edits.undo.is_empty());
+    assert_eq!(w.open.map_edits.history.steps().0, 0);
     // A step back or forward to a map that couldn't be opened again (a
     // reader taking less than when the step was made) isn't taken, and
     // stays a step.
@@ -275,7 +275,7 @@ fn a_change_that_would_make_a_map_too_big_to_open_again_is_refused() {
     w.open.map_edits.most_bytes = 10;
     w.map_undo(true, false);
     assert_eq!(*the_map(&w), *start);
-    assert_eq!(w.open.map_edits.redo.len(), 2);
+    assert_eq!(w.open.map_edits.history.steps().1, 2);
     assert!(saved_maps(&w.open.outbox).is_empty());
     assert!(last_warning(&w).is_some_and(|why| why.contains("wasn't changed")));
 }
@@ -304,12 +304,12 @@ fn a_kind_the_map_has_no_room_for_changes_nothing_like_a_value_too_many() {
         MapFileState::Read(Arc::new(full), Vec::new()),
     );
     w.open.outbox.clear();
-    let steps = w.open.map_edits.undo.len();
+    let steps = w.open.map_edits.history.steps().0;
     w.map_requests_done(vec![
         MapRequest::SetValueKind(0, ValueKind::Number),
         MapRequest::AddValue,
     ]);
-    assert_eq!(w.open.map_edits.undo.len(), steps);
+    assert_eq!(w.open.map_edits.history.steps().0, steps);
     assert!(saved_maps(&w.open.outbox).is_empty());
     let now = the_map(&w);
     assert_eq!(now.values().len(), 16);
@@ -658,10 +658,10 @@ fn big_maps_keep_fewer_undo_steps() {
     for _ in 0..30 {
         edits.push_undo("big.tilemap.lst".into(), TileMap::bare([4096, 4096], None));
     }
-    assert_eq!(edits.undo.len(), 16);
+    assert_eq!(edits.history.steps().0, 16);
     let mut small = MapEdits::default();
     for _ in 0..60 {
         small.push_undo("small.tilemap.lst".into(), TileMap::bare([64, 64], None));
     }
-    assert_eq!(small.undo.len(), 50, "small maps keep them all");
+    assert_eq!(small.history.steps().0, 50, "small maps keep them all");
 }

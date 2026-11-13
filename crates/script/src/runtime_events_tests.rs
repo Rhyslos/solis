@@ -43,7 +43,7 @@ fn loaded(main: &str) -> Runtime {
     files.push(("main.lst".into(), format!("\n{main}")));
     let chunk = match lust::to_lua_with(
         &lust::Engine {
-            folders: crate::describe::engine_folders(&files),
+            folders: crate::describe::engine_folders(),
         },
         "main.lst",
         &files,

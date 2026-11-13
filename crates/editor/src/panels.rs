@@ -333,8 +333,7 @@ impl PanelViewer<'_> {
                 self.area_requests.extend(requests);
             }
             Panel::Properties => {
-                if (self.in_front.contains(&Panel::Canvas)
-                    || self.in_front.contains(&Panel::Elements))
+                if shows_the_screen(self.in_front)
                     && let Some(screen) = &mut self.screen
                 {
                     egui::ScrollArea::vertical()
@@ -797,4 +796,10 @@ pub(crate) fn empty_note(ui: &mut Ui, text: &str) {
         .show(ui, |ui| {
             ui.label(RichText::new(text).color(theme::text_weak()));
         });
+}
+/// Whether Properties shows the open screen's settings rather than the
+/// area's: while its Canvas or Elements is in front (the UI tab). Its keys
+/// are the screen's then (`key_owner.rs`).
+pub(crate) fn shows_the_screen(in_front: &HashSet<Panel>) -> bool {
+    in_front.contains(&Panel::Canvas) || in_front.contains(&Panel::Elements)
 }

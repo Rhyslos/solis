@@ -85,7 +85,7 @@ fn compiled(main: &str) -> Compiled {
     files.push(("main.lst".into(), main.to_string()));
     let chunk = lust::to_lua_with(
         &lust::Engine {
-            folders: crate::describe::engine_folders(&files),
+            folders: crate::describe::engine_folders(),
         },
         "main.lst",
         &files,
@@ -231,7 +231,7 @@ fn the_manual_s_hoe_is_sound_code() {
     files.push((path, text));
     files.push(("main.lst".into(), page[start..end].to_string()));
     let engine = lust::Engine {
-        folders: crate::describe::engine_folders(&files),
+        folders: crate::describe::engine_folders(),
     };
     if let Err(problems) = lust::check_with(&engine, "main.lst", &files) {
         panic!("{}", problems[0]);

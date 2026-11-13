@@ -627,3 +627,51 @@ fn enter_while_a_name_is_typed_never_opens_the_picked_project() {
         WorkbenchAction::OpenRecent("/games/bench".into())
     ));
 }
+
+/// N-29: Enter typed in Search projects opens the card picked while the
+/// search still shows it: pick a card, narrow the list, Enter opens it,
+/// as Enter on a picked card always does. It never opens a picked card
+/// the search hides, nor any card when none is picked (not even the only
+/// one found).
+#[test]
+fn enter_in_the_search_opens_only_a_picked_card_it_shows() {
+    let opened = |h: &egui_kittest::Harness<'static, State>| -> Vec<WorkbenchAction> {
+        h.state()
+            .1
+            .actions
+            .iter()
+            .filter(|a| matches!(a, WorkbenchAction::OpenRecent(_)))
+            .cloned()
+            .collect()
+    };
+    let enter_after_typing = |pick: Option<&str>, typed: &str| {
+        let mut h = harness(page_with(some_projects()));
+        h.run();
+        if let Some(card) = pick {
+            h.get_by_label(card).click();
+            h.run();
+        }
+        h.get_by_label("Search projects").click();
+        h.run();
+        h.get_by_label("Search projects").type_text(typed);
+        h.run();
+        assert!(h.ctx.egui_wants_keyboard_input(), "typing in the search");
+        h.key_press(egui::Key::Enter);
+        h.run();
+        h.run();
+        opened(&h)
+    };
+    assert_eq!(
+        enter_after_typing(Some("Benchmark"), "bench"),
+        [WorkbenchAction::OpenRecent("/games/bench".into())],
+        "picked and shown: opened"
+    );
+    assert!(
+        enter_after_typing(Some("Benchmark"), "play").is_empty(),
+        "picked but hidden by the search: not opened"
+    );
+    assert!(
+        enter_after_typing(None, "bench").is_empty(),
+        "none picked: nothing opened, not even the one found"
+    );
+}

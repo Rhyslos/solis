@@ -381,3 +381,20 @@ fn spaced_capitals_are_made_here() {
     assert!((job.sections[0].format.extra_letter_spacing - 0.4).abs() < 1e-5);
     assert_eq!(job.sections[0].format.color, text_meta());
 }
+
+/// The second review pass's N-24: crops not picked were the old look's
+/// amber, which with the orange accent looked like the picked crop.
+/// Whichever accent is chosen, the picked crop (in the accent) and the
+/// others differ clearly in lightness, so colour never tells them apart
+/// alone.
+#[test]
+fn crops_not_picked_differ_in_lightness_from_every_accent() {
+    let old_amber = hex(0xffd84d);
+    assert!(crate::theme::contrast(old_amber, Accent::Orange.colour()) < 1.8);
+    for accent in Accent::ALL {
+        let ratio = crate::theme::contrast(CROP, accent.colour());
+        assert!(ratio >= 1.8, "{}: {ratio}", accent.name());
+    }
+    // And the frame shows against the grey behind a picture.
+    assert!(crate::theme::contrast(CROP, Color32::from_gray(60)) >= 2.0);
+}

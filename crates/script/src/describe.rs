@@ -1099,27 +1099,24 @@ pub const PROJECT_STATES: &[&str] = &[
     "Assembly", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture",
 ];
 
-/// What the first line of each file describing the engine says after who made it: how the
-/// compiler knows the engine's own folder (Lust's host folder, decision 0072), without the
-/// program's name written into the code.
+/// What the first line of each file describing the engine says after who made it.
 pub const ENGINE_FILE: &str = ": what game code can ask of the engine.";
 
-/// The engine's own folders among `files`: the top folder of each file describing the engine
-/// (its first line says so, [`ENGINE_FILE`]). Lust lets only their files give `entity`
-/// methods, and makes them part of every program.
-pub fn engine_folders(files: &[(String, String)]) -> Vec<String> {
-    let mut folders: Vec<String> = files
-        .iter()
-        .filter(|(_, text)| {
-            text.lines()
-                .next()
-                .is_some_and(|l| l.starts_with("-- Made by ") && l.contains(ENGINE_FILE))
-        })
-        .filter_map(|(path, _)| path.split_once('/').map(|(top, _)| top.to_string()))
-        .collect();
-    folders.sort();
-    folders.dedup();
-    folders
+/// Whether `path` (inside the assets, `/` between folders) is in the engine's own folder
+/// (`solis/`): the files describing the engine, the data files' classes, the project's names
+/// and the screens' readers, which Solis writes there. One rule, from the program's branding
+/// (`area::lust_data::ENGINE_FOLDER`, which the app keeps equal to its `CODE_FOLDER`): a file
+/// in it is the engine's, never the game's own, whatever it says.
+pub fn in_engine_folder(path: &str) -> bool {
+    path.split_once('/')
+        .is_some_and(|(top, _)| top == area::lust_data::ENGINE_FOLDER)
+}
+
+/// The engine's own folders, as Lust's host folders (decision 0072): only their files give
+/// `entity` methods, and Lust makes them part of every program. The one of
+/// [`in_engine_folder`].
+pub fn engine_folders() -> Vec<String> {
+    vec![area::lust_data::ENGINE_FOLDER.to_string()]
 }
 
 /// `lust`, a native's method line, with its name `new` changed to `old`.
@@ -1230,32 +1227,37 @@ mod tests {
                 .into(),
         ));
         let engine = lust::Engine {
-            folders: engine_folders(&files),
+            folders: engine_folders(),
         };
-        assert_eq!(engine.folders, ["solis"]);
         if let Err(problems) = lust::check_with(&engine, "main.lst", &files) {
             let text: Vec<String> = problems.iter().map(ToString::to_string).collect();
             panic!("{}", text.join("\n"));
         }
     }
 
+    /// The second review pass's N-14: three rules said which folder was the engine's (a file's
+    /// first line, the app's branding, and `solis/` written into the screens' code), so a file
+    /// anywhere saying it described the engine made its folder the engine's. One rule now, the
+    /// branding's folder, whatever a file says.
     #[test]
-    fn the_engines_folder_is_found_from_its_files_first_lines() {
-        let mut files = descriptions("Test Engine 9.9.9", "engine");
-        assert_eq!(engine_folders(&files), ["engine"]);
-        // A game's own files, a top-level one with the line, and one where it isn't first:
-        // none of them makes a folder the engine's.
-        files.push(("game/a.lst".into(), "end\n".into()));
-        files.push((
-            "loose.lst".into(),
-            format!("-- Made by me{ENGINE_FILE}\nend\n"),
-        ));
-        files.push((
-            "other/b.lst".into(),
-            format!("end\n-- Made by me{ENGINE_FILE}\n"),
-        ));
-        assert_eq!(engine_folders(&files), ["engine"]);
-        assert!(engine_folders(&[]).is_empty());
+    fn the_engines_folder_is_the_brandings_whatever_a_file_says() {
+        use area::lust_data::ENGINE_FOLDER;
+        assert_eq!(engine_folders(), [ENGINE_FOLDER]);
+        for (path, engine) in [
+            (format!("{ENGINE_FOLDER}/world.lst"), true),
+            (format!("{ENGINE_FOLDER}/kit/cameras.lst"), true),
+            (format!("{ENGINE_FOLDER}/mine.lst"), true),
+            (format!("{ENGINE_FOLDER}x/a.lst"), false),
+            (format!("game/{ENGINE_FOLDER}/a.lst"), false),
+            ("game/a.lst".to_string(), false),
+            (format!("{ENGINE_FOLDER}.lst"), false),
+            (String::new(), false),
+        ] {
+            assert_eq!(in_engine_folder(&path), engine, "{path}");
+        }
+        // The descriptions, written where the app says, are in it.
+        let files = descriptions("Test Engine 9.9.9", ENGINE_FOLDER);
+        assert!(files.iter().all(|(path, _)| in_engine_folder(path)));
     }
 
     #[test]
@@ -1270,9 +1272,8 @@ mod tests {
                 .into(),
         ));
         let engine = lust::Engine {
-            folders: engine_folders(&files),
+            folders: engine_folders(),
         };
-        assert_eq!(engine.folders, ["solis"]);
         if let Err(problems) = lust::check_with(&engine, "main.lst", &files) {
             let text: Vec<String> = problems.iter().map(ToString::to_string).collect();
             panic!("{}", text.join("\n"));

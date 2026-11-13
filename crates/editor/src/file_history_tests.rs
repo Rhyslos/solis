@@ -103,3 +103,42 @@ fn a_limit_of_nothing_still_keeps_one_step() {
     assert!(h.undo(&mut file));
     assert_eq!(file, 0);
 }
+
+#[test]
+fn steps_by_hand_undo_redo_and_go_back_when_they_cant_be_used() {
+    // The Map tab's way (the second review pass's N-27): a step pushed,
+    // taken out to put in force, the file as it was put on the other side,
+    // or the step put back when it couldn't be used.
+    let mut h = FileHistory::new(3);
+    for before in 1..=5 {
+        h.push(before);
+    }
+    assert_eq!(h.steps(), (3, 0), "the oldest went past the limit");
+    let undone = h.take(false);
+    assert_eq!(undone, Some(5));
+    h.put(true, 6);
+    assert_eq!(h.steps(), (2, 1));
+    // A redo that couldn't be saved goes back where it was.
+    let redone = h.take(true).unwrap();
+    h.put(true, redone);
+    assert_eq!(h.steps(), (2, 1));
+    assert_eq!(h.take(true), Some(6));
+    // A new step lets go of the redo steps.
+    h.put(true, 7);
+    h.push(8);
+    assert_eq!(h.steps(), (3, 0));
+    assert_eq!(h.take(true), None);
+}
+
+#[test]
+fn the_oldest_steps_go_while_too_much_is_kept_but_never_the_last() {
+    let mut h = FileHistory::new(10);
+    for before in [40, 30, 20, 10] {
+        h.push(before);
+    }
+    h.drop_oldest_while(|steps| steps.iter().sum::<u32>() > 35);
+    assert_eq!(h.steps(), (2, 0), "20 and 10 kept");
+    h.drop_oldest_while(|_| true);
+    assert_eq!(h.steps(), (1, 0), "the newest stays");
+    assert_eq!(h.take(false), Some(10));
+}

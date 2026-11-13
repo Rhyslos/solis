@@ -15,6 +15,8 @@
 //!   is handed to an `unbuilt::` function or put in a list as
 //!   `Unbuilt(..)`; and a control switched off for good must say why, so
 //!   a dead button can't stand in for a placeholder.
+//! - **One drop-down** (rule 21): every picker is the kit's
+//!   (`widgets::field::dropdown` and its kin), never egui's own.
 
 use std::path::{Path, PathBuf};
 
@@ -92,28 +94,23 @@ fn colours_written(code: &str) -> usize {
 /// meter's green, a build's tag), shades or lights what is under it, or
 /// is a grey the design has no name for; each goes, or takes a token,
 /// when its screen is rebuilt to the design.
-const KEPT: [(&str, usize, &str); 11] = [
+const KEPT: [(&str, usize, &str); 10] = [
     (
         "atlas_view.rs",
-        3,
-        "under and over a picture: the grey behind it, its grid, a crop's yellow frame",
+        2,
+        "under and over a picture: the grey behind it, its grid",
     ),
     (
         "canvas_view.rs",
-        4,
-        "over a game's screen: a missing picture's grey, the dashed frame, code's yellow mark",
-    ),
-    (
-        "frames_view.rs",
         2,
-        "the playhead's blue and an event's light blue",
+        "over a game's screen: a missing picture's grey, the dashed frame",
     ),
+    ("frames_view.rs", 1, "an event's light blue"),
     (
         "game_panel.rs",
         1,
         "the shade behind a note over the running game",
     ),
-    ("graph_canvas.rs", 1, "the live state's blue"),
     (
         "graph_canvas_drawing.rs",
         3,
@@ -516,5 +513,24 @@ fn the_dead_control_rule_asks_for_a_reason_in_the_same_statement() {
     assert_eq!(
         dead_controls("ui.add_enabled(can_save, Button::new(\"Save\"));"),
         0
+    );
+}
+
+/// The second review pass's N-27: a few views still drew egui's own
+/// pickers, unlike every other drop-down in the editor.
+#[test]
+fn every_picker_is_the_kit_s_drop_down() {
+    let mut wrong = Vec::new();
+    for (path, text) in sources_of(&["editor", "app"]) {
+        if name_of(&path).ends_with("tests.rs") {
+            continue;
+        }
+        if code_of(&text).contains("egui::ComboBox") {
+            wrong.push(name_of(&path));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "Use widgets::field::dropdown (or dropdown_showing, dropdown_of_names) for a picker: {wrong:?}"
     );
 }

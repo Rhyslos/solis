@@ -25,8 +25,6 @@ pub(crate) const ZOOM_RANGE: (f32, f32) = (0.25, 2.5);
 const EDGE: f32 = 9.0;
 /// How far apart two arrows between the same boxes (one each way) run.
 const SIDE_BY_SIDE: f32 = 7.0;
-/// The glow of what's live (the game's state).
-pub(crate) const LIVE: Color32 = Color32::from_rgb(0x2f, 0x8f, 0xd0);
 /// A box's corner radius.
 const ROUND: f32 = 8.0;
 

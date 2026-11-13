@@ -1,6 +1,7 @@
 //! Nothing became unreachable when the menus went: every item the old
-//! menu bar had can still be done, by name, from the ribbon, a File page
-//! or the search (the plan's rule 1, `docs/plans/shared-1-ui-remake.md`).
+//! menu bar had can still be done, by name, from the ribbon, a File page,
+//! the area's tab or the search (the plan's rule 1,
+//! `docs/plans/shared-1-ui-remake.md`).
 //!
 //! [`MOVED`] is the old menu bar, item by item, as the plan's inventory
 //! lists it (part a.2): where each was, what it is called now, and where
@@ -21,7 +22,14 @@ enum Place {
     RibbonList(RibbonTab, &'static str, &'static str),
     /// In the File page's column, under these words.
     File(&'static str),
-    /// In the search alone (and by its key, where it has one).
+    /// In the list the **+** after the area's tab opens, under these
+    /// words.
+    AreaTabPlus(&'static str),
+    /// In the area's tab's right-click menu, under words starting with
+    /// these (its shortcut follows them).
+    AreaTabMenu(&'static str),
+    /// In the search (and by its key, where it has one); some are in a
+    /// panel's menu or on a File page too, which this table doesn't try.
     Search,
 }
 
@@ -42,14 +50,26 @@ const MOVED: [(&str, &str, Place); 43] = [
         "Recent projects",
         Place::File("Recent projects"),
     ),
-    ("File > New area", "New area", Place::Search),
-    ("File > Open area…", "Open area…", Place::Search),
+    (
+        "File > New area",
+        "New area",
+        Place::AreaTabPlus("New area"),
+    ),
+    (
+        "File > Open area…",
+        "Open area…",
+        Place::AreaTabPlus("Open area…"),
+    ),
     (
         "File > Save area",
         "Save area",
         Place::Ribbon(RibbonTab::Home),
     ),
-    ("File > Save area as…", "Save area as…", Place::Search),
+    (
+        "File > Save area as…",
+        "Save area as…",
+        Place::AreaTabMenu("Save as…"),
+    ),
     (
         "File > Import model…",
         "Import model…",
@@ -317,6 +337,36 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                     "{was}: {words:?} is in the list {opener:?} opens"
                 );
             }
+            Place::AreaTabPlus(words) => {
+                h.get_by_label("New or open an area").click();
+                h.run();
+                assert!(
+                    h.query_by_label(words).is_some(),
+                    "{was}: the area's + has {words:?}"
+                );
+            }
+            Place::AreaTabMenu(words) => {
+                let tab = h
+                    .get_all_by_label("Untitled area")
+                    .map(|node| node.rect())
+                    .find(|r| (r.height() - crate::tokens::size::DOC_TAB_H).abs() < 0.5)
+                    .expect("the area's tab");
+                h.hover_at(tab.center());
+                h.run();
+                for pressed in [true, false] {
+                    h.event(egui::Event::PointerButton {
+                        pos: tab.center(),
+                        button: egui::PointerButton::Secondary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    });
+                }
+                h.run();
+                assert!(
+                    h.query_by_label_contains(words).is_some(),
+                    "{was}: the area's tab's menu has {words:?}"
+                );
+            }
             Place::File(words) => {
                 h.get_by_label("File tab").click();
                 h.run();
@@ -402,7 +452,11 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
     };
     let mut with_keys = 0;
     for command in ShellCommand::ALL {
-        if command.keys().is_empty() {
+        // The 2D editors' keys act over their own tab, and are tried
+        // there (`key_owner_tests.rs`).
+        if command.keys().is_empty()
+            || matches!(command.place(), "Tile map" | "Picture" | "Animate")
+        {
             continue;
         }
         with_keys += 1;

@@ -50,6 +50,51 @@ fn the_best_match_comes_first_and_actions_before_entities() {
     assert!(all.len() <= MAX_SHOWN);
 }
 
+/// The panels the search finds by name, with what's open in `w`.
+fn panels_found(w: &Workbench) -> Vec<Panel> {
+    w.search_items()
+        .into_iter()
+        .filter_map(|item| match item.target {
+            SearchTarget::Panel(panel) => Some(panel),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn every_panel_with_a_place_is_found_by_name() {
+    // The review (N-15): only ten panels were searched, so "Sound events",
+    // "Frames" or "Canvas" found nothing.
+    let check = |w: &Workbench| {
+        let found = panels_found(w);
+        for panel in Panel::ALL.into_iter().chain(Panel::OPEN_WITH_A_FILE) {
+            let has_a_place = crate::shell::workspaces::tab_for(panel, w.open_now()).is_some();
+            assert_eq!(found.contains(&panel), has_a_place, "{panel:?}");
+        }
+    };
+    let w = fresh();
+    check(&w);
+    let items = w.search_items();
+    assert!(
+        results(&items, "sound events")
+            .iter()
+            .any(|i| i.target == SearchTarget::Panel(Panel::SoundEvents))
+    );
+    // A file's panels come with it.
+    let (mut w, _, _) = crate::workbench_frames::tests::with_clips();
+    assert!(!panels_found(&w).contains(&Panel::Frames), "nothing open");
+    let mut actions = Vec::new();
+    w.library_request(
+        crate::library::LibraryRequest::Open(
+            crate::library::LibraryKind::SpriteClips,
+            "walker.solframes".into(),
+        ),
+        &mut actions,
+    );
+    check(&w);
+    assert!(panels_found(&w).contains(&Panel::Frames));
+}
+
 #[test]
 fn actions_that_cant_be_done_are_left_out() {
     let mut w = fresh();

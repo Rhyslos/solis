@@ -120,9 +120,13 @@ pub fn pictures_named(files: &[(String, String)]) -> Vec<PictureUse> {
     found
 }
 
-/// The file only screens fetch (decision 0087): `Ui`, and a reading
-/// method on entities for each component.
-pub const READERS: &str = "solis/screen.lst";
+/// The module only screens fetch (decision 0087), `solis/screen`: `Ui`,
+/// and a reading method on entities for each component. In the engine's
+/// folder ([`crate::describe::in_engine_folder`]), as the screen editor
+/// writes it into a screen's `fetch` lines.
+pub fn readers_module() -> String {
+    format!("{}/screen", area::lust_data::ENGINE_FOLDER)
+}
 
 /// The reading method for a component called `name` (`Health` gives
 /// `health`).
@@ -251,7 +255,7 @@ pub fn readers_file(
         .map(|n| n.name)
         .collect();
     let mut text = String::from(
-        "-- Made by Solis for its screens (decision 0087): what a screen can read. Only\n\
+        "-- Made for the screens (decision 0087): what a screen can read. Only\n\
          -- screens fetch it.\n\n",
     );
     let mut readers = Vec::new();
@@ -377,7 +381,7 @@ pub fn find(files: &[(String, String)]) -> (Vec<(String, String)>, Vec<CodeProbl
 pub fn events_named(files: &[(String, String)]) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = Vec::new();
     for (path, text) in files {
-        if path.starts_with("solis/") || !path.ends_with(".lst") {
+        if crate::describe::in_engine_folder(path) || !path.ends_with(".lst") {
             continue;
         }
         for line in text.lines() {
@@ -403,10 +407,10 @@ pub fn events_named(files: &[(String, String)]) -> Vec<(String, String)> {
 
 /// The entry that opens every screen.
 pub fn entry(screens: &[(String, String)]) -> String {
-    let mut text = String::from("-- Made by Solis for its screens: never saved.\n");
+    let mut text = String::from("-- Made for the screens: never saved.\n");
     // The readers' file always, so the components it describes are known
     // to Lust even when no screen fetches it.
-    text.push_str("fetch \"solis/screen\":Ui;\n");
+    text.push_str(&format!("fetch \"{}\":Ui;\n", readers_module()));
     for (name, path) in screens {
         let module = path.strip_suffix(".lst").unwrap_or(path);
         text.push_str(&format!("fetch \"{module}\":{name};\n"));
@@ -437,16 +441,19 @@ pub fn compile(
         };
     }
     let (readers_text, readers, notes) = readers_file(components, described);
+    let readers_path = format!("{}.lst", readers_module());
     let mut with_entry = files.to_vec();
-    with_entry.retain(|(p, _)| p != ENTRY && p != READERS);
+    with_entry.retain(|(p, _)| p != ENTRY && *p != readers_path);
     with_entry.push((ENTRY.to_string(), entry(&screens)));
-    with_entry.push((READERS.to_string(), readers_text));
-    // The readers' file is the engine's, like solis/'s others.
+    with_entry.push((readers_path, readers_text));
+    // The readers' file is the engine's, like the engine folder's others.
     let mut engine = lust::Engine {
         folders: engine.folders.clone(),
     };
-    if !engine.folders.iter().any(|f| f == "solis") {
-        engine.folders.push("solis".into());
+    for folder in crate::describe::engine_folders() {
+        if !engine.folders.contains(&folder) {
+            engine.folders.push(folder);
+        }
     }
     let sources: Vec<(String, String)> = files
         .iter()

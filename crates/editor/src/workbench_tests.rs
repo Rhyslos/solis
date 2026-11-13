@@ -2381,7 +2381,7 @@ fn a_sound_event_shows_its_takes_and_settings_and_plays() {
         "in the Library and in the takes"
     );
     let _ = h.get_by_label_contains("\"reverb\" isn't a sound event setting");
-    let _ = h.get_by_label("Bus");
+    let _ = h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Bus");
     h.get_by_label("Play the sound event").click();
     h.run();
     assert!(

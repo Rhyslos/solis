@@ -7,6 +7,7 @@
 //! (`workbench_tileset.rs`), from here too.
 
 use crate::console::LogLevel;
+use crate::file_history::FileHistory;
 use crate::own_files::OwnFile;
 use crate::sprite_sheets::MapFileState;
 use crate::workbench::Workbench;
@@ -28,8 +29,8 @@ const MAX_UNDO_BYTES: u64 = 256 << 20;
 pub(crate) struct MapEdits {
     /// The map file's path, while the tab shows one.
     pub(crate) path: Option<String>,
-    undo: Vec<(String, TileMap)>,
-    redo: Vec<(String, TileMap)>,
+    /// Each step: a map file's path, and the map as it was.
+    pub(crate) history: FileHistory<(String, TileMap)>,
     /// The cell under the pointer in the viewport (map, cell), for the
     /// tab's cell inspector.
     pub(crate) hovered: Option<(EntityId, [u32; 2])>,
@@ -52,8 +53,7 @@ impl Default for MapEdits {
     fn default() -> Self {
         Self {
             path: None,
-            undo: Vec::new(),
-            redo: Vec::new(),
+            history: FileHistory::new(MAX_UNDO),
             hovered: None,
             shown_values: Vec::new(),
             chunks: false,
@@ -69,20 +69,14 @@ impl MapEdits {
     /// Keeps `map` as it was before a change to the file at `path`, as an
     /// undo step (redo steps are let go).
     pub(crate) fn push_undo(&mut self, path: String, map: TileMap) {
-        self.undo.push((path, map));
-        if self.undo.len() > MAX_UNDO {
-            self.undo.remove(0);
-        }
+        self.history.push((path, map));
         // Each step keeps its own copy of what it changed (a layer, at
         // least): big maps keep fewer steps, within MAX_UNDO_BYTES (the
         // stability review).
         let step = |m: &TileMap| u64::from(m.size()[0]) * u64::from(m.size()[1]);
-        while self.undo.len() > 1
-            && self.undo.iter().map(|(_, m)| step(m)).sum::<u64>() > MAX_UNDO_BYTES
-        {
-            self.undo.remove(0);
-        }
-        self.redo.clear();
+        self.history.drop_oldest_while(|steps| {
+            steps.iter().map(|(_, m)| step(m)).sum::<u64>() > MAX_UNDO_BYTES
+        });
     }
 }
 
@@ -280,37 +274,24 @@ impl Workbench {
 
     /// Undoes (or redoes) the last change made in the Map tab.
     pub(crate) fn map_undo(&mut self, redo: bool, undo: bool) {
-        let popped = if redo {
-            self.open.map_edits.redo.pop()
-        } else if undo {
-            self.open.map_edits.undo.pop()
-        } else {
-            None
-        };
-        let Some((path, map)) = popped else {
+        if !redo && !undo {
+            return;
+        }
+        let Some((path, map)) = self.open.map_edits.history.take(redo) else {
             return;
         };
         let now = self.map_file(&path);
         if let Err(why) = self.save_tile_map(&path, map.clone()) {
             // The step stays where it was: nothing was undone.
-            let edits = &mut self.open.map_edits;
-            let back = if redo {
-                &mut edits.redo
-            } else {
-                &mut edits.undo
-            };
-            back.push((path.clone(), map));
+            self.open.map_edits.history.put(redo, (path.clone(), map));
             self.log(LogLevel::Warning, outgrown_note(&path, &why));
             return;
         }
         if let Some(now) = now {
-            let edits = &mut self.open.map_edits;
-            let other = if redo {
-                &mut edits.undo
-            } else {
-                &mut edits.redo
-            };
-            other.push((path, (*now).clone()));
+            self.open
+                .map_edits
+                .history
+                .put(!redo, (path, (*now).clone()));
         }
     }
 

@@ -8,9 +8,9 @@
 //! | Keys | Acted on by |
 //! | --- | --- |
 //! | Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z | The owner's own undo steps |
-//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The area where [`KeyOwner::is_area`]: on a tab whose groups hold the 3D or 2D view, or over a panel that edits the area (the Area list, Properties); over a tab with a file of its own, that tab alone, for the keys it has. Over the Library or the Assets column, F2 and Delete are the picked file's |
+//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The area where [`KeyOwner::is_area`]: on a tab whose groups hold the 3D or 2D view, or over a panel that edits the area (the Area list, Properties showing the area's); over a tab with a file of its own (Properties too, while it shows that file's settings), that tab alone, for the keys it has. Over the Library or the Assets column, F2 and Delete are the picked file's |
 //! | Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Space (the search), `'` (the Console) | The editor, where [`KeyOwner::takes_shortcuts`] (over the Frames tab, Space plays the clip instead) |
-//! | Ctrl+Space (the Library) | The editor, typing or not, where [`KeyOwner::is_editor`] |
+//! | Ctrl+Space (folds the shelf) | The editor, typing or not, where [`KeyOwner::is_editor`] |
 
 use crate::panel::Panel;
 use crate::shell::workspaces;
@@ -66,7 +66,8 @@ pub(crate) enum KeyOwner {
     /// The UI editor's Canvas: the screen's undo, its pieces' keys and the
     /// drawing tools' keys.
     Canvas,
-    /// The UI editor's Elements: the screen's undo, Delete and Ctrl+D.
+    /// The UI editor's Elements (and its Pictures, and Properties showing
+    /// the screen): the screen's undo, Delete and Ctrl+D.
     Elements,
 }
 
@@ -129,6 +130,14 @@ impl Workbench {
             }
             Some(Panel::Tileset | Panel::Terrains) if open.tilesets.tab().is_some() => {
                 Some(KeyOwner::Tileset)
+            }
+            // Properties showing the screen's settings, as Elements and
+            // Pictures beside it on the Screen shelf tab (the second
+            // review pass's N-28).
+            Some(Panel::Properties)
+                if open.screen_doc.is_some() && crate::panels::shows_the_screen(&self.in_front) =>
+            {
+                Some(KeyOwner::Elements)
             }
             Some(Panel::Properties) if open.tilesets.in_properties.is_some() => {
                 Some(KeyOwner::TilesetProperties)

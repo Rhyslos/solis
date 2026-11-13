@@ -68,8 +68,8 @@ pub(crate) struct ScreenDoc {
     pub(crate) text_percent: u16,
     /// The screen as the canvas last drew it, and what from.
     pub(crate) drawn: Option<crate::canvas_view::KeptDrawing>,
-    undo: Vec<String>,
-    redo: Vec<String>,
+    /// The text before each change, and after each undone.
+    history: crate::file_history::FileHistory<String>,
     /// The file's texts that are Solis's own, oldest first: the one it was
     /// opened with (or last took in from disk), and each one saved since.
     /// The code is checked on a worker, so the text a check was made from
@@ -201,8 +201,7 @@ impl ScreenDoc {
             redraw: false,
             text_percent: 100,
             drawn: None,
-            undo: Vec::new(),
-            redo: Vec::new(),
+            history: crate::file_history::FileHistory::new(MAX_UNDO),
         }
     }
 
@@ -236,12 +235,10 @@ impl ScreenDoc {
         if read(&text, &self.screen).is_err() && self.source.is_ok() {
             return false;
         }
-        let before = std::mem::replace(&mut self.text, text);
-        self.undo.push(before);
-        if self.undo.len() > MAX_UNDO {
-            self.undo.remove(0);
-        }
-        self.redo.clear();
+        self.history.change(&mut self.text, |now| {
+            *now = text;
+            true
+        });
         self.read_again();
         true
     }
@@ -270,10 +267,9 @@ impl ScreenDoc {
 
     /// Undoes the last change; whether there was one.
     pub(crate) fn undo(&mut self) -> bool {
-        let Some(before) = self.undo.pop() else {
+        if !self.history.undo(&mut self.text) {
             return false;
-        };
-        self.redo.push(std::mem::replace(&mut self.text, before));
+        }
         self.read_again();
         self.forget_places();
         self.behind = true;
@@ -282,10 +278,9 @@ impl ScreenDoc {
 
     /// Redoes the last change undone; whether there was one.
     pub(crate) fn redo(&mut self) -> bool {
-        let Some(after) = self.redo.pop() else {
+        if !self.history.redo(&mut self.text) {
             return false;
-        };
-        self.undo.push(std::mem::replace(&mut self.text, after));
+        }
         self.read_again();
         self.forget_places();
         self.behind = true;

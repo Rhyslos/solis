@@ -56,10 +56,11 @@ pub enum WorkbenchAction {
     /// Place the project's asset where the camera looks (a double-click in
     /// the Library).
     PlaceAsset(AssetId),
-    /// Start a new area (New area (in the search), Ctrl+N): the app calls
+    /// Start a new area (New area, after the area's tab, Ctrl+N): the app calls
     /// [`Workbench::new_area`](crate::Workbench::new_area).
     NewArea,
-    /// Ask which area file to open (Open area… (in the search), Ctrl+O).
+    /// Ask which area file to open (Open area…, after the area's tab,
+    /// Ctrl+O).
     OpenArea,
     /// Save the area to its file, or ask where if it has none (Ctrl+S).
     SaveArea,

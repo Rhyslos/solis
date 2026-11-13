@@ -27,8 +27,9 @@ pub(crate) struct Readable {
     pub(crate) component: String,
     /// The method that reads it on an entity (`health`).
     pub(crate) reader: String,
-    /// The file it's fetched from (`main`, or `solis/screen` for Solis's
-    /// own and other languages' components).
+    /// The file it's fetched from (`main`, or the engine's
+    /// `script::screens::readers_module`, `solis/screen`, for Solis's own
+    /// and other languages' components).
     pub(crate) module: String,
     /// Its fields: name, kind, and its starting number when it's one.
     pub(crate) fields: Vec<(String, Kind, f64)>,
@@ -82,7 +83,7 @@ pub(crate) fn readable(
                 .get(component)
                 .and_then(|(file, _)| file.strip_suffix(".lst"))
                 .map(str::to_string)
-                .unwrap_or_else(|| "solis/screen".into());
+                .unwrap_or_else(script::screens::readers_module);
             let fields = schema
                 .fields
                 .iter()
@@ -341,7 +342,7 @@ impl ScreenDoc {
         if r.module != module_of(&self.path) {
             text = fetched(&text, &r.module, &r.component);
         }
-        text = fetched(&text, "solis/screen", "Ui");
+        text = fetched(&text, &script::screens::readers_module(), "Ui");
         let (hidden, locked) = (self.hidden.clone(), self.locked.clone());
         let changed = self.change(text);
         if changed {
@@ -408,7 +409,7 @@ impl ScreenDoc {
         if module_of(file) != module_of(&self.path) {
             text = fetched(&text, module_of(file), event);
         }
-        text = fetched(&text, "solis/screen", "Ui");
+        text = fetched(&text, &script::screens::readers_module(), "Ui");
         let changed = self.change(text);
         self.behind |= changed;
         changed

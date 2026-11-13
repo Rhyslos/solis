@@ -293,22 +293,11 @@ fn layers(ui: &mut Ui, m: &MapUi<'_>, asked: &mut Vec<MapRequest>) {
                     if let Some(name) = name_field(ui, ("layer", layer.id), &layer.name, 70.0) {
                         asked.push(MapRequest::SetLayer(i, name, layer.over));
                     }
-                    egui::ComboBox::from_id_salt(("over", layer.id))
-                        .selected_text(if layer.over {
-                            "over sprites"
-                        } else {
-                            "under sprites"
-                        })
-                        .width(92.0)
-                        .show_ui(ui, |ui| {
-                            for (over, text) in [(false, "under sprites"), (true, "over sprites")] {
-                                if ui.selectable_label(layer.over == over, text).clicked()
-                                    && layer.over != over
-                                {
-                                    asked.push(MapRequest::SetLayer(i, layer.name.clone(), over));
-                                }
-                            }
-                        });
+                    let mut over = layer.over;
+                    let choices = [(false, "under sprites"), (true, "over sprites")];
+                    if crate::widgets::field::dropdown(ui, "Drawn", &mut over, &choices, 92.0) {
+                        asked.push(MapRequest::SetLayer(i, layer.name.clone(), over));
+                    }
                     let shown = !m.hidden.contains(&layer.id);
                     let eye = ui
                         .add(egui::Button::new(if shown { "◉" } else { "○" }).frame(false))
@@ -494,21 +483,20 @@ fn values(ui: &mut Ui, map: &TileMap, asked: &mut Vec<MapRequest>) {
             if let Some(name) = name_field(ui, ("value", v.id), &v.name, 70.0) {
                 asked.push(MapRequest::RenameValue(i, name));
             }
-            egui::ComboBox::from_id_salt(("kind", v.id))
-                .selected_text(v.kind.word())
-                .width(70.0)
-                .show_ui(ui, |ui| {
-                    for kind in [
-                        ValueKind::Number,
-                        ValueKind::Switch,
-                        ValueKind::Choice(Vec::new()),
-                    ] {
-                        let same = std::mem::discriminant(&kind) == std::mem::discriminant(&v.kind);
-                        if ui.selectable_label(same, kind.word()).clicked() && !same {
-                            asked.push(MapRequest::SetValueKind(i, kind));
-                        }
-                    }
-                });
+            let kinds = [
+                ValueKind::Number,
+                ValueKind::Switch,
+                ValueKind::Choice(Vec::new()),
+            ];
+            let words: Vec<&str> = kinds.iter().map(ValueKind::word).collect();
+            let list = crate::widgets::field::List {
+                shown: v.kind.word(),
+                note: None,
+                width: 70.0,
+            };
+            if let Some(k) = crate::widgets::field::dropdown_of_names(ui, "Kind", &words, list) {
+                asked.push(MapRequest::SetValueKind(i, kinds[k].clone()));
+            }
             if let ValueKind::Choice(options) = &v.kind {
                 let now = options.join(", ");
                 let id = ui.id().with(("options", v.id));

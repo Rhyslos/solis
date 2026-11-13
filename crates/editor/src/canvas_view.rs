@@ -468,7 +468,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
             painter.rect_stroke(
                 *r,
                 0.0,
-                Stroke::new(1.0, Color32::from_rgb(255, 216, 77)),
+                Stroke::new(1.0, crate::tokens::MADE_BY_CODE),
                 egui::StrokeKind::Outside,
             );
             badge(&painter, *r, "code");
@@ -603,7 +603,7 @@ fn badge(painter: &egui::Painter, r: Rect, text: &str) {
         Color32::BLACK,
     );
     let bg = Rect::from_min_size(at, galley.size() + Vec2::new(8.0, 2.0));
-    painter.rect_filled(bg, 3.0, Color32::from_rgb(255, 216, 77));
+    painter.rect_filled(bg, 3.0, crate::tokens::MADE_BY_CODE);
     painter.galley(at + Vec2::new(4.0, 1.0), galley, Color32::BLACK);
 }
 

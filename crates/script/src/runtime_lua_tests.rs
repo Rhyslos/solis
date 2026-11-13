@@ -16,7 +16,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
         files.push(("main.lst".into(), main.to_string()));
         match lust::to_lua_with(
             &lust::Engine {
-                folders: crate::describe::engine_folders(&files),
+                folders: crate::describe::engine_folders(),
             },
             "main.lst",
             &files,
@@ -410,7 +410,7 @@ fn a_component_drives_its_animator_through_the_animator_s_own_file() {
     ));
     let chunk = match lust::to_lua_with(
         &lust::Engine {
-            folders: crate::describe::engine_folders(&files),
+            folders: crate::describe::engine_folders(),
         },
         "main.lst",
         &files,
@@ -544,7 +544,7 @@ fn a_component_changes_a_tile_map_through_the_map_s_own_file() {
     ));
     let chunk = match lust::to_lua_with(
         &lust::Engine {
-            folders: crate::describe::engine_folders(&files),
+            folders: crate::describe::engine_folders(),
         },
         "main.lst",
         &files,

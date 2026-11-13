@@ -598,3 +598,128 @@ fn a_tab_has_the_keys_only_while_its_file_is_open() {
     w.game_input = true;
     assert_eq!(w.key_owner(&ctx), KeyOwner::Game);
 }
+
+/// What the 2D editors' commands change: the painter's tool, what the map
+/// shows and the copy held; the crops; the clip's frames; the states.
+fn editors_now(w: &Workbench) -> String {
+    let paint = &w.viewport.tile_overlay.paint;
+    format!(
+        "{:?} {} {:?} {:?} {:?} {:?}",
+        paint.tool,
+        paint.meaning,
+        paint.stamp,
+        w.open.atlas_editor.as_ref().map(|e| e.atlas.crops.len()),
+        w.open.frames_editor.as_ref().map(|e| e.file.clips.clone()),
+        w.open.animator_editor.as_ref().map(|e| e.file.states.len()),
+    )
+}
+
+/// Readies `w` for `command`: a copy held to turn, the map showing the
+/// other way, two crops with one picked, a frame picked, a state picked.
+fn ready_for(w: &mut Workbench, command: crate::shell::ShellCommand) {
+    use crate::shell::ShellCommand as C;
+    match command {
+        C::TurnCopy(_) => {
+            let paint = &mut w.viewport.tile_overlay.paint;
+            paint.tool = Some(crate::tile_paint::PaintTool::Brush);
+            let cell = |code| tiles::paint::StampCell { code, exact: None };
+            paint.stamp = Some(tiles::paint::Stamp {
+                // One corner unlike the rest: every turn shows.
+                size: [2, 2],
+                cells: vec![cell(b'.'), cell(b'~'), cell(b'~'), cell(b'~')],
+            });
+        }
+        C::MapMeaning(meaning) => w.viewport.tile_overlay.paint.meaning = !meaning,
+        C::CropDelete => {
+            let editor = w.open.atlas_editor.as_mut().expect("open");
+            assert!(editor.add([0, 0, 16, 16]) && editor.add([16, 0, 16, 16]));
+            editor.pick(Some(0));
+        }
+        C::FramesTakeOut => w.open.frames_editor.as_mut().expect("open").selected = vec![0],
+        C::StateDelete => {
+            let editor = w.open.animator_editor.as_mut().expect("open");
+            let idle = editor.file.states[0].id;
+            editor.picked = crate::animator_editor::Picked::States([Some(idle)].into());
+        }
+        _ => {}
+    }
+}
+
+/// N-21: the search and the ribbon's hover texts showed no key for the
+/// painting tools, the copy's turns, Map as and the 2D editors' Delete.
+/// The key each now shows does what its command does, over its tab.
+#[test]
+fn the_2d_editors_shown_keys_do_what_their_commands_do() {
+    use crate::shell::ShellCommand as C;
+    use crate::tile_paint::{PaintTool, Turn};
+    let mut cases: Vec<(Panel, C)> = PaintTool::ALL
+        .map(|tool| (Panel::Map, C::PaintWith(tool)))
+        .into_iter()
+        .chain(Turn::ALL.map(|turn| (Panel::Map, C::TurnCopy(turn))))
+        .collect();
+    cases.extend([
+        (Panel::Map, C::MapMeaning(false)),
+        (Panel::Map, C::MapMeaning(true)),
+        (Panel::AtlasCrop, C::CropDelete),
+        (Panel::Frames, C::FramesTakeOut),
+        (Panel::Animator, C::StateDelete),
+    ]);
+    for (panel, command) in cases {
+        let key = egui::Key::from_name(command.keys())
+            .unwrap_or_else(|| panic!("{command:?} shows a key: {:?}", command.keys()));
+        let readied = || {
+            let mut h = pointer_over(panel);
+            ready_for(&mut h.state_mut().0, command);
+            h.run();
+            h
+        };
+        let mut by_key = readied();
+        let before = editors_now(&by_key.state().0);
+        by_key.key_press(key);
+        by_key.run();
+        let mut by_command = readied();
+        let ctx = by_command.ctx.clone();
+        let (w, picker) = by_command.state_mut();
+        assert_eq!(command.why_not(w), None, "{command:?}");
+        command.run(w, &ctx, &mut picker.actions);
+        by_command.run();
+        let now = editors_now(&by_key.state().0);
+        assert_ne!(now, before, "{command:?}: its key did something");
+        assert_eq!(now, editors_now(&by_command.state().0), "{command:?}");
+    }
+}
+
+/// N-28: on the UI tab, Properties shows the screen's settings, but the
+/// keys over it were still the area's: a Delete there deleted the selected
+/// entity, which isn't on screen. They're the screen's now, as over
+/// Elements and Pictures beside it.
+#[test]
+fn over_properties_showing_the_screen_the_keys_are_the_screen_s() {
+    use crate::key_owner::KeyOwner;
+    let (mut w, _) = farm();
+    open_the_screen(&mut w);
+    let mut h = rest_over(harness(w), Panel::Properties);
+    let ctx = h.ctx.clone();
+    assert_eq!(h.state().0.key_owner(&ctx), KeyOwner::Elements);
+    h.state_mut()
+        .0
+        .open
+        .screen_doc
+        .as_mut()
+        .expect("open")
+        .picked = vec![vec![0, 0, 1]];
+    h.run();
+    let before = area_now(&h.state().0);
+    h.key_press(egui::Key::Delete);
+    h.run();
+    assert_eq!(area_now(&h.state().0), before, "the area is as it was");
+    assert!(!screen_text(&h).contains("Resume"), "the piece went");
+    // On Home, Properties shows the area's again, and the keys are its.
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);
+    let mut h = rest_over(h, Panel::Properties);
+    let ctx = h.ctx.clone();
+    assert_eq!(h.state().0.key_owner(&ctx), KeyOwner::Area);
+    h.key_press(egui::Key::Delete);
+    h.run();
+    assert_ne!(area_now(&h.state().0), before, "the Crate went");
+}

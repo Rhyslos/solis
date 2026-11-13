@@ -277,7 +277,7 @@ fn parameter_value(
             p.circle_stroke(c, 18.0, egui::Stroke::new(1.0, theme::button_border()));
             p.line_segment(
                 [c, c + vec2(v[0], -v[1]) * 16.0],
-                egui::Stroke::new(2.0, crate::graph_canvas::LIVE),
+                egui::Stroke::new(2.0, crate::interface_look::accent_fill()),
             );
             if (r.clicked() || r.dragged())
                 && let Some(at) = r.interact_pointer_pos()
@@ -361,11 +361,7 @@ pub(crate) fn preview(ui: &mut Ui, a: &mut AnimatorUi<'_>) {
             if let Some(m) = frame {
                 caption.push_str(&format!(" · frame {}", m.index + 1));
             }
-            ui.label(
-                RichText::new(caption)
-                    .small()
-                    .color(crate::graph_canvas::LIVE),
-            );
+            ui.label(RichText::new(caption).small().color(a.accent));
             if ui.small_button("Start again").clicked() {
                 a.editor.restart_preview();
             }
@@ -589,29 +585,29 @@ fn hint(ui: &mut Ui, text: &str) {
 }
 
 /// A clip picker of the sheet's clips. Returns the clip chosen.
-fn clip_choice(
-    ui: &mut Ui,
-    salt: impl std::hash::Hash + std::fmt::Debug,
-    current: &str,
-    clips: Option<&ClipSet>,
-) -> Option<String> {
-    let mut chosen = None;
+fn clip_choice(ui: &mut Ui, name: &str, current: &str, clips: Option<&ClipSet>) -> Option<String> {
     let shown = if current.is_empty() { "—" } else { current };
-    egui::ComboBox::from_id_salt(salt)
-        .selected_text(shown)
-        .show_ui(ui, |ui| {
-            if ui.selectable_label(current.is_empty(), "—").clicked() {
-                chosen = Some(String::new());
-            }
-            for c in clips.map_or(&[][..], |c| &c.clips) {
-                if ui.selectable_label(c.name == current, &c.name).clicked() {
-                    chosen = Some(c.name.clone());
-                }
-            }
-            if clips.is_none() {
-                ui.label(RichText::new("Choose the animator's sprite sheet first (click empty space in the graph).").color(theme::text_weak()));
-            }
-        });
+    let mut names = vec!["—"];
+    names.extend(
+        clips
+            .map_or(&[][..], |c| &c.clips)
+            .iter()
+            .map(|c| c.name.as_str()),
+    );
+    let list = crate::widgets::field::List {
+        shown,
+        note: clips.is_none().then_some(
+            "Choose the animator's sprite sheet first (click empty space in the graph).",
+        ),
+        width: ui.available_width(),
+    };
+    let chosen = crate::widgets::field::dropdown_of_names(ui, name, &names, list).map(|i| {
+        if i == 0 {
+            String::new()
+        } else {
+            names[i].to_owned()
+        }
+    });
     if !current.is_empty() && clips.is_some_and(|c| c.get(current).is_none()) {
         ui.label(RichText::new("missing").color(theme::WARNING))
             .on_hover_text(format!("The sprite sheet has no clip called \"{current}\""));
@@ -650,24 +646,12 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
         "Plays",
         "One clip, or a clip for each direction: the nearest to a direction parameter plays, keeping its place in the step when it turns.",
         |ui| {
-            egui::ComboBox::from_id_salt(("plays", state.id))
-                .selected_text(if by_direction {
-                    "a clip by facing"
-                } else {
-                    "one clip"
-                })
-                .show_ui(ui, |ui| {
-                    if ui.selectable_label(!by_direction, "one clip").clicked() && by_direction {
-                        changed |= editor.set_by_direction(state.id, false);
-                    }
-                    if ui
-                        .selectable_label(by_direction, "a clip by facing")
-                        .clicked()
-                        && !by_direction
-                    {
-                        changed |= editor.set_by_direction(state.id, true);
-                    }
-                });
+            let mut by = by_direction;
+            let choices = [(false, "one clip"), (true, "a clip by facing")];
+            let width = ui.available_width();
+            if crate::widgets::field::dropdown(ui, "Plays", &mut by, &choices, width) {
+                changed |= editor.set_by_direction(state.id, by);
+            }
         },
     );
     match &state.plays {
@@ -677,7 +661,7 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
                 "Clip",
                 "The clip it plays, from the animator's sprite sheet.",
                 |ui| {
-                    if let Some(new) = clip_choice(ui, ("clip", state.id), c, clips.as_ref()) {
+                    if let Some(new) = clip_choice(ui, "Clip", c, clips.as_ref()) {
                         changed |= editor.set_clip(state.id, &new);
                     }
                 },
@@ -700,15 +684,17 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
                     "Facing by",
                     "The direction parameter that picks the clip.",
                     |ui| {
-                        egui::ComboBox::from_id_salt(("by", state.id))
-                            .selected_text(by.as_str())
-                            .show_ui(ui, |ui| {
-                                for d in &directions {
-                                    if ui.selectable_label(d == by, d).clicked() {
-                                        changed |= editor.set_direction_by(state.id, d);
-                                    }
-                                }
-                            });
+                        let names: Vec<&str> = directions.iter().map(String::as_str).collect();
+                        let list = crate::widgets::field::List {
+                            shown: by,
+                            note: None,
+                            width: ui.available_width(),
+                        };
+                        if let Some(i) =
+                            crate::widgets::field::dropdown_of_names(ui, "Facing by", &names, list)
+                        {
+                            changed |= editor.set_direction_by(state.id, names[i]);
+                        }
                     },
                 );
             }
@@ -719,8 +705,7 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
             );
             for (facing, clip) in by_clips {
                 crate::inspector::row(ui, &facing_text(*facing), "", |ui| {
-                    if let Some(new) =
-                        clip_choice(ui, ("dir", state.id, facing.word()), clip, clips.as_ref())
+                    if let Some(new) = clip_choice(ui, &facing_text(*facing), clip, clips.as_ref())
                     {
                         changed |= editor.set_direction_clip(state.id, *facing, &new);
                     }
@@ -794,21 +779,17 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
             } else {
                 state.speed_by.as_str()
             };
-            egui::ComboBox::from_id_salt(("speed by", state.id))
-                .selected_text(shown)
-                .show_ui(ui, |ui| {
-                    if ui
-                        .selectable_label(state.speed_by.is_empty(), "—")
-                        .clicked()
-                    {
-                        changed |= editor.set_speed_by(state.id, "");
-                    }
-                    for n in &numbers {
-                        if ui.selectable_label(*n == state.speed_by, n).clicked() {
-                            changed |= editor.set_speed_by(state.id, n);
-                        }
-                    }
-                });
+            let mut names = vec!["—"];
+            names.extend(numbers.iter().map(String::as_str));
+            let list = crate::widgets::field::List {
+                shown,
+                note: None,
+                width: ui.available_width(),
+            };
+            if let Some(i) = crate::widgets::field::dropdown_of_names(ui, "Speed by", &names, list)
+            {
+                changed |= editor.set_speed_by(state.id, if i == 0 { "" } else { names[i] });
+            }
         },
     );
     let starts = editor.file.entry_state().is_some_and(|e| e.id == state.id);
@@ -841,61 +822,59 @@ fn condition_row(
 ) -> Option<Condition> {
     let mut out = None;
     let current = c.parameter().unwrap_or(animation::animator_file::FINISHED);
-    egui::ComboBox::from_id_salt(("cond param", salt.0, salt.1))
-        .selected_text(current)
-        .width(90.0)
-        .show_ui(ui, |ui| {
-            for p in params
-                .iter()
-                .filter(|p| !matches!(p.kind, ParameterKind::Direction(_)))
-            {
-                if ui.selectable_label(p.name == current, &p.name).clicked() && p.name != current {
-                    out = Some(match p.kind {
-                        ParameterKind::Number(_) => Condition::Above(p.name.clone(), 0.5),
-                        _ => Condition::Is(p.name.clone()),
-                    });
-                }
-            }
-            if ui
-                .selectable_label(matches!(c, Condition::Finished), "finished")
-                .on_hover_text("The state's clip has played all its times")
-                .clicked()
-            {
-                out = Some(Condition::Finished);
-            }
+    // The parameters a condition can test, then "finished": the state's
+    // clip has played all its times.
+    let testable: Vec<&animation::Parameter> = params
+        .iter()
+        .filter(|p| !matches!(p.kind, ParameterKind::Direction(_)))
+        .collect();
+    let mut names: Vec<&str> = testable.iter().map(|p| p.name.as_str()).collect();
+    names.push("finished");
+    let shown = if matches!(c, Condition::Finished) {
+        "finished"
+    } else {
+        current
+    };
+    let list = crate::widgets::field::List {
+        shown,
+        note: None,
+        width: 90.0,
+    };
+    if let Some(i) = crate::widgets::field::dropdown_of_names(ui, "Tests", &names, list) {
+        out = Some(match testable.get(i).map(|p| (p.kind, &p.name)) {
+            Some((ParameterKind::Number(_), name)) => Condition::Above(name.clone(), 0.5),
+            Some((_, name)) => Condition::Is(name.clone()),
+            None => Condition::Finished,
         });
+    }
     let kind = params.iter().find(|p| p.name == current).map(|p| p.kind);
     match (c, kind) {
         (Condition::Is(n) | Condition::Not(n), Some(ParameterKind::Switch(_))) => {
             let on = matches!(c, Condition::Is(_));
-            egui::ComboBox::from_id_salt(("cond on", salt.0, salt.1))
-                .selected_text(if on { "is on" } else { "is off" })
-                .width(60.0)
-                .show_ui(ui, |ui| {
-                    if ui.selectable_label(on, "is on").clicked() && !on {
-                        out = Some(Condition::Is(n.clone()));
-                    }
-                    if ui.selectable_label(!on, "is off").clicked() && on {
-                        out = Some(Condition::Not(n.clone()));
-                    }
+            let mut is_on = on;
+            let choices = [(true, "is on"), (false, "is off")];
+            if crate::widgets::field::dropdown(ui, "Is", &mut is_on, &choices, 60.0) {
+                out = Some(if is_on {
+                    Condition::Is(n.clone())
+                } else {
+                    Condition::Not(n.clone())
                 });
+            }
         }
         (Condition::Is(_), Some(ParameterKind::Trigger)) => {
             ui.label(RichText::new("fired").color(theme::text_weak()));
         }
         (Condition::Above(n, v) | Condition::Below(n, v), Some(ParameterKind::Number(_))) => {
             let above = matches!(c, Condition::Above(..));
-            egui::ComboBox::from_id_salt(("cond cmp", salt.0, salt.1))
-                .selected_text(if above { ">" } else { "<" })
-                .width(36.0)
-                .show_ui(ui, |ui| {
-                    if ui.selectable_label(above, ">").clicked() && !above {
-                        out = Some(Condition::Above(n.clone(), *v));
-                    }
-                    if ui.selectable_label(!above, "<").clicked() && above {
-                        out = Some(Condition::Below(n.clone(), *v));
-                    }
+            let mut is_above = above;
+            let choices = [(true, ">"), (false, "<")];
+            if crate::widgets::field::dropdown(ui, "Compared", &mut is_above, &choices, 36.0) {
+                out = Some(if is_above {
+                    Condition::Above(n.clone(), *v)
+                } else {
+                    Condition::Below(n.clone(), *v)
                 });
+            }
             if let Some(new) = crate::settled::settled_drag(
                 ui,
                 ("cond", salt.0, salt.1),
@@ -1035,18 +1014,27 @@ fn file_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
                     .find(|(_, i)| *i == id)
                     .map_or_else(|| format!("Missing sheet {id}"), |(n, _)| n.clone()),
             };
-            egui::ComboBox::from_id_salt("animator sheet")
-                .selected_text(shown)
-                .show_ui(ui, |ui| {
-                    for (n, id) in &listed {
-                        if ui.selectable_label(current == Some(*id), n).clicked() {
-                            changed |= a.editor.set_sheet(Some(*id));
-                        }
-                    }
-                    if listed.is_empty() {
-                        ui.label("No sprite sheets yet: put an Aseprite file in the project.");
-                    }
-                });
+            let choices: Vec<(Option<AssetId>, &str)> = listed
+                .iter()
+                .map(|(n, id)| (Some(*id), n.as_str()))
+                .collect();
+            let list = crate::widgets::field::List {
+                shown: &shown,
+                note: listed
+                    .is_empty()
+                    .then_some("No sprite sheets yet: put an Aseprite file in the project."),
+                width: ui.available_width(),
+            };
+            let mut chosen = current;
+            if crate::widgets::field::dropdown_showing(
+                ui,
+                "Sprite sheet",
+                &mut chosen,
+                &choices,
+                list,
+            ) {
+                changed |= a.editor.set_sheet(chosen);
+            }
         },
     );
     let f = &a.editor.file;

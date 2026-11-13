@@ -31,8 +31,6 @@ pub(crate) struct FramesUi<'a> {
     pub(crate) notes: Vec<String>,
 }
 
-/// The playing blue (the Play button's).
-const PLAYHEAD: Color32 = Color32::from_rgb(0x2f, 0x8f, 0xd0);
 /// An event's mark.
 const EVENT: Color32 = Color32::from_rgb(0x7c, 0xc4, 0xe4);
 /// A frame's tile, at most and at least this wide.
@@ -131,20 +129,17 @@ fn choose_sheet(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
         RichText::new("Choose the sprite sheet (an Aseprite file) whose frames these clips play:")
             .color(theme::text_weak()),
     );
-    let mut chosen = None;
-    egui::ComboBox::from_id_salt("frames sheet")
-        .selected_text("Choose…")
-        .show_ui(ui, |ui| {
-            let sheets = crate::workbench_frames::aseprite_sheets(f.sheets);
-            for (name, id) in &sheets {
-                if ui.selectable_label(false, name).clicked() {
-                    chosen = Some(*id);
-                }
-            }
-            if sheets.is_empty() {
-                ui.label("No sprite sheets yet: put an Aseprite file in the project.");
-            }
-        });
+    let sheets = crate::workbench_frames::aseprite_sheets(f.sheets);
+    let names: Vec<&str> = sheets.iter().map(|(name, _)| name.as_str()).collect();
+    let list = crate::widgets::field::List {
+        shown: "Choose…",
+        note: sheets
+            .is_empty()
+            .then_some("No sprite sheets yet: put an Aseprite file in the project."),
+        width: crate::tokens::size::SETTING_FIELD_W,
+    };
+    let chosen = crate::widgets::field::dropdown_of_names(ui, "Sprite sheet", &names, list)
+        .map(|i| sheets[i].1);
     chosen.is_some_and(|id| f.editor.change(|file| file.sheet = Some(id)))
 }
 
@@ -260,23 +255,17 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
                         .color(theme::text_weak()),
                 );
             } else {
-                let mut picked = None;
-                egui::ComboBox::from_id_salt("clip direction")
-                    .selected_text(clip.direction.name())
-                    .show_ui(ui, |ui| {
-                        for d in [
-                            Direction::Forward,
-                            Direction::Reverse,
-                            Direction::PingPong,
-                            Direction::PingPongReverse,
-                        ] {
-                            if ui.selectable_label(d == clip.direction, d.name()).clicked() {
-                                picked = Some(d);
-                            }
-                        }
-                    });
-                if let Some(d) = picked {
-                    changed |= editor.set_direction(d);
+                let choices = [
+                    Direction::Forward,
+                    Direction::Reverse,
+                    Direction::PingPong,
+                    Direction::PingPongReverse,
+                ]
+                .map(|d| (d, d.name()));
+                let mut picked = clip.direction;
+                let width = crate::tokens::size::SETTING_FIELD_W;
+                if crate::widgets::field::dropdown(ui, "Direction", &mut picked, &choices, width) {
+                    changed |= editor.set_direction(picked);
                 }
             }
             ui.end_row();
@@ -841,10 +830,12 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
     };
     let ms = (into * 1000.0) as u32;
     let head = x_of_ms(&order, clip, &width_of, left, ms);
+    // In the accent, as the design draws every playhead.
+    let playhead = crate::interface_look::accent_fill();
     painter.vline(
         head,
         ruler_y..=(lane.bottom()),
-        egui::Stroke::new(2.0, PLAYHEAD),
+        egui::Stroke::new(2.0, playhead),
     );
     painter.add(egui::Shape::convex_polygon(
         vec![
@@ -852,7 +843,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
             egui::pos2(head + 5.0, ruler_y),
             egui::pos2(head, ruler_y + 8.0),
         ],
-        PLAYHEAD,
+        playhead,
         egui::Stroke::NONE,
     ));
     changed

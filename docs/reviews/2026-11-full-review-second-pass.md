@@ -30,20 +30,20 @@ Severity runs from 1 to 10: 10 is lost work, a crash in normal use or something 
 - **N-11 (3)** The renderer hands over sprites, projectiles and models 15–20 % slower than on 7 November, on the same kind of machine, while the editor's own cases got faster. Fix: compare the renderer before and after pull request 245 and find the step. **Not a problem** (checked: today's renderer against `50f007a47`'s in release builds on the same machine, three runs each: no step, the runs vary by about 30 %).
 - **N-12 (3)** The scale case "quick-saving over a big save" no longer runs: its made-up old save is now refused as damaged when saving over it. Fix: write a save of today's version in the case. **Fixed** (`22ff0ddb6`)
 - **N-13 (3)** A Library action can freeze the window for over a second while a background scan runs (it now waits for it). Fix: don't wait; send it through the worker. **Fixed** (`eaa399ac0`)
-- **N-14 (3)** Three different rules say which folder is the engine's (`solis/`), and the screens write `"solis/screen"` into your code: renaming the program would break screens. Your own file placed in `solis/` now counts as the engine's. Fix: one rule, from branding, listed in RENAMING.md.
-- **N-15 (3)** Searching for a panel by name (Space) finds only 10 of them; "Sound events", "Frames" or "Canvas" find nothing. Fix: search every panel.
+- **N-14 (3)** Three different rules say which folder is the engine's (`solis/`), and the screens write `"solis/screen"` into your code: renaming the program would break screens. Your own file placed in `solis/` now counts as the engine's. Fix: one rule, from branding, listed in RENAMING.md. **Fixed** (`391939b57`)
+- **N-15 (3)** Searching for a panel by name (Space) finds only 10 of them; "Sound events", "Frames" or "Canvas" find nothing. Fix: search every panel. **Fixed** (`983eb1907`)
 - **N-16 (3)** The UI canvas copies and lays out its screen twice every frame and matches boxes to pieces the slow way. Fix: keep the result until the screen changes. **Fixed** (`885548588`)
 - **N-17 (3)** The Library and the Assets column lowercase every file's name every frame while you search, and the folder tree draws every folder. Fix: keep the lowered names; draw only the visible folders. **Fixed** (`9c9054c4d`)
 - **N-18 (3)** With a tileset open on any tab, the whole editor redraws 25 times a second forever; an open clips file sorts every picture's name every frame. Fix: only while its tab is in front. **Fixed** (`a231a78a7`)
 - **N-19 (3)** The Area column goes through every entity every frame once anything is hidden or locked. Fix: keep the result until the area changes. **Fixed** (`e99aae5a0`)
 - **N-20 (2)** The new folder watcher says nothing while files keep changing faster than every 0.3 s, so the Library doesn't update. Fix: also report every 2 seconds during a long burst. **Fixed** (`8b276d5bb`)
-- **N-21 (2)** The search shows no key for the tile tools, the copy axes and the Delete keys of the 2D editors. Fix: take the keys from the tools.
+- **N-21 (2)** The search shows no key for the tile tools, the copy axes and the Delete keys of the 2D editors. Fix: take the keys from the tools. **Fixed** (`12aa8074b`)
 - **N-22 (2)** A contextual tab's shelf (Tileset, Picture) is saved but never put back. Fix: look it up among the contextual tabs too. **Fixed** (`ed68d3789`)
-- **N-23 (2)** The manual and a few notes still say some actions are only in the search, that Ctrl+Space opens the Library, and that the window test drags a panel. Fix: correct them.
-- **N-24 (2)** A few colours from the old look bypass the theme (the playhead, the unpicked crops): with the orange accent, picked and unpicked crops look alike. Fix: make them tokens.
+- **N-23 (2)** The manual and a few notes still say some actions are only in the search, that Ctrl+Space opens the Library, and that the window test drags a panel. Fix: correct them. **Fixed** (`4d8b5123f`)
+- **N-24 (2)** A few colours from the old look bypass the theme (the playhead, the unpicked crops): with the orange accent, picked and unpicked crops look alike. Fix: make them tokens. **Fixed** (`cb0840e50`)
 - **N-25 (2)** The warning "too many model copies" repeats every frame. Fix: say it once, as sprites now do. **Fixed** (`4022219d0`)
 - **N-26 (2)** No scale case walks 2D characters, so a slow-down in the new corner check would go unseen. Fix: add one over a tile map's walls. **Fixed** (`a23edb3be`)
-- **N-27 (2)** Small leftovers: a test writes `escape.note` into the shared temporary folder; the screen editor and tile-map painting keep their own undo; a few views still use the old pickers; Luau's messages name the program; `tools/storage-bench` still asks for the old maths library.
+- **N-27 (2)** Small leftovers: a test writes `escape.note` into the shared temporary folder; the screen editor and tile-map painting keep their own undo; a few views still use the old pickers; Luau's messages name the program; `tools/storage-bench` still asks for the old maths library. **Fixed** (`e9215d83b`)
 
 ## What the review fixed
 

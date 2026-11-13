@@ -319,11 +319,13 @@ impl ShellCommand {
             C::SelectAll => "Ctrl+A",
             C::SelectNone => "Esc",
             C::FoldShelf => "Ctrl+Space",
-            C::UseTool(Tool::Select) => "Q",
-            C::UseTool(Tool::Move) => "W",
-            C::UseTool(Tool::Rotate) => "R",
-            C::UseTool(Tool::Scale) => "S",
-            C::UseTool(Tool::Transform) => "T",
+            C::UseTool(tool) => tool.key().name(),
+            // The 2D editors' keys, which act where their tab is under
+            // the pointer (`key_owner.rs`).
+            C::PaintWith(tool) => tool.key().name(),
+            C::TurnCopy(turn) => turn.key().name(),
+            C::MapMeaning(_) => "Tab",
+            C::CropDelete | C::FramesTakeOut | C::StateDelete => "Delete",
             _ => "",
         }
     }

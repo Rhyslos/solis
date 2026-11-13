@@ -66,6 +66,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Delete over the UI tab's Properties removes the screen's piece, not an entity.** Properties there shows the screen's settings, but the keys over it were still the area's, so Delete, Ctrl + D and Ctrl + Z changed the area you couldn't see. They are the screen's now, as over Elements.
+- **The last plain drop-downs look and work like the rest.** A sound event's Bus and Heard by, a screen's Sends and Colour, a tile map's Tileset, Layer and value Kind, the Frames tab's sheet and Direction, the tileset editor's Picture, Kind, rule size and Animation, and the animator's pickers were egui's own lists; they are the editor's drop-down now, and like every other one the arrow keys step through them while one has the keyboard.
+- **Which code is the engine's is decided one way everywhere: the files in `assets/solis/`.** A file of your own elsewhere whose first line looked like the engine's description files counted as the engine's, and the screens had a rule of their own. Your screens still fetch `"solis/screen"` as before. Lua's message for a call that doesn't exist now says it "isn't something the engine offers to game code".
+- **A picked crop stands out whatever the accent colour.** The other crops were yellow, which with the orange accent looked like the picked one; they are a darker grey now. The Frames tab's playhead and the animator's live state, which were always blue, follow the accent colour like the rest of the editor.
+- **The search and the ribbon's hover texts show the 2D editors' keys.** The painting tools (B, U, N, G, I), the copy's Flip X, Flip Y and Turn (X, Y, Z), Map as (Tab), and Delete for a crop, a clip's frames and an animator's state showed no key.
+- **The search finds every panel by name.** Only ten were searched, so "Sound events", "Frames" or "Canvas" found nothing; now any panel that has a place on a tab is found, a file's panels while that file is open.
 - **"Too many model copies to draw" is said once, not every frame.** Like the same warning about sprites, it comes again only when they fit and later stop fitting.
 - **Two characters starting on the very same spot no longer fly off and sink through the floor when they walk.** They're pushed apart gently instead, and walk on side by side.
 - **A tileset's and a picture's tabs keep their shelf between runs.** The shelf tab in front and whether it was folded were saved but never put back.

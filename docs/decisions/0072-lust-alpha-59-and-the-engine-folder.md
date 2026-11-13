@@ -1,6 +1,6 @@
 # 0072. Lust alpha 59: the engine's folder, `this`, and the compiler's notes
 
-- **Status:** Accepted (builds on 0002, 0065 and the Lust proposal of 2 November)
+- **Status:** Accepted (builds on 0002, 0065 and the Lust proposal of 2 November); how the folder is found is replaced by [0110](0110-one-rule-for-the-engine-folder.md)
 - **Date:** 2026-11-04
 
 ## Problem
