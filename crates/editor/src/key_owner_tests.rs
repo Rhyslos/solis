@@ -688,3 +688,38 @@ fn the_2d_editors_shown_keys_do_what_their_commands_do() {
         assert_eq!(now, editors_now(&by_command.state().0), "{command:?}");
     }
 }
+
+/// N-28: on the UI tab, Properties shows the screen's settings, but the
+/// keys over it were still the area's: a Delete there deleted the selected
+/// entity, which isn't on screen. They're the screen's now, as over
+/// Elements and Pictures beside it.
+#[test]
+fn over_properties_showing_the_screen_the_keys_are_the_screen_s() {
+    use crate::key_owner::KeyOwner;
+    let (mut w, _) = farm();
+    open_the_screen(&mut w);
+    let mut h = rest_over(harness(w), Panel::Properties);
+    let ctx = h.ctx.clone();
+    assert_eq!(h.state().0.key_owner(&ctx), KeyOwner::Elements);
+    h.state_mut()
+        .0
+        .open
+        .screen_doc
+        .as_mut()
+        .expect("open")
+        .picked = vec![vec![0, 0, 1]];
+    h.run();
+    let before = area_now(&h.state().0);
+    h.key_press(egui::Key::Delete);
+    h.run();
+    assert_eq!(area_now(&h.state().0), before, "the area is as it was");
+    assert!(!screen_text(&h).contains("Resume"), "the piece went");
+    // On Home, Properties shows the area's again, and the keys are its.
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);
+    let mut h = rest_over(h, Panel::Properties);
+    let ctx = h.ctx.clone();
+    assert_eq!(h.state().0.key_owner(&ctx), KeyOwner::Area);
+    h.key_press(egui::Key::Delete);
+    h.run();
+    assert_ne!(area_now(&h.state().0), before, "the Crate went");
+}
