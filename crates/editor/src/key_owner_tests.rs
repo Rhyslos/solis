@@ -598,3 +598,93 @@ fn a_tab_has_the_keys_only_while_its_file_is_open() {
     w.game_input = true;
     assert_eq!(w.key_owner(&ctx), KeyOwner::Game);
 }
+
+/// What the 2D editors' commands change: the painter's tool, what the map
+/// shows and the copy held; the crops; the clip's frames; the states.
+fn editors_now(w: &Workbench) -> String {
+    let paint = &w.viewport.tile_overlay.paint;
+    format!(
+        "{:?} {} {:?} {:?} {:?} {:?}",
+        paint.tool,
+        paint.meaning,
+        paint.stamp,
+        w.open.atlas_editor.as_ref().map(|e| e.atlas.crops.len()),
+        w.open.frames_editor.as_ref().map(|e| e.file.clips.clone()),
+        w.open.animator_editor.as_ref().map(|e| e.file.states.len()),
+    )
+}
+
+/// Readies `w` for `command`: a copy held to turn, the map showing the
+/// other way, two crops with one picked, a frame picked, a state picked.
+fn ready_for(w: &mut Workbench, command: crate::shell::ShellCommand) {
+    use crate::shell::ShellCommand as C;
+    match command {
+        C::TurnCopy(_) => {
+            let paint = &mut w.viewport.tile_overlay.paint;
+            paint.tool = Some(crate::tile_paint::PaintTool::Brush);
+            let cell = |code| tiles::paint::StampCell { code, exact: None };
+            paint.stamp = Some(tiles::paint::Stamp {
+                // One corner unlike the rest: every turn shows.
+                size: [2, 2],
+                cells: vec![cell(b'.'), cell(b'~'), cell(b'~'), cell(b'~')],
+            });
+        }
+        C::MapMeaning(meaning) => w.viewport.tile_overlay.paint.meaning = !meaning,
+        C::CropDelete => {
+            let editor = w.open.atlas_editor.as_mut().expect("open");
+            assert!(editor.add([0, 0, 16, 16]) && editor.add([16, 0, 16, 16]));
+            editor.pick(Some(0));
+        }
+        C::FramesTakeOut => w.open.frames_editor.as_mut().expect("open").selected = vec![0],
+        C::StateDelete => {
+            let editor = w.open.animator_editor.as_mut().expect("open");
+            let idle = editor.file.states[0].id;
+            editor.picked = crate::animator_editor::Picked::States([Some(idle)].into());
+        }
+        _ => {}
+    }
+}
+
+/// N-21: the search and the ribbon's hover texts showed no key for the
+/// painting tools, the copy's turns, Map as and the 2D editors' Delete.
+/// The key each now shows does what its command does, over its tab.
+#[test]
+fn the_2d_editors_shown_keys_do_what_their_commands_do() {
+    use crate::shell::ShellCommand as C;
+    use crate::tile_paint::{PaintTool, Turn};
+    let mut cases: Vec<(Panel, C)> = PaintTool::ALL
+        .map(|tool| (Panel::Map, C::PaintWith(tool)))
+        .into_iter()
+        .chain(Turn::ALL.map(|turn| (Panel::Map, C::TurnCopy(turn))))
+        .collect();
+    cases.extend([
+        (Panel::Map, C::MapMeaning(false)),
+        (Panel::Map, C::MapMeaning(true)),
+        (Panel::AtlasCrop, C::CropDelete),
+        (Panel::Frames, C::FramesTakeOut),
+        (Panel::Animator, C::StateDelete),
+    ]);
+    for (panel, command) in cases {
+        let key = egui::Key::from_name(command.keys())
+            .unwrap_or_else(|| panic!("{command:?} shows a key: {:?}", command.keys()));
+        let readied = || {
+            let mut h = pointer_over(panel);
+            ready_for(&mut h.state_mut().0, command);
+            h.run();
+            h
+        };
+        let mut by_key = readied();
+        let before = editors_now(&by_key.state().0);
+        by_key.key_press(key);
+        by_key.run();
+        let mut by_command = readied();
+        let ctx = by_command.ctx.clone();
+        let (w, picker) = by_command.state_mut();
+        assert_eq!(command.why_not(w), None, "{command:?}");
+        command.run(w, &ctx, &mut picker.actions);
+        by_command.run();
+        let now = editors_now(&by_key.state().0);
+        assert_ne!(now, before, "{command:?}: its key did something");
+        assert_eq!(now, editors_now(&by_command.state().0), "{command:?}");
+    }
+}

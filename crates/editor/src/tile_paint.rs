@@ -188,6 +188,20 @@ pub enum Turn {
     Rotate,
 }
 
+impl Turn {
+    /// Every turn, in the ribbon's order.
+    pub const ALL: [Self; 3] = [Self::FlipX, Self::FlipY, Self::Rotate];
+
+    /// The key that does it to the copy held.
+    pub fn key(self) -> egui::Key {
+        match self {
+            Self::FlipX => egui::Key::X,
+            Self::FlipY => egui::Key::Y,
+            Self::Rotate => egui::Key::Z,
+        }
+    }
+}
+
 /// The slot whose piece shows a terrain all round (its middle), for an
 /// exact tile when no piece is chosen.
 fn full_slot(kind: TileKind) -> Option<u32> {

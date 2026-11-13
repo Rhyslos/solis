@@ -151,13 +151,9 @@ impl Workbench {
             let tab = i.consume_key(egui::Modifiers::NONE, egui::Key::Tab);
             let mut turn = None;
             if holding {
-                for (key, t) in [
-                    (egui::Key::X, Turn::FlipX),
-                    (egui::Key::Y, Turn::FlipY),
-                    (egui::Key::Z, Turn::Rotate),
-                ] {
+                for t in Turn::ALL {
                     // Taken, so they don't lock an axis too.
-                    if i.consume_key(egui::Modifiers::NONE, key) {
+                    if i.consume_key(egui::Modifiers::NONE, t.key()) {
                         turn = Some(t);
                     }
                 }

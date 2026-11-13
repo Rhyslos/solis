@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The search and the ribbon's hover texts show the 2D editors' keys.** The painting tools (B, U, N, G, I), the copy's Flip X, Flip Y and Turn (X, Y, Z), Map as (Tab), and Delete for a crop, a clip's frames and an animator's state showed no key.
 - **The search finds every panel by name.** Only ten were searched, so "Sound events", "Frames" or "Canvas" found nothing; now any panel that has a place on a tab is found, a file's panels while that file is open.
 - **"Too many model copies to draw" is said once, not every frame.** Like the same warning about sprites, it comes again only when they fit and later stop fitting.
 - **Two characters starting on the very same spot no longer fly off and sink through the floor when they walk.** They're pushed apart gently instead, and walk on side by side.

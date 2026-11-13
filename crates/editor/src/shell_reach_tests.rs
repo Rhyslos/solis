@@ -402,7 +402,11 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
     };
     let mut with_keys = 0;
     for command in ShellCommand::ALL {
-        if command.keys().is_empty() {
+        // The 2D editors' keys act over their own tab, and are tried
+        // there (`key_owner_tests.rs`).
+        if command.keys().is_empty()
+            || matches!(command.place(), "Tile map" | "Picture" | "Animate")
+        {
             continue;
         }
         with_keys += 1;
