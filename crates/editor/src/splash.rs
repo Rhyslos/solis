@@ -1,9 +1,11 @@
 //! The splash screen ([decision
 //! 0045](../../../docs/decisions/0045-a-splash-screen-that-asks-before-updating.md)):
-//! what the window shows while Solis starts and checks for a newer build.
-//! The logo, the name and version, a thin bar and what's happening
-//! ("Checking for updates…"), on the dark background, as Aventail's
-//! splash (decision 0007). The app decides what happens; this only draws.
+//! what the window shows while Solis starts. The logo, the name and
+//! version, a thin bar and what's happening ("Starting…"), on the dark
+//! background, as Aventail's splash (decision 0007). The app decides what
+//! happens; this only draws. The update question here is asked by the
+//! editor once it's open (`updates.rs`), no longer on the splash
+//! ([decision 0090](../../../docs/decisions/0090-always-through-the-launcher.md)).
 
 use crate::theme::{self, Accent};
 use crate::workbench::AppInfo;
@@ -18,7 +20,7 @@ pub struct SplashView<'a> {
     pub accent: Accent,
     /// The logo, if it could be read.
     pub logo: Option<TextureId>,
-    /// What's happening ("Checking for updates…").
+    /// What's happening ("Starting…").
     pub doing: &'a str,
     /// How far along, from 0 to 1; `None` while it can't be known (the
     /// bar then sweeps).
@@ -122,25 +124,20 @@ pub enum UpdateAnswer {
     },
 }
 
-/// How far below the window's middle the question sits on the splash
-/// screen: under the logo, name, version and bar, which stay readable.
-pub const BELOW_THE_SPLASH: f32 = 170.0;
-
-/// The question "a newer build is out: update?", centred `down` points
-/// below the window's middle, with the Skip this version tick in `skip`.
+/// The question "a newer build is out: update?", centred in the window,
+/// with the Skip this version tick in `skip`.
 /// Gives the answer once one of its buttons is pressed.
 pub fn update_question(
     ctx: &egui::Context,
     name: &str,
     offer: &UpdateOffer,
     skip: &mut bool,
-    down: f32,
 ) -> Option<UpdateAnswer> {
     let mut answer = None;
     egui::Window::new("Update available")
         .collapsible(false)
         .resizable(false)
-        .anchor(Align2::CENTER_CENTER, [0.0, down])
+        .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
         .show(ctx, |ui| {
             let current = offer
                 .current

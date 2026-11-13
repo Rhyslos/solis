@@ -1,12 +1,12 @@
 //! Keeping the program up to date while it runs ([decision
 //! 0043](../../../docs/decisions/0043-installed-and-updated-from-github.md),
 //! [decision 0045](../../../docs/decisions/0045-a-splash-screen-that-asks-before-updating.md)).
-//! Solis asks GitHub on the splash screen as it starts (`startup.rs`); this
-//! is the rest: File > Updates asks whether to update when
-//! there's a newer build, Update now downloads it while you work, and the
-//! installer runs when the window closes (opening Solis again after
-//! Restart to update). A check the splash couldn't wait for finishes
-//! here, quietly. A copy that wasn't installed (one run from a build's
+//! Solis asks GitHub as it starts, without waiting for the answer
+//! ([decision 0090](../../../docs/decisions/0090-always-through-the-launcher.md));
+//! the check finishes here, quietly. File > Updates asks whether to update
+//! when there's a newer build, Update now downloads it while you work, and
+//! the installer runs when the window closes (opening Solis again after
+//! Restart to update). A copy that wasn't installed (one run from a build's
 //! zip) is only told a newer build is out, and where to get it: the
 //! `updater` crate itself refuses to download or install for it.
 
@@ -105,17 +105,6 @@ impl Updates {
     /// The build skipped with Skip this version, to save.
     pub fn skipped(&self) -> Option<u64> {
         self.skipped
-    }
-
-    /// Installs `installer` when the window closes, opening Solis again
-    /// after (Update now on the splash).
-    pub fn install_on_close(&mut self, installer: PathBuf) {
-        if let Ok(mut pending) = self.pending.lock() {
-            *pending = Some(Pending {
-                installer,
-                relaunch: true,
-            });
-        }
     }
 
     /// Skips `build` from now on (Skip this version).

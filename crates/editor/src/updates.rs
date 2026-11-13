@@ -115,8 +115,7 @@ impl Workbench {
             return;
         }
         let name = self.info.name.clone();
-        let Some(answer) =
-            crate::splash::update_question(ctx, &name, &offer, &mut self.skip_offer, 0.0)
+        let Some(answer) = crate::splash::update_question(ctx, &name, &offer, &mut self.skip_offer)
         else {
             return;
         };
