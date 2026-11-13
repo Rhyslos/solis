@@ -856,7 +856,11 @@ mod tests {
     fn a_new_file_waits_a_moment_for_its_sidecar() {
         let (project, assets) = project("db-settle");
         let (mut db, ..) = open(project);
-        db.settle = SETTLE;
+        // An hour, and a file aged by hand below: never a race with the
+        // clock (the review, TEST-01: 50 ms between writing a file and
+        // asking whether it had settled failed on a busy machine).
+        let hour = Duration::from_secs(3600);
+        db.settle = hour;
         // Git writes the model, and its sidecar from the other computer
         // a moment later: the look in between gives it no ID of its own.
         glb(&assets.join("crate.glb"), 0.5);
@@ -876,10 +880,14 @@ mod tests {
         assert!(db.id_at(&assets.join("rock.glb")).is_some());
         // One with no sidecar coming gets its own once it has settled.
         glb(&assets.join("barrel.glb"), 0.5);
-        db.settle = Duration::from_millis(50);
         db.rescan();
         assert!(db.id_at(&assets.join("barrel.glb")).is_none());
-        std::thread::sleep(Duration::from_millis(80));
+        std::fs::File::options()
+            .write(true)
+            .open(assets.join("barrel.glb"))
+            .unwrap()
+            .set_modified(SystemTime::now() - 2 * hour)
+            .unwrap();
         db.rescan();
         assert!(db.id_at(&assets.join("barrel.glb")).is_some());
     }
