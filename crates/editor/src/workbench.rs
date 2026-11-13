@@ -451,11 +451,8 @@ impl Workbench {
     /// nothing it shows changed.
     pub(crate) fn game_scene_now(&mut self) -> Option<(GameKey, crate::game_panel::GameScene)> {
         let state = self.play_state();
-        let document = &self.open.document;
-        self.open
-            .brushes
-            .refresh(document.area(), document.brushes());
-        let brushes = document.brushes();
+        self.open.brushes.refresh(&mut self.open.document);
+        let brushes = self.open.document.brushes();
         let playing = self.open.playing.as_mut()?;
         let between = match state {
             crate::play::PlayState::Playing => playing.world.progress().to_bits(),

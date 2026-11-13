@@ -383,12 +383,9 @@ impl Workbench {
                 hidden,
                 locked,
             );
-            let document = &self.open.document;
-            self.open
-                .brushes
-                .refresh(document.area(), document.brushes());
+            self.open.brushes.refresh(&mut self.open.document);
             self.viewport.area.add_brushes(
-                document.area(),
+                self.open.document.area(),
                 &self.open.brushes,
                 &world,
                 (hidden, locked),

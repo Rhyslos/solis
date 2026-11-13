@@ -8,7 +8,7 @@
 use super::*;
 use crate::document::Document;
 use area::builtin::{CharacterBody, Transform};
-use area::{Edit, EntityData};
+use area::{Area, Edit, EntityData};
 use std::time::Instant;
 
 /// The editor's frame target with a big area (as the 10,000-entity
@@ -70,14 +70,16 @@ fn scale_check_an_area_of_10000_box_brushes() {
     let area = area::text::read(&text, &registry).unwrap();
     let read_ms = ms_since(start);
     let mut w = crate::Workbench::new(crate::test_support::info());
-    let ids: Vec<(EntityId, EntityData)> = area.iter().map(|(id, e)| (id, e.clone())).collect();
-    w.open
-        .document
-        .edit("Fill", vec![Edit::Spawn { entities: ids }], None, None)
-        .unwrap();
+    // One edit for each, as each is a tree of its own.
+    let spawns: Vec<Edit> = area
+        .iter()
+        .map(|(id, e)| Edit::Spawn {
+            entities: vec![(id, e.clone())],
+        })
+        .collect();
+    w.open.document.edit("Fill", spawns, None, None).unwrap();
     let start = Instant::now();
-    let document = &w.open.document;
-    w.open.brushes.refresh(document.area(), document.brushes());
+    w.open.brushes.refresh(&mut w.open.document);
     let cut_ms = ms_since(start);
     assert_eq!(w.open.brushes.models(), 10_000);
     println!(
@@ -120,8 +122,7 @@ fn scale_check_an_area_of_10000_box_brushes() {
         .unwrap();
     let made = w.open.brushes.made();
     let start = Instant::now();
-    let document = &w.open.document;
-    w.open.brushes.refresh(document.area(), document.brushes());
+    w.open.brushes.refresh(&mut w.open.document);
     let changed_ms = ms_since(start);
     assert_eq!(
         w.open.brushes.made(),
@@ -188,7 +189,7 @@ fn scale_check_a_5000_face_brush_made_again_after_a_change() {
     let id = area.spawn(EntityData::new("Big").with(&brush));
     let mut document = Document::new(area);
     let mut models = BrushModels::default();
-    models.refresh(document.area(), document.brushes());
+    models.refresh(&mut document);
     // The change: every point moved a little (as a tool would), written
     // into the area as one edit.
     let mut moved = (*brush.mesh).clone();
@@ -215,7 +216,7 @@ fn scale_check_a_5000_face_brush_made_again_after_a_change() {
         )
         .unwrap();
     let start = Instant::now();
-    models.refresh(document.area(), document.brushes());
+    models.refresh(&mut document);
     let made_ms = ms_since(start);
     assert_eq!(models.get(id).unwrap().triangles, faces * 2);
     println!(

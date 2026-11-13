@@ -9,7 +9,6 @@
 //! same values (a hundred copies of one box) share one model, which the
 //! renderer uploads once and draws in one go.
 
-use area::Area;
 use area::builtin::Brush;
 use glam::{Mat4, Vec3};
 use reflect::{Component, ComponentData, EntityId, IdMap, Value};
@@ -108,49 +107,106 @@ impl PartialEq for ViewBrush {
 }
 
 /// Every brush in the open area, cut into triangles, kept until the
-/// document says a brush may have changed.
+/// document says a brush may have changed, and then made again only for
+/// the brushes it names.
 #[derive(Debug, Default)]
 pub(crate) struct BrushModels {
     /// The document's brush revision these are for.
     seen: Option<u64>,
     /// Each brush's model, by its entity.
     by_entity: IdMap<Arc<BrushModel>>,
-    /// The models, by their key.
-    by_key: HashMap<u64, Arc<BrushModel>>,
+    /// The models, by their key, with how many brushes use each.
+    by_key: HashMap<u64, (Arc<BrushModel>, usize)>,
     /// How many models have been made (for the tests: a brush that didn't
     /// change isn't made again).
     made: usize,
+    /// How many brushes' values have been looked at (for the tests: a
+    /// change to one brush looks at that one alone).
+    looked: usize,
 }
 
 impl BrushModels {
-    /// Brings the models up to date with `area` at the document's brush
-    /// `revision`: nothing to do when it's the one already seen. Returns
-    /// whether anything was looked at.
-    pub(crate) fn refresh(&mut self, area: &Area, revision: u64) -> bool {
-        if self.seen == Some(revision) {
+    /// Brings the models up to date with `document`'s area: nothing to do
+    /// when its brush revision is the one already seen; otherwise only the
+    /// brushes it says may have changed are looked at again (all of them
+    /// after an undo, say), each by its fingerprint. Returns whether
+    /// anything was looked at.
+    pub(crate) fn refresh(&mut self, document: &mut crate::document::Document) -> bool {
+        if self.seen == Some(document.brushes()) {
             return false;
         }
-        self.seen = Some(revision);
-        let mut by_entity = IdMap::default();
-        let mut by_key: HashMap<u64, Arc<BrushModel>> = HashMap::new();
-        for (id, entity) in area.iter() {
-            let Some(data) = entity.components.get(Brush::NAME) else {
-                continue;
-            };
-            let key = fingerprint(data);
-            let model = match by_key.get(&key).or_else(|| self.by_key.get(&key)) {
-                Some(model) => Arc::clone(model),
-                None => {
-                    self.made += 1;
-                    Arc::new(BrushModel::of(&Brush::from_data(data), key))
+        let first = self.seen.is_none();
+        self.seen = Some(document.brushes());
+        let changes = document.take_brush_changes();
+        let area = document.area();
+        if changes.all || first {
+            // Every brush again, keeping the models made so far to hand:
+            // an undo brings back values whose model is already made.
+            let spare: HashMap<u64, Arc<BrushModel>> = self
+                .by_key
+                .drain()
+                .map(|(key, (model, _))| (key, model))
+                .collect();
+            self.by_entity.clear();
+            for (id, entity) in area.iter() {
+                if let Some(data) = entity.components.get(Brush::NAME) {
+                    self.hold(id, data, &spare);
                 }
-            };
-            by_key.insert(key, Arc::clone(&model));
-            by_entity.insert(id, model);
+            }
+            return true;
         }
-        self.by_entity = by_entity;
-        self.by_key = by_key;
+        if changes.deleted {
+            let gone: Vec<EntityId> = self
+                .by_entity
+                .keys()
+                .copied()
+                .filter(|id| !area.contains(*id))
+                .collect();
+            for id in gone {
+                self.let_go(id);
+            }
+        }
+        for id in changes.entities {
+            match area.get(id).and_then(|e| e.components.get(Brush::NAME)) {
+                Some(data) => self.hold(id, data, &HashMap::new()),
+                None => self.let_go(id),
+            }
+        }
         true
+    }
+
+    /// Gives `id` the model of its brush `data`, made only if no brush
+    /// (nor `spare`) has those values already.
+    fn hold(&mut self, id: EntityId, data: &ComponentData, spare: &HashMap<u64, Arc<BrushModel>>) {
+        let key = fingerprint(data);
+        self.looked += 1;
+        if self.by_entity.get(&id).is_some_and(|m| m.key == key) {
+            return;
+        }
+        self.let_go(id);
+        let made = &mut self.made;
+        let (model, users) = self.by_key.entry(key).or_insert_with(|| {
+            let model = spare.get(&key).cloned().unwrap_or_else(|| {
+                *made += 1;
+                Arc::new(BrushModel::of(&Brush::from_data(data), key))
+            });
+            (model, 0)
+        });
+        *users += 1;
+        self.by_entity.insert(id, Arc::clone(model));
+    }
+
+    /// Forgets `id`'s brush, and its model once no brush uses it.
+    fn let_go(&mut self, id: EntityId) {
+        let Some(model) = self.by_entity.remove(&id) else {
+            return;
+        };
+        if let Some((_, users)) = self.by_key.get_mut(&model.key) {
+            *users -= 1;
+            if *users == 0 {
+                self.by_key.remove(&model.key);
+            }
+        }
     }
 
     /// The model of the brush on `entity`, if it has one.
@@ -175,62 +231,58 @@ impl BrushModels {
     pub(crate) fn made(&self) -> usize {
         self.made
     }
+
+    /// How many brushes' values have been looked at since the start.
+    #[cfg(test)]
+    pub(crate) fn looked(&self) -> usize {
+        self.looked
+    }
 }
 
-/// A fingerprint of a component's values (FNV-1a over each value's bits
-/// and kind), the same for the same values in every run.
+/// A fingerprint of a component's values: every value's kind and bits
+/// through the standard library's hasher, the same for the same values
+/// (it's never saved, so it only has to agree within one run). Its mixing
+/// makes two different brushes sharing one practically impossible; a
+/// weaker hash (FNV a word at a time) gave boxes of slightly different
+/// sizes the same one.
 fn fingerprint(data: &ComponentData) -> u64 {
-    let mut hash = Fnv(0xcbf2_9ce4_8422_2325);
+    use std::hash::Hasher;
+    let mut hash = std::hash::DefaultHasher::new();
     for (name, value) in &data.fields {
-        hash.bytes(name.as_bytes());
-        hash.value(value);
+        hash.write(name.as_bytes());
+        hash.write_u8(0xff);
+        add_value(&mut hash, value);
     }
-    hash.0
+    hash.finish()
 }
 
-struct Fnv(u64);
-
-impl Fnv {
-    fn word(&mut self, word: u64) {
-        self.0 = (self.0 ^ word).wrapping_mul(0x0000_0100_0000_01b3);
-    }
-
-    fn bytes(&mut self, bytes: &[u8]) {
-        self.word(bytes.len() as u64);
-        for chunk in bytes.chunks(8) {
-            let mut word = [0u8; 8];
-            word[..chunk.len()].copy_from_slice(chunk);
-            self.word(u64::from_le_bytes(word));
+fn add_value(hash: &mut impl std::hash::Hasher, value: &Value) {
+    match value {
+        Value::Bool(b) => hash.write_u8(1 + u8::from(*b)),
+        Value::Int(n) => {
+            hash.write_u8(3);
+            hash.write_i64(*n);
         }
-    }
-
-    fn value(&mut self, value: &Value) {
-        match value {
-            Value::Bool(b) => self.word(1 + u64::from(*b)),
-            Value::Int(n) => {
-                self.word(3);
-                self.word(*n as u64);
-            }
-            Value::Float(v) => {
-                self.word(4);
-                self.word(v.to_bits());
-            }
-            Value::Text(t) => {
-                self.word(5);
-                self.bytes(t.as_bytes());
-            }
-            Value::List(items) => {
-                self.word(6);
-                self.word(items.len() as u64);
-                for item in items {
-                    self.value(item);
-                }
-            }
-            // A brush holds none of these; any other value counts by its
-            // kind alone.
-            Value::Asset(_) => self.word(7),
-            Value::Entity(_) => self.word(8),
+        Value::Float(v) => {
+            hash.write_u8(4);
+            hash.write_u64(v.to_bits());
         }
+        Value::Text(t) => {
+            hash.write_u8(5);
+            hash.write_usize(t.len());
+            hash.write(t.as_bytes());
+        }
+        Value::List(items) => {
+            hash.write_u8(6);
+            hash.write_usize(items.len());
+            for item in items {
+                add_value(hash, item);
+            }
+        }
+        // A brush holds none of these; any other value counts by its kind
+        // alone.
+        Value::Asset(_) => hash.write_u8(7),
+        Value::Entity(_) => hash.write_u8(8),
     }
 }
 
