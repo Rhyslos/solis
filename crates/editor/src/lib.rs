@@ -31,6 +31,7 @@ pub mod document;
 mod elements_view;
 pub mod export_dialog;
 mod field_rows;
+mod file_history;
 pub mod file_pages;
 mod fonts;
 pub mod frames_editor;

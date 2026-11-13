@@ -255,3 +255,17 @@ fn a_file_changed_on_disk_is_taken_in_as_one_step() {
     assert!(e.redo());
     assert_eq!(e.file, by_hand);
 }
+
+#[test]
+fn keeps_the_newest_two_hundred_undo_steps() {
+    let (mut e, _) = editor();
+    for n in 1..=250 {
+        assert!(e.change(|f| f.first = format!("clip {n}")));
+    }
+    let mut steps = 0;
+    while e.undo() {
+        steps += 1;
+    }
+    assert_eq!(steps, UNDO_LIMIT);
+    assert_eq!(e.file.first, "clip 50", "the oldest steps went first");
+}

@@ -6,6 +6,7 @@
 //! file whole; what's picked (a terrain, a tile of the picture, a slot, a
 //! rule) and the patch to try edges on are the tab's own, never saved.
 
+use crate::file_history::FileHistory;
 use reflect::Id;
 use tiles::autotile;
 use tiles::{Animation, Cond, Piece, Rule, Terrain, TileKind, Tileset};
@@ -36,8 +37,7 @@ pub(crate) struct TilesetEditor {
     pub(crate) path: String,
     /// The tileset as it is now.
     pub(crate) file: Tileset,
-    undo: Vec<Tileset>,
-    redo: Vec<Tileset>,
+    history: FileHistory<Tileset>,
     /// The terrain chosen on the left.
     pub(crate) terrain: Option<Id>,
     /// The picture's tile picked: column and row.
@@ -86,8 +86,7 @@ impl TilesetEditor {
         Self {
             path,
             file,
-            undo: Vec::new(),
-            redo: Vec::new(),
+            history: FileHistory::new(MAX_UNDO),
             terrain,
             tile: None,
             slot: None,
@@ -118,37 +117,28 @@ impl TilesetEditor {
 
     /// Makes a change as one undo step. Whether it changed anything.
     pub(crate) fn change(&mut self, change: impl FnOnce(&mut Tileset)) -> bool {
-        let before = self.file.clone();
-        change(&mut self.file);
-        if self.file == before {
-            return false;
-        }
-        self.undo.push(before);
-        if self.undo.len() > MAX_UNDO {
-            self.undo.remove(0);
-        }
-        self.redo.clear();
-        true
+        self.history.change(&mut self.file, |f| {
+            change(f);
+            true
+        })
     }
 
     /// Undoes the last change. Whether there was one.
     pub(crate) fn undo(&mut self) -> bool {
-        let Some(before) = self.undo.pop() else {
-            return false;
-        };
-        self.redo.push(std::mem::replace(&mut self.file, before));
-        self.keep_picks();
-        true
+        let undone = self.history.undo(&mut self.file);
+        if undone {
+            self.keep_picks();
+        }
+        undone
     }
 
     /// Redoes the last change undone. Whether there was one.
     pub(crate) fn redo(&mut self) -> bool {
-        let Some(after) = self.redo.pop() else {
-            return false;
-        };
-        self.undo.push(std::mem::replace(&mut self.file, after));
-        self.keep_picks();
-        true
+        let redone = self.history.redo(&mut self.file);
+        if redone {
+            self.keep_picks();
+        }
+        redone
     }
 
     /// Lets go of picks no longer there.

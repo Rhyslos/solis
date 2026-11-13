@@ -2,6 +2,7 @@
 //! named crops, changed by drawing boxes on it, with undo. Every change is
 //! saved at once by the workbench (`workbench_atlas.rs`).
 
+use crate::file_history::FileHistory;
 use animation::atlas::{self, Atlas, Crop};
 
 /// The most undo steps kept.
@@ -24,8 +25,7 @@ pub(crate) struct AtlasEditor {
     pub(crate) pan: egui::Vec2,
     /// A box being drawn: the picture pixel it started at.
     pub(crate) drawing: Option<[f32; 2]>,
-    undo: Vec<Atlas>,
-    redo: Vec<Atlas>,
+    history: FileHistory<Atlas>,
 }
 
 impl AtlasEditor {
@@ -39,24 +39,16 @@ impl AtlasEditor {
             zoom: 4.0,
             pan: egui::Vec2::ZERO,
             drawing: None,
-            undo: Vec::new(),
-            redo: Vec::new(),
+            history: FileHistory::new(MAX_UNDO),
         }
     }
 
     /// Makes a change as one undo step; whether anything changed.
     fn change(&mut self, f: impl FnOnce(&mut Atlas)) -> bool {
-        let before = self.atlas.clone();
-        f(&mut self.atlas);
-        if self.atlas == before {
-            return false;
-        }
-        self.undo.push(before);
-        if self.undo.len() > MAX_UNDO {
-            self.undo.remove(0);
-        }
-        self.redo.clear();
-        true
+        self.history.change(&mut self.atlas, |a| {
+            f(a);
+            true
+        })
     }
 
     /// Picks crop `i` (or nothing), ready to rename.
@@ -173,22 +165,20 @@ impl AtlasEditor {
 
     /// Undoes the last change; whether there was one.
     pub(crate) fn undo(&mut self) -> bool {
-        let Some(before) = self.undo.pop() else {
-            return false;
-        };
-        self.redo.push(std::mem::replace(&mut self.atlas, before));
-        self.pick(None);
-        true
+        let undone = self.history.undo(&mut self.atlas);
+        if undone {
+            self.pick(None);
+        }
+        undone
     }
 
     /// Redoes the last change undone; whether there was one.
     pub(crate) fn redo(&mut self) -> bool {
-        let Some(after) = self.redo.pop() else {
-            return false;
-        };
-        self.undo.push(std::mem::replace(&mut self.atlas, after));
-        self.pick(None);
-        true
+        let redone = self.history.redo(&mut self.atlas);
+        if redone {
+            self.pick(None);
+        }
+        redone
     }
 
     /// The file's text, to save.

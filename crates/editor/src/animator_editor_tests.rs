@@ -269,3 +269,19 @@ fn picking_adds_takes_away_and_forgets_what_s_gone() {
     assert_eq!(e.picked, Picked::Nothing, "b is gone");
     assert!(e.picked_transition().is_none());
 }
+
+#[test]
+fn keeps_the_newest_two_hundred_undo_steps() {
+    let mut e = editor();
+    for n in 1..=250_u16 {
+        let mut file = e.file.clone();
+        file.any_place = [f32::from(n), 0.0];
+        e.reload(file);
+    }
+    let mut steps = 0;
+    while e.undo() {
+        steps += 1;
+    }
+    assert_eq!(steps, MAX_UNDO);
+    assert_eq!(e.file.any_place, [50.0, 0.0], "the oldest steps went first");
+}

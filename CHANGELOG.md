@@ -196,6 +196,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **The tileset, clips, atlas and animator editors share one undo history** instead of four copies of it, so a fix to undo reaches all four. Each keeps how many steps it remembers (100 for a tileset, 200 for the others).
 - **The maths library is built once instead of twice.** The engine used a newer version than its physics and sound libraries, so both were compiled and every vector was copied by hand at the physics edge. It now uses theirs, and they are updated together.
 - **The editor notices changed files without an extra library** that also brought a temporary-file library and a third copy of a random-number library into the program. Bursts of changes are still reported once, after the folder has been quiet for 300 ms.
 - **Two parts of the engine (sound and the updater) no longer list a logging library they never used**, and the dependency check now fails when a part lists a library none of its code uses, so the dependency list can't claim uses that don't exist.
