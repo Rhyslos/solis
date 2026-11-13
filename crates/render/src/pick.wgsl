@@ -48,6 +48,13 @@ fn pick_fs(in: PickOut) -> @location(0) vec2<u32> {
 // The same as in viewport.wgsl, so a sprite is picked where it's drawn.
 const FOOT_DEPTH: f32 = 0.00005;
 
+// SpriteInstance's flags (sprites.rs, whose tests check they match).
+const FLIP_X: u32 = 1u;
+const FLIP_Y: u32 = 2u;
+const SEE_THROUGH: u32 = 8u;
+const OVER: u32 = 32u;
+const PARALLAX: u32 = 64u;
+
 // The sprite's sheet (sprites.rs).
 @group(1) @binding(0) var sheet_image: texture_2d<f32>;
 
@@ -85,8 +92,8 @@ fn sprite_pick_vs(@builtin(vertex_index) index: u32, s: SpriteIn) -> SpritePickO
     // A parallax layer (decision 0094) is picked as it's drawn: one
     // behind only where nothing else is, one in front over everything.
     // Depth runs from 1 (near) to 0 (far).
-    if (s.flags & 64u) != 0u {
-        let near = select(0.000001, 0.999999, (s.flags & 32u) != 0u);
+    if (s.flags & PARALLAX) != 0u {
+        let near = select(0.000001, 0.999999, (s.flags & OVER) != 0u);
         out.clip.z = near * out.clip.w;
     }
     out.local = local;
@@ -105,14 +112,14 @@ fn sprite_pick_fs(in: SpritePickOut) -> @location(0) vec2<u32> {
         discard;
     }
     var q = p;
-    if (in.flags & 1u) != 0u {
+    if (in.flags & FLIP_X) != 0u {
         q.x = in.rect.z - 1.0 - p.x;
     }
-    if (in.flags & 2u) != 0u {
+    if (in.flags & FLIP_Y) != 0u {
         q.y = in.rect.w - 1.0 - p.y;
     }
     let a = textureLoad(sheet_image, vec2<i32>(in.rect.xy + q), 0).a;
-    let see_through = (in.flags & 8u) != 0u;
+    let see_through = (in.flags & SEE_THROUGH) != 0u;
     if a < 0.5 && !see_through || a <= 0.0 {
         discard;
     }

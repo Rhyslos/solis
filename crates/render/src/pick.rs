@@ -578,6 +578,17 @@ mod tests {
     }
 
     #[test]
+    fn the_camera_matches_the_shader_layout() {
+        // `request` writes the view's matrix alone.
+        crate::shader_layout::assert_struct(
+            crate::PICK_SHADER_SOURCE,
+            "PickFrame",
+            std::mem::size_of::<Mat4>(),
+            &[("view_projection", 0)],
+        );
+    }
+
+    #[test]
     fn pixels_are_found_inside_the_rectangle_only() {
         let r = result(vec![0, 7, 3, 0], vec![0.0, 0.5, 0.5, 0.0], [1, 1, 2, 2]);
         assert_eq!(r.pick_at(1, 1), None, "nothing there");

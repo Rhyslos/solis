@@ -313,8 +313,29 @@ mod tests {
 
     #[test]
     fn lights_match_the_shader_layout() {
-        assert_eq!(std::mem::size_of::<LightUniform>(), 64);
-        assert_eq!(std::mem::size_of::<LightsUniform>(), 64 * MAX_LIGHTS);
+        use std::mem::{offset_of, size_of};
+        crate::shader_layout::assert_struct(
+            crate::SHADER_SOURCE,
+            "Light",
+            size_of::<LightUniform>(),
+            &[
+                ("position", offset_of!(LightUniform, position)),
+                ("color", offset_of!(LightUniform, color)),
+                ("direction", offset_of!(LightUniform, direction)),
+                ("cone", offset_of!(LightUniform, cone)),
+            ],
+        );
+        // MAX_LIGHTS of them: the shader's array is as long.
+        crate::shader_layout::assert_struct(
+            crate::SHADER_SOURCE,
+            "Lights",
+            size_of::<LightsUniform>(),
+            &[("lights", offset_of!(LightsUniform, lights))],
+        );
+        assert_eq!(
+            size_of::<LightsUniform>(),
+            MAX_LIGHTS * size_of::<LightUniform>()
+        );
     }
 
     #[test]

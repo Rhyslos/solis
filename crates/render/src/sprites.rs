@@ -340,4 +340,41 @@ mod tests {
             std::mem::size_of::<SpriteInstance>() as u64
         );
     }
+
+    #[test]
+    fn the_shaders_flags_and_foot_depth_are_the_rust_ones() {
+        use crate::shader_layout::constant;
+        let flags = [
+            ("FLIP_X", SpriteInstance::FLIP_X),
+            ("FLIP_Y", SpriteInstance::FLIP_Y),
+            ("OUTLINE", SpriteInstance::OUTLINE),
+            ("SEE_THROUGH", SpriteInstance::SEE_THROUGH),
+            ("UNDER", SpriteInstance::UNDER),
+            ("OVER", SpriteInstance::OVER),
+        ];
+        for (name, value) in flags {
+            assert_eq!(
+                constant(crate::SHADER_SOURCE, name),
+                f64::from(value),
+                "{name}"
+            );
+        }
+        // Picking reads the flags that change what's picked where.
+        let picked = [
+            ("FLIP_X", SpriteInstance::FLIP_X),
+            ("FLIP_Y", SpriteInstance::FLIP_Y),
+            ("SEE_THROUGH", SpriteInstance::SEE_THROUGH),
+            ("OVER", SpriteInstance::OVER),
+            ("PARALLAX", SpriteInstance::PARALLAX),
+        ];
+        for (name, value) in picked {
+            let pick = constant(crate::PICK_SHADER_SOURCE, name);
+            assert_eq!(pick, f64::from(value), "picking's {name}");
+        }
+        // A sprite is picked where it's drawn.
+        assert_eq!(
+            constant(crate::PICK_SHADER_SOURCE, "FOOT_DEPTH"),
+            constant(crate::SHADER_SOURCE, "FOOT_DEPTH")
+        );
+    }
 }

@@ -794,6 +794,14 @@ fn bolt_fs(in: BoltOut) -> @location(0) vec4<f32> {
 // the top, in depth (sprites.rs).
 const FOOT_DEPTH: f32 = 0.00005;
 
+// SpriteInstance's flags (sprites.rs, whose tests check they match).
+const FLIP_X: u32 = 1u;
+const FLIP_Y: u32 = 2u;
+const OUTLINE: u32 = 4u;
+const SEE_THROUGH: u32 = 8u;
+const UNDER: u32 = 16u;
+const OVER: u32 = 32u;
+
 // A sprite sheet's atlas (sprites.rs): straight sRGB colour with alpha.
 @group(3) @binding(0) var sheet_image: texture_2d<f32>;
 
@@ -801,7 +809,7 @@ const FOOT_DEPTH: f32 = 0.00005;
 struct SpriteIn {
     // Where its frame's top-left corner is in the world.
     @location(0) corner: vec3<f32>,
-    // 1 flip across, 2 flip up, 4 outline, 8 see-through.
+    // The flags above.
     @location(1) flags: u32,
     // One pixel to the right, and one pixel down the picture, in the world.
     @location(2) axis_x: vec2<f32>,
@@ -835,7 +843,7 @@ fn sprite_vs(@builtin(vertex_index) index: u32, s: SpriteIn) -> SpriteOut {
         vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
     );
     // An outline needs a pixel more all round.
-    let margin = select(0.0, 1.0, (s.flags & 4u) != 0u);
+    let margin = select(0.0, 1.0, (s.flags & OUTLINE) != 0u);
     let local = corners[index] * (s.rect.zw + 2.0 * margin) - vec2<f32>(margin, margin);
     let world = s.corner + vec3<f32>(s.axis_x * local.x + s.axis_y * local.y, 0.0);
     var out: SpriteOut;
@@ -884,10 +892,10 @@ fn sprite_texel(p: vec2<f32>, rect: vec4<f32>, flags: u32) -> vec4<f32> {
         return vec4<f32>(0.0);
     }
     var q = p;
-    if (flags & 1u) != 0u {
+    if (flags & FLIP_X) != 0u {
         q.x = rect.z - 1.0 - p.x;
     }
-    if (flags & 2u) != 0u {
+    if (flags & FLIP_Y) != 0u {
         q.y = rect.w - 1.0 - p.y;
     }
     return textureLoad(sheet_image, vec2<i32>(rect.xy + q), 0);
@@ -897,13 +905,13 @@ fn sprite_texel(p: vec2<f32>, rect: vec4<f32>, flags: u32) -> vec4<f32> {
 fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
     let p = floor(in.local);
     let texel = sprite_texel(p, in.rect, in.flags);
-    // See-through sprites, and tile layers (16 under, 32 over), blend
-    // with their own alpha.
-    let see_through = (in.flags & (8u | 16u | 32u)) != 0u;
+    // See-through sprites, and tile layers under and over, blend with
+    // their own alpha.
+    let see_through = (in.flags & (SEE_THROUGH | UNDER | OVER)) != 0u;
     // Pixel art is cut out: a pixel is drawn or it isn't, so it writes
     // depth and needs no sorting. See-through sprites blend instead.
     if texel.a < 0.5 && !see_through || texel.a <= 0.0 {
-        if (in.flags & 4u) != 0u {
+        if (in.flags & OUTLINE) != 0u {
             let near = max(
                 max(sprite_texel(p + vec2<f32>(1.0, 0.0), in.rect, in.flags).a,
                     sprite_texel(p - vec2<f32>(1.0, 0.0), in.rect, in.flags).a),

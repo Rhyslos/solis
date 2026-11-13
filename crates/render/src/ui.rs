@@ -28,25 +28,37 @@ pub struct UiInstance {
 /// The most shapes drawn at once (more are left out).
 pub const MAX_SHAPES: usize = 65_536;
 
+/// Each kind of shape's number in the shader (`KIND_…` in `ui.wgsl`).
+const KIND_BOX: f32 = 0.0;
+const KIND_ELLIPSE: f32 = 1.0;
+const KIND_LINE: f32 = 2.0;
+const KIND_LETTER: f32 = 3.0;
+const KIND_PICTURE: f32 = 4.0;
+/// A shape's flags (`FLAG_…` in `ui.wgsl`): on the game's pixels, a
+/// gradient running down, a picture shown blocky.
+const FLAG_CRISP: u32 = 1;
+const FLAG_DOWN: u32 = 2;
+const FLAG_BLOCKY: u32 = 4;
+
 impl UiInstance {
     /// `shape` for the shader.
     pub fn of(shape: &ui::Shape) -> Self {
         let kind = match shape.kind {
-            ui::ShapeKind::Box => 0.0,
-            ui::ShapeKind::Ellipse => 1.0,
-            ui::ShapeKind::Line => 2.0,
-            ui::ShapeKind::Letter => 3.0,
-            ui::ShapeKind::Picture => 4.0,
+            ui::ShapeKind::Box => KIND_BOX,
+            ui::ShapeKind::Ellipse => KIND_ELLIPSE,
+            ui::ShapeKind::Line => KIND_LINE,
+            ui::ShapeKind::Letter => KIND_LETTER,
+            ui::ShapeKind::Picture => KIND_PICTURE,
         };
         let mut flags = 0u32;
         if shape.crisp {
-            flags |= 1;
+            flags |= FLAG_CRISP;
         }
         if shape.stretch == ui::Stretch::Down {
-            flags |= 2;
+            flags |= FLAG_DOWN;
         }
         if shape.blocky {
-            flags |= 4;
+            flags |= FLAG_BLOCKY;
         }
         Self {
             rect: shape.rect,
@@ -411,5 +423,39 @@ mod tests {
         let i = UiInstance::of(&shapes[1]);
         assert_eq!(i.shape[2], 1.0, "the sun is an ellipse");
         assert_eq!(i.shape[3], 1.0, "crisp");
+    }
+
+    #[test]
+    fn the_shader_s_numbers_are_the_rust_ones() {
+        use crate::shader_layout::{assert_struct, constant};
+        let source = include_str!("ui.wgsl");
+        // The screen's size, as `draw` writes it.
+        assert_struct(
+            source,
+            "Screen",
+            std::mem::size_of::<[f32; 4]>(),
+            &[("size", 0), ("_pad", 8)],
+        );
+        let numbers = [
+            ("SPREAD", f64::from(ui::text::SPREAD)),
+            ("ATLAS_SIDE", f64::from(ui::text::ATLAS_SIDE)),
+            ("PICTURES_SIDE", f64::from(ui::pictures::SIDE)),
+            ("KIND_ELLIPSE", f64::from(KIND_ELLIPSE)),
+            ("KIND_LINE", f64::from(KIND_LINE)),
+            ("KIND_LETTER", f64::from(KIND_LETTER)),
+            ("KIND_PICTURE", f64::from(KIND_PICTURE)),
+            ("FLAG_CRISP", f64::from(FLAG_CRISP)),
+            ("FLAG_DOWN", f64::from(FLAG_DOWN)),
+            ("FLAG_BLOCKY", f64::from(FLAG_BLOCKY)),
+        ];
+        for (name, rust) in numbers {
+            assert_eq!(constant(source, name), rust, "{name}");
+        }
+        // A box is any kind the shader doesn't name.
+        assert!(
+            [KIND_ELLIPSE, KIND_LINE, KIND_LETTER, KIND_PICTURE]
+                .iter()
+                .all(|&k| k != KIND_BOX)
+        );
     }
 }

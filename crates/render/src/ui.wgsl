@@ -16,10 +16,10 @@ struct Screen {
 // pixel of its edge copied round it.
 @group(0) @binding(3) var pictures: texture_2d<f32>;
 
-// ui::text's SPREAD and ATLAS_SIDE.
+// ui::text's SPREAD and ATLAS_SIDE, and ui::pictures's SIDE (a test in
+// ui.rs checks these and the kinds and flags below against Rust's).
 const SPREAD: f32 = 6.0;
 const ATLAS_SIDE: f32 = 1024.0;
-// ui::pictures's SIDE.
 const PICTURES_SIDE: f32 = 2048.0;
 
 struct Instance {
@@ -53,10 +53,14 @@ struct Out {
     @location(10) @interpolate(flat) outline: vec4<f32>,
 };
 
+// Each kind of shape's number (any other is a box), and a shape's flags.
 const KIND_ELLIPSE: f32 = 1.0;
 const KIND_LINE: f32 = 2.0;
 const KIND_LETTER: f32 = 3.0;
 const KIND_PICTURE: f32 = 4.0;
+const FLAG_CRISP: u32 = 1u;
+const FLAG_DOWN: u32 = 2u;
+const FLAG_BLOCKY: u32 = 4u;
 
 @vertex
 fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
@@ -137,7 +141,7 @@ fn ui_fs(o_in: Out) -> @location(0) vec4<f32> {
     let p = o.at - centre;
     let kind = o.shape.z;
     let flags = u32(o.shape.w);
-    let crisp = (flags & 1u) != 0u;
+    let crisp = (flags & FLAG_CRISP) != 0u;
     var d: f32;
     if (kind == KIND_LETTER) {
         // Where in the letter's distance image, then how far from its
@@ -167,7 +171,7 @@ fn ui_fs(o_in: Out) -> @location(0) vec4<f32> {
     // Its colour along it: across or down.
     let span = max(o.rect.zw - o.rect.xy, vec2<f32>(0.0001));
     var t = clamp((o.at.x - o.rect.x) / span.x, 0.0, 1.0);
-    if ((flags & 2u) != 0u) {
+    if ((flags & FLAG_DOWN) != 0u) {
         t = clamp((o.at.y - o.rect.y) / span.y, 0.0, 1.0);
     }
     var colour = mix(o.colour_a, o.colour_b, t);
@@ -178,7 +182,7 @@ fn ui_fs(o_in: Out) -> @location(0) vec4<f32> {
         let along = clamp((o.at - o.rect.xy) / span, vec2<f32>(0.0), vec2<f32>(1.0));
         let px = mix(o.ends.xy, o.ends.zw, along);
         var c: vec4<f32>;
-        if ((flags & 4u) != 0u) {
+        if ((flags & FLAG_BLOCKY) != 0u) {
             let lo = vec2<i32>(floor(o.ends.xy));
             let hi = max(vec2<i32>(ceil(o.ends.zw)) - vec2<i32>(1), lo);
             c = textureLoad(pictures, clamp(vec2<i32>(floor(px)), lo, hi), 0);

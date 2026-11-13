@@ -696,7 +696,21 @@ mod tests {
 
     #[test]
     fn the_uniform_matches_the_shader_layout() {
-        assert_eq!(std::mem::size_of::<StageUniform>(), 48);
+        use std::mem::offset_of;
+        crate::shader_layout::assert_struct(
+            PIXEL_SHADER_SOURCE,
+            "Stage",
+            std::mem::size_of::<StageUniform>(),
+            &[
+                ("origin", offset_of!(StageUniform, origin)),
+                ("size", offset_of!(StageUniform, size)),
+                ("base", offset_of!(StageUniform, base)),
+                ("scale", offset_of!(StageUniform, scale)),
+                ("whole", offset_of!(StageUniform, whole)),
+                ("slide", offset_of!(StageUniform, slide)),
+                ("over", offset_of!(StageUniform, over)),
+            ],
+        );
     }
 
     #[test]
