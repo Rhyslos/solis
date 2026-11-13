@@ -100,30 +100,21 @@ impl Workbench {
             .collect()
     }
 
-    /// The panels there are now (a document's only while it's open).
+    /// Every panel there is now, wherever it lives (a document's only
+    /// while it's open).
     fn panel_items(&self) -> Vec<SearchItem> {
-        [
-            Panel::Viewport,
-            Panel::Game,
-            Panel::Area,
-            Panel::Properties,
-            Panel::Library,
-            Panel::Code,
-            Panel::Console,
-            Panel::Problems,
-            Panel::Profiler,
-            Panel::Mixer,
-        ]
-        .into_iter()
-        .filter(|panel| crate::shell::workspaces::tab_for(*panel, self.open_now()).is_some())
-        .map(|panel| SearchItem {
-            name: panel.title().to_string(),
-            kind: SearchKind::Panel,
-            detail: String::new(),
-            keys: "",
-            target: SearchTarget::Panel(panel),
-        })
-        .collect()
+        Panel::ALL
+            .into_iter()
+            .chain(Panel::OPEN_WITH_A_FILE)
+            .filter(|panel| crate::shell::workspaces::tab_for(*panel, self.open_now()).is_some())
+            .map(|panel| SearchItem {
+                name: panel.title().to_string(),
+                kind: SearchKind::Panel,
+                detail: String::new(),
+                keys: "",
+                target: SearchTarget::Panel(panel),
+            })
+            .collect()
     }
 
     fn found_is_current(&self, found: &Found) -> bool {

@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The search finds every panel by name.** Only ten were searched, so "Sound events", "Frames" or "Canvas" found nothing; now any panel that has a place on a tab is found, a file's panels while that file is open.
 - **"Too many model copies to draw" is said once, not every frame.** Like the same warning about sprites, it comes again only when they fit and later stop fitting.
 - **Two characters starting on the very same spot no longer fly off and sink through the floor when they walk.** They're pushed apart gently instead, and walk on side by side.
 - **A tileset's and a picture's tabs keep their shelf between runs.** The shelf tab in front and whether it was folded were saved but never put back.
