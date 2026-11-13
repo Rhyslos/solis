@@ -1350,9 +1350,12 @@ fn scale_check_editor_with_10000_entities_listed_inspected_and_searched() {
     // BUG-28: with nothing changing, every frame the Area column listed
     // the whole tree again, Properties counted every entity using the
     // inspected model's file, and the open search copied and scored every
-    // entity.
+    // entity. The second review pass: once anything was hidden or locked,
+    // every frame went through every entity to find what's under it.
     const TARGET_MS: f64 = 8.0;
     let mut w = crowded(10_000);
+    let top = w.document().area().depth_first()[0];
+    w.open.area_panel.hidden.insert(top);
     let model = w
         .document()
         .area()
@@ -1373,8 +1376,8 @@ fn scale_check_editor_with_10000_entities_listed_inspected_and_searched() {
     let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
     let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
     println!(
-        "Scale check: editor frame with 10,000 entities listed, a model inspected and the \
-         search open {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+        "Scale check: editor frame with 10,000 entities listed, a group hidden, a model \
+         inspected and the search open {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
     );
     assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
 }

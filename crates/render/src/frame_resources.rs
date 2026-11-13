@@ -40,6 +40,9 @@ pub(super) struct FrameResources {
     /// Whether last frame's sprites were too many to draw, so the warning
     /// is logged once when they stop fitting, not every frame.
     pub(super) sprites_dropped: bool,
+    /// Whether last frame's model copies were too many to draw: their
+    /// warning is logged once too.
+    pub(super) copies_dropped: bool,
 }
 
 /// How many copies are compared and sent together: a run that changed
@@ -239,6 +242,7 @@ impl FrameResources {
             bolts: None,
             sprites: None,
             sprites_dropped: false,
+            copies_dropped: false,
         }
     }
 

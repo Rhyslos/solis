@@ -172,12 +172,15 @@ impl ViewportRenderer {
             None => 0,
         };
         if sent.is_none() {
-            log::warn!(
-                "{count} model copies are more than the graphics card can draw at once; models \
-                 aren't drawn"
-            );
+            if !target.frame.copies_dropped {
+                log::warn!(
+                    "{count} model copies are more than the graphics card can draw at once; \
+                     models aren't drawn"
+                );
+            }
             batches.clear();
         }
+        target.frame.copies_dropped = sent.is_none();
         let shadows_drawn = receivers.is_some() && casters.is_some() && sent.is_some();
         if shadows_drawn {
             target

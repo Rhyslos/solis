@@ -80,11 +80,17 @@ impl Workbench {
     /// Brings the File tab to the front on `page`. The tab that was in
     /// front is remembered, for Back to editor.
     pub(crate) fn show_file_page(&mut self, page: Page) {
-        if self.shell.tab != RibbonTab::File {
+        let entering = self.shell.tab != RibbonTab::File;
+        if entering {
             self.shell.before_file = self.shell.tab;
-            // The projects are read afresh each time File opens.
-            self.open.outbox.push(WorkbenchAction::ListProjects);
             self.file_pages.focus_search = true;
+        }
+        // The projects are read afresh each time Recent projects is shown,
+        // and only then: reading every known project's files on any visit
+        // to File (Preferences and About too) froze the window, for seconds
+        // with one on an unplugged drive (the second review pass).
+        if page == Page::Projects && (entering || self.file_pages.page != Page::Projects) {
+            self.open.outbox.push(WorkbenchAction::ListProjects);
         }
         self.shell.tab = RibbonTab::File;
         self.shell.dropped = false;

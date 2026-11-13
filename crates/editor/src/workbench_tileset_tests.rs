@@ -610,3 +610,40 @@ fn a_picture_read_again_gets_its_texture_made_again() {
     w.tileset_texture(&ctx);
     assert!(w.open.tile_textures.is_empty());
 }
+
+/// The second review pass: with a tileset open on any tab and any tile
+/// animating, the whole editor redrew 25 times a second, forever. Now it
+/// does only while the Tileset tab is drawn and its own tiles animate.
+#[test]
+fn an_animated_tileset_redraws_the_editor_only_while_its_tab_is_in_front() {
+    let (mut w, _, _) = with_tileset();
+    let sheets = Arc::make_mut(&mut w.viewport.sheets);
+    let Some(TilesetState::Read(set, _)) = sheets.tilesets.get_mut("farm.tileset.lst") else {
+        panic!("the tileset");
+    };
+    Arc::make_mut(set).pieces[0].animation = tiles::Animation::Columns { count: 2, ms: 100 };
+    w.open_tileset("farm.tileset.lst");
+    let mut h = harness(w);
+    // Whether frames asked for the tiles' next step, once the tab shown
+    // has settled (the causes egui gives are the frame before's).
+    let ticking = |h: &mut egui_kittest::Harness<'static, State>| {
+        h.step();
+        h.step();
+        let mut asked = false;
+        for _ in 0..3 {
+            h.step();
+            asked |= h
+                .ctx
+                .repaint_causes()
+                .iter()
+                .any(|cause| cause.file.ends_with("workbench_frame.rs"));
+        }
+        asked
+    };
+    assert_eq!(h.state().0.ribbon_tab(), crate::shell::RibbonTab::Tileset);
+    assert!(ticking(&mut h), "its tiles move on in its tab");
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);
+    assert!(!ticking(&mut h), "nothing to move on behind another tab");
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Tileset);
+    assert!(ticking(&mut h), "and again in front");
+}

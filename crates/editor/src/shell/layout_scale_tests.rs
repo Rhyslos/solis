@@ -108,3 +108,23 @@ fn scale_check_editor_frame_with_10000_entities_and_10000_files() {
         "the editor takes {slowest:.2} ms per frame"
     );
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_the_library_with_10000_files_searched_and_2000_folders() {
+    // The second review pass: while a search was typed, the Library and
+    // the Assets column lowered every file's name every frame, and the
+    // folder tree drew every folder.
+    let mut w = full(10_000, crate::shell::PanelLayout::default());
+    w.set_folders((0..2000).map(|i| format!("folder {i}")).collect());
+    w.open.library_state.search = "FILE 99".into();
+    w.show_tab(crate::shell::RibbonTab::Library);
+    let ms = frame_ms(w);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: editor frame on the Library tab, 10,000 files searched and 2,000 folders \
+         {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}

@@ -83,6 +83,40 @@ impl LibraryItem {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LibraryDrag(pub(crate) LibraryItem);
 
+/// The project's files as the Library lists them, each with its name in
+/// lower case, made once when the files change: searching compares every
+/// name every frame (the second review pass: it lowered each one every
+/// frame). Reads as a list of [`LibraryItem`]s.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct LibraryFiles {
+    items: Vec<LibraryItem>,
+    lowered: Vec<String>,
+}
+
+impl From<Vec<LibraryItem>> for LibraryFiles {
+    fn from(items: Vec<LibraryItem>) -> Self {
+        let lowered = items.iter().map(|i| i.name.to_lowercase()).collect();
+        Self { items, lowered }
+    }
+}
+
+impl std::ops::Deref for LibraryFiles {
+    type Target = [LibraryItem];
+
+    fn deref(&self) -> &[LibraryItem] {
+        &self.items
+    }
+}
+
+impl LibraryFiles {
+    /// Each file with its name in lower case.
+    pub(crate) fn with_lowered(&self) -> impl Iterator<Item = (&LibraryItem, &str)> {
+        self.items
+            .iter()
+            .zip(self.lowered.iter().map(String::as_str))
+    }
+}
+
 /// How the Library is shown: the folder open, whether the folder tree is
 /// out, thumbnails or a list, the search, and what's selected. The
 /// editor's own, never saved with the project.
@@ -213,7 +247,7 @@ const TREE_WIDTH: f32 = 150.0;
 pub(crate) fn library(
     ui: &mut Ui,
     project: Option<&ProjectInfo>,
-    (items, folders): (&[LibraryItem], &[String]),
+    (items, folders): (&LibraryFiles, &[String]),
     state: &mut LibraryState,
     accent: Accent,
     code: bool,
@@ -386,27 +420,28 @@ fn note(ui: &mut Ui, text: &str) {
 /// searching) that pass the chip picked; code files only in the Code
 /// panel.
 fn shown_items<'a>(
-    items: &'a [LibraryItem],
+    items: &'a LibraryFiles,
     state: &LibraryState,
     code: bool,
 ) -> Vec<&'a LibraryItem> {
     let search = state.search.trim().to_lowercase();
     items
-        .iter()
-        .filter(|i| {
+        .with_lowered()
+        .filter(|(i, _)| {
             if code {
                 i.kind == LibraryKind::Code
             } else {
                 state.filter.passes(i.kind)
             }
         })
-        .filter(|i| {
+        .filter(|(i, lowered)| {
             if search.is_empty() {
                 code || i.folder() == state.folder
             } else {
-                i.name.to_lowercase().contains(&search)
+                lowered.contains(&search)
             }
         })
+        .map(|(i, _)| i)
         .collect()
 }
 
@@ -471,12 +506,16 @@ fn folder_tree(
     accent: Accent,
     requests: &mut Vec<LibraryRequest>,
 ) {
-    egui::ScrollArea::vertical()
-        .auto_shrink(false)
-        .show(ui, |ui| {
-            ui.spacing_mut().item_spacing.y = 1.0;
-            let all = std::iter::once(String::new()).chain(folders.iter().cloned());
-            for folder in all {
+    // Only the folders in view are drawn (the second review pass: every
+    // folder was, every frame): the assets folder, then each.
+    ui.spacing_mut().item_spacing.y = 1.0;
+    egui::ScrollArea::vertical().auto_shrink(false).show_rows(
+        ui,
+        ROW,
+        folders.len() + 1,
+        |ui, range| {
+            for i in range {
+                let folder = i.checked_sub(1).map_or("", |i| folders[i].as_str());
                 let depth = if folder.is_empty() {
                     0
                 } else {
@@ -484,7 +523,7 @@ fn folder_tree(
                 };
                 let name = folder
                     .rsplit_once('/')
-                    .map_or(folder.as_str(), |(_, n)| n)
+                    .map_or(folder, |(_, n)| n)
                     .to_string();
                 let name = if folder.is_empty() {
                     project.to_string()
@@ -528,13 +567,14 @@ fn folder_tree(
                     )
                 });
                 if response.clicked() {
-                    state.folder.clone_from(&folder);
+                    folder.clone_into(&mut state.folder);
                     state.search.clear();
                 }
-                drop_onto_folder(ui, &response, &folder, requests);
-                response.context_menu(|ui| folder_menu(ui, &folder, state, requests));
+                drop_onto_folder(ui, &response, folder, requests);
+                response.context_menu(|ui| folder_menu(ui, folder, state, requests));
             }
-        });
+        },
+    );
 }
 
 /// A file dropped on a folder moves there.
@@ -1323,7 +1363,7 @@ mod tests {
         ];
         let mut state = LibraryState::default();
         let names = |state: &LibraryState, code| -> Vec<String> {
-            shown_items(&items, state, code)
+            shown_items(&LibraryFiles::from(items.to_vec()), state, code)
                 .iter()
                 .map(|i| i.name.clone())
                 .collect()
@@ -1391,7 +1431,7 @@ mod tests {
         let mut state = LibraryState::default();
         let mut names = |filter| -> Vec<String> {
             state.filter = filter;
-            shown_items(&items, &state, false)
+            shown_items(&LibraryFiles::from(items.to_vec()), &state, false)
                 .iter()
                 .map(|i| i.name.clone())
                 .collect()

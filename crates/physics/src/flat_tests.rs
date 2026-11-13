@@ -535,3 +535,74 @@ fn no_centre_or_size_hands_2d_rapier_a_number_out_of_range() {
         }
     }
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_500_flat_characters_walking() {
+    // The second review pass: no case walked 2D characters, so a slower
+    // corner check (NEW-09's) would go unseen. A 64 × 64 tile map whose
+    // walls run every 8 tiles with gaps (many corners), in chunks of 16 ×
+    // 16 tiles as a map gives them, and 500 characters each walking its
+    // own way into them for two seconds.
+    const TARGET_MS: f64 = 8.0;
+    const SIDE: u32 = 64;
+    let wall = |x: u32, y: u32| {
+        x == 0
+            || y == 0
+            || x == SIDE - 1
+            || y == SIDE - 1
+            || ((x.is_multiple_of(8) || y.is_multiple_of(8)) && !(x + y).is_multiple_of(3))
+    };
+    let mut flat = Flat::new();
+    for cy in 0..SIDE / 16 {
+        for cx in 0..SIDE / 16 {
+            let mut rects = Vec::new();
+            for y in cy * 16..cy * 16 + 16 {
+                for x in cx * 16..cx * 16 + 16 {
+                    if wall(x, y) {
+                        rects.push(rect(x as f32, y as f32, x as f32 + 1.0, y as f32 + 1.0));
+                    }
+                }
+            }
+            flat.set_walls(id(9_999), [cx, cy], &rects);
+        }
+    }
+    let open: Vec<(u32, u32)> = (0..SIDE * SIDE)
+        .map(|i| (i % SIDE, i / SIDE))
+        .filter(|&(x, y)| !wall(x, y))
+        .collect();
+    let walkers: Vec<(EntityId, Vec2)> = (0..500_u64)
+        .map(|i| {
+            let (x, y) = open[(i as usize * 7) % open.len()];
+            flat.add(
+                id(i + 1),
+                Vec2::new(x as f32 + 0.5, y as f32 + 0.5),
+                circle(0.25),
+                true,
+            );
+            // Each its own way (the golden angle apart), 4 m a second.
+            let angle = i as f32 * 2.399_963;
+            (id(i + 1), Vec2::new(angle.cos(), angle.sin()) * 4.0 / 60.0)
+        })
+        .collect();
+    let ticks = 120;
+    let start = std::time::Instant::now();
+    for _ in 0..ticks {
+        flat.move_characters(&walkers, 1.0 / 60.0);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(ticks);
+    assert!(!flat.take_broke());
+    // They met the walls: none went through to the far side of the map.
+    for (who, _) in &walkers {
+        let at = flat.state().place(*who).unwrap();
+        assert!((1.0..SIDE as f32 - 1.0).contains(&at.x), "{at}");
+        assert!((1.0..SIDE as f32 - 1.0).contains(&at.y), "{at}");
+    }
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: 500 2D characters walking into a tile map's walls, physics alone: \
+         {ms:.2} ms a tick (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.2} ms a tick");
+}

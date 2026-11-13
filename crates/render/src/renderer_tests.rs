@@ -1,5 +1,5 @@
 //! The renderer's own tests: what a target makes only once it draws it,
-//! sprites too many to draw, and the lines' layout.
+//! sprites and model copies too many to draw, and the lines' layout.
 
 use super::*;
 
@@ -186,6 +186,65 @@ fn sprites_too_many_to_draw_are_not_counted_and_warned_about_once() {
     let (stats, dropped) = draw(700);
     assert_eq!((stats.sprites, stats.sent_bytes), (700, 700 * size));
     assert!(!dropped);
+}
+
+#[test]
+fn model_copies_too_many_to_draw_are_warned_about_once() {
+    // The second review pass: the warning was logged every frame. A card
+    // that holds 64 KiB in one buffer: a few hundred copies at most.
+    let Some((device, queue)) = gpu_with(|limits| wgpu::Limits {
+        max_buffer_size: 1 << 16,
+        ..limits
+    }) else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&device, 1);
+    let mut target = renderer.create_target(&device, [16, 16]);
+    let model = assets::load_bytes(
+        &assets::sample::sample_glb(),
+        None,
+        "Sample",
+        &assets::Limits::default(),
+    )
+    .unwrap();
+    let model = renderer.upload_model(&device, &queue, &model);
+    let params = FrameParams {
+        view_projection: glam::Mat4::IDENTITY,
+        camera_position: Vec3::Z,
+        focus: Vec3::ZERO,
+        sky_top: [0.3; 3],
+        sky_horizon: [0.3; 3],
+        ground: [0.2; 3],
+        shading: crate::frame::Shading {
+            look: crate::frame::Look::Unlit,
+            ..crate::frame::Shading::default()
+        },
+        size_px: [16, 16],
+        sun: crate::lighting::Sun::default(),
+        environment: crate::environment::Environment::default(),
+        editor_lines: false,
+        grid_plane: crate::frame::GridPlane::Ground,
+        grid_step: 1.0,
+    };
+    let mut draw = |count: usize| {
+        let placed: Vec<Placement> = (0..count)
+            .map(|i| Placement {
+                model: &model,
+                node: None,
+                transform: glam::Mat4::from_translation(Vec3::new(i as f32 * 1e-4, 0.0, 0.0)),
+                pick: 0,
+            })
+            .collect();
+        renderer.render(&device, &queue, &mut target, &params, &placed, &[]);
+        target.frame.copies_dropped
+    };
+    assert!(!draw(10));
+    // Too many: dropped, and warned about on the first such frame only.
+    assert!(draw(5000));
+    assert!(draw(5000));
+    // Fitting again, and a warning again when they next don't.
+    assert!(!draw(10));
+    assert!(draw(5000));
 }
 
 #[test]

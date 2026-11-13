@@ -41,9 +41,8 @@ impl Workbench {
     /// What the selection's outline goes around: each selected model's
     /// box, or a point for anything else; and each selected collider's
     /// shape.
-    fn outlines(&self) -> Vec<Outline> {
+    fn outlines(&self, hidden: &std::collections::HashSet<reflect::EntityId>) -> Vec<Outline> {
         let area = self.open.document.area();
-        let hidden = self.open.area_panel.in_effect(&self.open.document).0;
         let placed = self.open.document.world_matrices();
         self.open
             .document
@@ -130,7 +129,8 @@ impl Workbench {
     /// Hands the viewport this frame's gizmo and outline.
     pub(crate) fn prepare_tools(&mut self) {
         self.viewport.tools.gizmo = self.gizmo();
-        self.viewport.tools.outlines = self.outlines();
+        let hidden = self.open.area_panel.in_effect(&self.open.document);
+        self.viewport.tools.outlines = self.outlines(&hidden.0);
     }
 
     /// Carries out what the viewport's tools did this frame.

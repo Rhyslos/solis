@@ -121,7 +121,7 @@ fn farm() -> Workbench {
         path: path.into(),
         thumbnail: None,
     };
-    w.open.library = vec![item("areas/town.solarea"), item("areas/farm.solarea")];
+    w.open.library = vec![item("areas/town.solarea"), item("areas/farm.solarea")].into();
     w.open_area(
         area::Area::new(),
         std::path::PathBuf::from("/projects/farm/assets/areas/farm.solarea"),

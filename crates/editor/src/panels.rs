@@ -6,7 +6,7 @@ use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
 use crate::key_owner::KeyOwner;
-use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
+use crate::library::{LibraryRequest, LibraryState, ProjectInfo, library};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{AssemblyPart, PropertyRequest, properties};
@@ -46,7 +46,7 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     pub(crate) area_requests: &'a mut Vec<AreaRequest>,
     pub(crate) project: Option<&'a ProjectInfo>,
-    pub(crate) library: &'a [LibraryItem],
+    pub(crate) library: &'a crate::library::LibraryFiles,
     pub(crate) folders: &'a [String],
     pub(crate) library_state: &'a mut LibraryState,
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,

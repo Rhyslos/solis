@@ -113,23 +113,50 @@ fn picking_something_folded_away_unfolds_the_way_to_it() {
 #[test]
 fn hidden_entities_and_their_children_are_not_drawn_and_locked_ones_not_picked() {
     let (mut w, room, lamp, crate_id) = a_room();
-    let view = |w: &Workbench| {
-        let (hidden, locked) = w.open.area_panel.in_effect(&w.open.document);
-        AreaView::of_shown(w.open.document.area(), &w.open.models, &hidden, &locked)
+    let view = |w: &mut Workbench| {
+        let in_effect = w.open.area_panel.in_effect(&w.open.document);
+        let (hidden, locked) = &*in_effect;
+        AreaView::of_shown(w.open.document.area(), &w.open.models, hidden, locked)
     };
-    assert_eq!(view(&w).lamps.len(), 1);
+    assert_eq!(view(&mut w).lamps.len(), 1);
     w.open.area_panel.hidden.insert(room);
-    let v = view(&w);
+    let v = view(&mut w);
     assert!(v.lamps.is_empty(), "the lamp is under the hidden room");
     assert_eq!(v.models.len(), 1, "the crate is still drawn");
     w.open.area_panel.hidden.clear();
     w.open.area_panel.locked.insert(crate_id);
-    let v = view(&w);
+    let v = view(&mut w);
     assert_eq!(v.models.len(), 1, "a locked crate is still drawn…");
     assert_eq!(v.models[0].pick, 0, "…but can't be picked");
     assert!(v.pickable.is_empty());
     w.open.area_panel.locked.insert(lamp);
-    assert!(view(&w).locked.contains(&lamp));
+    assert!(view(&mut w).locked.contains(&lamp));
+}
+
+/// The second review pass: once anything was hidden or locked, every
+/// frame went through every entity to find what's under it. Now that's
+/// worked out again only when the tree or the switches change.
+#[test]
+fn what_is_hidden_in_effect_is_worked_out_again_only_after_a_change() {
+    let (mut w, room, lamp, crate_id) = a_room();
+    w.open.area_panel.hidden.insert(room);
+    let first = w.open.area_panel.in_effect(&w.open.document);
+    assert!(first.0.contains(&lamp), "under the hidden room");
+    let again = w.open.area_panel.in_effect(&w.open.document);
+    assert!(std::sync::Arc::ptr_eq(&first, &again), "nothing changed");
+    // A switch changed.
+    w.open.area_panel.locked.insert(crate_id);
+    let locked = w.open.area_panel.in_effect(&w.open.document);
+    assert!(!std::sync::Arc::ptr_eq(&first, &locked));
+    assert!(locked.1.contains(&crate_id));
+    // The tree changed: the lamp out of the room is no longer hidden.
+    w.apply_area_request(AreaRequest::Reparent {
+        entity: lamp,
+        onto: None,
+    });
+    let moved = w.open.area_panel.in_effect(&w.open.document);
+    assert!(!moved.0.contains(&lamp));
+    assert!(moved.0.contains(&room));
 }
 
 #[test]

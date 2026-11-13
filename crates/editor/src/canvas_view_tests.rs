@@ -471,3 +471,65 @@ fn a_piece_on_a_canvas_dragged_back_to_where_it_was_isn_t_a_change() {
     assert!(!changed(&h));
     assert!(!h.state_mut().doc.undo());
 }
+
+/// The second review pass: the canvas made its screen and found its
+/// pieces' boxes again every frame. Now they're kept until the file, the
+/// view, what's hidden or the size changes.
+#[test]
+fn the_screen_drawn_is_kept_until_something_changes() {
+    let mut h = harness();
+    h.run();
+    let kept =
+        |h: &Harness<'static, State>| Arc::clone(&h.state().doc.drawn.as_ref().unwrap().screen);
+    let first = kept(&h);
+    h.step();
+    h.step();
+    assert!(Arc::ptr_eq(&first, &kept(&h)), "nothing changed: the same");
+    let pieces = h.state().doc.drawn.as_ref().unwrap().pieces.len();
+    assert!(pieces > 3, "{pieces} pieces with boxes");
+    // A piece hidden: drawn again, see-through.
+    let (file, _) = h.state().doc.matches()[1].clone();
+    h.state_mut().doc.hidden.insert(file);
+    h.step();
+    let hidden = kept(&h);
+    assert!(!Arc::ptr_eq(&first, &hidden));
+    assert_ne!(hidden.view, first.view);
+    // A new size: drawn again.
+    h.state_mut().doc.zoom = Some(0.25);
+    h.step();
+    assert!(!Arc::ptr_eq(&hidden, &kept(&h)));
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_the_ui_canvas_with_1000_pieces() {
+    // The second review pass: every frame the canvas copied the screen's
+    // view twice, matched its pieces to the file again, laid the screen
+    // out a second time for the boxes, and matched each box to its piece
+    // by going through them all.
+    const TARGET_MS: f64 = 8.0;
+    let pieces: String = (0..1000)
+        .map(|i| format!("                text \"Item {i}\";\n"))
+        .collect();
+    let screen = format!(
+        "fetch \"solis/screen\":Ui;\n\nassembly PauseMenu {{\n    view {{\n        stack [width fill, \
+         height fill] {{\n            column [gap 2] {{\n{pieces}            }}\n        }}\n    \
+         }}\n}}\n\npass PauseMenu;\nend\n"
+    );
+    let mut h = harness_of(&screen);
+    h.run();
+    assert!(h.state().doc.matches().len() > 1000, "every piece read");
+    let frames = 20;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: the UI canvas showing a screen of 1,000 pieces {ms:.2} ms (target \
+         {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.2} ms a frame");
+}

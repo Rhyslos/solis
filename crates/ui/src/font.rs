@@ -10,14 +10,30 @@ use ab_glyph_rasterizer::{Point, Rasterizer, point};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::OutlinePen as _;
 use skrifa::raw::TableProvider as _;
-use skrifa::raw::tables::kern::{Kern, SubtableKind};
+use skrifa::raw::tables::kern::SubtableKind;
 use skrifa::{FontRef, MetadataProvider as _};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub(crate) use skrifa::GlyphId;
 
+/// The characters read when the font is: every one below this (Latin,
+/// Greek, Cyrillic, Hebrew, Arabic and their punctuation), looked up by
+/// number, the quickest way.
+const COMMON: u32 = 0x800;
+
+/// The most characters, or pairs of letters, a font remembers; past it
+/// it starts again (text of every letter there is can't grow it forever).
+pub(crate) const MAX_REMEMBERED: usize = 1 << 16;
+
 /// A font file, and the numbers every size of it is worked out from, in
 /// the font's own units.
+///
+/// What measuring needs (each character's letter and advance, each
+/// pair's kerning) is read from the file the first time it's asked for
+/// and remembered: reading the file's tables again for every word made a
+/// screen full of text cost thousands of reads a frame (the second
+/// review pass).
 #[derive(Debug, Clone)]
 pub(crate) struct Font {
     bytes: Arc<Vec<u8>>,
@@ -25,6 +41,14 @@ pub(crate) struct Font {
     /// Below the baseline: negative.
     descent: f32,
     line_gap: f32,
+    /// Whether it has a `kern` table at all (many fonts kern elsewhere).
+    kerns: bool,
+    /// The letter and advance of each character below [`COMMON`].
+    common: Vec<(GlyphId, f32)>,
+    /// Each other character's letter and how far the pen moves after it.
+    letters: HashMap<char, (GlyphId, f32)>,
+    /// Each pair of letters' kerning.
+    pairs: HashMap<(GlyphId, GlyphId), f32>,
 }
 
 impl Font {
@@ -37,85 +61,109 @@ impl Font {
         if !(height.is_finite() && height > 0.0 && line_gap.is_finite()) {
             return None;
         }
+        let kerns = face.kern().is_ok();
+        let charmap = face.charmap();
+        let advances = face.glyph_metrics(Size::unscaled(), LocationRef::default());
+        let common = (0..COMMON)
+            .map(|c| {
+                let id = char::from_u32(c)
+                    .and_then(|c| charmap.map(c))
+                    .unwrap_or(GlyphId::NOTDEF);
+                (id, advances.advance_width(id).unwrap_or(0.0))
+            })
+            .collect();
         Some(Self {
             bytes: Arc::new(bytes),
             ascent,
             descent,
             line_gap,
+            kerns,
+            common,
+            letters: HashMap::new(),
+            pairs: HashMap::new(),
         })
     }
 
-    /// The font at `size` pixels, ready to lay text out.
-    pub(crate) fn at(&self, size: f32) -> Option<Sized<'_>> {
-        let face = FontRef::from_index(&self.bytes, 0).ok()?;
-        Some(Sized {
-            charmap: face.charmap(),
-            advances: face.glyph_metrics(Size::unscaled(), LocationRef::default()),
-            kern: face.kern().ok(),
-            outlines: face.outline_glyphs(),
+    /// The font at `size` pixels: its numbers for laying text out.
+    pub(crate) fn at(&self, size: f32) -> Sized {
+        let scale = size / (self.ascent - self.descent);
+        Sized {
             size,
-            scale: size / (self.ascent - self.descent),
-            font: self,
-        })
-    }
-}
-
-/// A font at one size: letters, advances and kerning in pixels.
-pub(crate) struct Sized<'a> {
-    charmap: skrifa::charmap::Charmap<'a>,
-    advances: skrifa::metrics::GlyphMetrics<'a>,
-    kern: Option<Kern<'a>>,
-    outlines: skrifa::outline::OutlineGlyphCollection<'a>,
-    /// From the top of the ascent to the bottom of the descent, in pixels.
-    size: f32,
-    /// Pixels per font unit.
-    scale: f32,
-    font: &'a Font,
-}
-
-impl Sized<'_> {
-    /// The letter for `c`; the font's "missing" letter when it has none.
-    pub(crate) fn glyph(&self, c: char) -> GlyphId {
-        self.charmap.map(c).unwrap_or(GlyphId::NOTDEF)
+            scale,
+            ascent: self.ascent * scale,
+            line_gap: self.line_gap * scale,
+        }
     }
 
-    /// How far the pen moves after `id`.
-    pub(crate) fn advance(&self, id: GlyphId) -> f32 {
-        self.advances.advance_width(id).unwrap_or(0.0) * self.scale
+    /// The letter for `c` (the font's "missing" letter when it has none),
+    /// and how far the pen moves after it, in font units.
+    pub(crate) fn letter(&mut self, c: char) -> (GlyphId, f32) {
+        if let Some(&found) = self.common.get(c as usize) {
+            return found;
+        }
+        if let Some(&found) = self.letters.get(&c) {
+            return found;
+        }
+        let found = FontRef::from_index(&self.bytes, 0)
+            .map(|face| {
+                let id = face.charmap().map(c).unwrap_or(GlyphId::NOTDEF);
+                let advance = face
+                    .glyph_metrics(Size::unscaled(), LocationRef::default())
+                    .advance_width(id)
+                    .unwrap_or(0.0);
+                (id, advance)
+            })
+            .unwrap_or((GlyphId::NOTDEF, 0.0));
+        if self.letters.len() >= MAX_REMEMBERED {
+            self.letters.clear();
+        }
+        self.letters.insert(c, found);
+        found
     }
 
     /// How much closer (negative) or further `second` goes after `first`,
-    /// from the font's `kern` table (its horizontal pairs and classes).
-    pub(crate) fn kern(&self, first: GlyphId, second: GlyphId) -> f32 {
-        let Some(kern) = &self.kern else {
+    /// in font units, from the font's `kern` table (its horizontal pairs
+    /// and classes).
+    pub(crate) fn kern(&mut self, first: GlyphId, second: GlyphId) -> f32 {
+        if !self.kerns {
             return 0.0;
-        };
-        kern.subtables()
-            .filter_map(Result::ok)
-            .filter(|t| t.is_horizontal() && !t.is_variable())
-            .find_map(|t| match t.kind().ok()? {
-                SubtableKind::Format0(t) => t.kerning(first, second),
-                SubtableKind::Format2(t) => t.kerning(first, second),
-                SubtableKind::Format3(t) => t.kerning(first, second),
-                SubtableKind::Format1(_) => None,
+        }
+        if let Some(&found) = self.pairs.get(&(first, second)) {
+            return found;
+        }
+        let found = FontRef::from_index(&self.bytes, 0)
+            .ok()
+            .and_then(|face| face.kern().ok())
+            .and_then(|kern| {
+                kern.subtables()
+                    .filter_map(Result::ok)
+                    .filter(|t| t.is_horizontal() && !t.is_variable())
+                    .find_map(|t| match t.kind().ok()? {
+                        SubtableKind::Format0(t) => t.kerning(first, second),
+                        SubtableKind::Format2(t) => t.kerning(first, second),
+                        SubtableKind::Format3(t) => t.kerning(first, second),
+                        SubtableKind::Format1(_) => None,
+                    })
             })
-            .map_or(0.0, |k| k as f32 * self.scale)
+            .map_or(0.0, |k| k as f32);
+        if self.pairs.len() >= MAX_REMEMBERED {
+            self.pairs.clear();
+        }
+        self.pairs.insert((first, second), found);
+        found
     }
 
-    /// From the baseline up to the top of the line.
-    pub(crate) fn ascent(&self) -> f32 {
-        self.font.ascent * self.scale
+    /// How many characters and pairs it remembers.
+    #[cfg(test)]
+    pub(crate) fn remembered(&self) -> [usize; 2] {
+        [self.letters.len(), self.pairs.len()]
     }
 
-    /// From one line's baseline to the next's.
-    pub(crate) fn line(&self) -> f32 {
-        self.size + self.font.line_gap * self.scale
-    }
-
-    /// Letter `id`'s outline, ready to draw; none for one with no outline
-    /// (a space) or one the font can't give.
-    pub(crate) fn outline(&self, id: GlyphId) -> Option<Outline> {
-        let glyph = self.outlines.get(id)?;
+    /// Letter `id`'s outline at `size` pixels, ready to draw; none for one
+    /// with no outline (a space) or one the font can't give.
+    pub(crate) fn outline(&self, id: GlyphId, size: f32) -> Option<Outline> {
+        let face = FontRef::from_index(&self.bytes, 0).ok()?;
+        let glyph = face.outline_glyphs().get(id)?;
         let mut pen = Pen::default();
         glyph
             .draw(
@@ -124,7 +172,35 @@ impl Sized<'_> {
             )
             .ok()?;
         pen.close();
-        Outline::new(pen.curves, self.scale)
+        Outline::new(pen.curves, self.at(size).scale)
+    }
+}
+
+/// A font at one size: its numbers in pixels.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Sized {
+    /// From the top of the ascent to the bottom of the descent, in pixels.
+    size: f32,
+    /// Pixels per font unit.
+    scale: f32,
+    ascent: f32,
+    line_gap: f32,
+}
+
+impl Sized {
+    /// `units` of the font, in pixels.
+    pub(crate) fn px(&self, units: f32) -> f32 {
+        units * self.scale
+    }
+
+    /// From the baseline up to the top of the line.
+    pub(crate) fn ascent(&self) -> f32 {
+        self.ascent
+    }
+
+    /// From one line's baseline to the next's.
+    pub(crate) fn line(&self) -> f32 {
+        self.size + self.line_gap
     }
 }
 

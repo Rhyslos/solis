@@ -17,7 +17,7 @@
 
 use crate::console::LogLevel;
 use crate::document::Document;
-use crate::library::{LibraryItem, ProjectInfo};
+use crate::library::ProjectInfo;
 use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
 use crate::properties::AssemblyPart;
@@ -54,7 +54,7 @@ pub(crate) struct ProjectState {
     /// app remembers.
     pub(crate) last_export_folder: Option<std::path::PathBuf>,
     /// The project's assets, for the Library.
-    pub(crate) library: Vec<LibraryItem>,
+    pub(crate) library: crate::library::LibraryFiles,
     /// The project's assemblies the area uses, as read from their files.
     pub(crate) assemblies: BTreeMap<AssetId, std::sync::Arc<area::text::AreaFile>>,
     /// Actions asked for outside `Workbench::show`'s own flow (menus,

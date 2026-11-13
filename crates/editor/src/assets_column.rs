@@ -15,7 +15,7 @@
 //! placeable files as tiles of at least 92 px, the one being dragged
 //! dimmed with a "dragging" badge.
 
-use crate::library::{LibraryItem, LibraryRequest, LibraryState, Sounds};
+use crate::library::{LibraryFiles, LibraryItem, LibraryRequest, LibraryState, Sounds};
 use crate::tokens::{self, size, text};
 use crate::widgets::{self, dashed};
 use egui::{Align2, CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
@@ -26,7 +26,7 @@ use egui::{Align2, CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, 
 pub(crate) fn assets(
     ui: &mut Ui,
     (has_project, placing): (bool, bool),
-    items: &[LibraryItem],
+    items: &LibraryFiles,
     state: &mut LibraryState,
     sounds: Sounds<'_>,
 ) -> Vec<LibraryRequest> {
@@ -40,18 +40,19 @@ pub(crate) fn assets(
     }
     let wanted = state.search.trim().to_lowercase();
     let shown: Vec<&LibraryItem> = items
-        .iter()
-        .filter(|item| {
+        .with_lowered()
+        .filter(|(item, lowered)| {
             if !placing {
                 return item.folder() == state.folder;
             }
             let here = if wanted.is_empty() {
                 item.folder() == state.folder
             } else {
-                item.name.to_lowercase().contains(&wanted)
+                lowered.contains(&wanted)
             };
             here && item.kind.placeable() && state.filter.passes(item.kind)
         })
+        .map(|(item, _)| item)
         .collect();
     let room = ui.available_rect_before_wrap().shrink(size::TILE_GAP * 2.0);
     // As many as fit: four in the Entity tab's column, more in a wide

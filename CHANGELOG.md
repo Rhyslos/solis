@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **"Too many model copies to draw" is said once, not every frame.** Like the same warning about sprites, it comes again only when they fit and later stop fitting.
 - **Two characters starting on the very same spot no longer fly off and sink through the floor when they walk.** They're pushed apart gently instead, and walk on side by side.
 - **A tileset's and a picture's tabs keep their shelf between runs.** The shelf tab in front and whether it was folded were saved but never put back.
 - **The Library follows files that keep changing.** A program writing into the assets folder more often than every 0.3 seconds kept Solis from noticing anything until it stopped; changes are now noticed at least every 2 seconds while it goes on.
@@ -212,6 +213,13 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Opening Preferences, About or another File page no longer freezes the window while the projects are checked.** Each visit to File read every known project's files, for seconds with one on an unplugged drive; the projects are now read only when Recent projects is shown.
+- **The game-screen canvas keeps up with big screens.** Every frame it copied the screen, matched its pieces to the file and laid it out a second time to find each piece's box; it now does that only when the screen, what's hidden or the canvas's size changes.
+- **Hiding or locking something in a big area no longer slows every frame.** Once anything was hidden or locked, the Area column and the viewport's outlines went through every entity each frame to find what's under it; that's now worked out only when something changes.
+- **Searching a big project's Library is quicker, and thousands of folders don't slow it.** The Library and the Assets column lowered every file's name each frame while you searched, and the folder tree drew every folder; names are now lowered once, and only the folders in sight are drawn.
+- **A tileset with moving tiles no longer keeps the editor busy from another tab.** With one open anywhere, the whole editor redrew 25 times a second; now it does only while the Tileset tab is in front. An open clips file no longer sorts every picture's name every frame either: its lists are made when you open them.
+- **A picture with thousands of crops no longer slows the editor.** The Picture tab drew every crop in its list and on the picture each frame, even those out of sight; now it draws only the ones you can see.
+- **Game screens with a lot of text lay out faster.** Measuring a word read the font file's tables again each time, thousands of times a frame for a screen full of text; each letter's size is now read once and remembered.
 - **The editor's longest files split into parts, with nothing to notice** (the November review, DEBT-05, 07 and 09): playing the game, saving and loading it, the viewport, the animator's graph and the editor window's own code are each in files of a readable size, in named steps. Solis works exactly as before.
 - **The engine's longest files split into parts, with nothing to notice** (the November review, DEBT-01, 04, 06 and 10): the splash screen's unused update question is gone (it hasn't asked since updates moved to File › Updates); game code's engine calls, the running world, and the viewport's drawing and its tests are each in files of a readable size. Solis works exactly as before.
 - **Properties' lists (a sprite's sheet, pivot and clip, an animator and its state, a tile map, a screen, an entity) are the editor's one drop-down,** the same as everywhere else in the new look: the arrow keys step through them, long lists scroll, and a name that isn't there any more is warned about under the field. The Play and Stop buttons of sounds and sound events are the editor's own button too.

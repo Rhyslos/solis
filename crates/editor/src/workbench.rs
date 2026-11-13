@@ -292,7 +292,7 @@ impl Workbench {
 
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
-        self.open.library = items;
+        self.open.library = items.into();
         self.open.cue_sounds = cue_sounds(&self.open.library);
         self.sources += 1;
     }

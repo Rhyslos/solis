@@ -470,15 +470,18 @@ impl SpriteSheets {
     /// Whether any tileset with a picture read has an animated piece.
     pub fn tiles_animate(&self) -> bool {
         self.tilesets.values().any(|t| match t {
-            TilesetState::Read(set, _) => {
-                set.picture.is_some_and(|p| self.tile_art(p).is_some())
-                    && set
-                        .pieces
-                        .iter()
-                        .any(|p| p.animation != tiles::Animation::None)
-            }
+            TilesetState::Read(set, _) => self.tileset_animates(set),
             TilesetState::Failed(_) => false,
         })
+    }
+
+    /// Whether `set` has its picture read and an animated piece.
+    pub fn tileset_animates(&self, set: &tiles::Tileset) -> bool {
+        set.picture.is_some_and(|p| self.tile_art(p).is_some())
+            && set
+                .pieces
+                .iter()
+                .any(|p| p.animation != tiles::Animation::None)
     }
 
     /// Every picture a tileset can take its art from (PNG, JPEG or

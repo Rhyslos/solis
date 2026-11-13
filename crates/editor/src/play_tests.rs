@@ -697,7 +697,7 @@ mod spawns_that_cannot_be_made {
     fn a_part_whose_file_cannot_be_read_is_named() {
         // In the Library, but never read as an assembly.
         let mut w = playing(vec![(asset(10), "squad", assembly(&[asset(11)]))]);
-        let mut library = w.open.library.clone();
+        let mut library = w.open.library.to_vec();
         library.push(LibraryItem {
             id: Some(asset(11)),
             kind: LibraryKind::Assembly,
