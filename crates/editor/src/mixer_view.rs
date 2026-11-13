@@ -38,9 +38,12 @@ pub struct MixerState {
     pub(crate) held: Vec<(f32, f32)>,
     /// Each bus's ducking now, in decibels, while the game plays.
     pub(crate) ducked: Vec<f32>,
-    /// The bus picked, and the area's selection then (a new selection on
-    /// another tab forgets it; the Bus group then shows Master).
-    pub(crate) shown: Option<(usize, Selection)>,
+    /// The bus picked, by name, and the area's selection then (a new
+    /// selection on another tab forgets it; the Bus group then shows
+    /// Master). By name, so the buses changing under it (one removed,
+    /// the file reordered) never hands the pick to another bus (the
+    /// second review pass's N-03).
+    pub(crate) shown: Option<(String, Selection)>,
     /// The Bus group shows the bus's effects (unfinished) in place of
     /// its ducking.
     pub(crate) effects: bool,
@@ -100,8 +103,7 @@ impl MixerState {
     pub(crate) fn bus_shown(&self) -> usize {
         self.shown
             .as_ref()
-            .map(|(at, _)| *at)
-            .filter(|at| *at < self.mixer.buses.len())
+            .and_then(|(name, _)| self.mixer.index_of(name))
             .unwrap_or(0)
     }
 
@@ -185,12 +187,13 @@ impl crate::Workbench {
         let listening = &mut self.open.mixer.listening;
         listening.muted.retain(|n| names.contains(&n.as_str()));
         listening.soloed.retain(|n| names.contains(&n.as_str()));
+        // A bus picked that's gone (removed): Master is shown, unpicked.
         if self
             .open
             .mixer
             .shown
             .as_ref()
-            .is_some_and(|(at, _)| *at >= mixer.buses.len())
+            .is_some_and(|(name, _)| mixer.index_of(name).is_none())
         {
             self.open.mixer.shown = None;
         }
@@ -224,7 +227,14 @@ impl crate::Workbench {
     ) {
         match request {
             MixerRequest::Select(at) => {
-                self.open.mixer.shown = Some((at, self.open.document.selection.clone()));
+                let selection = &self.open.document.selection;
+                self.open.mixer.shown = self
+                    .open
+                    .mixer
+                    .mixer
+                    .buses
+                    .get(at)
+                    .map(|bus| (bus.name.clone(), selection.clone()));
                 self.open.sound_shown = None;
             }
             MixerRequest::Changed { mixer, save } => {
@@ -402,7 +412,8 @@ mod tests {
         let mut h = with_the_mixer();
         h.get_by_label("Music").click();
         h.run();
-        assert_eq!(h.state().0.open.mixer.shown.as_ref().map(|s| s.0), Some(1));
+        assert_eq!(h.state().0.open.mixer.bus_shown(), 1);
+        assert!(h.state().0.open.mixer.shown.is_some());
         assert!(h.query_by_label("Quieter while").is_some());
         assert!(h.query_by_label("Remove bus").is_some());
         // A new bus goes inside the one shown (the ribbon's Bus).
@@ -413,14 +424,61 @@ mod tests {
         let m = &saves[0];
         let new = m.index_of("Bus").unwrap();
         assert_eq!(m.buses[new].inside, "Music");
-        assert_eq!(
-            h.state().0.open.mixer.shown.as_ref().map(|s| s.0),
-            Some(new)
-        );
+        assert_eq!(h.state().0.open.mixer.bus_shown(), new);
         // Removing it saves again, and Properties goes back.
         h.get_by_label("Remove bus").click();
         h.run();
         assert!(saved(&mut h)[0].index_of("Bus").is_none());
+    }
+
+    /// N-03: the pick was kept by place, so after Remove the next bus was
+    /// picked, and a second Remove deleted it too.
+    #[test]
+    fn remove_picks_master_so_a_second_remove_deletes_nothing() {
+        let mut h = with_the_mixer();
+        h.get_by_label("Music").click();
+        h.run();
+        let before = h.state().0.mixer().buses.len();
+        h.get_by_label("Remove bus").click();
+        h.run();
+        let saves = saved(&mut h);
+        assert_eq!(saves.len(), 1);
+        assert!(saves[0].index_of("Music").is_none());
+        let mixer = &h.state().0.open.mixer;
+        assert_eq!(mixer.mixer.buses.len(), before - 1);
+        assert_eq!((mixer.bus_shown(), mixer.shown.is_none()), (0, true));
+        assert!(
+            crate::bus_view::remove_bus(mixer).is_empty(),
+            "Master stays"
+        );
+    }
+
+    /// N-03: the buses read again in another order (the file changed on
+    /// disk), or one renamed, keep the same bus picked.
+    #[test]
+    fn the_pick_stays_on_its_bus_when_the_buses_change_under_it() {
+        let mut w = Workbench::new(info());
+        let music = w.mixer().index_of("Music").unwrap();
+        w.mixer_request(MixerRequest::Select(music), &mut Vec::new());
+        let mut reordered = w.mixer().clone();
+        let moved = reordered.buses.remove(music);
+        reordered.buses.push(moved);
+        w.set_mixer(reordered);
+        let shown = w.open.mixer.bus_shown();
+        assert_eq!(w.mixer().buses[shown].name, "Music");
+        // Renamed, as the bus's name field asks.
+        let mut renamed = w.mixer().clone();
+        assert!(renamed.rename_bus(shown, "Score"));
+        w.mixer_request(
+            MixerRequest::Changed {
+                mixer: renamed,
+                save: false,
+            },
+            &mut Vec::new(),
+        );
+        w.mixer_request(MixerRequest::Select(shown), &mut Vec::new());
+        let shown = w.open.mixer.bus_shown();
+        assert_eq!(w.mixer().buses[shown].name, "Score");
     }
 
     #[test]

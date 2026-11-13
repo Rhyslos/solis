@@ -350,9 +350,14 @@ pub enum ProgramFile {
 
 impl Workbench {
     /// Shows Recent projects as the editor starts: Solis always opens on
-    /// it, and a project opens from it (decision 0105).
+    /// it, and a project opens from it (decision 0105). Called once the
+    /// saved frame is put back, so the tab it left in front is the one
+    /// Back to editor (or Esc) returns to. Search projects isn't given
+    /// the keys at the start: the arrows walk the cards and Esc carries on
+    /// into the editor straight away.
     pub fn start_on_recent_projects(&mut self) {
         self.show_recent_projects();
+        self.file_pages.focus_search = false;
     }
 
     /// Shows Recent projects (the editor's window was closed with a

@@ -11,7 +11,7 @@ use reflect::AssetId;
 use reflect::ordinary_file::Refused;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError, TryLockError};
 use std::time::{Duration, Instant, SystemTime};
 
 /// How long a new file without a sidecar must have been left alone before
@@ -291,6 +291,21 @@ impl AssetDb {
         self.take(scanned).unwrap_or_default()
     }
 
+    /// [`AssetDb::rescan`], unless a look on a worker ([`Scan::run`]) is
+    /// going on: then `None` at once, rather than waiting for its walk of
+    /// the folder (over a second in a big project, on the window's thread:
+    /// the second review pass's N-13). Ask a worker to look again instead.
+    pub fn rescan_if_free(&mut self) -> Option<(Vec<Change>, Vec<String>)> {
+        let looking = Arc::clone(&self.looking);
+        let _looking = match looking.try_lock() {
+            Ok(held) => held,
+            Err(TryLockError::Poisoned(held)) => held.into_inner(),
+            Err(TryLockError::WouldBlock) => return None,
+        };
+        let scanned = self.scan().look();
+        Some(self.take(scanned).unwrap_or_default())
+    }
+
     /// A look at the whole folder, to [`Scan::run`] on another thread and
     /// hand to [`AssetDb::take`]. The database can be used meanwhile.
     pub fn scan(&mut self) -> Scan {
@@ -359,14 +374,17 @@ impl AssetDb {
     /// Gives the file at `path` (inside the assets, just written by Solis)
     /// a sidecar of its own now, so the next look takes it at once rather
     /// than waiting for it to settle. A file that has one keeps it.
-    pub fn adopt(&self, path: &Path) -> std::io::Result<()> {
+    /// Returns its ID, known before any look takes the file in.
+    pub fn adopt(&self, path: &Path) -> std::io::Result<AssetId> {
         let sidecar_path = sidecar::path_for(path);
         if sidecar_path.exists() {
-            return Ok(());
+            return Sidecar::read(&sidecar_path)
+                .map(|sidecar| sidecar.id)
+                .map_err(|why| std::io::Error::other(format!("its sidecar can't be read: {why}")));
         }
-        Sidecar::new(hash_file(path)?)
-            .write(&sidecar_path)
-            .map(|_| ())
+        let sidecar = Sidecar::new(hash_file(path)?);
+        sidecar.write(&sidecar_path)?;
+        Ok(sidecar.id)
     }
 
     /// Copies the model at `source` (and the files it reads) into the
@@ -437,7 +455,13 @@ impl Scan {
     /// when its content shows which it is, and are never deleted. Slow in
     /// a big project: run it away from the window's thread.
     pub fn run(self) -> Scanned {
-        let _looking = self.looking.lock().unwrap_or_else(PoisonError::into_inner);
+        let looking = Arc::clone(&self.looking);
+        let _looking = looking.lock().unwrap_or_else(PoisonError::into_inner);
+        self.look()
+    }
+
+    /// [`Scan::run`]'s work, with the folder already held.
+    fn look(self) -> Scanned {
         let root = self.project.assets();
         let mut notes = Vec::new();
         let mut waiting: Option<Instant> = None;
@@ -893,6 +917,26 @@ mod tests {
             .unwrap();
         db.rescan();
         assert!(db.id_at(&assets.join("barrel.glb")).is_some());
+    }
+
+    /// N-13: a look now never waits for one on a worker (which holds the
+    /// folder while it walks it): it says so at once, and looks once the
+    /// worker's is done.
+    #[test]
+    fn a_look_now_never_waits_for_one_on_a_worker() {
+        let (project, assets, _folder) = project("db-look-now");
+        let (mut db, ..) = open(project);
+        glb(&assets.join("rock.glb"), 0.5);
+        let id = db.adopt(&assets.join("rock.glb")).unwrap();
+        assert_eq!(db.adopt(&assets.join("rock.glb")).unwrap(), id, "kept");
+        let worker = Arc::clone(&db.looking);
+        let walking = worker.lock().unwrap();
+        assert!(db.rescan_if_free().is_none(), "not waited for");
+        assert_eq!(db.id_at(&assets.join("rock.glb")), None);
+        drop(walking);
+        let (changes, _) = db.rescan_if_free().expect("looked");
+        assert_eq!(changes, [Change::Added(id)]);
+        assert_eq!(db.id_at(&assets.join("rock.glb")), Some(id));
     }
 
     /// The review, BUG-32: every look hashed each file without a sidecar

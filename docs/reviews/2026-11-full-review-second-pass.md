@@ -17,28 +17,28 @@ The **scale check** ran on a 2-core machine with no graphics card. Most targets 
 
 Severity runs from 1 to 10: 10 is lost work, a crash in normal use or something a hostile file can exploit; 5 is a real bug in an edge case; 2 is small. Each has a proposed fix in the details below.
 
-- **N-01 (6)** A game written only in Lua is told "main.lst… there isn't one": Play is refused and the export says the code has mistakes. *(The fix for games with no code missed this case.)* Fix: check for `main.lst` only when the game has Lust files of its own.
-- **N-02 (5)** On the Audio, Debug, Build or Library tab, Delete, Ctrl+D and Ctrl+Z still act on the area you can't see (a crate deleted while you meant a bus). Fix: the area's keys rest on any tab without a 3D or 2D view.
-- **N-03 (5)** Remove a bus and the next bus becomes the picked one; a second click on Remove deletes it too, saved at once with no undo. The Input page has the same problem with its actions. Fix: keep the pick by name, and pick Master after Remove.
-- **N-04 (5)** Solis opens on Home instead of Recent projects every time after the first, because the saved layout is put back after the projects page was chosen (decision 0105). Fix: put the layout back first; a test of the real start order.
-- **N-05 (4)** Pressing Enter to confirm a project's new name also opens that project. Fix: ignore Enter on the cards while a name is being typed.
+- **N-01 (6)** A game written only in Lua is told "main.lst… there isn't one": Play is refused and the export says the code has mistakes. *(The fix for games with no code missed this case.)* Fix: check for `main.lst` only when the game has Lust files of its own. **Fixed** (`ee4dfb969`)
+- **N-02 (5)** On the Audio, Debug, Build or Library tab, Delete, Ctrl+D and Ctrl+Z still act on the area you can't see (a crate deleted while you meant a bus). Fix: the area's keys rest on any tab without a 3D or 2D view. **Fixed** (`ae1336fd6`)
+- **N-03 (5)** Remove a bus and the next bus becomes the picked one; a second click on Remove deletes it too, saved at once with no undo. The Input page has the same problem with its actions. Fix: keep the pick by name, and pick Master after Remove. **Fixed** (`bda9919f6`)
+- **N-04 (5)** Solis opens on Home instead of Recent projects every time after the first, because the saved layout is put back after the projects page was chosen (decision 0105). Fix: put the layout back first; a test of the real start order. **Fixed** (`e6d0537fc`)
+- **N-05 (4)** Pressing Enter to confirm a project's new name also opens that project. Fix: ignore Enter on the cards while a name is being typed. **Fixed** (`e9b3fc033`)
 - **N-06 (4)** Every visit to the File tab (Preferences, About too) reads up to 200 projects' files while the window waits: seconds of freeze with a project on an unplugged drive. Fix: read them on a worker, or only for Recent projects.
 - **N-07 (4)** The new font reader (from the fix of DEP-01) reads the whole font again for every word it measures: thousands of times a frame for a screen full of text. Fix: read the font once and keep what measuring needs.
 - **N-08 (4)** The Picture tab draws every crop in its list and on the picture every frame (up to 4,096). Fix: draw only the rows and boxes on screen.
-- **N-09 (4)** Build's big Export button resets the export form instead of exporting: the typed name is lost and "Open folder" greys out. Fix: make it do what the page's Export button does.
-- **N-10 (4, not yet seen by a reviewer)** Two characters starting on the very same spot and both walking fly apart and sink through the floor (seen by the fixer of NEW-01 in a probe). Fix: confirm with a test, then push overlapping characters apart gently.
+- **N-09 (4)** Build's big Export button resets the export form instead of exporting: the typed name is lost and "Open folder" greys out. Fix: make it do what the page's Export button does. **Fixed** (`04cbbe727`)
+- **N-10 (4, not yet seen by a reviewer)** Two characters starting on the very same spot and both walking fly apart and sink through the floor (seen by the fixer of NEW-01 in a probe). Fix: confirm with a test, then push overlapping characters apart gently. **Fixed** (`b818cedcb`)
 - **N-11 (3)** The renderer hands over sprites, projectiles and models 15–20 % slower than on 7 November, on the same kind of machine, while the editor's own cases got faster. Fix: compare the renderer before and after pull request 245 and find the step.
-- **N-12 (3)** The scale case "quick-saving over a big save" no longer runs: its made-up old save is now refused as damaged when saving over it. Fix: write a save of today's version in the case.
-- **N-13 (3)** A Library action can freeze the window for over a second while a background scan runs (it now waits for it). Fix: don't wait; send it through the worker.
+- **N-12 (3)** The scale case "quick-saving over a big save" no longer runs: its made-up old save is now refused as damaged when saving over it. Fix: write a save of today's version in the case. **Fixed** (`22ff0ddb6`)
+- **N-13 (3)** A Library action can freeze the window for over a second while a background scan runs (it now waits for it). Fix: don't wait; send it through the worker. **Fixed** (`eaa399ac0`)
 - **N-14 (3)** Three different rules say which folder is the engine's (`solis/`), and the screens write `"solis/screen"` into your code: renaming the program would break screens. Your own file placed in `solis/` now counts as the engine's. Fix: one rule, from branding, listed in RENAMING.md.
 - **N-15 (3)** Searching for a panel by name (Space) finds only 10 of them; "Sound events", "Frames" or "Canvas" find nothing. Fix: search every panel.
 - **N-16 (3)** The UI canvas copies and lays out its screen twice every frame and matches boxes to pieces the slow way. Fix: keep the result until the screen changes.
 - **N-17 (3)** The Library and the Assets column lowercase every file's name every frame while you search, and the folder tree draws every folder. Fix: keep the lowered names; draw only the visible folders.
 - **N-18 (3)** With a tileset open on any tab, the whole editor redraws 25 times a second forever; an open clips file sorts every picture's name every frame. Fix: only while its tab is in front.
 - **N-19 (3)** The Area column goes through every entity every frame once anything is hidden or locked. Fix: keep the result until the area changes.
-- **N-20 (2)** The new folder watcher says nothing while files keep changing faster than every 0.3 s, so the Library doesn't update. Fix: also report every 2 seconds during a long burst.
+- **N-20 (2)** The new folder watcher says nothing while files keep changing faster than every 0.3 s, so the Library doesn't update. Fix: also report every 2 seconds during a long burst. **Fixed** (`8b276d5bb`)
 - **N-21 (2)** The search shows no key for the tile tools, the copy axes and the Delete keys of the 2D editors. Fix: take the keys from the tools.
-- **N-22 (2)** A contextual tab's shelf (Tileset, Picture) is saved but never put back. Fix: look it up among the contextual tabs too.
+- **N-22 (2)** A contextual tab's shelf (Tileset, Picture) is saved but never put back. Fix: look it up among the contextual tabs too. **Fixed** (`ed68d3789`)
 - **N-23 (2)** The manual and a few notes still say some actions are only in the search, that Ctrl+Space opens the Library, and that the window test drags a panel. Fix: correct them.
 - **N-24 (2)** A few colours from the old look bypass the theme (the playhead, the unpicked crops): with the orange accent, picked and unpicked crops look alike. Fix: make them tokens.
 - **N-25 (2)** The warning "too many model copies" repeats every frame. Fix: say it once, as sprites now do.

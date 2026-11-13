@@ -14,6 +14,12 @@ use std::time::{Duration, Instant};
 /// program writing a file in pieces is reported once.
 pub(crate) const QUIET: Duration = Duration::from_millis(300);
 
+/// The longest a burst goes unreported: a folder that never goes quiet
+/// for [`QUIET`] (a program writing a file every 0.2 s, a long copy) is
+/// still reported this often, or the Library never followed it (the
+/// second review pass's N-20).
+pub(crate) const LONGEST: Duration = Duration::from_secs(2);
+
 /// Watches a folder and everything in it.
 pub struct Watcher {
     _watcher: notify::RecommendedWatcher,
@@ -44,8 +50,8 @@ impl Watcher {
     }
 
     /// Whether anything happened since last asked and the folder has
-    /// been quiet for `QUIET` since (an error, such as lost events,
-    /// counts: look again to be sure). Never waits.
+    /// been quiet for `QUIET` since, or it began `LONGEST` ago (an error,
+    /// such as lost events, counts: look again to be sure). Never waits.
     pub fn changed(&self) -> bool {
         let mut burst = self.burst.get();
         while let Ok(at) = self.events.try_recv() {
@@ -58,27 +64,33 @@ impl Watcher {
 }
 
 /// A burst of events, reported once the folder has been quiet for
-/// `QUIET` after the last of them.
+/// `QUIET` after the last of them, or once it has gone on for `LONGEST`.
 #[derive(Debug, Clone, Copy, Default)]
 struct Burst {
-    last: Option<Instant>,
+    /// The first and the newest event of the burst.
+    heard: Option<(Instant, Instant)>,
 }
 
 impl Burst {
     fn heard(&mut self, at: Instant) {
-        self.last = Some(self.last.map_or(at, |last| last.max(at)));
+        self.heard = Some(
+            self.heard
+                .map_or((at, at), |(first, last)| (first.min(at), last.max(at))),
+        );
     }
 
-    /// Whether a burst has ended by `now`; if so, it's reported and
-    /// forgotten.
+    /// Whether a burst is to be reported by `now`: it has ended, or gone
+    /// on too long. If so, it's reported and forgotten; events after it
+    /// start another.
     fn settled(&mut self, now: Instant) -> bool {
-        let ended = self
-            .last
-            .is_some_and(|last| now.saturating_duration_since(last) >= QUIET);
-        if ended {
-            self.last = None;
+        let report = self.heard.is_some_and(|(first, last)| {
+            now.saturating_duration_since(last) >= QUIET
+                || now.saturating_duration_since(first) >= LONGEST
+        });
+        if report {
+            self.heard = None;
         }
-        ended
+        report
     }
 }
 
@@ -129,6 +141,28 @@ mod tests {
         burst.heard(start);
         assert!(!burst.settled(start + QUIET + QUIET / 2));
         assert!(burst.settled(start + QUIET * 2));
+    }
+
+    #[test]
+    fn a_folder_that_never_goes_quiet_is_still_reported_every_two_seconds() {
+        // N-20: a file written every 0.2 s never left the folder quiet
+        // for 0.3 s, so nothing was reported while it went on.
+        let start = Instant::now();
+        let mut burst = Burst::default();
+        let mut reported = Vec::new();
+        for tick in 0..50u32 {
+            let at = start + Duration::from_millis(200) * tick;
+            burst.heard(at);
+            if burst.settled(at) {
+                reported.push(at - start);
+            }
+        }
+        let millis: Vec<u128> = reported.iter().map(Duration::as_millis).collect();
+        assert_eq!(millis, [2000, 4200, 6400, 8600], "every 2 s or so");
+        // The last part of it is still reported once it goes quiet.
+        let last = start + Duration::from_millis(200) * 49;
+        assert!(burst.settled(last + QUIET));
+        assert!(!burst.settled(last + LONGEST * 2), "reported once");
     }
 
     #[test]

@@ -281,11 +281,24 @@ fn scale_check_quick_saving_over_a_big_save() {
     // The Phase 8 review: saving into a slot read the whole save already
     // there just to see its version. A 64 MB save is replaced by another,
     // as a quick-save during play does; only its first line is read now.
+    // Both are of this build's version: an older one is upgraded and
+    // checked first, which this made-up text can't pass (the second
+    // review pass's N-12: the case stopped running when it was "solis
+    // save 3").
     const TARGET_MS: f64 = 1000.0;
     let root = project("scale-save");
     let slot = crate::play_files::save_path(&root, "quick").unwrap();
     std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
-    let big = format!("solis save 3\n{}", "x".repeat(64 << 20));
+    let big = format!(
+        "solis save {}\n{}",
+        editor::SAVE_FORMAT.current,
+        "x".repeat(64 << 20)
+    );
+    assert_eq!(
+        (editor::SAVE_FORMAT.version_of)(big.lines().next().unwrap()),
+        Some(editor::SAVE_FORMAT.current),
+        "a save of this build's version"
+    );
     std::fs::write(&slot, &big).unwrap();
     let start = std::time::Instant::now();
     let (_, copy) =

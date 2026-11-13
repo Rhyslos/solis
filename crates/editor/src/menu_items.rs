@@ -30,7 +30,7 @@ impl Workbench {
     /// Carries out a menu command.
     pub(crate) fn run(&mut self, command: MenuCommand, ctx: &egui::Context) {
         match command {
-            MenuCommand::ExportPlaytest => self.open_export(),
+            MenuCommand::ExportPlaytest => self.export_playtest(),
             MenuCommand::Undo => self.undo(),
             MenuCommand::Redo => self.redo(),
             MenuCommand::Duplicate => self.duplicate_selection(),

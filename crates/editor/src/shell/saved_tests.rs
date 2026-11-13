@@ -79,6 +79,34 @@ fn a_frame_reads_back_as_it_was_saved() {
     );
 }
 
+/// N-22: a contextual tab's shelf (the Tileset's, the Picture's) comes
+/// back as it was left; such a tab is never the one in front at the start.
+#[test]
+fn a_contextual_tab_s_shelf_comes_back_too() {
+    let mut shell = Shell {
+        tab: RibbonTab::Tileset,
+        ..Shell::default()
+    };
+    let tileset = shell.arrangement_mut(RibbonTab::Tileset);
+    tileset.shelf_tab = ShelfTab::Console;
+    tileset.shelf_folded = true;
+    shell.arrangement_mut(RibbonTab::Picture).shelf_tab = ShelfTab::Problems;
+    let text = ron::to_string(&shell.saved()).unwrap();
+    let restored = Shell::restored(&ron::from_str(&text).unwrap());
+    let tileset = restored.arrangement(RibbonTab::Tileset);
+    assert_eq!(
+        (tileset.shelf_tab, tileset.shelf_folded),
+        (ShelfTab::Console, true)
+    );
+    assert_eq!(
+        restored.arrangement(RibbonTab::Picture).shelf_tab,
+        ShelfTab::Problems
+    );
+    assert_eq!(restored.tab, RibbonTab::Library, "its parent in front");
+    let named: ShellState = ron::from_str("(tab: \"Tileset\")").unwrap();
+    assert_eq!(Shell::restored(&named).tab, RibbonTab::Home);
+}
+
 #[test]
 fn nothing_saved_is_the_standard() {
     let restored = Shell::restored(&ShellState::default());

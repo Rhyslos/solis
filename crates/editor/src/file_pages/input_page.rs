@@ -55,6 +55,30 @@ pub(crate) struct InputPage {
     pub(crate) search: String,
 }
 
+impl InputPage {
+    /// Keeps the action picked, and the one waiting for an input to bind,
+    /// on the same actions by name when the list changes under the page
+    /// (the file changed on disk): kept by place, the next key was bound
+    /// to another action (the second review pass's N-03). An action
+    /// that's gone is let go, and so is a picked binding whose action
+    /// changed.
+    pub(crate) fn follow(&mut self, before: &Bindings, now: &Bindings) {
+        let moved = |at: usize| {
+            let name = &before.actions.get(at)?.name;
+            now.actions.iter().position(|a| &a.name == name)
+        };
+        let picked = self.picked.and_then(moved);
+        let was = self.picked.and_then(|at| before.actions.get(at));
+        if picked.and_then(|at| now.actions.get(at)) != was {
+            self.picked_binding = None;
+        }
+        self.picked = picked;
+        self.listening = self
+            .listening
+            .and_then(|(at, slot, waited)| Some((moved(at)?, slot, waited)));
+    }
+}
+
 /// Whether `input` is a gamepad's.
 pub(super) fn is_pad(input: &str) -> bool {
     input.starts_with("Pad ")

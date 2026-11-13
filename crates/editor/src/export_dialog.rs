@@ -215,6 +215,14 @@ pub(crate) struct ExportForm {
     pub(crate) busy: bool,
 }
 
+impl ExportForm {
+    /// Whether Export can go: none is going, and the area and the folder
+    /// are chosen.
+    pub(crate) fn ready(&self) -> bool {
+        usable_area(&self.playtest.area) && !self.folder.trim().is_empty() && !self.busy
+    }
+}
+
 /// The window sizes offered, as the game's Resolution steps through them.
 pub(crate) fn sizes() -> &'static [[u32; 2]] {
     &script::settings::RESOLUTIONS
@@ -241,10 +249,48 @@ impl Workbench {
     }
 
     /// Opens Export for playtesting: the Build tab's page (also File ›
-    /// Project settings › Build), filled in afresh.
+    /// Project settings › Build), filled in if it isn't yet: what was
+    /// typed there, and how the last export went, are kept.
     pub fn open_export(&mut self) {
-        self.prepare_export();
+        if self.open.export.is_none() {
+            self.prepare_export();
+        }
         self.show_tab(crate::shell::RibbonTab::Build);
+    }
+
+    /// Export for playtesting from the ribbon (or the search): on the
+    /// Build tab, where its form is the page, it exports as the page's
+    /// Export does; elsewhere it opens the page. It used to fill the form
+    /// in afresh instead, losing the name typed (the second review pass's
+    /// N-09).
+    pub(crate) fn export_playtest(&mut self) {
+        if self.shell.tab == crate::shell::RibbonTab::Build && self.open.export.is_some() {
+            if let Some(request) = self.export_from_form() {
+                self.open
+                    .outbox
+                    .push(crate::WorkbenchAction::ExportPlaytest(request));
+            }
+            return;
+        }
+        self.open_export();
+    }
+
+    /// The export the form asks for, its game's name made usable, and the
+    /// form busy until it's done; none while one is going, or before the
+    /// area and the folder are chosen.
+    pub(crate) fn export_from_form(&mut self) -> Option<ExportRequest> {
+        let form = self.open.export.as_mut()?;
+        if !form.ready() {
+            return None;
+        }
+        form.playtest.name = game_name(&form.playtest.name);
+        form.busy = true;
+        form.done = None;
+        Some(ExportRequest {
+            playtest: form.playtest.clone(),
+            folder: PathBuf::from(form.folder.trim()),
+            suggested: form.folder == form.suggested,
+        })
     }
 
     /// Fills in Export for playtesting: the game named after the project,

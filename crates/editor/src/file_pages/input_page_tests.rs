@@ -107,3 +107,41 @@ fn a_click_in_the_window_saves_once() {
     h.run();
     assert_eq!(saves(&h), 1, "a whole-axis tick");
 }
+
+/// N-03: the actions read again with one gone and the rest moved up (the
+/// file changed on disk) keep the picked action, and the one waiting for
+/// an input, on the same actions: the next key is bound where it was
+/// asked for.
+#[test]
+fn the_picked_and_listening_actions_follow_the_list_changing_under_them() {
+    let mut w = Workbench::new(info());
+    let before = w.bindings().clone();
+    assert!(before.actions.len() >= 3);
+    w.open_input_page();
+    let page = w.open.input_page.as_mut().unwrap();
+    page.picked = Some(2);
+    page.picked_binding = Some((super::Slot::Inputs, 0));
+    page.listening = Some((2, super::Slot::Inputs, 1));
+    let mut now = before.clone();
+    now.actions.remove(0);
+    w.set_bindings(now.clone());
+    let page = w.open.input_page.as_ref().unwrap();
+    let name = |at: Option<usize>| at.map(|at| now.actions[at].name.clone());
+    assert_eq!(name(page.picked), Some(before.actions[2].name.clone()));
+    assert_eq!(
+        name(page.listening.map(|l| l.0)),
+        Some(before.actions[2].name.clone())
+    );
+    assert_eq!(
+        page.picked_binding,
+        Some((super::Slot::Inputs, 0)),
+        "same action"
+    );
+    // An action that's gone is let go.
+    let mut fewer = now.clone();
+    fewer.actions.retain(|a| a.name != before.actions[2].name);
+    w.set_bindings(fewer);
+    let page = w.open.input_page.as_ref().unwrap();
+    assert_eq!((page.picked, page.listening), (None, None));
+    assert_eq!(page.picked_binding, None);
+}

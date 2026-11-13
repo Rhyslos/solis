@@ -8,11 +8,12 @@
 //! | Keys | Acted on by |
 //! | --- | --- |
 //! | Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z | The owner's own undo steps |
-//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The area where [`KeyOwner::is_area`]; over a tab with a file of its own, that tab alone, for the keys it has. Over the Library or the Assets column, F2 and Delete are the picked file's |
+//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The area where [`KeyOwner::is_area`]: on a tab whose groups hold the 3D or 2D view, or over a panel that edits the area (the Area list, Properties); over a tab with a file of its own, that tab alone, for the keys it has. Over the Library or the Assets column, F2 and Delete are the picked file's |
 //! | Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Space (the search), `'` (the Console) | The editor, where [`KeyOwner::takes_shortcuts`] (over the Frames tab, Space plays the clip instead) |
 //! | Ctrl+Space (the Library) | The editor, typing or not, where [`KeyOwner::is_editor`] |
 
 use crate::panel::Panel;
+use crate::shell::workspaces;
 use crate::workbench::Workbench;
 
 /// The part of the editor the keys belong to this frame.
@@ -29,12 +30,17 @@ pub(crate) enum KeyOwner {
     /// A field being typed in: the keys are its text (Ctrl+Z undoes the
     /// typing).
     Field,
-    /// A whole page stands where the area would be (a File page, a
-    /// screen that isn't built): the area's keys rest, since nothing they
-    /// would change is on screen. The editor's own keys still work.
+    /// Nothing the area's keys would change is on screen: a whole page
+    /// stands where the area would be (a File page, a screen that isn't
+    /// built), or the tab in front has no 3D or 2D view and the pointer
+    /// isn't over the Area list or Properties (Mixer, Bus, Profiler,
+    /// Export, the Library on its tab). The area's keys rest; the
+    /// editor's own keys still work, and over the Library F2 and Delete
+    /// are still the picked file's.
     Page,
-    /// The area: the viewport, the Area panel, and everywhere no other
-    /// owner is named (Properties, the Library, the Console, windows).
+    /// The area: a tab with the 3D or 2D view (everywhere on it no other
+    /// owner is named: the viewport, the Console, the Assets column), and
+    /// the Area list and Properties on any tab.
     #[default]
     Area,
     /// The Map tab, or anywhere that would be the area's while a tile
@@ -137,6 +143,9 @@ impl Workbench {
             _ => None,
         };
         own.unwrap_or_else(|| {
+            if !self.area_on_screen() {
+                return KeyOwner::Page;
+            }
             let painting = self.viewport.tile_overlay.paint.painting();
             let over_the_map = self.pointer_over == Some(Panel::Map);
             if open.map_edits.path.is_some() && (over_the_map || painting) {
@@ -145,6 +154,21 @@ impl Workbench {
                 KeyOwner::Area
             }
         })
+    }
+}
+
+impl Workbench {
+    /// Whether what the area's keys change is on screen: a group of the
+    /// tab in front holds the 3D or 2D view, or the pointer rests over a
+    /// panel that edits the area (the Area list, Properties). Without
+    /// this, Delete over the Mixer deleted an entity no one could see (the
+    /// second review pass's N-02).
+    fn area_on_screen(&self) -> bool {
+        matches!(self.pointer_over, Some(Panel::Area | Panel::Properties))
+            || workspaces::groups(self.shell.tab, self.open_now())
+                .iter()
+                .flatten()
+                .any(|panel| *panel == Panel::Viewport)
     }
 }
 

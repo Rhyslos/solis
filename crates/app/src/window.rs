@@ -251,11 +251,14 @@ impl App {
             "https://github.com/{}/tree/main/docs/manual",
             branding::UPDATE_REPO
         ));
-        // Solis always opens on Recent projects, and a project opens from
-        // it (decision 0105, keeping 0090's promises): the last project
-        // isn't reopened.
-        app.workbench.start_on_recent_projects();
+        // The frame as it was left first, then Recent projects in front
+        // of it: Solis always opens there, and a project opens from it
+        // (decision 0105, keeping 0090's promises): the last project
+        // isn't reopened. The other way round, the tab put back covered
+        // Recent projects at every start but the first (the second review
+        // pass's N-04).
         saved.settle(&mut app.workbench);
+        app.workbench.start_on_recent_projects();
         for path in imports {
             app.import(&path);
         }
@@ -1476,19 +1479,17 @@ impl App {
         let written = asset_db::own_folder(&db.project().assets(), "assemblies")
             .and_then(|_| asset_db::write_atomically(&path, text.as_bytes()))
             .and_then(|()| self.projects.adopt(&path));
-        if let Err(why) = written {
-            self.workbench.log(
-                LogLevel::Error,
-                format!("Couldn't save the assembly: {why}."),
-            );
-            return;
-        }
-        let (changes, notes) = self.projects.rescan();
-        let Some(id) = self.projects.db().and_then(|db| db.id_at(&path)) else {
-            self.follow_changes(changes, notes);
-            self.refresh_library();
-            return;
+        let id = match written {
+            Ok(id) => id,
+            Err(why) => {
+                self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't save the assembly: {why}."),
+                );
+                return;
+            }
         };
+        let (changes, notes) = self.projects.rescan();
         self.workbench.set_assembly(id, std::sync::Arc::new(file));
         self.follow_changes(changes, notes);
         self.refresh_library();

@@ -29,6 +29,9 @@ impl Workbench {
     /// The project's input actions changed (it opened, or its
     /// `input.solinput` was read): the next Play uses them.
     pub fn set_bindings(&mut self, bindings: input::Bindings) {
+        if let Some(page) = &mut self.open.input_page {
+            page.follow(&self.open.bindings, &bindings);
+        }
         self.open.bindings = bindings;
     }
 

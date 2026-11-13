@@ -1017,6 +1017,30 @@ fn plan_one(
                 }
             }
         }
+        // Standing in other characters (two started on one spot, one
+        // walked into another): pushed apart gently, and passed through
+        // while it lasts. Rapier's way out of them below took the whole
+        // depth at once, and on one spot the same way for both, so the
+        // two flew off together, through the floor at times (the second
+        // review pass's N-10).
+        let mut among = Vec::new();
+        for (handle, other) in queries.intersect_shape(shape_pose, &*shape) {
+            let Some(body) = other.parent().and_then(|b| state.bodies.get(b)) else {
+                continue;
+            };
+            let them = reflect::Id::from_raw(body.user_data as u64).map(EntityId);
+            let Some((them, (theirs, _))) =
+                them.and_then(|them| Some((them, state.by_entity.get(&them)?.character?)))
+            else {
+                continue;
+            };
+            among.push(handle);
+            let mine = start.translation;
+            let reach = spec.radius + theirs.radius;
+            wanted += push_apart((id, mine), (them, body.position().translation), reach, dt);
+        }
+        let passing = |handle: rp::ColliderHandle, _: &rp::Collider| !among.contains(&handle);
+        let queries = queries.with_filter(filter.predicate(&passing));
         // Inside something (placed with its feet in the floor, or a crate
         // pushed into it): out first. Rapier only does this for a
         // character standing still.
@@ -1074,6 +1098,41 @@ fn plan_one(
     }))
     .ok()
     .flatten()
+}
+
+/// The fastest characters standing in one another are pushed apart,
+/// metres a second each.
+const PUSH_APART: f32 = 2.0;
+
+/// The push a character `me`, its feet at `mine`, gets from another
+/// standing in it, `them` at `theirs`, their middles less than `reach`
+/// apart: away from it, level, by at most half of how far they overlap
+/// and [`PUSH_APART`] metres a second. On one spot the way is the pair's
+/// own (from their IDs, so the same however they're moved), opposite for
+/// each.
+fn push_apart(
+    (me, mine): (EntityId, Vec3),
+    (them, theirs): (EntityId, Vec3),
+    reach: f32,
+    dt: f32,
+) -> Vec3 {
+    let between = (mine - theirs).truncate();
+    let distance = between.length();
+    if !distance.is_finite() || distance >= reach {
+        return Vec3::ZERO;
+    }
+    let away = if distance > 1.0e-4 {
+        between / distance
+    } else {
+        let (a, b) = (me.0.raw(), them.0.raw());
+        let (low, high) = (a.min(b), a.max(b));
+        let mixed = (low ^ high.rotate_left(29)).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+        let turn = (mixed >> 40) as f32 / (1u64 << 24) as f32 * std::f32::consts::TAU;
+        let way = glam::Vec2::from_angle(turn);
+        if a == low { way } else { -way }
+    };
+    let by = ((reach - distance) * 0.5).min(PUSH_APART * dt);
+    (away * by).extend(0.0)
 }
 
 /// Whether `body` is a character's. Characters are kinematic bodies too,

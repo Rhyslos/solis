@@ -555,3 +555,43 @@ fn the_page_s_tints_are_the_accent_in_use_mixed_into_the_surface() {
     }
     crate::interface_look::use_look(InterfaceLook::default());
 }
+
+/// N-05: Enter to keep a project's new name renames it and opens nothing;
+/// Enter on a picked card, nothing being typed, still opens it.
+#[test]
+fn enter_while_a_name_is_typed_never_opens_the_picked_project() {
+    let mut h = harness(page_with(some_projects()));
+    h.run();
+    h.get_by_label("Benchmark").click();
+    h.run();
+    h.state_mut().0.file_pages.renaming = Some(Renaming {
+        root: "/games/bench".into(),
+        name: "Bench".into(),
+        focused: false,
+    });
+    h.run();
+    h.run();
+    h.key_press(egui::Key::Enter);
+    h.run();
+    let opened = |h: &egui_kittest::Harness<'static, State>| {
+        h.state()
+            .1
+            .actions
+            .iter()
+            .any(|a| matches!(a, WorkbenchAction::OpenRecent(_)))
+    };
+    assert!(asked(
+        &h,
+        WorkbenchAction::RenameProject("/games/bench".into(), "Bench".into())
+    ));
+    assert!(!opened(&h), "renamed, not opened");
+    // A card picked, with nothing typed: Enter opens it.
+    h.get_by_label("Benchmark").click();
+    h.run();
+    h.key_press(egui::Key::Enter);
+    h.run();
+    assert!(asked(
+        &h,
+        WorkbenchAction::OpenRecent("/games/bench".into())
+    ));
+}

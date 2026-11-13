@@ -148,12 +148,17 @@ impl Workbench {
     /// the keys are the area's: over a tab with a file of its own they are
     /// that tab's, and never reach the area as well. Not while flying.
     pub(crate) fn editing_keys(&mut self, ui: &Ui, actions: &mut Vec<WorkbenchAction>) {
-        if !self.keys.is_area() || self.viewport.is_flying() {
+        if self.viewport.is_flying() {
             return;
         }
         // Over the Library or the Assets column, F2 and Delete are the
-        // picked file's.
-        let files = self.file_keys_over_the_library(ui, actions);
+        // picked file's: on the Library tab too, where the area's own
+        // keys rest.
+        let files = (self.keys.is_area() || self.keys == KeyOwner::Page)
+            && self.file_keys_over_the_library(ui, actions);
+        if !self.keys.is_area() {
+            return;
+        }
         let (delete, duplicate, rename, frame) = ui.input_mut(|i| {
             let plain = |i: &egui::InputState, key| i.key_pressed(key) && i.modifiers.is_none();
             (

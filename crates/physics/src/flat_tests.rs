@@ -51,6 +51,32 @@ fn a_character_walks_freely_and_stops_a_skin_short_of_a_wall() {
     assert!(flat.moved().is_empty(), "said once");
 }
 
+/// N-10: two characters starting on the very same spot, both walking the
+/// same way, end beside one another near where walking takes them, not
+/// flung apart.
+#[test]
+fn two_characters_on_one_spot_walking_stay_together() {
+    for step in [Vec2::new(0.05, 0.0), Vec2::new(-0.03, 0.04)] {
+        let mut flat = Flat::new();
+        flat.add(id(1), Vec2::ZERO, circle(0.25), true);
+        flat.add(id(2), Vec2::ZERO, circle(0.25), true);
+        for _ in 0..120 {
+            flat.move_characters(&[(id(1), step), (id(2), step)], 1.0 / 60.0);
+        }
+        let walked_to = step * 120.0;
+        let places = [id(1), id(2)].map(|who| flat.state().place(who).unwrap());
+        for at in places {
+            let off = (at - walked_to).length();
+            assert!(
+                off < 1.0,
+                "{step}: near where it walked to ({walked_to}): {at}"
+            );
+        }
+        let apart = (places[0] - places[1]).length();
+        assert!(apart > 0.2, "{step}: pushed apart: {apart}");
+    }
+}
+
 #[test]
 fn it_slides_along_a_wall_it_walks_into_at_an_angle() {
     let mut flat = world(Vec2::new(1.5, 0.0), &[rect(2.0, -50.0, 3.0, 50.0)]);

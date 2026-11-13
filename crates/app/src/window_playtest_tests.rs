@@ -180,6 +180,22 @@ fn an_exported_game_with_no_code_starts() {
     assert_eq!(app.workbench.code_mistakes(), None);
 }
 
+/// N-01: a game written only in Lua starts too: the engine's Lust files
+/// beside it don't make it a Lust game missing its `main.lst`.
+#[test]
+fn an_exported_game_only_in_lua_starts() {
+    let dir = scratch("lua-only");
+    let (ctx, mut app) = game_without_code(&dir, |assets| {
+        std::fs::write(
+            assets.join("spin.lua"),
+            "local Spin = component(\"Spin\", {})\n",
+        )
+        .unwrap();
+    });
+    assert_eq!(frames_until_it_plays(&ctx, &mut app), Ok(()));
+    assert_eq!(app.workbench.code_mistakes(), None);
+}
+
 /// Nor do folders with no code in them make any.
 #[test]
 fn an_exported_game_with_only_empty_folders_starts() {
