@@ -197,13 +197,13 @@ quit() {
     snap file-page
     xdotool mousemove "${EXIT_X:-110}" "${EXIT_Y:-534}" click 1
     # With unsaved changes (an imported model), Solis asks first: answer
-    # Don't save, in the middle of the window, once it's shown.
+    # Don't save, on the left of the box in the middle, once it's shown.
     for _ in $(seq 1 240); do
         kill -0 "$PID" 2>/dev/null || break
         snap now
         if ! empty now && differs file-page 1000; then
             hold_still
-            xdotool mousemove "${DONT_SAVE_X:-647}" "${DONT_SAVE_Y:-485}" click 1
+            xdotool mousemove "${DONT_SAVE_X:-554}" "${DONT_SAVE_Y:-479}" click 1
             break
         fi
         sleep 0.25
@@ -312,14 +312,25 @@ echo "Pixels different from the dragged frame: $SAME; from the first launch: $FI
 [ "$SAME" -lt 20000 ] || fail "the reopened editor does not match the dragged frame"
 quit
 
+# Red pixels (the sample's base) in the middle of the viewport, in the
+# picture `$1`.
+red_pixels() {
+    convert "$OUT/$1.png" -crop 600x400+250+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:
+}
+model_drawn() { [ "$(red_pixels now)" -gt 2000 ]; }
+
 # 8. Importing a model: start with --import and the sample model (a
 #    checker cube on a red base; SAMPLE_MODEL names the file, made with
 #    `cargo run -p assets --example sample -- sample.glb`). The camera
-#    frames it, so red fills part of the middle of the viewport.
+#    frames it, so red fills part of the middle of the viewport. The frame
+#    reopens on the tab used last (Audio, step 5), and an import doesn't
+#    change the tab: Home shows the 3D view.
 if [ -n "${SAMPLE_MODEL:-}" ]; then
     launch --import "$SAMPLE_MODEL"
+    xdotool mousemove "${HOME_TAB_X:-114}" "${HOME_TAB_Y:-19}" click 1
+    wait_for model_drawn || true
     shot imported
-    RED="$(convert "$OUT/imported.png" -crop 600x400+250+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:)"
+    RED="$(red_pixels imported)"
     echo "Red pixels of the sample's base in the viewport: $RED"
     [ "$RED" -gt 2000 ] || fail "the imported model is not drawn"
     grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
