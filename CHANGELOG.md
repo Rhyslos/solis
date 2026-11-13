@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **A game written only in Lua now plays and exports.** The engine's own Lust files, which every project has, made Solis treat such a game as Lust code missing its `main.lst`: Play was refused and the export said the code had mistakes. Only a game with Lust files of its own needs a `main.lst` now.
 - **A game with no code of its own now exports and plays.** The files Solis writes to describe the engine to game code were taken for the game's own code, so a project with none was told in Problems that its `main.lst` was missing, and an exported game of it said "The game can't start: its code has mistakes".
 - **A 2D character can no longer end up partly inside a wall's corner.** Brushing past the corner of a wall at certain angles, the physics library's check of what's in the way could give up and say the way was clear, so the character walked a few centimetres into the corner. Where each step ends is now checked as well, and the character stops at the corner and slides round it.
 - **The Console's `help ui` no longer says screens can't be made yet.** Its last sentence, "Until screens are made in Lust", was left from before game screens were built.

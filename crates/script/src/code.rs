@@ -43,12 +43,20 @@ impl Code {
     /// project with none was told its `main.lst` was missing, and an
     /// exported game of it never started (the full review's NEW-10).
     pub fn is_empty(&self) -> bool {
+        self.lua.is_empty() && !self.has_own_lust()
+    }
+
+    /// Whether the game has Lust files of its own, outside the engine's
+    /// folder. Only then is it a Lust game, which starts at [`ENTRY`]: a
+    /// game written only in Lua was told its `main.lst` was missing (the
+    /// second review pass's N-01).
+    fn has_own_lust(&self) -> bool {
         let engine = crate::describe::engine_folders(&self.files);
-        self.lua.is_empty()
-            && self.files.iter().all(|(path, _)| {
-                path.split_once('/')
-                    .is_some_and(|(top, _)| engine.iter().any(|e| e == top))
-            })
+        self.files.iter().any(|(path, _)| {
+            !path
+                .split_once('/')
+                .is_some_and(|(top, _)| engine.iter().any(|e| e == top))
+        })
     }
 }
 
@@ -405,7 +413,8 @@ fn compile_here(
 ) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
     let mut lust = None;
-    if !code.files.is_empty() {
+    let own_lust = code.has_own_lust();
+    if own_lust {
         let mut missing = check_entry(code);
         missing.extend(long_prefix_chains(&code.files));
         missing.extend(shared_names(&code.files));
@@ -485,7 +494,7 @@ fn compile_here(
     }
     // The screens, once the game's code is sound and its components known
     // (decision 0087): each Lust component readable from them.
-    if !code.files.is_empty() {
+    if own_lust {
         let components: Vec<(String, String)> = compiled
             .places
             .iter()
@@ -904,6 +913,34 @@ mod tests {
             notes: Vec::new(),
         };
         assert!(!mine.is_empty());
+    }
+
+    /// N-01: a game written only in Lua has the engine's Lust files beside
+    /// its own, as every project does; they don't make it a Lust game
+    /// missing its `main.lst`, and it compiles with no Lust at all.
+    #[test]
+    fn a_game_only_in_lua_is_no_lust_game_missing_its_main() {
+        let (engine, _) = crate::describe::descriptions_for(
+            "Test 1.0",
+            "solis",
+            &crate::project_names::Names::standard(),
+        );
+        let lua_only = Code {
+            files: engine,
+            lua: vec![(
+                "spin.lua".into(),
+                "local Spin = component(\"Spin\", {})\n".into(),
+            )],
+            notes: Vec::new(),
+        };
+        assert_eq!(check(&lua_only), Vec::new());
+        let compiled = compile(&lua_only).unwrap().unwrap();
+        assert!(compiled.lust.is_none(), "no Lust of its own to compile");
+        assert!(compiled.schemas.iter().any(|s| s.name == "Spin"));
+        // A Lust file of its own, beside the Lua, still needs main.lst.
+        let mut both = lua_only.clone();
+        both.files.push(("gun.lst".into(), "end\n".into()));
+        assert!(check(&both)[0].message.contains("main.lst"));
     }
 
     #[test]
