@@ -23,7 +23,7 @@ Use it to:
 ## How to use it
 
 1. Each project is a **card**: a large letter where its picture will be (pictures are an [unfinished part](unfinished-parts.md)), its name, its folder, when you last opened it, and the [build](concepts.md#projects) that last opened it. [Pinned](#settings) projects come first.
-2. **Double-click** a card to open it, or click it once and press **Enter**. The **arrow keys** walk from card to card: left and right along a row, up and down between rows. With unsaved changes in the open area, Solis asks first.
+2. **Double-click** a card to open it, or click it once and press **Enter** (Enter in **Search projects** opens it too, while the search still shows it; with no card picked, Enter there opens nothing). The **arrow keys** walk from card to card: left and right along a row, up and down between rows. With unsaved changes in the open area, Solis asks first.
 3. The **pin** at the right of a project's name keeps it at the front; click it again to unpin.
 4. **Right-click** a card for its menu:
    - **Open**.
