@@ -30,6 +30,7 @@ sound = { path = "crates/sound" }
 animation = { path = "crates/animation" }
 tiles = { path = "crates/tiles" }
 ui = { path = "crates/ui" }
+mesh = { path = "crates/mesh" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).

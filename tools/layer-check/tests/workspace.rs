@@ -34,6 +34,7 @@ fn every_planned_crate_exists() {
             "assets",
             "editor",
             "input",
+            "mesh",
             "physics",
             "reflect",
             "render",
