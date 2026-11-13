@@ -16,7 +16,8 @@
 //! caller changes its own document, so every change can be undone.
 
 use crate::theme;
-use egui::{Color32, Pos2, Rect, Sense, Stroke, Ui, Vec2, pos2, vec2};
+use drawing::{box_fonts, draw_box, draw_drag, draw_grid, draw_wires};
+use egui::{Color32, Pos2, Rect, Sense, Ui, Vec2, vec2};
 
 /// The nearest and farthest the canvas zooms.
 pub(crate) const ZOOM_RANGE: (f32, f32) = (0.25, 2.5);
@@ -190,29 +191,6 @@ impl GraphCanvas {
 /// space, at [`GraphCanvas::pointer`]).
 pub(crate) type GraphMenu<'a> = dyn FnMut(&mut Ui, Option<GraphTarget>) + 'a;
 
-/// Where an arrow between two boxes starts and ends: from edge to edge
-/// along the line between their middles, moved aside when there's one
-/// going the other way.
-fn wire_ends(from: Rect, to: Rect, aside: bool) -> (Pos2, Pos2) {
-    let (a, b) = (from.center(), to.center());
-    let dir = (b - a).normalized();
-    let shift = if aside {
-        vec2(-dir.y, dir.x) * SIDE_BY_SIDE
-    } else {
-        Vec2::ZERO
-    };
-    let edge = |r: Rect, toward: Vec2| -> Pos2 {
-        // Where the ray from the middle leaves the box.
-        let half = r.size() / 2.0;
-        let t = (half.x / toward.x.abs().max(1e-6)).min(half.y / toward.y.abs().max(1e-6));
-        r.center() + toward * t
-    };
-    if !dir.is_finite() || dir == Vec2::ZERO {
-        return (a, b);
-    }
-    (edge(from, dir) + shift, edge(to, -dir) + shift)
-}
-
 /// How far `p` is from the segment `a`–`b`.
 fn distance_to_segment(p: Pos2, a: Pos2, b: Pos2) -> f32 {
     let ab = b - a;
@@ -220,22 +198,55 @@ fn distance_to_segment(p: Pos2, a: Pos2, b: Pos2) -> f32 {
     p.distance(a + ab * t)
 }
 
-/// The arrow's head at `tip`, pointing along `dir`.
-fn arrow_head(painter: &egui::Painter, tip: Pos2, dir: Vec2, color: Color32) {
-    let back = -dir * 9.0;
-    let side = vec2(-dir.y, dir.x) * 5.0;
-    painter.add(egui::Shape::convex_polygon(
-        vec![tip, tip + back + side, tip + back - side],
-        color,
-        Stroke::NONE,
-    ));
-}
-
 /// The bounds of every box, in graph units.
 pub(crate) fn bounds(boxes: &[GraphBox]) -> Rect {
     boxes.iter().fold(Rect::NOTHING, |r, b| {
         r.union(Rect::from_min_size(b.place, b.size))
     })
+}
+
+/// One frame of the canvas: where it is on screen, the pointer, and where
+/// each box is drawn (with a drag's move, as it was when the frame began).
+struct Frame {
+    /// The canvas's space.
+    full: Rect,
+    /// Its top left: where the view's offset counts from.
+    origin: Pos2,
+    /// Where it looks, after this frame's pan and zoom.
+    view: GraphView,
+    /// The pointer, if it's anywhere.
+    pointer: Option<Pos2>,
+    /// Whether the pointer is over the canvas.
+    hovered: bool,
+    /// Whether a click adds to what's picked (Ctrl or Shift).
+    add: bool,
+    /// Boxes being dragged, and how far, as the frame began.
+    dragging: Option<(Vec<u64>, Vec2)>,
+    /// What's picked is drawn in this.
+    accent: Color32,
+}
+
+impl Frame {
+    /// Where box `b` is drawn, on screen.
+    fn rect_of(&self, b: &GraphBox) -> Rect {
+        let moved = match &self.dragging {
+            Some((ids, by)) if ids.contains(&b.id) => *by,
+            _ => Vec2::ZERO,
+        };
+        Rect::from_min_size(
+            self.view.to_screen(self.origin, b.place),
+            b.size * self.view.zoom,
+        )
+        .translate(moved)
+    }
+
+    /// The box under `p` that an arrow from `from` can end at.
+    fn arrow_end_at(&self, boxes: &[GraphBox], from: u64, p: Pos2) -> Option<u64> {
+        boxes
+            .iter()
+            .find(|b| b.takes_arrows && b.id != from && self.rect_of(b).contains(p))
+            .map(|b| b.id)
+    }
 }
 
 /// Draws the canvas into the space left in `ui`, and gives back what was
@@ -265,173 +276,115 @@ pub(crate) fn graph_canvas(
     }
     let painter = ui.painter_at(full);
     painter.rect_filled(full, 0.0, theme::background());
-    // A quiet grid, so panning shows.
-    let step = 40.0 * canvas.view.zoom;
-    if step > 8.0 {
-        let start = origin
-            + vec2(
-                canvas.view.offset.x.rem_euclid(step),
-                canvas.view.offset.y.rem_euclid(step),
-            );
-        let grid = crate::tokens::row_hover();
-        let mut x = start.x;
-        while x < full.right() {
-            painter.vline(x, full.y_range(), Stroke::new(1.0, grid));
-            x += step;
-        }
-        let mut y = start.y;
-        while y < full.bottom() {
-            painter.hline(full.x_range(), y, Stroke::new(1.0, grid));
-            y += step;
-        }
-    }
+    draw_grid(&painter, full, canvas.view);
     let hovered = ui.rect_contains_pointer(full);
     let pointer = ui.ctx().pointer_latest_pos();
+    pan_and_zoom(ui, canvas, origin, pointer, hovered);
+    if keys {
+        events.extend(canvas_keys(ui, canvas, boxes, full.size()));
+    }
+    // Boxes where they're drawn, with a drag's move added.
+    let frame = Frame {
+        full,
+        origin,
+        view: canvas.view,
+        pointer,
+        hovered,
+        add: ui.input(|i| i.modifiers.ctrl || i.modifiers.shift || i.modifiers.command),
+        dragging: match &canvas.drag {
+            Drag::Boxes(ids, by) => Some((ids.clone(), *by)),
+            _ => None,
+        },
+        accent,
+    };
+    // Arrows, under the boxes.
+    let wire_hit = draw_wires(ui, &painter, &frame, boxes, wires, &mut events);
+    let box_hit = draw_boxes(ui, &painter, &frame, canvas, boxes, &mut events, menu);
+    // An arrow made from a menu ends at the next click.
+    events.extend(end_aim(ui, &frame, canvas, boxes, keys));
+    draw_drag(&painter, &frame, canvas, boxes);
+    empty_space(
+        &background,
+        &frame,
+        canvas,
+        (wire_hit, box_hit),
+        &mut events,
+        menu,
+    );
+    // Letting go ends whatever drag it was.
+    if ui.input(|i| i.pointer.primary_released()) {
+        events.extend(end_drag(&frame, canvas, boxes));
+    }
+    ui.advance_cursor_after_rect(full);
+    events
+}
+
+/// Notes where the pointer is over the canvas, in graph units; pan with
+/// the middle button; zoom with the wheel round the pointer.
+fn pan_and_zoom(
+    ui: &Ui,
+    canvas: &mut GraphCanvas,
+    origin: Pos2,
+    pointer: Option<Pos2>,
+    hovered: bool,
+) {
     if let Some(p) = pointer.filter(|_| hovered) {
         canvas.pointer = canvas.view.to_world(origin, p);
     }
-    // Pan with the middle button; zoom with the wheel round the pointer.
-    if hovered {
-        let (middle, delta, scroll) = ui.input(|i| {
-            (
-                i.pointer.middle_down(),
-                i.pointer.delta(),
-                i.smooth_scroll_delta.y,
-            )
-        });
-        if middle {
-            canvas.view.offset += delta;
-        }
-        if scroll != 0.0
-            && let Some(p) = pointer
-        {
-            canvas.view.zoom_at(origin, p, (scroll / 200.0).exp());
-        }
+    if !hovered {
+        return;
     }
-    if keys {
-        let (frame, delete) = ui.input(|i| {
-            (
-                i.key_pressed(egui::Key::F) && i.modifiers.is_none(),
-                i.key_pressed(egui::Key::Delete),
-            )
-        });
-        if frame {
-            canvas.view.frame(bounds(boxes), full.size());
-        }
-        if delete {
-            events.push(GraphEvent::Delete);
-        }
+    let (middle, delta, scroll) = ui.input(|i| {
+        (
+            i.pointer.middle_down(),
+            i.pointer.delta(),
+            i.smooth_scroll_delta.y,
+        )
+    });
+    if middle {
+        canvas.view.offset += delta;
     }
-    let view = canvas.view;
-    // Boxes where they're drawn, with a drag's move added.
-    let dragging: Option<(Vec<u64>, Vec2)> = match &canvas.drag {
-        Drag::Boxes(ids, by) => Some((ids.clone(), *by)),
-        _ => None,
-    };
-    let moved = |b: &GraphBox| -> Vec2 {
-        match &dragging {
-            Some((ids, by)) if ids.contains(&b.id) => *by,
-            _ => Vec2::ZERO,
-        }
-    };
-    let rect_of = |b: &GraphBox| -> Rect {
-        Rect::from_min_size(view.to_screen(origin, b.place), b.size * view.zoom).translate(moved(b))
-    };
-    let rects: Vec<(u64, Rect)> = boxes.iter().map(|b| (b.id, rect_of(b))).collect();
-    let find = |id: u64| rects.iter().find(|(i, _)| *i == id).map(|(_, r)| *r);
-    let add = ui.input(|i| i.modifiers.ctrl || i.modifiers.shift || i.modifiers.command);
-    // Arrows, under the boxes.
-    let mut wire_hit: Option<u64> = None;
-    let font = egui::FontId::proportional(11.0 * view.zoom.clamp(0.7, 1.4));
-    for w in wires {
-        let (Some(a), Some(b)) = (find(w.from), find(w.to)) else {
-            continue;
-        };
-        let back = wires.iter().any(|o| o.from == w.to && o.to == w.from);
-        let (start, end) = wire_ends(a, b, back);
-        let color = if w.picked {
-            accent
-        } else {
-            Color32::from_rgb(0x9a, 0x9a, 0x9a)
-        };
-        painter.line_segment(
-            [start, end],
-            Stroke::new(if w.picked { 2.5 } else { 1.5 }, color),
-        );
-        let dir = (end - start).normalized();
-        if dir.is_finite() {
-            arrow_head(&painter, end, dir, color);
-        }
-        let middle = start + (end - start) / 2.0;
-        if !w.label.is_empty() {
-            // On the arrow's own side, so two arrows each way keep their
-            // labels apart: the label sits beyond the line, away from the
-            // other arrow.
-            let perp = if dir.is_finite() {
-                vec2(-dir.y, dir.x)
-            } else {
-                vec2(0.0, -1.0)
-            };
-            let side = if back {
-                perp
-            } else if perp.y.abs() >= perp.x.abs() {
-                // Lying down: above it.
-                perp * -perp.y.signum()
-            } else {
-                // Standing up: to its right.
-                perp * perp.x.signum()
-            };
-            let align = if side.y > 0.3 {
-                egui::Align2::CENTER_TOP
-            } else if side.y < -0.3 {
-                egui::Align2::CENTER_BOTTOM
-            } else if side.x > 0.0 {
-                egui::Align2::LEFT_CENTER
-            } else {
-                egui::Align2::RIGHT_CENTER
-            };
-            painter.text(
-                middle + side * 5.0,
-                align,
-                &w.label,
-                font.clone(),
-                if w.picked { accent } else { theme::text_weak() },
-            );
-        }
-        if let Some(p) = pointer
-            && hovered
-            && distance_to_segment(p, start, end) < 6.0
-        {
-            wire_hit = Some(w.id);
-        }
-        // Each arrow can be found and clicked by its label (screen readers,
-        // tests).
-        let hit = Rect::from_center_size(middle, vec2(18.0, 18.0));
-        let r = ui.interact(hit, ui.id().with(("wire", w.id)), Sense::click());
-        let label = format!("Transition {}", w.label);
-        r.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::Button, true, w.picked, &label)
-        });
-        if r.clicked() {
-            events.push(GraphEvent::Pick(GraphTarget::Wire(w.id), add));
-        }
-        if r.secondary_clicked() {
-            wire_hit = Some(w.id);
-        }
+    if scroll != 0.0
+        && let Some(p) = pointer
+    {
+        canvas.view.zoom_at(origin, p, (scroll / 200.0).exp());
     }
-    // Boxes.
-    // Names in the heading font, where the editor's fonts are loaded.
-    let semibold = egui::FontFamily::Name(theme::SEMIBOLD.into());
-    let family = if ui.fonts(|f| f.families().contains(&semibold)) {
-        semibold
-    } else {
-        egui::FontFamily::Proportional
-    };
-    let title_font = egui::FontId::new(13.0 * view.zoom, family);
-    let small = egui::FontId::proportional(11.0 * view.zoom);
+}
+
+/// F frames everything; Delete removes what's picked.
+fn canvas_keys(
+    ui: &Ui,
+    canvas: &mut GraphCanvas,
+    boxes: &[GraphBox],
+    size: Vec2,
+) -> Option<GraphEvent> {
+    let (frame, delete) = ui.input(|i| {
+        (
+            i.key_pressed(egui::Key::F) && i.modifiers.is_none(),
+            i.key_pressed(egui::Key::Delete),
+        )
+    });
+    if frame {
+        canvas.view.frame(bounds(boxes), size);
+    }
+    delete.then_some(GraphEvent::Delete)
+}
+
+/// Draws the boxes and takes their clicks, drags and right-clicks; gives
+/// back the box under the pointer (or right-clicked), if any.
+fn draw_boxes(
+    ui: &Ui,
+    painter: &egui::Painter,
+    frame: &Frame,
+    canvas: &mut GraphCanvas,
+    boxes: &[GraphBox],
+    events: &mut Vec<GraphEvent>,
+    menu: &mut GraphMenu<'_>,
+) -> Option<u64> {
+    let fonts = box_fonts(ui, frame.view.zoom);
     let mut box_hit: Option<u64> = None;
     for b in boxes {
-        let rect = rect_of(b);
+        let rect = frame.rect_of(b);
         let response = ui.interact(rect, ui.id().with(("box", b.id)), Sense::click_and_drag());
         let label = format!("State {}", b.title);
         response.widget_info(|| {
@@ -440,101 +393,19 @@ pub(crate) fn graph_canvas(
         if response.hovered() || response.secondary_clicked() {
             box_hit = Some(b.id);
         }
-        if b.live {
-            for (grow, alpha) in [(6.0, 40), (3.0, 90)] {
-                painter.rect_stroke(
-                    rect.expand(grow),
-                    ROUND + grow,
-                    Stroke::new(3.0, LIVE.gamma_multiply(f32::from(alpha as u8) / 255.0)),
-                    egui::StrokeKind::Outside,
-                );
-            }
-        }
-        painter.rect_filled(rect, ROUND, crate::tokens::field_border());
-        let border = if b.live {
-            Stroke::new(2.0, LIVE)
-        } else if b.picked {
-            Stroke::new(2.0, accent)
-        } else {
-            Stroke::new(1.0, Color32::from_rgb(0x4a, 0x4a, 0x4a))
-        };
-        painter.rect_stroke(rect, ROUND, border, egui::StrokeKind::Inside);
-        let pad = 10.0 * view.zoom;
-        let clip = painter.with_clip_rect(rect.shrink(2.0).intersect(full));
-        clip.text(
-            rect.min + vec2(pad, 7.0 * view.zoom),
-            egui::Align2::LEFT_TOP,
-            &b.title,
-            title_font.clone(),
-            theme::text_strong(),
-        );
-        clip.text(
-            rect.min + vec2(pad, 28.0 * view.zoom),
-            egui::Align2::LEFT_TOP,
-            &b.line,
-            small.clone(),
-            theme::text_weak(),
-        );
-        if let Some(chip) = &b.chip {
-            let galley = clip.layout_no_wrap(chip.clone(), small.clone(), theme::WARNING);
-            let at = rect.min + vec2(pad, rect.height() - 22.0 * view.zoom);
-            let chip_rect = Rect::from_min_size(at, galley.size() + vec2(12.0, 2.0) * view.zoom);
-            clip.rect_filled(
-                chip_rect,
-                8.0 * view.zoom,
-                Color32::from_rgb(0x3a, 0x30, 0x20),
-            );
-            clip.galley(at + vec2(6.0, 1.0) * view.zoom, galley, theme::WARNING);
-        }
-        if b.start {
-            let at = pos2(rect.left() - 12.0, rect.center().y);
-            painter.text(
-                at - vec2(14.0, 0.0),
-                egui::Align2::RIGHT_CENTER,
-                "Start",
-                small.clone(),
-                theme::COLLIDER,
-            );
-            arrow_head(
-                &painter,
-                at + vec2(8.0, 0.0),
-                vec2(1.0, 0.0),
-                theme::COLLIDER,
-            );
-            painter.line_segment(
-                [at - vec2(10.0, 0.0), at],
-                Stroke::new(1.5, theme::COLLIDER),
-            );
-        }
+        draw_box(painter, frame, b, rect, &fonts);
         // Clicks, drags and double-clicks.
         if response.double_clicked() {
             events.push(GraphEvent::Edit(b.id));
         } else if response.clicked() {
-            events.push(GraphEvent::Pick(GraphTarget::Box(b.id), add));
+            events.push(GraphEvent::Pick(GraphTarget::Box(b.id), frame.add));
         }
         if response.drag_started_by(egui::PointerButton::Primary) {
             let near_edge = response.interact_pointer_pos().is_some_and(|p| {
                 let inner = rect.shrink(EDGE);
                 !inner.contains(p)
             });
-            canvas.drag = if near_edge {
-                Drag::Joining(b.id)
-            } else if b.movable {
-                // Dragging an unpicked box moves it alone (and picks it).
-                let ids = if b.picked {
-                    boxes
-                        .iter()
-                        .filter(|o| o.picked && o.movable)
-                        .map(|o| o.id)
-                        .collect()
-                } else {
-                    events.push(GraphEvent::Pick(GraphTarget::Box(b.id), false));
-                    vec![b.id]
-                };
-                Drag::Boxes(ids, Vec2::ZERO)
-            } else {
-                Drag::None
-            };
+            canvas.drag = drag_from(b, near_edge, boxes, events);
         }
         if response.dragged_by(egui::PointerButton::Primary)
             && let Drag::Boxes(_, by) = &mut canvas.drag
@@ -543,92 +414,127 @@ pub(crate) fn graph_canvas(
         }
         response.context_menu(|ui| menu(ui, Some(GraphTarget::Box(b.id))));
     }
-    // An arrow made from a menu ends at the next click.
-    if let Drag::Aiming(from) = canvas.drag {
-        let (pressed, escape) = ui.input(|i| {
-            (
-                i.pointer.button_pressed(egui::PointerButton::Primary),
-                keys && i.key_pressed(egui::Key::Escape),
-            )
-        });
-        if escape {
-            canvas.drag = Drag::None;
-        } else if pressed {
-            canvas.drag = Drag::None;
-            if let Some(p) = pointer
-                && let Some(to) = boxes
-                    .iter()
-                    .find(|b| b.takes_arrows && b.id != from && rect_of(b).contains(p))
-            {
-                events.push(GraphEvent::Join(from, to.id));
-            }
-        }
+    box_hit
+}
+
+/// What a drag started on box `b` drags: an arrow from it when it's near
+/// the edge, otherwise the picked boxes (an unpicked box moves alone, and
+/// is picked).
+fn drag_from(
+    b: &GraphBox,
+    near_edge: bool,
+    boxes: &[GraphBox],
+    events: &mut Vec<GraphEvent>,
+) -> Drag {
+    if near_edge {
+        Drag::Joining(b.id)
+    } else if b.movable {
+        // Dragging an unpicked box moves it alone (and picks it).
+        let ids = if b.picked {
+            boxes
+                .iter()
+                .filter(|o| o.picked && o.movable)
+                .map(|o| o.id)
+                .collect()
+        } else {
+            events.push(GraphEvent::Pick(GraphTarget::Box(b.id), false));
+            vec![b.id]
+        };
+        Drag::Boxes(ids, Vec2::ZERO)
+    } else {
+        Drag::None
     }
-    // An arrow being drawn.
-    if let (Drag::Joining(from) | Drag::Aiming(from), Some(p)) = (&canvas.drag, pointer)
-        && let Some(a) = find(*from)
-    {
-        let start = a.center();
-        painter.line_segment([start, p], Stroke::new(2.0, accent));
-        let dir = (p - start).normalized();
-        if dir.is_finite() {
-            arrow_head(&painter, p, dir, accent);
-        }
+}
+
+/// An arrow made from a box's menu ends at the next click: joined to
+/// the box clicked, if it takes arrows; Escape, or a click anywhere
+/// else, gives up.
+fn end_aim(
+    ui: &Ui,
+    frame: &Frame,
+    canvas: &mut GraphCanvas,
+    boxes: &[GraphBox],
+    keys: bool,
+) -> Option<GraphEvent> {
+    let Drag::Aiming(from) = canvas.drag else {
+        return None;
+    };
+    let (pressed, escape) = ui.input(|i| {
+        (
+            i.pointer.button_pressed(egui::PointerButton::Primary),
+            keys && i.key_pressed(egui::Key::Escape),
+        )
+    });
+    if escape {
+        canvas.drag = Drag::None;
+        return None;
     }
-    // A picking box.
-    if let (Drag::Picking(from, _), Some(p)) = (&canvas.drag, pointer) {
-        let r = Rect::from_two_pos(*from, p);
-        painter.rect_filled(r, 0.0, accent.gamma_multiply(0.12));
-        painter.rect_stroke(r, 0.0, Stroke::new(1.0, accent), egui::StrokeKind::Inside);
+    if !pressed {
+        return None;
     }
-    // Empty space: picking boxes, and clearing.
+    canvas.drag = Drag::None;
+    let to = frame
+        .pointer
+        .and_then(|p| frame.arrow_end_at(boxes, from, p))?;
+    Some(GraphEvent::Join(from, to))
+}
+
+/// Empty space: a drag there starts a picking box, a click clears what's
+/// picked (or picks the arrow under the pointer), and a right-click opens
+/// the menu for empty space or the arrow under it (`hits`: the arrow and
+/// the box under the pointer).
+fn empty_space(
+    background: &egui::Response,
+    frame: &Frame,
+    canvas: &mut GraphCanvas,
+    (wire_hit, box_hit): (Option<u64>, Option<u64>),
+    events: &mut Vec<GraphEvent>,
+    menu: &mut GraphMenu<'_>,
+) {
     if background.drag_started_by(egui::PointerButton::Primary)
         && let Some(p) = background.interact_pointer_pos()
     {
-        canvas.drag = Drag::Picking(p, add);
+        canvas.drag = Drag::Picking(p, frame.add);
     }
     if background.clicked() {
         match wire_hit {
-            Some(w) => events.push(GraphEvent::Pick(GraphTarget::Wire(w), add)),
+            Some(w) => events.push(GraphEvent::Pick(GraphTarget::Wire(w), frame.add)),
             None => events.push(GraphEvent::Clear),
         }
     }
     let right_on_wire = wire_hit.filter(|_| box_hit.is_none());
     background.context_menu(|ui| menu(ui, right_on_wire.map(GraphTarget::Wire)));
-    // Letting go ends whatever drag it was.
-    if ui.input(|i| i.pointer.primary_released()) {
-        match std::mem::take(&mut canvas.drag) {
-            Drag::Boxes(ids, by) if by != Vec2::ZERO => {
-                events.push(GraphEvent::Moved(ids, by / view.zoom));
-            }
-            Drag::Joining(from) => {
-                if let Some(p) = pointer
-                    && let Some(to) = boxes
-                        .iter()
-                        .find(|b| b.takes_arrows && b.id != from && rect_of(b).contains(p))
-                {
-                    events.push(GraphEvent::Join(from, to.id));
-                }
-            }
-            Drag::Picking(from, add) => {
-                if let Some(p) = pointer {
-                    let r = Rect::from_two_pos(from, p);
-                    if r.width() > 3.0 || r.height() > 3.0 {
-                        let ids = boxes
-                            .iter()
-                            .filter(|b| r.intersects(rect_of(b)))
-                            .map(|b| b.id)
-                            .collect();
-                        events.push(GraphEvent::PickBoxes(ids, add));
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    ui.advance_cursor_after_rect(full);
-    events
 }
+
+/// Letting go ends whatever drag it was: moved boxes, an arrow joined,
+/// or boxes picked by a picking box.
+fn end_drag(frame: &Frame, canvas: &mut GraphCanvas, boxes: &[GraphBox]) -> Option<GraphEvent> {
+    let pointer = frame.pointer;
+    match std::mem::take(&mut canvas.drag) {
+        Drag::Boxes(ids, by) if by != Vec2::ZERO => {
+            Some(GraphEvent::Moved(ids, by / frame.view.zoom))
+        }
+        Drag::Joining(from) => {
+            let to = pointer.and_then(|p| frame.arrow_end_at(boxes, from, p))?;
+            Some(GraphEvent::Join(from, to))
+        }
+        Drag::Picking(from, add) => {
+            let r = Rect::from_two_pos(from, pointer?);
+            (r.width() > 3.0 || r.height() > 3.0).then(|| {
+                let ids = boxes
+                    .iter()
+                    .filter(|b| r.intersects(frame.rect_of(b)))
+                    .map(|b| b.id)
+                    .collect();
+                GraphEvent::PickBoxes(ids, add)
+            })
+        }
+        _ => None,
+    }
+}
+
+#[path = "graph_canvas_drawing.rs"]
+mod drawing;
 
 #[cfg(test)]
 #[path = "graph_canvas_tests.rs"]

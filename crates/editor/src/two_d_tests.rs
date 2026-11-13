@@ -9,6 +9,7 @@ use crate::test_support::*;
 use crate::transforming::{PixelSnap, Snapping, Targets, snapped_in_2d};
 use area::pixels::{PixelSettings, Scaling};
 use egui_kittest::kittest::Queryable;
+use glam::Vec3;
 
 fn two_d(position: Vec3, zoom: f32) -> Camera {
     Camera {
