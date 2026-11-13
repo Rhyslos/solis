@@ -118,10 +118,14 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 
 | File | What it does | Main items |
 | --- | --- | --- |
-| `play.rs` | Play mode: the area running as a game beside the editor, built from a copy of the document. What game code spawns and despawns lands here (`land_edits`); a spawn that can't be made says why in the Console, once a play for each assembly. | `PlayState` |
+| `play.rs` | Play mode: the area running as a game beside the editor, built from a copy of the document: Play, Pause, Step and Stop. | `PlayState` |
+| `play_tick.rs`, `play_tick_end.rs` | One frame of the running game (`run_game`): the editor's changes taken in, then each tick due in its fixed order, a named step each (`begin_tick`, `move_world_on`, `tick_input`, `run_tick_code`, `step_tick_physics`, `record_or_compare`, `saves_and_loads`), and what the frame has to say at its end (`end_frame`). | `Workbench::run_game` |
+| `play_landing.rs` | What game code spawns and despawns lands here (`land_edits`); a spawn that can't be made says why in the Console, once a play for each assembly. | `Workbench::land_edits` |
 | `game_code.rs` | Game code in the editor: its components in the registry, and the program running against the game's world (decision 0028). | |
 | `play_input.rs` | The game's input in the editor: clicking the Game panel gives the game the mouse and keys; recording and replaying input; Alt+Enter switches the player's fullscreen setting. In an exported game, Esc is the game's and a lost focus keeps the keys. | |
 | `save_game.rs` | Save games: the whole running game, so loading carries on exactly (decision 0038). Older saves load through `FORMAT`'s upgraders (Phase 8, C2), saying what couldn't be carried over; a component the game's code no longer has is left out and said. Game-wide objects are an `objects` section (decision 0080; tests in `save_game_objects_tests.rs`). | `Save`, `FORMAT` |
+| `save_reading.rs` | Reading a save back (`Save::read`): its header and checksum, its sections (an older save's brought up to date by the upgraders here), and one function per section, each within its limits. | `Save::read` |
+| `save_loading.rs` | Loading a save: read and checked against the project, the world built as saved, game code started afresh and given its saved values and objects, then swapped in. | `Workbench::load_game` |
 | `two_d_tests.rs` | The 2D view and Settings > 2D (Phase 9, D1): whole-step zoom, pixels on whole screen pixels, the corner, snapping to pixels or tiles, 2D cameras and their frames. | |
 | `two_d_screen_tests.rs` | Part C's screens drawn whole (round 3): each 2D editor in its tab with its ribbon, and an ignored test that writes each beside its approved mock-up. | |
 | `open_externally_tests.rs` | What each place in the editor asks the computer's own programs for: Properties' Open code asks exactly what the Library does for the same file, a `.lua` file is shown in its folder, and nothing outside the assets is asked for. | |

@@ -8,6 +8,7 @@ use crate::workbench::WorkbenchAction;
 use area::EntityData;
 use area::builtin::{Collider, RigidBody};
 use glam::Vec3;
+use std::sync::Arc;
 
 /// A busy game: a counter that staggers randomly, kicks a crate on its
 /// first tick, fires a laser now and then, and saves or loads when its
