@@ -231,18 +231,28 @@ impl Projects {
     }
 
     /// Gives a file Solis just wrote into the assets its sidecar now (see
-    /// [`AssetDb::adopt`]).
-    pub fn adopt(&self, path: &Path) -> std::io::Result<()> {
-        self.db.as_ref().map_or(Ok(()), |db| db.adopt(path))
+    /// [`AssetDb::adopt`]), and returns its ID.
+    pub fn adopt(&self, path: &Path) -> std::io::Result<AssetId> {
+        self.db
+            .as_ref()
+            .ok_or_else(|| std::io::Error::other("no project is open"))?
+            .adopt(path)
     }
 
     /// Looks at the whole assets folder again, now (after Solis changed
-    /// it, to know the new file's ID at once). A look on a worker begun
-    /// before it is out of date, and dropped.
+    /// it), unless a look on a worker is walking it: then nothing now,
+    /// never waiting for that look (the second review pass's N-13), and
+    /// another look follows it on the worker, whose findings come from
+    /// [`Self::poll`]. A look on a worker begun before one made now is out
+    /// of date, and dropped.
     pub fn rescan(&mut self) -> (Vec<Change>, Vec<String>) {
-        self.db
-            .as_mut()
-            .map_or_else(|| (Vec::new(), Vec::new()), AssetDb::rescan)
+        let Some(db) = self.db.as_mut() else {
+            return (Vec::new(), Vec::new());
+        };
+        db.rescan_if_free().unwrap_or_else(|| {
+            self.again = true;
+            (Vec::new(), Vec::new())
+        })
     }
 
     /// Every file and folder in the assets folder (nothing without a
@@ -331,7 +341,7 @@ impl Projects {
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())?;
         // Made by Solis just now: taken at once, not left to settle.
         db.adopt(&file).map_err(|e| e.to_string())?;
-        db.rescan();
+        self.rescan();
         Ok(folder.join(name))
     }
 
@@ -561,12 +571,10 @@ impl Projects {
         } else {
             db.copy_in(source)?
         };
-        // Made by Solis just now: taken at once, not left to settle.
-        db.adopt(&target)?;
-        db.rescan();
-        let id = db
-            .id_at(&target)
-            .ok_or_else(|| std::io::Error::other("its sidecar couldn't be made"))?;
+        // Made by Solis just now: taken at once, not left to settle. Its
+        // ID is known now, whether or not the look below can be made.
+        let id = db.adopt(&target)?;
+        self.rescan();
         Ok((id, target))
     }
 }

@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Making an assembly, a sound event or bringing in a model no longer freezes the window while the assets folder is being looked at.** Solis waited for the look going on in the background to finish (over a second in a big project); now the new file gets its ID at once and the look after it shows it in the Library.
 - **The Build tab's big Export button exports.** It filled the export form in afresh instead: the game's name you typed was lost and **Open folder** greyed out. It now exports what the page shows, as the page's own **Export** does, and Home's **Build** keeps what you typed there.
 - **Pressing Enter to keep a project's new name no longer opens it as well.** On Recent projects, Enter in **Rename…** renamed the project and also opened the card picked behind it.
 - **Removing a bus no longer picks the next one, and a second click on Remove no longer deletes it.** The bus picked was kept by its place in the list, so after Remove the next bus was picked, and the buses read again in another order moved your edits to another bus. Picks are now kept by name, and Master is shown after Remove. Project settings › Input keeps its picked action and the one waiting for a key by name too, so a key is never bound to another action when the file changes.

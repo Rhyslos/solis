@@ -1479,19 +1479,17 @@ impl App {
         let written = asset_db::own_folder(&db.project().assets(), "assemblies")
             .and_then(|_| asset_db::write_atomically(&path, text.as_bytes()))
             .and_then(|()| self.projects.adopt(&path));
-        if let Err(why) = written {
-            self.workbench.log(
-                LogLevel::Error,
-                format!("Couldn't save the assembly: {why}."),
-            );
-            return;
-        }
-        let (changes, notes) = self.projects.rescan();
-        let Some(id) = self.projects.db().and_then(|db| db.id_at(&path)) else {
-            self.follow_changes(changes, notes);
-            self.refresh_library();
-            return;
+        let id = match written {
+            Ok(id) => id,
+            Err(why) => {
+                self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't save the assembly: {why}."),
+                );
+                return;
+            }
         };
+        let (changes, notes) = self.projects.rescan();
         self.workbench.set_assembly(id, std::sync::Arc::new(file));
         self.follow_changes(changes, notes);
         self.refresh_library();
