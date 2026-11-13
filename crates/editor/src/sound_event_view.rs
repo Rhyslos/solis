@@ -173,13 +173,15 @@ fn editor(
         "Which group of sounds it belongs to, so a game's options can turn music, effects and \
          voices up or down separately.",
         |ui| {
-            egui::ComboBox::from_id_salt(("bus", path))
-                .selected_text(event.bus.clone())
-                .show_ui(ui, |ui| {
-                    for bus in &sounds.mixer.buses {
-                        ui.selectable_value(&mut event.bus, bus.name.clone(), &bus.name);
-                    }
-                });
+            let names: Vec<&str> = sounds.mixer.buses.iter().map(|b| b.name.as_str()).collect();
+            let list = crate::widgets::field::List {
+                shown: &event.bus,
+                note: None,
+                width: ui.available_width(),
+            };
+            if let Some(i) = crate::widgets::field::dropdown_of_names(ui, "Bus", &names, list) {
+                event.bus = names[i].to_owned();
+            }
         },
     );
     inspector::row(
@@ -210,13 +212,9 @@ fn editor(
          it (or on what it's part of): the player's own footsteps in first person, a click in \
          their menu. Groups: listeners in one of these groups (a Listener lists its groups).",
         |ui| {
-            egui::ComboBox::from_id_salt(("heard-by", path))
-                .selected_text(event.heard_by.name())
-                .show_ui(ui, |ui| {
-                    for choice in HeardBy::ALL {
-                        ui.selectable_value(&mut event.heard_by, choice, choice.name());
-                    }
-                });
+            let choices = HeardBy::ALL.map(|choice| (choice, choice.name()));
+            let width = ui.available_width();
+            crate::widgets::field::dropdown(ui, "Heard by", &mut event.heard_by, &choices, width);
         },
     );
     if event.heard_by == HeardBy::Groups {

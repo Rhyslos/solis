@@ -338,6 +338,23 @@ pub fn dropdown_showing<T: Copy + PartialEq>(
     *chosen != before
 }
 
+/// A [`dropdown_showing`] of `names` (a project's files, buses, clips:
+/// words that aren't a type of their own): the place in `names` of the one
+/// picked, when it isn't the one `list` shows.
+pub fn dropdown_of_names(ui: &mut Ui, name: &str, names: &[&str], list: List<'_>) -> Option<usize> {
+    let mut chosen = names.iter().position(|n| *n == list.shown);
+    let choices: Vec<(Option<usize>, &str)> = names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (Some(i), *n))
+        .collect();
+    if dropdown_showing(ui, name, &mut chosen, &choices, list) {
+        chosen
+    } else {
+        None
+    }
+}
+
 /// Quiet words in an open list, saying something rather than offering
 /// it: why it is empty, or that it shows only some.
 pub fn list_note(ui: &mut Ui, note: &str) {

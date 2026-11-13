@@ -304,29 +304,24 @@ pub(crate) fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
             |(p, _)| crate::sprite_sheets::name_of(p) + extension(p),
         ),
     };
-    let mut picked: Option<Option<AssetId>> = None;
-    egui::ComboBox::from_id_salt("tileset picture")
-        .selected_text(shown)
-        .width(ui.available_width() - 8.0)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(t.editor.file.picture.is_none(), "None")
-                .clicked()
-            {
-                picked = Some(None);
-            }
-            for (path, id) in &t.pictures {
-                if ui
-                    .selectable_label(t.editor.file.picture == Some(*id), path)
-                    .clicked()
-                {
-                    picked = Some(Some(*id));
-                }
-            }
-            if t.pictures.is_empty() {
-                ui.label("No pictures yet: put a PNG or an Aseprite file in the project's assets.");
-            }
-        });
+    let mut choices: Vec<(Option<AssetId>, &str)> = vec![(None, "None")];
+    choices.extend(
+        t.pictures
+            .iter()
+            .map(|(path, id)| (Some(*id), path.as_str())),
+    );
+    let list = crate::widgets::field::List {
+        shown: &shown,
+        note: t
+            .pictures
+            .is_empty()
+            .then_some("No pictures yet: put a PNG or an Aseprite file in the project's assets."),
+        width: ui.available_width() - 8.0,
+    };
+    let mut chosen = t.editor.file.picture;
+    let picked =
+        crate::widgets::field::dropdown_showing(ui, "Picture", &mut chosen, &choices, list)
+            .then_some(chosen);
     if let Some(p) = picked
         && p != t.editor.file.picture
     {
@@ -571,15 +566,13 @@ fn needs_column(ui: &mut Ui, t: &mut TilesetUi<'_>, out: &mut TilesetOut) {
         ui.label(RichText::new(format!("{} · {}", c.name, c.kind.word())).color(theme::text()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let mut kind = c.kind;
-            egui::ComboBox::from_id_salt("terrain kind")
-                .selected_text("Kind")
-                .width(80.0)
-                .show_ui(ui, |ui| {
-                    for k in TileKind::ALL {
-                        ui.selectable_value(&mut kind, k, k.word());
-                    }
-                });
-            if kind != c.kind {
+            let choices = TileKind::ALL.map(|k| (k, k.word()));
+            let list = crate::widgets::field::List {
+                shown: "Kind",
+                note: None,
+                width: 80.0,
+            };
+            if crate::widgets::field::dropdown_showing(ui, "Kind", &mut kind, &choices, list) {
                 out.changed |= t.editor.set_kind(c.id, kind);
             }
         });
@@ -831,15 +824,20 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                         });
                         ui.horizontal(|ui| {
                             let mut size = rule.size;
-                            egui::ComboBox::from_id_salt(("rule size", rule.id))
-                                .selected_text(format!("{0} × {0}", rule.size))
-                                .width(60.0)
-                                .show_ui(ui, |ui| {
-                                    for s in [1, 3, 5, 7, 9] {
-                                        ui.selectable_value(&mut size, s, format!("{s} × {s}"));
-                                    }
-                                });
-                            if size != rule.size {
+                            let choices = [
+                                (1, "1 × 1"),
+                                (3, "3 × 3"),
+                                (5, "5 × 5"),
+                                (7, "7 × 7"),
+                                (9, "9 × 9"),
+                            ];
+                            if crate::widgets::field::dropdown(
+                                ui,
+                                "Rule size",
+                                &mut size,
+                                &choices,
+                                60.0,
+                            ) {
                                 out.changed |= t.editor.set_rule_size(rule.id, size);
                             }
                             if ui
@@ -1157,27 +1155,29 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                                 Animation::Columns { .. } => "tiles to the right",
                                 Animation::Frames => "the picture's frames",
                             };
-                            egui::ComboBox::from_id_salt(("piece animation", piece.id))
-                                .selected_text(word)
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(&mut animation, Animation::None, "none");
-                                    if !matches!(animation, Animation::Columns { .. }) {
-                                        let cols = Animation::Columns { count: 4, ms: 150 };
-                                        if ui
-                                            .selectable_label(false, "tiles to the right")
-                                            .clicked()
-                                        {
-                                            animation = cols;
-                                        }
-                                    }
-                                    if aseprite {
-                                        ui.selectable_value(
-                                            &mut animation,
-                                            Animation::Frames,
-                                            "the picture's frames",
-                                        );
-                                    }
-                                });
+                            // Tiles to the right start at four, 150 ms each;
+                            // chosen again, they keep what they have.
+                            let columns = match animation {
+                                Animation::Columns { .. } => animation,
+                                _ => Animation::Columns { count: 4, ms: 150 },
+                            };
+                            let mut choices =
+                                vec![(Animation::None, "none"), (columns, "tiles to the right")];
+                            if aseprite {
+                                choices.push((Animation::Frames, "the picture's frames"));
+                            }
+                            let list = crate::widgets::field::List {
+                                shown: word,
+                                note: None,
+                                width: crate::tokens::size::SETTING_FIELD_W,
+                            };
+                            crate::widgets::field::dropdown_showing(
+                                ui,
+                                "Animation",
+                                &mut animation,
+                                &choices,
+                                list,
+                            );
                         });
                         if let Animation::Columns { count, ms } = &mut animation {
                             ui.horizontal(|ui| {

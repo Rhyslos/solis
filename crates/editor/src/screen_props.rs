@@ -207,23 +207,17 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
             let events = &game.events;
             ui.horizontal(|ui| {
                 ui.label("Sends");
-                egui::ComboBox::from_id_salt(("screen sends", &path))
-                    .selected_text(now.clone().unwrap_or_else(|| "nothing".into()))
-                    .height(520.0)
-                    .show_ui(ui, |ui| {
-                        for (e, file) in events {
-                            if ui
-                                .selectable_label(now.as_deref() == Some(e), e)
-                                .on_hover_text(format!("Written in {file}"))
-                                .clicked()
-                                && now.as_deref() != Some(e)
-                            {
-                                changed |= doc.set_sends(e, file);
-                            }
-                        }
-                    })
-                    .response
-                    .on_hover_text("The event sent to the screen's entity when it's clicked");
+                let names: Vec<&str> = events.iter().map(|(e, _)| e.as_str()).collect();
+                let list = crate::widgets::field::List {
+                    shown: now.as_deref().unwrap_or("nothing"),
+                    note: None,
+                    width: crate::tokens::size::SETTING_FIELD_W,
+                };
+                if let Some(i) = crate::widgets::field::dropdown_of_names(ui, "Sends", &names, list)
+                {
+                    let (e, file) = &events[i];
+                    changed |= doc.set_sends(e, file);
+                }
             });
             ui.label(
                 RichText::new(if events.is_empty() {
@@ -628,33 +622,35 @@ fn colour_field(
             ui.painter()
                 .rect_filled(rect, 3.0, egui::Color32::from_rgb(r, g, b));
         }
-        egui::ComboBox::from_id_salt(("screen colour", piece.span.start))
-            .height(520.0)
-            .selected_text(now.clone().unwrap_or_else(|| "default".into()))
-            .show_ui(ui, |ui| {
-                if ui.selectable_label(now.is_none(), "default").clicked() {
-                    changed |= if alone {
-                        let names: Vec<&str> = COLOURS.to_vec();
-                        doc.remove_styles(&names)
-                    } else {
-                        doc.remove_styles(&[style])
-                    };
-                }
-                for name in COLOURS {
-                    let on = now.as_deref() == Some(*name);
-                    if ui.selectable_label(on, *name).clicked() && !on {
-                        changed |= if alone {
-                            let mut old: Vec<&str> = COLOURS.to_vec();
-                            if let Some(n) = now.as_deref() {
-                                old.push(n);
-                            }
-                            doc.restyle(&old, &[(name, None)])
-                        } else {
-                            doc.set_style(style, Some(name))
-                        };
+        let mut names = vec!["default"];
+        names.extend(COLOURS.iter().copied());
+        let list = crate::widgets::field::List {
+            shown: now.as_deref().unwrap_or("default"),
+            note: None,
+            width: crate::tokens::size::SETTING_FIELD_W,
+        };
+        match crate::widgets::field::dropdown_of_names(ui, "Colour", &names, list) {
+            Some(0) => {
+                changed |= if alone {
+                    doc.remove_styles(COLOURS)
+                } else {
+                    doc.remove_styles(&[style])
+                };
+            }
+            Some(i) => {
+                let name = names[i];
+                changed |= if alone {
+                    let mut old: Vec<&str> = COLOURS.to_vec();
+                    if let Some(n) = now.as_deref() {
+                        old.push(n);
                     }
-                }
-            });
+                    doc.restyle(&old, &[(name, None)])
+                } else {
+                    doc.set_style(style, Some(name))
+                };
+            }
+            None => {}
+        }
     });
     changed
 }

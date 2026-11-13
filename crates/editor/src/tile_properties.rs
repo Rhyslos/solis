@@ -141,20 +141,17 @@ pub(crate) fn map_file_properties(
                 .find(|(_, i)| *i == id)
                 .map_or_else(|| format!("Missing tileset {id}"), |(n, _)| n.clone()),
         };
-        egui::ComboBox::from_id_salt(("map tileset", path))
-            .selected_text(shown)
-            .show_ui(ui, |ui| {
-                for (n, id) in tilesets {
-                    if ui.selectable_label(map.tileset == Some(*id), n).clicked()
-                        && map.tileset != Some(*id)
-                    {
-                        out = Some((Some(*id), map.size()));
-                    }
-                }
-                if tilesets.is_empty() {
-                    ui.label("No tilesets yet: right-click in the Library > New > Tileset.");
-                }
-            });
+        let names: Vec<&str> = tilesets.iter().map(|(n, _)| n.as_str()).collect();
+        let list = crate::widgets::field::List {
+            shown: &shown,
+            note: tilesets
+                .is_empty()
+                .then_some("No tilesets yet: right-click in the Library > New > Tileset."),
+            width: ui.available_width(),
+        };
+        if let Some(i) = crate::widgets::field::dropdown_of_names(ui, "Tileset", &names, list) {
+            out = Some((Some(tilesets[i].1), map.size()));
+        }
     });
     crate::inspector::row(
         ui,

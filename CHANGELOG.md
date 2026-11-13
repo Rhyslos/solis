@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The last plain drop-downs look and work like the rest.** A sound event's Bus and Heard by, a screen's Sends and Colour, a tile map's Tileset, Layer and value Kind, the Frames tab's sheet and Direction, the tileset editor's Picture, Kind, rule size and Animation, and the animator's pickers were egui's own lists; they are the editor's drop-down now, and like every other one the arrow keys step through them while one has the keyboard.
 - **Which code is the engine's is decided one way everywhere: the files in `assets/solis/`.** A file of your own elsewhere whose first line looked like the engine's description files counted as the engine's, and the screens had a rule of their own. Your screens still fetch `"solis/screen"` as before. Lua's message for a call that doesn't exist now says it "isn't something the engine offers to game code".
 - **A picked crop stands out whatever the accent colour.** The other crops were yellow, which with the orange accent looked like the picked one; they are a darker grey now. The Frames tab's playhead and the animator's live state, which were always blue, follow the accent colour like the rest of the editor.
 - **The search and the ribbon's hover texts show the 2D editors' keys.** The painting tools (B, U, N, G, I), the copy's Flip X, Flip Y and Turn (X, Y, Z), Map as (Tab), and Delete for a crop, a clip's frames and an animator's state showed no key.

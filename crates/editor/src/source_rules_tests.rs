@@ -15,6 +15,8 @@
 //!   is handed to an `unbuilt::` function or put in a list as
 //!   `Unbuilt(..)`; and a control switched off for good must say why, so
 //!   a dead button can't stand in for a placeholder.
+//! - **One drop-down** (rule 21): every picker is the kit's
+//!   (`widgets::field::dropdown` and its kin), never egui's own.
 
 use std::path::{Path, PathBuf};
 
@@ -511,5 +513,24 @@ fn the_dead_control_rule_asks_for_a_reason_in_the_same_statement() {
     assert_eq!(
         dead_controls("ui.add_enabled(can_save, Button::new(\"Save\"));"),
         0
+    );
+}
+
+/// The second review pass's N-27: a few views still drew egui's own
+/// pickers, unlike every other drop-down in the editor.
+#[test]
+fn every_picker_is_the_kit_s_drop_down() {
+    let mut wrong = Vec::new();
+    for (path, text) in sources_of(&["editor", "app"]) {
+        if name_of(&path).ends_with("tests.rs") {
+            continue;
+        }
+        if code_of(&text).contains("egui::ComboBox") {
+            wrong.push(name_of(&path));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "Use widgets::field::dropdown (or dropdown_showing, dropdown_of_names) for a picker: {wrong:?}"
     );
 }

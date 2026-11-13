@@ -494,13 +494,19 @@ mod tests {
             save(&root, &elsewhere, b"note version 2;", &NOTE, |_| Ok(())),
             Err(SaveError::Outside(_))
         ));
-        let climbing = root.join("assets/../../escape.note");
+        // The project for climbing out sits in a folder of the test's own,
+        // so the file it climbs to lands there, never in the temporary
+        // folder every test run shares (the second review pass's N-27).
+        let around = TempFolder::new("backup-climb").unwrap();
+        let inner = around.join("project");
+        std::fs::create_dir_all(inner.join("assets")).unwrap();
+        let climbing = inner.join("assets/../../escape.note");
         std::fs::write(&climbing, "note version 1;").unwrap();
+        assert!(around.join("escape.note").is_file(), "in the test's folder");
         assert!(matches!(
-            save(&root, &climbing, b"note version 2;", &NOTE, |_| Ok(())),
+            save(&inner, &climbing, b"note version 2;", &NOTE, |_| Ok(())),
             Err(SaveError::Outside(_))
         ));
-        let _ = std::fs::remove_file(&climbing);
     }
 
     #[test]
