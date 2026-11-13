@@ -270,12 +270,46 @@ pub fn dropdown<T: Copy + PartialEq>(
     choices: &[(T, &str)],
     width: f32,
 ) -> bool {
-    let before = *chosen;
     let shown = choices
         .iter()
         .find(|(value, _)| value == chosen)
         .map_or("", |(_, word)| word);
-    let response = dropdown_button(ui, name, shown, width);
+    let list = List {
+        shown,
+        note: None,
+        width,
+    };
+    dropdown_showing(ui, name, chosen, choices, list)
+}
+
+/// What a [`dropdown_showing`] shows besides its choices.
+#[derive(Debug, Clone, Copy)]
+pub struct List<'a> {
+    /// What the closed box says. It may be none of the choices: a dash
+    /// for values that differ, a name that is no longer there.
+    pub shown: &'a str,
+    /// Quiet words ending the open list, if any: how to make the first
+    /// choice when there are none yet.
+    pub note: Option<&'a str>,
+    /// How wide the field is.
+    pub width: f32,
+}
+
+/// The longest an open list grows before it scrolls.
+pub const LIST_MAX_H: f32 = 320.0;
+
+/// A [`dropdown`] whose box says what `list` says, which need not be one
+/// of the `choices` (`chosen` may be none of them too: then the arrow keys
+/// don't step, and any row picked is another choice). A long list scrolls.
+pub fn dropdown_showing<T: Copy + PartialEq>(
+    ui: &mut Ui,
+    name: &str,
+    chosen: &mut T,
+    choices: &[(T, &str)],
+    list: List<'_>,
+) -> bool {
+    let before = *chosen;
+    let response = dropdown_button(ui, name, list.shown, list.width);
     let open = egui::Popup::is_id_open(ui.ctx(), egui::Popup::default_response_id(&response));
     if !open {
         let step = arrow_step(ui, &response);
@@ -285,16 +319,36 @@ pub fn dropdown<T: Copy + PartialEq>(
             *chosen = choices[next as usize].0;
         }
     }
-    egui::Popup::menu(&response).width(width).show(|ui| {
-        // The rows of a list touch.
-        ui.spacing_mut().item_spacing.y = 0.0;
-        for (value, word) in choices {
-            if list_row(ui, word, value == chosen).clicked() {
-                *chosen = *value;
-            }
-        }
+    egui::Popup::menu(&response).width(list.width).show(|ui| {
+        egui::ScrollArea::vertical()
+            .max_height(LIST_MAX_H)
+            .show(ui, |ui| {
+                // The rows of a list touch.
+                ui.spacing_mut().item_spacing.y = 0.0;
+                for (value, word) in choices {
+                    if list_row(ui, word, value == chosen).clicked() {
+                        *chosen = *value;
+                    }
+                }
+                if let Some(note) = list.note {
+                    list_note(ui, note);
+                }
+            });
     });
     *chosen != before
+}
+
+/// Quiet words in an open list, saying something rather than offering
+/// it: why it is empty, or that it shows only some.
+pub fn list_note(ui: &mut Ui, note: &str) {
+    ui.add(
+        egui::Label::new(
+            RichText::new(note)
+                .font(text::row())
+                .color(tokens::text_label()),
+        )
+        .wrap(),
+    );
 }
 
 /// The closed drop-down: the field's box, `shown` in it, and the arrow.
@@ -341,8 +395,9 @@ pub fn dropdown_button(ui: &mut Ui, name: &str, shown: &str, width: f32) -> Resp
 const DROP_ARROW: f32 = 6.0;
 
 /// One row of an open list: 24 tall, lifted under the pointer, bright
-/// when it is the choice in force.
-fn list_row(ui: &mut Ui, word: &str, chosen: bool) -> Response {
+/// when it is the choice in force. For a list [`dropdown`] can't make
+/// (one with a box to find a row by name).
+pub fn list_row(ui: &mut Ui, word: &str, chosen: bool) -> Response {
     let width = ui.available_width();
     let (rect, response) = ui.allocate_exact_size(vec2(width, size::MENU_ROW_H), Sense::click());
     response.widget_info(|| {

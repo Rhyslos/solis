@@ -83,36 +83,9 @@ fn header(
         ui.label(RichText::new(name).strong());
         if playable {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let label = if playing { "Stop" } else { "Play" };
-                let button = ui.add(
-                    egui::Button::new(format!("     {label}")).min_size(egui::vec2(70.0, 0.0)),
-                );
-                crate::icons::icon(
-                    ui.painter(),
-                    egui::Rect::from_center_size(
-                        egui::pos2(button.rect.left() + 13.0, button.rect.center().y),
-                        egui::vec2(11.0, 11.0),
-                    ),
-                    if playing {
-                        crate::icons::Icon::Stop
-                    } else {
-                        crate::icons::Icon::Play
-                    },
-                    theme::text_strong(),
-                );
-                button.widget_info(|| {
-                    egui::WidgetInfo::labeled(
-                        egui::WidgetType::Button,
-                        true,
-                        format!("{label} the sound event"),
-                    )
-                });
-                let button = button.on_hover_text(if playing {
-                    "Stop listening"
-                } else {
-                    "Plays it as a game would: a different take, pitch and volume each press"
-                });
-                if button.clicked() {
+                let listen =
+                    "Plays it as a game would: a different take, pitch and volume each press";
+                if sound_view::play_stop(ui, playing, "the sound event", listen) {
                     requests.push(if playing {
                         LibraryRequest::StopSound
                     } else {

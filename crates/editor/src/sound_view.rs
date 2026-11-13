@@ -233,31 +233,8 @@ fn details(
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         let playing = played.is_some();
-        let (icon, label) = if playing {
-            (crate::icons::Icon::Stop, "Stop")
-        } else {
-            (crate::icons::Icon::Play, "Play")
-        };
-        let button =
-            ui.add(egui::Button::new(format!("     {label}")).min_size(egui::vec2(70.0, 0.0)));
-        crate::icons::icon(
-            ui.painter(),
-            egui::Rect::from_center_size(
-                egui::pos2(button.rect.left() + 13.0, button.rect.center().y),
-                egui::vec2(11.0, 11.0),
-            ),
-            icon,
-            theme::text_strong(),
-        );
-        button.widget_info(|| {
-            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("{label} the sound"))
-        });
-        let button = button.on_hover_text(if playing {
-            "Stop listening"
-        } else {
-            "Listen to it (only you hear it: the game's volumes don't touch it)"
-        });
-        if button.clicked() {
+        let listen = "Listen to it (only you hear it: the game's volumes don't touch it)";
+        if play_stop(ui, playing, "the sound", listen) {
             request = Some(if playing {
                 LibraryRequest::StopSound
             } else {
@@ -313,6 +290,23 @@ fn details(
         },
     );
     request
+}
+
+/// The Play button of a sound or a sound event (`what`), Stop while it
+/// plays. `listen` says, on hover, what Play does. Whether it was pressed.
+pub(crate) fn play_stop(ui: &mut Ui, playing: bool, what: &str, listen: &str) -> bool {
+    let (icon, label, hover) = if playing {
+        (crate::icons::Icon::Stop, "Stop", "Stop listening")
+    } else {
+        (crate::icons::Icon::Play, "Play", listen)
+    };
+    let name = format!("{label} {what}");
+    crate::widgets::button::Button::plain(label)
+        .icon(icon)
+        .named(&name)
+        .show(ui)
+        .on_hover_text(hover)
+        .clicked()
 }
 
 #[cfg(test)]

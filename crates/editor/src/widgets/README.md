@@ -7,7 +7,7 @@ Every control follows the accent, the density and the interface scale through th
 | File | What it draws |
 | --- | --- |
 | `mod.rs` | What the controls share: the focus ring, a one-pixel border, words clipped to their room, and the arrow keys' step while a control holds the keyboard. |
-| `button.rs` | `Button::plain`, `Button::primary` (the accent) and `Button::light` (Play's look), with an icon, at a page's or a header's height, or as wide as their room; `dashed` ("+ Component"); `icon` (26 x 26, an icon alone, named for hover and screen readers); `link`. |
+| `button.rs` | `Button::plain`, `Button::primary` (the accent) and `Button::light` (Play's look), with an icon, at a page's or a header's height, or as wide as their room, and `named` for screen readers when the word alone doesn't say what it does ("Play the sound"); `dashed` ("+ Component"); `icon` (26 x 26, an icon alone, named for hover and screen readers); `link`. |
 | `toggle.rs` | The switch: 32 x 18, its knob at the right on the accent when on. |
 | `checkbox.rs` | The checkbox: a 12 x 12 rounded square, filled with the accent and ticked when on. |
 | `segmented.rs` | The segmented control: choices side by side in a dark well, the chosen one lifted. |
@@ -21,7 +21,7 @@ Every control follows the accent, the density and the interface scale through th
 | `slider.rs` | The slider: a thin track filled with the accent up to a round light knob. |
 | `tile.rs` | A tile: a square thumbnail over a name (cut off with "...") and a kind with its dot; chosen, it takes the accent. |
 | `rows.rs` | `setting_row` (a name and a line about it on the left, the control in a 260 px column at the right, a hairline under), `key_value`, `section_caps` and `column_header`. |
-| `field.rs` | The field (24 tall, its border the accent while the keyboard is in it or it is dragged): `text_field`, `number_field` (with an axis letter), `framed` (the box round any of egui's editing, as Properties' fields use it) and `dropdown`, which is meant to be the one drop-down everywhere. The editing inside is egui's own. |
+| `field.rs` | The field (24 tall, its border the accent while the keyboard is in it or it is dragged): `text_field`, `number_field` (with an axis letter), `framed` (the box round any of egui's editing, as Properties' fields use it) and `dropdown`, which is meant to be the one drop-down everywhere; `dropdown_showing` is the same with words of its own in the box (a dash for values that differ, a name no longer there) and a quiet `list_note` ending the list (Properties' pickers use it), and `dropdown_button` with `list_row` build a list `dropdown` can't (the entity field's, with a box to find one by name). A long list scrolls. The editing inside is egui's own. |
 | `menu.rs` | The rows of the design's menus: `item` (with quiet words after it, a key), `choice` and `check` (a check mark while in force), `caps` (small capitals over a group) and `line`. They go inside egui's own menus. |
 | `dashed.rs` | A dashed outline round a rounded rectangle, which egui can't draw itself. |
 | `dialog.rs` | The shared dialog card (round 1, `10-dialog-*`): a title, what is asked, and the answers in a row, those that set the work aside at the left, the main one in the accent at the far right. Unsaved changes, Changed on disk and Keep or Undo all are this card. |

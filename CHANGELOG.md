@@ -196,6 +196,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Properties' lists (a sprite's sheet, pivot and clip, an animator and its state, a tile map, a screen, an entity) are the editor's one drop-down,** the same as everywhere else in the new look: the arrow keys step through them, long lists scroll, and a name that isn't there any more is warned about under the field. The Play and Stop buttons of sounds and sound events are the editor's own button too.
 - **The tileset, clips, atlas and animator editors share one undo history** instead of four copies of it, so a fix to undo reaches all four. Each keeps how many steps it remembers (100 for a tileset, 200 for the others).
 - **The maths library is built once instead of twice.** The engine used a newer version than its physics and sound libraries, so both were compiled and every vector was copied by hand at the physics edge. It now uses theirs, and they are updated together.
 - **The editor notices changed files without an extra library** that also brought a temporary-file library and a third copy of a random-number library into the program. Bursts of changes are still reported once, after the folder has been quiet for 300 ms.
