@@ -1,5 +1,6 @@
-//! One tick of the running game: every component's `update` (Lust, Lua
-//! and Rust alike, in one order), then delivering the events they sent.
+//! One tick of the running game: the tweens game code started, every
+//! component's `update` (Lust, Lua and Rust alike, in one order), then
+//! delivering the events they sent.
 
 use crate::code::CodeProblem;
 use crate::events::{Event, EventKinds, Queue, arguments, values_table};
@@ -223,6 +224,7 @@ impl Ticking<'_> {
     /// used up, the rest wait.
     pub(crate) fn updates(&self, lent: &Lent<'_, '_>, running: &mut RunningMap, dt: f64) -> Phase {
         let mut phase = Phase::default();
+        self.tweens(lent, dt, &mut phase);
         for ((entity, name), component) in running.iter_mut() {
             if self.luau.clock.over() {
                 break;
@@ -256,6 +258,44 @@ impl Ticking<'_> {
             }
         }
         phase
+    }
+
+    /// Moves the tweens game code started on by `dt` (Lust's `tickTweens`,
+    /// decision 0106): once a tick, after the game-wide objects and before
+    /// any component's `update`, on each core for the components there.
+    /// A done block's sends and changes come before every update's. A
+    /// tween that fails stops nothing, since Lust doesn't say whose it
+    /// was, and is said once until the code changes. Objects are never
+    /// open here, so a tween can't change an object's field (decision
+    /// 0080: only its update can).
+    fn tweens(&self, lent: &Lent<'_, '_>, dt: f64, phase: &mut Phase) {
+        let Some((program, tick)) = self.lust.and_then(|p| Some((p, p.tick_tweens.as_ref()?)))
+        else {
+            return;
+        };
+        if self.luau.clock.over() {
+            return;
+        }
+        let at = Order::default();
+        lent.borrow_mut().at(&at);
+        let result = program
+            .objects
+            .tweening(|| self.luau.clock.limited(|| tick.call::<()>(dt)));
+        self.collect_sent(&at, phase);
+        if let Err(err) = result {
+            if self.luau.clock.over() || program.tween_told.replace(true) {
+                return;
+            }
+            phase.failures.push((
+                at,
+                Failure {
+                    entity: None,
+                    component: String::new(),
+                    at: self.located(&err),
+                    stopped: false,
+                },
+            ));
+        }
     }
 
     /// Runs every game-wide object's `update`, in name order, open to

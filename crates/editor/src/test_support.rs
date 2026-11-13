@@ -232,6 +232,16 @@ pub(crate) trait Tap: Sized {
 }
 impl<T> Tap for T {}
 
+/// Plays `w`'s games unhurried (the review's TEST-02): game code's and
+/// physics' time limits are kept on the real clock, so on a busy machine a
+/// tick of one run is cut short and the game pauses, and a test comparing
+/// it with another run fails though nothing is wrong. For tests that
+/// compare runs (or count what a whole tick made) only: the others keep
+/// the real limits, which stop code that never ends.
+pub(crate) fn unhurried(w: &mut Workbench) {
+    w.unhurried = crate::game_code::Unhurried::Everything;
+}
+
 pub(crate) fn info() -> AppInfo {
     AppInfo {
         name: "Test Engine".into(),

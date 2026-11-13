@@ -50,9 +50,9 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 
 **Values for `set`:**
 - Numbers: `set Light.strength 250`. A unit after the number is fine (`2m`).
-- Three numbers (positions, scales): `0 0 2` or `0,0,2`.
+- Three numbers (positions, scales): `0 0 2` or `0,0,2`. Two for a game code's `vec2`: `3 4.5`.
 - Rotations: three angles in degrees, around X, Y and Z, as Properties shows them: `set Transform.rotation 0 0 90`.
-- Colours: `#ff8800` (as in a paint program), or three numbers from 0 to 1.
+- Colours: `#ff8800` (as in a paint program), or three numbers from 0 to 1. A game code's `colour` can be see-through: `#ff880080`, or a fourth number for how solid it is (`get` shows it the same way).
 - Choices: one of the choices Properties offers, such as `set Light.kind spot`.
 - On or off: `on`, `off`, `yes`, `no`, `true`, `false`.
 - Models and entities can't be typed yet; choose them in Properties.

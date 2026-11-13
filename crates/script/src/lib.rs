@@ -25,6 +25,8 @@ pub mod rust_component;
 pub mod screens;
 pub mod settings;
 mod syncing;
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;
 mod ticking;
 
 pub use code::{

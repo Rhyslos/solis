@@ -2,7 +2,7 @@
 //! component is written in.
 
 use crate::id::{AssetId, EntityId};
-use glam::{Quat, Vec3};
+use glam::{Quat, Vec2, Vec3};
 
 /// A reference to an asset, or to one part of it (a node of a model).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -73,6 +73,29 @@ impl Value {
         Self::floats(&v.to_array())
     }
 
+    /// A 2D vector.
+    pub fn vec2(v: Vec2) -> Self {
+        Self::floats(&v.to_array())
+    }
+
+    /// A colour's red, green, blue and see-through: three numbers (fully
+    /// solid) or four.
+    pub fn as_colour(&self) -> Option<[f32; 4]> {
+        self.as_floats::<4>()
+            .or_else(|| self.as_floats::<3>().map(|[r, g, b]| [r, g, b, 1.0]))
+    }
+
+    /// A colour as a field keeps it: three numbers when it's fully solid,
+    /// as every colour was before game code's colours could be see-through,
+    /// and four when it isn't.
+    pub fn colour([r, g, b, a]: [f32; 4]) -> Self {
+        if a == 1.0 {
+            Self::floats(&[r, g, b])
+        } else {
+            Self::floats(&[r, g, b, a])
+        }
+    }
+
     /// A rotation, as x, y, z, w.
     pub fn quat(q: Quat) -> Self {
         Self::floats(&q.to_array())
@@ -95,6 +118,26 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_colour_keeps_its_see_through_only_when_it_has_one() {
+        let solid = Value::colour([1.0, 0.5, 0.0, 1.0]);
+        assert_eq!(
+            solid,
+            Value::floats(&[1.0, 0.5, 0.0]),
+            "as colours always were"
+        );
+        assert_eq!(solid.as_colour(), Some([1.0, 0.5, 0.0, 1.0]));
+        let faded = Value::colour([1.0, 0.5, 0.0, 0.25]);
+        assert_eq!(faded.as_floats::<4>(), Some([1.0, 0.5, 0.0, 0.25]));
+        assert_eq!(faded.as_colour(), Some([1.0, 0.5, 0.0, 0.25]));
+        assert_eq!(Value::floats(&[1.0, 0.5]).as_colour(), None);
+        assert_eq!(Value::Float(1.0).as_colour(), None);
+        assert_eq!(
+            Value::vec2(glam::Vec2::new(3.0, 4.5)).as_floats::<2>(),
+            Some([3.0, 4.5])
+        );
+    }
 
     #[test]
     fn numbers_and_lists_read_back() {

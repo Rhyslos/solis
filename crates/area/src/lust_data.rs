@@ -422,6 +422,9 @@ pub fn from_fixed(f: &Fixed) -> Option<reflect::Value> {
                 .to_string(),
         ),
         Fixed::List(items) => V::List(items.iter().filter_map(from_fixed).collect()),
+        // A colour word or `Colour:hex(…)`: Solis's colours are three
+        // numbers, so the see-through is dropped.
+        Fixed::Colour([r, g, b, _]) => V::floats(&[*r, *g, *b]),
         Fixed::Thing { .. } => return None,
     })
 }

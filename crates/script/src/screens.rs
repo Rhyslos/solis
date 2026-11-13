@@ -222,7 +222,9 @@ fn lust_field(kind: &reflect::FieldKind) -> Option<(&'static str, &'static str)>
         FieldKind::Int => ("int", "0"),
         FieldKind::Float => ("float", "0"),
         FieldKind::Text | FieldKind::Choice(_) => ("string", "\"\""),
+        // Solis's own colours reach screens as they always have: as vec3s.
         FieldKind::Vec3 | FieldKind::Color => ("vec3", "[0, 0, 0]"),
+        FieldKind::Vec2 => ("vec2", "[0, 0]"),
         FieldKind::Rotation => ("rotation", "[0, 0, 0]"),
         FieldKind::Entity => ("entity", "nothing"),
         FieldKind::Asset => return None,

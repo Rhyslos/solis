@@ -132,6 +132,32 @@ fn numbers_colours_choices_and_switches_are_read_for_their_field() {
 }
 
 #[test]
+fn a_vec2_and_a_see_through_colour_from_game_code_are_read_and_shown() {
+    use reflect::{FieldInfo, FieldKind};
+    let w = |s: &str| words(s);
+    let aim = FieldInfo::new("aim", "Aim", FieldKind::Vec2, Value::floats(&[0.0, 0.0]));
+    let typed = parse_value(&aim, &w("3, 4.5")).unwrap();
+    assert_eq!(typed, Value::floats(&[3.0, 4.5]));
+    assert_eq!(shown_value(&aim, &typed), "3.000 4.500");
+    assert!(parse_value(&aim, &w("1 2 3")).is_err());
+    assert!(parse_value(&aim, &w("1 NaN")).is_err());
+
+    let tint = FieldInfo::new("tint", "Tint", FieldKind::Color, Value::floats(&[1.0; 3]));
+    let half = parse_value(&tint, &w("#ff000080")).unwrap();
+    assert_eq!(half.as_colour(), Some([1.0, 0.0, 0.0, 128.0 / 255.0]));
+    assert_eq!(shown_value(&tint, &half), "#ff000080");
+    let solid = parse_value(&tint, &w("1 0 0 1")).unwrap();
+    assert_eq!(
+        solid,
+        Value::floats(&[1.0, 0.0, 0.0]),
+        "solid: three numbers"
+    );
+    assert_eq!(shown_value(&tint, &solid), "#ff0000");
+    assert!(parse_value(&tint, &w("1 0 0 2")).is_err(), "out of range");
+    assert!(parse_value(&tint, &w("1 0")).is_err());
+}
+
+#[test]
 fn select_finds_entities_by_name_or_id_and_says_when_nothing_matches() {
     let (mut w, crate_id) = with_a_crate();
     let lamp = w.add_point_light();
@@ -630,6 +656,8 @@ fn hero_with_a_score() -> (Workbench, EntityId) {
     };
     let program = std::sync::Arc::new(script::compile(&code).unwrap().unwrap());
     let mut w = Workbench::new(info());
+    // Its tests wait for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program));
     let id = EntityId::random();
     let mut hero = area::EntityData::new("Hero").with(&Transform::default());

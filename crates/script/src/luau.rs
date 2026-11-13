@@ -66,17 +66,29 @@ impl Default for Limits {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 impl Limits {
+    /// How long "unhurried" is: an hour, which no busy machine reaches.
+    const UNHURRIED: Duration = Duration::from_secs(3600);
+
     /// Limits no busy machine reaches (an hour each): only code that
     /// never ends is stopped, and the test with it.
     pub(crate) fn unhurried() -> Self {
-        let long = Duration::from_secs(3600);
         Self {
-            call: long,
-            tick: long,
-            load: long,
-            compile: long,
+            call: Self::UNHURRIED,
+            tick: Self::UNHURRIED,
+            load: Self::UNHURRIED,
+            compile: Self::UNHURRIED,
+        }
+    }
+
+    /// A game's limits, but an hour for each call: for tests of the
+    /// tick's limit itself, whose slow calls a busy machine would
+    /// otherwise stop one by one before the tick's limit is reached.
+    pub(crate) fn calls_unhurried() -> Self {
+        Self {
+            call: Self::UNHURRIED,
+            ..Self::default()
         }
     }
 }

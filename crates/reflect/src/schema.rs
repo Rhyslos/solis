@@ -18,9 +18,13 @@ pub enum FieldKind {
     Choice(Vec<String>),
     /// Three numbers: a position, a size.
     Vec3,
+    /// Two numbers: a place or a direction in 2D (game code's `vec2`).
+    Vec2,
     /// A rotation, stored as a quaternion (x, y, z, w) and shown in degrees.
     Rotation,
-    /// A colour, three numbers from 0 to 1 in sRGB, as colour pickers show.
+    /// A colour, three numbers from 0 to 1 in sRGB, as colour pickers show,
+    /// and a fourth for its see-through when game code's colour has one
+    /// (`Value::colour`).
     Color,
     /// A reference to an asset.
     Asset,
@@ -39,7 +43,9 @@ impl FieldKind {
             | (Self::Asset, Value::Asset(_))
             | (Self::Entity, Value::Entity(_)) => true,
             (Self::Choice(options), Value::Text(t)) => options.contains(t),
-            (Self::Vec3 | Self::Color, v) => v.as_floats::<3>().is_some(),
+            (Self::Vec3, v) => v.as_floats::<3>().is_some(),
+            (Self::Vec2, v) => v.as_floats::<2>().is_some(),
+            (Self::Color, v) => v.as_colour().is_some(),
             (Self::Rotation, v) => v.as_floats::<4>().is_some(),
             _ => false,
         }
@@ -159,5 +165,17 @@ mod tests {
         assert!(!FieldKind::Rotation.accepts(&Value::floats(&[1.0, 0.5, 0.0])));
         assert!(!FieldKind::Vec3.accepts(&Value::List(vec![Value::Float(f64::NAN); 3])));
         assert!(!FieldKind::Bool.accepts(&Value::Int(1)));
+    }
+
+    #[test]
+    fn a_vec2_is_two_numbers_and_a_colour_three_or_four() {
+        assert!(FieldKind::Vec2.accepts(&Value::floats(&[1.0, -2.5])));
+        assert!(!FieldKind::Vec2.accepts(&Value::floats(&[1.0, 2.0, 3.0])));
+        assert!(!FieldKind::Vec2.accepts(&Value::List(vec![Value::Float(f64::INFINITY); 2])));
+        assert!(!FieldKind::Vec3.accepts(&Value::floats(&[1.0, 2.0])));
+        assert!(FieldKind::Color.accepts(&Value::floats(&[1.0, 0.5, 0.0, 0.25])));
+        assert!(!FieldKind::Color.accepts(&Value::floats(&[1.0, 0.5])));
+        assert!(!FieldKind::Color.accepts(&Value::floats(&[1.0, 0.5, 0.0, 0.25, 1.0])));
+        assert!(!FieldKind::Vec3.accepts(&Value::floats(&[1.0, 0.5, 0.0, 0.25])));
     }
 }

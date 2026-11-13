@@ -31,6 +31,13 @@ pub(crate) struct LustProgram {
     pub(crate) methods: BTreeMap<String, Methods>,
     /// The game-wide objects it passes (decision 0080).
     pub(crate) objects: crate::objects::Objects,
+    /// Its `tickTweens(dt)`, which moves the tweens game code started
+    /// (LUST.md §21, "Tweens in an engine"; decision 0106).
+    pub(crate) tick_tweens: Option<Function>,
+    /// Whether a tween's failure has been said: one that fails keeps
+    /// failing each tick until it ends, so it's said once until the code
+    /// changes.
+    pub(crate) tween_told: std::cell::Cell<bool>,
 }
 
 /// A Lust component's `update` and `handle`, if it has them.
@@ -97,6 +104,7 @@ pub(crate) fn prepare(
             stopped: true,
         });
     }
+    let tick_tweens = api.raw_get("tickTweens").map_err(failed)?;
     // Reading the components makes one of each, which works out their
     // fields' starting values: game code, so the natives are lent too.
     let ((fields, schemas, methods), events, objects) =
@@ -117,6 +125,8 @@ pub(crate) fn prepare(
         events: Rc::new(events),
         methods,
         objects,
+        tick_tweens,
+        tween_told: std::cell::Cell::new(false),
     })
 }
 

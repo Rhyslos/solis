@@ -113,7 +113,7 @@ fn program() -> Arc<script::Compiled> {
         lua: Vec::new(),
         notes: Vec::new(),
     };
-    match script::compile(&code) {
+    match script::test_support::compile_unhurried(&code) {
         Ok(Some(c)) => Arc::new(c),
         Ok(None) => panic!("no code"),
         Err(problems) => panic!("{}", problems[0]),
@@ -149,6 +149,8 @@ fn a_crate(at: Vec3) -> EntityData {
 /// fixed seed.
 fn level() -> Workbench {
     let mut w = Workbench::new(info());
+    // Every rule here compares runs: a busy machine mustn't cut one short.
+    unhurried(&mut w);
     w.open.project = Some(crate::library::ProjectInfo {
         name: "Invariants".into(),
         root: std::env::temp_dir(),

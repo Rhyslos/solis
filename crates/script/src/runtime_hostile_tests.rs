@@ -211,12 +211,17 @@ fn a_lust_starting_value_that_never_ends_stops_the_load_in_time() {
 
 #[test]
 fn many_slow_components_cut_the_tick_short_and_ask_for_a_pause() {
-    let slow = "local S = component('Slow', {})\n\
+    let slow = "local S = component('Slow', { { 'ran', 'bool', false } })\n\
                 function S:update(dt)\n\
                   local start = os.clock()\n\
                   while os.clock() - start < 0.09 do end\n\
+                  self.ran = true\n\
                 end";
     let mut runtime = Runtime::new().unwrap();
+    // Each call 90 ms, within its 100 ms: but a busy machine would stop
+    // one now and then, so the calls are unhurried and only the tick's
+    // own limit is tried (the review's TEST-02).
+    runtime.set_limits(crate::luau::Limits::calls_unhurried());
     runtime
         .load(&code("", &[("slow.lua", slow)]), &mut NoHost)
         .unwrap();
@@ -225,13 +230,20 @@ fn many_slow_components_cut_the_tick_short_and_ask_for_a_pause() {
             .sync(id(n), "Slow", &ComponentData::default(), &mut NoHost)
             .unwrap();
     }
-    let start = Instant::now();
     let ticked = runtime.tick(0.1, &mut NoHost);
-    let took = start.elapsed();
-    assert!(took < TICK_LIMIT + Duration::from_millis(150), "{took:?}");
     assert!(ticked.pause.is_some(), "{ticked:?}");
     // None was to blame on its own, so none stopped.
     assert!(ticked.failures.is_empty(), "{ticked:?}");
+    // The tick stopped at its limit, whatever the machine's speed: the
+    // updates before it ran, in order, and none after it (the 2.7 seconds
+    // asked never ran).
+    let ran: Vec<bool> = (1..=30)
+        .map(|n| {
+            runtime.values(id(n), "Slow").unwrap().get("ran") == Some(&reflect::Value::Bool(true))
+        })
+        .collect();
+    let first_left = ran.iter().position(|r| !r).expect("the tick cut short");
+    assert!(ran[first_left..].iter().all(|r| !r), "{ran:?}");
 }
 
 #[test]

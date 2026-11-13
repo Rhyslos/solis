@@ -19,7 +19,8 @@
 //! class's metamethods and names (`like` still knows it).
 //!
 //! Only fields of the kinds a component's are (`bool`, `int`, `float`,
-//! `string`, a state, `vec3`, `rotation`, `entity`) are copied and saved.
+//! `string`, a state, `vec3`, `vec2`, `colour`, `rotation`, `entity`) are
+//! copied and saved.
 //! Others (lists, maps, things) stay as each core's copy has them, so the
 //! editor says so when an object has one.
 
@@ -57,6 +58,11 @@ return function(o, class, name, names, guard)
       return
     end
     local field = names[k] or tostring(k)
+    if guard.tweening then
+      error(name .. "." .. field .. " can't be moved by a tween: an object changes only in its "
+        .. "own update, so every part of the game sees it the same. Glide it in " .. name
+        .. "'s update instead, with Maths:moveTowards or lerp.", 2)
+    end
     error(name .. "." .. field .. " can't be changed here: an object changes only in its own "
       .. "update, so every part of the game sees it the same. Components can read it; change "
       .. field .. " in " .. name .. "'s update.", 2)
@@ -170,9 +176,20 @@ impl Objects {
 
     /// Runs `run` with the objects open to change.
     pub(crate) fn open<T>(&self, run: impl FnOnce() -> T) -> T {
-        let set = |open: bool| {
+        self.flagged("open", run)
+    }
+
+    /// Runs `run` (the tweens moving on) with the objects closed, and
+    /// saying so when a tween would change one (decision 0106).
+    pub(crate) fn tweening<T>(&self, run: impl FnOnce() -> T) -> T {
+        self.flagged("tweening", run)
+    }
+
+    /// Runs `run` with the guard's `flag` set.
+    fn flagged<T>(&self, flag: &str, run: impl FnOnce() -> T) -> T {
+        let set = |on: bool| {
             if let Some(guard) = &self.guard {
-                let _ = guard.raw_set("open", open);
+                let _ = guard.raw_set(flag, on);
             }
         };
         set(true);

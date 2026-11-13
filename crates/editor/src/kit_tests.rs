@@ -68,6 +68,8 @@ fn block(at: Vec3, size: Vec3) -> EntityData {
 /// a camera with `camera` (a component name and its fields).
 fn level(camera: &str, fields: &[(&str, Value)]) -> Workbench {
     let mut w = Workbench::new(info());
+    // Its tests wait for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program()));
     let mut player = EntityData::new("Player")
         .with(&Transform::default())

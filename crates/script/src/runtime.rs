@@ -40,7 +40,8 @@ pub struct Failure {
     /// The entity whose component failed (none while the program's own
     /// start ran).
     pub entity: Option<EntityId>,
-    /// The component (empty while the program's own start ran).
+    /// The component (empty while the program's own start ran, and for a
+    /// tween's done block, which Lust doesn't say the owner of).
     pub component: String,
     /// Where in the code, and why.
     pub at: CodeProblem,

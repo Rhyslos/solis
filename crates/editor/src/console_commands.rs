@@ -820,11 +820,18 @@ fn shown_value(field: &FieldInfo, value: &Value) -> String {
             |f| numbers(&f.map(f64::from), field.hint.unit),
         ),
         (FieldKind::Rotation, v) => numbers(&degrees_of(v), "°"),
-        (FieldKind::Color, v) => v.as_floats::<3>().map_or_else(
+        (FieldKind::Vec2, v) => v.as_floats::<2>().map_or_else(
+            || "?".into(),
+            |f| numbers(&f.map(f64::from), field.hint.unit),
+        ),
+        (FieldKind::Color, v) => v.as_colour().map_or_else(
             || "?".into(),
             |c| {
-                let [r, g, b] = c.map(|x| (x.clamp(0.0, 1.0) * 255.0).round() as u8);
-                format!("#{r:02x}{g:02x}{b:02x}")
+                let [r, g, b, a] = c.map(|x| (x.clamp(0.0, 1.0) * 255.0).round() as u8);
+                match v.as_floats::<4>() {
+                    Some(_) => format!("#{r:02x}{g:02x}{b:02x}{a:02x}"),
+                    None => format!("#{r:02x}{g:02x}{b:02x}"),
+                }
             },
         ),
         (_, Value::Bool(b)) => b.to_string(),
@@ -839,8 +846,9 @@ fn shown_value(field: &FieldInfo, value: &Value) -> String {
 }
 
 /// Reads a typed value for `field`: numbers, yes or no, a choice, three
-/// numbers ("0 0 2" or "0,0,2"), degrees for a rotation, a colour as
-/// "#ff8800" or three numbers from 0 to 1.
+/// numbers ("0 0 2" or "0,0,2"), two for a vec2, degrees for a rotation,
+/// a colour as "#ff8800" or three numbers from 0 to 1 (with a fourth, or
+/// "#ff880080", for a see-through one).
 pub(crate) fn parse_value(field: &FieldInfo, words: &[String]) -> Result<Value, String> {
     let all = words.join(" ");
     let number = |w: &str| -> Result<f64, String> {
@@ -854,11 +862,11 @@ pub(crate) fn parse_value(field: &FieldInfo, words: &[String]) -> Result<Value, 
             .filter(|n| n.is_finite())
             .ok_or_else(|| format!("\"{w}\" isn't a number"))
     };
+    let parts: Vec<&str> = all
+        .split([' ', ','])
+        .filter(|p| !p.trim().is_empty())
+        .collect();
     let three = || -> Result<[f64; 3], String> {
-        let parts: Vec<&str> = all
-            .split([' ', ','])
-            .filter(|p| !p.trim().is_empty())
-            .collect();
         match parts.as_slice() {
             [x, y, z] => Ok([number(x)?, number(y)?, number(z)?]),
             _ => Err(format!(
@@ -886,20 +894,32 @@ pub(crate) fn parse_value(field: &FieldInfo, words: &[String]) -> Result<Value, 
             .map(|o| Value::Text(o.clone()))
             .ok_or_else(|| format!("{} is one of: {}", field.label, options.join(", "))),
         FieldKind::Vec3 => three().map(|v| Value::floats(&v.map(|c| c as f32))),
+        FieldKind::Vec2 => match parts.as_slice() {
+            [x, y] => Ok(Value::floats(&[number(x)? as f32, number(y)? as f32])),
+            _ => Err(format!("{} takes two numbers, such as 3 4.5", field.label)),
+        },
         FieldKind::Rotation => three().map(rotation_of),
         FieldKind::Color => {
             let hex = all.trim().trim_start_matches('#');
-            if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
-                let byte = |i: usize| u8::from_str_radix(&hex[i..i + 2], 16).unwrap_or(0);
-                return Ok(Value::floats(
-                    &[0, 2, 4].map(|i| f32::from(byte(i)) / 255.0),
-                ));
+            if matches!(hex.len(), 6 | 8) && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+                let byte = |i: usize| {
+                    hex.get(i..i + 2)
+                        .and_then(|b| u8::from_str_radix(b, 16).ok())
+                        .map_or(1.0, |b| f32::from(b) / 255.0)
+                };
+                return Ok(Value::colour([0, 2, 4, 6].map(byte)));
             }
-            let c = three()?;
+            let c = match parts.as_slice() {
+                [r, g, b] => [number(r)?, number(g)?, number(b)?, 1.0],
+                [r, g, b, a] => [number(r)?, number(g)?, number(b)?, number(a)?],
+                _ => [f64::NAN; 4],
+            };
             if c.iter().all(|v| (0.0..=1.0).contains(v)) {
-                Ok(Value::floats(&c.map(|v| v as f32)))
+                Ok(Value::colour(c.map(|v| v as f32)))
             } else {
-                Err("a colour is #rrggbb, or three numbers from 0 to 1".into())
+                Err("a colour is #rrggbb, or three numbers from 0 to 1 \
+                     (#rrggbbaa, or a fourth number, for how solid it is)"
+                    .into())
             }
         }
         FieldKind::Asset | FieldKind::Entity => Err(format!(

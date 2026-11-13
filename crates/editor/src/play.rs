@@ -369,6 +369,8 @@ impl Workbench {
                 return (None, Vec::new());
             }
         };
+        #[cfg(test)]
+        self.unhurried.give(&mut game);
         game.leave_out(self.open.left_out.clone());
         let mut host = PlayWorld::new(world, view, 0.0);
         let mut failures = Vec::new();
@@ -545,11 +547,22 @@ impl Workbench {
         self.run_game(seconds);
     }
 
+    /// The longest one tick of physics may take: [`PHYSICS_LIMIT`], or
+    /// no limit for a test that plays unhurried (TEST-02).
+    fn physics_limit(&self) -> std::time::Duration {
+        #[cfg(test)]
+        if self.unhurried == crate::game_code::Unhurried::Everything {
+            return std::time::Duration::MAX;
+        }
+        PHYSICS_LIMIT
+    }
+
     /// Moves the game on by `seconds`, taking in what changed in the
     /// area: only the entities changed, or, when entities were added,
     /// deleted or moved, everything. Called once a frame.
     pub(crate) fn run_game(&mut self, seconds: f32) {
         let started = std::time::Instant::now();
+        let physics_limit = self.physics_limit();
         // Game code's share, timed apart; the rest is the world's.
         let mut code = std::time::Duration::ZERO;
         let changes = self.open.document.take_changes();
@@ -811,7 +824,7 @@ impl Workbench {
                 playing.told_flat_broke = true;
                 flat_broke = Some(flat_broke_note(&playing.world, broke));
             }
-            if slow.is_none() && stepping.elapsed() > PHYSICS_LIMIT {
+            if slow.is_none() && stepping.elapsed() > physics_limit {
                 slow = Some(format!(
                     "Physics took {:.0} ms for one tick (more than {} ms), so the game is paused \
                      rather than falling further behind. Fewer bodies, or simpler colliders, make \

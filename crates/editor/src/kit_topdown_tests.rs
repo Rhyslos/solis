@@ -44,6 +44,8 @@ const FENCE: u64 = 2;
 /// (a solid box 16 px wide, 20 m tall) whose left face is at x = 6.
 fn farm(fields: &[(&str, Value)]) -> Workbench {
     let mut w = Workbench::new(info());
+    // Its tests wait for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program()));
     let mut farmer = EntityData::new("Farmer")
         .with(&Transform::default())
@@ -208,6 +210,8 @@ fn a_2d_character_knows_it_s_grounded_and_how_fast_it_goes() {
         Err(problems) => panic!("{}", problems[0]),
     };
     let mut w = Workbench::new(info());
+    // Its tests wait for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program));
     let mut hero = EntityData::new("Hero")
         .with(&Transform {
@@ -304,6 +308,8 @@ fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
     const FLOOR: u64 = 2;
     const COIN: u64 = 3;
     let mut w = Workbench::new(info());
+    // Its tests wait for whole ticks: a busy machine mustn't pause the game.
+    unhurried(&mut w);
     w.set_program(Some(program));
     // The guide's hero: a 12 × 16 px box raised 8 px onto its feet, a
     // tile above a floor whose top is at y = 0.

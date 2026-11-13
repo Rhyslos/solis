@@ -78,7 +78,11 @@ end
 4. Change **Speed** in Properties while it plays: the running Mover takes the new speed at once, and keeps everything else it has (here, where it is). While the game plays, Properties shows a game code component's values as they are right now, not the ones it started with: a turret that has fired shows the ammo it has left. Why? So you can watch what your code is doing without writing anything to the Console. A value you set there is taken by the running component as you set it, even when it's the value it started with: type the turret's full ammo and it has full ammo again. (With several entities selected, it shows the values they started with.)
 5. Press **Stop**. Everything the game changed is back as it was before Play. The Speed you changed yourself is a change to the area, so Solis lists it and asks: **Keep** it, or **Undo all** (see [Play mode](play-mode.md)).
 
-What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `rotation` and `entity` (another entity, or `nothing`).
+What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `vec2`, `rotation`, `colour` and `entity` (another entity, or `nothing`).
+
+- **`vec2`** is two numbers, for 2D: a place on a tile map, a direction to walk (`vec2 speed = [2, -1];`). Properties shows its X and Y.
+- **`colour`** is red, green and blue from 0 to 1, and how solid it is (`colour tint = orange5;`, `colour shadow = [0, 0, 0, 0.5];`). Properties shows a colour picker; picking a colour keeps how see-through it was. **Why it matters:** a field of either kind is saved in the area and in save games, and a loaded game carries on with it exactly as it was.
+- **In Lua** they're tables: `{ "speed", "vec2", { x = 2, y = -1 } }` and `{ "tint", "colour", { r = 1, g = 0.5, b = 0 } }` (`a`, how solid, is 1 when left out). **In Rust** they're `FieldKind::Vec2` and `FieldKind::Color` (a colour's fourth number is there only when it isn't solid).
 
 **Order:** each tick runs entities in the order of their IDs, and an entity's components in the order of their names, so a game runs the same way every time.
 
@@ -275,7 +279,55 @@ pass Die;
 end
 ```
 
-Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed. The numbers carry on while the game is paused with `World:setGameSpeed(0)`: every tick still rolls new ones, so a pause menu can shuffle or roll like any other code.
+Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed. Lust's own `Random` (`Random[1, 6]`, `Random:chance`, an array's `pick` and `shuffle`) doesn't yet: its first roll starts it from the computer's clock, and with it the game's seed, so the same game can't be played again. Use `World:random` and the rest above. The numbers carry on while the game is paused with `World:setGameSpeed(0)`: every tick still rolls new ones, so a pause menu can shuffle or roll like any other code.
+
+## Tweens
+
+A door that swings open over half a second, a health bar that slides down, a light that fades: a **[tween](concepts.md#game-code)** glides a field to a new value over time, so you don't write the in-between steps yourself.
+
+```
+fetch "solis/world":World;
+
+component Door {
+    has {
+        float open = 0;
+    }
+
+    on Opened() {
+        tween open to 1 over 0.5 [ease OutCubic] {
+            World:say("the door is open");
+        }
+    }
+}
+
+event Opened();
+pass Door;
+end
+```
+
+- **What it moves:** a field of the component (or a variable at the top of the file) that's an `int`, `float`, `vec2`, `vec3`, `colour` or `rotation`. `[ease OutCubic]` picks how it speeds up and slows down (any of the `Ease` curves; leave it out for a steady glide), and the `{ }` after it, if any, runs once when it gets there.
+- **When:** each tick, tweens move after the game-wide objects and before any component's `update`. So an `update` sees this tick's value, and what a done block changes is there for the same tick's updates. A tween started in an `update` first moves on the next tick. Starting another tween on the same field replaces the first, whose `{ }` never runs.
+- **New code while playing** stops the tweens the old code started, where they are, without their `{ }`.
+- **A game-wide object's fields can't be tweened:** an object changes only in its own update ([below](#game-wide-objects)), so the tween stops with a message saying so. Glide the field in the object's `update` instead, with `Maths:moveTowards(hour, 18, dt)` or `lerp`.
+- **When a tween fails** (its `{ }` divides by zero, say), the Console says where, once, until the code changes. Tweens started after it wait until it has run its time, so fix it first.
+
+Tweens are Lust's own. **In Lua** or **Rust**, move the field a step in `update`:
+
+```lua
+function Door:update(dt)
+    if self.opening then
+        self.open = math.min(1, self.open + dt / 0.5)
+    end
+end
+```
+
+```rust
+fn update(&mut self, _cx: &mut Context<'_>, dt: f64) {
+    if self.opening {
+        self.open = (self.open + dt / 0.5).min(1.0);
+    }
+}
+```
 
 ## Game-wide objects
 
@@ -318,7 +370,7 @@ end
 - **Ticked first:** each passed object's `update(float dt)` runs once a tick, objects in order of their names, before any entity's components. So every lamp sees the same hour, the one the clock has just moved to.
 - **Read anywhere, changed only in its own update.** Components read an object's fields and call its methods (`Clock.hour`, `Clock:isNight()`). Changing one of its fields anywhere else (`Clock.hour = 12;` in a component) stops that component, with a message pointing at the line: "Clock.hour can't be changed here: an object changes only in its own update". An object's `update` may change other objects too. **Why:** Solis runs game code on every core of the computer at once, each core with its own copy of the code. Objects run on the first, and their fields are copied to the others before the components run; if a component on one core could change the clock, the others would never know.
 - **Kept in save games:** a save keeps every object's fields, and loading gives them back ([Save games](save-games.md)). New code while the game runs keeps them too, field by field, by name, like a component's.
-- **Which fields:** the kinds a component's fields can be (`bool`, `int`, `float`, `string`, a state, `vec3`, `rotation`, `entity`) are copied and kept. A list, a map or a thing in an object isn't saved yet, and each core keeps its own copy, so the Console says so when you press Play. Keep what every part of the game must see in plain fields.
+- **Which fields:** the kinds a component's fields can be (`bool`, `int`, `float`, `string`, a state, `vec3`, `vec2`, `rotation`, `colour`, `entity`) are copied and kept. A list, a map or a thing in an object isn't saved yet, and each core keeps its own copy, so the Console says so when you press Play. Keep what every part of the game must see in plain fields.
 - **An object that fails** in its `update` stops, and the Console says where, like a component; it runs again when the code changes. Components can still read it.
 - **Lust only:** objects are written in Lust. Lua and Rust components can't read them yet.
 - An object that isn't passed is its file's own helper, and Solis leaves it alone.
@@ -498,5 +550,5 @@ Game code runs inside a **sandbox**: it can reach the game through the engine's 
 - [Play mode](play-mode.md)
 - [Physics](physics.md)
 - [Input](input.md)
-- Concepts: [game code, Lust, native method, tick, event, random number](concepts.md#game-code), [physics](concepts.md#simulation)
+- Concepts: [game code, Lust, native method, tick, event, random number, tween](concepts.md#game-code), [physics](concepts.md#simulation)
 - The Lust language itself: [Lust's guide](https://github.com/Rhyslos/Lust/blob/main/LUST.md)

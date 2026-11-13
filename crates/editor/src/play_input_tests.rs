@@ -209,6 +209,7 @@ fn record(w: &mut Workbench, ticks: u64) -> String {
 #[test]
 fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
     let mut w = with_a_walker();
+    unhurried(&mut w);
     let text = record(&mut w, 90);
     let recording = input::Recording::read(&text).unwrap();
     assert_eq!(recording.ticks.len(), 90);
@@ -356,6 +357,7 @@ fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
         World:setSeed(42);\n\
         pass Drifter;\nend\n";
     let mut w = with_a_walker();
+    unhurried(&mut w);
     w.set_program(Some(program(code)));
     let id = EntityId(reflect::Id::from_raw(WALKER_ID).unwrap());
     let mut data = w.open.document.area().get(id).unwrap().clone();

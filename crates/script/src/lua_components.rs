@@ -245,7 +245,7 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
         let Some(kind) = kind_of(&kind_name, options) else {
             return Err(mistake(format!(
                 "{name}'s field {field} is a {kind_name}, which isn't a kind a component can \
-                 hold: bool, int, float, string, state, vec3, rotation or entity"
+                 hold: bool, int, float, string, state, vec3, vec2, colour, rotation or entity"
             )));
         };
         // A state lists its states (found by the hardening milestone's

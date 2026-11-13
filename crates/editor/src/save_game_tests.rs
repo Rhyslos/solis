@@ -56,7 +56,11 @@ pub(super) fn program(main: &str) -> Arc<script::Compiled> {
         lua: Vec::new(),
         notes: Vec::new(),
     };
-    Arc::new(script::compile(&code).unwrap().unwrap())
+    Arc::new(
+        script::test_support::compile_unhurried(&code)
+            .unwrap()
+            .unwrap(),
+    )
 }
 
 fn raw(n: u64) -> EntityId {
@@ -67,6 +71,9 @@ fn raw(n: u64) -> EntityId {
 /// floor, a crate on it, and the busy entity.
 pub(super) fn busy(project: &str) -> Workbench {
     let mut w = Workbench::new(info());
+    // A save carries on as the game it saved: compared run with run, so
+    // played unhurried.
+    unhurried(&mut w);
     w.open.project = Some(crate::library::ProjectInfo {
         name: project.into(),
         root: std::env::temp_dir(),

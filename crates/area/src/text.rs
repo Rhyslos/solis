@@ -1024,14 +1024,15 @@ fn coerce(value: Value, kind: &FieldKind) -> Value {
             Ok(id) => Value::Entity(Some(id)),
             Err(_) => Value::Text(t),
         },
-        (FieldKind::Vec3 | FieldKind::Rotation | FieldKind::Color, Value::List(items)) => {
-            Value::List(
-                items
-                    .into_iter()
-                    .map(|v| coerce(v, &FieldKind::Float))
-                    .collect(),
-            )
-        }
+        (
+            FieldKind::Vec3 | FieldKind::Vec2 | FieldKind::Rotation | FieldKind::Color,
+            Value::List(items),
+        ) => Value::List(
+            items
+                .into_iter()
+                .map(|v| coerce(v, &FieldKind::Float))
+                .collect(),
+        ),
         (_, value) => value,
     }
 }

@@ -187,6 +187,10 @@ impl Workbench {
         };
         if playing.game.is_none() {
             playing.game = Some(new_game(&self.open.rust_components)?);
+            #[cfg(test)]
+            if let Some(game) = &mut playing.game {
+                self.unhurried.give(game);
+            }
         }
         let Some(game) = &mut playing.game else {
             return Ok(());
@@ -285,6 +289,38 @@ pub(crate) fn new_game(rust: &[script::RustKind]) -> Result<Game, Failure> {
         game.add_rust(kind.clone());
     }
     Ok(game)
+}
+
+/// Which of game code's and physics' real-time limits a test's games keep
+/// (the review's TEST-02). The limits are kept on the real clock, so a
+/// test thread the machine keeps off the processor uses them up running
+/// nothing: a tick is cut short and the game pauses, though nothing was
+/// wrong. Set per test (`Workbench::unhurried`), never for all: other
+/// tests rely on the real limits to stop code that never ends.
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum Unhurried {
+    /// A game's limits.
+    #[default]
+    No,
+    /// An hour for each call into game code, the rest a game's: for tests
+    /// of the tick's own limit.
+    Calls,
+    /// An hour for everything, physics' tick too: for tests that compare
+    /// one run of a game with another.
+    Everything,
+}
+
+#[cfg(test)]
+impl Unhurried {
+    /// Gives `game` these limits.
+    pub(crate) fn give(self, game: &mut Game) {
+        match self {
+            Self::No => {}
+            Self::Calls => script::test_support::calls_unhurried(game),
+            Self::Everything => script::test_support::unhurried(game),
+        }
+    }
 }
 
 /// What game code reads of the world is worked out again only when the
