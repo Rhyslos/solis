@@ -1027,7 +1027,18 @@ mod tests {
 
     #[test]
     fn material_settings_match_the_shader_layout() {
-        assert_eq!(std::mem::size_of::<MaterialUniform>(), 64);
+        use std::mem::offset_of;
+        crate::shader_layout::assert_struct(
+            crate::SHADER_SOURCE,
+            "Material",
+            std::mem::size_of::<MaterialUniform>(),
+            &[
+                ("base_color", offset_of!(MaterialUniform, base_color)),
+                ("emissive", offset_of!(MaterialUniform, emissive)),
+                ("surface", offset_of!(MaterialUniform, surface)),
+                ("alpha", offset_of!(MaterialUniform, alpha)),
+            ],
+        );
         let m = MaterialUniform::new(&Material {
             alpha: AlphaMode::Mask(0.3),
             metallic: 1.0,

@@ -1,6 +1,6 @@
 # 0084. Game UI text: letters as distance images from ab_glyph
 
-- **Status:** Accepted (carries out the text half of 0083's first milestone; changes the game UI plan's choice of `parley` and `fdsm`)
+- **Status:** Accepted (carries out the text half of 0083's first milestone; changes the game UI plan's choice of `parley` and `fdsm`). Fonts are read with `skrifa` since [0107](0107-game-ui-fonts-read-with-skrifa.md): `ab_glyph` was no longer in egui.
 - **Date:** 2026-11-05
 
 ## Problem

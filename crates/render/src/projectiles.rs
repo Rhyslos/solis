@@ -25,11 +25,14 @@ const ATTRIBUTES: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
 
 /// The pipeline that draws them, into the main pass (`sample_count`
 /// samples, the world's HDR image), with the frame's data as group 0.
+/// `layered` is for a layer's picture (decision 0094), whose alpha is how
+/// covered each pixel is: there a streak covers by how bright it is.
 pub(crate) fn pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     shader: &wgpu::ShaderModule,
     sample_count: u32,
+    layered: bool,
 ) -> wgpu::RenderPipeline {
     let buffers = [Some(wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<Bolt>() as wgpu::BufferAddress,
@@ -37,7 +40,11 @@ pub(crate) fn pipeline(
         attributes: &ATTRIBUTES,
     })];
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("projectile pipeline"),
+        label: Some(if layered {
+            "layered projectile pipeline"
+        } else {
+            "projectile pipeline"
+        }),
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module: shader,
@@ -68,17 +75,27 @@ pub(crate) fn pipeline(
             targets: &[Some(wgpu::ColorTargetState {
                 format: crate::renderer::HDR_FORMAT,
                 // Added to what's behind; the alpha below (which marks
-                // what the last pass tone maps) is left alone.
+                // what the last pass tone maps) is left alone, except in a
+                // layer's picture, where it's how covered the pixel is and
+                // grows as streaks are drawn over it.
                 blend: Some(wgpu::BlendState {
                     color: wgpu::BlendComponent {
                         src_factor: wgpu::BlendFactor::One,
                         dst_factor: wgpu::BlendFactor::One,
                         operation: wgpu::BlendOperation::Add,
                     },
-                    alpha: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::Zero,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
+                    alpha: if layered {
+                        wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::One,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        }
+                    } else {
+                        wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::Zero,
+                            dst_factor: wgpu::BlendFactor::One,
+                            operation: wgpu::BlendOperation::Add,
+                        }
                     },
                 }),
                 write_mask: wgpu::ColorWrites::ALL,

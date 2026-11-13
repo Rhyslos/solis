@@ -14,16 +14,35 @@ fn a_letter_is_made_once_into_the_atlas() {
     let mut f = fonts();
     let first = f.place(0, "Spring", 24.0, [10.0, 10.0], None);
     assert_eq!(first.len(), 6);
+    assert_eq!(f.letters.len(), 6, "six different letters, each made once");
     let made = f.atlas.revision;
-    assert_eq!(made, 6, "six different letters, each made once");
     let again = f.place(0, "Spring", 48.0, [0.0, 0.0], None);
     assert_eq!(f.atlas.revision, made, "nothing made again at another size");
+    assert_eq!(f.letters.len(), 6);
     // Twice the size: twice as big, the same place in the atlas.
     let (a, b) = (first[0], again[0]);
     assert_eq!(a.atlas, b.atlas);
     let wa = a.rect[2] - a.rect[0];
     let wb = b.rect[2] - b.rect[0];
     assert!((wb - 2.0 * wa).abs() < 0.01, "{wa} {wb}");
+}
+
+#[test]
+fn no_two_font_sets_share_an_atlas_revision() {
+    // The renderer keeps one letters' atlas on the card and sends another
+    // when the revision differs: two sets of fonts with as many letters
+    // made used to have the same one, and the second drew its text from
+    // the first's letters.
+    let (mut a, mut b) = (fonts(), fonts());
+    assert_ne!(a.atlas.revision, b.atlas.revision, "empty");
+    let _ = a.place(0, "Spring", 24.0, [0.0, 0.0], None);
+    let _ = b.place(0, "Winter", 24.0, [0.0, 0.0], None);
+    assert_ne!(a.atlas.revision, b.atlas.revision, "six letters each");
+    // A copy changes apart from its original.
+    let mut c = a.clone();
+    let _ = c.place(0, "z", 24.0, [0.0, 0.0], None);
+    let _ = a.place(0, "z", 24.0, [0.0, 0.0], None);
+    assert_ne!(a.atlas.revision, c.atlas.revision);
 }
 
 #[test]
@@ -83,21 +102,135 @@ fn broken_fonts_and_nonsense_sizes_are_safe() {
 }
 
 #[test]
-fn a_full_atlas_says_so_and_carries_on() {
+fn damaged_fonts_never_crash_and_never_give_a_shape_that_isnt_finite() {
+    // A fuzz sweep (rule 9): Inter damaged in many ways, the same ways on
+    // every run (a fixed sequence, no chance): bytes changed in its
+    // tables' directory and anywhere, and cut short. Each is read, or left
+    // out with a note; what's read lays text out with finite boxes.
+    let mut state = 0x5eed_u64;
+    let mut next = move |below: usize| {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        (state % below as u64) as usize
+    };
+    for case in 0..120 {
+        let mut bytes = INTER.to_vec();
+        for _ in 0..1 + case % 8 {
+            // Half the changes in the first kilobyte: the directory and
+            // the small tables it points to first.
+            let reach = if next(2) == 0 { 1024 } else { bytes.len() };
+            let at = next(reach);
+            bytes[at] = next(256) as u8;
+        }
+        if case % 5 == 0 {
+            bytes.truncate(next(bytes.len()));
+        }
+        let (mut f, notes) = Fonts::new(vec![bytes]);
+        assert_eq!(f.len() + notes.len(), 1, "case {case}");
+        f.begin_frame();
+        for p in f.place(0, "Ag→ fi", 24.0, [0.0, 0.0], None) {
+            assert!(p.rect.iter().all(|v| v.is_finite()), "case {case}");
+        }
+        assert!(f.measure(0, "Ag→ fi", 24.0).iter().all(|v| v.is_finite()));
+    }
+}
+
+/// Every letter Inter has, big: more than the atlas holds.
+fn every_letter() -> String {
+    (0x20u32..0x2500).filter_map(char::from_u32).collect()
+}
+
+/// The atlas's pixels inside `rect`, row by row.
+fn atlas_part(f: &Fonts, rect: [u16; 4]) -> Vec<u8> {
+    let side = ATLAS_SIDE as usize;
+    let [l, t, r, b] = rect.map(usize::from);
+    (t..b)
+        .flat_map(|y| f.atlas.pixels[y * side + l..y * side + r].iter().copied())
+        .collect()
+}
+
+#[test]
+fn a_full_atlas_says_so_and_makes_room_the_next_frame() {
     let mut f = fonts();
-    // Every letter Inter has, big: more than fit.
-    let all: String = (0x20u32..0x2500).filter_map(char::from_u32).collect();
-    let _ = f.place(0, &all, 20.0, [0.0, 0.0], None);
+    f.begin_frame();
+    let _ = f.place(0, &every_letter(), 20.0, [0.0, 0.0], None);
     assert!(f.full);
-    // The next text starts the atlas again, so its letters show (they
-    // used to be lost for good).
-    // An arrow, near the end, was one that didn't fit.
+    // That frame showed every letter in the atlas, so nothing is let go
+    // yet: an arrow, near the end, still doesn't fit.
+    f.begin_frame();
+    let placed = f.place(0, "→ still fine", 20.0, [0.0, 0.0], None);
+    assert_eq!(placed.len(), "stillfine".chars().count());
+    // This frame showed only these letters: the next lets go of the
+    // rest, so the arrow gets a place (it used to be lost for good).
+    f.begin_frame();
     let placed = f.place(0, "→ still fine", 20.0, [0.0, 0.0], None);
     assert_eq!(
         placed.len(),
         "→stillfine".chars().count(),
         "every letter has a place"
     );
+}
+
+#[test]
+fn letters_placed_in_a_frame_keep_their_place_when_the_atlas_fills() {
+    // A frame's text is laid out a piece at a time, and drawn after: the
+    // atlas must not change under letters already placed (it used to be
+    // wiped by the next piece of text once it filled).
+    let mut f = fonts();
+    f.begin_frame();
+    let big = f.place(0, &every_letter(), 20.0, [0.0, 0.0], None);
+    assert!(f.full);
+    let before: Vec<Vec<u8>> = big.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    let revision = f.atlas.revision;
+    let score = f.place(0, "Score 120", 24.0, [0.0, 0.0], None);
+    assert_eq!(score.len(), "Score120".chars().count());
+    let after: Vec<Vec<u8>> = big.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    assert!(
+        before == after,
+        "the letters placed this frame are where they were"
+    );
+    assert_eq!(f.atlas.revision, revision);
+}
+
+#[test]
+fn a_frame_that_needs_more_letters_than_fit_makes_none_again() {
+    // Every frame wants more letters than fit: they are left out, and
+    // the atlas stays as it is, rather than being made again (and sent
+    // to the card again) every frame.
+    let mut f = fonts();
+    let all = every_letter();
+    f.begin_frame();
+    let first = f.place(0, &all, 20.0, [0.0, 0.0], None);
+    let revision = f.atlas.revision;
+    for _ in 0..3 {
+        f.begin_frame();
+        let again = f.place(0, &all, 20.0, [0.0, 0.0], None);
+        assert_eq!(f.atlas.revision, revision, "nothing made again");
+        assert!(again == first, "the same letters in the same places");
+    }
+}
+
+#[test]
+fn making_room_keeps_the_letters_last_shown_as_they_were() {
+    let mut f = fonts();
+    f.begin_frame();
+    let _ = f.place(0, &every_letter(), 20.0, [0.0, 0.0], None);
+    // A frame showing a score, and an arrow that doesn't fit.
+    f.begin_frame();
+    let score = f.place(0, "Score 120", 24.0, [0.0, 0.0], None);
+    assert!(f.place(0, "→", 24.0, [0.0, 0.0], None).is_empty());
+    let before: Vec<Vec<u8>> = score.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    // The next frame lets go of every other letter: the score's are
+    // moved together, their images as they were, and the arrow fits.
+    f.begin_frame();
+    let moved = f.place(0, "Score 120", 24.0, [0.0, 0.0], None);
+    let after: Vec<Vec<u8>> = moved.iter().map(|p| atlas_part(&f, p.atlas)).collect();
+    assert!(before == after, "copied, not changed");
+    for (was, now) in score.iter().zip(&moved) {
+        assert_eq!(was.rect, now.rect, "on the screen where they were");
+    }
+    assert_eq!(f.place(0, "→", 24.0, [0.0, 0.0], None).len(), 1);
 }
 
 #[test]

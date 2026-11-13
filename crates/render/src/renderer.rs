@@ -90,11 +90,15 @@ const MAX_MARKED_LAMPS: usize = 1024;
 struct FrameResources {
     uniform_buffer: wgpu::Buffer,
     lights_buffer: wgpu::Buffer,
-    shadow_view: wgpu::TextureView,
+    /// The sun's shadow map (16 MiB), made the first frame that draws
+    /// shadows: a layer's picture, or a view without shadows, never needs
+    /// one. Until then `bind_group` binds the renderer's 1 × 1 stand-in.
+    shadow_view: Option<wgpu::TextureView>,
     bind_group: wgpu::BindGroup,
     shadow_bind_group: wgpu::BindGroup,
-    /// Room for every lamp's marker lines, filled each frame.
-    markers: wgpu::Buffer,
+    /// Room for every lamp's marker lines, filled each frame the editor's
+    /// lines are drawn; made the first time there are any.
+    markers: Option<wgpu::Buffer>,
     /// Every mesh copy's placement, filled each frame; replaced by a
     /// bigger one when a frame has more (decision 0021).
     instances: Option<wgpu::Buffer>,
@@ -109,6 +113,9 @@ struct FrameResources {
     /// Every sprite, filled each frame; replaced by a bigger one when a
     /// frame has more.
     sprites: Option<wgpu::Buffer>,
+    /// Whether last frame's sprites were too many to draw, so the warning
+    /// is logged once when they stop fitting, not every frame.
+    sprites_dropped: bool,
 }
 
 /// How many copies are compared and sent together: a run that changed
@@ -258,11 +265,14 @@ impl FrameResources {
 }
 
 impl FrameResources {
+    /// `no_shadows` is bound for the shadow map until one is made
+    /// ([`Self::shadow_map`]).
     fn new(
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,
         shadow_layout: &wgpu::BindGroupLayout,
         shadow_sampler: &wgpu::Sampler,
+        no_shadows: &wgpu::TextureView,
     ) -> Self {
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("frame uniforms"),
@@ -276,47 +286,14 @@ impl FrameResources {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        // The sun's shadow map: a depth image the models are drawn into
-        // from the sun's side, then looked up while shading.
-        let shadow_view = device
-            .create_texture(&wgpu::TextureDescriptor {
-                label: Some("sun shadow map"),
-                size: wgpu::Extent3d {
-                    width: SHADOW_MAP_SIZE,
-                    height: SHADOW_MAP_SIZE,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: SHADOW_FORMAT,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            })
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("frame bind group"),
-            layout: frame_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: lights_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&shadow_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(shadow_sampler),
-                },
-            ],
-        });
+        let bind_group = frame_bind_group(
+            device,
+            frame_layout,
+            &uniform_buffer,
+            &lights_buffer,
+            no_shadows,
+            shadow_sampler,
+        );
         let shadow_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("shadow frame bind group"),
             layout: shadow_layout,
@@ -325,27 +302,117 @@ impl FrameResources {
                 resource: uniform_buffer.as_entire_binding(),
             }],
         });
-        let markers = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lamp markers"),
-            size: (MAX_MARKED_LAMPS * MARKER_VERTICES * std::mem::size_of::<LineVertex>())
-                as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
         Self {
             uniform_buffer,
             lights_buffer,
-            shadow_view,
+            shadow_view: None,
             bind_group,
             shadow_bind_group,
-            markers,
+            markers: None,
             instances: None,
             sent: Vec::new(),
             levels: Vec::new(),
             bolts: None,
             sprites: None,
+            sprites_dropped: false,
         }
     }
+
+    /// The sun's shadow map, made (and bound for shading) the first time
+    /// it's asked for.
+    fn shadow_map(
+        &mut self,
+        device: &wgpu::Device,
+        frame_layout: &wgpu::BindGroupLayout,
+        shadow_sampler: &wgpu::Sampler,
+    ) -> &wgpu::TextureView {
+        let view = match self.shadow_view.take() {
+            Some(view) => view,
+            None => {
+                // A depth image the models are drawn into from the sun's
+                // side, then looked up while shading.
+                let view = depth_image(device, "sun shadow map", SHADOW_MAP_SIZE);
+                self.bind_group = frame_bind_group(
+                    device,
+                    frame_layout,
+                    &self.uniform_buffer,
+                    &self.lights_buffer,
+                    &view,
+                    shadow_sampler,
+                );
+                view
+            }
+        };
+        self.shadow_view.insert(view)
+    }
+
+    /// Room for every marked lamp's lines, made the first time it's
+    /// asked for.
+    fn markers(&mut self, device: &wgpu::Device) -> &wgpu::Buffer {
+        self.markers.get_or_insert_with(|| {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("lamp markers"),
+                size: (MAX_MARKED_LAMPS * MARKER_VERTICES * std::mem::size_of::<LineVertex>())
+                    as wgpu::BufferAddress,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        })
+    }
+}
+
+/// A square depth image `side` texels across, for the sun's shadows.
+fn depth_image(device: &wgpu::Device, label: &str, side: u32) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+                width: side,
+                height: side,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: SHADOW_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        })
+        .create_view(&wgpu::TextureViewDescriptor::default())
+}
+
+/// A viewport's frame data as the shaders read it: its uniforms, lamps,
+/// and the shadow map with its sampler.
+fn frame_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    uniform_buffer: &wgpu::Buffer,
+    lights_buffer: &wgpu::Buffer,
+    shadow_view: &wgpu::TextureView,
+    shadow_sampler: &wgpu::Sampler,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("frame bind group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: lights_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::TextureView(shadow_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: wgpu::BindingResource::Sampler(shadow_sampler),
+            },
+        ],
+    })
 }
 
 impl ViewportTarget {
@@ -630,6 +697,9 @@ pub struct ViewportRenderer {
     frame_layout: wgpu::BindGroupLayout,
     shadow_layout: wgpu::BindGroupLayout,
     shadow_sampler: wgpu::Sampler,
+    /// A 1 × 1 depth image bound for the shadow map by every viewport
+    /// that hasn't drawn shadows yet (the shaders don't read it then).
+    no_shadows: wgpu::TextureView,
     shadow_pipeline: wgpu::RenderPipeline,
     sky_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
@@ -637,6 +707,8 @@ pub struct ViewportRenderer {
     grid_pipeline: wgpu::RenderPipeline,
     line_pipeline: wgpu::RenderPipeline,
     bolt_pipeline: wgpu::RenderPipeline,
+    /// [`Self::bolt_pipeline`] for a layer's picture (decision 0094).
+    bolt_pipeline_layered: wgpu::RenderPipeline,
     models: ModelPipelines,
     axes: wgpu::Buffer,
     axis_count: u32,
@@ -766,11 +838,25 @@ impl ViewportRenderer {
             post_pipeline,
             grid_pipeline: pipeline(Kind::Grid),
             line_pipeline: pipeline(Kind::Lines),
-            bolt_pipeline: crate::projectiles::pipeline(device, &layout, &shader, sample_count),
+            bolt_pipeline: crate::projectiles::pipeline(
+                device,
+                &layout,
+                &shader,
+                sample_count,
+                false,
+            ),
+            bolt_pipeline_layered: crate::projectiles::pipeline(
+                device,
+                &layout,
+                &shader,
+                sample_count,
+                true,
+            ),
             models: ModelPipelines::new(device, &bind_group_layout, &shader, sample_count),
             frame_layout: bind_group_layout,
             shadow_layout,
             shadow_sampler,
+            no_shadows: depth_image(device, "no shadow map", 1),
             shadow_pipeline,
             axes,
             axis_count: axis_vertices.len() as u32,
@@ -1014,6 +1100,7 @@ impl ViewportRenderer {
                 &self.frame_layout,
                 &self.shadow_layout,
                 &self.shadow_sampler,
+                &self.no_shadows,
             ),
             size,
             msaa_view,
@@ -1149,17 +1236,40 @@ impl ViewportRenderer {
         let sent = target.frame.write_instances(device, queue, raw);
         let bolt_count = target.frame.write_bolts(device, queue, bolts);
         let sprite_starts = target.frame.write_sprites(device, queue, sprites);
-        if sprite_starts.is_none() {
+        if sprite_starts.is_none() && !target.frame.sprites_dropped {
             log::warn!(
                 "more sprites than the graphics card can draw at once; sprites aren't drawn"
             );
         }
+        target.frame.sprites_dropped = sprite_starts.is_none();
+        // Only sprites that are drawn count, and are sent.
+        let sprites_drawn: u64 = match sprite_starts {
+            Some(_) => sprites.iter().map(|r| r.instances.len() as u64).sum(),
+            None => 0,
+        };
         if sent.is_none() {
             log::warn!(
                 "{count} model copies are more than the graphics card can draw at once; models \
                  aren't drawn"
             );
             batches.clear();
+        }
+        let shadows_drawn = receivers.is_some() && casters.is_some() && sent.is_some();
+        if shadows_drawn {
+            target
+                .frame
+                .shadow_map(device, &self.frame_layout, &self.shadow_sampler);
+        }
+        // Lamps are marked only among the editor's lines.
+        let marked = &lights[..lights.len().min(MAX_MARKED_LAMPS)];
+        let markers = if params.editor_lines {
+            light_markers(marked)
+        } else {
+            Vec::new()
+        };
+        if !markers.is_empty() {
+            let buffer = target.frame.markers(device);
+            queue.write_buffer(buffer, 0, bytemuck::cast_slice(&markers));
         }
         let target = &*target;
         let model_of = |b: &crate::instances::Batch| placed[batch_models[b.model]].model;
@@ -1183,17 +1293,12 @@ impl ViewportRenderer {
                     lods
                 }),
             sent_bytes: sent.unwrap_or(0)
-                + u64::from(bolt_count) * 40
-                + sprites
-                    .iter()
-                    .map(|r| r.instances.len() as u64)
-                    .sum::<u64>()
-                    * 88,
+                + u64::from(bolt_count) * std::mem::size_of::<crate::projectiles::Bolt>() as u64
+                + sprites_drawn * std::mem::size_of::<crate::sprites::SpriteInstance>() as u64,
             bolts: bolt_count,
-            sprites: sprites.iter().map(|r| r.instances.len() as u32).sum(),
+            sprites: u32::try_from(sprites_drawn).unwrap_or(u32::MAX),
         };
         let timer = target.timer.as_ref().and_then(Option::as_ref);
-        let shadows_drawn = receivers.is_some() && casters.is_some() && sent.is_some();
         let mut light = FrameLight {
             lamps: lamp_count,
             shadows_drawn,
@@ -1210,11 +1315,6 @@ impl ViewportRenderer {
             bytemuck::bytes_of(&FrameUniforms::new(params, &light).layered(target.layered)),
         );
         queue.write_buffer(&frame.lights_buffer, 0, bytemuck::bytes_of(&lamps));
-        let marked = &lights[..lights.len().min(MAX_MARKED_LAMPS)];
-        let markers = light_markers(marked);
-        if !markers.is_empty() {
-            queue.write_buffer(&frame.markers, 0, bytemuck::cast_slice(&markers));
-        }
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("viewport frame"),
         });
@@ -1222,12 +1322,12 @@ impl ViewportRenderer {
             timer.begin(shadows_drawn);
         }
         let stamps = |pass| timer.and_then(|t| t.writes(pass));
-        if shadows_drawn {
+        if let Some(shadow_view) = frame.shadow_view.as_ref().filter(|_| shadows_drawn) {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("sun shadow map"),
                 color_attachments: &[],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &frame.shadow_view,
+                    view: shadow_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
@@ -1360,8 +1460,8 @@ impl ViewportRenderer {
                 pass.set_pipeline(&self.line_pipeline);
                 pass.set_vertex_buffer(0, self.axes.slice(..));
                 pass.draw(0..self.axis_count, 0..1);
-                if !markers.is_empty() {
-                    pass.set_vertex_buffer(0, frame.markers.slice(..));
+                if let Some(buffer) = frame.markers.as_ref().filter(|_| !markers.is_empty()) {
+                    pass.set_vertex_buffer(0, buffer.slice(..));
                     pass.draw(0..markers.len() as u32, 0..1);
                 }
             }
@@ -1370,7 +1470,11 @@ impl ViewportRenderer {
             }
             self.draw_batches(&mut pass, &batches, &model_of, Pass::Blended);
             if let Some(buffer) = frame.bolts.as_ref().filter(|_| bolt_count > 0) {
-                pass.set_pipeline(&self.bolt_pipeline);
+                pass.set_pipeline(if layered {
+                    &self.bolt_pipeline_layered
+                } else {
+                    &self.bolt_pipeline
+                });
                 pass.set_vertex_buffer(0, buffer.slice(..));
                 pass.draw(0..6, 0..bolt_count);
             }
@@ -1415,6 +1519,191 @@ impl ViewportRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A device to draw on; none skips the test, unless `REQUIRE_GPU` is
+    /// set (as in tests/gpu.rs).
+    fn gpu() -> Option<(wgpu::Device, wgpu::Queue)> {
+        gpu_with(|limits| limits)
+    }
+
+    /// [`gpu`] with the adapter's limits changed by `limits`.
+    fn gpu_with(
+        limits: impl FnOnce(wgpu::Limits) -> wgpu::Limits,
+    ) -> Option<(wgpu::Device, wgpu::Queue)> {
+        let instance =
+            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle().with_env());
+        let found =
+            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
+                .ok()
+                .and_then(|adapter| {
+                    let descriptor = wgpu::DeviceDescriptor {
+                        required_limits: limits(adapter.limits()),
+                        ..wgpu::DeviceDescriptor::default()
+                    };
+                    pollster::block_on(adapter.request_device(&descriptor)).ok()
+                });
+        if found.is_none() {
+            assert!(
+                std::env::var_os("REQUIRE_GPU").is_none(),
+                "REQUIRE_GPU is set but no GPU adapter was found"
+            );
+        }
+        found
+    }
+
+    #[test]
+    fn a_target_makes_its_shadow_map_and_lamp_markers_only_once_it_draws_them() {
+        // A layer's picture or the game's view never draws shadows or
+        // marks lamps, so it never pays for the 16 MiB shadow map or the
+        // markers' buffer.
+        let Some((device, queue)) = gpu() else {
+            return;
+        };
+        let renderer = ViewportRenderer::new(&device, 1);
+        let mut target = renderer.create_target(&device, [32, 32]);
+        assert!(target.frame.shadow_view.is_none());
+        assert!(target.frame.markers.is_none());
+        let model = assets::load_bytes(
+            &assets::sample::sample_glb(),
+            None,
+            "Sample",
+            &assets::Limits::default(),
+        )
+        .unwrap();
+        let model = renderer.upload_model(&device, &queue, &model);
+        let placed = [Placement {
+            model: &model,
+            node: None,
+            transform: glam::Mat4::IDENTITY,
+            pick: 0,
+        }];
+        let lamp = Light {
+            kind: crate::lighting::LightKind::Point,
+            position: Vec3::new(1.0, 1.0, 2.0),
+            direction: -Vec3::Z,
+            color: [1.0; 3],
+            strength: 100.0,
+            range: None,
+        };
+        // Looking north from 6 m back, 60° tall, depth reversed as every
+        // pipeline has it (1 near, 0 far).
+        let eye = Vec3::new(0.0, -6.0, 1.0);
+        let (near, far, scale) = (0.1, 1000.0, 1.0 / 30.0_f32.to_radians().tan());
+        let projection = glam::Mat4::from_cols(
+            glam::Vec4::new(scale, 0.0, 0.0, 0.0),
+            glam::Vec4::new(0.0, scale, 0.0, 0.0),
+            glam::Vec4::new(0.0, 0.0, near / (far - near), -1.0),
+            glam::Vec4::new(0.0, 0.0, far * near / (far - near), 0.0),
+        );
+        let view = glam::Mat4::from_cols(
+            glam::Vec4::new(1.0, 0.0, 0.0, 0.0),
+            glam::Vec4::new(0.0, 0.0, -1.0, 0.0),
+            glam::Vec4::new(0.0, 1.0, 0.0, 0.0),
+            glam::Vec4::new(-eye.x, -eye.z, eye.y, 1.0),
+        );
+        let mut params = FrameParams {
+            view_projection: projection * view,
+            camera_position: eye,
+            focus: Vec3::ZERO,
+            sky_top: [0.3; 3],
+            sky_horizon: [0.3; 3],
+            ground: [0.2; 3],
+            shading: crate::frame::Shading {
+                look: crate::frame::Look::Unlit,
+                ..crate::frame::Shading::default()
+            },
+            size_px: [32, 32],
+            sun: crate::lighting::Sun::default(),
+            environment: crate::environment::Environment::default(),
+            editor_lines: false,
+            grid_plane: crate::frame::GridPlane::Ground,
+            grid_step: 1.0,
+        };
+        target.set_layered(true);
+        renderer.render(&device, &queue, &mut target, &params, &placed, &[lamp]);
+        assert!(target.frame.shadow_view.is_none(), "unlit: no shadows");
+        assert!(
+            target.frame.markers.is_none(),
+            "no editor lines: no markers"
+        );
+        // The editor's own view, lit: both, kept from then on.
+        target.set_layered(false);
+        params.shading.look = crate::frame::Look::Standard;
+        params.editor_lines = true;
+        renderer.render(&device, &queue, &mut target, &params, &placed, &[lamp]);
+        assert!(target.frame.shadow_view.is_some(), "shadows drawn");
+        assert!(target.frame.markers.is_some(), "a lamp marked");
+        params.sun.shadows = false;
+        renderer.render(&device, &queue, &mut target, &params, &placed, &[]);
+        assert!(target.frame.shadow_view.is_some());
+    }
+
+    #[test]
+    fn sprites_too_many_to_draw_are_not_counted_and_warned_about_once() {
+        // A card that holds 64 KiB in one buffer: 744 sprites at most.
+        let Some((device, queue)) = gpu_with(|limits| wgpu::Limits {
+            max_buffer_size: 1 << 16,
+            ..limits
+        }) else {
+            return;
+        };
+        let renderer = ViewportRenderer::new(&device, 1);
+        let mut target = renderer.create_target(&device, [16, 16]);
+        let sheet = renderer.upload_sheet(&device, &queue, [1, 1], &[255; 4]);
+        let sprite = crate::sprites::SpriteInstance {
+            corner: [0.0; 3],
+            flags: 0,
+            axis_x: [0.01, 0.0],
+            axis_y: [0.0, -0.01],
+            rect: [0.0, 0.0, 1.0, 1.0],
+            tint: [1.0; 4],
+            outline: [0.0; 4],
+            foot: [0.0; 2],
+        };
+        let size = std::mem::size_of::<crate::sprites::SpriteInstance>() as u64;
+        let params = FrameParams {
+            view_projection: glam::Mat4::IDENTITY,
+            camera_position: Vec3::Z,
+            focus: Vec3::ZERO,
+            sky_top: [0.3; 3],
+            sky_horizon: [0.3; 3],
+            ground: [0.2; 3],
+            shading: crate::frame::Shading::default(),
+            size_px: [16, 16],
+            sun: crate::lighting::Sun::default(),
+            environment: crate::environment::Environment::default(),
+            editor_lines: false,
+            grid_plane: crate::frame::GridPlane::Ground,
+            grid_step: 1.0,
+        };
+        let mut draw = |count: usize| {
+            let instances = vec![sprite; count];
+            let runs = [crate::sprites::SpriteRun {
+                sheet: &sheet,
+                instances: &instances,
+            }];
+            let scene = Scene {
+                sprites: &runs,
+                ..Scene::default()
+            };
+            let stats = renderer.render_scene(&device, &queue, &mut target, &params, &scene);
+            (stats, target.frame.sprites_dropped)
+        };
+        let (stats, dropped) = draw(10);
+        assert_eq!((stats.sprites, stats.sent_bytes), (10, 10 * size));
+        assert!(!dropped);
+        // Too many: none drawn, none counted, none sent; the warning is
+        // logged on the first such frame only.
+        for _ in 0..2 {
+            let (stats, dropped) = draw(1000);
+            assert_eq!((stats.sprites, stats.sent_bytes), (0, 0));
+            assert!(dropped);
+        }
+        // Fitting again, and a warning again when they next don't.
+        let (stats, dropped) = draw(700);
+        assert_eq!((stats.sprites, stats.sent_bytes), (700, 700 * size));
+        assert!(!dropped);
+    }
 
     #[test]
     fn line_vertices_match_the_shader_layout() {

@@ -182,7 +182,10 @@ impl App {
             }
         }
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
-            Some(gpu) => gpu,
+            Some(gpu) => {
+                gpu.begin_frame();
+                gpu
+            }
             None => &mut self.no_gpu,
         };
         let actions = self.workbench.show_play_only(ui, renderer, &waiting);

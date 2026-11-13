@@ -310,8 +310,37 @@ mod tests {
 
     #[test]
     fn uniforms_match_the_shader_layout() {
-        // Three matrices and seventeen vectors of 16 bytes.
-        assert_eq!(std::mem::size_of::<FrameUniforms>(), 3 * 64 + 17 * 16);
+        use std::mem::offset_of;
+        crate::shader_layout::assert_struct(
+            crate::SHADER_SOURCE,
+            "Frame",
+            std::mem::size_of::<FrameUniforms>(),
+            &[
+                ("view_proj", offset_of!(FrameUniforms, view_projection)),
+                (
+                    "inv_view_proj",
+                    offset_of!(FrameUniforms, inverse_view_projection),
+                ),
+                ("camera", offset_of!(FrameUniforms, camera)),
+                ("focus", offset_of!(FrameUniforms, focus)),
+                ("grid", offset_of!(FrameUniforms, grid)),
+                ("grid_strength", offset_of!(FrameUniforms, grid_strength)),
+                ("sky_top", offset_of!(FrameUniforms, sky_top)),
+                ("sky_horizon", offset_of!(FrameUniforms, sky_horizon)),
+                ("ground", offset_of!(FrameUniforms, ground)),
+                ("shading", offset_of!(FrameUniforms, shading)),
+                ("screen", offset_of!(FrameUniforms, screen)),
+                ("sun_view_proj", offset_of!(FrameUniforms, sun_view_proj)),
+                ("sun_direction", offset_of!(FrameUniforms, sun_direction)),
+                ("sun_color", offset_of!(FrameUniforms, sun_color)),
+                ("shadow", offset_of!(FrameUniforms, shadow)),
+                ("light_above", offset_of!(FrameUniforms, light_above)),
+                ("light_below", offset_of!(FrameUniforms, light_below)),
+                ("fog", offset_of!(FrameUniforms, fog)),
+                ("post", offset_of!(FrameUniforms, post)),
+                ("sprite_light", offset_of!(FrameUniforms, sprite_light)),
+            ],
+        );
     }
 
     #[test]

@@ -978,11 +978,10 @@ pub fn move_piece(
     let screens = parse(text).ok()?;
     let view = &screens.iter().find(|s| s.name == screen)?.view;
     let piece = view.at(piece_path)?.clone();
-    let indent = {
-        let target = view.block_at(block_path)?;
-        place_in(text, target, index).1
-    };
-    let _ = indent;
+    // Only a block that's there takes it. Its indent is the one it has
+    // after the piece is taken out, so the piece goes in unindented here
+    // and `insert_piece` indents it there.
+    view.block_at(block_path)?;
     let moved = reindented(text, &piece, "");
     // In the same block, taking it out first moves those after it up one.
     let (parent, own) = piece_path.split_at(piece_path.len() - 1);

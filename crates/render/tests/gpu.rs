@@ -2522,6 +2522,98 @@ fn projectiles_glow_in_their_colour_and_hide_behind_models() {
 }
 
 #[test]
+fn projectiles_and_unlit_models_show_in_a_layer_s_picture() {
+    // A 2D game with a parallax layer behind draws its world into a
+    // layer's picture (decision 0094), clear where nothing is. Projectiles
+    // over empty ground, and models in the unlit look, must still cover
+    // their pixels there, or the last pass leaves them out.
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 64;
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
+    target.set_layered(true);
+    let eye = Vec3::new(0.0, -6.0, 1.0);
+    let params = FrameParams {
+        view_projection: looking_north(eye),
+        camera_position: eye,
+        focus: Vec3::ZERO,
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+        shading: Shading {
+            look: Look::Unlit,
+            ..Shading::default()
+        },
+        size_px: [size, size],
+        sun: Sun::default(),
+        environment: unmapped(),
+        editor_lines: false,
+        grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
+    };
+    let alpha = |pixels: &[u8], x: u32, y: u32| pixels[((y * size + x) * 4 + 3) as usize];
+    // A red streak across the middle, nothing behind it.
+    let streak = render::Bolt {
+        head: [1.0, -4.0, 1.0],
+        trail: [-2.0, 0.0, 0.0],
+        colour: [4.0, 0.1, 0.1],
+        width: 0.3,
+    };
+    renderer.render_with_bolts(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &params,
+        &[],
+        &[],
+        &[streak],
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    assert_eq!(alpha(&pixels, 0, 0), 0, "clear where nothing is");
+    let middle = pixel(&pixels, size, size / 2, size / 2);
+    assert_eq!(alpha(&pixels, size / 2, size / 2), 255, "the streak covers");
+    assert!(middle[0] > 200 && middle[1] < 120, "red: {middle:?}");
+    // A dimmer streak covers by how bright it is, its colour kept.
+    let dim = render::Bolt {
+        colour: [0.25, 0.0, 0.0],
+        width: 2.0,
+        ..streak
+    };
+    renderer.render_with_bolts(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &params,
+        &[],
+        &[],
+        &[dim],
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    let covered = alpha(&pixels, size / 2, size / 2);
+    assert!(covered > 0 && covered < 255, "partly covered: {covered}");
+    // The sample's cube in the unlit look, straight ahead.
+    let model = renderer.upload_model(&gpu.device, &gpu.queue, &sample());
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &params,
+        &[Placement {
+            model: &model,
+            node: None,
+            transform: Mat4::IDENTITY,
+            pick: 0,
+        }],
+        &[],
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    assert_eq!(alpha(&pixels, 0, 0), 0, "clear where nothing is");
+    assert_eq!(alpha(&pixels, size / 2, size / 2), 255, "the model covers");
+}
+
+#[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_100000_projectiles() {
     // The CPU's side of drawing 100,000 lasers spread over a field:
@@ -2819,6 +2911,20 @@ fn layers_lie_over_each_other_each_slid_by_its_own_bit_of_a_pixel() {
     assert_eq!(at(37, 41), source_colour(10, 11), "and before it");
     // Everywhere else, exactly the back picture.
     assert_eq!(at(200, 300), source_colour(51, 76));
+    // The image keeps each picture's place from frame to frame: the next
+    // frames lay them the other way round, then the block's alone, and
+    // each shows what it was given.
+    let frames: [&[(&render::ViewportTarget, render::PixelLayout)]; 2] =
+        [&[(&front, still), (&back, still)], &[(&front, still)]];
+    let mut shown = Vec::new();
+    for laid in frames {
+        renderer.draw_pixel_layers(&gpu.device, &gpu.queue, laid, &image);
+        let pixels = read_texture(&gpu.device, &gpu.queue, image.texture(), screen).unwrap();
+        let i = ((41 * screen[0] + 41) * 4) as usize;
+        shown.push([pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]]);
+    }
+    assert_eq!(shown[0], source_colour(11, 11), "the back picture over all");
+    assert_eq!(shown[1], [255, 255, 255, 255], "the block alone");
 }
 
 #[test]
@@ -2941,6 +3047,59 @@ fn scale_check_eight_parallax_layers_at_4k() {
     let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
     println!(
         "Scale check: eight parallax layers and the world laid at 3840x2160 {ms:.2} ms (about nine times the pixel stage alone) on {}",
+        gpu.adapter.get_info().name
+    );
+}
+
+/// Part of the scale check (decision 0011): the CPU's side of a busy 2D
+/// game's frame after its pictures are drawn: eight parallax layers and
+/// the world laid into a 1080p image, then three screens of game UI with
+/// 20,000 shapes between them drawn over it. Only handing the work over
+/// is timed (the GPU's drawing is waited for between frames, untimed).
+/// Reported, not judged: drivers differ in what handing over costs.
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_layers_and_game_ui_handed_over() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let base = [480, 270];
+    let screen = [1920, 1080];
+    let sources: Vec<render::ViewportTarget> = (0..9)
+        .map(|_| pattern_source(&gpu, &renderer, base))
+        .collect();
+    let image = renderer.create_pixel_image(&gpu.device, screen);
+    let hud = ui::layout(&ui::sample::hud(ui::ScaleRule::Grow, 0.5), screen, None);
+    let shapes: Vec<ui::Shape> = hud.iter().cycle().take(20_000 / 3).cloned().collect();
+    let frames = 60u32;
+    let mut spent = std::time::Duration::ZERO;
+    for i in 0..frames {
+        let laid: Vec<(&render::ViewportTarget, render::PixelLayout)> = sources
+            .iter()
+            .enumerate()
+            .map(|(n, source)| {
+                let slide = [(i as usize * (n + 1)) as f32 / 60.0 % 1.0, 0.0];
+                (
+                    source,
+                    pixel_layout(base, screen, PixelScaling::WholeSteps, slide),
+                )
+            })
+            .collect();
+        let start = std::time::Instant::now();
+        renderer.draw_pixel_layers(&gpu.device, &gpu.queue, &laid, &image);
+        for _ in 0..3 {
+            renderer.draw_ui_on_pixels(&gpu.device, &gpu.queue, &image, &shapes, None, None);
+        }
+        spent += start.elapsed();
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+    }
+    let ms = spent.as_secs_f64() * 1000.0 / f64::from(frames);
+    println!(
+        "Scale check: eight parallax layers and three screens of game UI (20,000 shapes) handed over {ms:.3} ms a frame on {}",
         gpu.adapter.get_info().name
     );
 }

@@ -19,19 +19,19 @@ When it resumes: check each open finding against the code first. The UI remake r
 | BUG-33 | 4 | A crash in the game-code worker is silent and leaves an exported game on "Starting" forever | `crates/app/src/game_code.rs:315` | Fixed (`492726035`) |
 | BUG-35 | 4 | Starting a streamed sound opens and scans the whole Ogg file on the frame loop | `crates/sound/src/device.rs:259` | Fixed (`71d9a7ed2`) |
 | BUG-36 | 3 | The import cache hashes a file, then reads it again to import it | `crates/asset_db/src/cache.rs:70` | Fixed (`790131a3b`) |
-| BUG-38 | 5 | Projectiles and unlit models vanish in a 2D picture that has a parallax layer behind it | `crates/render/src/projectiles.rs:78` | **Open** |
-| BUG-39 | 5 | Game UI and the pixel stage create GPU buffers and bind groups every frame | `crates/render/src/ui.rs:312, pixel.rs:372` | **Open** |
-| BUG-40 | 4 | Every viewport target allocates a 16 MiB shadow map, including parallax layer pictures | `crates/render/src/renderer.rs:281` | **Open** |
-| BUG-41 | 4 | A full letter atlas wipes itself mid-layout: garbled text and a frame-rate collapse | `crates/ui/src/text.rs:177` | **Open** |
-| BUG-42 | 4 | "Matches the shader layout" tests only check Rust against itself | `crates/render/src/frame.rs:312` | **Open** |
-| BUG-43 | 3 | The letter atlas's revision isn't unique across font sets, and its upload skips the length check | `crates/ui/src/text.rs:57` | **Open** |
-| BUG-44 | 2 | Frame statistics count sprites that were not drawn, and warn every frame | `crates/render/src/renderer.rs:1185` | **Open** |
-| BUG-45 | 2 | move_piece computes an indent and throws it away | `crates/ui/src/source.rs:981` | **Open** |
+| BUG-38 | 5 | Projectiles and unlit models vanish in a 2D picture that has a parallax layer behind it | `crates/render/src/projectiles.rs:78` | Fixed (`9dadc756b`) |
+| BUG-39 | 5 | Game UI and the pixel stage create GPU buffers and bind groups every frame | `crates/render/src/ui.rs:312, pixel.rs:372` | Fixed (`713e3b3d2`) |
+| BUG-40 | 4 | Every viewport target allocates a 16 MiB shadow map, including parallax layer pictures | `crates/render/src/renderer.rs:281` | Fixed (`1f768ead3`) |
+| BUG-41 | 4 | A full letter atlas wipes itself mid-layout: garbled text and a frame-rate collapse | `crates/ui/src/text.rs:177` | Fixed (`4ab63db0b`) |
+| BUG-42 | 4 | "Matches the shader layout" tests only check Rust against itself | `crates/render/src/frame.rs:312` | Fixed (`eae6bb6ca`) |
+| BUG-43 | 3 | The letter atlas's revision isn't unique across font sets, and its upload skips the length check | `crates/ui/src/text.rs:57` | Fixed (`e490c5d86`) |
+| BUG-44 | 2 | Frame statistics count sprites that were not drawn, and warn every frame | `crates/render/src/renderer.rs:1185` | Fixed (`dba2c6cad`) |
+| BUG-45 | 2 | move_piece computes an indent and throws it away | `crates/ui/src/source.rs:981` | Fixed (`779693dd4`) |
 | TEST-01 | 5 | A sidecar test must reach its check within 50 ms of writing a file | `crates/asset_db/src/db.rs:783` | **Open** |
 | TEST-02 | 4 | Tests race the game code's real-time limits (100 ms a call, 250 ms a tick) | `crates/script/src/runtime_hostile_tests.rs:162, crates/editor/src/game_code_tests.rs:473` | Fixed (`06f848ad1`) |
 | TEST-03 | 3 | The window smoke test waits by sleeping fixed times | `tools/smoke/window-smoke.sh:65` | **Open** |
 | TEST-04 | 2 | Short wall-clock budgets asserted in ordinary tests | `crates/reflect/src/id.rs:297, crates/editor/src/workbench_paint_tests.rs:77, crates/app/src/sprites.rs:539` | **Open** |
-| DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | **Open** |
+| DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | Fixed (`bad651bdc`) |
 | DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | **Open** |
 | DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | **Open** |
 | DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | **Open** |
@@ -120,19 +120,19 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | BUG-35 | 4 | Starting a streamed sound opens and scans the whole Ogg file on the frame loop | `crates/sound/src/device.rs:259` | Fixed (`71d9a7ed2`) |
 | BUG-36 | 3 | The import cache hashes a file, then reads it again to import it | `crates/asset_db/src/cache.rs:70` | Fixed (`790131a3b`) |
 | BUG-37 | 2 | Changing a tile value's kind skips the map's memory limit | `crates/tiles/src/map.rs:655` | Fixed (`2b6daec1d`) |
-| BUG-38 | 5 | Projectiles and unlit models vanish in a 2D picture that has a parallax layer behind it | `crates/render/src/projectiles.rs:78` | **Open** |
-| BUG-39 | 5 | Game UI and the pixel stage create GPU buffers and bind groups every frame | `crates/render/src/ui.rs:312, pixel.rs:372` | **Open** |
-| BUG-40 | 4 | Every viewport target allocates a 16 MiB shadow map, including parallax layer pictures | `crates/render/src/renderer.rs:281` | **Open** |
-| BUG-41 | 4 | A full letter atlas wipes itself mid-layout: garbled text and a frame-rate collapse | `crates/ui/src/text.rs:177` | **Open** |
-| BUG-42 | 4 | "Matches the shader layout" tests only check Rust against itself | `crates/render/src/frame.rs:312` | **Open** |
-| BUG-43 | 3 | The letter atlas's revision isn't unique across font sets, and its upload skips the length check | `crates/ui/src/text.rs:57` | **Open** |
-| BUG-44 | 2 | Frame statistics count sprites that were not drawn, and warn every frame | `crates/render/src/renderer.rs:1185` | **Open** |
-| BUG-45 | 2 | move_piece computes an indent and throws it away | `crates/ui/src/source.rs:981` | **Open** |
+| BUG-38 | 5 | Projectiles and unlit models vanish in a 2D picture that has a parallax layer behind it | `crates/render/src/projectiles.rs:78` | Fixed (`9dadc756b`) |
+| BUG-39 | 5 | Game UI and the pixel stage create GPU buffers and bind groups every frame | `crates/render/src/ui.rs:312, pixel.rs:372` | Fixed (`713e3b3d2`) |
+| BUG-40 | 4 | Every viewport target allocates a 16 MiB shadow map, including parallax layer pictures | `crates/render/src/renderer.rs:281` | Fixed (`1f768ead3`) |
+| BUG-41 | 4 | A full letter atlas wipes itself mid-layout: garbled text and a frame-rate collapse | `crates/ui/src/text.rs:177` | Fixed (`4ab63db0b`) |
+| BUG-42 | 4 | "Matches the shader layout" tests only check Rust against itself | `crates/render/src/frame.rs:312` | Fixed (`eae6bb6ca`) |
+| BUG-43 | 3 | The letter atlas's revision isn't unique across font sets, and its upload skips the length check | `crates/ui/src/text.rs:57` | Fixed (`e490c5d86`) |
+| BUG-44 | 2 | Frame statistics count sprites that were not drawn, and warn every frame | `crates/render/src/renderer.rs:1185` | Fixed (`dba2c6cad`) |
+| BUG-45 | 2 | move_piece computes an indent and throws it away | `crates/ui/src/source.rs:981` | Fixed (`779693dd4`) |
 | TEST-01 | 5 | A sidecar test must reach its check within 50 ms of writing a file | `crates/asset_db/src/db.rs:783` | **Open** |
 | TEST-02 | 4 | Tests race the game code's real-time limits (100 ms a call, 250 ms a tick) | `crates/script/src/runtime_hostile_tests.rs:162, crates/editor/src/game_code_tests.rs:473` | Fixed (`06f848ad1`) |
 | TEST-03 | 3 | The window smoke test waits by sleeping fixed times | `tools/smoke/window-smoke.sh:65` | **Open** |
 | TEST-04 | 2 | Short wall-clock budgets asserted in ordinary tests | `crates/reflect/src/id.rs:297, crates/editor/src/workbench_paint_tests.rs:77, crates/app/src/sprites.rs:539` | **Open** |
-| DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | **Open** |
+| DEP-01 | 5 | The font library is no longer shared with the editor's, and its unmaintained parser ships on Windows on a false reason | `Cargo.toml:47, deny.toml:16` | Fixed (`bad651bdc`) |
 | DEP-02 | 4 | The triple_buffer stand-in can make the audio thread wait, which its own README forbids | `patches/triple_buffer/src/lib.rs:17` | **Open** |
 | DEP-03 | 4 | The Luau source hold exists only as a comment and a lock line | `Cargo.toml:106` | **Open** |
 | DEP-05 | 3 | Solis's glam is one version ahead of every library that speaks glam (compiled twice) | `Cargo.toml:38` | **Open** |

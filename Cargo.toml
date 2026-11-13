@@ -44,8 +44,12 @@ bytemuck = { version = "1.25", features = ["derive"] }
 # The window and frame loop (winit + wgpu underneath).
 eframe = { version = "0.36", features = ["persistence"] }
 egui = "0.36"
-# Reads fonts for game UI's text (decision 0084); the same version egui uses.
-ab_glyph = "0.2.32"
+# Reads fonts for game UI's text (decisions 0084 and 0107): the font
+# reader egui uses, at its version.
+skrifa = "0.44"
+# Turns a letter's outline into how much of each pixel it covers, for game
+# UI's text (decision 0107).
+ab_glyph_rasterizer = "0.1.10"
 # Dockable panels (decision 0004).
 # Reading glTF models: the JSON and binary layout only. Buffers and
 # images are read by Solis itself, with size limits (crates/assets).

@@ -11,7 +11,6 @@
 //! never shows as a dark fringe.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 /// The pictures' atlas is this many pixels each way.
 pub const SIDE: u32 = 2048;
@@ -21,10 +20,6 @@ pub const MAX_PICTURES: usize = 1024;
 
 /// The longest picture name kept (a path and a crop).
 pub const MAX_NAME: usize = 512;
-
-/// Every [`Pictures`] has its own revision, so the renderer can tell one
-/// atlas from another.
-static REVISIONS: AtomicU64 = AtomicU64::new(1);
 
 /// The picture file and the crop a name gives: `sprites/tools.png#Axe` is
 /// `("sprites/tools.png", Some("Axe"))`.
@@ -70,7 +65,7 @@ impl Default for Pictures {
     fn default() -> Self {
         Self {
             pixels: Vec::new(),
-            revision: REVISIONS.fetch_add(1, Ordering::Relaxed),
+            revision: crate::next_revision(),
             placed: HashMap::new(),
             shelf: [0, 0, 0],
         }
@@ -186,7 +181,7 @@ impl Pictures {
             },
         );
         self.shelf = [x + pw, y, tall.max(ph)];
-        self.revision = REVISIONS.fetch_add(1, Ordering::Relaxed);
+        self.revision = crate::next_revision();
         Ok(())
     }
 }
