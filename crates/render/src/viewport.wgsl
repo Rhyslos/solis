@@ -585,10 +585,16 @@ fn mesh_fs(in: MeshOut, @builtin(front_facing) front: bool) -> @location(0) vec4
     }
     // Fog, then the mask for the last pass: the unlit look's colours are
     // shown as painted, never tone mapped. (Blended surfaces use their
-    // alpha for blending instead.)
+    // alpha for blending instead.) In a layer's picture (decision 0094)
+    // the alpha is how covered the pixel is: a solid surface covers it
+    // whole, whatever the look.
     let visibility = fog_visibility(in.world);
     let fogged = mix(frame.fog.rgb, lit + glow, visibility);
-    let mask = select(world_mask(visibility), 0.0, frame.shading.x == 2.0);
+    let mask = select(
+        select(world_mask(visibility), 0.0, frame.shading.x == 2.0),
+        1.0,
+        frame.post.w > 0.5,
+    );
     let alpha = select(mask, color.a, material.alpha.y == 2.0);
     return vec4<f32>(fogged, alpha);
 }
@@ -772,9 +778,14 @@ fn bolt_vs(@builtin(vertex_index) corner: u32, bolt: BoltIn) -> BoltOut {
 
 @fragment
 fn bolt_fs(in: BoltOut) -> @location(0) vec4<f32> {
-    // Soft edges; added to what's behind, so crossing streaks glow.
+    // Soft edges; added to what's behind, so crossing streaks glow. The
+    // alpha is only kept in a layer's picture (decision 0094), where it's
+    // how covered the pixel is: as much as the streak is bright, so the
+    // last pass shows its colour as drawn over what's behind.
     let soft = 1.0 - in.across * in.across;
-    return vec4<f32>(in.color * soft, 1.0);
+    let colour = in.color * soft;
+    let bright = max(colour.r, max(colour.g, colour.b));
+    return vec4<f32>(colour, clamp(bright, 0.0, 1.0));
 }
 
 // ------------------------------------------------------------- sprites ---

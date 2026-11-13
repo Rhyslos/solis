@@ -637,6 +637,8 @@ pub struct ViewportRenderer {
     grid_pipeline: wgpu::RenderPipeline,
     line_pipeline: wgpu::RenderPipeline,
     bolt_pipeline: wgpu::RenderPipeline,
+    /// [`Self::bolt_pipeline`] for a layer's picture (decision 0094).
+    bolt_pipeline_layered: wgpu::RenderPipeline,
     models: ModelPipelines,
     axes: wgpu::Buffer,
     axis_count: u32,
@@ -766,7 +768,20 @@ impl ViewportRenderer {
             post_pipeline,
             grid_pipeline: pipeline(Kind::Grid),
             line_pipeline: pipeline(Kind::Lines),
-            bolt_pipeline: crate::projectiles::pipeline(device, &layout, &shader, sample_count),
+            bolt_pipeline: crate::projectiles::pipeline(
+                device,
+                &layout,
+                &shader,
+                sample_count,
+                false,
+            ),
+            bolt_pipeline_layered: crate::projectiles::pipeline(
+                device,
+                &layout,
+                &shader,
+                sample_count,
+                true,
+            ),
             models: ModelPipelines::new(device, &bind_group_layout, &shader, sample_count),
             frame_layout: bind_group_layout,
             shadow_layout,
@@ -1370,7 +1385,11 @@ impl ViewportRenderer {
             }
             self.draw_batches(&mut pass, &batches, &model_of, Pass::Blended);
             if let Some(buffer) = frame.bolts.as_ref().filter(|_| bolt_count > 0) {
-                pass.set_pipeline(&self.bolt_pipeline);
+                pass.set_pipeline(if layered {
+                    &self.bolt_pipeline_layered
+                } else {
+                    &self.bolt_pipeline
+                });
                 pass.set_vertex_buffer(0, buffer.slice(..));
                 pass.draw(0..6, 0..bolt_count);
             }
