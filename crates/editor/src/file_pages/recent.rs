@@ -190,7 +190,12 @@ impl Workbench {
         {
             self.file_pages.selected = Some(self.known_projects[order[to]].root.clone());
         }
-        if ui.input(|i| i.key_pressed(egui::Key::Enter))
+        // Not while a name is typed: Enter there is the field's (Rename…
+        // keeps the name with it, and opened the project as well: the
+        // second review pass's N-05).
+        let typing = self.file_pages.renaming.is_some() || ui.ctx().egui_wants_keyboard_input();
+        if !typing
+            && ui.input(|i| i.key_pressed(egui::Key::Enter))
             && let Some(i) = at.map(|at| order[at])
             && self.known_projects[i].problem.is_none()
         {
