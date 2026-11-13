@@ -196,6 +196,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **The editor's longest files split into parts, with nothing to notice** (the November review, DEBT-05, 07 and 09): playing the game, saving and loading it, the viewport, the animator's graph and the editor window's own code are each in files of a readable size, in named steps. Solis works exactly as before.
 - **The engine's longest files split into parts, with nothing to notice** (the November review, DEBT-01, 04, 06 and 10): the splash screen's unused update question is gone (it hasn't asked since updates moved to File › Updates); game code's engine calls, the running world, and the viewport's drawing and its tests are each in files of a readable size. Solis works exactly as before.
 - **Properties' lists (a sprite's sheet, pivot and clip, an animator and its state, a tile map, a screen, an entity) are the editor's one drop-down,** the same as everywhere else in the new look: the arrow keys step through them, long lists scroll, and a name that isn't there any more is warned about under the field. The Play and Stop buttons of sounds and sound events are the editor's own button too.
 - **The tileset, clips, atlas and animator editors share one undo history** instead of four copies of it, so a fix to undo reaches all four. Each keeps how many steps it remembers (100 for a tileset, 200 for the others).
