@@ -81,7 +81,7 @@ kira = { version = "0.12.5", default-features = false, features = ["cpal"] }
 hound = "3.5"
 # Reading Ogg Vorbis files.
 lewton = "0.10"
-ogg = "0.8"
+ogg = "0.9"
 mint = "0.5"
 # Gamepads (decision 0037), on Windows.
 gilrs = "0.11"
