@@ -101,6 +101,41 @@ fn broken_fonts_and_nonsense_sizes_are_safe() {
     assert_eq!(f.place(0, &long, 10.0, [0.0, 0.0], None).len(), MAX_LETTERS);
 }
 
+#[test]
+fn damaged_fonts_never_crash_and_never_give_a_shape_that_isnt_finite() {
+    // A fuzz sweep (rule 9): Inter damaged in many ways, the same ways on
+    // every run (a fixed sequence, no chance): bytes changed in its
+    // tables' directory and anywhere, and cut short. Each is read, or left
+    // out with a note; what's read lays text out with finite boxes.
+    let mut state = 0x5eed_u64;
+    let mut next = move |below: usize| {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        (state % below as u64) as usize
+    };
+    for case in 0..120 {
+        let mut bytes = INTER.to_vec();
+        for _ in 0..1 + case % 8 {
+            // Half the changes in the first kilobyte: the directory and
+            // the small tables it points to first.
+            let reach = if next(2) == 0 { 1024 } else { bytes.len() };
+            let at = next(reach);
+            bytes[at] = next(256) as u8;
+        }
+        if case % 5 == 0 {
+            bytes.truncate(next(bytes.len()));
+        }
+        let (mut f, notes) = Fonts::new(vec![bytes]);
+        assert_eq!(f.len() + notes.len(), 1, "case {case}");
+        f.begin_frame();
+        for p in f.place(0, "Ag→ fi", 24.0, [0.0, 0.0], None) {
+            assert!(p.rect.iter().all(|v| v.is_finite()), "case {case}");
+        }
+        assert!(f.measure(0, "Ag→ fi", 24.0).iter().all(|v| v.is_finite()));
+    }
+}
+
 /// Every letter Inter has, big: more than the atlas holds.
 fn every_letter() -> String {
     (0x20u32..0x2500).filter_map(char::from_u32).collect()

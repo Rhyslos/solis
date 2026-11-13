@@ -1,14 +1,14 @@
 //! Text for game UI (the game UI plan's M1b; decision 0084): fonts read
-//! with `ab_glyph`, each letter turned once into a distance image (how far
-//! every pixel is from the letter's edge) kept in one atlas, so a letter is
-//! sharp at any size from one picture of it, and its edge, an outline or a
-//! glow are worked out in the shader. Pixel-art screens draw the same
-//! letters with hard edges.
+//! with `skrifa` (`font.rs`, decision 0107), each letter turned once into
+//! a distance image (how far every pixel is from the letter's edge) kept
+//! in one atlas, so a letter is sharp at any size from one picture of it,
+//! and its edge, an outline or a glow are worked out in the shader.
+//! Pixel-art screens draw the same letters with hard edges.
 //!
 //! Layout is simple and exact: left to right, a line per `\n`, each
 //! letter's advance and the font's kerning; long lines aren't wrapped yet.
 
-use ab_glyph::{Font as _, FontArc, GlyphId, ScaleFont as _};
+use crate::font::{Font, GlyphId};
 use std::collections::HashMap;
 
 /// The size letters are drawn at for their distance images, in pixels.
@@ -93,7 +93,7 @@ impl Atlas {
 /// keeps its place in the atlas until the frame is drawn.
 #[derive(Debug, Clone)]
 pub struct Fonts {
-    fonts: Vec<FontArc>,
+    fonts: Vec<Font>,
     /// Each letter made (none for one with no outline, a space), and the
     /// frame it was last placed in.
     letters: HashMap<(usize, GlyphId), Option<(Letter, u64)>>,
@@ -135,9 +135,9 @@ impl Fonts {
                 ));
                 continue;
             }
-            match FontArc::try_from_vec(bytes) {
-                Ok(font) => fonts.push(font),
-                Err(_) => notes.push(format!("font {} isn't a font Solis can read", i + 1)),
+            match Font::read(bytes) {
+                Some(font) => fonts.push(font),
+                None => notes.push(format!("font {} isn't a font Solis can read", i + 1)),
             }
         }
         (
@@ -242,16 +242,17 @@ impl Fonts {
     }
 
     fn make(&mut self, font: usize, id: GlyphId) -> Made {
-        let Some(f) = self.fonts.get(font) else {
+        let Some(outlined) = self
+            .fonts
+            .get(font)
+            .and_then(|f| f.at(SDF_SIZE))
+            .and_then(|f| f.outline(id))
+        else {
             return Made::Blank;
         };
-        let glyph = id.with_scale(SDF_SIZE);
-        let Some(outlined) = f.outline_glyph(glyph) else {
-            return Made::Blank;
-        };
-        let bounds = outlined.px_bounds();
+        let [left, top, right, bottom] = outlined.bounds();
         let pad = SPREAD.ceil() as i32 + 1;
-        let (bw, bh) = (bounds.width().ceil() as i32, bounds.height().ceil() as i32);
+        let (bw, bh) = ((right - left).ceil() as i32, (bottom - top).ceil() as i32);
         if bw <= 0 || bh <= 0 || bw > 512 || bh > 512 {
             return Made::Blank;
         }
@@ -283,18 +284,21 @@ impl Fonts {
                 (ax + w as u32) as u16,
                 (ay + h as u32) as u16,
             ],
-            offset: [bounds.min.x - pad as f32, bounds.min.y - pad as f32],
+            offset: [left - pad as f32, top - pad as f32],
         })
     }
 
     /// How wide `text` is at `size` pixels in font `font`, and how tall a
     /// line is.
     pub fn measure(&self, font: usize, text: &str, size: f32) -> [f32; 2] {
-        let Some(f) = self.fonts.get(font.min(self.fonts.len().saturating_sub(1))) else {
+        let Some(scaled) = self
+            .fonts
+            .get(font.min(self.fonts.len().saturating_sub(1)))
+            .and_then(|f| f.at(size.max(0.0)))
+        else {
             return [0.0, 0.0];
         };
-        let scaled = f.as_scaled(size.max(0.0));
-        let line = scaled.height() + scaled.line_gap();
+        let line = scaled.line();
         let mut widest = 0.0_f32;
         let mut lines = 0;
         for text_line in text.split('\n') {
@@ -302,11 +306,11 @@ impl Fonts {
             let mut x = 0.0;
             let mut last: Option<GlyphId> = None;
             for c in text_line.chars().take(MAX_LETTERS) {
-                let id = scaled.glyph_id(c);
+                let id = scaled.glyph(c);
                 if let Some(prev) = last {
                     x += scaled.kern(prev, id);
                 }
-                x += scaled.h_advance(id);
+                x += scaled.advance(id);
                 last = Some(id);
             }
             widest = widest.max(x);
@@ -335,9 +339,11 @@ impl Fonts {
         } else {
             0.0
         };
-        let scaled = f.as_scaled(size);
+        let Some(scaled) = f.at(size) else {
+            return Vec::new();
+        };
         let k = size / SDF_SIZE;
-        let line = scaled.height() + scaled.line_gap();
+        let line = scaled.line();
         let mut out = Vec::new();
         let mut y = at[1] + scaled.ascent();
         for text_line in text.split('\n') {
@@ -347,7 +353,7 @@ impl Fonts {
                 if out.len() >= MAX_LETTERS {
                     return out;
                 }
-                let id = scaled.glyph_id(c);
+                let id = scaled.glyph(c);
                 if let Some(prev) = last {
                     x += scaled.kern(prev, id);
                 }
@@ -364,7 +370,7 @@ impl Fonts {
                         atlas: letter.atlas,
                     });
                 }
-                x += scaled.h_advance(id);
+                x += scaled.advance(id);
                 last = Some(id);
             }
             y += line;

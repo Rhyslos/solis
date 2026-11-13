@@ -4823,8 +4823,9 @@ dependencies = [
 name = "ui"
 version = "0.0.1"
 dependencies = [
- "ab_glyph",
+ "ab_glyph_rasterizer",
  "proptest",
+ "skrifa",
 ]
 
 [[package]]

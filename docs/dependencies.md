@@ -43,7 +43,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 
 | Library | What it does for Solis | Licence | Allowed in | Reach | Exit plan |
 | --- | --- | --- | --- | --- | --- |
-| `ab_glyph` | Reads fonts for game UI text: letters' outlines, advances and kerning ([decision 0084](decisions/0084-game-ui-text.md)) | Apache-2.0 | ui | walled | Stay on the last good version (it's also inside egui); or `skrifa`, or `ttf-parser` (which it wraps) |
+| `ab_glyph_rasterizer` | Turns a letter's outline into how much of each pixel it covers, for game UI text ([decision 0107](decisions/0107-game-ui-fonts-read-with-skrifa.md)) | Apache-2.0 | ui | walled | Write it (a coverage rasterizer for lines and curves, about 300 lines), or draw outlines with the renderer's own path filling |
 | `base64` | Decodes models' embedded data (glTF `data:` addresses) | MIT OR Apache-2.0 | assets | walled | Write it (about 100 lines, tested against the standard's examples) |
 | `bytemuck` | Turns Solis's structs into bytes for the graphics card, safely | Zlib OR Apache-2.0 OR MIT | app, assets, editor, render | shared | Stay on the last good version (it's small, stable and needs nothing else); or write the few safe casts Solis uses |
 | `chrono` | Times on Console messages, and the names of backup folders | MIT OR Apache-2.0 | asset_db, editor | walled | Use the standard library's clock and format the time ourselves |
@@ -79,6 +79,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `serde` | Turns data into files and back | MIT OR Apache-2.0 | app, asset_db, editor, input, reflect, updater | shared | Stay on the last good version (it's the standard, with a vast following); or Solis's own readers and writers through `reflect` |
 | `serde_json` | Reads GitHub's answers in the updater | MIT OR Apache-2.0 | updater | walled | Read the few fields the updater needs ourselves |
 | `sha2` | Checks downloaded updates (SHA-256) | MIT OR Apache-2.0 | updater | walled | Write SHA-256 (about 150 lines, tested against the standard's examples) |
+| `skrifa` | Reads fonts for game UI text: letters, advances, kerning and outlines ([decision 0107](decisions/0107-game-ui-fonts-read-with-skrifa.md); it's also egui's font reader) | MIT OR Apache-2.0 | ui | walled | Stay on egui's version; or `read-fonts` (underneath it) with our own outline reading |
 | `toml` | Reads and writes settings and input files | MIT OR Apache-2.0 | asset_db, input, reflect (tests) | shared | Fork it, or read the small part of TOML Solis uses ourselves |
 | `trash` | Moves deleted files to the Recycle Bin | MIT | asset_db | walled | Ask Windows directly (`IFileOperation`) |
 | `ureq` | Talks to GitHub for updates | MIT OR Apache-2.0 | updater | walled | Use Windows' own web client (WinHTTP), or another client |
