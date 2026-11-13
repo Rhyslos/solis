@@ -648,16 +648,19 @@ mod tests {
         }
     }
 
+    /// Polls until every read has finished: up to 30 s, then fails
+    /// saying so (it gave up after 2.5 s without a word, so a slow
+    /// machine failed a later check about sheets: the review, TEST-04).
     fn settle(s: &mut Sprites) -> Vec<String> {
         let mut read = Vec::new();
-        for _ in 0..500 {
+        for _ in 0..6000 {
             read.extend(s.poll().0);
             if !s.waiting() {
-                break;
+                return read;
             }
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
-        read
+        panic!("reading never finished");
     }
 
     /// A tiny valid Aseprite file: one 2 × 2 frame, all red.
