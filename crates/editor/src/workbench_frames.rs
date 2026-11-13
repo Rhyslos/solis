@@ -14,12 +14,15 @@ use crate::workbench::Workbench;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// What the tabs draw from, for the file open in `editor`.
+/// What the tabs draw from, for the file open in `editor`. The lists to
+/// choose a sheet and a sound event from are made only when one is
+/// opened (the second review pass: every frame sorted every picture's
+/// name, on any tab).
 pub(crate) fn frames_ui<'a>(
     editor: &'a mut FramesEditor,
     sheets: &'a SpriteSheets,
     pictures: &'a HashMap<String, egui::TextureHandle>,
-    cue_sounds: &HashMap<String, String>,
+    cue_sounds: &'a HashMap<String, String>,
 ) -> FramesUi<'a> {
     let sheet = editor.file.sheet.and_then(|id| sheets.get(id));
     let atlas = editor
@@ -32,8 +35,8 @@ pub(crate) fn frames_ui<'a>(
         _ => Vec::new(),
     };
     FramesUi {
-        sheets: aseprite_sheets(sheets),
-        sounds: sound_names(cue_sounds),
+        sheets,
+        cue_sounds,
         notes,
         sheet,
         atlas,
@@ -42,7 +45,7 @@ pub(crate) fn frames_ui<'a>(
 }
 
 /// The project's Aseprite sheets, by name.
-fn aseprite_sheets(sheets: &SpriteSheets) -> Vec<(String, reflect::AssetId)> {
+pub(crate) fn aseprite_sheets(sheets: &SpriteSheets) -> Vec<(String, reflect::AssetId)> {
     sheets
         .listed()
         .into_iter()
@@ -57,7 +60,7 @@ fn aseprite_sheets(sheets: &SpriteSheets) -> Vec<(String, reflect::AssetId)> {
 
 /// The sound events by the shortest name a frame's event can use: the
 /// file's name when no other has it, otherwise its path.
-fn sound_names(cue_sounds: &HashMap<String, String>) -> Vec<String> {
+pub(crate) fn sound_names(cue_sounds: &HashMap<String, String>) -> Vec<String> {
     let mut names: Vec<String> = cue_sounds
         .iter()
         .filter(|(name, path)| {

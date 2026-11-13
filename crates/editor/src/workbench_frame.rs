@@ -141,10 +141,6 @@ impl Workbench {
             )
         });
         let tile_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
-        if self.open.tilesets.tab().is_some() && sheets.tiles_animate() {
-            ui.ctx()
-                .request_repaint_after(std::time::Duration::from_millis(40));
-        }
         let tileset = self.open.tilesets.tab_mut().map(|editor| {
             crate::workbench_tileset::tileset_ui(
                 editor,
@@ -265,6 +261,19 @@ impl Workbench {
             crate::shell::middle(ui, &mut self.shell, open_now, layout, &mut viewer)
         };
         self.in_front = shown;
+        // The Tileset tab's animated tiles move on by themselves, while it
+        // is drawn (the second review pass: any tileset open on any tab
+        // redrew the whole editor 25 times a second).
+        if self.in_front.contains(&Panel::Tileset)
+            && self
+                .open
+                .tilesets
+                .tab()
+                .is_some_and(|editor| sheets.tileset_animates(&editor.file))
+        {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(40));
+        }
         self.pointer_over = asks.frames.pointer_over;
         self.doc_asks(doc_asks, ui.ctx(), &mut actions);
         self.apply_panel_asks(ui, asks, &picked_before, &mut actions);

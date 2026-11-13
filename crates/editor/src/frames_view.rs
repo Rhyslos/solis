@@ -13,7 +13,6 @@ use crate::theme;
 use animation::{ClipSet, Direction};
 use assets::sprite_sheet::SpriteSheet;
 use egui::{Color32, RichText, Ui};
-use reflect::AssetId;
 use std::sync::Arc;
 
 /// What the tabs draw from.
@@ -24,10 +23,10 @@ pub(crate) struct FramesUi<'a> {
     pub(crate) sheet: Option<&'a Arc<SpriteSheet>>,
     /// The sheet's atlas as an egui picture.
     pub(crate) atlas: Option<&'a egui::TextureHandle>,
-    /// The project's Aseprite sheets, by name, to choose the file's from.
-    pub(crate) sheets: Vec<(String, AssetId)>,
-    /// The project's sound events, by the name a frame's event uses.
-    pub(crate) sounds: Vec<String>,
+    /// The project's sheets, to choose the file's from.
+    pub(crate) sheets: &'a crate::sprite_sheets::SpriteSheets,
+    /// The project's sound events, by name, to choose a frame's event from.
+    pub(crate) cue_sounds: &'a std::collections::HashMap<String, String>,
     /// What was put right reading the file, or doesn't fit its sheet.
     pub(crate) notes: Vec<String>,
 }
@@ -136,12 +135,13 @@ fn choose_sheet(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     egui::ComboBox::from_id_salt("frames sheet")
         .selected_text("Choose…")
         .show_ui(ui, |ui| {
-            for (name, id) in &f.sheets {
+            let sheets = crate::workbench_frames::aseprite_sheets(f.sheets);
+            for (name, id) in &sheets {
                 if ui.selectable_label(false, name).clicked() {
                     chosen = Some(*id);
                 }
             }
-            if f.sheets.is_empty() {
+            if sheets.is_empty() {
                 ui.label("No sprite sheets yet: put an Aseprite file in the project.");
             }
         });
@@ -608,13 +608,14 @@ fn event_field(
     }
     ui.menu_button("Sound events ▾", |ui| {
         ui.label(RichText::new("Sound events").color(theme::text_weak()));
-        for name in &f.sounds {
+        let sounds = crate::workbench_frames::sound_names(f.cue_sounds);
+        for name in &sounds {
             if ui.button(name).clicked() {
                 changed |= f.editor.set_event(clips, name);
                 ui.close();
             }
         }
-        if f.sounds.is_empty() {
+        if sounds.is_empty() {
             ui.label("None yet: an event named like a sound event plays it.");
         }
         ui.separator();
