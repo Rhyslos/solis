@@ -12,6 +12,9 @@
 
 pub mod flat;
 mod guard;
+mod solid_mesh;
+
+pub use solid_mesh::{MAX_TRIANGLES, SolidMesh};
 
 use glam::{Quat, Vec3};
 use rapier3d::prelude as rp;
@@ -75,7 +78,7 @@ impl Default for Body {
 }
 
 /// A collider's shape, in the entity's own space before its scale.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
     /// A box this size (full widths, metres).
     Box(Vec3),
@@ -88,10 +91,14 @@ pub enum Shape {
         /// Its height, end to end.
         height: f32,
     },
+    /// A surface of triangles (a brush's), shared: always still, as a
+    /// floor or a wall is. With no usable triangles it collides with
+    /// nothing.
+    Mesh(Arc<SolidMesh>),
 }
 
 /// A collider's settings (the `Collider` component's).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColliderSpec {
     /// Its shape.
     pub shape: Shape,
@@ -590,11 +597,11 @@ impl Physics {
             builder = builder.lock_rotations();
         }
         let handle = state.bodies.insert(builder);
-        let collider = collider.map(|c| {
+        let collider = collider.and_then(|c| {
             let s = scale.abs();
-            let shape = match c.shape {
+            let shape = match &c.shape {
                 Shape::Box(size) => {
-                    let half = size * s * 0.5;
+                    let half = *size * s * 0.5;
                     rp::ColliderBuilder::cuboid(length(half.x), length(half.y), length(half.z))
                 }
                 Shape::Sphere(r) => rp::ColliderBuilder::ball(length(r * s.max_element())),
@@ -603,6 +610,7 @@ impl Physics {
                     let half = (length(height * s.z) * 0.5 - radius).max(0.0);
                     rp::ColliderBuilder::capsule_z(half, radius)
                 }
+                Shape::Mesh(mesh) => solid_mesh::collider(mesh, scale, MAX_PLACE)?,
             };
             // Held to where places are held: a centre and a scale that
             // are each a number can multiply past the biggest one.
@@ -619,9 +627,11 @@ impl Physics {
             if spec.mass > 0.0 && spec.mass.is_finite() {
                 builder = builder.mass(spec.mass.min(1.0e9));
             }
-            state
-                .colliders
-                .insert_with_parent(builder, handle, &mut state.bodies)
+            Some(
+                state
+                    .colliders
+                    .insert_with_parent(builder, handle, &mut state.bodies),
+            )
         });
         state.by_entity.insert(
             id,

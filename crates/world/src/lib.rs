@@ -276,6 +276,7 @@ impl World {
             Collider2D::NAME => typed::<Collider2D>(self, id),
             CharacterBody::NAME => typed::<CharacterBody>(self, id),
             Model::NAME => typed::<Model>(self, id),
+            area::builtin::Brush::NAME => typed::<area::builtin::Brush>(self, id),
             Environment::NAME => typed::<Environment>(self, id),
             Camera::NAME => typed::<Camera>(self, id),
             AudioSource::NAME => typed::<AudioSource>(self, id),
@@ -381,5 +382,7 @@ impl World {
     }
 }
 
+#[cfg(test)]
+mod brush_tests;
 #[cfg(test)]
 mod tests;

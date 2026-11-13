@@ -18,6 +18,8 @@ Solis's physics is **strict**: the same game, with the same inputs, comes out ex
 
 An entity with a collider and nothing else never moves: floors, walls, rocks.
 
+Quicker still: a **Solid** [brush](brushes.md) (Create › More › Box brush) is a floor or wall with no collider to add. Its own faces are what physics bumps into, exactly as drawn, and it never falls, even with a RigidBody (a Kinematic one still moves it as game code says, as a platform). A Collider on the same entity is used instead of its faces.
+
 **A crate that falls**
 1. Select the crate and add a **Collider** sized like it (a 1 m crate: Box, size `1 1 1`).
 2. Add a **RigidBody** too. Its **Kind** is **Dynamic**: physics moves it.
