@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The Library follows files that keep changing.** A program writing into the assets folder more often than every 0.3 seconds kept Solis from noticing anything until it stopped; changes are now noticed at least every 2 seconds while it goes on.
 - **Making an assembly, a sound event or bringing in a model no longer freezes the window while the assets folder is being looked at.** Solis waited for the look going on in the background to finish (over a second in a big project); now the new file gets its ID at once and the look after it shows it in the Library.
 - **The Build tab's big Export button exports.** It filled the export form in afresh instead: the game's name you typed was lost and **Open folder** greyed out. It now exports what the page shows, as the page's own **Export** does, and Home's **Build** keeps what you typed there.
 - **Pressing Enter to keep a project's new name no longer opens it as well.** On Recent projects, Enter in **Rename…** renamed the project and also opened the card picked behind it.
