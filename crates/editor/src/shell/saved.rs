@@ -164,9 +164,18 @@ impl Shell {
 
     /// The frame as `saved` left it, repaired where it can't be used.
     pub fn restored(saved: &ShellState) -> Self {
-        let named = |name: &str| RibbonTab::ALL.into_iter().find(|t| t.name() == name);
+        // The contextual tabs' middles are saved too (a Tileset's shelf
+        // tab), and were never put back when only the main tabs were
+        // looked in (the second review pass's N-22).
+        let named = |name: &str| {
+            RibbonTab::ALL
+                .into_iter()
+                .chain(RibbonTab::CONTEXT)
+                .find(|t| t.name() == name)
+        };
+        // Not a contextual tab in front: its file isn't open at the start.
         let tab = named(&saved.tab)
-            .filter(|t| *t != RibbonTab::File && t.is_built())
+            .filter(|t| *t != RibbonTab::File && t.is_built() && t.parent() == *t)
             .unwrap_or(RibbonTab::Home);
         let mut sizes = Sizes::default();
         let arrangements = saved
