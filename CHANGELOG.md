@@ -64,6 +64,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **More sprites than the graphics card can draw at once no longer fill the Console or the Profiler with wrong numbers.** The Console got the same warning 60 times a second, and the Profiler counted the sprites as drawn and sent though none were. The warning now comes once, when they stop fitting, and the Profiler counts only what is drawn.
 - **Parallax layers no longer take 16 MB of graphics memory each.** Every picture the engine draws into made room for the sun's shadows and the editor's lamp markers, even a parallax layer's small picture that never shows either: eight layers took about 130 MB. That room is now made only when shadows or lamp markers are first drawn.
 - **2D games with screens or parallax layers no longer make new graphics memory every frame.** Each screen of game UI made new buffers for its shapes, and each parallax layer its own settings, every frame, to be thrown away the next; they are now made once and refilled, so busy games don't stutter from it.
 - **Projectiles and models in the unlit look show in a 2D game with a parallax layer behind.** With a layer behind, the game's world is drawn as a picture of its own that is clear where nothing is, and projectiles over empty ground and unlit models counted as nothing there, so they vanished except where they crossed a sprite. Now a projectile covers its pixels as much as it glows, and any solid model covers them whole.

@@ -113,6 +113,9 @@ struct FrameResources {
     /// Every sprite, filled each frame; replaced by a bigger one when a
     /// frame has more.
     sprites: Option<wgpu::Buffer>,
+    /// Whether last frame's sprites were too many to draw, so the warning
+    /// is logged once when they stop fitting, not every frame.
+    sprites_dropped: bool,
 }
 
 /// How many copies are compared and sent together: a run that changed
@@ -311,6 +314,7 @@ impl FrameResources {
             levels: Vec::new(),
             bolts: None,
             sprites: None,
+            sprites_dropped: false,
         }
     }
 
@@ -1232,11 +1236,17 @@ impl ViewportRenderer {
         let sent = target.frame.write_instances(device, queue, raw);
         let bolt_count = target.frame.write_bolts(device, queue, bolts);
         let sprite_starts = target.frame.write_sprites(device, queue, sprites);
-        if sprite_starts.is_none() {
+        if sprite_starts.is_none() && !target.frame.sprites_dropped {
             log::warn!(
                 "more sprites than the graphics card can draw at once; sprites aren't drawn"
             );
         }
+        target.frame.sprites_dropped = sprite_starts.is_none();
+        // Only sprites that are drawn count, and are sent.
+        let sprites_drawn: u64 = match sprite_starts {
+            Some(_) => sprites.iter().map(|r| r.instances.len() as u64).sum(),
+            None => 0,
+        };
         if sent.is_none() {
             log::warn!(
                 "{count} model copies are more than the graphics card can draw at once; models \
@@ -1283,14 +1293,10 @@ impl ViewportRenderer {
                     lods
                 }),
             sent_bytes: sent.unwrap_or(0)
-                + u64::from(bolt_count) * 40
-                + sprites
-                    .iter()
-                    .map(|r| r.instances.len() as u64)
-                    .sum::<u64>()
-                    * 88,
+                + u64::from(bolt_count) * std::mem::size_of::<crate::projectiles::Bolt>() as u64
+                + sprites_drawn * std::mem::size_of::<crate::sprites::SpriteInstance>() as u64,
             bolts: bolt_count,
-            sprites: sprites.iter().map(|r| r.instances.len() as u32).sum(),
+            sprites: u32::try_from(sprites_drawn).unwrap_or(u32::MAX),
         };
         let timer = target.timer.as_ref().and_then(Option::as_ref);
         let mut light = FrameLight {
@@ -1517,14 +1523,24 @@ mod tests {
     /// A device to draw on; none skips the test, unless `REQUIRE_GPU` is
     /// set (as in tests/gpu.rs).
     fn gpu() -> Option<(wgpu::Device, wgpu::Queue)> {
+        gpu_with(|limits| limits)
+    }
+
+    /// [`gpu`] with the adapter's limits changed by `limits`.
+    fn gpu_with(
+        limits: impl FnOnce(wgpu::Limits) -> wgpu::Limits,
+    ) -> Option<(wgpu::Device, wgpu::Queue)> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle().with_env());
         let found =
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
                 .ok()
                 .and_then(|adapter| {
-                    pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
-                        .ok()
+                    let descriptor = wgpu::DeviceDescriptor {
+                        required_limits: limits(adapter.limits()),
+                        ..wgpu::DeviceDescriptor::default()
+                    };
+                    pollster::block_on(adapter.request_device(&descriptor)).ok()
                 });
         if found.is_none() {
             assert!(
@@ -1620,6 +1636,73 @@ mod tests {
         params.sun.shadows = false;
         renderer.render(&device, &queue, &mut target, &params, &placed, &[]);
         assert!(target.frame.shadow_view.is_some());
+    }
+
+    #[test]
+    fn sprites_too_many_to_draw_are_not_counted_and_warned_about_once() {
+        // A card that holds 64 KiB in one buffer: 744 sprites at most.
+        let Some((device, queue)) = gpu_with(|limits| wgpu::Limits {
+            max_buffer_size: 1 << 16,
+            ..limits
+        }) else {
+            return;
+        };
+        let renderer = ViewportRenderer::new(&device, 1);
+        let mut target = renderer.create_target(&device, [16, 16]);
+        let sheet = renderer.upload_sheet(&device, &queue, [1, 1], &[255; 4]);
+        let sprite = crate::sprites::SpriteInstance {
+            corner: [0.0; 3],
+            flags: 0,
+            axis_x: [0.01, 0.0],
+            axis_y: [0.0, -0.01],
+            rect: [0.0, 0.0, 1.0, 1.0],
+            tint: [1.0; 4],
+            outline: [0.0; 4],
+            foot: [0.0; 2],
+        };
+        let size = std::mem::size_of::<crate::sprites::SpriteInstance>() as u64;
+        let params = FrameParams {
+            view_projection: glam::Mat4::IDENTITY,
+            camera_position: Vec3::Z,
+            focus: Vec3::ZERO,
+            sky_top: [0.3; 3],
+            sky_horizon: [0.3; 3],
+            ground: [0.2; 3],
+            shading: crate::frame::Shading::default(),
+            size_px: [16, 16],
+            sun: crate::lighting::Sun::default(),
+            environment: crate::environment::Environment::default(),
+            editor_lines: false,
+            grid_plane: crate::frame::GridPlane::Ground,
+            grid_step: 1.0,
+        };
+        let mut draw = |count: usize| {
+            let instances = vec![sprite; count];
+            let runs = [crate::sprites::SpriteRun {
+                sheet: &sheet,
+                instances: &instances,
+            }];
+            let scene = Scene {
+                sprites: &runs,
+                ..Scene::default()
+            };
+            let stats = renderer.render_scene(&device, &queue, &mut target, &params, &scene);
+            (stats, target.frame.sprites_dropped)
+        };
+        let (stats, dropped) = draw(10);
+        assert_eq!((stats.sprites, stats.sent_bytes), (10, 10 * size));
+        assert!(!dropped);
+        // Too many: none drawn, none counted, none sent; the warning is
+        // logged on the first such frame only.
+        for _ in 0..2 {
+            let (stats, dropped) = draw(1000);
+            assert_eq!((stats.sprites, stats.sent_bytes), (0, 0));
+            assert!(dropped);
+        }
+        // Fitting again, and a warning again when they next don't.
+        let (stats, dropped) = draw(700);
+        assert_eq!((stats.sprites, stats.sent_bytes), (700, 700 * size));
+        assert!(!dropped);
     }
 
     #[test]
