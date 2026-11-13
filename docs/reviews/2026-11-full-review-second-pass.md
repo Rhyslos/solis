@@ -17,10 +17,10 @@ The **scale check** ran on a 2-core machine with no graphics card. Most targets 
 
 Severity runs from 1 to 10: 10 is lost work, a crash in normal use or something a hostile file can exploit; 5 is a real bug in an edge case; 2 is small. Each has a proposed fix in the details below.
 
-- **N-01 (6)** A game written only in Lua is told "main.lst… there isn't one": Play is refused and the export says the code has mistakes. *(The fix for games with no code missed this case.)* Fix: check for `main.lst` only when the game has Lust files of its own.
+- **N-01 (6)** A game written only in Lua is told "main.lst… there isn't one": Play is refused and the export says the code has mistakes. *(The fix for games with no code missed this case.)* Fix: check for `main.lst` only when the game has Lust files of its own. **Fixed** (`ee4dfb969`)
 - **N-02 (5)** On the Audio, Debug, Build or Library tab, Delete, Ctrl+D and Ctrl+Z still act on the area you can't see (a crate deleted while you meant a bus). Fix: the area's keys rest on any tab without a 3D or 2D view.
 - **N-03 (5)** Remove a bus and the next bus becomes the picked one; a second click on Remove deletes it too, saved at once with no undo. The Input page has the same problem with its actions. Fix: keep the pick by name, and pick Master after Remove.
-- **N-04 (5)** Solis opens on Home instead of Recent projects every time after the first, because the saved layout is put back after the projects page was chosen (decision 0105). Fix: put the layout back first; a test of the real start order.
+- **N-04 (5)** Solis opens on Home instead of Recent projects every time after the first, because the saved layout is put back after the projects page was chosen (decision 0105). Fix: put the layout back first; a test of the real start order. **Fixed** (`e6d0537fc`)
 - **N-05 (4)** Pressing Enter to confirm a project's new name also opens that project. Fix: ignore Enter on the cards while a name is being typed.
 - **N-06 (4)** Every visit to the File tab (Preferences, About too) reads up to 200 projects' files while the window waits: seconds of freeze with a project on an unplugged drive. Fix: read them on a worker, or only for Recent projects.
 - **N-07 (4)** The new font reader (from the fix of DEP-01) reads the whole font again for every word it measures: thousands of times a frame for a screen full of text. Fix: read the font once and keep what measuring needs.
