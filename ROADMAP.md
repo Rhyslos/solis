@@ -299,14 +299,28 @@ Added 13 November 2026 by the project lead, after trying the remade interface: t
 
 The problems found by the full review's second pass ([the report](docs/reviews/2026-11-full-review-second-pass.md)), fixed in pull requests grouped by kind: stability and correctness, speed (with scale cases), and the small mismatches.
 
-## Tools 1: Shape brushes and world sculpting
+## Tools 1a: Shape brushes
 
-Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)). Mocked up and planned before it's built; every tool has a scale case.
+Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)); what the tools are: [decision 0111](docs/decisions/0111-tools-1-brushes-and-ground.md); plan: [docs/plans/tools-1.md](docs/plans/tools-1.md). Mocked up and approved before it's built; every tool has a scale case.
 
-- **Shape brushes:** simple shapes (a box, a wedge, a cylinder, stairs and the like) made in the editor to build a level with. **B** over the 3D or 2D view opens the brush list, each **B** moves down it, **Space** confirms while it's open, **Esc** closes it; with a tile map picked, B stays the tile Brush.
-- **World sculpting:** shaping the ground by painting on it (raise, lower, smooth, flatten), fast enough for big worlds.
+- **B1 The shape core:** an editable polygon mesh (Aventail's, decision 0007), the list's shapes, a Brush component saved in the area, drawn and solid.
+- **B2 The list and drawing out:** **B** opens the list over the view, each **B** moves down, **Space** confirms, **Esc** closes; drag the footprint, pull up the height, click.
+- **B3 Editing the insides:** **Tab**, then **1** points, **2** edges, **3** faces, moved with the gizmos.
+- **B4 Extrude and shaping:** **E** then move and click, or Shift + drag on the gizmo; inset, split, delete.
+- **B5 Materials, speed, the manual.**
 
-**Gate:** a level blocked out with brushes on sculpted ground, played, saved and reopened, at the scale check's targets.
+**Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened.
+
+## Tools 1b: World sculpting
+
+- **G0 The study** (rule 22): competing ways to store and draw a ground with caves, measured.
+- **G1 The ground, Smooth:** one per area, in chunks made on workers, solid, saved.
+- **G2 Sculpting:** left-drag adds, Ctrl digs, Shift smooths, [ and ] size, Shift + [ and ] strength; Flatten.
+- **G3 Blocky and Sharp:** the ground's look as a setting per ground.
+- **G4 Painting:** materials painted with the same brush.
+- **G5 Speed, game code, the manual.**
+
+**Gate:** a level of brushes on a sculpted, painted ground with a cave, in each look, played, saved and reopened, at the scale check's targets.
 
 ---
 
