@@ -37,7 +37,7 @@ impl Workbench {
         self.load_game_with(text, name, false);
     }
 
-    /// As [`Self::load_game`], for game code's `loadGame` (a quick-load
+    /// As [`Self::load_game`], for game code's `Saves:loadFrom` (a quick-load
     /// key): the game keeps the mouse and keys, so playing goes on.
     pub fn load_game_from_code(&mut self, text: &str, slot: &str) {
         self.load_game_with(text, slot, true);

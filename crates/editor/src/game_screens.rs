@@ -326,8 +326,6 @@ impl script::ScreenReader for GameReader<'_> {
 }
 
 impl Workbench {
-    /// Runs the shown screens' views again (after ticks, or when the code
-    /// changed) and keeps their pictures for the Game panel.
     /// Whether the screens the game shows now aren't the ones last run
     /// (game code showed or hid one since).
     pub(crate) fn screens_out_of_step(&self) -> bool {
@@ -350,6 +348,8 @@ impl Workbench {
                 .any(|((e, n, _), (se, sn))| e != se || n != sn)
     }
 
+    /// Runs the shown screens' views again (after ticks, or when the code
+    /// changed) and keeps their pictures for the Game panel.
     pub(crate) fn refresh_game_screens(&mut self) {
         let Some(playing) = &mut self.open.playing else {
             self.open.game_screens.clear();

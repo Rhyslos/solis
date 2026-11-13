@@ -1,9 +1,9 @@
 //! Events between components (LUST.md §21, "Events"): `send` queues an
 //! event for an entity, and Solis delivers the queue after each tick's
 //! updates, in order, to each component on the entity in order of their
-//! names. Events sent while delivering join the end of the same tick's
-//! queue, so a game runs the same way every time. Lust, Rust and (from M5)
-//! Lua components send and handle the same events.
+//! names. Events sent while delivering are delivered in the next round of
+//! the same tick (`runtime::in_rounds`), so a game runs the same way every
+//! time. Lust, Lua and Rust components send and handle the same events.
 
 use crate::convert::{from_lua, guessed, guessed_to_lua, kind_of, to_lua};
 use mlua::{Lua, Table, Value as LuaValue};

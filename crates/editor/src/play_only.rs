@@ -37,8 +37,9 @@ impl Workbench {
         self.open.quit_asked
     }
 
-    /// Whether the game's code is read and ready (or there's none): an
-    /// exported game starts then.
+    /// Whether the game's code is compiled and ready: an exported game
+    /// starts then. With no code at all there's no program, so this is
+    /// false.
     pub fn code_ready(&self) -> bool {
         self.open.program.is_some()
     }

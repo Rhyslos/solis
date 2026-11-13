@@ -1,6 +1,6 @@
 //! Game code's sounds on their way out of the game (Phase 7, S3).
 //!
-//! Each tick's requests (`playSound…`, `stopSoundsOn`) are gathered on the
+//! Each tick's requests (`Audio:play…`, `entity:stopSounds`) are gathered on the
 //! host in the tick's fixed order, like moves (decision 0033), and handed
 //! to the app after the tick ([`crate::Workbench::take_game_sounds`]),
 //! which plays them. Nothing comes back into the game, and nothing here is

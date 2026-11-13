@@ -1,6 +1,6 @@
 //! The 2D collider (decision 0071): a shape on the ground, in pixels, for
 //! 2D physics. Solid and still (a house, a shipping bin), or a character
-//! game code walks (`moveCharacter`), which slides along walls, solid
+//! game code walks (`entity:walk`), which slides along walls, solid
 //! tiles and other colliders. Plain values here; the game's world turns
 //! them into 2D physics.
 
@@ -48,7 +48,7 @@ pub struct Collider2D {
     /// How far up from the entity's place its middle is, pixels (a
     /// sprite's feet are often a little above its place).
     pub up: f32,
-    /// Walked by game code (`moveCharacter`), sliding along what's in its
+    /// Walked by game code (`entity:walk`), sliding along what's in its
     /// way; otherwise solid and still.
     pub character: bool,
 }

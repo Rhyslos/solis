@@ -436,7 +436,7 @@ impl Workbench {
     /// running, the camera flies, something is being dragged or a key or
     /// button is held, or a pick's answer is coming. Otherwise nothing on
     /// screen moves, and the app draws a frame only when something
-    /// happens ([decision 0026](../../docs/decisions/0026-draw-only-when-something-changes.md)).
+    /// happens ([decision 0026](../../../docs/decisions/0026-draw-only-when-something-changes.md)).
     pub fn wants_frames(&self, ctx: &egui::Context) -> bool {
         self.open.playing.as_ref().is_some_and(|p| !p.paused)
             || self.open.frames_editor.as_ref().is_some_and(|f| f.playing)

@@ -14,7 +14,7 @@
 //!   each zone's echo every sound placed in the world gets.
 //! - **Buses** (S4): each sound plays through its event's bus, with
 //!   ducking worked out here each frame, mute and solo from the Mixer, and
-//!   game code's `setBusVolume` shares for the play; the meters go back
+//!   game code's `Audio:setVolume` shares for the play; the meters go back
 //!   to the Mixer.
 //!
 //! Only what the editor hands out is used: requests, the audio sources
@@ -67,7 +67,7 @@ pub struct GameAudio {
     told_unknown: HashSet<String>,
     /// Whether "too many sounds at once" was said, this play.
     told_full: bool,
-    /// Game code's `setBusVolume` shares, by bus name, this play.
+    /// Game code's `Audio:setVolume` shares, by bus name, this play.
     shares: HashMap<String, f32>,
     /// Ducking as it goes.
     ducker: sound::mixer::Ducker,
@@ -268,7 +268,7 @@ impl GameAudio {
                     device.play_game_sound(w.clip, &w.pick, w.placement, voice(true, true, start))
                 }
                 // An event set to Loop plays on until stopped
-                // (`stopSoundsOn`) or the game stops.
+                // (`entity:stopSounds`) or the game stops.
                 Key::Shot(_) => device.play_game_sound(
                     w.clip,
                     &w.pick,

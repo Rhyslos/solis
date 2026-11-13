@@ -31,7 +31,7 @@ use std::time::Duration;
 
 /// How long Stop takes to fade the game's sounds out.
 pub const STOP_FADE: Duration = Duration::from_millis(250);
-/// How long `stopSoundsOn` takes to fade an entity's sounds out.
+/// How long `entity:stopSounds` takes to fade an entity's sounds out.
 pub const STOP_ON_FADE: Duration = Duration::from_millis(100);
 /// How long pausing and carrying on take, so neither clicks.
 const PAUSE_FADE: Duration = Duration::from_millis(40);
@@ -66,7 +66,7 @@ pub struct Voice {
     pub looping: bool,
     /// Whether it's an `AudioSource`'s loop: listed by
     /// [`crate::SoundDevice::loops_playing`] and stopped with
-    /// [`crate::SoundDevice::stop_loop_on`], never by `stopSoundsOn`.
+    /// [`crate::SoundDevice::stop_loop_on`], never by `entity:stopSounds`.
     pub source: bool,
     /// Where in the sound to start, in seconds.
     pub start_s: f64,
@@ -74,7 +74,7 @@ pub struct Voice {
     pub extra_db: f32,
     /// The entity it belongs to, by its ID's number, even when it's heard
     /// everywhere (a placed sound's entity comes with its placement): so
-    /// `stopSoundsOn` and an AudioSource's loop find it.
+    /// `entity:stopSounds` and an AudioSource's loop find it.
     pub on: Option<u64>,
 }
 
@@ -112,7 +112,7 @@ struct Playing {
     /// Its event's number.
     event: u64,
     /// Whether it's an AudioSource's loop (rests and comes back; not
-    /// stopped by `stopSoundsOn`).
+    /// stopped by `entity:stopSounds`).
     source: bool,
     /// The entity it's on, by its ID's number.
     on: Option<u64>,

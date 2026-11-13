@@ -123,8 +123,6 @@ impl std::fmt::Display for FileError {
 
 impl std::error::Error for FileError {}
 
-/// `path` only if it's a plain path inside a folder: no `..`, no root,
-/// nothing empty.
 /// Whether `name` can name a file or folder in the project on every
 /// system: not empty or hidden (starting with `.`), at most
 /// [`MAX_NAME_CHARS`] characters, none of Windows' forbidden ones
@@ -179,6 +177,8 @@ pub fn file_name_from(name: &str, fallback: &str) -> String {
     safe
 }
 
+/// `path` only if it's a plain path inside a folder: no `..`, no root,
+/// nothing empty.
 fn inside(path: &Path) -> Result<&Path, FileError> {
     let plain = path.components().all(|c| matches!(c, Component::Normal(_)));
     if plain && path.components().next().is_some() {

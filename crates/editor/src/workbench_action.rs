@@ -177,7 +177,7 @@ pub enum WorkbenchAction {
     /// Ask which recording to play back (Debug > Replay a recording…);
     /// the app reads it and calls [`Workbench::replay`](crate::Workbench::replay).
     OpenRecording,
-    /// Save this save game (game code's `saveGame`) as the slot's file in the
+    /// Save this save game (game code's `Saves:saveTo`) as the slot's file in the
     /// project's `saves` folder.
     SaveGame {
         /// Its slot: the file's name.

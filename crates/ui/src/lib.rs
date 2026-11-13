@@ -9,6 +9,9 @@
 //! - [`pictures`]: the pictures screens show, packed into one atlas
 //!   ([decision 0089](../../../docs/decisions/0089-atlas-crop-and-the-ui-editor.md)).
 //! - [`presets`]: the screen sizes the UI editor previews.
+//! - [`sample`]: the mock-up's sample HUD, for the Console's `ui test`.
+//! - [`source`]: a screen's Lust file as the UI editor reads and changes it
+//!   (decision 0089).
 //! - [`text`]: fonts, and letters as distance images in an atlas
 //!   ([decision 0084](../../../docs/decisions/0084-game-ui-text.md)).
 //! - [`view`]: a screen written in Lust, its view's tree laid out with

@@ -635,7 +635,7 @@ pub struct Listening {
 }
 
 /// What each bus's volume should be now, in decibels: its fader, times
-/// game code's `setBusVolume` share while playing (`shares`, 1 as set, 0
+/// game code's `Audio:setVolume` share while playing (`shares`, 1 as set, 0
 /// silent; missing is 1), its ducking from `ducked`, and mute and solo.
 /// Silent is [`f32::NEG_INFINITY`].
 pub fn levels(mixer: &Mixer, shares: &[f32], ducked: &[f32], listening: &Listening) -> Vec<f32> {
