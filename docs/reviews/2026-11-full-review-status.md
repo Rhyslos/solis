@@ -1,10 +1,10 @@
 # The full review of November 2026: where each finding stands
 
-The review of the whole engine ([the findings](2026-11-full-review.md)) found 114 problems, and nine more turned up while they were being fixed: this file tracks all 123. One agent fixed each, and a lead reviewer read each fix. It was paused on 2026-11-11, when the project lead moved the work to the editor's UI remake, and **resumed on 2026-11-12**. **Every finding is now dealt with: 118 fixed, four fixed in part (DEBT-04, DEBT-05, DEBT-09 and DEBT-10: big files split, with the rest of each written in its row) and one left on purpose for the UI remake (DEBT-08), which is now built, so the second pass checks it again.** The fixes are in pull requests 228 and 230 to 249, and in the one with this update (DOC-01, DOC-02 and DOC-04 to DOC-07). What was planned after the fixes, and is **not done**: a second review pass over what the fixes changed, and a short final report for the project lead with every new find scored 1 to 10.
+The review of the whole engine ([the findings](2026-11-full-review.md)) found 114 problems, and eleven more turned up while they were being fixed: this file tracks all 125. One agent fixed each, and a lead reviewer read each fix. It was paused on 2026-11-11, when the project lead moved the work to the editor's UI remake, and **resumed on 2026-11-12**. **Every finding is now dealt with: 120 fixed and five fixed in part (DEBT-04, DEBT-05, DEBT-08, DEBT-09 and DEBT-10: big files split, with the rest of each written in its row).** The fixes are in pull requests 228 and 230 to 250. The second pass over what the fixes and the UI remake changed, and the final report with every new find scored 1 to 10, are in [2026-11-full-review-second-pass.md](2026-11-full-review-second-pass.md) (27 new problems, none fixed yet).
 
 The UI remake is built (pull requests 236 to 242): the second pass reads the code as it is now.
 
-## Open (none; four fixed in part)
+## Open (none; five fixed in part)
 
 The findings that were open when the review paused, and how each was dealt with since.
 
@@ -149,7 +149,7 @@ DEBT-08 (files too large in the editor's interface) is left for the UI remake on
 | DEBT-07 | 4 | run_game is one 485-line function; play.rs and save_game.rs are twice the size guide | `crates/editor/src/play.rs:460` | Fixed (`a56d96986`) |
 | DEBT-09 | 4 | viewport.rs (1,742 lines) and the editor views are far past the size guide | `crates/editor/src/viewport.rs:887` | Fixed in part (`760dbf025`): viewport.rs, graph_canvas and camera.rs; tileset_view, canvas_view, animator_view, tile_view and frames_view left for the UI remake |
 | DEBT-10 | 4 | render_scene is 312 lines; renderer files far past the size guide | `crates/render/src/renderer.rs:1101` | Fixed in part (`2e9971081`): render_scene in four passes, the renderer and its GPU tests split; gpu_model.rs, ui's view.rs and source.rs left |
-| DEBT-08 | 4 | The editor's panel files and functions are several times the size limit (launcher, library, search, properties) | `crates/editor/src/library.rs, launcher.rs, search.rs` | Left for the UI remake, on purpose |
+| DEBT-08 | 4 | The editor's panel files and functions are several times the size limit (launcher, library, search, properties) | `crates/editor/src/library.rs, launcher.rs, search.rs` | Fixed in part by the UI remake: launcher and search split; `library/mod.rs` (1,423 lines) left |
 | DOC-04 | 4 | Phase numbers retired by decision 0097 are still used, one shown to users | `crates/app/src/sample_game.rs:110, docs/manual (5 pages), ARCHITECTURE.md:100` | Fixed (`1cc7c4fb1`) |
 | DOC-06 | 3 | RENAMING.md misses five file extensions and one hard-coded name | `RENAMING.md:21, crates/script/src/screens.rs:25` | Fixed (`4140345d1`) |
 | DOC-07 | 3 | Doc comments in source files describe an earlier state of the code | `about 35 places across script, render, world, tiles, editor, app` | Fixed (`2469ba67c`) |
