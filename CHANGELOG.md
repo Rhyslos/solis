@@ -64,6 +64,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **A game with no code of its own now exports and plays.** The files Solis writes to describe the engine to game code were taken for the game's own code, so a project with none was told in Problems that its `main.lst` was missing, and an exported game of it said "The game can't start: its code has mistakes".
 - **A 2D character can no longer end up partly inside a wall's corner.** Brushing past the corner of a wall at certain angles, the physics library's check of what's in the way could give up and say the way was clear, so the character walked a few centimetres into the corner. Where each step ends is now checked as well, and the character stops at the corner and slides round it.
 - **The Console's `help ui` no longer says screens can't be made yet.** Its last sentence, "Until screens are made in Lust", was left from before game screens were built.
 - **The Console, the turret sample and the manual no longer point at phases that don't exist.** A changed `armour.rs`, the sample's own copy of it and three manual pages named "Phase 10" or "Phase 18", which the roadmap no longer has; they now say a game's own Rust waits for the full export and the merge tool is not built yet. A turret sample made before this sees its `armour.rs` as changed, since its comment changed; make the sample again to clear the note.

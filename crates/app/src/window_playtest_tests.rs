@@ -120,3 +120,84 @@ fn the_editor_s_frames_get_the_sound_card_too() {
     frames_until_the_card_answers(&ctx, &mut app);
     assert!(!app.sound.device().is_silent());
 }
+
+/// An exported game of a project with no game code: an area with one
+/// entity, and whatever `extra` makes in its assets folder first.
+fn game_without_code(dir: &Path, extra: impl Fn(&Path)) -> (egui::Context, App) {
+    let root = dir.join("game");
+    asset_db::Project::create(&root, "Plain").unwrap();
+    let assets = root.join(asset_db::ASSETS_FOLDER);
+    extra(&assets);
+    let mut area = area::Area::new();
+    area.spawn(area::EntityData::new("Rock").with(&area::builtin::Transform::default()));
+    let registry = area::builtin::registry().unwrap();
+    std::fs::write(
+        assets.join("plain.solarea"),
+        area::text::write(&area, &registry, &|_| None),
+    )
+    .unwrap();
+    let (ctx, mut app) = game(dir, fails);
+    app.playtest.as_mut().unwrap().found.playtest.area = "plain.solarea".into();
+    (ctx, app)
+}
+
+/// Frames until play starts, or the game says why it can't (its files,
+/// or mistakes in its code once checked). Gives up after 30 seconds.
+fn frames_until_it_plays(ctx: &egui::Context, app: &mut App) -> Result<(), String> {
+    let give_up = Instant::now() + Duration::from_secs(30);
+    while Instant::now() < give_up {
+        frame(ctx, app);
+        if app.workbench.play_state() != editor::PlayState::Editing {
+            return Ok(());
+        }
+        if let Some(why) = app.playtest.as_ref().and_then(|r| r.failed.clone()) {
+            return Err(why);
+        }
+        if !app.game_code.waiting()
+            && let Some(why) = app.workbench.code_mistakes()
+        {
+            return Err(format!("its code has mistakes: {why}"));
+        }
+        std::thread::yield_now();
+    }
+    Err(format!(
+        "never started: code ready {}, checking {}",
+        app.workbench.code_ready(),
+        app.game_code.waiting()
+    ))
+}
+
+/// NEW-10: a game with no code of its own plays, as it does in the
+/// editor. The engine's files describing it to game code (written into
+/// every project) were taken for game code without a `main.lst`, and
+/// with that put right the game still waited for a program there's none
+/// of: it never started.
+#[test]
+fn an_exported_game_with_no_code_starts() {
+    let dir = scratch("no-code");
+    let (ctx, mut app) = game_without_code(&dir, |_| {});
+    assert_eq!(frames_until_it_plays(&ctx, &mut app), Ok(()));
+    assert_eq!(app.workbench.code_mistakes(), None);
+}
+
+/// Nor do folders with no code in them make any.
+#[test]
+fn an_exported_game_with_only_empty_folders_starts() {
+    let dir = scratch("empty-folder");
+    let (ctx, mut app) = game_without_code(&dir, |assets| {
+        std::fs::create_dir_all(assets.join("code")).unwrap();
+        std::fs::create_dir_all(assets.join("solis")).unwrap();
+    });
+    assert_eq!(frames_until_it_plays(&ctx, &mut app), Ok(()));
+}
+
+/// A game whose code has a mistake still says so, and doesn't start.
+#[test]
+fn an_exported_game_whose_code_has_a_mistake_says_so() {
+    let dir = scratch("mistake");
+    let (ctx, mut app) = game_without_code(&dir, |assets| {
+        std::fs::write(assets.join("hero.lst"), "end\n").unwrap();
+    });
+    let said = frames_until_it_plays(&ctx, &mut app).unwrap_err();
+    assert!(said.contains("main.lst"), "{said}");
+}

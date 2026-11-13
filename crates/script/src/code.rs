@@ -36,9 +36,19 @@ pub struct Code {
 }
 
 impl Code {
-    /// Whether there's any game code at all.
+    /// Whether there's no game code at all. The files in the engine's own
+    /// folder ([`crate::describe::engine_folders`]) only describe the
+    /// engine and the project to game code, and are written into every
+    /// project: they alone aren't a game's code. Counted as code, a
+    /// project with none was told its `main.lst` was missing, and an
+    /// exported game of it never started (the full review's NEW-10).
     pub fn is_empty(&self) -> bool {
-        self.files.is_empty() && self.lua.is_empty()
+        let engine = crate::describe::engine_folders(&self.files);
+        self.lua.is_empty()
+            && self.files.iter().all(|(path, _)| {
+                path.split_once('/')
+                    .is_some_and(|(top, _)| engine.iter().any(|e| e == top))
+            })
     }
 }
 
@@ -858,6 +868,42 @@ mod tests {
             notes: Vec::new(),
         };
         assert!(check(&sound).is_empty());
+    }
+
+    /// NEW-10: the files describing the engine, which every project gets
+    /// in the engine's folder, aren't game code: alone they're no code
+    /// (not a missing `main.lst`), and any file of the game's own is.
+    #[test]
+    fn the_engine_s_own_files_alone_are_no_code() {
+        let (engine, _) = crate::describe::descriptions_for(
+            "Test 1.0",
+            "solis",
+            &crate::project_names::Names::standard(),
+        );
+        assert!(engine.len() > 1 && engine.iter().all(|(p, _)| p.starts_with("solis/")));
+        let only_the_engine = Code {
+            files: engine.clone(),
+            lua: Vec::new(),
+            notes: Vec::new(),
+        };
+        assert!(only_the_engine.is_empty());
+        assert!(compile(&only_the_engine).unwrap().is_none());
+        // One file of the game's own, Lust or Lua, is code.
+        let mut gun = only_the_engine.clone();
+        gun.files.push(("gun.lst".into(), "end\n".into()));
+        assert!(!gun.is_empty());
+        assert!(check(&gun)[0].message.contains("main.lst"));
+        let mut lua = only_the_engine.clone();
+        lua.lua.push(("gun.lua".into(), "return {}\n".into()));
+        assert!(!lua.is_empty());
+        // A folder isn't the engine's for its name: only files saying
+        // they describe it make it so.
+        let mine = Code {
+            files: vec![("solis/gun.lst".into(), "end\n".into())],
+            lua: Vec::new(),
+            notes: Vec::new(),
+        };
+        assert!(!mine.is_empty());
     }
 
     #[test]

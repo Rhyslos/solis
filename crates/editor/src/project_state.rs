@@ -147,6 +147,9 @@ pub(crate) struct ProjectState {
     pub(crate) code_problems: Vec<script::CodeProblem>,
     /// The game's program, from the last code without mistakes.
     pub(crate) program: Option<std::sync::Arc<script::Compiled>>,
+    /// Whether a check of the game's code has handed its program over
+    /// (`Workbench::set_program`), none when there's no code.
+    pub(crate) program_given: bool,
     /// The components it put in the registry, by name.
     pub(crate) game_components: std::collections::BTreeSet<String>,
     /// What the viewport's `AreaView` was last worked out for.
