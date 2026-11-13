@@ -3,7 +3,7 @@
 //! a menu's arrow ended by a click, Delete, panning, zooming and framing.
 
 use super::*;
-use egui::{Event, Modifiers, PointerButton};
+use egui::{Event, Modifiers, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 

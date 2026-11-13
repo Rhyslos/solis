@@ -3,7 +3,9 @@
 
 use super::*;
 use crate::test_support::*;
+use egui::vec2;
 use egui_kittest::kittest::Queryable;
+use glam::Vec3;
 
 fn wheel(h: &egui_kittest::Harness<'_, State>, notches: f32) {
     h.event(egui::Event::MouseWheel {

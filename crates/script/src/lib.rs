@@ -18,6 +18,7 @@ pub mod luau;
 mod lust_program;
 pub mod map_code;
 mod native_values;
+mod natives;
 mod objects;
 pub mod project_names;
 pub mod runtime;

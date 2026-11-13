@@ -41,7 +41,7 @@ fn question(offer: UpdateOffer) -> Harness<'static, Asked> {
     Harness::builder().with_size([800.0, 600.0]).build_ui_state(
         move |ui, state: &mut Asked| {
             let ctx = ui.ctx().clone();
-            if let Some(answer) = update_question(&ctx, "Test Engine", &offer, &mut state.0, 0.0) {
+            if let Some(answer) = update_question(&ctx, "Test Engine", &offer, &mut state.0) {
                 state.1 = Some(answer);
             }
         },

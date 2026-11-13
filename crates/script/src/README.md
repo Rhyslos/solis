@@ -31,7 +31,8 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 | `syncing.rs` | Making running components from the area's values, and passing on what changed or was set by hand. | |
 | `ticking.rs` | One tick: the game-wide objects' `update`s, the tweens game code started (Lust's `tickTweens`), every component's `update` in one order, then delivering events. An `Order` also says which entity's code is running (who caused a sound). | `Order` |
 | `events.rs` | Events between components: queued by `send`, delivered after the tick's updates in a fixed order, so a game runs the same way every time. | `Event` |
-| `host.rs` | What game code can ask of the engine: the `Host` that answers the native methods, lent to Luau only while game code runs. | `Host`, `NoHost`, `Shot` |
+| `host.rs` | What game code can ask of the engine: the `Host` that answers the native methods, lent to Luau only while game code runs (`with_natives`). Tests in `host_tests.rs`. | `Host`, `NoHost`, `Shot` |
+| [`natives/`](natives/README.md) | The natives themselves, one file per engine object, each lent under the key `describe::NATIVES` gives it. | |
 | `native_values.rs` | A native as Lua calls it, reading each value it's given by itself, so one of the wrong kind is said in plain words by the call's name (`solis.World:say(words) wants text for words…`), and what's said when a native kept in a variable is called. Tests in `native_values_tests.rs`. | |
 | `convert.rs` | Values between the editor's kinds (`reflect`) and how Lust keeps them in Luau (a `vec3` as a Luau vector, a `vec2` and a `colour` as tables). | |
 | `game.rs` | Game code on every core (decision 0033): entities split into shards, each with its own `Runtime`, all seeing the world as it was at the start of the tick. | `Game`, `GameWorld`, `WorldView`, `Change` |

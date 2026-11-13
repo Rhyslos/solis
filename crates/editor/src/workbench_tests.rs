@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::area_panel::AreaRequest;
+use crate::area_view::AreaView;
 use crate::commands::POINT_LIGHT_HEIGHT;
 use crate::models::{FileLight, FileLightKind};
 use crate::properties::PropertyRequest;

@@ -131,8 +131,8 @@ struct App {
     updates: crate::updates::Updates,
     /// Copying a project or looking for projects, for Recent projects.
     tidying: crate::known_projects::Tidying,
-    /// Starting up behind the splash screen, until the editor opens.
-    startup: Option<crate::startup::Startup>,
+    /// Whether the splash screen still shows, until the editor opens.
+    splashing: bool,
     /// File › Exit (or closing the window on a File page) asked to quit:
     /// the window's close isn't turned into going back to Recent projects.
     quitting: bool,
@@ -193,7 +193,6 @@ impl App {
         // An exported game never asks GitHub for anything.
         let check = (saved.auto_update && playtest.is_none())
             .then(|| crate::updates::start_check(&cc.egui_ctx));
-        let startup = crate::startup::Startup::new(None, skipped, copy.installed, copy.build);
         let mut app = Self {
             workbench,
             gpu,
@@ -225,7 +224,7 @@ impl App {
             updates: crate::updates::Updates::new(pending, skipped, copy.clone()),
             text_files: crate::text_files::TextFiles::default(),
             tidying: Default::default(),
-            startup: playtest.is_none().then_some(startup),
+            splashing: playtest.is_none(),
             quitting: false,
             editor_size: saved.editor_size,
             sized: false,
@@ -1790,58 +1789,14 @@ impl App {
         }
     }
 
-    /// One frame of the splash screen: asks the update question when
-    /// there's a newer build, moves starting on, and opens the editor (or
-    /// closes, to install a new build) when it's done.
+    /// One frame of the splash screen, opening the editor once it has
+    /// shown for long enough.
     fn splash(&mut self, ui: &mut egui::Ui) {
-        use crate::startup::Next;
         let ctx = ui.ctx().clone();
-        let Some(startup) = self.startup.as_mut() else {
+        if crate::startup::done(self.began.elapsed()) {
+            self.splashing = false;
+            ctx.request_repaint();
             return;
-        };
-        if let Some(offer) = startup.offer()
-            && let Some(answer) = editor::splash::update_question(
-                &ctx,
-                branding::APP_NAME,
-                &offer,
-                &mut startup.skip_tick,
-                editor::splash::BELOW_THE_SPLASH,
-            )
-        {
-            if answer == editor::UpdateAnswer::OpenDownloadPage
-                && let Err(why) = opener::open(crate::updates::releases_page())
-            {
-                log::warn!("couldn't open the download page: {why}");
-            }
-            startup.answer(answer, |release| {
-                crate::updates::start_download(&ctx, crate::updates::this_copy(), release)
-            });
-        }
-        let doing = startup.doing();
-        // Full while the question waits; sweeping while working.
-        let progress = startup.offer().map(|_| 1.0);
-        match startup.step(self.began.elapsed()) {
-            Next::Wait => {}
-            Next::Open(note) => {
-                if let Some(build) = startup.skipped() {
-                    self.updates.skip(build);
-                }
-                if let Some(check) = startup.take_check() {
-                    self.updates.adopt(check, &mut self.workbench);
-                }
-                if let Some((level, text)) = note {
-                    self.workbench.log(level, text);
-                }
-                self.startup = None;
-                ctx.request_repaint();
-                return;
-            }
-            Next::Install { installer } => {
-                // The window closes, and `run` starts the installer, which
-                // opens the new build.
-                self.updates.install_on_close(installer);
-                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            }
         }
         editor::splash::show(
             ui,
@@ -1849,8 +1804,8 @@ impl App {
                 info: &crate::app_info(),
                 accent: self.workbench.accent(),
                 logo: self.logo.as_ref().map(egui::TextureHandle::id),
-                doing: &doing,
-                progress,
+                doing: crate::startup::DOING,
+                progress: None,
                 time: self.began.elapsed().as_secs_f64(),
             },
         );
@@ -1939,7 +1894,7 @@ impl eframe::App for App {
         }
         self.follow_export();
         // The splash screen until starting is done (decision 0045).
-        if self.startup.is_some() {
+        if self.splashing {
             self.splash(ui);
             return;
         }
