@@ -2,7 +2,7 @@
 
 **Layer 1 · Engine**
 
-Animation (Phase 9, D3 and D3b): clips of frames played by time, with their events, a sprite's clips file (`.solframes`), and animators (`.solanim`): state machines that choose which clip plays. 3D skeletons' clips (Phase 16) build on the same clips and the same state machine.
+Animation (Phase 9, D3 and D3b): clips of frames played by time, with their events, a sprite's clips file (`.solframes`), and animators (`.solanim`): state machines that choose which clip plays. 3D skeletons' clips (3D 1 in ROADMAP.md) will build on the same clips and the same state machine.
 
 ## Purpose
 

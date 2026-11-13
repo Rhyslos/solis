@@ -108,7 +108,8 @@ struct App {
     /// The game's code, described and checked on a worker.
     game_code: crate::game_code::GameCode,
     /// The last note on the project's `armour.rs` (changes to it don't
-    /// run until Phase 18), to say it again only when it changes.
+    /// run until the full export, Shared 11), to say it again only when it
+    /// changes.
     rust_note: Option<String>,
     /// What's in the assets folder, as the Library last showed it.
     listing: asset_db::Listing,
@@ -463,7 +464,8 @@ impl App {
                     );
                 }
                 // Rust components built into Solis that this project uses
-                // (the turret sample's), until Phase 18 builds a game's own.
+                // (the turret sample's), until the full export (Shared 11) builds a
+                // game's own.
                 let (rust, note) = crate::sample_game::rust_components(&assets);
                 self.workbench.set_rust_components(rust);
                 if let Some(note) = &note {

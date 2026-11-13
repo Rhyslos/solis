@@ -64,6 +64,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The Console, the turret sample and the manual no longer point at phases that don't exist.** A changed `armour.rs`, the sample's own copy of it and three manual pages named "Phase 10" or "Phase 18", which the roadmap no longer has; they now say a game's own Rust waits for the full export and the merge tool is not built yet. A turret sample made before this sees its `armour.rs` as changed, since its comment changed; make the sample again to clear the note.
 - **The weekly fuzzing of save games builds again.** Its fuzz target still called the editor the way it was made before the new layout, so it no longer compiled and save games went unfuzzed.
 - **The playtest file is now fuzzed weekly like every other file a project ships,** and when a fuzzer finds a crash, its log now says which check failed (the fuzzers used to hide every panic message, their own included).
 - **Sound can no longer drop out because the game paused at the wrong moment.** The piece that hands sound commands to the audio thread could make that thread wait, if Windows paused the game halfway through handing over a change (a volume, a pitch); now neither side ever waits for the other.
