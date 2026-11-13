@@ -31,8 +31,6 @@ pub(crate) struct FramesUi<'a> {
     pub(crate) notes: Vec<String>,
 }
 
-/// The playing blue (the Play button's).
-const PLAYHEAD: Color32 = Color32::from_rgb(0x2f, 0x8f, 0xd0);
 /// An event's mark.
 const EVENT: Color32 = Color32::from_rgb(0x7c, 0xc4, 0xe4);
 /// A frame's tile, at most and at least this wide.
@@ -841,10 +839,12 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
     };
     let ms = (into * 1000.0) as u32;
     let head = x_of_ms(&order, clip, &width_of, left, ms);
+    // In the accent, as the design draws every playhead.
+    let playhead = crate::interface_look::accent_fill();
     painter.vline(
         head,
         ruler_y..=(lane.bottom()),
-        egui::Stroke::new(2.0, PLAYHEAD),
+        egui::Stroke::new(2.0, playhead),
     );
     painter.add(egui::Shape::convex_polygon(
         vec![
@@ -852,7 +852,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
             egui::pos2(head + 5.0, ruler_y),
             egui::pos2(head, ruler_y + 8.0),
         ],
-        PLAYHEAD,
+        playhead,
         egui::Stroke::NONE,
     ));
     changed

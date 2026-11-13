@@ -3,7 +3,7 @@
 //! dragged.
 
 use super::{
-    Drag, Frame, GraphBox, GraphCanvas, GraphEvent, GraphTarget, GraphView, GraphWire, LIVE, ROUND,
+    Drag, Frame, GraphBox, GraphCanvas, GraphEvent, GraphTarget, GraphView, GraphWire, ROUND,
     SIDE_BY_SIDE, distance_to_segment,
 };
 use crate::theme;
@@ -200,15 +200,17 @@ pub(super) fn draw_box(
             painter.rect_stroke(
                 rect.expand(grow),
                 ROUND + grow,
-                Stroke::new(3.0, LIVE.gamma_multiply(f32::from(alpha as u8) / 255.0)),
+                Stroke::new(
+                    3.0,
+                    frame.accent.gamma_multiply(f32::from(alpha as u8) / 255.0),
+                ),
                 egui::StrokeKind::Outside,
             );
         }
     }
     painter.rect_filled(rect, ROUND, crate::tokens::field_border());
-    let border = if b.live {
-        Stroke::new(2.0, LIVE)
-    } else if b.picked {
+    // The live state is told from a picked one by its glow above.
+    let border = if b.live || b.picked {
         Stroke::new(2.0, frame.accent)
     } else {
         Stroke::new(1.0, Color32::from_rgb(0x4a, 0x4a, 0x4a))

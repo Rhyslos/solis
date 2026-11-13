@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **A picked crop stands out whatever the accent colour.** The other crops were yellow, which with the orange accent looked like the picked one; they are a darker grey now. The Frames tab's playhead and the animator's live state, which were always blue, follow the accent colour like the rest of the editor.
 - **The search and the ribbon's hover texts show the 2D editors' keys.** The painting tools (B, U, N, G, I), the copy's Flip X, Flip Y and Turn (X, Y, Z), Map as (Tab), and Delete for a crop, a clip's frames and an animator's state showed no key.
 - **The search finds every panel by name.** Only ten were searched, so "Sound events", "Frames" or "Canvas" found nothing; now any panel that has a place on a tab is found, a file's panels while that file is open.
 - **"Too many model copies to draw" is said once, not every frame.** Like the same warning about sprites, it comes again only when they fit and later stop fitting.

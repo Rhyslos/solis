@@ -92,28 +92,23 @@ fn colours_written(code: &str) -> usize {
 /// meter's green, a build's tag), shades or lights what is under it, or
 /// is a grey the design has no name for; each goes, or takes a token,
 /// when its screen is rebuilt to the design.
-const KEPT: [(&str, usize, &str); 11] = [
+const KEPT: [(&str, usize, &str); 10] = [
     (
         "atlas_view.rs",
-        3,
-        "under and over a picture: the grey behind it, its grid, a crop's yellow frame",
+        2,
+        "under and over a picture: the grey behind it, its grid",
     ),
     (
         "canvas_view.rs",
-        4,
-        "over a game's screen: a missing picture's grey, the dashed frame, code's yellow mark",
-    ),
-    (
-        "frames_view.rs",
         2,
-        "the playhead's blue and an event's light blue",
+        "over a game's screen: a missing picture's grey, the dashed frame",
     ),
+    ("frames_view.rs", 1, "an event's light blue"),
     (
         "game_panel.rs",
         1,
         "the shade behind a note over the running game",
     ),
-    ("graph_canvas.rs", 1, "the live state's blue"),
     (
         "graph_canvas_drawing.rs",
         3,

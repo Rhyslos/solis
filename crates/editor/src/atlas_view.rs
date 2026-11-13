@@ -328,11 +328,7 @@ fn picture_canvas(
             continue;
         }
         let picked = editor.picked == Some(i);
-        let colour = if picked {
-            accent
-        } else {
-            Color32::from_rgb(255, 216, 77)
-        };
+        let colour = if picked { accent } else { crate::tokens::CROP };
         painter.rect_stroke(
             r,
             0.0,

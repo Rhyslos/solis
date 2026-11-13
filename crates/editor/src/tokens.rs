@@ -319,6 +319,14 @@ meaning! {
     SAMPLE_GLOW = 0xfff2c8;
     /// A sample effect's flame.
     SAMPLE_FLAME = 0xf2c46d;
+    /// A crop's frame and name on its picture while it isn't picked (the
+    /// picked one is in the accent). Darker than every accent, so the two
+    /// differ in lightness and not by colour alone (Solis's own; the
+    /// specification's grey for a curve shown for context).
+    CROP = 0x6e6e6e;
+    /// A piece game code made, on the screen's canvas: its frame under the
+    /// pointer and the badge saying "code" (from the mock-up).
+    MADE_BY_CODE = 0xffd84d;
 }
 
 /// How see-through the pills floating over the viewport are (their fill is

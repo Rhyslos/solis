@@ -277,7 +277,7 @@ fn parameter_value(
             p.circle_stroke(c, 18.0, egui::Stroke::new(1.0, theme::button_border()));
             p.line_segment(
                 [c, c + vec2(v[0], -v[1]) * 16.0],
-                egui::Stroke::new(2.0, crate::graph_canvas::LIVE),
+                egui::Stroke::new(2.0, crate::interface_look::accent_fill()),
             );
             if (r.clicked() || r.dragged())
                 && let Some(at) = r.interact_pointer_pos()
@@ -361,11 +361,7 @@ pub(crate) fn preview(ui: &mut Ui, a: &mut AnimatorUi<'_>) {
             if let Some(m) = frame {
                 caption.push_str(&format!(" · frame {}", m.index + 1));
             }
-            ui.label(
-                RichText::new(caption)
-                    .small()
-                    .color(crate::graph_canvas::LIVE),
-            );
+            ui.label(RichText::new(caption).small().color(a.accent));
             if ui.small_button("Start again").clicked() {
                 a.editor.restart_preview();
             }
