@@ -4,6 +4,7 @@
 
 mod animator;
 mod audio_source;
+mod brush;
 mod camera;
 mod collider_2d;
 mod day;
@@ -21,6 +22,7 @@ mod transform;
 
 pub use animator::Animator;
 pub use audio_source::AudioSource;
+pub use brush::{Brush, MAX_CORNERS, MAX_CORNERS_PER_FACE, MAX_FACES, MAX_POINTS, MAX_SLOT};
 pub use camera::{Camera, CameraView};
 pub use collider_2d::{Collider2D, Shape2D};
 pub use day::{DayColours, MAX_STOPS};
@@ -59,6 +61,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<TileMap>()?;
     registry.register_type::<Screen>()?;
     registry.register_type::<Parallax>()?;
+    registry.register_type::<Brush>()?;
     Ok(registry)
 }
 
@@ -167,6 +170,7 @@ mod tests {
             [
                 "Animator",
                 "AudioSource",
+                "Brush",
                 "Camera",
                 "CharacterBody",
                 "Collider",

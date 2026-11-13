@@ -9,6 +9,7 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | `aseprite/` | Two small Aseprite files written by the `assets` crate's tests: the walker, and one in indexed colour (a palette). |
 | `atlas/` | Atlas files (`.atlas.lst`): the fixture of version 1, and a hostile one from `crates/animation/tests/data` that the reader refuses (a control character in its picture's name, which was read but not written back: the file the fuzzer's first run found, made small). |
 | `frames/` | A sprite's clips file (`.solframes`), as the fixture of version 1. |
+| `brush/` | An area of brushes: the area fixture of version 3 (a box, a ramp and stairs). |
 | `game_code/` | Each sample's `main.lst`, and the turret's Lust and Lua joined by a 0x01 byte. |
 | `import_cache/` | Import cache entries (`.solbin`) of the sample models. |
 | `input_actions/` | Input action files (`.solinput`), with one of format 1 (no version line). |

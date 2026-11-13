@@ -5,6 +5,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | File | What it reads |
 | --- | --- |
 | `area_file.rs` | An area or assembly file: refused or read, its assemblies expanded, written and read back. |
+| `brush.rs` | An area file holding brushes: refused or read, each brush within the limits (points, faces, corners), written back to itself, and cut into the triangles it's drawn and made solid with. |
 | `aseprite.rs` | An Aseprite file (`.aseprite`): refused or read within the limits, every frame the canvas's size, tags within the frames, then packed into a sheet whose frames draw back the same. |
 | `atlas.rs` | An atlas file (`.atlas.lst`): refused or read, within the limits, each crop's name good and used once, and written back to itself. |
 | `animator.rs` | An animator file (`.solanim`): refused or read, within the limits, written back to itself, and run with every parameter set every way. |

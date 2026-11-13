@@ -48,6 +48,9 @@ pub(crate) fn about(component: &str) -> Option<&'static str> {
         "Screen" => {
             "Screen shows one of the game's screens (a HUD, a menu) over the game while it plays: pick it, then press Play."
         }
+        "Brush" => {
+            "Brush is a shape made here, drawn flat: move and stretch it with the gizmos, and with Solid ticked the game's characters stand on it."
+        }
         _ => return None,
     })
 }

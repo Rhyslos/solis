@@ -287,9 +287,11 @@ fn prism(outline: &[Vec2], depth: f32) -> Mesh {
     mesh
 }
 
-/// A primitive (built 100 units across) stretched to fill `size`.
+/// A primitive (built 100 units across) stretched to fill `size`, without
+/// the hard edges it marks for smooth shading: brushes are drawn flat.
 fn stretched(primitive: Primitive, size: Vec3) -> Mesh {
     let mut mesh = primitive.mesh();
+    mesh.remove_attribute(crate::attributes::HARD);
     let scale = size / 100.0;
     let points: Vec<(VertexId, Vec3)> = mesh.vertices().collect();
     for (id, at) in points {

@@ -291,6 +291,7 @@ version = "0.0.1"
 dependencies = [
  "glam 0.33.12",
  "lust",
+ "mesh",
  "proptest",
  "reflect",
 ]

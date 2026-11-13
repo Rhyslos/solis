@@ -8,7 +8,7 @@ Example files of every version of every file format Solis has ever released (Pha
 
 | Folder | Format | Versions |
 | --- | --- | --- |
-| `area/` | Areas (`.solarea`) and assemblies (`.solassembly`) | v1, v2 (a placed assembly's part moved out to the top level, `parent = "";`) |
+| `area/` | Areas (`.solarea`) and assemblies (`.solassembly`) | v1, v2 (a placed assembly's part moved out to the top level, `parent = "";`), v3 (brushes: a box, a ramp and stairs, their points and faces a few numbers to a line) |
 | `sound-event/` | Sound events (`.solsound`) | v1 |
 | `mixer/` | The project's buses (`mixer.solmix`) | v1 |
 | `pixels/` | The project's 2D settings (`pixels.solpix`) | v1 |

@@ -23,6 +23,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 - **2D colliders** (`builtin/collider_2d.rs`, decision 0071): the `Collider2D` component, a shape on the ground for 2D physics, in pixels: a circle or a box, offset across and up, solid and still or a character game code walks.
 - **Parallax layers** (`builtin/parallax.rs`, [decision 0094](../../docs/decisions/0094-parallax-layers.md)): the `Parallax` component, which makes the entity's Sprite a layer moving with the camera at its own speed (scroll across and up), repeated if wanted, behind everything or in front; `Parallax::offset` says how far it goes along with the camera.
 - **Tile maps** (`builtin/tile_map.rs`, Phase 9, D4): the `TileMap` component: a tile map file (`.soltilemap`) placed with its top-left corner at the entity. `settings::read_block_settings_within` reads a block settings file with a cap on its blocks, for files as big as a map.
+- **Brushes** (`builtin/brush.rs`, Tools 1a, B1, decision 0111): the `Brush` component, a shape made in the editor: what it was made as (`mesh::Shape`), Solid, and its mesh (`mesh::Mesh`, shared) written as three lists of numbers (`points`, `faces` with each face's count first, `materials`), whose counts are checked against `MAX_POINTS`, `MAX_FACES`, `MAX_CORNERS_PER_FACE` and `MAX_CORNERS` before anything is made; a mesh that breaks one, or a face naming a point twice or one that isn't there, reads as an empty brush (`Brush::damaged`). Area files are version 3 from it: lists of more than `text::NUMBERS_PER_LINE` numbers are written over several lines.
 - **A new area** has a Sun and an Environment (the sun, sky and fog live in each area).
 
 ## Must never
@@ -33,7 +34,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 
 ## Depends on
 
-`reflect`, glam, and the Lust compiler (`lust`), which reads Lust data files (`lust_data`).
+`reflect`, `mesh` (a brush's mesh and its shapes), glam, and the Lust compiler (`lust`), which reads Lust data files (`lust_data`).
 
 ## Status
 

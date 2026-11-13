@@ -924,7 +924,7 @@ pub(crate) fn parse_value(field: &FieldInfo, words: &[String]) -> Result<Value, 
                     .into())
             }
         }
-        FieldKind::Asset | FieldKind::Entity => Err(format!(
+        FieldKind::Asset | FieldKind::Entity | FieldKind::Numbers => Err(format!(
             "{} can't be typed yet; set it in Properties",
             field.label
         )),

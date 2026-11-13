@@ -383,6 +383,17 @@ pub(crate) fn field_widget(
             None
         }
         FieldKind::Entity => whole(entity_picker(ui, (&field.label, value, mixed.whole), area)),
+        FieldKind::Numbers => {
+            // Made by tools (a brush's points), never typed: only how
+            // many there are.
+            let text = match value {
+                _ if mixed.whole => "—".to_string(),
+                Value::List(items) => format!("{} numbers", crate::models::grouped(items.len())),
+                _ => "None".to_string(),
+            };
+            ui.label(text);
+            None
+        }
     }
 }
 

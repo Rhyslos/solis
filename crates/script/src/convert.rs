@@ -40,6 +40,7 @@ pub(crate) fn empty(kind: &FieldKind) -> Value {
         FieldKind::Entity => Value::Entity(None),
         FieldKind::Asset => Value::Asset(None),
         FieldKind::Text => Value::Text(String::new()),
+        FieldKind::Numbers => Value::List(Vec::new()),
     }
 }
 
