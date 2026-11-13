@@ -5795,6 +5795,7 @@ dependencies = [
  "area",
  "glam 0.33.12",
  "hecs",
+ "mesh",
  "physics",
  "rayon",
  "reflect",

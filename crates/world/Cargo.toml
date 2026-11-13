@@ -17,6 +17,7 @@ layer = 1
 [dependencies]
 rayon.workspace = true
 area.workspace = true
+mesh.workspace = true
 animation.workspace = true
 tiles.workspace = true
 reflect.workspace = true
