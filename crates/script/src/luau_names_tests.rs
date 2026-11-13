@@ -133,8 +133,14 @@ fn solis_offers_the_engine_s_objects_and_nothing_else() {
     // Anything else is refused by name; the natives themselves only
     // while the game runs.
     for (other, said) in [
-        ("solis.Files", "solis.Files isn't something Solis offers"),
-        ("solis.world", "solis.world isn't something Solis offers"),
+        (
+            "solis.Files",
+            "solis.Files isn't something the engine offers",
+        ),
+        (
+            "solis.world",
+            "solis.world isn't something the engine offers",
+        ),
         ("solis.send_event", "solis.send_event isn't something"),
         ("solis.Window.quit", "solis.Window.quit isn't something"),
     ] {

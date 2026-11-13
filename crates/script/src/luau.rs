@@ -282,7 +282,7 @@ local function group(prefix)
   local inside = { __index = function(_, key)
     local f = natives and natives[prefix .. "_" .. tostring(key)]
     if not f then
-      error("solis." .. prefix .. "." .. tostring(key) .. " isn't something Solis offers to game code", 2)
+      error("solis." .. prefix .. "." .. tostring(key) .. " isn't something the engine offers to game code", 2)
     end
     return f
   end, __newindex = function()
@@ -300,7 +300,7 @@ local reach = { __index = function(_, key)
   if groups[key] then return groups[key] end
   local f = natives and key ~= "send_event" and natives[key]
   if not f then
-    error("solis." .. tostring(key) .. " isn't something Solis offers to game code", 2)
+    error("solis." .. tostring(key) .. " isn't something the engine offers to game code", 2)
   end
   return f
 end, __metatable = "solis" }

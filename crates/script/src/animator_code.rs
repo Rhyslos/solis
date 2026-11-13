@@ -274,7 +274,7 @@ mod tests {
                 .into(),
         ));
         let engine = lust::Engine {
-            folders: crate::describe::engine_folders(&files),
+            folders: crate::describe::engine_folders(),
         };
         if let Err(problems) = lust::check_with(&engine, "main.lst", &files) {
             let text: Vec<String> = problems.iter().map(ToString::to_string).collect();

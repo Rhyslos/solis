@@ -37,7 +37,7 @@ pub struct Code {
 
 impl Code {
     /// Whether there's no game code at all. The files in the engine's own
-    /// folder ([`crate::describe::engine_folders`]) only describe the
+    /// folder ([`crate::describe::in_engine_folder`]) only describe the
     /// engine and the project to game code, and are written into every
     /// project: they alone aren't a game's code. Counted as code, a
     /// project with none was told its `main.lst` was missing, and an
@@ -51,12 +51,9 @@ impl Code {
     /// game written only in Lua was told its `main.lst` was missing (the
     /// second review pass's N-01).
     fn has_own_lust(&self) -> bool {
-        let engine = crate::describe::engine_folders(&self.files);
-        self.files.iter().any(|(path, _)| {
-            !path
-                .split_once('/')
-                .is_some_and(|(top, _)| engine.iter().any(|e| e == top))
-        })
+        self.files
+            .iter()
+            .any(|(path, _)| !crate::describe::in_engine_folder(path))
     }
 }
 
@@ -423,7 +420,7 @@ fn compile_here(
             // The engine's own folder (solis/): Lust's host folder, whose files give entity
             // its methods and come with every program.
             let engine = lust::Engine {
-                folders: crate::describe::engine_folders(files),
+                folders: crate::describe::engine_folders(),
             };
             match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, files)) {
                 Ok(Ok(chunk)) => lust = Some(chunk),
@@ -502,7 +499,7 @@ fn compile_here(
             .map(|(name, (file, _))| (name.clone(), file.clone()))
             .collect();
         let engine = lust::Engine {
-            folders: crate::describe::engine_folders(&code.files),
+            folders: crate::describe::engine_folders(),
         };
         // And the game's Lua and Rust components and Solis's own, described
         // to screens as Lust components of their fields.
@@ -905,14 +902,22 @@ mod tests {
         let mut lua = only_the_engine.clone();
         lua.lua.push(("gun.lua".into(), "return {}\n".into()));
         assert!(!lua.is_empty());
-        // A folder isn't the engine's for its name: only files saying
-        // they describe it make it so.
-        let mine = Code {
-            files: vec![("solis/gun.lst".into(), "end\n".into())],
+        // N-14: the engine's folder is the branding's, so a file elsewhere
+        // saying it describes the engine is the game's own code (it made
+        // its folder the engine's), and one in the engine's folder isn't.
+        let marked = format!("-- Made by me{}\nend\n", crate::describe::ENGINE_FILE);
+        let elsewhere = Code {
+            files: vec![("tools/gun.lst".into(), marked.clone())],
             lua: Vec::new(),
             notes: Vec::new(),
         };
-        assert!(!mine.is_empty());
+        assert!(!elsewhere.is_empty());
+        let inside = Code {
+            files: vec![("solis/gun.lst".into(), marked)],
+            lua: Vec::new(),
+            notes: Vec::new(),
+        };
+        assert!(inside.is_empty());
     }
 
     /// N-01: a game written only in Lua has the engine's Lust files beside

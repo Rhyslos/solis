@@ -18,7 +18,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
         files.push(("main.lst".into(), main.to_string()));
         match lust::to_lua_with(
             &lust::Engine {
-                folders: crate::describe::engine_folders(&files),
+                folders: crate::describe::engine_folders(),
             },
             "main.lst",
             &files,
