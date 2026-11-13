@@ -24,7 +24,7 @@ The image is plain 8-bit RGBA; the shaders convert linear colour to sRGB as they
 
 ## Tests
 
-The unit tests read the shaders as the compiler does (`shader_layout` in `lib.rs`): every uniform's members, offsets and size, and every number a shader repeats from Rust (sprite flags, game UI's kinds, flags and atlas sizes), must match the Rust side. `tests/gpu.rs` renders real frames and checks pixels. It skips without a GPU, unless `REQUIRE_GPU=1` is set. Without a graphics card, Mesa's software driver works: `WGPU_BACKEND=gl cargo test -p render --test gpu`.
+The unit tests read the shaders as the compiler does (`shader_layout` in `lib.rs`): every uniform's members, offsets and size, and every number a shader repeats from Rust (sprite flags, game UI's kinds, flags and atlas sizes), must match the Rust side. `tests/gpu/` renders real frames and checks pixels, a file per feature. It skips without a GPU, unless `REQUIRE_GPU=1` is set. Without a graphics card, Mesa's software driver works: `WGPU_BACKEND=gl cargo test -p render --test gpu`.
 
 ## Depends on
 

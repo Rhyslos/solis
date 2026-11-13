@@ -7,7 +7,11 @@ Draws viewports on the GPU with wgpu, into offscreen images: the sky, every copy
 | File | What it does | Main items |
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers; checks the shaders compile. | |
-| `renderer.rs` | Draws one viewport frame into its own image: shadow map, sky, models, grid, axes, projectiles, then the last tone-mapping pass. | `ViewportRenderer`, `ViewportTarget`, `LineVertex` |
+| `renderer.rs` | The viewport renderer: its shared pipelines and buffers, uploading models and sheets, picking, the pixel stage and game UI over a picture; the image formats, the ground axes' lines. Tests in `renderer_tests.rs`. | `ViewportRenderer`, `Scene`, `LineVertex` |
+| `passes.rs` | One frame of a scene (`render_scene`): preparing it (what's in view and casts into the shadows in view, sent to the GPU and counted), then the sun's shadow map, the viewport pass (sky, models, outlines, sprites, the editor's lines, projectiles) and the last pass (exposure, tone mapping and sRGB). | `ViewportRenderer::render_scene` |
+| `target.rs` | The images one viewport draws into, and making them (`create_target`). | `ViewportTarget` |
+| `frame_resources.rs` | The GPU data one viewport's frames use (uniforms, copies, projectiles, sprites, shadow map, lamp markers), each buffer grown when it must be. | |
+| `pipelines.rs` | The viewport's own pipelines: sky, grid, lines and the last pass. | |
 | `frame.rs` | What the renderer needs each frame (camera, colours, look, grid plane, the day's tint and lit sprites) and how it is laid out for the GPU. | `FrameParams`, `Look`, `Shading`, `GridPlane` |
 | `gpu_model.rs` | Models on the GPU: an `assets::Model` uploaded once into buffers and textures, then drawn every frame; also the outline and shadow passes. | `GpuModel` |
 | `instances.rs` | Where each copy of a mesh is drawn: all placements gathered into one buffer each frame, grouped so each mesh is drawn once for all its copies; copies out of view are left out, far ones get simpler levels. | `Placement` |
