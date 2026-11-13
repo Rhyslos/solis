@@ -286,6 +286,34 @@ pub(crate) fn press(
     });
 }
 
+/// A new editor with Home's lists in `layout` (decision 0109): for
+/// tests of the design's own shelf (`PanelLayout::Shelf`), or of one
+/// layout in particular.
+pub(crate) fn in_layout(layout: crate::shell::PanelLayout) -> Workbench {
+    let look = crate::interface_look::InterfaceLook {
+        layout,
+        ..Default::default()
+    };
+    Workbench::new(info()).with_interface_look(look)
+}
+
+/// A double-click at `at`: both clicks in one frame, since the test
+/// window's frames are too far apart in time for two of them to be one.
+pub(crate) fn double_click(h: &mut egui_kittest::Harness<'_, State>, at: Pos2) {
+    h.hover_at(at);
+    h.run();
+    for pressed in [true, false, true, false] {
+        h.input_mut().events.push(egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+    h.run();
+    h.run();
+}
+
 /// A click at `at`, with `modifiers` (Ctrl, say) held throughout.
 pub(crate) fn click(
     h: &mut egui_kittest::Harness<'_, State>,
@@ -422,12 +450,23 @@ pub(crate) fn has_panel(w: &Workbench, panel: Panel) -> bool {
     }
 }
 
-/// Gives the shelf of every tab the most room it can have in the test
-/// window, for tests that click far down a column (Properties shares
-/// Home's shelf with the Area and the Library).
+/// Gives Properties the most room it can have in the test window, for
+/// tests that click far down it: where it is a column of the shelf (on
+/// every tab but Home, and on Home in the shelf layout), the tallest
+/// shelf; where it is a column of its own beside the groups (Home in a
+/// side layout, decision 0109), the shortest shelf, so the column is
+/// tall.
 pub(crate) fn roomy_shelf(w: &mut Workbench) {
-    for tab in crate::shell::RibbonTab::ALL {
-        w.shell.arrangement_mut(tab).shelf_height = ROOMY_SHELF;
+    use crate::shell::{PanelLayout, RibbonTab, sizes::Edge};
+    for tab in RibbonTab::ALL {
+        for layout in PanelLayout::ALL {
+            let height = if tab == RibbonTab::Home && layout.is_side() {
+                crate::tokens::size::SHELF_MIN_H
+            } else {
+                ROOMY_SHELF
+            };
+            w.shell.sizes.set(tab, layout, Edge::ShelfHeight, height);
+        }
     }
 }
 

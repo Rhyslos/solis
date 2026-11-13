@@ -1,6 +1,6 @@
 //! How the editor's interface looks, as the user chose it: the accent
-//! colour, the interface scale, the density, and two switches the new
-//! frame reads as it is built
+//! colour, the interface scale, the density, the layout of Home's lists,
+//! and the switches the new frame reads as it is built
 //! ([decision 0100](../../../docs/decisions/0100-one-theme-five-accents.md)).
 //! Not to be confused with [`crate::Look`], how models are shaded in the
 //! viewport.
@@ -14,6 +14,7 @@
 //! ([`in_use`]): sizes that follow the density and the launcher's tints
 //! read it without being handed it.
 
+pub use crate::shell::PanelLayout;
 use crate::tokens::size::{Density, Scale};
 use crate::tokens::{self, Accent};
 use egui::Color32;
@@ -41,6 +42,10 @@ pub struct InterfaceLook {
     /// (Preferences › Appearance). Builds before it had none: they read
     /// the standard, which keeps the shelf as it is.
     pub shelf_opens_on: ShelfOpensOn,
+    /// Where Home's Area, Properties and Assets lists sit (Preferences ›
+    /// Appearance; decision 0109). Builds before it had them on the
+    /// shelf; they read the standard, the lists beside the groups.
+    pub layout: PanelLayout,
 }
 
 /// Which shelf tab comes to the front when something is selected.
@@ -75,6 +80,7 @@ impl Default for InterfaceLook {
             ribbon_labels: true,
             hide_unfinished: false,
             shelf_opens_on: ShelfOpensOn::AsItIs,
+            layout: PanelLayout::default(),
         }
     }
 }

@@ -107,6 +107,10 @@ pub const SHELF_GRIP: [f32; 2] = [36.0, 4.0];
 pub const SHELF_H: f32 = 300.0;
 /// The shelf's standard height on the Animate tab (spec 418).
 pub const SHELF_H_ANIMATE: f32 = 360.0;
+/// The shelf's standard height on Home in a layout with the Area,
+/// Properties and Assets lists beside the groups (decision 0109): it
+/// holds only the Console, Problems and the like there. Solis's own.
+pub const SHELF_H_SIDE: f32 = 160.0;
 /// The shelf's least height under its bar, when the grip is dragged.
 /// Solis's own.
 pub const SHELF_MIN_H: f32 = 80.0;
@@ -120,6 +124,25 @@ pub const SCENE_COLUMN_W: f32 = 240.0;
 pub const TERRAINS_COLUMN_W: f32 = 630.0;
 /// The Assets (Library) column's width (spec 207: 280 to 320).
 pub const ASSETS_COLUMN_W: f32 = 300.0;
+/// Properties as a column of its own beside the groups (decision 0109):
+/// its cards one under another, each with room for three numbers in a
+/// row; dragged wider, two go side by side. Solis's own.
+pub const PROPERTIES_COLUMN_W: f32 = 340.0;
+/// The Assets strip under the groups (decision 0109), header and all:
+/// two rows of tiles. Solis's own.
+pub const ASSETS_STRIP_H: f32 = 190.0;
+/// The least height of the Assets strip, or of one of two lists stacked
+/// in a column, when a border is dragged. Solis's own.
+pub const PART_MIN_H: f32 = 80.0;
+/// The least width the editor groups keep between the side columns:
+/// narrower, the columns give way. Solis's own.
+pub const CENTER_MIN_W: f32 = 240.0;
+/// The upper list's standard share of a column holding two (decision
+/// 0109). Solis's own.
+pub const SIDE_SHARE: f32 = 0.5;
+/// The least width of a tile in the Assets list: as many go across as
+/// fit, four in its standard column. Solis's own.
+pub const ASSETS_TILE_MIN_W: f32 = 64.0;
 /// The Placement column on the Place shelf tab (spec 270: 250 to 280).
 pub const PLACEMENT_COLUMN_W: f32 = 260.0;
 /// How far right of the pointer the placing label starts. Solis's own.
@@ -146,8 +169,8 @@ pub const SPLIT_AUDIO: f32 = 0.6;
 /// The least width of an editor group side by side: narrower than this,
 /// the groups stack (spec 1145). Solis's own.
 pub const GROUP_MIN_W: f32 = 360.0;
-/// How far either side of a divider (the 1 px line between groups, the
-/// shelf's top edge) a drag takes hold. Solis's own.
+/// How far either side of a border (the 1 px line between groups or
+/// columns, the shelf's top edge) a drag takes hold. Solis's own.
 pub const DIVIDER_REACH: f32 = 3.0;
 /// A shelf column header's height.
 pub const COLUMN_HEADER_H: f32 = 30.0;

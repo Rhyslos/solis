@@ -259,11 +259,14 @@ fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_no
             crate::library::Filter::All,
             "{path}: no chip hides it"
         );
-        assert_eq!(
-            w.shelf_tab(),
-            Some(crate::shell::ShelfTab::Entity),
-            "{path}: the Library comes up"
-        );
+        // The Assets list comes up: on the shelf's Entity tab, or beside
+        // the area in a side layout, where it is always in view.
+        use crate::shell::workspaces::{Home, home_of};
+        let home = home_of(w.ribbon_tab(), w.open_now(), crate::panel::Panel::Assets);
+        match home {
+            Some(Home::Shelf(shelf)) => assert_eq!(w.shelf_tab(), Some(shelf), "{path}"),
+            other => assert_eq!(other, Some(Home::Beside), "{path}: the Library comes up"),
+        }
     }
 }
 

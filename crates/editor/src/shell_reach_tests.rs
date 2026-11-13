@@ -448,3 +448,38 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
     }
     assert_eq!(with_keys, 17, "every command with a shortcut was tried");
 }
+
+/// Nothing became unreachable when Home's lists left the shelf (decision
+/// 0109): in every panel layout, every panel can be brought into view,
+/// and placing (the Place shelf tab) can be started and left.
+#[test]
+fn every_panel_can_be_reached_in_every_layout() {
+    use crate::panel::Panel;
+    use crate::shell::PanelLayout;
+    for layout in PanelLayout::ALL {
+        let mut w = crate::test_support::in_layout(layout);
+        w.set_project(Some(crate::library::ProjectInfo {
+            name: "Farm".into(),
+            root: "/projects/farm".into(),
+            assets: "/projects/farm/assets".into(),
+        }));
+        let mut h = harness(w);
+        h.run();
+        for panel in Panel::ALL {
+            h.state_mut().0.show_panel(panel);
+            h.run();
+            assert!(
+                h.state().0.panels_shown().contains(&panel),
+                "{panel:?} in {layout:?}"
+            );
+        }
+        h.state_mut().0.show_tab(RibbonTab::Home);
+        h.run();
+        h.get_by_label("Place").click();
+        h.run();
+        assert!(h.state().0.placing(), "{layout:?}");
+        h.get_by_label("Console").click();
+        h.run();
+        assert!(!h.state().0.placing(), "{layout:?}");
+    }
+}

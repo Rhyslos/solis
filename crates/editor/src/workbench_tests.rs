@@ -32,7 +32,15 @@ fn the_title_names_program_version_and_area() {
 fn a_new_workbench_starts_on_home_as_the_design_draws_it() {
     let w = Workbench::new(info());
     assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Home);
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Entity));
+    // The standard layout (decision 0109): Home's lists beside the area,
+    // the Console in front on the shelf; in the design's own, Entity.
+    assert_eq!(
+        w.interface_look().layout,
+        crate::shell::PanelLayout::AreaLeftAssetsBottom
+    );
+    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Console));
+    let shelf = crate::test_support::in_layout(crate::shell::PanelLayout::Shelf);
+    assert_eq!(shelf.shelf_tab(), Some(crate::shell::ShelfTab::Entity));
     assert!(!w.shelf_folded());
     assert_eq!(w.tool(), Tool::Select);
     assert_eq!(w.accent(), Accent::Blue);
@@ -106,10 +114,9 @@ fn harness_with(workbench: Workbench) -> egui_kittest::Harness<'static, Workbenc
 fn the_editor_draws_every_panel_without_a_gpu() {
     let mut h = harness();
     h.run();
-    // The area's document tab, the shelf's tabs and the Entity tab's
-    // columns.
+    // The area's document tab, the shelf's tabs and Home's lists.
     for label in [
-        "Entity",
+        "Place",
         "Console",
         "Problems",
         "Area",

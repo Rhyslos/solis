@@ -15,7 +15,8 @@ pub(crate) enum Tab {
     /// Preferences › General: updates, hints, unfinished parts.
     #[default]
     General,
-    /// Preferences › Appearance: the accent, scale, density, the layout.
+    /// Preferences › Appearance: the accent, scale, density, the layout
+    /// and its sizes.
     Appearance,
     /// Preferences › Viewport: what it shows, snapping, the camera, looks.
     Viewport,
@@ -98,6 +99,7 @@ impl Tab {
                     vec![
                         Built(S::ShelfOpensOn),
                         Built(S::Layout),
+                        Built(S::ResetLayout),
                         Unbuilt(UnbuiltId::PrefsCodeSplit),
                     ],
                 ),
@@ -187,6 +189,7 @@ pub(crate) enum Setting {
     Density,
     ShelfOpensOn,
     Layout,
+    ResetLayout,
     Stats,
     Pills,
     Toolbox,
@@ -215,7 +218,7 @@ pub(crate) enum Setting {
 
 impl Setting {
     /// Every setting, in the pages' order.
-    pub(crate) const ALL: [Self; 32] = [
+    pub(crate) const ALL: [Self; 33] = [
         Self::AutoUpdate,
         Self::Hints,
         Self::HideUnfinished,
@@ -224,6 +227,7 @@ impl Setting {
         Self::Density,
         Self::ShelfOpensOn,
         Self::Layout,
+        Self::ResetLayout,
         Self::Stats,
         Self::Pills,
         Self::Toolbox,
@@ -256,7 +260,9 @@ impl Setting {
         use Setting as S;
         match self {
             S::AutoUpdate | S::Hints | S::HideUnfinished => Tab::General,
-            S::Accent | S::Scale | S::Density | S::ShelfOpensOn | S::Layout => Tab::Appearance,
+            S::Accent | S::Scale | S::Density | S::ShelfOpensOn | S::Layout | S::ResetLayout => {
+                Tab::Appearance
+            }
             S::Stats
             | S::Pills
             | S::Toolbox
@@ -288,6 +294,7 @@ impl Setting {
             S::Density => "Density",
             S::ShelfOpensOn => "Shelf opens on",
             S::Layout => "Panel layout",
+            S::ResetLayout => "Sizes",
             S::Stats => "Frame time and frame rate",
             S::Pills => "Axis locks, axes and camera speed",
             S::Toolbox => "Toolbox",
@@ -334,7 +341,13 @@ impl Setting {
             S::Scale => "Scales text and controls. Useful on very sharp screens.",
             S::Density => "Compact fits more rows; Comfortable is easier to click.",
             S::ShelfOpensOn => "Which shelf tab comes to the front when you select something.",
-            S::Layout => "Puts this tab's shelf and groups back as they started.",
+            S::Layout => {
+                "Where the Area, Properties and Assets lists sit on Home: columns beside the \
+                 view, or on the shelf as designed. Changes at once."
+            }
+            S::ResetLayout => {
+                "Puts this tab's shelf, groups and every border you dragged back as they started."
+            }
             S::Stats => {
                 "The pill at the top right. Hover it for the count of entities and triangles."
             }

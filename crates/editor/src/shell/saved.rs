@@ -1,6 +1,7 @@
 //! What the frame keeps between runs (spec 1131-1138; plan 4.2, 4.3):
 //! the tab in front, whether the ribbon is collapsed, and for each tab
-//! its shelf tab, the shelf's height and fold, and its split.
+//! its shelf tab, the shelf's fold, and the size of every border dragged,
+//! for each layout (decision 0109).
 //!
 //! It is a saved format (rules 9 and 23). Tabs are kept by name, so a
 //! name this build doesn't know (one a later build adds, or damage) is
@@ -8,13 +9,21 @@
 //! so a value missing is the standard; and [`Workbench::restore_shell`]
 //! repairs what it can: an unknown shelf tab becomes the tab's first, a
 //! height that doesn't fit becomes the standard, a split outside its
-//! limits becomes the standard.
+//! limits becomes the standard, and a size of a layout or border this
+//! build doesn't know, or one outside its limits, is passed over.
+//!
+//! The shelf's height and the split in the shelf layout keep the keys
+//! they had before the layouts (`shelf_height`, `split`), so an earlier
+//! build still reads them; every other size is under `sizes`, by the
+//! layout's name and then the border's.
 //!
 //! The panel arrangements saved before (the dock's trees under
 //! `panel_layout2` and `workspaces`) mean nothing to this frame and are
 //! not carried over: the Console says so once.
 
-use super::workspaces::{Arrangement, SPLIT_LIMIT, ShelfTab};
+use super::layouts::PanelLayout;
+use super::sizes::{Edge, Sizes};
+use super::workspaces::{Arrangement, ShelfTab};
 use super::{RibbonTab, Shell};
 use crate::tokens::size;
 use crate::workbench::Workbench;
@@ -43,8 +52,11 @@ pub struct WorkspaceState {
     pub shelf_height: f32,
     /// Whether the shelf is folded to its bar.
     pub shelf_folded: bool,
-    /// The first group's share of the room.
+    /// The first group's share of the room, in the shelf layout.
     pub split: f32,
+    /// Every other border dragged: by the layout's name, then the
+    /// border's (`PanelLayout::key`, `Edge::key`).
+    pub sizes: BTreeMap<String, BTreeMap<String, f32>>,
 }
 
 impl Default for WorkspaceState {
@@ -54,64 +66,85 @@ impl Default for WorkspaceState {
             shelf_height: size::SHELF_H,
             shelf_folded: false,
             split: size::SPLIT,
+            sizes: BTreeMap::new(),
         }
     }
 }
 
-/// The most the shelf's content may take, in points: the window has room
-/// for it and a center at least [`size::CENTER_MIN_H`] tall.
-pub(crate) const SHELF_MAX: f32 = 2_000.0;
+/// The two sizes kept under their keys from before the layouts.
+const OLD_KEYS: [(PanelLayout, Edge); 2] = [
+    (PanelLayout::Shelf, Edge::ShelfHeight),
+    (PanelLayout::Shelf, Edge::Split),
+];
 
 impl WorkspaceState {
-    fn of(arrangement: &Arrangement) -> Self {
+    /// What to save of `tab`.
+    fn of(tab: RibbonTab, arrangement: &Arrangement, sizes: &Sizes) -> Self {
+        let mut kept: BTreeMap<String, BTreeMap<String, f32>> = BTreeMap::new();
+        for ((t, layout, edge), value) in sizes.kept() {
+            if t == tab && !OLD_KEYS.contains(&(layout, edge)) {
+                kept.entry(layout.key().to_owned())
+                    .or_default()
+                    .insert(edge.key(), value);
+            }
+        }
+        let shelf = PanelLayout::Shelf;
         Self {
             shelf_tab: arrangement.shelf_tab.name().to_owned(),
-            shelf_height: arrangement.shelf_height,
+            shelf_height: sizes.get(tab, shelf, Edge::ShelfHeight),
             shelf_folded: arrangement.shelf_folded,
-            split: arrangement.split,
+            split: sizes.get(tab, shelf, Edge::Split),
+            sizes: kept,
         }
     }
 
     /// The arrangement this stands for on `tab`, repaired where it can't
-    /// be used as saved.
-    fn restore(&self, tab: RibbonTab) -> Arrangement {
+    /// be used as saved, and its sizes taken into `sizes`: those this
+    /// build knows, inside their limits, and not just the standard.
+    fn restore(&self, tab: RibbonTab, sizes: &mut Sizes) -> Arrangement {
         let standard = Arrangement::standard(tab);
         let shelf_tab = ShelfTab::named(&self.shelf_tab).unwrap_or(standard.shelf_tab);
-        let height = self.shelf_height;
-        let shelf_height =
-            if height.is_finite() && (size::SHELF_MIN_H..=SHELF_MAX).contains(&height) {
-                height
-            } else {
-                standard.shelf_height
-            };
-        let split =
-            if self.split.is_finite() && (SPLIT_LIMIT..=1.0 - SPLIT_LIMIT).contains(&self.split) {
-                self.split
-            } else {
-                standard.split
-            };
+        let old = [self.shelf_height, self.split];
+        let named = self.sizes.iter().flat_map(|(layout, edges)| {
+            let layout = PanelLayout::from_key(layout);
+            edges
+                .iter()
+                .filter_map(move |(edge, value)| Some((layout?, Edge::from_key(edge)?, *value)))
+        });
+        let all = OLD_KEYS
+            .into_iter()
+            .zip(old)
+            .map(|((layout, edge), value)| (layout, edge, value))
+            .chain(named);
+        for (layout, edge, value) in all {
+            if value != edge.standard(tab, layout) {
+                sizes.take_saved(tab, layout, edge, value);
+            }
+        }
         Arrangement {
             shelf_tab,
-            shelf_height,
             shelf_folded: self.shelf_folded,
-            split,
-            front: [None, None],
-            alone: None,
-            merged: false,
+            ..standard
         }
     }
 }
 
 impl Shell {
-    /// What to save.
+    /// What to save: every tab whose middle was changed.
     pub fn saved(&self) -> ShellState {
+        let mut changed: Vec<RibbonTab> = self.arrangements.keys().copied().collect();
+        changed.extend(self.sizes.kept().map(|((tab, _, _), _)| tab));
+        changed.sort();
+        changed.dedup();
         ShellState {
             tab: self.tab_to_save().name().to_owned(),
             ribbon_collapsed: self.collapsed,
-            workspaces: self
-                .arrangements
-                .iter()
-                .map(|(tab, a)| (tab.name().to_owned(), WorkspaceState::of(a)))
+            workspaces: changed
+                .into_iter()
+                .map(|tab| {
+                    let state = WorkspaceState::of(tab, &self.arrangement(tab), &self.sizes);
+                    (tab.name().to_owned(), state)
+                })
                 .collect(),
         }
     }
@@ -135,16 +168,18 @@ impl Shell {
         let tab = named(&saved.tab)
             .filter(|t| *t != RibbonTab::File && t.is_built())
             .unwrap_or(RibbonTab::Home);
+        let mut sizes = Sizes::default();
         let arrangements = saved
             .workspaces
             .iter()
-            .filter_map(|(name, state)| named(name).map(|t| (t, state.restore(t))))
+            .filter_map(|(name, state)| named(name).map(|t| (t, state.restore(t, &mut sizes))))
             .collect();
         Self {
             tab,
             before_file: tab,
             collapsed: saved.ribbon_collapsed,
             arrangements,
+            sizes,
             ..Self::default()
         }
     }

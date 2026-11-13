@@ -3,10 +3,11 @@
 //! document tabs and their menus, groups and columns at narrow widths,
 //! and what each tab remembers across a restart.
 
+use super::sizes::Edge;
 use super::workspaces::ShelfTab;
-use super::{RibbonTab, ShellState};
+use super::{PanelLayout, RibbonTab, ShellState};
 use crate::panel::Panel;
-use crate::test_support::{State, fonts_ready, info};
+use crate::test_support::{State, fonts_ready, in_layout, info};
 use crate::tokens::size;
 use crate::workbench::Workbench;
 use egui::{Key, Modifiers, Rect, vec2};
@@ -32,6 +33,12 @@ fn window(width: f32, height: f32, w: Workbench) -> Harness {
     h.run();
     h.run();
     h
+}
+
+/// The size the tab in front keeps for `edge` in the layout drawn.
+fn size_of(h: &Harness, tab: RibbonTab, edge: Edge) -> f32 {
+    let w = &h.state().0;
+    w.shell.size(tab, w.open_now().layout, edge)
 }
 
 fn body(h: &Harness, panel: Panel) -> Rect {
@@ -67,7 +74,7 @@ fn drag(h: &mut Harness, from: egui::Pos2, by: egui::Vec2) {
 #[test]
 fn the_five_bands_have_the_design_s_heights_at_both_sizes() {
     for (width, height) in [(1440.0, 900.0), (1100.0, 700.0)] {
-        let h = window(width, height, Workbench::new(info()));
+        let h = window(width, height, in_layout(PanelLayout::Shelf));
         // The window's margin: the tabs sit at the foot of the tab bar.
         let margin = h.get_by_label("File tab").rect().bottom() - size::TAB_BAR_H;
         let viewport = body(&h, Panel::Viewport);
@@ -99,12 +106,12 @@ fn the_five_bands_have_the_design_s_heights_at_both_sizes() {
 
 #[test]
 fn the_grip_resizes_the_shelf_within_limits() {
-    let mut h = window(1440.0, 900.0, Workbench::new(info()));
+    let mut h = window(1440.0, 900.0, in_layout(PanelLayout::Shelf));
     let grip = h.get_by_label("Shelf grip").rect().center();
     let before = body(&h, Panel::Viewport).bottom();
     drag(&mut h, grip, vec2(0.0, -100.0));
-    let arrangement = h.state().0.shell.arrangement(RibbonTab::Home);
-    assert!((arrangement.shelf_height - (size::SHELF_H + 100.0)).abs() <= 1.0);
+    let height = size_of(&h, RibbonTab::Home, Edge::ShelfHeight);
+    assert!((height - (size::SHELF_H + 100.0)).abs() <= 1.0);
     assert!((body(&h, Panel::Viewport).bottom() - (before - 100.0)).abs() <= 1.0);
     // Far up: the center keeps its least height.
     let grip = h.get_by_label("Shelf grip").rect().center();
@@ -113,11 +120,20 @@ fn the_grip_resizes_the_shelf_within_limits() {
     // Far down: the shelf keeps its least.
     let grip = h.get_by_label("Shelf grip").rect().center();
     drag(&mut h, grip, vec2(0.0, 2000.0));
-    let arrangement = h.state().0.shell.arrangement(RibbonTab::Home);
-    assert_eq!(arrangement.shelf_height, size::SHELF_MIN_H);
+    assert_eq!(
+        size_of(&h, RibbonTab::Home, Edge::ShelfHeight),
+        size::SHELF_MIN_H
+    );
     // Another tab's shelf is its own.
     assert_eq!(
-        h.state().0.shell.arrangement(RibbonTab::Debug).shelf_height,
+        size_of(&h, RibbonTab::Debug, Edge::ShelfHeight),
+        size::SHELF_H
+    );
+    // A double-click on the grip puts the standard height back.
+    let grip = h.get_by_label("Shelf grip").rect().center();
+    crate::test_support::double_click(&mut h, grip);
+    assert_eq!(
+        size_of(&h, RibbonTab::Home, Edge::ShelfHeight),
         size::SHELF_H
     );
 }
@@ -125,12 +141,15 @@ fn the_grip_resizes_the_shelf_within_limits() {
 #[test]
 fn ctrl_space_folds_the_shelf_and_works_while_typing() {
     let mut h = window(1440.0, 900.0, Workbench::new(info()));
+    let area = body(&h, Panel::Area);
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
     assert!(h.state().0.shelf_folded());
-    assert!(h.state().0.shell.drawn_at(Panel::Area).is_none());
-    // The bar stays, on the status bar; the center has the room.
-    let _ = h.get_by_label("Entity");
+    assert!(h.state().0.shell.drawn_at(Panel::Console).is_none());
+    // The bar stays, on the status bar; the columns beside the area have
+    // the room.
+    let _ = h.get_by_label("Place");
+    assert!(body(&h, Panel::Area).height() > area.height());
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
     assert!(!h.state().0.shelf_folded());
@@ -163,11 +182,11 @@ fn two_groups_side_by_side_share_the_room_and_stack_when_narrow() {
     // The divider's drag moves the split, within its limits.
     let divider = h.get_by_label("Group divider").rect().center();
     drag(&mut h, divider, vec2(-300.0, 0.0));
-    let split = h.state().0.shell.arrangement(RibbonTab::Audio).split;
+    let split = size_of(&h, RibbonTab::Audio, Edge::Split);
     assert!(split < 0.4, "{split}");
     let divider = h.get_by_label("Group divider").rect().center();
     drag(&mut h, divider, vec2(-2000.0, 0.0));
-    let split = h.state().0.shell.arrangement(RibbonTab::Audio).split;
+    let split = size_of(&h, RibbonTab::Audio, Edge::Split);
     assert_eq!(split, super::workspaces::SPLIT_LIMIT);
     // Too narrow for two side by side: they stack.
     let mut w = Workbench::new(info());
@@ -181,7 +200,13 @@ fn two_groups_side_by_side_share_the_room_and_stack_when_narrow() {
 
 #[test]
 fn columns_wrap_under_each_other_when_narrow() {
-    let h = window(700.0, 900.0, Workbench::new(info()));
+    // Too narrow for the side layout, and for the three columns at their
+    // least side by side: they go on the shelf, under each other.
+    let h = window(
+        3.0 * size::COLUMN_MIN_W - 20.0,
+        900.0,
+        Workbench::new(info()),
+    );
     let area = body(&h, Panel::Area);
     let properties = body(&h, Panel::Properties);
     let library = body(&h, Panel::Assets);
@@ -258,7 +283,7 @@ fn the_game_tab_comes_to_the_front_on_play_and_goes_on_stop() {
 
 #[test]
 fn each_tab_remembers_its_shelf_its_height_and_its_split_across_a_restart() {
-    let mut h = window(1440.0, 900.0, Workbench::new(info()));
+    let mut h = window(1440.0, 900.0, in_layout(PanelLayout::Shelf));
     h.get_by_label("Console").click();
     h.run();
     let grip = h.get_by_label("Shelf grip").rect().center();
@@ -277,9 +302,9 @@ fn each_tab_remembers_its_shelf_its_height_and_its_split_across_a_restart() {
     for tab in [RibbonTab::Home, RibbonTab::Audio] {
         let (a, b) = (before.arrangement(tab), w.shell.arrangement(tab));
         assert_eq!(a.shelf_tab, b.shelf_tab, "{tab:?}");
-        assert_eq!(a.shelf_height, b.shelf_height, "{tab:?}");
-        assert_eq!(a.split, b.split, "{tab:?}");
     }
+    assert_eq!(before.sizes, w.shell.sizes);
+    assert!(w.shell.sizes.kept().count() >= 2);
     assert_eq!(w.ribbon_tab(), RibbonTab::Audio);
     assert!(w.ribbon_collapsed());
     assert_eq!(

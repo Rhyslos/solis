@@ -9,6 +9,7 @@ const EVERYTHING: OpenNow = OpenNow {
     atlas: true,
     clips: true,
     map: true,
+    layout: PanelLayout::Shelf,
 };
 
 #[test]
@@ -30,7 +31,7 @@ fn a_panel_is_in_one_place_per_tab() {
             seen.push(panel);
         }
         for shelf in built_shelf_tabs(tab, EVERYTHING) {
-            for panel in shelf.panels() {
+            for panel in shelf.panels(EVERYTHING.layout) {
                 assert!(
                     !groups(tab, EVERYTHING).concat().contains(&panel),
                     "{panel:?} is both a document and on the shelf of {tab:?}"

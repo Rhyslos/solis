@@ -1,6 +1,7 @@
 //! The scale check's case for the frame's layouts (decision 0109): an
-//! editor frame on Home with 10,000 entities in the Area list and 10,000
-//! files in the Assets list, within the editor frame's target.
+//! editor frame on Home in each panel layout with 10,000 entities in the
+//! Area list and 10,000 files in the Assets list, within the editor
+//! frame's target.
 
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::test_support::info;
@@ -16,8 +17,12 @@ const TARGET_MS: f64 = 8.0;
 /// The editor with `count` entities (every tenth heading a group of the
 /// next nine, one selected) and `count` files in the Library's top
 /// folder, a project open so the Assets list shows them.
-pub(crate) fn full(count: usize) -> Workbench {
-    let mut w = Workbench::new(info());
+pub(crate) fn full(count: usize, layout: crate::shell::PanelLayout) -> Workbench {
+    let look = crate::interface_look::InterfaceLook {
+        layout,
+        ..Default::default()
+    };
+    let mut w = Workbench::new(info()).with_interface_look(look);
     w.set_project(Some(ProjectInfo {
         name: "Big".into(),
         root: "big".into(),
@@ -87,11 +92,19 @@ pub(crate) fn frame_ms(w: Workbench) -> f64 {
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 #[allow(clippy::print_stdout)]
 fn scale_check_editor_frame_with_10000_entities_and_10000_files() {
-    let ms = frame_ms(full(10_000));
-    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
-    println!(
-        "Scale check: editor frame on Home, 10,000 entities and 10,000 files listed \
-         {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    let mut slowest = 0.0_f64;
+    for layout in crate::shell::PanelLayout::ALL {
+        let ms = frame_ms(full(10_000, layout));
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!(
+            "Scale check: editor frame on Home ({}), 10,000 entities and 10,000 files listed \
+             {ms:.2} ms (target {TARGET_MS} ms) {verdict}",
+            layout.name()
+        );
+        slowest = slowest.max(ms);
+    }
+    assert!(
+        slowest <= TARGET_MS,
+        "the editor takes {slowest:.2} ms per frame"
     );
-    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
 }

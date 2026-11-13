@@ -3,7 +3,7 @@
 //! sampled against the tokens (and the design's own first screen), and
 //! pictures written out at two sizes to look at beside the design's.
 
-use super::RibbonTab;
+use super::{PanelLayout, RibbonTab};
 use crate::interface_look::InterfaceLook;
 use crate::picture_support::{
     DESIGN_SCALE, Picture, design, drawn, editor_window, matches_approved, sample_project,
@@ -33,11 +33,20 @@ const TABS: [(RibbonTab, &str, Option<&str>); 7] = [
     (RibbonTab::Build, "build", None),
 ];
 
+/// The design's look, with Home's lists on the shelf as its screens have
+/// them (the other tabs look the same in every layout).
+fn shelf_look() -> InterfaceLook {
+    InterfaceLook {
+        layout: PanelLayout::Shelf,
+        ..InterfaceLook::default()
+    }
+}
+
 /// The sample project with `tab` in front, drawn at `size`.
 fn tab_picture(tab: RibbonTab, size: [f32; 2]) -> Option<Picture> {
     let mut workbench = sample_project();
     workbench.show_tab(tab);
-    let mut harness = editor_window(workbench, InterfaceLook::default(), size)?;
+    let mut harness = editor_window(workbench, shelf_look(), size)?;
     harness.run();
     harness.run();
     Some(drawn(&mut harness))
@@ -173,7 +182,7 @@ fn the_grip_and_a_fold_change_only_the_shelf() {
     };
     let mut workbench = sample_project();
     workbench.fold_shelf(true);
-    let Some(mut harness) = editor_window(workbench, InterfaceLook::default(), SIZES[0]) else {
+    let Some(mut harness) = editor_window(workbench, shelf_look(), SIZES[0]) else {
         return;
     };
     harness.run();
@@ -192,4 +201,40 @@ fn the_grip_and_a_fold_change_only_the_shelf() {
         folded.at([700.0, status + size::STATUS_BAR_H / 2.0], 1.0),
         open.at([700.0, status + size::STATUS_BAR_H / 2.0], 1.0)
     );
+}
+
+/// Home in each panel layout with Home's lists beside the area (decision
+/// 0109), against its approved picture; in the shelf layout it is
+/// `editor.png` (`picture_tests.rs`). The lists are panels on the panel's
+/// grey, with a line between each and the area.
+#[test]
+fn home_in_each_side_layout_is_its_approved_picture() {
+    for layout in PanelLayout::ALL.into_iter().filter(|l| l.is_side()) {
+        let look = InterfaceLook {
+            layout,
+            ..InterfaceLook::default()
+        };
+        // Problems in front on the shelf: the Console's lines carry the
+        // time of day they were written.
+        let mut workbench = sample_project();
+        workbench.show_panel(crate::panel::Panel::Problems);
+        let Some(mut harness) = editor_window(workbench, look, SIZES[0]) else {
+            return;
+        };
+        harness.run();
+        harness.run();
+        let area = harness.state().shell.drawn_at(crate::panel::Panel::Area);
+        let picture = drawn(&mut harness);
+        let area = area.expect("the Area list is drawn");
+        // Below the Area list's rows, and the line at its right edge.
+        let below = [area.center().x, area.bottom() - 20.0];
+        assert_eq!(
+            colour_at(&picture, "the Area list", below, 1.0),
+            tokens::panel()
+        );
+        let edge = [area.right() + 0.5, area.bottom() - 20.0];
+        assert_eq!(picture.at(edge, 1.0), tokens::line(), "{layout:?}");
+        let name = format!("home-{}", layout.key().replace(' ', "-"));
+        matches_approved(&name, &picture);
+    }
 }
