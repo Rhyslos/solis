@@ -154,6 +154,8 @@ fn name_field(
         let mut mixer = state.mixer.clone();
         if words.trim() != bus.name && mixer.rename_bus(at, &words) {
             out.push(MixerRequest::Changed { mixer, save: true });
+            // The pick is kept by name: it follows the new one.
+            out.push(MixerRequest::Select(at));
         }
     }
 }
@@ -275,7 +277,8 @@ pub(crate) fn add_rule(state: &MixerState) -> Vec<MixerRequest> {
 }
 
 /// Removes the bus shown (never Master): the ribbon's Remove and the
-/// group's Remove bus.
+/// group's Remove bus. Master is shown after, unpicked: a second Remove
+/// does nothing, rather than remove the next bus.
 pub(crate) fn remove_bus(state: &MixerState) -> Vec<MixerRequest> {
     let at = state.bus_shown();
     if at == 0 {

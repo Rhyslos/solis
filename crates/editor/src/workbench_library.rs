@@ -514,8 +514,8 @@ impl Workbench {
         if stale {
             self.open.sound_shown = None;
         }
-        let bus_stale = self.open.mixer.shown.as_ref().is_some_and(|(at, then)| {
-            *then != self.open.document.selection || *at >= self.open.mixer.mixer.buses.len()
+        let bus_stale = self.open.mixer.shown.as_ref().is_some_and(|(name, then)| {
+            *then != self.open.document.selection || self.open.mixer.mixer.index_of(name).is_none()
         });
         if bus_stale {
             self.open.mixer.shown = None;
