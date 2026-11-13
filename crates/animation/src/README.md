@@ -8,3 +8,4 @@
 | `animator_file.rs` | An animator (`.solanim`): parameters, states (a clip, or a clip per direction) and transitions with conditions; read within limits and written. Tests in `animator_file_tests.rs`. | `AnimatorFile`, `Parameter`, `State`, `Transition`, `Condition`, `Facing`, `read`, `write` |
 | `animator.rs` | An animator made ready to run, and one entity's place in it, stepped once a tick. Tests in `animator_tests.rs`. | `Animator`, `Run`, `ParamValue` |
 | `clip_set.rs` | A sheet's Aseprite tags and its clips file put together. Tests in `clip_set_tests.rs`. | `ClipSet` |
+| `atlas.rs` | Atlas crops (decision 0089): named boxes cut out of a picture, kept in a Lust data file beside it (`tools.png` gives `tools.atlas.lst`; decision 0081), never changing the picture; read within limits and written. Tests in `atlas_tests.rs`. | `Atlas`, `Crop`, `read`, `write`, `file_for` |

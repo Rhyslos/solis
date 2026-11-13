@@ -91,7 +91,7 @@ A change is not done until its documentation is.
 | --- | --- |
 | Code comments (`///` and `//!`) | The item changes. Missing docs fail the build. |
 | Crate `README.md` | The crate's purpose or limits change |
-| Folder `README.md` | A file or folder is added, removed or renamed, or its job changes. Every folder has a README saying what's in it, except where an extra file would do harm or be read as data: game projects' asset folders (`samples/*/assets`), fuzz seeds (`fuzz/seeds/*`), test data (`crates/*/tests/data`), `proptest-regressions`, font and licence folders (`crates/editor/assets/fonts`, `licenses/fonts`), `docs/manual` (every page there is part of the manual) and `.github` itself (GitHub would show it as the front page). Describe those in their parent folder's README instead. |
+| Folder `README.md` | A file or folder is added, removed or renamed, or its job changes. Every folder has a README saying what's in it, except where an extra file would do harm or be read as data: game projects' asset folders, and each sample's folder, which holds only its assets (`samples/*/assets`, `samples/*`), test fixtures (`tests/fixtures` and the folders in it), fuzz seeds (`fuzz/seeds/*`), test data (`crates/*/tests/data`), `proptest-regressions`, font and licence folders (`crates/editor/assets/fonts`, `licenses/fonts`), `docs/manual` (every page there is part of the manual) and `.github` itself (GitHub would show it as the front page). Describe those in their parent folder's README instead. |
 | `ARCHITECTURE.md` | A crate is added, removed or moved, or a data flow changes |
 | `CLAUDE.md` | Anything it describes changes: it is always current |
 | `CONTRIBUTING.md` | Tooling or rules change |
