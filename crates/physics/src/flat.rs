@@ -15,14 +15,17 @@
 //! made for side views, with a floor and slopes): a shape cast to what it
 //! meets, a small skin back out from it, then a slide along it, a few
 //! times over. Kept a skin away, a character sliding along a row of walls never
-//! touches the corners where they meet, so it never snags on a seam.
+//! touches the corners where they meet, so it never snags on a seam. The
+//! cast can (rarely) miss what's in its way, so where each piece of a move
+//! ends is checked too: a character never ends inside anything it didn't
+//! start in.
 //!
 //! Everything is kept in entity order, so the same changes always make the
 //! same handles, and a tick's moves are made one after another in the
 //! order asked: the same on every PC.
 
 use glam::Vec2;
-use rapier2d::parry::query::ShapeCastOptions;
+use rapier2d::parry::query::{self, ShapeCastHit, ShapeCastOptions};
 use rapier2d::prelude as rp;
 use reflect::EntityId;
 use std::collections::BTreeMap;
@@ -42,6 +45,14 @@ pub const MAX_CHUNK_WALLS: usize = 512;
 
 /// How many times a move slides along what it meets before stopping.
 const SLIDES: usize = 4;
+
+/// How deep a mover may sit in what it touches before it counts as inside
+/// it, in metres: rounding, far under a [`SKIN`].
+const TOUCH: f32 = 1.0e-4;
+
+/// How many times the search for where a missed thing is met halves the
+/// move: a 4 m move to within a quarter of a micrometre.
+const HALVINGS: usize = 24;
 
 /// A flat collider's shape (in metres, on the ground).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -273,22 +284,22 @@ impl FlatState {
             // Rapier's maths failing on something out of range stops the
             // move, never crashes.
             let Ok(hit) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                queries.cast_shape(&pose, left, &*shape, options)
+                let cast = queries.cast_shape(&pose, left, &*shape, options).map(met);
+                // Whatever the cast says, what it missed on the way to
+                // where it stops comes first.
+                let reach = cast.map_or(1.0, |(_, t, _)| t);
+                self.missed(skip, &*shape, at, left * reach)
+                    .map(|(handle, s, normal)| (handle, s * reach, normal))
+                    .or(cast)
             })) else {
                 break;
             };
-            let Some((handle, hit)) = hit else {
+            let Some((handle, t, normal)) = hit else {
                 at += left;
                 break;
             };
-            let t = if hit.time_of_impact.is_finite() {
-                hit.time_of_impact.clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
             // The hit thing's surface faces the mover: keep only the part
             // of what's left along it.
-            let normal = hit.normal1.normalize_or_zero();
             let rest = left * (1.0 - t);
             let into = rest.dot(normal);
             if into >= -1.0e-7 {
@@ -307,6 +318,77 @@ impl FlatState {
         }
         (if at.is_finite() { at } else { start }, floor)
     }
+
+    /// What a cast of `shape` from `from` by `by` missed: anything it would
+    /// end deeper in than [`TOUCH`] but didn't start in. Rapier's cast
+    /// (parry's GJK) can close in on the right time of impact, stall a
+    /// hair short of proving it, and give up saying nothing's in the way:
+    /// a circle swept past a box's corner went into it (the full review's
+    /// NEW-09). Found, the place it starts touching is halved down to, and
+    /// it's met as a cast's hit is: the fraction of `by` there, and the
+    /// surface's normal.
+    fn missed(
+        &self,
+        skip: rp::ColliderHandle,
+        shape: &dyn rp::Shape,
+        from: Vec2,
+        by: Vec2,
+    ) -> Option<(rp::ColliderHandle, f32, Vec2)> {
+        // What the move has slid past counts too: sliding on along one
+        // thing never takes it into another it passed.
+        let filter = rp::QueryFilter::default()
+            .exclude_collider(skip)
+            .exclude_sensors();
+        let queries = self.broad_phase.as_query_pipeline(
+            self.narrow_phase.query_dispatcher(),
+            &self.bodies,
+            &self.colliders,
+            filter,
+        );
+        let contact = |place: Vec2, c: &rp::Collider| {
+            let pose = rp::Pose::from_translation(place);
+            query::contact(c.position(), c.shape(), &pose, shape, 1.0)
+                .ok()
+                .flatten()
+        };
+        let inside =
+            |place: Vec2, c: &rp::Collider| contact(place, c).is_some_and(|hit| hit.dist < -TOUCH);
+        let end = from + by;
+        let missed: Vec<(rp::ColliderHandle, &rp::Collider)> = queries
+            .intersect_shape(rp::Pose::from_translation(end), shape)
+            .filter(|(_, c)| inside(end, c) && !inside(from, c))
+            .collect();
+        if missed.is_empty() {
+            return None;
+        }
+        let (mut clear, mut deep) = (0.0_f32, 1.0_f32);
+        for _ in 0..HALVINGS {
+            let mid = (clear + deep) * 0.5;
+            if missed.iter().any(|(_, c)| inside(from + by * mid, c)) {
+                deep = mid;
+            } else {
+                clear = mid;
+            }
+        }
+        // The one nearest there is the one met.
+        let place = from + by * clear;
+        missed
+            .iter()
+            .filter_map(|(h, c)| Some((*h, contact(place, c)?)))
+            .min_by(|a, b| a.1.dist.total_cmp(&b.1.dist))
+            .map(|(h, hit)| (h, clear, hit.normal1.normalize_or_zero()))
+    }
+}
+
+/// What a cast hit, the fraction of the move to it, and its surface's
+/// normal (facing the mover).
+fn met((handle, hit): (rp::ColliderHandle, ShapeCastHit)) -> (rp::ColliderHandle, f32, Vec2) {
+    let t = if hit.time_of_impact.is_finite() {
+        hit.time_of_impact.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    (handle, t, hit.normal1.normalize_or_zero())
 }
 
 /// 2D physics: its [`FlatState`], and Rapier's workspace.

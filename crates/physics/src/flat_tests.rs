@@ -373,6 +373,59 @@ fn a_break_names_the_move_it_broke_on_when_that_s_all_that_changed() {
     assert_eq!(flat.broke_on(), None);
 }
 
+/// The wall a round character (radius 0.25, as `world` makes it) at `at`
+/// is inside, if any: its middle nearer the wall than its radius (less
+/// a millimetre for rounding).
+fn wall_it_is_inside(at: Vec2, walls: &[(Vec2, Vec2)]) -> Option<(Vec2, Vec2)> {
+    walls
+        .iter()
+        .copied()
+        .find(|(lo, hi)| at.clamp(*lo, *hi).distance(at) < 0.25 - 1e-3)
+}
+
+#[test]
+fn the_inside_check_knows_a_circle_from_its_box() {
+    let wall = [rect(-4.0, -4.0, -1.0, -1.0)];
+    // Where NEW-09's character ended: 0.208 from the corner, so 4 cm into it.
+    assert!(wall_it_is_inside(Vec2::new(-0.967_717_3, -0.794_273_7), &wall).is_some());
+    // Off the corner diagonally, the circle's box would overlap the wall's
+    // and the circle doesn't.
+    assert!(wall_it_is_inside(Vec2::new(-0.8, -0.8), &wall).is_none());
+    assert!(wall_it_is_inside(Vec2::new(-0.76, -2.0), &wall).is_some());
+    assert!(wall_it_is_inside(Vec2::new(-0.74, -2.0), &wall).is_none());
+}
+
+/// The full review's NEW-09, which the property test below rolled: a
+/// circle swept past a box's corner, and Rapier's cast (parry's GJK) closed
+/// in on the time it touched, stalled a hair short of proving it and said
+/// nothing was in the way, so the move went 4 cm into the corner. This is
+/// the place and move it failed on, to the bit.
+#[test]
+fn a_move_the_cast_misses_still_stops_at_the_corner() {
+    let wall = [rect(-4.0, -4.0, -1.0, -1.0)];
+    let mut flat = world(Vec2::new(-0.796_123_6, -0.716_439_8), &wall);
+    let at = walk(&mut flat, Vec2::new(-0.171_593_64, -0.077_833_92), 1);
+    assert_eq!(wall_it_is_inside(at, &wall), None, "inside at {at}");
+    // Stopped a skin out at the corner, then slid on round it, which
+    // takes it a little further off.
+    let gap = at.distance(Vec2::new(-1.0, -1.0)) - 0.25;
+    assert!((SKIN * 0.9..0.02).contains(&gap), "at the corner: {gap}");
+    let last = flat.state().last_move(id(1)).unwrap();
+    assert!(
+        last.velocity.x < 0.0,
+        "slid round it, still going: {last:?}"
+    );
+}
+
+#[test]
+fn a_character_put_inside_a_wall_can_still_walk_out() {
+    // Checking where a move ends counts only what it didn't start in.
+    let wall = [rect(-1.0, -1.0, 1.0, 1.0)];
+    let mut flat = world(Vec2::new(0.5, 0.0), &wall);
+    let at = walk(&mut flat, Vec2::new(0.1, 0.0), 20);
+    assert!((at.x - 2.5).abs() < 1e-4, "walked out: {at}");
+}
+
 proptest! {
     /// Any walls and any moves: the character never ends inside a wall.
     #[test]
@@ -389,10 +442,7 @@ proptest! {
         for (x, y) in moves {
             flat.move_characters(&[(id(1), Vec2::new(x, y))], 1.0 / 60.0);
             let at = flat.state().place(id(1)).unwrap();
-            for (lo, hi) in &walls {
-                let nearest = at.clamp(*lo, *hi);
-                prop_assert!(nearest.distance(at) >= 0.25 - 1e-3, "inside {lo} {hi} at {at}");
-            }
+            prop_assert_eq!(wall_it_is_inside(at, &walls), None, "inside at {}", at);
         }
     }
 }
