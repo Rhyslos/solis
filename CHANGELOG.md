@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Solis opens on File › Recent projects at every start again.** From the second start on, the tab you left in front last time was put back over Recent projects, so Solis opened on Home (or that tab). Now Recent projects is in front every time, with that tab behind it for **Esc** or Back to editor. At the start the arrow keys walk the cards rather than the search box.
 - **A game written only in Lua now plays and exports.** The engine's own Lust files, which every project has, made Solis treat such a game as Lust code missing its `main.lst`: Play was refused and the export said the code had mistakes. Only a game with Lust files of its own needs a `main.lst` now.
 - **A game with no code of its own now exports and plays.** The files Solis writes to describe the engine to game code were taken for the game's own code, so a project with none was told in Problems that its `main.lst` was missing, and an exported game of it said "The game can't start: its code has mistakes".
 - **A 2D character can no longer end up partly inside a wall's corner.** Brushing past the corner of a wall at certain angles, the physics library's check of what's in the way could give up and say the way was clear, so the character walked a few centimetres into the corner. Where each step ends is now checked as well, and the character stops at the corner and slides round it.

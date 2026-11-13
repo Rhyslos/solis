@@ -6,7 +6,7 @@
 
 Solis always starts here, in its own full window: the **File** tab's **Recent projects** page. You pick the project to work on, and the editor opens on it. Solis never reopens the last project by itself, so you always choose; the projects you opened most recently come first, so it's one double-click.
 
-Until a project is open, the other tabs along the top are dimmed and the top right says **No project open**. They still work: clicking one, or **Carry on without a project** at the top of the File column (or **Esc**), opens the editor with nothing open, which is handy for looking at a model on its own.
+Until a project is open, the other tabs along the top are dimmed and the top right says **No project open**. They still work: clicking one, or **Carry on without a project** at the top of the File column (or **Esc**), opens the editor with nothing open, which is handy for looking at a model on its own. The editor opens on the tab you left in front last time.
 
 Closing the editor's window brings you back to this page, with the project still open behind it (**Back to editor** returns to it). Closing the window while a File page is in front quits Solis, asking about unsaved work first. The page is also there at any time from **File › Recent projects**.
 
@@ -32,7 +32,7 @@ Use it to:
    - **Rename…**: changes the project's name (in the title bar and on its card). Its folder keeps its name, so nothing that points at the folder breaks. Type the new name and press **Enter**; **Esc** leaves it as it was.
    - **Make a copy…**: choose an empty folder, and the whole project is copied there, named "… copy". Handy before trying something you may want to undo. The import cache is left out (the copy makes its own when it opens), and so are links to elsewhere on the computer. A big project takes a while: a note under the heading says when it's done, and the copy joins the list.
    - **Remove from list**: only forgets the project here. Its folder and files stay exactly where they are, and **Open…** brings it back.
-5. **Search projects** narrows the cards as you type, by name or folder. Every word you type must appear somewhere, in any order.
+5. **Search projects** narrows the cards as you type, by name or folder. Every word you type must appear somewhere, in any order. Click it to type: when Solis starts, the keys are the cards' (the arrows walk them, **Esc** carries on into the editor).
 6. **Sort by** orders the cards by when each was last opened, or by name. Pinned projects always come first.
 7. **New project** makes a folder into a new project. **Open… ▾** has **Open a project folder…** (one that isn't in the list yet) and **Scan a folder for projects…**, which looks through a folder you choose, and the folders inside it (four levels down), and adds every project it finds, without opening them. It doesn't look inside projects or hidden folders.
 8. **Start from a template**, under the cards: **Blank project** is the same as New project; **Playground**, **Turret sample**, **UI sample** and **Benchmark** each make one of Solis's [examples](getting-started.md) as a new project, in a folder you choose. The faint tiles after them (First-person, Top-down, Platformer, and **All templates**) are [unfinished parts](unfinished-parts.md): templates to come.

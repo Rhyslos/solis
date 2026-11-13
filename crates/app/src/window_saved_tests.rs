@@ -11,6 +11,7 @@ use super::super::{
 use super::*;
 use editor::theme::{Accent, Density, Scale};
 use eframe::Storage as _;
+use eframe::egui;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -97,6 +98,66 @@ fn starts_with_the_standard_frame_and_says_so_once(workbench: &Workbench) {
         .filter(|l| l.text.contains("wasn't carried over"))
         .count();
     assert_eq!(said, 1);
+}
+
+/// One frame of `app`, as eframe asks for it, with `events` in it.
+fn frame(ctx: &egui::Context, app: &mut super::super::App, events: Vec<egui::Event>) {
+    let mut frame = eframe::Frame::_new_kittest();
+    let input = egui::RawInput {
+        events,
+        ..egui::RawInput::default()
+    };
+    let mut output = ctx.run_ui(input, |ui| eframe::App::ui(app, ui, &mut frame));
+    output.textures_delta.clear();
+}
+
+/// The second review pass's N-04: every start opens on File › Recent
+/// projects, the frame saved last time behind it, through `App::new` in
+/// the window's own order. The saved tab used to be put back after
+/// Recent projects was chosen, and covered it at every start but the
+/// first. Search projects doesn't take the keys at the start, so Esc
+/// carries on into the editor at once, on the tab left in front.
+#[test]
+fn every_start_opens_on_recent_projects_with_the_saved_frame_behind_it() {
+    let mut storage = Memory::default();
+    // Nothing is asked of the network: checking for updates is off.
+    eframe::set_value(&mut storage, AUTO_UPDATE_KEY, &false);
+    let mut last_run = Workbench::new(info());
+    last_run.show_tab(editor::RibbonTab::Audio);
+    eframe::set_value(&mut storage, SHELL_KEY, &last_run.shell_state());
+    let ctx = egui::Context::default();
+    let mut cc = eframe::CreationContext::_new_kittest(ctx.clone());
+    cc.storage = Some(&storage);
+    let mut app = super::super::App::new(
+        &cc,
+        crate::app_info(),
+        Vec::new(),
+        crate::updates::PendingSlot::default(),
+        None,
+    );
+    app.sound = crate::sound::Sound::with_opener(
+        || Err("there's no sound card".to_owned()),
+        crate::sound::RETRY,
+    );
+    assert!(app.workbench.file_page_open(), "on Recent projects");
+    app.splashing = false;
+    frame(&ctx, &mut app, Vec::new());
+    frame(&ctx, &mut app, Vec::new());
+    assert!(app.workbench.file_page_open(), "still on Recent projects");
+    assert_eq!(
+        ctx.memory(egui::Memory::focused),
+        None,
+        "Search projects doesn't have the keys"
+    );
+    let esc = egui::Event::Key {
+        key: egui::Key::Escape,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    };
+    frame(&ctx, &mut app, vec![esc]);
+    assert_eq!(app.workbench.ribbon_tab(), editor::RibbonTab::Audio);
 }
 
 #[test]
