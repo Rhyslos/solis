@@ -115,7 +115,6 @@ lust = { git = "https://github.com/Rhyslos/Lust", rev = "ee12407605c51c3ab89a68a
 # 0.22.0+luau740): with 0.744, mlua 0.12.2 can't start a Luau at all
 # ("Error configuring Luau"). Update the two together.
 mlua = { version = "0.12", features = ["luau"] }
-notify-debouncer-mini = "0.7"
 # Deleting from the Library moves files to the Recycle Bin, so nothing is
 # lost by accident.
 trash = "5.2"

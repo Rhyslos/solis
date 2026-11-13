@@ -65,7 +65,6 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `mint` | Hands places and turns to Kira (the shared maths types it takes) | MIT | sound | walled | Kira's own; would go with it |
 | `mlua` | Runs Lua and Luau game code, sandboxed | MIT | script | walled | Fork it (MIT), or bind to Luau ourselves (Luau is MIT); only the script crate changes |
 | `notify` | Notices when files change on disk | CC0-1.0 | asset_db | walled | Ask Windows directly (`ReadDirectoryChangesW`), or check files on a timer |
-| `notify-debouncer-mini` | Groups bursts of file changes into one | MIT OR Apache-2.0 | asset_db | walled | Group them ourselves (a short timer) |
 | `ogg` | Reads the Ogg pages a Vorbis file is packed in, so Solis can check its headers before `lewton` reads them and hand `lewton` the sound a packet at a time | BSD-3-Clause | sound | walled | Read Ogg pages ourselves (a simple, public format) |
 | `opener` | Opens web pages and folders | MIT OR Apache-2.0 | app | walled | Ask Windows directly (`ShellExecute`) |
 | `percent-encoding` | Decodes `%20`-style names in model files | MIT OR Apache-2.0 | assets | walled | Write it (a few lines) |
