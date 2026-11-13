@@ -7,7 +7,7 @@ use crate::console::LogLevel;
 use crate::document::Document;
 
 impl Workbench {
-    /// Starts a new, unsaved area (New area (in the search)). Doesn't ask about
+    /// Starts a new, unsaved area (New area, after the area's tab). Doesn't ask about
     /// unsaved changes: asking comes before the action.
     pub fn new_area(&mut self) {
         self.leave_for(Document::default());

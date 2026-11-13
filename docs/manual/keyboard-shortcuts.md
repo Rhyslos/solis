@@ -215,7 +215,7 @@ Space, or a click on **Search or run a command** in the tab bar, opens it (the b
 
 Over the Frames tab, Space plays and stops the clip instead, so point somewhere else first.
 
-The list shows each thing's shortcut beside it, so it is also the quickest place to look a key up. Some things are done from the search alone, having no button yet: New area, Open area…, Save area as…, Reset layout, the examples, and showing or hiding the viewport's corner controls.
+The list shows each thing's shortcut beside it, so it is also the quickest place to look a key up. It finds the things without a button on the ribbon too, such as New area, Open area… and Save area as… (on the area's tab: its **+** and a right-click), Reset layout (File › Preferences), the examples (File › Learn), and showing or hiding the viewport's corner controls (the **Show ▾** pill).
 
 ## The tab bar and the ribbon
 
