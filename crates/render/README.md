@@ -28,7 +28,7 @@ The unit tests read the shaders as the compiler does (`shader_layout` in `lib.rs
 
 ## Depends on
 
-`assets` (for the model data it uploads), `ui` (game UI's shapes), wgpu, glam and bytemuck.
+`assets` (for the model data it uploads), `ui` (game UI's shapes), wgpu, glam, bytemuck, rayon (filling instance lists on every core) and log (warnings for the Console).
 
 ## Status
 

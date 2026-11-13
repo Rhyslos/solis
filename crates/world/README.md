@@ -22,7 +22,7 @@ Hold the running game's entities in a form a game can run over quickly. The area
 
 ## Depends on
 
-`area`, `animation` (the clips sprites play), `reflect`, `physics`, `tiles`, glam and hecs.
+`area`, `animation` (the clips sprites play), `reflect`, `physics`, `tiles`, glam, hecs and rayon (projectiles on every core).
 
 ## Status
 

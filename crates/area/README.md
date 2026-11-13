@@ -33,7 +33,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 
 ## Depends on
 
-`reflect`, and glam.
+`reflect`, glam, and the Lust compiler (`lust`), which reads Lust data files (`lust_data`).
 
 ## Status
 

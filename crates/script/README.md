@@ -39,7 +39,7 @@ Game code ([decision 0028](../../docs/decisions/0028-lust-runs-as-luau-while-edi
 
 ## Depends on
 
-`reflect` and glam; the Lust compiler (`lust`, without its default features, pinned to a commit) and `mlua` with Luau.
+`reflect` and glam; the Lust compiler (`lust`, without its default features, pinned to a commit) and `mlua` with Luau. For what game code reaches: `physics` (rays and 2D characters' state), `input` (actions), `tiles` (tile maps' cells), `animation` (atlases' crops), `ui` (screens' limits and views) and `area` (the built-in components, and `lust_guard`, which checks Lust before the compiler sees it).
 
 ## Status
 

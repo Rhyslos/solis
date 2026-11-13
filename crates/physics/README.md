@@ -28,7 +28,7 @@ Everything is kept in entity order (a `BTreeMap`), never a hash map's, so the sa
 
 ## Depends on
 
-`reflect`, glam, `rapier3d` and `rapier2d` (Apache-2.0).
+`reflect`, glam, `rapier3d` and `rapier2d` (Apache-2.0), and rayon (characters' moves on every core).
 
 ## Status
 

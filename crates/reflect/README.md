@@ -27,7 +27,7 @@ For every crate's tests, behind the `test-support` feature (only ever turned on 
 
 ## Depends on
 
-glam (vectors and rotations). Random IDs use only the standard library.
+glam (vectors and rotations) and serde (IDs saved as text). Random IDs use only the standard library.
 
 ## Status
 
