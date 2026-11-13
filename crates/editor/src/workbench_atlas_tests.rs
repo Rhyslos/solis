@@ -5,6 +5,7 @@ use crate::panel::Panel;
 use crate::sprite_sheets::{ArtState, AtlasState};
 use crate::test_support::*;
 use crate::workbench::Workbench;
+use egui_kittest::kittest::Queryable;
 use std::sync::Arc;
 
 pub(crate) fn with_project() -> Workbench {
@@ -93,7 +94,7 @@ fn an_atlas_file_opens_its_picture_s_crops_and_a_change_on_disk_is_taken_in() {
     assert_eq!(w.open.atlas_editor.as_ref().unwrap().atlas, atlas);
     assert!(saved(&w).is_empty(), "nothing new to make");
     // No picture: the tab says why.
-    w.open.library.clear();
+    w.open.library = Default::default();
     let (_, problem) = w.atlas_picture();
     assert!(problem.unwrap().contains("hero.aseprite"));
     // Changed by hand: taken in, one undo step.
@@ -175,4 +176,88 @@ fn a_dragged_grid_size_is_one_step_and_one_save() {
     assert!(editor.undo());
     assert_eq!(editor.atlas.grid, grid);
     assert!(!editor.undo(), "the drag was one step");
+}
+
+/// The scale case's picture: 1024 × 1024, cut into 4,096 crops of 16 × 16
+/// (the most a file holds), on the Picture tab with its Crops shelf tab.
+fn atlas_of_4096_crops() -> Workbench {
+    let mut w = with_project();
+    let mut actions = Vec::new();
+    w.library_request(
+        LibraryRequest::AtlasCrop("sprites/big.png".into()),
+        &mut actions,
+    );
+    let art = assets::tile_art::TileArt {
+        size: [1024, 1024],
+        frames: vec![vec![255u8; 1024 * 1024 * 4]],
+        durations: vec![100],
+    };
+    Arc::make_mut(&mut w.viewport.sheets)
+        .tile_art
+        .insert("sprites/big.png".into(), ArtState::Read(Arc::new(art)));
+    let editor = w.open.atlas_editor.as_mut().unwrap();
+    assert_eq!(editor.crop_every_tile([1024, 1024], &|_| true), 4096);
+    editor.pick(Some(2000));
+    w
+}
+
+/// The second review pass: the Crops list made a row for every crop,
+/// every frame. Now only the rows in view are made, and the list is as
+/// tall as before, so scrolling reaches the last crop.
+#[test]
+fn the_crops_list_makes_only_the_rows_in_view() {
+    let mut h = harness(atlas_of_4096_crops());
+    h.run();
+    h.run();
+    let first = h.get_by_label("Tile_0_0").rect();
+    assert!(
+        h.query_by_label("Tile_63_63").is_none(),
+        "the last isn't made"
+    );
+    let made = (0..4096)
+        .filter(|i| {
+            let name = format!("Tile_{}_{}", i % 64, i / 64);
+            h.query_all_by_label(&name).next().is_some()
+        })
+        .count();
+    assert!(made < 40, "{made} rows made");
+    // The wheel down to the end (scrolling eases, a frame at a time).
+    h.hover_at(first.center());
+    for _ in 0..300 {
+        if h.query_by_label("Tile_63_63").is_some() {
+            break;
+        }
+        h.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(0.0, -10_000.0),
+            modifiers: egui::Modifiers::NONE,
+            phase: egui::TouchPhase::Move,
+        });
+        h.step();
+    }
+    h.get_by_label("Tile_63_63").click();
+    h.step();
+    h.step();
+    let editor = h.state().0.open.atlas_editor.as_ref().unwrap();
+    assert_eq!(
+        editor.picked,
+        Some(4095),
+        "the last row picks the last crop"
+    );
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_the_picture_tab_with_4096_crops() {
+    // The second review pass: every crop was drawn every frame, in the
+    // list and on the picture, seen or not.
+    const TARGET_MS: f64 = 8.0;
+    let ms = crate::shell::layout_scale_tests::frame_ms(atlas_of_4096_crops());
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: editor frame on the Picture tab, 4,096 crops listed and drawn \
+         {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.2} ms a frame");
 }

@@ -651,7 +651,7 @@ pub(crate) fn middle(
 }
 
 #[cfg(test)]
-mod layout_scale_tests;
+pub(crate) mod layout_scale_tests;
 #[cfg(test)]
 mod layout_tests;
 #[cfg(test)]

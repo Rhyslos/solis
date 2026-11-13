@@ -130,9 +130,13 @@ fn crop_list(ui: &mut Ui, editor: &mut AtlasEditor, out: &mut AtlasOut) {
         );
     }
     // A table: the crop's name, then its size and place in mono, as
-    // round 3 draws it.
+    // round 3 draws it. Only the rows in view are drawn; the rest are
+    // room kept in the column's scrolling (a picture can have 4,096).
     let mut picked = editor.picked;
-    for (i, crop) in editor.atlas.crops.iter().enumerate() {
+    let crops = &editor.atlas.crops;
+    let shown = rows_in_view(ui, crops.len());
+    keep_room(ui, shown.start);
+    for (i, crop) in crops.iter().enumerate().take(shown.end).skip(shown.start) {
         let [x, y, w, h] = crop.rect;
         let (rect, row) =
             ui.allocate_exact_size(Vec2::new(ui.available_width(), CROP_ROW_H), Sense::click());
@@ -168,8 +172,29 @@ fn crop_list(ui: &mut Ui, editor: &mut AtlasEditor, out: &mut AtlasOut) {
             picked = Some(i);
         }
     }
+    keep_room(ui, crops.len() - shown.end);
     if picked != editor.picked {
         editor.pick(picked);
+    }
+}
+
+/// Which of `count` crop rows, laid out from the cursor down, are in
+/// view (the clip).
+fn rows_in_view(ui: &Ui, count: usize) -> std::ops::Range<usize> {
+    let pitch = CROP_ROW_H + ui.spacing().item_spacing.y;
+    let top = ui.cursor().top();
+    let clip = ui.clip_rect();
+    let row = |y: f32| (((y - top) / pitch).max(0.0) as usize).min(count);
+    let first = row(clip.top());
+    first..(row(clip.bottom()) + 1).min(count).max(first)
+}
+
+/// Room for `rows` crop rows that aren't drawn, as tall as they would be.
+fn keep_room(ui: &mut Ui, rows: usize) {
+    if rows > 0 {
+        let pitch = CROP_ROW_H + ui.spacing().item_spacing.y;
+        let height = rows as f32 * pitch - ui.spacing().item_spacing.y;
+        ui.allocate_space(Vec2::new(ui.available_width(), height));
     }
 }
 
@@ -294,10 +319,14 @@ fn picture_canvas(
             y += grid[1];
         }
     }
-    // The crops, the picked one in the accent.
+    // The crops, the picked one in the accent: only those in view.
+    let seen = painter.clip_rect();
     for (i, crop) in editor.atlas.crops.iter().enumerate() {
         let [x, y, w, h] = crop.rect.map(|v| v as f32);
         let r = Rect::from_min_max(to_screen(x, y), to_screen(x + w, y + h));
+        if !seen.intersects(r) {
+            continue;
+        }
         let picked = editor.picked == Some(i);
         let colour = if picked {
             accent

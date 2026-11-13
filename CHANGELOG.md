@@ -212,6 +212,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **A picture with thousands of crops no longer slows the editor.** The Picture tab drew every crop in its list and on the picture each frame, even those out of sight; now it draws only the ones you can see.
 - **Game screens with a lot of text lay out faster.** Measuring a word read the font file's tables again each time, thousands of times a frame for a screen full of text; each letter's size is now read once and remembered.
 - **The editor's longest files split into parts, with nothing to notice** (the November review, DEBT-05, 07 and 09): playing the game, saving and loading it, the viewport, the animator's graph and the editor window's own code are each in files of a readable size, in named steps. Solis works exactly as before.
 - **The engine's longest files split into parts, with nothing to notice** (the November review, DEBT-01, 04, 06 and 10): the splash screen's unused update question is gone (it hasn't asked since updates moved to File › Updates); game code's engine calls, the running world, and the viewport's drawing and its tests are each in files of a readable size. Solis works exactly as before.
