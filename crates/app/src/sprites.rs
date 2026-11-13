@@ -627,9 +627,8 @@ impl Sprites {
 mod tests {
     use super::*;
 
-    fn folder(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("solis-sprites-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+    fn folder(name: &str) -> reflect::test_support::TempFolder {
+        let dir = reflect::test_support::TempFolder::new(&format!("sprites-{name}")).unwrap();
         std::fs::create_dir_all(dir.join("sprites")).unwrap();
         dir
     }
@@ -739,7 +738,6 @@ mod tests {
         // Gone: forgotten.
         s.want(&listing(&[]), &dir);
         assert!(s.sheets().by_path.is_empty());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -773,7 +771,6 @@ mod tests {
         // A broken picture says why.
         std::fs::write(&file, b"not a png").unwrap();
         assert!(matches!(read_sheet(&file), SheetState::Failed(_)));
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -801,7 +798,6 @@ mod tests {
         s.want(&list, &dir);
         settle(&mut s);
         assert!(s.sheets().get(id).is_some());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -828,7 +824,6 @@ mod tests {
         assert!(s.sheets().tile_art.contains_key("sprites/icon.png"));
         s.want_pictures([], &dir);
         assert!(s.sheets().tile_art.is_empty());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The review, BUG-09: what the editor saved is the file from then on,
@@ -872,7 +867,6 @@ mod tests {
         s.saved("sprites/hero.atlas.lst", OwnFile::Atlas(saved));
         s.want(&listing(&[]), &dir);
         assert!(held(&s).is_none());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// A project can hold a folder, or a link to a device or a pipe, named
@@ -915,7 +909,6 @@ mod tests {
             read_art(&dir.join("none.png")),
             ArtState::Failed(why) if why.starts_with("couldn't read it: ")
         ));
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -967,7 +960,6 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(20));
         s.want(&list, &dir);
         assert!(s.sheets().tile_art.is_empty());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// A tile map's file (`farm.tilemap.lst`) of `size` cells.
@@ -1036,7 +1028,6 @@ mod tests {
         settle(&mut s);
         assert!(s.sheets().tile_maps.is_empty());
         assert!(s.sheets().tile_art.is_empty());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// A read of a tile map asked for before the editor saved it never
@@ -1065,7 +1056,6 @@ mod tests {
         // And asking again doesn't read Solis's own save.
         s.want(&list, &dir);
         assert!(!s.waiting());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The review, BUG-31: asking for a big tile map and a big picture
@@ -1107,7 +1097,6 @@ mod tests {
             "Scale check: asking for a 1,024 x 1,024 tile map and a 4,096 x 4,096 picture {ms:.3} ms \
              (target {TARGET_MS} ms; reading them, now on a worker, {reads_ms:.0} ms) {verdict}"
         );
-        let _ = std::fs::remove_dir_all(&dir);
         assert!(ms <= TARGET_MS, "{ms:.3} ms");
     }
 }

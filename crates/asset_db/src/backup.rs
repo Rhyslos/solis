@@ -358,6 +358,7 @@ fn size_of(folder: &Path) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reflect::test_support::TempFolder;
     use reflect::upgrade::{Format, header_version};
 
     /// A made-up format at version 2.
@@ -368,13 +369,9 @@ mod tests {
         steps: &[|_| Ok(())],
     };
 
-    fn project(name: &str) -> PathBuf {
-        let root = std::env::temp_dir().join(format!(
-            "solis-backup-{name}-{}-{:?}",
-            std::process::id(),
-            std::thread::current().id()
-        ));
-        let _ = std::fs::remove_dir_all(&root);
+    /// A project folder with `assets/levels`, removed when dropped.
+    fn project(name: &str) -> TempFolder {
+        let root = TempFolder::new(&format!("backup-{name}")).unwrap();
         std::fs::create_dir_all(root.join("assets/levels")).unwrap();
         root
     }
@@ -424,7 +421,6 @@ mod tests {
         let other = root.join("assets/levels/other.tilemap.lst");
         assert!(move_to_new_format(&root, &old, &other, b"x", |_| Err("no".into())).is_err());
         assert!(old.exists() && !other.exists());
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -464,7 +460,6 @@ mod tests {
             save(&root, &fresh, b"note version 2;", &NOTE, |_| Ok(())).unwrap(),
             None
         );
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -492,8 +487,8 @@ mod tests {
             Err(SaveError::Check(_))
         ));
         // Outside the project, or climbing out of it: refused.
-        let elsewhere =
-            std::env::temp_dir().join(format!("solis-outside-{}.note", std::process::id()));
+        let outside = TempFolder::new("backup-outside").unwrap();
+        let elsewhere = outside.join("elsewhere.note");
         std::fs::write(&elsewhere, "note version 1;").unwrap();
         assert!(matches!(
             save(&root, &elsewhere, b"note version 2;", &NOTE, |_| Ok(())),
@@ -505,9 +500,7 @@ mod tests {
             save(&root, &climbing, b"note version 2;", &NOTE, |_| Ok(())),
             Err(SaveError::Outside(_))
         ));
-        let _ = std::fs::remove_file(&elsewhere);
         let _ = std::fs::remove_file(&climbing);
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -545,7 +538,6 @@ mod tests {
                 .expect("copied");
             assert_eq!(std::fs::read(&copy).unwrap(), old);
         }
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -589,8 +581,6 @@ mod tests {
         // No backups at all: nothing to do.
         let empty = project("trim-empty");
         assert_eq!(trim(&empty, at("2030-01-01 00-00-00")).unwrap(), 0);
-        let _ = std::fs::remove_dir_all(&root);
-        let _ = std::fs::remove_dir_all(&empty);
     }
 
     #[test]
@@ -606,7 +596,6 @@ mod tests {
             None
         );
         assert_eq!(std::fs::read_to_string(&inside).unwrap(), "note version 2;");
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -632,7 +621,6 @@ mod tests {
         let gone = trim_keeping(&root, at("2026-11-10 05-00-00"), 10, &just_made).unwrap();
         assert_eq!(gone, 1);
         assert!(just_made.exists() && folder(&root).join("2099-01-01 00-00-00").exists());
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -653,6 +641,5 @@ mod tests {
         assert!(other.to_string_lossy().ends_with(" 2"), "{other:?}");
         // The trim still reads it as a backup.
         assert_eq!(utf8_prefix(&[b'a', 0xe2, 0x82]), "a");
-        let _ = std::fs::remove_dir_all(&root);
     }
 }

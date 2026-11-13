@@ -122,9 +122,8 @@ fn savers() -> Vec<Saver> {
 /// saver's text and a line more: in the format Solis writes now (a saver
 /// writes straight over such a file, with no copy kept first), yet not
 /// what any saver here saves, so a save that lands on one shows.
-fn scratch(name: &str) -> (PathBuf, Projects) {
-    let base = std::env::temp_dir().join(format!("solis-app-saving-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&base);
+fn scratch(name: &str) -> (reflect::test_support::TempFolder, Projects) {
+    let base = reflect::test_support::TempFolder::new(&format!("app-saving-{name}")).unwrap();
     let root = base.join("project");
     std::fs::create_dir_all(base.join("outside")).unwrap();
     std::fs::create_dir_all(&root).unwrap();
@@ -134,7 +133,7 @@ fn scratch(name: &str) -> (PathBuf, Projects) {
         .unwrap();
     std::fs::create_dir_all(root.join("assets/a")).unwrap();
     for saver in savers() {
-        for folder in [base.clone(), root.clone(), base.join("outside")] {
+        for folder in [base.to_path_buf(), root.clone(), base.join("outside")] {
             std::fs::write(folder.join(saver.file), format!("{}\n", saver.text)).unwrap();
         }
     }
@@ -242,7 +241,6 @@ fn every_saver_refuses_a_path_that_strays_or_isn_t_its_kind_and_writes_nothing()
     }
     let written = changed(&before, &files(&base));
     assert!(written.is_empty(), "a refused save wrote {written:?}");
-    let _ = std::fs::remove_dir_all(&base);
 }
 
 #[test]
@@ -295,7 +293,6 @@ fn every_saver_saves_a_plain_path_of_its_kind_as_before() {
             save(Path::new(&shouted)).unwrap_or_else(|why| panic!("{}: {why}", saver.name));
         }
     }
-    let _ = std::fs::remove_dir_all(&base);
 }
 
 #[test]
@@ -342,7 +339,6 @@ fn no_made_up_path_makes_a_saver_write_outside_the_assets() {
     // The sweep did save where it may: plain paths inside the assets.
     assert!(assets.join("x.png").is_file());
     assert!(assets.join("a/x.solframes").is_file());
-    let _ = std::fs::remove_dir_all(&base);
 }
 
 #[test]
@@ -395,7 +391,6 @@ fn a_new_sound_event_is_made_only_in_a_folder_inside_the_assets() {
         assert_eq!(at, PathBuf::from(made));
         assert!(base.join("project/assets").join(made).is_file());
     }
-    let _ = std::fs::remove_dir_all(&base);
 }
 
 #[test]
@@ -447,5 +442,4 @@ fn moving_deleting_and_new_folders_keep_to_plain_paths_inside_the_assets() {
         projects.new_folder(Path::new("a")).unwrap(),
         PathBuf::from("a/New folder")
     );
-    let _ = std::fs::remove_dir_all(&base);
 }

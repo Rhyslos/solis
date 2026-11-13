@@ -6,12 +6,11 @@ use super::*;
 const MADE_BY: &str = "Test 1.0";
 
 /// A new playground in its own folder, with a recording of a few seconds
-/// of play kept as a check.
-fn playground_with_a_check(name: &str) -> PathBuf {
-    let root = std::env::temp_dir()
-        .join(format!("solis-check-{name}-{}", std::process::id()))
-        .join("Playground");
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
+/// of play kept as a check, and the folder holding it (removed when
+/// that's dropped).
+fn playground_with_a_check(name: &str) -> (reflect::test_support::TempFolder, PathBuf) {
+    let temp = reflect::test_support::TempFolder::new(&format!("check-{name}")).unwrap();
+    let root = temp.join("Playground");
     crate::playground::make(&root).unwrap();
     let project = asset_db::Project::open(&root).unwrap();
     let mut quiet = Report::default();
@@ -36,12 +35,12 @@ fn playground_with_a_check(name: &str) -> PathBuf {
     let checks = root.join(RECORDINGS).join(CHECKS);
     std::fs::create_dir_all(&checks).unwrap();
     std::fs::write(checks.join("walk.solrec"), text).unwrap();
-    root
+    (temp, root)
 }
 
 #[test]
 fn an_unchanged_project_checks_out() {
-    let root = playground_with_a_check("same");
+    let (_temp, root) = playground_with_a_check("same");
     let report = check(&root, MADE_BY);
     let text = report.text();
     assert_eq!(report.failed, 0, "{text}");
@@ -52,12 +51,11 @@ fn an_unchanged_project_checks_out() {
         "{text}"
     );
     assert!(text.ends_with("nothing changed.\n"), "{text}");
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
 
 #[test]
 fn a_changed_area_or_a_damaged_file_fails() {
-    let root = playground_with_a_check("changed");
+    let (_temp, root) = playground_with_a_check("changed");
     // A crate moved in the area: the recording no longer plays the same.
     let area = root.join("assets").join(crate::playground::AREA);
     let text = std::fs::read_to_string(&area).unwrap();
@@ -91,7 +89,6 @@ fn a_changed_area_or_a_damaged_file_fails() {
         "{text}"
     );
     assert!(text.contains("Don't ship it"), "{text}");
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
 
 #[test]
@@ -103,8 +100,7 @@ fn a_folder_that_isn_t_a_project_fails_at_once() {
 
 #[test]
 fn an_area_outside_the_assets_is_refused() {
-    let root = std::env::temp_dir().join(format!("solis-check-outside-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+    let root = reflect::test_support::TempFolder::new("check-outside").unwrap();
     asset_db::Project::create(&root, "Out").unwrap();
     let project = asset_db::Project::open(&root).unwrap();
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
@@ -120,7 +116,6 @@ fn an_area_outside_the_assets_is_refused() {
             .unwrap();
         assert!(refused.contains("isn't in the assets"), "{bad}: {refused}");
     }
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -133,14 +128,11 @@ fn the_samples_check_out() {
         ("benchmark", crate::benchmark::make as Make),
         ("playground", crate::playground::make as Make),
     ] {
-        let root = std::env::temp_dir()
-            .join(format!("solis-check-sample-{}", std::process::id()))
-            .join(name);
-        let _ = std::fs::remove_dir_all(&root);
+        let temp = reflect::test_support::TempFolder::new("check-sample").unwrap();
+        let root = temp.join(name);
         make(&root).unwrap();
         let report = check(&root, MADE_BY);
         assert_eq!(report.failed, 0, "{name}:\n{}", report.text());
-        let _ = std::fs::remove_dir_all(&root);
     }
 }
 
@@ -148,15 +140,13 @@ fn the_samples_check_out() {
 fn a_file_bigger_than_its_kind_allows_fails_without_being_read() {
     // Regression (the Phase 8 review): each kind of file is read within the
     // editor's own limit, so a planted huge sidecar can't use up memory.
-    let root = std::env::temp_dir().join(format!("solis-check-big-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+    let root = reflect::test_support::TempFolder::new("check-big").unwrap();
     asset_db::Project::create(&root, "Big").unwrap();
     let big = vec![b'#'; asset_db::sidecar::MAX_BYTES as usize + 1];
     std::fs::write(root.join("assets/huge.glb.solmeta"), big).unwrap();
     let report = check(&root, MADE_BY);
     let text = report.text();
     assert!(text.contains("FAIL  assets/huge.glb.solmeta"), "{text}");
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -177,8 +167,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
             }\n\
         }\n\
         pass Hopper;\nend\n";
-    let root = std::env::temp_dir().join(format!("solis-check-hop-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+    let root = reflect::test_support::TempFolder::new("check-hop").unwrap();
     asset_db::Project::create(&root, "Hop").unwrap();
     let assets = root.join("assets");
     std::fs::write(assets.join("main.lst"), CODE).unwrap();
@@ -220,12 +209,11 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     let report = check(&root, MADE_BY);
     assert_eq!(report.failed, 0, "{}", report.text());
     assert!(!root.join("saves").exists(), "the check writes no saves");
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
 fn a_file_made_just_before_a_check_gets_its_sidecar_in_that_check() {
-    let root = playground_with_a_check("new-file");
+    let (_temp, root) = playground_with_a_check("new-file");
     let map = root.join("assets/farm.tilemap.lst");
     std::fs::write(
         &map,
@@ -240,12 +228,11 @@ fn a_file_made_just_before_a_check_gets_its_sidecar_in_that_check() {
         "made in this check: {:?}",
         report.lines
     );
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
 fn a_recording_plays_back_with_the_project_s_tile_maps_and_tilesets() {
-    let root = playground_with_a_check("tile-maps");
+    let (_temp, root) = playground_with_a_check("tile-maps");
     let assets = root.join("assets");
     std::fs::write(
         assets.join("farm.tileset.lst"),
@@ -274,14 +261,13 @@ fn a_recording_plays_back_with_the_project_s_tile_maps_and_tilesets() {
     assert!(sheets.tile_maps.contains_key("farm.tilemap.lst"));
     assert!(sheets.tilesets.contains_key("farm.tileset.lst"));
     assert_eq!(sheets.map_set.len(), 1, "for the running game, by ID");
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
 fn the_check_plays_with_the_project_s_own_2d_settings() {
     // The phase review: the check used the standard 2D settings, so a
     // project with its own tile size played differently there.
-    let root = playground_with_a_check("pixels");
+    let (_temp, root) = playground_with_a_check("pixels");
     let settings = area::pixels::PixelSettings {
         tile: [32, 32],
         ..Default::default()
@@ -299,14 +285,13 @@ fn the_check_plays_with_the_project_s_own_2d_settings() {
     )
     .unwrap();
     assert_eq!(w.pixels(), settings);
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
 
 #[test]
 fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
     // The phase review: a build that couldn't read them any more used to
     // check out.
-    let root = playground_with_a_check("data");
+    let (_temp, root) = playground_with_a_check("data");
     for (name, text) in [
         ("farm.tilemap.lst", "this isn't a map"),
         ("ground.tileset.lst", "nor a tileset"),
@@ -334,5 +319,4 @@ fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
     }
     // Game code in Lust isn't a data file.
     assert!(!text.contains("FAIL  assets/main.lst"), "{text}");
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }

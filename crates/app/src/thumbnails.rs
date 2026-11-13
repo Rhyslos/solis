@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn a_picture_is_shrunk_to_fit() {
-        let folder = std::env::temp_dir().join(format!("solis-thumb-{}", std::process::id()));
+        let folder = reflect::test_support::TempFolder::new("thumb").unwrap();
         std::fs::create_dir_all(&folder).unwrap();
         let file = folder.join("big.png");
         image::RgbaImage::from_pixel(512, 256, image::Rgba([200, 30, 30, 255]))
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn a_bmp_named_like_a_png_is_refused_everywhere_pictures_are_read() {
         use editor::sprite_sheets::{ArtState, SheetState};
-        let folder = std::env::temp_dir().join(format!("solis-thumb-bmp-{}", std::process::id()));
+        let folder = reflect::test_support::TempFolder::new("thumb-bmp").unwrap();
         std::fs::create_dir_all(&folder).unwrap();
         let file = folder.join("sneaky.png");
         // The file's length, where its pixels start, the header's length,
@@ -276,7 +276,6 @@ mod tests {
             crate::sprites::read_art(&file),
             ArtState::Failed(why) if unread(&why)
         ));
-        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]
@@ -313,8 +312,7 @@ mod tests {
 
     #[test]
     fn a_changed_picture_is_made_again_and_an_old_projects_never_arrives() {
-        let folder =
-            std::env::temp_dir().join(format!("solis-thumb-change-{}", std::process::id()));
+        let folder = reflect::test_support::TempFolder::new("thumb-change").unwrap();
         std::fs::create_dir_all(&folder).unwrap();
         let red = image::RgbaImage::from_pixel(8, 8, image::Rgba([200, 30, 30, 255]));
         red.save(folder.join("b.png")).unwrap();

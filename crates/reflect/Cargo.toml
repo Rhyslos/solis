@@ -21,5 +21,11 @@ serde.workspace = true
 [dev-dependencies]
 toml.workspace = true
 
+[features]
+# What other crates' tests need (`reflect::test_support`): a temporary
+# folder that removes itself. Only ever a dev-dependency's feature, never
+# in a build of Solis.
+test-support = []
+
 [lints]
 workspace = true

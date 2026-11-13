@@ -2,11 +2,8 @@
 
 use super::*;
 
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("solis-playtest-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+fn scratch(name: &str) -> reflect::test_support::TempFolder {
+    reflect::test_support::TempFolder::new(&format!("playtest-{name}")).unwrap()
 }
 
 /// The UI sample made in `dir/project`, and a stand-in for the program.
@@ -56,7 +53,6 @@ fn an_export_holds_the_program_renamed_the_game_and_what_to_play() {
     assert!(!shipped.contains("folder"), "where it went isn't shipped");
     // And the editor itself, anywhere else, doesn't.
     assert!(beside(&program).is_none());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -91,7 +87,6 @@ fn an_export_never_mixes_with_or_replaces_anything() {
     };
     assert!(export(&root, &program, &out, &dir.join("b")).is_err());
     assert!(export(&root, &program, &farm(), Path::new("relative/folder")).is_err());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[cfg(unix)]
@@ -105,7 +100,6 @@ fn links_in_the_project_are_left_out() {
     let folder = dir.join("out");
     export(&root, &program, &farm(), &folder).unwrap();
     assert!(!folder.join("game/assets/secret.txt").exists());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -117,7 +111,6 @@ fn a_damaged_playtest_file_is_explained_not_ignored() {
     std::fs::write(dir.join(PLAYTEST_FILE), farm().text()).unwrap();
     let why = beside(&dir.join("Farm.exe")).unwrap().unwrap_err();
     assert!(why.contains("game folder"), "{why}");
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -137,7 +130,6 @@ fn the_player_s_settings_read_back_and_start_from_the_export_s_window() {
         start,
         "no folder: as exported"
     );
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -180,7 +172,6 @@ fn the_crash_log_says_what_happened_and_what_was_said() {
         text.contains("line 99") && !text.contains("line 10\n"),
         "the last 40"
     );
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -196,7 +187,6 @@ fn a_project_remembers_how_it_was_exported() {
             ..p
         })
     );
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// What a project's own file says of its last export, written as it's
@@ -239,7 +229,6 @@ fn a_project_s_file_never_says_where_to_export() {
         let kept = std::fs::read_to_string(dir.join(asset_db::CACHE_FOLDER).join(LAST_EXPORT));
         assert!(!kept.unwrap().contains("folder"), "{folder}");
     }
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// Everything else the project's file says is put right as it's read, or
@@ -278,7 +267,6 @@ fn a_project_s_last_export_is_read_as_a_stranger_s_file() {
     let own = dir.join(asset_db::CACHE_FOLDER);
     std::fs::write(own.join(LAST_EXPORT), [0xFF, 0xFE, 0x00, 0x80]).unwrap();
     assert_eq!(last_export(&dir), None);
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -294,7 +282,6 @@ fn a_second_export_the_same_day_gets_a_folder_of_its_own() {
     std::fs::create_dir_all(&second).unwrap();
     std::fs::write(second.join("Farm.exe"), "x").unwrap();
     assert_eq!(unused(first), dir.join("Farm playtest 2026-11-06 (3)"));
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// Once Export is pressed: the window's own suggestion moves beside an
@@ -317,7 +304,6 @@ fn only_the_window_s_own_folder_is_numbered_and_only_when_exporting() {
     assert_eq!(folder_for(&request(false)), used, "chosen: as given");
     let why = export(&root, &program, &farm(), &folder_for(&request(false))).unwrap_err();
     assert!(why.contains("already has files"), "{why}");
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -341,7 +327,6 @@ fn a_failed_export_leaves_nothing_in_the_way() {
     assert!(export(&root, &dir.join("no program here"), &farm(), &folder).is_err());
     assert!(folder.is_dir());
     assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 0);
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[cfg(unix)]
@@ -354,7 +339,6 @@ fn a_path_into_the_project_through_a_missing_folder_is_refused() {
     let why = export(&root, &program, &farm(), &folder).unwrap_err();
     assert!(why.contains("inside the project"), "{why}");
     assert!(!root.join("sub").exists(), "nothing left in the project");
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[cfg(not(windows))]

@@ -52,6 +52,7 @@ gilrs.workspace = true
 winresource.workspace = true
 
 [dev-dependencies]
+reflect = { workspace = true, features = ["test-support"] }
 image.workspace = true
 pollster.workspace = true
 

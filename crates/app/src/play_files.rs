@@ -465,12 +465,8 @@ mod tests {
         }
     }
 
-    fn scratch(name: &str) -> PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("solis-play-files-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
+    fn scratch(name: &str) -> reflect::test_support::TempFolder {
+        reflect::test_support::TempFolder::new(&format!("play-files-{name}")).unwrap()
     }
 
     #[test]
@@ -563,7 +559,6 @@ mod tests {
         assert!(note.unwrap().contains("ready-made"));
         std::fs::write(root.join(input::FILE), vec![b'#'; 2 << 20]).unwrap();
         assert!(load_bindings(&root).1.unwrap().contains("bigger"));
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -593,7 +588,6 @@ mod tests {
             std::fs::read_to_string(root.join("input.solinput.bak2")).unwrap(),
             "broken again [["
         );
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -608,7 +602,6 @@ mod tests {
             std::fs::read_to_string(save_path(&root, "slot_3").unwrap()).unwrap(),
             "replaced"
         );
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[cfg(unix)]
@@ -650,7 +643,6 @@ mod tests {
         assert!(std::fs::read_dir(&elsewhere).unwrap().next().is_none());
         let _ = std::fs::remove_dir_all(elsewhere);
         let _ = std::fs::remove_file(outside);
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -663,7 +655,6 @@ mod tests {
         save_game_within(&root, "b", &"x".repeat(400), room).unwrap();
         // Replacing a slot counts its new size, not the old one too.
         save_game_within(&root, "a", &"x".repeat(550), room).unwrap();
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -692,7 +683,6 @@ mod tests {
             assert!(save_path(&root, bad).is_none());
         }
         assert!(!root.join("outside.solsave").exists());
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
@@ -704,6 +694,5 @@ mod tests {
         assert_eq!(a.parent().unwrap(), root.join(RECORDINGS));
         assert_eq!(std::fs::read_to_string(a).unwrap(), "one");
         assert_eq!(std::fs::read_to_string(b).unwrap(), "two");
-        let _ = std::fs::remove_dir_all(root);
     }
 }

@@ -719,12 +719,15 @@ fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
 mod tests {
     use super::*;
     use crate::test_folder;
+    use reflect::test_support::TempFolder;
 
-    fn project(name: &str) -> (Project, PathBuf) {
+    /// A new project, its assets folder, and the folder holding it (the
+    /// project goes when that's dropped).
+    fn project(name: &str) -> (Project, PathBuf, TempFolder) {
         let root = test_folder(name);
         let project = Project::create(&root, "Test").unwrap();
         let assets = project.assets();
-        (project, assets)
+        (project, assets, root)
     }
 
     fn glb(path: &Path, size: f32) {
@@ -740,7 +743,7 @@ mod tests {
 
     #[test]
     fn new_assets_get_sidecars_and_keep_their_ids_on_reopening() {
-        let (project, assets) = project("db-new");
+        let (project, assets, _folder) = project("db-new");
         glb(&assets.join("crate.glb"), 0.5);
         std::fs::create_dir_all(assets.join("props")).unwrap();
         glb(&assets.join("props/barrel.glb"), 0.4);
@@ -759,7 +762,7 @@ mod tests {
 
     #[test]
     fn assemblies_are_assets_too() {
-        let (project, assets) = project("db-assemblies");
+        let (project, assets, _folder) = project("db-assemblies");
         std::fs::create_dir_all(assets.join("assemblies")).unwrap();
         std::fs::write(
             assets.join("assemblies/lamp post.solassembly"),
@@ -777,7 +780,7 @@ mod tests {
 
     #[test]
     fn a_rename_outside_solis_keeps_the_id() {
-        let (project, assets) = project("db-rename");
+        let (project, assets, _folder) = project("db-rename");
         glb(&assets.join("crate.glb"), 0.5);
         let (mut db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
@@ -803,7 +806,7 @@ mod tests {
 
     #[test]
     fn a_copy_with_its_sidecar_gets_a_new_id_and_the_original_keeps_its_own() {
-        let (project, assets) = project("db-copy");
+        let (project, assets, _folder) = project("db-copy");
         glb(&assets.join("crate.glb"), 0.5);
         let (mut db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
@@ -828,7 +831,7 @@ mod tests {
 
     #[test]
     fn a_copy_made_while_solis_was_closed_leaves_the_original_its_id() {
-        let (project, assets) = project("db-copy-closed");
+        let (project, assets, _folder) = project("db-copy-closed");
         glb(&assets.join("crate.glb"), 0.5);
         let (db, ..) = open(project.clone());
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
@@ -854,7 +857,7 @@ mod tests {
 
     #[test]
     fn a_new_file_waits_a_moment_for_its_sidecar() {
-        let (project, assets) = project("db-settle");
+        let (project, assets, _folder) = project("db-settle");
         let (mut db, ..) = open(project);
         // An hour, and a file aged by hand below: never a race with the
         // clock (the review, TEST-01: 50 ms between writing a file and
@@ -900,7 +903,7 @@ mod tests {
     /// renamed outside Solis: that's found once it has settled.
     #[test]
     fn a_file_that_hasn_t_settled_isn_t_read_even_to_find_a_renamed_asset() {
-        let (project, assets) = project("db-unsettled");
+        let (project, assets, _folder) = project("db-unsettled");
         glb(&assets.join("crate.glb"), 0.5);
         let (mut db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
@@ -927,7 +930,7 @@ mod tests {
     /// one begun before a later look was taken in is out of date.
     #[test]
     fn a_look_runs_on_another_thread_and_an_older_one_is_dropped() {
-        let (project, assets) = project("db-scan");
+        let (project, assets, _folder) = project("db-scan");
         let (mut db, ..) = open(project);
         glb(&assets.join("crate.glb"), 0.5);
         let scan = db.scan();
@@ -955,7 +958,7 @@ mod tests {
 
     #[test]
     fn edits_moves_and_removals_are_noticed_and_sidecars_kept() {
-        let (project, assets) = project("db-changes");
+        let (project, assets, _folder) = project("db-changes");
         glb(&assets.join("crate.glb"), 0.5);
         let (mut db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
@@ -985,7 +988,7 @@ mod tests {
     fn a_save_by_rename_is_a_change_not_a_new_asset() {
         // Many programs save by writing a temporary file and renaming it
         // over the old one.
-        let (project, assets) = project("db-save-rename");
+        let (project, assets, _folder) = project("db-save-rename");
         glb(&assets.join("crate.glb"), 0.5);
         let (mut db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
@@ -1003,7 +1006,7 @@ mod tests {
 
     #[test]
     fn a_damaged_sidecar_is_explained_and_left_alone() {
-        let (project, assets) = project("db-damaged");
+        let (project, assets, _folder) = project("db-damaged");
         glb(&assets.join("crate.glb"), 0.5);
         std::fs::write(assets.join("crate.glb.solmeta"), "id = ").unwrap();
         let (db, _, notes) = open(project);
@@ -1019,7 +1022,7 @@ mod tests {
 
     #[test]
     fn copying_in_takes_the_files_a_model_reads_and_a_free_name() {
-        let (project, assets) = project("db-copy-in");
+        let (project, assets, _folder) = project("db-copy-in");
         let outside = test_folder("db-copy-in-source");
         std::fs::create_dir_all(&outside).unwrap();
         let mut b = assets::sample::Builder::default();
@@ -1046,7 +1049,7 @@ mod tests {
 
     #[test]
     fn only_ordinary_files_are_copied_in() {
-        let (project, assets) = project("db-copy-odd");
+        let (project, assets, _folder) = project("db-copy-odd");
         let outside = test_folder("db-copy-odd-source");
         std::fs::create_dir_all(&outside).unwrap();
         let (db, ..) = open(project);
@@ -1071,7 +1074,7 @@ mod tests {
 
     #[test]
     fn part_ids_are_written_once_and_kept() {
-        let (project, assets) = project("db-parts");
+        let (project, assets, _folder) = project("db-parts");
         glb(&assets.join("crate.glb"), 0.5);
         let (db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();

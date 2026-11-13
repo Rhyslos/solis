@@ -75,10 +75,8 @@ fn its_files_read_back() {
 
 #[test]
 fn the_playground_is_made_as_a_project_and_plays() {
-    let root = std::env::temp_dir()
-        .join(format!("solis-playground-{}", std::process::id()))
-        .join("Playground");
-    let _ = std::fs::remove_dir_all(&root);
+    let temp = reflect::test_support::TempFolder::new("playground").unwrap();
+    let root = temp.join("Playground");
     make(&root).unwrap();
     assert!(make(&root).is_err(), "not over an existing project");
     let project = Project::open(&root).unwrap();
@@ -160,10 +158,8 @@ fn the_playground_is_made_as_a_project_and_plays() {
 
 #[test]
 fn the_playground_never_replaces_a_file_of_the_person_s() {
-    let root = std::env::temp_dir()
-        .join(format!("solis-playground-mine-{}", std::process::id()))
-        .join("My game");
-    let _ = std::fs::remove_dir_all(&root);
+    let temp = reflect::test_support::TempFolder::new("playground-mine").unwrap();
+    let root = temp.join("My game");
     std::fs::create_dir_all(&root).unwrap();
     std::fs::write(root.join(input::FILE), "# mine\n").unwrap();
     let why = make(&root).unwrap_err().to_string();
@@ -180,10 +176,8 @@ fn entity_fields_survive_the_area_opening_before_the_code_is_checked() {
     // The user test: making the playground opens its area at once, before
     // its new code is checked, so the camera's target and the
     // character's camera were read as text and showed as nothing.
-    let root = std::env::temp_dir()
-        .join(format!("solis-playground-order-{}", std::process::id()))
-        .join("Playground");
-    let _ = std::fs::remove_dir_all(&root);
+    let temp = reflect::test_support::TempFolder::new("playground-order").unwrap();
+    let root = temp.join("Playground");
     make(&root).unwrap();
     let assets = Project::open(&root).unwrap().assets();
     let compiled = compiled(&assets);
@@ -217,15 +211,12 @@ fn entity_fields_survive_the_area_opening_before_the_code_is_checked() {
         Some(Value::Entity(Some(camera)))
     );
     assert!(!w.document().is_dirty(), "not an unsaved change");
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
 
 #[test]
 fn footsteps_follow_ground_covered_and_never_while_still() {
-    let root = std::env::temp_dir()
-        .join(format!("solis-playground-steps-{}", std::process::id()))
-        .join("Playground");
-    let _ = std::fs::remove_dir_all(&root);
+    let temp = reflect::test_support::TempFolder::new("playground-steps").unwrap();
+    let root = temp.join("Playground");
     make(&root).unwrap();
     let assets = Project::open(&root).unwrap().assets();
     let mut w = editor::Workbench::new(editor::AppInfo {
@@ -272,5 +263,4 @@ fn footsteps_follow_ground_covered_and_never_while_still() {
     // 10 m at a stride of 0.8 m: about 12 steps (the start is gentle).
     assert!((10..=13).contains(&steps), "{steps} steps");
     assert_eq!(on(still), 0, "none while standing");
-    let _ = std::fs::remove_dir_all(&root);
 }

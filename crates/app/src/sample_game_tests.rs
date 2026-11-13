@@ -70,10 +70,8 @@ fn write_the_sample_area() {
 
 #[test]
 fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
-    let root = std::env::temp_dir()
-        .join(format!("solis-sample-{}", std::process::id()))
-        .join("Turret sample");
-    let _ = std::fs::remove_dir_all(&root);
+    let temp = reflect::test_support::TempFolder::new("sample").unwrap();
+    let root = temp.join("Turret sample");
     make(&root).unwrap();
     assert!(make(&root).is_err(), "not over an existing project");
     let project = Project::open(&root).unwrap();
@@ -193,10 +191,8 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
 
 #[test]
 fn the_sample_never_replaces_a_file_of_the_person_s() {
-    let root = std::env::temp_dir()
-        .join(format!("solis-sample-mine-{}", std::process::id()))
-        .join("My game");
-    let _ = std::fs::remove_dir_all(&root);
+    let temp = reflect::test_support::TempFolder::new("sample-mine").unwrap();
+    let root = temp.join("My game");
     let assets = root.join(asset_db::ASSETS_FOLDER);
     std::fs::create_dir_all(&assets).unwrap();
     std::fs::write(assets.join("main.lst"), "-- mine\nend\n").unwrap();
@@ -240,10 +236,8 @@ fn the_manual_s_things_to_try_are_sound_code() {
 
 #[test]
 fn armour_rs_with_windows_line_endings_is_still_the_built_in_one() {
-    let assets = std::env::temp_dir()
-        .join(format!("solis-sample-crlf-{}", std::process::id()))
-        .join("assets");
-    let _ = std::fs::remove_dir_all(&assets);
+    let temp = reflect::test_support::TempFolder::new("sample-crlf").unwrap();
+    let assets = temp.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     let built_in = FILES.iter().find(|(p, _)| *p == "armour.rs").unwrap().1;
     let windows = built_in.replace("\r\n", "\n").replace('\n', "\r\n");
@@ -255,11 +249,9 @@ fn armour_rs_with_windows_line_endings_is_still_the_built_in_one() {
 /// under that name is passed over at once, as if it weren't there.
 #[test]
 fn armour_rs_is_only_read_if_it_is_an_ordinary_file() {
-    let root = std::env::temp_dir().join(format!("solis-armour-odd-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+    let root = reflect::test_support::TempFolder::new("armour-odd").unwrap();
     for odd in crate::odd_files(&root, "armour.rs") {
         let (rust, note) = rust_components(odd.parent().unwrap());
         assert!(rust.is_empty() && note.is_none(), "{odd:?}");
     }
-    let _ = std::fs::remove_dir_all(&root);
 }

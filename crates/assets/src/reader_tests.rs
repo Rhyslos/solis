@@ -2,6 +2,7 @@ use super::*;
 use crate::Y_UP_TO_Z_UP;
 use crate::sample::{Builder, checker_png, sample_glb};
 use glam::Vec3;
+use reflect::test_support::TempFolder;
 
 fn limits() -> Limits {
     Limits::default()
@@ -73,7 +74,7 @@ fn normals_stay_length_one() {
 
 #[test]
 fn a_gltf_with_separate_files_reads_from_its_folder() {
-    let folder = std::env::temp_dir().join(format!("solis-assets-{}", std::process::id()));
+    let folder = TempFolder::new("assets").unwrap();
     std::fs::create_dir_all(&folder).unwrap();
     let mut b = Builder::default();
     let mesh = b.add_cube_mesh(0.5, Some(0));
@@ -106,7 +107,6 @@ fn a_gltf_with_separate_files_reads_from_its_folder() {
     std::fs::remove_file(folder.join("cube.bin")).unwrap();
     let err = load(&path, &limits()).unwrap_err();
     assert!(err.to_string().contains("cube.bin"), "{err}");
-    let _ = std::fs::remove_dir_all(&folder);
 }
 
 #[test]
@@ -560,8 +560,7 @@ fn odd_files(folder: &std::path::Path, name: &str) -> Vec<std::path::PathBuf> {
 
 #[test]
 fn only_ordinary_files_are_read_for_a_model() {
-    let folder = std::env::temp_dir().join(format!("solis-odd-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&folder);
+    let folder = TempFolder::new("odd").unwrap();
     // The model itself: refused at once, saying why.
     for odd in odd_files(&folder.join("models"), "ship.glb") {
         for err in [
@@ -612,14 +611,13 @@ fn only_ordinary_files_are_read_for_a_model() {
         load(&path, &tight),
         Err(ImportError::TooBig { bytes, limit }) if bytes == size && limit == size - 1
     ));
-    let _ = std::fs::remove_dir_all(&folder);
 }
 
 // ------------------------------------- holes found by the Phase 1 review ---
 
 #[test]
 fn a_buffer_reads_only_what_it_declares_from_a_bigger_file() {
-    let folder = std::env::temp_dir().join(format!("solis-prefix-{}", std::process::id()));
+    let folder = TempFolder::new("prefix").unwrap();
     std::fs::create_dir_all(&folder).unwrap();
     let mut b = Builder::default();
     let mesh = b.add_cube_mesh(0.5, None);
@@ -651,7 +649,6 @@ fn a_buffer_reads_only_what_it_declares_from_a_bigger_file() {
     std::fs::write(&path, json).unwrap();
     let err = load(&path, &tight).unwrap_err();
     assert!(matches!(err, ImportError::TooBig { .. }), "{err}");
-    let _ = std::fs::remove_dir_all(&folder);
 }
 
 #[test]
@@ -902,7 +899,7 @@ fn a_mesh_used_by_several_nodes_is_stored_once() {
 
 #[test]
 fn a_gltf_lists_the_files_beside_it_that_it_reads() {
-    let folder = std::env::temp_dir().join(format!("solis-refs-{}", std::process::id()));
+    let folder = TempFolder::new("refs").unwrap();
     std::fs::create_dir_all(&folder).unwrap();
     let mut b = Builder::default();
     b.add_cube_mesh(1.0, None);
@@ -919,7 +916,6 @@ fn a_gltf_lists_the_files_beside_it_that_it_reads() {
     let glb = folder.join("crate.glb");
     std::fs::write(&glb, b.glb()).unwrap();
     assert!(referenced_files(&glb, &limits()).unwrap().is_empty());
-    let _ = std::fs::remove_dir_all(&folder);
 }
 
 #[test]
@@ -1086,7 +1082,7 @@ fn a_buffer_declaring_more_than_the_binary_part_holds_is_refused() {
 #[test]
 fn buffers_with_addresses_still_read_beside_the_binary_part() {
     use base64::Engine as _;
-    let folder = std::env::temp_dir().join(format!("solis-buffers-{}", std::process::id()));
+    let folder = TempFolder::new("buffers").unwrap();
     std::fs::create_dir_all(&folder).unwrap();
     let mut b = Builder::default();
     let mesh = b.add_cube_mesh(0.5, None);
@@ -1122,7 +1118,6 @@ fn buffers_with_addresses_still_read_beside_the_binary_part() {
             .unwrap_or_else(|e| panic!("{first:?}, {second:.20}: {e}"));
         assert_eq!(model.triangles(), 12);
     }
-    let _ = std::fs::remove_dir_all(&folder);
 }
 
 /// Thousands of made-up lists of buffers (the binary part, addresses
@@ -1132,7 +1127,7 @@ fn buffers_with_addresses_still_read_beside_the_binary_part() {
 #[test]
 fn made_up_lists_of_buffers_only_ever_hold_what_they_declare() {
     use base64::Engine as _;
-    let folder = std::env::temp_dir().join(format!("solis-lists-{}", std::process::id()));
+    let folder = TempFolder::new("lists").unwrap();
     std::fs::create_dir_all(&folder).unwrap();
     std::fs::write(folder.join("file.bin"), [6; 600]).unwrap();
     let inline = format!(
@@ -1183,7 +1178,6 @@ fn made_up_lists_of_buffers_only_ever_hold_what_they_declare() {
         read > 100 && refused > 100,
         "{read} read, {refused} refused"
     );
-    let _ = std::fs::remove_dir_all(&folder);
 }
 
 // ------------------------------ found by the weekly fuzzer (issue #157) ---

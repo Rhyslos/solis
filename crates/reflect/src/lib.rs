@@ -15,6 +15,8 @@ mod id;
 pub mod ordinary_file;
 mod registry;
 mod schema;
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;
 pub mod upgrade;
 mod value;
 

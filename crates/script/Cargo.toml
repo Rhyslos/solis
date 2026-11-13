@@ -27,6 +27,7 @@ ui.workspace = true
 mlua.workspace = true
 
 [dev-dependencies]
+reflect = { workspace = true, features = ["test-support"] }
 proptest.workspace = true
 
 [features]

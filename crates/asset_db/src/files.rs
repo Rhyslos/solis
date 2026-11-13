@@ -402,8 +402,11 @@ mod tests {
     use super::*;
     use crate::project::Project;
     use crate::test_folder;
+    use reflect::test_support::TempFolder;
 
-    fn project(name: &str) -> (AssetDb, PathBuf) {
+    /// A project with a few files, and the folder holding it (the project
+    /// goes when that's dropped).
+    fn project(name: &str) -> (AssetDb, PathBuf, TempFolder) {
         let root = test_folder(name);
         let project = Project::create(&root, "Test").unwrap();
         let assets = project.assets();
@@ -415,7 +418,7 @@ mod tests {
         std::fs::write(assets.join("turret.lst"), "object Turret {}\n").unwrap();
         std::fs::write(assets.join("notes.txt"), "hi").unwrap();
         let (db, _, _) = AssetDb::open(project, assets::Limits::default());
-        (db, assets)
+        (db, assets, root)
     }
 
     fn sample() -> Vec<u8> {
@@ -424,7 +427,7 @@ mod tests {
 
     #[test]
     fn the_listing_has_every_kind_and_folder_but_no_sidecars() {
-        let (db, _) = project("files-listing");
+        let (db, _, _folder) = project("files-listing");
         let listing = db.listing();
         assert_eq!(
             listing.folders,
@@ -454,7 +457,7 @@ mod tests {
 
     #[test]
     fn moving_a_model_takes_its_sidecar_and_keeps_its_id() {
-        let (mut db, assets) = project("files-move");
+        let (mut db, assets, _folder) = project("files-move");
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
         db.move_path(Path::new("crate.glb"), Path::new("props/old/box.glb"))
             .unwrap();
@@ -470,7 +473,7 @@ mod tests {
 
     #[test]
     fn moves_that_would_lose_or_break_something_are_refused() {
-        let (db, assets) = project("files-refused");
+        let (db, assets, _folder) = project("files-refused");
         let refuse = |from: &str, to: &str| {
             db.move_path(Path::new(from), Path::new(to))
                 .expect_err(&format!("{from} → {to}"))
@@ -518,7 +521,7 @@ mod tests {
 
     #[test]
     fn new_folders_get_free_names() {
-        let (db, assets) = project("files-new-folder");
+        let (db, assets, _folder) = project("files-new-folder");
         assert_eq!(
             db.new_folder(Path::new("")).unwrap(),
             PathBuf::from("New folder")

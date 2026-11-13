@@ -56,12 +56,7 @@ fn merge(base: &Area, ours: &Area, theirs: &Area) -> Option<Result<Area, String>
     if !git.status.success() {
         return None;
     }
-    let folder = std::env::temp_dir().join(format!(
-        "solis-merge-{}-{:?}",
-        std::process::id(),
-        std::thread::current().id()
-    ));
-    std::fs::create_dir_all(&folder).unwrap();
+    let folder = reflect::test_support::TempFolder::new("merge").unwrap();
     let write = |name: &str, area: &Area| {
         let path = folder.join(name);
         std::fs::write(&path, text::write(area, &registry(), &|_| None)).unwrap();
@@ -81,7 +76,6 @@ fn merge(base: &Area, ours: &Area, theirs: &Area) -> Option<Result<Area, String>
         )
         .output()
         .ok()?;
-    let _ = std::fs::remove_dir_all(&folder);
     let merged = String::from_utf8(out.stdout).unwrap();
     if !out.status.success() {
         return Some(Err(merged));
@@ -192,8 +186,7 @@ fn merge_files(
     theirs: &text::AreaFile,
 ) -> Option<text::AreaFile> {
     let as_area = |file: &text::AreaFile| text::write_file(file, &registry(), &|_| None);
-    let folder = std::env::temp_dir().join(format!("solis-merge-files-{}", std::process::id()));
-    std::fs::create_dir_all(&folder).unwrap();
+    let folder = reflect::test_support::TempFolder::new("merge-files").unwrap();
     let paths: Vec<std::path::PathBuf> = [("ours", ours), ("base", base), ("theirs", theirs)]
         .iter()
         .map(|(name, file)| {
@@ -207,7 +200,6 @@ fn merge_files(
         .args(paths.iter().map(|p| p.as_os_str()))
         .output()
         .ok()?;
-    let _ = std::fs::remove_dir_all(&folder);
     assert!(
         out.status.success(),
         "conflict:\n{}",

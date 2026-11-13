@@ -7,11 +7,8 @@ use sound::SoundDevice;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("solis-window-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+fn scratch(name: &str) -> reflect::test_support::TempFolder {
+    reflect::test_support::TempFolder::new(&format!("window-{name}")).unwrap()
 }
 
 fn works() -> Result<SoundDevice, String> {
@@ -78,7 +75,6 @@ fn an_exported_game_gets_the_sound_card_once_it_opens() {
         !app.sound.device().is_silent(),
         "the game plays on the card"
     );
-    let _ = std::fs::remove_dir_all(dir);
 }
 
 /// With no sound card the game says so where its maker can read it: its
@@ -101,7 +97,6 @@ fn an_exported_game_with_no_sound_card_says_so_in_its_log() {
     app.flush_log(true);
     let log = std::fs::read_to_string(dir.join("saved").join(LOG_FILE)).unwrap();
     assert!(log.contains("No sound: there's no sound card"), "{log}");
-    let _ = std::fs::remove_dir_all(dir);
 }
 
 /// The card is asked for before the frame splits into its kinds, so the

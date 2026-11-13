@@ -219,11 +219,8 @@ pub fn with_extension(path: &Path) -> PathBuf {
 mod tests {
     use super::*;
 
-    fn folder(name: &str) -> PathBuf {
-        let f = std::env::temp_dir().join(format!("solis-areas-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&f);
-        std::fs::create_dir_all(&f).unwrap();
-        f
+    fn folder(name: &str) -> reflect::test_support::TempFolder {
+        reflect::test_support::TempFolder::new(&format!("areas-{name}")).unwrap()
     }
 
     #[test]

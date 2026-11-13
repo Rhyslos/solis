@@ -683,7 +683,6 @@ mod tests {
         let (kept, hit) = load(&file, Some(&cache), &Limits::default()).unwrap();
         assert!(hit, "read back, not made again");
         assert_eq!(kept.meshes, made.meshes);
-        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]

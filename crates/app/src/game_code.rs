@@ -514,14 +514,12 @@ mod tests {
 
     /// A project's assets folder of its own: checking the code reads the
     /// input actions and buses beside it, which another test may write.
-    fn folder(name: &str) -> PathBuf {
-        let root = std::env::temp_dir()
-            .join(format!("solis-game-code-{}", std::process::id()))
-            .join(name);
-        let _ = std::fs::remove_dir_all(&root);
+    /// The folder holding it goes when the first part is dropped.
+    fn folder(name: &str) -> (reflect::test_support::TempFolder, PathBuf) {
+        let root = reflect::test_support::TempFolder::new(&format!("game-code-{name}")).unwrap();
         let path = root.join("assets");
         std::fs::create_dir_all(&path).unwrap();
-        path
+        (root, path)
     }
 
     fn finished(code: &mut GameCode) -> Option<Checked> {
@@ -546,7 +544,7 @@ mod tests {
 
     #[test]
     fn a_file_is_the_same_text_only_if_it_is_an_ordinary_file_holding_it() {
-        let dir = folder("same-text");
+        let (_temp, dir) = folder("same-text");
         let file = dir.join("names.lst");
         std::fs::write(&file, "enum Clip {}").unwrap();
         assert!(same_text(&file, "enum Clip {}"));
@@ -563,7 +561,7 @@ mod tests {
 
     #[test]
     fn the_project_s_assemblies_become_names_and_its_notes_are_said_once() {
-        let assets = folder("names");
+        let (_temp, assets) = folder("names");
         std::fs::create_dir_all(assets.join("ships")).unwrap();
         std::fs::create_dir_all(assets.join(".hidden")).unwrap();
         std::fs::create_dir_all(assets.join("solis")).unwrap();
@@ -639,7 +637,7 @@ mod tests {
     #[test]
     fn each_animator_gets_its_own_file_and_a_gone_one_s_is_taken_away() {
         use script::animator_code::{AnimatorNames, ParamKind};
-        let assets = folder("animators");
+        let (_temp, assets) = folder("animators");
         let farmer = AnimatorNames {
             path: "animals/farmer".into(),
             parameters: vec![("moving".into(), ParamKind::Switch)],
@@ -681,7 +679,7 @@ mod tests {
 
     #[test]
     fn the_engine_is_described_once_and_the_code_checked_when_it_changes() {
-        let assets = folder("check");
+        let (_temp, assets) = folder("check");
         assert!(GameCode::describe(&assets, "Test 1.0").is_empty());
         let written = std::fs::read_to_string(assets.join("solis/world.lst")).unwrap();
         assert!(written.contains("method say(string words) native;"));
@@ -768,11 +766,8 @@ mod unfinished {
 
     #[test]
     fn code_not_checked_while_a_check_never_finishes_is_checked_by_itself_when_it_ends() {
-        let assets = std::env::temp_dir()
-            .join(format!("solis-game-code-{}", std::process::id()))
-            .join("unfinished")
-            .join("assets");
-        let _ = std::fs::remove_dir_all(&assets);
+        let temp = reflect::test_support::TempFolder::new("game-code-unfinished").unwrap();
+        let assets = temp.join("assets");
         std::fs::create_dir_all(&assets).unwrap();
         std::fs::write(assets.join("main.lst"), "end\n").unwrap();
         let asked = || ASKED.load(Ordering::SeqCst);
@@ -832,7 +827,6 @@ mod unfinished {
         assert!(code.poll().is_none());
         assert!(!code.waiting());
         assert_eq!(asked(), 5);
-        let _ = std::fs::remove_dir_all(&assets);
     }
 }
 
@@ -872,10 +866,8 @@ mod fast_changes {
         // whole path: the folder's watcher, reading and compiling on the
         // worker, and the editor swapping it in.
         const TARGET_MS: f64 = 2000.0;
-        let assets = std::env::temp_dir()
-            .join(format!("solis-fast-{}", std::process::id()))
-            .join("assets");
-        let _ = std::fs::remove_dir_all(&assets);
+        let temp = reflect::test_support::TempFolder::new("fast").unwrap();
+        let assets = temp.join("assets");
         std::fs::create_dir_all(&assets).unwrap();
         GameCode::describe(&assets, "Test 1.0");
         std::fs::write(assets.join("main.lst"), MOVER).unwrap();
@@ -962,11 +954,8 @@ mod crashed {
     /// is checked.
     #[test]
     fn a_crash_while_checking_is_said_and_the_next_change_is_checked() {
-        let assets = std::env::temp_dir()
-            .join(format!("solis-game-code-{}", std::process::id()))
-            .join("crashed")
-            .join("assets");
-        let _ = std::fs::remove_dir_all(&assets);
+        let temp = reflect::test_support::TempFolder::new("game-code-crashed").unwrap();
+        let assets = temp.join("assets");
         std::fs::create_dir_all(&assets).unwrap();
         std::fs::write(assets.join("main.lst"), "end\n").unwrap();
         let mut code = GameCode {
@@ -989,18 +978,14 @@ mod crashed {
         // The same code again is checked again (it was never checked).
         code.check(assets.clone());
         assert!(checking(&mut code).is_some(), "said again");
-        let _ = std::fs::remove_dir_all(assets.parent().unwrap());
     }
 
     /// A worker that ends without a word is a crash too, and a change
     /// that waited behind its check is checked at once.
     #[test]
     fn a_worker_gone_without_an_answer_is_said_and_what_waited_starts() {
-        let assets = std::env::temp_dir()
-            .join(format!("solis-game-code-{}", std::process::id()))
-            .join("gone")
-            .join("assets");
-        let _ = std::fs::remove_dir_all(&assets);
+        let temp = reflect::test_support::TempFolder::new("game-code-gone").unwrap();
+        let assets = temp.join("assets");
         std::fs::create_dir_all(&assets).unwrap();
         let mut code = GameCode::default();
         let (sender, receiver) = channel::<Answer>();
@@ -1012,6 +997,5 @@ mod crashed {
         assert!(code.waiting(), "the change that waited is being checked");
         assert!(code.again.is_none());
         checking(&mut code);
-        let _ = std::fs::remove_dir_all(assets.parent().unwrap());
     }
 }

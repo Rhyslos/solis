@@ -210,13 +210,11 @@ mod tests {
 
     #[test]
     fn making_it_twice_in_one_folder_is_refused() {
-        let folder = std::env::temp_dir().join(format!("solis-benchmark-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&folder);
+        let folder = reflect::test_support::TempFolder::new("benchmark").unwrap();
         make(&folder).unwrap();
         assert!(folder.join("assets/ships/fighter.glb").exists());
         assert!(folder.join("assets/ceiling.solarea").exists());
         assert!(make(&folder).is_err());
-        let _ = std::fs::remove_dir_all(&folder);
     }
 }
 
@@ -232,8 +230,7 @@ mod play_tests {
         area: &str,
         tweak: impl Fn(&mut ComponentData),
     ) -> editor::Workbench {
-        let root = std::env::temp_dir().join(format!("solis-bench-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
+        let root = reflect::test_support::TempFolder::new(&format!("bench-{name}")).unwrap();
         make(&root).unwrap();
         let assets = root.join(asset_db::ASSETS_FOLDER);
         crate::game_code::GameCode::describe(&assets, "Test 1.0");
@@ -276,7 +273,6 @@ mod play_tests {
             tweak(data);
         }
         w.open_area(level, assets.join(area));
-        let _ = std::fs::remove_dir_all(&root);
         w
     }
 

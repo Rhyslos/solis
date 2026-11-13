@@ -682,10 +682,8 @@ mod saving_tests;
 mod tests {
     use super::*;
 
-    fn folder(name: &str) -> PathBuf {
-        let f = std::env::temp_dir().join(format!("solis-app-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&f);
-        f
+    fn folder(name: &str) -> reflect::test_support::TempFolder {
+        reflect::test_support::TempFolder::new(&format!("app-{name}")).unwrap()
     }
 
     /// Polls `projects` frame by frame until a look finds something (at
@@ -734,7 +732,6 @@ mod tests {
             projects.take_changed(),
             "the Library lists the folder again"
         );
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// The review, BUG-32: a new 256 MB sound settled in the assets. Its
@@ -767,7 +764,6 @@ mod tests {
             "Scale check: the longest frame's part while a new 256 MB file is looked at {ms:.3} ms \
              (target {TARGET_MS} ms; the look itself, now on a worker, {look_ms:.0} ms) {verdict}"
         );
-        let _ = std::fs::remove_dir_all(&root);
         assert!(ms <= TARGET_MS, "{ms:.3} ms");
     }
 
@@ -779,12 +775,13 @@ mod tests {
         let opened = projects
             .open(&root, true, assets::Limits::default())
             .unwrap();
+        // Named after its folder.
         assert_eq!(
-            opened.info.name,
-            format!("solis-app-projects-{}", std::process::id())
+            Some(opened.info.name.as_str()),
+            root.file_name().and_then(|n| n.to_str())
         );
         assert!(root.join("project.solis").exists());
-        assert_eq!(projects.recent(), vec![root.clone()]);
+        assert_eq!(projects.recent(), vec![root.to_path_buf()]);
         assert_eq!(asset_db::Project::summary(&root).unwrap().saved_by, None);
         // Opening it again doesn't make it again, and it stays first.
         projects
@@ -874,13 +871,11 @@ mod tests {
             asset_db::Project::summary(&root).unwrap().saved_by,
             Some(61)
         );
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
     fn sound_events_are_made_with_free_names_and_saved_only_as_events() {
         let root = folder("sound-events");
-        let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).unwrap();
         let mut projects = Projects::default();
         projects
@@ -920,6 +915,5 @@ mod tests {
             std::fs::read_to_string(root.join("assets/notes.txt")).unwrap(),
             "mine"
         );
-        let _ = std::fs::remove_dir_all(&root);
     }
 }

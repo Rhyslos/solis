@@ -479,13 +479,9 @@ fn a_started_check_and_download_report_every_step_and_wake_the_window() {
     assert!(matches!(steps.last(), Some(Status::Ready { build: 5, .. })));
 }
 
-fn temp_folder(name: &str) -> PathBuf {
-    let folder = std::env::temp_dir()
-        .join("solis-updater-tests")
-        .join(format!("{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&folder);
-    std::fs::create_dir_all(&folder).unwrap();
-    folder
+/// A new, empty folder for one test, removed when it's dropped.
+fn temp_folder(name: &str) -> reflect::test_support::TempFolder {
+    reflect::test_support::TempFolder::new(&format!("updater-{name}")).unwrap()
 }
 
 // --- Damaged answers never crash ---

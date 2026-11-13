@@ -141,7 +141,6 @@ mod tests {
             assert_eq!(err.to_string(), "it isn't an ordinary file", "{odd:?}");
         }
         assert!(hash_file(&folder.join("none.glb")).is_err());
-        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]

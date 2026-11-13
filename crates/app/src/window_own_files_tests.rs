@@ -55,8 +55,16 @@ fn read_sprites(app: &mut App) {
     }
 }
 
-/// Closes the editor and takes its project's folder away.
-pub(super) fn close(app: App) {
+/// Closes the editor and takes its project's folder away, once the game
+/// code's check has ended: its worker writes in the project's `solis`
+/// folder, and a file it wrote while the folder was being removed left
+/// the whole project behind (the review, TEST-06).
+pub(super) fn close(mut app: App) {
+    let start = std::time::Instant::now();
+    while app.game_code.waiting() && start.elapsed().as_secs() < 30 {
+        app.game_code.poll();
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
     let root = app.projects.root().map(Path::to_path_buf);
     drop(app);
     if let Some(root) = root {
