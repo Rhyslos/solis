@@ -242,12 +242,7 @@ impl Fonts {
     }
 
     fn make(&mut self, font: usize, id: GlyphId) -> Made {
-        let Some(outlined) = self
-            .fonts
-            .get(font)
-            .and_then(|f| f.at(SDF_SIZE))
-            .and_then(|f| f.outline(id))
-        else {
+        let Some(outlined) = self.fonts.get(font).and_then(|f| f.outline(id, SDF_SIZE)) else {
             return Made::Blank;
         };
         let [left, top, right, bottom] = outlined.bounds();
@@ -290,15 +285,12 @@ impl Fonts {
 
     /// How wide `text` is at `size` pixels in font `font`, and how tall a
     /// line is.
-    pub fn measure(&self, font: usize, text: &str, size: f32) -> [f32; 2] {
-        let Some(scaled) = self
-            .fonts
-            .get(font.min(self.fonts.len().saturating_sub(1)))
-            .and_then(|f| f.at(size.max(0.0)))
-        else {
+    pub fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
+        let last_font = self.fonts.len().saturating_sub(1);
+        let Some(f) = self.fonts.get_mut(font.min(last_font)) else {
             return [0.0, 0.0];
         };
-        let line = scaled.line();
+        let scaled = f.at(size.max(0.0));
         let mut widest = 0.0_f32;
         let mut lines = 0;
         for text_line in text.split('\n') {
@@ -306,16 +298,16 @@ impl Fonts {
             let mut x = 0.0;
             let mut last: Option<GlyphId> = None;
             for c in text_line.chars().take(MAX_LETTERS) {
-                let id = scaled.glyph(c);
+                let (id, advance) = f.letter(c);
                 if let Some(prev) = last {
-                    x += scaled.kern(prev, id);
+                    x += scaled.px(f.kern(prev, id));
                 }
-                x += scaled.advance(id);
+                x += scaled.px(advance);
                 last = Some(id);
             }
             widest = widest.max(x);
         }
-        [widest, line * lines as f32]
+        [widest, scaled.line() * lines as f32]
     }
 
     /// Lays `text` out at `size` pixels in font `font` with its first
@@ -331,15 +323,12 @@ impl Fonts {
         crisp: Option<f32>,
     ) -> Vec<Placed> {
         let font = font.min(self.fonts.len().saturating_sub(1));
-        let Some(f) = self.fonts.get(font).cloned() else {
-            return Vec::new();
-        };
         let size = if size.is_finite() {
             size.clamp(0.0, 4096.0)
         } else {
             0.0
         };
-        let Some(scaled) = f.at(size) else {
+        let Some(scaled) = self.fonts.get(font).map(|f| f.at(size)) else {
             return Vec::new();
         };
         let k = size / SDF_SIZE;
@@ -353,9 +342,10 @@ impl Fonts {
                 if out.len() >= MAX_LETTERS {
                     return out;
                 }
-                let id = scaled.glyph(c);
+                let f = &mut self.fonts[font];
+                let (id, advance) = f.letter(c);
                 if let Some(prev) = last {
-                    x += scaled.kern(prev, id);
+                    x += scaled.px(f.kern(prev, id));
                 }
                 if let Some(letter) = self.letter(font, id) {
                     let [l, t, r, b] = letter.atlas.map(f32::from);
@@ -370,7 +360,7 @@ impl Fonts {
                         atlas: letter.atlas,
                     });
                 }
-                x += scaled.advance(id);
+                x += scaled.px(advance);
                 last = Some(id);
             }
             y += line;

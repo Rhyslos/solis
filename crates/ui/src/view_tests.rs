@@ -982,3 +982,40 @@ fn scale_check_wrapping_a_long_text() {
     );
     assert!(ms <= TARGET_MS, "{ms:.3} ms");
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_wrapping_a_long_text_in_a_real_font() {
+    // The second review pass: measuring a word read the whole font file
+    // again (its letter map, advances, kerning and outlines), thousands of
+    // times a frame for a screen full of text. The same paragraph as
+    // above, measured with a real font.
+    const TARGET_MS: f64 = 4.0;
+    let inter = include_bytes!("../../editor/assets/fonts/Inter-Regular.ttf");
+    let (mut fonts, _) = crate::text::Fonts::new(vec![inter.to_vec()]);
+    let paragraph: Vec<String> = (0..1300).map(|i| format!("w{}", i % 10)).collect();
+    let view = node(
+        "view",
+        &[],
+        vec![node(
+            "column",
+            &[("width", n(10_000.0))],
+            vec![text(&paragraph.join(" "), &[])],
+        )],
+    );
+    let out = lay_out(&view, [20_000.0, 30_000.0], &mut fonts);
+    let ElementKind::Text { text, .. } = &out[0].kind else {
+        panic!("text");
+    };
+    assert!(text.split('\n').count() > 2, "wrapped");
+    let start = std::time::Instant::now();
+    for _ in 0..10 {
+        let _ = lay_out(&view, [20_000.0, 30_000.0], &mut fonts);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / 10.0;
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: wrapping 4,000 letters in a real font {ms:.3} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.3} ms");
+}

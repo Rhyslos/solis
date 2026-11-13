@@ -63,6 +63,57 @@ fn letters_run_left_to_right_and_lines_down() {
 }
 
 #[test]
+fn measuring_reads_each_character_from_the_font_once() {
+    // The second review pass: every word measured read the font's tables
+    // again. Now the common characters are read with the font, and each
+    // other one the first time it's measured, then remembered.
+    let mut f = fonts();
+    let text = "Spring → spring ←→";
+    let first = f.measure(0, text, 24.0);
+    assert_eq!(f.fonts[0].remembered(), [2, 0], "the two arrows");
+    assert_eq!(f.measure(0, text, 24.0), first, "the same the second time");
+    assert_eq!(f.fonts[0].remembered(), [2, 0], "nothing read again");
+    assert_eq!(f.place(0, text, 24.0, [0.0, 0.0], None).len(), 15);
+    assert_eq!(f.fonts[0].remembered(), [2, 0]);
+    // As wide as the font says, letter by letter (Inter kerns in another
+    // table, so no pairs are looked up).
+    use skrifa::MetadataProvider as _;
+    let face = skrifa::FontRef::new(INTER).unwrap();
+    let (charmap, advances) = (
+        face.charmap(),
+        face.glyph_metrics(
+            skrifa::instance::Size::unscaled(),
+            skrifa::instance::LocationRef::default(),
+        ),
+    );
+    let units: f32 = text
+        .chars()
+        .map(|c| advances.advance_width(charmap.map(c).unwrap()).unwrap())
+        .sum();
+    let scale = f.fonts[0].at(24.0).px(1.0);
+    assert!((first[0] - units * scale).abs() < 0.01, "{first:?} {units}");
+}
+
+#[test]
+fn what_a_font_remembers_has_a_limit() {
+    // Text of every character there is can't grow it forever.
+    let mut f = fonts();
+    let every: Vec<String> = ('\u{800}'..='\u{2_ffff}')
+        .collect::<Vec<char>>()
+        .chunks(4000)
+        .map(|line| line.iter().collect())
+        .collect();
+    let every = every.join("\n");
+    let _ = f.measure(0, &every, 12.0);
+    assert!(f.fonts[0].remembered()[0] <= crate::font::MAX_REMEMBERED);
+    let wide = f.measure(0, "Wy→", 30.0);
+    let _ = f.measure(0, &every, 12.0);
+    assert!(f.fonts[0].remembered()[0] <= crate::font::MAX_REMEMBERED);
+    // What it measures stays the same after starting again.
+    assert_eq!(f.measure(0, "Wy→", 30.0), wide);
+}
+
+#[test]
 fn the_distance_image_is_inside_out_and_edge_in_the_middle() {
     let mut f = fonts();
     let placed = f.place(0, "I", 48.0, [0.0, 0.0], None)[0];
