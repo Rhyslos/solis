@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn a_model_is_read_in_the_background() {
-        let folder = std::env::temp_dir().join(format!("solis-import-{}", std::process::id()));
+        let folder = reflect::test_support::TempFolder::new("import").unwrap();
         std::fs::create_dir_all(&folder).unwrap();
         let path = folder.join("sample.glb");
         std::fs::write(&path, assets::sample::sample_glb()).unwrap();
@@ -265,7 +265,6 @@ mod tests {
         assert_eq!(done[0].id, id);
         assert_eq!(done[0].result.as_ref().unwrap().name, "sample");
         assert!(!importer.busy());
-        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]
@@ -319,9 +318,7 @@ mod tests {
 
     #[test]
     fn a_project_import_goes_through_the_cache() {
-        let folder =
-            std::env::temp_dir().join(format!("solis-import-cache-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&folder);
+        let folder = reflect::test_support::TempFolder::new("import-cache").unwrap();
         std::fs::create_dir_all(&folder).unwrap();
         let path = folder.join("sample.glb");
         std::fs::write(&path, assets::sample::sample_glb()).unwrap();
@@ -333,6 +330,5 @@ mod tests {
         let again = wait(&mut importer);
         assert!(again[0].from_cache);
         assert!(again[0].result.is_ok());
-        let _ = std::fs::remove_dir_all(&folder);
     }
 }

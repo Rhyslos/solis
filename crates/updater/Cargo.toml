@@ -26,4 +26,5 @@ log.workspace = true
 workspace = true
 
 [dev-dependencies]
+reflect = { workspace = true, features = ["test-support"] }
 proptest.workspace = true

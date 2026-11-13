@@ -639,8 +639,7 @@ mod tests {
     fn a_sidecar_not_in_this_format_is_copied_before_it_s_rewritten() {
         // Regression (the Phase 8 review): sidecars were rewritten with no
         // copy when a model was imported again.
-        let root = std::env::temp_dir().join(format!("solis-sidecar-copy-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
+        let root = crate::test_folder("sidecar-copy");
         std::fs::create_dir_all(root.join("assets")).unwrap();
         let path = root.join("assets/crate.glb.solmeta");
         std::fs::write(&path, "format = 9\nid = \"0000000000001\"\nhash = \"0\"\n").unwrap();
@@ -652,6 +651,5 @@ mod tests {
         again.hash = "2".into();
         assert!(again.write_in(&root, &path).unwrap());
         assert_eq!(std::fs::read_dir(&copied).unwrap().count(), 1);
-        let _ = std::fs::remove_dir_all(&root);
     }
 }

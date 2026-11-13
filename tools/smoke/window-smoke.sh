@@ -19,10 +19,15 @@
 # under them (its tab strip at 100, the viewport from 130 to 542), the
 # shelf's bar at 542 and its columns under it, the status bar at 876.
 #
-# Nothing here waits a fixed time for the program: it waits until the
-# screen has stopped changing (`settle`), or until the program has ended.
-# The short pauses that are left pace the mouse and keys themselves, as a
-# hand does.
+# Nothing here waits a fixed time for the program: after each step it
+# waits until the screen shows what the step does (`wait_for`: the File
+# page open, the tool lit, the view moved), then until the screen holds
+# still, or until the program has ended. A screen that has only stopped
+# changing isn't enough: right after a click, a slow software-drawn frame
+# still shows the screen as it was (the review, TEST-03). An empty picture
+# (one colour all over, before the window is first drawn) never counts
+# (TEST-08). The short pauses that are left pace the mouse and keys
+# themselves, as a hand does.
 set -euo pipefail
 
 BIN="${1:?usage: window-smoke.sh <binary> <window title> [output folder]}"
@@ -68,38 +73,97 @@ launch() {
     WINDOW_ID="$(xdotool search --name "$TITLE" 2>/dev/null | head -1)" || true
     [ -n "$WINDOW_ID" ] || fail "no window after 60 seconds"
     # The first frames are drawn (software rendering is slow).
-    settle
+    wait_for drawn || fail "the window stayed empty"
     xdotool windowfocus --sync "$WINDOW_ID" 2>/dev/null || true
-    # Solis always starts on File › Recent projects (decision 0105): Esc carries on
-    # without a project, into the editor.
-    xdotool key --window "$WINDOW_ID" Escape 2>/dev/null || true
-    settle
+    # On File › Recent projects (decision 0105), Esc carries on without a
+    # project, into the editor.
+    if tab_open "${FILE_TAB_X:-64}"; then
+        xdotool key --window "$WINDOW_ID" Escape 2>/dev/null || true
+    fi
+    wait_for editor_shown || fail "the editor isn't shown (still on the File page)"
 }
 
-# Waits until the screen has stopped changing: two pictures of it in a row
-# are the same and aren't empty. Gives up after 40 tries (the picture then
-# is whatever the screen shows, and the check that follows says what is
-# wrong with it).
-settle() {
+# A picture of the screen, as `$1`.
+snap() {
+    import -window root "$OUT/$1.png" 2>/dev/null || rm -f "$OUT/$1.png"
+}
+
+# Whether the picture `$1` is empty: missing, or one colour all over (the
+# screen before the window is first drawn).
+empty() {
+    [ ! -s "$OUT/$1.png" ] ||
+        [ "$(convert "$OUT/$1.png" -format '%[fx:standard_deviation>0]' info:)" = 0 ]
+}
+
+# Checks run by `wait_for` on the newest picture, `now`.
+drawn() { true; }
+# The top tab at `$1` is the one open: it's underlined in the accent blue.
+tab_open() {
+    local r _g b
+    read -r r _g b <<<"$(pixel "$1" "${TAB_LINE_Y:-32}" now)"
+    [ "$b" -gt 200 ] && [ "$r" -lt 150 ]
+}
+editor_shown() { ! tab_open "${FILE_TAB_X:-64}"; }
+# More than `$2` pixels differ from the picture `$1` (within the region
+# `$3`, if given).
+differs() { [ "$(changed_pixels "$1" now "${3:-}")" -gt "$2" ]; }
+
+# Takes pictures of the screen (`now`) until the check `$@` says the step
+# has shown. An empty picture never counts. Gives up after a minute and
+# says so (the check that follows then says what is wrong).
+seen() {
+    for _ in $(seq 1 240); do
+        snap now
+        if ! empty now && "$@"; then return 0; fi
+        sleep 0.25
+    done
+    echo "Waited a minute for: $*"
+    return 1
+}
+
+# As `seen`, then waits until the screen holds still, so the picture is a
+# whole frame.
+wait_for() {
+    seen "$@" && hold_still
+}
+
+# Waits until two pictures of the screen in a row are the same and aren't
+# empty (an animation ending, the pointer's highlight going), up to 40
+# looks.
+hold_still() {
     local last="" now
     for _ in $(seq 1 40); do
-        now="$(import -window root rgb:- 2>/dev/null | md5sum | cut -d' ' -f1)"
-        if [ -n "$last" ] && [ "$now" = "$last" ]; then return 0; fi
-        last="$now"
+        snap still
+        if ! empty still; then
+            now="$(md5sum <"$OUT/still.png")"
+            if [ "$now" = "$last" ]; then return 0; fi
+            last="$now"
+        fi
         sleep 0.25
     done
     echo "The screen was still changing after 40 looks; carrying on."
 }
 
+# Moves the pointer out of the way and keeps a picture of the screen as
+# `$1`, once it holds still.
 shot() {
     xdotool mousemove 1300 880
-    settle
-    import -window root "$OUT/$1.png"
+    hold_still
+    snap "$1"
+    empty "$1" && fail "the screen is empty"
+    return 0
 }
 
 # Colour of one screen pixel, as "R G B".
 pixel() {
     convert "$OUT/$3.png" -format "%[fx:int(255*p{$1,$2}.r)] %[fx:int(255*p{$1,$2}.g)] %[fx:int(255*p{$1,$2}.b)]" info:
+}
+
+# The viewport's sky is drawn: near its top, not black.
+sky_drawn() {
+    local _r _g b
+    read -r _r _g b <<<"$(pixel 300 156 now)"
+    [ "$b" -ge 15 ]
 }
 
 # Number of pixels that differ between two screenshots, within an optional
@@ -129,20 +193,28 @@ quit() {
     # of the File page's column, under Learn, Updates and About (the
     # column's own sizes are FILE_MENU_* in crates/editor/src/tokens/size.rs).
     xdotool mousemove "${FILE_TAB_X:-64}" "${FILE_TAB_Y:-19}" click 1
-    settle
+    wait_for tab_open "${FILE_TAB_X:-64}" || fail "File did not open the File page"
+    snap file-page
     xdotool mousemove "${EXIT_X:-110}" "${EXIT_Y:-534}" click 1
     # With unsaved changes (an imported model), Solis asks first: answer
-    # Don't save, in the middle of the window.
-    if ! ended_within 3; then
-        settle
-        xdotool mousemove "${DONT_SAVE_X:-647}" "${DONT_SAVE_Y:-485}" click 1
-    fi
+    # Don't save, on the left of the box in the middle, once it's shown.
+    for _ in $(seq 1 240); do
+        kill -0 "$PID" 2>/dev/null || break
+        snap now
+        if ! empty now && differs file-page 1000; then
+            hold_still
+            xdotool mousemove "${DONT_SAVE_X:-554}" "${DONT_SAVE_Y:-479}" click 1
+            break
+        fi
+        sleep 0.25
+    done
     ended_within 15 || fail "File > Exit did not quit"
     wait "$PID" || fail "the program exited with an error"
     PID=""
 }
 
 launch
+wait_for sky_drawn || true
 shot first
 
 # 1. The viewport is drawn: near its top is the sky, a dark neutral grey
@@ -159,6 +231,7 @@ grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 #    the viewport's left edge) lights up. Only the toolbox's transform
 #    tools are compared, so the viewport moving beside it doesn't count.
 xdotool key --window "$WINDOW_ID" w || true
+wait_for differs first 100 "34x180+5+${TOOLS_Y:-136}" || true
 shot move-tool
 TOOL_CHANGE="$(changed_pixels first move-tool 34x180+5+${TOOLS_Y:-136})"
 echo "Pixels changed in the toolbox by pressing W: $TOOL_CHANGE"
@@ -179,6 +252,7 @@ xdotool keydown w
 sleep 1.5
 xdotool keyup w
 xdotool mouseup 3
+wait_for differs move-tool 5000 800x370+280+140 || true
 shot flown
 FLY_CHANGE="$(changed_pixels move-tool flown 800x370+280+140)"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
@@ -187,8 +261,10 @@ TOOL_AFTER="$(changed_pixels move-tool flown 34x180+5+${TOOLS_Y:-136})"
 echo "Pixels changed in the toolbox by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 
-# Drags with the left button from ($1, $2) by ($3, $4), in steps.
+# Drags with the left button from ($1, $2) by ($3, $4), in steps, and
+# lets go once the screen shows the drag.
 drag() {
+    snap before-drag
     xdotool mousemove "$1" "$2"
     sleep 0.3
     xdotool mousedown 1
@@ -196,7 +272,7 @@ drag() {
         xdotool mousemove $(($1 + i * $3 / 20)) $(($2 + i * $4 / 20))
         sleep 0.05
     done
-    settle
+    seen differs before-drag 5000 || true
     xdotool mouseup 1
 }
 
@@ -210,7 +286,7 @@ echo "Pixels changed by dragging the shelf's grip: $GROW_CHANGE"
 # 5. On the Audio tab (the mixer beside the Bus group, split 60 / 40),
 #    drag the divider between the two groups to the left.
 xdotool mousemove "${AUDIO_TAB_X:-481}" "${AUDIO_TAB_Y:-19}" click 1
-settle
+wait_for tab_open "${AUDIO_TAB_X:-481}" || fail "the Audio tab did not open"
 shot audio
 drag "${DIVIDER_X:-864}" "${DIVIDER_Y:-300}" -200 0
 shot dragged
@@ -236,14 +312,25 @@ echo "Pixels different from the dragged frame: $SAME; from the first launch: $FI
 [ "$SAME" -lt 20000 ] || fail "the reopened editor does not match the dragged frame"
 quit
 
+# Red pixels (the sample's base) in the middle of the viewport, in the
+# picture `$1`.
+red_pixels() {
+    convert "$OUT/$1.png" -crop 600x400+250+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:
+}
+model_drawn() { [ "$(red_pixels now)" -gt 2000 ]; }
+
 # 8. Importing a model: start with --import and the sample model (a
 #    checker cube on a red base; SAMPLE_MODEL names the file, made with
 #    `cargo run -p assets --example sample -- sample.glb`). The camera
-#    frames it, so red fills part of the middle of the viewport.
+#    frames it, so red fills part of the middle of the viewport. The frame
+#    reopens on the tab used last (Audio, step 5), and an import doesn't
+#    change the tab: Home shows the 3D view.
 if [ -n "${SAMPLE_MODEL:-}" ]; then
     launch --import "$SAMPLE_MODEL"
+    xdotool mousemove "${HOME_TAB_X:-114}" "${HOME_TAB_Y:-19}" click 1
+    wait_for model_drawn || true
     shot imported
-    RED="$(convert "$OUT/imported.png" -crop 600x400+250+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:)"
+    RED="$(red_pixels imported)"
     echo "Red pixels of the sample's base in the viewport: $RED"
     [ "$RED" -gt 2000 ] || fail "the imported model is not drawn"
     grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"

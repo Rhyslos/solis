@@ -25,5 +25,8 @@ notify-debouncer-mini.workspace = true
 trash.workspace = true
 chrono.workspace = true
 
+[dev-dependencies]
+reflect = { workspace = true, features = ["test-support"] }
+
 [lints]
 workspace = true

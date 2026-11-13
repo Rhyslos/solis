@@ -5,12 +5,17 @@ use super::*;
 
 const MADE_BY: &str = "Test 1.0";
 
-/// A new UI sample in its own folder, open in a workbench on its area.
-fn made(name: &str) -> (std::path::PathBuf, editor::Workbench) {
-    let root = std::env::temp_dir()
-        .join(format!("solis-ui-sample-{name}-{}", std::process::id()))
-        .join("UI sample");
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
+/// A new UI sample in its own folder (removed when the first part of
+/// what's returned is dropped), open in a workbench on its area.
+fn made(
+    name: &str,
+) -> (
+    reflect::test_support::TempFolder,
+    std::path::PathBuf,
+    editor::Workbench,
+) {
+    let temp = reflect::test_support::TempFolder::new(&format!("ui-sample-{name}")).unwrap();
+    let root = temp.join("UI sample");
     make(&root).unwrap();
     assert!(make(&root).is_err(), "not over an existing project");
     let project = Project::open(&root).unwrap();
@@ -32,7 +37,7 @@ fn made(name: &str) -> (std::path::PathBuf, editor::Workbench) {
         &mut crate::check_project::Read::default(),
     )
     .unwrap();
-    (root, w)
+    (temp, root, w)
 }
 
 /// Every text and button's words on the screens shown.
@@ -83,7 +88,7 @@ fn play_through(w: &mut editor::Workbench) {
 
 #[test]
 fn the_ui_sample_s_screens_follow_the_game_and_its_menu_changes_the_settings() {
-    let (root, mut w) = made("plays");
+    let (_temp, _, mut w) = made("plays");
     w.play();
     w.play_for(1.0 / 60.0);
     assert!(has(&w, "Ammo 12 / 12"), "{:?}", words(&w));
@@ -132,12 +137,11 @@ fn the_ui_sample_s_screens_follow_the_game_and_its_menu_changes_the_settings() {
     // The settings stay after Stop, for the next play.
     w.stop();
     assert_eq!(w.player_settings().text_size, 1.25);
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
 
 #[test]
 fn the_ui_sample_plays_the_same_from_a_recording_menus_included() {
-    let (root, mut w) = made("recorded");
+    let (_temp, root, mut w) = made("recorded");
     w.play_and_record();
     play_through(&mut w);
     let text = w.recording_text().expect("recording");
@@ -155,15 +159,12 @@ fn the_ui_sample_plays_the_same_from_a_recording_menus_included() {
     let said = report.text();
     assert_eq!(report.failed, 0, "{said}");
     assert!(said.contains("plays back the same"), "{said}");
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
 
 #[test]
 fn the_ui_sample_never_replaces_a_file_of_the_person_s() {
-    let root = std::env::temp_dir()
-        .join(format!("solis-ui-sample-mine-{}", std::process::id()))
-        .join("My game");
-    let _ = std::fs::remove_dir_all(&root);
+    let temp = reflect::test_support::TempFolder::new("ui-sample-mine").unwrap();
+    let root = temp.join("My game");
     let assets = root.join(asset_db::ASSETS_FOLDER);
     std::fs::create_dir_all(assets.join("ui")).unwrap();
     std::fs::write(assets.join("ui/hud.lst"), "-- mine\nend\n").unwrap();
@@ -193,7 +194,7 @@ fn every_screen_of_the_ui_sample_opens_on_the_canvas() {
 
 #[test]
 fn review_findings_stay_fixed() {
-    let (root, mut w) = made("review");
+    let (_temp, _, mut w) = made("review");
     w.play();
     w.play_for(1.0 / 60.0);
     // Twelve shots empty it; it stays empty while reloading, then refills.
@@ -226,5 +227,4 @@ fn review_findings_stay_fixed() {
             .any(|l| l.text.contains("the exported game would close")),
         "the Console says so"
     );
-    let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }

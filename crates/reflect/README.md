@@ -17,6 +17,8 @@ Nothing here knows Rust types beyond the [`Component`] trait for typed access, s
 
 As the one crate every reader of files already depends on, it also holds the one way a file is opened (`ordinary_file`): only an ordinary file, never a folder, a device or a pipe (a project can ship a link to one, named like any picture or sound, and reading it would never end), and never more of it than asked. The model, picture, sound, project and text readers all open their files there.
 
+For every crate's tests, behind the `test-support` feature (only ever turned on by a dev-dependency, never in a build of Solis): `test_support::TempFolder`, the one way a test makes a folder in the system's temporary folder. It is always new (`solis-<name>-<process id>-<n>`, never an earlier run's) and is removed with everything in it when dropped, so runs leave nothing behind.
+
 ## Must never
 
 - Identify a component by its Rust type (`TypeId`): names only, so Lust libraries can be rebuilt and Lua components defined at run time.

@@ -902,6 +902,21 @@ proptest::proptest! {
     }
 }
 
+/// Two characters standing in one another, still, on a moving platform
+/// end in the same place moved together or one by one. (The property test
+/// found it: the platform under each was looked for with a ray that met
+/// the other character first, which then carried it by where it was
+/// going, known only once it had been moved.)
+#[test]
+fn characters_standing_in_one_another_end_alike_moved_together_or_not() {
+    let places = [(0, 0), (0, 0)];
+    let still: Ticks = vec![vec![(0, 0, 0, 0), (1, 0, 0, 0)]; 30];
+    assert_eq!(
+        crowd_played(&places, true, &still, true),
+        crowd_played(&places, true, &still, false)
+    );
+}
+
 // The hardening milestone's mutation testing found these untested.
 
 #[test]

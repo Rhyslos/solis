@@ -184,7 +184,6 @@ mod tests {
         assert!(root.is_dir(), "the folder keeps its name");
         assert!(rename(&root, "").is_err());
         assert!(rename(&test_folder("tidy-rename-none"), "X").is_err());
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -220,8 +219,6 @@ mod tests {
         let err = copy_project(&root, &root.join("assets/inside"), "In").unwrap_err();
         assert!(err.contains("inside"), "{err}");
         assert!(copy_project(&to.join("assets"), &test_folder("tidy-copy-3"), "X").is_err());
-        let _ = std::fs::remove_dir_all(&root);
-        let _ = std::fs::remove_dir_all(&to);
     }
 
     #[test]
@@ -238,6 +235,5 @@ mod tests {
         let (found, _) = find_projects(&top.join("a"));
         assert_eq!(found, vec![top.join("a")], "the folder chosen can be one");
         assert_eq!(find_projects(&top.join("none")), (vec![], false));
-        let _ = std::fs::remove_dir_all(&top);
     }
 }

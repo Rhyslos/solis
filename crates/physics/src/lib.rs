@@ -727,12 +727,9 @@ impl Physics {
                 let Some(body) = state.bodies.get(handle) else {
                     return false;
                 };
-                // Characters are kinematic too, and one moved earlier in
-                // the same step mustn't count as a platform.
-                let character = reflect::Id::from_raw(body.user_data as u64)
-                    .and_then(|id| state.by_entity.get(&EntityId(id)))
-                    .is_some_and(|e| e.character.is_some());
-                body.is_kinematic() && !character && body.next_position() != body.position()
+                body.is_kinematic()
+                    && !is_a_character(state, body)
+                    && body.next_position() != body.position()
             })
         };
         // Only each character's first move can be worked out ahead.
@@ -1008,11 +1005,19 @@ fn plan_one(
         // carries the character, turning included, by how far it moves this
         // step. (Rapier only carries a character through what its move
         // happens to meet, which a character standing still or walking on
-        // the flat doesn't, so Solis does it whatever the move.)
+        // the flat doesn't, so Solis does it whatever the move.) The ray
+        // passes through characters, which never carry (see
+        // `is_a_character`): one standing in another finds what's under both.
         if last.grounded && platforms {
             let feet = start.translation;
             let ray = rp::Ray::new(feet + rp::Vector::Z * 0.05, -rp::Vector::Z);
+            let not_a_character = |_, c: &rp::Collider| {
+                c.parent()
+                    .and_then(|body| state.bodies.get(body))
+                    .is_none_or(|body| !is_a_character(state, body))
+            };
             let under = queries
+                .with_filter(filter.predicate(&not_a_character))
                 .cast_ray(&ray, spec.snap.max(0.05) + 0.15, true)
                 .and_then(|(handle, _)| state.colliders.get(handle)?.parent())
                 .and_then(|body| state.bodies.get(body))
@@ -1083,6 +1088,16 @@ fn plan_one(
     }))
     .ok()
     .flatten()
+}
+
+/// Whether `body` is a character's. Characters are kinematic bodies too,
+/// but never a platform that carries one: where a character goes this step
+/// depends on whether it has been moved yet, so a crowd moved together
+/// would end somewhere else than one moved one by one.
+fn is_a_character(state: &State, body: &rp::RigidBody) -> bool {
+    reflect::Id::from_raw(body.user_data as u64)
+        .and_then(|id| state.by_entity.get(&EntityId(id)))
+        .is_some_and(|e| e.character.is_some())
 }
 
 /// Makes a worked-out move: pushes what it walked into, and sets its

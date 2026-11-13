@@ -112,15 +112,11 @@ pub fn read_start(path: &Path, most: u64) -> Result<Vec<u8>, Refused> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::TempFolder;
     use std::io::ErrorKind;
-    use std::path::PathBuf;
 
-    fn folder(name: &str) -> PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("solis-ordinary-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
+    fn folder(name: &str) -> TempFolder {
+        TempFolder::new(&format!("ordinary-{name}")).unwrap()
     }
 
     #[test]

@@ -395,8 +395,7 @@ fn a_lua_file_starting_with_a_control_byte_is_text_never_bytecode() {
 fn game_code_can_t_require_files_from_anywhere() {
     // The security review: Luau's package library gave game code
     // `require`, which reads and runs any .lua file on the computer.
-    let outside = std::env::temp_dir().join(format!("solis-require-{}", std::process::id()));
-    std::fs::create_dir_all(&outside).unwrap();
+    let outside = reflect::test_support::TempFolder::new("require").unwrap();
     std::fs::write(outside.join("secret.lua"), "return 'TOP-SECRET'").unwrap();
     let path = outside.join("secret").to_string_lossy().replace('\\', "/");
     let probe = format!(
@@ -420,7 +419,6 @@ fn game_code_can_t_require_files_from_anywhere() {
     assert!(!found.contains("TOP-SECRET"), "{found}");
     assert!(found.starts_with("false"), "{found}");
     assert!(found.ends_with("nil nil"), "{found}");
-    let _ = std::fs::remove_dir_all(outside);
 }
 
 #[test]

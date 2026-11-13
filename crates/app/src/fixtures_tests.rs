@@ -170,16 +170,9 @@ fn every_version_of_every_format_opens() {
     }
 }
 
-/// A project folder in the temporary folder, made fresh.
-fn project(name: &str) -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "solis-fixtures-{name}-{}-{:?}",
-        std::process::id(),
-        std::thread::current().id()
-    ));
-    let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root).unwrap();
-    root
+/// A new project folder in the temporary folder, removed when dropped.
+fn project(name: &str) -> reflect::test_support::TempFolder {
+    reflect::test_support::TempFolder::new(&format!("fixtures-{name}")).unwrap()
 }
 
 #[test]
@@ -215,7 +208,6 @@ fn an_old_input_actions_file_is_upgraded_and_kept_when_saved() {
         crate::play_files::save_bindings(&root, &bindings.write()).unwrap(),
         None
     );
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -236,7 +228,6 @@ fn an_upgrade_that_would_lose_something_leaves_the_old_file() {
     assert!(refused.unwrap_err().contains("read back"));
     assert_eq!(std::fs::read(&path).unwrap(), old);
     assert!(!asset_db::backup::folder(&root).exists());
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -255,7 +246,6 @@ fn an_older_save_in_a_slot_is_kept_before_it_s_replaced() {
     // Now current: replaced without another copy.
     let (_, again) = crate::play_files::save_game(&root, "quick", &current).unwrap();
     assert_eq!(again, None);
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -270,7 +260,6 @@ fn a_newer_save_in_a_slot_is_kept_before_it_s_replaced() {
     std::fs::write(&slot, &newer).unwrap();
     let (_, copy) = crate::play_files::save_game(&root, "quick", &current).unwrap();
     assert_eq!(std::fs::read_to_string(copy.expect("kept")).unwrap(), newer);
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -284,7 +273,6 @@ fn input_actions_from_a_newer_solis_are_never_overwritten() {
         std::fs::read_to_string(root.join(input::FILE)).unwrap(),
         newer
     );
-    let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
@@ -308,6 +296,5 @@ fn scale_check_quick_saving_over_a_big_save() {
     println!(
         "Scale check: quick-saving 64 MB over a 64 MB save of this version {ms:.0} ms (target {TARGET_MS} ms) {verdict}"
     );
-    let _ = std::fs::remove_dir_all(&root);
     assert!(ms <= TARGET_MS, "{ms:.0} ms");
 }

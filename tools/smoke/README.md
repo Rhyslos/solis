@@ -4,7 +4,7 @@ The window test: opens the real editor on a virtual screen and checks what a scr
 
 | File | What it does |
 | --- | --- |
-| `window-smoke.sh` | Starts the editor with a throwaway home folder, then checks: the window opens, the viewport is drawn in the right colours, a tool key picks a tool, the camera flies (right mouse and W), a panel can be dragged to a new place, File > Exit quits, and the next launch puts the panel and camera back. It never waits a fixed time for the program: it waits until the screen has stopped changing, or until the program has ended. With `SAMPLE_MODEL` set to a `.glb` file it also checks an imported model is drawn. Screenshots go to the output folder. |
+| `window-smoke.sh` | Starts the editor with a throwaway home folder, then checks: the window opens, the viewport is drawn in the right colours, a tool key picks a tool, the camera flies (right mouse and W), a panel can be dragged to a new place, File > Exit quits, and the next launch puts the panel and camera back. It never waits a fixed time for the program: after each step it waits until the screen shows what the step does (the File page open, the tool lit, the view moved), then until the screen holds still, or until the program has ended. A picture of one colour all over (before the window is first drawn) never counts. With `SAMPLE_MODEL` set to a `.glb` file it also checks an imported model is drawn. Screenshots go to the output folder. |
 
 It runs on Linux only (it needs Xvfb, xdotool, ImageMagick and a GPU driver such as Mesa's software one). The program's name is passed in as the window title, so the script never names the program:
 

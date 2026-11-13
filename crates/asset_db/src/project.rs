@@ -422,7 +422,6 @@ mod tests {
             assert!(read_text_limited(&odd, 1 << 20).is_err(), "{odd:?}");
         }
         assert_eq!(read_text_limited(&path, 12).unwrap(), "twelve bytes");
-        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]
@@ -456,7 +455,6 @@ mod tests {
         );
         assert_eq!(Project::summary(&root).unwrap().saved_by, Some(52));
         assert_eq!(Project::open(&root).unwrap().name(), "Farm");
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -484,7 +482,6 @@ mod tests {
         )
         .unwrap();
         assert!(Project::summary(&root).is_err());
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -508,9 +505,7 @@ mod tests {
             std::os::unix::fs::symlink(&outside, made.join("deeper")).unwrap();
             assert!(own_folder(&root, "solis/kit/deeper/x").is_err());
             assert!(std::fs::read_dir(&outside).unwrap().next().is_none());
-            let _ = std::fs::remove_dir_all(&outside);
         }
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

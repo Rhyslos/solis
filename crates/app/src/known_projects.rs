@@ -415,8 +415,7 @@ mod tests {
 
     #[test]
     fn rows_read_each_project_and_say_what_went_wrong() {
-        let base = std::env::temp_dir().join(format!("solis-known-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&base);
+        let base = reflect::test_support::TempFolder::new("known").unwrap();
         let farm = base.join("farm");
         let project = asset_db::Project::create(&farm, "Farm").unwrap();
         project.record_build(57).unwrap();
@@ -449,6 +448,5 @@ mod tests {
         let rows = list.rows();
         assert_eq!(rows[0].name, "Farm");
         assert!(rows[0].problem.is_some());
-        let _ = std::fs::remove_dir_all(&base);
     }
 }

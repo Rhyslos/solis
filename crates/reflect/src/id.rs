@@ -293,11 +293,18 @@ mod hasher_tests {
             .map(|id| IdHashing::default().hash_one(id) & 0xffff)
             .collect();
         assert!(lows.len() > 5_000, "{}", lows.len());
+        // And in the top bits, which the map compares first. Both spread,
+        // a map of them stays quick: the cause is checked rather than a
+        // time, which a busy machine can miss (the review, TEST-04).
+        let tops: std::collections::HashSet<u64> = (1..=10_000u64)
+            .map(|k| EntityId(Id::from_raw(k << 40).unwrap()))
+            .map(|id| IdHashing::default().hash_one(id) >> 57)
+            .collect();
+        assert!(tops.len() > 100, "{}", tops.len());
         let mut map: IdMap<u64> = IdMap::default();
-        let start = std::time::Instant::now();
         for k in 1..=100_000u64 {
             map.insert(EntityId(Id::from_raw(k << 40).unwrap()), k);
         }
-        assert!(start.elapsed() < std::time::Duration::from_millis(500));
+        assert_eq!(map.len(), 100_000);
     }
 }

@@ -38,12 +38,11 @@ pub use project::{
 pub use sidecar::{Part, PartKey, PartKind, SIDECAR_FORMAT, Sidecar};
 pub use watch::Watcher;
 
-/// A fresh, empty folder for one test, in the system's temporary folder.
+/// A new, empty folder for one test, in the system's temporary folder,
+/// removed when the test ends.
 #[cfg(test)]
-pub(crate) fn test_folder(name: &str) -> std::path::PathBuf {
-    let folder = std::env::temp_dir().join(format!("solis-test-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&folder);
-    folder
+pub(crate) fn test_folder(name: &str) -> reflect::test_support::TempFolder {
+    reflect::test_support::TempFolder::new(&format!("test-{name}")).unwrap()
 }
 
 /// Things that aren't ordinary files, each called `name` in a folder of

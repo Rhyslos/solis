@@ -25,5 +25,8 @@ bytemuck.workspace = true
 meshopt.workspace = true
 flate2.workspace = true
 
+[dev-dependencies]
+reflect = { workspace = true, features = ["test-support"] }
+
 [lints]
 workspace = true

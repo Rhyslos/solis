@@ -72,14 +72,18 @@ fn a_brush_stroke_paints_every_cell_dragged_over_as_one_undo_step() {
     assert_eq!(row(&w, 1, 9..18), ".........");
     w.map_undo(true, false);
     assert_eq!(row(&w, 1, 9..18), ".~~~~~~~.");
-    // A drag far off the map (zoomed right out) is quick and paints
-    // nothing there (the stability review).
-    let started = std::time::Instant::now();
+    // A drag far off the map (zoomed right out) jumps to where it lands
+    // rather than walking the 1.8 million cells between (the stability
+    // review), so the cells of the map it passed over are left as they
+    // were. (What makes it quick is checked, not a time
+    // a busy machine can miss: the review, TEST-04.)
+    let width = the_map(&w).size()[0];
+    let before = row(&w, 1, 0..width);
     frame(&mut w, [16, 1], true, false, true, [false; 2]);
     frame(&mut w, [900_000, 1], true, false, false, [false; 2]);
     frame(&mut w, [-900_000, 1], true, false, false, [false; 2]);
     frame(&mut w, [-900_000, 1], false, false, false, [false; 2]);
-    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    assert_eq!(row(&w, 1, 0..width), before);
 }
 
 /// The review, BUG-09: the app handing over its files while a stroke was

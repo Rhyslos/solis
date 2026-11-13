@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn text_is_read_and_what_isn_t_text_says_why() {
-        let dir = std::env::temp_dir().join(format!("solis-text-files-{}", std::process::id()));
+        let dir = reflect::test_support::TempFolder::new("text-files").unwrap();
         std::fs::create_dir_all(&dir).unwrap();
         let notes = dir.join("notes.md");
         std::fs::write(&notes, "# Notes\nhéllo").unwrap();
@@ -86,6 +86,5 @@ mod tests {
                 .unwrap_err()
                 .contains("couldn't be read")
         );
-        std::fs::remove_dir_all(&dir).ok();
     }
 }

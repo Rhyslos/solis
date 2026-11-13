@@ -2354,7 +2354,7 @@ mod tests {
 
     #[test]
     fn the_same_folder_is_recognised_however_its_written() {
-        let folder = std::env::temp_dir().join(format!("solis-same-{}", std::process::id()));
+        let folder = reflect::test_support::TempFolder::new("same").unwrap();
         std::fs::create_dir_all(folder.join("assets")).unwrap();
         assert!(same_folder(&folder, &folder.join("assets").join("..")));
         assert!(!same_folder(&folder, &folder.join("assets")));

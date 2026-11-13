@@ -683,12 +683,9 @@ fn the_extension_and_the_contents_name_the_format() {
     assert_eq!(Format::Wav.name(), "WAV");
 }
 
-/// A fresh folder for one test.
-pub(crate) fn test_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("solis-sound-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
+/// A new, empty folder for one test, removed when it's dropped.
+pub(crate) fn test_dir(name: &str) -> reflect::test_support::TempFolder {
+    reflect::test_support::TempFolder::new(&format!("sound-{name}")).unwrap()
 }
 
 // --- The game's sounds ----------------------------------------------
@@ -829,7 +826,6 @@ mod game_sounds {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         assert!(said.is_some_and(|why| why.starts_with("couldn't read it")));
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -1103,7 +1099,6 @@ fn a_stream_opened_as_it_plays_starts_where_asked_or_says_why_once() {
         total += chunk.len();
     }
     assert_eq!(total, 3_000);
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -1132,7 +1127,6 @@ fn a_streamed_file_shorter_than_measured_ends_and_a_changed_one_is_refused() {
     // Another rate since: refused.
     std::fs::write(&path, wav_int(22_050, 1, 16, &[500; 3_000])).unwrap();
     assert!(crate::device::FileStream::open(&path, info).is_err());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

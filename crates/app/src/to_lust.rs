@@ -146,13 +146,9 @@ fn move_one(root: &Path, path: &Path, older: &Older) -> Result<PathBuf, String> 
 mod tests {
     use super::*;
 
-    fn project(name: &str) -> (PathBuf, PathBuf) {
-        let root = std::env::temp_dir().join(format!(
-            "solis-to-lust-{name}-{}-{:?}",
-            std::process::id(),
-            std::thread::current().id()
-        ));
-        let _ = std::fs::remove_dir_all(&root);
+    /// A project's folder (removed when it's dropped) and its assets.
+    fn project(name: &str) -> (reflect::test_support::TempFolder, PathBuf) {
+        let root = reflect::test_support::TempFolder::new(&format!("to-lust-{name}")).unwrap();
         let assets = root.join("assets");
         std::fs::create_dir_all(assets.join("maps")).unwrap();
         (root, assets)
@@ -200,7 +196,6 @@ mod tests {
         );
         // Opened again: nothing left to move.
         assert!(move_older_files(&root, &assets).is_empty());
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -222,6 +217,5 @@ mod tests {
             "mine",
             "never written over"
         );
-        let _ = std::fs::remove_dir_all(&root);
     }
 }

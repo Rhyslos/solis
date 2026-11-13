@@ -558,13 +558,9 @@ fn slashed(path: &Path) -> String {
 mod tests {
     use super::*;
 
-    fn folder(name: &str) -> std::path::PathBuf {
-        let path = std::env::temp_dir()
-            .join(format!("solis-script-{}", std::process::id()))
-            .join(name);
-        let _ = std::fs::remove_dir_all(&path);
-        std::fs::create_dir_all(&path).unwrap();
-        path
+    /// A new, empty folder for one test, removed when it's dropped.
+    fn folder(name: &str) -> reflect::test_support::TempFolder {
+        reflect::test_support::TempFolder::new(&format!("script-{name}")).unwrap()
     }
 
     #[test]
@@ -754,7 +750,6 @@ mod tests {
             "{:?}",
             code.notes
         );
-        let _ = std::fs::remove_dir_all(&assets);
         // At most so many files: the next is left out, and said.
         let assets = folder("edges-count");
         for n in 0..=MAX_FILES {
@@ -767,7 +762,6 @@ mod tests {
             "{:?}",
             code.notes
         );
-        let _ = std::fs::remove_dir_all(&assets);
     }
 
     #[test]

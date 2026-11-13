@@ -585,9 +585,8 @@ mod tests {
         panic!("measuring never finished");
     }
 
-    fn folder(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("solis-sounds-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+    fn folder(name: &str) -> reflect::test_support::TempFolder {
+        let dir = reflect::test_support::TempFolder::new(&format!("sounds-{name}")).unwrap();
         std::fs::create_dir_all(dir.join("sfx")).unwrap();
         dir
     }
@@ -665,7 +664,6 @@ mod tests {
         s.clear(&mut device);
         assert!(s.states().is_empty());
         assert!(s.preview(&device).is_none());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// A made-up asset ID for a sound file, from its name.
@@ -749,7 +747,6 @@ mod tests {
         w.stop();
         audio.frame(&mut w, &s, &mut device, &ctx);
         assert!(device.loops_playing().is_empty());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -832,12 +829,14 @@ mod tests {
         assert_eq!(device.loops_playing(), expected);
         assert!(!device.loops_playing().contains(&blue));
         assert!(!device.loops_playing().contains(&theirs));
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The sounds folder for the review's tests: `hum.wav`, and an event
     /// file for each of `events`.
-    fn with_events(name: &str, events: &[(&str, sound::SoundEvent)]) -> (PathBuf, Sounds) {
+    fn with_events(
+        name: &str,
+        events: &[(&str, sound::SoundEvent)],
+    ) -> (reflect::test_support::TempFolder, Sounds) {
         let dir = folder(name);
         std::fs::write(dir.join("sfx/hum.wav"), wav()).unwrap();
         let mut files = vec!["sfx/hum.wav".to_owned()];
@@ -907,7 +906,7 @@ mod tests {
             space: sound::event::Space::Flat,
             ..hum_event()
         };
-        let (dir, s) = with_events("flat", &[("hum", flat)]);
+        let (_dir, s) = with_events("flat", &[("hum", flat)]);
         let (mut w, ids) = hum_world(1);
         let mut device = SoundDevice::for_tests();
         let mut audio = crate::game_audio::GameAudio::default();
@@ -929,7 +928,6 @@ mod tests {
         w.play_for(1.0 / 60.0);
         audio.frame(&mut w, &s, &mut device, &ctx);
         assert_eq!(device.game_sounds_playing(), 1);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -941,7 +939,7 @@ mod tests {
             at_once: 2,
             ..hum_event()
         };
-        let (dir, s) = with_events("at-once", &[("hum", two)]);
+        let (_dir, s) = with_events("at-once", &[("hum", two)]);
         const KEEP: &str = "fetch \"solis/project\":Sound;\n\n\
             component Keep {\n\
                 method update(float dt) { playSound(Sound.Hum); }\n\
@@ -974,7 +972,6 @@ mod tests {
         w.play_for(1.0 / 60.0);
         audio.frame(&mut w, &s, &mut device, &ctx);
         assert_eq!(device.one_shots_playing(), 0, "stopped before it began");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -985,7 +982,7 @@ mod tests {
             looping: true,
             ..hum_event()
         };
-        let (dir, s) = with_events("drone", &[("drone", drone)]);
+        let (_dir, s) = with_events("drone", &[("drone", drone)]);
         const ONCE: &str = "fetch \"solis/project\":Sound;\n\n\
             component Once {\n\
                 has { bool started = false; }\n\
@@ -1006,14 +1003,13 @@ mod tests {
         }
         assert_eq!(device.one_shots_playing(), 1);
         assert!(device.loops_playing().is_empty(), "not an AudioSource's");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn made_up_buses_and_events_don_t_pile_up() {
         // Regression (the Phase 7 review): game code naming buses or sound
         // events that aren't there grew two lists without end.
-        let (dir, s) = with_events("made-up", &[("hum", hum_event())]);
+        let (_dir, s) = with_events("made-up", &[("hum", hum_event())]);
         const MADE_UP: &str = "fetch \"solis/project\":[Sound, Bus];\nfetch \"solis/sound\":Audio;\n\n\
             component Noisy {\n\
                 method update(float dt) {\n\
@@ -1037,7 +1033,6 @@ mod tests {
             (1, 1),
             "only the real bus; the unknown name once"
         );
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -1046,7 +1041,7 @@ mod tests {
         // The Phase 7 review: every frame, every AudioSource was worked out
         // again from scratch. 2,000 playing loops, 64 heard at once.
         const TARGET_MS: f64 = 1.0;
-        let (dir, s) = with_events("scale-loops", &[("hum", hum_event())]);
+        let (_dir, s) = with_events("scale-loops", &[("hum", hum_event())]);
         let (mut w, _) = hum_world(2_000);
         w.set_mixer(sound::Mixer::default());
         let mut device = SoundDevice::for_tests();
@@ -1065,7 +1060,6 @@ mod tests {
         println!(
             "Scale check: the game's sound for a frame with 2,000 AudioSources playing {ms:.3} ms (target {TARGET_MS} ms) {verdict}"
         );
-        let _ = std::fs::remove_dir_all(&dir);
         assert!(ms <= TARGET_MS, "{ms:.3} ms");
     }
 
@@ -1073,7 +1067,7 @@ mod tests {
     fn a_loop_picks_again_when_its_event_changes() {
         // Loops keep their pick from frame to frame; an event saved with
         // no takes must stop it, and saved back start it again.
-        let (dir, mut s) = with_events("kept-pick", &[("hum", hum_event())]);
+        let (_dir, mut s) = with_events("kept-pick", &[("hum", hum_event())]);
         let (mut w, _) = hum_world(1);
         let mut device = SoundDevice::for_tests();
         let mut audio = crate::game_audio::GameAudio::default();
@@ -1095,7 +1089,6 @@ mod tests {
         s.saved_event(Path::new("hum.solsound"), hum_event());
         audio.frame(&mut w, &s, &mut device, &ctx);
         assert_eq!(device.loops_playing().len(), 1);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -1159,7 +1152,6 @@ mod tests {
             .play(Path::new("bad.solsound"), &dir, &mut device)
             .unwrap_err();
         assert!(none.contains("none of its takes"), "{none}");
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -1181,6 +1173,5 @@ mod tests {
             read_event(&dir.join("none.solsound")),
             EventState::Failed(_)
         ));
-        let _ = std::fs::remove_dir_all(&dir);
     }
 }
