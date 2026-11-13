@@ -67,6 +67,10 @@ deny = [
     # Luau"), so no game code would run; mlua-sys asks only for ^0.22.0, so
     # any `cargo update` would take it. Lift with an mlua that works with it.
     { crate = "luau0-src@>=0.22.1", reason = "Luau held at 0.740: mlua 0.12.2 can't start a newer one; update the two together" },
+    # Solis's maths library is held at the version physics (Rapier) and
+    # sound (Kira) use, so it's built once and vectors cross unchanged; a
+    # second version means an update ran ahead of them.
+    { crate = "glam", deny-multiple-versions = true, reason = "Solis's glam is held at the one Rapier and Kira use; move them together (Dependabot's maths group)" },
 ]
 
 [sources]

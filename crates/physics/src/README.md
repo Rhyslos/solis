@@ -1,6 +1,6 @@
 # physics/src
 
-The game's physics (decision 0036): the Rapier library in its strict mode, so the same game gives exactly the same result on every PC. Bodies and colliders belong to entities by their area IDs; positions and directions use the engine's own types (Z up) and are converted at this crate's edge, so games never meet Rapier itself.
+The game's physics (decision 0036): the Rapier library in its strict mode, so the same game gives exactly the same result on every PC. Bodies and colliders belong to entities by their area IDs; positions and directions use the engine's own types (Z up), which are Rapier's too (both use the same glam), so games never meet Rapier itself.
 
 | File | What it does | Main items |
 | --- | --- | --- |

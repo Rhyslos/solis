@@ -193,6 +193,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **The maths library is built once instead of twice.** The engine used a newer version than its physics and sound libraries, so both were compiled and every vector was copied by hand at the physics edge. It now uses theirs, and they are updated together.
 - **The editor notices changed files without an extra library** that also brought a temporary-file library and a third copy of a random-number library into the program. Bursts of changes are still reported once, after the folder has been quiet for 300 ms.
 - **Two parts of the engine (sound and the updater) no longer list a logging library they never used**, and the dependency check now fails when a part lists a library none of its code uses, so the dependency list can't claim uses that don't exist.
 - **Game UI reads its fonts with the same font reader the editor's interface uses** ([decision 0107](docs/decisions/0107-game-ui-fonts-read-with-skrifa.md)). The one it used before is no longer looked after by its author; letters look exactly as they did.

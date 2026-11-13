@@ -251,16 +251,6 @@ impl Default for State {
     }
 }
 
-/// Solis's vector as Rapier's.
-fn to_rp(v: Vec3) -> rp::Vector {
-    rp::Vector::new(v.x, v.y, v.z)
-}
-
-/// Rapier's vector as Solis's.
-fn from_rp(v: rp::Vector) -> Vec3 {
-    Vec3::new(v.x, v.y, v.z)
-}
-
 /// A place and facing as Rapier's pose.
 fn pose(position: Vec3, rotation: Quat) -> rp::Pose {
     // Kept exactly when it's already a turn (a body's own, carried over),
@@ -270,13 +260,12 @@ fn pose(position: Vec3, rotation: Quat) -> rp::Pose {
     } else {
         rotation.normalize()
     };
-    rp::Pose::from_parts(to_rp(position), rp::Rotation::from_xyzw(r.x, r.y, r.z, r.w))
+    rp::Pose::from_parts(position, r)
 }
 
 /// Rapier's pose as a place and facing.
 fn from_pose(p: &rp::Pose) -> (Vec3, Quat) {
-    let r = p.rotation;
-    (from_rp(p.translation), Quat::from_xyzw(r.x, r.y, r.z, r.w))
+    (p.translation, p.rotation)
 }
 
 /// Whether every number is sensible: Rapier is never given NaN.
@@ -337,7 +326,7 @@ impl State {
     /// How fast `id`'s body moves, metres a second.
     pub fn velocity(&self, id: EntityId) -> Option<Vec3> {
         let entry = self.by_entity.get(&id)?;
-        self.bodies.get(entry.body).map(|b| from_rp(b.linvel()))
+        self.bodies.get(entry.body).map(|b| b.linvel())
     }
 
     /// Where `id`'s body is and which way it faces.
@@ -369,7 +358,7 @@ impl State {
         if !(from.is_finite() && reach.is_finite()) || reach <= 0.0 || direction == Vec3::ZERO {
             return None;
         }
-        let start = to_rp(from);
+        let start = from;
         let inside = |_: rp::ColliderHandle, c: &rp::Collider| {
             !c.shape().contains_point(c.position(), start)
         };
@@ -380,7 +369,7 @@ impl State {
             &self.colliders,
             filter,
         );
-        let ray = rp::Ray::new(start, to_rp(direction));
+        let ray = rp::Ray::new(start, direction);
         // Rapier's maths failing on something out of range is a miss, never
         // a crash.
         let (handle, hit) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -391,7 +380,7 @@ impl State {
             entity: self.entity_of(handle)?,
             distance: hit.time_of_impact,
             point: from + direction * hit.time_of_impact,
-            normal: from_rp(hit.normal),
+            normal: hit.normal,
         })
     }
 
@@ -407,11 +396,10 @@ impl State {
                 for v in p.to_array().into_iter().chain(r.to_array()) {
                     sum.f32(v);
                 }
-                for v in from_rp(body.linvel()).to_array() {
+                for v in body.linvel().to_array() {
                     sum.f32(v);
                 }
-                let w = body.angvel();
-                for v in [w.x, w.y, w.z] {
+                for v in body.angvel().to_array() {
                     sum.f32(v);
                 }
                 sum.u64(u64::from(body.is_sleeping()));
@@ -438,12 +426,11 @@ impl State {
         let entry = self.by_entity.get(&id)?;
         let body = self.bodies.get(entry.body)?;
         let (position, rotation) = from_pose(body.position());
-        let w = body.angvel();
         Some(BodyState {
             position,
             rotation,
-            velocity: from_rp(body.linvel()),
-            spin: Vec3::new(w.x, w.y, w.z),
+            velocity: body.linvel(),
+            spin: body.angvel(),
             sleeping: body.is_sleeping(),
             character: entry.character.map(|(_, c)| c),
         })
@@ -542,8 +529,8 @@ impl Physics {
                 }
             }
             if body.is_dynamic() {
-                body.set_linvel(to_rp(state.velocity), false);
-                body.set_angvel(to_rp(state.spin), false);
+                body.set_linvel(state.velocity, false);
+                body.set_angvel(state.spin, false);
             }
             // Asleep only for a save's exact place: a body built again
             // after an edit (lifted, or its floor taken away) must be free
@@ -625,7 +612,7 @@ impl Physics {
                 Vec3::ZERO
             };
             let mut builder = shape
-                .translation(to_rp(center))
+                .translation(center)
                 .friction(sensible(c.friction, 0.0, 10.0))
                 .restitution(sensible(c.bounciness, 0.0, 1.0))
                 .user_data(u128::from(id.0.raw()));
@@ -841,7 +828,7 @@ impl Physics {
             return;
         };
         if let Some(body) = self.state_mut().bodies.get_mut(handle) {
-            body.set_linvel(to_rp(velocity.clamp_length_max(MAX_SPEED)), true);
+            body.set_linvel(velocity.clamp_length_max(MAX_SPEED), true);
         }
     }
 
@@ -857,7 +844,7 @@ impl Physics {
         if let Some(body) = self.state_mut().bodies.get_mut(handle) {
             // No faster than MAX_SPEED from one push.
             let most = MAX_SPEED * body.mass().max(1e-3);
-            body.apply_impulse(to_rp(impulse.clamp_length_max(most)), true);
+            body.apply_impulse(impulse.clamp_length_max(most), true);
         }
     }
 
@@ -1026,7 +1013,7 @@ fn plan_one(
                 let carry = *platform.next_position() * platform.position().inverse();
                 let ride = carry.transform_point(feet) - feet;
                 if ride.is_finite() {
-                    wanted += from_rp(ride).clamp_length_max(MAX_CHARACTER_MOVE);
+                    wanted += ride.clamp_length_max(MAX_CHARACTER_MOVE);
                 }
             }
         }
@@ -1045,10 +1032,9 @@ fn plan_one(
                 .translation;
         }
         let shape_pose = rp::Pose::from_translation(out) * shape_pose;
-        let mut result =
-            controller.move_shape(dt, &queries, &*shape, &shape_pose, to_rp(wanted), |hit| {
-                collisions.push(hit);
-            });
+        let mut result = controller.move_shape(dt, &queries, &*shape, &shape_pose, wanted, |hit| {
+            collisions.push(hit);
+        });
         // Walking off a step or down a slope: down to the ground, if it's
         // within reach, rather than flying off.
         // (Also when Rapier still calls it grounded, up to a few

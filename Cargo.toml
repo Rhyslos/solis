@@ -35,7 +35,10 @@ ui = { path = "crates/ui" }
 # checked by `cargo deny check` (see deny.toml and decision 0007).
 toml = "1.1"
 serde = { version = "1.0", features = ["derive"] }
-glam = { version = "0.34", features = ["serde", "bytemuck"] }
+# Held at the glam the physics (Rapier) and sound (Kira) libraries use, so
+# it's built once and their vectors are Solis's own. Move it with them:
+# Dependabot brings the three as one update.
+glam = { version = "0.33", features = ["serde", "bytemuck"] }
 # Simplifies meshes into levels of detail (decision 0032).
 meshopt = "0.7"
 # Must match the wgpu version eframe uses (one GPU device is shared).

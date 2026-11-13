@@ -26,6 +26,12 @@ updates:
       # they come together, whatever kind of update.
       egui:
         patterns: ["egui", "egui_*", "egui-*", "eframe", "epaint", "emath", "ecolor"]
+      # Solis's glam is held at the one physics (Rapier) and sound (Kira)
+      # use, so it's built once and vectors cross unchanged: they move
+      # together, whatever kind of update. Also the libraries between
+      # Rapier and glam.
+      maths:
+        patterns: ["glam", "glamx", "rapier*", "parry*", "kira", "nalgebra"]
       rust-dependencies:
         patterns: ["*"]
         update-types: ["minor", "patch"]

@@ -237,7 +237,7 @@ dependencies = [
  "editor",
  "eframe",
  "gilrs",
- "glam 0.34.1",
+ "glam 0.33.12",
  "image",
  "input",
  "log",
@@ -289,7 +289,7 @@ dependencies = [
 name = "area"
 version = "0.0.1"
 dependencies = [
- "glam 0.34.1",
+ "glam 0.33.12",
  "lust",
  "proptest",
  "reflect",
@@ -328,7 +328,7 @@ version = "0.0.1"
 dependencies = [
  "assets",
  "chrono",
- "glam 0.34.1",
+ "glam 0.33.12",
  "notify",
  "reflect",
  "serde",
@@ -343,7 +343,7 @@ dependencies = [
  "base64",
  "bytemuck",
  "flate2",
- "glam 0.34.1",
+ "glam 0.33.12",
  "gltf",
  "image",
  "meshopt",
@@ -1098,7 +1098,7 @@ dependencies = [
  "chrono",
  "egui",
  "egui_kittest",
- "glam 0.34.1",
+ "glam 0.33.12",
  "input",
  "physics",
  "proptest",
@@ -1692,17 +1692,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37bfe73dc8ec21f54d181e5a60554327ec3f1c600c455a75ccbfc65d2106a6c4"
 dependencies = [
  "approx",
+ "bytemuck",
  "libm",
  "mint",
-]
-
-[[package]]
-name = "glam"
-version = "0.34.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc148d4ddd3930c52f9e5ae79b89805c6f07e9ff417e7b083e0348cea60a5aba"
-dependencies = [
- "bytemuck",
  "serde_core",
 ]
 
@@ -2175,7 +2167,7 @@ dependencies = [
 name = "input"
 version = "0.0.1"
 dependencies = [
- "glam 0.34.1",
+ "glam 0.33.12",
  "reflect",
  "serde",
  "toml",
@@ -3452,7 +3444,7 @@ dependencies = [
 name = "physics"
 version = "0.0.1"
 dependencies = [
- "glam 0.34.1",
+ "glam 0.33.12",
  "proptest",
  "rapier2d",
  "rapier3d",
@@ -3843,7 +3835,7 @@ dependencies = [
 name = "reflect"
 version = "0.0.1"
 dependencies = [
- "glam 0.34.1",
+ "glam 0.33.12",
  "serde",
  "toml",
 ]
@@ -3860,7 +3852,7 @@ version = "0.0.1"
 dependencies = [
  "assets",
  "bytemuck",
- "glam 0.34.1",
+ "glam 0.33.12",
  "log",
  "pollster 1.0.1",
  "rayon",
@@ -4124,7 +4116,7 @@ version = "0.0.1"
 dependencies = [
  "animation",
  "area",
- "glam 0.34.1",
+ "glam 0.33.12",
  "input",
  "lust",
  "mlua",
@@ -5796,7 +5788,7 @@ version = "0.0.1"
 dependencies = [
  "animation",
  "area",
- "glam 0.34.1",
+ "glam 0.33.12",
  "hecs",
  "physics",
  "rayon",
