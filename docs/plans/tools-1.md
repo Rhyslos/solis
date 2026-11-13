@@ -1,6 +1,6 @@
 # Tools 1: shape brushes and world sculpting
 
-**Status:** planned on 2026-11-13 from the project lead's answers; the mock-ups wait for approval (below), and nothing is built yet. Decisions [0108](../decisions/0108-shape-brushes-and-sculpting-come-next.md) (the order) and [0111](../decisions/0111-tools-1-brushes-and-ground.md) (what the tools are).
+**Status:** planned on 2026-11-13 from the project lead's answers; the mock-ups are approved (below); nothing is built yet. Decisions [0108](../decisions/0108-shape-brushes-and-sculpting-come-next.md) (the order) and [0111](../decisions/0111-tools-1-brushes-and-ground.md) (what the tools are).
 
 ## What the project lead asked
 
@@ -46,9 +46,9 @@ Tools 1 is too big for one phase (CLAUDE.md: two to six milestones), so it is tw
 | **G4 Painting** | Materials painted with the same brush, from a palette on the shelf; blended where they meet; drawn without stretching on steep and overhanging ground. |
 | **G5 Speed, game code, the gate** | Scale cases (the biggest ground the scale target names, sculpting it, walking 2,000 units over it); game code asking the ground questions (its height, a ray against it), following the game-code rules (decision 0065); the manual. **Gate:** a level of brushes on a sculpted, painted ground with a cave, in each look, played, saved and reopened, at the scale check's targets. |
 
-## Mock-ups (waiting for approval)
+## Mock-ups (approved 2026-11-13)
 
-Drawn in the design's language on Home's standard layout (decision 0109):
+In [docs/design/tools-1/](../design/tools-1/README.md), drawn in the design's language on Home's standard layout (decision 0109). With the approval, Ctrl turns snapping off for one drag while drawing out or extruding (as for the gizmos), and a Shape button in Home's Create group opens the brush list too.
 
 1. The brush list open (B pressed twice, Ramp highlighted).
 2. Drawing out a box (footprint and height).
