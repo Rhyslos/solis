@@ -11,7 +11,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
    - how deep it reaches;
    - an **exit plan**: what Solis does if the library goes bad.
 
-   A test (`tools/layer-check`, run by CI) fails if a crate uses a library that isn't listed, uses one in a crate the register doesn't allow, or if the register lists a library or a use that no longer exists.
+   A test (`tools/layer-check`, run by CI) fails if a crate uses a library that isn't listed, uses one in a crate the register doesn't allow, if the register lists a library or a use that no longer exists, or if a crate declares a library its code never names (a forgotten line in a `Cargo.toml` would otherwise keep a row looking used).
 2. **Walls.** A library is used in as few crates as possible, ideally one, behind Solis's own types, so replacing it means rewriting one crate, not the engine. The "allowed in" column is the wall, and the test holds it.
 3. **Licences are checked on every build.** `cargo deny check` (CI, `deny.toml`) fails if any library, including the libraries libraries use, has a licence that isn't on the allowed list.
    - **A library can't slip into another licence unnoticed:** if an update changes its licence to one not allowed, the update fails.
@@ -59,7 +59,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `image` | Reads PNG and JPEG textures (only those: `assets/src/picture.rs` checks a file's first bytes, whatever formats other libraries switch on) | MIT OR Apache-2.0 | assets, app (tests) | walled | Use smaller PNG and JPEG readers, or fork |
 | `kira` | Plays and mixes sound: tracks, effects, sound placed in 3D (decision 0056) | MIT OR Apache-2.0 | sound | walled | Fork it (MIT or Apache-2.0), or mix ourselves on top of `cpal` underneath; only the sound crate changes |
 | `lewton` | Decodes Ogg Vorbis sound (its headers and packets, handed to it by Solis; its own file reader isn't used) | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |
-| `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render, sound, updater | shared | A few lines of Solis's own logging |
+| `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render | shared | A few lines of Solis's own logging |
 | `lust` | Lust, the project lead's language (Solis's game code, and reading the data files Solis makes, decision 0081) | MIT | area, script | shared | Ours: the project lead's own repository, pinned to one commit |
 | `meshopt` | Makes levels of detail (simpler meshes for far away) | MIT OR Apache-2.0 | assets | walled | Write a simplifier (quadric error, a known method), or fork; meshoptimizer underneath is MIT |
 | `mint` | Hands places and turns to Kira (the shared maths types it takes) | MIT | sound | walled | Kira's own; would go with it |

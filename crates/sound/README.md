@@ -30,7 +30,7 @@ Read sound files and play them, without ever changing the game.
 
 ## Depends on
 
-`area` (its settings-file reader, for `.solsound` files) and `reflect` (asset IDs and values, and the one way files are opened), Kira (`cpal` backend only), hound, lewton, ogg, log.
+`area` (its settings-file reader, for `.solsound` files) and `reflect` (asset IDs and values, and the one way files are opened), Kira (`cpal` backend only), hound, lewton, ogg.
 
 ## Status
 

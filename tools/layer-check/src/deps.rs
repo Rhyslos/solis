@@ -4,7 +4,9 @@
 //! register, with the crates allowed to use it. These functions read the
 //! crates' manifests and the register, and say where they disagree:
 //! a library used but not listed, used in a crate it isn't allowed in,
-//! listed but no longer used, or listed without an exit plan.
+//! listed but no longer used, or listed without an exit plan. A library a
+//! crate declares but none of its code names is reported too: a manifest
+//! line alone would keep the register's row looking used.
 
 use std::fmt;
 
@@ -94,6 +96,13 @@ pub enum Problem {
         /// The library.
         library: String,
     },
+    /// A crate declares a library that none of its code names.
+    NotInCode {
+        /// The library.
+        library: String,
+        /// The crate declaring it.
+        krate: String,
+    },
 }
 
 impl fmt::Display for Problem {
@@ -134,6 +143,11 @@ impl fmt::Display for Problem {
             Self::Duplicate { library } => {
                 write!(f, "`{library}` is listed twice in docs/dependencies.md")
             }
+            Self::NotInCode { library, krate } => write!(
+                f,
+                "{krate} declares `{library}` in its Cargo.toml, but none of its code uses it: \
+                 remove the line, and {krate} from the row in docs/dependencies.md"
+            ),
         }
     }
 }
@@ -161,19 +175,23 @@ fn dependency_tables(doc: &toml::Table) -> Vec<(&toml::Table, Kind)> {
     tables
 }
 
-/// The outside libraries one crate's `Cargo.toml` uses. `internal` lists
-/// Solis's own crates, which aren't outside libraries. A dependency
-/// renamed with `package = "..."` counts under its real name.
-pub fn library_uses(manifest: &str, internal: &[String]) -> Result<Vec<Use>, String> {
-    let doc: toml::Table = manifest.parse().map_err(|e| format!("{e}"))?;
-    let krate = doc
-        .get("package")
+/// The crate name a manifest declares.
+fn package_name(doc: &toml::Table) -> Result<String, String> {
+    doc.get("package")
         .and_then(|p| p.get("name"))
         .and_then(toml::Value::as_str)
-        .ok_or_else(|| "no package name".to_string())?
-        .to_string();
-    let mut uses = Vec::new();
-    for (deps, kind) in dependency_tables(&doc) {
+        .map(str::to_string)
+        .ok_or_else(|| "no package name".to_string())
+}
+
+/// The outside libraries a manifest declares, each as the name its code
+/// calls it by (the key), the library's real name and how it's used.
+fn outside_dependencies<'a>(
+    doc: &'a toml::Table,
+    internal: &[String],
+) -> Vec<(&'a str, String, Kind)> {
+    let mut found = Vec::new();
+    for (deps, kind) in dependency_tables(doc) {
         for (name, spec) in deps {
             let by_path = spec
                 .get("path")
@@ -187,18 +205,77 @@ pub fn library_uses(manifest: &str, internal: &[String]) -> Result<Vec<Use>, Str
                 .and_then(toml::Value::as_str)
                 .unwrap_or(name)
                 .to_string();
-            let u = Use {
-                krate: krate.clone(),
-                library,
-                kind,
-            };
-            if !uses.contains(&u) {
-                uses.push(u);
-            }
+            found.push((name.as_str(), library, kind));
+        }
+    }
+    found
+}
+
+/// The outside libraries one crate's `Cargo.toml` uses. `internal` lists
+/// Solis's own crates, which aren't outside libraries. A dependency
+/// renamed with `package = "..."` counts under its real name.
+pub fn library_uses(manifest: &str, internal: &[String]) -> Result<Vec<Use>, String> {
+    let doc: toml::Table = manifest.parse().map_err(|e| format!("{e}"))?;
+    let krate = package_name(&doc)?;
+    let mut uses = Vec::new();
+    for (_, library, kind) in outside_dependencies(&doc, internal) {
+        let u = Use {
+            krate: krate.clone(),
+            library,
+            kind,
+        };
+        if !uses.contains(&u) {
+            uses.push(u);
         }
     }
     uses.sort();
     Ok(uses)
+}
+
+/// The outside libraries one crate's `Cargo.toml` declares that none of its
+/// Rust code names. `sources` is all of the crate's `.rs` files run
+/// together. A library counts as named when a path starts with it
+/// (`name::item`) or a `use` or `extern crate` brings it in, so a word in
+/// a comment doesn't count.
+pub fn unnamed_libraries(
+    manifest: &str,
+    internal: &[String],
+    sources: &str,
+) -> Result<Vec<Problem>, String> {
+    let doc: toml::Table = manifest.parse().map_err(|e| format!("{e}"))?;
+    let krate = package_name(&doc)?;
+    let mut found = Vec::new();
+    for (name, library, _) in outside_dependencies(&doc, internal) {
+        let problem = Problem::NotInCode {
+            library,
+            krate: krate.clone(),
+        };
+        if !code_names(sources, &name.replace('-', "_")) && !found.contains(&problem) {
+            found.push(problem);
+        }
+    }
+    Ok(found)
+}
+
+/// Whether Rust source text names the crate `ident`: `ident::` at the start
+/// of a path (alone or after a leading `::`), or `use ident` / `extern
+/// crate ident` followed by something that ends the name.
+fn code_names(sources: &str, ident: &str) -> bool {
+    let is_ident = |c: char| c.is_alphanumeric() || c == '_';
+    sources.match_indices(ident).any(|(at, _)| {
+        let before = &sources[..at];
+        let after = &sources[at + ident.len()..];
+        if after.starts_with(|c: char| is_ident(c)) || before.ends_with(is_ident) {
+            return false;
+        }
+        let path_start = match before.strip_suffix("::") {
+            Some(rest) => !rest.ends_with(|c: char| is_ident(c) || c == '>'),
+            None => true,
+        };
+        (path_start && after.starts_with("::"))
+            || before.ends_with("use ")
+            || before.ends_with("extern crate ")
+    })
 }
 
 /// Reads the register's table from `docs/dependencies.md`: the rows under
@@ -377,6 +454,70 @@ mod tests {
     fn a_manifest_without_a_name_or_that_isn_t_toml_is_an_error() {
         assert!(library_uses("[dependencies]\nx = \"1\"", &[]).is_err());
         assert!(library_uses("this is [not toml", &[]).is_err());
+        assert!(unnamed_libraries("[dependencies]\nx = \"1\"", &[], "").is_err());
+        assert!(unnamed_libraries("this is [not toml", &[], "").is_err());
+    }
+
+    fn not_in_code(library: &str) -> Problem {
+        Problem::NotInCode {
+            library: library.into(),
+            krate: "render".into(),
+        }
+    }
+
+    #[test]
+    fn a_library_no_code_names_is_reported() {
+        // Every library named in a path, a `use` or an `extern crate`;
+        // `real-name` is renamed, so its code calls it `fast`.
+        let code = "use wgpu;\nfn f() { fast::go(); ::pollster::block_on(x); }\n\
+                    extern crate winresource;\nlet p = gilrs::Gilrs::new();";
+        assert!(
+            unnamed_libraries(MANIFEST, &internal(), code)
+                .unwrap()
+                .is_empty()
+        );
+        // Nothing named: every outside library is reported once, under its
+        // real name; Solis's own crates never are.
+        let found = unnamed_libraries(MANIFEST, &internal(), "fn main() {}").unwrap();
+        let mut names: Vec<String> = found
+            .iter()
+            .map(|p| match p {
+                Problem::NotInCode { library, .. } => library.clone(),
+                other => panic!("{other:?}"),
+            })
+            .collect();
+        names.sort();
+        assert_eq!(
+            names,
+            ["gilrs", "pollster", "real-name", "wgpu", "winresource"]
+        );
+    }
+
+    #[test]
+    fn a_library_s_name_only_in_words_or_other_paths_doesn_t_count() {
+        let manifest = "[package]\nname = \"render\"\n[dependencies]\nlog = \"0.4\"\n";
+        for code in [
+            "// write it to the log\nfn f() {}",
+            "fn catalog::x() {}",
+            "let y = x.log(2.0); let z = f32::log(a, b);",
+            "use tracing::log::warn;",
+            "let w = blog::post();",
+            "use logger;",
+        ] {
+            let found = unnamed_libraries(manifest, &[], code).unwrap();
+            assert_eq!(found, vec![not_in_code("log")], "{code}");
+        }
+        for code in [
+            "log::warn!(\"x\");",
+            "use log::info;",
+            "use log;",
+            "fn f() -> Vec<log::Level> {}",
+        ] {
+            assert!(
+                unnamed_libraries(manifest, &[], code).unwrap().is_empty(),
+                "{code}"
+            );
+        }
     }
 
     const REGISTER: &str = "\
@@ -541,6 +682,10 @@ mod tests {
             },
             Problem::Duplicate {
                 library: "a".into(),
+            },
+            Problem::NotInCode {
+                library: "a".into(),
+                krate: "b".into(),
             },
         ];
         for p in problems {

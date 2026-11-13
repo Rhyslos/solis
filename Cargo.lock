@@ -4447,7 +4447,6 @@ dependencies = [
  "hound",
  "kira",
  "lewton",
- "log",
  "mint",
  "ogg",
  "proptest",
@@ -4868,7 +4867,6 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 name = "updater"
 version = "0.0.1"
 dependencies = [
- "log",
  "proptest",
  "reflect",
  "serde",

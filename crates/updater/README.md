@@ -27,7 +27,7 @@ Find out whether a newer build has been published, download its installer, make 
 
 ## Depends on
 
-ureq (with rustls, ring and rustls-platform-verifier), sha2, serde and serde_json, log.
+ureq (with rustls, ring and rustls-platform-verifier), sha2, serde and serde_json.
 
 ## Status
 
