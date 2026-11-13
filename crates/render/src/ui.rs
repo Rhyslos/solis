@@ -3,8 +3,8 @@
 //! the shader from its distance, so boxes, rounded corners, ellipses and
 //! lines stay sharp at any size. Drawn over a finished image (the Game
 //! panel's, after tone mapping), in the order given, in one draw call.
-
-use wgpu::util::DeviceExt as _;
+//! The shapes' buffer, the screen's size and the bind group are made once
+//! and filled each draw, so a frame allocates nothing on the card.
 
 /// One shape as the shader reads it (160 bytes).
 #[repr(C)]
@@ -67,17 +67,20 @@ impl UiInstance {
 /// atlases on the card.
 #[derive(Debug)]
 pub struct UiPipeline {
-    layout: wgpu::BindGroupLayout,
     pipeline: wgpu::RenderPipeline,
     atlas: wgpu::Texture,
-    atlas_view: wgpu::TextureView,
-    sampler: wgpu::Sampler,
     /// The atlas revision on the card (`u64::MAX`: none yet).
     uploaded: std::sync::atomic::AtomicU64,
     /// The pictures' atlas (decision 0089), and its revision on the card.
     pictures: wgpu::Texture,
-    pictures_view: wgpu::TextureView,
     pictures_uploaded: std::sync::atomic::AtomicU64,
+    /// The screen's size, filled each draw.
+    screen: wgpu::Buffer,
+    /// The screen's size, the atlases and the sampler, bound once.
+    bind_group: wgpu::BindGroup,
+    /// Every shape of a draw; replaced by a bigger one when a draw has
+    /// more.
+    shapes: std::sync::Mutex<Option<wgpu::Buffer>>,
 }
 
 impl UiPipeline {
@@ -209,15 +212,42 @@ impl UiPipeline {
             view_formats: &[],
         });
         let pictures_view = pictures.create_view(&wgpu::TextureViewDescriptor::default());
+        let screen = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("game ui screen"),
+            size: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("game ui bind group"),
+            layout: &layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: screen.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&atlas_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&pictures_view),
+                },
+            ],
+        });
         Self {
-            layout,
+            screen,
+            bind_group,
+            shapes: std::sync::Mutex::new(None),
             pipeline,
             atlas,
-            atlas_view,
-            sampler,
             uploaded: std::sync::atomic::AtomicU64::new(u64::MAX),
             pictures,
-            pictures_view,
             pictures_uploaded: std::sync::atomic::AtomicU64::new(u64::MAX),
         }
     }
@@ -309,39 +339,37 @@ impl UiPipeline {
         }
         let instances: Vec<UiInstance> =
             shapes.iter().take(MAX_SHAPES).map(UiInstance::of).collect();
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("game ui shapes"),
-            contents: bytemuck::cast_slice(&instances),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        let bytes: &[u8] = bytemuck::cast_slice(&instances);
+        let most = device.limits().max_buffer_size;
+        if bytes.len() as u64 > most {
+            return;
+        }
+        // Several screens a frame share the buffer: each draw's writes
+        // land before its own submit and after the one before.
+        let mut held = self
+            .shapes
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if !held
+            .as_ref()
+            .is_some_and(|b| b.size() >= bytes.len() as u64)
+        {
+            // Room to grow, so a slowly growing screen isn't re-made
+            // every frame.
+            let size = (bytes.len() as u64).next_power_of_two().max(4096).min(most);
+            *held = Some(device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("game ui shapes"),
+                size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }));
+        }
+        let Some(buffer) = held.as_ref() else {
+            return;
+        };
+        queue.write_buffer(buffer, 0, bytes);
         let screen = [size[0] as f32, size[1] as f32, 0.0, 0.0];
-        let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("game ui screen"),
-            contents: bytemuck::cast_slice(&screen),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("game ui bind group"),
-            layout: &self.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&self.atlas_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&self.pictures_view),
-                },
-            ],
-        });
+        queue.write_buffer(&self.screen, 0, bytemuck::cast_slice(&screen));
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("game ui"),
         });
@@ -363,8 +391,8 @@ impl UiPipeline {
                 multiview_mask: None,
             });
             pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.set_vertex_buffer(0, buffer.slice(..));
+            pass.set_bind_group(0, &self.bind_group, &[]);
+            pass.set_vertex_buffer(0, buffer.slice(..bytes.len() as u64));
             pass.draw(0..4, 0..instances.len() as u32);
         }
         queue.submit([encoder.finish()]);

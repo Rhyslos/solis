@@ -300,7 +300,87 @@ pub struct PixelImage {
     size: [u32; 2],
     texture: wgpu::Texture,
     view: wgpu::TextureView,
+    /// A slot per picture laid into it (the first for the world), kept
+    /// from frame to frame so drawing allocates nothing on the card.
+    bound: std::sync::Mutex<Vec<Bound>>,
+}
+
+/// One picture's slot in a [`PixelImage`]: its layout, filled each draw,
+/// and its bind group, made again only when the picture is another.
+#[derive(Debug)]
+struct Bound {
     uniform: wgpu::Buffer,
+    source: wgpu::TextureView,
+    group: wgpu::BindGroup,
+}
+
+impl Bound {
+    fn group(
+        device: &wgpu::Device,
+        pipeline: &PixelPipeline,
+        uniform: &wgpu::Buffer,
+        source: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pixel stage bind group"),
+            layout: &pipeline.layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(source),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&pipeline.sampler),
+                },
+            ],
+        })
+    }
+}
+
+/// Binds each of `pictures` (a source and its layout) to its slot in
+/// `bound`, in order, making a slot the first time it's needed and its
+/// bind group again only when its source changed, and fills its layout.
+/// Slots past the last picture are let go, so no picture is kept alive
+/// that isn't drawn.
+fn bind_all<'a>(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    pipeline: &PixelPipeline,
+    bound: &mut Vec<Bound>,
+    pictures: impl ExactSizeIterator<Item = (&'a wgpu::TextureView, StageUniform)>,
+) {
+    bound.truncate(pictures.len());
+    for (n, (source, uniform)) in pictures.enumerate() {
+        match bound.get_mut(n) {
+            Some(slot) => {
+                if slot.source != *source {
+                    slot.group = Bound::group(device, pipeline, &slot.uniform, source);
+                    slot.source = source.clone();
+                }
+            }
+            None => {
+                let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("pixel stage uniform"),
+                    size: std::mem::size_of::<StageUniform>() as wgpu::BufferAddress,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                bound.push(Bound {
+                    group: Bound::group(device, pipeline, &buffer, source),
+                    uniform: buffer,
+                    source: source.clone(),
+                });
+            }
+        }
+        if let Some(slot) = bound.get(n) {
+            queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&uniform));
+        }
+    }
 }
 
 impl PixelImage {
@@ -324,17 +404,11 @@ impl PixelImage {
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("pixel stage uniform"),
-            size: std::mem::size_of::<StageUniform>() as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
         Self {
             size,
             texture,
             view,
-            uniform,
+            bound: std::sync::Mutex::new(Vec::new()),
         }
     }
 
@@ -364,29 +438,17 @@ impl PixelImage {
         source: &wgpu::TextureView,
         layout: &PixelLayout,
     ) {
-        queue.write_buffer(
-            &self.uniform,
-            0,
-            bytemuck::bytes_of(&StageUniform::new(layout)),
+        let mut bound = self.bound();
+        bind_all(
+            device,
+            queue,
+            pipeline,
+            &mut bound,
+            std::iter::once((source, StageUniform::new(layout))),
         );
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("pixel stage bind group"),
-            layout: &pipeline.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.uniform.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(source),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&pipeline.sampler),
-                },
-            ],
-        });
+        let Some(first) = bound.first() else {
+            return;
+        };
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("pixel stage"),
         });
@@ -408,7 +470,7 @@ impl PixelImage {
                 multiview_mask: None,
             });
             pass.set_pipeline(&pipeline.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
+            pass.set_bind_group(0, &first.group, &[]);
             pass.draw(0..3, 0..1);
         }
         queue.submit([encoder.finish()]);
@@ -416,6 +478,13 @@ impl PixelImage {
 }
 
 impl PixelImage {
+    /// Its slots, locked for one draw.
+    fn bound(&self) -> std::sync::MutexGuard<'_, Vec<Bound>> {
+        self.bound
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
     /// Scales each of `sources` (small pictures, each with its own
     /// layout and slide) into this image, laid on each other in order
     /// (decision 0094): the first as it is, the rest over it by how
@@ -427,49 +496,22 @@ impl PixelImage {
         pipeline: &PixelPipeline,
         sources: &[(&wgpu::TextureView, PixelLayout)],
     ) {
-        use wgpu::util::DeviceExt;
-        let Some(((first, first_layout), rest)) = sources.split_first() else {
+        if sources.is_empty() {
             return;
-        };
-        queue.write_buffer(
-            &self.uniform,
-            0,
-            bytemuck::bytes_of(&StageUniform::new(first_layout)),
+        }
+        let mut bound = self.bound();
+        // The first as it is, the rest laid over it.
+        bind_all(
+            device,
+            queue,
+            pipeline,
+            &mut bound,
+            sources
+                .iter()
+                .enumerate()
+                .map(|(n, (source, layout))| (*source, StageUniform::laid(layout, n > 0))),
         );
-        let bind = |uniform: &wgpu::Buffer, source: &wgpu::TextureView| {
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("pixel stage bind group"),
-                layout: &pipeline.layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: uniform.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(source),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::Sampler(&pipeline.sampler),
-                    },
-                ],
-            })
-        };
-        let mut groups = vec![bind(&self.uniform, first)];
-        let mut uniforms = Vec::with_capacity(rest.len());
-        for (_, layout) in rest {
-            uniforms.push(
-                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("pixel stage layer uniform"),
-                    contents: bytemuck::bytes_of(&StageUniform::laid(layout, true)),
-                    usage: wgpu::BufferUsages::UNIFORM,
-                }),
-            );
-        }
-        for ((source, _), uniform) in rest.iter().zip(&uniforms) {
-            groups.push(bind(uniform, source));
-        }
+        let groups = bound.iter().take(sources.len()).map(|slot| &slot.group);
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("pixel stage layers"),
         });
@@ -490,7 +532,7 @@ impl PixelImage {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            for (n, group) in groups.iter().enumerate() {
+            for (n, group) in groups.enumerate() {
                 pass.set_pipeline(if n == 0 {
                     &pipeline.pipeline
                 } else {

@@ -2911,6 +2911,20 @@ fn layers_lie_over_each_other_each_slid_by_its_own_bit_of_a_pixel() {
     assert_eq!(at(37, 41), source_colour(10, 11), "and before it");
     // Everywhere else, exactly the back picture.
     assert_eq!(at(200, 300), source_colour(51, 76));
+    // The image keeps each picture's place from frame to frame: the next
+    // frames lay them the other way round, then the block's alone, and
+    // each shows what it was given.
+    let frames: [&[(&render::ViewportTarget, render::PixelLayout)]; 2] =
+        [&[(&front, still), (&back, still)], &[(&front, still)]];
+    let mut shown = Vec::new();
+    for laid in frames {
+        renderer.draw_pixel_layers(&gpu.device, &gpu.queue, laid, &image);
+        let pixels = read_texture(&gpu.device, &gpu.queue, image.texture(), screen).unwrap();
+        let i = ((41 * screen[0] + 41) * 4) as usize;
+        shown.push([pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]]);
+    }
+    assert_eq!(shown[0], source_colour(11, 11), "the back picture over all");
+    assert_eq!(shown[1], [255, 255, 255, 255], "the block alone");
 }
 
 #[test]
@@ -3033,6 +3047,59 @@ fn scale_check_eight_parallax_layers_at_4k() {
     let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
     println!(
         "Scale check: eight parallax layers and the world laid at 3840x2160 {ms:.2} ms (about nine times the pixel stage alone) on {}",
+        gpu.adapter.get_info().name
+    );
+}
+
+/// Part of the scale check (decision 0011): the CPU's side of a busy 2D
+/// game's frame after its pictures are drawn: eight parallax layers and
+/// the world laid into a 1080p image, then three screens of game UI with
+/// 20,000 shapes between them drawn over it. Only handing the work over
+/// is timed (the GPU's drawing is waited for between frames, untimed).
+/// Reported, not judged: drivers differ in what handing over costs.
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_layers_and_game_ui_handed_over() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let base = [480, 270];
+    let screen = [1920, 1080];
+    let sources: Vec<render::ViewportTarget> = (0..9)
+        .map(|_| pattern_source(&gpu, &renderer, base))
+        .collect();
+    let image = renderer.create_pixel_image(&gpu.device, screen);
+    let hud = ui::layout(&ui::sample::hud(ui::ScaleRule::Grow, 0.5), screen, None);
+    let shapes: Vec<ui::Shape> = hud.iter().cycle().take(20_000 / 3).cloned().collect();
+    let frames = 60u32;
+    let mut spent = std::time::Duration::ZERO;
+    for i in 0..frames {
+        let laid: Vec<(&render::ViewportTarget, render::PixelLayout)> = sources
+            .iter()
+            .enumerate()
+            .map(|(n, source)| {
+                let slide = [(i as usize * (n + 1)) as f32 / 60.0 % 1.0, 0.0];
+                (
+                    source,
+                    pixel_layout(base, screen, PixelScaling::WholeSteps, slide),
+                )
+            })
+            .collect();
+        let start = std::time::Instant::now();
+        renderer.draw_pixel_layers(&gpu.device, &gpu.queue, &laid, &image);
+        for _ in 0..3 {
+            renderer.draw_ui_on_pixels(&gpu.device, &gpu.queue, &image, &shapes, None, None);
+        }
+        spent += start.elapsed();
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+    }
+    let ms = spent.as_secs_f64() * 1000.0 / f64::from(frames);
+    println!(
+        "Scale check: eight parallax layers and three screens of game UI (20,000 shapes) handed over {ms:.3} ms a frame on {}",
         gpu.adapter.get_info().name
     );
 }

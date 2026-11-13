@@ -58,6 +58,18 @@ fn draw_all(
     pictures: Option<&ui::Pictures>,
 ) -> Option<Vec<u8>> {
     let (device, queue, _turn) = gpu()?;
+    let (texture, view) = grey_image(&device, &queue, size);
+    UiPipeline::new(&device, render::COLOR_FORMAT)
+        .draw(&device, &queue, &view, size, shapes, atlas, pictures);
+    Some(read_texture(&device, &queue, &texture, size).unwrap())
+}
+
+/// A grey image `size` big, ready to draw over and read back.
+fn grey_image(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    size: [u32; 2],
+) -> (wgpu::Texture, wgpu::TextureView) {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ui test"),
         size: wgpu::Extent3d {
@@ -96,9 +108,7 @@ fn draw_all(
         multiview_mask: None,
     });
     queue.submit([encoder.finish()]);
-    UiPipeline::new(&device, render::COLOR_FORMAT)
-        .draw(&device, &queue, &view, size, shapes, atlas, pictures);
-    Some(read_texture(&device, &queue, &texture, size).unwrap())
+    (texture, view)
 }
 
 fn px(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
@@ -200,6 +210,91 @@ fn half_seen_shapes_blend_and_no_shapes_draw_nothing() {
         return;
     };
     assert!(near(px(&none, 8, 4, 4), GREY));
+}
+
+#[test]
+fn one_pipeline_draws_several_screens_a_frame_each_with_its_own_shapes() {
+    // The pipeline keeps one buffer for the shapes and one for the
+    // screen's size, filled each draw: three screens drawn one after
+    // another, without waiting, must each show their own shapes, the
+    // first two sharing the buffer, the last with so many that it grows.
+    let Some((device, queue, _turn)) = gpu() else {
+        return;
+    };
+    let pipeline = UiPipeline::new(&device, render::COLOR_FORMAT);
+    let box_at = |name: &str, at: [f32; 2], size: [f32; 2], colour: ui::Colour| {
+        ui::Element::new(name, ui::ElementKind::Box { round: 0.0 })
+            .sized(size)
+            .at(ui::Anchor::TOP_LEFT, at)
+            .filled(ui::Fill::Solid(colour))
+    };
+    let shapes_of = |design: [f32; 2], elements: Vec<ui::Element>| {
+        let mut screen = ui::Screen::new("t", design, ui::ScaleRule::Keep);
+        screen.elements = elements;
+        ui::layout(&screen, [design[0] as u32, design[1] as u32], None)
+    };
+    let white = shapes_of(
+        [100.0, 100.0],
+        vec![box_at(
+            "white",
+            [20.0, 20.0],
+            [60.0, 60.0],
+            ui::Colour::WHITE,
+        )],
+    );
+    let mut many = vec![box_at(
+        "black",
+        [0.0, 0.0],
+        [100.0, 100.0],
+        ui::Colour([0.0, 0.0, 0.0, 1.0]),
+    )];
+    many.extend((0..3000).map(|i| {
+        box_at(
+            "speck",
+            [199.0, 99.0],
+            [1.0, 1.0],
+            ui::Colour([0.0, 0.0, i as f32 / 3000.0, 1.0]),
+        )
+    }));
+    let many = shapes_of([200.0, 100.0], many);
+    assert!(many.len() > 3000);
+    let red = shapes_of(
+        [100.0, 100.0],
+        vec![box_at(
+            "red",
+            [50.0, 0.0],
+            [50.0, 100.0],
+            ui::Colour([1.0, 0.0, 0.0, 1.0]),
+        )],
+    );
+    let drawn: Vec<(wgpu::Texture, [u32; 2])> = [
+        (&white, [100, 100]),
+        (&red, [100, 100]),
+        (&many, [200, 100]),
+    ]
+    .into_iter()
+    .map(|(shapes, size)| {
+        let (texture, view) = grey_image(&device, &queue, size);
+        pipeline.draw(&device, &queue, &view, size, shapes, None, None);
+        (texture, size)
+    })
+    .collect();
+    let read: Vec<Vec<u8>> = drawn
+        .iter()
+        .map(|(texture, size)| read_texture(&device, &queue, texture, *size).unwrap())
+        .collect();
+    assert!(near(px(&read[0], 100, 50, 50), [255, 255, 255]));
+    assert!(
+        near(px(&read[0], 100, 75, 10), GREY),
+        "not the next one's box"
+    );
+    assert!(near(px(&read[1], 100, 75, 10), [255, 0, 0]));
+    assert!(
+        near(px(&read[1], 100, 25, 50), GREY),
+        "not the first one's box"
+    );
+    assert!(near(px(&read[2], 200, 50, 50), [0, 0, 0]));
+    assert!(near(px(&read[2], 200, 150, 50), GREY));
 }
 
 fn fonts() -> ui::Fonts {
