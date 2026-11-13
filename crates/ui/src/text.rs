@@ -47,8 +47,9 @@ pub struct Placed {
 pub struct Atlas {
     /// Its pixels, row by row.
     pub pixels: Vec<u8>,
-    /// Changed each time a letter is added, so the renderer uploads it
-    /// again only then.
+    /// Different for every atlas and after every change (a letter added,
+    /// room made), so the renderer uploads it again only then, and never
+    /// mistakes another set of fonts' atlas for this one.
     pub revision: u64,
     /// The shelf being filled: its top, its height, and how far along.
     shelf: [u32; 3],
@@ -58,7 +59,7 @@ impl Default for Atlas {
     fn default() -> Self {
         Self {
             pixels: vec![0; (ATLAS_SIDE * ATLAS_SIDE) as usize],
-            revision: 0,
+            revision: crate::next_revision(),
             shelf: [0, 0, 0],
         }
     }
@@ -193,14 +194,7 @@ impl Fonts {
         }
         // Top to bottom, left to right: the order they were packed in.
         kept.sort_by_key(|(_, l)| [l.atlas[1], l.atlas[0]]);
-        let revision = self.atlas.revision + 1;
-        let old = std::mem::replace(
-            &mut self.atlas,
-            Atlas {
-                revision,
-                ..Atlas::default()
-            },
-        );
+        let old = std::mem::take(&mut self.atlas);
         self.letters.retain(|_, made| made.is_none());
         for (key, letter) in kept {
             let [l, t, r, b] = letter.atlas.map(u32::from);
@@ -281,7 +275,7 @@ impl Fonts {
             let from = (y * w as u32) as usize;
             self.atlas.pixels[row..row + w as usize].copy_from_slice(&sdf[from..from + w as usize]);
         }
-        self.atlas.revision += 1;
+        self.atlas.revision = crate::next_revision();
         Made::Letter(Letter {
             atlas: [
                 ax as u16,

@@ -344,6 +344,77 @@ fn text_is_drawn_from_the_letters_atlas_in_its_colour() {
     assert!(near(gap, GREY), "{gap:?}");
 }
 
+#[test]
+fn each_set_of_fonts_draws_from_its_own_atlas() {
+    // One pipeline drawing two sets of fonts' text, each with one letter
+    // made: the second's atlas is sent though it has as many letters (it
+    // used to be taken for the first's, drawing the first's letter).
+    let word = |text: &str, fonts: &mut ui::Fonts| {
+        let mut screen = ui::Screen::new("t", [200.0, 100.0], ui::ScaleRule::Keep);
+        screen.elements = vec![
+            ui::Element::new(
+                "word",
+                ui::ElementKind::Text {
+                    text: text.into(),
+                    size: 80.0,
+                    font: 0,
+                    align: ui::Edge::Start,
+                },
+            )
+            .at(
+                ui::Anchor::new(ui::Edge::Stretch, ui::Edge::Stretch),
+                [10.0, 0.0],
+            )
+            .filled(ui::Fill::Solid(ui::Colour::WHITE)),
+        ];
+        ui::layout_with(&screen, [200, 100], None, Some(fonts))
+    };
+    let (mut first, mut second) = (fonts(), fonts());
+    let h = word("H", &mut first);
+    let o = word("O", &mut second);
+    let Some((device, queue, _turn)) = gpu() else {
+        return;
+    };
+    let size = [200, 100];
+    let pipeline = UiPipeline::new(&device, render::COLOR_FORMAT);
+    let mut drawn = Vec::new();
+    for (shapes, atlas) in [(&h, &first.atlas), (&o, &second.atlas)] {
+        let (texture, view) = grey_image(&device, &queue, size);
+        pipeline.draw(&device, &queue, &view, size, shapes, Some(atlas), None);
+        drawn.push(read_texture(&device, &queue, &texture, size).unwrap());
+    }
+    // The O as a pipeline of its own draws it.
+    let (texture, view) = grey_image(&device, &queue, size);
+    UiPipeline::new(&device, render::COLOR_FORMAT).draw(
+        &device,
+        &queue,
+        &view,
+        size,
+        &o,
+        Some(&second.atlas),
+        None,
+    );
+    let alone = read_texture(&device, &queue, &texture, size).unwrap();
+    assert!(drawn[1] == alone, "the O from its own atlas");
+    assert!(drawn[0] != drawn[1]);
+    // An atlas of the wrong size isn't sent (the card would refuse it):
+    // its text draws from nothing, and nothing fails.
+    let mut broken = second.atlas.clone();
+    broken.pixels.truncate(10);
+    let (texture, view) = grey_image(&device, &queue, size);
+    UiPipeline::new(&device, render::COLOR_FORMAT).draw(
+        &device,
+        &queue,
+        &view,
+        size,
+        &o,
+        Some(&broken),
+        None,
+    );
+    let empty = read_texture(&device, &queue, &texture, size).unwrap();
+    assert!(near(px(&empty, 200, 100, 50), GREY));
+}
+
 /// A HUD as Lust's view gives it (decision 0087): a full-screen stack
 /// pinning a column to the bottom left, with a word and a green bar.
 fn lust_hud() -> ui::view::Node {

@@ -29,3 +29,13 @@ pub use layout::{Shape, ShapeKind, Stretch, UNCLIPPED, layout, layout_at, layout
 pub use pictures::Pictures;
 pub use screen::{Anchor, Colour, Edge, Element, ElementKind, Fill, ScaleRule, Screen, ScreenLook};
 pub use text::Fonts;
+
+/// The next number from one count shared by every atlas (the letters' and
+/// the pictures'), so no two atlases, or one atlas before and after a
+/// change, ever share a revision: the renderer keeps one of each on the
+/// card and sends it again when the revision it's given is another.
+pub(crate) fn next_revision() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static REVISIONS: AtomicU64 = AtomicU64::new(1);
+    REVISIONS.fetch_add(1, Ordering::Relaxed)
+}

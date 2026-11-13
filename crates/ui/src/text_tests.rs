@@ -14,16 +14,35 @@ fn a_letter_is_made_once_into_the_atlas() {
     let mut f = fonts();
     let first = f.place(0, "Spring", 24.0, [10.0, 10.0], None);
     assert_eq!(first.len(), 6);
+    assert_eq!(f.letters.len(), 6, "six different letters, each made once");
     let made = f.atlas.revision;
-    assert_eq!(made, 6, "six different letters, each made once");
     let again = f.place(0, "Spring", 48.0, [0.0, 0.0], None);
     assert_eq!(f.atlas.revision, made, "nothing made again at another size");
+    assert_eq!(f.letters.len(), 6);
     // Twice the size: twice as big, the same place in the atlas.
     let (a, b) = (first[0], again[0]);
     assert_eq!(a.atlas, b.atlas);
     let wa = a.rect[2] - a.rect[0];
     let wb = b.rect[2] - b.rect[0];
     assert!((wb - 2.0 * wa).abs() < 0.01, "{wa} {wb}");
+}
+
+#[test]
+fn no_two_font_sets_share_an_atlas_revision() {
+    // The renderer keeps one letters' atlas on the card and sends another
+    // when the revision differs: two sets of fonts with as many letters
+    // made used to have the same one, and the second drew its text from
+    // the first's letters.
+    let (mut a, mut b) = (fonts(), fonts());
+    assert_ne!(a.atlas.revision, b.atlas.revision, "empty");
+    let _ = a.place(0, "Spring", 24.0, [0.0, 0.0], None);
+    let _ = b.place(0, "Winter", 24.0, [0.0, 0.0], None);
+    assert_ne!(a.atlas.revision, b.atlas.revision, "six letters each");
+    // A copy changes apart from its original.
+    let mut c = a.clone();
+    let _ = c.place(0, "z", 24.0, [0.0, 0.0], None);
+    let _ = a.place(0, "z", 24.0, [0.0, 0.0], None);
+    assert_ne!(a.atlas.revision, c.atlas.revision);
 }
 
 #[test]

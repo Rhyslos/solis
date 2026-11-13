@@ -296,13 +296,17 @@ impl UiPipeline {
             .store(pictures.revision, Ordering::Relaxed);
     }
 
-    /// Sends the letters' atlas to the card when it changed since last.
+    /// Sends the letters' atlas to the card when it's another or changed
+    /// (every atlas has its own revisions). One of the wrong size isn't
+    /// sent: its pixels are public, and the card's copy would refuse it.
     fn upload(&self, queue: &wgpu::Queue, atlas: &ui::text::Atlas) {
         use std::sync::atomic::Ordering;
-        if self.uploaded.load(Ordering::Relaxed) == atlas.revision {
+        let side = ui::text::ATLAS_SIDE;
+        if self.uploaded.load(Ordering::Relaxed) == atlas.revision
+            || atlas.pixels.len() != (side * side) as usize
+        {
             return;
         }
-        let side = ui::text::ATLAS_SIDE;
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.atlas,
