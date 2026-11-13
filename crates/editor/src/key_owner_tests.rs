@@ -242,12 +242,28 @@ impl AreaKey {
 }
 
 /// Every panel the pointer can rest over, whether the area's keys are
-/// acted on there, and whether Ctrl+Z there is the area's.
-const OWNERS: [(Panel, bool, bool); 12] = [
+/// acted on there, and whether Ctrl+Z there is the area's. They are on a
+/// tab that shows the 3D or 2D view, and over the Area list and
+/// Properties; on a tab without one, where the area can't be seen, they
+/// rest (the second review pass's N-02).
+const OWNERS: [(Panel, bool, bool); 23] = [
     (Panel::Viewport, true, true),
     (Panel::Area, true, true),
     (Panel::Properties, true, true),
-    (Panel::Library, true, true),
+    // Home's panels: the view is beside them.
+    (Panel::Assets, true, true),
+    (Panel::Placement, true, true),
+    (Panel::Console, true, true),
+    (Panel::Problems, true, true),
+    // The tabs without a view.
+    (Panel::Library, false, false),
+    (Panel::Code, false, false),
+    (Panel::Mixer, false, false),
+    (Panel::Bus, false, false),
+    (Panel::SoundEvents, false, false),
+    (Panel::Profiler, false, false),
+    (Panel::Game, false, false),
+    (Panel::Export, false, false),
     // Beside Properties, for the selected entity's map: only undo is its.
     (Panel::Map, true, false),
     (Panel::Clips, false, false),
@@ -270,9 +286,9 @@ fn each_key_of_the_area_s_acts_on_it_only_where_the_area_owns_the_keys() {
             h.run();
             let acts = match key {
                 AreaKey::Undo => area_undo,
-                // Over the Library, Delete is the picked file's (the
-                // project lead's answer 25).
-                AreaKey::Delete if panel == Panel::Library => false,
+                // Over the Assets column, Delete is the picked file's
+                // (the project lead's answer 25).
+                AreaKey::Delete if panel == Panel::Assets => false,
                 _ => area_keys,
             };
             let expected = if acts {
@@ -287,6 +303,32 @@ fn each_key_of_the_area_s_acts_on_it_only_where_the_area_owns_the_keys() {
             );
         }
     }
+}
+
+/// N-02: on the Library tab the area's keys rest, but F2 and Delete are
+/// still the picked file's.
+#[test]
+fn on_the_library_tab_f2_and_delete_are_the_picked_file_s_and_never_the_area_s() {
+    let mut h = pointer_over(Panel::Library);
+    h.state_mut().0.open.library_state.selected = Some(PICTURE.into());
+    let before = area_now(&h.state().0);
+    h.key_press(egui::Key::F2);
+    h.run();
+    let renaming = h.state().0.open.library_state.renaming.clone();
+    assert_eq!(renaming.map(|(path, _)| path), Some(PICTURE.to_string()));
+    h.state_mut().0.open.library_state.renaming = None;
+    h.run();
+    h.key_press(egui::Key::Delete);
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&crate::workbench::WorkbenchAction::DeleteFile(
+                PICTURE.into()
+            ))
+    );
+    assert_eq!(area_now(&h.state().0), before, "the area is as it was");
 }
 
 /// The screen's text with the pointer over `panel` (the Canvas or

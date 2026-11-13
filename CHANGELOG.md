@@ -66,6 +66,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The area's keys no longer act on an area you can't see.** On the Library, Audio, Debug and Build tabs, Delete, Ctrl + D, Ctrl + Z, Esc and the area's other keys changed the area behind them (a crate deleted while you meant a bus). They now rest there, except over the Area list and Properties; over the Library, F2 and Delete still rename and delete the picked file.
 - **Solis opens on File › Recent projects at every start again.** From the second start on, the tab you left in front last time was put back over Recent projects, so Solis opened on Home (or that tab). Now Recent projects is in front every time, with that tab behind it for **Esc** or Back to editor. At the start the arrow keys walk the cards rather than the search box.
 - **A game written only in Lua now plays and exports.** The engine's own Lust files, which every project has, made Solis treat such a game as Lust code missing its `main.lst`: Play was refused and the export said the code had mistakes. Only a game with Lust files of its own needs a `main.lst` now.
 - **A game with no code of its own now exports and plays.** The files Solis writes to describe the engine to game code were taken for the game's own code, so a project with none was told in Problems that its `main.lst` was missing, and an exported game of it said "The game can't start: its code has mistakes".
