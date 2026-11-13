@@ -1,0 +1,5 @@
+playtest 1
+name   Night: Run?. 
+area start.solarea
+window fullscreen 99999 12
+folder C:\Users\me\Documents\Harbour exports

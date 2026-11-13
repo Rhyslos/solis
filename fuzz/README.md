@@ -27,6 +27,9 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `tile_art` | A tileset's picture (PNG, JPEG or Aseprite, the first byte choosing); a picture read is within the limits, every frame its size, and its grid and kind are found without panicking |
 | `tile_map` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`); a map read is within the limits, writes back to itself (or isn't written, when its file would be more than is read back), is autotiled, painted (a fill, a stamp flipped and turned, exact tiles) and changed cell by cell, resized and summed without panicking |
 | `sound_file` | A WAV or Ogg Vorbis sound file (`sound::read_bytes`); a sound read is within the limits, as long as its overview, and every sample a number between -1 and 1 |
+| `playtest_file` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`); a file read has a usable name and area and a window Solis opens, and writes back to itself |
+
+The targets are in [`fuzz_targets/`](fuzz_targets/README.md), what they share in [`src/`](src/README.md), and the files they start from in [`seeds/`](seeds/README.md).
 
 ## Running
 
@@ -45,7 +48,7 @@ On a machine that can't download nightly, `RUSTC_BOOTSTRAP=1` lets the pinned st
 
 What each run finds is kept in `fuzz/corpus/<target>` (not committed). A crash is saved in `fuzz/artifacts/<target>/`; replay it with `cargo fuzz run <target> <file>`, then fix it and add a regression test in the crate that reads the file.
 
-Each target only counts a panic that escapes Solis: libraries' panics that Solis catches on purpose, and turns into a refused file, aren't failures. For example, the `gltf` crate (1.4.1) panics on a mesh whose POSITION names an accessor that isn't there.
+Each target only counts a panic that escapes Solis: libraries' panics that Solis catches on purpose, and turns into a refused file, aren't failures. For example, the `gltf` crate (1.4.1) panics on a mesh whose POSITION names an accessor that isn't there. So each target starts with `fuzz_support::quiet_caught_panics()` ([`src/lib.rs`](src/README.md)), which keeps quiet about a panic inside a library from crates.io and shows every other one as usual: a target's own `assert!` message, or a panic in Solis's code, is in the crash's log, saying which promise broke.
 
 While fuzzing, Solis is built with `--cfg fuzzing`. The only difference is that a save game's checksum isn't checked, because a fuzzer can't make a matching one, so the rest of the reader gets tried.
 

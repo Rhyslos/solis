@@ -1,0 +1,4 @@
+playtest 1
+name CON
+area ../outside.solarea
+window windowed 1280 720
