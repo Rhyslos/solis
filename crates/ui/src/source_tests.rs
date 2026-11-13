@@ -177,6 +177,11 @@ fn pieces_are_taken_out_put_in_and_moved_on_lines_of_their_own() {
         None,
         "not into itself"
     );
+    assert_eq!(
+        move_piece(MENU, "PauseMenu", &[0, 0, 2], &[7], 0),
+        None,
+        "not into a block that isn't there"
+    );
 }
 
 #[test]
