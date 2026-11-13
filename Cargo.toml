@@ -113,7 +113,8 @@ notify = "8.2"
 lust = { git = "https://github.com/Rhyslos/Lust", rev = "ee12407605c51c3ab89a68a98f129d91fda013b0", default-features = false }
 # Its Luau source is held at 0.740 in Cargo.lock (luau0-src
 # 0.22.0+luau740): with 0.744, mlua 0.12.2 can't start a Luau at all
-# ("Error configuring Luau"). Update the two together.
+# ("Error configuring Luau"). Update the two together. deny.toml's [bans]
+# fails the checks on a newer luau0-src, and Dependabot skips it.
 mlua = { version = "0.12", features = ["luau"] }
 # Deleting from the Library moves files to the Recycle Bin, so nothing is
 # lost by accident.

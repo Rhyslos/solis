@@ -18,6 +18,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
    - **The version Solis uses keeps its licence:** a library that changes its licence can usually only do so for new versions, and the version already published stays under the licence it was published with. Solis stays on the last good version and replaces the library in its own time. This is general understanding, not legal advice.
 4. **Exact versions, from known places.**
    - `Cargo.lock` pins every version, and nothing updates on its own. Dependabot proposes updates as pull requests, checked like any change.
+   - **Holds are enforced, not remembered.** A version held back on purpose is denied in `deny.toml`'s `[bans]`, with the reason, so an update past it fails the checks; Dependabot skips it too (`.github/dependabot.yml`, `ignore`). Today that's game code's Luau source, held at 0.740 (`luau0-src` 0.22.0) because mlua 0.12.2 can't start a newer one.
    - **One lock file.** The fuzzing workspace (`fuzz/`) needs a lock file of its own, and nothing in Cargo keeps two in step, so it isn't kept in the repository: `tools/ci/fuzz-lock.sh` writes it from `Cargo.lock` whenever the fuzzers are built. What the fuzzers vet is then what ships, and a version held back in `Cargo.lock` is held back for them too ([fuzz/README.md](../fuzz/README.md#the-lock-file)).
    - Libraries come only from the official registry, or from the project lead's own Lust repository pinned to one commit (`deny.toml`, `[sources]`).
    - Removed ("yanked") versions fail the check.

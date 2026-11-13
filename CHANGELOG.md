@@ -64,6 +64,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **An update can no longer bring in a version of the game code's language runtime that stops all game code from starting.** The version was held back only by a note; now the dependency check fails on a newer one, and the weekly update requests skip it.
 - **Characters no longer carry one another.** A character standing in or on another one, while a platform moved somewhere in the level, could be carried along by the other's walk when game code moved it twice in one tick, so a crowd ended up a little away from where the physics rules put it. A moving platform still carries the characters standing on it.
 - **Game UI's text no longer shows wrong letters, or slows the game to a crawl, once a game has shown many different letters.** The letters are kept in one picture on the graphics card; when it filled up, it was wiped in the middle of laying out a frame's text, so letters laid out just before showed other letters, and a screen needing more letters than fit wiped and remade all of them every frame. Now room is made only between frames, keeping the letters on screen, and letters that don't fit are left out without remaking the rest.
 - **More sprites than the graphics card can draw at once no longer fill the Console or the Profiler with wrong numbers.** The Console got the same warning 60 times a second, and the Profiler counted the sprites as drawn and sent though none were. The warning now comes once, when they stop fitting, and the Profiler counts only what is drawn.

@@ -15,6 +15,12 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Versions held back on purpose, each also denied in deny.toml's
+    # [bans] (which says why), so a grouped update can't carry one in and
+    # fail the checks for everything else in it.
+    ignore:
+      - dependency-name: "luau0-src"
+        versions: [">0.22.0"]
     groups:
       # egui and the crates built on it only work at the same version, so
       # they come together, whatever kind of update.
