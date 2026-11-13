@@ -598,6 +598,8 @@ pub(crate) fn middle(
 }
 
 #[cfg(test)]
+mod layout_scale_tests;
+#[cfg(test)]
 mod middle_picture_tests;
 #[cfg(test)]
 mod middle_tests;
