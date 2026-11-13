@@ -133,8 +133,10 @@ fn the_model_card_shows_its_rows_to_come_unless_they_are_hidden() {
     assert!(h.query_by_label("Shadows").is_none());
 }
 
+/// Home as the design's first screen draws it: the Assets column on the
+/// shelf.
 fn with_files() -> Workbench {
-    let mut w = Workbench::new(info());
+    let mut w = crate::test_support::in_layout(crate::shell::PanelLayout::Shelf);
     w.set_project(Some(ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),

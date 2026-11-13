@@ -7,7 +7,7 @@
 use super::settings::{Setting, Tab};
 use super::{plain, sentence};
 use crate::icons::Icon;
-use crate::interface_look::ShelfOpensOn;
+use crate::interface_look::{PanelLayout, ShelfOpensOn};
 use crate::look::LookKind;
 use crate::theme::{self, Accent, Density, Scale};
 use crate::tokens::{self, size, text};
@@ -55,7 +55,8 @@ impl Workbench {
     }
 
     /// Puts the middle of the tab in front back as the design draws it:
-    /// its shelf tab, the shelf's height and fold, its split.
+    /// its shelf tab, the shelf's fold, and every border's size in every
+    /// layout (the shelf's height, the split, the columns).
     pub fn reset_layout(&mut self) {
         // From File › Preferences: the tab File was opened from.
         let tab = match self.shell.tab {
@@ -63,6 +64,7 @@ impl Workbench {
             tab => tab,
         };
         self.shell.arrangements.remove(&tab);
+        self.shell.sizes.forget_tab(tab);
     }
 
     /// The control of one of Preferences' settings.
@@ -127,6 +129,13 @@ impl Workbench {
                 }
             }
             Setting::Layout => {
+                let mut layout = look.layout;
+                let choices = PanelLayout::ALL.map(|l| (l, l.name()));
+                if field::dropdown(ui, name, &mut layout, &choices, size::SETTING_FIELD_W) {
+                    self.choose_interface_look(&ctx, theme::InterfaceLook { layout, ..look });
+                }
+            }
+            Setting::ResetLayout => {
                 if Button::plain("Reset layout").show(ui).clicked() {
                     self.reset_layout();
                 }
@@ -248,6 +257,7 @@ impl Workbench {
                     scale: standard.scale,
                     density: standard.density,
                     shelf_opens_on: standard.shelf_opens_on,
+                    layout: standard.layout,
                     ..look
                 },
             ),

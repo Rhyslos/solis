@@ -185,15 +185,21 @@ fn reset_layout_puts_the_tab_s_middle_back() {
     // The tab File was opened from.
     let tab = crate::shell::RibbonTab::Home;
     let standard = h.state().0.shell.arrangement(tab);
+    let sizes = h.state().0.shell.sizes.clone();
     {
+        use crate::shell::{PanelLayout, sizes::Edge};
         let w = &mut h.state_mut().0;
         w.show_panel(Panel::Console);
         w.fold_shelf(true);
-        w.shell.arrangement_mut(tab).shelf_height = 410.0;
+        // A border in two layouts: both are put back.
+        let shelf = PanelLayout::Shelf;
+        w.shell.sizes.set(tab, shelf, Edge::ShelfHeight, 410.0);
+        w.shell.sizes.set(tab, PanelLayout::AreaAndAssetsLeft, Edge::Left, 410.0);
     }
     h.get_all_by_label("Reset layout").next().unwrap().click();
     h.run();
     assert_eq!(h.state().0.shell.arrangement(tab), standard);
+    assert_eq!(h.state().0.shell.sizes, sizes);
 }
 
 #[test]

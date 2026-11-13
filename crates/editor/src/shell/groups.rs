@@ -1,16 +1,19 @@
 //! The center: one or two editor groups side by side (spec 148-151),
 //! each a 30 px strip of document tabs over the document in front, with
 //! a 1 px divider between them that a drag moves. When the window is too
-//! narrow for two side by side, they stack (spec 1145). Which documents
-//! each group holds is `workspaces::groups`; which is in front, and the
-//! split, are the tab's `Arrangement`.
+//! narrow for two side by side, they stack (spec 1145); a double-click on
+//! the divider shares the room as at first. Which documents each group
+//! holds is `workspaces::groups`; which is in front is the tab's
+//! `Arrangement`, and the split is kept with the other sizes (`sizes.rs`).
 //!
 //! The area's tab carries a **+** (New area, Open area…) and a menu on a
 //! right-click (Save, Save as…, Close, Close others, Show in the
 //! Library), as mock-up round 1 drew them; a document that comes with a
 //! file has a × that closes the file.
 
-use super::workspaces::{OpenNow, SPLIT_LIMIT};
+use super::layouts::PanelLayout;
+use super::sizes::Edge;
+use super::workspaces::OpenNow;
 use super::{RibbonTab, Shell, ShellCommand};
 use crate::icons::{self, Icon};
 use crate::panel::Panel;
@@ -56,7 +59,7 @@ pub(crate) fn center(
             return asks;
         }
         1 => vec![rect],
-        _ => split(ui, rect, shell, side_by_side),
+        _ => split(ui, rect, shell, (open.layout, side_by_side)),
     };
     let mut strips = Vec::new();
     for (index, (docs, place)) in documents.iter().zip(places).enumerate() {
@@ -95,11 +98,16 @@ pub(crate) fn center(
     asks
 }
 
-/// Splits `rect` between two groups at the tab's split, side by side or
-/// stacked, and lets a drag on the divider move it.
-fn split(ui: &mut Ui, rect: Rect, shell: &mut Shell, side_by_side: bool) -> Vec<Rect> {
+/// Splits `rect` between two groups at the tab's split in `layout`,
+/// side by side or stacked, and lets a drag on the divider move it.
+fn split(
+    ui: &mut Ui,
+    rect: Rect,
+    shell: &mut Shell,
+    (layout, side_by_side): (PanelLayout, bool),
+) -> Vec<Rect> {
     let tab = shell.tab;
-    let share = shell.arrangement(tab).split;
+    let share = shell.size(tab, layout, Edge::Split);
     let (first, second, line) = if side_by_side {
         let x = (rect.left() + rect.width() * share).round();
         (
@@ -117,7 +125,11 @@ fn split(ui: &mut Ui, rect: Rect, shell: &mut Shell, side_by_side: bool) -> Vec<
     };
     ui.painter().rect_filled(line, 0.0, tokens::group_gap());
     let reach = line.expand(size::DIVIDER_REACH);
-    let response = ui.interact(reach, Id::new(("group divider", tab)), Sense::drag());
+    let response = ui.interact(
+        reach,
+        Id::new(("group divider", tab)),
+        Sense::click_and_drag(),
+    );
     response.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Other, true, "Group divider"));
     if response.hovered() || response.dragged() {
         ui.ctx().set_cursor_icon(if side_by_side {
@@ -126,7 +138,9 @@ fn split(ui: &mut Ui, rect: Rect, shell: &mut Shell, side_by_side: bool) -> Vec<
             egui::CursorIcon::ResizeVertical
         });
     }
-    if response.dragged()
+    if response.double_clicked() {
+        shell.sizes.forget(tab, layout, Edge::Split);
+    } else if response.dragged()
         && let Some(at) = response.interact_pointer_pos()
     {
         let share = if side_by_side {
@@ -134,7 +148,8 @@ fn split(ui: &mut Ui, rect: Rect, shell: &mut Shell, side_by_side: bool) -> Vec<
         } else {
             (at.y - rect.top()) / rect.height().max(1.0)
         };
-        shell.arrangement_mut(tab).split = share.clamp(SPLIT_LIMIT, 1.0 - SPLIT_LIMIT);
+        // Held to its limits as it is kept.
+        shell.sizes.set(tab, layout, Edge::Split, share);
     }
     vec![first, second]
 }

@@ -291,8 +291,14 @@ fn assert_flat(picture: &Picture, what: &str, point: [f32; 2], scale: f32) {
 const EDITOR_SIZE: [f32; 2] = [1440.0, 900.0];
 
 /// Today's editor with the sample project open, drawn for real in the
-/// new look.
+/// new look, Home's lists on the shelf as the design's first screen has
+/// them (the other panel layouts' pictures are in
+/// `shell/middle_picture_tests.rs`).
 fn editor_picture(look: InterfaceLook) -> Option<Picture> {
+    let look = InterfaceLook {
+        layout: crate::shell::PanelLayout::Shelf,
+        ..look
+    };
     let mut harness = editor_window(sample_project(), look, EDITOR_SIZE)?;
     harness.run();
     harness.run();

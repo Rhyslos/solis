@@ -239,10 +239,10 @@ See [Projects and the Library](projects-and-the-library.md).
 
 | Action | Shortcut |
 |---|---|
-| Place a model, assembly, sprite sheet or tile map where the camera looks | Double-click it in the shelf's Assets or Place column; in the Library tab a double-click only picks it (**Place** on the ribbon places it) |
+| Place a model, assembly, sprite sheet or tile map where the camera looks | Double-click it in the Assets list; in the Library tab a double-click only picks it (**Place** on the ribbon places it) |
 | Open any other file (an area, a picture in its program) | Double-click it |
 | Drop without snapping to the grid, this once | Hold Ctrl as you let go |
-| Rename or delete the file picked | F2, Delete, with the pointer over the Library or the Assets column |
+| Rename or delete the file picked | F2, Delete, with the pointer over the Library or the Assets list |
 | Place a model, assembly, sprite, picture or tile map where you point | Drag it into the viewport |
 | Place one under an entity | Drag it onto the entity in the Area panel |
 | Move a file to another folder | Drag it onto the folder in the tree |
@@ -323,7 +323,7 @@ See [Input](input.md).
 
 ## Editor groups and the shelf
 
-Panels stay where each tab's screen puts them; these size the screen, and each tab remembers what you did.
+Panels stay where each tab's screen puts them (on Home, where the [panel layout](concepts.md#the-window) chosen in **File › Preferences** puts its three lists); these size the screen, and each tab remembers what you did, for each panel layout.
 
 | Action | Mouse or key |
 |---|---|
@@ -332,6 +332,8 @@ Panels stay where each tab's screen puts them; these size the screen, and each t
 | New area, Open area… | The **+** after the area's tab |
 | Save, Save as…, Close others, Show in the Library | Right-click the area's tab |
 | Give one of two groups more room | Drag the line between them |
+| Make a column, the Assets strip or one of two stacked lists bigger or smaller | Drag the line at its edge (the pointer becomes a two-headed arrow over it) |
+| Put a border back to its standard size | Double-click it (the shelf's grip and top edge too) |
 | Give a document a group of its own, on one half of the middle | Drag its tab onto that half |
 | Join two groups | Drag a tab onto the other group's tabs |
 | Put a dragged tab back | Esc, while dragging |

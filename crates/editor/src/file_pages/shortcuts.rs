@@ -82,6 +82,16 @@ pub(crate) const SHORTCUTS: &[(&str, &[Shortcut])] = &[
                 "Space",
             ),
             ("Fold or unfold the shelf", "Everywhere", "Ctrl+Space"),
+            (
+                "Size a column, the Assets strip, the shelf or two groups",
+                "The line between them",
+                "Drag",
+            ),
+            (
+                "Put a border back to its standard size",
+                "The line between them",
+                "Double-Click",
+            ),
             ("Leave a File page", "File", "Esc"),
         ],
     ),

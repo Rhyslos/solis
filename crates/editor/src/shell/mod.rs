@@ -12,8 +12,11 @@
 //!   editor's one field for all of it, saved as [`ShellState`]
 //!   (`saved.rs`).
 //! - `workspaces.rs` is the table of what each tab's middle holds;
+//!   `layouts.rs` the layouts of Home's lists and where everything in the
+//!   middle goes, `sizes.rs` what each border was dragged to;
 //!   `groups.rs` draws the center's editor groups and their document
-//!   tabs, `shelf.rs` the shelf, `status.rs` the status bar.
+//!   tabs, `shelf.rs` the shelf, `beside.rs` the lists beside the groups
+//!   and every border's drag, `status.rs` the status bar.
 //! - `commands.rs` is the one table of what the editor can do by name
 //!   (`ShellCommand`): the ribbon's buttons, the File page's items and
 //!   the search all run its entries, and show its shortcuts.
@@ -22,17 +25,20 @@
 //!   `play_group.rs` is the group at the ribbon's right end;
 //!   `file_page.rs` is the File tab's menu column and page.
 
+mod beside;
 mod command_words;
 pub(crate) mod commands;
 mod controls;
 mod create;
 pub(crate) mod file_page;
 mod groups;
+pub mod layouts;
 mod play_group;
 pub(crate) mod ribbon;
 mod ribbons;
 pub(crate) mod saved;
 mod shelf;
+pub mod sizes;
 pub mod status;
 pub(crate) mod tab_bar;
 mod tab_drag;
@@ -44,6 +50,7 @@ pub(crate) use commands::ShellCommand;
 pub(crate) fn animate_direction(i: u8) -> Option<animation::Direction> {
     ribbons::animate::DIRECTIONS.get(usize::from(i)).copied()
 }
+pub use layouts::PanelLayout;
 pub use saved::{ShellState, WorkspaceState};
 use std::collections::BTreeMap;
 use workspaces::Arrangement;
@@ -178,6 +185,11 @@ pub struct Shell {
     /// What each tab remembers of its middle; a tab not here is as the
     /// design draws it.
     pub(crate) arrangements: BTreeMap<RibbonTab, Arrangement>,
+    /// What each border was dragged to, per tab and layout.
+    pub(crate) sizes: sizes::Sizes,
+    /// Whether the last frame was too narrow for the layout chosen, so
+    /// Home's lists went back on the shelf (decision 0109).
+    pub(crate) narrow: bool,
     /// Where each panel was drawn in the last frame: its body, under its
     /// tab or header.
     pub(crate) drawn: Vec<(Panel, egui::Rect)>,
@@ -200,6 +212,8 @@ impl Default for Shell {
             collapsed: false,
             dropped: false,
             arrangements: BTreeMap::new(),
+            sizes: sizes::Sizes::default(),
+            narrow: false,
             drawn: Vec::new(),
             seen_map: false,
             seen_selected: None,
@@ -234,6 +248,11 @@ impl Shell {
         self.arrangements
             .entry(tab)
             .or_insert_with(|| Arrangement::standard(tab))
+    }
+
+    /// `edge`'s size on `tab` in `layout`: as dragged, or its standard.
+    pub(crate) fn size(&self, tab: RibbonTab, layout: PanelLayout, edge: sizes::Edge) -> f32 {
+        self.sizes.get(tab, layout, edge)
     }
 
     /// Where `panel`'s body was drawn in the last frame, if it was.
@@ -275,6 +294,11 @@ impl Workbench {
             atlas: open.atlas_editor.is_some(),
             clips: open.frames_editor.is_some(),
             map: open.map_edits.path.is_some(),
+            layout: if self.shell.narrow {
+                PanelLayout::Shelf
+            } else {
+                self.interface.layout
+            },
         }
     }
 
@@ -321,6 +345,8 @@ impl Workbench {
                 arrangement.shelf_tab = shelf;
                 arrangement.shelf_folded = false;
             }
+            // Always in view.
+            Home::Beside => {}
         }
     }
 
@@ -392,12 +418,11 @@ impl Workbench {
         if selected.is_some()
             && selected != was
             && self.interface_look().shelf_opens_on == crate::interface_look::ShelfOpensOn::Entity
+            && let Some(home) =
+                workspaces::home_of(RibbonTab::Home, self.open_now(), Panel::Properties)
         {
-            self.show_in(
-                RibbonTab::Home,
-                Home::Shelf(workspaces::ShelfTab::Entity),
-                Panel::Properties,
-            );
+            // In a side layout, Properties is always in view.
+            self.show_in(RibbonTab::Home, home, Panel::Properties);
         }
         self.follow_map_selection();
         let has_map = self.open.map_edits.path.is_some();
@@ -477,12 +502,14 @@ impl Workbench {
     /// pointer leaves it.
     pub(crate) fn tab_clicked(&mut self, tab: RibbonTab) {
         if tab == self.shell.tab && self.map_tools_in_front() {
-            // Home again, from its tile map's tools: the Entity tab.
-            self.show_in(
-                tab,
-                Home::Shelf(workspaces::ShelfTab::Entity),
-                Panel::Properties,
-            );
+            // Home again, from its tile map's tools: the Entity tab, or in
+            // a side layout (which has none) the Console.
+            let open = self.open_now();
+            let shelf = workspaces::built_shelf_tabs(tab, open)
+                .into_iter()
+                .find(|s| *s == workspaces::ShelfTab::Entity)
+                .unwrap_or(workspaces::ShelfTab::Console);
+            self.show_in(tab, Home::Shelf(shelf), Panel::Properties);
             return;
         }
         let again = self.shell.tab == tab;
@@ -578,25 +605,55 @@ impl Workbench {
 }
 
 /// The groups and the shelf of the tab in front, in what is left of
-/// `ui` under the ribbon. Notes where each panel was drawn.
+/// `ui` under the ribbon, with Home's lists beside them in `chosen`, the
+/// layout chosen in Preferences, when the window has room for it (else
+/// on the shelf). Notes where each panel was drawn.
 pub(crate) fn middle(
     ui: &mut egui::Ui,
     shell: &mut Shell,
     open: OpenNow,
+    chosen: PanelLayout,
     viewer: &mut crate::panels::PanelViewer<'_>,
 ) -> groups::DocAsks {
     let rect = ui.available_rect_before_wrap();
-    let shelf_h = shelf::height(shell, rect.height());
-    let center = rect.with_max_y(rect.bottom() - shelf_h);
+    shell.narrow = rect.width() < layouts::least_width(chosen);
+    let layout = if shell.narrow {
+        PanelLayout::Shelf
+    } else {
+        chosen
+    };
+    let open = OpenNow { layout, ..open };
+    let beside = shell.tab == RibbonTab::Home && layout.is_side();
+    let reserve = if beside {
+        layouts::strip_reserve(layout)
+    } else {
+        0.0
+    };
+    let shelf_h = shelf::height(shell, rect.height(), layout, reserve);
+    let upper = rect.with_max_y(rect.bottom() - shelf_h);
     shell.drawn.clear();
     ui.painter()
         .rect_filled(rect, 0.0, crate::tokens::viewport());
+    let place = beside.then(|| {
+        let tab = shell.tab;
+        layouts::side(upper, layout, |edge| shell.size(tab, layout, edge))
+    });
+    let center = place.as_ref().map_or(upper, |p| p.center);
     let asks = groups::center(ui, center, shell, open, viewer);
-    shelf::shelf(ui, rect.with_min_y(center.bottom()), shell, open, viewer);
+    // The shelf before the lists: Assets takes its placing form beside
+    // Placement drawn this frame.
+    shelf::shelf(ui, rect.with_min_y(upper.bottom()), shell, open, viewer);
+    if let Some(place) = place {
+        beside::lists(ui, upper, &place, shell, layout, viewer);
+    }
     ui.advance_cursor_after_rect(rect);
     asks
 }
 
+#[cfg(test)]
+mod layout_scale_tests;
+#[cfg(test)]
+mod layout_tests;
 #[cfg(test)]
 mod middle_picture_tests;
 #[cfg(test)]

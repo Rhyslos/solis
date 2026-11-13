@@ -10,8 +10,10 @@ use crate::viewport::Tool;
 use crate::workbench::Workbench;
 use egui_kittest::kittest::Queryable;
 
+/// Placing as the design's Screen 2 draws it, on the shelf (the other
+/// layouts' placing is in `shell/layout_tests.rs`).
 fn with_models() -> Workbench {
-    let mut w = Workbench::new(info());
+    let mut w = crate::test_support::in_layout(crate::shell::PanelLayout::Shelf);
     w.set_project(Some(ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -152,8 +154,12 @@ fn placing_matches_its_approved_picture() {
     w.open.library_state.folder = "props".into();
     w.viewport.snapping.grid = true;
     w.viewport.snapping.grid_step = 0.25;
-    let Some(mut h) = editor_window(w, crate::theme::InterfaceLook::default(), [1440.0, 900.0])
-    else {
+    // Screen 2 as the design draws it: on the shelf.
+    let look = crate::theme::InterfaceLook {
+        layout: crate::shell::PanelLayout::Shelf,
+        ..Default::default()
+    };
+    let Some(mut h) = editor_window(w, look, [1440.0, 900.0]) else {
         return;
     };
     h.run();

@@ -2,9 +2,13 @@
 //! and the tools of the tab in front at the right) over columns laid side
 //! by side. The grip's drag sets its height; Ctrl + Space folds it to its
 //! bar and back; each ribbon tab remembers its shelf tab, height and fold
-//! (`Arrangement`). Columns wrap under each other when the window is too
-//! narrow for them side by side.
+//! (`Arrangement`), and its height and its columns' widths per layout
+//! (`sizes.rs`): every line between two columns drags, and a double-click
+//! on it puts it back. Columns wrap under each other when the window is
+//! too narrow for them side by side (`layouts::shelf_columns`).
 
+use super::layouts::{self, PanelLayout};
+use super::sizes::Edge;
 use super::workspaces::{Column, OpenNow, ShelfTab, Width, shelf_tabs};
 use super::{RibbonTab, Shell};
 use crate::icons::Icon;
@@ -20,14 +24,15 @@ use egui::{Align, Align2, Id, Layout, Rect, Sense, Ui, UiBuilder, WidgetInfo, po
 const LOWER_SHARE: f32 = 0.28;
 
 /// How tall the shelf is, bar and all, in a middle `room` tall: what the
-/// tab remembers, kept so the center keeps its least height.
-pub(crate) fn height(shell: &Shell, room: f32) -> f32 {
-    let arrangement = shell.arrangement(shell.tab);
-    let content = if arrangement.shelf_folded {
+/// tab remembers in `layout`, kept so the center keeps its least height
+/// (and `reserve` more under it: the Assets strip's least).
+pub(crate) fn height(shell: &Shell, room: f32, layout: PanelLayout, reserve: f32) -> f32 {
+    let tab = shell.tab;
+    let content = if shell.arrangement(tab).shelf_folded {
         0.0
     } else {
-        let most = (room - size::SHELF_BAR_H - size::CENTER_MIN_H).max(0.0);
-        arrangement.shelf_height.min(most)
+        let most = (room - size::SHELF_BAR_H - size::CENTER_MIN_H - reserve).max(0.0);
+        shell.size(tab, layout, Edge::ShelfHeight).min(most)
     };
     (size::SHELF_BAR_H + content).min(room)
 }
@@ -52,7 +57,13 @@ pub(crate) fn shelf(
     let front = shell.arrangement(tab).shelf_tab_of(&built);
     let bar = rect.with_max_y(rect.top() + size::SHELF_BAR_H);
     bar_background(ui, bar);
-    grip(ui, bar, shell, rect.height() - size::SHELF_BAR_H);
+    grip(
+        ui,
+        bar,
+        shell,
+        open.layout,
+        rect.height() - size::SHELF_BAR_H,
+    );
     let tabs_left = bar.left() + size::ROW_PAD + size::SHELF_GRIP[0] + size::ROW_PAD;
     let mut bar_ui = ui.new_child(
         UiBuilder::new()
@@ -74,7 +85,8 @@ pub(crate) fn shelf(
                     clicked = Some(*shelf);
                 }
                 if shelf.closes_a_file() && close_mark(&mut bar_ui, *shelf) {
-                    viewer.close(shelf.panels().next().unwrap_or(Panel::Frames));
+                    let first = shelf.panels(open.layout).next();
+                    viewer.close(first.unwrap_or(Panel::Frames));
                 }
             }
             Entry::Unbuilt(id) => {
@@ -96,7 +108,7 @@ pub(crate) fn shelf(
         return;
     }
     if let Some(front) = clicked.or(front) {
-        columns(ui, content, front, shell, viewer);
+        columns(ui, content, front, shell, open.layout, viewer);
     }
 }
 
@@ -115,8 +127,9 @@ fn bar_background(ui: &Ui, bar: Rect) {
 }
 
 /// The grip at the bar's left, and the bar's top edge: dragging either
-/// sets the shelf's height (`drawn` is its content's height now).
-fn grip(ui: &Ui, bar: Rect, shell: &mut Shell, drawn: f32) {
+/// sets the shelf's height (`drawn` is its content's height now), and a
+/// double-click on either puts the standard height back.
+fn grip(ui: &Ui, bar: Rect, shell: &mut Shell, layout: PanelLayout, drawn: f32) {
     let [w, h] = size::SHELF_GRIP;
     let spot = Rect::from_min_size(
         pos2(bar.left() + size::ROW_PAD, bar.center().y - h / 2.0),
@@ -125,26 +138,35 @@ fn grip(ui: &Ui, bar: Rect, shell: &mut Shell, drawn: f32) {
     ui.painter()
         .rect_filled(spot, size::radius::GRIP, tokens::stronger_line());
     let reach = spot.expand2(vec2(size::GAP, (size::SHELF_BAR_H - h) / 2.0));
-    let held = ui.interact(reach, Id::new("shelf grip"), Sense::drag());
+    let held = ui.interact(reach, Id::new("shelf grip"), Sense::click_and_drag());
     held.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Other, true, "Shelf grip"));
     let edge = Rect::from_x_y_ranges(
         bar.x_range(),
         bar.top() - size::DIVIDER_REACH..=bar.top() + size::DIVIDER_REACH,
     );
-    let edge = ui.interact(edge, Id::new("shelf edge"), Sense::drag());
+    let edge = ui.interact(edge, Id::new("shelf edge"), Sense::click_and_drag());
+    edge.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Other, true, "Shelf's top edge"));
+    let tab = shell.tab;
     for response in [&held, &edge] {
         if response.hovered() || response.dragged() {
             ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeVertical);
+        }
+        if response.double_clicked() {
+            shell.sizes.forget(tab, layout, Edge::ShelfHeight);
+            shell.arrangement_mut(tab).shelf_folded = false;
         }
     }
     let moved: f32 = [held, edge].iter().map(|r| r.drag_delta().y).sum();
     if moved != 0.0 {
         // From the height drawn (a remembered one may not fit), by as
         // much as the pointer moved: up makes the shelf taller.
-        let arrangement = shell.arrangement_mut(shell.tab);
-        arrangement.shelf_folded = false;
-        arrangement.shelf_height =
-            (drawn - moved).clamp(size::SHELF_MIN_H, super::saved::SHELF_MAX);
+        shell.arrangement_mut(tab).shelf_folded = false;
+        shell.sizes.set(
+            tab,
+            layout,
+            Edge::ShelfHeight,
+            (drawn - moved).max(size::SHELF_MIN_H),
+        );
     }
 }
 
@@ -285,99 +307,76 @@ fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut Pane
 }
 
 /// The front shelf tab's columns in `content`, side by side, or under
-/// each other when there isn't room.
+/// each other when there isn't room; the lines between them drag.
 fn columns(
     ui: &mut Ui,
     content: Rect,
-    tab: ShelfTab,
+    front: ShelfTab,
+    shell: &mut Shell,
+    layout: PanelLayout,
+    viewer: &mut PanelViewer<'_>,
+) {
+    let columns = front.columns(layout);
+    let tab = shell.tab;
+    let edge_of = |i: usize| Edge::Column(front, u8::try_from(i).unwrap_or(u8::MAX));
+    let widths: Vec<f32> = columns
+        .iter()
+        .enumerate()
+        .map(|(i, c)| match c.width {
+            Width::Fixed(_) => shell.size(tab, layout, edge_of(i)),
+            Width::Rest => 0.0,
+        })
+        .collect();
+    let (places, borders) = layouts::shelf_columns(content, columns, &widths, edge_of);
+    // The 1 px gaps between columns show this.
+    ui.painter().rect_filled(content, 0.0, tokens::line());
+    let headers = columns.len() > 1;
+    for (column, place) in columns.iter().zip(places) {
+        self::column(ui, place, column, headers, shell, viewer);
+    }
+    super::beside::drag_borders(ui, &borders, shell, layout);
+}
+
+/// Draws `column` in `place`: its header (when `with_header`, and it
+/// doesn't draw its own), then its panels, a second one under the first.
+/// Notes where each was drawn.
+pub(super) fn column(
+    ui: &mut Ui,
+    place: Rect,
+    column: &Column,
+    with_header: bool,
     shell: &mut Shell,
     viewer: &mut PanelViewer<'_>,
 ) {
-    let columns = tab.columns();
-    // The 1 px gaps between columns show this.
-    ui.painter().rect_filled(content, 0.0, tokens::line());
-    for (column, place) in columns.iter().zip(places(content, columns)) {
-        let body = if columns.len() > 1 && !column.own_header {
-            header(ui, place, column, viewer)
-        } else {
-            place
-        };
-        ui.painter().rect_filled(body, 0.0, tokens::panel());
-        let [upper, lower] = match column.panels {
-            [one] => [(Some(*one), body), (None, Rect::NOTHING)],
-            [first, second, ..] => {
-                let y = (body.bottom() - body.height() * LOWER_SHARE).round();
-                tokens::hline(ui.painter(), body.x_range(), y, tokens::line());
-                [
-                    (Some(*first), body.with_max_y(y)),
-                    (Some(*second), body.with_min_y(y + 1.0)),
-                ]
-            }
-            [] => continue,
-        };
-        for (panel, rect) in [upper, lower] {
-            let Some(panel) = panel else { continue };
-            let mut panel_ui = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(rect)
-                    .id_salt(("shelf column", panel)),
-            );
-            panel_ui.set_clip_rect(rect.intersect(ui.clip_rect()));
-            viewer.draw_panel(&mut panel_ui, panel);
-            shell.drawn.push((panel, rect));
+    let body = if with_header && !column.own_header {
+        header(ui, place, column, viewer)
+    } else {
+        place
+    };
+    ui.painter().rect_filled(body, 0.0, tokens::panel());
+    let [upper, lower] = match column.panels {
+        [one] => [(Some(*one), body), (None, Rect::NOTHING)],
+        [first, second, ..] => {
+            let y = (body.bottom() - body.height() * LOWER_SHARE).round();
+            tokens::hline(ui.painter(), body.x_range(), y, tokens::line());
+            [
+                (Some(*first), body.with_max_y(y)),
+                (Some(*second), body.with_min_y(y + 1.0)),
+            ]
         }
+        [] => return,
+    };
+    for (panel, rect) in [upper, lower] {
+        let Some(panel) = panel else { continue };
+        let mut panel_ui = ui.new_child(
+            UiBuilder::new()
+                .max_rect(rect)
+                .id_salt(("shelf column", panel)),
+        );
+        panel_ui.set_clip_rect(rect.intersect(ui.clip_rect()));
+        viewer.draw_panel(&mut panel_ui, panel);
+        shell.drawn.push((panel, rect));
     }
-}
-
-/// Where each column goes in `content`: side by side with 1 px gaps, the
-/// fixed ones at their width and the rest sharing what's left; or, when
-/// that leaves a column narrower than its least, each under the one
-/// before.
-fn places(content: Rect, columns: &[Column]) -> Vec<Rect> {
-    let gaps = columns.len().saturating_sub(1) as f32;
-    let fixed: f32 = columns
-        .iter()
-        .map(|c| match c.width {
-            Width::Fixed(w) => w,
-            Width::Rest => 0.0,
-        })
-        .sum();
-    let rest_count = columns
-        .iter()
-        .filter(|c| c.width == Width::Rest)
-        .count()
-        .max(1) as f32;
-    let rest = (content.width() - fixed - gaps) / rest_count;
-    if rest < size::COLUMN_MIN_W && columns.len() > 1 {
-        let n = columns.len() as f32;
-        let each = ((content.height() - (n - 1.0)) / n).floor();
-        return (0..columns.len())
-            .map(|i| {
-                let top = content.top() + i as f32 * (each + 1.0);
-                Rect::from_min_size(pos2(content.left(), top), vec2(content.width(), each))
-            })
-            .collect();
-    }
-    let mut x = content.left();
-    columns
-        .iter()
-        .enumerate()
-        .map(|(i, c)| {
-            let w = match c.width {
-                Width::Fixed(w) => w,
-                Width::Rest => rest,
-            };
-            let last = i + 1 == columns.len();
-            let right = if last {
-                content.right()
-            } else {
-                (x + w).round()
-            };
-            let rect = Rect::from_x_y_ranges(x..=right, content.y_range());
-            x = right + 1.0;
-            rect
-        })
-        .collect()
 }
 
 /// A column's 30 px header: its title, a count on the right where it has

@@ -1,6 +1,7 @@
-//! The Assets column of Home's Entity shelf tab (spec 200, 215-216): the
-//! files of the Library's open folder as square tiles, four across, and
-//! an Import tile last. A tile is dragged into the viewport to place it,
+//! The Assets list of Home (spec 200, 215-216): a column of the Entity
+//! shelf tab, or in a side layout a column or strip of its own (decision
+//! 0109). The files of the Library's open folder as square tiles, as many
+//! across as fit (four in the shelf's column), and an Import tile last. A tile is dragged into the viewport to place it,
 //! onto an entity in the Area column to place it under that, or onto a
 //! card's field to assign it; a double-click places it where the camera
 //! looks (or opens what isn't placed); a right-click has the Library's
@@ -9,7 +10,7 @@
 //! The folder is the Library's own, so the Library tab and this column
 //! show the same place.
 //!
-//! On the Place shelf tab it takes its placing form (spec 270-276; round
+//! While the Place shelf tab is in front it takes its placing form (spec 270-276; round
 //! 2, `06-placing-a.png`): chips, a search and **Open Library** over the
 //! placeable files as tiles of at least 92 px, the one being dragged
 //! dimmed with a "dragging" badge.
@@ -18,9 +19,6 @@ use crate::library::{LibraryItem, LibraryRequest, LibraryState, Sounds};
 use crate::tokens::{self, size, text};
 use crate::widgets::{self, dashed};
 use egui::{Align2, CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
-
-/// How many tiles go across in the Entity tab's column.
-const ACROSS: usize = 4;
 
 /// The Assets column: the open folder's files, then Import (or, while
 /// `placing`, the placeable ones under its chips and search). Returns
@@ -56,13 +54,16 @@ pub(crate) fn assets(
         })
         .collect();
     let room = ui.available_rect_before_wrap().shrink(size::TILE_GAP * 2.0);
-    let across = if placing {
-        ((room.width() + size::TILE_GAP) / (size::PLACE_TILE_MIN_W + size::TILE_GAP))
-            .floor()
-            .max(1.0) as usize
+    // As many as fit: four in the Entity tab's column, more in a wide
+    // strip (decision 0109).
+    let least = if placing {
+        size::PLACE_TILE_MIN_W
     } else {
-        ACROSS
+        size::ASSETS_TILE_MIN_W
     };
+    let across = ((room.width() + size::TILE_GAP) / (least + size::TILE_GAP))
+        .floor()
+        .max(1.0) as usize;
     let width = ((room.width() - (across - 1) as f32 * size::TILE_GAP) / across as f32).floor();
     let height = tile_height(width);
     // Placing has no Import tile: it is for what's there.

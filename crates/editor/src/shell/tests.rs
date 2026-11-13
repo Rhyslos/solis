@@ -92,7 +92,18 @@ fn each_tab_shows_its_own_documents_and_shelf() {
             vec![Panel::Mixer, Panel::Bus],
             ShelfTab::SoundEvents,
         ),
-        (RibbonTab::Home, vec![Panel::Viewport], ShelfTab::Entity),
+        // The standard layout: the lists beside the area, the Console in
+        // front on the shelf (decision 0109).
+        (
+            RibbonTab::Home,
+            vec![
+                Panel::Viewport,
+                Panel::Area,
+                Panel::Properties,
+                Panel::Assets,
+            ],
+            ShelfTab::Console,
+        ),
     ] {
         ribbon_tab(&mut h, tab);
         h.run();
@@ -102,7 +113,7 @@ fn each_tab_shows_its_own_documents_and_shelf() {
         for panel in documents {
             assert!(w.in_front.contains(&panel), "{tab:?} shows {panel:?}");
         }
-        for panel in shelf.panels() {
+        for panel in shelf.panels(w.open_now().layout) {
             assert!(
                 w.in_front.contains(&panel),
                 "{tab:?}'s shelf shows {panel:?}"

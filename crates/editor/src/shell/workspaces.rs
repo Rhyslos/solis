@@ -7,10 +7,16 @@
 //! running game, an animator, a tileset, a picture's crops, a clips file,
 //! a tile map selected), which adds documents and shelf tabs while it is
 //! open; and what each tab remembers (`Arrangement`): the shelf tab in
-//! front, the shelf's height and whether it's folded, the split between
-//! its two groups and the document in front of each.
+//! front, whether the shelf is folded, and the document in front of each
+//! group. The sizes of its borders are kept apart (`sizes.rs`).
+//!
+//! On Home, the layout chosen in Preferences (decision 0109) takes the
+//! Area, Properties and Assets lists off the shelf into columns of their
+//! own (`layouts.rs`): the Entity shelf tab goes, and Place keeps only
+//! its Placement column.
 
 use super::RibbonTab;
+use super::layouts::PanelLayout;
 use crate::panel::Panel;
 use crate::tokens::size;
 use crate::unbuilt::{Entry, UnbuiltId};
@@ -146,11 +152,14 @@ impl ShelfTab {
         Self::ALL.into_iter().find(|tab| tab.name() == name)
     }
 
-    /// Its columns, left to right.
-    pub fn columns(self) -> &'static [Column] {
+    /// Its columns, left to right, in `layout`.
+    pub fn columns(self, layout: PanelLayout) -> &'static [Column] {
         use Panel as P;
         use Width::{Fixed, Rest};
         match self {
+            // The Area and Assets lists are columns of their own: placing
+            // keeps how placed things land on the shelf.
+            Self::Place if layout.is_side() => &[column!("Placement", [P::Placement], Rest)],
             Self::Place => &[
                 column!("Area", [P::Area], Fixed(size::SCENE_COLUMN_W)),
                 column!("Placement", [P::Placement], Fixed(size::PLACEMENT_COLUMN_W)),
@@ -190,9 +199,11 @@ impl ShelfTab {
         }
     }
 
-    /// Every panel the tab shows.
-    pub fn panels(self) -> impl Iterator<Item = Panel> {
-        self.columns().iter().flat_map(|c| c.panels.iter().copied())
+    /// Every panel the tab shows in `layout`.
+    pub fn panels(self, layout: PanelLayout) -> impl Iterator<Item = Panel> {
+        self.columns(layout)
+            .iter()
+            .flat_map(|c| c.panels.iter().copied())
     }
 
     /// Whether a close button sits on the tab: it shows a file of its own
@@ -218,6 +229,9 @@ pub struct OpenNow {
     pub clips: bool,
     /// An entity with a tile map is selected.
     pub map: bool,
+    /// The layout Home is drawn in (decision 0109): the one chosen in
+    /// Preferences, or the shelf while the window is too narrow for it.
+    pub layout: PanelLayout,
 }
 
 /// The documents of a tab's editor groups: one or two groups, each a
@@ -324,6 +338,10 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
     if tab == RibbonTab::Home && open.map {
         tabs.push(Entry::Built(S::Map));
     }
+    if tab == RibbonTab::Home && open.layout.is_side() {
+        // Its three lists are columns of their own.
+        tabs.retain(|entry| *entry != Entry::Built(S::Entity));
+    }
     if tab == RibbonTab::Animate {
         // A clips file's tabs, then an animator's, after the unfinished
         // sequencer (round 3).
@@ -351,17 +369,13 @@ pub fn built_shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<ShelfTab> {
 }
 
 /// What a tab remembers of its middle, between frames and between runs
-/// (spec 1131-1138).
+/// (spec 1131-1138), apart from its borders' sizes (`sizes.rs`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Arrangement {
     /// The shelf tab in front.
     pub shelf_tab: ShelfTab,
-    /// The shelf's content height (under its bar), in points.
-    pub shelf_height: f32,
     /// Whether the shelf is folded to its bar.
     pub shelf_folded: bool,
-    /// The first group's share of the room, when there are two.
-    pub split: f32,
     /// The document in front of each group, if one was chosen.
     pub front: [Option<Panel>; 2],
     /// A document dragged to one half of the center, standing alone in
@@ -381,28 +395,19 @@ impl Arrangement {
     pub fn standard(tab: RibbonTab) -> Self {
         // Home opens on Entity, the level editor; Place is first on its
         // shelf bar but is a mode chosen by bringing it to the front.
+        // In a side layout, where Home has no Entity tab, the first after
+        // Place stands in for it (`shelf_tab_of`).
         let everything = OpenNow {
             tileset: true,
             atlas: true,
+            layout: PanelLayout::Shelf,
             ..OpenNow::default()
         };
-        let shelf_tab = built_shelf_tabs(tab, everything)
-            .into_iter()
-            .find(|shelf| *shelf != ShelfTab::Place)
-            .unwrap_or(ShelfTab::Console);
+        let shelf_tab =
+            first_not_placing(&built_shelf_tabs(tab, everything)).unwrap_or(ShelfTab::Console);
         Self {
             shelf_tab,
-            shelf_height: if tab == RibbonTab::Animate {
-                size::SHELF_H_ANIMATE
-            } else {
-                size::SHELF_H
-            },
             shelf_folded: false,
-            split: match tab {
-                RibbonTab::Library => size::SPLIT_LIBRARY,
-                RibbonTab::Audio => size::SPLIT_AUDIO,
-                _ => size::SPLIT,
-            },
             front: [None, None],
             alone: None,
             merged: false,
@@ -442,13 +447,20 @@ impl Arrangement {
     }
 
     /// The shelf tab in front, of those `tabs` there are now: the one
-    /// chosen if it's there, else the first.
+    /// chosen if it's there, else the first that isn't Place (which is a
+    /// mode, chosen only by bringing it to the front), else Place.
     pub fn shelf_tab_of(&self, tabs: &[ShelfTab]) -> Option<ShelfTab> {
         tabs.iter()
             .copied()
             .find(|tab| *tab == self.shelf_tab)
+            .or_else(|| first_not_placing(tabs))
             .or_else(|| tabs.first().copied())
     }
+}
+
+/// The first of `tabs` that isn't Place.
+fn first_not_placing(tabs: &[ShelfTab]) -> Option<ShelfTab> {
+    tabs.iter().copied().find(|tab| *tab != ShelfTab::Place)
 }
 
 /// Where `panel` lives on `tab`: in a group (its index), or on a shelf
@@ -459,6 +471,9 @@ pub enum Home {
     Group(usize),
     /// A column of this shelf tab.
     Shelf(ShelfTab),
+    /// A column of its own beside the groups, or the strip under them
+    /// (decision 0109): always in view.
+    Beside,
 }
 
 /// Where `panel` is on `tab` with `open` open, if it's there.
@@ -469,12 +484,15 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
     {
         return Some(Home::Group(index));
     }
+    if tab == RibbonTab::Home && open.layout.has_beside(panel) {
+        return Some(Home::Beside);
+    }
     // The Area and Assets columns are on Place too, but their home is
     // Entity: showing one doesn't start placing.
     built_shelf_tabs(tab, open)
         .into_iter()
         .filter(|shelf| *shelf != ShelfTab::Place || panel == Panel::Placement)
-        .find(|shelf| shelf.panels().any(|p| p == panel))
+        .find(|shelf| shelf.panels(open.layout).any(|p| p == panel))
         .map(Home::Shelf)
 }
 

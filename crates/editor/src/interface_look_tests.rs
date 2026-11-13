@@ -12,6 +12,7 @@ fn changed() -> InterfaceLook {
         ribbon_labels: false,
         hide_unfinished: true,
         shelf_opens_on: ShelfOpensOn::Entity,
+        layout: PanelLayout::AreaLeftAssetsRight,
     }
 }
 
@@ -82,6 +83,25 @@ fn missing_fields_take_their_standard_and_unknown_ones_are_passed_over() {
             ..InterfaceLook::default()
         }
     );
+}
+
+#[test]
+fn the_layout_is_saved_and_one_from_before_it_or_after_it_still_reads() {
+    for layout in PanelLayout::ALL {
+        let look = InterfaceLook {
+            layout,
+            ..InterfaceLook::default()
+        };
+        let text = ron::to_string(&look).unwrap();
+        assert_eq!(ron::from_str::<InterfaceLook>(&text).unwrap(), look);
+    }
+    // A build before the layouts had none: the new standard.
+    let before = ron::from_str::<InterfaceLook>("(accent:Teal,shelf_opens_on:Entity)").unwrap();
+    assert_eq!(before.layout, PanelLayout::AreaLeftAssetsBottom);
+    // A layout a later build adds reads as the standard, keeping the rest.
+    let later = ron::from_str::<InterfaceLook>("(accent:Purple,layout:Diagonal)").unwrap();
+    assert_eq!(later.layout, PanelLayout::default());
+    assert_eq!(later.accent, Accent::Purple);
 }
 
 #[test]

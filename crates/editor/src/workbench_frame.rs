@@ -75,6 +75,7 @@ impl Workbench {
                 std::sync::Arc::default()
             };
         let open_now = self.open_now();
+        let layout = self.interface.layout;
         let map_shown = self.map_shown();
         let map_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
         let map_name = self
@@ -261,7 +262,7 @@ impl Workbench {
             self.shell.drawn.clear();
             Default::default()
         } else {
-            crate::shell::middle(ui, &mut self.shell, open_now, &mut viewer)
+            crate::shell::middle(ui, &mut self.shell, open_now, layout, &mut viewer)
         };
         self.in_front = shown;
         self.pointer_over = asks.frames.pointer_over;

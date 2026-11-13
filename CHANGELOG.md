@@ -6,6 +6,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **Home's Area list, Properties and Assets are columns beside the area now** (Shared 1e; [decision 0109](docs/decisions/0109-layouts-as-a-setting.md)): the Area list a tall column at the left, Properties one at the right, Assets a wide strip under the area. The shelf keeps Place, the Console, Problems and Map; its **Entity** tab is there only in the design's layout. To have them back on the shelf, choose **The shelf (as designed)** in **File › Preferences › Appearance › Panel layout**. In the side layouts the **Place** tab holds Placement alone, and the Assets list shows what can be placed while Place is in front.
+
 - **Home's level editor looks like the design's first screen** (Shared 1b, M5). What moved:
   - The tool bar at the bottom of the viewport is now the **toolbox**, a column down the viewport's left edge (Select, Move, Rotate, Scale, Transform; a selected tile map's painting tools under them). Its keys are the same.
   - The viewport's corner controls are **pills**: top left the view (**Perspective ▾**, with how many views and Maximise in its list), the look (**Standard ▾**) and **Show ▾** (what the viewport shows, and Preview animation); top right the frame time; bottom right the axis locks, **World ▾** and the camera's speed. The menu behind the three lines is gone.
@@ -257,6 +259,9 @@ What changed in each version, for people using Solis. Newest first.
 - Lights brought in with a model are listed under it in the Area panel, and deleting the model deletes them.
 
 ### Added
+
+- **Panel layouts** (Shared 1e; [decision 0109](docs/decisions/0109-layouts-as-a-setting.md)): **File › Preferences › Appearance › Panel layout** puts Home's three lists in one of four places: **Area left, Assets bottom** (the standard), **Area and Assets on the left**, **Area left, Assets right**, or **The shelf (as designed)**. It changes at once. When the window is too narrow for the columns, the area narrows first, then the right column, then the left; narrower still, the lists go back on the shelf until there's room.
+- **Every border drags** (Shared 1e): the side columns' edges, the Assets strip's top, the line between two lists in one column, the lines between a shelf tab's columns, as well as the shelf and the line between two groups. The pointer becomes a two-headed arrow over each, and a **double-click** puts it back to its standard size. Each tab remembers its sizes for each panel layout, also after closing Solis; **Reset layout** puts them all back. The Assets list shows as many tiles across as fit. To try by hand: drag each border, close and reopen Solis, and check they stay; try each layout at a small window size.
 
 - **Dragging a number's name changes it** (Shared 1b, M5): in Properties, drag a field's name (Strength, Range…) left or right, as dragging the value does; one drag is one undo step.
 - **What you change while the game plays is marked** in Properties: the field keeps an accent border, with **↺** and the value from before Play to put it back, and the note at the top counts your changes so far.
