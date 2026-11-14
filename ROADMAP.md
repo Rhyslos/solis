@@ -229,7 +229,7 @@ The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/009
 
 **The order:**
 
-1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)).
+1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)), then **Open worlds** (the ground at 20 × 20 km and beyond; proposed, [decision 0116](docs/decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)).
 2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
 3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes).
 4. **2D 1 and 2D 2:** 2D complete.
@@ -321,6 +321,18 @@ Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decision
 - **G5 Speed, game code, the manual.**
 
 **Gate:** a level of brushes on a sculpted, painted ground with a cave, in each look, played, saved and reopened, at the scale check's targets.
+
+## Open worlds (proposed)
+
+After Tools 1b, the ground grows from 1 × 1 km to **20 × 20 km and beyond** ([decision 0116](docs/decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)): only what's near the camera and units kept in memory, far ground drawn coarser, physics only where it's needed. Planned by [the open-worlds study](docs/reports/open-worlds-study.md); **its milestones are proposed** until the project lead answers the study's questions.
+
+- **W1 Regions and streaming** (proposed): region files hold levels 0 to 3 with a table of their chunks; chunks read on workers by priority with a ring read ahead, under a memory budget; sculpted chunks written back before they're let go; grounds past 2 km.
+- **W2 Far ground coarser** (proposed): nested rings of fixed-size chunks; levels 1 to 3 joined by a transition band (Smooth, Sharp) or walls between sizes (Blocky); past 2 km, the far field, a height map made from the voxels, to the horizon.
+- **W3 Physics and units across the world** (proposed): colliders only near physics characters, their shapes built on workers; characters held at the edge of ground not yet solid; 2,000 units following the ground anywhere in the world.
+- **W4 The world map and a starting ground** (proposed): a map of the regions to go to a place; a starting ground made from noise or a height map picture, written as region files on workers.
+- **W5 Speed, game code, the manual** (proposed): drawing near the camera precise however far from the middle; game code's calls for big grounds; the scale cases; the manual.
+
+**Gate (proposed):** a 20 × 20 km ground made from noise, sculpted and painted in places kilometres apart, flown across without holes or stalls in each look, walked on and crossed by 2,000 units, saved and reopened.
 
 ---
 

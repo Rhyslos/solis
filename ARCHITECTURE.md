@@ -15,7 +15,7 @@ Each crate's `README.md` states its purpose and what it **must never** do. Read 
 
 Planned: a networking crate in a later phase. See ROADMAP.md.
 
-Outside the layers, three tools are workspace members so they build with the same libraries and checks: `tools/layer-check`, `tools/user-guide` (below) and `tools/ground-study`, Tools 1b's study of how to keep and draw the ground ([docs/reports/ground-study.md](docs/reports/ground-study.md)): prototypes of voxel storage and meshing and the program that measures them, which nothing in the program depends on.
+Outside the layers, three tools are workspace members so they build with the same libraries and checks: `tools/layer-check`, `tools/user-guide` (below) and `tools/ground-study`, Tools 1b's study of how to keep and draw the ground ([docs/reports/ground-study.md](docs/reports/ground-study.md)) and the open-worlds study of streaming it and drawing it coarser far away ([docs/reports/open-worlds-study.md](docs/reports/open-worlds-study.md)): prototypes of voxel storage, meshing, levels of detail and streaming, and the program that measures them, which nothing in the program depends on.
 
 ## The area
 
