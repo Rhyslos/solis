@@ -180,6 +180,7 @@ struct Mesher<'a, L: Levels> {
     key: IVec3,
     look: Look,
     seams: Seams,
+    only_border: bool,
     cache: Vec<Sample>,
     chunks: IVec3,
     size: IVec3,
@@ -195,25 +196,7 @@ pub fn mesh(
     look: Look,
     seams: Seams,
 ) -> Made {
-    let neighbours_matter = matches!(seams, Seams::Transition | Seams::Stitched);
-    let scope = Scope {
-        layout: neighbours_matter.then_some(layout),
-        level,
-    };
-    let size = levels.size(level);
-    let mut mesher = Mesher {
-        levels,
-        scope,
-        level,
-        key,
-        look,
-        seams,
-        cache: Vec::new(),
-        chunks: (size + SIZE_I - 1).div_euclid(IVec3::splat(SIZE_I)),
-        size,
-    };
-    mesher.fill_cache();
-    let mut made = mesher.emit();
+    let mut made = Mesher::new(levels, layout, level, key, look, seams, false).emit();
     if look == Look::Sharp {
         made.mesh = sharpen(&made.mesh, HARD_EDGE_DEGREES);
         made.border = sharpen(&made.border, HARD_EDGE_DEGREES);
@@ -226,7 +209,53 @@ pub fn mesh(
     made
 }
 
-impl<L: Levels> Mesher<'_, L> {
+/// Just the border of the chunk `key` of `level` with [`Seams::Stitched`]:
+/// what is made again when a neighbour's level changes.
+pub fn border(
+    levels: &impl Levels,
+    layout: &Layout,
+    level: u32,
+    key: IVec3,
+    look: Look,
+) -> ChunkMesh {
+    let made = Mesher::new(levels, layout, level, key, look, Seams::Stitched, true).emit();
+    match look {
+        Look::Smooth => made.border,
+        Look::Sharp => sharpen(&made.border, HARD_EDGE_DEGREES),
+    }
+}
+
+impl<'a, L: Levels> Mesher<'a, L> {
+    fn new(
+        levels: &'a L,
+        layout: &'a Layout,
+        level: u32,
+        key: IVec3,
+        look: Look,
+        seams: Seams,
+        only_border: bool,
+    ) -> Self {
+        let neighbours_matter = matches!(seams, Seams::Transition | Seams::Stitched);
+        let size = levels.size(level);
+        let mut mesher = Self {
+            levels,
+            scope: Scope {
+                layout: neighbours_matter.then_some(layout),
+                level,
+            },
+            level,
+            key,
+            look,
+            seams,
+            only_border,
+            cache: Vec::new(),
+            chunks: (size + SIZE_I - 1).div_euclid(IVec3::splat(SIZE_I)),
+            size,
+        };
+        mesher.fill_cache();
+        mesher
+    }
+
     fn fill_cache(&mut self) {
         let mut samples = Samples::default();
         let mut scratch = Dense::filled(Voxel::AIR);
@@ -278,6 +307,10 @@ impl<L: Levels> Mesher<'_, L> {
             for y in 0..=SIZE_I {
                 for x in 0..=SIZE_I {
                     let s = IVec3::new(x, y, z);
+                    let inner = |v: i32| (2..SIZE_I - 1).contains(&v);
+                    if self.only_border && inner(x) && inner(y) {
+                        continue;
+                    }
                     let g = origin + s;
                     if g.cmplt(IVec3::ZERO).any() || g.cmpge(self.size).any() {
                         continue;

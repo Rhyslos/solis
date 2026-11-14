@@ -182,8 +182,15 @@ impl Scene {
     /// Casts a ray from `eye` through each of `targets` (on the ground)
     /// and a little past it, counting those that went through: that saw
     /// the back of a triangle first, or passed deep into the ground
-    /// (`inside` says where that is) before meeting any.
-    pub fn look(&self, eye: Vec3, targets: &[Vec3], inside: impl Fn(Vec3) -> bool) -> Seen {
+    /// (`inside` says where that is, checked every `step` metres, given
+    /// the place) before meeting any.
+    pub fn look(
+        &self,
+        eye: Vec3,
+        targets: &[Vec3],
+        inside: impl Fn(Vec3) -> bool,
+        step: impl Fn(Vec3) -> f32,
+    ) -> Seen {
         let mut seen = Seen::default();
         for target in targets {
             let way = *target - eye;
@@ -191,12 +198,17 @@ impl Scene {
             seen.rays += 1;
             let first = self.first_hit(eye, way, reach);
             let until = first.map_or(reach, |(t, _)| t);
-            let step = 0.25;
             let dir = way.normalize_or_zero();
-            let went_in = (1..)
-                .map(|i| i as f32 * step)
-                .take_while(|t| *t < until)
-                .any(|t| inside(eye + dir * t));
+            let mut t = step(eye).max(0.01);
+            let mut went_in = false;
+            while t < until {
+                let p = eye + dir * t;
+                if inside(p) {
+                    went_in = true;
+                    break;
+                }
+                t += step(p).max(0.01);
+            }
             if went_in || matches!(first, Some((_, false))) {
                 seen.through += 1;
             }
@@ -283,6 +295,7 @@ mod tests {
             Vec3::new(4.25, -5.0, 5.0),
             &[Vec3::new(4.25, 4.0, 0.0), Vec3::new(2.0, 4.0, 0.0)],
             |p| p.z < -0.5,
+            |_| 0.25,
         );
         assert_eq!(
             seen,

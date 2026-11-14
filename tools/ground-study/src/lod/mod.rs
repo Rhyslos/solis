@@ -269,6 +269,11 @@ impl Kept {
         self.chunks.keys().copied()
     }
 
+    /// How many levels the world has.
+    pub fn levels(&self) -> u32 {
+        self.sizes.len() as u32
+    }
+
     /// How many chunks are kept.
     pub fn len(&self) -> usize {
         self.chunks.len()

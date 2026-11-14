@@ -463,16 +463,17 @@ fn chunk_bytes(chunk: &Chunk<Full>) -> usize {
 }
 
 /// The chunks a frame wants round `place` (metres) for the layout's
-/// `columns`: each column's chunks, drawn, and a column of each level
-/// round them, for their samples. Nearer is wanted first.
+/// `columns`: each column's chunks, drawn, and two columns of each level
+/// round them: one for their samples, and one read ahead, since rings
+/// move two columns at a time. Nearer is wanted first.
 pub fn wanted_for(columns: &[crate::lod::layout::Column], place: glam::Vec2) -> Vec<Wanted> {
     let mut out: HashMap<ChunkId, Wanted> = HashMap::new();
     for c in columns {
         let size = crate::lod::chunk_metres(c.level) as f32;
         let middle = (c.key.as_vec2() + 0.5) * size;
         let priority = middle.distance(place) / size;
-        for dy in -1..=1 {
-            for dx in -1..=1 {
+        for dy in -2..=2 {
+            for dx in -2..=2 {
                 let key = c.key + IVec2::new(dx, dy);
                 if key.cmplt(IVec2::ZERO).any() {
                     continue;
@@ -480,11 +481,13 @@ pub fn wanted_for(columns: &[crate::lod::layout::Column], place: glam::Vec2) -> 
                 let drawn = dx == 0 && dy == 0;
                 for z in 0..crate::world::chunks_high(c.level) as i32 {
                     let id = (c.level, key.extend(z));
+                    let ring = dx.abs().max(dy.abs()) as f32;
                     let w = out.entry(id).or_insert(Wanted {
                         id,
-                        priority: priority + 1.0,
+                        priority: priority + ring,
                         drawn,
                     });
+                    w.priority = w.priority.min(priority + ring);
                     if drawn {
                         w.drawn = true;
                         w.priority = w.priority.min(priority);

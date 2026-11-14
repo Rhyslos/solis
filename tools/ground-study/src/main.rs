@@ -4,6 +4,9 @@
 //! - no arguments: every measurement, as Markdown tables;
 //! - `uploads` (with the `gpu` feature): uploads through the renderer;
 //! - `pictures <folder>` (with the `gpu` feature): the report's pictures.
+//! - `worlds [levels|view|streaming|units|disk]`: the open-worlds study's
+//!   measurements, all or one part.
+//! - `worlds-pictures <folder>` (with the `gpu` feature): its pictures.
 
 // A tool that prints its report.
 #![allow(clippy::print_stdout)]
@@ -14,6 +17,15 @@ fn main() -> std::process::ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         None => study::run(),
+        Some("worlds") => study::worlds::run(args.get(1).map(String::as_str)),
+        #[cfg(feature = "gpu")]
+        Some("worlds-pictures") => {
+            let folder = std::path::PathBuf::from(args.get(1).map_or(".", String::as_str));
+            if let Err(e) = study::worlds::pictures::all(&folder) {
+                println!("No pictures: {e}");
+                return std::process::ExitCode::FAILURE;
+            }
+        }
         #[cfg(feature = "gpu")]
         Some("uploads") => study::uploads(),
         #[cfg(feature = "gpu")]
@@ -26,7 +38,7 @@ fn main() -> std::process::ExitCode {
         }
         Some(other) => {
             println!(
-                "Unknown command {other}: run with nothing, `uploads` or `pictures <folder>`."
+                "Unknown command {other}: run with nothing, `uploads`, `pictures <folder>`, `worlds` or `worlds-pictures <folder>`."
             );
             return std::process::ExitCode::FAILURE;
         }

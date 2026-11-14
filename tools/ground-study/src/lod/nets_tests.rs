@@ -90,7 +90,12 @@ fn rays_at(
             if !clear {
                 continue;
             }
-            let s = scene.look(eye, &[*t], |q| crate::lod::cracks::deep(p, layout, q));
+            let s = scene.look(
+                eye,
+                &[*t],
+                |q| crate::lod::cracks::deep(p, layout, q),
+                |_| 0.25,
+            );
             seen.rays += s.rays;
             seen.through += s.through;
         }
@@ -241,4 +246,19 @@ fn the_world_edge_stays_open_and_nothing_else_does() {
     let refs: Vec<&ChunkMesh> = meshes.iter().collect();
     let edge = |q: Vec3| q.x <= 0.5 || q.y <= 0.5 || q.x >= 253.0 || q.y >= 253.0;
     assert_eq!(open_edges(&refs, edge), 0);
+}
+
+#[test]
+fn a_border_alone_is_the_stitched_chunks_border() {
+    let p = ball_pyramid(3);
+    let layout = mixed();
+    for c in layout.columns().iter().take(6) {
+        let key = c.key.extend(1);
+        let whole = mesh(&p, &layout, c.level, key, Look::Sharp, Seams::Stitched);
+        assert_eq!(
+            border(&p, &layout, c.level, key, Look::Sharp),
+            whole.border,
+            "{key}"
+        );
+    }
 }

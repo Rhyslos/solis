@@ -181,6 +181,18 @@ impl Layout {
         }
     }
 
+    /// The same layout with every level above `top` drawn at `top`
+    /// instead: what the voxel chunks see when the coarser columns are
+    /// drawn some other way (the far field), so that they mesh up to
+    /// those columns as if they were their own level, and leave the seam
+    /// to the far field's skirts.
+    pub fn capped(&self, top: u32) -> Self {
+        Self {
+            across: self.across,
+            levels: self.levels.iter().map(|l| (*l).min(top as u8)).collect(),
+        }
+    }
+
     /// The world's size in level-0 columns.
     pub fn across(&self) -> IVec2 {
         self.across
@@ -323,6 +335,15 @@ mod tests {
         let edge = IVec2::new(lo * 32, 32 * 32 + 5);
         assert_eq!(layout.coarsest_at(edge), 1);
         assert_eq!(layout.coarsest_at(edge + IVec2::X), 0);
+    }
+
+    #[test]
+    fn capping_draws_the_coarser_levels_at_the_cap() {
+        let layout = Layout::rings(IVec2::splat(640), Vec2::splat(10_240.0), 7, 8);
+        let capped = layout.capped(3);
+        assert!(capped.columns().iter().all(|c| c.level <= 3));
+        assert_eq!(capped.level_at(Vec2::splat(10_240.0)), 0);
+        assert_eq!(capped.level_at(Vec2::splat(100.0)), 3);
     }
 
     #[test]
