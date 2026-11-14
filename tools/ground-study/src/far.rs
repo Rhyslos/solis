@@ -73,12 +73,23 @@ pub fn tile(levels: &impl Levels, level: u32, key: IVec2, skirts: bool) -> Chunk
     }
     if skirts {
         // Round the tile counter-clockwise, as its triangles go along
-        // its sides.
+        // its sides; none along the world's own edges, where the ground
+        // just stops.
+        let last = levels.size(level).truncate() - 1;
+        let end = origin + SIZE_I;
         let mut rim = Vec::new();
-        rim.extend((0..SIZE_I).map(|x| (point(x, 0), point(x + 1, 0))));
-        rim.extend((0..SIZE_I).map(|y| (point(SIZE_I, y), point(SIZE_I, y + 1))));
-        rim.extend((0..SIZE_I).map(|x| (point(x + 1, SIZE_I), point(x, SIZE_I))));
-        rim.extend((0..SIZE_I).map(|y| (point(0, y + 1), point(0, y))));
+        if origin.y > 0 {
+            rim.extend((0..SIZE_I).map(|x| (point(x, 0), point(x + 1, 0))));
+        }
+        if end.x < last.x {
+            rim.extend((0..SIZE_I).map(|y| (point(SIZE_I, y), point(SIZE_I, y + 1))));
+        }
+        if end.y < last.y {
+            rim.extend((0..SIZE_I).map(|x| (point(x + 1, SIZE_I), point(x, SIZE_I))));
+        }
+        if origin.x > 0 {
+            rim.extend((0..SIZE_I).map(|y| (point(0, y + 1), point(0, y))));
+        }
         let depth = 2.0 * voxel(level + 1);
         for (a, b) in rim {
             let (pa, pb) = (out.positions[a as usize], out.positions[b as usize]);
@@ -197,12 +208,14 @@ mod tests {
     }
 
     #[test]
-    fn a_tile_is_a_grid_with_skirts_round_it() {
+    fn a_tile_is_a_grid_with_skirts_round_it_but_on_the_worlds_edges() {
         let p = slope();
         let plain = tile(&p, 0, IVec2::ZERO, false);
         assert_eq!(plain.triangles(), 32 * 32 * 2);
+        // The first of the world's two by two tiles: skirts on its two
+        // sides inside the world, none on its two along the world's edge.
         let skirted = tile(&p, 0, IVec2::ZERO, true);
-        assert_eq!(skirted.triangles(), 32 * 32 * 2 + 4 * 32 * 2);
+        assert_eq!(skirted.triangles(), 32 * 32 * 2 + 2 * 32 * 2);
         assert!(plain.normals.iter().all(|n| n.z > 0.9));
     }
 

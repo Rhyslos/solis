@@ -85,7 +85,8 @@ fn sample(p: Vec3, c: Column, voxel: f32) -> (f32, u8) {
         let q = p / 28.0;
         let tunnel = (noise3(2, q).abs() + noise3(3, q).abs() - 0.07) * 10.0;
         d = d.max(-(tunnel + 0.75 * (voxel - 1.0)));
-        wall = tunnel < 1.5;
+        // Rock round the caves, but not showing through the grass.
+        wall = tunnel < 1.5 && depth > 3.0;
     }
     // Seen from afar, a voxel shows the kind of the surface it holds.
     let seen_depth = (depth - (voxel - 1.0)).max(0.0);

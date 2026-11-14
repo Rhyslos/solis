@@ -9,7 +9,7 @@ use ground_study::far::{self, top};
 use ground_study::lod::cracks::{Scene, deep};
 use ground_study::lod::layout::{Column, Layout, new_columns};
 use ground_study::lod::nets::Seams;
-use ground_study::lod::{Kept, voxel};
+use ground_study::lod::{Kept, skirts, voxel};
 use ground_study::mesh::ChunkMesh;
 use ground_study::voxel::SIZE_I;
 use ground_study::world;
@@ -121,12 +121,22 @@ pub(crate) fn draw(way: Way, look: Looks, camera: Vec3) -> Drawn {
     let (voxel_columns, tile_columns): (Vec<Column>, Vec<Column>) =
         columns.iter().partition(|c| !way.is_tile(c));
     let (wall_ms, (meshed, tiles)) = timed(|| {
-        // Voxel chunks next to the far field mesh up to it as if it were
-        // their own level; the far field's skirts close the seam.
-        let voxel_layout = way
-            .far_from
-            .map_or_else(|| layout.clone(), |f| layout.capped(f - 1));
-        let meshed = mesh_all(&kept, &voxel_layout, &voxel_columns, look, way.seams);
+        let mut meshed = mesh_all(&kept, &layout, &voxel_columns, look, way.seams);
+        // Voxel chunks beside the far field also hang skirts, which with
+        // the far field's own skirts close the seam between them.
+        if way.far_from.is_some() {
+            for m in &mut meshed {
+                if beside_tiles(way, &layout, m.id) {
+                    let (lo, hi) = ground_study::lod::nets::square(m.id.0, m.id.1);
+                    skirts::hang(
+                        &mut m.mesh,
+                        lo.as_vec2(),
+                        hi.as_vec2(),
+                        2.0 * voxel(m.id.0 + 1),
+                    );
+                }
+            }
+        }
         let tiles: Vec<(ChunkMesh, f64)> = tile_columns
             .par_iter()
             .map(|c| {
@@ -154,6 +164,19 @@ pub(crate) fn draw(way: Way, look: Looks, camera: Vec3) -> Drawn {
         kept,
         layout,
     }
+}
+
+/// Whether the chunk `id` has a column of the far field beside it.
+fn beside_tiles(way: Way, layout: &Layout, (level, key): ground_study::lod::ChunkId) -> bool {
+    let lo = key.truncate() << level;
+    let hi = lo + (1 << level);
+    (lo.y - 1..=hi.y).any(|y| {
+        (lo.x - 1..=hi.x).any(|x| {
+            layout
+                .level_of(IVec2::new(x, y))
+                .is_some_and(|l| way.far_from.is_some_and(|f| l >= f))
+        })
+    })
 }
 
 /// Triangles whose middles are within 45° of looking north (+y) from

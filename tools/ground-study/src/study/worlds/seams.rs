@@ -219,12 +219,12 @@ pub(crate) fn seams(p: &Pyramid) {
     rebuilds(&kept, camera);
 }
 
-/// What's made again when the camera moves 150 m and levels change round
+/// What's made again when the camera moves 175 m and levels change round
 /// it, each way (one core, Smooth).
 fn rebuilds(kept: &Kept, camera: glam::Vec2) {
     let across = IVec2::splat(32);
-    let before = Layout::rings(across, camera, 4, 6);
-    let after = Layout::rings(across, camera + glam::Vec2::new(130.0, 70.0), 4, 6);
+    let before = Layout::rings(across, camera, 4, 8);
+    let after = Layout::rings(across, camera + glam::Vec2::new(150.0, 90.0), 4, 8);
     let new: Vec<_> = new_columns(&before, &after);
     // Columns kept whose neighbours' levels changed.
     let changed_cells: HashSet<IVec2> = (0..32)
@@ -243,7 +243,7 @@ fn rebuilds(kept: &Kept, camera: glam::Vec2) {
         })
         .collect();
     let table = Table::start(
-        "When the camera moves 150 m: what is made again (Smooth, one core)",
+        "When the camera moves 175 m: what is made again (rings of 8, Smooth, one core)",
         &[
             "Way",
             "Columns new",

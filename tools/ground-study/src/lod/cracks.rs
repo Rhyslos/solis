@@ -154,7 +154,7 @@ impl Scene {
                 for &i in &self.bins[(cell.x + self.across.x * cell.y) as usize] {
                     if let Some(hit) = hit(&self.triangles[i as usize], from, way)
                         && hit.0 <= reach
-                        && best.is_none_or(|b| hit.0 < b.0)
+                        && best.is_none_or(|b| nearer(hit, b))
                     {
                         best = Some(hit);
                     }
@@ -232,6 +232,18 @@ pub fn deep(levels: &impl super::Levels, layout: &super::layout::Layout, p: Vec3
     })
 }
 
+/// Whether `hit` comes before `best`; two at the same place (a ray
+/// meeting a skirt just where the surface it hangs from ends) count as
+/// the front one, as a picture would show it.
+fn nearer(hit: (f32, bool), best: (f32, bool)) -> bool {
+    let tie = 1e-4 * best.0.max(1.0);
+    if (hit.0 - best.0).abs() <= tie {
+        hit.1 && !best.1
+    } else {
+        hit.0 < best.0
+    }
+}
+
 /// Where a ray meets a triangle (either side): how far, and whether its
 /// front (counter-clockwise from outside) faces the ray.
 fn hit(t: &[Vec3; 3], from: Vec3, way: Vec3) -> Option<(f32, bool)> {
@@ -243,13 +255,17 @@ fn hit(t: &[Vec3; 3], from: Vec3, way: Vec3) -> Option<(f32, bool)> {
     }
     let inv = 1.0 / det;
     let s = from - t[0];
+    // A hair of slack, so a ray passing exactly along an edge between
+    // two triangles meets one of them (a test without it lets such rays
+    // through, which would count as cracks).
+    const SLACK: f32 = 1e-4;
     let u = s.dot(p) * inv;
-    if !(0.0..=1.0).contains(&u) {
+    if !(-SLACK..=1.0 + SLACK).contains(&u) {
         return None;
     }
     let q = s.cross(e1);
     let v = way.dot(q) * inv;
-    if v < 0.0 || u + v > 1.0 {
+    if v < -SLACK || u + v > 1.0 + SLACK {
         return None;
     }
     let distance = e2.dot(q) * inv;

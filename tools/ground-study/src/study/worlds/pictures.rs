@@ -5,7 +5,7 @@
 
 use super::super::stats::{ms, timed};
 use super::Looks;
-use super::view::{Arrange, Way, camera, draw};
+use super::view::{Arrange, Way, draw};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use ground_study::far::Heights;
 use ground_study::lod::layout::Layout;
@@ -191,7 +191,7 @@ fn shoot(gpu: &Gpu, model: &assets::Model, shot: &Shot, path: &Path) -> Result<f
                 shading: Shading::default(),
                 size_px: size,
                 sun: Sun {
-                    direction: Vec3::new(0.55, 0.45, -0.45).normalize(),
+                    direction: Vec3::new(0.7, 0.3, -0.22).normalize(),
                     ..Sun::default()
                 },
                 environment,
@@ -235,14 +235,17 @@ pub(crate) fn all(folder: &Path) -> Result<(), String> {
     let gpu = gpu().ok_or("no graphics driver")?;
     let info = gpu.adapter.get_info();
     println!("Drawing through {} ({:?}).", info.name, info.backend);
-    let camera = camera();
-    let eye = camera + Vec3::new(0.0, -300.0, 140.0);
-    let at = eye + Vec3::new(0.0, 1000.0, -95.0);
+    // Just south of the hilliest part of the world, looking north into
+    // it from 35 m over the ground, the sun low.
+    let flat = super::hilly_corner().as_vec2() + Vec2::new(1100.0, -300.0);
+    let camera = flat.extend(world::height(flat) + 60.0);
+    let eye = flat.extend(world::height(flat) + 35.0);
+    let at = eye + Vec3::new(0.0, 3000.0, -150.0);
     let view = Shot {
         eye,
         at,
         loud_sky: false,
-        fog: Some(6000.0),
+        fog: Some(7000.0),
     };
     for look in Looks::ALL {
         let drawn = draw(RECOMMENDED, look, camera);
@@ -268,7 +271,7 @@ pub(crate) fn all(folder: &Path) -> Result<(), String> {
             shoot(&gpu, &tinted, &view, &folder.join("open-worlds-levels.ppm"))?;
         }
     }
-    seams(&gpu, folder, camera)?;
+    seams(&gpu, folder, super::view::camera())?;
     map(folder, camera.truncate())
 }
 
@@ -315,15 +318,27 @@ fn seams(gpu: &Gpu, folder: &Path, camera: Vec3) -> Result<(), String> {
             .map(|m| (0, m))
             .collect();
         let model = model_of(&near, &PALETTE, |_, kind| usize::from(kind));
-        shoot(
-            gpu,
-            &model,
-            &shot,
-            &folder.join(format!("open-worlds-seam-{name}.ppm")),
-        )?;
-        println!("open-worlds-seam-{name}.ppm");
+        let path = folder.join(format!("open-worlds-seam-{name}.ppm"));
+        shoot(gpu, &model, &shot, &path)?;
+        println!(
+            "open-worlds-seam-{name}.ppm: {} pixels of the backdrop seen through the ground",
+            backdrop_seen(&path)?
+        );
     }
     Ok(())
+}
+
+/// Pixels of the loud backdrop in the lower 60 % of a picture (under
+/// the horizon): the backdrop seen through cracks.
+fn backdrop_seen(path: &Path) -> Result<usize, String> {
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let pixels = bytes.get(15..).ok_or("a short picture")?;
+    let (w, h) = (960usize, 540usize);
+    Ok(pixels
+        .chunks_exact(3)
+        .enumerate()
+        .filter(|(i, p)| i / w >= h * 2 / 5 && p[0] > 180 && p[1] < 80 && p[2] > 150)
+        .count())
 }
 
 /// The editor's map of a 20 km world: its heights shaded, its regions
