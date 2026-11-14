@@ -73,6 +73,91 @@ pass Sprinkler;
 end
 ```
 
+```rust
+// The map's file is Lust's. Rust reads the map through its host by its
+// path, with numbers: layers and values by their place in the Map tab's
+// lists (from 0), terrains by their code in the tileset, and a choice by
+// its place in its list.
+use script::{Context, RustComponent};
+use tiles::CellValue;
+
+const FARM: &str = "maps/farm";
+const GROUND: usize = 0;
+const SOIL: u8 = b's';
+// The farm's values, in the Map tab's order.
+const WATERED: usize = 0;
+const GROWTH: usize = 1;
+const CROP: usize = 2;
+const PARSNIP: u8 = 0;
+
+pub struct Sprinkler {
+    x: u32,
+    y: u32,
+}
+
+impl RustComponent for Sprinkler {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        let Some(farm) = cx.host().map(FARM) else {
+            return;
+        };
+        let (x, y) = (self.x, self.y);
+
+        // Water the cell if it's tilled soil and dry.
+        let soil = farm.code(GROUND, x, y) == Some(SOIL);
+        let dry = farm.value(WATERED, x, y) != Some(CellValue::Switch(true));
+        if soil && dry {
+            cx.host().set_map_value(FARM, WATERED, [x, y], CellValue::Switch(true));
+            let growth = match farm.value(GROWTH, x, y) {
+                Some(CellValue::Number(n)) => n,
+                _ => 0,
+            };
+            cx.host().set_map_value(FARM, GROWTH, [x, y], CellValue::Number(growth + 1));
+        }
+
+        // Plant parsnips where nothing grows yet.
+        if farm.value(CROP, x, y) == Some(CellValue::Choice(None)) {
+            cx.host().set_map_value(FARM, CROP, [x, y], CellValue::Choice(Some(PARSNIP)));
+        }
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+-- The map's file is Lust's. Lua reaches the map through solis.Maps by
+-- its path, with numbers: layers and values by their place in the Map
+-- tab's lists (from 0), terrains by their code in the tileset, and a
+-- choice by its place in its list (-1 for none).
+local FARM = "maps/farm"
+local GROUND = 0
+local SOIL = string.byte("s")
+-- The farm's values, in the Map tab's order.
+local WATERED, GROWTH, CROP = 0, 1, 2
+local PARSNIP = 0
+
+local Sprinkler = component("Sprinkler", {
+    { "x", "int", 3 },
+    { "y", "int", 4 },
+})
+
+function Sprinkler:update(dt)
+    local x, y = self.x, self.y
+
+    -- Water the cell if it's tilled soil and dry.
+    local soil = solis.Maps:terrain(FARM, GROUND, x, y) == SOIL
+    if soil and not solis.Maps:isOn(FARM, WATERED, x, y) then
+        solis.Maps:setSwitch(FARM, WATERED, x, y, true)
+        solis.Maps:setNumber(FARM, GROWTH, x, y, solis.Maps:number(FARM, GROWTH, x, y) + 1)
+    end
+
+    -- Plant parsnips where nothing grows yet.
+    if solis.Maps:choice(FARM, CROP, x, y) == -1 then
+        solis.Maps:setChoice(FARM, CROP, x, y, PARSNIP)
+    end
+end
+```
+
 | In the Map tab | becomes |
 |---|---|
 | its size | `farm:width()`, `farm:height()` (in cells) |
@@ -104,6 +189,60 @@ component Hoe {
 }
 
 pass Hoe;
+end
+```
+
+```rust
+// The map's file is Lust's. Rust reads the map through its host by its
+// path, with numbers: layers and values by their place in the Map tab's
+// lists (from 0), terrains by their code in the tileset, and a choice by
+// its place in its list.
+use script::{Context, RustComponent};
+
+const FARM: &str = "maps/farm";
+const GROUND: usize = 0;
+const GRASS: u8 = b'.';
+const TILLED: u8 = b't';
+
+pub struct Hoe;
+
+impl RustComponent for Hoe {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        let me = cx.me();
+        let at = cx.host().position(me).unwrap_or_default();
+        let (Some(farm), Some(place)) = (cx.host().map(FARM), cx.host().map_place(FARM)) else {
+            return;
+        };
+        let ([x, y], inside) = place.cell_at(at);
+        if !inside {
+            return;
+        }
+        let cell = [x as u32, y as u32];
+        if farm.code(GROUND, cell[0], cell[1]) == Some(GRASS) {
+            cx.host().set_map_tile(FARM, GROUND, cell, TILLED);
+        }
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+-- The map's file is Lust's. Lua reaches the map through solis.Maps by
+-- its path, with numbers: layers and values by their place in the Map
+-- tab's lists (from 0), terrains by their code in the tileset, and a
+-- choice by its place in its list (-1 for none).
+local FARM = "maps/farm"
+local GROUND = 0
+local GRASS, TILLED = string.byte("."), string.byte("t")
+
+local Hoe = component("Hoe", {})
+
+function Hoe:update(dt)
+    local here = solis.Maps:cellAt(FARM, solis.entity.position(self.me))
+    if here.inside and solis.Maps:terrain(FARM, GROUND, here.x, here.y) == GRASS then
+        solis.Maps:setTerrain(FARM, GROUND, here.x, here.y, TILLED)
+    end
 end
 ```
 
@@ -153,6 +292,7 @@ Value kinds:
 - **Problem:** cells are bright pink. **Why:** their code isn't one of the tileset's terrains (the terrain was taken away, or its code changed), or their terrain's art is missing the tile they need. The Map tab counts unknown codes, and Problems names missing tiles. **Fix:** add a terrain with that code, change the cells, or fill the slot in the tileset.
 - **Problem:** clicking the map in the viewport selects what's behind it, or nothing. **Why:** clicks on a map are kept for the [tile painter](painting-tiles.md). **Fix:** select the map in the Area panel.
 - **Problem:** the Map tab is gone. **Why:** it shows only while a map is selected. **Fix:** select the map's entity.
+- **Problem:** after making a tile map, Problems lists mistakes in `solis/maps/…` ("there's nothing called Maps here"). **Why:** the map's own file uses the engine's `Maps`, which Lust only finds when the game's code fetches `solis/tiles` (or the map's file) itself. **Fix:** add `fetch "solis/tiles":Maps;` to `main.lst`, or fetch the map's file where you use it.
 - **Problem:** numbers don't show on the cells. **Why:** cells are too small to write on, or too many are in view. **Fix:** zoom in.
 - **Problem:** a value's numbers are gone after changing its kind. **Why:** a value's cells start again when its kind changes. **Fix:** Ctrl + Z over the Map tab.
 - **Problem:** on a very big map, **+** adds no layer or value, or a value's kind won't change to number. **Why:** a map's layers and values together take at most 512 MB of memory. A layer, a switch or a choice takes a byte for each cell and a number four, so the biggest map (4,096 × 4,096) has room for 32 bytes a cell: 16 layers and 4 numbers, say. **Fix:** take away a layer or value the map doesn't need, or make the map smaller.

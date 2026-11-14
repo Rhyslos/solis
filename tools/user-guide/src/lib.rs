@@ -8,18 +8,21 @@
 //! the logo is `branding/logo.svg`; the fonts are the editor's own
 //! (`crates/editor/assets/fonts`).
 //!
-//! [`read`] gathers all of that from the repository, [`build`] turns it
-//! into the guide or says what stops it: a page missing from the
-//! contents, a link to nothing. The tests in `tests/manual.rs` fail when
+//! [`read`] gathers all of that from the repository, with the manual's
+//! pictures, [`build`] turns it into the guide or says what stops it: a
+//! page missing from the contents, a link to nothing, a picture missing
+//! or shown by no page, a game-code example not in all three languages. The tests in `tests/manual.rs` fail when
 //! the copy kept in `docs/user-guide/index.html` isn't what [`build`]
 //! makes now.
 
 pub mod blocks;
 pub mod contents;
+pub mod examples;
 mod guide;
 pub mod html;
 pub mod inline;
 pub mod links;
+pub mod pictures;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -72,6 +75,8 @@ pub struct Manual {
     pub logo: Vec<u8>,
     /// The fonts.
     pub fonts: Vec<Font>,
+    /// The pictures in `docs/manual/pictures`, by file name.
+    pub pictures: BTreeMap<String, Vec<u8>>,
     /// The repository's top folder, where linked files are looked for.
     pub root: PathBuf,
 }
@@ -126,6 +131,7 @@ pub fn read(root: &Path) -> Result<Manual, String> {
         logo: std::fs::read(&logo_path)
             .map_err(|e| format!("Couldn't read {}: {e}", logo_path.display()))?,
         fonts,
+        pictures: pictures::read(root)?,
         root: root.to_path_buf(),
     })
 }
@@ -156,6 +162,17 @@ pub fn constant(source: &str, name: &str) -> Result<String, String> {
         .filter(|value| !value.is_empty() && !value.contains(['"', '\\', '<', '>']))
         .map(str::to_string)
         .ok_or_else(|| format!("branding.rs has no `{start}…\";` line"))
+}
+
+/// Every game-code example in the manual, page by page in the contents'
+/// order.
+pub fn examples(manual: &Manual) -> Result<Vec<examples::Example>, Vec<String>> {
+    let contents = contents::read(&manual.contents)?;
+    Ok(contents
+        .pages()
+        .filter_map(|page| Some((page, manual.pages.get(page)?)))
+        .flat_map(|(page, text)| examples::on_page(page, &blocks::parse(text)))
+        .collect())
 }
 
 /// The pages of the manual missing from its contents page.

@@ -10,6 +10,9 @@ The guide is a single file on your computer, in the `user-guide` folder beside t
 
 ## How to use it
 
+![The Documentation button](pictures/documentation-button.png)
+**Documentation**, at the right of the tab bar, beside the project's name: one click opens this guide.
+
 1. Click **Documentation** at the right end of the tab bar, beside the project's name. It is always there: on every tab, on the File pages, and before any project is open.
 2. The guide opens in your browser (which one is a setting; see below), at the welcome. **File › Learn** and **File › About** open it too, and a component's **?** in [Properties](entities.md) opens the chapter about that component.
 3. Find what you're after:

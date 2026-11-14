@@ -283,6 +283,47 @@ blockquote { margin: 1.2em 0; padding: 0.2em 1.1em; border-left: 3px solid var(-
 hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
 img { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
 
+/* The manual's pictures: a figure with its caption, larger when clicked. */
+figure.shot { margin: 1.4em 0 1.8em; max-width: 100%; }
+figure.shot .zoom { display: block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: 8px; }
+figure.shot img { display: block; box-shadow: var(--shadow); }
+figure.shot .zoom:hover img { border-color: var(--accent-line); }
+figure.shot figcaption, .lightbox figcaption { margin-top: 0.55em; font-size: 0.88rem; line-height: 1.5; color: var(--muted); max-width: var(--measure); }
+.lightbox {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  padding: 56px 24px 24px; background: var(--scrim); backdrop-filter: blur(2px);
+  cursor: zoom-out;
+}
+.lightbox[hidden] { display: none; }
+.lightbox figure { margin: 0; max-width: 100%; max-height: 100%; display: flex; flex-direction: column; align-items: center; }
+.lightbox img { max-width: 100%; max-height: calc(100vh - 140px); width: auto; height: auto; object-fit: contain; background: var(--surface); box-shadow: var(--shadow-pop); }
+.lightbox figcaption { color: var(--text); background: var(--surface); padding: 6px 12px; border-radius: 6px; }
+.lightbox .close { position: absolute; top: 12px; right: 16px; }
+body.boxed { overflow: hidden; }
+
+/* A game-code example in Lust, Rust and Lua: the switch above it picks
+   the language for every example at once (remembered by the browser
+   when it allows). Without the script all three show, each named. */
+.example { margin: 1em 0 1.4em; max-width: 100%; }
+.example pre { margin: 0; border-top-left-radius: 0; }
+.example .langs { display: flex; gap: 2px; }
+.example .langs button {
+  font: inherit; font-size: 12.5px; font-weight: 600; letter-spacing: 0.01em;
+  padding: 5px 14px 4px; margin-bottom: -1px; min-height: 30px;
+  color: var(--muted); background: var(--panel); cursor: pointer;
+  border: 1px solid var(--line); border-bottom-color: var(--line); border-radius: 7px 7px 0 0;
+}
+.example .langs button:hover { color: var(--text); }
+.example .langs button[aria-selected="true"] { color: var(--accent); background: var(--surface); border-bottom-color: var(--surface); position: relative; z-index: 1; }
+:root[data-code] .example pre { display: none; }
+:root[data-code="lust"] .example pre[data-lang="lust"],
+:root[data-code="rust"] .example pre[data-lang="rust"],
+:root[data-code="lua"] .example pre[data-lang="lua"] { display: block; }
+:root:not([data-code]) .example .langs { display: none; }
+:root:not([data-code]) .example pre { margin-bottom: 0.8em; border-radius: 8px; }
+:root:not([data-code]) .example pre::before { content: attr(data-name); display: block; margin-bottom: 0.4em; font: 600 11.5px/1.4 "Inter", system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
 .table-wrap { overflow-x: auto; margin: 1em 0 1.6em; }
 table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.93rem; line-height: 1.55; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
 th, td { text-align: left; vertical-align: top; padding: 0.6em 0.9em; border-bottom: 1px solid var(--line); }
@@ -364,12 +405,15 @@ footer p { color: var(--muted); }
   .pager .next { grid-column: 1; }
   .to-top .label { display: none; }
   .to-top { padding: 0; width: 40px; }
+  .example .langs button { padding: 5px 12px 4px; }
+  .lightbox { padding: 52px 8px 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 @media print {
-  .top, nav.toc, .pager, .to-top, .scrim { display: none !important; }
+  .top, nav.toc, .pager, .to-top, .scrim, .lightbox, .example .langs { display: none !important; }
+  .example pre { display: block !important; }
   .page { display: block; }
   main { padding: 0; }
   section.chapter { break-before: page; }

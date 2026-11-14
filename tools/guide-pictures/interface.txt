@@ -1,0 +1,22 @@
+# The editor's approved picture-test images (crates/editor/tests/pictures) when the
+# guide's pictures were last taken, with a hash of each (FNV-1a, 64 bits).
+# Written by tools/guide-pictures/take-pictures.sh; a test fails when they change.
+brush-draw.png 92c2edbf4105563c
+brush-edit-faces.png 86f836e3147a01c7
+brush-edit-points.png b22b9629e71b7056
+brush-list.png f9c471dac2fbe42d
+editor.png 0b176fa43332030f
+home-area-and-assets-left.png 8babaf5ec1920013
+home-area-left-assets-bottom.png e9444dbd347e5dcc
+home-area-left-assets-right.png a7ea7d1f2d1ce22d
+icon-sheet.png c694a64561268ad7
+kind-colours.png 80af21e68949c237
+placeholder-sheet.png b0ff0c1cbf32772a
+placing.png be136d0d951be0a8
+recent-projects.png 607a0c6a926b8f6b
+tab-animate.png 2c2692b4291b2a72
+tab-audio.png dda17d6872266d7f
+tab-library.png ede86d725a39c60f
+tab-ui.png de4b522fa1882a53
+token-sheet.png 6b1f716a3202b855
+widget-sheet.png 3add3c477c3021a0

@@ -7,14 +7,19 @@
 <title>{{name}} user guide</title>
 <!-- Made by tools/user-guide from docs/manual: change the manual, never this file. -->
 <script>
-/* The chosen theme is set before anything is drawn, so the page never
-   shows the other one first. Storage can be refused (file://, private
-   windows): then the page follows the system. */
+/* The chosen theme and the language of the code examples are set before
+   anything is drawn, so the page never shows the others first. Storage
+   can be refused (file://, private windows): then the page follows the
+   system, and the examples start in Lust. */
 (function () {
+  var root = document.documentElement;
+  root.setAttribute("data-code", "lust");
   try {
     var t = window.localStorage.getItem("guide-theme");
-    if (t === "light" || t === "dark") { document.documentElement.setAttribute("data-theme", t); }
-  } catch (e) { /* follow the system */ }
+    if (t === "light" || t === "dark") { root.setAttribute("data-theme", t); }
+    var c = window.localStorage.getItem("guide-code");
+    if (c === "rust" || c === "lua") { root.setAttribute("data-code", c); }
+  } catch (e) { /* the system's theme, and Lust */ }
 }());
 </script>
 <style>
@@ -69,6 +74,12 @@
   <span class="label">Top</span>
 </button>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="The picture, larger" hidden>
+  <button class="icon-button close" id="lightbox-close" type="button" title="Close (Esc)" aria-label="Close">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+  </button>
+  <figure><img id="lightbox-picture" alt=""><figcaption id="lightbox-caption"></figcaption></figure>
+</div>
 <script>
 {{script}}
 </script>

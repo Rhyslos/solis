@@ -1,6 +1,8 @@
 /* The guide's behaviour. The page is whole without it (the contents, the
-   chapters and every link are written into the HTML); this adds the
-   search, the theme switch, where you are, and the small comforts. */
+   chapters, every link and every example's three languages are written
+   into the HTML); this adds the search, the theme switch, the examples'
+   language switch, pictures shown larger, where you are, and the small
+   comforts. */
 (function () {
   "use strict";
   var doc = document;
@@ -53,6 +55,71 @@
     theme = applyTheme(modes[(modes.indexOf(theme) + 1) % modes.length]);
     store.set("guide-theme", theme);
   });
+
+  /* The examples' language: Lust, Rust or Lua, for every example at once,
+     remembered like the theme. The script in <head> has already set the
+     stored one. The example clicked stays where it is on the screen while
+     the others above it change height. */
+  var languages = ["lust", "rust", "lua"];
+  function setCode(lang, keep) {
+    if (languages.indexOf(lang) < 0) { lang = "lust"; }
+    var before = keep ? keep.getBoundingClientRect().top : 0;
+    root.setAttribute("data-code", lang);
+    each(main.querySelectorAll(".example .langs button"), function (b) {
+      b.setAttribute("aria-selected", b.dataset.lang === lang ? "true" : "false");
+      b.tabIndex = b.dataset.lang === lang ? 0 : -1;
+    });
+    if (keep) { window.scrollBy(0, keep.getBoundingClientRect().top - before); }
+  }
+  setCode(root.getAttribute("data-code"), null);
+  main.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".example .langs button");
+    if (!b) { return; }
+    setCode(b.dataset.lang, b);
+    store.set("guide-code", b.dataset.lang);
+  });
+  main.addEventListener("keydown", function (e) {
+    var b = e.target.closest && e.target.closest(".example .langs button");
+    if (!b || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) { return; }
+    e.preventDefault();
+    var next = languages[(languages.indexOf(b.dataset.lang) + (e.key === "ArrowRight" ? 1 : 2)) % 3];
+    setCode(next, b);
+    store.set("guide-code", next);
+    var to = b.parentNode.querySelector('[data-lang="' + next + '"]');
+    if (to) { to.focus(); }
+  });
+
+  /* Pictures: clicking one shows it larger, over the page; a click, Esc or
+     the close button puts it away. */
+  var lightbox = doc.getElementById("lightbox");
+  var lightboxPicture = doc.getElementById("lightbox-picture");
+  var lightboxCaption = doc.getElementById("lightbox-caption");
+  var lightboxFrom = null;
+  function showLarger(button) {
+    var img = button.querySelector("img");
+    var caption = button.parentNode.querySelector("figcaption");
+    lightboxPicture.src = img.src;
+    lightboxPicture.alt = img.alt;
+    lightboxCaption.textContent = caption ? caption.textContent : "";
+    lightboxCaption.hidden = !caption;
+    lightbox.hidden = false;
+    doc.body.classList.add("boxed");
+    lightboxFrom = button;
+    doc.getElementById("lightbox-close").focus();
+  }
+  function putAway() {
+    if (lightbox.hidden) { return false; }
+    lightbox.hidden = true;
+    doc.body.classList.remove("boxed");
+    lightboxPicture.removeAttribute("src");
+    if (lightboxFrom) { lightboxFrom.focus(); }
+    return true;
+  }
+  main.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("figure.shot .zoom");
+    if (b) { showLarger(b); }
+  });
+  lightbox.addEventListener("click", putAway);
 
   function headingOf(el) {
     if (/^H[1-6]$/.test(el.tagName)) { return el; }
@@ -245,8 +312,17 @@
       units.push({ id: s.id, nodes: [s], chapter: chapter, title: h ? titleOf(h) : chapter.guideTitle });
     });
   });
+  /* What a place says, without the examples' switches (which would
+     match "Rust" on every page with an example). Every language's code is
+     searched, shown or not. */
+  function searchedText(n) {
+    if (!n.querySelector || !n.querySelector(".langs")) { return n.textContent; }
+    var c = n.cloneNode(true);
+    each(c.querySelectorAll(".langs"), function (l) { l.remove(); });
+    return c.textContent;
+  }
   units.forEach(function (u) {
-    u.text = u.nodes.map(function (n) { return n.textContent; }).join(" ").replace(/\s+/g, " ").replace(/#(?=\s|$)/g, "").trim();
+    u.text = u.nodes.map(searchedText).join(" ").replace(/\s+/g, " ").replace(/#(?=\s|$)/g, "").trim();
     u.lower = u.text.toLowerCase();
     u.body = u.text.indexOf(u.title) === 0 ? u.text.slice(u.title.length).trim() : u.text;
     u.bodyLower = u.body.toLowerCase();
@@ -268,7 +344,7 @@
     var walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
         var p = n.parentNode;
-        if (!p || /^(SCRIPT|STYLE|MARK)$/.test(p.nodeName) || p.classList.contains("anchor")) { return NodeFilter.FILTER_REJECT; }
+        if (!p || /^(SCRIPT|STYLE|MARK|BUTTON)$/.test(p.nodeName) || p.classList.contains("anchor")) { return NodeFilter.FILTER_REJECT; }
         re.lastIndex = 0;
         return re.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
       }
@@ -366,8 +442,18 @@
     if (!u) { return; }
     setResults(false);
     input.blur();
-    var target = null;
-    for (var k = 0; k < u.nodes.length && !target; k++) { target = u.nodes[k].querySelector ? u.nodes[k].querySelector("mark.hl") : null; }
+    /* The first match that shows; failing that, one in an example's other
+       language, which the switch then shows. */
+    var target = null, hidden = null;
+    for (var k = 0; k < u.nodes.length && !target; k++) {
+      if (!u.nodes[k].querySelectorAll) { continue; }
+      each(u.nodes[k].querySelectorAll("mark.hl"), function (m) {
+        if (target) { return; }
+        if (m.getClientRects().length) { target = m; } else if (!hidden) { hidden = m; }
+      });
+    }
+    var other = !target && hidden && hidden.closest("pre[data-lang]");
+    if (other) { setCode(other.dataset.lang, null); target = hidden; }
     var el = target || u.nodes[0];
     /* The match a third of the way down, with its section's top above the
        reading line, so the contents and the top bar name that section. */
@@ -432,7 +518,8 @@
     } else if (e.key === "/" && !typing) {
       e.preventDefault(); setToc(false); input.focus(); input.select();
     } else if (e.key === "Escape") {
-      if (doc.body.classList.contains("toc-open")) { setToc(false); }
+      if (putAway()) { e.preventDefault(); }
+      else if (doc.body.classList.contains("toc-open")) { setToc(false); }
       else if (!typing && input.value) { clearSearch(); }
     }
   });

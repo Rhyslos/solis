@@ -6,9 +6,15 @@
 //!   page's title is its opening sentence;
 //! - a numbered list is numbered steps;
 //! - keys are keys (see [`crate::inline`]);
-//! - every heading gets a `#` link to itself.
+//! - every heading gets a `#` link to itself;
+//! - a picture alone on its line, with a caption line under it, is a
+//!   figure that opens larger when clicked ([`crate::pictures`]);
+//! - three fenced blocks one after another, `lust`, `rust` and `lua`, are
+//!   one example with a switch between the languages
+//!   ([`mod@crate::examples`]).
 
 use crate::blocks::{Block, List, Table};
+use crate::examples::{self, LANGUAGES};
 use crate::inline::{self, Places, escape};
 
 /// A heading's anchor, as GitHub makes it: lower case, letters, numbers,
@@ -170,9 +176,67 @@ impl<'a> Writer<'a> {
     /// Writes blocks, with each heading one level deeper than the manual
     /// has it (a page's sections are a chapter's).
     pub fn blocks(&mut self, blocks: &[Block]) {
-        for block in blocks {
-            self.block(block);
+        let mut at = 0;
+        while at < blocks.len() {
+            if let Some(codes) = examples::three_at(blocks, at) {
+                self.example(codes);
+                at += LANGUAGES.len();
+            } else {
+                self.block(&blocks[at]);
+                at += 1;
+            }
         }
+    }
+
+    /// One example in the three languages: the switch, then each
+    /// language's code. Without the guide's script all three show, each
+    /// named; with it, the one chosen.
+    fn example(&mut self, codes: [&str; 3]) {
+        self.out.push_str(
+            "<div class=\"example\">\n<div class=\"langs\" role=\"tablist\" aria-label=\"Language\">",
+        );
+        for (n, (word, name)) in LANGUAGES.iter().enumerate() {
+            let chosen = if n == 0 { "true" } else { "false" };
+            self.out.push_str(&format!(
+                "<button type=\"button\" role=\"tab\" data-lang=\"{word}\" aria-selected=\"{chosen}\">{name}</button>"
+            ));
+        }
+        self.out.push_str("</div>\n");
+        for ((word, name), code) in LANGUAGES.iter().zip(codes) {
+            self.out.push_str(&format!(
+                "<pre data-lang=\"{word}\" data-name=\"{name}\"><code>{}</code></pre>\n",
+                escape(code)
+            ));
+        }
+        self.out.push_str("</div>\n");
+    }
+
+    /// A paragraph: a figure when it starts with one of the manual's
+    /// pictures alone on its line (the lines under it are its caption).
+    fn paragraph(&mut self, words: &str) {
+        let (first, caption) = words.split_once('\n').unwrap_or((words, ""));
+        let first = first.trim();
+        let alone = first.starts_with("![")
+            && first.ends_with(')')
+            && first.contains(&format!("]({}", crate::pictures::PREFIX));
+        if !alone {
+            let html = self.words(words);
+            self.out.push_str(&format!("<p>{html}</p>\n"));
+            return;
+        }
+        let picture = self.words(first);
+        self.out.push_str(&format!(
+            "<figure class=\"shot\">\n<button type=\"button\" class=\"zoom\" aria-label=\"Show this picture larger\">{picture}</button>\n"
+        ));
+        if caption.trim().is_empty() {
+            let why = format!("the picture {first} has no caption: write one on the line under it");
+            self.places.problem(why);
+        } else {
+            let html = self.words(caption.trim());
+            self.out
+                .push_str(&format!("<figcaption>{html}</figcaption>\n"));
+        }
+        self.out.push_str("</figure>\n");
     }
 
     fn block(&mut self, block: &Block) {
@@ -186,11 +250,21 @@ impl<'a> Writer<'a> {
                     anchor_link(&id)
                 ));
             }
-            Block::Paragraph(words) => {
-                let html = self.words(words);
-                self.out.push_str(&format!("<p>{html}</p>\n"));
-            }
+            Block::Paragraph(words) => self.paragraph(words),
             Block::Code(language, text) => {
+                if examples::is_game_code(language) {
+                    self.places.problem(format!(
+                        "a game-code example in {language} isn't in all three languages: write \
+                         it as three blocks one after another, ```lust, ```rust and ```lua \
+                         (_template.md)"
+                    ));
+                } else if language.is_empty() && examples::looks_like_lust(text) {
+                    self.places.problem(format!(
+                        "a code block starting \"{}\" reads as Lust game code: fence it \
+                         ```lust, with ```rust and ```lua after it (_template.md)",
+                        text.lines().next().unwrap_or("").trim()
+                    ));
+                }
                 let class = if language.is_empty() {
                     String::new()
                 } else {

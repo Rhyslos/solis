@@ -7,6 +7,9 @@ The first time, and whenever you want the newest version.
 
 ## How to use it
 
+![File › Learn](pictures/learn.png)
+**File › Learn**: the four examples, each with **Make it in a folder…**, the first steps, and this guide.
+
 **Install it (Windows, recommended):** download `solis-setup.exe` from the newest release on the repository's **Releases** page and run it. Solis then updates itself whenever a new build is merged. See [Installing and updating](installing-and-updating.md).
 
 **Or download the program on its own:**

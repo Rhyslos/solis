@@ -9,6 +9,9 @@ When finding your way around, or making the layout suit your screen.
 
 This page follows what you see, in the order you meet it: Recent projects, the File page Solis starts on, then the editor from its tab bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in **File › Preferences** ([Settings](settings.md)).
 
+![The whole editor, its parts numbered](pictures/editor.png)
+The editor with the playground open: **1** the tabs, **2** the search, **3** the ribbon, **4** Play, **5** the Area list, **6** the area in the viewport, **7** the toolbox, **8** Assets, **9** Properties, **10** the shelf (here the Console), **11** the status bar. Each is explained below.
+
 **[Recent projects](launcher.md)** is what Solis always starts on, in its full window: the **File** tab's first page. Your projects are cards (pinned ones first, with **Search projects**, **Sort by**, **Open… ▾** and **New project**); double-click one and the editor opens with it. Under them, **Start from a template**: an empty project or one of the four examples. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. Until a project is open the other tabs are dimmed; **Esc**, or **Carry on without a project**, opens the editor with none. See [Projects](launcher.md).
 
 **The tab bar** is the dark strip along the very top. From left to right:
@@ -58,6 +61,9 @@ Each tab remembers its own shelf tab, the shelf's height, the split between its 
 | Updates | The build you have, the newest one, and **Check now** ([Installing and updating](installing-and-updating.md)). |
 | About | The program's name, version and build, its licences, and the [user guide](user-guide.md). |
 | Exit | Closes Solis, asking about unsaved work first. |
+
+![The search open](pictures/search.png)
+The search, opened with `Space`, with "new" typed: actions with their tab and key, and files and entities, in one list.
 
 **One search for everything:** press **Space** (with nothing being typed) or click **Search or run a command** in the tab bar. Type part of a name and the list finds:
 - everything the editor can **do** (Save area, Add point light, Play…), each with where it lives and its shortcut beside it when it has one, so you pick up the keys as you go. Going to a tab, collapsing the ribbon, folding the shelf and hiding unfinished parts are there too;

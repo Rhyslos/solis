@@ -279,12 +279,18 @@ fn guide_file(page: &str, first: &str) -> String {
 fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
     // docs/manual/first-platformer.md: its three files, as written there.
     let page = include_str!("../../../docs/manual/first-platformer.md").replace("\r\n", "\n");
-    let mut main = guide_file(&page, "-- main.lst");
-    // Step 7 adds the coin's fetch under the hero's.
-    assert!(page.contains("```lust\nfetch \"coin\":[Coin];\n```"));
-    main = main.replace(
-        "fetch \"hero\":[Hero];\n",
-        "fetch \"hero\":[Hero];\nfetch \"coin\":[Coin];\n",
+    // Step 7's main.lst: step 4's with the coin's fetch under the hero's.
+    // (Each is a Lust example: its Rust and Lua beside it say other things.)
+    let mut mains = page.match_indices("```lust\n-- main.lst").map(|(at, _)| at);
+    let (step_4, step_7) = (mains.next().unwrap(), mains.next().unwrap());
+    let first = guide_file(&page[step_4..], "-- main.lst");
+    let main = guide_file(&page[step_7..], "-- main.lst");
+    assert_eq!(
+        main,
+        first.replace(
+            "fetch \"hero\":[Hero];\n",
+            "fetch \"hero\":[Hero];\nfetch \"coin\":[Coin];\n",
+        )
     );
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",

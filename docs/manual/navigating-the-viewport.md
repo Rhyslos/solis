@@ -7,6 +7,9 @@ Whenever you want to look at the world from somewhere else. Solis has one camera
 
 ## How to use it
 
+![The view pill open](pictures/view-menu.png)
+The view pill at the viewport's top left: the four views, **2D**, and how many views to show at once.
+
 **Looking and flying:**
 1. Point at the viewport and **hold the right mouse button**. The pointer disappears.
 2. Move the mouse to look around.

@@ -6,6 +6,10 @@
 When something in the area doesn't look right, or the **Problems** tab shows a number beside its name. Problems are things Solis can't fix by itself, usually because files changed outside it: a model deleted in Explorer, an area merged by Git, a component from a newer version of your game's code. The area still opens and saves: nothing is lost, but something needs your attention.
 
 ## How to use it
+
+![A mistake in Problems](pictures/problems.png)
+A mistake in the code, in **Problems**: what's wrong, and in grey where (the file and line). Click it to open the file there.
+
 1. Click the **Problems** tab (beside the Console). The number on the tab says how many there are; with none, the tab has no number.
 2. Mistakes in the [game's code](game-code.md) come first, each with its file, line and column: click one to open the file in your code editor. Then come the area's, each naming its entity and what's wrong with it. Point at a line to read it all.
 3. Click an area line to select its entity. The Area panel unfolds to show it, and Properties shows its settings, ready to fix.

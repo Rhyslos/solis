@@ -70,6 +70,69 @@ pass Farmer;
 end
 ```
 
+```rust
+use glam::Vec3;
+use script::{AnimatorValue, Context, RustComponent};
+
+// The animator's file is Lust's. Rust reaches the entity's animator
+// through its host, by the graph's own names.
+pub struct Farmer;
+
+impl RustComponent for Farmer {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        let me = cx.me();
+
+        // How is the farmer moving?
+        let velocity = cx.host().velocity(me).unwrap_or_default();
+        let speed = velocity.length();
+
+        // Tell the animator.
+        cx.host().animator_set(me, "moving", AnimatorValue::Switch(speed > 0.1));
+        cx.host().animator_set(me, "speed", AnimatorValue::Number(speed));
+        cx.host().animator_set(me, "facing", AnimatorValue::Direction(velocity));
+
+        // The use button swings the hoe.
+        if cx.host().action("Interact").pressed {
+            cx.host().animator_set(me, "swing", AnimatorValue::Fire);
+        }
+
+        // Stand still while using a tool.
+        if cx.host().animator_state(me).as_deref() == Some("Use tool") {
+            cx.host().set_velocity(me, Vec3::ZERO);
+        }
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+-- The animator's file is Lust's. Lua reaches the entity's animator
+-- through solis.Animators, by the graph's own names.
+local Farmer = component("Farmer", {})
+
+function Farmer:update(dt)
+    -- How is the farmer moving?
+    local velocity = solis.entity.velocity(self.me)
+    local speed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z)
+
+    -- Tell the animator.
+    solis.Animators:setSwitch(self.me, "moving", speed > 0.1)
+    solis.Animators:setNumber(self.me, "speed", speed)
+    solis.Animators:setDirection(self.me, "facing", velocity)
+
+    -- The use button swings the hoe.
+    if solis.Input:pressed("Interact") then
+        solis.Animators:fire(self.me, "swing")
+    end
+
+    -- Stand still while using a tool.
+    if solis.Animators:stateOf(self.me) == "Use tool" then
+        solis.entity.setVelocity(self.me, vec3(0, 0, 0))
+    end
+end
+```
+
 | A parameter or | becomes |
 |---|---|
 | switch *moving* | `anim:setMoving(on)` |
@@ -116,6 +179,7 @@ These work while the pointer is over the Animator tab.
 | Undo or redo a change to the animator | Ctrl + Z, Ctrl + Y |
 
 ## Tips and common problems
+- **Problem:** after making an animator, Problems lists mistakes in `solis/animators/…` ("there's nothing called Animators here"). **Why:** the animator's own file uses the engine's `Animators`, which Lust only finds when the game's code fetches `solis/animation` (or the animator's file) itself. **Fix:** add `fetch "solis/animation":Animators;` to `main.lst`, or fetch the animator's file where you use it.
 - **Problem:** a transition is taken at once. **Why:** it has no conditions (its arrow says *always*). **Fix:** click the arrow and add one.
 - **Problem:** the sprite flickers between two states. **Why:** each one's transition to the other holds at the same time (*moving* and *not moving* can't both hold, but *speed > 0* and *speed < 1* can). **Fix:** make the conditions exclude each other.
 - **Problem:** a swing never ends. **Why:** its clip plays over and over, so it never *finishes*. **Fix:** make the clip play once (its **Plays** in the Clips tab), or leave it on a different condition.

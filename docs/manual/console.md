@@ -8,6 +8,9 @@
 
 ## How to use it
 
+![The Console](pictures/console.png)
+The Console on the shelf: its messages, the counts of each kind (click one to show only those), its search, and the command line at the bottom.
+
 **Reading messages**
 1. Each message shows its time, how serious it is as a word in its colour (**INFO**, **WARN** in amber, **ERROR** in red, with the row faintly tinted), and the text. A long message is cut short: **click it** to read it in full in a strip below the list (with **Copy**, to paste it somewhere), and click it again or **Close** to put the strip away.
 2. The three buttons at the top count the messages of each kind: information (ⓘ), warnings (⚠) and errors (✕). Click one to hide those messages, and again to show them.

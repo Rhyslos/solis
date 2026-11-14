@@ -81,3 +81,79 @@ fn code_is_escaped() {
         "<pre><code>&lt;b&gt;&amp;</code></pre>\n"
     );
 }
+
+/// Places that keep the problems said.
+#[derive(Default)]
+struct Telling(Vec<String>);
+
+impl Places for Telling {
+    fn href(&mut self, url: &str) -> String {
+        url.to_string()
+    }
+    fn anchor(&mut self, id: &str) -> String {
+        id.to_string()
+    }
+    fn picture(&mut self, url: &str) -> (String, Option<(u32, u32)>) {
+        (format!("data:{url}"), Some((640, 400)))
+    }
+    fn problem(&mut self, why: String) {
+        self.0.push(why);
+    }
+}
+
+fn told(text: &str) -> (String, Vec<String>) {
+    let mut places = Telling::default();
+    let mut writer = Writer::new(&mut places);
+    writer.blocks(&parse(text));
+    let html = writer.finish();
+    (html, places.0)
+}
+
+#[test]
+fn three_languages_in_a_row_are_one_example_with_a_switch() {
+    let (out, problems) = told(
+        "```lust\nmoveTo(p);\n```\n\n```rust\nlet a = 1 < 2;\n```\n\n```lua\nsolis.entity.moveTo(self.me, p)\n```\n",
+    );
+    assert!(problems.is_empty(), "{problems:?}");
+    assert_eq!(out.matches("<div class=\"example\">").count(), 1);
+    assert!(out.contains("<button type=\"button\" role=\"tab\" data-lang=\"lust\" aria-selected=\"true\">Lust</button>"));
+    assert!(out.contains("data-lang=\"rust\" aria-selected=\"false\">Rust</button>"));
+    assert!(out.contains(
+        "<pre data-lang=\"rust\" data-name=\"Rust\"><code>let a = 1 &lt; 2;</code></pre>"
+    ));
+    assert!(
+        out.find("data-lang=\"lust\" data-name").unwrap()
+            < out.find("data-lang=\"lua\" data-name").unwrap()
+    );
+}
+
+#[test]
+fn a_game_code_block_on_its_own_is_a_problem_and_other_code_is_not() {
+    let (_, problems) = told("```lust\nmoveTo(p);\n```\n\n```lua\nx()\n```\n");
+    assert_eq!(problems.len(), 2, "{problems:?}");
+    assert!(problems[0].contains("all three languages"));
+    let (_, problems) = told("```\ncomponent Mover {\n}\n```\n");
+    assert!(problems[0].contains("reads as Lust"), "{problems:?}");
+    let (out, problems) =
+        told("```text\nsolis --check-project farm\n```\n\n```\narea version 3;\n```\n");
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(out.contains("<pre data-lang=\"text\">"));
+}
+
+#[test]
+fn a_picture_with_a_caption_is_a_figure() {
+    let (out, problems) = told("![The editor](pictures/editor.png)\nThe editor, **open**.\n");
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(out.starts_with("<figure class=\"shot\">"), "{out}");
+    assert!(out.contains("<img src=\"data:pictures/editor.png\" alt=\"The editor\" width=\"640\" height=\"400\" loading=\"lazy\">"));
+    assert!(out.contains("<figcaption>The editor, <strong>open</strong>.</figcaption>"));
+}
+
+#[test]
+fn a_picture_without_a_caption_is_a_problem_and_one_in_words_stays_in_them() {
+    let (_, problems) = told("![The editor](pictures/editor.png)\n");
+    assert!(problems[0].contains("no caption"), "{problems:?}");
+    let (out, problems) = told("See ![a key](pictures/key.png) here.\n");
+    assert!(problems.is_empty());
+    assert!(out.starts_with("<p>See <img"), "{out}");
+}

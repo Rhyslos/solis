@@ -6,10 +6,13 @@
 //!   it, `#heading` one on the same page;
 //! - a path out of the manual (`../decisions/0103-….md`) is the file on
 //!   the repository's GitHub page, if the file is in the repository;
-//! - a web address stays as it is.
+//! - a web address stays as it is;
+//! - a picture in `pictures/` is written into the page as data, and must
+//!   be there.
 
 use crate::inline::Places;
-use std::collections::BTreeMap;
+use crate::pictures;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 
 /// What every page's links may reach.
@@ -22,6 +25,8 @@ pub struct Reach<'a> {
     pub root: &'a Path,
     /// The repository on GitHub (`owner/name`).
     pub repo: &'a str,
+    /// The manual's pictures, by file name.
+    pub pictures: &'a BTreeMap<String, Vec<u8>>,
 }
 
 /// The links of one page.
@@ -30,6 +35,8 @@ pub struct PageLinks<'a> {
     page: &'a str,
     /// What is wrong with the links seen so far.
     pub problems: Vec<String>,
+    /// The pictures the page shows, by file name.
+    pub pictures: BTreeSet<String>,
 }
 
 impl<'a> PageLinks<'a> {
@@ -39,10 +46,11 @@ impl<'a> PageLinks<'a> {
             reach,
             page,
             problems: Vec::new(),
+            pictures: BTreeSet::new(),
         }
     }
 
-    fn problem(&mut self, url: &str, why: &str) {
+    fn broken(&mut self, url: &str, why: &str) {
         self.problems
             .push(format!("{}.md links to `{url}`, but {why}", self.page));
     }
@@ -50,14 +58,14 @@ impl<'a> PageLinks<'a> {
     /// The guide's id of the anchor `fragment` on `page`.
     fn place(&mut self, url: &str, page: &str, fragment: Option<&str>) -> String {
         let Some(anchors) = self.reach.anchors.get(page) else {
-            self.problem(url, &format!("{page}.md isn't a page in SUMMARY.md"));
+            self.broken(url, &format!("{page}.md isn't a page in SUMMARY.md"));
             return format!("#{page}");
         };
         let Some(fragment) = fragment.filter(|f| !f.is_empty()) else {
             return format!("#{page}");
         };
         if !anchors.iter().any(|a| a == fragment) {
-            self.problem(
+            self.broken(
                 url,
                 &format!("{page}.md has no heading or anchor `{fragment}`"),
             );
@@ -72,7 +80,7 @@ impl<'a> PageLinks<'a> {
     /// A path out of the manual, on GitHub.
     fn outside(&mut self, url: &str, path: &str, fragment: Option<&str>) -> String {
         let Some(inside) = within_repository(path) else {
-            self.problem(url, "it leads out of the repository");
+            self.broken(url, "it leads out of the repository");
             return String::new();
         };
         let full = self.reach.root.join(&inside);
@@ -81,7 +89,7 @@ impl<'a> PageLinks<'a> {
         } else if full.is_file() {
             "blob"
         } else {
-            self.problem(url, "no such file is in the repository");
+            self.broken(url, "no such file is in the repository");
             "blob"
         };
         let slashed: Vec<String> = inside
@@ -137,7 +145,7 @@ impl Places for PageLinks<'_> {
             return url.to_string();
         }
         if url.is_empty() {
-            self.problem(url, "the address is empty");
+            self.broken(url, "the address is empty");
             return String::new();
         }
         let (path, fragment) = match url.split_once('#') {
@@ -149,7 +157,7 @@ impl Places for PageLinks<'_> {
             return self.place(url, page, fragment);
         }
         if lower.contains(':') {
-            self.problem(
+            self.broken(
                 url,
                 "only web addresses and the repository's files can be linked",
             );
@@ -167,6 +175,32 @@ impl Places for PageLinks<'_> {
 
     fn anchor(&mut self, id: &str) -> String {
         self::id(self.page, id)
+    }
+
+    fn picture(&mut self, url: &str) -> (String, Option<(u32, u32)>) {
+        let Some(name) = url
+            .strip_prefix(pictures::PREFIX)
+            .filter(|n| !n.contains(['/', '\\']))
+        else {
+            return (self.href(url), None);
+        };
+        let Some(data) = self.reach.pictures.get(name) else {
+            self.broken(
+                url,
+                &format!(
+                    "there's no {name} in {}: take the pictures again with {}",
+                    pictures::FOLDER,
+                    pictures::RETAKE
+                ),
+            );
+            return (String::new(), None);
+        };
+        self.pictures.insert(name.to_string());
+        (pictures::data_address(data), pictures::size(data))
+    }
+
+    fn problem(&mut self, why: String) {
+        self.problems.push(format!("{}.md: {why}", self.page));
     }
 }
 

@@ -15,6 +15,9 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 
 ## How to use it
 
+![Properties with the sun picked](pictures/properties.png)
+The sun picked: Properties shows its **Transform** (which way it shines is its Rotation) and its **Light** card.
+
 **Change the sun**
 1. In the **Area** panel, click **Sun**.
 2. In **Properties**, under **Transform**, drag the first **Rotation** number (X) to tilt the sun: 0° shines straight down (noon), 90° skims the horizon (sunrise), so a bigger tilt gives longer shadows. Drag the third number (Z) to turn it around the sky.

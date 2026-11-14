@@ -1,0 +1,267 @@
+# The user guide's pictures, and how take-pictures.sh makes each one.
+#
+# `session <sample>` starts the editor afresh, in a new home folder, on a
+# new copy of a sample (game, ui, playground or benchmark; `none` for no
+# project). `picture <file>` starts a picture; the indented lines under it
+# say which page shows it, what it shows, and the steps that make it, in
+# order. A picture carries on from the one above it in its session.
+#
+# Steps (places are pixels on the 1440 x 900 screen, standard layout):
+#   key <keys>            press keys (xdotool's names: Escape, Tab, space, b)
+#   type <words>          type words
+#   move X Y              move the pointer there
+#   click X Y             click there; `double X Y` double-clicks, `right X Y` right-clicks
+#   drag X Y TO_X TO_Y    drag with the left button
+#   wait <seconds>        wait (the shot waits for the screen to hold still anyway)
+#   write <file> <text>   write a file into the project (\n for a new line)
+#   prepend <file> <text> put text at the start of a file of the project
+#   restart [sample]      start the editor again in the same home folder,
+#                         after quitting it with File > Exit (on a new
+#                         copy of a sample, when one is named)
+#   label X Y <n>         a numbered mark on the picture at X Y
+#   shot X Y W H [width]  take the picture: the screen from X Y, W by H,
+#                         scaled to `width` pixels across when given
+#
+# Prefer the search (key space, type, key Return) to clicks: it finds an
+# action wherever the layout puts its button.
+
+session playground
+
+picture editor.png
+  page interface-tour.md
+  shows The whole editor with the playground open, its parts numbered
+  label 650 18 1
+  label 900 17 2
+  label 1150 62 3
+  label 1290 62 4
+  label 120 640 5
+  label 690 220 6
+  label 263 470 7
+  label 760 600 8
+  label 1270 360 9
+  label 700 760 10
+  label 600 888 11
+  shot 0 0 1440 900 1100
+
+picture area-list.png
+  page entities.md
+  shows The Area list: every entity in the area, with what each is
+  shot 0 100 241 560
+
+picture view-menu.png
+  page navigating-the-viewport.md
+  shows The view's pill open: Perspective, Top, Front, Right, 2D and how many views
+  click 335 150
+  shot 241 130 660 310
+  key Escape
+
+picture brush-list.png
+  page brushes.md
+  shows The brush list, opened with B over the view
+  move 700 380
+  key b
+  wait 1
+  shot 285 130 814 530
+
+picture brush-drawing.png
+  page brushes.md
+  shows Drawing a box out: the footprint dragged, the height being chosen
+  key space
+  wait 1
+  drag 640 400 760 430
+  move 760 400
+  move 760 370
+  move 760 350
+  wait 1
+  shot 285 130 814 361
+
+picture brush-editing.png
+  page brushes.md
+  shows Editing a brush: its faces picked with 3, the Brush card counting them
+  click 760 350
+  wait 1
+  key Tab
+  wait 1
+  key 3
+  wait 1
+  shot 0 0 1440 680 1100
+  key Tab
+
+picture search.png
+  page interface-tour.md
+  shows The search, opened with Space: actions, files and entities in one list
+  move 700 300
+  key space
+  type new
+  wait 1
+  shot 440 40 580 410
+  key Escape
+
+picture properties.png
+  page lights.md
+  shows Properties with the sun picked: its Transform and Light cards
+  move 700 300
+  key space
+  type Sun
+  key Return
+  move 700 600
+  shot 1100 100 340 580
+
+picture gizmo.png
+  page selecting-and-moving.md
+  shows A crate picked, with the Move gizmo's arrows on it
+  move 700 300
+  key space
+  type Crate 1
+  key Return
+  move 690 320
+  key w
+  move 900 450
+  shot 285 130 814 361
+
+picture play.png
+  page play-mode.md
+  shows Playing: the Game panel in the middle, Stop, Pause and Step on the ribbon
+  click 1350 60
+  wait 8
+  shot 0 0 1440 500 1100
+
+picture console.png
+  page console.md
+  shows The Console on the shelf, with its counts, search and command line
+  shot 0 682 1440 218 1100
+
+picture profiler.png
+  page profiler.md
+  shows The Debug tab's Profiler while the game plays: the frames, a frame's timeline and Statistics
+  click 540 18
+  wait 3
+  shot 0 100 1440 445 1100
+  click 1246 60
+  wait 2
+
+picture library.png
+  page projects-and-the-library.md
+  shows The Library tab: the project's folders, its files as tiles, and Details under them
+  click 176 18
+  shot 0 100 1440 600 1100
+
+picture mixer.png
+  page mixer.md
+  shows The Audio tab: a strip for each bus, with Master last, and the bus picked beside them
+  click 482 18
+  shot 0 100 1440 445 1100
+
+picture sound-events.png
+  page sound-events.md
+  shows The project's sound events on the Audio tab's shelf, one picked with its takes
+  shot 0 575 1440 300 1100
+
+picture preferences.png
+  page settings.md
+  shows File > Preferences > General
+  click 64 17
+  click 86 323
+  move 1300 700
+  shot 220 40 1220 580 1000
+
+picture input-actions.png
+  page input.md
+  shows File > Project settings > Input: each action and the keys that set it off
+  click 97 285
+  click 457 151
+  move 1300 700
+  shot 220 40 1220 830 1000
+
+picture documentation-button.png
+  page user-guide.md
+  shows Documentation, at the right of the tab bar
+  shot 1130 0 310 36 620
+
+session game
+
+picture problems.png
+  page problems.md
+  shows Problems with a mistake in the code: what's wrong, and where
+  write assets/broken.lst component Broken {\n    has {\n        float speed = "fast";\n    }\n}\n\npass Broken;\nend\n
+  write assets/main.lst fetch "broken":[Broken];\nend\n
+  wait 4
+  click 335 700
+  shot 0 682 1440 110 1100
+
+picture turret-playing.png
+  page first-game.md
+  shows The turret sample playing: the Console tells the story
+  session game
+  click 1350 60
+  wait 12
+  click 250 700
+  shot 0 682 1440 218 1100
+  click 1246 60
+
+picture tileset.png
+  page tilesets.md
+  shows A new tileset on its own tab: its terrains, and how it draws them
+  prepend assets/main.lst fetch "solis/tiles":Maps;\n
+  key space
+  type Tileset
+  key Return
+  wait 3
+  shot 0 100 1440 775 1100
+
+picture tile-painter.png
+  page painting-tiles.md
+  shows A tile map picked in the 2D view: the painting tools on the ribbon, its terrains in the Map tab
+  click 114 18
+  wait 1
+  key space
+  type New tile map
+  key Return
+  wait 3
+  double 422 563
+  wait 3
+  click 335 150
+  click 376 284
+  wait 2
+  move 690 320
+  key f
+  wait 2
+  click 382 780
+  click 91 60
+  drag 450 250 650 420
+  click 431 780
+  drag 760 200 900 330
+  click 34 60
+  move 1000 600
+  shot 0 0 1440 900 1100
+
+session ui
+
+picture ui-canvas.png
+  page ui-editor.md
+  shows The UI tab with the sample's HUD open on the canvas
+  click 176 18
+  click 40 262
+  wait 1
+  double 328 250
+  wait 4
+  shot 0 0 1440 900 1100
+
+picture learn.png
+  page getting-started.md
+  shows File > Learn: the four examples, the first steps and the user guide
+  click 64 17
+  click 66 418
+  move 1300 800
+  shot 220 40 1220 620 1000
+
+picture launcher.png
+  page launcher.md
+  shows Recent projects, where Solis starts: two projects as cards, and the templates
+  click 60 532
+  restart playground
+  click 64 17
+  click 60 532
+  restart
+  move 1300 800
+  shot 220 40 1220 560 1000

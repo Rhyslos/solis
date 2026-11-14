@@ -11,6 +11,10 @@ When you want to change how the editor itself looks or behaves (its accent colou
 Neither is an undo step. Every change applies at once: there is no Save or Apply button.
 
 ## How to use it
+
+![Preferences](pictures/preferences.png)
+**File › Preferences › General**: each setting with what it does, and the search at the top, which looks through every sub-tab.
+
 1. Click the **File** tab, then **Preferences** or **Project settings** in its column. Or press **Space** and type *Preferences*.
 2. Pick a sub-tab under the heading: Preferences has **General**, **Appearance**, **Viewport** and **Shortcuts**; Project settings has **General**, **2D**, **Input** and **Build**. The faint sub-tabs with a small square (Source control, Physics, Platforms and others) are [unfinished parts](unfinished-parts.md).
 3. Each setting is a row, with its name and a line about it on the left and its control on the right: a switch, a row of choices side by side, a drop-down list, colour swatches, a number or a button. They work from the keyboard too: **Tab** moves from one to the next (a thin ring in the accent colour shows where you are), **Space** or **Enter** presses or flips it, and the **arrow keys** move along the swatches and the choices, or step through a drop-down list without opening it.
