@@ -15,13 +15,27 @@
 //! - [`collision`]: chunks made solid, and a character walking on them.
 //! - [`file`](mod@file): the ground's file as text and as bytes.
 //! - [`shapes`] and [`noise`]: the test grounds.
+//!
+//! The open-worlds study (after Tools 1b; `docs/reports/open-worlds-study.md`)
+//! adds:
+//!
+//! - [`world`]: the 20 × 20 km test world, made at any level of detail.
+//! - [`lod`]: far ground drawn coarser: levels made by averaging, which
+//!   size is drawn where, the looks' meshers at any level and the ways of
+//!   closing the seams between levels.
+//! - [`far`]: the far field, a height map made from the voxels.
+//! - [`stream`]: region files, and streaming chunks in and out.
 
 pub mod brush;
 pub mod collision;
+pub mod far;
 pub mod file;
 pub mod ground;
+pub mod lod;
 pub mod mesh;
 pub mod noise;
 pub mod shapes;
 pub mod store;
+pub mod stream;
 pub mod voxel;
+pub mod world;

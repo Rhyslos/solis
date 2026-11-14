@@ -11,6 +11,9 @@ mod qef;
 use crate::ground::Samples;
 use glam::Vec3;
 
+pub(crate) use blocky::mesh_with as blocky_with;
+pub(crate) use normals::sharpen;
+
 /// A chunk's triangles, ready to draw and to make solid.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct ChunkMesh {
@@ -37,7 +40,7 @@ impl ChunkMesh {
         self.positions.len() * 32 + self.indices.len() * 4
     }
 
-    fn push_point(&mut self, position: Vec3, normal: Vec3, material: u8) -> u32 {
+    pub(crate) fn push_point(&mut self, position: Vec3, normal: Vec3, material: u8) -> u32 {
         let index = self.positions.len() as u32;
         self.positions.push(position);
         self.normals.push(normal);

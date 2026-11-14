@@ -13,6 +13,7 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 
 /// One chunk of a ground.
+#[derive(Clone)]
 pub enum Chunk<S> {
     /// The same voxel all through (all air, or deep in the ground).
     Uniform(Voxel),
@@ -162,11 +163,20 @@ impl<S: Store> Ground<S> {
     /// Applies `brush`, chunk by chunk, and says which chunks' meshes it
     /// changed (the chunks whose samples include a changed voxel).
     pub fn apply(&mut self, brush: &Brush) -> Vec<IVec3> {
+        match self.apply_changed(brush) {
+            Some((lo, hi)) => self.meshes_reaching(lo, hi),
+            None => Vec::new(),
+        }
+    }
+
+    /// Applies `brush` and says which voxels it changed: the box from
+    /// the first up to (not including) the second, if any.
+    pub fn apply_changed(&mut self, brush: &Brush) -> Option<(IVec3, IVec3)> {
         let (lo, hi) = brush.reach();
         let lo = lo.max(IVec3::ZERO);
         let hi = hi.min(self.size());
         if lo.cmpge(hi).any() {
-            return Vec::new();
+            return None;
         }
         let (first, _) = split(lo);
         let (last, _) = split(hi - 1);
@@ -183,9 +193,7 @@ impl<S: Store> Ground<S> {
             let (key, local) = split(p);
             decoded.get(&key).map_or(Voxel::AIR, |d| d.get(local))
         });
-        let Some((changed_lo, changed_hi)) = brush.apply(&mut region) else {
-            return Vec::new();
-        };
+        let changed = brush.apply(&mut region)?;
         let mut touched = Vec::new();
         for (key, dense) in &mut decoded {
             if region.write_into(*key, dense) {
@@ -197,11 +205,48 @@ impl<S: Store> Ground<S> {
                 self.chunks[slot] = Chunk::keep(dense);
             }
         }
-        self.meshes_reaching(changed_lo, changed_hi)
+        Some(changed)
+    }
+
+    /// Rewrites every voxel from `lo` up to (not including) `hi` with
+    /// `voxel` (given its world place), chunk by chunk; returns the keys
+    /// of the chunks that changed.
+    pub fn rewrite(&mut self, lo: IVec3, hi: IVec3, voxel: impl Fn(IVec3) -> Voxel) -> Vec<IVec3> {
+        let lo = lo.max(IVec3::ZERO);
+        let hi = hi.min(self.size());
+        if lo.cmpge(hi).any() {
+            return Vec::new();
+        }
+        let (first, _) = split(lo);
+        let (last, _) = split(hi - 1);
+        let mut changed = Vec::new();
+        let mut dense = Dense::filled(Voxel::AIR);
+        for key in boxed(first, last + 1) {
+            let Some(slot) = self.slot(key) else {
+                continue;
+            };
+            self.chunks[slot].decode(&mut dense);
+            let from = (key * SIZE_I).max(lo);
+            let to = ((key + 1) * SIZE_I).min(hi);
+            let mut any = false;
+            for p in boxed(from, to) {
+                let local = (p - key * SIZE_I).as_uvec3();
+                let v = voxel(p);
+                if dense.get(local) != v {
+                    dense.set(local, v);
+                    any = true;
+                }
+            }
+            if any {
+                self.chunks[slot] = Chunk::keep(&dense);
+                changed.push(key);
+            }
+        }
+        changed
     }
 
     /// The chunks whose samples include any voxel in `lo..hi`.
-    fn meshes_reaching(&self, lo: IVec3, hi: IVec3) -> Vec<IVec3> {
+    pub fn meshes_reaching(&self, lo: IVec3, hi: IVec3) -> Vec<IVec3> {
         let (first, _) = split(lo - APRON);
         let (last, _) = split(hi - 1 + APRON);
         let mut keys: Vec<IVec3> = boxed(first, last + 1)
@@ -272,6 +317,13 @@ impl Samples {
             d(p + IVec3::Y) - d(p - IVec3::Y),
             d(p + IVec3::Z) - d(p - IVec3::Z),
         ) * 0.5
+    }
+
+    /// Sets the voxel at `p` (as [`Self::get`] counts), so a mesher can
+    /// be handed samples changed at the chunk's edges.
+    pub fn set(&mut self, p: IVec3, voxel: Voxel) {
+        let i = Self::index(p);
+        self.voxels[i] = voxel;
     }
 
     /// Bytes they take (copied to a worker).
