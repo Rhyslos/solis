@@ -40,6 +40,10 @@ pub struct AnimatorNames {
     pub states: Vec<String>,
 }
 
+/// The folder inside the engine's that each animator's file is written
+/// into (`solis/animators/farmer.lst`).
+pub const FOLDER: &str = "animators";
+
 /// The methods every animator's class has, which no parameter may take.
 const OWN: &[&str] = &["current", "jumpTo", "setPlaybackSpeed"];
 
@@ -183,10 +187,7 @@ pub fn animator_file(
         "    }\n    -- How fast its clips play: 1 as made, 2 twice as fast.\n    method setPlaybackSpeed(float scale) {\n        Animators:setPlaybackSpeed(owner, scale);\n    }\n}\n\n",
     );
     text.push_str(&format!("pass {state}, {class};\nend\n"));
-    (
-        Some((format!("{folder}/animators/{path}.lst"), text)),
-        notes,
-    )
+    (Some((format!("{folder}/{FOLDER}/{path}.lst"), text)), notes)
 }
 
 /// `text` as a Lust text literal: quotes and backslashes escaped, and a

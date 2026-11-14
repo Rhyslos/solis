@@ -416,13 +416,15 @@ fn compile_here(
         missing.extend(long_prefix_chains(&code.files));
         missing.extend(shared_names(&code.files));
         if missing.is_empty() {
-            let files = &code.files;
+            // Without the editor's files for things the game never
+            // fetches, which would want engine objects it never reaches.
+            let files = crate::reach::for_lust(&code.files, ENTRY);
             // The engine's own folder (solis/): Lust's host folder, whose files give entity
             // its methods and come with every program.
             let engine = lust::Engine {
                 folders: crate::describe::engine_folders(),
             };
-            match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, files)) {
+            match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &files)) {
                 Ok(Ok(chunk)) => lust = Some(chunk),
                 Ok(Err(found)) => problems.extend(found.into_iter().map(CodeProblem::from)),
                 Err(_) => problems.push(compiler_stopped()),

@@ -320,3 +320,94 @@ fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
     // Game code in Lust isn't a data file.
     assert!(!text.contains("FAIL  assets/main.lst"), "{text}");
 }
+
+/// The turret sample with a tile map and an animator made in it, as the
+/// editor makes them (`maps/farm.tilemap.lst`, `farmer.solanim`), and the
+/// folder holding it (removed when that's dropped).
+fn turret_with_a_map_and_an_animator(name: &str) -> (reflect::test_support::TempFolder, PathBuf) {
+    let temp = reflect::test_support::TempFolder::new(&format!("check-{name}")).unwrap();
+    let root = temp.join("Turret");
+    crate::sample_game::make(&root).unwrap();
+    let assets = root.join("assets");
+    std::fs::create_dir_all(assets.join("maps")).unwrap();
+    let map = tiles::TileMap::new(tiles::map_file::STANDARD_SIZE, None, None);
+    std::fs::write(
+        assets.join("maps/farm.tilemap.lst"),
+        tiles::map_file::write(&map).unwrap(),
+    )
+    .unwrap();
+    let idle = reflect::Id::random();
+    let animator = animation::AnimatorFile {
+        entry: Some(idle),
+        parameters: vec![animation::Parameter {
+            id: reflect::Id::random(),
+            name: "moving".into(),
+            kind: animation::ParameterKind::Switch(false),
+        }],
+        states: vec![animation::State {
+            id: idle,
+            name: "Idle".into(),
+            place: [0.0, 0.0],
+            plays: animation::Plays::Clip(String::new()),
+            speed: 1.0,
+            speed_by: String::new(),
+        }],
+        ..animation::AnimatorFile::default()
+    };
+    std::fs::write(
+        assets.join("farmer.solanim"),
+        animation::animator_file::write(&animator),
+    )
+    .unwrap();
+    (temp, root)
+}
+
+/// The files the editor writes for the map and the animator.
+const MADE_FOR_THEM: [&str; 2] = ["solis/maps/maps/farm.lst", "solis/animators/farmer.lst"];
+
+#[test]
+fn the_turret_sample_with_a_tile_map_and_an_animator_made_in_it_checks_out() {
+    // Regression (2026-11-14): each file the editor wrote for them wanted
+    // the engine's Maps or Animators, which the sample never fetches, and
+    // Problems listed a mistake for every use.
+    let (_temp, root) = turret_with_a_map_and_an_animator("turret-map");
+    let report = check(&root, MADE_BY);
+    assert_eq!(report.failed, 0, "{}", report.text());
+    assert!(report.text().contains("the game's code checks"));
+    for made in MADE_FOR_THEM {
+        assert!(root.join("assets").join(made).is_file(), "{made} written");
+    }
+}
+
+#[test]
+fn a_project_saved_before_the_fix_checks_out() {
+    // Saved by the code before the fix: the editor's files for the map and
+    // the animator already there (what writes them hasn't changed), a file
+    // for a map since taken away, and main.lst with the manual's old
+    // workaround, fetching the engine's objects itself.
+    let (_temp, root) = turret_with_a_map_and_an_animator("turret-old");
+    let assets = root.join("assets");
+    let first = check(&root, MADE_BY);
+    assert_eq!(first.failed, 0, "{}", first.text());
+    let gone = assets.join("solis/maps/maps/barn.lst");
+    std::fs::write(
+        &gone,
+        std::fs::read_to_string(assets.join(MADE_FOR_THEM[0]))
+            .unwrap()
+            .replace("Farm", "Barn"),
+    )
+    .unwrap();
+    let main = assets.join("main.lst");
+    let text = std::fs::read_to_string(&main).unwrap();
+    std::fs::write(
+        &main,
+        format!("fetch \"solis/tiles\":Maps;\nfetch \"solis/animation\":Animators;\n{text}"),
+    )
+    .unwrap();
+    let report = check(&root, MADE_BY);
+    assert_eq!(report.failed, 0, "{}", report.text());
+    assert!(!gone.exists(), "the gone map's file is taken away");
+    for made in MADE_FOR_THEM {
+        assert!(assets.join(made).is_file(), "{made} kept");
+    }
+}

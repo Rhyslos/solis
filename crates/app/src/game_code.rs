@@ -301,8 +301,8 @@ impl GameCode {
                 }
             }
         }
-        forget_animator_files(assets, &files, "animators");
-        forget_animator_files(assets, &files, "maps");
+        forget_animator_files(assets, &files, script::animator_code::FOLDER);
+        forget_animator_files(assets, &files, script::map_code::FOLDER);
         for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {

@@ -21,6 +21,7 @@ mod native_values;
 mod natives;
 mod objects;
 pub mod project_names;
+mod reach;
 pub mod runtime;
 pub mod rust_component;
 pub mod screens;
@@ -111,6 +112,9 @@ mod slot_tests {
     }
 }
 
+#[cfg(test)]
+#[path = "editor_files_tests.rs"]
+mod editor_files_tests;
 #[cfg(test)]
 #[path = "manual_examples_tests.rs"]
 mod manual_examples_tests;
