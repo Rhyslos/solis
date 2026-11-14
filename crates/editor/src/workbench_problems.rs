@@ -68,7 +68,7 @@ impl Workbench {
             self.log(level, text);
         }
         self.open.code_problems = problems;
-        self.open.code_checked = Some(chrono::Local::now().format("%H:%M:%S").to_string());
+        self.open.code_checked = Some(self.console.now());
     }
 
     /// Mistakes in the game's code, from the last check.

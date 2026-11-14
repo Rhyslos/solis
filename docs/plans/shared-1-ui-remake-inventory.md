@@ -236,8 +236,8 @@ Counts are at the end of this part.
 | `brush.shape.inset` | HOME TOOLS · Brush › Shape › **Inset** | EXISTS | `brushing::pull`: the mouse sets the border's width, a click keeps it | Tools 1a, B4 (built) |
 | `brush.shape.split` | HOME TOOLS · Brush › Shape › **Split** | EXISTS | `brushing::shaping`, `mesh::split`: by the mode | Tools 1a, B4 (built) |
 | `brush.shape.delete` | HOME TOOLS · Brush › Shape › **Delete** | EXISTS | `brushing::shaping`, `mesh::merge`: Delete and Backspace while editing do the same | Tools 1a, B4 (built) |
-| `brush.ribbon.material` | HOME TOOLS · Brush › Brush › "Material ▾" | PLACEHOLDER | A ribbon row | Tools 1a, B5 |
-| `brush.card.material` | The Brush card's **Material** row (mock-up 3) | PLACEHOLDER | A field row | Tools 1a, B5 |
+| `brush.ribbon.material` | HOME TOOLS · Brush › Brush › "Material ▾" | PLACEHOLDER | A ribbon row | Shared 7: Materials and shaders (moved from Tools 1a, B5, by the project lead on 2026-11-14: Solis has no material assets yet) |
+| `brush.card.material` | The Brush card's **Material** row (mock-up 3) | PLACEHOLDER | A field row | Shared 7 (moved from Tools 1a, B5, likewise) |
 | `home.create.long-press` | Long press opens a type list (spec 174) | EXISTS | (shell); a new mouse action: decision D15 | |
 | `home.snap.grid` | Snapping › "Grid · 0.25" (spec 175) | EXISTS | `transforming::Snapping`, `viewport_tools.rs` | |
 | `home.snap.angle` | Snapping › "Angle · 15°" | EXISTS | The same | |
