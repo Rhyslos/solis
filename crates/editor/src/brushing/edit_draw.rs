@@ -113,7 +113,11 @@ fn pulled(ui: &Ui, view: Rect, camera: &Camera, (pull, mesh, world): (&Pull, &Me
             vec2(0.0, 1.0)
         };
         let middle = (from.to_vec2() + to.to_vec2()) / 2.0 - centre;
-        let away = if middle.dot(square) < 0.0 { -square } else { square };
+        let away = if middle.dot(square) < 0.0 {
+            -square
+        } else {
+            square
+        };
         (middle.dot(away), away)
     };
     let furthest = lines
