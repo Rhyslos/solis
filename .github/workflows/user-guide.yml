@@ -1,0 +1,52 @@
+# The user guide is the manual, built (decision 0112,
+# docs/decisions/0112-the-user-guide-is-the-manual-built.md). CI skips
+# changes that touch only documentation, so this small workflow runs the
+# guide's checks on exactly those: the kept guide is what the manual
+# builds now, every page is in the contents, and every link goes
+# somewhere. It builds only tools/user-guide (no libraries, none of the
+# program's crates), so it needs no Ubuntu packages and takes about a
+# minute. Code changes run the same tests in ci.yml as well.
+name: User guide
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "docs/manual/**"
+      - "docs/user-guide/**"
+      - "tools/user-guide/**"
+      - "crates/app/src/branding.rs"
+      - "crates/editor/src/tokens.rs"
+      - "crates/editor/assets/fonts/**"
+      - "branding/logo.svg"
+      - ".github/workflows/user-guide.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/manual/**"
+      - "docs/user-guide/**"
+      - "tools/user-guide/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: user-guide-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  guide:
+    name: The user guide is the manual, built
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - run: cargo test --locked -p user-guide

@@ -97,7 +97,8 @@ A change is not done until its documentation is.
 | `CONTRIBUTING.md` | Tooling or rules change |
 | `DESIGN.md`, `ROADMAP.md` | Scope or the plan changes |
 | `docs/decisions/` | A major choice is made or reversed |
-| User manual (`docs/manual/`) | Anything a user would notice. Follow `docs/manual/_template.md`. |
+| User manual (`docs/manual/`) | Anything a user would notice. Follow `docs/manual/_template.md`. **The user guide is the manual, built:** every change a user would notice updates the manual in the same pull request, and the guide is generated again (`cargo run -p user-guide`); the check fails otherwise ([decision 0112](docs/decisions/0112-the-user-guide-is-the-manual-built.md)). |
+| User guide (`docs/user-guide/index.html`) | Never by hand: `cargo run -p user-guide` after any change to the manual, committed with it. |
 | `CHANGELOG.md` | Any change a user would notice (CI checks this) |
 | README progress tracker | A milestone or gate is completed |
 | `RENAMING.md` | The program's name appears somewhere new |

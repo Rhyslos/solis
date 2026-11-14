@@ -82,6 +82,8 @@ Source: "{#Source}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; The libraries' copyright notices and licences (decision 0044).
 Source: "{#Source}\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Source}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
+; The user guide, which the editor's Documentation button opens (decision 0112).
+Source: "{#Source}\user-guide\*"; DestDir: "{app}\user-guide"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [INI]
 ; installed.txt: the program updates itself only when this is beside it.

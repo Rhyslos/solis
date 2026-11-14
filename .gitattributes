@@ -2,3 +2,7 @@
 # must not change their line endings (a save carries a checksum).
 tests/fixtures/** -text
 fuzz/seeds/** -text
+# The user guide is built from the manual (cargo run -p user-guide): kept
+# byte for byte, and folded away in pull requests' changes, where the
+# manual's own change is the one to read.
+docs/user-guide/index.html -text linguist-generated=true

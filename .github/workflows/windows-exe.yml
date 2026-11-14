@@ -81,7 +81,10 @@ jobs:
           # Stamped into the program: what it compares updates against.
           BUILD_NUMBER: ${{ steps.brand.outputs.build }}
       # The program and its licences side by side in one flat folder, so
-      # the downloaded zip opens straight to the program.
+      # the downloaded zip opens straight to the program. The user guide
+      # goes beside them, where the editor's Documentation button looks
+      # for it (decision 0112): the copy kept in docs/user-guide, which the
+      # pull request's checks proved is the manual as it is now.
       - name: Package
         shell: bash
         run: |
@@ -89,6 +92,9 @@ jobs:
           cp "target/release/${{ steps.brand.outputs.id }}.exe" LICENSE dist/
           cp -r licenses dist/licenses
           rm dist/licenses/third-party.hbs
+          mkdir dist/user-guide
+          cp docs/user-guide/index.html dist/user-guide/
+          test -s dist/user-guide/index.html
       # The libraries built into the program, with their copyright notices
       # and licences, as their licences ask of every copy (decision 0044).
       # From the exact libraries in this build, for Windows.
