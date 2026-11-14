@@ -2,7 +2,7 @@
 //! person does it: Tab in and out; 1, 2 and 3; clicks, Ctrl + clicks,
 //! boxes and clearing; the gizmo on what's picked, snapping on and off;
 //! one undo step each, and an undo past the start ending it; a change
-//! that would break the brush put back; Delete held back; Made as after
+//! that would break the brush put back; Delete never deleting the brush; Made as after
 //! edits; a size typed; the counts; the 2D view; a save and reopen; and
 //! the picked brush's outline.
 
@@ -122,7 +122,7 @@ fn top_picked(h: &mut H) -> FaceId {
 fn gizmo_drag(h: &mut H, change: Change, ctrl: bool) {
     let w = &mut h.state_mut().0;
     w.viewport.tools.events = vec![
-        ViewportEvent::GizmoStart,
+        ViewportEvent::GizmoStart { extrude: false },
         ViewportEvent::GizmoChange { change, flip: ctrl },
         ViewportEvent::GizmoEnd,
     ];
@@ -146,7 +146,7 @@ fn tab_starts_editing_with_the_brush_tab_in_front_and_tab_again_ends_it() {
             .is_some(),
         "the ribbon's Edit group"
     );
-    assert!(h.query_by_label("Extrude").is_some(), "shown, unfinished");
+    assert!(h.query_by_label("Extrude").is_some(), "the Shape group");
     h.key_press(Key::Tab);
     h.run();
     let w = &h.state().0;
@@ -441,6 +441,8 @@ fn a_bent_face_is_allowed() {
 
 #[test]
 fn delete_and_backspace_while_editing_never_delete_the_brush() {
+    // They delete the picked parts (B4): a lone face is refused, as it
+    // would leave a hole.
     let (mut h, id) = editing();
     top_picked(&mut h);
     for key in [Key::Delete, Key::Backspace] {
@@ -448,10 +450,7 @@ fn delete_and_backspace_while_editing_never_delete_the_brush() {
         h.run();
         let w = &h.state().0;
         assert!(w.document().area().contains(id));
-        assert_eq!(
-            status(&h).as_deref(),
-            Some(crate::workbench_brush_edit::NO_DELETING_YET)
-        );
+        assert_eq!(status(&h).as_deref(), Some(mesh::merge::LONE_FACE));
     }
     // The search's Delete neither.
     run(&mut h, "Delete");

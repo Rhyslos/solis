@@ -1,6 +1,7 @@
 //! Moving, turning and stretching a brush's picked parts with the gizmo,
 //! and stretching the whole brush to a size typed on its card (Tools 1a,
-//! B3).
+//! B3); Shift + drag on the move gizmo extrudes the picked faces as it
+//! moves them (B4).
 //!
 //! A drag works from the brush as it was when the drag began: each frame
 //! the change so far is made again on that copy, in the brush's own
@@ -38,6 +39,10 @@ pub(crate) struct Drag {
     local: Mat4,
     /// What the drag is doing, for its undo step's name.
     verb: &'static str,
+    /// Whether it extrudes as it moves (Shift + drag on the move gizmo,
+    /// B4): `start` is the brush with the picked faces extruded by
+    /// nothing, and the whole check is made as it is kept.
+    extruding: bool,
 }
 
 impl Drag {
@@ -61,7 +66,50 @@ impl Drag {
             world,
             local: Mat4::IDENTITY,
             verb: "Move",
+            extruding: false,
         }
+    }
+
+    /// A drag that extrudes `faces` of `mesh` as it moves them (Shift +
+    /// drag on the move gizmo): the faces are extruded by nothing first,
+    /// so the drag moves their new copies and the walls stretch after
+    /// them. `None` when none of the faces is in the mesh.
+    pub(crate) fn extruding(
+        mesh: &Mesh,
+        faces: &[mesh::FaceId],
+        (pivot, axes): (Vec3, [Vec3; 3]),
+        world: Mat4,
+    ) -> Option<Self> {
+        let mut start = mesh.clone();
+        let done = mesh::edit::extrude_shaped(
+            &mut start,
+            faces,
+            0.0,
+            mesh::edit::Grouping::Together,
+            mesh::edit::ExtrudeShape::default(),
+        );
+        if done.matched == 0 {
+            return None;
+        }
+        let picked = faces
+            .iter()
+            .map(|f| crate::brushing::edit::Part::Face(*f))
+            .collect();
+        let points = crate::brushing::edit::points_of(&start, &picked);
+        let mut drag = Self::begin(Arc::new(start), points, (pivot, axes), world);
+        drag.verb = "Extrude";
+        drag.extruding = true;
+        Some(drag)
+    }
+
+    /// Whether it extrudes as it moves.
+    pub(crate) fn is_extruding(&self) -> bool {
+        self.extruding
+    }
+
+    /// The points that move.
+    pub(crate) fn points(&self) -> &[VertexId] {
+        &self.points
     }
 
     /// The brush as dragged so far.
@@ -84,6 +132,7 @@ impl Drag {
             return;
         }
         self.verb = match change {
+            _ if self.extruding => "Extrude",
             Change::Translate(_) => "Move",
             Change::Rotate { .. } => "Rotate",
             Change::Scale(_) => "Scale",
@@ -99,6 +148,10 @@ impl Drag {
     pub(crate) fn finish(&self) -> Result<Option<Arc<Mesh>>, Broken> {
         if Arc::ptr_eq(&self.now, &self.start) || *self.now == *self.start {
             return Ok(None);
+        }
+        if self.extruding {
+            // Checked whole as it is kept (`Workbench::keep_shaped`).
+            return Ok(Some(Arc::clone(&self.now)));
         }
         mesh::check_moved(
             &self.start,

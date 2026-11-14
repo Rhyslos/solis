@@ -29,6 +29,10 @@ pub struct BrushModel {
     /// Whether the brush's mesh couldn't be read, so it is drawn as
     /// nothing (the Problems list names it, Tools 1a B2).
     pub damaged: bool,
+    /// Whether the brush read is open or inside out and couldn't be
+    /// mended as it was read (B4): drawn as it is, and named in the
+    /// Problems list.
+    pub unwhole: bool,
     /// Whether it is drawn only for a moment: a brush being dragged by
     /// its parts (Tools 1a, B3), made anew each frame of the drag. The
     /// renderer lets it go as soon as a frame doesn't draw it.
@@ -45,6 +49,7 @@ impl BrushModel {
     fn of(brush: &Brush, key: u64) -> Self {
         let mut model = Self::of_mesh(&brush.mesh, key);
         model.damaged = brush.damaged;
+        model.unwhole = !brush.damaged && mesh::repair::why_not_whole(&brush.mesh).is_some();
         model
     }
 
@@ -66,6 +71,7 @@ impl BrushModel {
             model: self.model.clone(),
             triangles: self.triangles,
             damaged: false,
+            unwhole: mesh::repair::why_not_whole(&self.mesh).is_some(),
             passing: false,
             mesh: Arc::clone(&self.mesh),
             edges: std::sync::OnceLock::new(),
@@ -136,6 +142,7 @@ impl BrushModel {
             },
             triangles,
             damaged: false,
+            unwhole: false,
             passing: false,
             mesh: Arc::clone(mesh),
             edges: std::sync::OnceLock::new(),
@@ -330,12 +337,13 @@ impl BrushModels {
         self.made
     }
 
-    /// The brushes whose mesh couldn't be read, in no particular order:
-    /// looked at again only when a brush may have changed.
+    /// The brushes whose mesh couldn't be read, or reads open or inside
+    /// out and couldn't be mended, in no particular order: looked at
+    /// again only when a brush may have changed.
     pub(crate) fn damaged(&self) -> impl Iterator<Item = EntityId> + '_ {
         self.by_entity
             .iter()
-            .filter(|(_, model)| model.damaged)
+            .filter(|(_, model)| model.damaged || model.unwhole)
             .map(|(id, _)| *id)
     }
 

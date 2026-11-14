@@ -3,7 +3,10 @@
 //! edges, a dot on each point (points mode) or at each face's middle
 //! (faces mode), what's picked in the accent and what's under the
 //! pointer lit; and, on the view in use, the text at its top and the
-//! keys at its foot, over the tool bar.
+//! keys at its foot, over the tool bar. While an extrude or inset is
+//! under way (B4, the mock-up `04-brush-extrude.png`): the new faces in
+//! the accent, the distance in metres beside them, and its own words and
+//! keys.
 //!
 //! Only the sides facing the camera are drawn, worked out from the
 //! brush's own few faces each frame by the painter: never through the
@@ -11,7 +14,9 @@
 
 use super::edit::{Editing, Mode, Part};
 use super::ghost::{Progress, step_pill};
+use super::pull::{Pull, PullKind};
 use crate::camera::Camera;
+use crate::icons::Icon;
 use crate::tokens::{self, size, text};
 use crate::widgets;
 use egui::{Color32, Pos2, Rect, Shape, Ui, pos2, vec2};
@@ -19,10 +24,11 @@ use glam::{Mat3, Mat4, Vec2, Vec3};
 use mesh::{FaceId, Mesh};
 
 /// The keys at the foot of the view while editing: only what works now.
-pub(crate) const KEYS: [(&str, &str); 4] = [
+pub(crate) const KEYS: [(&str, &str); 5] = [
     ("Click", "pick"),
     ("Ctrl + Click", "add"),
     ("Drag", "box pick"),
+    ("E", "extrude"),
     ("Tab", "done"),
 ];
 
@@ -37,6 +43,9 @@ const FACE_FILL: f32 = 0.35;
 /// seen by `camera`: its edges, dots and what's picked.
 pub(crate) fn show(ui: &mut Ui, view: Rect, camera: &Camera, (edit, world): (&Editing, Mat4)) {
     if let Some(mesh) = edit.mesh() {
+        if let Some(pull) = &edit.pull {
+            pulled(ui, view, camera, (pull, mesh, world));
+        }
         parts(ui, view, camera, (edit, mesh, world));
     }
 }
@@ -44,9 +53,107 @@ pub(crate) fn show(ui: &mut Ui, view: Rect, camera: &Camera, (edit, world): (&Ed
 /// The view in use's words while `edit` goes on: the text at its top,
 /// and the keys with their foot at `strip` (over the tool bar, or the
 /// bottom pills). Returns where they cover the view (presses there
-/// aren't the view's).
+/// aren't the view's). While extruding or insetting, its own words and
+/// keys (B4).
 pub(crate) fn words(ui: &mut Ui, view: Rect, edit: &Editing, strip: f32) -> Vec<Rect> {
-    vec![top(ui, view, &edit.top_words()), keys(ui, view, strip)]
+    let Some(pull) = &edit.pull else {
+        return vec![
+            top(ui, view, None, &edit.top_words()),
+            keys(ui, view, strip, &KEYS),
+        ];
+    };
+    let icon = match pull.kind {
+        PullKind::Extrude | PullKind::ExtrudeEdges => Icon::ArrowUp,
+        PullKind::Inset => Icon::FourSquares,
+    };
+    vec![
+        top(ui, view, Some(icon), &edit.top_words()),
+        keys(ui, view, strip, &pull.kind.keys()),
+    ]
+}
+
+/// What an extrude or inset under way adds (B4): the new faces seen
+/// through in the accent, and how far, in metres, beside the part
+/// lowest on screen with a line from where it began.
+fn pulled(ui: &Ui, view: Rect, camera: &Camera, (pull, mesh, world): (&Pull, &Mesh, Mat4)) {
+    let size = Vec2::new(view.width(), view.height());
+    let project = camera.projector(size);
+    let at = |p: Vec3| project(world.transform_point3(p)).map(|s| view.min + vec2(s.x, s.y));
+    let accent = crate::interface_look::accent_fill();
+    let screen: Vec<Option<Pos2>> = mesh.point_slots().map(|p| p.and_then(at)).collect();
+    let moving: std::collections::HashSet<mesh::VertexId> =
+        pull.moving_points().into_iter().collect();
+    let topology = mesh.topology();
+    let fill = accent.gamma_multiply(tokens::share::SELECTED);
+    let mut batch = Batch::default();
+    let mut new_faces = std::collections::BTreeSet::new();
+    for v in &moving {
+        new_faces.extend(topology.vertex_faces(*v).iter().copied());
+    }
+    for face in new_faces {
+        batch.face(mesh, face, &screen, fill);
+    }
+    ui.painter_at(view).add(Shape::mesh(batch.0));
+    // Beside the moving part furthest out from the rest, square to its
+    // own line, so the measure stands clear of the brush as the mock-up
+    // draws it (below a side pulled sideways, beside a top pulled up).
+    let lines: Vec<(Pos2, Pos2)> = pull
+        .moved()
+        .filter_map(|(from, to)| Some((at(from)?, at(to)?)))
+        .collect();
+    let centre = lines
+        .iter()
+        .fold(egui::Vec2::ZERO, |sum, (_, to)| sum + to.to_vec2())
+        / lines.len().max(1) as f32;
+    let outward = |(from, to): &(Pos2, Pos2)| {
+        let along = *to - *from;
+        let square = if along.length() > 1e-3 {
+            along.normalized().rot90()
+        } else {
+            vec2(0.0, 1.0)
+        };
+        let middle = (from.to_vec2() + to.to_vec2()) / 2.0 - centre;
+        let away = if middle.dot(square) < 0.0 {
+            -square
+        } else {
+            square
+        };
+        (middle.dot(away), away)
+    };
+    let furthest = lines
+        .iter()
+        .max_by(|a, b| outward(a).0.total_cmp(&outward(b).0));
+    if let Some(line) = furthest {
+        let words = format!("{:.2} m", pull.metres.abs());
+        measure(ui, *line, outward(line).1, &words, accent);
+    }
+}
+
+/// A measuring line from `from` to `to`, set a little `away` from them
+/// (a unit direction on screen), with a tick at each end and `words` in
+/// a box beyond its middle.
+fn measure(ui: &Ui, (from, to): (Pos2, Pos2), away: egui::Vec2, words: &str, accent: Color32) {
+    let down = away * size::BRUSH_LABEL_OFFSET;
+    let (a, b) = (from + down, to + down);
+    let ink = tokens::text_emphasis();
+    let stroke = egui::Stroke::new(size::LINE * 1.5, ink);
+    let painter = ui.painter();
+    painter.line_segment([a, b], stroke);
+    let along = if a.distance(b) > 1e-3 {
+        (b - a).normalized()
+    } else {
+        vec2(1.0, 0.0)
+    };
+    let tick = along.rot90() * size::BRUSH_ARROW[0] / 2.0;
+    for end in [a, b] {
+        painter.line_segment([end - tick, end + tick], stroke);
+    }
+    // The label's box clear of the line, whichever way it stands off.
+    let width = widgets::width_of(ui, words, text::mono_small()) + 2.0 * size::FIELD_PAD;
+    let height = widgets::line_height(ui, &text::mono_small()) + size::FIELD_PAD;
+    let clear = away.x.abs() * width / 2.0 + away.y.abs() * height / 2.0;
+    let middle = a + (b - a) / 2.0 + away * (size::BRUSH_LABEL_OFFSET + clear);
+    super::ghost::label(ui, middle, words, accent);
 }
 
 /// Which faces of `mesh` face the camera, by face slot.
@@ -290,20 +397,25 @@ fn dots(
 
 /// The text at the top of the view, outlined in the accent as a step in
 /// hand is: "Editing Box_03 · Faces · 1 picked".
-fn top(ui: &mut Ui, view: Rect, words: &str) -> Rect {
-    let width = widgets::width_of(ui, words, text::ribbon_small()) + 2.0 * size::PILL_PAD;
+fn top(ui: &mut Ui, view: Rect, icon: Option<Icon>, words: &str) -> Rect {
+    let marks = if icon.is_some() {
+        size::ICON_SMALL + size::PILL_ICON_GAP
+    } else {
+        0.0
+    };
+    let width = widgets::width_of(ui, words, text::ribbon_small()) + 2.0 * size::PILL_PAD + marks;
     let top = view.top() + size::PILL_MARGIN + size::PILL_H + size::BRUSH_STEPS_DROP;
     let rect = Rect::from_min_size(
         pos2(view.center().x - width / 2.0, top),
         vec2(width, size::PILL_H),
     );
-    step_pill(ui, rect, None, words, Progress::Now);
+    step_pill(ui, rect, icon, words, Progress::Now);
     rect
 }
 
 /// The keys at the foot of the view, their own foot at `strip`: over the
 /// tool bar, or the bottom pills, as the mock-ups draw them.
-fn keys(ui: &mut Ui, view: Rect, strip: f32) -> Rect {
+fn keys(ui: &mut Ui, view: Rect, strip: f32, keys: &[(&str, &str)]) -> Rect {
     let above = view.with_max_y(strip + size::PILL_MARGIN);
-    widgets::pill::key_hints(ui, above, &KEYS)
+    widgets::pill::key_hints(ui, above, keys)
 }

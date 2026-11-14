@@ -1152,10 +1152,9 @@ impl Workbench {
     /// (Delete).
     pub fn delete_selection(&mut self) {
         if self.viewport.brushing.edit.is_some() {
-            // Never the brush whose insides are edited (B4 deletes parts).
-            self.viewport
-                .brushing
-                .tell(crate::workbench_brush_edit::NO_DELETING_YET);
+            // Never the brush whose insides are edited: its picked parts
+            // (Tools 1a, B4).
+            self.shape_brush(crate::shell::ShellCommand::BrushDelete);
             return;
         }
         let roots = self.selected_roots();

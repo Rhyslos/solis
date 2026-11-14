@@ -18,7 +18,9 @@
 //!   brush picked, then **1**, **2** and **3** for points, edges and
 //!   faces; picking them ([`parts`]), moving, turning and stretching them
 //!   with the gizmo ([`reshape`]), what's drawn over the view meanwhile
-//!   ([`edit_draw`]) and the Brush card ([`card`]).
+//!   ([`edit_draw`]) and the Brush card ([`card`]). B4: extruding and
+//!   insetting with the mouse ([`pull`]), and what Extrude, Inset, Split
+//!   and Delete do with what's picked ([`shaping`]).
 //!
 //! The viewport keeps this state ([`Brushing`]) and reports a brush drawn
 //! as a [`crate::viewport_tools::ViewportEvent::BrushDrawn`]; the
@@ -34,7 +36,9 @@ pub(crate) mod edit_draw;
 pub(crate) mod ghost;
 pub(crate) mod list;
 pub(crate) mod parts;
+pub(crate) mod pull;
 pub(crate) mod reshape;
+pub(crate) mod shaping;
 pub(crate) mod surface;
 
 use crate::icons::Icon;
@@ -98,14 +102,8 @@ impl Brushing {
     /// being drawn out. Keys are in backticks, which the card draws as
     /// keycaps.
     pub(crate) fn hint(&self, grid: f32) -> Option<String> {
-        if self.edit.is_some() {
-            return Some(
-                "Editing a brush's insides: `1` picks points, `2` edges, `3` faces. Click one, \
-                 `Ctrl` + click to add or take away, or drag a box. Move, turn or stretch them \
-                 with the gizmo (`W`, `R`, `S`); `Ctrl` turns snapping off for one drag. \
-                 `Tab` when done."
-                    .to_owned(),
-            );
+        if let Some(edit) = &self.edit {
+            return Some(edit_hint(edit, grid));
         }
         if self.list.is_some() {
             return Some(
@@ -130,6 +128,31 @@ impl Brushing {
                  ribbon); hold `Ctrl` to draw freely."
             )
         })
+    }
+}
+
+/// What the Hints card says while a brush's insides are edited: what
+/// an extrude or inset under way does, or what editing offers.
+fn edit_hint(edit: &edit::Editing, grid: f32) -> String {
+    let grid = draw::metres(grid);
+    match edit.pull.as_ref().map(|p| p.kind) {
+        Some(pull::PullKind::Extrude | pull::PullKind::ExtrudeEdges) => format!(
+            "Extruding: move the mouse to pull the new part out, and click to keep it. The \
+             distance snaps to the grid (Grid · {grid}); hold `Ctrl` for no snapping. `Esc` or \
+             a right-click gives up and leaves nothing."
+        ),
+        Some(pull::PullKind::Inset) => format!(
+            "Insetting: move the mouse to set how wide the border round each face is, and \
+             click to keep it. It snaps to the grid (Grid · {grid}); hold `Ctrl` for no \
+             snapping. `Esc` or a right-click gives up."
+        ),
+        None => "Editing a brush's insides: `1` picks points, `2` edges, `3` faces. Click one, \
+                 `Ctrl` + click to add or take away, or drag a box. Move, turn or stretch them \
+                 with the gizmo (`W`, `R`, `S`); `Ctrl` turns snapping off for one drag. `E` \
+                 extrudes the picked faces (or `Shift` + drag the move gizmo); Inset, Split and \
+                 Delete are on the ribbon, and `Delete` deletes what's picked, closing the gap. \
+                 `Tab` when done."
+            .to_owned(),
     }
 }
 

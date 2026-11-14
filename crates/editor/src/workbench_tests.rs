@@ -1455,7 +1455,7 @@ fn scale_check_dragging_everything() {
         .viewport
         .tools
         .events
-        .push(crate::viewport_tools::ViewportEvent::GizmoStart);
+        .push(crate::viewport_tools::ViewportEvent::GizmoStart { extrude: false });
     let frames = 100;
     let start = std::time::Instant::now();
     for i in 0..frames {

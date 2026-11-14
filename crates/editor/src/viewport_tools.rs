@@ -33,8 +33,11 @@ pub struct PickAnswer {
 /// Something the viewport's tools did, for the workbench to carry out.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum ViewportEvent {
-    /// A gizmo drag began: remember where everything is.
-    GizmoStart,
+    /// A gizmo drag began: remember where everything is. `extrude`: it
+    /// began with Shift held on a move handle while a brush's insides are
+    /// edited, so it extrudes the picked faces as it moves them (Tools
+    /// 1a, B4).
+    GizmoStart { extrude: bool },
     /// The drag so far, before snapping (`flip`: Ctrl is held).
     GizmoChange {
         /// The change from where the drag started.
@@ -62,6 +65,10 @@ pub(crate) enum ViewportEvent {
     },
     /// A brush was drawn out (Tools 1a, B2): add it, as one undo step.
     BrushDrawn(crate::brushing::draw::Planned),
+    /// While a brush's insides are edited (B4): what came of an extrude's
+    /// or inset's frame (the brush changed, a click kept it, a
+    /// right-click gave it up).
+    Pulled(crate::brushing::pull::PullOutcome),
     /// While a brush's insides are edited (B3): a click or a box found
     /// these parts of it.
     Parts {
@@ -135,6 +142,8 @@ pub(crate) enum Pressing {
     Gizmo {
         drag: Box<Drag>,
         last: Option<Change>,
+        /// It extrudes: Shift then is held for that, not for fine moves.
+        extrude: bool,
     },
 }
 
@@ -323,10 +332,12 @@ impl Tools {
                 if input.pressed && input.on_viewport {
                     self.pressing = match (self.gizmo, hovered) {
                         (Some(gizmo), Some(handle)) => {
-                            self.events.push(ViewportEvent::GizmoStart);
+                            let extrude = self.parts && input.shift && handle.moves();
+                            self.events.push(ViewportEvent::GizmoStart { extrude });
                             Pressing::Gizmo {
                                 drag: Box::new(Drag::new(gizmo, handle, camera, size, mouse)),
                                 last: None,
+                                extrude,
                             }
                         }
                         _ => Pressing::Click { at: mouse },
@@ -355,14 +366,18 @@ impl Tools {
                     self.pressing = Pressing::Box { from };
                 }
             }
-            Pressing::Gizmo { mut drag, last } => {
+            Pressing::Gizmo {
+                mut drag,
+                last,
+                extrude,
+            } => {
                 self.hovered = Some(drag.handle);
                 if input.right_pressed {
                     self.events.push(ViewportEvent::GizmoCancel);
                     return;
                 }
                 let change = match input.mouse {
-                    Some(mouse) => drag.update(mouse, input.shift, locked),
+                    Some(mouse) => drag.update(mouse, input.shift && !extrude, locked),
                     None => drag.change(locked),
                 };
                 if last != Some(change) {
@@ -377,6 +392,7 @@ impl Tools {
                     self.pressing = Pressing::Gizmo {
                         drag,
                         last: Some(change),
+                        extrude,
                     };
                 }
             }

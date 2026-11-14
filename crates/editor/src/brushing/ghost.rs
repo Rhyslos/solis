@@ -174,7 +174,7 @@ fn sizes(
 }
 
 /// A size in a small dark box with the accent round it, centred on `at`.
-fn label(ui: &Ui, at: Pos2, words: &str, edge: Color32) {
+pub(crate) fn label(ui: &Ui, at: Pos2, words: &str, edge: Color32) {
     let painter = ui.painter();
     let galley = painter.layout_no_wrap(
         words.to_owned(),

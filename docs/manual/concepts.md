@@ -58,6 +58,9 @@
 - **Mesh:** a shape made of **points** joined into flat **faces**, each face's sides being its **edges**. Models and brushes are meshes; a brush's faces can have any number of corners, and are cut into triangles to draw.
 - **Point, edge, face:** the parts of a mesh. A **point** (a corner, also called a vertex) is one spot; an **edge** is the straight side between two points, where two faces meet; a **face** is one flat side, its edges all the way round. Editing a brush's insides moves these. A face is **bent** when its corners aren't all on one flat plane: allowed, and cut into triangles to draw. See [Brushes](brushes.md).
 - **Editing a brush's insides:** working on a brush's points, edges or faces instead of the whole brush, started with `Tab`. See [Brushes](brushes.md).
+- **Extrude:** pulling faces out of a shape into a new part, joined to it by new side faces (walls), like pulling a drawer out of a cabinet; pushing them in makes a dent. See [Brushes](brushes.md).
+- **Inset:** making a smaller face inside a face, with a border of new faces round it, all still flat: the start of a window, a rim or a step. See [Brushes](brushes.md).
+- **Closed (a whole brush):** a shape with no holes, every edge with a face on each side, all faces facing outwards. Brushes are always kept closed, so they're solid and draw properly. See [Brushes](brushes.md).
 - **Block-out:** a first, rough version of a level made of simple shapes, to try how it plays before anything is modelled.
 - **Instance:** one copy of a mesh drawn somewhere. A mesh used many times (a crate in a hundred places) is stored once and drawn as many instances, which is much faster than storing a hundred crates.
 

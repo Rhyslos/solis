@@ -100,6 +100,11 @@ impl Handle {
             Self::Centre | Self::ViewRing | Self::ScaleAll => None,
         }
     }
+
+    /// Whether dragging it moves (rather than turns or scales).
+    pub fn moves(self) -> bool {
+        matches!(self, Self::Axis(_) | Self::Plane(_) | Self::Centre)
+    }
 }
 
 /// Something to draw for a handle, in screen points.

@@ -85,6 +85,21 @@ picture brush-editing.png
   key 3
   wait 1
   shot 0 0 1440 680 1100
+
+picture brush-extrude.png
+  page brushes.md
+  shows Extruding the box's top with E: the new part following the mouse, its distance beside it and at the top
+  click 694 277
+  wait 1
+  move 694 278
+  key e
+  wait 1
+  move 694 262
+  move 694 246
+  move 694 232
+  wait 1
+  shot 241 130 858 361
+  key Escape
   key Tab
 
 picture search.png

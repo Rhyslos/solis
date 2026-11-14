@@ -1,7 +1,8 @@
 //! HOME TOOLS · Brush's ribbon, while a brush's insides are edited
 //! (Tools 1a, B3; the approved mock-up `docs/design/tools-1/
 //! 03-brush-edit-faces.png`): Edit (Points 1, Edges 2, Faces 3, and Done
-//! Tab), Shape (Extrude, Inset, Split and Delete, which come with B4),
+//! Tab), Shape (Extrude E, Inset, Split and Delete, B4: each greyed with
+//! why when the mode or the pick doesn't allow it),
 //! Brush (Material, which comes with B5, and Solid) and Snapping. The
 //! Play group follows, as on Home.
 
@@ -37,27 +38,10 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
             label: Some("Edit"),
             slots: edit,
         },
-        group!(
-            Some("Shape"),
-            [
-                unbuilt_at(
-                    Shape::Big(Icon::ArrowUp),
-                    Entry::Unbuilt(UnbuiltId::BrushShapeExtrude),
-                ),
-                unbuilt_at(
-                    Shape::Big(Icon::FourSquares),
-                    Entry::Unbuilt(UnbuiltId::BrushShapeInset),
-                ),
-                unbuilt_at(
-                    Shape::Big(Icon::Grid),
-                    Entry::Unbuilt(UnbuiltId::BrushShapeSplit),
-                ),
-                unbuilt_at(
-                    Shape::Big(Icon::Trash),
-                    Entry::Unbuilt(UnbuiltId::BrushShapeDelete),
-                ),
-            ]
-        ),
+        Group {
+            label: Some("Shape"),
+            slots: shape(w),
+        },
         group!(
             Some("Brush"),
             [
@@ -69,6 +53,41 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
             ]
         ),
         snapping(w),
+    ]
+}
+
+/// Extrude (its key small beside it, lit while extruding), Inset (lit
+/// while insetting), Split and Delete.
+fn shape(w: &Workbench) -> Vec<crate::shell::ribbon::Slot> {
+    use crate::brushing::pull::PullKind;
+    let pulling = w
+        .viewport
+        .brushing
+        .edit
+        .as_ref()
+        .and_then(|e| e.pull.as_ref())
+        .map(|p| p.kind);
+    let button = |icon, label, command, lit, keyed| {
+        let control = Control::Do {
+            label,
+            command,
+            lit,
+            keyed,
+        };
+        (Shape::Big(icon), vec![Entry::Built(control)])
+    };
+    let extruding = matches!(pulling, Some(PullKind::Extrude | PullKind::ExtrudeEdges));
+    vec![
+        button(Icon::ArrowUp, "Extrude", C::BrushExtrude, extruding, true),
+        button(
+            Icon::FourSquares,
+            "Inset",
+            C::BrushInset,
+            pulling == Some(PullKind::Inset),
+            false,
+        ),
+        button(Icon::Grid, "Split", C::BrushSplit, false, false),
+        button(Icon::Trash, "Delete", C::BrushDelete, false, false),
     ]
 }
 

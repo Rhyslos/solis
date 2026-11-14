@@ -12,8 +12,13 @@ Polygon meshes, how they connect, the operations on them and the brushes' shapes
 | `attributes.rs` | Named values on points, edges, faces or corners, stored by id. Tests in `attributes_tests.rs`. | `Domain`, `Value`, `AttributeElement`, `HARD` |
 | `builder.rs` | How operations make new points and faces so their values come along. Tests in `builder_tests.rs`. | `Builder`, `PointFrom`, `CornerFrom` |
 | `material.rs` | Each face's material slot, a face layer. | `MATERIAL`, `slot_of`, `set_material` |
-| `edit.rs` | Operations in one place: moving points, and the extrudes, inset and materials re-exported. | `Outcome`, `move_points`, `transform_points` |
+| `edit.rs` | Operations in one place: moving points, and the extrudes, inset, splits, merges and materials re-exported. | `Outcome`, `move_points`, `transform_points` |
 | `extrude.rs` | Extruding faces (along their facing, straight, shaped), insetting them, and extruding border edges. Tests in `extrude_tests.rs` and `extrude_shaped_tests.rs`. | `extrude_polygons`, `extrude_shaped`, `inset_polygons`, `extrude_edges`, `Grouping` |
+| `split.rs` | Cutting a face in two between two points, a point in the middle of edges, faces cut across their middle along the longer side. Tests in `split_tests.rs`. | `split_face_between`, `split_edges`, `split_faces_across` |
+| `merge.rs` | Deleting parts and closing the gap: touching faces merged into one, an edge's or a point's faces merged. Tests in `merge_tests.rs`. | `merge_faces`, `dissolve_edges`, `dissolve_points` |
+| `intact.rs` | Whether a brush stays whole after points move: no face folded or flattened, no passing through. Tests in `intact_tests.rs`. | `check_moved`, `Broken` |
+| `whole.rs` | Whether a brush is whole after faces are added, removed or rewired: closed, facing out, room inside, four faces or more. Tests in `whole_tests.rs`. | `check_whole`, `room_inside` |
+| `repair.rs` | Mending a mesh read from a file: faces turned the right way, a hole with one flat border filled. Tests in `repair_tests.rs`. | `repair`, `why_not_whole` |
 | `triangulate.rs` | Cutting any face into triangles, the same way every time. Tests in `triangulate_tests.rs`. | `face_triangles`, `triangulate` |
 | `flat.rs` | A mesh as triangles: drawn flat (each face's own facing and slot), or over shared points for physics. | `FlatTriangles`, `flat_triangles`, `solid_triangles` |
 | `shading.rs` | Smooth or sharp shading by hard edges or by angle. | `shaded_triangles`, `corner_shading`, `Hardness` |

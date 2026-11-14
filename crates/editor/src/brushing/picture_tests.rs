@@ -1,9 +1,9 @@
-//! The brush list open, a box being drawn out, and a box's insides being
-//! edited in faces and in points mode, drawn for real in the sample
-//! project as the approved mock-ups show them
-//! (`docs/design/tools-1/01-brush-list.png`, `02-brush-draw.png`,
-//! `03-brush-edit-faces.png`), each held to an approved picture of
-//! Solis's own.
+//! The brush list open, a box being drawn out, a box's insides being
+//! edited in faces and in points mode, and its face extruded and inset
+//! (B4), drawn for real in the sample project as the approved mock-ups
+//! show them (`docs/design/tools-1/01-brush-list.png`, `02-brush-draw.png`,
+//! `03-brush-edit-faces.png`, `04-brush-extrude.png`), each held to an
+//! approved picture of Solis's own.
 
 use crate::picture_support::{Picture, drawn, editor_window, matches_approved, sample_project};
 use egui::{Pos2, pos2};
@@ -101,10 +101,11 @@ pub(crate) fn drawing_out() -> Option<Picture> {
     Some(drawn(&mut h))
 }
 
-/// Box_03, 4 × 2.5 × 3 m, being edited as mock-up 3 draws it: its side
-/// facing the camera picked in faces mode, the Move gizmo on it; or, in
-/// points mode, that face's corners.
-pub(crate) fn editing(points: bool) -> Option<Picture> {
+type H = Harness<'static, crate::workbench::Workbench>;
+
+/// Box_03, 4 × 2.5 × 3 m, standing at `AT`, its insides edited with the
+/// Move tool, seen as the mock-ups 3 and 4 see it.
+fn box_edited() -> Option<H> {
     use area::builtin::{Brush, Transform};
     let mut h = editor()?;
     let w = h.state_mut();
@@ -115,33 +116,60 @@ pub(crate) fn editing(points: bool) -> Option<Picture> {
         ),
         ..Brush::default()
     };
-    let at = Vec3::new(2.0, 0.0, 0.0);
     w.spawn_selected(
         area::EntityData::new("Box_03")
             .with(&Transform {
-                position: at,
+                position: AT,
                 ..Transform::default()
             })
             .with(&brush),
     );
     w.viewport.tool = crate::viewport::Tool::Move;
     let camera = &mut w.viewport.camera;
-    camera.position = at + Vec3::new(-4.5, -7.0, 5.5);
-    camera.look_at(at + Vec3::new(0.0, 0.0, 1.2));
+    camera.position = AT + Vec3::new(-4.5, -7.0, 5.5);
+    camera.look_at(AT + Vec3::new(0.0, 0.0, 1.2));
     h.run();
     h.key_press(egui::Key::Tab);
     h.run();
+    Some(h)
+}
+
+/// Where the box stands.
+const AT: Vec3 = Vec3::new(2.0, 0.0, 0.0);
+
+/// Where world point `p` is on screen.
+fn on_screen(h: &H, p: Vec3) -> Pos2 {
     let w = h.state();
     let rect = w.viewport.rect;
-    let front = w
+    let at = w
         .viewport
         .camera
-        .project(
-            at + Vec3::new(0.0, -1.25, 1.5),
-            glam::Vec2::new(rect.width(), rect.height()),
-        )
+        .project(p, glam::Vec2::new(rect.width(), rect.height()))
         .expect("in view");
-    let front = rect.min + egui::vec2(front.x, front.y);
+    rect.min + egui::vec2(at.x, at.y)
+}
+
+/// The edited box's face facing `normal`, picked.
+fn pick_face(h: &mut H, normal: Vec3) {
+    use super::edit::{Part, PickHow};
+    let w = h.state_mut();
+    let edit = w.viewport.brushing.edit.as_ref().expect("editing");
+    let mesh = edit.parts.as_ref().expect("its parts").mesh();
+    let face = mesh
+        .faces()
+        .map(|(f, _)| f)
+        .find(|f| mesh.face_normal(*f).dot(normal) > 0.99)
+        .expect("a face");
+    w.pick_parts(&[Part::Face(face)], PickHow::Replace);
+    h.run();
+}
+
+/// Box_03 being edited as mock-up 3 draws it: its side facing the
+/// camera picked in faces mode, the Move gizmo on it; or, in points
+/// mode, that face's corners.
+pub(crate) fn editing(points: bool) -> Option<Picture> {
+    let mut h = box_edited()?;
+    let front = on_screen(&h, AT + Vec3::new(0.0, -1.25, 1.5));
     h.hover_at(front);
     h.run();
     press(&h, true, front);
@@ -158,6 +186,60 @@ pub(crate) fn editing(points: bool) -> Option<Picture> {
     let edit = h.state().viewport.brushing.edit.as_ref().expect("editing");
     assert_eq!(edit.picked.len(), if points { 4 } else { 1 });
     Some(drawn(&mut h))
+}
+
+/// Box_03's end face being extruded 2 m with E, as mock-up 4 draws it:
+/// the new part following the mouse, its distance beside it and at the
+/// top of the view, the keys at the foot and the status bar.
+pub(crate) fn extruding() -> Option<Picture> {
+    let mut h = box_edited()?;
+    pick_face(&mut h, Vec3::X);
+    let middle = AT + Vec3::new(2.0, 0.0, 1.5);
+    h.hover_at(on_screen(&h, middle));
+    h.run();
+    h.key_press(egui::Key::E);
+    h.run();
+    h.hover_at(on_screen(&h, middle + Vec3::X * 2.0));
+    h.run();
+    h.run();
+    let edit = h.state().viewport.brushing.edit.as_ref().expect("editing");
+    let pull = edit.pull.as_ref().expect("extruding");
+    assert_eq!(pull.metres, 2.0);
+    Some(drawn(&mut h))
+}
+
+/// Box_03's front face being inset by half a metre.
+pub(crate) fn insetting() -> Option<Picture> {
+    let mut h = box_edited()?;
+    pick_face(&mut h, -Vec3::Y);
+    let middle = AT + Vec3::new(0.0, -1.25, 1.5);
+    h.hover_at(on_screen(&h, middle));
+    h.run();
+    h.state_mut()
+        .shape_brush(crate::shell::ShellCommand::BrushInset);
+    h.run();
+    let right = h.state().viewport.camera.right();
+    h.hover_at(on_screen(&h, middle + right * 0.5));
+    h.run();
+    h.run();
+    let edit = h.state().viewport.brushing.edit.as_ref().expect("editing");
+    let pull = edit.pull.as_ref().expect("insetting");
+    assert_eq!(pull.metres, 0.5);
+    Some(drawn(&mut h))
+}
+
+#[test]
+fn extruding_a_brush_s_face_is_its_approved_picture() {
+    if let Some(picture) = extruding() {
+        matches_approved("brush-extrude", &picture);
+    }
+}
+
+#[test]
+fn insetting_a_brush_s_face_is_its_approved_picture() {
+    if let Some(picture) = insetting() {
+        matches_approved("brush-inset", &picture);
+    }
 }
 
 #[test]
