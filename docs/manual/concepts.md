@@ -104,7 +104,7 @@
 
 ## Tools
 
-- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform, chosen in the **toolbox** (the column down the viewport's left edge) or by key. See [Selecting and moving things](selecting-and-moving.md).
+- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform, chosen on the **tool bar** (floating at the foot of the viewport) or by key. See [Selecting and moving things](selecting-and-moving.md).
 - **Selection:** the entities you're working on. Selected things are outlined in the accent colour in the viewport and highlighted in the Area panel; Properties shows one of them.
 - **Gizmo:** the coloured arrows, rings and boxes drawn on the selection, which you drag to move, turn or resize it. Each handle works along one axis, in its colour.
 - **Pivot:** the point a selection turns and grows around: the middle of the selected entities.

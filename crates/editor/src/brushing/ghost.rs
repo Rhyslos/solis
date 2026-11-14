@@ -15,9 +15,17 @@ use crate::widgets;
 use egui::{Align2, Color32, CornerRadius, Pos2, Rect, Stroke, Ui, pos2, vec2};
 use glam::{Mat4, Vec2, Vec3};
 
-/// Draws `draw` over the view at `view`, seen by `camera`. Returns where
-/// its steps and keys cover the view (presses there aren't the view's).
-pub(crate) fn show(ui: &mut Ui, view: Rect, camera: &Camera, draw: &Draw, grid: f32) -> Vec<Rect> {
+/// Draws `draw` (on the grid of `grid` metres) over the view at `view`,
+/// seen by `camera`, its keys' foot at `strip` (over the tool bar, or
+/// the bottom pills). Returns where its steps and keys cover the view
+/// (presses there aren't the view's).
+pub(crate) fn show(
+    ui: &mut Ui,
+    view: Rect,
+    camera: &Camera,
+    (draw, grid): (&Draw, f32),
+    strip: f32,
+) -> Vec<Rect> {
     let size = Vec2::new(view.width(), view.height());
     let project = camera.projector(size);
     let on_screen = |p: Vec3| project(p).map(|s| view.min + vec2(s.x, s.y));
@@ -48,7 +56,7 @@ pub(crate) fn show(ui: &mut Ui, view: Rect, camera: &Camera, draw: &Draw, grid: 
             arrow(ui, (foot, foot + Vec3::Z * height), &on_screen, height);
         }
     }
-    vec![steps(ui, view, draw), keys(ui, view, draw)]
+    vec![steps(ui, view, draw), keys(ui, view, draw, strip)]
 }
 
 /// The shape as it would be made now: its faces seen through, its edges
@@ -317,8 +325,9 @@ pub(crate) fn step_pill(ui: &Ui, rect: Rect, icon: Option<Icon>, words: &str, pr
     );
 }
 
-/// The keys at the foot of the view, for the step in hand.
-fn keys(ui: &mut Ui, view: Rect, draw: &Draw) -> Rect {
+/// The keys at the foot of the view, for the step in hand, their own
+/// foot at `strip`.
+fn keys(ui: &mut Ui, view: Rect, draw: &Draw, strip: f32) -> Rect {
     let keys: &[(&str, &str)] = match draw.step {
         Step::Height { .. } => &[
             ("Move up", "height"),
@@ -339,8 +348,8 @@ fn keys(ui: &mut Ui, view: Rect, draw: &Draw) -> Rect {
             ("Esc", "give up"),
         ],
     };
-    // Over the view's bottom pills (the locks, the space, the camera's
-    // speed), as the mock-up draws it.
-    let above = view.with_max_y(view.bottom() - size::PILL_H - size::PILL_MARGIN);
+    // Over the tool bar, or the view's bottom pills (the locks, the
+    // space, the camera's speed), as the mock-ups draw it.
+    let above = view.with_max_y(strip + size::PILL_MARGIN);
     widgets::pill::key_hints(ui, above, keys)
 }

@@ -110,7 +110,7 @@ impl Tab {
                     vec![
                         Built(S::Stats),
                         Built(S::Pills),
-                        Built(S::Toolbox),
+                        Built(S::Tools),
                         Built(S::PreviewAnimation),
                     ],
                 ),
@@ -193,7 +193,7 @@ pub(crate) enum Setting {
     ResetLayout,
     Stats,
     Pills,
-    Toolbox,
+    Tools,
     PreviewAnimation,
     GridStep,
     AngleStep,
@@ -232,7 +232,7 @@ impl Setting {
         Self::ResetLayout,
         Self::Stats,
         Self::Pills,
-        Self::Toolbox,
+        Self::Tools,
         Self::PreviewAnimation,
         Self::GridStep,
         Self::AngleStep,
@@ -267,7 +267,7 @@ impl Setting {
             }
             S::Stats
             | S::Pills
-            | S::Toolbox
+            | S::Tools
             | S::PreviewAnimation
             | S::GridStep
             | S::AngleStep
@@ -300,7 +300,7 @@ impl Setting {
             S::ResetLayout => "Sizes",
             S::Stats => "Frame time and frame rate",
             S::Pills => "Axis locks, axes and camera speed",
-            S::Toolbox => "Toolbox",
+            S::Tools => "Tools",
             S::PreviewAnimation => "Preview animation",
             S::GridStep => "Grid step",
             S::AngleStep => "Angle step",
@@ -361,8 +361,9 @@ impl Setting {
             S::Pills => {
                 "The pills at the bottom right: Lock X Y Z, World or Object, and the camera's speed."
             }
-            S::Toolbox => {
-                "The column of tools at the left. The keys Q, W, R, S and T work either way."
+            S::Tools => {
+                "The bar of tools floating at the foot of the view. The keys Q, W, R, S and T work \
+                 either way."
             }
             S::PreviewAnimation => {
                 "Sprites play their clips while you edit. Off, each shows its clip's frame and \

@@ -18,8 +18,8 @@
 # standard panel layout (decision 0109) on a 1440x900 screen: the tab bar
 # and ribbon along the top; the Area list from x 0 to 240 and Properties
 # from 1100 to 1440, down to the shelf; the area's group between them
-# (its tab strip at 100, the viewport from 130 to 491, its toolbox from
-# x 241), the Assets strip under it from 492; the shelf's bar at 682 and
+# (its tab strip at 100, the viewport from 130 to 491, its tool bar
+# floating at its foot from 590 to 752, 450 to 488), the Assets strip under it from 492; the shelf's bar at 682 and
 # the status bar at 876. On Audio the shelf's bar is at 542.
 #
 # Nothing here waits a fixed time for the program: after each step it
@@ -165,10 +165,10 @@ pixel() {
 # A point of the viewport's sky: near its top, clear of its pills.
 SKY_X="${SKY_X:-700}"
 SKY_Y="${SKY_Y:-200}"
-# The toolbox's transform tools: a region (WxH+X+Y) left of the view.
-TOOLS="34x180+${TOOLS_X:-246}+${TOOLS_Y:-136}"
-# Most of the viewport, clear of its toolbox.
-VIEW="800x340+280+140"
+# The tool bar's buttons: a region (WxH+X+Y) at the foot of the view.
+TOOLS="150x30+${TOOLS_X:-596}+${TOOLS_Y:-455}"
+# Most of the viewport, clear of its tool bar.
+VIEW="800x300+280+140"
 
 # The viewport's sky is drawn: near its top, not black.
 sky_drawn() {
@@ -238,14 +238,14 @@ echo "Sky at ($SKY_X, $SKY_Y): $R $G $B (expected a dark neutral grey)"
     fail "the sky is tinted, not neutral: ($R, $G, $B)"
 grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 
-# 2. W picks the Move tool: its button in the toolbox (the column down
-#    the viewport's left edge) lights up. Only the toolbox's transform
-#    tools are compared, so the viewport moving beside it doesn't count.
+# 2. W picks the Move tool: its button on the tool bar (floating at the
+#    foot of the view) lights up. Only the bar's buttons are compared,
+#    so the viewport moving behind it doesn't count.
 xdotool key --window "$WINDOW_ID" w || true
 wait_for differs first 100 "$TOOLS" || true
 shot move-tool
 TOOL_CHANGE="$(changed_pixels first move-tool "$TOOLS")"
-echo "Pixels changed in the toolbox by pressing W: $TOOL_CHANGE"
+echo "Pixels changed in the tool bar by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
 # 3. Fly: hold the right mouse button in the viewport, turn a little and
@@ -269,7 +269,7 @@ FLY_CHANGE="$(changed_pixels move-tool flown "$VIEW")"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
 [ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
 TOOL_AFTER="$(changed_pixels move-tool flown "$TOOLS")"
-echo "Pixels changed in the toolbox by flying: $TOOL_AFTER"
+echo "Pixels changed in the tool bar by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 
 # Drags with the left button from ($1, $2) by ($3, $4), in steps, and

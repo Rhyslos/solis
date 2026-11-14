@@ -79,8 +79,8 @@ pub(crate) enum ShellCommand {
     FoldShelf,
     HideUnfinished,
     CollapseRibbon,
-    /// Picks one of the toolbox's tools (the build form's Transform
-    /// group, where there is no toolbox).
+    /// Picks one of the tool bar's tools (the build form's Transform
+    /// group, where there is no tool bar).
     UseTool(crate::viewport::Tool),
     /// Makes something in the Library's open folder (its Create list and
     /// Folder).

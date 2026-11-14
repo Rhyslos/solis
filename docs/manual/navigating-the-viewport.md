@@ -1,6 +1,6 @@
 # Moving around the viewport
 
-> Fly the camera through the 3D world, split the viewport into several views (flat ones too), and use the toolbox and the [pills](concepts.md#pill) floating over each view.
+> Fly the camera through the 3D world, split the viewport into several views (flat ones too), and use the tool bar and the [pills](concepts.md#pill) floating over each view.
 
 ## When to use it
 Whenever you want to look at the world from somewhere else. Solis has one camera style, the [fly camera](concepts.md#the-3d-view): you steer it like a drone, as in Unreal Engine.
@@ -40,10 +40,10 @@ These are the flat-view controls Unreal Engine uses.
 
 **The 2D view** (the last in the **Perspective ▾** list): a flat view from above like Top, measured in your game's pixels, for 2D games ([2D](2d-pixel-perfect.md)). It slides the same way, but the wheel zooms in whole steps (100%, 200%, 300%…) and every pixel of the game lands on whole screen pixels, so pixel art looks as it will in the game. The grid is the project's tile size, a dashed frame shows what each 2D camera sees, and the pills at the bottom right are **Lock X Y**, **Snap: Whole pixels ▾** (moves land on whole pixels, tiles, or anywhere), the grid and **Zoom ▾**. Moves go across the ground only (X and Y).
 
-**The toolbox** runs down the viewport's left edge: Select (**Q**), Move (**W**), Rotate (**R**), Scale (**S**) and Transform (**T**); while a tile map is selected its painting tools follow them; then four tools that aren't built yet, marked as [unfinished parts](unfinished-parts.md). See [Selecting and moving things](selecting-and-moving.md). There is one toolbox however many views there are. When the shelf is dragged tall, the toolbox scrolls with the mouse wheel.
+**The tool bar** floats at the foot of the view in use, in the middle: Select (**Q**), Move (**W**), Rotate (**R**), Scale (**S**) and Transform (**T**), each with its key small in its corner, the tool in use filled with the accent colour. While you edit a [brush](brushes.md)'s insides, a short line and **Points (1)**, **Edges (2)** and **Faces (3)** follow. See [Selecting and moving things](selecting-and-moving.md). It floats over the picture rather than taking a column beside it, so the view keeps its whole width. It keeps clear of the pills at the bottom right: when the view is too narrow for both on one row, it moves left of them and its buttons get a little smaller; if there's still no room, it goes above them, and in a very narrow view its buttons shrink to fit (point at one to see its name and key). With two or four views it is on the view in use, as the bottom-right pills are. A tile map's painting tools are on their own ribbon instead ([Painting tiles](painting-tiles.md)); while one is in use, no tool on the bar is lit.
 
 **The pills** float over each view, so the picture stays as large as it can be:
-- **Top left, on every view:** the view (**Perspective ▾**: its kind, and how many views), the look (**Standard ▾**, how models are shaded; see [Looks](looks.md)) and **Show ▾**: what the viewport shows (the frame time, the axis locks and camera speed, the toolbox) and **Preview animation**.
+- **Top left, on every view:** the view (**Perspective ▾**: its kind, and how many views), the look (**Standard ▾**, how models are shaded; see [Looks](looks.md)) and **Show ▾**: what the viewport shows (the frame time, the axis locks and camera speed, the **Tools** bar) and **Preview animation**.
 - **Top right, on the view in use:** the time each frame takes and the frames per second. Point at it to see how many entities and triangles there are. When nothing moves it says **Idle**: Solis then draws only when something changes, so your computer isn't kept busy (and a laptop stays cool and quiet). Fly the camera or press Play to see the frame rate.
 - **Bottom right, on the view in use:** **Lock X Y Z** (the axis locks), **World ▾** or **Object ▾** (which way the gizmo points) and the camera's speed. See [Selecting and moving things](selecting-and-moving.md).
 

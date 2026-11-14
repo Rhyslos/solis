@@ -1,6 +1,6 @@
 //! Placing (milestone M6; spec 236-287, round 2 `06-placing-a.png`): the
 //! Place shelf tab is the mode, the ribbon takes its build form, the
-//! toolbox goes, and a file dragged in shows where it lands.
+//! tool bar goes, and a file dragged in shows where it lands.
 
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::panel::Panel;
@@ -55,17 +55,17 @@ fn home_opens_on_entity_and_place_is_the_first_shelf_tab() {
     assert!(place.left() < entity.left(), "Place comes first");
     assert!(
         h.query_by_label("Select (Q)").is_some(),
-        "the level editor's toolbox"
+        "the level editor's tool bar"
     );
 }
 
 #[test]
-fn place_in_front_is_the_mode_the_ribbon_and_toolbox_follow() {
+fn place_in_front_is_the_mode_the_ribbon_and_tool_bar_follow() {
     let mut h = placing();
     assert!(h.state().0.placing());
     // The build form: Place for Create, Transform with the tools, no
-    // toolbox and no Lighting.
-    assert!(h.query_by_label("Select (Q)").is_none(), "no toolbox");
+    // tool bar and no Lighting.
+    assert!(h.query_by_label("Select (Q)").is_none(), "no tool bar");
     for name in ["Select tool", "Move tool", "All three tool"] {
         assert!(h.query_by_label(name).is_some(), "{name} on the ribbon");
     }

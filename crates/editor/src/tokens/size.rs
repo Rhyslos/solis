@@ -85,20 +85,47 @@ pub const DOC_TAB_H: f32 = 30.0;
 pub const DOC_TAB_PAD: f32 = 12.0;
 /// The gap inside a document tab.
 pub const DOC_TAB_GAP: f32 = 7.0;
-/// The toolbox column's width.
+/// The toolbox column's width (the UI canvas's).
 pub const TOOLBOX_W: f32 = 44.0;
 /// A toolbox button's side.
 pub const TOOL_BUTTON: f32 = 34.0;
-/// A toolbox button's icon.
+/// A toolbox button's icon, and the floating tool bar's.
 pub const TOOL_ICON: f32 = 15.0;
 /// Space above the toolbox's first tool and below its last (from the HTML).
 pub const TOOLBOX_PAD: f32 = 6.0;
 /// Space between the toolbox's tools (from the HTML).
 pub const TOOL_GAP: f32 = 2.0;
-/// How long the line between kinds of tool is (from the HTML).
-pub const TOOL_DIVIDER: f32 = 22.0;
-/// Space above and below that line (from the HTML).
-pub const TOOL_DIVIDER_GAP: f32 = 4.0;
+
+/// The tool bar floating at the foot of the view (decision 0114; the
+/// approved mock-ups `docs/design/tools-1/07-floating-tools-editing.png`
+/// and `08-floating-tools-plain.png`): a button's side.
+pub const TOOL_BAR_BUTTON: f32 = 30.0;
+/// The tool bar: space between its buttons.
+pub const TOOL_BAR_GAP: f32 = 1.0;
+/// The tool bar: its frame's padding round the buttons, border included.
+pub const TOOL_BAR_PAD: f32 = 4.0;
+/// The tool bar: how far its foot is above the view's.
+pub const TOOL_BAR_MARGIN: f32 = 3.0;
+/// The tool bar: the room the line between the tools and a brush's
+/// Points, Edges and Faces takes across, and the line's length.
+pub const TOOL_BAR_DIVIDER: [f32; 2] = [21.0, 19.0];
+/// The tool bar: its least button on the pills' row, as it shrinks to
+/// stay there rather than go above them. Solis's own.
+pub const TOOL_BAR_LEAST_BUTTON: f32 = 20.0;
+/// The tool bar: its least button in a view narrower than the bar at
+/// [`TOOL_BAR_LEAST_BUTTON`]. Solis's own.
+pub const TOOL_BAR_SMALLEST_BUTTON: f32 = 12.0;
+/// The tool bar: the gap between its top and a strip of keys over it.
+pub const TOOL_BAR_STRIP_GAP: f32 = 2.0;
+/// The tool bar: how far a button's key sits in from its corner.
+pub const TOOL_BAR_KEY_INSET: f32 = 2.0;
+/// The tool bar: the least button that shows its key in its corner;
+/// smaller ones, shrunk in a narrow view, leave it to the hover text.
+/// Solis's own.
+pub const TOOL_BAR_KEYED_BUTTON: f32 = 26.0;
+/// The tool bar: the least room left round a shrunk button's icon.
+/// Solis's own.
+pub const TOOL_BAR_ICON_ROOM: f32 = 6.0;
 
 /// The shelf bar's height.
 pub const SHELF_BAR_H: f32 = 34.0;

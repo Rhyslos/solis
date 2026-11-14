@@ -575,7 +575,7 @@ icons! {
             "M3 9.5a5.2 5.2 0 009.4 1.5",
             "M13 13.5v-3h-3",
         ];
-    /// Move's four arrows round Rotate's ring: Toolbox › Transform (T).
+    /// Move's four arrows round Rotate's ring: the tool bar's Transform (T).
     Transform = "transform", Line,
         lines: [
             "M8 1.5v3M6 3.5l2-2 2 2",

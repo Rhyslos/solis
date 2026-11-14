@@ -180,7 +180,7 @@ The everyday editing screen: the 3D viewport and the selected object’s script 
 ### Center, left group: viewport (about 60% of the width)
 
 - **Document tabs:** “Docks\_Night.level” (active), “Docks\_Day.level”. Several levels can be open at once.
-- **Toolbox** (44 px column, #141414, right border #262626), 34 × 34 px buttons, top to bottom: Select, **Move (active: accent fill, dark icon)**, Rotate, Scale, a 22 px divider, Pose bones, Motion path, Add key, Measure. Intended shortcuts: Q / W / E / R for the first four.
+- **Toolbox** (44 px column, #141414, right border #262626), 34 × 34 px buttons, top to bottom: Select, **Move (active: accent fill, dark icon)**, Rotate, Scale, a 22 px divider, Pose bones, Motion path, Add key, Measure. Intended shortcuts: Q / W / E / R for the first four. *(Solis's note: the area's tools float in a bar at the foot of the view instead of this column, as the project lead asked on 2026-11-14, [decision 0114](../../decisions/0114-the-tools-float-in-the-view.md); the UI canvas keeps its toolbox column.)*
 - **Viewport scene:** sky gradient #141414 → #2A2A2A down to the horizon (44% height), floor #202020 with perspective grid lines in white at 5% opacity. Objects are flat-shaded grays (lit faces lighter). The selected crane has a 1.5 px accent outline; its animation path is a dashed accent curve with an accent start dot and a light end dot.
 - **Move gizmo:** three 2.5 px rounded arrows from the object’s pivot — X red (#E5534B) to the right, Y green (#6CC24A) up, Z blue (#4C8DFF) toward the viewer.
 - **Overlays:** top left, pills “Perspective ▾” and “Lit ▾” (view and shading menus); top right, a mono pill “6.9 ms · 144 fps”. Pills are 24 px, #121212 at 85% with a #2E2E2E border.

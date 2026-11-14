@@ -1,6 +1,6 @@
 # docs/design/tools-1
 
-The approved mock-ups of Tools 1: shape brushes and world sculpting ([the plan](../../plans/tools-1.md), [decision 0111](../../decisions/0111-tools-1-brushes-and-ground.md)). The project lead approved them on 2026-11-13. They are drawn in the G layout's language ([decision 0099](../../decisions/0099-the-g-layout.md)) on Home's standard layout ([decision 0109](../../decisions/0109-layouts-as-a-setting.md)).
+The approved mock-ups of Tools 1: shape brushes and world sculpting ([the plan](../../plans/tools-1.md), [decision 0111](../../decisions/0111-tools-1-brushes-and-ground.md)). The project lead approved them on 2026-11-13, and the floating tools (07 and 08) on 2026-11-14. They are drawn in the G layout's language ([decision 0099](../../decisions/0099-the-g-layout.md)) on Home's standard layout ([decision 0109](../../decisions/0109-layouts-as-a-setting.md)).
 
 | File | What it shows |
 | --- | --- |
@@ -10,6 +10,8 @@ The approved mock-ups of Tools 1: shape brushes and world sculpting ([the plan](
 | `04-brush-extrude.png` | An extrude under way: the new part's ghost, the distance, the gizmo. |
 | `05-ground-sculpt.png` | The HOME TOOLS · Ground tab (Add, Dig, Smooth, Flatten, Paint; Size, Strength, Falloff; Look), the brush's circle, the Ground shelf tab (materials, mouse and keys, what's under the pointer). |
 | `06-ground-looks.png` | One hill and cave in the Smooth, Blocky and Sharp looks. |
+| `07-floating-tools-editing.png` | The tools floating at the foot of the view while a brush is edited ([decision 0114](../../decisions/0114-the-tools-float-in-the-view.md), approved 2026-11-14): Select, Move, Rotate, Scale and Transform with their keys small in a corner, a line, then Points 1, Edges 2 and Faces 3; Move and Faces lit; the keys' strip just above, the bottom-right pills beside. |
+| `08-floating-tools-plain.png` | The same bar with no brush being edited: the five tools alone. |
 
 ## Settled with the approval
 

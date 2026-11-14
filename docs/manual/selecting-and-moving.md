@@ -23,7 +23,7 @@ Clicking on empty sky or ground selects nothing.
 
 **Moving, turning and resizing:**
 1. Select something.
-2. Choose a tool with its key or its button in the toolbox, the column down the viewport's left edge: **Move (W)**, **Rotate (R)**, **Scale (S)**, or **Transform (T)**, which shows all three. **Select (Q)** shows no gizmo, so clicks only select.
+2. Choose a tool with its key or its button on the **tool bar**, the rounded bar floating at the foot of the viewport: **Move (W)**, **Rotate (R)**, **Scale (S)**, or **Transform (T)**, which shows all three. **Select (Q)** shows no gizmo, so clicks only select. Each button has its key small in its corner, and the tool in use is filled with the accent colour; point at a button to see its name. The keys and the buttons do the same thing, so use whichever is nearer your hand.
 3. A [gizmo](concepts.md#tools) appears on the selection. Drag one of its handles:
    - **Move:** drag an **arrow** to move along that axis, a **square** to move in that flat plane (the blue-sided square slides along the ground), or the **dot in the middle** to move across the screen.
    - **Rotate:** drag a **ring** to turn around that axis (the blue ring turns like a record on a turntable), or the **outer ring** to turn around the line you're looking along.

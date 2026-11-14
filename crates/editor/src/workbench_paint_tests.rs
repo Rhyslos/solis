@@ -459,3 +459,32 @@ fn scale_check_painting_a_1000_by_1000_map() {
     assert!(ms <= TARGET_MS, "{ms:.2} ms a frame");
     assert!(save_ms <= SAVE_MS, "{save_ms:.0} ms to let go");
 }
+
+#[test]
+fn while_a_painting_tool_is_in_use_no_transform_tool_is_lit_on_the_bar() {
+    use egui_kittest::kittest::NodeT as _;
+    let lit = |h: &egui_kittest::Harness<'static, State>, label: &str| {
+        h.get_by_label(label).accesskit_node().toggled() == Some(egui::accesskit::Toggled::True)
+    };
+    let tools = [
+        "Select (Q)",
+        "Move (W)",
+        "Rotate (R)",
+        "Scale (S)",
+        "Transform (T)",
+    ];
+    let mut h = harness(painting(PaintTool::Fill));
+    h.run();
+    h.run();
+    assert!(h.state().0.viewport.tile_overlay.paint.painting());
+    for label in tools {
+        assert!(!lit(&h, label), "{label} unlit while painting");
+    }
+    // A click on one puts the painting tool down and lights it.
+    h.get_by_label("Move (W)").click();
+    h.run();
+    h.run();
+    assert_eq!(h.state().0.viewport.tile_overlay.paint.tool, None);
+    assert_eq!(h.state().0.tool(), crate::viewport::Tool::Move);
+    assert!(lit(&h, "Move (W)"));
+}

@@ -113,6 +113,18 @@ impl Picture {
         half
     }
 
+    /// The part of the picture from `min`, `size` pixels: what's outside
+    /// the picture is its nearest edge's colour.
+    pub(crate) fn cropped(&self, min: [u32; 2], size: [u32; 2]) -> Self {
+        let mut part = Self::filled(size, Color32::BLACK);
+        for y in 0..size[1] {
+            for x in 0..size[0] {
+                part.put(x, y, self.pixel(min[0] + x, min[1] + y));
+            }
+        }
+        part
+    }
+
     /// Two pictures side by side with a gap, for looking at.
     pub(crate) fn beside(&self, other: &Self, gap: u32, between: Color32) -> Self {
         let size = [
