@@ -143,3 +143,30 @@ fn every_example_s_lua_and_rust_call_only_what_game_code_can() {
         wrong.join("\n  ")
     );
 }
+
+/// Colouring never changes an example: take the spans away and each
+/// language's code is as the manual wrote it, with every span closed.
+#[test]
+fn colouring_never_changes_an_example_s_text() {
+    let mut coloured = 0;
+    for example in examples() {
+        for ((language, _), code) in user_guide::examples::LANGUAGES.iter().zip(&example.code) {
+            let html = user_guide::colour::code(language, code);
+            let start = example.code[0].lines().next().unwrap_or("");
+            assert_eq!(
+                user_guide::colour::text_of(&html),
+                *code,
+                "{}.md, the example starting \"{start}\": its {language} changed when coloured",
+                example.page
+            );
+            assert_eq!(
+                html.matches("<span class=\"tk-").count(),
+                html.matches("</span>").count(),
+                "{}.md, the example starting \"{start}\": its {language}'s spans",
+                example.page
+            );
+            coloured += usize::from(html.contains("<span"));
+        }
+    }
+    assert!(coloured >= 60, "only {coloured} blocks were coloured");
+}

@@ -28,6 +28,19 @@
   --scrim: rgba(20, 20, 20, 0.35);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 20px rgba(0, 0, 0, 0.06);
   --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.12);
+  /* Code in Ledger's quiet colours (Ledger, the project lead's editor
+     for Lust; src/colour.rs). Five are a little darker than Ledger's,
+     to read at 4.5:1 on white: --lust-red #d9433b, --lust-flow #b8635c,
+     --lust-type #6f8a69, --lust-punct #9d9d99, --lust-state #1f8a78. */
+  --lust-red: #d83e36;
+  --lust-flow: #b55d56;
+  --lust-value: #8a6a2b;
+  --lust-comment: #3f7f3f;
+  --lust-type: #657d5f;
+  --lust-punct: #777772;
+  --lust-state: #1e8573;
+  --lust-class: #3566a8;
+  --lust-object: #b35a1f;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -56,6 +69,15 @@
     --scrim: rgba(0, 0, 0, 0.6);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.3);
     --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.45), 0 16px 40px rgba(0, 0, 0, 0.5);
+    --lust-red: #ff5f56;
+    --lust-flow: #f0a39e;
+    --lust-value: #d7ba7d;
+    --lust-comment: #6a9955;
+    --lust-type: #a1b59c;
+    --lust-punct: #7f8285;
+    --lust-state: #4fc4ab;
+    --lust-class: #7fa9dc;
+    --lust-object: #e8935a;
     color-scheme: dark;
   }
 }
@@ -84,6 +106,15 @@
   --scrim: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.3);
   --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.45), 0 16px 40px rgba(0, 0, 0, 0.5);
+  --lust-red: #ff5f56;
+  --lust-flow: #f0a39e;
+  --lust-value: #d7ba7d;
+  --lust-comment: #6a9955;
+  --lust-type: #a1b59c;
+  --lust-punct: #7f8285;
+  --lust-state: #4fc4ab;
+  --lust-class: #7fa9dc;
+  --lust-object: #e8935a;
   color-scheme: dark;
 }
 
@@ -106,6 +137,18 @@ code, kbd, pre { font-family: "JetBrains Mono", ui-monospace, Consolas, monospac
 code { font-size: 0.86em; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 0.08em 0.36em; overflow-wrap: anywhere; }
 pre { margin: 1em 0 1.4em; padding: 0.9em 1.1em; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-size: 0.84rem; line-height: 1.6; max-width: 100%; }
 pre code { background: none; border: 0; padding: 0; font-size: inherit; overflow-wrap: normal; }
+/* Game code's tokens (src/colour.rs): structure, flow, types, values,
+   comments, classes, objects, punctuation, states. Dark's punctuation is
+   a shade lighter than Ledger's #7c7f83, for the same reason. */
+.tk-k { color: var(--lust-red); font-weight: 500; }
+.tk-f { color: var(--lust-flow); }
+.tk-t { color: var(--lust-type); }
+.tk-v { color: var(--lust-value); }
+.tk-c { color: var(--lust-comment); font-style: italic; }
+.tk-n { color: var(--lust-class); }
+.tk-o { color: var(--lust-object); }
+.tk-p { color: var(--lust-punct); }
+.tk-s { color: var(--lust-state); font-weight: 500; }
 kbd {
   display: inline-block;
   min-width: 1.75em;

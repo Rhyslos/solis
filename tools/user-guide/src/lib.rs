@@ -16,6 +16,7 @@
 //! makes now.
 
 pub mod blocks;
+pub mod colour;
 pub mod contents;
 pub mod examples;
 mod guide;

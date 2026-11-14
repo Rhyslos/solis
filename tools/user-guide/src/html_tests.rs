@@ -119,7 +119,8 @@ fn three_languages_in_a_row_are_one_example_with_a_switch() {
     assert!(out.contains("<button type=\"button\" role=\"tab\" data-lang=\"lust\" aria-selected=\"true\">Lust</button>"));
     assert!(out.contains("data-lang=\"rust\" aria-selected=\"false\">Rust</button>"));
     assert!(out.contains(
-        "<pre data-lang=\"rust\" data-name=\"Rust\"><code>let a = 1 &lt; 2;</code></pre>"
+        "<pre data-lang=\"rust\" data-name=\"Rust\"><code><span class=\"tk-k\">let</span> a = \
+         <span class=\"tk-v\">1</span> &lt; <span class=\"tk-v\">2</span><span class=\"tk-p\">;</span></code></pre>"
     ));
     assert!(
         out.find("data-lang=\"lust\" data-name").unwrap()

@@ -323,3 +323,44 @@ fn the_dark_theme_is_the_editors_tokens() {
     }
     assert!(named >= 14, "only {named} colours name their token");
 }
+
+/// Each of code's colours reads at 4.5:1 or better on the code's
+/// background (`--surface`), light and dark.
+#[test]
+fn code_colours_read_on_their_background() {
+    fn luminance(hex: &str) -> f64 {
+        let channel = |at: usize| {
+            let c = f64::from(u8::from_str_radix(&hex[at..at + 2], 16).unwrap()) / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5)
+    }
+    let style = include_str!("../assets/guide.css");
+    let dark_start = style.find("@media (prefers-color-scheme: dark)").unwrap();
+    let chosen_start = style.find(":root[data-theme=\"dark\"]").unwrap();
+    for block in [&style[..dark_start], &style[dark_start..chosen_start]] {
+        let value = |name: &str| {
+            let at = block.find(&format!("{name}: #")).unwrap() + name.len() + 2;
+            block[at..at + 7].to_string()
+        };
+        let background = luminance(&value("--surface"));
+        let names: Vec<&str> = block
+            .lines()
+            .filter_map(|l| {
+                let (name, _) = l.trim().strip_prefix("--lust-")?.split_once(':')?;
+                (!name.contains(' ')).then_some(name)
+            })
+            .collect();
+        assert_eq!(names.len(), 9, "{names:?}");
+        for name in names {
+            let colour = value(&format!("--lust-{name}"));
+            let (a, b) = (luminance(&colour), background);
+            let ratio = (a.max(b) + 0.05) / (a.min(b) + 0.05);
+            assert!(ratio >= 4.5, "--lust-{name} {colour} is only {ratio:.2}:1");
+        }
+    }
+}

@@ -340,11 +340,45 @@
     });
     parents.forEach(function (p) { p.normalize(); });
   }
+  /* Coloured code is cut into a span per token, so a match there can
+     cross them (Action.Jump): each block's text is searched whole, and
+     each piece of a match is marked in the span it is in. */
+  function markAcross(code, re) {
+    var nodes = [], text = "", found = [], m;
+    var walker = doc.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) { nodes.push({ node: walker.currentNode, from: text.length }); text += walker.currentNode.nodeValue; }
+    re.lastIndex = 0;
+    while ((m = re.exec(text)) !== null) {
+      if (m[0].length === 0) { re.lastIndex++; continue; }
+      found.push([m.index, m.index + m[0].length]);
+    }
+    if (!found.length) { return; }
+    nodes.forEach(function (n) {
+      var value = n.node.nodeValue, start = n.from, end = start + value.length, last = 0, frag = null;
+      found.forEach(function (f) {
+        var a = Math.max(f[0], start) - start, b = Math.min(f[1], end) - start;
+        if (a >= b) { return; }
+        frag = frag || doc.createDocumentFragment();
+        frag.appendChild(doc.createTextNode(value.slice(last, a)));
+        var mark = doc.createElement("mark");
+        mark.className = "hl";
+        mark.textContent = value.slice(a, b);
+        frag.appendChild(mark);
+        last = b;
+      });
+      if (!frag) { return; }
+      frag.appendChild(doc.createTextNode(value.slice(last)));
+      n.node.parentNode.replaceChild(frag, n.node);
+    });
+  }
   function markWords(el, re) {
+    if (el.querySelectorAll) {
+      each(el.tagName === "PRE" ? el.querySelectorAll("code") : el.querySelectorAll("pre code"), function (c) { markAcross(c, re); });
+    }
     var walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
         var p = n.parentNode;
-        if (!p || /^(SCRIPT|STYLE|MARK|BUTTON)$/.test(p.nodeName) || p.classList.contains("anchor")) { return NodeFilter.FILTER_REJECT; }
+        if (!p || /^(SCRIPT|STYLE|MARK|BUTTON)$/.test(p.nodeName) || p.classList.contains("anchor") || p.closest("pre")) { return NodeFilter.FILTER_REJECT; }
         re.lastIndex = 0;
         return re.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
       }
