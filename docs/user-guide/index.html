@@ -947,6 +947,8 @@ end</code></pre>
 <li><strong>Brush list:</strong> the list of shapes a brush can start as (Box, Ramp, Cylinder, Stairs, Arch, Sphere, Wedge), opened with <span class="keys"><kbd>B</kbd></span> over the view or Home's <strong>Shape</strong> button. See <a href="#brushes">Brushes</a>.</li>
 <li><strong>Drawing out:</strong> making a brush with the mouse: drag its <strong>footprint</strong> (the shape's outline on the ground, its two sides), then move the mouse up for its height and click. See <a href="#brushes">Brushes</a>.</li>
 <li><strong>Mesh:</strong> a shape made of <strong>points</strong> joined into flat <strong>faces</strong>, each face's sides being its <strong>edges</strong>. Models and brushes are meshes; a brush's faces can have any number of corners, and are cut into triangles to draw.</li>
+<li><strong>Point, edge, face:</strong> the parts of a mesh. A <strong>point</strong> (a corner, also called a vertex) is one spot; an <strong>edge</strong> is the straight side between two points, where two faces meet; a <strong>face</strong> is one flat side, its edges all the way round. Editing a brush's insides moves these. A face is <strong>bent</strong> when its corners aren't all on one flat plane: allowed, and cut into triangles to draw. See <a href="#brushes">Brushes</a>.</li>
+<li><strong>Editing a brush's insides:</strong> working on a brush's points, edges or faces instead of the whole brush, started with <span class="keys"><kbd>Tab</kbd></span>. See <a href="#brushes">Brushes</a>.</li>
 <li><strong>Block-out:</strong> a first, rough version of a level made of simple shapes, to try how it plays before anything is modelled.</li>
 <li><strong>Instance:</strong> one copy of a mesh drawn somewhere. A mesh used many times (a crate in a hundred places) is stored once and drawn as many instances, which is much faster than storing a hundred crates.</li>
 </ul>
@@ -2078,7 +2080,7 @@ entity 2B8D4NE6TV0HC {
 </section>
 <section class="chapter" id="brushes" data-num="15">
 <h2>Brushes<a class="anchor" href="#brushes" aria-label="Link to this section">#</a></h2>
-<p class="lead">Shapes made in the editor itself: a box, a ramp, stairs, drawn out on the ground, saved in the area and solid in the game.</p>
+<p class="lead">Shapes made in the editor itself: a box, a ramp, stairs, drawn out on the ground, reshaped point by point, edge by edge and face by face, saved in the area and solid in the game.</p>
 <section id="brushes--when-to-use-it">
 <h3>When to use it<a class="anchor" href="#brushes--when-to-use-it" aria-label="Link to this section">#</a></h3>
 <p>For blocking out a level: the floors, walls, ramps, steps and platforms you walk on while you work out how a place plays. A <strong>brush</strong> is a shape made of flat faces, kept in the area itself, so there's no model to make in another program first: you can try a layout, play it, change it and play it again in minutes. Once the layout is right, brushes can stay (simple, clean shapes suit many art styles) or be replaced by models made elsewhere.</p>
@@ -2108,7 +2110,22 @@ entity 2B8D4NE6TV0HC {
 <p><strong>In the 2D view</strong> (and the flat Front and Right views), the footprint is drawn flat in the view itself and there is no height step: letting go makes the brush, one grid step deep. The status bar and Hints say so.</p>
 <p><strong>What you see while drawing:</strong> the steps along the top of the view (the shape, 1 Footprint, 2 Height, the one in hand outlined), the keys for that step along the bottom, the sizes beside the brush, and what's happening in the status bar (&quot;Drawing a Box: height 1.75 m · Click to keep · Esc to give up&quot;). The <strong>Hints</strong> card in Properties (<a href="#interface-tour">Interface tour</a>) says how it works too.</p>
 <p>Once made, a brush moves, turns and resizes with the gizmos like any entity (<a href="#selecting-and-moving">Selecting and moving</a>), and its <strong>Transform's scale</strong> stretches it. Press <strong>Play</strong>: characters stand on it and bump into it, because it is <strong>Solid</strong>.</p>
-<p>A brush is drawn <strong>flat</strong>: every face is one shade, so its edges look crisp, as a block-out should.</p>
+<p>A brush is drawn <strong>flat</strong>: every face is one shade, so its edges look crisp, as a block-out should. Picked, a brush is outlined along its own edges.</p>
+<p><strong>Editing its insides</strong></p>
+<p>A brush is made of <a href="#concepts--the-area">points, edges and faces</a>. Editing its insides lets you move those parts, not just the whole brush: pull one face of a box out to make it longer, lift one corner of a floor into a slope, turn the top of a pillar.</p>
+<ol class="steps">
+<li>Pick one brush (click it, or click it in the Area list) and press <span class="keys"><kbd>Tab</kbd></span>. The ribbon becomes <strong>Home tools · Brush</strong>, the other entities fade so the brush stands out, its edges are drawn in white, and the top of the view and the status bar say &quot;Editing Box_03 · Faces · nothing picked&quot;.</li>
+<li>Choose what clicks pick: <span class="keys"><kbd>1</kbd></span> <strong>points</strong> (corners), <span class="keys"><kbd>2</kbd></span> <strong>edges</strong> (where two faces meet) or <span class="keys"><kbd>3</kbd></span> <strong>faces</strong> (the flat sides). The same three are the first buttons on the ribbon. Editing starts in faces mode; points show as dots, and each face as a dot at its middle. Switching keeps what you picked: the points of a picked face, or the edges and faces made wholly of picked points.</li>
+<li>Pick parts as you pick entities: a <strong>click</strong> picks the part under the pointer (it lights up before you click), <span class="keys"><kbd>Ctrl</kbd></span> + click adds a part or takes it away, a <strong>drag</strong> on empty space picks everything inside the box (through the brush, its far side too), and a click on empty space picks nothing. Clicks reach only this brush: the others can't be picked while you edit.</li>
+<li>Use the <strong>Move</strong>, <strong>Rotate</strong> or <strong>Scale</strong> tool (<span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>R</kbd></span>, <span class="keys"><kbd>S</kbd></span>) as for entities. The gizmo sits in the middle of what's picked; drag it. Snapping follows <strong>Grid</strong> and <strong>Angle</strong> on the ribbon, and <span class="keys"><kbd>Ctrl</kbd></span> turns it off for one drag. <strong>World</strong> or <strong>Local</strong> (the pill at the bottom right, or <span class="keys"><kbd>L</kbd></span>) chooses the world's axes or the brush's own.</li>
+<li>Press <span class="keys"><kbd>Tab</kbd></span> again, or <strong>Done</strong>, to stop. The ribbon goes back to Home.</li>
+</ol>
+<p>Each drag is <strong>one undo step</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>). Parts shared by what you picked move together, so the brush never comes apart at a seam: moving a face moves its edges and corners, and the faces beside it stretch to follow.</p>
+<div class="note">
+<p>A change that would break the brush is refused. If a move, turn or stretch would fold a face over itself (turn it inside out), flatten a face to nothing (two corners on one spot), or push the brush through itself, the brush snaps back when you let go and the status bar says why (&quot;Put back: it would fold a face over itself&quot;). A face that ends up <strong>bent</strong> (its corners no longer on one flat plane, after lifting one corner) is fine: it is cut into triangles to draw and to be solid.</p>
+</div>
+<p><strong>Undo while editing</strong> steps back through the brush's changes as usual; undoing past the moment you pressed <span class="keys"><kbd>Tab</kbd></span> (the brush's own making, say) ends editing. Picking something else in the Area list ends editing too and picks that instead. <span class="keys"><kbd>Delete</kbd></span> and <span class="keys"><kbd>Backspace</kbd></span> do nothing while you edit (they never delete the whole brush): deleting parts comes with the next update, and the status bar says so. <strong>Extrude</strong>, <strong>Inset</strong>, <strong>Split</strong>, <strong>Delete</strong> and <strong>Material</strong> are on the ribbon already, marked as not finished yet.</p>
+<p><strong>In the 2D view</strong> you edit the same way, moving parts across the view's plane.</p>
 </section>
 <section id="brushes--settings">
 <h3>Settings<a class="anchor" href="#brushes--settings" aria-label="Link to this section">#</a></h3>
@@ -2116,9 +2133,11 @@ entity 2B8D4NE6TV0HC {
 <div class="table-wrap"><table>
 <thead><tr><th>Setting</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td>Made as</td><td>The shape the brush is. Choosing another makes the brush again as that shape, filling the same box it filled (a 4 × 2 × 1 m box becomes a 4 × 2 × 1 m cylinder), in one undo step.</td></tr>
-<tr><td>Solid</td><td>On: the game's characters and bodies collide with it, as with a floor or a wall. Off: it's only drawn, and things pass through it (a light shaft, a hint of where something goes). A brush never falls: it stays where it's placed.</td></tr>
-<tr><td>Points, Faces, Materials</td><td>The brush's shape itself, made by the editor's tools: Properties only says how many numbers each holds.</td></tr>
+<tr><td>Made as</td><td>The shape the brush was made from. Choosing another makes the brush again as that shape, filling the same box it filled (a 4 × 2 × 1 m box becomes a 4 × 2 × 1 m cylinder), in one undo step. If you had edited its insides, those edits are replaced by the fresh shape, and the status bar says so: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> brings them back.</td></tr>
+<tr><td>Size</td><td>The brush's box, in metres (X across, Y deep, Z up), in its own space. Typing a size stretches the brush about its middle, as one undo step; a stretch that would break the brush is refused. Each side is kept between 1 cm and 10 km.</td></tr>
+<tr><td>Material</td><td>Not finished yet: brush materials come with a later update. Every face is drawn in the plain material.</td></tr>
+<tr><td>Solid</td><td>On: the game's characters and bodies collide with it, as with a floor or a wall. Off: it's only drawn, and things pass through it (a light shaft, a hint of where something goes). A brush never falls: it stays where it's placed. Also on the ribbon while editing.</td></tr>
+<tr><td>Points, Edges, Faces</td><td>How many the brush has, in three boxes; while its insides are edited, the box of the mode in use is outlined, and the line under them says what's picked (&quot;Picked: 1 face · Faces mode&quot;).</td></tr>
 </tbody>
 </table></div>
 </section>
@@ -2135,6 +2154,10 @@ entity 2B8D4NE6TV0HC {
 <tr><td>Draw freely, off the grid</td><td>Hold <span class="keys"><kbd>Ctrl</kbd></span> while dragging or pulling up</td></tr>
 <tr><td>Keep the brush</td><td>Move the mouse up, then click</td></tr>
 <tr><td>Give it up</td><td><span class="keys"><kbd>Esc</kbd></span>, or right-click</td></tr>
+<tr><td>Start or stop editing the picked brush's insides</td><td><span class="keys"><kbd>Tab</kbd></span></td></tr>
+<tr><td>Pick points, edges or faces (while editing)</td><td><span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span>, <span class="keys"><kbd>3</kbd></span></td></tr>
+<tr><td>Pick a part; add or take one away; pick with a box</td><td>Click; <span class="keys"><kbd>Ctrl</kbd></span> + click; drag on empty space</td></tr>
+<tr><td>Pick every part of the mode; pick nothing (while editing)</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>; <span class="keys"><kbd>Esc</kbd></span></td></tr>
 </tbody>
 </table></div>
 <p>With a tile map picked, <span class="keys"><kbd>B</kbd></span> is the tile map's Brush instead (<a href="#painting-tiles">Painting tiles</a>); the Shape button still opens the list.</p>
@@ -2142,6 +2165,10 @@ entity 2B8D4NE6TV0HC {
 <section id="brushes--tips-and-common-problems">
 <h3>Tips and common problems<a class="anchor" href="#brushes--tips-and-common-problems" aria-label="Link to this section">#</a></h3>
 <ul>
+<li><strong>Problem:</strong> <span class="keys"><kbd>Tab</kbd></span> does nothing. <strong>Why:</strong> editing needs exactly one brush picked, and the game stopped. <strong>Fix:</strong> click one brush (not a lamp or a model), or stop the game.</li>
+<li><strong>Problem:</strong> a drag snapped back when let go. <strong>Why:</strong> it would have broken the brush; the status bar said how. <strong>Fix:</strong> move less far, or move the faces beside it too (pick them with <span class="keys"><kbd>Ctrl</kbd></span> + click), so nothing folds over.</li>
+<li><strong>Problem:</strong> clicking another entity while editing doesn't pick it. <strong>Why:</strong> while editing, clicks reach only the brush being edited. <strong>Fix:</strong> press <span class="keys"><kbd>Tab</kbd></span> to stop, or pick the other entity in the Area list.</li>
+<li><strong>Problem:</strong> <span class="keys"><kbd>Delete</kbd></span> doesn't delete the brush. <strong>Why:</strong> while editing, Delete is kept for deleting parts, which comes with the next update. <strong>Fix:</strong> press <span class="keys"><kbd>Tab</kbd></span> to stop editing, then <span class="keys"><kbd>Delete</kbd></span>.</li>
 <li><strong>Problem:</strong> pressing <span class="keys"><kbd>B</kbd></span> paints tiles instead of opening the list. <strong>Why:</strong> a tile map is picked, and B is its Brush. <strong>Fix:</strong> pick something else (or nothing, <span class="keys"><kbd>Esc</kbd></span>), or use the <strong>Shape</strong> button.</li>
 <li><strong>Problem:</strong> &quot;Nothing made: the footprint had no size&quot;. <strong>Why:</strong> you clicked without dragging. <strong>Fix:</strong> press and drag to the opposite corner before letting go.</li>
 <li><strong>Problem:</strong> &quot;Nothing made: the brush had no height&quot;. <strong>Why:</strong> you clicked before moving the mouse up. <strong>Fix:</strong> after letting go of the footprint, move the mouse up until the height shows, then click.</li>
@@ -2158,7 +2185,8 @@ entity 2B8D4NE6TV0HC {
 <li><a href="#physics">Physics</a>: colliders and bodies, which a Solid brush works with.</li>
 <li><a href="#saving-areas">Saving areas</a>: how a brush is written in the area's file.</li>
 <li><a href="#keyboard-shortcuts">Keyboard shortcuts</a>: every key in one place.</li>
-<li><a href="#concepts--the-area">Concepts</a>: brush, footprint, mesh, face.</li>
+<li><a href="#selecting-and-moving">Selecting and moving things</a>: the gizmos, snapping and world or local axes, which editing a brush's insides uses too.</li>
+<li><a href="#concepts--the-area">Concepts</a>: brush, footprint, mesh, point, edge, face.</li>
 </ul>
 </section>
 <nav class="pager" aria-label="Chapters before and after"><a class="prev" href="#assemblies"><span class="dir">← Previous · Chapter 14</span><span class="name">Assemblies</span></a><a class="next" href="#play-mode"><span class="dir">Next → · Chapter 16</span><span class="name">Play mode</span></a></nav>
@@ -6392,7 +6420,11 @@ end</code></pre>
 <tr><td>Give the brush up, leaving nothing</td><td><span class="keys"><kbd>Esc</kbd></span>, or right-click</td></tr>
 </tbody>
 </table></div>
-<p>With a tile map picked, <span class="keys"><kbd>B</kbd></span> is the tile map's Brush instead (below). See <a href="#brushes">Brushes</a>.</p>
+<p>| Start or stop editing the picked brush's insides (or <strong>Done</strong> on <strong>Home tools · Brush</strong>) | <span class="keys"><kbd>Tab</kbd></span> |
+| Pick points, edges or faces, while editing | <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span>, <span class="keys"><kbd>3</kbd></span> |
+| Add a part to the pick, or take it away, while editing | <span class="keys"><kbd>Ctrl</kbd></span> + click |
+| Do nothing to the brush (deleting parts comes later) | <span class="keys"><kbd>Delete</kbd></span>, <span class="keys"><kbd>Backspace</kbd></span>, while editing |</p>
+<p>With a tile map picked, <span class="keys"><kbd>B</kbd></span> is the tile map's Brush instead, and <span class="keys"><kbd>Tab</kbd></span> its art or meaning (below). Over the UI canvas, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> and <span class="keys"><kbd>3</kbd></span> stay its tools. See <a href="#brushes">Brushes</a>.</p>
 </section>
 <section id="keyboard-shortcuts--the-frames-tab-a-clips-file-open">
 <h3>The Frames tab (a clips file open)<a class="anchor" href="#keyboard-shortcuts--the-frames-tab-a-clips-file-open" aria-label="Link to this section">#</a></h3>

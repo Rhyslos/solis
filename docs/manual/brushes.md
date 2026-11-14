@@ -1,6 +1,6 @@
 # Brushes
 
-> Shapes made in the editor itself: a box, a ramp, stairs, drawn out on the ground, saved in the area and solid in the game.
+> Shapes made in the editor itself: a box, a ramp, stairs, drawn out on the ground, reshaped point by point, edge by edge and face by face, saved in the area and solid in the game.
 
 ## When to use it
 For blocking out a level: the floors, walls, ramps, steps and platforms you walk on while you work out how a place plays. A **brush** is a shape made of flat faces, kept in the area itself, so there's no model to make in another program first: you can try a layout, play it, change it and play it again in minutes. Once the layout is right, brushes can stay (simple, clean shapes suit many art styles) or be replaced by models made elsewhere.
@@ -34,16 +34,36 @@ Corners and heights land on the grid, in the step set in the ribbon's **Grid** (
 
 Once made, a brush moves, turns and resizes with the gizmos like any entity ([Selecting and moving](selecting-and-moving.md)), and its **Transform's scale** stretches it. Press **Play**: characters stand on it and bump into it, because it is **Solid**.
 
-A brush is drawn **flat**: every face is one shade, so its edges look crisp, as a block-out should.
+A brush is drawn **flat**: every face is one shade, so its edges look crisp, as a block-out should. Picked, a brush is outlined along its own edges.
+
+**Editing its insides**
+
+A brush is made of [points, edges and faces](concepts.md#the-area). Editing its insides lets you move those parts, not just the whole brush: pull one face of a box out to make it longer, lift one corner of a floor into a slope, turn the top of a pillar.
+
+1. Pick one brush (click it, or click it in the Area list) and press `Tab`. The ribbon becomes **Home tools · Brush**, the other entities fade so the brush stands out, its edges are drawn in white, and the top of the view and the status bar say "Editing Box_03 · Faces · nothing picked".
+2. Choose what clicks pick: `1` **points** (corners), `2` **edges** (where two faces meet) or `3` **faces** (the flat sides). The same three are the first buttons on the ribbon. Editing starts in faces mode; points show as dots, and each face as a dot at its middle. Switching keeps what you picked: the points of a picked face, or the edges and faces made wholly of picked points.
+3. Pick parts as you pick entities: a **click** picks the part under the pointer (it lights up before you click), `Ctrl` + click adds a part or takes it away, a **drag** on empty space picks everything inside the box (through the brush, its far side too), and a click on empty space picks nothing. Clicks reach only this brush: the others can't be picked while you edit.
+4. Use the **Move**, **Rotate** or **Scale** tool (`W`, `R`, `S`) as for entities. The gizmo sits in the middle of what's picked; drag it. Snapping follows **Grid** and **Angle** on the ribbon, and `Ctrl` turns it off for one drag. **World** or **Local** (the pill at the bottom right, or `L`) chooses the world's axes or the brush's own.
+5. Press `Tab` again, or **Done**, to stop. The ribbon goes back to Home.
+
+Each drag is **one undo step** (`Ctrl + Z`). Parts shared by what you picked move together, so the brush never comes apart at a seam: moving a face moves its edges and corners, and the faces beside it stretch to follow.
+
+> **Good to know:** a change that would break the brush is refused. If a move, turn or stretch would fold a face over itself (turn it inside out), flatten a face to nothing (two corners on one spot), or push the brush through itself, the brush snaps back when you let go and the status bar says why ("Put back: it would fold a face over itself"). A face that ends up **bent** (its corners no longer on one flat plane, after lifting one corner) is fine: it is cut into triangles to draw and to be solid.
+
+**Undo while editing** steps back through the brush's changes as usual; undoing past the moment you pressed `Tab` (the brush's own making, say) ends editing. Picking something else in the Area list ends editing too and picks that instead. `Delete` and `Backspace` do nothing while you edit (they never delete the whole brush): deleting parts comes with the next update, and the status bar says so. **Extrude**, **Inset**, **Split**, **Delete** and **Material** are on the ribbon already, marked as not finished yet.
+
+**In the 2D view** you edit the same way, moving parts across the view's plane.
 
 ## Settings
 The **Brush** card in Properties:
 
 | Setting | What it does |
 |---|---|
-| Made as | The shape the brush is. Choosing another makes the brush again as that shape, filling the same box it filled (a 4 × 2 × 1 m box becomes a 4 × 2 × 1 m cylinder), in one undo step. |
-| Solid | On: the game's characters and bodies collide with it, as with a floor or a wall. Off: it's only drawn, and things pass through it (a light shaft, a hint of where something goes). A brush never falls: it stays where it's placed. |
-| Points, Faces, Materials | The brush's shape itself, made by the editor's tools: Properties only says how many numbers each holds. |
+| Made as | The shape the brush was made from. Choosing another makes the brush again as that shape, filling the same box it filled (a 4 × 2 × 1 m box becomes a 4 × 2 × 1 m cylinder), in one undo step. If you had edited its insides, those edits are replaced by the fresh shape, and the status bar says so: `Ctrl + Z` brings them back. |
+| Size | The brush's box, in metres (X across, Y deep, Z up), in its own space. Typing a size stretches the brush about its middle, as one undo step; a stretch that would break the brush is refused. Each side is kept between 1 cm and 10 km. |
+| Material | Not finished yet: brush materials come with a later update. Every face is drawn in the plain material. |
+| Solid | On: the game's characters and bodies collide with it, as with a floor or a wall. Off: it's only drawn, and things pass through it (a light shaft, a hint of where something goes). A brush never falls: it stays where it's placed. Also on the ribbon while editing. |
+| Points, Edges, Faces | How many the brush has, in three boxes; while its insides are edited, the box of the mode in use is outlined, and the line under them says what's picked ("Picked: 1 face · Faces mode"). |
 
 ## Shortcuts
 | Action | Shortcut |
@@ -56,10 +76,18 @@ The **Brush** card in Properties:
 | Draw freely, off the grid | Hold `Ctrl` while dragging or pulling up |
 | Keep the brush | Move the mouse up, then click |
 | Give it up | `Esc`, or right-click |
+| Start or stop editing the picked brush's insides | `Tab` |
+| Pick points, edges or faces (while editing) | `1`, `2`, `3` |
+| Pick a part; add or take one away; pick with a box | Click; `Ctrl` + click; drag on empty space |
+| Pick every part of the mode; pick nothing (while editing) | `Ctrl + A`; `Esc` |
 
 With a tile map picked, `B` is the tile map's Brush instead ([Painting tiles](painting-tiles.md)); the Shape button still opens the list.
 
 ## Tips and common problems
+- **Problem:** `Tab` does nothing. **Why:** editing needs exactly one brush picked, and the game stopped. **Fix:** click one brush (not a lamp or a model), or stop the game.
+- **Problem:** a drag snapped back when let go. **Why:** it would have broken the brush; the status bar said how. **Fix:** move less far, or move the faces beside it too (pick them with `Ctrl` + click), so nothing folds over.
+- **Problem:** clicking another entity while editing doesn't pick it. **Why:** while editing, clicks reach only the brush being edited. **Fix:** press `Tab` to stop, or pick the other entity in the Area list.
+- **Problem:** `Delete` doesn't delete the brush. **Why:** while editing, Delete is kept for deleting parts, which comes with the next update. **Fix:** press `Tab` to stop editing, then `Delete`.
 - **Problem:** pressing `B` paints tiles instead of opening the list. **Why:** a tile map is picked, and B is its Brush. **Fix:** pick something else (or nothing, `Esc`), or use the **Shape** button.
 - **Problem:** "Nothing made: the footprint had no size". **Why:** you clicked without dragging. **Fix:** press and drag to the opposite corner before letting go.
 - **Problem:** "Nothing made: the brush had no height". **Why:** you clicked before moving the mouse up. **Fix:** after letting go of the footprint, move the mouse up until the height shows, then click.
@@ -73,4 +101,5 @@ With a tile map picked, `B` is the tile map's Brush instead ([Painting tiles](pa
 - [Physics](physics.md): colliders and bodies, which a Solid brush works with.
 - [Saving areas](saving-areas.md): how a brush is written in the area's file.
 - [Keyboard shortcuts](keyboard-shortcuts.md): every key in one place.
-- [Concepts](concepts.md#the-area): brush, footprint, mesh, face.
+- [Selecting and moving things](selecting-and-moving.md): the gizmos, snapping and world or local axes, which editing a brush's insides uses too.
+- [Concepts](concepts.md#the-area): brush, footprint, mesh, point, edge, face.
