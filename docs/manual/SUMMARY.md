@@ -19,7 +19,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Interface tour: the top bar, the panels, and rearranging them](interface-tour.md)
 - [Settings: the editor's own colour, layout and more](settings.md)
 - [Unfinished parts: the grey controls with a small square, what they are, and hiding them](unfinished-parts.md)
-- [Moving around the viewport: the fly camera, several views, flat views, the toolbox and the pills](navigating-the-viewport.md)
+- [Moving around the viewport: the fly camera, several views, flat views, the tool bar and the pills](navigating-the-viewport.md)
 - [Entities and components: what an area is made of](entities.md)
 - [Selecting and moving things: clicking, boxes, and the move, rotate and scale gizmos](selecting-and-moving.md)
 - [Undo and redo: take back any change](undo.md)
@@ -70,7 +70,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Tile maps: a grid of terrains in layers under and over sprites, values every cell has, the Map tab](tile-maps.md)
 - [Atlas Crop: pictures cut out of a sprite sheet](atlas-crop.md)
 - [Tilesets and autotiling: terrains' art from a picture, edges worked out from neighbours, the Tileset tab](tilesets.md)
-- [Painting tiles: brush, rectangle, line, fill and eyedropper in the viewport's toolbox, copies, exact tiles](painting-tiles.md)
+- [Painting tiles: brush, rectangle, line, fill and eyedropper on their own ribbon, copies, exact tiles](painting-tiles.md)
 - [Walls and walking in 2D: solid terrains, Collider2D, the TopDownController](walls-and-walking.md)
 - [Parallax layers: backgrounds and foregrounds that move with the camera at their own speed](parallax.md)
 

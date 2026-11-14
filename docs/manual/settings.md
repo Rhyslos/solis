@@ -38,7 +38,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 | Appearance › Code editor split | An [unfinished part](unfinished-parts.md): it will show game code next to the viewport. Today, game code opens in your own code editor ([Game code](game-code.md)). |
 | Viewport › Frame time and frame rate | The pill at the top right of the viewport. |
 | Viewport › Axis locks, axes and camera speed | The pills at the bottom right: Lock X Y Z, World or Object, and the camera's speed. |
-| Viewport › Toolbox | The column of tools at the viewport's left. Q, W, R, S and T work either way. |
+| Viewport › Tools | The tool bar floating at the foot of the view. Q, W, R, S and T work either way. |
 | Viewport › Preview animation | Sprites play their clips while you edit. Off (the standard), each shows its clip's frame and the editor rests. The game always animates. |
 | Viewport › Grid step, Angle step | The steps moves and turns land on while snapping is on (the Home ribbon's Snapping turns it on and off). |
 | Viewport › In the 2D view, moves land on | **Pixels** (whole pixels, so pixel art stays crisp), **Tiles** or **Off**. |

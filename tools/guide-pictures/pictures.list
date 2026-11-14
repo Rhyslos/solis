@@ -36,7 +36,7 @@ picture editor.png
   label 1290 62 4
   label 120 640 5
   label 690 220 6
-  label 263 470 7
+  label 562 469 7
   label 760 600 8
   label 1270 360 9
   label 700 760 10
@@ -51,7 +51,7 @@ picture area-list.png
 picture view-menu.png
   page navigating-the-viewport.md
   shows The view's pill open: Perspective, Top, Front, Right, 2D and how many views
-  click 335 150
+  click 290 150
   shot 241 130 660 310
   key Escape
 
@@ -61,24 +61,24 @@ picture brush-list.png
   move 700 380
   key b
   wait 1
-  shot 285 130 814 530
+  shot 241 130 858 530
 
 picture brush-drawing.png
   page brushes.md
   shows Drawing a box out: the footprint dragged, the height being chosen
   key space
   wait 1
-  drag 640 400 760 430
-  move 760 400
-  move 760 370
-  move 760 350
+  drag 640 330 760 360
+  move 760 330
+  move 760 300
+  move 760 280
   wait 1
-  shot 285 130 814 361
+  shot 241 130 858 361
 
 picture brush-editing.png
   page brushes.md
   shows Editing a brush: its faces picked with 3, the Brush card counting them
-  click 760 350
+  click 760 290
   wait 1
   key Tab
   wait 1
@@ -117,7 +117,7 @@ picture gizmo.png
   move 690 320
   key w
   move 900 450
-  shot 285 130 814 361
+  shot 241 130 858 361
 
 picture play.png
   page play-mode.md
@@ -220,7 +220,7 @@ picture tile-painter.png
   wait 3
   double 422 563
   wait 3
-  click 335 150
+  click 290 150
   click 376 284
   wait 2
   move 690 320

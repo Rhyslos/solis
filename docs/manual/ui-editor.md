@@ -22,7 +22,7 @@ The UI tab with the UI sample's HUD on the canvas: the screen's pieces in **Elem
 8. **Close the screen:** the **×** on the **Canvas** tab closes it. Nothing is lost: every change was saved as you made it. Double-click the file in the Library to open it again.
 
 ### Drawing new pieces
-The **toolbox** down the canvas's left edge holds the tools, as the viewport's toolbox does on Home: **Select** (picking and moving, as above), **Box**, **Ellipse**, **Line**, **Pen**, **Text**, **Image** and **Button**. Keys `1` to `7` pick them while the pointer is over the canvas, and `E` opens them all in a ring at the pointer, so your hand never leaves the canvas. The hint along the canvas's foot names these keys.
+The **toolbox** down the canvas's left edge holds the tools: **Select** (picking and moving, as above), **Box**, **Ellipse**, **Line**, **Pen**, **Text**, **Image** and **Button**. Keys `1` to `7` pick them while the pointer is over the canvas, and `E` opens them all in a ring at the pointer, so your hand never leaves the canvas. The hint along the canvas's foot names these keys.
 
 - **Box, Ellipse, Line:** drag where it goes. Inside a `canvas` piece the shape is placed where you drew it (its `x` and `y`); anywhere else it gets a small canvas of its own, just big enough, among the pieces where you started the drag. (Shapes only exist inside a canvas in Lust, so a lone box is a canvas holding one.)
 - **Pen:** click each corner, then press `Enter` or double-click to finish. Each corner-to-corner part becomes a `line`. Curves wait for Lust to have paths.

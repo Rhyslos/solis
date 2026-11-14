@@ -1,14 +1,14 @@
 # The editor's approved picture-test images (crates/editor/tests/pictures) when the
 # guide's pictures were last taken, with a hash of each (FNV-1a, 64 bits).
 # Written by tools/guide-pictures/take-pictures.sh; a test fails when they change.
-brush-draw.png 92c2edbf4105563c
-brush-edit-faces.png 86f836e3147a01c7
-brush-edit-points.png b22b9629e71b7056
-brush-list.png f9c471dac2fbe42d
-editor.png 0b176fa43332030f
-home-area-and-assets-left.png 8babaf5ec1920013
-home-area-left-assets-bottom.png e9444dbd347e5dcc
-home-area-left-assets-right.png a7ea7d1f2d1ce22d
+brush-draw.png 4f1ad2a57f0f49cb
+brush-edit-faces.png 77949abb6eba5bbc
+brush-edit-points.png 9f4ad7fb996d038d
+brush-list.png 37eb11c816a16f7a
+editor.png c4d838296d51d5f3
+home-area-and-assets-left.png 415ab56390e468b6
+home-area-left-assets-bottom.png 5fe6a822086ecbd5
+home-area-left-assets-right.png a4967e3601991f89
 icon-sheet.png c694a64561268ad7
 kind-colours.png 80af21e68949c237
 placeholder-sheet.png b0ff0c1cbf32772a
@@ -19,4 +19,7 @@ tab-audio.png dda17d6872266d7f
 tab-library.png ede86d725a39c60f
 tab-ui.png de4b522fa1882a53
 token-sheet.png 6b1f716a3202b855
+tool-bar-editing.png 3b60f358d202dfea
+tool-bar-narrow.png 9b5840270d934d7f
+tool-bar.png 79ddfe66973a0fec
 widget-sheet.png 3add3c477c3021a0
