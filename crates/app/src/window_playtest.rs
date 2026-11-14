@@ -493,7 +493,7 @@ pub fn run_playtest(info: editor::AppInfo, found: Found) -> Result<(), String> {
                 Ok(Box::new(App::new(
                     cc,
                     info,
-                    Vec::new(),
+                    crate::cli::Launch::default(),
                     pending,
                     Some(found),
                 )))

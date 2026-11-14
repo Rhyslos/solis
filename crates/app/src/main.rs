@@ -71,7 +71,7 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         }
-        Ok(Command::Run(imports)) => match app::window::run(app::app_info(), imports) {
+        Ok(Command::Run(launch)) => match app::window::run(app::app_info(), launch) {
             Ok(()) => ExitCode::SUCCESS,
             Err(reason) => {
                 say(

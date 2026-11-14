@@ -31,7 +31,7 @@ pub(super) fn editor_with_project(name: &str) -> (egui::Context, App, PathBuf) {
     let mut app = App::new(
         &cc,
         crate::app_info(),
-        Vec::new(),
+        crate::cli::Launch::default(),
         crate::updates::PendingSlot::default(),
         None,
     );

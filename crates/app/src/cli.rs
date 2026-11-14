@@ -1,5 +1,7 @@
 //! The command line: `--version`, `--help`, or nothing to open the editor
-//! (with `--import <file>` to bring models in as it opens).
+//! (with `--import <file>` to bring models in as it opens, and `--sample
+//! <which> <folder>` to make a sample project and open it, as File ›
+//! Learn does: the guide's picture script starts the editor this way).
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -7,8 +9,8 @@ use std::path::PathBuf;
 /// What the command line asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    /// Open the editor, importing these models.
-    Run(Vec<PathBuf>),
+    /// Open the editor.
+    Run(Launch),
     /// Print the version and exit.
     Version,
     /// Print how to use the program and exit.
@@ -18,11 +20,50 @@ pub enum Command {
     CheckProject(PathBuf),
 }
 
+/// What the editor does as it opens.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Launch {
+    /// Models to import.
+    pub imports: Vec<PathBuf>,
+    /// A sample project to make in an empty folder and open.
+    pub sample: Option<(Sample, PathBuf)>,
+}
+
+/// The sample projects File › Learn makes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sample {
+    /// The turret sample (Make the sample game…).
+    Game,
+    /// The UI sample.
+    Ui,
+    /// The playground.
+    Playground,
+    /// The benchmark.
+    Benchmark,
+}
+
+impl Sample {
+    /// Every sample, by the word the command line takes for it.
+    pub const ALL: [(&'static str, Sample); 4] = [
+        ("game", Sample::Game),
+        ("ui", Sample::Ui),
+        ("playground", Sample::Playground),
+        ("benchmark", Sample::Benchmark),
+    ];
+
+    fn named(word: &str) -> Option<Self> {
+        Self::ALL
+            .iter()
+            .find(|(name, _)| *name == word)
+            .map(|(_, sample)| *sample)
+    }
+}
+
 /// Reads the arguments after the program's name. Anything unknown is
 /// explained in the error.
 pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String> {
     let mut version = false;
-    let mut imports = Vec::new();
+    let mut launch = Launch::default();
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         match arg.to_str() {
@@ -38,9 +79,28 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
                 }
             },
             Some("--import") => match args.next() {
-                Some(file) => imports.push(PathBuf::from(file)),
+                Some(file) => launch.imports.push(PathBuf::from(file)),
                 None => return Err("--import needs a file after it. Try --help.".to_string()),
             },
+            Some("--sample") => {
+                let which = args.next();
+                let sample = which
+                    .as_ref()
+                    .and_then(|w| w.to_str())
+                    .and_then(Sample::named);
+                match (sample, args.next()) {
+                    (Some(sample), Some(folder)) => {
+                        launch.sample = Some((sample, PathBuf::from(folder)));
+                    }
+                    _ => {
+                        return Err(
+                            "--sample needs which sample (game, ui, playground or benchmark) \
+                             and an empty folder after it. Try --help."
+                                .to_string(),
+                        );
+                    }
+                }
+            }
             _ => {
                 return Err(format!(
                     "Unknown option {}. Try --help.",
@@ -52,18 +112,21 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     Ok(if version {
         Command::Version
     } else {
-        Command::Run(imports)
+        Command::Run(launch)
     })
 }
 
 /// How to use the program, for `--help`.
 pub fn usage(program: &str) -> String {
     format!(
-        "Usage: {program} [--import <file>]... [--version | --help]\n       \
+        "Usage: {program} [--import <file>]... [--sample <which> <folder>] [--version | --help]\n       \
          {program} --check-project <folder>\n\n\
          Opens the {name} editor.\n\n\
          Options:\n  \
          --import <file>  Import a glTF model (.gltf or .glb) as the editor opens\n  \
+         --sample <which> <folder>\n                   \
+         Make a sample project (game, ui, playground or benchmark) in an\n                   \
+         empty folder and open it, as File > Learn does\n  \
          --check-project <folder>\n                   \
          Check a project without opening the editor: read every file, check\n                   \
          the game's code and play back recordings/checks/; the report is\n                   \
@@ -84,7 +147,7 @@ mod tests {
 
     #[test]
     fn nothing_opens_the_editor() {
-        assert_eq!(parse(args(&[])), Ok(Command::Run(Vec::new())));
+        assert_eq!(parse(args(&[])), Ok(Command::Run(Launch::default())));
     }
 
     #[test]
@@ -113,13 +176,38 @@ mod tests {
     fn models_can_be_imported_from_the_command_line() {
         assert_eq!(
             parse(args(&["--import", "a.glb", "--import", "b c.gltf"])),
-            Ok(Command::Run(vec![
-                PathBuf::from("a.glb"),
-                PathBuf::from("b c.gltf")
-            ]))
+            Ok(Command::Run(Launch {
+                imports: vec![PathBuf::from("a.glb"), PathBuf::from("b c.gltf")],
+                sample: None,
+            }))
         );
         let err = parse(args(&["--import"])).unwrap_err();
         assert!(err.contains("needs a file"), "{err}");
+    }
+
+    #[test]
+    fn a_sample_can_be_made_from_the_command_line() {
+        for (word, sample) in Sample::ALL {
+            assert_eq!(
+                parse(args(&["--sample", word, "games/try"])),
+                Ok(Command::Run(Launch {
+                    imports: Vec::new(),
+                    sample: Some((sample, PathBuf::from("games/try"))),
+                }))
+            );
+        }
+        for wrong in [
+            &["--sample"][..],
+            &["--sample", "game"],
+            &["--sample", "farm", "x"],
+        ] {
+            let err = parse(args(wrong)).unwrap_err();
+            assert!(
+                err.contains("--sample needs") && err.contains("--help"),
+                "{err}"
+            );
+        }
+        assert!(usage("solis").contains("--sample <which> <folder>"));
     }
 
     #[test]

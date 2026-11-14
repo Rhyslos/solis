@@ -131,7 +131,7 @@ fn every_start_opens_on_recent_projects_with_the_saved_frame_behind_it() {
     let mut app = super::super::App::new(
         &cc,
         crate::app_info(),
-        Vec::new(),
+        crate::cli::Launch::default(),
         crate::updates::PendingSlot::default(),
         None,
     );
