@@ -32,7 +32,7 @@ fn game(dir: &Path, opener: Opener) -> (egui::Context, App) {
     let mut app = App::new(
         &cc,
         crate::app_info(),
-        Vec::new(),
+        crate::cli::Launch::default(),
         crate::updates::PendingSlot::default(),
         Some(found),
     );
@@ -112,7 +112,7 @@ fn the_editor_s_frames_get_the_sound_card_too() {
     let mut app = App::new(
         &cc,
         crate::app_info(),
-        Vec::new(),
+        crate::cli::Launch::default(),
         crate::updates::PendingSlot::default(),
         None,
     );

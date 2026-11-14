@@ -10,6 +10,9 @@ Whenever the player controls something. Game code never asks "is W down?"; it as
 
 ## How to use it
 
+![The input actions](pictures/input-actions.png)
+**File › Project settings › Input**: each of the project's actions and the keys, buttons and sticks that set it off.
+
 **Playing with the keys and mouse**
 1. Press **Play**.
 2. **Click the Game panel.** The game now has the mouse and keys: the pointer disappears (moving the mouse turns, instead of moving a pointer), and the editor's own keys (W for the move tool, Delete, Ctrl + Z…) are off, so they can't change your area by accident while you play.
@@ -51,9 +54,9 @@ While a screen with buttons is shown, only the four menu actions reach game code
 
 Changes are saved straight away, and a game that's playing takes them at once (any rebinding game code did in this play gives way to them). A speed you drag shows its number as you go and counts when you let go of the mouse, and a typed one when you press Enter or click somewhere else: the change is saved, and reaches a playing game, then. They're kept in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
 
-**In game code**, the actions are names Lust checks: Solis writes them into `solis/project.lst` as `state Action` whenever you change them here, so `Action.Jmp` is a mistake before the game runs, listing the real actions. Fetch `Input` and `Action`, and ask `Input` (in Lua, `solis.Input:held("Jump")`):
+**In game code**, the actions are names Lust checks: Solis writes them into `solis/project.lst` as `state Action` whenever you change them here, so `Action.Jmp` is a mistake before the game runs, listing the real actions. Fetch `Input` and `Action`, and ask `Input`. In Lua the action's name is text (`solis.Input:held("Jump")`), and in Rust the host gives an action's whole state at once (`cx.host().action("Jump")`, with `held`, `pressed`, `released` and `axis`):
 
-```
+```lust
 fetch "solis/input":Input;
 fetch "solis/project":Action;
 
@@ -73,6 +76,45 @@ component Walker {
 }
 
 pass Walker;
+end
+```
+
+```rust
+use glam::Vec3;
+use script::{Context, RustComponent};
+
+pub struct Walker {
+    speed: f32,
+}
+
+impl RustComponent for Walker {
+    fn update(&mut self, cx: &mut Context<'_>, dt: f64) {
+        let me = cx.me();
+        let way = cx.host().action("Move").axis;
+        let step = Vec3::new(way.x, way.y, 0.0);
+        let here = cx.host().position(me).unwrap_or_default();
+        cx.host().move_to(me, here + step * self.speed * dt as f32);
+        if cx.host().action("Jump").pressed {
+            cx.host().move_to(me, here + Vec3::new(0.0, 0.0, 1.0));
+        }
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Walker = component("Walker", {
+    { "speed", "float", 4 },
+})
+
+function Walker:update(dt)
+    local way = solis.Input:axis("Move")
+    local step = vec3(way.x, way.y, 0)
+    solis.entity.moveTo(self.me, solis.entity.position(self.me) + step * self.speed * dt)
+    if solis.Input:pressed("Jump") then
+        solis.entity.moveTo(self.me, solis.entity.position(self.me) + vec3(0, 0, 1))
+    end
 end
 ```
 

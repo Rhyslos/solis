@@ -8,6 +8,10 @@
 - A single sound you only ever play once, such as one piece of music, still works best as an event with one take: the event holds its settings.
 
 ## How to use it
+
+![The sound events](pictures/sound-events.png)
+The project's sound events on the Audio tab's shelf: each one's bus, volume, placement and takes, and the one picked at the right.
+
 1. **Make one:** in the **Library**, **New › Sound event** (right-click in the Library, or **+ New**). It's made in the folder shown, called "New sound event", and shown in Details (Properties). Rename it like any file (right-click › **Rename…**), say to `footstep`.
 2. **Add takes:** drag sound files from the Library onto the event's tile, or into the **Takes** list in Properties. Five to eight takes of a footstep is plenty. The tile shows how many it has (×5).
 3. **Listen:** press **Play** in Properties, or point at the event's tile and click its **▶**. Each press picks a different take, pitch and volume, never the same take twice in a row, and the line under Play says what it picked. Press it a few times to hear the variety.

@@ -8,6 +8,10 @@ A [tile map](tile-maps.md) is a grid of [terrains](concepts.md#2d): grass, tille
 Painting is for the map file, the world as the game starts. While the game runs, the map is the game's own copy, so painting is off then; game code changes cells as you play.
 
 ## How to use it
+
+![Painting a tile map](pictures/tile-painter.png)
+A tile map picked in the 2D view: the painting tools on the ribbon (**Brush**, **Rectangle**, **Line**, **Fill**, **Eyedropper**), and its layers and terrains on the **Map** tab, where a terrain's swatch is the paint.
+
 1. **Select the map's entity** (in the Area panel). A **Home tools · Tile map** tab joins the tab bar after Home and comes to the front, with the **Map** tab of the shelf. Its [ribbon](concepts.md#the-window) holds everything for painting, so the viewport stays clear: the tools are on the ribbon rather than in the toolbox because there are five of them and they are only there while a map is selected. Bringing another shelf tab to the front (Entity, say) gives Home's own ribbon back; the Tile map tab, or the Map shelf tab, brings the painting ribbon again.
 2. **Choose a tool** in the ribbon's **Paint** group or with its key: **Brush (B)**, **Rectangle (U)**, **Line (N)**, **Fill (G)** or **Eyedropper (I)**. Q, W, R, S or T goes back to the transform tools. While a tool is in use, its keys show in a hint along the foot of the view.
 3. **Choose what to paint:** click a terrain's swatch in the Map tab's **Terrains** column. The outlined swatch is the one painted, and the ribbon names it beside the tools. Clicking a swatch takes the brush if no painting tool is in use.

@@ -166,7 +166,7 @@ impl App {
     fn new(
         cc: &eframe::CreationContext<'_>,
         info: AppInfo,
-        imports: Vec<PathBuf>,
+        launch: crate::cli::Launch,
         pending: crate::updates::PendingSlot,
         playtest: Option<crate::playtest::Found>,
     ) -> Self {
@@ -261,7 +261,10 @@ impl App {
         // pass's N-04).
         saved.settle(&mut app.workbench);
         app.workbench.start_on_recent_projects();
-        for path in imports {
+        if let Some((sample, folder)) = &launch.sample {
+            app.make_sample(*sample, folder);
+        }
+        for path in launch.imports {
             app.import(&path);
         }
         app
@@ -1558,6 +1561,18 @@ impl App {
         }
     }
 
+    /// Makes one of File › Learn's samples in `folder` and opens it (the
+    /// command line's `--sample`).
+    fn make_sample(&mut self, sample: crate::cli::Sample, folder: &Path) {
+        use crate::cli::Sample;
+        match sample {
+            Sample::Game => self.make_sample_game(folder),
+            Sample::Ui => self.make_ui_sample(folder),
+            Sample::Playground => self.make_playground(folder),
+            Sample::Benchmark => self.make_benchmark(folder),
+        }
+    }
+
     /// Makes the turret sample in `folder` as a new project, opens it and
     /// its area, or says why it couldn't.
     fn make_sample_game(&mut self, folder: &Path) {
@@ -2157,7 +2172,7 @@ impl eframe::App for App {
 }
 
 /// Opens the editor window and runs until it closes.
-pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
+pub fn run(info: AppInfo, launch: crate::cli::Launch) -> Result<(), String> {
     start_jobs();
     let title = format!("{} {}", info.name, info.version);
     let options = eframe::NativeOptions {
@@ -2177,7 +2192,7 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
         eframe::run_native(
             branding::APP_ID,
             options,
-            Box::new(move |cc| Ok(Box::new(App::new(cc, info, imports, slot, None)))),
+            Box::new(move |cc| Ok(Box::new(App::new(cc, info, launch, slot, None)))),
         )
     }));
     // The window is gone: a downloaded update installs now (decision 0043).

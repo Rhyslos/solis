@@ -110,3 +110,7 @@ mod slot_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "manual_examples_tests.rs"]
+mod manual_examples_tests;

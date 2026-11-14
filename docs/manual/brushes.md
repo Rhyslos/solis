@@ -8,6 +8,10 @@ For blocking out a level: the floors, walls, ramps, steps and platforms you walk
 Use an imported [model](importing-models.md) instead for anything detailed or curved, such as a character, a tree or a statue: a brush is made of flat faces.
 
 ## How to use it
+
+![The brush list](pictures/brush-list.png)
+The brush list, opened with `B` over the view: each `B` moves down it, `Space` takes the lit shape.
+
 A brush is made in two parts: you choose its shape from the **brush list**, then **draw it out** in the view: first its footprint on the ground, then its height.
 
 **Choosing a shape**
@@ -18,6 +22,10 @@ A brush is made in two parts: you choose its shape from the **brush list**, then
 The **Shape** button on **Home**, in the **Create** group (its key, B, is written small beside it), opens the same list. It stays lit while the list is open and while you draw.
 
 **Drawing it out**
+
+![Drawing a box out](pictures/brush-drawing.png)
+Drawing a box: the footprint is dragged on the ground, and now the mouse moves up for its height. The sizes show beside the edges, the steps at the top, the keys at the foot.
+
 1. Press the left mouse button on the ground where one corner of the brush should be, and drag to the opposite corner. This is the brush's **footprint**: its size shows in metres beside two of its edges, and in the steps at the top of the view ("1 Footprint · 4 × 3 m").
 2. Let go. Now move the mouse **up** (without pressing anything): the brush rises from the footprint, and an arrow shows its height in metres.
 3. Click to keep it. The brush is added to the Area list, named after its shape (**Box_01**, then Box_02; **Ramp_01** for the first ramp) with its shape's picture and name beside it, and picked, so its gizmo and Properties are ready.
@@ -37,6 +45,9 @@ Once made, a brush moves, turns and resizes with the gizmos like any entity ([Se
 A brush is drawn **flat**: every face is one shade, so its edges look crisp, as a block-out should. Picked, a brush is outlined along its own edges.
 
 **Editing its insides**
+
+![Editing a brush](pictures/brush-editing.png)
+Editing a brush (`Tab`): `3` picks faces, the other entities fade, and the **Brush** card counts its points, edges and faces.
 
 A brush is made of [points, edges and faces](concepts.md#the-area). Editing its insides lets you move those parts, not just the whole brush: pull one face of a box out to make it longer, lift one corner of a floor into a slope, turn the top of a pillar.
 

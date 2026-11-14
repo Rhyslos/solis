@@ -24,11 +24,31 @@ It has sounds too ([Sound events](sound-events.md)): footsteps as the character 
 2. In **Properties**, choose **+ Component › CharacterBody**. A green capsule shows its shape when it's selected. Its feet are at the entity's origin.
 3. Make sure there's ground under it: an entity with a **Collider**, see [Physics](physics.md).
 4. In `main.lst`, fetch the ready-made components:
-   ```
+
+   ```lust
    fetch "solis/kit/character":[CharacterController];
    fetch "solis/kit/cameras":[ThirdPersonCamera];
    end
    ```
+
+   ```rust
+   // The kit's components are Lust. A game in Rust brings them in from a
+   // main.lst of three lines beside its Rust:
+   //
+   //     fetch "solis/kit/character":[CharacterController];
+   //     fetch "solis/kit/cameras":[ThirdPersonCamera];
+   //     end
+   ```
+
+   ```lua
+   -- The kit's components are Lust. A game in Lua brings them in from a
+   -- main.lst of three lines beside its Lua files:
+   --
+   --     fetch "solis/kit/character":[CharacterController];
+   --     fetch "solis/kit/cameras":[ThirdPersonCamera];
+   --     end
+   ```
+
    (For a 2D game, fetch `FollowCamera2D` and the kit's `TopDownController` instead: see [Tile maps](tile-maps.md).)
 5. Add **CharacterController** to the character. Set its **camera** to the camera entity (next step).
 6. On the entity with the **Camera** component, add **ThirdPersonCamera** and set its **target** to the character.
@@ -56,7 +76,7 @@ These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Z
 
 `walk(wanted)` moves the component's character by `wanted` metres (`target:walk(wanted)` moves another), as far as it can: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. Two characters standing in one another (spawned on one spot, say) are pushed apart gently as they walk, rather than stuck together. It happens at the end of the [tick](concepts.md#game-code), after physics has had game code's other changes. Call it once a tick with speed times `dt`, plus your own falling. Always multiply by `dt`: it's the tick's length at the game's speed, so the character slows down and stops with `World:setGameSpeed` like everything else. A `walk` without `dt` ignores the game's speed.
 
-```
+```lust
 fetch "solis/input":Input;
 fetch "solis/project":Action;
 
@@ -84,9 +104,58 @@ pass Hopper;
 end
 ```
 
+```rust
+use glam::Vec3;
+use script::{Context, RustComponent};
+
+pub struct Hopper {
+    fall: f32,
+}
+
+impl RustComponent for Hopper {
+    fn update(&mut self, cx: &mut Context<'_>, dt: f64) {
+        let me = cx.me();
+        let dt = dt as f32;
+        let wanted = cx.host().action("Move").axis;
+        let step = Vec3::new(wanted.x, wanted.y, 0.0);
+        if cx.host().grounded(me) {
+            self.fall = 0.0;
+            if cx.host().action("Jump").pressed {
+                self.fall = 5.0;
+            }
+        } else {
+            self.fall -= 20.0 * dt;
+        }
+        cx.host().walk(me, step * 4.0 * dt + Vec3::new(0.0, 0.0, self.fall * dt));
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Hopper = component("Hopper", {
+    { "fall", "float", 0 },
+})
+
+function Hopper:update(dt)
+    local move = solis.Input:axis("Move")
+    local step = vec3(move.x, move.y, 0)
+    if solis.entity.grounded(self.me) then
+        self.fall = 0
+        if solis.Input:pressed("Jump") then
+            self.fall = 5
+        end
+    else
+        self.fall = self.fall - 20 * dt
+    end
+    solis.entity.walk(self.me, step * 4 * dt + vec3(0, 0, self.fall * dt))
+end
+```
+
 Why your own falling? Because how a character falls and jumps is part of how a game feels (floaty or snappy), so it's yours to choose. On the ground it stops falling (`fall = 0`): the CharacterBody keeps it to the ground going down steps and slopes (its **Keeps to the ground** setting).
 
-In Lua it's `solis.entity.walk(self.me, {x, y, z})` and `solis.entity.grounded(self.me)`.
+In Lua the move is a `vec3(x, y, z)` (a table works too, but only with its parts named: `{ x = 1, y = 0, z = 0 }`).
 
 ## Settings
 

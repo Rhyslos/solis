@@ -22,6 +22,9 @@ Use it to:
 
 ## How to use it
 
+![Recent projects](pictures/launcher.png)
+**Recent projects**, where Solis starts: each project a card, the newest first, and the templates under them.
+
 1. Each project is a **card**: a large letter where its picture will be (pictures are an [unfinished part](unfinished-parts.md)), its name, its folder, when you last opened it, and the [build](concepts.md#projects) that last opened it. [Pinned](#settings) projects come first.
 2. **Double-click** a card to open it, or click it once and press **Enter** (Enter in **Search projects** opens it too, while the search still shows it; with no card picked, Enter there opens nothing). The **arrow keys** walk from card to card: left and right along a row, up and down between rows. With unsaved changes in the open area, Solis asks first.
 3. The **pin** at the right of a project's name keeps it at the front; click it again to unpin.
@@ -35,7 +38,7 @@ Use it to:
 5. **Search projects** narrows the cards as you type, by name or folder. Every word you type must appear somewhere, in any order. Click it to type: when Solis starts, the keys are the cards' (the arrows walk them, **Esc** carries on into the editor).
 6. **Sort by** orders the cards by when each was last opened, or by name. Pinned projects always come first.
 7. **New project** makes a folder into a new project. **Open… ▾** has **Open a project folder…** (one that isn't in the list yet) and **Scan a folder for projects…**, which looks through a folder you choose, and the folders inside it (four levels down), and adds every project it finds, without opening them. It doesn't look inside projects or hidden folders.
-8. **Start from a template**, under the cards: **Blank project** is the same as New project; **Playground**, **Turret sample**, **UI sample** and **Benchmark** each make one of Solis's [examples](getting-started.md) as a new project, in a folder you choose. The faint tiles after them (First-person, Top-down, Platformer, and **All templates**) are [unfinished parts](unfinished-parts.md): templates to come.
+8. **Start from a template**, under the cards: **Blank project** is the same as New project; **Playground**, **Turret sample**, **UI sample** and **Benchmark** each make one of Solis's [examples](getting-started.md) as a new project, in a folder you choose. The faint tiles after them (First-person, Top-down, Platformer, and **All templates**) are [unfinished parts](unfinished-parts.md): templates to come. The four examples can be made from the command line too, for a script: `solis --sample playground "C:\Games\Try"` makes the playground in that empty folder and opens it (the others are `game`, `ui` and `benchmark`).
 
 ## Learn, Updates and About
 

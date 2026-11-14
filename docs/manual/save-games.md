@@ -9,9 +9,9 @@ It's also a debugging tool: save just before something goes wrong, and you can l
 
 ## How to use it
 
-**From game code** (in Lust, `fetch "solis/world":Saves;` then `Saves:saveTo("quick")`; in Lua, `solis.Saves:saveTo("quick")`):
+**From game code** (in Lust, `fetch "solis/world":Saves;` then `Saves:saveTo("quick")`; in Lua, `solis.Saves:saveTo("quick")`; in Rust, `cx.host().save_game("quick", false)`, with `true` to load):
 
-```
+```lust
 fetch "solis/world":Saves;
 fetch "solis/input":Input;
 fetch "solis/project":Action;
@@ -28,6 +28,39 @@ component QuickSave {
 }
 
 pass QuickSave;
+end
+```
+
+```rust
+use script::{Context, RustComponent};
+
+pub struct QuickSave;
+
+impl RustComponent for QuickSave {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        // The slot's name, then whether to load it (true) or save it (false).
+        if cx.host().action("QuickSave").pressed {
+            cx.host().save_game("quick", false);
+        }
+        if cx.host().action("QuickLoad").pressed {
+            cx.host().save_game("quick", true);
+        }
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local QuickSave = component("QuickSave", {})
+
+function QuickSave:update(dt)
+    if solis.Input:pressed("QuickSave") then
+        solis.Saves:saveTo("quick")
+    end
+    if solis.Input:pressed("QuickLoad") then
+        solis.Saves:loadFrom("quick")
+    end
 end
 ```
 

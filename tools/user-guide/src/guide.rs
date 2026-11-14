@@ -8,8 +8,8 @@ use crate::contents::Contents;
 use crate::html::{self, Writer, anchor_link, plain_words};
 use crate::inline::escape;
 use crate::links::{PageLinks, Reach};
-use crate::{Font, Manual};
-use std::collections::BTreeMap;
+use crate::{Font, Manual, pictures};
+use std::collections::{BTreeMap, BTreeSet};
 
 const PAGE: &str = include_str!("../assets/page.html");
 const STYLE: &str = include_str!("../assets/guide.css");
@@ -39,8 +39,14 @@ pub(crate) fn write(manual: &Manual, contents: &Contents) -> Result<String, Vec<
         anchors: &anchors,
         root: &manual.root,
         repo: &manual.repo,
+        pictures: &manual.pictures,
     };
-    let mut problems = Vec::new();
+    let mut problems: Vec<String> = manual
+        .pictures
+        .iter()
+        .filter_map(|(name, data)| pictures::problem(name, data))
+        .collect();
+    let mut shown = BTreeSet::new();
     let mut chapters = Vec::new();
     for (group, g) in contents.groups.iter().enumerate() {
         for page in &g.pages {
@@ -51,11 +57,27 @@ pub(crate) fn write(manual: &Manual, contents: &Contents) -> Result<String, Vec<
                 continue;
             };
             match chapter(page, group, blocks, &reach) {
-                Ok(chapter) => chapters.push(chapter),
+                Ok((chapter, its_pictures)) => {
+                    chapters.push(chapter);
+                    shown.extend(its_pictures);
+                }
                 Err(found) => problems.extend(found),
             }
         }
     }
+    problems.extend(
+        manual
+            .pictures
+            .keys()
+            .filter(|name| !shown.contains(*name))
+            .map(|name| {
+                format!(
+                    "{}/{name} isn't shown on any page: show it, or take it out of the \
+                     picture script's list and delete it",
+                    pictures::FOLDER
+                )
+            }),
+    );
     let welcome = welcome(manual, contents, &reach, &mut problems);
     if !problems.is_empty() {
         return Err(problems);
@@ -89,12 +111,13 @@ fn welcome(
     body
 }
 
+/// A page as a chapter, with the pictures it shows.
 fn chapter(
     page: &str,
     group: usize,
     blocks: &[Block],
     reach: &Reach<'_>,
-) -> Result<Chapter, Vec<String>> {
+) -> Result<(Chapter, BTreeSet<String>), Vec<String>> {
     let Some((Block::Heading(1, title), rest)) = blocks.split_first() else {
         return Err(vec![format!(
             "{page}.md must start with its title, as `# Title`"
@@ -119,8 +142,21 @@ fn chapter(
     }
     let mut sections = Vec::new();
     let mut open = false;
-    for block in rest {
+    // Each section's blocks are written together, so an example's three
+    // blocks are seen as one.
+    let mut parts: Vec<(Option<&str>, &[Block])> = Vec::new();
+    let mut start = 0;
+    let mut heading = None;
+    for (at, block) in rest.iter().enumerate() {
         if let Block::Heading(2, words) = block {
+            parts.push((heading, &rest[start..at]));
+            heading = Some(words.as_str());
+            start = at + 1;
+        }
+    }
+    parts.push((heading, &rest[start..]));
+    for (heading, blocks) in parts {
+        if let Some(words) = heading {
             if open {
                 writer.push("</section>\n");
             }
@@ -132,9 +168,8 @@ fn chapter(
             ));
             sections.push((id, plain_words(words)));
             open = true;
-        } else {
-            writer.blocks(std::slice::from_ref(block));
         }
+        writer.blocks(blocks);
     }
     if open {
         writer.push("</section>\n");
@@ -143,13 +178,14 @@ fn chapter(
     if !links.problems.is_empty() {
         return Err(links.problems);
     }
-    Ok(Chapter {
+    let chapter = Chapter {
         page: page.to_string(),
         title: plain_words(title),
         group,
         sections,
         body,
-    })
+    };
+    Ok((chapter, links.pictures))
 }
 
 /// The contents down the side: the welcome, then each group's name and

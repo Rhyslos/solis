@@ -7,6 +7,9 @@ Whenever you want to see the area the way a player will: through the game's came
 
 ## How to use it
 
+![The editor while the game plays](pictures/play.png)
+Playing: the **Game** panel shows the game through its camera, and the Play group has **Stop**, **Pause** and **Step**.
+
 **Add a camera first** (once per area)
 1. Move the viewport to look the way the game should look.
 2. On the **Home** tab, click **Camera** in the ribbon's **Create** group. A camera appears exactly where you're looking from, facing the same way, and is selected. In the viewport it's drawn as a small wire pyramid pointing the way it looks; click it to select it.

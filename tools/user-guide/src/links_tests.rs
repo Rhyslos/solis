@@ -21,10 +21,12 @@ fn anchors() -> BTreeMap<String, Vec<String>> {
 fn href(url: &str) -> (String, Vec<String>) {
     let anchors = anchors();
     let root = root();
+    let pictures = BTreeMap::new();
     let reach = Reach {
         anchors: &anchors,
         root: &root,
         repo: "owner/repo",
+        pictures: &pictures,
     };
     let mut links = PageLinks::new(&reach, "physics");
     let href = links.href(url);

@@ -17,7 +17,7 @@ This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws th
 1. **Make the file.** In the Library, make a folder called `ui` inside your assets, and a Lust file in it named after the screen: `ui/hud.lst` is the screen **Hud**. Its name starts with a letter and holds only letters and numbers.
 2. **Write the screen.** The file holds an `assembly` with the screen's name and a `view`, and passes it. The view uses Lust's own pieces (the same ones as Lust's windows):
 
-   ```
+   ```lust
    fetch "main":Clock;
 
    assembly Hud {
@@ -39,6 +39,21 @@ This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws th
    end
    ```
 
+   ```rust
+   // A screen is written in Lust, whatever language the game is in: the
+   // files in ui/ are Lust only. A Rust component shows and hides it
+   // through its host:
+   //
+   //     cx.host().show_screen(cx.me(), "Hud", true);
+   ```
+
+   ```lua
+   -- A screen is written in Lust, whatever language the game is in: the
+   -- files in ui/ are Lust only. A Lua component shows and hides it:
+   --
+   --     solis.entity.showScreen(self.me, "Hud")
+   ```
+
    - `[width 1920, height 1080]` is the size you design at. On other screens everything grows or shrinks with the screen's **height**, and a wider screen (ultrawide) gets more room at the sides.
    - To pin something to a corner, put it in a `stack` as big as the screen (`width fill, height fill`) and say where: `bottom`, `top`, `left`, `right`, `center`, `middle`, with `pad` for the distance from the edge.
 3. **Show it.** Add a **Screen** component to an entity (the player, or a "Game" entity), and pick **Hud** in its **Screen** field. **Shown** turns it on and off; **Order** decides which of several screens is on top.
@@ -50,7 +65,7 @@ This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws th
 - its own fields (`coins` above): the screen's memory;
 - **the entity it's shown for** (the one whose Screen component shows it): `Ui:entity()`, and a copy of any of that entity's [Lust components](game-code.md), with a reading method named after the component: `Ui:entity():health()` gives its `Health`. Fetch `Ui` from `solis/screen` and the component from its file:
 
-  ```
+  ```lust
   fetch "solis/screen":Ui;
   fetch "main":Health;
 
@@ -66,11 +81,26 @@ This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws th
   end
   ```
 
+  ```rust
+  // A screen is written in Lust, whatever language the game is in: the
+  // files in ui/ are Lust only. A Rust component shows and hides it
+  // through its host:
+  //
+  //     cx.host().show_screen(cx.me(), "DroneHealth", true);
+  ```
+
+  ```lua
+  -- A screen is written in Lust, whatever language the game is in: the
+  -- files in ui/ are Lust only. A Lua component shows and hides it:
+  --
+  --     solis.entity.showScreen(self.me, "DroneHealth")
+  ```
+
   The copy is the component as the last tick left it: its methods work (`health:fraction()`), and changing it changes nothing in the game. The turret sample (**Make the sample game…** (press **Space** and type it, or use **File › Learn**)) has this health bar over its drone.
 
   **Lua and Rust components, and Solis's own** (Transform, Sprite, Camera, AudioSource and the rest) are read the same way. Solis describes each one to screens as a Lust component of its fields, so fetch it from `solis/screen` instead of from a file of yours:
 
-  ```
+  ```lust
   fetch "solis/screen":[Ui, Transform, Sparks];
 
   assembly Where {
@@ -85,11 +115,26 @@ This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws th
   end
   ```
 
+  ```rust
+  // A screen is written in Lust, whatever language the game is in: the
+  // files in ui/ are Lust only. A Rust component shows and hides it
+  // through its host:
+  //
+  //     cx.host().show_screen(cx.me(), "Where", true);
+  ```
+
+  ```lua
+  -- A screen is written in Lust, whatever language the game is in: the
+  -- files in ui/ are Lust only. A Lua component shows and hides it:
+  --
+  --     solis.entity.showScreen(self.me, "Where")
+  ```
+
   Their fields are copies, as Lust components' are; they have no methods. A field Lust can't hold (a model or other asset, or one named like one of Lust's own words) is left out.
 
 **Buttons.** A `button` has its words and, in `{ }`, what a click does: usually `send` an event to the entity the screen is shown for. Declare the event in game code, fetch it in the screen, and handle it in a component on that entity:
 
-```
+```lust
 -- ui/pauseMenu.lst
 fetch "solis/screen":Ui;
 fetch "main":[Resumed, Quit];
@@ -110,7 +155,22 @@ pass PauseMenu;
 end
 ```
 
+```rust
+// A screen is written in Lust, whatever language the game is in: the
+// files in ui/ are Lust only. A Rust component shows and hides it
+// through its host:
+//
+//     cx.host().show_screen(cx.me(), "PauseMenu", true);
 ```
+
+```lua
+-- A screen is written in Lust, whatever language the game is in: the
+-- files in ui/ are Lust only. A Lua component shows and hides it:
+--
+--     solis.entity.showScreen(self.me, "PauseMenu")
+```
+
+```lust
 -- main.lst
 fetch "solis/project":Screen;
 
@@ -124,6 +184,37 @@ component Pauser {
 }
 
 pass Pauser, Resumed, Quit;
+end
+```
+
+```rust
+use script::{Context, Event, RustComponent};
+
+// The events are declared in Lust (main.lst), where the screen fetches
+// them from.
+pub struct Pauser;
+
+impl RustComponent for Pauser {
+    fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
+        if event.name != "Resumed" {
+            return false;
+        }
+        let me = cx.me();
+        cx.host().show_screen(me, "PauseMenu", false);
+        true
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+-- The events are declared in Lust (main.lst), where the screen fetches
+-- them from.
+local Pauser = component("Pauser", {})
+
+function Pauser:on_Resumed()
+    solis.entity.hideScreen(self.me, "PauseMenu")
 end
 ```
 
@@ -152,7 +243,13 @@ While a screen with buttons is shown, the game's own actions wait: only MenuMove
 
 **A pause menu.** `World:setGameSpeed(0)` stops the game while game code keeps running: game time, physics, projectiles and sprites stand still and every `dt` is 0, but components' `update`s, events and the screens go on, so a menu can be used. `World:setGameSpeed(1)` carries on (anything between 0 and 4 runs slower or faster). The Game panel's corner says *Game speed 0* meanwhile, and the speed is kept in save games. The turret sample has one: press P (or Start) while it plays.
 
-```
+```lust
+fetch "solis/world":World;
+fetch "solis/input":Input;
+fetch "solis/project":[Action, Screen];
+
+event Resumed();
+
 component Pauser {
     method update(float dt) {
         is Input:pressed(Action.Pause)? then {
@@ -160,20 +257,70 @@ component Pauser {
             World:setGameSpeed(0);
         }
     }
+
     on Resumed() {
         hideScreen(Screen.PauseMenu);
         World:setGameSpeed(1);
     }
 }
+
+pass Pauser, Resumed;
+end
 ```
 
-In Lua: `solis.World:setGameSpeed(0)`. In Rust: `cx.host().set_game_speed(0.0)`.
+```rust
+use script::{Context, Event, RustComponent};
+
+pub struct Pauser;
+
+impl RustComponent for Pauser {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        if cx.host().action("Pause").pressed {
+            let me = cx.me();
+            cx.host().show_screen(me, "PauseMenu", true);
+            cx.host().set_game_speed(0.0);
+        }
+    }
+
+    fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
+        if event.name != "Resumed" {
+            return false;
+        }
+        let me = cx.me();
+        cx.host().show_screen(me, "PauseMenu", false);
+        cx.host().set_game_speed(1.0);
+        true
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Pauser = component("Pauser", {})
+
+function Pauser:update(dt)
+    if solis.Input:pressed("Pause") then
+        solis.entity.showScreen(self.me, "PauseMenu")
+        solis.World:setGameSpeed(0)
+    end
+end
+
+function Pauser:on_Resumed()
+    solis.entity.hideScreen(self.me, "PauseMenu")
+    solis.World:setGameSpeed(1)
+end
+```
 
 **Text size and UI size for players.** Some players need bigger text, and a game played from a sofa needs a bigger HUD. Two player settings grow every screen: **text size** (`Screens:setTextSize(1.5)`: every text half as big again, from 0.5 to 3; the columns and rows round it make room, and long lines wrap) and **UI size** (`Screens:setUiSize(1.25)`: the whole screen bigger, from 0.5 to 2). A pause menu usually offers them. They're the player's, not the game's: they're not in save games or recordings, a loaded game keeps the player's, and they're kept from one play to the next. So only let them change what's shown and offered, never the game itself (how hard it is, say): a recording played back with other settings would go differently. Screens read them too (`text "Text " + Screens:textSize().text();`), but only game code changes them, so a menu's button sends an event and the entity's code does it:
 
-```
+```lust
 fetch "solis/screens":Screens;
 fetch "solis/window":Window;
+
+event BiggerText();
+event Fullscreen();
+event NextResolution();
 
 component Pauser {
     on BiggerText() {
@@ -190,9 +337,59 @@ component Pauser {
         Window:useNextResolution();
     }
 }
+
+pass Pauser, BiggerText, Fullscreen, NextResolution;
+end
 ```
 
-In Lua: `solis.Screens:setTextSize(1.5)` and `solis.Window:setFullscreen(true)`. In Rust: `cx.host().set_text_size(1.5)` and `cx.host().set_fullscreen(true)`.
+```rust
+use script::{Context, Event, RustComponent};
+
+pub struct Pauser;
+
+impl RustComponent for Pauser {
+    fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
+        match event.name.as_str() {
+            "BiggerText" => {
+                let mut size = cx.host().text_size() + 0.25;
+                if size > 2.0 {
+                    size = 1.0;
+                }
+                cx.host().set_text_size(size);
+            }
+            "Fullscreen" => {
+                let on = cx.host().fullscreen();
+                cx.host().set_fullscreen(!on);
+            }
+            "NextResolution" => cx.host().use_next_resolution(),
+            _ => return false,
+        }
+        true
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Pauser = component("Pauser", {})
+
+function Pauser:on_BiggerText()
+    local size = solis.Screens:textSize() + 0.25
+    if size > 2 then
+        size = 1
+    end
+    solis.Screens:setTextSize(size)
+end
+
+function Pauser:on_Fullscreen()
+    solis.Window:setFullscreen(not solis.Window:fullscreen())
+end
+
+function Pauser:on_NextResolution()
+    solis.Window:useNextResolution()
+end
+```
 
 **The window.** `Window:setFullscreen(true)` fills the screen, and `Window:setResolution(1920, 1080)` (or `Window:useNextResolution()`, for a menu's Resolution button) sizes the window; `Window:fullscreen()` and `Window:resolution()` read them. **Alt+Enter** switches fullscreen in any game, as players expect. `Window:quit()` closes the game, for a menu's Quit button. While you play in the editor, the game stays in the Game panel: the Console says what the exported game would do, the settings are kept so the menu shows them, and Quit stops play. In an [exported game](playtest-export.md) they're real: the window changes, the game closes, and the settings are kept in the player's own folder.
 
@@ -202,7 +399,7 @@ In Lua: `solis.Screens:setTextSize(1.5)` and `solis.Window:setFullscreen(true)`.
 
 **Pictures.** `image` shows a picture from your assets, named by its place inside them: `image "sprites/coin.png";`. To show one part of a sprite sheet, cut it out with [Atlas Crop](atlas-crop.md) and add `#` and the crop's name: `image "sprites/tools.png#Axe";`. A crop is better than a picture of its own for icons: the artist keeps drawing on one sheet, and every crop follows.
 
-```
+```lust
 assembly Hotbar {
     view {
         stack [width fill, height fill, bottom, center, pad 24] {
@@ -217,6 +414,21 @@ assembly Hotbar {
 
 pass Hotbar;
 end
+```
+
+```rust
+// A screen is written in Lust, whatever language the game is in: the
+// files in ui/ are Lust only. A Rust component shows and hides it
+// through its host:
+//
+//     cx.host().show_screen(cx.me(), "Hotbar", true);
+```
+
+```lua
+-- A screen is written in Lust, whatever language the game is in: the
+-- files in ui/ are Lust only. A Lua component shows and hides it:
+--
+--     solis.entity.showScreen(self.me, "Hotbar")
 ```
 
 - A picture is as big as it is unless you give it a `width` or a `height`; give one and the other follows, keeping its shape. Give both and it fits inside that box, in the middle; add `cover` to fill the box instead, cutting off what reaches past it.

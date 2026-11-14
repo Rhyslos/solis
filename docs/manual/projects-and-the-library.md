@@ -12,6 +12,9 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 
 ## How to use it
 
+![The Library tab](pictures/library.png)
+The Library tab: the project's folders down the left, the open folder's files as tiles, the chips that show one kind, and the file picked in Details below.
+
 **Make a project**
 1. **File › New project** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
 2. Solis makes `project.solis`, an `assets` folder, and a hidden `.solis` folder for its cache. If you use Git, it also adds `.gitignore` and `.gitattributes` files set up for games.

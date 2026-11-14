@@ -12,6 +12,7 @@ fn small_manual(pages: &[(&str, &str)], contents: &str) -> Manual {
         repo: "owner/repo".into(),
         logo: b"<svg/>".to_vec(),
         fonts: Vec::new(),
+        pictures: BTreeMap::new(),
         root: PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../..")),
     }
 }
@@ -76,6 +77,93 @@ fn a_broken_link_or_a_missing_title_stops_the_build() {
     );
     let problems = build(&manual).unwrap_err();
     assert_eq!(problems.len(), 2, "{problems:?}");
+}
+
+/// The smallest PNG header there can be, `width` by `height`.
+fn png(width: u32, height: u32) -> Vec<u8> {
+    let mut data = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13];
+    data.extend_from_slice(b"IHDR");
+    data.extend_from_slice(&width.to_be_bytes());
+    data.extend_from_slice(&height.to_be_bytes());
+    data
+}
+
+#[test]
+fn a_picture_shown_is_written_in_as_data() {
+    let mut manual = small_manual(
+        &[
+            (
+                "one",
+                "# One
+
+![The view](pictures/view.png)
+The view.
+",
+            ),
+            (
+                "two", "# Two
+",
+            ),
+        ],
+        CONTENTS,
+    );
+    manual.pictures.insert("view.png".into(), png(320, 200));
+    let html = build(&manual).unwrap();
+    assert!(
+        html.contains("<img src=\"data:image/png;base64,"),
+        "written in"
+    );
+    assert!(html.contains("width=\"320\" height=\"200\""));
+    assert!(html.contains("<figcaption>The view.</figcaption>"));
+    assert!(html.contains("id=\"lightbox\""), "it opens larger");
+}
+
+#[test]
+fn a_missing_unshown_or_broken_picture_stops_the_build() {
+    let mut manual = small_manual(
+        &[
+            (
+                "one",
+                "# One
+
+![Gone](pictures/gone.png)
+Gone.
+",
+            ),
+            (
+                "two", "# Two
+",
+            ),
+        ],
+        CONTENTS,
+    );
+    manual.pictures.insert("spare.png".into(), png(2, 2));
+    manual
+        .pictures
+        .insert("words.png".into(), b"not a picture".to_vec());
+    let problems = build(&manual).unwrap_err();
+    assert_eq!(problems.len(), 4, "{problems:?}");
+    let all = problems.join("\n");
+    assert!(all.contains("no gone.png in docs/manual/pictures"), "{all}");
+    assert!(all.contains("spare.png isn't shown on any page"), "{all}");
+    assert!(all.contains("words.png isn't a PNG"), "{all}");
+    assert!(all.contains("words.png isn't shown"), "{all}");
+}
+
+#[test]
+fn every_example_is_listed_in_the_contents_order() {
+    let three = "```lust\nl\n```\n```rust\nr\n```\n```lua\nu\n```\n";
+    let manual = small_manual(
+        &[
+            ("two", &format!("# Two\n\n{three}")),
+            ("one", &format!("# One\n\n{three}{three}")),
+        ],
+        CONTENTS,
+    );
+    let found = examples(&manual).unwrap();
+    let pages: Vec<&str> = found.iter().map(|e| e.page.as_str()).collect();
+    assert_eq!(pages, ["one", "one", "two"]);
+    assert_eq!(found[0].code, ["l", "r", "u"].map(String::from));
 }
 
 #[test]

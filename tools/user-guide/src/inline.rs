@@ -13,6 +13,13 @@ pub trait Places {
     fn href(&mut self, url: &str) -> String;
     /// The guide's id for an anchor the manual names `id` on this page.
     fn anchor(&mut self, id: &str) -> String;
+    /// A picture the manual shows from `url`: its address in the guide,
+    /// and its width and height when they are known.
+    fn picture(&mut self, url: &str) -> (String, Option<(u32, u32)>) {
+        (self.href(url), None)
+    }
+    /// Something about the page that stops the guide being built.
+    fn problem(&mut self, _why: String) {}
 }
 
 /// Keys with a name of more than one letter.
@@ -314,9 +321,12 @@ fn image(chars: &[char], i: usize, places: &mut dyn Places, out: &mut String) ->
     let close = bracketed(chars, i + 1)?;
     let (url, end) = destination(chars, close + 1)?;
     let alt: String = chars[i + 2..close].iter().collect();
-    let src = places.href(&url);
+    let (src, size) = places.picture(&url);
+    let size = size
+        .map(|(w, h)| format!(" width=\"{w}\" height=\"{h}\""))
+        .unwrap_or_default();
     out.push_str(&format!(
-        "<img src=\"{}\" alt=\"{}\" loading=\"lazy\">",
+        "<img src=\"{}\" alt=\"{}\"{size} loading=\"lazy\">",
         escape(&src),
         escape(&alt)
     ));

@@ -283,8 +283,9 @@ fn the_manual_s_door_glides_open_as_it_says() {
         .nth(1)
         .expect("the Tweens section");
     let lust = section
-        .split("```\n")
+        .split("```lust\n")
         .nth(1)
+        .and_then(|example| example.split("```\n").next())
         .expect("its Lust example")
         .to_string();
     let mut world = TestWorld::with(&["D1"]);

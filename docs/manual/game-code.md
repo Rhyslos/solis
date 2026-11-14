@@ -22,9 +22,9 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 
    Why files? Lust checks every call you write against them before the game runs, so a misspelt call is a mistake you see at once, not a surprise while playing.
 2. Right-click in the Library and choose **New › Lust code file**. The first one is `main.lst`, at the top of the `assets` folder: your game's code starts there. Lust reads `main.lst` first, and every other code file is fetched from it, or from a file it fetches. The file opens in your code editor for Lust (Ledger), with a component to start from. You can also make the file by hand in any text editor.
-3. Write a component. An entity's own abilities, such as `position()` and `moveTo(place)`, need no `get`: they're on every entity. The engine's other parts are objects you `fetch`, such as `fetch "solis/world":World;` for `World:say(…)`:
+3. Write a component. An entity's own abilities, such as `position()` and `moveTo(place)`, need no `get`: they're on every entity. The engine's other parts are objects you `fetch`, such as `fetch "solis/world":World;` for `World:say(…)`. The switch above the code shows the same component in Rust and in Lua (a Lua file is any `.lua` file in `assets`, made in any text editor):
 
-   ```
+   ```lust
    component Spinner {
        has {
            float speed = 2;
@@ -35,14 +35,44 @@ Not sure which? [Which language when](which-language.md) compares them, with num
    end
    ```
 
+   ```rust
+   use reflect::{ComponentData, Value};
+   use script::RustComponent;
+
+   pub struct Spinner {
+       speed: f64,
+   }
+
+   impl RustComponent for Spinner {
+       // Its fields, for Properties and saves.
+       fn values(&self) -> ComponentData {
+           let mut data = ComponentData::default();
+           data.set("speed", Value::Float(self.speed));
+           data
+       }
+
+       fn set(&mut self, data: &ComponentData) {
+           if let Some(speed) = data.get("speed").and_then(Value::as_f64) {
+               self.speed = speed;
+           }
+       }
+   }
+   ```
+
+   ```lua
+   local Spinner = component("Spinner", {
+       { "speed", "float", 2 },
+   })
+   ```
+
 4. Save. Solis checks the code within a moment. Mistakes appear in the [Problems](problems.md) panel, such as "main.lst, line 6:15: speed is a float, but this is text". The Console says how many there are. **Notes** go to the Console too, as warnings: things that aren't mistakes, so the code still runs, but worth changing (writing `me` where Lust now says `this`). Each is said once, until the notes change.
 5. Click a mistake to open its file in your code editor, fix it and save. It disappears from Problems by itself.
 
 ## Components
 
-A [component](concepts.md#the-area) written in Lust works like Solis's own: put it on an entity, set its fields in Properties, and it does its job when the game runs.
+A [component](concepts.md#the-area) written in Lust works like Solis's own: put it on an entity, set its fields in Properties, and it does its job when the game runs. This one moves its entity along, a little every tick:
 
-```
+```lust
 component Mover {
     has {
         float speed = 2;
@@ -58,19 +88,70 @@ pass Mover;
 end
 ```
 
-The same component in **Lua**, in any `.lua` file in `assets` (here `mover.lua`):
+```rust
+use glam::Vec3;
+use reflect::{ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
+use script::{Context, RustComponent, RustKind};
+
+pub struct Mover {
+    speed: f64,
+}
+
+impl RustComponent for Mover {
+    fn update(&mut self, cx: &mut Context<'_>, dt: f64) {
+        let me = cx.me();
+        let ahead = Vec3::new(1.0, 0.0, 0.0);
+        let here = cx.host().position(me).unwrap_or_default();
+        cx.host().move_to(me, here + ahead * (self.speed * dt) as f32);
+    }
+
+    // Its fields, for Properties and saves.
+    fn values(&self) -> ComponentData {
+        let mut data = ComponentData::default();
+        data.set("speed", Value::Float(self.speed));
+        data
+    }
+
+    fn set(&mut self, data: &ComponentData) {
+        if let Some(speed) = data.get("speed").and_then(Value::as_f64) {
+            self.speed = speed;
+        }
+    }
+}
+
+// How Solis makes one: its name, its fields and their starting values.
+pub fn mover() -> RustKind {
+    RustKind {
+        schema: ComponentSchema {
+            name: "Mover".into(),
+            help: "Moves its entity along x.".into(),
+            fields: vec![FieldInfo::new("speed", "Speed", FieldKind::Float, Value::Float(2.0))],
+        },
+        make: |data| {
+            let mut mover = Mover { speed: 2.0 };
+            mover.set(data);
+            Box::new(mover)
+        },
+    }
+}
+```
 
 ```lua
+-- mover.lua: any .lua file in assets.
 local Mover = component("Mover", {
     { "speed", "float", 2 },
 })
 
 function Mover:update(dt)
-    solis.entity.moveTo(self.me, solis.entity.position(self.me) + vec3(1, 0, 0) * self.speed * dt)
+    local ahead = vec3(1, 0, 0)
+    local here = solis.entity.position(self.me)
+    solis.entity.moveTo(self.me, here + ahead * self.speed * dt)
 end
 ```
 
-`component` takes the name and the fields in order, each as `{ name, kind, starting value }` (a `state` also lists its options: `{ "mode", "state", "Single", { "Single", "Burst" } }`). The fields are `self.speed` and so on, the entity is `self.me`, the engine's methods are under `solis.`, and `vec3(x, y, z)` makes a vector (a Luau vector, the same kind of value a Lust `vec3` is) you can add, take away and scale, with `v.x` reading a part. A Lua component works the same way as a Lust one from here on, and both can be in the same game.
+**In Lua**, `component` takes the name and the fields in order, each as `{ name, kind, starting value }` (a `state` also lists its options: `{ "mode", "state", "Single", { "Single", "Burst" } }`). The fields are `self.speed` and so on, the entity is `self.me`, the engine's methods are under `solis.`, and `vec3(x, y, z)` makes a vector (a Luau vector, the same kind of value a Lust `vec3` is) you can add, take away and scale, with `v.x` reading a part. A Lua component works the same way as a Lust one from here on, and both can be in the same game.
+
+**In Rust**, a component is a type that implements `script::RustComponent`: `update` and `handle` (for events) are the ones you write, `cx.me()` is the entity, and `cx.host()` reaches the engine with the same calls in snake case (`position`, `move_to`). `values` and `set` hand its fields to Properties and save games, and a `RustKind` tells Solis its name, its fields and how to make one. Those parts always have this shape, so the other Rust examples in this manual leave them out. Solis can't build a game's own Rust yet (that comes with the full export); until then the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
 
 1. Save the file. When the code has no mistakes, **Mover** appears in Properties' **+ Component** list.
 2. Select an entity and add **Mover**. Its `has` fields show in Properties with their starting values (`speed` as **Speed**), and are saved in the area like any other component's.
@@ -119,7 +200,7 @@ The Console says what changed each time: "The running game took the new code (Gu
 
 Components tell each other things with [events](concepts.md#game-code): a gun tells a target it was hit, the target's health tells its entity it died. An event says what it carries. A component reacts to it with `on`, and anything sends it to an entity with `send`:
 
-```
+```lust
 fetch "solis/world":World;
 
 event Hit(entity by, float damage);
@@ -158,6 +239,85 @@ pass Health, Gun;
 end
 ```
 
+```rust
+use reflect::{EntityId, Value};
+use script::{Context, Event, RustComponent};
+
+// The events are declared in Lust, as in the Lust example: what they
+// carry is checked against it.
+pub struct Health {
+    hp: f64,
+}
+
+impl RustComponent for Health {
+    fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
+        match event.name.as_str() {
+            // Hit carries who hit it, then the damage.
+            "Hit" => {
+                let damage = event.values.get(1).and_then(Value::as_f64).unwrap_or(0.0);
+                if self.hp > 0.0 {
+                    self.hp -= damage;
+                    if self.hp <= 0.0 {
+                        let me = cx.me();
+                        cx.send(Some(me), "Died", Vec::new());
+                    }
+                }
+                true
+            }
+            "Died" => {
+                cx.host().say("down!");
+                true
+            }
+            _ => false,
+        }
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+
+pub struct Gun {
+    target: Option<EntityId>,
+}
+
+impl RustComponent for Gun {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        let me = cx.me();
+        cx.send(self.target, "Hit", vec![Value::Entity(Some(me)), Value::Float(2.5)]);
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+```
+
+```lua
+-- The events are declared in Lust, as in the Lust example: what they
+-- carry is checked against it.
+local Health = component("Health", {
+    { "hp", "float", 10 },
+})
+
+function Health:on_Hit(by, damage)
+    if self.hp > 0 then
+        self.hp = self.hp - damage
+        if self.hp <= 0 then
+            solis.send(self.me, "Died")
+        end
+    end
+end
+
+function Health:on_Died()
+    solis.World:say("down!")
+end
+
+local Gun = component("Gun", {
+    { "target", "entity" },
+})
+
+function Gun:update(dt)
+    solis.send(self.target, "Hit", self.me, 2.5)
+end
+```
+
 - **When they arrive:** after every component's `update` in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
 - **To something you just spawned:** an event sent to an entity spawned in the same tick (`entity shot = World:spawn(…); send Launch(dir) to shot;`) arrives at the start of the next tick's events, once its components exist. Its first `update` runs just before, so set it moving in the `on`, not in `update`'s first run.
 - **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
@@ -166,15 +326,7 @@ end
 - **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console (once, until the code changes), so the game can't freeze. At most 10,000 events can wait at once, holding at most 16 MB of text: past that, the `send` itself fails, so the Console points at the component sending too much.
 - **A component whose reaction keeps failing** (an `on` that divides by zero, every time) is said once in the Console; it keeps running, and its later failures with events aren't said again until the code changes.
 
-**In Lua**, `solis.send(to, "Hit", by, 2.5)` sends an event, and a function called `on_` and the event's name reacts to it:
-
-```lua
-function Health:on_Hit(by, damage)
-    self.hp = self.hp - damage
-end
-```
-
-When the Lust declares the event, what Lua sends is checked against what it carries: a wrong value means the event isn't sent, and the Console names the Lua component that sent it. Lua can also send events no Lust declares; their numbers arrive as floats (Lua has one kind of number, so `2` and `2.5` arrive alike).
+**In Lua**, `solis.send(to, "Hit", by, 2.5)` sends an event, and a function called `on_` and the event's name reacts to it. When the Lust declares the event, what Lua sends is checked against what it carries: a wrong value means the event isn't sent, and the Console names the Lua component that sent it. Lua can also send events no Lust declares; their numbers arrive as floats (Lua has one kind of number, so `2` and `2.5` arrive alike).
 
 A Lua component's fields can't be called `me` (the entity it's on), `update`, or anything starting with `on_` or `__`: those are its methods, and Lua's own.
 
@@ -182,19 +334,7 @@ A Lua component's fields can't be called `me` (the entity it's on), `update`, or
 
 **What Lua game code can't do.** Game code is sandboxed, so a game you download can't harm your computer: it has no `require`, no files, and no way out of its time and memory limits. It has no `loadstring`, `getfenv` or `setfenv` either: those reach past a file's own globals, into another file's or Solis's own, and calling one is a mistake ("attempt to call a nil value"). `table.move` moves at most a million items at once (a bigger one couldn't be stopped in time), and `collectgarbage` only tells you how much memory is used (`collectgarbage("count")`).
 
-**In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. Solis can't build a game's own Rust until the full export, which isn't built yet; until then, the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
-
-```rust
-fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
-    if event.name != "Hit" {
-        return false;
-    }
-    self.dents += 1;
-    let me = cx.me();
-    cx.send(Some(me), "Dented", vec![Value::Int(self.dents)]);
-    true
-}
-```
+**In Rust**, `handle` takes each event by name, with what it carries in `event.values`, in the order the Lust declares, and returns whether it reacted; `cx.send(to, "Hit", values)` sends one. Like Lua's, a Rust send is checked against what the Lust declares: one that doesn't fit isn't sent (`send` returns `false`), and the Console says why, naming the component.
 
 Other code files can sit in any folder in `assets`. Fetch them by their path from `assets`, such as `fetch "weapons/gun":Gun;` for `assets/weapons/gun.lst`. The Library's **Code** tab lists them all.
 
@@ -202,7 +342,7 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 
 Lasers, bolts and tracer rounds come in their thousands, so they aren't entities: they're [projectiles](concepts.md#game-code), which Solis moves itself, every tick, on every core.
 
-```
+```lust
 fetch "solis/world":World;
 
 component Turret {
@@ -223,7 +363,51 @@ pass Turret;
 end
 ```
 
-`fire` takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser. In Lua it's `solis.World:fire(from, direction, speed, life, colour)`, with `vec3(…)` for each.
+```rust
+use glam::Vec3;
+use script::{Context, RustComponent, Shot};
+
+pub struct Turret {
+    cooldown: i64,
+}
+
+impl RustComponent for Turret {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        self.cooldown -= 1;
+        if self.cooldown <= 0 {
+            let me = cx.me();
+            let from = cx.host().position(me).unwrap_or_default();
+            cx.host().fire(Shot {
+                from,
+                direction: Vec3::new(0.0, 1.0, 0.0),
+                speed: 60.0,
+                life: 2.0,
+                colour: [4.0, 0.3, 0.2],
+            });
+            self.cooldown = 30;
+        }
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+```
+
+```lua
+local Turret = component("Turret", {
+    { "cooldown", "int", 0 },
+})
+
+function Turret:update(dt)
+    self.cooldown = self.cooldown - 1
+    if self.cooldown <= 0 then
+        local from = solis.entity.position(self.me)
+        solis.World:fire(from, vec3(0, 1, 0), 60, 2, vec3(4, 0.3, 0.2))
+        self.cooldown = 30
+    end
+end
+```
+
+`fire` takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser.
 
 - It flies in a straight line and disappears when its time is up. It doesn't hit anything: lasers are kept out of [physics](physics.md) so a million can fly. To see what a shot would hit, look along its line with `castRay`.
 - It's drawn in the **Game** panel as a glowing streak, as long as it flies in two frames. Streaks add their light where they cross.
@@ -234,7 +418,7 @@ end
 
 Game code can make copies of [assemblies](assemblies.md) while it plays, and take entities away:
 
-```
+```lust
 fetch "solis/world":World;
 fetch "solis/project":Assembly;
 
@@ -255,6 +439,42 @@ pass Hangar;
 end
 ```
 
+```rust
+use glam::Vec3;
+use script::{Context, RustComponent};
+
+pub struct Hangar {
+    made: i64,
+}
+
+impl RustComponent for Hangar {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        if self.made < 10 {
+            // The assembly by its file in assets, without .solassembly.
+            let place = Vec3::new(self.made as f32 * 5.0, 0.0, 10.0);
+            let _ship = cx.host().spawn("ships/fighter", place);
+            self.made += 1;
+        }
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+```
+
+```lua
+local Hangar = component("Hangar", {
+    { "made", "int", 0 },
+})
+
+function Hangar:update(dt)
+    if self.made < 10 then
+        -- The assembly's name as text: Assembly.Ships.Fighter is "Ships.Fighter".
+        local ship = solis.World:spawn("Ships.Fighter", vec3(self.made * 5, 0, 10))
+        self.made = self.made + 1
+    end
+end
+```
+
 - **Which assembly:** one of the project's, named from its file with folders as options inside options: `ships/fighter.solassembly` is `Assembly.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove an assembly, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Assembly.None` is there when the project has none, and makes nothing.
 - **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the area's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Area panel while playing, and are gone when you press **Stop**, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours ([Play mode](play-mode.md)), so a change you make to one of these copies goes with it.
@@ -266,7 +486,7 @@ end
 
 Dice, loot, where an enemy wanders next: `random()` gives a number from 0 up to 1, `randomRange(low, high)` one between two numbers, and `randomInt(low, high)` a whole number, both ends included.
 
-```
+```lust
 fetch "solis/world":World;
 
 component Die {
@@ -279,13 +499,37 @@ pass Die;
 end
 ```
 
+```rust
+use script::{Context, RustComponent};
+
+pub struct Die;
+
+impl RustComponent for Die {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        // random() is from 0 up to 1: six sides make 1 to 6.
+        let roll = (cx.host().random() * 6.0).floor() as i64 + 1;
+        cx.host().say(&format!("rolled {roll}"));
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+```
+
+```lua
+local Die = component("Die", {})
+
+function Die:update(dt)
+    solis.World:say("rolled " .. solis.World:randomInt(1, 6))
+end
+```
+
 Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed. Lust's own `Random` (`Random[1, 6]`, `Random:chance`, an array's `pick` and `shuffle`) doesn't yet: its first roll starts it from the computer's clock, and with it the game's seed, so the same game can't be played again. Use `World:random` and the rest above. The numbers carry on while the game is paused with `World:setGameSpeed(0)`: every tick still rolls new ones, so a pause menu can shuffle or roll like any other code.
 
 ## Tweens
 
 A door that swings open over half a second, a health bar that slides down, a light that fades: a **[tween](concepts.md#game-code)** glides a field to a new value over time, so you don't write the in-between steps yourself.
 
-```
+```lust
 fetch "solis/world":World;
 
 component Door {
@@ -305,35 +549,75 @@ pass Door;
 end
 ```
 
+```rust
+use script::{Context, Event, RustComponent};
+
+// Tweens are Lust's own. In Rust, move the field a step in update:
+// here a steady glide from 0 to 1 over half a second.
+pub struct Door {
+    open: f64,
+    opening: bool,
+}
+
+impl RustComponent for Door {
+    fn handle(&mut self, _cx: &mut Context<'_>, event: &Event) -> bool {
+        if event.name != "Opened" {
+            return false;
+        }
+        self.opening = true;
+        true
+    }
+
+    fn update(&mut self, cx: &mut Context<'_>, dt: f64) {
+        if self.opening {
+            self.open = (self.open + dt / 0.5).min(1.0);
+            if self.open >= 1.0 {
+                self.opening = false;
+                cx.host().say("the door is open");
+            }
+        }
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+```
+
+```lua
+-- Tweens are Lust's own. In Lua, move the field a step in update:
+-- here a steady glide from 0 to 1 over half a second.
+local Door = component("Door", {
+    { "open", "float", 0 },
+    { "opening", "bool", false },
+})
+
+function Door:on_Opened()
+    self.opening = true
+end
+
+function Door:update(dt)
+    if self.opening then
+        self.open = math.min(1, self.open + dt / 0.5)
+        if self.open >= 1 then
+            self.opening = false
+            solis.World:say("the door is open")
+        end
+    end
+end
+```
+
 - **What it moves:** a field of the component (or a variable at the top of the file) that's an `int`, `float`, `vec2`, `vec3`, `colour` or `rotation`. `[ease OutCubic]` picks how it speeds up and slows down (any of the `Ease` curves; leave it out for a steady glide), and the `{ }` after it, if any, runs once when it gets there.
 - **When:** each tick, tweens move after the game-wide objects and before any component's `update`. So an `update` sees this tick's value, and what a done block changes is there for the same tick's updates. A tween started in an `update` first moves on the next tick. Starting another tween on the same field replaces the first, whose `{ }` never runs.
 - **New code while playing** stops the tweens the old code started, where they are, without their `{ }`.
 - **A game-wide object's fields can't be tweened:** an object changes only in its own update ([below](#game-wide-objects)), so the tween stops with a message saying so. Glide the field in the object's `update` instead, with `Maths:moveTowards(hour, 18, dt)` or `lerp`.
 - **When a tween fails** (its `{ }` divides by zero, say), the Console says where, once, until the code changes. Tweens started after it wait until it has run its time, so fix it first.
 
-Tweens are Lust's own. **In Lua** or **Rust**, move the field a step in `update`:
-
-```lua
-function Door:update(dt)
-    if self.opening then
-        self.open = math.min(1, self.open + dt / 0.5)
-    end
-end
-```
-
-```rust
-fn update(&mut self, _cx: &mut Context<'_>, dt: f64) {
-    if self.opening {
-        self.open = (self.open + dt / 0.5).min(1.0);
-    }
-}
-```
+Tweens are Lust's own. **In Lua** or **Rust**, move the field a step in `update`, as the switch above shows; for an ease, bend the step with a curve of your own.
 
 ## Game-wide objects
 
 Some things belong to the whole game, not to any one entity: the time of day, the player's money, the weather. Write one as a Lust `object` and pass it, and Solis runs it for you ([game-wide object](concepts.md#game-code)):
 
-```
+```lust
 object Clock {
     has {
         int day = 1;
@@ -367,6 +651,47 @@ pass Clock, StreetLamp;
 end
 ```
 
+```rust
+use script::{Context, Event, RustComponent};
+
+// Game-wide objects are Lust's own: Rust and Lua components can't read
+// them yet. Keep the clock in Lust, as in the Lust example, and have a
+// Lust component tell the lamps with an event when night falls.
+pub struct StreetLamp {
+    lit: bool,
+}
+
+impl RustComponent for StreetLamp {
+    fn handle(&mut self, _cx: &mut Context<'_>, event: &Event) -> bool {
+        match event.name.as_str() {
+            "NightFell" => self.lit = true,
+            "DayBroke" => self.lit = false,
+            _ => return false,
+        }
+        true
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+```
+
+```lua
+-- Game-wide objects are Lust's own: Lua and Rust components can't read
+-- them yet. Keep the clock in Lust, as in the Lust example, and have a
+-- Lust component tell the lamps with an event when night falls.
+local StreetLamp = component("StreetLamp", {
+    { "lit", "bool", false },
+})
+
+function StreetLamp:on_NightFell()
+    self.lit = true
+end
+
+function StreetLamp:on_DayBroke()
+    self.lit = false
+end
+```
+
 - **Ticked first:** each passed object's `update(float dt)` runs once a tick, objects in order of their names, before any entity's components. So every lamp sees the same hour, the one the clock has just moved to.
 - **Read anywhere, changed only in its own update.** Components read an object's fields and call its methods (`Clock.hour`, `Clock:isNight()`). Changing one of its fields anywhere else (`Clock.hour = 12;` in a component) stops that component, with a message pointing at the line: "Clock.hour can't be changed here: an object changes only in its own update". An object's `update` may change other objects too. **Why:** Solis runs game code on every core of the computer at once, each core with its own copy of the code. Objects run on the first, and their fields are copied to the others before the components run; if a component on one core could change the clock, the others would never know.
 - **Kept in save games:** a save keeps every object's fields, and loading gives them back ([Save games](save-games.md)). New code while the game runs keeps them too, field by field, by name, like a component's.
@@ -383,7 +708,7 @@ end
 
 Game code plays [sound events](sound-events.md) by the project's names for them: Solis writes each event into `solis/project.lst` as `state Sound`, folders as options inside options, so `assets/sfx/footstep.solsound` is `Sound.Sfx.Footstep`. A misspelt or deleted event is a mistake before the game runs. Fetch `Audio` from `solis/sound` and `Sound` from `solis/project`:
 
-```
+```lust
 fetch "solis/sound":Audio;
 fetch "solis/project":Sound;
 
@@ -401,6 +726,42 @@ component Walker {
 }
 
 pass Walker;
+end
+```
+
+```rust
+use script::{Context, RustComponent, SoundAt};
+
+pub struct Walker {
+    steps: i64,
+}
+
+impl RustComponent for Walker {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        self.steps += 1;
+        if self.steps % 30 == 0 {
+            // The sound event by its file in assets, without .solsound.
+            let me = cx.me();
+            let here = cx.host().position(me).unwrap_or_default();
+            cx.host().play_sound("sfx/footstep", SoundAt::Place(here));
+        }
+    }
+
+    // values() and set(): as Mover's, under Components.
+}
+```
+
+```lua
+local Walker = component("Walker", {
+    { "steps", "int", 0 },
+})
+
+function Walker:update(dt)
+    self.steps = self.steps + 1
+    if self.steps % 30 == 0 then
+        -- The sound event's name as text: Sound.Sfx.Footstep is "Sfx.Footstep".
+        solis.Audio:playAt("Sfx.Footstep", solis.entity.position(self.me))
+    end
 end
 ```
 

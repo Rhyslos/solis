@@ -12,6 +12,9 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**+
 
 ## How to use it
 
+![The Area list](pictures/area-list.png)
+The Area list on Home: every entity in the area, by name, with what it is beside it (a model's triangles, a camera, a light's kind).
+
 **See what something is made of**
 1. Click it in the **Area** panel, or in the viewport ([Selecting and moving things](selecting-and-moving.md)).
 2. **Properties** shows its **Name** and each of its components in a card of its own, Transform first, with their settings. Point at a setting's name to see what it does.

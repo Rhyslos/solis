@@ -8,6 +8,9 @@ Whenever you build an area: picking a model to change it, arranging crates, turn
 
 ## How to use it
 
+![A crate with the Move gizmo](pictures/gizmo.png)
+A crate picked with the Move tool (`W`): drag an arrow to move it along that axis, or a square between two arrows to move it across that plane.
+
 **Selecting:**
 1. Click a model or a lamp's marker in the [viewport](concepts.md#the-3d-view). It's outlined in the accent colour, and the Area panel and Properties show it.
 2. **Ctrl + click** adds another one to the selection, or takes it out if it's already selected.

@@ -30,6 +30,22 @@ Three parts work together:
    end
    ```
 
+   ```rust
+   // The kit's components are Lust. A game in Rust brings one in from a
+   // main.lst of two lines beside its Rust:
+   //
+   //     fetch "solis/kit/topdown":[TopDownController];
+   //     end
+   ```
+
+   ```lua
+   -- The kit's components are Lust. A game in Lua brings one in from a
+   -- main.lst of two lines beside its Lua files:
+   --
+   --     fetch "solis/kit/topdown":[TopDownController];
+   --     end
+   ```
+
 5. Save, then in **Properties** choose **+ Component › TopDownController**.
 6. Press **Play** and walk with WASD or the arrow keys. It stops at solid tiles and other colliders and slides along them.
 
@@ -42,9 +58,34 @@ component Wanderer {
         walk([1.5 * dt, 0, 0]);
     }
 }
+
+pass Wanderer;
+end
 ```
 
-In Lua it's `solis.entity.walk(self.me, {1.5 * dt, 0, 0})`. In Rust, through the component's host: `cx.host().walk(cx.me(), Vec3::new(1.5 * dt, 0.0, 0.0))`.
+```rust
+use glam::Vec3;
+use script::{Context, RustComponent};
+
+pub struct Wanderer;
+
+impl RustComponent for Wanderer {
+    fn update(&mut self, cx: &mut Context<'_>, dt: f64) {
+        let me = cx.me();
+        cx.host().walk(me, Vec3::new(1.5 * dt as f32, 0.0, 0.0));
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Wanderer = component("Wanderer", {})
+
+function Wanderer:update(dt)
+    solis.entity.walk(self.me, vec3(1.5 * dt, 0, 0))
+end
+```
 
 A 2D character moves on the ground: the move's third number (height) is ignored, and it stays on its layer.
 
@@ -53,18 +94,75 @@ A 2D character moves on the ground: the move's third number (height) is ignored,
 - `grounded()` is true when a floor under it stopped it going down: jump only then. A wall, or a slope steeper than about 45°, isn't ground.
 - `velocity()` is how fast its last tick's move really went, in metres a second: less than you asked for when something stopped it. A head bump shows as `velocity().y` dropping to 0 while you asked to go up.
 
-```
+```lust
+fetch "solis/input":Input;
+fetch "solis/project":Action;
+
 component Hero {
-    has { float fall = 0; }
+    has {
+        float fall = 0;
+    }
+
     method update(float dt) {
+        -- Gravity, then a jump from the floor.
         fall = fall - 30 * dt;
         is grounded()? then {
             fall = 0;
-            is Input:pressed(Action.Jump)? then { fall = 12; }
+            is Input:pressed(Action.Jump)? then {
+                fall = 12;
+            }
         }
         walk([4 * dt, fall * dt, 0]);
     }
 }
+
+pass Hero;
+end
+```
+
+```rust
+use glam::Vec3;
+use script::{Context, RustComponent};
+
+pub struct Hero {
+    fall: f64,
+}
+
+impl RustComponent for Hero {
+    fn update(&mut self, cx: &mut Context<'_>, dt: f64) {
+        let me = cx.me();
+        // Gravity, then a jump from the floor.
+        self.fall -= 30.0 * dt;
+        if cx.host().grounded(me) {
+            self.fall = 0.0;
+            if cx.host().action("Jump").pressed {
+                self.fall = 12.0;
+            }
+        }
+        let step = Vec3::new((4.0 * dt) as f32, (self.fall * dt) as f32, 0.0);
+        cx.host().walk(me, step);
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Hero = component("Hero", {
+    { "fall", "float", 0 },
+})
+
+function Hero:update(dt)
+    -- Gravity, then a jump from the floor.
+    self.fall = self.fall - 30 * dt
+    if solis.entity.grounded(self.me) then
+        self.fall = 0
+        if solis.Input:pressed("Jump") then
+            self.fall = 12
+        end
+    end
+    solis.entity.walk(self.me, vec3(4 * dt, self.fall * dt, 0))
+end
 ```
 
 When an entity with a Collider2D is despawned, its collider goes with it at once, so a squashed enemy never leaves an invisible wall.

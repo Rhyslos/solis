@@ -59,14 +59,107 @@ pass Farmer;
 end
 ```
 
+```rust
+use reflect::Value;
+use script::{Context, Event, RustComponent};
+
+pub struct Farmer {
+    steps: i64,
+}
+
+impl RustComponent for Farmer {
+    fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
+        // The engine's events carry the project's names as text.
+        let named = match event.values.first() {
+            Some(Value::Text(name)) => name.as_str(),
+            _ => "",
+        };
+        match event.name.as_str() {
+            // Count the footsteps as they land.
+            "CueReached" if named == "Footstep" => self.steps += 1,
+            // Back to standing once the hoe swing is done.
+            "ClipFinished" if named == "Sprites.Farmer.Hoe" => {
+                let me = cx.me();
+                cx.host().play_clip(me, "idle", false);
+            }
+            _ => return false,
+        }
+        true
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Farmer = component("Farmer", {
+    { "steps", "int", 0 },
+})
+
+-- Count the footsteps as they land.
+function Farmer:on_CueReached(cue)
+    if cue == "Footstep" then
+        self.steps = self.steps + 1
+    end
+end
+
+-- Back to standing once the hoe swing is done.
+function Farmer:on_ClipFinished(clip)
+    if clip == "Sprites.Farmer.Hoe" then
+        solis.entity.animate(self.me, "Sprites.Farmer.Idle")
+    end
+end
+```
+
 - `animate(Clip.Sprites.Farmer.Walk)` plays a clip on the component's entity (`target:animate(…)` on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
 - `animateFromStart(Clip.Sprites.Farmer.Hoe)` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
 - `stopAnimation()` stops it where it is; `animate` with the same clip carries on from there.
 - `setFlip(across, down)` mirrors the sprite (its **Flip across** and **Flip up** settings): `setFlip(true, false)` faces it the other way. So you draw a run facing right only once, and one `Run` clip does both ways, instead of a `RunLeft` as well:
 
+  ```lust
+  fetch "solis/input":Input;
+  fetch "solis/project":[Action, Clip];
+
+  component Runner {
+      method update(float dt) {
+          -- Face the way the player pushes.
+          bool walkingLeft = Input:axis(Action.Move).x < 0;
+          setFlip(walkingLeft, false);
+          animate(Clip.Sprites.Hero.Run);
+      }
+  }
+
+  pass Runner;
+  end
   ```
-  is walkingLeft? then { setFlip(true, false); } or { setFlip(false, false); }
-  animate(Clip.Sprites.Hero.Run);
+
+  ```rust
+  use script::{Context, RustComponent};
+
+  pub struct Runner;
+
+  impl RustComponent for Runner {
+      fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+          let me = cx.me();
+          // Face the way the player pushes.
+          let walking_left = cx.host().action("Move").axis.x < 0.0;
+          cx.host().set_flip(me, walking_left, false);
+          cx.host().play_clip(me, "run", false);
+      }
+
+      // values() and set(): as Mover's in Game code, under Components.
+  }
+  ```
+
+  ```lua
+  local Runner = component("Runner", {})
+
+  function Runner:update(dt)
+      -- Face the way the player pushes.
+      local walkingLeft = solis.Input:axis("Move").x < 0
+      solis.entity.setFlip(self.me, walkingLeft, false)
+      solis.entity.animate(self.me, "Sprites.Hero.Run")
+  end
   ```
 
   It's safe to call every tick, and like the other calls it lands at the end of the tick.

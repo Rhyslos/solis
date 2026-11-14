@@ -105,6 +105,85 @@ pass Hero;
 end
 ```
 
+```rust
+// hero.rs: the player. Runs left and right, falls, and jumps.
+use glam::Vec3;
+use script::{Context, RustComponent};
+
+pub struct Hero {
+    speed: f64,
+    jump_speed: f64,
+    gravity: f64,
+    fall: f64,
+}
+
+impl RustComponent for Hero {
+    fn update(&mut self, cx: &mut Context<'_>, dt: f64) {
+        let me = cx.me();
+
+        // Which way the player pushes: -1 is left, 1 is right, 0 is neither.
+        let across = f64::from(cx.host().action("Move").axis.x);
+        let grounded = cx.host().grounded(me);
+
+        // On the floor: stop falling, but keep a small push down, so the
+        // floor still stops it next tick and grounded() stays true.
+        if grounded {
+            self.fall = -1.0;
+        }
+        // Going up but stopped: it bumped its head, so start coming down.
+        let rising = cx.host().velocity(me).unwrap_or_default().y;
+        if self.fall > 0.0 && rising <= 0.0 {
+            self.fall = 0.0;
+        }
+        // Gravity: every tick, it falls a little faster.
+        self.fall -= self.gravity * dt;
+        // Jump, but only from the floor.
+        if grounded && cx.host().action("Jump").pressed {
+            self.fall = self.jump_speed;
+        }
+
+        let step = Vec3::new((across * self.speed * dt) as f32, (self.fall * dt) as f32, 0.0);
+        cx.host().walk(me, step);
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+-- hero.lua: the player. Runs left and right, falls, and jumps.
+local Hero = component("Hero", {
+    { "speed", "float", 6 },
+    { "jumpSpeed", "float", 13 },
+    { "gravity", "float", 35 },
+    { "fall", "float", 0 },
+})
+
+function Hero:update(dt)
+    -- Which way the player pushes: -1 is left, 1 is right, 0 is neither.
+    local across = solis.Input:axis("Move").x
+    local grounded = solis.entity.grounded(self.me)
+
+    -- On the floor: stop falling, but keep a small push down, so the
+    -- floor still stops it next tick and grounded() stays true.
+    if grounded then
+        self.fall = -1
+    end
+    -- Going up but stopped: it bumped its head, so start coming down.
+    if self.fall > 0 and solis.entity.velocity(self.me).y <= 0 then
+        self.fall = 0
+    end
+    -- Gravity: every tick, it falls a little faster.
+    self.fall = self.fall - self.gravity * dt
+    -- Jump, but only from the floor.
+    if grounded and solis.Input:pressed("Jump") then
+        self.fall = self.jumpSpeed
+    end
+
+    solis.entity.walk(self.me, vec3(across * self.speed * dt, self.fall * dt, 0))
+end
+```
+
 4. Open `main.lst`, replace everything in it with this, and save:
 
 ```lust
@@ -112,6 +191,26 @@ end
 fetch "hero":[Hero];
 fetch "solis/kit/cameras":[FollowCamera2D];
 end
+```
+
+```rust
+// main.lst is where Lust code starts; a Rust component needs none (Solis
+// is told of it by its RustKind). The ready-made FollowCamera2D is Lust,
+// so a game in Rust keeps a main.lst of two lines beside its Rust, to
+// bring the camera in:
+//
+//     fetch "solis/kit/cameras":[FollowCamera2D];
+//     end
+```
+
+```lua
+-- main.lst is where Lust code starts; Lua files need none, since Solis
+-- reads every .lua file in assets. The ready-made FollowCamera2D is
+-- Lust, so a game in Lua keeps a main.lst of two lines, to bring the
+-- camera in:
+--
+--     fetch "solis/kit/cameras":[FollowCamera2D];
+--     end
 ```
 
 5. Solis checks your code a moment after each save. If you made a typing mistake, the [Problems](problems.md) panel says where (click it to jump to the line). An empty Problems panel means the code is sound.
@@ -171,10 +270,74 @@ pass Coin;
 end
 ```
 
-2. In `main.lst`, add a line under the hero's, and save:
+```rust
+// coin.rs: a coin that disappears when the player touches it.
+use reflect::EntityId;
+use script::{Context, RustComponent};
+
+pub struct Coin {
+    player: Option<EntityId>,
+    reach: f32,
+}
+
+impl RustComponent for Coin {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        let Some(player) = self.player else {
+            return;
+        };
+        let me = cx.me();
+        // How far the player is, across and up.
+        let there = cx.host().position(player).unwrap_or_default();
+        let here = cx.host().position(me).unwrap_or_default();
+        let gap = there - here;
+        if gap.x * gap.x + gap.y * gap.y < self.reach * self.reach {
+            cx.host().say("Got a coin!");
+            cx.host().despawn(me);
+        }
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+-- coin.lua: a coin that disappears when the player touches it.
+local Coin = component("Coin", {
+    { "player", "entity" },
+    { "reach", "float", 0.8 },
+})
+
+function Coin:update(dt)
+    if self.player == nil then
+        return
+    end
+    -- How far the player is, across and up.
+    local gap = solis.entity.position(self.player) - solis.entity.position(self.me)
+    if gap.x * gap.x + gap.y * gap.y < self.reach * self.reach then
+        solis.World:say("Got a coin!")
+        solis.entity.despawn(self.me)
+    end
+end
+```
+
+2. In `main.lst`, add a line fetching the coin under the hero's, and save. It now reads:
 
 ```lust
+-- main.lst: where the game's code starts. It fetches the other files.
+fetch "hero":[Hero];
 fetch "coin":[Coin];
+fetch "solis/kit/cameras":[FollowCamera2D];
+end
+```
+
+```rust
+// Nothing to add in Rust: Solis is told of the Coin by its RustKind,
+// as of the Hero.
+```
+
+```lua
+-- Nothing to add in Lua: Solis reads coin.lua by itself, as it reads
+-- every .lua file in assets.
 ```
 
 3. Drag `coin.png` into the viewport, somewhere the hero can reach (on a platform, say). **+ Component › Coin**, and set its **player** to the hero.
@@ -195,7 +358,7 @@ You've built a game and written two components. Some ideas, each with its page:
 - **A coin counter on screen**: [Game screens](screens.md) and [the UI editor](ui-editor.md).
 - **Sounds** for jumping and coins: [Sounds](sounds.md) and [Sound events](sound-events.md).
 - **Send it to a friend**: [Exporting for playtesting](playtest-export.md).
-- **Learn more Lust**: [Game code](game-code.md) covers events, spawning and more. This guide teaches Lust; the same game can be written in Lua or Rust (see [Which language when](which-language.md)). In Lua, the hero's calls are `solis.Input:axis("Move")`, `solis.Input:pressed("Jump")`, `solis.entity.grounded(self.me)`, `solis.entity.velocity(self.me)` and `solis.entity.walk(self.me, {x, y, 0})`.
+- **Learn more Lust**: [Game code](game-code.md) covers events, spawning and more. This guide teaches Lust; the same game can be written in Lua or Rust (see [Which language when](which-language.md)): the switch above each example shows it in all three.
 
 ## Settings
 The fields of the two components you wrote:

@@ -32,9 +32,9 @@ Quicker still: a **Solid** [brush](brushes.md) (`B` over the view, or Create ›
 - A **Fixed** body never moves, like a collider on its own.
 - You can still `moveTo` a dynamic body to put it somewhere new (say, back on its shelf); physics carries on from there.
 
-**From game code**, a body's abilities are on its entity (`ball:push(force)`, or `push(force)` for the component's own), and rays are asked of `Physics` (in Lua, `solis.entity.push(e, force)` and `solis.Physics:castRay(from, direction, reach)`):
+**From game code**, a body's abilities are on its entity (`ball:push(force)`, or `push(force)` for the component's own), and rays are asked of `Physics` (in Lua, `solis.entity.push(e, force)` and `solis.Physics:castRay(from, direction, reach)`, whose answer is a table with the same four fields; in Rust, `cx.host().push(e, force)` and `cx.host().cast_ray(from, direction, reach)`, which gives back the hit or nothing):
 
-```
+```lust
 fetch "solis/world":World;
 fetch "solis/physics":[Physics, RayHit];
 
@@ -58,6 +58,54 @@ component Kicker {
 }
 
 pass Kicker;
+end
+```
+
+```rust
+use glam::Vec3;
+use script::{Context, RustComponent};
+
+pub struct Kicker {
+    kicked: i64,
+}
+
+impl RustComponent for Kicker {
+    fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
+        let me = cx.me();
+        if self.kicked == 0 {
+            if let Some(ball) = cx.host().find("Ball") {
+                cx.host().push(ball, Vec3::new(5.0, 0.0, 2.0));
+            }
+            self.kicked = 1;
+        }
+        // Is anything below, within 2 metres?
+        let here = cx.host().position(me).unwrap_or_default();
+        if let Some(below) = cx.host().cast_ray(here, Vec3::new(0.0, 0.0, -1.0), 2.0) {
+            let name = cx.host().name(below.entity).unwrap_or_default();
+            cx.host().say(&format!("{name} is below me"));
+        }
+    }
+
+    // values() and set(): as Mover's in Game code, under Components.
+}
+```
+
+```lua
+local Kicker = component("Kicker", {
+    { "kicked", "int", 0 },
+})
+
+function Kicker:update(dt)
+    local ball = solis.World:find("Ball")
+    if self.kicked == 0 then
+        solis.entity.push(ball, vec3(5, 0, 2))
+        self.kicked = 1
+    end
+    -- Is anything below, within 2 metres?
+    local below = solis.Physics:castRay(solis.entity.position(self.me), vec3(0, 0, -1), 2)
+    if below.found then
+        solis.World:say(solis.entity.name(below.entity) .. " is below me")
+    end
 end
 ```
 
