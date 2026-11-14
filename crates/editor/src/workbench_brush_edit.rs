@@ -1,6 +1,6 @@
 //! The workbench's side of editing a brush's insides (Tools 1a, B3):
 //! Tab starting and ending it, 1, 2 and 3 choosing what clicks pick,
-//! Delete and Backspace held back, editing kept in step with the area
+//! E, Delete and Backspace shaping it (B4), editing kept in step with the area
 //! each frame (and ended when the brush goes, something else is picked,
 //! the game plays or an undo goes back past its start), the status bar's
 //! words, the Brush card's facts and Solid.
@@ -18,17 +18,14 @@ use egui::{Key, Modifiers};
 use reflect::{Component, EntityId, Value};
 use std::sync::Arc;
 
-/// What the status bar says for Delete or Backspace while editing: parts
-/// are deleted from the next update on (B4).
-pub(crate) const NO_DELETING_YET: &str = "Deleting parts comes with the next update";
-
 impl Workbench {
     /// Tab starts or ends editing the picked brush's insides; while
-    /// editing, 1, 2 and 3 choose points, edges or faces, and Delete and
-    /// Backspace do nothing to the brush (the status bar says why). Only
-    /// where the keys are the area's: the tile map's Tab (its Meaning
-    /// view, with a map picked) and the UI canvas's 1, 2 and 3 are
-    /// theirs.
+    /// editing, 1, 2 and 3 choose points, edges or faces, E extrudes the
+    /// picked faces, and Delete and Backspace delete the picked parts
+    /// (never the brush; B4). While an extrude or inset is under way Esc
+    /// gives it up and the other keys wait. Only where the keys are the
+    /// area's: the tile map's Tab (its Meaning view, with a map picked)
+    /// and the UI canvas's 1, 2 and 3 are theirs.
     pub(crate) fn brush_edit_keys(&mut self, ui: &egui::Ui) {
         if !self.keys.is_area()
             || self.viewport.is_flying()
@@ -42,17 +39,24 @@ impl Workbench {
         if !editing && self.why_not_edit_brush().is_some() {
             return;
         }
-        let (tab, mode, delete) = ui.input_mut(|i| {
+        if self.is_pulling() {
+            if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
+                self.give_up_pull();
+            }
+            return;
+        }
+        let (tab, mode, delete, extrude) = ui.input_mut(|i| {
             let tab = i.consume_key(Modifiers::NONE, Key::Tab);
             if !editing {
-                return (tab, None, false);
+                return (tab, None, false, false);
             }
             let mode = Mode::ALL
                 .into_iter()
                 .find(|m| i.consume_key(Modifiers::NONE, m.key()));
             let delete = i.consume_key(Modifiers::NONE, Key::Delete)
                 | i.consume_key(Modifiers::NONE, Key::Backspace);
-            (tab, mode, delete)
+            let extrude = i.consume_key(Modifiers::NONE, Key::E);
+            (tab, mode, delete, extrude)
         });
         if tab {
             // Taken from egui too, which would move the keyboard's focus
@@ -65,7 +69,10 @@ impl Workbench {
             self.brush_mode(mode);
         }
         if delete {
-            self.viewport.brushing.tell(NO_DELETING_YET);
+            self.shape_brush(crate::shell::ShellCommand::BrushDelete);
+        }
+        if extrude {
+            self.shape_brush(crate::shell::ShellCommand::BrushExtrude);
         }
     }
 
@@ -194,6 +201,11 @@ impl Workbench {
         if edit.parts.as_ref().is_none_or(|p| p.key != model.key) {
             edit.parts = Some(Arc::new(PartCache::of(Arc::clone(&model.mesh), model.key)));
             edit.forget_missing();
+            // An undo under way changed the brush: what was being pulled
+            // out of it is given up.
+            if edit.pull.take().is_some() {
+                edit.preview = None;
+            }
         }
         if let Some(name) = self.open.document.area().get(entity).map(|e| &e.name)
             && *name != edit.name
@@ -255,12 +267,14 @@ impl Workbench {
             .as_ref()
             .filter(|e| e.entity == id)
             .map(|e| (e.mode, e.picked_words()));
+        // While an extrude or inset is under way the counts stay the
+        // brush's own, as the mock-up draws them.
         let mesh = self
             .viewport
             .brushing
             .edit
             .as_ref()
-            .filter(|e| e.entity == id)
+            .filter(|e| e.entity == id && e.pull.is_none())
             .and_then(|e| e.mesh())
             .unwrap_or(&model.mesh);
         Some(crate::brushing::card::facts_of(mesh, editing))

@@ -47,6 +47,9 @@ pub enum ProblemKind {
     /// A brush whose points or faces couldn't be read from the file: it
     /// shows nothing and isn't solid (Tools 1a, B2).
     DamagedBrush,
+    /// A brush read open (with a hole) or inside out that couldn't be
+    /// mended as it was read (Tools 1a, B4): drawn as it is.
+    OpenBrush,
 }
 
 /// One mistake, and the entity it's on.
@@ -97,8 +100,9 @@ pub(crate) struct Sources<'a> {
     /// What each tile map file's tileset still needs drawn, by the map
     /// file's asset (Phase 9, D5).
     pub(crate) tile_gaps: &'a std::collections::HashMap<AssetId, String>,
-    /// The brushes whose mesh couldn't be read (from the brushes' models,
-    /// which read every brush already).
+    /// The brushes whose mesh couldn't be read, or reads open or inside
+    /// out and couldn't be mended (from the brushes' models, which read
+    /// every brush already).
     pub(crate) damaged_brushes: &'a HashSet<EntityId>,
 }
 
@@ -354,19 +358,7 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
             }
         }
         if sources.damaged_brushes.contains(&id) {
-            let why = entity
-                .components
-                .get(<area::builtin::Brush as reflect::Component>::NAME)
-                .and_then(area::builtin::damage_of)
-                .unwrap_or("its points or faces couldn't be read");
-            found.push(Problem {
-                kind: ProblemKind::DamagedBrush,
-                entity: id,
-                text: format!(
-                    "{name}'s brush shows nothing and isn't solid: {why}. Its file's text is \
-                     kept as it was, to put right by hand, or delete the brush and draw it again"
-                ),
-            });
+            found.extend(brush_problem(id, entity, name));
         }
         // Only the copy's root names its assembly.
         if let Some(origin) = &entity.origin
@@ -385,6 +377,35 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
         }
     }
     found
+}
+
+/// What's wrong with a brush the models found damaged or not whole: why
+/// it couldn't be read, or why it is open or inside out (worked out for
+/// this brush alone).
+fn brush_problem(id: EntityId, entity: &area::EntityData, name: &str) -> Option<Problem> {
+    use area::builtin::Brush;
+    use reflect::Component;
+    let data = entity.components.get(Brush::NAME)?;
+    if let Some(why) = area::builtin::damage_of(data) {
+        return Some(Problem {
+            kind: ProblemKind::DamagedBrush,
+            entity: id,
+            text: format!(
+                "{name}'s brush shows nothing and isn't solid: {why}. Its file's text is kept \
+                 as it was, to put right by hand, or delete the brush and draw it again"
+            ),
+        });
+    }
+    let why = mesh::repair::why_not_whole(&Brush::from_data(data).mesh)?;
+    Some(Problem {
+        kind: ProblemKind::OpenBrush,
+        entity: id,
+        text: format!(
+            "{name}'s brush is open or inside out and couldn't be mended as it was read: {why}. \
+             It's drawn as it is, but extruding, insetting, splitting and deleting its parts are \
+             refused until it's whole: delete it and draw it again"
+        ),
+    })
 }
 
 /// What a click in the Problems panel asks for.

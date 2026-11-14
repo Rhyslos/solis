@@ -66,7 +66,15 @@ impl Viewport {
                 .draw
                 .as_ref()
                 .is_some_and(crate::brushing::draw::Draw::is_under_way);
-        self.navigate(ui, &response, dt, painting || under_way);
+        // While a brush is extruded or inset (B4), the mouse pulls it and
+        // the right button gives it up, never flies.
+        let pulling = in_use
+            && self
+                .brushing
+                .edit
+                .as_ref()
+                .is_some_and(|e| e.pull.is_some());
+        self.navigate(ui, &response, dt, painting || under_way || pulling);
         let frame = self.view_frame(ui, rect);
         self.tools
             .receive(renderer.picked(VIEWPORT_IMAGE + self.active));
@@ -74,6 +82,8 @@ impl Viewport {
             self.tile_overlay.input = self.paint_input(ui, &response);
         } else if self.brushing.list.is_some() {
             // The list has the pointer: a click on the view only closes it.
+        } else if pulling && !self.is_flying() {
+            self.pull_with_mouse(ui, &response, &frame);
         } else if drawing && !self.is_flying() {
             self.draw_out(ui, &response, &frame);
         } else if !self.is_flying() && self.brushing.draw.is_none() {
@@ -158,6 +168,35 @@ impl Viewport {
                     .events
                     .push(viewport_tools::ViewportEvent::BrushDrawn(planned));
             }
+        }
+    }
+
+    /// An extrude or inset under way takes this frame's pointer and
+    /// buttons (Tools 1a, B4): its distance follows the mouse, and what
+    /// came of the frame goes to the workbench.
+    fn pull_with_mouse(&mut self, ui: &Ui, response: &egui::Response, frame: &ViewFrame) {
+        use crate::brushing::pull::{PullInput, PullOutcome};
+        let on_corner = self.on_corner(ui);
+        let rect = frame.rect;
+        let input = ui.input(|i| PullInput {
+            mouse: i
+                .pointer
+                .latest_pos()
+                .map(|p| glam::Vec2::new(p.x - rect.min.x, p.y - rect.min.y)),
+            pressed: i.pointer.primary_pressed(),
+            right_pressed: i.pointer.secondary_pressed(),
+            ctrl: i.modifiers.command,
+            on_view: response.hovered() && !on_corner,
+        });
+        let grid = self.snapping.grid_step;
+        let Some(pull) = self.brushing.edit.as_mut().and_then(|e| e.pull.as_mut()) else {
+            return;
+        };
+        let outcome = pull.update(input, (&frame.seen, frame.size), grid);
+        if outcome != PullOutcome::Going(false) {
+            self.tools
+                .events
+                .push(viewport_tools::ViewportEvent::Pulled(outcome));
         }
     }
 

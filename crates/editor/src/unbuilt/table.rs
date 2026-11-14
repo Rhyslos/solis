@@ -48,10 +48,6 @@ unbuilt! {
 
     // Home: the level editor.
     HomeCreateTrigger: "home.create.trigger" => ("Trigger zone", TwoD2, "Adds a zone that tells game code when something enters or leaves it"),
-    BrushShapeExtrude: "brush.shape.extrude" => ("Extrude", Tools1a, "Pulls the picked faces out into new parts of the brush, as E does"),
-    BrushShapeInset: "brush.shape.inset" => ("Inset", Tools1a, "Makes a smaller face inside each picked face, with a ring of faces round it"),
-    BrushShapeSplit: "brush.shape.split" => ("Split", Tools1a, "Cuts the picked faces or edges in two"),
-    BrushShapeDelete: "brush.shape.delete" => ("Delete", Tools1a, "Takes the picked points, edges or faces out of the brush, never leaving it with a hole"),
     BrushRibbonMaterial: "brush.ribbon.material" => ("Material", Tools1a, "Gives the picked faces a material: concrete, planks, grass"),
     BrushCardMaterial: "brush.card.material" => ("Material", Tools1a, "Gives the brush's faces a material: concrete, planks, grass"),
     HomeLightingBake: "home.lighting.bake" => ("Bake", ThreeD5, "Works out bounced light for the area"),

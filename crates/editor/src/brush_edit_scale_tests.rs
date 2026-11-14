@@ -1,6 +1,8 @@
-//! The scale check for editing a brush's insides (Tools 1a, B3; decision
-//! 0108, "all fast"): a brush of 5,000 faces edited in an area of 10,000
-//! brushes. The frame that starts editing, frames hovering over it,
+//! The scale check for editing a brush's insides (Tools 1a, B3 and B4;
+//! decision 0108, "all fast"): a brush of 5,000 faces edited in an area
+//! of 10,000 brushes. B4 adds extruding and insetting 1,000 of its faces
+//! (each frame while pulling, and letting go) and a delete merging 100
+//! faces into one. The frame that starts editing, frames hovering over it,
 //! a box over all its faces, frames dragging the gizmo on 1,000 picked
 //! faces, and letting go (the check, the command, the brush made again
 //! and uploaded), each within the editor's frame target. Frames are
@@ -236,7 +238,7 @@ fn scale_check_editing_a_5000_face_brush_among_10000_brushes() {
         w.viewport
             .tools
             .events
-            .push(crate::viewport_tools::ViewportEvent::GizmoStart);
+            .push(crate::viewport_tools::ViewportEvent::GizmoStart { extrude: false });
         w.tool_events();
     }
     let mut drags = Vec::new();
@@ -300,6 +302,159 @@ fn scale_check_editing_a_5000_face_brush_among_10000_brushes() {
         ("dragging", drag_ms),
         ("letting go", let_go_ms),
         ("the frame after letting go", next_ms),
+    ] {
+        assert!(ms <= FRAME_MS, "{what} takes {ms:.2} ms");
+    }
+}
+
+/// The faces of `mesh` whose every corner is within `depth` metres of
+/// its top: the top and rings of its sides below it.
+fn faces_near_the_top(mesh: &mesh::Mesh, depth: f32) -> Vec<Part> {
+    let top = mesh.bounds().unwrap().max.z;
+    mesh.faces()
+        .filter(|(_, corners)| {
+            corners
+                .iter()
+                .all(|v| mesh.position(*v).is_some_and(|p| p.z > top - depth))
+        })
+        .map(|(f, _)| Part::Face(f))
+        .collect()
+}
+
+/// An extrude or inset of `picked` (`command`) pulled with the mouse
+/// for 20 frames, Ctrl held so each frame moves, then kept: the frames'
+/// middle and most, the frame that keeps it and the next, in ms.
+fn pulled_frames(
+    h: &mut H,
+    picked: &[Part],
+    command: crate::shell::ShellCommand,
+) -> ([f64; 2], [f64; 2], f64) {
+    h.state_mut().0.pick_parts(picked, PickHow::Replace);
+    let rect = h.state().0.viewport.rect;
+    h.hover_at(rect.center());
+    h.step();
+    let start = Instant::now();
+    h.state_mut().0.shape_brush(command);
+    h.step();
+    let start_ms = ms_since(start);
+    assert!(h.state().0.is_pulling());
+    h.event(egui::Event::ModifiersChanged(egui::Modifiers::COMMAND));
+    let made = h.state().0.open.brushes.made();
+    let mut frames = Vec::new();
+    for i in 1..=20 {
+        h.hover_at(rect.center() - egui::vec2(i as f32 * 1.5, i as f32 * 3.0));
+        frames.push(timed(h));
+    }
+    h.event(egui::Event::ModifiersChanged(egui::Modifiers::NONE));
+    assert_eq!(
+        h.state().0.open.brushes.made(),
+        made,
+        "nothing made while pulling"
+    );
+    let most = frames.iter().copied().fold(0.0, f64::max);
+    let steps = h.state().0.document().history().undo_len();
+    h.state_mut()
+        .0
+        .viewport
+        .tools
+        .events
+        .push(crate::viewport_tools::ViewportEvent::Pulled(
+            crate::brushing::pull::PullOutcome::Keep,
+        ));
+    let keep_ms = timed(h);
+    let next_ms = timed(h);
+    assert_eq!(
+        h.state().0.document().history().undo_len(),
+        steps + 1,
+        "kept: {:?}",
+        h.state().0.status().brushing
+    );
+    ([median(frames), most], [keep_ms, next_ms], start_ms)
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_shaping_a_5000_face_brush_among_10000_brushes() {
+    use crate::shell::ShellCommand as C;
+    let (mut h, id) = editor();
+    let entities = h.state().0.document().area().len();
+    h.key_press(egui::Key::Tab);
+    h.step();
+    assert!(h.state().0.viewport.brushing.edit.is_some());
+    let mesh = h.state().0.open.brushes.get(id).unwrap().mesh.clone();
+    let faces = mesh.face_count();
+    // An extrude of 1,000 faces: the top and the rings below it.
+    let picked = faces_near_the_top(&mesh, 2.5 * 20.0 / 29.0);
+    assert!(picked.len() >= 1_000, "{}", picked.len());
+    let (extrude, extrude_keep, extrude_start) = pulled_frames(&mut h, &picked, C::BrushExtrude);
+    let extrude_stages = stages(&h);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
+    h.step();
+    h.step();
+    // An inset of 1,000 faces.
+    let (inset, inset_keep, inset_start) = pulled_frames(&mut h, &picked, C::BrushInset);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
+    h.step();
+    h.step();
+    // A delete merging 100 faces: a 10 × 10 patch of the top.
+    let mesh = h.state().0.open.brushes.get(id).unwrap().mesh.clone();
+    let top = mesh.bounds().unwrap().max.z;
+    let corner = mesh.bounds().unwrap().min + Vec3::splat(10.0 * 20.0 / 29.0 + 1e-3);
+    let patch: Vec<Part> = mesh
+        .faces()
+        .filter(|(f, c)| {
+            mesh.face_normal(*f).z > 0.99
+                && c.iter().all(|v| {
+                    mesh.position(*v)
+                        .is_some_and(|p| p.z > top - 1e-3 && p.x < corner.x && p.y < corner.y)
+                })
+        })
+        .map(|(f, _)| Part::Face(f))
+        .collect();
+    assert_eq!(patch.len(), 100);
+    h.state_mut().0.pick_parts(&patch, PickHow::Replace);
+    h.step();
+    let steps = h.state().0.document().history().undo_len();
+    let start = Instant::now();
+    h.state_mut().0.shape_brush(C::BrushDelete);
+    let delete_alone_ms = ms_since(start);
+    let delete_ms = timed(&mut h) + delete_alone_ms;
+    let delete_next_ms = timed(&mut h);
+    assert_eq!(h.state().0.document().history().undo_len(), steps + 1);
+    assert_eq!(
+        h.state().0.open.brushes.get(id).unwrap().mesh.face_count(),
+        faces - 99
+    );
+    println!(
+        "Scale check: shaping a brush of {faces} faces among {entities} entities: extruding \
+         {} faces {:.2} ms a frame ({:.2} at most) {}, starting it {extrude_start:.2} ms, \
+         letting go {:.2} ms and the next frame {:.2} ms {} (by stage: {extrude_stages}); \
+         insetting them {:.2} ms a frame ({:.2} at most) {}, starting it {inset_start:.2} ms, \
+         letting go {:.2} ms and the next frame {:.2} ms {}; deleting 100 faces into one \
+         {delete_ms:.2} ms (the delete alone {delete_alone_ms:.2} ms) and the next frame \
+         {delete_next_ms:.2} ms {} (target {FRAME_MS} ms)",
+        picked.len(),
+        extrude[0],
+        extrude[1],
+        verdict(extrude[0]),
+        extrude_keep[0],
+        extrude_keep[1],
+        verdict(extrude_keep[0].max(extrude_keep[1])),
+        inset[0],
+        inset[1],
+        verdict(inset[0]),
+        inset_keep[0],
+        inset_keep[1],
+        verdict(inset_keep[0].max(inset_keep[1])),
+        verdict(delete_ms.max(delete_next_ms)),
+    );
+    for (what, ms) in [
+        ("extruding", extrude[0]),
+        ("letting an extrude go", extrude_keep[0]),
+        ("the frame after", extrude_keep[1]),
+        ("insetting", inset[0]),
+        ("letting an inset go", inset_keep[0]),
+        ("deleting", delete_ms),
     ] {
         assert!(ms <= FRAME_MS, "{what} takes {ms:.2} ms");
     }

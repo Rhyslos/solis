@@ -150,6 +150,10 @@ impl ShellCommand {
             C::AddReverbZone => "Add reverb zone",
             C::ChooseShapeBrush => "Choose a shape brush",
             C::EditBrushInsides => "Edit the brush's insides",
+            C::BrushExtrude => "Extrude",
+            C::BrushInset => "Inset",
+            C::BrushSplit => "Split",
+            C::BrushDelete => "Delete the picked parts",
             C::NewTileMap => "New tile map",
             C::CreateAssembly => "Create assembly from selection",
             C::Play => "Play",
@@ -311,7 +315,13 @@ impl ShellCommand {
             | C::ClearSolo
             | C::MuteGame
             | C::HeardAtOnce(_) => "Audio",
-            C::EditBrushInsides | C::BrushMode(_) | C::BrushSolid => "Brush",
+            C::EditBrushInsides
+            | C::BrushMode(_)
+            | C::BrushSolid
+            | C::BrushExtrude
+            | C::BrushInset
+            | C::BrushSplit
+            | C::BrushDelete => "Brush",
             _ => "Home",
         }
     }
@@ -336,6 +346,8 @@ impl ShellCommand {
             C::ChooseShapeBrush => "B",
             C::EditBrushInsides => "Tab",
             C::BrushMode(mode) => mode.key().name(),
+            C::BrushExtrude => "E",
+            C::BrushDelete => "Delete",
             C::UseTool(tool) => tool.key().name(),
             // The 2D editors' keys, which act where their tab is under
             // the pointer (`key_owner.rs`).
@@ -393,6 +405,22 @@ impl ShellCommand {
                 "Clicks pick the brush's faces (its flat sides)"
             }
             C::BrushSolid => "Whether characters and bodies in the game collide with it",
+            C::BrushExtrude => {
+                "Pulls the picked faces out into a new part of the brush: move the mouse, then \
+                 click to keep it (Esc gives up). Shift + drag on the move gizmo does it too"
+            }
+            C::BrushInset => {
+                "Makes a smaller face inside each picked face, with a border of faces round it: \
+                 move the mouse for its width, then click"
+            }
+            C::BrushSplit => {
+                "Points: cuts their face in two between the two picked. Edges: a new point in \
+                 the middle of each. Faces: each cut in two across its middle"
+            }
+            C::BrushDelete => {
+                "Takes the picked points, edges or faces out and merges the faces around them, \
+                 never leaving a hole"
+            }
             C::CreateAssembly => {
                 "Saves the selected entity, and everything under it, as an assembly in the project, \
                  and turns it into a copy of it"

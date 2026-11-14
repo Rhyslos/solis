@@ -155,7 +155,7 @@ impl Workbench {
                 continue;
             }
             match event {
-                ViewportEvent::GizmoStart => {
+                ViewportEvent::GizmoStart { .. } => {
                     let world = self.open.document.world_matrices();
                     self.open.moving = targets_placed(
                         self.open.document.area(),
@@ -196,7 +196,7 @@ impl Workbench {
                     self.add_drawn_brush(planned);
                 }
                 // Only while a brush's insides are edited (above).
-                ViewportEvent::Parts { .. } => {}
+                ViewportEvent::Parts { .. } | ViewportEvent::Pulled(_) => {}
                 ViewportEvent::Drop { asset, at, free } => {
                     let at = crate::placement::landing(at, &self.viewport.snapping, free);
                     self.place_dropped(asset, at, None);
@@ -219,11 +219,12 @@ impl Workbench {
     /// them. Whether it was one of those.
     fn part_event(&mut self, event: &ViewportEvent) -> bool {
         match event {
-            ViewportEvent::GizmoStart => self.part_drag_start(),
+            ViewportEvent::GizmoStart { extrude } => self.part_drag_start(*extrude),
             ViewportEvent::GizmoChange { change, flip } => self.part_drag_change(*change, *flip),
             ViewportEvent::GizmoEnd => self.part_drag_end(),
             ViewportEvent::GizmoCancel => self.part_drag_cancel(),
             ViewportEvent::Parts { hits, how } => self.pick_parts(hits, *how),
+            ViewportEvent::Pulled(outcome) => self.pulled(*outcome),
             _ => return false,
         }
         true

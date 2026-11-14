@@ -232,10 +232,10 @@ Counts are at the end of this part.
 | `home.create.light` | Create › **Light** | EXISTS | `MenuCommand` Add point light, Add spotlight (`menu_items.rs`) | |
 | `home.create.camera` | Create › **Camera** | EXISTS | `MenuCommand` Add camera | |
 | `home.create.volume` | Create › **Volume** | PARTLY | Adds an entity with a ReverbZone, the one volume Solis has. Unbuilt piece: `home.create.trigger` (a trigger zone) in the long-press list. | 2D 2: triggers |
-| `brush.shape.extrude` | HOME TOOLS · Brush › Shape › **Extrude** (Tools 1, mock-up 3) | PLACEHOLDER | A ribbon button, while a brush's insides are edited | Tools 1a, B4 |
-| `brush.shape.inset` | HOME TOOLS · Brush › Shape › **Inset** | PLACEHOLDER | A ribbon button | Tools 1a, B4 |
-| `brush.shape.split` | HOME TOOLS · Brush › Shape › **Split** | PLACEHOLDER | A ribbon button | Tools 1a, B4 |
-| `brush.shape.delete` | HOME TOOLS · Brush › Shape › **Delete** | PLACEHOLDER | A ribbon button; Delete and Backspace say it comes with the next update | Tools 1a, B4 |
+| `brush.shape.extrude` | HOME TOOLS · Brush › Shape › **Extrude** (Tools 1, mock-up 3) | EXISTS | `brushing::shaping`, `brushing::pull`: E, then the mouse and a click; Shift + drag on the move gizmo | Tools 1a, B4 (built) |
+| `brush.shape.inset` | HOME TOOLS · Brush › Shape › **Inset** | EXISTS | `brushing::pull`: the mouse sets the border's width, a click keeps it | Tools 1a, B4 (built) |
+| `brush.shape.split` | HOME TOOLS · Brush › Shape › **Split** | EXISTS | `brushing::shaping`, `mesh::split`: by the mode | Tools 1a, B4 (built) |
+| `brush.shape.delete` | HOME TOOLS · Brush › Shape › **Delete** | EXISTS | `brushing::shaping`, `mesh::merge`: Delete and Backspace while editing do the same | Tools 1a, B4 (built) |
 | `brush.ribbon.material` | HOME TOOLS · Brush › Brush › "Material ▾" | PLACEHOLDER | A ribbon row | Tools 1a, B5 |
 | `brush.card.material` | The Brush card's **Material** row (mock-up 3) | PLACEHOLDER | A field row | Tools 1a, B5 |
 | `home.create.long-press` | Long press opens a type list (spec 174) | EXISTS | (shell); a new mouse action: decision D15 | |

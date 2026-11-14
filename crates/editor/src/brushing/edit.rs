@@ -145,6 +145,8 @@ pub(crate) struct Editing {
     /// While dragging, the brush as it would be: drawn in its place, its
     /// own mesh alone uploaded.
     pub(crate) preview: Option<Arc<BrushModel>>,
+    /// An extrude or inset under way, following the mouse (B4).
+    pub(crate) pull: Option<super::pull::Pull>,
 }
 
 impl Editing {
@@ -162,16 +164,20 @@ impl Editing {
             parts: None,
             drag: None,
             preview: None,
+            pull: None,
         }
     }
 
-    /// The mesh drawn and picked now: the drag's while dragging, else
-    /// the brush's.
+    /// The mesh drawn and picked now: the drag's while dragging, the
+    /// pull's while extruding or insetting, else the brush's.
     pub(crate) fn mesh(&self) -> Option<&Mesh> {
-        match &self.drag {
-            Some(drag) => Some(drag.now()),
-            None => self.parts.as_ref().map(|p| p.mesh()),
+        if let Some(drag) = &self.drag {
+            return Some(drag.now());
         }
+        if let Some(pull) = &self.pull {
+            return Some(pull.now());
+        }
+        self.parts.as_ref().map(|p| p.mesh())
     }
 
     /// Switches to `mode`, keeping what was picked as the new mode's
@@ -255,8 +261,11 @@ impl Editing {
     }
 
     /// What the status bar says: "Editing Box_03 · Faces · 1 face
-    /// picked".
+    /// picked", or while extruding "Extruding 1 face: 2.00 m · …".
     pub(crate) fn status_words(&self) -> String {
+        if let Some(pull) = &self.pull {
+            return pull.status_words();
+        }
         let name = &self.name;
         let picked = match self.picked.len() {
             0 => "nothing picked".to_owned(),
@@ -266,8 +275,11 @@ impl Editing {
     }
 
     /// What the text at the top of the view says: "Editing Box_03 ·
-    /// Faces · 1 picked".
+    /// Faces · 1 picked", or while extruding "Extruding 1 face · 2.00 m".
     pub(crate) fn top_words(&self) -> String {
+        if let Some(pull) = &self.pull {
+            return pull.top_words();
+        }
         let name = &self.name;
         format!(
             "Editing {name} \u{b7} {} \u{b7} {} picked",

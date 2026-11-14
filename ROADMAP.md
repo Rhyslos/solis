@@ -306,7 +306,7 @@ Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decision
 - **B1 The shape core** (built): an editable polygon mesh (Aventail's, decision 0007, the `mesh` crate), the list's shapes, a Brush component saved in the area (area files' version 3), drawn and solid.
 - **B2 The list and drawing out** (built): **B** opens the list over the view (or Home › Create › Shape), each **B** moves down, **Space** confirms, **Esc** closes; drag the footprint on the grid, pull up the height, click; one undo step a brush.
 - **B3 Editing the insides** (built): **Tab**, then **1** points, **2** edges, **3** faces; click, Ctrl + click and box to pick; moved, turned and stretched with the gizmos, one undo step a drag; a change that would break the brush is put back.
-- **B4 Extrude and shaping:** **E** then move and click, or Shift + drag on the gizmo; inset, split, delete.
+- **B4 Extrude and shaping** (built): **E** then move and click, or Shift + drag on the gizmo; Inset with the mouse; Split and Delete as the mode says; every result checked whole, one undo step each; a brush read open or inside out mended.
 - **B5 Materials, speed, the manual.**
 
 **Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened.

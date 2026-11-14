@@ -228,45 +228,61 @@ fn merge_groups(
 /// Takes out points left in the middle of a straight side of a merged
 /// face (`faces`) that only it and one other face use, from both.
 fn straighten(mesh: &mut Mesh, faces: &[FaceId]) {
-    let topology = mesh.topology().clone();
-    let mut drop: BTreeSet<VertexId> = BTreeSet::new();
-    for face in faces {
-        let corners = mesh.face(*face).unwrap_or_default();
-        let n = corners.len();
-        for i in 0..n {
-            let (prev, at, next) = (corners[(i + n - 1) % n], corners[i], corners[(i + 1) % n]);
-            if topology.vertex_faces(at).len() == 2 && straight(mesh, prev, at, next) {
-                drop.insert(at);
+    let (drop, changes) = {
+        let topology = mesh.topology();
+        let mut drop: BTreeSet<VertexId> = BTreeSet::new();
+        for face in faces {
+            let corners = mesh.face(*face).unwrap_or_default();
+            let n = corners.len();
+            for i in 0..n {
+                let (prev, at, next) = (corners[(i + n - 1) % n], corners[i], corners[(i + 1) % n]);
+                if topology.vertex_faces(at).len() == 2 && straight(mesh, prev, at, next) {
+                    drop.insert(at);
+                }
             }
         }
-    }
-    let mut changes: BTreeMap<FaceId, Vec<VertexId>> = BTreeMap::new();
-    for v in &drop {
-        for face in topology.vertex_faces(*v) {
-            let corners = changes
-                .entry(*face)
-                .or_insert_with(|| mesh.face(*face).unwrap_or_default().to_vec());
-            if corners.len() > 3 {
-                corners.retain(|c| c != v);
+        if drop.is_empty() {
+            return;
+        }
+        let mut changes: BTreeMap<FaceId, Vec<VertexId>> = BTreeMap::new();
+        for v in &drop {
+            for face in topology.vertex_faces(*v) {
+                changes
+                    .entry(*face)
+                    .or_insert_with(|| mesh.face(*face).unwrap_or_default().to_vec());
             }
         }
-    }
+        for corners in changes.values_mut() {
+            let left = corners.iter().filter(|c| !drop.contains(c)).count();
+            // A face that would be left with fewer than three keeps them.
+            if left >= 3 {
+                corners.retain(|c| !drop.contains(c));
+            }
+        }
+        (drop, changes)
+    };
     let used: BTreeSet<VertexId> = changes.values().flatten().copied().collect();
-    // A point some face kept (it had only three corners) stays in all.
+    // A point some face kept stays in every face, so none is left open.
     let stays: BTreeSet<VertexId> = drop.iter().copied().filter(|v| used.contains(v)).collect();
-    if !stays.is_empty() {
-        for (face, corners) in &mut changes {
-            *corners = mesh
-                .face(*face)
-                .unwrap_or_default()
-                .iter()
-                .copied()
-                .filter(|c| !drop.contains(c) || stays.contains(c))
-                .collect();
-        }
-    }
+    let changes: BTreeMap<FaceId, Vec<VertexId>> = if stays.is_empty() {
+        changes
+    } else {
+        changes
+            .into_keys()
+            .map(|face| {
+                let corners = mesh
+                    .face(face)
+                    .unwrap_or_default()
+                    .iter()
+                    .copied()
+                    .filter(|c| !drop.contains(c) || stays.contains(c))
+                    .collect();
+                (face, corners)
+            })
+            .collect()
+    };
     if mesh.rewrite_faces(&changes).is_ok() {
-        let gone: Vec<VertexId> = drop.into_iter().collect();
+        let gone: Vec<VertexId> = drop.difference(&stays).copied().collect();
         mesh.remove_unused_vertices(&gone);
     }
 }

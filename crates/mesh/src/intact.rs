@@ -236,6 +236,7 @@ pub(crate) fn passes_through(
         };
         let mine: HashSet<VertexId> = mesh.face(face).unwrap_or(&[]).iter().copied().collect();
         let triangles = triangles_of(mesh, face);
+        let my_slab = Slab::of(mesh, face);
         for other in grid.near(lo, hi) {
             if other == face || !tried.insert(ordered(face, other)) {
                 continue;
@@ -243,7 +244,7 @@ pub(crate) fn passes_through(
             let shares = mesh
                 .face(other)
                 .is_some_and(|c| c.iter().any(|v| mine.contains(v)));
-            if shares {
+            if shares || apart(mesh, (face, &my_slab), other, near) {
                 continue;
             }
             let theirs = triangles_of(mesh, other);
@@ -256,6 +257,77 @@ pub(crate) fn passes_through(
         }
     }
     Ok(())
+}
+
+/// How far a face's corners reach along its facing: a flat face's lie
+/// on one plane (`low` = `high`), a bent face's spread a little.
+struct Slab {
+    normal: Vec3,
+    low: f32,
+    high: f32,
+}
+
+impl Slab {
+    fn of(mesh: &Mesh, face: FaceId) -> Self {
+        let normal = mesh.face_normal(face);
+        let (low, high) = corners_along(mesh, face, normal)
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(lo, hi), d| {
+                (lo.min(d), hi.max(d))
+            });
+        Self { normal, low, high }
+    }
+
+    /// Whether some of `face`'s corners are clearly above it and some
+    /// clearly below: only then can one of its sides cross this slab.
+    fn straddled_by(&self, mesh: &Mesh, face: FaceId, near: f32) -> bool {
+        let (mut above, mut below) = (false, false);
+        for d in corners_along(mesh, face, self.normal) {
+            above |= d > self.high + near;
+            below |= d < self.low - near;
+        }
+        above && below
+    }
+
+    /// Whether every corner of `face` is clearly on one side of it.
+    fn clear_of(&self, mesh: &Mesh, face: FaceId, near: f32) -> bool {
+        let (mut above, mut below) = (true, true);
+        for d in corners_along(mesh, face, self.normal) {
+            above &= d > self.high + near;
+            below &= d < self.low - near;
+        }
+        above || below
+    }
+
+    fn is_flat(&self, near: f32) -> bool {
+        self.high - self.low <= near
+    }
+}
+
+/// Each corner of `face`, how far along `normal`.
+fn corners_along(mesh: &Mesh, face: FaceId, normal: Vec3) -> impl Iterator<Item = f32> + '_ {
+    mesh.face(face)
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(move |v| mesh.position(*v).map(|p| p.dot(normal)))
+}
+
+/// Whether `face` (with its slab) and `other` surely don't pass through
+/// each other, found from their corners alone: one wholly on one side of
+/// the other, or both flat and neither's corners on both sides of the
+/// other's plane. Saves cutting faces into triangles that can't meet,
+/// such as the many beside a big merged face on the same plane.
+fn apart(mesh: &Mesh, (face, slab): (FaceId, &Slab), other: FaceId, near: f32) -> bool {
+    if slab.clear_of(mesh, other, near) {
+        return true;
+    }
+    let theirs = Slab::of(mesh, other);
+    if theirs.clear_of(mesh, face, near) {
+        return true;
+    }
+    slab.is_flat(near)
+        && theirs.is_flat(near)
+        && !slab.straddled_by(mesh, other, near)
+        && !theirs.straddled_by(mesh, face, near)
 }
 
 fn ordered(a: FaceId, b: FaceId) -> (FaceId, FaceId) {

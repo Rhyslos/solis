@@ -1,4 +1,5 @@
 //! Changing a brush's insides (Tools 1a, B3): the gizmo on what's picked
+//! (Shift + drag on a move handle extruding the picked faces, B4)
 //! (its pivot the middle of the picked points; its axes the world's, or
 //! the brush's own with Local), each drag drawn on the brush's own copy
 //! and let go as one undo step or put back when it would break the
@@ -45,8 +46,9 @@ impl Workbench {
         }
     }
 
-    /// A gizmo drag began on the picked parts.
-    pub(crate) fn part_drag_start(&mut self) {
+    /// A gizmo drag began on the picked parts; `extrude` (Shift held on
+    /// a move handle, B4) extrudes the picked faces as it moves them.
+    pub(crate) fn part_drag_start(&mut self, extrude: bool) {
         let world = self
             .open
             .document
@@ -66,7 +68,16 @@ impl Workbench {
             return;
         };
         edit.hovered = None;
-        edit.drag = Some(Drag::begin(parts.shared(), points, (pivot, axes), world));
+        if !extrude || edit.mode == crate::brushing::edit::Mode::Points {
+            edit.drag = Some(Drag::begin(parts.shared(), points, (pivot, axes), world));
+            return;
+        }
+        if let Some(why) = crate::brushing::shaping::why_not_extrude(edit) {
+            self.viewport.brushing.tell(why);
+            return;
+        }
+        let faces = crate::brushing::shaping::picked_faces(edit);
+        edit.drag = Drag::extruding(parts.mesh(), &faces, (pivot, axes), world);
     }
 
     /// The drag so far (`flip`: Ctrl turns snapping around for it): the
@@ -106,6 +117,16 @@ impl Workbench {
         let entity = edit.entity;
         let what = edit.picked_words();
         match drag.finish() {
+            Ok(Some(mesh)) if drag.is_extruding() => {
+                let shaped = crate::brushing::shaping::Shaped {
+                    mesh: (*mesh).clone(),
+                    around: drag.points().to_vec(),
+                    label: drag.label(&what),
+                    picked: edit.picked.iter().copied().collect(),
+                };
+                self.keep_shaped(shaped, last);
+                return;
+            }
             Ok(Some(mesh)) => {
                 let label = drag.label(&what);
                 let edits = vec![points_edit(entity, &mesh)];

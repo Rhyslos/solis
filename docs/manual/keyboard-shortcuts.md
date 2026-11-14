@@ -92,11 +92,14 @@ See [Selecting and moving things](selecting-and-moving.md).
 | Then the height | Move the mouse up; click to keep it |
 | Draw freely, off the grid, for this drag | Hold `Ctrl` |
 | Give the brush up, leaving nothing | `Esc`, or right-click |
-
 | Start or stop editing the picked brush's insides (or **Done** on **Home tools · Brush**) | `Tab` |
 | Pick points, edges or faces, while editing | `1`, `2`, `3` |
 | Add a part to the pick, or take it away, while editing | `Ctrl` + click |
-| Do nothing to the brush (deleting parts comes later) | `Delete`, `Backspace`, while editing |
+| Extrude the picked faces (or **Extrude** on **Home tools · Brush**): move the mouse, click to keep | `E`, while editing |
+| Extrude the picked faces as you move them | Hold `Shift` and drag the Move tool's gizmo, while editing |
+| Extrude or inset freely, off the grid | Hold `Ctrl` while moving the mouse |
+| Give an extrude or inset up, leaving nothing | `Esc`, or right-click |
+| Delete the picked parts and close the gap (never the brush) | `Delete`, `Backspace`, while editing |
 
 With a tile map picked, `B` is the tile map's Brush instead, and `Tab` its art or meaning (below). Over the UI canvas, `1`, `2` and `3` stay its tools. See [Brushes](brushes.md).
 

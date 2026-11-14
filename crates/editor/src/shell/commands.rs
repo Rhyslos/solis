@@ -58,6 +58,16 @@ pub(crate) enum ShellCommand {
     BrushMode(crate::brushing::edit::Mode),
     /// Makes the brush being edited solid, or not.
     BrushSolid,
+    /// Extrudes the picked faces (or edges) of the brush being edited
+    /// with the mouse (B4): E, and HOME TOOLS · Brush › Extrude.
+    BrushExtrude,
+    /// Insets the picked faces with the mouse (B4).
+    BrushInset,
+    /// Splits what's picked, as the mode says (B4).
+    BrushSplit,
+    /// Deletes what's picked and closes the gap (B4): Delete and
+    /// Backspace while editing.
+    BrushDelete,
     NewTileMap,
     CreateAssembly,
     SnapToGrid,
@@ -245,7 +255,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 143] = [
+    pub(crate) const ALL: [Self; 147] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -277,6 +287,10 @@ impl ShellCommand {
         C::BrushMode(crate::brushing::edit::Mode::Edges),
         C::BrushMode(crate::brushing::edit::Mode::Faces),
         C::BrushSolid,
+        C::BrushExtrude,
+        C::BrushInset,
+        C::BrushSplit,
+        C::BrushDelete,
         C::NewTileMap,
         C::CreateAssembly,
         C::SnapToGrid,
@@ -449,6 +463,9 @@ impl ShellCommand {
                 w.viewport.brushing.edit.is_some(),
                 "Pick one brush and press Tab first",
             ),
+            C::BrushExtrude | C::BrushInset | C::BrushSplit | C::BrushDelete => {
+                w.why_not_shape(self)
+            }
             C::NewInLibrary(_) => when(project, "Open or make a project first (File)"),
             C::PlacePicked => when(
                 w.picked_placeable().is_some(),
@@ -590,6 +607,7 @@ impl ShellCommand {
             C::EditBrushInsides => w.toggle_brush_editing(),
             C::BrushMode(mode) => w.brush_mode(mode),
             C::BrushSolid => w.switch_edited_brush_solid(),
+            C::BrushExtrude | C::BrushInset | C::BrushSplit | C::BrushDelete => w.shape_brush(self),
             C::SnapToGrid => w.viewport.snapping.grid ^= true,
             C::SnapAngles => w.viewport.snapping.angle ^= true,
             C::SnapScale => w.viewport.snapping.scale ^= true,
