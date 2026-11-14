@@ -348,3 +348,56 @@ fn broken_numbers_and_missing_polygons_are_handled() {
     extrude_shaped(&mut cyl, &[cap], -10.0, Grouping::Together, shape);
     healthy(&cyl);
 }
+
+#[test]
+fn extrude_ways_are_each_piece_and_the_way_its_points_go() {
+    let mut mesh = cube();
+    let faces: Vec<FaceId> = mesh.faces().map(|(f, _)| f).collect();
+    let top = faces
+        .iter()
+        .copied()
+        .find(|f| mesh.face_normal(*f).z > 0.99)
+        .unwrap();
+    let side = faces
+        .iter()
+        .copied()
+        .find(|f| mesh.face_normal(*f).x > 0.99)
+        .unwrap();
+    // Touching, together: one piece going between their facings.
+    let together = extrude_ways(&mesh, &[top, side], Grouping::Together);
+    assert_eq!(together.len(), 1);
+    assert_eq!(together[0].0.len(), 2);
+    let way = together[0].1;
+    assert!(
+        (way - Vec3::new(1.0, 0.0, 1.0).normalize()).length() < 1e-5,
+        "{way}"
+    );
+    // Apart: one each, each its own way.
+    let apart = extrude_ways(&mesh, &[top, side], Grouping::Separate);
+    assert_eq!(apart.len(), 2);
+    // The way the extrude moves the top's points, by any distance.
+    let before: Vec<Vec3> = mesh
+        .face(top)
+        .unwrap()
+        .iter()
+        .filter_map(|v| mesh.position(*v))
+        .collect();
+    extrude_shaped(
+        &mut mesh,
+        &[top],
+        2.0,
+        Grouping::Together,
+        ExtrudeShape::default(),
+    );
+    let after: Vec<Vec3> = mesh
+        .face(top)
+        .unwrap()
+        .iter()
+        .filter_map(|v| mesh.position(*v))
+        .collect();
+    for (a, b) in before.iter().zip(&after) {
+        assert!((*b - *a - Vec3::Z * 2.0).length() < 1e-5);
+    }
+    // Faces that aren't there make no piece.
+    assert!(extrude_ways(&mesh, &[FaceId::from_raw(999)], Grouping::Together).is_empty());
+}

@@ -134,9 +134,12 @@ impl Workbench {
                     self.open.document.close_step();
                     // The drag's last frame is the brush's model: made
                     // once, from the mesh in hand, never read back.
+                    // Moving points keeps a whole brush whole (the drag's
+                    // check says so) and a brush that wasn't, as it was.
+                    let unwhole = self.open.brushes.get(entity).is_some_and(|m| m.unwhole);
                     let kept = Arc::new(match &last {
-                        Some(last) => last.kept(),
-                        None => BrushModel::passing(&mesh).kept(),
+                        Some(last) => last.kept(unwhole),
+                        None => BrushModel::passing(&mesh).kept(unwhole),
                     });
                     self.open.brushes.adopt(entity, Arc::clone(&kept));
                     self.show_edited_model(entity, Some(kept));

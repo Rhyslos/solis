@@ -239,6 +239,16 @@ impl Topology {
         self.edges.iter().copied()
     }
 
+    /// Every edge, in order, with the faces using it: for walking every
+    /// edge without looking each one up (drawing a big brush's edges
+    /// each frame, Tools 1a B5).
+    pub fn edges_with_uses(&self) -> impl Iterator<Item = (EdgeKey, &[EdgeUse])> + '_ {
+        self.edges
+            .iter()
+            .enumerate()
+            .map(|(i, edge)| (*edge, slice_at(&self.use_starts, &self.uses, i)))
+    }
+
     /// Every edge, in order, as a list.
     pub fn edge_list(&self) -> &[EdgeKey] {
         &self.edges

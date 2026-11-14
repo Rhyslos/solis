@@ -34,6 +34,7 @@ pub(crate) mod draw;
 pub(crate) mod edit;
 pub(crate) mod edit_draw;
 pub(crate) mod ghost;
+pub(crate) mod keep;
 pub(crate) mod list;
 pub(crate) mod parts;
 pub(crate) mod pull;

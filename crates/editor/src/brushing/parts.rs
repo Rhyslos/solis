@@ -24,6 +24,9 @@ struct FacePlace {
     /// Its middle (the average of its corners): faces mode shows a dot
     /// there, and a box picks the face when it holds it.
     middle: Vec3,
+    /// Its facing (unit long): which side the camera sees, each frame,
+    /// without working it out again (Tools 1a, B5).
+    normal: Vec3,
     /// Its triangles' place in [`PartCache::triangles`].
     first: u32,
     count: u32,
@@ -65,6 +68,7 @@ impl PartCache {
                 lo,
                 hi,
                 middle,
+                normal: mesh.face_normal(id),
                 first,
                 count: triangles.len() as u32 - first,
             });
@@ -87,6 +91,11 @@ impl PartCache {
     /// The mesh.
     pub(crate) fn mesh(&self) -> &Mesh {
         &self.mesh
+    }
+
+    /// Each face's id, middle and facing, as worked out once for its mesh.
+    pub(crate) fn faces(&self) -> impl Iterator<Item = (FaceId, Vec3, Vec3)> + '_ {
+        self.faces.iter().map(|f| (f.id, f.middle, f.normal))
     }
 
     /// The mesh, shared.

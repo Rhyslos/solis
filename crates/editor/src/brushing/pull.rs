@@ -21,7 +21,9 @@
 
 use crate::camera::Camera;
 use glam::{Mat3, Mat4, Vec2, Vec3};
-use mesh::edit::{ExtrudeShape, Grouping, extrude_edges, extrude_shaped, inset_polygons};
+use mesh::edit::{
+    ExtrudeShape, Grouping, extrude_edges, extrude_shaped, extrude_ways, inset_polygons,
+};
 use mesh::{EdgeKey, FaceId, Mesh, VertexId};
 use std::sync::Arc;
 
@@ -131,6 +133,11 @@ pub(crate) struct Pull {
     pub(crate) free: bool,
     /// The brush as it would be now.
     now: Arc<Mesh>,
+    /// Keeping it as it is now, worked out ahead on a worker (Tools 1a,
+    /// B5), so the click that keeps it finds the work done.
+    pub(crate) ahead: Option<Arc<super::keep::Ahead>>,
+    /// How many have been asked for ahead.
+    pub(crate) newest: super::keep::Newest,
 }
 
 impl Pull {
@@ -142,9 +149,31 @@ impl Pull {
         world: Mat4,
         what: String,
     ) -> Option<Self> {
-        Self::prepared(PullKind::Extrude, mesh, world, what, |m, d| {
-            extrude_shaped(m, faces, d, Grouping::Together, ExtrudeShape::default());
-        })
+        // Made once, at no distance: every point of a piece then goes the
+        // piece's one way (Tools 1a, B5; the same as making it again at a
+        // unit's distance, which the tests hold it to).
+        let mut start = mesh.clone();
+        extrude_shaped(
+            &mut start,
+            faces,
+            0.0,
+            Grouping::Together,
+            ExtrudeShape::default(),
+        );
+        let mut seen = std::collections::HashSet::new();
+        let mut moving = Vec::new();
+        for (piece, way) in extrude_ways(mesh, faces, Grouping::Together) {
+            for face in piece {
+                for v in start.face(face).unwrap_or_default() {
+                    if let Some(at) = start.position(*v)
+                        && seen.insert(*v)
+                    {
+                        moving.push((*v, at, way));
+                    }
+                }
+            }
+        }
+        Self::moving(PullKind::Extrude, start, moving, world, what)
     }
 
     /// Extruding `edges` (those on an open side).
@@ -167,24 +196,45 @@ impl Pull {
     }
 
     /// The operation `op` made at no distance and at one unit, which give
-    /// where each moving point starts and which way it goes.
+    /// where each moving point starts and which way it goes. The two are
+    /// made side by side on two cores (Tools 1a, B5): the frame that
+    /// starts a pull of a big pick waits for them.
     fn prepared(
         kind: PullKind,
         mesh: &Mesh,
         world: Mat4,
         what: String,
-        op: impl Fn(&mut Mesh, f32),
+        op: impl Fn(&mut Mesh, f32) + Sync,
     ) -> Option<Self> {
-        let mut start = mesh.clone();
-        op(&mut start, 0.0);
-        let mut one = mesh.clone();
-        op(&mut one, 1.0);
+        let made = |distance: f32| {
+            let mut out = mesh.clone();
+            op(&mut out, distance);
+            out
+        };
+        let (start, one) = rayon::join(|| made(0.0), || made(1.0));
         let moving: Vec<(VertexId, Vec3, Vec3)> = start
             .vertices()
             .filter_map(|(v, at)| {
                 let per = one.position(v)? - at;
                 (per.length_squared() > 0.0 && per.is_finite()).then_some((v, at, per))
             })
+            .collect();
+        Self::moving(kind, start, moving, world, what)
+    }
+
+    /// A pull of `kind` from `start` (the operation made at no distance),
+    /// `moving` each point that moves: where it starts and how far it
+    /// goes for one unit.
+    fn moving(
+        kind: PullKind,
+        start: Mesh,
+        moving: Vec<(VertexId, Vec3, Vec3)>,
+        world: Mat4,
+        what: String,
+    ) -> Option<Self> {
+        let moving: Vec<(VertexId, Vec3, Vec3)> = moving
+            .into_iter()
+            .filter(|(_, _, per)| per.length_squared() > 0.0 && per.is_finite())
             .collect();
         if moving.is_empty() {
             return None;
@@ -220,6 +270,8 @@ impl Pull {
             gauge: None,
             metres: 0.0,
             free: false,
+            ahead: None,
+            newest: super::keep::Newest::default(),
         })
     }
 

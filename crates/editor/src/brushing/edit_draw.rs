@@ -158,19 +158,35 @@ fn measure(ui: &Ui, (from, to): (Pos2, Pos2), away: egui::Vec2, words: &str, acc
 
 /// Which faces of `mesh` face the camera, by face slot.
 fn facing(mesh: &Mesh, camera: &Camera, world: Mat4) -> Vec<bool> {
+    let each = mesh
+        .faces()
+        .map(|(face, corners)| (face, middle_of(mesh, corners), mesh.face_normal(face)));
+    facing_of(mesh, each, camera, world)
+}
+
+/// [`facing`] from each face's middle and facing, worked out already
+/// (the picking geometry's, when it is the mesh drawn: Tools 1a, B5).
+fn facing_of(
+    mesh: &Mesh,
+    faces: impl Iterator<Item = (FaceId, Vec3, Vec3)>,
+    camera: &Camera,
+    world: Mat4,
+) -> Vec<bool> {
     let normals = Mat3::from_mat4(world).inverse().transpose();
     let flat = camera.is_flat();
     let eye = camera.position;
     let forward = camera.forward();
     let (starts, _) = mesh.face_layout();
     let mut front = vec![false; starts.len().saturating_sub(1)];
-    for (face, corners) in mesh.faces() {
-        let normal = normals * mesh.face_normal(face);
-        front[face.get() as usize] = if flat {
-            normal.dot(forward) < 0.0
-        } else {
-            normal.dot(eye - world.transform_point3(middle_of(mesh, corners))) > 0.0
-        };
+    for (face, middle, facing) in faces {
+        let normal = normals * facing;
+        if let Some(slot) = front.get_mut(face.get() as usize) {
+            *slot = if flat {
+                normal.dot(forward) < 0.0
+            } else {
+                normal.dot(eye - world.transform_point3(middle)) > 0.0
+            };
+        }
     }
     front
 }
@@ -191,6 +207,14 @@ fn middle_of(mesh: &Mesh, corners: &[mesh::VertexId]) -> Vec3 {
 struct Batch(egui::Mesh);
 
 impl Batch {
+    /// A batch with room for `quads` four-cornered shapes.
+    fn with_room(quads: usize) -> Self {
+        let mut mesh = egui::Mesh::default();
+        mesh.vertices.reserve(quads * 4);
+        mesh.indices.reserve(quads * 6);
+        Self(mesh)
+    }
+
     /// A line from `a` to `b`, `width` points wide.
     fn line(&mut self, a: Pos2, b: Pos2, width: f32, colour: Color32) {
         let along = b - a;
@@ -237,13 +261,34 @@ impl Batch {
             return;
         };
         let first = self.0.vertices.len() as u32;
+        // A flat quad, the most common face, is cut along the diagonal
+        // that keeps both halves turning the same way, without the general
+        // cutter's work (thousands are lit in a big pick).
+        let quad = (points.len() == 4).then(|| {
+            let turn = |a: Pos2, b: Pos2, c: Pos2| (b - a).x * (c - a).y - (b - a).y * (c - a).x;
+            let [p, q, r, t] = [points[0], points[1], points[2], points[3]];
+            let along_02 = turn(p, q, r).signum() == turn(p, r, t).signum();
+            if along_02 {
+                [0, 1, 2, 0, 2, 3]
+            } else {
+                [0, 1, 3, 1, 2, 3]
+            }
+        });
         for p in points {
             self.0.colored_vertex(p, colour);
         }
-        mesh::face_triangles(mesh, corners, |[a, b, c]| {
-            self.0
-                .add_triangle(first + a as u32, first + b as u32, first + c as u32);
-        });
+        match quad {
+            Some(cut) => {
+                for t in cut.chunks_exact(3) {
+                    self.0
+                        .add_triangle(first + t[0], first + t[1], first + t[2]);
+                }
+            }
+            None => mesh::face_triangles(mesh, corners, |[a, b, c]| {
+                self.0
+                    .add_triangle(first + a as u32, first + b as u32, first + c as u32);
+            }),
+        }
     }
 }
 
@@ -255,12 +300,20 @@ fn parts(ui: &Ui, view: Rect, camera: &Camera, (edit, mesh, world): (&Editing, &
     // Each point put on screen once.
     let screen: Vec<Option<Pos2>> = mesh.point_slots().map(|p| p.and_then(at)).collect();
     let point = |v: mesh::VertexId| screen.get(v.get() as usize).copied().flatten();
-    let front = facing(mesh, camera, world);
+    // The picking geometry's facings when it is this mesh (not a drag's
+    // or a pull's): worked out once, not every frame.
+    let front = match edit.parts.as_ref().filter(|p| std::ptr::eq(p.mesh(), mesh)) {
+        Some(parts) => facing_of(mesh, parts.faces(), camera, world),
+        None => facing(mesh, camera, world),
+    };
     let faces_front = |f: &FaceId| front.get(f.get() as usize).copied().unwrap_or(false);
     let accent = crate::interface_look::accent_fill();
     let lit = tokens::mix(accent, Color32::WHITE, 0.55);
     let line = tokens::mix(tokens::text_emphasis(), tokens::strong_line(), 0.8);
-    let mut batch = Batch::default();
+    // Room for every edge's line and dot at once: a big brush's frame
+    // would otherwise grow the batch many times over.
+    let mut batch =
+        Batch::with_room(mesh.edges().len() + mesh.face_count() + edit.picked.len() * 4);
     // Picked faces first, under the lines.
     if edit.mode == Mode::Faces {
         for part in edit.picked.iter().chain(edit.hovered.iter()) {
@@ -272,8 +325,8 @@ fn parts(ui: &Ui, view: Rect, camera: &Camera, (edit, mesh, world): (&Editing, &
         }
     }
     let topology = mesh.topology();
-    for edge in mesh.edges() {
-        if !topology.edge_faces(*edge).any(|f| faces_front(&f)) {
+    for (edge, uses) in topology.edges_with_uses() {
+        if !uses.iter().any(|u| faces_front(&u.face)) {
             continue;
         }
         let (a, b) = edge.ends();
@@ -282,27 +335,35 @@ fn parts(ui: &Ui, view: Rect, camera: &Camera, (edit, mesh, world): (&Editing, &
         }
     }
     // The picked edges, and the rim of the picked faces (sides shared by
-    // two picked faces are inside it), in the accent.
-    let mut sides: std::collections::HashMap<mesh::EdgeKey, u32> = Default::default();
+    // two picked faces are inside it), in the accent: a side is on the
+    // rim when the face across it isn't picked.
+    let mut picked_face = vec![false; front.len()];
+    for part in &edit.picked {
+        if let Part::Face(face) = *part
+            && let Some(slot) = picked_face.get_mut(face.get() as usize)
+        {
+            *slot = true;
+        }
+    }
+    let is_picked = |f: FaceId| picked_face.get(f.get() as usize).copied().unwrap_or(false);
     for part in &edit.picked {
         match *part {
             Part::Face(face) => {
                 for edge in topology.face_edges(face) {
-                    *sides.entry(*edge).or_default() += 1;
+                    if topology.edge_faces(*edge).filter(|f| is_picked(*f)).count() == 1 {
+                        outline_part(&mut batch, mesh, Part::Edge(*edge), &point, accent);
+                    }
                 }
             }
             other => outline_part(&mut batch, mesh, other, &point, accent),
         }
-    }
-    for (edge, _) in sides.into_iter().filter(|(_, n)| *n == 1) {
-        outline_part(&mut batch, mesh, Part::Edge(edge), &point, accent);
     }
     if let Some(part) = edit.hovered {
         outline_part(&mut batch, mesh, part, &point, lit);
     }
     dots(
         &mut batch,
-        (edit, mesh),
+        (edit, mesh, &picked_face),
         (&faces_front, &point),
         (accent, lit, line),
     );
@@ -349,14 +410,20 @@ fn outline_part(
 /// pointer lit.
 fn dots(
     batch: &mut Batch,
-    (edit, mesh): (&Editing, &Mesh),
+    (edit, mesh, picked_face): (&Editing, &Mesh, &[bool]),
     (front, point): (&dyn Fn(&FaceId) -> bool, &OnScreen<'_>),
     (accent, lit, plain): (Color32, Color32, Color32),
 ) {
+    // Picked faces looked up by place, not in the pick's sorted set: a
+    // faces-mode frame asks for every face (Tools 1a, B5).
+    let picked = |part: &Part| match part {
+        Part::Face(f) => picked_face.get(f.get() as usize).copied().unwrap_or(false),
+        other => edit.picked.contains(other),
+    };
     let look = |part: Part| {
         if edit.hovered == Some(part) {
             (lit, DOT_LIT)
-        } else if edit.picked.contains(&part) {
+        } else if picked(&part) {
             (accent, DOT_LIT)
         } else {
             (plain, DOT)

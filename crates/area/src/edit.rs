@@ -139,7 +139,15 @@ fn value_bytes(value: &Value) -> usize {
     std::mem::size_of::<Value>()
         + match value {
             Value::Text(t) => t.len(),
-            Value::List(items) => items.iter().map(value_bytes).sum(),
+            // Long lists of numbers (a brush's) are counted without a
+            // call for each.
+            Value::List(items) => items
+                .iter()
+                .map(|v| match v {
+                    Value::Text(_) | Value::List(_) => value_bytes(v),
+                    _ => std::mem::size_of::<Value>(),
+                })
+                .sum(),
             _ => 0,
         }
 }

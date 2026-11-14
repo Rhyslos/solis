@@ -8,12 +8,12 @@ Polygon meshes, how they connect, the operations on them and the brushes' shapes
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers. | |
 | `polygon.rs` | The mesh: points and n-sided faces by stable id, hard edges, deleting, rebuilding from saved slots. Its point storage is in [`polygon/`](polygon/README.md). Tests in `polygon_tests.rs`. | `Mesh`, `VertexId`, `FaceId`, `EdgeKey`, `MeshError` |
-| `topology.rs` | How points, edges and faces connect, worked out once per set of faces. Tests in `topology_tests.rs`. | `Topology`, `EdgeUse` |
+| `topology.rs` | How points, edges and faces connect, worked out once per set of faces. Tests in `topology_tests.rs`. | `Topology` (with `edges_with_uses`, every edge and its faces without a lookup each), `EdgeUse` |
 | `attributes.rs` | Named values on points, edges, faces or corners, stored by id. Tests in `attributes_tests.rs`. | `Domain`, `Value`, `AttributeElement`, `HARD` |
 | `builder.rs` | How operations make new points and faces so their values come along. Tests in `builder_tests.rs`. | `Builder`, `PointFrom`, `CornerFrom` |
 | `material.rs` | Each face's material slot, a face layer. | `MATERIAL`, `slot_of`, `set_material` |
 | `edit.rs` | Operations in one place: moving points, and the extrudes, inset, splits, merges and materials re-exported. | `Outcome`, `move_points`, `transform_points` |
-| `extrude.rs` | Extruding faces (along their facing, straight, shaped), insetting them, and extruding border edges. Tests in `extrude_tests.rs` and `extrude_shaped_tests.rs`. | `extrude_polygons`, `extrude_shaped`, `inset_polygons`, `extrude_edges`, `Grouping` |
+| `extrude.rs` | Extruding faces (along their facing, straight, shaped), insetting them, and extruding border edges. Tests in `extrude_tests.rs` and `extrude_shaped_tests.rs`. | `extrude_polygons`, `extrude_shaped`, `extrude_ways` (each piece and the one way its points go, so a tool following the mouse makes the extrude once), `inset_polygons`, `extrude_edges`, `Grouping` |
 | `split.rs` | Cutting a face in two between two points, a point in the middle of edges, faces cut across their middle along the longer side. Tests in `split_tests.rs`. | `split_face_between`, `split_edges`, `split_faces_across` |
 | `merge.rs` | Deleting parts and closing the gap: touching faces merged into one, an edge's or a point's faces merged. Tests in `merge_tests.rs`. | `merge_faces`, `dissolve_edges`, `dissolve_points` |
 | `intact.rs` | Whether a brush stays whole after points move: no face folded or flattened, no passing through. Tests in `intact_tests.rs`. | `check_moved`, `Broken` |

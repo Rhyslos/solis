@@ -198,23 +198,69 @@ pub fn points_of(mesh: &Mesh) -> Vec<Value> {
 /// order, gaps left by deleted ones closed up), its faces by those places,
 /// and each face's material slot.
 fn lists_of(mesh: &Mesh) -> (Vec<Value>, Vec<Value>, Vec<Value>) {
-    let mut place: HashMap<VertexId, i64> = HashMap::with_capacity(mesh.vertex_count());
-    for (id, _) in mesh.vertices() {
-        place.insert(id, place.len() as i64);
-    }
+    let place = places(mesh);
     let points = points_of(mesh);
-    let mut faces = Vec::new();
+    let (starts, _) = mesh.face_layout();
+    let mut faces =
+        Vec::with_capacity(mesh.face_count() + starts.last().copied().unwrap_or(0) as usize);
     let mut materials = Vec::with_capacity(mesh.face_count());
     for (face, corners) in mesh.faces() {
         faces.push(Value::Int(corners.len() as i64));
         faces.extend(
             corners
                 .iter()
-                .map(|v| Value::Int(place.get(v).copied().unwrap_or(0))),
+                .map(|v| Value::Int(i64::from(place.get(v.get() as usize).copied().unwrap_or(0)))),
         );
         materials.push(Value::Int(i64::from(mesh::material::slot_of(mesh, face))));
     }
     (points, faces, materials)
+}
+
+/// Each point slot's place in the written list of points (gaps closed
+/// up), by slot.
+fn places(mesh: &Mesh) -> Vec<u32> {
+    let mut place = vec![0; mesh.point_slot_count()];
+    for (n, (id, _)) in mesh.vertices().enumerate() {
+        if let Some(p) = place.get_mut(id.get() as usize) {
+            *p = n as u32;
+        }
+    }
+    place
+}
+
+/// The mesh reading back [`Brush::to_data`]'s lists of `mesh` gives (the
+/// gaps left by deleted points and faces closed up, the ids after them
+/// moved down), made straight from `mesh` without writing or reading
+/// them (Tools 1a, B5: keeping a shaped brush). For a mesh known whole,
+/// which reading wouldn't mend; `None` if it can't be made.
+pub fn compacted(mesh: &Mesh) -> Option<Mesh> {
+    let place = places(mesh);
+    let points: Vec<Option<glam::Vec3>> = mesh.vertices().map(|(_, at)| Some(at)).collect();
+    let mut slots: HashMap<u32, Vec<FaceId>> = HashMap::new();
+    let faces: Vec<Option<Vec<VertexId>>> = mesh
+        .faces()
+        .enumerate()
+        .map(|(n, (face, corners))| {
+            let slot = mesh::material::slot_of(mesh, face);
+            if slot != 0 {
+                slots
+                    .entry(slot)
+                    .or_default()
+                    .push(FaceId::from_raw(n as u32));
+            }
+            Some(
+                corners
+                    .iter()
+                    .map(|v| VertexId::from_raw(place.get(v.get() as usize).copied().unwrap_or(0)))
+                    .collect(),
+            )
+        })
+        .collect();
+    let mut out = Mesh::from_slots(points, faces, []).ok()?;
+    for (slot, faces) in slots {
+        set_material(&mut out, &faces, slot);
+    }
+    Some(out)
 }
 
 /// Why a brush's lists read as no mesh (each count is checked against

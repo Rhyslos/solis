@@ -466,3 +466,40 @@ fn points_of_is_the_points_list_the_brush_writes() {
     }
     assert!(points_of(&Mesh::new()).is_empty());
 }
+
+#[test]
+fn compacted_is_the_mesh_its_lists_read_back_as_gaps_closed_and_slots_kept() {
+    // Two boxes side by side whose tops are merged (a face gone), and a
+    // loose point deleted: gaps in both the points and the faces.
+    let mut mesh = mesh::Primitive::Cube(mesh::CubeParams {
+        size: glam::Vec3::new(4.0, 2.0, 2.0),
+        segments: [2, 1, 1],
+    })
+    .mesh();
+    let faces: Vec<FaceId> = mesh.faces().map(|(f, _)| f).collect();
+    set_material(&mut mesh, &faces[3..5], 2);
+    let loose = mesh.add_vertex(glam::Vec3::splat(9.0)).unwrap();
+    mesh.remove_unused_vertex(loose);
+    let tops: Vec<FaceId> = mesh
+        .faces()
+        .map(|(f, _)| f)
+        .filter(|f| mesh.face_normal(*f).z > 0.99)
+        .collect();
+    assert_eq!(tops.len(), 2);
+    mesh::edit::merge_faces(&mut mesh, &tops).unwrap();
+    assert!(
+        mesh.face_layout().0.len() - 1 > mesh.face_count(),
+        "a face gap"
+    );
+    let brush = Brush {
+        mesh: Arc::new(mesh.clone()),
+        ..Brush::default()
+    };
+    let read = Brush::from_data(&brush.to_data());
+    let made = compacted(&mesh).unwrap();
+    assert_eq!(made, *read.mesh);
+    assert_eq!(made.point_slot_count(), made.vertex_count(), "no gaps");
+    // A mesh without gaps comes back the same.
+    let plain = Shape::Arch.build(&Shape::Arch.standard());
+    assert_eq!(compacted(&plain).unwrap(), plain);
+}
