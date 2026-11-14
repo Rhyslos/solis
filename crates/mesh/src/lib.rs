@@ -11,6 +11,7 @@ pub mod check;
 pub mod edit;
 pub mod extrude;
 pub mod flat;
+pub mod intact;
 pub mod material;
 pub mod parallel;
 pub mod polygon;
@@ -29,6 +30,7 @@ pub use bounds::Bounds;
 pub use builder::{Builder, CornerFrom, PointFrom};
 pub use check::MeshReport;
 pub use flat::{FlatTriangles, flat_triangles, solid_triangles};
+pub use intact::{Broken, check_moved};
 pub use polygon::{EdgeKey, FaceId, Mesh, MeshError, VertexId};
 pub use primitives::{
     ConeParams, CubeParams, CylinderParams, DiscParams, PlaneParams, Primitive, PrimitiveKind,
