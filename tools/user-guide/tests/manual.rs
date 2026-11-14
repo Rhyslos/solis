@@ -9,7 +9,10 @@ fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-#[allow(clippy::panic, reason = "a test's helper: stopping loudly is the point")]
+#[allow(
+    clippy::panic,
+    reason = "a test's helper: stopping loudly is the point"
+)]
 fn manual() -> user_guide::Manual {
     user_guide::read(&root()).unwrap_or_else(|why| panic!("{why}"))
 }

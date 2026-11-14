@@ -42,7 +42,7 @@ pub(super) fn sentence(ui: &mut Ui, words: &str) {
     );
 }
 
-/// A setting row whose control is a button: "Open the manual ↗". Returns
+/// A setting row whose control is a button: "Open the user guide". Returns
 /// whether it was clicked. `outside` marks a button that leaves Solis
 /// (the browser, another program).
 pub(super) fn button_row(

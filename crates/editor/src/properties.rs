@@ -28,6 +28,8 @@ pub(crate) enum PropertyRequest {
         /// Its new value.
         value: Value,
     },
+    /// Open the user guide at a manual page's chapter (`lights`).
+    OpenGuide(&'static str),
     /// Rename an entity.
     Rename {
         /// The entity.
@@ -145,13 +147,12 @@ pub(crate) struct AssemblyPart {
     pub root: bool,
 }
 
-/// Where Properties sends people to read more: the manual's address, and
-/// where each game code component is written (its file inside the assets,
-/// and line), by name.
+/// Where Properties sends people to read more about a component: the
+/// user guide's chapter for the engine's own (`manual_page`), and where
+/// each game code component is written (its file inside the assets, and
+/// line), by name.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Help<'a> {
-    /// The manual's address (`…/docs/manual`); empty for none.
-    pub manual: &'a str,
     /// Each game code component's file and line.
     pub places: Option<&'a BTreeMap<String, (String, u32)>>,
 }
@@ -371,15 +372,12 @@ impl Card<'_> {
             name: component,
             can_paste: self.copied.iter().any(|c| c == component),
             code: place.is_some(),
-            help: place.is_none()
-                && !self.help.manual.is_empty()
-                && manual_page(component).is_some(),
+            help: place.is_none() && manual_page(component).is_some(),
         };
         match cards::title_row(ui, has, &schema.help, background) {
             Some(cards::CardAsk::Help) => {
                 if let Some(page) = manual_page(component) {
-                    let address = format!("{}/{page}", self.help.manual);
-                    ui.ctx().open_url(egui::OpenUrl::new_tab(address));
+                    requests.push(PropertyRequest::OpenGuide(page.trim_end_matches(".md")));
                 }
             }
             Some(cards::CardAsk::Menu(cards::CardMenu::OpenCode)) => {

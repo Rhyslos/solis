@@ -64,7 +64,7 @@ impl<'a> Button<'a> {
         self
     }
 
-    /// With an icon after its word: "Open the manual ↗".
+    /// With an icon after its word: "Documentation ↗".
     pub fn icon_after(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
         self.after = true;

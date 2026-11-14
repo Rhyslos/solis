@@ -55,11 +55,11 @@ fn numbered_lists_are_steps() {
 fn good_to_know_and_careful_are_boxes() {
     assert_eq!(
         html("> **Good to know:** keys work here."),
-        "<div class=\"note\">\n<p>keys work here.</p>\n</div>\n"
+        "<div class=\"note\">\n<p>Keys work here.</p>\n</div>\n"
     );
     assert_eq!(
         html("> Note: one\n> two"),
-        "<div class=\"note\">\n<p>one\ntwo</p>\n</div>\n"
+        "<div class=\"note\">\n<p>One\ntwo</p>\n</div>\n"
     );
     assert!(html("> Careful. It deletes.").starts_with("<div class=\"warn\">"));
     assert!(html("> Noted elsewhere").starts_with("<blockquote>"));

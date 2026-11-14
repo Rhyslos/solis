@@ -77,7 +77,7 @@ fn the_tab_bar_and_the_ribbon_are_the_design_s_colours() {
     let ribbon_middle = size::TAB_BAR_H + size::RIBBON_H / 2.0;
     for (what, point, token) in [
         // Between the last tab and the search box.
-        ("the tab bar", [700.0, 17.0], tokens::app()),
+        ("the tab bar", [645.0, 17.0], tokens::app()),
         // Beside the words of the tab in front.
         ("the tab in front", [96.0, 10.0], tokens::ribbon()),
         ("the search box", [1000.0, 17.0], tokens::ribbon()),
@@ -118,4 +118,41 @@ fn nothing_changes_colour_while_the_game_runs_but_play_becoming_stop() {
             "no tint at {point:?}"
         );
     }
+}
+
+/// Documentation is drawn as the tab bar's tabs that aren't in front
+/// are: its words in the tab's grey, on the tab bar's own colour, at the
+/// bar's right end between the project and the chevron (decision 0112).
+#[test]
+fn documentation_is_drawn_as_the_tab_bar_s_words() {
+    use egui_kittest::kittest::Queryable;
+    let Some(mut harness) = editor_window(sample_project(), InterfaceLook::default(), SIZE) else {
+        return;
+    };
+    harness.run();
+    harness.run();
+    let rect = harness
+        .get_by_label(super::documentation::DOCUMENTATION)
+        .rect();
+    let chevron = harness.get_by_label("Collapse the ribbon").rect();
+    let picture = drawn(&mut harness);
+    assert!(rect.right() <= chevron.left() && rect.left() > SIZE[0] / 2.0);
+    assert_eq!(
+        colour_at(
+            &picture,
+            "beside Documentation",
+            [rect.left() + 2.0, rect.top() + 3.0]
+        ),
+        tokens::app()
+    );
+    let brightest = (rect.left() as u32..rect.right() as u32)
+        .flat_map(|x| (rect.top() as u32..rect.bottom() as u32).map(move |y| (x, y)))
+        .map(|(x, y)| picture.pixel(x, y))
+        .max_by_key(|c| c.r())
+        .unwrap();
+    let ink = tokens::text_label();
+    assert!(
+        brightest.r().abs_diff(ink.r()) <= 6 && brightest.r() == brightest.g(),
+        "Documentation's words are {brightest:?}, the tab's grey is {ink:?}"
+    );
 }

@@ -472,6 +472,10 @@ impl Workbench {
                 );
                 self.open.outbox.extend(actions);
             }
+            PropertyRequest::OpenGuide(chapter) => self
+                .open
+                .outbox
+                .push(WorkbenchAction::OpenGuide(Some(chapter.to_string()))),
             PropertyRequest::OpenCode(file) => self.log(
                 LogLevel::Warning,
                 format!("{file} is in the ready-made code: open a project to see it."),

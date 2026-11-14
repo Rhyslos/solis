@@ -30,6 +30,7 @@ mod command_words;
 pub(crate) mod commands;
 mod controls;
 mod create;
+pub(crate) mod documentation;
 pub(crate) mod file_page;
 mod groups;
 pub mod layouts;

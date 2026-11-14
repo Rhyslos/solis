@@ -44,7 +44,6 @@ fn page_with(projects: Vec<KnownProject>) -> Workbench {
     let mut w = Workbench::new(info());
     w.set_known_projects(projects);
     w.set_this_build(Some(57));
-    w.set_manual_url("https://example.com/manual".into());
     w.start_on_recent_projects();
     w
 }
@@ -399,7 +398,7 @@ fn the_learn_page_offers_the_examples_the_manual_and_the_sample_area() {
         "Make the Playground",
         "Make the Turret sample",
         "Make the Benchmark",
-        "Open the manual",
+        "Open the user guide",
         "Add the sample area",
     ] {
         assert!(h.query_all_by_label(label).next().is_some(), "{label}");
@@ -407,6 +406,9 @@ fn the_learn_page_offers_the_examples_the_manual_and_the_sample_area() {
     h.get_by_label("Make the Playground").click();
     h.run();
     assert!(asked(&h, WorkbenchAction::MakePlayground));
+    h.get_by_label("Open the user guide").click();
+    h.run();
+    assert!(asked(&h, WorkbenchAction::OpenGuide(None)));
     // The sample area needs a project to go into.
     h.get_by_label("Add the sample area").click();
     h.run();
@@ -435,6 +437,9 @@ fn about_is_a_page_with_the_name_the_build_and_the_licences() {
         &h,
         WorkbenchAction::OpenProgramFile(ProgramFile::Licence)
     ));
+    h.get_by_label("Open the user guide").click();
+    h.run();
+    assert!(asked(&h, WorkbenchAction::OpenGuide(None)));
     h.get_by_label("Open the notices").click();
     h.run();
     assert!(asked(

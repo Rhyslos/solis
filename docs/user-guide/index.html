@@ -536,6 +536,7 @@ footer p { color: var(--muted); }
 <ol class="steps">
 <li>Install Rust from <a href="https://rustup.rs" target="_blank" rel="noopener">rustup.rs<span class="out" aria-hidden="true">↗</span></a>.</li>
 <li>In the <code>solis</code> folder, run <code>cargo run --release -p app</code>. The first build takes a few minutes; later ones are quicker.</li>
+<li>For <strong>Documentation</strong> to open the <a href="#user-guide">user guide</a>, put the guide beside your build once: <code>cargo run -p user-guide -- --out target/release/user-guide/index.html</code>. A downloaded or installed copy has it already.</li>
 </ol>
 <p><strong>Opening with a model:</strong> <code>solis --import ship.glb</code> opens Solis and imports the model straight away (repeat <code>--import</code> for more than one).</p>
 </section>
@@ -1180,7 +1181,7 @@ end</code></pre>
 </ol>
 <p>On a narrow window the contents fold away behind the button at the top left, and the line saying where you are opens them too.</p>
 <div class="note">
-<p>the guide is made from the manual's pages each time Solis is built, so it can never say something the manual doesn't. If you find a mistake in it, it's a mistake in the manual: the page to fix is the chapter's own page in <code>docs/manual</code>.</p>
+<p>The guide is made from the manual's pages each time Solis is built, so it can never say something the manual doesn't. If you find a mistake in it, it's a mistake in the manual: the page to fix is the chapter's own page in <code>docs/manual</code>.</p>
 </div>
 </section>
 <section id="user-guide--settings">
@@ -1241,7 +1242,8 @@ end</code></pre>
 <li><strong>The <a href="#concepts--the-window">tabs</a>:</strong> <strong>File</strong>, <strong>Home</strong>, <strong>Library</strong>, <strong>Shading</strong>, <strong>Animate</strong>, <strong>UI</strong>, <strong>VFX</strong>, <strong>Audio</strong>, <strong>Debug</strong> and <strong>Build</strong>. Each is one kind of work, and a click on one changes the <a href="#concepts--the-window">ribbon</a> under it and what the editor shows (see <strong>The tabs</strong> below). The tab in front is lit, with a line of the accent colour under it. <strong>Shading</strong> and <strong>VFX</strong> are grey with a small hollow square after their names: those screens aren't built yet (<a href="#unfinished-parts">Unfinished parts</a>).</li>
 <li><strong>A tab that comes with a file</strong> (a <a href="#concepts--the-window">contextual tab</a>): while a tileset, a picture's crops or a selected tile map is open, a tab such as <strong>LIBRARY TOOLS · Tileset</strong> stands right after the tab it belongs to, with a ribbon of that file's own tools. Click it to bring that file to the front; it goes when the file closes. A tileset and a picture's crops fill their tab (with <strong>‹ Back to Library</strong> at the right of the document's tab); a tile map's tab is Home with the <strong>Map</strong> shelf tab in front.</li>
 <li><strong>Search or run a command</strong>, in the middle: one search for everything (see below). Its right end shows its key, <strong>Space</strong>.</li>
-<li><strong>The project and the area</strong>, as in <code>Harbour / docks</code>, with an amber dot after the area's name while it has unsaved changes. Once an update has downloaded, <strong>Restart to update</strong> appears just left of it (<a href="#installing-and-updating">Installing and updating</a>).</li>
+<li><strong>The project and the area</strong>, as in <code>Harbour / docks</code>, with an amber dot after the area's name while it has unsaved changes. Before a project is open it says <strong>No project open</strong>.</li>
+<li><strong>Documentation</strong> opens the <a href="#user-guide">user guide</a>, this manual as one page in your browser, with a search. It is there on every tab, the File pages too, project or not.</li>
 <li><strong>The chevron</strong> at the far right collapses the ribbon (see below).</li>
 </ul>
 <p><strong>The ribbon</strong> is the band under the tab bar: the things you do on the tab in front, as buttons you can see instead of menus you have to open. Why a ribbon? Everything for the job at hand is on screen at once, each with its name under it, and nothing is hidden two menus deep. It is made of <strong>groups</strong>, each with its name underneath:</p>
@@ -1276,9 +1278,9 @@ end</code></pre>
 <tr><td>Project settings</td><td>This project's settings: General, 2D, Input (the game's actions and their keys, see <a href="#input">Input</a>) and Build (<a href="#settings">Settings</a>).</td></tr>
 <tr><td>Preferences</td><td>The editor's own settings, such as its accent colour (<a href="#settings">Settings</a>).</td></tr>
 <tr><td>Plugins</td><td>Not built yet.</td></tr>
-<tr><td>Learn</td><td>Four examples to start from, the first steps and a link to this manual.</td></tr>
+<tr><td>Learn</td><td>Four examples to start from, the first steps, the <a href="#user-guide">user guide</a> and the sample area.</td></tr>
 <tr><td>Updates</td><td>The build you have, the newest one, and <strong>Check now</strong> (<a href="#installing-and-updating">Installing and updating</a>).</td></tr>
-<tr><td>About</td><td>The program's name and version.</td></tr>
+<tr><td>About</td><td>The program's name, version and build, its licences, and the <a href="#user-guide">user guide</a>.</td></tr>
 <tr><td>Exit</td><td>Closes Solis, asking about unsaved work first.</td></tr>
 </tbody>
 </table></div>
@@ -1289,7 +1291,7 @@ end</code></pre>
 <li>every <strong>entity</strong> in the area, which selects it and points the camera at it;</li>
 <li>a <strong>panel</strong> by its name, which comes to the front.</li>
 </ul>
-<p>Up and Down choose, <strong>Enter</strong> does it, <strong>Esc</strong> closes. Why? You don't have to remember which tab something is on: type what you want. Things without a button on the ribbon are found here too, wherever else they are: <strong>New area</strong> and <strong>Open area…</strong> (the <strong>+</strong> after the area's tab), <strong>Save area as…</strong> (a right-click on the area's tab), <strong>Duplicate</strong>, <strong>Delete</strong>, <strong>Rename</strong>, <strong>Select all</strong> and <strong>Select nothing</strong> (a right-click in the Area list), <strong>Reset layout</strong> (<strong>File › Preferences</strong>), <strong>Open the manual ↗</strong> and <strong>Add the sample area</strong> (<strong>File › Learn</strong>), <strong>Check for updates</strong> (<strong>File › Updates</strong>), and showing or hiding the viewport's corner controls (its <strong>Show ▾</strong> pill). Things that can't be done right now (Pause while editing, Delete with nothing selected) aren't listed. In the Frames tab, Space still plays and stops the clip, so point somewhere else first.</p>
+<p>Up and Down choose, <strong>Enter</strong> does it, <strong>Esc</strong> closes. Why? You don't have to remember which tab something is on: type what you want. Things without a button on the ribbon are found here too, wherever else they are: <strong>New area</strong> and <strong>Open area…</strong> (the <strong>+</strong> after the area's tab), <strong>Save area as…</strong> (a right-click on the area's tab), <strong>Duplicate</strong>, <strong>Delete</strong>, <strong>Rename</strong>, <strong>Select all</strong> and <strong>Select nothing</strong> (a right-click in the Area list), <strong>Reset layout</strong> (<strong>File › Preferences</strong>), <strong>Documentation ↗</strong> (the tab bar) and <strong>Add the sample area</strong> (<strong>File › Learn</strong>), <strong>Check for updates</strong> (<strong>File › Updates</strong>), and showing or hiding the viewport's corner controls (its <strong>Show ▾</strong> pill). Things that can't be done right now (Pause while editing, Delete with nothing selected) aren't listed. In the Frames tab, Space still plays and stops the clip, so point somewhere else first.</p>
 <p><strong>The middle of the window</strong> is the same on every tab: one or two <a href="#concepts--the-window">editor groups</a> on top, the <a href="#concepts--the-window">shelf</a> under them, the status bar along the bottom; on Home, the Area list, Properties and Assets sit where the panel layout puts them. Why the same everywhere? Each tab of the tab bar is one kind of work, and its screen keeps your things in the same places: what you're working on big in the middle, the tools and lists for it round it. Panels don't move between places; every tab remembers how you sized it.</p>
 <p><strong>Home's panel layouts.</strong> Home has three lists you use all the time: the <strong>Area</strong> tree, <strong>Properties</strong> and <strong>Assets</strong>. Where they sit is a setting, <strong>File › Preferences › Appearance › Panel layout</strong>, and it changes at once, so try each:</p>
 <div class="table-wrap"><table>
@@ -1332,7 +1334,7 @@ end</code></pre>
 <tr><td>Viewport</td><td>The area's tab on Home and Animate</td><td>The 3D world, in one, two or four views (flat ones too). See <a href="#navigating-the-viewport">Moving around the viewport</a>.</td></tr>
 <tr><td>Game</td><td>Beside the area while playing; beside the Profiler on Debug</td><td>The running game, through its camera, when you press Play. See <a href="#play-mode">Play mode</a>.</td></tr>
 <tr><td>Area</td><td>Home: the left column; in the shelf layout, Home › Entity and Place, left</td><td>Every <a href="#entities">entity</a> in the area, as a tree, with its count in the header. The header's magnifier searches by name, the next button folds everything, and <strong>⋯</strong> unfolds everything, shows what's hidden and unlocks what's locked. Point at a row for its eye (hide) and lock; right-click it for Rename, Duplicate, Delete, Add…, Create assembly and Select all or nothing.</td></tr>
-<tr><td>Properties</td><td>Home: the right column; in the shelf layout, Home › Entity, middle; and the Details, Properties and Screen shelf tabs</td><td>Along its top the selected entity: its name (click and type to rename it), what it is and what it's under, <strong>+ Component</strong>, and <strong>⋯</strong> for rarer actions. Below, each <a href="#entities">component</a> is a card with its settings, side by side as many as fit; a card's <strong>?</strong> opens its manual page and its <strong>⋯</strong> (or a right-click on the card) copies, pastes, resets or removes it. The last card is <strong>Hints</strong>: a few plain sentences about what's selected and what you can do with it. <strong>Turn hints off</strong> on it once you know your way around; <strong>File › Preferences</strong> turns them back on.</td></tr>
+<tr><td>Properties</td><td>Home: the right column; in the shelf layout, Home › Entity, middle; and the Details, Properties and Screen shelf tabs</td><td>Along its top the selected entity: its name (click and type to rename it), what it is and what it's under, <strong>+ Component</strong>, and <strong>⋯</strong> for rarer actions. Below, each <a href="#entities">component</a> is a card with its settings, side by side as many as fit; a card's <strong>?</strong> opens its chapter of the <a href="#user-guide">user guide</a> and its <strong>⋯</strong> (or a right-click on the card) copies, pastes, resets or removes it. The last card is <strong>Hints</strong>: a few plain sentences about what's selected and what you can do with it. <strong>Turn hints off</strong> on it once you know your way around; <strong>File › Preferences</strong> turns them back on.</td></tr>
 <tr><td>Assets</td><td>Home: the strip under the area, or under the Area list, or under Properties, as the panel layout says; in the shelf layout, Home › Entity, right, and Home › Place</td><td>The Library's open folder as tiles (as many across as fit), with <strong>Import</strong> last; while <strong>Place</strong> is in front, only what can be placed, with chips and a search. Drag a tile into the viewport to place it, double-click it to place it where the camera looks, right-click it for the Library's menu.</td></tr>
 <tr><td>Placement</td><td>Home › Place</td><td>How placed things land: on the grid, or where you point.</td></tr>
 <tr><td>Library</td><td>The Library tab</td><td>The open <a href="#projects-and-the-library">project</a>'s files as tiles or a list, with chips for each kind and a search.</td></tr>
@@ -1447,6 +1449,7 @@ end</code></pre>
 <tbody>
 <tr><td>General › Look for updates when Solis starts</td><td>Asks GitHub for a newer build at each start, in the background. Off, nothing is asked until you choose <strong>Check now</strong> on <strong>File › Updates</strong>.</td></tr>
 <tr><td>General › Show hints</td><td>The Hints card, last under Properties, says what's selected and what you can do with it. Its <strong>Turn hints off</strong> does the same as this switch.</td></tr>
+<tr><td>General › Open the guide in</td><td>Which program shows the <a href="#user-guide">user guide</a> when you click <strong>Documentation</strong>: <strong>Default browser</strong> (the standard), a browser Windows lists as installed on this computer, or <strong>A program you choose…</strong>. A browser that's gone falls back to the default, and the status bar says so.</td></tr>
 <tr><td>General › Hide unfinished parts</td><td>Some places in the editor are for features that come in later updates. They are shown faint with a small hollow square, and do nothing yet. Switch this on to hide every one of them, so only what works is on screen. The card beside it shows what one looks like. See <a href="#unfinished-parts">Unfinished parts</a>.</td></tr>
 <tr><td>Appearance › Accent colour</td><td>The colour that marks what's chosen and selected: the chosen tool, the front tab, the selected row. Five colours: <strong>Blue</strong> (the standard), <strong>Grey</strong>, <strong>Orange</strong>, <strong>Teal</strong> and <strong>Purple</strong>. Colours that mean something keep their own: <strong>Play</strong> is the one light button on screen, and warnings and errors are amber and red. The small picture at the right shows the editor in the colour chosen.</td></tr>
 <tr><td>Appearance › Interface scale</td><td>How large everything is drawn: <strong>100%</strong> to <strong>200%</strong>. Raise it when text is too small, common on a laptop or a very sharp (4K) screen. Everything grows together, and thin lines stay crisp. It doesn't change your game.</td></tr>
@@ -2261,9 +2264,9 @@ entity 2B8D4NE6TV0HC {
 <h3>Learn, Updates and About<a class="anchor" href="#launcher--learn-updates-and-about" aria-label="Link to this section">#</a></h3>
 <p>The File column has three more pages:</p>
 <ul>
-<li><strong>Learn</strong>: the four examples again, each with a sentence about it and <strong>Make it in a folder…</strong>; <strong>Your first hour</strong>, five steps for someone new; <strong>Open the manual</strong> (this manual, in your browser); and <strong>Add the sample area</strong>, which adds a small ready-made area to the open project to look around in.</li>
+<li><strong>Learn</strong>: the four examples again, each with a sentence about it and <strong>Make it in a folder…</strong>; <strong>Your first hour</strong>, five steps for someone new; <strong>Open the user guide</strong> (this manual, as one page in your browser: <a href="#user-guide">The user guide</a>); and <strong>Add the sample area</strong>, which adds a small ready-made area to the open project to look around in.</li>
 <li><strong>Updates</strong>: when a newer build of Solis is out, Updates has a <strong>New</strong> mark in the File column, the status bar says <strong>Build N is out</strong> (click it to come here), and a card across the top of the page says what it is, with <strong>Not now</strong> and <strong>Download</strong> (it downloads while you work), then <strong>Restart to update</strong> (Solis asks about unsaved work, closes, installs it and opens again). In a copy you didn't install with the setup file, the step is <strong>Open the releases page</strong> instead. Under the card: the build you have, the newest build with <strong>Check now</strong>, the <strong>Look for updates when Solis starts</strong> switch, the releases page and the list of every change. Beside them, what the new build brings, from its release on GitHub. See <a href="#installing-and-updating">Installing and updating</a>.</li>
-<li><strong>About</strong>: the program's name, version and build, what it is, <strong>Open LICENSE</strong> (its licence), <strong>Open the notices</strong> (the libraries and fonts built into it, each with its licence), and the way to Updates and the manual.</li>
+<li><strong>About</strong>: the program's name, version and build, what it is, <strong>Open LICENSE</strong> (its licence), <strong>Open the notices</strong> (the libraries and fonts built into it, each with its licence), and the way to Updates and the user guide.</li>
 </ul>
 </section>
 <section id="launcher--settings">
@@ -6257,9 +6260,9 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Look around</td><td>Hold right mouse, move the mouse</td></tr>
-<tr><td>Fly forward, left, back, right</td><td>Hold right mouse + W, A, S, D</td></tr>
-<tr><td>Fly down, up</td><td>Hold right mouse + Q, E</td></tr>
-<tr><td>Faster for a moment</td><td>Hold Shift while flying</td></tr>
+<tr><td>Fly forward, left, back, right</td><td>Hold right mouse + <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span>, <span class="keys"><kbd>D</kbd></span></td></tr>
+<tr><td>Fly down, up</td><td>Hold right mouse + <span class="keys"><kbd>Q</kbd></span>, <span class="keys"><kbd>E</kbd></span></td></tr>
+<tr><td>Faster for a moment</td><td>Hold <span class="keys"><kbd>Shift</kbd></span> while flying</td></tr>
 <tr><td>Change camera speed</td><td>Hold right mouse + mouse wheel</td></tr>
 <tr><td>Move forward or back in steps</td><td>Mouse wheel</td></tr>
 <tr><td>Slide the view</td><td>Hold middle mouse, drag</td></tr>
@@ -6275,8 +6278,8 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Give the game the mouse and keys</td><td>Click the Game panel</td></tr>
-<tr><td>Give them back to the editor</td><td>Esc</td></tr>
-<tr><td>Switch the game's fullscreen setting</td><td>Alt + Enter</td></tr>
+<tr><td>Give them back to the editor</td><td><span class="keys"><kbd>Esc</kbd></span></td></tr>
+<tr><td>Switch the game's fullscreen setting</td><td><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Enter</kbd></span></td></tr>
 </tbody>
 </table></div>
 <p>While the game has them, every key is the game's and the editor's shortcuts are off. In an <a href="#playtest-export">exported game</a>, the game has them from the start, Esc included, and Alt + Enter really switches the window.</p>
@@ -6284,19 +6287,19 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Keyboard and mouse</th><th>Gamepad</th></tr></thead>
 <tbody>
-<tr><td>Move</td><td>W A S D, or the arrow keys</td><td>Left stick</td></tr>
+<tr><td>Move</td><td><span class="keys"><kbd>W</kbd></span> <span class="keys"><kbd>A</kbd></span> <span class="keys"><kbd>S</kbd></span> <span class="keys"><kbd>D</kbd></span>, or the arrow keys</td><td>Left stick</td></tr>
 <tr><td>Look</td><td>Move the mouse</td><td>Right stick</td></tr>
-<tr><td>Jump</td><td>Space</td><td>A</td></tr>
-<tr><td>Sprint</td><td>Shift</td><td>Left stick click</td></tr>
-<tr><td>Interact</td><td>F</td><td>X</td></tr>
+<tr><td>Jump</td><td><span class="keys"><kbd>Space</kbd></span></td><td>A</td></tr>
+<tr><td>Sprint</td><td><span class="keys"><kbd>Shift</kbd></span></td><td>Left stick click</td></tr>
+<tr><td>Interact</td><td><span class="keys"><kbd>F</kbd></span></td><td>X</td></tr>
 <tr><td>Pan the <a href="#characters-and-cameras">RTS camera</a></td><td>Arrow keys</td><td>Left stick</td></tr>
-<tr><td>Turn the RTS camera</td><td>Alt + left and right arrows</td><td>Right stick</td></tr>
-<tr><td>Zoom the RTS camera</td><td>Mouse wheel, Page Up and Page Down</td><td>Right and left triggers</td></tr>
+<tr><td>Turn the RTS camera</td><td><span class="keys"><kbd>Alt</kbd></span> + left and right arrows</td><td>Right stick</td></tr>
+<tr><td>Zoom the RTS camera</td><td>Mouse wheel, <span class="keys"><kbd>Page Up</kbd></span> and <span class="keys"><kbd>Page Down</kbd></span></td><td>Right and left triggers</td></tr>
 <tr><td>Drag the map under the RTS camera</td><td>Hold the middle mouse button</td><td></td></tr>
 <tr><td>Move between a <a href="#screens">screen's buttons</a> (MenuMove)</td><td>Arrow keys</td><td>D-pad, left stick</td></tr>
-<tr><td>Choose the button with the ring round it (MenuChoose)</td><td>Enter, Space</td><td>A</td></tr>
-<tr><td>Back (MenuBack)</td><td>Backspace</td><td>B</td></tr>
-<tr><td>Pause</td><td>P</td><td>Start</td></tr>
+<tr><td>Choose the button with the ring round it (MenuChoose)</td><td><span class="keys"><kbd>Enter</kbd></span>, <span class="keys"><kbd>Space</kbd></span></td><td>A</td></tr>
+<tr><td>Back (MenuBack)</td><td><span class="keys"><kbd>Backspace</kbd></span></td><td>B</td></tr>
+<tr><td>Pause</td><td><span class="keys"><kbd>P</kbd></span></td><td>Start</td></tr>
 </tbody>
 </table></div>
 <p>The <a href="#characters-and-cameras--how-to-use-it">playground</a> adds two of its own: it saves on F6 and loads on F7.</p>
@@ -6307,11 +6310,11 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Tool</th><th>Key</th></tr></thead>
 <tbody>
-<tr><td>Select</td><td>Q</td></tr>
-<tr><td>Move</td><td>W</td></tr>
-<tr><td>Rotate</td><td>R</td></tr>
-<tr><td>Scale</td><td>S</td></tr>
-<tr><td>Transform (move, rotate and scale)</td><td>T</td></tr>
+<tr><td>Select</td><td><span class="keys"><kbd>Q</kbd></span></td></tr>
+<tr><td>Move</td><td><span class="keys"><kbd>W</kbd></span></td></tr>
+<tr><td>Rotate</td><td><span class="keys"><kbd>R</kbd></span></td></tr>
+<tr><td>Scale</td><td><span class="keys"><kbd>S</kbd></span></td></tr>
+<tr><td>Transform (move, rotate and scale)</td><td><span class="keys"><kbd>T</kbd></span></td></tr>
 </tbody>
 </table></div>
 <p>These are the area's keys: they wait while the pointer is over a tab with keys of its own (see <a href="#keyboard-shortcuts--editing">Editing</a>).</p>
@@ -6322,15 +6325,15 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Select</td><td>Click</td></tr>
-<tr><td>Add to or take from the selection</td><td>Ctrl + click</td></tr>
-<tr><td>Select with a box</td><td>Drag on empty space (Ctrl + drag adds)</td></tr>
-<tr><td>Select nothing</td><td>Esc</td></tr>
-<tr><td>Select everything</td><td>Ctrl + A</td></tr>
-<tr><td>Snapping on or off for one drag</td><td>Hold Ctrl while dragging a gizmo</td></tr>
-<tr><td>Ten times finer</td><td>Hold Shift while dragging a gizmo</td></tr>
-<tr><td>Cancel a box or a gizmo drag</td><td>Esc, or right click</td></tr>
-<tr><td>Lock or free an axis</td><td>X, Y, Z</td></tr>
-<tr><td>World or object axes</td><td>L</td></tr>
+<tr><td>Add to or take from the selection</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span>click</span></td></tr>
+<tr><td>Select with a box</td><td>Drag on empty space (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span>drag</span> adds)</td></tr>
+<tr><td>Select nothing</td><td><span class="keys"><kbd>Esc</kbd></span></td></tr>
+<tr><td>Select everything</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span></td></tr>
+<tr><td>Snapping on or off for one drag</td><td>Hold <span class="keys"><kbd>Ctrl</kbd></span> while dragging a gizmo</td></tr>
+<tr><td>Ten times finer</td><td>Hold <span class="keys"><kbd>Shift</kbd></span> while dragging a gizmo</td></tr>
+<tr><td>Cancel a box or a gizmo drag</td><td><span class="keys"><kbd>Esc</kbd></span>, or right click</td></tr>
+<tr><td>Lock or free an axis</td><td><span class="keys"><kbd>X</kbd></span>, <span class="keys"><kbd>Y</kbd></span>, <span class="keys"><kbd>Z</kbd></span></td></tr>
+<tr><td>World or object axes</td><td><span class="keys"><kbd>L</kbd></span></td></tr>
 </tbody>
 </table></div>
 <p>See <a href="#selecting-and-moving">Selecting and moving things</a>.</p>
@@ -6341,12 +6344,12 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
-<tr><td>Rename a clip (clips made here)</td><td>Double-click it in the Frames tab's list of clips (Enter keeps the name, Esc leaves it)</td></tr>
-<tr><td>Pick a frame; several</td><td>Click; Ctrl + click, or Shift + click for a run</td></tr>
+<tr><td>Rename a clip (clips made here)</td><td>Double-click it in the Frames tab's list of clips (<span class="keys"><kbd>Enter</kbd></span> keeps the name, <span class="keys"><kbd>Esc</kbd></span> leaves it)</td></tr>
+<tr><td>Pick a frame; several</td><td>Click; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span>click</span>, or <span class="keys"><kbd>Shift</kbd><span class="plus">+</span>click</span> for a run</td></tr>
 <tr><td>Move picked frames (clips made here)</td><td>Drag them</td></tr>
-<tr><td>Take picked frames out (clips made here)</td><td>Delete</td></tr>
-<tr><td>Play or stop the clip</td><td>Space</td></tr>
-<tr><td>Undo or redo a change to the clips file</td><td>Ctrl + Z, Ctrl + Y</td></tr>
+<tr><td>Take picked frames out (clips made here)</td><td><span class="keys"><kbd>Delete</kbd></span></td></tr>
+<tr><td>Play or stop the clip</td><td><span class="keys"><kbd>Space</kbd></span></td></tr>
+<tr><td>Undo or redo a change to the clips file</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6356,16 +6359,16 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
-<tr><td>Pick a state or an arrow; add to what's picked</td><td>Click; Ctrl + click or Shift + click</td></tr>
+<tr><td>Pick a state or an arrow; add to what's picked</td><td>Click; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span>click</span> or <span class="keys"><kbd>Shift</kbd><span class="plus">+</span>click</span></td></tr>
 <tr><td>Pick states with a box</td><td>Drag on empty space</td></tr>
 <tr><td>Move picked states</td><td>Drag one of them</td></tr>
 <tr><td>Join two states</td><td>Drag from a state's edge to another</td></tr>
 <tr><td>Menus (Add state, Make transition, Start here, Delete)</td><td>Right-click empty space, a state or an arrow</td></tr>
-<tr><td>Give up an arrow started with Make transition</td><td>Esc</td></tr>
+<tr><td>Give up an arrow started with Make transition</td><td><span class="keys"><kbd>Esc</kbd></span></td></tr>
 <tr><td>Delete a parameter, or start it at the value shown</td><td>Right-click its name</td></tr>
-<tr><td>Take away what's picked</td><td>Delete</td></tr>
-<tr><td>Pan, zoom, fit everything</td><td>Middle-drag, mouse wheel, F</td></tr>
-<tr><td>Undo or redo a change to the animator</td><td>Ctrl + Z, Ctrl + Y</td></tr>
+<tr><td>Take away what's picked</td><td><span class="keys"><kbd>Delete</kbd></span></td></tr>
+<tr><td>Pan, zoom, fit everything</td><td>Middle-drag, mouse wheel, <span class="keys"><kbd>F</kbd></span></td></tr>
+<tr><td>Undo or redo a change to the animator</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6376,7 +6379,7 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Give a tile to a slot</td><td>Click the tile in the picture, then the slot; or drag the tile onto the slot</td></tr>
-<tr><td>Undo or redo a change to the tileset</td><td>Ctrl + Z, Ctrl + Y (over Properties while it shows the tileset, too)</td></tr>
+<tr><td>Undo or redo a change to the tileset</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span> (over Properties while it shows the tileset, too)</td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6388,9 +6391,9 @@ end</code></pre>
 <tbody>
 <tr><td>Draw a crop</td><td>Drag with the left button on the picture</td></tr>
 <tr><td>Pick a crop</td><td>Click it</td></tr>
-<tr><td>Delete the picked crop</td><td>Delete</td></tr>
+<tr><td>Delete the picked crop</td><td><span class="keys"><kbd>Delete</kbd></span></td></tr>
 <tr><td>Zoom, move the picture</td><td>Mouse wheel, middle-button drag</td></tr>
-<tr><td>Undo or redo a change to the crops</td><td>Ctrl + Z, Ctrl + Y</td></tr>
+<tr><td>Undo or redo a change to the crops</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6425,7 +6428,7 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>A terrain's settings (whether it's solid)</td><td>Right-click its swatch</td></tr>
-<tr><td>Undo or redo a change to the map</td><td>Ctrl + Z, Ctrl + Y</td></tr>
+<tr><td>Undo or redo a change to the map</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6435,16 +6438,16 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
-<tr><td>Brush, Rectangle, Line, Fill, Eyedropper</td><td>B, U, N, G, I</td></tr>
-<tr><td>Back to a transform tool</td><td>Q, W, R, S, T</td></tr>
+<tr><td>Brush, Rectangle, Line, Fill, Eyedropper</td><td><span class="keys"><kbd>B</kbd></span>, <span class="keys"><kbd>U</kbd></span>, <span class="keys"><kbd>N</kbd></span>, <span class="keys"><kbd>G</kbd></span>, <span class="keys"><kbd>I</kbd></span></td></tr>
+<tr><td>Back to a transform tool</td><td><span class="keys"><kbd>Q</kbd></span>, <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>R</kbd></span>, <span class="keys"><kbd>S</kbd></span>, <span class="keys"><kbd>T</kbd></span></td></tr>
 <tr><td>Paint</td><td>Left-drag (a click for the fill)</td></tr>
 <tr><td>Empty cells</td><td>Right-drag</td></tr>
-<tr><td>Paint with the terrain under the pointer</td><td>Alt + click</td></tr>
-<tr><td>Place exact tiles for one stroke</td><td>Hold Ctrl while painting</td></tr>
-<tr><td>Flip a copy left and right, top and bottom; turn it a quarter</td><td>X, Y, Z (holding a copy)</td></tr>
-<tr><td>Give up a stroke; put the copy away; leave the painting tool</td><td>Esc</td></tr>
-<tr><td>Show the map's art or its meaning</td><td>Tab</td></tr>
-<tr><td>Undo or redo a stroke</td><td>Ctrl + Z, Ctrl + Y</td></tr>
+<tr><td>Paint with the terrain under the pointer</td><td><span class="keys"><kbd>Alt</kbd><span class="plus">+</span>click</span></td></tr>
+<tr><td>Place exact tiles for one stroke</td><td>Hold <span class="keys"><kbd>Ctrl</kbd></span> while painting</td></tr>
+<tr><td>Flip a copy left and right, top and bottom; turn it a quarter</td><td><span class="keys"><kbd>X</kbd></span>, <span class="keys"><kbd>Y</kbd></span>, <span class="keys"><kbd>Z</kbd></span> (holding a copy)</td></tr>
+<tr><td>Give up a stroke; put the copy away; leave the painting tool</td><td><span class="keys"><kbd>Esc</kbd></span></td></tr>
+<tr><td>Show the map's art or its meaning</td><td><span class="keys"><kbd>Tab</kbd></span></td></tr>
+<tr><td>Undo or redo a stroke</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span></td></tr>
 <tr><td>Slide the view</td><td>Middle-drag</td></tr>
 </tbody>
 </table></div>
@@ -6454,18 +6457,18 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
-<tr><td>Undo</td><td>Ctrl + Z</td></tr>
-<tr><td>Redo</td><td>Ctrl + Y, or Ctrl + Shift + Z</td></tr>
-<tr><td>New area</td><td>Ctrl + N</td></tr>
-<tr><td>Open area</td><td>Ctrl + O</td></tr>
-<tr><td>Save area</td><td>Ctrl + S</td></tr>
-<tr><td>Save area as</td><td>Ctrl + Shift + S</td></tr>
-<tr><td>Delete the selection</td><td>Delete</td></tr>
-<tr><td>Duplicate the selection</td><td>Ctrl + D</td></tr>
-<tr><td>Rename</td><td>F2</td></tr>
-<tr><td>Point the camera at the selection</td><td>F</td></tr>
-<tr><td>Search for anything to do, any file, entity or panel (with nothing being typed)</td><td>Space</td></tr>
-<tr><td>Fold the shelf to its bar, or open it again</td><td>Ctrl + Space</td></tr>
+<tr><td>Undo</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span></td></tr>
+<tr><td>Redo</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>, or <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span></td></tr>
+<tr><td>New area</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span></td></tr>
+<tr><td>Open area</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span></td></tr>
+<tr><td>Save area</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span></td></tr>
+<tr><td>Save area as</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span></td></tr>
+<tr><td>Delete the selection</td><td><span class="keys"><kbd>Delete</kbd></span></td></tr>
+<tr><td>Duplicate the selection</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span></td></tr>
+<tr><td>Rename</td><td><span class="keys"><kbd>F2</kbd></span></td></tr>
+<tr><td>Point the camera at the selection</td><td><span class="keys"><kbd>F</kbd></span></td></tr>
+<tr><td>Search for anything to do, any file, entity or panel (with nothing being typed)</td><td><span class="keys"><kbd>Space</kbd></span></td></tr>
+<tr><td>Fold the shelf to its bar, or open it again</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span></td></tr>
 </tbody>
 </table></div>
 <p>All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See <a href="#undo">Undo and redo</a>.</p>
@@ -6477,11 +6480,11 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
-<tr><td>Open the search (with nothing being typed)</td><td>Space</td></tr>
+<tr><td>Open the search (with nothing being typed)</td><td><span class="keys"><kbd>Space</kbd></span></td></tr>
 <tr><td>Narrow the list</td><td>Type part of a name</td></tr>
-<tr><td>Choose a result</td><td>Up, Down</td></tr>
-<tr><td>Do what's chosen</td><td>Enter, or click a result</td></tr>
-<tr><td>Close the search</td><td>Esc, or click outside it</td></tr>
+<tr><td>Choose a result</td><td><span class="keys"><kbd>Up</kbd></span>, <span class="keys"><kbd>Down</kbd></span></td></tr>
+<tr><td>Do what's chosen</td><td><span class="keys"><kbd>Enter</kbd></span>, or click a result</td></tr>
+<tr><td>Close the search</td><td><span class="keys"><kbd>Esc</kbd></span>, or click outside it</td></tr>
 </tbody>
 </table></div>
 <p>Over the Frames tab, Space plays and stops the clip instead, so point somewhere else first.</p>
@@ -6499,7 +6502,7 @@ end</code></pre>
 <tr><td>Scroll a ribbon that doesn't fit the window</td><td>Turn the mouse wheel over the ribbon</td></tr>
 <tr><td>Make the usual kind with a Create button</td><td>Click it (<strong>Light</strong> makes a point light)</td></tr>
 <tr><td>List the other kinds it makes</td><td>Click the small arrow on the button, or right-click the button</td></tr>
-<tr><td>Leave the File page for the tab you came from</td><td>Esc, or <strong>Back to editor</strong></td></tr>
+<tr><td>Leave the File page for the tab you came from</td><td><span class="keys"><kbd>Esc</kbd></span>, or <strong>Back to editor</strong></td></tr>
 </tbody>
 </table></div>
 <p>Why no long press on a Create button? Holding the mouse down is slow, and nothing on the button says it can be done; a small arrow can be seen.</p>
@@ -6512,14 +6515,14 @@ end</code></pre>
 <tbody>
 <tr><td>Place a model, assembly, sprite sheet or tile map where the camera looks</td><td>Double-click it in the Assets list; in the Library tab a double-click only picks it (<strong>Place</strong> on the ribbon places it)</td></tr>
 <tr><td>Open any other file (an area, a picture in its program)</td><td>Double-click it</td></tr>
-<tr><td>Drop without snapping to the grid, this once</td><td>Hold Ctrl as you let go</td></tr>
-<tr><td>Rename or delete the file picked</td><td>F2, Delete, with the pointer over the Library or the Assets list</td></tr>
+<tr><td>Drop without snapping to the grid, this once</td><td>Hold <span class="keys"><kbd>Ctrl</kbd></span> as you let go</td></tr>
+<tr><td>Rename or delete the file picked</td><td><span class="keys"><kbd>F2</kbd></span>, <span class="keys"><kbd>Delete</kbd></span>, with the pointer over the Library or the Assets list</td></tr>
 <tr><td>Place a model, assembly, sprite, picture or tile map where you point</td><td>Drag it into the viewport</td></tr>
 <tr><td>Place one under an entity</td><td>Drag it onto the entity in the Area panel</td></tr>
 <tr><td>Move a file to another folder</td><td>Drag it onto the folder in the tree</td></tr>
 <tr><td>Add a sound to a <a href="#sound-events">sound event</a> as a take</td><td>Drag the sound onto the event</td></tr>
 <tr><td>Menus (New, Place or Open, Show in Explorer, Rename…, Delete)</td><td>Right-click a file, a folder or empty space</td></tr>
-<tr><td>In Rename…: keep the new name, or leave it as it was</td><td>Enter, Esc</td></tr>
+<tr><td>In Rename…: keep the new name, or leave it as it was</td><td><span class="keys"><kbd>Enter</kbd></span>, <span class="keys"><kbd>Esc</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6529,9 +6532,9 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Select</td><td>Click</td></tr>
-<tr><td>Add to or take from the selection</td><td>Ctrl + click</td></tr>
-<tr><td>Select a range</td><td>Shift + click</td></tr>
-<tr><td>Rename</td><td>Double-click (Enter keeps the name, Esc leaves it)</td></tr>
+<tr><td>Add to or take from the selection</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span>click</span></td></tr>
+<tr><td>Select a range</td><td><span class="keys"><kbd>Shift</kbd><span class="plus">+</span>click</span></td></tr>
+<tr><td>Rename</td><td>Double-click (<span class="keys"><kbd>Enter</kbd></span> keeps the name, <span class="keys"><kbd>Esc</kbd></span> leaves it)</td></tr>
 <tr><td>Put under another entity</td><td>Drag onto it</td></tr>
 <tr><td>Make it stand alone</td><td>Drag onto empty space</td></tr>
 </tbody>
@@ -6542,7 +6545,7 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
-<tr><td>Add the first component found (after typing part of its name in <strong>+ Component</strong>)</td><td>Enter</td></tr>
+<tr><td>Add the first component found (after typing part of its name in <strong>+ Component</strong>)</td><td><span class="keys"><kbd>Enter</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6552,7 +6555,7 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Move a fader</td><td>Drag it up or down</td></tr>
-<tr><td>Move a fader finely</td><td>Shift while dragging</td></tr>
+<tr><td>Move a fader finely</td><td><span class="keys"><kbd>Shift</kbd></span> while dragging</td></tr>
 <tr><td>Put a fader back to 0 dB</td><td>Double-click it</td></tr>
 <tr><td>Drop a meter's peak line to the level now</td><td>Click the meter</td></tr>
 </tbody>
@@ -6575,10 +6578,10 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Jump to the command line</td><td>' (the key next to Æ on a Norwegian keyboard)</td></tr>
-<tr><td>Run the command</td><td>Enter</td></tr>
-<tr><td>Earlier and later commands</td><td>Up, Down</td></tr>
-<tr><td>Finish a name (the choices show at the line's right)</td><td>Tab</td></tr>
-<tr><td>Leave the command line</td><td>Esc</td></tr>
+<tr><td>Run the command</td><td><span class="keys"><kbd>Enter</kbd></span></td></tr>
+<tr><td>Earlier and later commands</td><td><span class="keys"><kbd>Up</kbd></span>, <span class="keys"><kbd>Down</kbd></span></td></tr>
+<tr><td>Finish a name (the choices show at the line's right)</td><td><span class="keys"><kbd>Tab</kbd></span></td></tr>
+<tr><td>Leave the command line</td><td><span class="keys"><kbd>Esc</kbd></span></td></tr>
 </tbody>
 </table></div>
 <p>See <a href="#console">The Console</a>.</p>
@@ -6589,11 +6592,11 @@ end</code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
-<tr><td>Open the project picked</td><td>Enter, or double-click its card</td></tr>
-<tr><td>Walk the cards</td><td>Left, Right, Up, Down</td></tr>
+<tr><td>Open the project picked</td><td><span class="keys"><kbd>Enter</kbd></span>, or double-click its card</td></tr>
+<tr><td>Walk the cards</td><td><span class="keys"><kbd>Left</kbd></span>, <span class="keys"><kbd>Right</kbd></span>, <span class="keys"><kbd>Up</kbd></span>, <span class="keys"><kbd>Down</kbd></span></td></tr>
 <tr><td>A card's menu (Open, Pin, Show in Explorer, Rename…, Make a copy…, Remove from list)</td><td>Right-click it</td></tr>
-<tr><td>Back to the editor, or carry on without a project</td><td>Esc</td></tr>
-<tr><td>In Rename…: keep the new name, or leave it as it was</td><td>Enter, Esc</td></tr>
+<tr><td>Back to the editor, or carry on without a project</td><td><span class="keys"><kbd>Esc</kbd></span></td></tr>
+<tr><td>In Rename…: keep the new name, or leave it as it was</td><td><span class="keys"><kbd>Enter</kbd></span>, <span class="keys"><kbd>Esc</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6604,9 +6607,9 @@ end</code></pre>
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
 <tr><td>Pick an action; pick one of its bindings</td><td>Click its row; click the binding in its card</td></tr>
-<tr><td>Clear the picked binding</td><td>Backspace (its × does the same)</td></tr>
-<tr><td>Bind the next key, mouse button or gamepad button pressed</td><td><strong>+ Add binding</strong>, then press it (Backspace too is bound then)</td></tr>
-<tr><td>Give up binding</td><td>Esc</td></tr>
+<tr><td>Clear the picked binding</td><td><span class="keys"><kbd>Backspace</kbd></span> (its × does the same)</td></tr>
+<tr><td>Bind the next key, mouse button or gamepad button pressed</td><td><strong>+ Add binding</strong>, then press it (<span class="keys"><kbd>Backspace</kbd></span> too is bound then)</td></tr>
+<tr><td>Give up binding</td><td><span class="keys"><kbd>Esc</kbd></span></td></tr>
 </tbody>
 </table></div>
 </section>
@@ -6625,10 +6628,10 @@ end</code></pre>
 <tr><td>Put a border back to its standard size</td><td>Double-click it (the shelf's grip and top edge too)</td></tr>
 <tr><td>Give a document a group of its own, on one half of the middle</td><td>Drag its tab onto that half</td></tr>
 <tr><td>Join two groups</td><td>Drag a tab onto the other group's tabs</td></tr>
-<tr><td>Put a dragged tab back</td><td>Esc, while dragging</td></tr>
+<tr><td>Put a dragged tab back</td><td><span class="keys"><kbd>Esc</kbd></span>, while dragging</td></tr>
 <tr><td>Bring a shelf tab to the front (opening a folded shelf)</td><td>Click it</td></tr>
 <tr><td>Make the shelf taller or shorter</td><td>Drag the grip at its bar's left, or the bar's top edge</td></tr>
-<tr><td>Fold the shelf to its bar, or open it again</td><td>Ctrl + Space (while typing too)</td></tr>
+<tr><td>Fold the shelf to its bar, or open it again</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> (while typing too)</td></tr>
 <tr><td>Close a clips file</td><td>The <strong>×</strong> after the Frames or Clip shelf tab</td></tr>
 </tbody>
 </table></div>

@@ -307,11 +307,16 @@ fn strip_start(words: &str, length: usize) -> String {
         }
         cut = at + c.len_utf8();
     }
-    words[cut..]
+    let rest = words[cut..]
         .trim_start_matches(['*', '_', ':', '.'])
         .trim_start_matches(['*', '_'])
-        .trim_start()
-        .to_string()
+        .trim_start();
+    // The box's own label ends a sentence: what follows starts one.
+    let mut chars = rest.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().chain(chars).collect(),
+        None => String::new(),
+    }
 }
 
 /// The `#` after a heading that links to it.

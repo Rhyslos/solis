@@ -6,6 +6,7 @@
 
 use super::settings::{Setting, Tab};
 use super::{plain, sentence};
+use crate::guide::GuideChoice;
 use crate::icons::Icon;
 use crate::interface_look::{PanelLayout, ShelfOpensOn};
 use crate::look::LookKind;
@@ -86,6 +87,16 @@ impl Workbench {
                 }
             }
             Setting::Hints => drop(toggle::toggle(ui, &mut self.hints, name)),
+            Setting::GuideBrowser => {
+                let (choices, mut chosen) = self.guide.choices();
+                let words: Vec<(GuideChoice, &str)> =
+                    choices.iter().map(|(c, w)| (*c, w.as_str())).collect();
+                if field::dropdown(ui, name, &mut chosen, &words, size::SETTING_FIELD_W)
+                    && self.guide.choose(chosen)
+                {
+                    asked.push(WorkbenchAction::PickGuideBrowser);
+                }
+            }
             Setting::HideUnfinished => {
                 let mut on = look.hide_unfinished;
                 if toggle::toggle(ui, &mut on, name).changed() {

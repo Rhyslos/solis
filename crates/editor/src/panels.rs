@@ -66,8 +66,8 @@ pub(crate) struct PanelViewer<'a> {
     /// now, by component, and what the user changed since Play.
     pub(crate) running: Option<crate::properties::WhilePlaying<'a>>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
-    /// The manual's address and where game code components are written,
-    /// for Properties' **?** and **Open in Ledger** (decision 0085).
+    /// Where game code components are written, for Properties' **Open in
+    /// Ledger** (decision 0085); the **?** opens the user guide instead.
     pub(crate) help: crate::properties::Help<'a>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,

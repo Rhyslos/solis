@@ -2200,7 +2200,6 @@ fn a_game_code_component_s_card_opens_its_file() {
         root: "/projects/farm".into(),
         assets: "/projects/farm/assets".into(),
     }));
-    w.set_manual_url("https://example.org/manual".into());
     let (mut w, id) = mover_on(w);
     w.select(id);
     let mut h = harness(w);

@@ -1,5 +1,5 @@
 //! File › Learn (round 2's `10-file-learn`): the four examples to make
-//! and take apart, the first hour's five steps, the manual, and the
+//! and take apart, the first hour's five steps, the user guide, and the
 //! sample area.
 
 use super::{examples, page_head, plain, section, sentence};
@@ -47,14 +47,14 @@ impl Workbench {
                         section(ui, "Help");
                         if super::button_row(
                             ui,
-                            "The manual",
+                            "The user guide",
                             "Every part of the editor, with the why as well as the how.",
-                            "Open the manual",
+                            "Open the user guide",
                             true,
                         )
                         .clicked()
                         {
-                            w.open_manual(ui);
+                            asked.push(WorkbenchAction::OpenGuide(None));
                         }
                         let open = w.open.project.is_some();
                         let add = ui

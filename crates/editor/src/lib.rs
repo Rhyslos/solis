@@ -45,6 +45,9 @@ pub mod game_sound;
 mod game_sound_tests;
 pub mod gizmo;
 mod graph_canvas;
+mod guide;
+#[cfg(test)]
+mod guide_keys_tests;
 pub mod hints;
 pub mod icons;
 mod inspector;
@@ -131,6 +134,7 @@ pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
 pub use file_pages::{KnownProject, ProgramFile};
 pub use game_sound::{GameSound, Hearer, SoundMode};
+pub use guide::{FoundBrowser, GuideBrowser};
 pub use interface_look::InterfaceLook;
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
