@@ -10,6 +10,7 @@ Checks and helpers that run beside the code: they test the engine and the editor
 | [`scale/`](scale/README.md) | `scale-check.sh`: times the editor, game code and the viewport against their targets and prints a table. | At the end of each phase and when the project lead asks (decision 0011) |
 | [`smoke/`](smoke/README.md) | `window-smoke.sh`: opens the real editor on a virtual screen and clicks through it. | In CI on Linux, and locally before pushing |
 | [`ci/`](ci/README.md) | Small scripts the CI workflows use. | In CI |
+| [`ground-study/`](ground-study/README.md) | Tools 1b's study (G0): small working versions of the ways a ground with caves could be stored and drawn, tested, and a program that measures them against each other. Behind [docs/reports/ground-study.md](../docs/reports/ground-study.md). A workspace member that nothing in the program depends on. | Its tests with `cargo test --workspace`; the measurements by hand (`cargo run --release -p ground-study`) |
 | [`storage-bench/`](storage-bench/README.md) | The benchmark behind decision 0024 (the game's storage). Kept for the record, outside the workspace. | By hand only |
 
 **Read next:** CONTRIBUTING.md, "Setting up", for the commands, and ARCHITECTURE.md, "Checks", for how these fit with CI.

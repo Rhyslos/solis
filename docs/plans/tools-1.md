@@ -39,7 +39,7 @@ Tools 1 is too big for one phase (CLAUDE.md: two to six milestones), so it is tw
 
 | Milestone | What it gives |
 | --- | --- |
-| **G0 The study** (rule 22) | Competing ways to store and draw a ground with caves, built and measured against each other in `docs/reports/`: storage (fixed chunks of voxels; sparse chunks that store only the surface; an octree), and drawing each look (Smooth: surface nets, marching cubes; Sharp: dual contouring, or sharp features added to surface nets; Blocky: cube faces merged). Measured at the scale target: one brush stroke from mouse to screen, a chunk made again, memory and file size per square kilometre, triangles drawn, collision per chunk. The best of each goes into decision records. |
+| **G0 The study** (rule 22) | Competing ways to store and draw a ground with caves, built and measured against each other in `docs/reports/`: storage (fixed chunks of voxels; sparse chunks that store only the surface; an octree), and drawing each look (Smooth: surface nets, marching cubes; Sharp: dual contouring, or sharp features added to surface nets; Blocky: cube faces merged). Measured at the scale target: one brush stroke from mouse to screen, a chunk made again, memory and file size per square kilometre, triangles drawn, collision per chunk. The best of each goes into decision records. **Done** (2026-11-14): [the report](../reports/ground-study.md), with the prototypes in `tools/ground-study`; it recommends fixed chunks, surface nets (Smooth), sharpened surface nets (Sharp) and merged cube faces (Blocky), chunks made on workers and colliders when a stroke ends, and gives the draft decisions and the three questions below with their options. |
 | **G1 The ground, Smooth** | One ground per area, in chunks, its own file (format, version, fuzz test); drawn in the Smooth look, chunks made on workers, never on the frame; solid to physics chunk by chunk; saved and loaded. |
 | **G2 Sculpting** | The **HOME TOOLS · Ground** tab: Add, Dig, Smooth, Flatten; the brush's size, strength and falloff; the mouse and keys as answered. A stroke is one undo step, saved when let go; only touched chunks are made again. |
 | **G3 Blocky and Sharp** | The other two looks, chosen per ground, switching at once. |
@@ -69,9 +69,13 @@ In [docs/design/tools-1/](../design/tools-1/README.md), drawn in the design's la
 5. Sculpting the ground (the HOME TOOLS · Ground tab, the brush's circle, the Ground shelf tab with the palette).
 6. One hill and cave in each look: Smooth, Blocky, Sharp.
 
-## Still to settle (asked when their milestone starts)
+## Settled after the study
 
-- The ground's file: text, as areas are, or a binary chunk file (voxel data as text is large); a decision either way.
-- How big a ground can be (the scale target for it), and how it ends at its edges.
-- Which shapes are in the list at first, and their standard sizes: taken as recommended for B2 (all seven, the mock-up's order; sizes from drawing out), on the project lead's morning list.
-- What game code may change on a ground while playing (digging in a game is a game's feature; the engine offers the calls).
+The project lead answered the study's questions on 2026-11-14 ([decision 0116](../decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)):
+
+- **The ground's file:** text settings plus binary 256 × 256 m region files.
+- **Its size:** 1 × 1 km in Tools 1b (2 × 2 km tested). Vast open worlds (20 km and more) come in a following "Open worlds" phase, planned by its own study.
+- **Its edges:** the ground just stops.
+- **Game code** may change everything the editor can.
+- **Painting** uses a palette of up to 256 ground kinds until materials exist.
+- Which shapes are in the list at first, and their standard sizes: taken as recommended for B2 (all seven, the mock-up's order; sizes from drawing out).
