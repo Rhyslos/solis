@@ -91,7 +91,7 @@ The **Brush** card in Properties:
 |---|---|
 | Made as | The shape the brush was made from. Choosing another makes the brush again as that shape, filling the same box it filled (a 4 × 2 × 1 m box becomes a 4 × 2 × 1 m cylinder), in one undo step. If you had edited its insides, those edits are replaced by the fresh shape, and the status bar says so: `Ctrl + Z` brings them back. |
 | Size | The brush's box, in metres (X across, Y deep, Z up), in its own space. Typing a size stretches the brush about its middle, as one undo step; a stretch that would break the brush is refused. Each side is kept between 1 cm and 10 km. |
-| Material | Not finished yet: brush materials come with a later update. Every face is drawn in the plain material. |
+| Material | Not finished yet: giving faces materials comes with Materials and shaders, once Solis has materials of its own to give them. Every face is drawn in the plain material. |
 | Solid | On: the game's characters and bodies collide with it, as with a floor or a wall. Off: it's only drawn, and things pass through it (a light shaft, a hint of where something goes). A brush never falls: it stays where it's placed. Also on the ribbon while editing. |
 | Points, Edges, Faces | How many the brush has, in three boxes; while its insides are edited, the box of the mode in use is outlined, and the line under them says what's picked ("Picked: 1 face · Faces mode"). |
 

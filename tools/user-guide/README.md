@@ -17,7 +17,7 @@ cargo run -p user-guide -- --stamp-pictures  # for the picture script: notes the
 - Refuse to build, listing every problem, when a page isn't in `SUMMARY.md`, a link goes nowhere (another page, a heading in it, or a file in the repository), a picture a page shows is missing or too large, a picture is shown by no page, or a game-code example isn't in all three languages.
 - Write the same bytes for the same manual, so the check below can compare.
 
-**The check:** `tests/manual.rs` runs with `cargo test --workspace` and fails when the kept copy isn't what this tool makes now, when a page is missing from the contents, when a link is broken, when the pictures are older than the editor's interface (see [`tools/guide-pictures`](../guide-pictures/README.md)), or when an example's Rust doesn't balance its brackets or its Lua or Rust calls something game code can't. CI runs it on every pull request, documentation-only ones too (`.github/workflows/user-guide.yml`).
+**The check:** `tests/manual.rs` runs with `cargo test --workspace` and fails when the kept copy isn't what this tool makes now, when a page is missing from the contents, when a link is broken, when the pictures are older than the editor's interface (a note in the normal suite, a failure only with `GUIDE_PICTURES_STRICT=1` at a phase's end, decision 0115; see [`tools/guide-pictures`](../guide-pictures/README.md)), or when an example's Rust doesn't balance its brackets or its Lua or Rust calls something game code can't. CI runs it on every pull request, documentation-only ones too (`.github/workflows/user-guide.yml`).
 
 | Folder | What it holds |
 | --- | --- |

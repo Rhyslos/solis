@@ -400,6 +400,35 @@ impl ExtrudeShape {
 }
 
 /// Twice a polygon's area, along its facing (Newell's method).
+/// A piece's facing: its polygons' facings weighted by their size, made
+/// unit long (its first polygon's facing for a piece of no size).
+fn piece_facing(mesh: &Mesh, piece: &[FaceId]) -> Vec3 {
+    piece
+        .iter()
+        .map(|f| facing_by_size(mesh, *f))
+        .sum::<Vec3>()
+        .try_normalize()
+        .or_else(|| piece.first().map(|f| mesh.face_normal(*f)))
+        .unwrap_or(Vec3::Z)
+}
+
+/// The pieces [`extrude_shaped`] with the standard [`ExtrudeShape`]
+/// (straight, ends the same size) pulls `faces` of `mesh` out as, each
+/// with the way all its points go, unit long: so extruding by any
+/// distance moves each piece's polygons' points that far that way, and a
+/// tool following the mouse needs the operation made only once, at no
+/// distance (Tools 1a, B5). The polygons keep their ids in the result.
+pub fn extrude_ways(mesh: &Mesh, faces: &[FaceId], grouping: Grouping) -> Vec<(Vec<FaceId>, Vec3)> {
+    let (faces, _) = existing_faces(mesh, faces);
+    face_regions(mesh.topology(), &faces, grouping)
+        .into_iter()
+        .map(|piece| {
+            let way = piece_facing(mesh, &piece);
+            (piece, way)
+        })
+        .collect()
+}
+
 fn facing_by_size(mesh: &Mesh, face: FaceId) -> Vec3 {
     let points: Vec<Vec3> = mesh
         .face(face)
@@ -423,13 +452,7 @@ fn piece_ends(
     distance: f32,
     shape: &ExtrudeShape,
 ) -> BTreeMap<VertexId, Vec3> {
-    let facing = piece
-        .iter()
-        .map(|f| facing_by_size(mesh, *f))
-        .sum::<Vec3>()
-        .try_normalize()
-        .or_else(|| piece.first().map(|f| mesh.face_normal(*f)))
-        .unwrap_or(Vec3::Z);
+    let facing = piece_facing(mesh, piece);
     // The way the end goes as a whole (for its size and flattening).
     let way = match shape.direction.axis() {
         Some(axis) if axis.dot(facing) < 0.0 => -axis,

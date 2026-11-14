@@ -34,7 +34,7 @@ cargo build -p app
 xvfb-run -s "-screen 0 1440x900x24" tools/smoke/window-smoke.sh target/debug/solis "Solis" smoke-output
 ```
 
-**The scale check** (`tools/scale/scale-check.sh`) times the editor and the viewport against their targets. It runs at the end of every phase and whenever the project lead asks, not on every pull request ([decision 0011](docs/decisions/0011-scale-check-at-phase-gates.md)).
+**The scale check** (`tools/scale/scale-check.sh`) times the editor and the viewport against their targets. It runs at the end of every phase and whenever the project lead asks, not on every pull request ([decision 0011](docs/decisions/0011-scale-check-at-phase-gates.md)). The end of a phase also takes the guide's pictures again and runs `GUIDE_PICTURES_STRICT=1 cargo test -p user-guide` ([decision 0115](docs/decisions/0115-guide-pictures-once-a-phase.md)).
 
 ## Third-party material
 
@@ -97,7 +97,7 @@ A change is not done until its documentation is.
 | `CONTRIBUTING.md` | Tooling or rules change |
 | `DESIGN.md`, `ROADMAP.md` | Scope or the plan changes |
 | `docs/decisions/` | A major choice is made or reversed |
-| User manual (`docs/manual/`) | Anything a user would notice. Follow `docs/manual/_template.md`. **The user guide is the manual, built:** every change a user would notice updates the manual in the same pull request, and the guide is generated again (`cargo run -p user-guide`); the check fails otherwise ([decision 0112](docs/decisions/0112-the-user-guide-is-the-manual-built.md)). Every game-code example is written in Lust, Rust and Lua, and a change to the interface's look takes the guide's pictures again (`tools/guide-pictures/take-pictures.sh`, after `cargo build -p app`), which the check also asks for ([decision 0113](docs/decisions/0113-pictures-and-three-languages-in-the-guide.md)). |
+| User manual (`docs/manual/`) | Anything a user would notice. Follow `docs/manual/_template.md`. **The user guide is the manual, built:** every change a user would notice updates the manual in the same pull request, and the guide is generated again (`cargo run -p user-guide`); the check fails otherwise ([decision 0112](docs/decisions/0112-the-user-guide-is-the-manual-built.md)). Every game-code example is written in Lust, Rust and Lua, and the guide's pictures are taken again once a phase, at its end (`tools/guide-pictures/take-pictures.sh`, after `cargo build -p app`): between phases the check only notes pictures older than the interface, and at a phase's end `GUIDE_PICTURES_STRICT=1 cargo test -p user-guide` fails until they're taken again; a missing, unused, oversized or uncaptioned picture fails every run ([decisions 0113](docs/decisions/0113-pictures-and-three-languages-in-the-guide.md) and [0115](docs/decisions/0115-guide-pictures-once-a-phase.md)). |
 | User guide (`docs/user-guide/index.html`) | Never by hand: `cargo run -p user-guide` after any change to the manual, committed with it. |
 | `CHANGELOG.md` | Any change a user would notice (CI checks this) |
 | README progress tracker | A milestone or gate is completed |

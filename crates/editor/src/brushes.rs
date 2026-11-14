@@ -65,13 +65,16 @@ impl BrushModel {
 
     /// The same triangles kept as a brush's model (a drag's last frame,
     /// let go), under the same key, so the renderer has it already.
-    pub(crate) fn kept(&self) -> Self {
+    /// Whether it is whole is known to the caller (the brush was before a
+    /// drag that kept it so, or the whole check passed), so it isn't
+    /// worked out again over the whole mesh (Tools 1a, B5: letting go).
+    pub(crate) fn kept(&self, unwhole: bool) -> Self {
         Self {
             key: self.key,
             model: self.model.clone(),
             triangles: self.triangles,
             damaged: false,
-            unwhole: mesh::repair::why_not_whole(&self.mesh).is_some(),
+            unwhole,
             passing: false,
             mesh: Arc::clone(&self.mesh),
             edges: std::sync::OnceLock::new(),

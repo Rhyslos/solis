@@ -38,6 +38,10 @@ if [ -z "${DISPLAY:-}" ]; then
     exec xvfb-run -a -s "-screen 0 1440x900x24" "$0" "$@"
 fi
 export WGPU_BACKEND="${WGPU_BACKEND:-gl}"
+# Each session changes HOME, so cargo's and rustup's own folders are
+# pinned to the real ones first: the last step builds the guide with
+# cargo, which must still find its registry (offline) and toolchain.
+export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
 [ -x "$BIN" ] || { echo "No program at $BIN: build it first (cargo build -p app)."; exit 1; }
 mkdir -p "$OUT"
 # A short, plain folder: the launcher's pictures show where projects are.

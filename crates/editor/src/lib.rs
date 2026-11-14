@@ -190,4 +190,6 @@ mod shell_reach_tests;
 #[cfg(test)]
 mod source_rules_tests;
 #[cfg(test)]
+mod tools_1a_gate_tests;
+#[cfg(test)]
 mod two_d_screen_tests;

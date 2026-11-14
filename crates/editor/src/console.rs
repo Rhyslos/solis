@@ -112,6 +112,9 @@ pub(crate) struct Console {
     /// The message clicked, shown in full under the list until it's
     /// clicked again (one row is often too short for a whole message).
     pub(crate) reading: Option<LogLine>,
+    /// The time every message is given instead of the clock's, when set:
+    /// the picture tests' frames stay the same from run to run.
+    fixed_time: Option<String>,
 }
 
 /// What the command line asks the editor to do.
@@ -135,8 +138,28 @@ pub(crate) const CONSOLE_LIMIT: usize = 2_000;
 const DROP_AT_ONCE: usize = 250;
 
 impl Console {
+    /// The time a message added now is given: the clock's, as
+    /// hours:minutes:seconds, or the fixed one.
+    pub(crate) fn now(&self) -> String {
+        match &self.fixed_time {
+            Some(time) => time.clone(),
+            None => chrono::Local::now().format("%H:%M:%S").to_string(),
+        }
+    }
+
+    /// Gives every message, those there and those to come, `time` instead
+    /// of the clock's (the picture tests, whose frames must not change
+    /// with the hour they run at).
+    #[cfg(test)]
+    pub(crate) fn fix_time(&mut self, time: &str) {
+        self.fixed_time = Some(time.to_string());
+        for line in &mut self.lines {
+            line.time = time.to_string();
+        }
+    }
+
     pub(crate) fn push(&mut self, level: LogLevel, text: String) {
-        let time = chrono::Local::now().format("%H:%M:%S").to_string();
+        let time = self.now();
         self.lowered.push(text.to_lowercase());
         self.lines.push(LogLine { time, level, text });
         self.pushed += 1;

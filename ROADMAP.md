@@ -4,7 +4,7 @@ The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; gam
 
 **No timeframe:** phases are done when they're done (the project lead, 2026-10-27). A phase is finished when the project lead has tried its gate by hand. Light, sky and atmosphere got a phase of their own ([decision 0046](docs/decisions/0046-light-before-netcode.md)), and so did materials and shaders ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). Compatibility, first-class 2D, a playtest export and game UI then moved to the front, so the project lead's own 2D game can move to Solis ([decisions 0053](docs/decisions/0053-compatibility-before-2d.md) and [0054](docs/decisions/0054-first-class-2d.md)). Plans for phases not started are named by subject (`docs/plans/light.md`), since the order can still change.
 
-Each phase ends with a **gate**: something the project lead tries by hand before the next phase starts. Each milestone inside a phase is one pull request.
+Each phase ends with a **gate**: something the project lead tries by hand before the next phase starts. Each milestone inside a phase is one pull request. Before the gate, the end of a phase runs the code review (decision 0027) and the scale check (decision 0011), and takes the guide's pictures again, checked with `GUIDE_PICTURES_STRICT=1 cargo test -p user-guide` (decision 0115).
 
 ## At a glance
 
@@ -307,9 +307,9 @@ Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decision
 - **B2 The list and drawing out** (built): **B** opens the list over the view (or Home › Create › Shape), each **B** moves down, **Space** confirms, **Esc** closes; drag the footprint on the grid, pull up the height, click; one undo step a brush.
 - **B3 Editing the insides** (built): **Tab**, then **1** points, **2** edges, **3** faces; click, Ctrl + click and box to pick; moved, turned and stretched with the gizmos, one undo step a drag; a change that would break the brush is put back.
 - **B4 Extrude and shaping** (built): **E** then move and click, or Shift + drag on the gizmo; Inset with the mouse; Split and Delete as the mode says; every result checked whole, one undo step each; a brush read open or inside out mended.
-- **B5 Materials, speed, the manual.**
+- **B5 Speed, the remaining scale cases, the gate** (built): the one-off frames of letting go of a drag, an extrude or an inset, and of a delete, made fast; the scale cases kept; the gate's own test. **A material per brush face moved to Shared 7** (the project lead, 2026-11-14): Solis has no material assets yet; each face's material slot is already saved.
 
-**Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened.
+**Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened. Tools 1a is complete; its gate is waiting for the project lead.
 
 ## Tools 1b: World sculpting
 
@@ -411,6 +411,7 @@ Ideas 10, 11, 28 and 30.
 Was Phase 14. For sprites and models alike: how a surface takes light, glows, dissolves, gets wet or sways in the wind ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan is [docs/plans/materials.md](docs/plans/materials.md).
 
 - **Materials as assets** (`.solmat`), each with its own look (standard, stylized, light ramp, unlit), edited in Properties with a live preview.
+- **A material per brush face** (moved here from Tools 1a, B5, by the project lead on 2026-11-14, since Solis had no material assets): HOME TOOLS · Brush's Material ▾ and the Brush card's Material row, a material dragged from the Assets onto a face, pictures laid on from the world without stretching. Each face's material slot is saved already.
 - **Inputs that drive any material value:** the light around the surface, time, distance, height, the weather's wetness, noise, and values set by game code.
 - **A node graph for materials and shaders,** saved as readable text, sharing its graph editor with the animator and the effects.
 - **Code for experts:** a node holding a few lines of shader code, checked before it runs.

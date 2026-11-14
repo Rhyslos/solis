@@ -8,6 +8,7 @@
 
 use crate::brushes::BrushModel;
 use crate::brushing::edit::Part;
+use crate::brushing::keep::{self, Checked, Kept};
 use crate::brushing::pull::{PullKind, PullOutcome};
 use crate::brushing::reshape;
 use crate::brushing::shaping::{self, Shaped};
@@ -84,6 +85,15 @@ impl Workbench {
                 };
                 let preview = Arc::new(BrushModel::passing(&pull.now_shared()));
                 edit.preview = Some(Arc::clone(&preview));
+                let ahead = keep::Ahead::start(
+                    &pull.newest,
+                    (pull.now_shared(), pull.moving_points()),
+                    Arc::clone(&preview),
+                    pull.metres,
+                );
+                if let Some(pull) = edit.pull.as_mut() {
+                    pull.ahead = Some(Arc::new(ahead));
+                }
                 let entity = edit.entity;
                 self.show_edited_model(entity, Some(preview));
             }
@@ -133,7 +143,17 @@ impl Workbench {
             self.viewport.brushing.tell(nothing);
             return;
         }
-        let picked = edit.picked.iter().copied().collect();
+        let picked: Vec<Part> = edit.picked.iter().copied().collect();
+        // The work done ahead for where the pull is now, if any.
+        if let Some(checked) = pull
+            .ahead
+            .as_ref()
+            .filter(|a| a.metres == pull.metres)
+            .and_then(|a| a.answer())
+        {
+            self.keep_checked(checked, pull.label(), picked);
+            return;
+        }
         let shaped = Shaped {
             mesh: pull.now().clone(),
             around: pull.moving_points(),
@@ -148,56 +168,69 @@ impl Workbench {
     /// in hand (`made`, a pull's last frame, when there is one), the pick
     /// following. Otherwise the brush stays as it was and the status bar
     /// says why. Whether it was kept.
+    ///
+    /// The whole check and the writing (the lists, and the mesh and model
+    /// as they'll read back) are worked out side by side on two cores
+    /// (Tools 1a, B5), and the lists are moved into the undo step, never
+    /// copied: this is a frame the brush's size shows in.
     pub(crate) fn keep_shaped(&mut self, shaped: Shaped, made: Option<Arc<BrushModel>>) -> bool {
+        let Shaped {
+            mesh,
+            around,
+            label,
+            picked,
+        } = shaped;
+        let checked = keep::both(Arc::new(mesh), &around, made);
+        self.keep_checked(checked, label, picked)
+    }
+
+    /// Keeps a shaped brush checked and written already (`checked`), as
+    /// [`Self::keep_shaped`] says, as one undo step named `label`, with
+    /// `picked` picked after.
+    fn keep_checked(&mut self, checked: Checked, label: String, picked: Vec<Part>) -> bool {
         let Some(entity) = self.viewport.brushing.edit.as_ref().map(|e| e.entity) else {
             return false;
         };
-        if let Err(broken) = mesh::check_whole(&shaped.mesh, &shaped.around) {
+        let Checked {
+            written,
+            whole,
+            kept,
+        } = checked;
+        if let Err(broken) = whole {
             self.viewport.brushing.tell(reshape::refused_words(broken));
             self.show_edited_model(entity, None);
             return false;
         }
-        let written = Arc::new(shaped.mesh);
-        let data = Brush {
-            mesh: Arc::clone(&written),
-            ..Brush::default()
-        }
-        .to_data();
+        let Some(Kept {
+            mut data,
+            read,
+            model,
+            parts,
+        }) = kept
+        else {
+            self.show_edited_model(entity, None);
+            return false;
+        };
         let edits: Vec<Edit> = ["points", "faces", "materials"]
             .into_iter()
             .map(|field| Edit::SetField {
                 entity,
                 component: Brush::NAME.into(),
                 field: field.into(),
-                value: data.get(field).cloned(),
+                value: data.fields.remove(field),
             })
             .collect();
-        // The ids any later read of the lists gives: the same when no
-        // point or face left a gap.
-        let read = if has_gaps(&written) {
-            let read = Brush::from_data(&data);
-            if read.damaged {
-                return false;
-            }
-            read.mesh
-        } else {
-            Arc::clone(&written)
-        };
         let renumbered = Renumbered::of(&written, &read);
-        if !self.command(&shaped.label, edits, None, None) {
+        if !self.command(&label, edits, None, None) {
             self.show_edited_model(entity, None);
             return false;
         }
         self.open.document.close_step();
-        let model = match made.filter(|_| renumbered.is_none()) {
-            Some(model) => Arc::new(model.kept()),
-            None => Arc::new(BrushModel::passing(&read).kept()),
-        };
         self.open.brushes.adopt(entity, Arc::clone(&model));
         self.show_edited_model(entity, Some(model));
         if let Some(edit) = self.viewport.brushing.edit.as_mut() {
-            edit.picked = shaped
-                .picked
+            edit.parts = Some(parts);
+            edit.picked = picked
                 .into_iter()
                 .filter_map(|p| renumbered.as_ref().map_or(Some(p), |r| r.part(p)))
                 .filter(|p| p.is_in(&read))
@@ -206,13 +239,6 @@ impl Workbench {
         }
         true
     }
-}
-
-/// Whether `mesh` has gaps left by deleted points or faces, which
-/// writing its lists closes up.
-fn has_gaps(mesh: &Mesh) -> bool {
-    mesh.point_slot_count() != mesh.vertex_count()
-        || mesh.face_layout().0.len().saturating_sub(1) != mesh.face_count()
 }
 
 /// How ids changed when a mesh with gaps was written and read back.

@@ -90,3 +90,17 @@ fn only_pngs_are_read_and_no_folder_is_no_pictures() {
     assert_eq!(pictures.keys().collect::<Vec<_>>(), ["one.png"]);
     std::fs::remove_dir_all(&root).unwrap();
 }
+
+#[test]
+fn older_pictures_are_a_note_and_fail_only_when_strict() {
+    assert_eq!(verdict(false, false), Ok(None));
+    assert_eq!(verdict(false, true), Ok(None));
+    let note = verdict(true, false).unwrap().unwrap();
+    assert!(note.starts_with("Note: "), "{note}");
+    assert!(note.contains(RETAKE) && note.contains(STRICT), "{note}");
+    let failed = verdict(true, true).unwrap_err();
+    assert!(
+        failed.contains(RETAKE) && !failed.starts_with("Note"),
+        "{failed}"
+    );
+}

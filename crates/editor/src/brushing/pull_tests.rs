@@ -179,3 +179,48 @@ fn nothing_to_pull_makes_no_pull_and_only_the_moving_points_change() {
     pull.set(f32::NAN);
     assert_eq!(pull.metres, 1.5, "a broken distance is ignored");
 }
+
+/// Regression (Tools 1a, B5): an extrude is made once, at no distance,
+/// its points' ways taken from its pieces; it must move every point
+/// exactly as making the operation again at a unit's distance does.
+#[test]
+fn an_extrude_made_once_moves_its_points_as_one_made_twice_would() {
+    let grid = mesh::Primitive::Cube(mesh::CubeParams {
+        size: Vec3::new(4.0, 3.0, 2.0),
+        segments: [4, 3, 2],
+    })
+    .mesh();
+    let all: Vec<FaceId> = grid.faces().map(|(f, _)| f).collect();
+    let tops: Vec<FaceId> = all
+        .iter()
+        .copied()
+        .filter(|f| grid.face_normal(*f).z > 0.99)
+        .collect();
+    let corner_and_side: Vec<FaceId> = all
+        .iter()
+        .copied()
+        .filter(|f| grid.face_normal(*f).x > 0.99 || grid.face_normal(*f).z > 0.99)
+        .collect();
+    let apart = vec![tops[0], tops[tops.len() - 1]];
+    let world = Mat4::from_scale(Vec3::new(1.0, 2.0, 0.5));
+    for pick in [tops, corner_and_side, apart, vec![all[0]]] {
+        let once = Pull::extrude(&grid, &pick, world, "x".into()).unwrap();
+        let twice = Pull::prepared(PullKind::Extrude, &grid, world, "x".into(), |m, d| {
+            extrude_shaped(m, &pick, d, Grouping::Together, ExtrudeShape::default());
+        })
+        .unwrap();
+        let sorted = |p: &Pull| {
+            let mut m: Vec<(VertexId, Vec3, Vec3)> = p.moving.clone();
+            m.sort_by_key(|(v, _, _)| *v);
+            m
+        };
+        let (a, b) = (sorted(&once), sorted(&twice));
+        assert_eq!(a.len(), b.len());
+        for ((va, at_a, per_a), (vb, at_b, per_b)) in a.iter().zip(&b) {
+            assert_eq!(va, vb);
+            assert!(at_a.distance(*at_b) < 1e-5 && per_a.distance(*per_b) < 1e-5);
+        }
+        assert_eq!(*once.start, *twice.start);
+        assert!((once.way - twice.way).length() < 1e-5 && (once.scale - twice.scale).abs() < 1e-5);
+    }
+}

@@ -103,6 +103,7 @@ Each question has a recommended answer first, then the alternatives, in plain wo
 
 ### M1. Materials as assets
 - **The file:** `.solmat` materials, made with **Asset > New material** or **Make editable** on an imported one.
+- **A material per brush face** (moved here from Tools 1a, B5: the project lead, 2026-11-14, because Solis had no material assets to give a face): HOME TOOLS · Brush's **Material ▾** and the Brush card's **Material** row (both drawn as unfinished until then), a material dragged from the Assets onto a face or a brush, each face's picture laid on from the world so stretching or moving a brush never stretches it, and new brushes taking the material last chosen. A brush already saves each face's material slot (`Brush.materials`), so only the list of materials it names is new.
 - **Each has its own look:** standard, stylized, light ramp or unlit. This completes decision 0013, whose viewport menu becomes "as the materials say", plus overrides for checking.
 - **The simple view** in Properties.
 - **A preview tab:** a ball, a cube or the model, under the area's sky and a time-of-day slider.

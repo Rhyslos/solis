@@ -314,7 +314,13 @@ pub(crate) fn editor_window(
     };
     let mut themed = false;
     // The editor holds the accent it draws with, as the app hands it over.
-    let workbench = workbench.with_interface_look(look);
+    let mut workbench = workbench.with_interface_look(look);
+    // The Console's times and the status bar's last check are fixed, so
+    // a picture doesn't change with the hour it's taken at.
+    workbench.console.fix_time("12:00:00");
+    if workbench.open.code_checked.is_some() {
+        workbench.open.code_checked = Some(workbench.console.now());
+    }
     let harness = Harness::builder()
         .with_size(egui::vec2(size[0], size[1]))
         .renderer(WgpuTestRenderer::new())

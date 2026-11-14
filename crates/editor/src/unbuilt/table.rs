@@ -13,7 +13,7 @@
 
 use super::Phase::{
     NotPlanned, Shared4, Shared6, Shared7, Shared8, Shared10, Shared11, Shared13, ThreeD1, ThreeD5,
-    Tools1a, TwoD2,
+    TwoD2,
 };
 use super::Unbuilt;
 
@@ -48,8 +48,8 @@ unbuilt! {
 
     // Home: the level editor.
     HomeCreateTrigger: "home.create.trigger" => ("Trigger zone", TwoD2, "Adds a zone that tells game code when something enters or leaves it"),
-    BrushRibbonMaterial: "brush.ribbon.material" => ("Material", Tools1a, "Gives the picked faces a material: concrete, planks, grass"),
-    BrushCardMaterial: "brush.card.material" => ("Material", Tools1a, "Gives the brush's faces a material: concrete, planks, grass"),
+    BrushRibbonMaterial: "brush.ribbon.material" => ("Material", Shared7, "Gives the picked faces a material: concrete, planks, grass"),
+    BrushCardMaterial: "brush.card.material" => ("Material", Shared7, "Gives the brush's faces a material: concrete, planks, grass"),
     HomeLightingBake: "home.lighting.bake" => ("Bake", ThreeD5, "Works out bounced light for the area"),
     HomeLightingQuality: "home.lighting.quality" => ("Quality", ThreeD5, "Chooses how carefully bounced light is worked out"),
     HomeLightingLightmapView: "home.lighting.lightmap-view" => ("Light map view", ThreeD5, "Shows the worked-out light on its own in the viewport"),

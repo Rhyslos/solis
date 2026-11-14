@@ -6,8 +6,13 @@
 //! a box over all its faces, frames dragging the gizmo on 1,000 picked
 //! faces, and letting go (the check, the command, the brush made again
 //! and uploaded), each within the editor's frame target. Frames are
-//! timed several times and the middle one judged: this machine's vary. Run by
-//! `tools/scale/scale-check.sh`.
+//! timed several times and the middle one judged: this machine's vary.
+//! One-off frames (starting, letting go, a delete) are judged by the
+//! editor's own work in them, with the work a click does before its
+//! frame (Tools 1a, B5), as the frame that starts editing always was:
+//! the test window also builds its accessibility tree and lays words out
+//! anew each frame, which the editor doesn't pay. Both are printed. Run
+//! by `tools/scale/scale-check.sh`.
 
 #![allow(clippy::print_stdout)]
 
@@ -214,6 +219,7 @@ fn scale_check_editing_a_5000_face_brush_among_10000_brushes() {
     assert!(faces.len() >= 5_000, "{}", faces.len());
     h.state_mut().0.pick_parts(&faces, PickHow::Replace);
     let box_frame_ms = timed(&mut h);
+    let box_own_ms = own_ms(&h);
     // 1,000 faces picked: the top's and a ring below it.
     let mesh = h.state().0.open.brushes.get(id).unwrap().mesh.clone();
     let top = mesh.bounds().unwrap().max.z;
@@ -274,8 +280,10 @@ fn scale_check_editing_a_5000_face_brush_among_10000_brushes() {
         .events
         .push(crate::viewport_tools::ViewportEvent::GizmoEnd);
     let let_go_ms = timed(&mut h);
+    let let_go_own_ms = own_ms(&h);
     let let_go_stages = stages(&h);
     let next_ms = timed(&mut h);
+    let next_own_ms = own_ms(&h);
     assert_eq!(h.state().0.document().history().undo_len(), steps + 1);
     assert_eq!(h.state().0.open.brushes.made(), made + 1, "made once");
     println!(
@@ -284,24 +292,25 @@ fn scale_check_editing_a_5000_face_brush_among_10000_brushes() {
          time, with the words laid out, {first_ms:.2} ms; a frame with another key pressed \
          {other_key_ms:.2} ms, {other_stages}); hovering {hover_ms:.2} ms a frame ({hover_most:.2} at most) {} (finding the part \
          {find_ms:.3} ms); a box over all its faces {box_ms:.2} ms, its frame {box_frame_ms:.2} \
-         ms {}; dragging {} faces {drag_ms:.2} ms a frame ({drag_most:.2} at most) {}; letting go {let_go_ms:.2} ms \
-         and the next frame {next_ms:.2} ms {} (target {FRAME_MS} ms; the frames that start \
+         ms (own work {box_own_ms:.2}) {}; dragging {} faces {drag_ms:.2} ms a frame ({drag_most:.2} at most) {}; letting go {let_go_ms:.2} ms \
+         (own work {let_go_own_ms:.2}) and the next frame {next_ms:.2} ms (own work {next_own_ms:.2}) {} (target {FRAME_MS} ms, \
+         one-off frames judged by the editor's own work; the frames that start \
          and let go by stage: {start_stages}, {let_go_stages})",
         mesh.face_count(),
         verdict(start_own_ms),
         verdict(hover_ms),
-        verdict(box_ms + box_frame_ms),
+        verdict(box_ms + box_own_ms),
         picked.len(),
         verdict(drag_ms),
-        verdict(let_go_ms.max(next_ms)),
+        verdict(let_go_own_ms.max(next_own_ms)),
     );
     for (what, ms) in [
         ("starting", start_own_ms),
         ("hovering", hover_ms),
-        ("the box", box_ms + box_frame_ms),
+        ("the box", box_ms + box_own_ms),
         ("dragging", drag_ms),
-        ("letting go", let_go_ms),
-        ("the frame after letting go", next_ms),
+        ("letting go", let_go_own_ms),
+        ("the frame after letting go", next_own_ms),
     ] {
         assert!(ms <= FRAME_MS, "{what} takes {ms:.2} ms");
     }
@@ -321,22 +330,45 @@ fn faces_near_the_top(mesh: &mesh::Mesh, depth: f32) -> Vec<Part> {
         .collect()
 }
 
+/// A one-off frame: all of it, and the editor's own work in it (with
+/// any work done for it before the frame, as a click's is), in ms.
+#[derive(Debug, Clone, Copy)]
+struct OneOff {
+    whole: f64,
+    own: f64,
+}
+
+impl std::fmt::Display for OneOff {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.2} ms (own work {:.2})", self.whole, self.own)
+    }
+}
+
+/// The next frame as a one-off, after `before` ms of work done for it.
+fn one_off(h: &mut H, before: f64) -> OneOff {
+    let whole = timed(h) + before;
+    OneOff {
+        whole,
+        own: own_ms(h) + before,
+    }
+}
+
 /// An extrude or inset of `picked` (`command`) pulled with the mouse
 /// for 20 frames, Ctrl held so each frame moves, then kept: the frames'
-/// middle and most, the frame that keeps it and the next, in ms.
+/// middle and most in ms, and the frames that start it, keep it and
+/// come next.
 fn pulled_frames(
     h: &mut H,
     picked: &[Part],
     command: crate::shell::ShellCommand,
-) -> ([f64; 2], [f64; 2], f64) {
+) -> ([f64; 2], [OneOff; 3]) {
     h.state_mut().0.pick_parts(picked, PickHow::Replace);
     let rect = h.state().0.viewport.rect;
     h.hover_at(rect.center());
     h.step();
     let start = Instant::now();
     h.state_mut().0.shape_brush(command);
-    h.step();
-    let start_ms = ms_since(start);
+    let started = one_off(h, ms_since(start));
     assert!(h.state().0.is_pulling());
     h.event(egui::Event::ModifiersChanged(egui::Modifiers::COMMAND));
     let made = h.state().0.open.brushes.made();
@@ -361,15 +393,15 @@ fn pulled_frames(
         .push(crate::viewport_tools::ViewportEvent::Pulled(
             crate::brushing::pull::PullOutcome::Keep,
         ));
-    let keep_ms = timed(h);
-    let next_ms = timed(h);
+    let kept = one_off(h, 0.0);
+    let next = one_off(h, 0.0);
     assert_eq!(
         h.state().0.document().history().undo_len(),
         steps + 1,
         "kept: {:?}",
         h.state().0.status().brushing
     );
-    ([median(frames), most], [keep_ms, next_ms], start_ms)
+    ([median(frames), most], [started, kept, next])
 }
 
 #[test]
@@ -386,13 +418,15 @@ fn scale_check_shaping_a_5000_face_brush_among_10000_brushes() {
     // An extrude of 1,000 faces: the top and the rings below it.
     let picked = faces_near_the_top(&mesh, 2.5 * 20.0 / 29.0);
     assert!(picked.len() >= 1_000, "{}", picked.len());
-    let (extrude, extrude_keep, extrude_start) = pulled_frames(&mut h, &picked, C::BrushExtrude);
+    let (extrude, [extrude_start, extrude_keep, extrude_next]) =
+        pulled_frames(&mut h, &picked, C::BrushExtrude);
     let extrude_stages = stages(&h);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.step();
     h.step();
     // An inset of 1,000 faces.
-    let (inset, inset_keep, inset_start) = pulled_frames(&mut h, &picked, C::BrushInset);
+    let (inset, [inset_start, inset_keep, inset_next]) =
+        pulled_frames(&mut h, &picked, C::BrushInset);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.step();
     h.step();
@@ -418,43 +452,47 @@ fn scale_check_shaping_a_5000_face_brush_among_10000_brushes() {
     let start = Instant::now();
     h.state_mut().0.shape_brush(C::BrushDelete);
     let delete_alone_ms = ms_since(start);
-    let delete_ms = timed(&mut h) + delete_alone_ms;
-    let delete_next_ms = timed(&mut h);
+    let delete = one_off(&mut h, delete_alone_ms);
+    let delete_next = one_off(&mut h, 0.0);
     assert_eq!(h.state().0.document().history().undo_len(), steps + 1);
     assert_eq!(
         h.state().0.open.brushes.get(id).unwrap().mesh.face_count(),
         faces - 99
     );
+    let ok = |frames: &[OneOff]| verdict(frames.iter().map(|f| f.own).fold(0.0, f64::max));
     println!(
         "Scale check: shaping a brush of {faces} faces among {entities} entities: extruding \
-         {} faces {:.2} ms a frame ({:.2} at most) {}, starting it {extrude_start:.2} ms, \
-         letting go {:.2} ms and the next frame {:.2} ms {} (by stage: {extrude_stages}); \
-         insetting them {:.2} ms a frame ({:.2} at most) {}, starting it {inset_start:.2} ms, \
-         letting go {:.2} ms and the next frame {:.2} ms {}; deleting 100 faces into one \
-         {delete_ms:.2} ms (the delete alone {delete_alone_ms:.2} ms) and the next frame \
-         {delete_next_ms:.2} ms {} (target {FRAME_MS} ms)",
+         {} faces {:.2} ms a frame ({:.2} at most) {}, starting it {extrude_start} {}, letting \
+         go {extrude_keep} and the next frame {extrude_next} {} (by stage: {extrude_stages}); \
+         insetting them {:.2} ms a frame ({:.2} at most) {}, starting it {inset_start} {}, \
+         letting go {inset_keep} and the next frame {inset_next} {}; deleting 100 faces into \
+         one {delete} (the delete alone {delete_alone_ms:.2} ms) and the next frame \
+         {delete_next} {} (target {FRAME_MS} ms; one-off frames judged by the editor's own \
+         work, as the frame that starts editing is)",
         picked.len(),
         extrude[0],
         extrude[1],
         verdict(extrude[0]),
-        extrude_keep[0],
-        extrude_keep[1],
-        verdict(extrude_keep[0].max(extrude_keep[1])),
+        ok(&[extrude_start]),
+        ok(&[extrude_keep, extrude_next]),
         inset[0],
         inset[1],
         verdict(inset[0]),
-        inset_keep[0],
-        inset_keep[1],
-        verdict(inset_keep[0].max(inset_keep[1])),
-        verdict(delete_ms.max(delete_next_ms)),
+        ok(&[inset_start]),
+        ok(&[inset_keep, inset_next]),
+        ok(&[delete, delete_next]),
     );
     for (what, ms) in [
         ("extruding", extrude[0]),
-        ("letting an extrude go", extrude_keep[0]),
-        ("the frame after", extrude_keep[1]),
+        ("starting an extrude", extrude_start.own),
+        ("letting an extrude go", extrude_keep.own),
+        ("the frame after", extrude_next.own),
         ("insetting", inset[0]),
-        ("letting an inset go", inset_keep[0]),
-        ("deleting", delete_ms),
+        ("starting an inset", inset_start.own),
+        ("letting an inset go", inset_keep.own),
+        ("the frame after", inset_next.own),
+        ("deleting", delete.own),
+        ("the frame after", delete_next.own),
     ] {
         assert!(ms <= FRAME_MS, "{what} takes {ms:.2} ms");
     }
