@@ -8,6 +8,7 @@ mod scale;
 mod solid;
 mod stats;
 mod strokes;
+pub(crate) mod worlds;
 
 use ground_study::store::{Octree, Sparse};
 use std::sync::Arc;

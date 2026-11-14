@@ -13,6 +13,17 @@ const AXES: [IVec3; 3] = [IVec3::X, IVec3::Y, IVec3::Z];
 
 /// The chunk's cube faces, merged into rectangles when `merge` is set.
 pub(crate) fn mesh(samples: &Samples, merge: bool) -> ChunkMesh {
+    mesh_with(samples, merge, |_, _| false)
+}
+
+/// The chunk's cube faces, and also the faces `extra` names (a solid
+/// voxel at `p` and the way it faces) even where the voxel beyond is
+/// solid too: the levels of detail's walls at a chunk's sides.
+pub(crate) fn mesh_with(
+    samples: &Samples,
+    merge: bool,
+    extra: impl Fn(IVec3, IVec3) -> bool,
+) -> ChunkMesh {
     let mut out = ChunkMesh::default();
     let mut mask = vec![0u16; SIZE * SIZE];
     for (a, across) in AXES.iter().enumerate() {
@@ -24,12 +35,13 @@ pub(crate) fn mesh(samples: &Samples, merge: bool) -> ChunkMesh {
                     for u in 0..SIZE_I {
                         let p = *across * k + AXES[b] * u + AXES[c] * w;
                         let here = samples.get(p);
-                        mask[u as usize + SIZE * w as usize] =
-                            if here.is_solid() && !samples.get(p + step).is_solid() {
-                                u16::from(here.material) + 1
-                            } else {
-                                0
-                            };
+                        mask[u as usize + SIZE * w as usize] = if here.is_solid()
+                            && (!samples.get(p + step).is_solid() || extra(p, step))
+                        {
+                            u16::from(here.material) + 1
+                        } else {
+                            0
+                        };
                     }
                 }
                 let face = Face {

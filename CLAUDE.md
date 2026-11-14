@@ -53,6 +53,7 @@ The repo is public, so GitHub's machines are free (decision 0018, which replaces
 
 - If rustup cannot download the pinned toolchain, run commands with `RUSTUP_TOOLCHAIN=stable` when the installed stable version matches `rust-toolchain.toml`.
 - With no GPU, run the editor and GPU tests on Mesa's software driver: `WGPU_BACKEND=gl` under `xvfb-run`.
+- Copies of the code (git worktrees) share one build folder. Before building or checking in a copy, run `git ls-files -z | xargs -0 touch` in it: cargo otherwise reuses what another copy built and tests old code (found 2026-11-14).
 
 ## Git
 

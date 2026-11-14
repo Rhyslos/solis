@@ -30,6 +30,7 @@ pub trait Store: Sized + Send + Sync + 'static {
 }
 
 /// Every voxel, as laid out.
+#[derive(Clone)]
 pub struct Full(Dense);
 
 impl Store for Full {
