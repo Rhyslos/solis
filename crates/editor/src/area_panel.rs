@@ -344,6 +344,20 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
     if entity.has("Camera") {
         return (Icon::Camera, theme::kind::CAMERA, "Camera".into());
     }
+    // A brush (Tools 1a, B2, as the mock-ups draw it): its shape's icon and
+    // name, read from that one field, never its mesh.
+    if let Some(brush) = entity.components.get("Brush") {
+        let shape = match brush.get("shape") {
+            Some(reflect::Value::Text(name)) => mesh::Shape::from_name(name),
+            _ => None,
+        }
+        .unwrap_or(mesh::Shape::Box);
+        return (
+            crate::brushing::icon(shape),
+            theme::kind::OTHER,
+            shape.name().to_owned(),
+        );
+    }
     if entity.has("Environment") {
         return (Icon::AreaFile, theme::kind::ENVIRONMENT, "sky, fog".into());
     }
@@ -866,6 +880,13 @@ mod tests {
 
     fn color_of(entity: &EntityData) -> Color32 {
         looks(entity, &BTreeMap::new()).1
+    }
+
+    #[test]
+    fn a_brush_shows_its_shape_s_icon_and_name() {
+        let ramp = area::builtin::Brush::of_shape(mesh::Shape::Ramp);
+        let (icon, _, note) = looks(&EntityData::new("Ramp_01").with(&ramp), &BTreeMap::new());
+        assert_eq!((icon, note.as_str()), (Icon::ShapeRamp, "Ramp"));
     }
 
     #[test]
