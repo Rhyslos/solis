@@ -38,6 +38,10 @@ pub struct MapNames {
     pub values: Vec<(String, ValueNames)>,
 }
 
+/// The folder inside the engine's that each map's file is written into
+/// (`solis/maps/maps/farm.lst`).
+pub const FOLDER: &str = "maps";
+
 /// The methods every map's class has, which no value may take.
 const OWN: &[&str] = &[
     "width",
@@ -266,7 +270,7 @@ pub fn map_file(
          pass {};\nend\n",
         passed.join(", ")
     );
-    (Some((format!("{folder}/maps/{path}.lst"), text)), notes)
+    (Some((format!("{folder}/{FOLDER}/{path}.lst"), text)), notes)
 }
 
 #[cfg(test)]

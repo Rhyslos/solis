@@ -77,6 +77,27 @@ pub fn scan(text: &str) -> impl Iterator<Item = (u32, Found<'_>)> {
     })
 }
 
+/// The paths `text` brings files in from (`fetch "entities/player":Player;`
+/// and `get "helpers/maths":clamp;`), as written, in order. Found as Lust
+/// reads the text, so a path in a comment, or text that only looks like
+/// one, isn't given.
+pub fn fetched(text: &str) -> impl Iterator<Item = &str> {
+    let mut pieces = Pieces::new(text);
+    let mut bringing_in = false;
+    std::iter::from_fn(move || {
+        loop {
+            let (_, piece) = pieces.next()?;
+            let after_word = std::mem::replace(
+                &mut bringing_in,
+                matches!(piece, Piece::Word("fetch" | "get")),
+            );
+            if let (true, Piece::Text { inside, .. }) = (after_word, piece) {
+                return Some(inside);
+            }
+        }
+    })
+}
+
 /// A piece of Lust text, as Lust's reader splits it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Piece<'a> {
@@ -460,5 +481,26 @@ mod tests {
                 .collect::<Vec<_>>(),
             [2, 2]
         );
+    }
+
+    #[test]
+    fn the_paths_fetched_are_found_as_lust_reads_them() {
+        let text = "fetch \"solis/world\":World;\n\
+                    fetch\n  \"maps/farm\":[FarmMap, FarmLayer];\n\
+                    get \"helpers/maths\":clamp;\n\
+                    -- fetch \"in/a/comment\":X;\n\
+                    --[[ fetch \"in/a/block\":X; ]]\n\
+                    string s = \"fetch \\\"in/text\\\":X;\";\n\
+                    lua { fetch \"in/lua\" }\n\
+                    fetched \"not/a/word\":X;\n\
+                    fetch \"last\":Y;\nend\n";
+        assert_eq!(
+            fetched(text).collect::<Vec<_>>(),
+            ["solis/world", "maps/farm", "helpers/maths", "last"]
+        );
+        // Unfinished or empty: at most the path begun, and no crash.
+        for broken in ["fetch", "fetch \"open", "get :X;", "", "\"x\""] {
+            assert!(fetched(broken).all(|p| p == "open"), "{broken:?}");
+        }
     }
 }
