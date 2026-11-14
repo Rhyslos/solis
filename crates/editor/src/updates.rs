@@ -60,7 +60,7 @@ impl UpdateNotice {
         }
     }
 
-    /// One line for the Help menu.
+    /// One line for Project settings' Engine version.
     pub fn line(&self) -> String {
         match self {
             UpdateNotice::NotChecked => "Not checked yet".into(),

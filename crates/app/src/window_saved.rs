@@ -16,8 +16,8 @@
 //! so once.
 
 use super::{
-    ACCENT_KEY, AUTO_UPDATE_KEY, CAMERA_KEY, CONSOLE_HISTORY_KEY, FIRST_SIZE, HINTS_KEY,
-    INTERFACE_LOOK_KEY, KNOWN_PROJECTS_KEY, LOOK_KEY, OLD_ACCENT_KEY, OLD_LAYOUT_KEYS,
+    ACCENT_KEY, AUTO_UPDATE_KEY, CAMERA_KEY, CONSOLE_HISTORY_KEY, FIRST_SIZE, GUIDE_BROWSER_KEY,
+    HINTS_KEY, INTERFACE_LOOK_KEY, KNOWN_PROJECTS_KEY, LOOK_KEY, OLD_ACCENT_KEY, OLD_LAYOUT_KEYS,
     OVERLAYS_KEY, RECENT_PROJECTS_KEY, SHELL_KEY, SKIPPED_BUILD_KEY, SNAPPING_KEY, VIEWS_KEY,
     saved_editor_size,
 };
@@ -38,6 +38,8 @@ pub(super) struct Saved {
     pub(super) auto_update: bool,
     /// The build skipped with Skip this version.
     pub(super) skipped: Option<u64>,
+    /// The program the user guide opens in.
+    pub(super) guide_browser: editor::GuideBrowser,
     shell: Option<ShellState>,
     /// Whether an earlier build left a docked panels' arrangement.
     had_old_layout: bool,
@@ -78,6 +80,9 @@ impl Saved {
             known: KnownProjects::from_saved(get(storage, KNOWN_PROJECTS_KEY), recent),
             auto_update: get(storage, AUTO_UPDATE_KEY).unwrap_or(true),
             skipped: get::<Option<u64>>(storage, SKIPPED_BUILD_KEY).flatten(),
+            guide_browser: get(storage, GUIDE_BROWSER_KEY)
+                .map(crate::user_guide::checked)
+                .unwrap_or_default(),
             shell: get(storage, SHELL_KEY),
             had_old_layout: storage.is_some_and(|s| {
                 OLD_LAYOUT_KEYS
@@ -105,6 +110,7 @@ impl Saved {
             .with_look(self.viewport_look)
             .with_console_history(std::mem::take(&mut self.console_history));
         workbench.set_auto_update(self.auto_update);
+        workbench.set_guide_browser(self.guide_browser.clone());
         // Saved before views existed: the one camera and look above.
         if let Some(views) = &self.views {
             workbench = workbench.with_views(views);

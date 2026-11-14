@@ -20,6 +20,7 @@ A copy run this way doesn't update itself. Each download stays available for 30 
 **Build it yourself:**
 1. Install Rust from [rustup.rs](https://rustup.rs).
 2. In the `solis` folder, run `cargo run --release -p app`. The first build takes a few minutes; later ones are quicker.
+3. For **Documentation** to open the [user guide](user-guide.md), put the guide beside your build once: `cargo run -p user-guide -- --out target/release/user-guide/index.html`. A downloaded or installed copy has it already.
 
 **Opening with a model:** `solis --import ship.glb` opens Solis and imports the model straight away (repeat `--import` for more than one).
 

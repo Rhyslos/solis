@@ -5,7 +5,7 @@
 use super::*;
 use crate::inspector::{moved_from_default, short};
 use crate::test_support::*;
-use crate::workbench::Workbench;
+use crate::workbench::{Workbench, WorkbenchAction};
 use egui_kittest::kittest::Queryable;
 use reflect::{FieldInfo, FieldKind};
 
@@ -123,12 +123,20 @@ fn a_changed_value_has_a_reset_to_its_standard_value() {
 
 #[test]
 fn a_component_s_card_has_its_menu_and_manual_page() {
-    let (mut w, id) = with_a_lamp();
-    w.set_manual_url("https://example.org/manual".into());
+    let (w, id) = with_a_lamp();
     let mut h = harness(w);
     h.run();
-    // The ? opens Light's manual page; the ⋯ holds the rare actions.
-    let _ = h.get_by_label("About Light");
+    // The ? opens the user guide at Light's chapter; the ⋯ holds the
+    // rare actions.
+    h.get_by_label("About Light").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::OpenGuide(Some("lights".into()))),
+        "the guide at the lights chapter"
+    );
     assert!(
         h.query_by_label("Remove Light").is_none(),
         "tucked in the menu"

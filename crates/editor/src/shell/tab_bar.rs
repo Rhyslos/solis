@@ -1,7 +1,7 @@
 //! The tab bar, along the top of the window (specification, "Tab bar"):
 //! the logo in its light tile, the ribbon's tabs, the tabs that come with
-//! an open file, the search box, the project and area, and the chevron
-//! that collapses the ribbon.
+//! an open file, the search box, the project and area, Documentation
+//! (`documentation.rs`), and the chevron that collapses the ribbon.
 
 use super::RibbonTab;
 use crate::icons::{self, Icon};
@@ -233,9 +233,8 @@ impl Workbench {
         end
     }
 
-    /// The bar's right end, laid out from the right: the chevron, the
-    /// project and area, and Restart to update while a new build waits.
-    /// Returns where it starts.
+    /// The bar's right end, laid out from the right: the chevron,
+    /// Documentation, and the project and area. Returns where it starts.
     fn right_end(&mut self, ui: &mut Ui, bar: Rect) -> f32 {
         let mut side = ui.new_child(
             UiBuilder::new()
@@ -253,6 +252,7 @@ impl Workbench {
         if widgets::button::icon(ui, icon, name).clicked() {
             self.set_ribbon_collapsed(!collapsed);
         }
+        self.documentation_button(ui);
         self.path(ui);
         ui.min_rect().left()
     }

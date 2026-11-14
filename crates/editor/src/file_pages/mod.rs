@@ -408,19 +408,6 @@ impl Workbench {
         }
     }
 
-    /// Where the manual is, for Learn and About (the app knows it).
-    pub fn set_manual_url(&mut self, url: String) {
-        self.manual_url = url;
-    }
-
-    /// Opens the manual in the browser.
-    pub(crate) fn open_manual(&self, ui: &Ui) {
-        if !self.manual_url.is_empty() {
-            ui.ctx()
-                .open_url(egui::OpenUrl::new_tab(self.manual_url.clone()));
-        }
-    }
-
     /// The page in front, filling what is left of `ui`. Returns whether
     /// the project already open was chosen: the caller goes back to it.
     pub(crate) fn file_page_body(

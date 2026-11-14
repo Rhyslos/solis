@@ -2,3 +2,12 @@
 # must not change their line endings (a save carries a checksum).
 tests/fixtures/** -text
 fuzz/seeds/** -text
+# The user guide is built from the manual (cargo run -p user-guide): kept
+# byte for byte, and folded away in pull requests' changes, where the
+# manual's own change is the one to read.
+docs/user-guide/index.html -text linguist-generated=true
+# What the user guide is built from goes into it byte for byte, so a Windows
+# checkout must keep the same line ends or its guide differs from the kept one.
+# (The manual's pages are read with their line ends made the same.)
+tools/user-guide/assets/** text eol=lf
+branding/logo.svg text eol=lf

@@ -341,7 +341,7 @@ fn the_editor_s_surfaces_are_the_design_s() {
     // holds that screen to the same tokens): the frame is the design's;
     // the panels inside it are still today's.
     for (what, point, token) in [
-        ("the tab bar", [700.0, 17.0], tokens::app()),
+        ("the tab bar", [645.0, 17.0], tokens::app()),
         ("the ribbon", [1150.0, 67.0], tokens::ribbon()),
         ("a tab strip", [200.0, 115.0], tokens::app()),
         ("another tab strip", [800.0, 115.0], tokens::app()),

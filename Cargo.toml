@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "tools/layer-check", "patches/triple_buffer"]
+members = ["crates/*", "tools/layer-check", "tools/user-guide", "patches/triple_buffer"]
 
 [workspace.package]
 version = "0.0.1"

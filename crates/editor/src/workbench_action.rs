@@ -194,6 +194,14 @@ pub enum WorkbenchAction {
     OpenSave,
     /// Check GitHub for a newer build now (File > Updates).
     CheckForUpdates,
+    /// Open the user guide (Documentation in the tab bar, File › Learn
+    /// and About, a component's help), at the chapter of the manual page
+    /// named (`lights`), or at its start; in the program chosen in
+    /// Preferences (decision 0112).
+    OpenGuide(Option<String>),
+    /// Ask which program the guide opens in (Preferences' A program you
+    /// choose…); the app sets it with `Workbench::set_guide_browser`.
+    PickGuideBrowser,
     /// Turn checking for updates when starting on or off (File > Updates when starting); the app saves it.
     SetAutoUpdate(bool),
     /// Download the newer build offered (the update question's Update

@@ -41,9 +41,9 @@ Use it to:
 
 The File column has three more pages:
 
-- **Learn**: the four examples again, each with a sentence about it and **Make it in a folder…**; **Your first hour**, five steps for someone new; **Open the manual** (this manual, in your browser); and **Add the sample area**, which adds a small ready-made area to the open project to look around in.
+- **Learn**: the four examples again, each with a sentence about it and **Make it in a folder…**; **Your first hour**, five steps for someone new; **Open the user guide** (this manual, as one page in your browser: [The user guide](user-guide.md)); and **Add the sample area**, which adds a small ready-made area to the open project to look around in.
 - **Updates**: when a newer build of Solis is out, Updates has a **New** mark in the File column, the status bar says **Build N is out** (click it to come here), and a card across the top of the page says what it is, with **Not now** and **Download** (it downloads while you work), then **Restart to update** (Solis asks about unsaved work, closes, installs it and opens again). In a copy you didn't install with the setup file, the step is **Open the releases page** instead. Under the card: the build you have, the newest build with **Check now**, the **Look for updates when Solis starts** switch, the releases page and the list of every change. Beside them, what the new build brings, from its release on GitHub. See [Installing and updating](installing-and-updating.md).
-- **About**: the program's name, version and build, what it is, **Open LICENSE** (its licence), **Open the notices** (the libraries and fonts built into it, each with its licence), and the way to Updates and the manual.
+- **About**: the program's name, version and build, what it is, **Open LICENSE** (its licence), **Open the notices** (the libraries and fonts built into it, each with its licence), and the way to Updates and the user guide.
 
 ## Settings
 

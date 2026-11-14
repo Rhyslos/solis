@@ -238,4 +238,6 @@
 - **Release:** a build published on GitHub's Releases page for anyone to download. Solis publishes every build as a release called `build-` and its number.
 - **Installer:** a program that puts another program on your computer properly: in its own folder, in the Start menu, and in Windows' list of apps so you can uninstall it. Solis's is `solis-setup.exe`.
 - **Splash screen:** the picture a program shows while it starts: Solis's logo, name and version, and what it's doing ("Starting…").
+- <a id="user-guide"></a>**Manual and user guide:** the manual is the set of pages explaining every part of Solis (these pages, in the `docs/manual` folder of the code). The **user guide** is the same pages made into one page for your web browser, with a search and a contents list, which comes with every build and opens from **Documentation** in the tab bar. One is made from the other, so they always agree. See [The user guide](user-guide.md).
+- **Default browser:** the web browser Windows opens links in, set in Windows' own settings. The user guide opens in it unless you choose another in **File › Preferences**.
 - **SHA-256:** a 64-character fingerprint of a file's contents. Change one byte and it's completely different, so comparing fingerprints shows a download arrived whole and unchanged.

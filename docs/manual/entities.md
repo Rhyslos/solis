@@ -36,7 +36,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**+
 **Find, fold, hide and lock** in the Area column
 - **Search** (the magnifier in the Area column's header): a field opens under the header; type part of a name to list only the entities called that, with what they belong to. **Esc** empties and closes it.
 - **▾ / ▸** before an entity with children folds them away or shows them again. The header's fold button folds everything; its **⋯** has **Unfold everything**, **Fold everything**, **Show everything hidden** and **Unlock everything**. Selecting something in the viewport unfolds the way to it, so you can see it in the list.
-- Point at a row to see its two switches on the right: the **eye** hides the entity in the editor (it isn't drawn, and nor is anything under it), and the **padlock** locks it, so clicks in the viewport pass through it to what's behind (handy for a floor you keep clicking by mistake). The switches stay showing while they're on. **View › Show everything hidden** and **Unlock everything** turn them all off.
+- Point at a row to see its two switches on the right: the **eye** hides the entity in the editor (it isn't drawn, and nor is anything under it), and the **padlock** locks it, so clicks in the viewport pass through it to what's behind (handy for a floor you keep clicking by mistake). The switches stay showing while they're on. **Show everything hidden** and **Unlock everything**, on the Area column header's **⋯**, turn them all off.
 - Hiding and locking are only how you see the area while you work: they aren't saved in the area, aren't undo steps, and don't change the game.
 
 **Copy settings from one entity to another**

@@ -1,6 +1,6 @@
 //! File › About (round 2's `10-file-about`): the program's name, version
 //! and build, what it is, its licence and the notices, and the way to
-//! Updates and the manual. Every name on it is read from `AppInfo`.
+//! Updates and the user guide. Every name on it is read from `AppInfo`.
 
 use super::{Page, ProgramFile, page_head, plain, section};
 use crate::tokens::{self, size, text};
@@ -55,14 +55,14 @@ impl Workbench {
             }
             if super::button_row(
                 ui,
-                "The manual",
+                "The user guide",
                 "Every part of the editor, explained.",
-                "Open the manual",
+                "Open the user guide",
                 true,
             )
             .clicked()
             {
-                self.open_manual(ui);
+                asked.push(WorkbenchAction::OpenGuide(None));
             }
         });
     }

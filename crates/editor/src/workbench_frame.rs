@@ -237,7 +237,6 @@ impl Workbench {
                 }),
             requests: &mut asks.properties,
             help: crate::properties::Help {
-                manual: &self.manual_url,
                 places: self.open.program.as_ref().map(|p| &p.places),
             },
             accent: self.accent,

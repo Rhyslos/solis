@@ -9,9 +9,9 @@ Plain clicks on buttons and menus aren't listed. This page is for the keys, and 
 | Action | Shortcut |
 |---|---|
 | Look around | Hold right mouse, move the mouse |
-| Fly forward, left, back, right | Hold right mouse + W, A, S, D |
-| Fly down, up | Hold right mouse + Q, E |
-| Faster for a moment | Hold Shift while flying |
+| Fly forward, left, back, right | Hold right mouse + `W`, `A`, `S`, `D` |
+| Fly down, up | Hold right mouse + `Q`, `E` |
+| Faster for a moment | Hold `Shift` while flying |
 | Change camera speed | Hold right mouse + mouse wheel |
 | Move forward or back in steps | Mouse wheel |
 | Slide the view | Hold middle mouse, drag |
@@ -24,8 +24,8 @@ Plain clicks on buttons and menus aren't listed. This page is for the keys, and 
 | Action | Shortcut |
 |---|---|
 | Give the game the mouse and keys | Click the Game panel |
-| Give them back to the editor | Esc |
-| Switch the game's fullscreen setting | Alt + Enter |
+| Give them back to the editor | `Esc` |
+| Switch the game's fullscreen setting | `Alt + Enter` |
 
 While the game has them, every key is the game's and the editor's shortcuts are off. In an [exported game](playtest-export.md), the game has them from the start, Esc included, and Alt + Enter really switches the window.
 
@@ -33,19 +33,19 @@ While the game has them, every key is the game's and the editor's shortcuts are 
 
 | Action | Keyboard and mouse | Gamepad |
 |---|---|---|
-| Move | W A S D, or the arrow keys | Left stick |
+| Move | `W` `A` `S` `D`, or the arrow keys | Left stick |
 | Look | Move the mouse | Right stick |
-| Jump | Space | A |
-| Sprint | Shift | Left stick click |
-| Interact | F | X |
+| Jump | `Space` | A |
+| Sprint | `Shift` | Left stick click |
+| Interact | `F` | X |
 | Pan the [RTS camera](characters-and-cameras.md) | Arrow keys | Left stick |
-| Turn the RTS camera | Alt + left and right arrows | Right stick |
-| Zoom the RTS camera | Mouse wheel, Page Up and Page Down | Right and left triggers |
+| Turn the RTS camera | `Alt` + left and right arrows | Right stick |
+| Zoom the RTS camera | Mouse wheel, `Page Up` and `Page Down` | Right and left triggers |
 | Drag the map under the RTS camera | Hold the middle mouse button | |
 | Move between a [screen's buttons](screens.md) (MenuMove) | Arrow keys | D-pad, left stick |
-| Choose the button with the ring round it (MenuChoose) | Enter, Space | A |
-| Back (MenuBack) | Backspace | B |
-| Pause | P | Start |
+| Choose the button with the ring round it (MenuChoose) | `Enter`, `Space` | A |
+| Back (MenuBack) | `Backspace` | B |
+| Pause | `P` | Start |
 
 The [playground](characters-and-cameras.md#how-to-use-it) adds two of its own: it saves on F6 and loads on F7.
 
@@ -55,11 +55,11 @@ In **File › Project settings › Input**, after clicking **+ Add binding**, th
 
 | Tool | Key |
 |---|---|
-| Select | Q |
-| Move | W |
-| Rotate | R |
-| Scale | S |
-| Transform (move, rotate and scale) | T |
+| Select | `Q` |
+| Move | `W` |
+| Rotate | `R` |
+| Scale | `S` |
+| Transform (move, rotate and scale) | `T` |
 
 These are the area's keys: they wait while the pointer is over a tab with keys of its own (see [Editing](#editing)).
 
@@ -68,15 +68,15 @@ These are the area's keys: they wait while the pointer is over a tab with keys o
 | Action | Shortcut |
 |---|---|
 | Select | Click |
-| Add to or take from the selection | Ctrl + click |
-| Select with a box | Drag on empty space (Ctrl + drag adds) |
-| Select nothing | Esc |
-| Select everything | Ctrl + A |
-| Snapping on or off for one drag | Hold Ctrl while dragging a gizmo |
-| Ten times finer | Hold Shift while dragging a gizmo |
-| Cancel a box or a gizmo drag | Esc, or right click |
-| Lock or free an axis | X, Y, Z |
-| World or object axes | L |
+| Add to or take from the selection | `Ctrl + click` |
+| Select with a box | Drag on empty space (`Ctrl + drag` adds) |
+| Select nothing | `Esc` |
+| Select everything | `Ctrl + A` |
+| Snapping on or off for one drag | Hold `Ctrl` while dragging a gizmo |
+| Ten times finer | Hold `Shift` while dragging a gizmo |
+| Cancel a box or a gizmo drag | `Esc`, or right click |
+| Lock or free an axis | `X`, `Y`, `Z` |
+| World or object axes | `L` |
 
 See [Selecting and moving things](selecting-and-moving.md).
 
@@ -86,12 +86,12 @@ The keys work while the pointer is over the Frames tab (undo and redo over the C
 
 | Action | Shortcut |
 |---|---|
-| Rename a clip (clips made here) | Double-click it in the Frames tab's list of clips (Enter keeps the name, Esc leaves it) |
-| Pick a frame; several | Click; Ctrl + click, or Shift + click for a run |
+| Rename a clip (clips made here) | Double-click it in the Frames tab's list of clips (`Enter` keeps the name, `Esc` leaves it) |
+| Pick a frame; several | Click; `Ctrl + click`, or `Shift + click` for a run |
 | Move picked frames (clips made here) | Drag them |
-| Take picked frames out (clips made here) | Delete |
-| Play or stop the clip | Space |
-| Undo or redo a change to the clips file | Ctrl + Z, Ctrl + Y |
+| Take picked frames out (clips made here) | `Delete` |
+| Play or stop the clip | `Space` |
+| Undo or redo a change to the clips file | `Ctrl + Z`, `Ctrl + Y` |
 
 ## The Animator tab (an animator open)
 
@@ -99,16 +99,16 @@ These work while the pointer is over the Animator tab; see [Animators](animators
 
 | Action | Shortcut |
 |---|---|
-| Pick a state or an arrow; add to what's picked | Click; Ctrl + click or Shift + click |
+| Pick a state or an arrow; add to what's picked | Click; `Ctrl + click` or `Shift + click` |
 | Pick states with a box | Drag on empty space |
 | Move picked states | Drag one of them |
 | Join two states | Drag from a state's edge to another |
 | Menus (Add state, Make transition, Start here, Delete) | Right-click empty space, a state or an arrow |
-| Give up an arrow started with Make transition | Esc |
+| Give up an arrow started with Make transition | `Esc` |
 | Delete a parameter, or start it at the value shown | Right-click its name |
-| Take away what's picked | Delete |
-| Pan, zoom, fit everything | Middle-drag, mouse wheel, F |
-| Undo or redo a change to the animator | Ctrl + Z, Ctrl + Y |
+| Take away what's picked | `Delete` |
+| Pan, zoom, fit everything | Middle-drag, mouse wheel, `F` |
+| Undo or redo a change to the animator | `Ctrl + Z`, `Ctrl + Y` |
 
 ## The Tileset tab (a tileset open)
 
@@ -117,7 +117,7 @@ These work while the pointer is over the Tileset tab; see [Tilesets and autotili
 | Action | Shortcut |
 |---|---|
 | Give a tile to a slot | Click the tile in the picture, then the slot; or drag the tile onto the slot |
-| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (over Properties while it shows the tileset, too) |
+| Undo or redo a change to the tileset | `Ctrl + Z`, `Ctrl + Y` (over Properties while it shows the tileset, too) |
 
 ## The Atlas Crop tab (a picture's crops open)
 
@@ -127,9 +127,9 @@ These work while the pointer is over the Atlas Crop tab; see [Atlas Crop](atlas-
 |---|---|
 | Draw a crop | Drag with the left button on the picture |
 | Pick a crop | Click it |
-| Delete the picked crop | Delete |
+| Delete the picked crop | `Delete` |
 | Zoom, move the picture | Mouse wheel, middle-button drag |
-| Undo or redo a change to the crops | Ctrl + Z, Ctrl + Y |
+| Undo or redo a change to the crops | `Ctrl + Z`, `Ctrl + Y` |
 
 ## The UI editor (a screen open on the canvas)
 
@@ -160,7 +160,7 @@ These work while the pointer is over the Map tab; see [Tile maps](tile-maps.md).
 | Action | Shortcut |
 |---|---|
 | A terrain's settings (whether it's solid) | Right-click its swatch |
-| Undo or redo a change to the map | Ctrl + Z, Ctrl + Y |
+| Undo or redo a change to the map | `Ctrl + Z`, `Ctrl + Y` |
 
 ## Painting tiles (a tile map selected)
 
@@ -168,34 +168,34 @@ These work in the viewport while a tile map's entity is selected; the same tools
 
 | Action | Shortcut |
 |---|---|
-| Brush, Rectangle, Line, Fill, Eyedropper | B, U, N, G, I |
-| Back to a transform tool | Q, W, R, S, T |
+| Brush, Rectangle, Line, Fill, Eyedropper | `B`, `U`, `N`, `G`, `I` |
+| Back to a transform tool | `Q`, `W`, `R`, `S`, `T` |
 | Paint | Left-drag (a click for the fill) |
 | Empty cells | Right-drag |
-| Paint with the terrain under the pointer | Alt + click |
-| Place exact tiles for one stroke | Hold Ctrl while painting |
-| Flip a copy left and right, top and bottom; turn it a quarter | X, Y, Z (holding a copy) |
-| Give up a stroke; put the copy away; leave the painting tool | Esc |
-| Show the map's art or its meaning | Tab |
-| Undo or redo a stroke | Ctrl + Z, Ctrl + Y |
+| Paint with the terrain under the pointer | `Alt + click` |
+| Place exact tiles for one stroke | Hold `Ctrl` while painting |
+| Flip a copy left and right, top and bottom; turn it a quarter | `X`, `Y`, `Z` (holding a copy) |
+| Give up a stroke; put the copy away; leave the painting tool | `Esc` |
+| Show the map's art or its meaning | `Tab` |
+| Undo or redo a stroke | `Ctrl + Z`, `Ctrl + Y` |
 | Slide the view | Middle-drag |
 
 ## Editing
 
 | Action | Shortcut |
 |---|---|
-| Undo | Ctrl + Z |
-| Redo | Ctrl + Y, or Ctrl + Shift + Z |
-| New area | Ctrl + N |
-| Open area | Ctrl + O |
-| Save area | Ctrl + S |
-| Save area as | Ctrl + Shift + S |
-| Delete the selection | Delete |
-| Duplicate the selection | Ctrl + D |
-| Rename | F2 |
-| Point the camera at the selection | F |
-| Search for anything to do, any file, entity or panel (with nothing being typed) | Space |
-| Fold the shelf to its bar, or open it again | Ctrl + Space |
+| Undo | `Ctrl + Z` |
+| Redo | `Ctrl + Y`, or `Ctrl + Shift + Z` |
+| New area | `Ctrl + N` |
+| Open area | `Ctrl + O` |
+| Save area | `Ctrl + S` |
+| Save area as | `Ctrl + Shift + S` |
+| Delete the selection | `Delete` |
+| Duplicate the selection | `Ctrl + D` |
+| Rename | `F2` |
+| Point the camera at the selection | `F` |
+| Search for anything to do, any file, entity or panel (with nothing being typed) | `Space` |
+| Fold the shelf to its bar, or open it again | `Ctrl + Space` |
 
 All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md).
 
@@ -207,11 +207,11 @@ Space, or a click on **Search or run a command** in the tab bar, opens it (the b
 
 | Action | Shortcut |
 |---|---|
-| Open the search (with nothing being typed) | Space |
+| Open the search (with nothing being typed) | `Space` |
 | Narrow the list | Type part of a name |
-| Choose a result | Up, Down |
-| Do what's chosen | Enter, or click a result |
-| Close the search | Esc, or click outside it |
+| Choose a result | `Up`, `Down` |
+| Do what's chosen | `Enter`, or click a result |
+| Close the search | `Esc`, or click outside it |
 
 Over the Frames tab, Space plays and stops the clip instead, so point somewhere else first.
 
@@ -229,7 +229,7 @@ See the [Interface tour](interface-tour.md).
 | Scroll a ribbon that doesn't fit the window | Turn the mouse wheel over the ribbon |
 | Make the usual kind with a Create button | Click it (**Light** makes a point light) |
 | List the other kinds it makes | Click the small arrow on the button, or right-click the button |
-| Leave the File page for the tab you came from | Esc, or **Back to editor** |
+| Leave the File page for the tab you came from | `Esc`, or **Back to editor** |
 
 Why no long press on a Create button? Holding the mouse down is slow, and nothing on the button says it can be done; a small arrow can be seen.
 
@@ -241,23 +241,23 @@ See [Projects and the Library](projects-and-the-library.md).
 |---|---|
 | Place a model, assembly, sprite sheet or tile map where the camera looks | Double-click it in the Assets list; in the Library tab a double-click only picks it (**Place** on the ribbon places it) |
 | Open any other file (an area, a picture in its program) | Double-click it |
-| Drop without snapping to the grid, this once | Hold Ctrl as you let go |
-| Rename or delete the file picked | F2, Delete, with the pointer over the Library or the Assets list |
+| Drop without snapping to the grid, this once | Hold `Ctrl` as you let go |
+| Rename or delete the file picked | `F2`, `Delete`, with the pointer over the Library or the Assets list |
 | Place a model, assembly, sprite, picture or tile map where you point | Drag it into the viewport |
 | Place one under an entity | Drag it onto the entity in the Area panel |
 | Move a file to another folder | Drag it onto the folder in the tree |
 | Add a sound to a [sound event](sound-events.md) as a take | Drag the sound onto the event |
 | Menus (New, Place or Open, Show in Explorer, Rename…, Delete) | Right-click a file, a folder or empty space |
-| In Rename…: keep the new name, or leave it as it was | Enter, Esc |
+| In Rename…: keep the new name, or leave it as it was | `Enter`, `Esc` |
 
 ## In the Area panel
 
 | Action | Shortcut |
 |---|---|
 | Select | Click |
-| Add to or take from the selection | Ctrl + click |
-| Select a range | Shift + click |
-| Rename | Double-click (Enter keeps the name, Esc leaves it) |
+| Add to or take from the selection | `Ctrl + click` |
+| Select a range | `Shift + click` |
+| Rename | Double-click (`Enter` keeps the name, `Esc` leaves it) |
 | Put under another entity | Drag onto it |
 | Make it stand alone | Drag onto empty space |
 
@@ -265,14 +265,14 @@ See [Projects and the Library](projects-and-the-library.md).
 
 | Action | Shortcut |
 |---|---|
-| Add the first component found (after typing part of its name in **+ Component**) | Enter |
+| Add the first component found (after typing part of its name in **+ Component**) | `Enter` |
 
 ## Audio: the mixer
 
 | Action | Shortcut |
 |---|---|
 | Move a fader | Drag it up or down |
-| Move a fader finely | Shift while dragging |
+| Move a fader finely | `Shift` while dragging |
 | Put a fader back to 0 dB | Double-click it |
 | Drop a meter's peak line to the level now | Click the meter |
 
@@ -291,10 +291,10 @@ See [The Profiler](profiler.md).
 | Action | Shortcut |
 |---|---|
 | Jump to the command line | ' (the key next to Æ on a Norwegian keyboard) |
-| Run the command | Enter |
-| Earlier and later commands | Up, Down |
-| Finish a name (the choices show at the line's right) | Tab |
-| Leave the command line | Esc |
+| Run the command | `Enter` |
+| Earlier and later commands | `Up`, `Down` |
+| Finish a name (the choices show at the line's right) | `Tab` |
+| Leave the command line | `Esc` |
 
 See [The Console](console.md).
 
@@ -304,11 +304,11 @@ File › Recent projects is what Solis starts on; see [Projects](launcher.md).
 
 | Action | Shortcut |
 |---|---|
-| Open the project picked | Enter, or double-click its card |
-| Walk the cards | Left, Right, Up, Down |
+| Open the project picked | `Enter`, or double-click its card |
+| Walk the cards | `Left`, `Right`, `Up`, `Down` |
 | A card's menu (Open, Pin, Show in Explorer, Rename…, Make a copy…, Remove from list) | Right-click it |
-| Back to the editor, or carry on without a project | Esc |
-| In Rename…: keep the new name, or leave it as it was | Enter, Esc |
+| Back to the editor, or carry on without a project | `Esc` |
+| In Rename…: keep the new name, or leave it as it was | `Enter`, `Esc` |
 
 ## Project settings › Input
 
@@ -317,9 +317,9 @@ See [Input](input.md).
 | Action | Shortcut |
 |---|---|
 | Pick an action; pick one of its bindings | Click its row; click the binding in its card |
-| Clear the picked binding | Backspace (its × does the same) |
-| Bind the next key, mouse button or gamepad button pressed | **+ Add binding**, then press it (Backspace too is bound then) |
-| Give up binding | Esc |
+| Clear the picked binding | `Backspace` (its × does the same) |
+| Bind the next key, mouse button or gamepad button pressed | **+ Add binding**, then press it (`Backspace` too is bound then) |
+| Give up binding | `Esc` |
 
 ## Editor groups and the shelf
 
@@ -336,10 +336,10 @@ Panels stay where each tab's screen puts them (on Home, where the [panel layout]
 | Put a border back to its standard size | Double-click it (the shelf's grip and top edge too) |
 | Give a document a group of its own, on one half of the middle | Drag its tab onto that half |
 | Join two groups | Drag a tab onto the other group's tabs |
-| Put a dragged tab back | Esc, while dragging |
+| Put a dragged tab back | `Esc`, while dragging |
 | Bring a shelf tab to the front (opening a folded shelf) | Click it |
 | Make the shelf taller or shorter | Drag the grip at its bar's left, or the bar's top edge |
-| Fold the shelf to its bar, or open it again | Ctrl + Space (while typing too) |
+| Fold the shelf to its bar, or open it again | `Ctrl + Space` (while typing too) |
 | Close a clips file | The **×** after the Frames or Clip shelf tab |
 
 See the [Interface tour](interface-tour.md).

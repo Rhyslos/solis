@@ -44,7 +44,7 @@ Solis is now in the Start menu (with its logo, a glowing swirl round a dark cent
 None: updating has no keys.
 
 ## Tips and common problems
-- **Problem:** Help says *Built from source: no updates*. **Why:** you built Solis yourself with Cargo, so it has no build number to compare. **Fix:** install it with the setup file to get updates, or update your own copy with `git pull`.
+- **Problem:** **File › Project settings** says *Built from source: no updates* beside **Engine version**. **Why:** you built Solis yourself with Cargo, so it has no build number to compare. **Fix:** install it with the setup file to get updates, or update your own copy with `git pull`.
 - **Problem:** the Console says a newer build is out, but *this copy wasn't installed with the installer*, and there's no **Update now**. **Why:** you're running a downloaded `solis.exe` (from a zip). Solis only updates a copy its installer put there, so this one is never downloaded for or changed. **Fix:** install with `solis-setup.exe` once (the Updates page's **Open the releases page** goes there); from then on it updates.
 - **Problem:** *Couldn't check: couldn't reach GitHub*. **Why:** the computer is offline, or something blocks GitHub. **Fix:** nothing to do; it tries again later. Your work isn't affected.
 - **Problem:** *GitHub asked to wait before checking again*. **Why:** GitHub limits how often one computer may ask (60 times an hour). **Fix:** wait an hour.

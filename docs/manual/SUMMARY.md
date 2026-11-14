@@ -4,12 +4,18 @@ This manual describes what Solis can do **right now**. It grows with every updat
 
 New to game engines? Start with [Concepts](concepts.md), then build [your first 2D platformer](first-platformer.md).
 
-## Basics
+The manual is also the **user guide**: all its pages as one page to read in your browser, with a search, opened by **Documentation** at the top right of the editor ([The user guide](user-guide.md)).
+
+## Start here
 
 - [Getting started: install Solis, download it, or build it yourself](getting-started.md)
 - [Getting started: your first 2D platformer, step by step, learning Solis and Lust](first-platformer.md)
 - [Installing and updating: install once, and new builds arrive by themselves](installing-and-updating.md)
 - [Concepts: the ideas behind a game engine's editor](concepts.md)
+- [The user guide: this guide, the Documentation button, and which browser it opens in](user-guide.md)
+
+## The editor
+
 - [Interface tour: the top bar, the panels, and rearranging them](interface-tour.md)
 - [Settings: the editor's own colour, layout and more](settings.md)
 - [Unfinished parts: the grey controls with a small square, what they are, and hiding them](unfinished-parts.md)
@@ -21,28 +27,42 @@ New to game engines? Start with [Concepts](concepts.md), then build [your first 
 - [Assemblies: build once, place everywhere](assemblies.md)
 - [Brushes: shapes made in the editor, for blocking out a level](brushes.md)
 - [Play mode: run the area as a game, and Stop puts everything back](play-mode.md)
+
+## Projects and files
+
 - [Projects: Recent projects, Learn, Updates and About](launcher.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Backups and upgrades: older files keep opening, and a copy is kept before they change](backups-and-upgrades.md)
 - [Checking a project before updating: does this build still play my game the same?](checking-a-project.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
+
+## Sound
+
 - [Sounds: WAV and Ogg files, their waveforms, and listening to them](sounds.md)
 - [Sound events: takes that vary, so nothing sounds copied](sound-events.md)
 - [The Mixer: buses, ducking, mute and solo](mixer.md)
 - [Reverb zones: places where sounds echo](reverb-zones.md)
 - [Listeners and who hears what](listeners.md)
+
+## 3D: models, light and sky
+
 - [Levels of detail: simpler models far away](levels-of-detail.md)
 - [Looks: standard, stylized and unlit](looks.md)
 - [Lights and shadows: the sun, point lights and spotlights](lights.md)
 - [Sky, fog and exposure: the world around your models, and how bright the picture is](sky-fog-and-exposure.md)
-- [The Console: messages, search and commands](console.md)
+
+## Game code
+
 - [Game code: writing your game's rules in Lust, Lua and Rust](game-code.md)
-- [Game screens: a HUD and menus in Lust](screens.md)
-- [The UI editor: drawing a screen on the canvas](ui-editor.md)
-- [The UI sample: a HUD and a pause menu, start to finish](ui-sample.md)
 - [Which language when: Lust, Lua or Rust, with measured numbers](which-language.md)
 - [Physics: things that fall, collide and get pushed](physics.md)
 - [Input: the game's controls as named actions, gamepads, rebinding and recordings](input.md)
+- [Game screens: a HUD and menus in Lust](screens.md)
+- [The UI editor: drawing a screen on the canvas](ui-editor.md)
+- [The UI sample: a HUD and a pause menu, start to finish](ui-sample.md)
+
+## 2D
+
 - [2D: the pixel-perfect view, a project's 2D settings, and 2D cameras](2d-pixel-perfect.md)
 - [Sprites from Aseprite: sprite sheets, placing sprites, pivots, front and behind](sprites.md)
 - [Animating sprites: clips from Aseprite tags and your own, the Clips and Frames tabs, events that play sounds, animate](sprite-animation.md)
@@ -53,11 +73,21 @@ New to game engines? Start with [Concepts](concepts.md), then build [your first 
 - [Painting tiles: brush, rectangle, line, fill and eyedropper in the viewport's toolbox, copies, exact tiles](painting-tiles.md)
 - [Walls and walking in 2D: solid terrains, Collider2D, the TopDownController](walls-and-walking.md)
 - [Parallax layers: backgrounds and foregrounds that move with the camera at their own speed](parallax.md)
+
+## Making a game
+
 - [Characters and cameras: a character that walks and jumps, third-person, first-person and RTS cameras, and the playground](characters-and-cameras.md)
 - [Save games: save everything, and load it back exactly](save-games.md)
 - [Exporting for playtesting: a folder with your game, to send to a friend](playtest-export.md)
 - [Your first game: the turret sample, in all three languages](first-game.md)
+
+## Finding problems
+
+- [The Console: messages, search and commands](console.md)
 - [Problems: mistakes found in the area and the game's code](problems.md)
 - [The Profiler: where each frame's time goes](profiler.md)
 - [The benchmark: how much can this computer play?](benchmark.md)
+
+## Reference
+
 - [Keyboard shortcuts: every key in one place](keyboard-shortcuts.md)

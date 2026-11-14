@@ -8,6 +8,7 @@
 pub mod area_file;
 pub mod benchmark;
 pub mod branding;
+mod browsers;
 mod brush_uploads;
 pub mod check_project;
 pub mod cli;
@@ -37,6 +38,7 @@ mod to_lust;
 pub mod ui_sample;
 pub mod updates;
 mod upgrades;
+mod user_guide;
 pub mod window;
 
 /// The text shown by `--version`: the name and version.

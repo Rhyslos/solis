@@ -152,7 +152,7 @@ impl ShellCommand {
             C::ResetLayout => "Reset layout",
             C::FoldShelf => "Fold the shelf",
             C::CollapseRibbon => "Collapse the ribbon",
-            C::OpenManual => "Open the manual ↗",
+            C::OpenGuide => "Documentation ↗",
             C::Learn => "Learn",
             C::AddSampleArea => "Add the sample area",
             C::MakeSampleGame => "Make the sample game…",
@@ -236,7 +236,7 @@ impl ShellCommand {
             | C::ProjectSettings
             | C::InputActions
             | C::Preferences
-            | C::OpenManual
+            | C::OpenGuide
             | C::Learn
             | C::AddSampleArea
             | C::MakeSampleGame
@@ -387,7 +387,10 @@ impl ShellCommand {
             C::FoldShelf => {
                 "Folds the shelf to its bar, giving its room to the editor, or opens it again"
             }
-            C::OpenManual => "The user manual, in your web browser",
+            C::OpenGuide => {
+                "The user guide: every part of the editor explained, in your web browser (File › \
+                 Preferences chooses which)"
+            }
             C::Learn => "The examples, the first steps and the manual",
             C::AddSampleArea => {
                 "A small area for trying the looks: a checker cube, rows of plastic and metal \

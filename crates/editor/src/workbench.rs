@@ -76,8 +76,8 @@ pub struct Workbench {
     pub(crate) known_projects: Vec<crate::file_pages::KnownProject>,
     /// This copy's build number, for the project cards and About.
     pub(crate) this_build: Option<u64>,
-    /// Where the manual is, for Learn and About.
-    pub(crate) manual_url: String,
+    /// Which program the user guide opens in, and the browsers found.
+    pub(crate) guide: crate::guide::GuideSettings,
     /// How long the game's sound took last frame (the Profiler's Sound).
     pub(crate) sound_spent: std::time::Duration,
     /// The Documents folder, for exports to go in by default.
@@ -203,7 +203,7 @@ impl Workbench {
             file_pages: Default::default(),
             known_projects: Vec::new(),
             this_build: None,
-            manual_url: String::new(),
+            guide: Default::default(),
             sound_spent: std::time::Duration::ZERO,
             documents: None,
             update: Default::default(),

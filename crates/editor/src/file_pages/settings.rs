@@ -86,7 +86,7 @@ impl Tab {
         match self {
             Self::General => vec![
                 ("Starting", vec![Built(S::AutoUpdate)]),
-                ("Help", vec![Built(S::Hints)]),
+                ("Help", vec![Built(S::Hints), Built(S::GuideBrowser)]),
                 ("Unfinished parts", vec![Built(S::HideUnfinished)]),
             ],
             Self::Appearance => vec![
@@ -183,6 +183,7 @@ impl Tab {
 pub(crate) enum Setting {
     AutoUpdate,
     Hints,
+    GuideBrowser,
     HideUnfinished,
     Accent,
     Scale,
@@ -218,9 +219,10 @@ pub(crate) enum Setting {
 
 impl Setting {
     /// Every setting, in the pages' order.
-    pub(crate) const ALL: [Self; 33] = [
+    pub(crate) const ALL: [Self; 34] = [
         Self::AutoUpdate,
         Self::Hints,
+        Self::GuideBrowser,
         Self::HideUnfinished,
         Self::Accent,
         Self::Scale,
@@ -259,7 +261,7 @@ impl Setting {
     pub(crate) fn tab(self) -> Tab {
         use Setting as S;
         match self {
-            S::AutoUpdate | S::Hints | S::HideUnfinished => Tab::General,
+            S::AutoUpdate | S::Hints | S::GuideBrowser | S::HideUnfinished => Tab::General,
             S::Accent | S::Scale | S::Density | S::ShelfOpensOn | S::Layout | S::ResetLayout => {
                 Tab::Appearance
             }
@@ -288,6 +290,7 @@ impl Setting {
         match self {
             S::AutoUpdate => "Look for updates when the editor starts",
             S::Hints => "Show hints",
+            S::GuideBrowser => "Open the guide in",
             S::HideUnfinished => "Hide unfinished parts",
             S::Accent => "Accent colour",
             S::Scale => "Interface scale",
@@ -332,6 +335,10 @@ impl Setting {
             }
             S::Hints => {
                 "The Hints card under Properties says what's selected and what you can do with it."
+            }
+            S::GuideBrowser => {
+                "The program that shows the user guide when you click Documentation: your \
+                 default browser, one installed on this computer, or one you choose."
             }
             S::HideUnfinished => {
                 "Parts of the editor still to come are shown faint, with a small square, so the \

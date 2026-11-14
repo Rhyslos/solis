@@ -169,11 +169,7 @@ const MOVED: [(&str, &str, Place); 43] = [
         Place::Ribbon(RibbonTab::Debug),
     ),
     ("Window > Reset layout", "Reset layout", Place::Search),
-    (
-        "Help > Open the manual ↗",
-        "Open the manual ↗",
-        Place::Search,
-    ),
+    ("Help > Open the manual ↗", "Documentation ↗", Place::Search),
     (
         "Help > Add the sample area",
         "Add the sample area",
@@ -207,7 +203,7 @@ const MOVED: [(&str, &str, Place); 43] = [
 ];
 
 /// An editor in which every old item can be done at some moment: a
-/// project open, something selected, a step to undo, a manual to open.
+/// project open, something selected, a step to undo.
 fn ready() -> Workbench {
     let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
@@ -215,7 +211,6 @@ fn ready() -> Workbench {
         root: "/projects/farm".into(),
         assets: "/projects/farm/assets".into(),
     }));
-    w.set_manual_url("https://example.org/manual".into());
     w.add_point_light();
     w
 }
@@ -259,18 +254,12 @@ fn every_old_menu_item_is_a_command_that_can_be_done_and_the_search_lists_it() {
 }
 
 /// Commands whose doing shows nowhere this test looks: Rename starts
-/// typing in the Area panel, the manual opens in the web browser, with
+/// typing in the Area panel, with
 /// one entity in the area Select all selects what already is, a step
 /// moves the game on by a tick (`play_tests.rs` watches that), and the
 /// panels of an untouched arrangement are already where Reset layout
 /// puts them (`file_pages/settings_tests.rs` moves one first).
-const QUIET: [&str; 5] = [
-    "Rename",
-    "Open the manual ↗",
-    "Select all",
-    "Step one tick",
-    "Reset layout",
-];
+const QUIET: [&str; 4] = ["Rename", "Select all", "Step one tick", "Reset layout"];
 
 /// What a command may change, as far as these tests look.
 fn snapshot(w: &Workbench) -> impl std::fmt::Debug + use<> {

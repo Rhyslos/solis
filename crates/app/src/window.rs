@@ -71,6 +71,8 @@ const VIEWS_KEY: &str = "viewport_views";
 const CONSOLE_HISTORY_KEY: &str = "console_history";
 /// Whether updates are checked when Solis starts (decisions 0043, 0045).
 const AUTO_UPDATE_KEY: &str = "auto_update";
+/// The program the user guide opens in (decision 0112).
+const GUIDE_BROWSER_KEY: &str = "guide_browser";
 /// The build skipped with Skip this version (decision 0045).
 const SKIPPED_BUILD_KEY: &str = "skipped_build";
 /// Window size on first launch, in logical pixels.
@@ -149,6 +151,8 @@ struct App {
     playtest: Option<playtest_window::Run>,
     /// An export to a folder, on a thread of its own: its outcome.
     exporting: Option<std::sync::mpsc::Receiver<playtest_window::ExportDone>>,
+    /// The browsers found for the user guide, and choosing a program.
+    guide: crate::user_guide::GuideWork,
 }
 
 #[path = "window_playtest.rs"]
@@ -233,6 +237,7 @@ impl App {
             logo: load_logo(&cc.egui_ctx),
             playtest: None,
             exporting: None,
+            guide: Default::default(),
         };
         app.workbench
             .set_documents_folder(crate::playtest::documents());
@@ -247,10 +252,7 @@ impl App {
             app.updates.adopt(check, &mut app.workbench);
         }
         app.list_projects();
-        app.workbench.set_manual_url(format!(
-            "https://github.com/{}/tree/main/docs/manual",
-            branding::UPDATE_REPO
-        ));
+        app.guide.start_looking();
         // The frame as it was left first, then Recent projects in front
         // of it: Solis always opens there, and a project opens from it
         // (decision 0105, keeping 0090's promises): the last project
@@ -988,6 +990,10 @@ impl App {
                 }
                 // Kept in the editor; saved with the rest.
                 WorkbenchAction::SetAutoUpdate(_) => {}
+                WorkbenchAction::OpenGuide(chapter) => {
+                    crate::user_guide::open(ctx, &mut self.workbench, chapter.as_deref());
+                }
+                WorkbenchAction::PickGuideBrowser => self.guide.ask_for_program(),
                 WorkbenchAction::ImportModel => self.importer.ask(),
                 WorkbenchAction::NewProject => self.importer.ask_folder(FolderFor::NewProject),
                 WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
@@ -1943,6 +1949,7 @@ impl eframe::App for App {
         if let Some(done) = self.tidying.done() {
             self.tidied(done);
         }
+        self.guide.take_in(&ctx, &mut self.workbench);
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);
         if self.projects.take_changed() {
@@ -2139,6 +2146,7 @@ impl eframe::App for App {
         eframe::set_value(storage, KNOWN_PROJECTS_KEY, &self.projects.known().saved());
         eframe::set_value(storage, VIEWS_KEY, &self.workbench.views());
         eframe::set_value(storage, AUTO_UPDATE_KEY, &self.workbench.auto_update());
+        eframe::set_value(storage, GUIDE_BROWSER_KEY, self.workbench.guide_browser());
         eframe::set_value(storage, SKIPPED_BUILD_KEY, &self.updates.skipped());
         eframe::set_value(
             storage,

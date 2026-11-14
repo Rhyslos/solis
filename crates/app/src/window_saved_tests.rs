@@ -5,8 +5,8 @@
 
 use super::super::tests::Memory;
 use super::super::{
-    ACCENT_KEY, AUTO_UPDATE_KEY, EDITOR_SIZE_KEY, FIRST_SIZE, INTERFACE_LOOK_KEY, OLD_ACCENT_KEY,
-    SHELL_KEY,
+    ACCENT_KEY, AUTO_UPDATE_KEY, EDITOR_SIZE_KEY, FIRST_SIZE, GUIDE_BROWSER_KEY,
+    INTERFACE_LOOK_KEY, OLD_ACCENT_KEY, SHELL_KEY,
 };
 use super::*;
 use editor::theme::{Accent, Density, Scale};
@@ -399,4 +399,56 @@ fn damaged_looks_and_accents_never_stop_the_editor_starting() {
     }
     assert!(kept > 50, "only {kept} damaged looks still read");
     assert!(kept < 4000, "no damage was refused");
+}
+
+/// The program the user guide opens in (decision 0112): saved under its
+/// own key, the default when it's missing (every file from before it),
+/// and the default again when what's saved is damaged or couldn't be a
+/// program on this computer (rule 9).
+#[test]
+fn the_guide_s_browser_is_kept_and_a_damaged_one_is_the_default() {
+    let program = if cfg!(windows) {
+        std::path::PathBuf::from("C:\\Browsers\\example.exe")
+    } else {
+        std::path::PathBuf::from("/usr/bin/example")
+    };
+    let chosen = editor::GuideBrowser::Installed {
+        name: "Example Browser".into(),
+        program,
+    };
+    assert_eq!(
+        Saved::read(None).guide_browser,
+        editor::GuideBrowser::Default
+    );
+    let mut storage = Memory::default();
+    eframe::set_value(&mut storage, GUIDE_BROWSER_KEY, &chosen);
+    let (saved, workbench) = started(&storage);
+    assert_eq!(saved.guide_browser, chosen);
+    assert_eq!(workbench.guide_browser(), &chosen);
+    let good = storage.get_string(GUIDE_BROWSER_KEY).unwrap();
+    let mut dice = Dice(0x5151_2026);
+    let mut kept = 0;
+    for _ in 0..3000 {
+        let mut bytes = good.clone().into_bytes();
+        for _ in 0..1 + dice.roll() % 3 {
+            if bytes.is_empty() {
+                break;
+            }
+            let at = dice.roll() as usize % bytes.len();
+            match dice.roll() % 3 {
+                0 => bytes[at] = (dice.roll() >> 8) as u8,
+                1 => bytes.truncate(at),
+                _ => bytes.insert(at, b"(\\\"/:."[dice.roll() as usize % 6]),
+            }
+        }
+        let mut storage = Memory::default();
+        storage.set_string(
+            GUIDE_BROWSER_KEY,
+            String::from_utf8_lossy(&bytes).into_owned(),
+        );
+        let read = Saved::read(Some(&storage)).guide_browser;
+        assert_eq!(crate::user_guide::checked(read.clone()), read);
+        kept += usize::from(read != editor::GuideBrowser::Default);
+    }
+    assert!(kept > 50, "only {kept} damaged choices still read");
 }

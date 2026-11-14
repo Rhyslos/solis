@@ -164,7 +164,7 @@ pub(crate) enum ShellCommand {
     /// Shows the last export's folder (Build › Playtest).
     OpenExportFolder,
     Tab(RibbonTab),
-    OpenManual,
+    OpenGuide,
     Learn,
     AddSampleArea,
     MakeSampleGame,
@@ -362,7 +362,7 @@ impl ShellCommand {
         C::Tab(RibbonTab::Audio),
         C::Tab(RibbonTab::Debug),
         C::Tab(RibbonTab::Build),
-        C::OpenManual,
+        C::OpenGuide,
         C::Learn,
         C::AddSampleArea,
         C::MakeSampleGame,
@@ -486,10 +486,6 @@ impl ShellCommand {
                     None
                 }
             }
-            C::OpenManual => when(
-                !w.manual_url.is_empty(),
-                "This copy doesn't know where its manual is",
-            ),
             C::CheckForUpdates => when(
                 !matches!(
                     w.update,
@@ -656,7 +652,6 @@ impl ShellCommand {
                 }
             }
             C::Tab(tab) => w.show_tab(tab),
-            C::OpenManual => ctx.open_url(egui::OpenUrl::new_tab(w.manual_url.clone())),
             C::AutoUpdate => {
                 w.auto_update ^= true;
                 actions.push(WorkbenchAction::SetAutoUpdate(w.auto_update));
@@ -691,6 +686,7 @@ impl ShellCommand {
             C::MakeBenchmark => A::MakeBenchmark,
             C::MakePlayground => A::MakePlayground,
             C::CheckForUpdates => A::CheckForUpdates,
+            C::OpenGuide => A::OpenGuide(None),
             C::Exit => A::Quit,
             _ => return None,
         })
