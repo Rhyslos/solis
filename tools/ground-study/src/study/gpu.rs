@@ -2,7 +2,7 @@
 //! step of a stroke), and the report's pictures of each look.
 
 use super::scale::mesh_all;
-use super::stats::{Spread, Table, mb, ms, timed};
+use super::stats::{Spread, Table, ms, timed};
 use glam::{Mat4, Vec3, Vec4};
 use ground_study::ground::{Ground, Samples};
 use ground_study::mesh::{ChunkMesh, Method};
@@ -160,7 +160,10 @@ pub(crate) fn uploads(full: &Ground<Full>) {
             method.name().into(),
             ms(spread.mean),
             ms(spread.worst),
-            mb(bytes as f64 / times.len().max(1) as f64),
+            format!(
+                "{:.0} KB",
+                bytes as f64 / times.len().max(1) as f64 / 1024.0
+            ),
         ]);
     }
 }

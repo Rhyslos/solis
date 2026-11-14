@@ -13,7 +13,7 @@
 //! - [`brush`]: one dab of the round sculpting brush.
 //! - [`mesh`]: the looks' competing ways of making triangles.
 //! - [`collision`]: chunks made solid, and a character walking on them.
-//! - [`file`]: the ground's file as text and as bytes.
+//! - [`file`](mod@file): the ground's file as text and as bytes.
 //! - [`shapes`] and [`noise`]: the test grounds.
 
 pub mod brush;
