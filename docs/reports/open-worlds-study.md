@@ -374,7 +374,7 @@ Five milestones (decision 0097: two to six), each one pull request. They are pro
 
 ## Questions for the project lead
 
-Each with its options and the recommended one, ready to ask one at a time.
+**Answered on 2026-11-14 ([decision 0117](../decisions/0117-open-worlds-ten-km-a-recipe-and-far-caves.md)):** 10 × 10 km (100 km²) by default, further by setting; voxels to 4 km by default with voxels to the horizon as an option made as well; the starting ground kept as a recipe; 1 GB of memory; 512 m high or more. The questions as they were asked follow.
 
 ### 1. How big a world does Solis promise?
 
