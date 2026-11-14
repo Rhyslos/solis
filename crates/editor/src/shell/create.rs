@@ -5,7 +5,7 @@
 
 use crate::workbench::Workbench;
 use area::EntityData;
-use area::builtin::{ReverbZone, Sprite, Transform};
+use area::builtin::{Brush, ReverbZone, Sprite, Transform};
 use reflect::EntityId;
 
 impl Workbench {
@@ -33,6 +33,33 @@ impl Workbench {
                     ..Transform::default()
                 })
                 .with(&ReverbZone::default()),
+        )
+    }
+
+    /// Adds a solid box brush (Tools 1a, B1) standing where the camera
+    /// looks, named as the brush list names them (`Box_01`, `Box_02`…).
+    /// Until the brush list arrives (B2), this is how a brush is made.
+    pub fn add_box_brush(&mut self) -> EntityId {
+        let position = self.viewport.camera.focus();
+        let boxes = self
+            .open
+            .document
+            .area()
+            .iter()
+            .filter(|(_, e)| {
+                e.components
+                    .get(<Brush as reflect::Component>::NAME)
+                    .and_then(|c| c.get("shape"))
+                    == Some(&reflect::Value::Text("Box".into()))
+            })
+            .count();
+        self.spawn_selected(
+            EntityData::new(&format!("Box_{:02}", boxes + 1))
+                .with(&Transform {
+                    position,
+                    ..Transform::default()
+                })
+                .with(&Brush::default()),
         )
     }
 }

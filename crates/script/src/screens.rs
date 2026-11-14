@@ -231,7 +231,7 @@ fn lust_field(kind: &reflect::FieldKind) -> Option<(&'static str, &'static str)>
         FieldKind::Vec2 => ("vec2", "[0, 0]"),
         FieldKind::Rotation => ("rotation", "[0, 0, 0]"),
         FieldKind::Entity => ("entity", "nothing"),
-        FieldKind::Asset => return None,
+        FieldKind::Asset | FieldKind::Numbers => return None,
     })
 }
 

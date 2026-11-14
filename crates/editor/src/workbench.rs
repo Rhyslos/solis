@@ -184,6 +184,8 @@ pub(crate) struct GameKey {
     between: u32,
     sources: u64,
     models: usize,
+    /// The document's brush revision the brushes were drawn at.
+    brushes: u64,
     state: crate::play::PlayState,
 }
 
@@ -449,6 +451,8 @@ impl Workbench {
     /// nothing it shows changed.
     pub(crate) fn game_scene_now(&mut self) -> Option<(GameKey, crate::game_panel::GameScene)> {
         let state = self.play_state();
+        self.open.brushes.refresh(&mut self.open.document);
+        let brushes = self.open.document.brushes();
         let playing = self.open.playing.as_mut()?;
         let between = match state {
             crate::play::PlayState::Playing => playing.world.progress().to_bits(),
@@ -459,13 +463,17 @@ impl Workbench {
             between,
             sources: self.sources,
             models: self.open.models.len(),
+            brushes,
             state,
         };
         Some(match self.open.game_scene.take() {
             Some((was, scene)) if was == key => (key, scene),
             _ => (key, {
-                let mut scene =
-                    crate::game_panel::GameScene::of(&playing.world, &self.open.models, state);
+                let mut scene = crate::game_panel::GameScene::of(
+                    &playing.world,
+                    (&self.open.models, &self.open.brushes),
+                    state,
+                );
                 scene.camera_start =
                     crate::game_panel::GameScene::camera_start_in(playing.before.area());
                 scene

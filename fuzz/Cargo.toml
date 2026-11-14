@@ -26,6 +26,7 @@ arbitrary = "=1.5.0"
 editor = { path = "../crates/editor" }
 input = { path = "../crates/input" }
 area = { path = "../crates/area" }
+mesh = { path = "../crates/mesh" }
 assets = { path = "../crates/assets" }
 asset_db = { path = "../crates/asset_db" }
 script = { path = "../crates/script" }
@@ -223,6 +224,13 @@ bench = false
 [[bin]]
 name = "playtest_file"
 path = "fuzz_targets/playtest_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "brush"
+path = "fuzz_targets/brush.rs"
 test = false
 doc = false
 bench = false

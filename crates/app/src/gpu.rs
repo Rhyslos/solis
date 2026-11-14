@@ -44,6 +44,8 @@ pub struct GpuViewport {
     pixel_images: Vec<Option<PixelImages>>,
     /// Imported models, uploaded.
     models: HashMap<AssetId, GpuModel>,
+    /// Brushes' models, uploaded (Tools 1a, B1).
+    brushes: crate::brush_uploads::BrushUploads,
     /// Sprite sheets' atlases, uploaded (Phase 9, D2).
     sheets: HashMap<AssetId, render::GpuSheet>,
     /// Each tile map layer's picture uploaded (into `sheets`), by its key
@@ -76,6 +78,7 @@ impl GpuViewport {
             images: Vec::new(),
             pixel_images: Vec::new(),
             models: HashMap::new(),
+            brushes: Default::default(),
             sheets: HashMap::new(),
             tile_keys: HashMap::new(),
             thumbnail_target: None,
@@ -94,6 +97,7 @@ impl GpuViewport {
     /// keep their place in it until it's drawn.
     pub fn begin_frame(&mut self) {
         self.fonts.begin_frame();
+        self.brushes.begin_frame();
     }
 
     /// Draws `model` from a three-quarter view into a small image of its
@@ -361,22 +365,16 @@ impl GpuViewport {
     ) -> Result<egui::TextureId, String> {
         let small = [pixel.base[0] + 2, pixel.base[1] + 2];
         params.size_px = small;
+        self.brushes.upload(
+            &self.renderer,
+            (&self.state.device, &self.state.queue),
+            &view.brushes,
+        );
         self.prepare_pixel_images(view.image, small, view.size_px);
         let images = self.pixel_images[view.image]
             .as_mut()
             .ok_or("the 2D images could not be made")?;
-        let placed: Vec<render::Placement<'_>> = view
-            .models
-            .iter()
-            .filter_map(|m| {
-                self.models.get(&m.asset).map(|model| render::Placement {
-                    model,
-                    node: m.node,
-                    transform: m.transform,
-                    pick: m.pick,
-                })
-            })
-            .collect();
+        let placed = placements(&self.models, &self.brushes, view);
         let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
         let picks = sprite_runs(&self.sheets, &view.sprites);
         let runs: Vec<render::SpriteRun> = picks.iter().map(|p| p.run).collect();
@@ -588,6 +586,28 @@ fn to_render_sun(sun: Option<&ViewLight>) -> render::Sun {
     )
 }
 
+/// The view's models and brushes as the renderer places them: the
+/// models uploaded and the brushes' models (uploaded first, by
+/// `BrushUploads::upload`).
+fn placements<'a>(
+    models: &'a HashMap<AssetId, GpuModel>,
+    brushes: &'a crate::brush_uploads::BrushUploads,
+    view: &'a ViewportView,
+) -> Vec<render::Placement<'a>> {
+    view.models
+        .iter()
+        .filter_map(|m| {
+            models.get(&m.asset).map(|model| render::Placement {
+                model,
+                node: m.node,
+                transform: m.transform,
+                pick: m.pick,
+            })
+        })
+        .chain(brushes.placements(&view.brushes))
+        .collect()
+}
+
 /// An area light as the renderer takes it.
 fn to_render_light(light: &ViewLight) -> render::Light {
     render::Light {
@@ -660,22 +680,16 @@ impl ViewportRenderer for GpuViewport {
         if let Some(pixel) = view.pixel {
             return self.render_pixels(view, pixel, params, &lights);
         }
+        self.brushes.upload(
+            &self.renderer,
+            (&self.state.device, &self.state.queue),
+            &view.brushes,
+        );
         self.prepare_image(view.image, view.size_px);
         let image = self.images[view.image]
             .as_mut()
             .ok_or("the viewport image could not be made")?;
-        let placed: Vec<render::Placement<'_>> = view
-            .models
-            .iter()
-            .filter_map(|m| {
-                self.models.get(&m.asset).map(|model| render::Placement {
-                    model,
-                    node: m.node,
-                    transform: m.transform,
-                    pick: m.pick,
-                })
-            })
-            .collect();
+        let placed = placements(&self.models, &self.brushes, view);
         // The same layout (checked by a test), so no copy.
         let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
         let picks = sprite_runs(&self.sheets, &view.sprites);

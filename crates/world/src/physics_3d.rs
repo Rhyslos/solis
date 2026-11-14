@@ -3,27 +3,34 @@
 //! saves.
 
 use crate::{Global, Id, PhysicsAsk, World};
-use area::builtin::{CharacterBody, Collider, RigidBody, Transform};
+use area::builtin::{Brush, CharacterBody, Collider, RigidBody, Transform};
 use glam::Mat4;
 use reflect::EntityId;
+
+/// What physics knows of an entity: where it's placed, its physics
+/// components and its Solid brush.
+pub(crate) type PhysicsParts = (
+    Option<Transform>,
+    Option<RigidBody>,
+    Option<Collider>,
+    Option<CharacterBody>,
+    Option<Brush>,
+);
 
 impl World {
     /// What physics knows of an entity: where it's placed and its physics
     /// components.
-    pub(crate) fn physics_parts(
-        &self,
-        entity: hecs::Entity,
-    ) -> (
-        Option<Transform>,
-        Option<RigidBody>,
-        Option<Collider>,
-        Option<CharacterBody>,
-    ) {
+    pub(crate) fn physics_parts(&self, entity: hecs::Entity) -> PhysicsParts {
         (
             self.ecs.get::<&Transform>(entity).ok().map(|c| *c),
             self.ecs.get::<&RigidBody>(entity).ok().map(|c| *c),
             self.ecs.get::<&Collider>(entity).ok().map(|c| *c),
             self.ecs.get::<&CharacterBody>(entity).ok().map(|c| *c),
+            self.ecs
+                .get::<&Brush>(entity)
+                .ok()
+                .map(|c| (*c).clone())
+                .filter(|b| b.solid),
         )
     }
 
@@ -61,13 +68,26 @@ impl World {
         }
         let body = self.ecs.get::<&RigidBody>(entity).ok().map(|b| *b);
         let collider = self.ecs.get::<&Collider>(entity).ok().map(|c| *c);
-        if body.is_none() && collider.is_none() {
+        // A Solid brush is its own collider when it has no other, and
+        // never falls: its body is fixed, or kinematic if game code moves
+        // it as a platform (decision 0111).
+        let brush = match collider {
+            None => self
+                .ecs
+                .get::<&Brush>(entity)
+                .ok()
+                .filter(|b| b.solid)
+                .map(|b| brush_collider(&b)),
+            Some(_) => None,
+        };
+        if body.is_none() && collider.is_none() && brush.is_none() {
             self.physics.remove(id);
             return;
         }
         let (scale, rotation, position) = global.to_scale_rotation_translation();
         let body = body.map(|b| physics::Body {
             kind: match b.kind {
+                area::builtin::BodyKind::Dynamic if brush.is_some() => physics::BodyKind::Fixed,
                 area::builtin::BodyKind::Dynamic => physics::BodyKind::Dynamic,
                 area::builtin::BodyKind::Kinematic => physics::BodyKind::Kinematic,
                 area::builtin::BodyKind::Fixed => physics::BodyKind::Fixed,
@@ -92,6 +112,7 @@ impl World {
             friction: c.friction,
             bounciness: c.bounciness,
         });
+        let collider = collider.or(brush);
         self.physics
             .add(id, (position, rotation), scale, body, collider);
         self.touched = true;
@@ -257,5 +278,18 @@ impl World {
     /// emptied since last asked.
     pub fn take_physics_broke(&mut self) -> bool {
         self.physics.take_broke()
+    }
+}
+
+/// A Solid brush's collider: its faces cut into triangles, as they're
+/// drawn, in the entity's own space.
+fn brush_collider(brush: &Brush) -> physics::ColliderSpec {
+    let (points, triangles) = mesh::solid_triangles(&brush.mesh);
+    physics::ColliderSpec {
+        shape: physics::Shape::Mesh(std::sync::Arc::new(physics::SolidMesh {
+            points,
+            triangles,
+        })),
+        ..physics::ColliderSpec::default()
     }
 }

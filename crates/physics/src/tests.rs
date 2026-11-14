@@ -42,7 +42,7 @@ fn a_crate_falls_and_lands_on_the_floor() {
         (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider,
+        collider.clone(),
     );
     run(&mut physics, 30);
     let falling = physics.state().pose(id(2)).unwrap().0.z;
@@ -74,7 +74,7 @@ fn pile(count: u64, ticks: usize) -> Vec<u64> {
             ),
             Vec3::ONE,
             body,
-            collider,
+            collider.clone(),
         );
     }
     (0..ticks)
@@ -101,7 +101,7 @@ fn rays_hit_the_nearest_thing_and_pass_out_of_what_they_start_in() {
         (Vec3::new(0.0, 0.0, 3.0), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider,
+        collider.clone(),
     );
     // Collisions are found by stepping once.
     physics.step(1.0 / 60.0);
@@ -174,7 +174,7 @@ fn pushes_velocities_and_kinematic_moves() {
         (Vec3::ZERO, Quat::IDENTITY),
         Vec3::ONE,
         Some(floating),
-        collider,
+        collider.clone(),
     );
     physics.set_velocity(id(2), Vec3::new(2.0, 0.0, 0.0));
     run(&mut physics, 60);
@@ -212,21 +212,21 @@ fn nothing_that_isnt_a_number_gets_in() {
         (Vec3::NAN, Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider
+        collider.clone()
     ));
     assert!(!physics.add(
         id(2),
         (Vec3::ZERO, Quat::from_xyzw(0.0, 0.0, 0.0, 0.0)),
         Vec3::ONE,
         body,
-        collider
+        collider.clone()
     ));
     assert!(!physics.add(
         id(2),
         (Vec3::ZERO, Quat::IDENTITY),
         Vec3::INFINITY,
         body,
-        collider
+        collider.clone()
     ));
     // Wild settings are made sensible, not refused.
     let wild = Body {
@@ -282,7 +282,7 @@ fn past_the_most_bodies_the_rest_are_counted_not_made() {
             (Vec3::new(n as f32 * 2.0, 0.0, 0.0), Quat::IDENTITY),
             Vec3::ONE,
             body,
-            collider,
+            collider.clone(),
         );
     }
     assert_eq!(physics.state().len(), MAX_BODIES);
@@ -325,7 +325,7 @@ fn six_crates(physics: &mut Physics) {
             ),
             Vec3::ONE,
             body,
-            collider,
+            collider.clone(),
         );
     }
 }
@@ -549,7 +549,7 @@ fn a_character_pushes_a_crate() {
         (Vec3::new(1.5, 0.0, 0.5), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider,
+        collider.clone(),
     );
     character_at(&mut physics, Vec3::ZERO);
     walk(&mut physics, Vec3::ZERO, 10);
@@ -574,7 +574,7 @@ fn a_character_moves_the_same_every_run_and_after_being_built_again() {
             (Vec3::new(1.0, 1.0, 0.5), Quat::IDENTITY),
             Vec3::ONE,
             body,
-            collider,
+            collider.clone(),
         );
         character_at(&mut physics, Vec3::new(0.0, 0.0, 1.0));
         physics
@@ -607,7 +607,7 @@ fn a_character_moves_the_same_every_run_and_after_being_built_again() {
             (Vec3::ZERO, Quat::IDENTITY),
             Vec3::ONE,
             body,
-            collider,
+            collider.clone(),
         );
         character_at(physics, Vec3::ZERO);
     };
@@ -705,7 +705,7 @@ fn many_characters_moved_together_go_exactly_where_one_by_one_would() {
             (Vec3::new(2.0, 2.0, 0.5), Quat::IDENTITY),
             Vec3::ONE,
             body,
-            collider,
+            collider.clone(),
         );
         physics
     };
@@ -747,14 +747,14 @@ fn numbers_too_big_for_physics_are_refused_or_held_in_range() {
         (Vec3::ZERO, Quat::from_xyzw(2.0e19, 0.0, 0.0, 0.0)),
         Vec3::ONE,
         body,
-        collider,
+        collider.clone(),
     ));
     assert!(!physics.add(
         id(3),
         (Vec3::splat(2.0e9), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider
+        collider.clone()
     ));
     let mut state = physics.state().body_state(id(1)).unwrap();
     state.velocity = Vec3::splat(1.0e30);
@@ -765,7 +765,7 @@ fn numbers_too_big_for_physics_are_refused_or_held_in_range() {
         (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
         Vec3::splat(1.0e20),
         body,
-        collider
+        collider.clone()
     ));
     run(&mut physics, 5);
     assert!(!physics.take_broke());
@@ -829,7 +829,7 @@ fn crowd_played(places: &[(i8, i8)], platform: bool, ticks: &Ticks, together: bo
             (Vec3::new(n as f32, 1.0, 0.5 + n as f32), Quat::IDENTITY),
             Vec3::splat(0.5),
             body,
-            collider,
+            collider.clone(),
         );
     }
     physics.add(
@@ -979,7 +979,7 @@ fn the_state_says_who_takes_part_and_who_physics_moves() {
         (Vec3::new(0.0, 0.0, 3.0), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider,
+        collider.clone(),
     );
     let state = physics.state().clone();
     assert!(!state.is_empty());
@@ -1039,7 +1039,7 @@ fn a_collider_s_centre_and_size_are_held_in_range_after_scaling() {
         (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider
+        collider.clone()
     ));
     let far = ColliderSpec {
         shape: Shape::Box(Vec3::splat(1.0e30)),
@@ -1100,7 +1100,7 @@ fn no_scale_centre_or_size_hands_rapier_a_number_out_of_range() {
                         ..Body::default()
                     };
                     let spec = ColliderSpec {
-                        shape,
+                        shape: shape.clone(),
                         center,
                         ..ColliderSpec::default()
                     };
@@ -1136,7 +1136,7 @@ fn a_step_that_fails_empties_physics_and_says_so_once() {
         (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider,
+        collider.clone(),
     );
     run(&mut physics, 3);
     assert!(!physics.take_broke());
@@ -1151,7 +1151,7 @@ fn a_step_that_fails_empties_physics_and_says_so_once() {
         (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
         Vec3::ONE,
         body,
-        collider,
+        collider.clone(),
     );
     run(&mut physics, 30);
     assert!(physics.state().pose(id(2)).unwrap().0.z < 5.0, "falling");

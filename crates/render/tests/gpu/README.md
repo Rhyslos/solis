@@ -6,6 +6,7 @@ Renders real frames on a GPU and checks their pixels: one test program (`cargo t
 | --- | --- |
 | `main.rs` | The shared helpers, and the list of files. |
 | `backdrop.rs` | The backdrop's sky and ground, the ground axes and grid, sizes clamped, and the scale check's viewport frame. |
+| `brushes.rs` | Brushes: a brush's flat triangles drawn one shade a face, and filling the view as a model does. |
 | `looks.rs` | Models in each look: an imported model with its texture, outlines, glow, the normal texture, metal and plastic; `dump_renders_to_look_at` writes pictures to look at by eye. |
 | `lights.rs` | The sun's shadows on models and the grid, and lamps: points, spots, ranges, many at once. |
 | `environment.rs` | Tone mapping and exposure, the editor's backdrop and the daylight sky, fog, and two viewports keeping their own frames. |

@@ -428,6 +428,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             Model::NAME => {
                 builder.add(Model::from_data(component));
             }
+            area::builtin::Brush::NAME => {
+                builder.add(area::builtin::Brush::from_data(component));
+            }
             Environment::NAME => {
                 builder.add(Environment::from_data(component));
             }

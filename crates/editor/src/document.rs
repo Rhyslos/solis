@@ -111,6 +111,12 @@ pub struct Document {
     /// A number that changes whenever what Problems checks does: see
     /// [`Self::shape`].
     shape: u64,
+    /// A number that changes whenever a brush may have: see
+    /// [`Self::brushes`].
+    brushes: u64,
+    /// Which brushes may have changed since last asked: see
+    /// [`Self::take_brush_changes`].
+    brush_changes: BrushChanges,
     /// The area's tree, kept until entities are added, deleted or given
     /// another parent: see [`Self::tree`].
     tree: RefCell<Option<Arc<Tree>>>,
@@ -175,7 +181,9 @@ impl Changes {
                 Edit::AddComponent {
                     entity, component, ..
                 }
-                | Edit::RemoveComponent { entity, component } => {
+                | Edit::RemoveComponent {
+                    entity, component, ..
+                } => {
                     self.entities.insert(*entity);
                     if component == Transform::NAME {
                         self.moved.insert(*entity);
@@ -200,6 +208,52 @@ impl Changes {
     /// Whether nothing changed.
     pub fn is_empty(&self) -> bool {
         !self.everything && self.entities.is_empty()
+    }
+}
+
+/// Which brushes may have changed (Tools 1a, B1): entities whose Brush
+/// was set, added or taken off, or that were added; whether any were
+/// deleted; or, after an undo or anything else that may have changed any
+/// of them, all.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BrushChanges {
+    /// Entities whose brush may have changed (or come).
+    pub entities: BTreeSet<EntityId>,
+    /// Whether entities were deleted (their brushes go).
+    pub deleted: bool,
+    /// Whether any brush may have changed.
+    pub all: bool,
+}
+
+impl BrushChanges {
+    /// Notes what `edits` may change of brushes.
+    fn note(&mut self, edits: &[Edit]) {
+        let brush = area::builtin::Brush::NAME;
+        for edit in edits {
+            match edit {
+                Edit::SetField {
+                    entity, component, ..
+                }
+                | Edit::AddComponent {
+                    entity, component, ..
+                }
+                | Edit::RemoveComponent {
+                    entity, component, ..
+                } => {
+                    if component == brush {
+                        self.entities.insert(*entity);
+                    }
+                }
+                Edit::Spawn { entities } => {
+                    self.entities.extend(entities.iter().map(|(id, _)| *id));
+                }
+                Edit::Despawn { .. } => self.deleted = true,
+                Edit::Rename { .. } | Edit::SetOrigin { .. } | Edit::Reparent { .. } => {}
+            }
+        }
+        if self.entities.len() > MAX_CHANGED_ENTITIES {
+            self.all = true;
+        }
     }
 }
 
@@ -239,6 +293,11 @@ impl Document {
                 ..Changes::default()
             },
             shape: next_revision(),
+            brushes: next_revision(),
+            brush_changes: BrushChanges {
+                all: true,
+                ..BrushChanges::default()
+            },
             tree: RefCell::new(None),
             world: RefCell::new(None),
             users: RefCell::new(None),
@@ -381,6 +440,29 @@ impl Document {
         self.shape
     }
 
+    /// A number standing for the area's brushes (Tools 1a, B1): it changes
+    /// with every edit that may change one (a Brush's field, a component
+    /// added or taken off, entities added or deleted, an undo), but not
+    /// with moving, turning or resizing, so a drag never makes brushes'
+    /// triangles again.
+    pub fn brushes(&self) -> u64 {
+        self.brushes
+    }
+
+    /// Which brushes may have changed since this was last asked (all, for
+    /// a new document): the one who keeps brushes' triangles asks, with
+    /// [`Self::brushes`] saying when to.
+    pub fn take_brush_changes(&mut self) -> BrushChanges {
+        std::mem::take(&mut self.brush_changes)
+    }
+
+    fn add_brush_changes(&mut self, changes: BrushChanges) {
+        self.brush_changes.entities.extend(changes.entities);
+        self.brush_changes.deleted |= changes.deleted;
+        self.brush_changes.all |=
+            changes.all || self.brush_changes.entities.len() > MAX_CHANGED_ENTITIES;
+    }
+
     /// The area's tree: children in order, tree order, the first of some
     /// entities. Worked out once, and again only after entities are
     /// added, deleted or given another parent.
@@ -450,6 +532,7 @@ impl Document {
         self.revision = next_revision();
         if !values_only {
             self.shape = next_revision();
+            self.brushes = self.shape;
         }
         if !same_tree {
             *self.tree.get_mut() = None;
@@ -489,9 +572,18 @@ impl Document {
                 Edit::Spawn { .. } | Edit::Despawn { .. } | Edit::Reparent { .. }
             )
         });
+        let mut brush_changes = BrushChanges::default();
+        brush_changes.note(&edits);
+        let brushes = edits.iter().any(|e| {
+            matches!(e, Edit::SetField { component, .. } if component == area::builtin::Brush::NAME)
+        });
         self.history
             .apply(&mut self.area, label, edits, merge, before, after.clone())?;
         self.changed(values_only, same_tree);
+        if brushes {
+            self.brushes = next_revision();
+        }
+        self.add_brush_changes(brush_changes);
         self.changes.entities.extend(changes.entities);
         self.changes.moved.extend(changes.moved);
         self.changes.everything |= changes.everything;
@@ -511,6 +603,9 @@ impl Document {
     /// the game made them in its world too. Returns how many couldn't be
     /// made (an entity already there, or gone).
     pub fn edit_by_game(&mut self, edits: Vec<Edit>) -> usize {
+        let mut brush_changes = BrushChanges::default();
+        brush_changes.note(&edits);
+        self.add_brush_changes(brush_changes);
         let mut failed = 0;
         for edit in edits {
             if self.area.apply(edit).is_err() {
@@ -529,6 +624,7 @@ impl Document {
     pub fn undo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.undo(&mut self.area)?;
         self.changed(false, false);
+        self.brush_changes.all = true;
         self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
@@ -542,6 +638,7 @@ impl Document {
     pub fn redo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.redo(&mut self.area)?;
         self.changed(false, false);
+        self.brush_changes.all = true;
         self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
@@ -582,6 +679,7 @@ impl Document {
     /// back after playing).
     pub(crate) fn touch(&mut self) {
         self.changed(false, false);
+        self.brush_changes.all = true;
         self.changes.everything = true;
     }
 

@@ -41,7 +41,7 @@ impl GameScene {
     /// What the running `world` shows, `state` being whether it runs.
     pub(crate) fn of(
         world: &world::World,
-        models: &BTreeMap<AssetId, ModelInfo>,
+        (models, brushes): (&BTreeMap<AssetId, ModelInfo>, &crate::brushes::BrushModels),
         state: PlayState,
     ) -> Self {
         // Drawn part way between the last tick and the next, so a screen
@@ -50,8 +50,10 @@ impl GameScene {
             PlayState::Playing => world.progress(),
             _ => 1.0,
         };
+        let mut view = AreaView::of_world(world, models, t);
+        view.add_world_brushes(world, brushes, t);
         Self {
-            view: AreaView::of_world(world, models, t),
+            view,
             camera: world
                 .camera_between(t)
                 .map(|(_, camera, global)| (camera, global)),
@@ -351,6 +353,7 @@ pub(crate) fn game_panel(
         sky_horizon: theme::backdrop::rgb(theme::backdrop::horizon()),
         ground: theme::backdrop::rgb(theme::backdrop::ground()),
         models: scene.view.models.clone(),
+        brushes: scene.view.brushes.clone(),
         // The game's own look, whatever the viewport uses.
         look: Look::default(),
         outline_px: 0.0,

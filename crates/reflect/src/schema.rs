@@ -30,6 +30,10 @@ pub enum FieldKind {
     Asset,
     /// A reference to another entity.
     Entity,
+    /// A list of numbers of any length (a brush's points and faces): kept
+    /// and saved as it is, made by tools rather than typed, so Properties
+    /// only says how many there are.
+    Numbers,
 }
 
 impl FieldKind {
@@ -47,6 +51,11 @@ impl FieldKind {
             (Self::Vec2, v) => v.as_floats::<2>().is_some(),
             (Self::Color, v) => v.as_colour().is_some(),
             (Self::Rotation, v) => v.as_floats::<4>().is_some(),
+            (Self::Numbers, Value::List(items)) => items.iter().all(|v| match v {
+                Value::Int(_) => true,
+                Value::Float(f) => f.is_finite(),
+                _ => false,
+            }),
             _ => false,
         }
     }
@@ -165,6 +174,16 @@ mod tests {
         assert!(!FieldKind::Rotation.accepts(&Value::floats(&[1.0, 0.5, 0.0])));
         assert!(!FieldKind::Vec3.accepts(&Value::List(vec![Value::Float(f64::NAN); 3])));
         assert!(!FieldKind::Bool.accepts(&Value::Int(1)));
+    }
+
+    #[test]
+    fn numbers_are_a_list_of_any_length_of_finite_numbers() {
+        assert!(FieldKind::Numbers.accepts(&Value::List(Vec::new())));
+        let mixed = Value::List(vec![Value::Int(3), Value::Float(0.5), Value::Int(-2)]);
+        assert!(FieldKind::Numbers.accepts(&mixed));
+        assert!(!FieldKind::Numbers.accepts(&Value::List(vec![Value::Float(f64::NAN)])));
+        assert!(!FieldKind::Numbers.accepts(&Value::List(vec![Value::Text("1".into())])));
+        assert!(!FieldKind::Numbers.accepts(&Value::Int(1)));
     }
 
     #[test]

@@ -52,6 +52,9 @@
 - **Assembly:** a group of entities saved once and placed many times; each placed **copy** follows the assembly but can have its own changes. Other engines call it a *prefab*. See [Assemblies](assemblies.md).
 - **Unpack:** turning a copy of an assembly, or an imported model, into separate ordinary entities.
 - **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children. A child's position is measured from its parent, so moving the parent carries it along.
+- **Brush:** a shape made in the editor itself (a box, a ramp, stairs), kept in the area and solid in the game, for blocking out a level before (or instead of) making models. See [Brushes](brushes.md).
+- **Mesh:** a shape made of **points** joined into flat **faces**, each face's sides being its **edges**. Models and brushes are meshes; a brush's faces can have any number of corners, and are cut into triangles to draw.
+- **Block-out:** a first, rough version of a level made of simple shapes, to try how it plays before anything is modelled.
 - **Instance:** one copy of a mesh drawn somewhere. A mesh used many times (a crate in a hundred places) is stored once and drawn as many instances, which is much faster than storing a hundred crates.
 
 ## Projects
@@ -148,7 +151,7 @@
 
 - **Physics:** making things move like real objects without writing how: they fall, collide, stack and get pushed. See [Physics](physics.md).
 - **Rigid body:** what makes an entity move by physics. **Dynamic** ones are moved by physics, **kinematic** ones only by game code (pushing dynamic ones aside), and **fixed** ones never move.
-- **Collider:** the shape physics bumps into (a box, sphere or capsule), which can be simpler than what's drawn. A collider on its own makes a floor or wall that never moves.
+- **Collider:** the shape physics bumps into (a box, sphere or capsule), which can be simpler than what's drawn. A collider on its own makes a floor or wall that never moves. A Solid [brush](brushes.md) is its own collider, its shape exactly as drawn.
 - **Impulse (push):** a sudden push, like a kick. The same push moves a light thing more than a heavy one.
 - **Ray:** an invisible line from a point in a direction, asking "what's the first thing along here?". Games use them to see whether a character stands on the ground, or what a gun points at.
 - **Determinism:** a game coming out exactly the same every time it's given the same inputs, on any computer. Solis keeps to it (decimals rounded the same way, everything done in a fixed order), so a recording replays exactly, and players online can keep their games in step by sending only their inputs.

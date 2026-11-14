@@ -137,6 +137,7 @@ fn create(label: &'static str) -> Group {
                 "More",
                 vec![
                     item("Reverb zone", C::AddReverbZone),
+                    item("Box brush", C::AddBoxBrush),
                     item("Assembly from selection", C::CreateAssembly),
                 ],
             ),

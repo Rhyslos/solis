@@ -231,6 +231,9 @@ fn kind_name(kind: &FieldKind) -> &'static str {
         FieldKind::Rotation => "rotation",
         FieldKind::Entity => "entity",
         FieldKind::Asset => "asset",
+        // Only Solis's own components hold these (a brush's points);
+        // game code can't declare one.
+        FieldKind::Numbers => "list of numbers",
     }
 }
 

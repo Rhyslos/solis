@@ -6,6 +6,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **Areas are saved as version 3** (Tools 1a, B1): the version that holds [brushes](docs/manual/brushes.md), whose points and faces are long lists of numbers written twelve to a line. Older areas open as they always did, and a copy of each is kept in `.solis/backups` before it's first saved again; an area saved now opens only in this build or newer. Nothing to do.
+
 - **Home's Area list, Properties and Assets are columns beside the area now** (Shared 1e; [decision 0109](docs/decisions/0109-layouts-as-a-setting.md)): the Area list a tall column at the left, Properties one at the right, Assets a wide strip under the area. The shelf keeps Place, the Console, Problems and Map; its **Entity** tab is there only in the design's layout. To have them back on the shelf, choose **The shelf (as designed)** in **File › Preferences › Appearance › Panel layout**. In the side layouts the **Place** tab holds Placement alone, and the Assets list shows what can be placed while Place is in front.
 
 - **Home's level editor looks like the design's first screen** (Shared 1b, M5). What moved:
@@ -283,6 +285,8 @@ What changed in each version, for people using Solis. Newest first.
 - Lights brought in with a model are listed under it in the Area panel, and deleting the model deletes them.
 
 ### Added
+
+- **Brushes** (Tools 1a, B1; [decision 0111](docs/decisions/0111-tools-1-brushes-and-ground.md)): shapes made in the editor itself, for blocking out a level. **Home › Create › More › Box brush** adds a box 2 m a side where the camera looks (Box_01, Box_02…), one step to undo. Move, turn and stretch it as any entity; it's drawn flat, one shade a face, and is **Solid** in the game: characters stand on it and bump into it, and it never falls. Its card in Properties has **Made as** and **Solid**. The brush list (**B**), drawing brushes out and editing their faces come next. See [Brushes](docs/manual/brushes.md).
 
 - **Panel layouts** (Shared 1e; [decision 0109](docs/decisions/0109-layouts-as-a-setting.md)): **File › Preferences › Appearance › Panel layout** puts Home's three lists in one of four places: **Area left, Assets bottom** (the standard), **Area and Assets on the left**, **Area left, Assets right**, or **The shelf (as designed)**. It changes at once. When the window is too narrow for the columns, the area narrows first, then the right column, then the left; narrower still, the lists go back on the shelf until there's room.
 - **Every border drags** (Shared 1e): the side columns' edges, the Assets strip's top, the line between two lists in one column, the lines between a shelf tab's columns, as well as the shelf and the line between two groups. The pointer becomes a two-headed arrow over each, and a **double-click** puts it back to its standard size. Each tab remembers its sizes for each panel layout, also after closing Solis; **Reset layout** puts them all back. The Assets list shows as many tiles across as fit. To try by hand: drag each border, close and reopen Solis, and check they stay; try each layout at a small window size.

@@ -291,6 +291,7 @@ version = "0.0.1"
 dependencies = [
  "glam 0.33.12",
  "lust",
+ "mesh",
  "proptest",
  "reflect",
 ]
@@ -1100,6 +1101,7 @@ dependencies = [
  "egui_kittest",
  "glam 0.33.12",
  "input",
+ "mesh",
  "physics",
  "proptest",
  "rayon",
@@ -2510,6 +2512,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "mesh"
+version = "0.0.1"
+dependencies = [
+ "glam 0.33.12",
+]
+
+[[package]]
 name = "meshopt"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3854,6 +3863,7 @@ dependencies = [
  "bytemuck",
  "glam 0.33.12",
  "log",
+ "mesh",
  "pollster 1.0.1",
  "rayon",
  "ui",
@@ -5787,6 +5797,7 @@ dependencies = [
  "area",
  "glam 0.33.12",
  "hecs",
+ "mesh",
  "physics",
  "rayon",
  "reflect",

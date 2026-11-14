@@ -18,6 +18,7 @@ layer = 2
 rayon.workspace = true
 reflect.workspace = true
 area.workspace = true
+mesh.workspace = true
 world.workspace = true
 animation.workspace = true
 tiles.workspace = true

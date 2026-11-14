@@ -47,6 +47,7 @@ pub(crate) enum ShellCommand {
     AddSpotlight,
     AddCamera,
     AddReverbZone,
+    AddBoxBrush,
     NewTileMap,
     CreateAssembly,
     SnapToGrid,
@@ -234,7 +235,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 137] = [
+    pub(crate) const ALL: [Self; 138] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -260,6 +261,7 @@ impl ShellCommand {
         C::AddSpotlight,
         C::AddCamera,
         C::AddReverbZone,
+        C::AddBoxBrush,
         C::NewTileMap,
         C::CreateAssembly,
         C::SnapToGrid,
@@ -557,6 +559,9 @@ impl ShellCommand {
             }
             C::AddReverbZone => {
                 w.add_reverb_zone();
+            }
+            C::AddBoxBrush => {
+                w.add_box_brush();
             }
             C::NewTileMap => {
                 let folder = w.open.library_state.folder.clone();

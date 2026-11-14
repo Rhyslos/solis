@@ -19,6 +19,7 @@ New to game engines? Start with [Concepts](concepts.md), then build [your first 
 - [Undo and redo: take back any change](undo.md)
 - [Saving areas: files Git can merge](saving-areas.md)
 - [Assemblies: build once, place everywhere](assemblies.md)
+- [Brushes: shapes made in the editor, for blocking out a level](brushes.md)
 - [Play mode: run the area as a game, and Stop puts everything back](play-mode.md)
 - [Projects: Recent projects, Learn, Updates and About](launcher.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)

@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! -- An area. Safe to edit by hand: one block per entity, one line per field.
-//! area version 2;
+//! area version 3;
 //!
 //! entity 2B8D4NE6TV0HC {
 //!     name = "Sun";
@@ -32,8 +32,10 @@ use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 
 /// The layout version this build writes and reads. Version 2 gave a part
-/// of a placed assembly a way to say it has no parent (`parent = "";`).
-pub const VERSION: u32 = 2;
+/// of a placed assembly a way to say it has no parent (`parent = "";`);
+/// version 3 brought brushes (Tools 1a, B1), whose meshes are long lists
+/// of numbers written over several lines ([`NUMBERS_PER_LINE`]).
+pub const VERSION: u32 = 3;
 
 /// Areas' and assemblies' version and upgraders (Phase 8, C1): each step
 /// turns a file read at one version into the next, after its blocks are
@@ -45,7 +47,7 @@ pub static FORMAT: reflect::upgrade::Format<AreaFile> = reflect::upgrade::Format
     name: "area",
     current: VERSION,
     version_of: |text| reflect::upgrade::header_version(text, &["area", "assembly"]),
-    steps: &[parts_at_the_top_level],
+    steps: &[parts_at_the_top_level, brushes],
 };
 
 /// Version 1 to 2: nothing to change. Version 2 lets a placed assembly's
@@ -55,6 +57,20 @@ pub static FORMAT: reflect::upgrade::Format<AreaFile> = reflect::upgrade::Format
 fn parts_at_the_top_level(_: &mut AreaFile) -> Result<(), String> {
     Ok(())
 }
+
+/// Version 2 to 3: nothing to change. Version 3 has the Brush component,
+/// whose lists of numbers run over several lines; no version 2 file holds
+/// one, and every one reads as it always did.
+fn brushes(_: &mut AreaFile) -> Result<(), String> {
+    Ok(())
+}
+
+/// A list of more numbers than this (a brush's points or faces) is
+/// written this many to a line, each line on its own under the field, so
+/// no line comes near [`MAX_LINE`] and a change to a brush changes only
+/// the lines it touches. Shorter lists (positions, colours) stay on one
+/// line, as they always were.
+pub const NUMBERS_PER_LINE: usize = 12;
 /// The biggest area file read.
 pub const MAX_BYTES: usize = 64 << 20;
 /// The longest line read.
@@ -308,7 +324,9 @@ fn write_components(
         for field in names {
             let value = &data.fields[field];
             let mut line = format!("    {component}.{field} = ");
-            write_value(&mut line, value);
+            if !write_long_numbers(&mut line, value) {
+                write_value(&mut line, value);
+            }
             line.push(';');
             if let Value::Asset(Some(r)) = value
                 && let Some(path) = asset_path(r.asset)
@@ -368,6 +386,34 @@ fn decimal(text: String, v: f64) -> String {
     } else {
         format!("{text}.0")
     }
+}
+
+/// Writes `value` over several lines if it's a list of more than
+/// [`NUMBERS_PER_LINE`] numbers, returning whether it did.
+fn write_long_numbers(out: &mut String, value: &Value) -> bool {
+    let Value::List(items) = value else {
+        return false;
+    };
+    let numbers = items
+        .iter()
+        .all(|v| matches!(v, Value::Int(_) | Value::Float(_)));
+    if items.len() <= NUMBERS_PER_LINE || !numbers {
+        return false;
+    }
+    out.push('[');
+    for (i, item) in items.iter().enumerate() {
+        if i % NUMBERS_PER_LINE == 0 {
+            out.push_str("\n        ");
+        } else {
+            out.push_str(", ");
+        }
+        write_value(out, item);
+        if i + 1 < items.len() && (i + 1) % NUMBERS_PER_LINE == 0 {
+            out.push(',');
+        }
+    }
+    out.push_str("\n    ]");
+    true
 }
 
 pub(crate) fn write_value(out: &mut String, value: &Value) {
@@ -1137,7 +1183,7 @@ mod tests {
         assert_eq!(write_file(&file, &registry(), &no_paths), written);
         // An entity's own block may say it has none: the top level, which
         // is written as no line at all.
-        let own = "area version 2;\nentity 0000000000007 { name = \"Shed\"; parent = \"\"; }";
+        let own = "area version 3;\nentity 0000000000007 { name = \"Shed\"; parent = \"\"; }";
         let shed = read(own, &registry()).unwrap();
         assert_eq!(shed.get(id(7)).unwrap().parent, None);
         assert!(!write(&shed, &registry(), &no_paths).contains("parent"));
@@ -1155,10 +1201,11 @@ mod tests {
     }
 
     #[test]
-    fn a_version_1_file_reads_as_it_always_did_and_is_written_as_version_2() {
-        // Version 2 only added `parent = "";` for a part (BUG-13). Every
-        // line a version 1 file can hold means what it meant.
-        assert_eq!(VERSION, 2);
+    fn a_version_1_file_reads_as_it_always_did_and_is_written_as_the_newest() {
+        // Version 2 only added `parent = "";` for a part (BUG-13), and
+        // version 3 brushes. Every line a version 1 file can hold means
+        // what it meant.
+        assert_eq!(VERSION, 3);
         assert!(FORMAT.is_complete());
         let old = parts_moved(1).replace("parent = \"\";", "order = \"a9\";");
         let new = parts_moved(2).replace("parent = \"\";", "order = \"a9\";");
@@ -1178,24 +1225,25 @@ mod tests {
             assert_eq!((FORMAT.version_of)(fixture), Some(1));
             let read = read_file(fixture, &registry()).unwrap();
             let written = write_file(&read, &registry(), &no_paths);
-            // Written now it says version 2, and nothing else differs but
+            // Written now it says version 3, and nothing else differs but
             // the comments beside asset IDs (never read).
-            assert_eq!((FORMAT.version_of)(&written), Some(2));
+            assert_eq!((FORMAT.version_of)(&written), Some(3));
             assert_eq!(read_file(&written, &registry()).unwrap(), read);
         }
-        // A build that reads up to version 2 refuses what's newer by its
-        // first line, as a build before this one refuses version 2.
-        let newer = read_file(&parts_moved(3), &registry()).unwrap_err();
+        // A build that reads up to version 3 refuses what's newer by its
+        // first line, as a build before this one refuses version 3.
+        let newer = read_file(&parts_moved(4), &registry()).unwrap_err();
         assert_eq!(newer.line, 1);
         assert!(newer.message.contains("newer version"), "{newer}");
     }
 
     #[test]
-    fn the_version_2_example_is_what_this_build_writes() {
+    fn the_version_2_example_is_written_as_it_was_but_for_its_version() {
         // tests/fixtures/area/v2: a yard with a crate placed in it, its
         // lid moved out to the top level (BUG-13).
         let yard = include_str!("../../../tests/fixtures/area/v2/yard.solarea");
         let file = read_file(yard, &registry()).unwrap();
+        let yard = yard.replace("area version 2;", "area version 3;");
         let moved: Vec<_> = (file.overrides.values())
             .filter(|o| o.parent == ParentChange::TopLevel)
             .collect();
@@ -1204,6 +1252,7 @@ mod tests {
         assert_eq!(write_file(&file, &registry(), &paths), yard);
         let crate_ = include_str!("../../../tests/fixtures/area/v2/crate.solassembly");
         let file = read_file(crate_, &registry()).unwrap();
+        let crate_ = crate_.replace("assembly version 2", "assembly version 3");
         assert_eq!(write_file(&file, &registry(), &no_paths), crate_);
     }
 
@@ -1310,7 +1359,7 @@ mod tests {
         );
         let text = write(&area, &registry(), &|_| Some("props/sun.glb".into()));
         assert!(text.contains(
-            "area version 2;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
+            "area version 3;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
         ));
         assert!(text.contains("    Light.color = [1.0, 0.95, 0.88];\n"));
         assert!(text.contains("    Light.kind = \"Sun\";\n"));
@@ -1341,7 +1390,7 @@ mod tests {
         let cases = [
             ("", 1, "empty"),
             ("scene version 1;", 1, "isn't an area file"),
-            ("area version 3;", 1, "newer version"),
+            ("area version 4;", 1, "newer version"),
             ("area version 0;", 1, "no layout version 0"),
             ("area version 1;\nentity X {}", 2, "isn't an ID"),
             (
