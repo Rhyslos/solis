@@ -148,13 +148,18 @@ fn walk_all(
     walked
 }
 
-/// Whether feet at `p` are inside the ground or under it: fallen
-/// through (a walker in a cave is under the top but in the air).
+/// Whether feet at `p` are buried in the ground or below it: fallen
+/// through. (Two voxels above the feet must both be ground, so a walker
+/// on a steep slope, or in a cave under the top, isn't counted.)
 fn inside(ground: Option<&Ground<Full>>, p: Vec3) -> bool {
     if p.z < -1.0 {
         return true;
     }
-    ground.is_some_and(|g| g.get((p + Vec3::Z * 0.5).round().as_ivec3()).is_solid())
+    ground.is_some_and(|g| {
+        [1.5, 2.5]
+            .iter()
+            .all(|up| g.get((p + Vec3::Z * *up).round().as_ivec3()).is_solid())
+    })
 }
 
 /// The ground's surface under `p` (looking a little above it), read

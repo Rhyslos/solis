@@ -47,35 +47,43 @@ fn ellipsoid(p: Vec3, middle: Vec3, radii: Vec3) -> f32 {
 
 fn hill_height(q: Vec2) -> f32 {
     let r2 = (q - Vec2::new(56.0, 54.0)).length_squared();
-    12.0 + 22.0 * (-r2 / (2.0 * 15.0 * 15.0)).exp() + 1.2 * noise2(5, q / 14.0)
+    12.0 + 24.0 * (-r2 / (2.0 * 13.0 * 13.0)).exp() + 1.2 * noise2(5, q / 14.0)
 }
 
 /// The report's picture: a hill on a meadow (96 by 96 voxels), a cave
 /// dug into its south side, a rock shelf overhanging its west side, a
-/// dirt path to the cave and sand to the east.
+/// square cut into its south-east side (straight walls, for the Sharp look's
+/// edges), a dirt path to the cave and sand to the south-east.
 pub fn hill_with_cave(p: Vec3) -> Voxel {
     let (ground, h, slope) = above(p, hill_height);
-    let shelf = ellipsoid(p, Vec3::new(39.0, 58.0, 25.0), Vec3::new(9.0, 7.0, 2.2));
+    let shelf = ellipsoid(p, Vec3::new(41.0, 60.0, 25.0), Vec3::new(9.0, 7.0, 2.2));
     let cave = capsule(
         p,
-        Vec3::new(56.0, 30.0, 13.5),
-        Vec3::new(56.0, 50.0, 16.0),
-        4.2,
+        Vec3::new(56.0, 27.0, 15.0),
+        Vec3::new(56.0, 48.0, 17.0),
+        4.0,
     )
-    .min((p - Vec3::new(56.0, 53.0, 17.0)).length() - 6.5);
-    let d = ground.min(shelf).max(-cave);
+    .min((p - Vec3::new(56.0, 51.0, 18.0)).length() - 6.0);
+    let cut = boxed(p, Vec3::new(71.3, 39.3, 24.0), Vec3::new(4.5, 4.5, 10.0));
+    let d = ground.min(shelf).max(-cave).max(-cut);
     let depth = h - p.z;
-    let path = segment_distance(p.truncate(), Vec2::new(14.0, 6.0), Vec2::new(56.0, 32.0));
-    let material = if shelf < 0.5 || slope > 0.9 || depth > 2.5 || cave < 1.5 {
+    let path = segment_distance(p.truncate(), Vec2::new(30.0, 4.0), Vec2::new(56.0, 29.0));
+    let material = if shelf < 0.5 || slope > 1.3 || depth > 2.5 || cave < 1.5 || cut < 1.5 {
         ROCK
     } else if path < 2.5 {
         DIRT
-    } else if (p.truncate() - Vec2::new(82.0, 22.0)).length() < 10.0 {
+    } else if (p.truncate() - Vec2::new(80.0, 16.0)).length() < 10.0 {
         SAND
     } else {
         GRASS
     };
     Voxel::at(d, material)
+}
+
+/// Distance from a box `half` its size each way about `middle`.
+fn boxed(p: Vec3, middle: Vec3, half: Vec3) -> f32 {
+    let q = (p - middle).abs() - half;
+    q.max(Vec3::ZERO).length() + q.max_element().min(0.0)
 }
 
 fn segment_distance(p: Vec2, a: Vec2, b: Vec2) -> f32 {

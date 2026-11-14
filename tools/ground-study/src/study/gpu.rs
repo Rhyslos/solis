@@ -175,8 +175,8 @@ pub(crate) fn pictures(folder: &Path) -> Result<(), String> {
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let size = [480, 360];
     let mut target = renderer.create_target(&gpu.device, size);
-    let eye = Vec3::new(18.0, 4.0, 36.0);
-    let view = glam::camera::rh::view::look_at_mat4(eye, Vec3::new(52.0, 46.0, 15.0), Vec3::Z);
+    let eye = Vec3::new(44.0, -6.0, 34.0);
+    let view = glam::camera::rh::view::look_at_mat4(eye, Vec3::new(57.0, 50.0, 15.0), Vec3::Z);
     let view_projection = perspective(size[0] as f32 / size[1] as f32) * view;
     let (mut scratch, mut samples) = (Dense::filled(Voxel::AIR), Samples::default());
     for method in Method::ALL {
@@ -196,7 +196,7 @@ pub(crate) fn pictures(folder: &Path) -> Result<(), String> {
             &FrameParams {
                 view_projection,
                 camera_position: eye,
-                focus: Vec3::new(52.0, 46.0, 15.0),
+                focus: Vec3::new(57.0, 50.0, 15.0),
                 sky_top: [0.09, 0.09, 0.11],
                 sky_horizon: [0.11, 0.12, 0.14],
                 ground: [0.12, 0.13, 0.15],

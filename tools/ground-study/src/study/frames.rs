@@ -100,7 +100,7 @@ pub(crate) fn worker_or_frame(full: &Arc<Ground<Full>>) {
 /// arithmetic.
 fn frame_work() -> f64 {
     let mut x = 1.0f64;
-    for i in 0..600_000 {
+    for i in 0..1_200_000 {
         x = (x * 1.000_001 + f64::from(i % 7)).sqrt();
     }
     x
@@ -109,18 +109,20 @@ fn frame_work() -> f64 {
 /// The frame's own work, alone and while one or two workers mesh.
 pub(crate) fn interference() {
     let table = Table::start(
-        "The rest of the frame while chunks are made (median of 40, ms)",
-        &["While", "Frame's own work"],
+        "The rest of the frame while chunks are made (60 frames, ms)",
+        &["While", "Frame's own work, median", "Worst"],
     );
     let ground: Ground<Full> = Ground::build(UVec3::ONE, |key, dense| fill(key, dense, busy));
     let ground = Arc::new(ground);
-    let measure = || -> f64 {
-        let times: Vec<f64> = (0..40)
+    let measure = || -> [String; 2] {
+        let times: Vec<f64> = (0..60)
             .map(|_| timed(|| std::hint::black_box(frame_work())).0)
             .collect();
-        Spread::of(&times).median
+        let spread = Spread::of(&times);
+        [ms(spread.median), ms(spread.worst)]
     };
-    table.row(&["Nothing else".into(), ms(measure())]);
+    let [median, worst] = measure();
+    table.row(&["Nothing else".into(), median, worst]);
     for workers in [1, 2] {
         let busy_now = Arc::new(AtomicBool::new(true));
         let handles: Vec<_> = (0..workers)
@@ -137,7 +139,7 @@ pub(crate) fn interference() {
                 })
             })
             .collect();
-        let while_busy = measure();
+        let [median, worst] = measure();
         busy_now.store(false, Ordering::Relaxed);
         for handle in handles {
             let _ = handle.join();
@@ -147,6 +149,6 @@ pub(crate) fn interference() {
         } else {
             "Two workers meshing (both cores taken)"
         };
-        table.row(&[label.into(), ms(while_busy)]);
+        table.row(&[label.into(), median, worst]);
     }
 }
