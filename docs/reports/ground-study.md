@@ -252,7 +252,7 @@ A run is a count of equal voxels one after another, which is how sky and deep ro
 
 ## Three questions for the project lead
 
-Each is asked when its milestone starts (the plan's "Still to settle"); here are the options and what each costs.
+**Answered on 2026-11-14 ([decision 0116](../decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)):** binary regions with text settings; 1 × 1 km now, with vast open worlds in a following phase; the ground just stops at its edges; game code may change everything the editor can; a palette of ground kinds. The options as they were asked follow.
 
 ### 1. The ground's file: text, or a binary chunk file?
 
