@@ -14,8 +14,9 @@
 //! A file is untrusted (CONTRIBUTING.md, rule 9): every count is checked
 //! against the limits below before anything is made, and a mesh that
 //! breaks one, or a face that names a point twice or one that isn't there,
-//! reads as an empty brush ([`Brush::damaged`]), never a crash. The file's
-//! own values stay in the area untouched until the brush is changed.
+//! reads as an empty brush ([`Brush::damaged`]), never a crash; why is
+//! [`damage_of`], which the editor's Problems list shows. The file's own
+//! values stay in the area untouched until the brush is changed.
 
 use mesh::material::set_material;
 use mesh::{FaceId, Mesh, Shape, VertexId};
@@ -154,8 +155,8 @@ impl Component for Brush {
             // Neither: a brush written by hand as only its shape.
             (None, None) => (shape.build(&shape.standard()), false),
             (points, faces) => match mesh_of(points, faces, data.get("materials")) {
-                Some(mesh) => (mesh, false),
-                None => (Mesh::new(), true),
+                Ok(mesh) => (mesh, false),
+                Err(_) => (Mesh::new(), true),
             },
         };
         Self {
@@ -191,7 +192,19 @@ fn lists_of(mesh: &Mesh) -> (Vec<Value>, Vec<Value>, Vec<Value>) {
     (points, faces, materials)
 }
 
-/// The mesh the lists read from a file describe, or `None` if any count
+/// Why a brush's lists read as no mesh (each count is checked against
+/// the limits before anything is made), in plain words, or `None` when
+/// they read: for the Problems list, which names a damaged brush and why
+/// (Tools 1a, B2). A brush with neither list (written by hand as only its
+/// shape) isn't damaged.
+pub fn damage_of(data: &ComponentData) -> Option<&'static str> {
+    match (data.get("points"), data.get("faces")) {
+        (None, None) => None,
+        (points, faces) => mesh_of(points, faces, data.get("materials")).err(),
+    }
+}
+
+/// The mesh the lists read from a file describe, or why not if any count
 /// is past its limit or anything doesn't fit (checked before the mesh is
 /// made, so a hostile file can't make Solis set aside more than the
 /// limits allow).
@@ -199,52 +212,66 @@ fn mesh_of(
     points: Option<&Value>,
     faces: Option<&Value>,
     materials: Option<&Value>,
-) -> Option<Mesh> {
+) -> Result<Mesh, &'static str> {
     let (Some(Value::List(points)), Some(Value::List(faces))) = (points, faces) else {
-        return None;
+        return Err("its list of points or of faces is missing, or isn't a list of numbers");
     };
-    if !points.len().is_multiple_of(3) || points.len() / 3 > MAX_POINTS {
-        return None;
+    if !points.len().is_multiple_of(3) {
+        return Err("its points aren't in threes (x, y, z)");
+    }
+    if points.len() / 3 > MAX_POINTS {
+        return Err("it has more points than a brush may hold (65,536)");
     }
     // A face takes at least four numbers (a count and three corners).
     if faces.len() > MAX_CORNERS + MAX_FACES {
-        return None;
+        return Err("its list of faces is longer than a brush may hold");
     }
     let mut slots = Vec::with_capacity(points.len() / 3);
     for xyz in points.chunks_exact(3) {
         let [x, y, z] = [&xyz[0], &xyz[1], &xyz[2]].map(Value::as_f32);
-        slots.push(Some(glam::Vec3::new(x?, y?, z?)));
+        let (Some(x), Some(y), Some(z)) = (x, y, z) else {
+            return Err("one of its points isn't a number");
+        };
+        slots.push(Some(glam::Vec3::new(x, y, z)));
     }
     let count = slots.len();
     let mut corner_lists = Vec::new();
     let mut total = 0usize;
     let mut numbers = faces.iter();
     while let Some(n) = numbers.next() {
-        let Value::Int(n) = n else { return None };
-        let n = usize::try_from(*n).ok()?;
+        let n = match n {
+            Value::Int(n) => usize::try_from(*n).ok(),
+            _ => None,
+        };
+        let Some(n) = n else {
+            return Err("a face's count of corners isn't a whole number");
+        };
         total += n;
-        if !(3..=MAX_CORNERS_PER_FACE).contains(&n)
-            || corner_lists.len() >= MAX_FACES
-            || total > MAX_CORNERS
-        {
-            return None;
+        if !(3..=MAX_CORNERS_PER_FACE).contains(&n) {
+            return Err("a face has fewer than 3 corners, or more than 256");
+        }
+        if corner_lists.len() >= MAX_FACES || total > MAX_CORNERS {
+            return Err("it has more faces or corners than a brush may hold (65,536 faces)");
         }
         let mut corners = Vec::with_capacity(n);
         for _ in 0..n {
             let Some(Value::Int(i)) = numbers.next() else {
-                return None;
+                return Err("a face's list of corners ends early");
             };
-            let i = usize::try_from(*i).ok().filter(|i| *i < count)?;
+            let Some(i) = usize::try_from(*i).ok().filter(|i| *i < count) else {
+                return Err("a face names a point that isn't there");
+            };
             corners.push(VertexId::from_raw(i as u32));
         }
         corner_lists.push(Some(corners));
     }
     // `from_slots` refuses a face naming a point twice.
-    let mut mesh = Mesh::from_slots(slots, corner_lists, []).ok()?;
+    let mut mesh = Mesh::from_slots(slots, corner_lists, [])
+        .map_err(|_| "a face names one of its points twice")?;
     if let Some(Value::List(materials)) = materials {
         give_materials(&mut mesh, materials);
     }
-    Some(mesh)
+    Ok(mesh)
 }
 
 /// Gives each face the material slot listed for it; a slot that isn't a

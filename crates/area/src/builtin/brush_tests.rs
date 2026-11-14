@@ -164,7 +164,26 @@ fn damaged_lists_read_as_an_empty_brush() {
         let brush = Brush::from_data(&data);
         assert!(brush.damaged, "{data:?}");
         assert_eq!(brush.mesh.face_count(), 0);
+        assert!(damage_of(&data).is_some(), "says why: {data:?}");
     }
+    // Why, in plain words (Tools 1a, B2: the Problems list says it).
+    let why = |points: &Value, faces: Value| damage_of(&data_with(points.clone(), faces));
+    assert_eq!(
+        why(&points, ints(&[3, 0, 1, 7])),
+        Some("a face names a point that isn't there")
+    );
+    assert_eq!(
+        why(&points, ints(&[3, 0, 1, 1])),
+        Some("a face names one of its points twice")
+    );
+    assert_eq!(
+        why(&floats(&[0.0, 1.0]), faces.clone()),
+        Some("its points aren't in threes (x, y, z)")
+    );
+    assert_eq!(why(&points, faces.clone()), None, "a sound brush");
+    let mut hand_written = ComponentData::default();
+    hand_written.set("shape", Value::Text("Ramp".into()));
+    assert_eq!(damage_of(&hand_written), None, "only its shape");
     // One list without the other is damaged too.
     let mut half = ComponentData::default();
     half.set("points", points);
@@ -255,6 +274,12 @@ fn thousands_of_damaged_brush_files_are_read_or_refused_never_a_crash() {
             for (_, brush) in read.with::<Brush>() {
                 assert!(brush.mesh.vertex_count() <= MAX_POINTS);
                 assert!(brush.mesh.face_count() <= MAX_FACES);
+            }
+            // Why a brush is damaged is said for every damaged one.
+            for (_, entity) in read.iter() {
+                if let Some(data) = entity.components.get(Brush::NAME) {
+                    assert_eq!(damage_of(data).is_some(), Brush::from_data(data).damaged);
+                }
             }
         }
     }
