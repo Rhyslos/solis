@@ -8,7 +8,9 @@
 //! must be as new as the editor's interface. For the last, the picture
 //! script writes a stamp ([`STAMP`]): the editor's approved picture-test
 //! images ([`INTERFACE`]) with a hash of each. When those images change,
-//! the interface changed, and the pictures need taking again.
+//! the interface changed, and the pictures need taking again. Since
+//! decision 0115 they are taken again once a phase, so that check is a
+//! note, failing only when [`STRICT`] is set ([`verdict`]).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -28,6 +30,10 @@ pub const STAMP: &str = "tools/guide-pictures/interface.txt";
 
 /// The command that takes the pictures again, for messages.
 pub const RETAKE: &str = "tools/guide-pictures/take-pictures.sh";
+
+/// Set to `1`, pictures older than the interface fail the check instead
+/// of giving a note (decision 0115): the end-of-phase run.
+pub const STRICT: &str = "GUIDE_PICTURES_STRICT";
 
 /// The largest a picture may be: the repository and the guide both
 /// carry it.
@@ -165,6 +171,34 @@ pub fn older_than_interface(root: &Path) -> Result<bool, String> {
             .collect()
     };
     Ok(lines(&kept) != lines(&now))
+}
+
+/// What the check makes of pictures older than the interface (decision
+/// 0115): the pictures are taken again once a phase, so between phases
+/// it is a note (`Ok(Some(..))`), and only at the end of a phase, run
+/// with [`STRICT`] set to `1`, a failure (`Err`). As new as the
+/// interface, it says nothing.
+pub fn verdict(older: bool, strict: bool) -> Result<Option<String>, String> {
+    if !older {
+        return Ok(None);
+    }
+    let words = format!(
+        "The guide's pictures are older than the interface: the editor's approved picture-test \
+         images ({INTERFACE}) changed since they were taken. They are taken again at the end of \
+         each phase, which also builds the guide; commit both:\n  {RETAKE}"
+    );
+    if strict {
+        Err(words)
+    } else {
+        Ok(Some(format!(
+            "Note: {words}\n(It fails only with {STRICT}=1, at the end of a phase.)"
+        )))
+    }
+}
+
+/// Whether [`STRICT`] is set to `1` in this run.
+pub fn strict_from_env() -> bool {
+    std::env::var(STRICT).is_ok_and(|v| v.trim() == "1")
 }
 
 /// A picture as an address the page can show without the network.

@@ -4,8 +4,9 @@
 //! goes nowhere. Each failure says what to do.
 //!
 //! And its pictures and examples (decision 0113): a picture a page shows
-//! is missing, a picture is shown by no page, or the pictures are older
-//! than the editor's interface; a game-code example isn't in all three
+//! is missing, a picture is shown by no page, or (at a phase's end, with
+//! `GUIDE_PICTURES_STRICT=1`, decision 0115) the pictures are older than
+//! the editor's interface; a game-code example isn't in all three
 //! languages (those stop the build, so the test above fails), its Rust's
 //! brackets don't balance, or its Lua or Rust calls something game code
 //! can't. Its Lust, and its Lua's syntax, are checked against the engine
@@ -76,18 +77,20 @@ fn the_guide_needs_no_network() {
     }
 }
 
+/// Pictures older than the interface are a note between phases, and a
+/// failure only at the end of one, with `GUIDE_PICTURES_STRICT=1`
+/// (decision 0115). Missing, unused, oversized or uncaptioned pictures
+/// fail every run (the guide isn't built).
 #[test]
-fn the_guide_s_pictures_are_as_new_as_the_interface() {
+fn the_guide_s_pictures_are_as_new_as_the_interface_at_a_phase_s_end() {
     let older =
         user_guide::pictures::older_than_interface(&root()).unwrap_or_else(|why| panic!("{why}"));
-    assert!(
-        !older,
-        "The guide's pictures are older than the interface: the editor's approved picture-test \
-         images ({}) changed since they were taken. Take them again, which also builds the \
-         guide, and commit both:\n  {}",
-        user_guide::pictures::INTERFACE,
-        user_guide::pictures::RETAKE
-    );
+    let strict = user_guide::pictures::strict_from_env();
+    match user_guide::pictures::verdict(older, strict) {
+        Ok(None) => {}
+        Ok(Some(note)) => eprintln!("{note}"),
+        Err(why) => panic!("{why}"),
+    }
 }
 
 #[allow(
