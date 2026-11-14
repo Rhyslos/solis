@@ -53,6 +53,8 @@
 - **Unpack:** turning a copy of an assembly, or an imported model, into separate ordinary entities.
 - **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children. A child's position is measured from its parent, so moving the parent carries it along.
 - **Brush:** a shape made in the editor itself (a box, a ramp, stairs), kept in the area and solid in the game, for blocking out a level before (or instead of) making models. See [Brushes](brushes.md).
+- **Brush list:** the list of shapes a brush can start as (Box, Ramp, Cylinder, Stairs, Arch, Sphere, Wedge), opened with `B` over the view or Home's **Shape** button. See [Brushes](brushes.md).
+- **Drawing out:** making a brush with the mouse: drag its **footprint** (the shape's outline on the ground, its two sides), then move the mouse up for its height and click. See [Brushes](brushes.md).
 - **Mesh:** a shape made of **points** joined into flat **faces**, each face's sides being its **edges**. Models and brushes are meshes; a brush's faces can have any number of corners, and are cut into triangles to draw.
 - **Block-out:** a first, rough version of a level made of simple shapes, to try how it plays before anything is modelled.
 - **Instance:** one copy of a mesh drawn somewhere. A mesh used many times (a crate in a hundred places) is stored once and drawn as many instances, which is much faster than storing a hundred crates.
