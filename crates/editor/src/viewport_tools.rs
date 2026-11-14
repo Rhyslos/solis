@@ -60,6 +60,8 @@ pub(crate) enum ViewportEvent {
         /// Replace or add.
         mode: PickMode,
     },
+    /// A brush was drawn out (Tools 1a, B2): add it, as one undo step.
+    BrushDrawn(crate::brushing::draw::Planned),
     /// An asset dragged from the Library was dropped here.
     Drop {
         /// The model or assembly.

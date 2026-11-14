@@ -56,13 +56,26 @@ impl Viewport {
         // While painting a tile map (D6), the left and right buttons
         // paint and empty: the middle button and the wheel still move.
         let painting = in_use && self.tile_overlay.paint.painting();
-        self.navigate(ui, &response, dt, painting);
+        // While a brush is drawn out (B2), the left button draws it, and
+        // once under way the right button gives it up, never flies.
+        let drawing = in_use && self.brushing.draw.is_some();
+        let under_way = drawing
+            && self
+                .brushing
+                .draw
+                .as_ref()
+                .is_some_and(crate::brushing::draw::Draw::is_under_way);
+        self.navigate(ui, &response, dt, painting || under_way);
         let frame = self.view_frame(ui, rect);
         self.tools
             .receive(renderer.picked(VIEWPORT_IMAGE + self.active));
         if painting {
             self.tile_overlay.input = self.paint_input(ui, &response);
-        } else if !self.is_flying() {
+        } else if self.brushing.list.is_some() {
+            // The list has the pointer: a click on the view only closes it.
+        } else if drawing && !self.is_flying() {
+            self.draw_out(ui, &response, &frame);
+        } else if !self.is_flying() && self.brushing.draw.is_none() {
             self.use_tools(ui, &response, &frame);
         }
         if let Some(dropped) = response.dnd_release_payload::<crate::library::LibraryDrag>()
@@ -85,6 +98,51 @@ impl Viewport {
         // left; the frame rate and the locks, space and camera speed on
         // the view in use only.
         self.covered = self.view_pills(ui, rect, several, in_use, frame.two_d);
+        if in_use && let Some(draw) = &self.brushing.draw {
+            let covered =
+                crate::brushing::ghost::show(ui, rect, &frame.seen, draw, self.snapping.grid_step);
+            self.covered.extend(covered);
+        }
+    }
+
+    /// Drawing a brush out takes this frame's pointer and buttons (B2): a
+    /// brush drawn out is reported to the workbench; one given up, or
+    /// drawn with no size, leaves nothing.
+    fn draw_out(&mut self, ui: &Ui, response: &egui::Response, frame: &ViewFrame) {
+        use crate::brushing::draw::{DrawInput, DrawView, Outcome};
+        let on_corner = self.on_corner(ui);
+        let rect = frame.rect;
+        let input = ui.input(|i| DrawInput {
+            mouse: i
+                .pointer
+                .latest_pos()
+                .map(|p| glam::Vec2::new(p.x - rect.min.x, p.y - rect.min.y)),
+            pressed: i.pointer.primary_pressed(),
+            down: i.pointer.primary_down(),
+            released: i.pointer.primary_released(),
+            right_pressed: i.pointer.secondary_pressed(),
+            ctrl: i.modifiers.command,
+            on_view: response.hovered() && !on_corner,
+        });
+        let view = DrawView {
+            camera: &frame.seen,
+            size: frame.size,
+            area: &self.area,
+            grid: self.snapping.grid_step,
+        };
+        let Some(draw) = self.brushing.draw.as_mut() else {
+            return;
+        };
+        match draw.update(input, &view) {
+            Outcome::Going => {}
+            Outcome::GaveUp => self.brushing.draw = None,
+            Outcome::Made(planned) => {
+                self.brushing.draw = None;
+                self.tools
+                    .events
+                    .push(viewport_tools::ViewportEvent::BrushDrawn(planned));
+            }
+        }
     }
 
     /// What one view's frame works from: its size, what it sees, its

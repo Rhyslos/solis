@@ -259,10 +259,39 @@ pub(crate) fn hints_card(ui: &mut Ui, hints: &[String]) -> bool {
             } else {
                 tokens::text_label()
             };
-            ui.add(egui::Label::new(egui::RichText::new(hint).font(text::ui()).color(ink)).wrap());
+            ui.add(egui::Label::new(with_keycaps(hint, ink)).wrap());
         }
     });
     off
+}
+
+/// A hint's words, its keys (between backticks: "Press `B`") drawn as
+/// small keycaps in the line, as the approved mock-ups draw them.
+fn with_keycaps(hint: &str, ink: egui::Color32) -> egui::text::LayoutJob {
+    let mut job = egui::text::LayoutJob::default();
+    for (n, part) in hint.split('`').enumerate() {
+        let format = if n % 2 == 1 {
+            egui::TextFormat {
+                font_id: text::mono_small(),
+                color: tokens::text_primary(),
+                background: tokens::line(),
+                ..Default::default()
+            }
+        } else {
+            egui::TextFormat {
+                font_id: text::ui(),
+                color: ink,
+                ..Default::default()
+            }
+        };
+        let part = if n % 2 == 1 {
+            format!("\u{a0}{part}\u{a0}")
+        } else {
+            part.to_owned()
+        };
+        job.append(&part, 0.0, format);
+    }
+    job
 }
 
 /// The Model card's rows the design has and Solis doesn't yet: a model

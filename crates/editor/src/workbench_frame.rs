@@ -276,6 +276,7 @@ impl Workbench {
         self.pointer_over = asks.frames.pointer_over;
         self.doc_asks(doc_asks, ui.ctx(), &mut actions);
         self.apply_panel_asks(ui, asks, &picked_before, &mut actions);
+        self.brush_list_frame(ui.ctx());
         // Kept for the next frame, which may show the same.
         self.open.game_scene = game;
         self.end_frame_windows(ui, &mut actions);
@@ -324,6 +325,9 @@ impl Workbench {
         // Who has the keys this frame is decided once, here: each handler
         // below, and each tab drawn after, acts only on what is its own.
         self.keys = self.key_owner(ui.ctx());
+        // First: the brush list's B, Space and Esc come before the tile
+        // painter's B, the search's Space and Esc's other jobs.
+        self.brush_keys(ui);
         self.tool_keys(ui);
         self.paint_keys(ui);
         self.tool_extra_keys(ui);

@@ -174,6 +174,9 @@ pub struct Viewport {
     /// Whether the editor is placing (the Place shelf tab is in front):
     /// there is no toolbox then (the workbench hands it over each frame).
     pub(crate) placing: bool,
+    /// The brush list B opens, and a brush being drawn out (Tools 1a,
+    /// B2).
+    pub(crate) brushing: crate::brushing::Brushing,
 }
 
 /// One view's own camera, look and state, while another view is in use.
@@ -237,6 +240,7 @@ impl Default for Viewport {
             preview_hour: None,
             tile_ms: 0,
             placing: false,
+            brushing: crate::brushing::Brushing::default(),
             preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
@@ -293,6 +297,7 @@ impl Viewport {
             sheets,
             tile_overlay,
             preview_hour,
+            brushing,
         } = self;
         *area = AreaView::default();
         *entities = 0;
@@ -304,6 +309,7 @@ impl Viewport {
         *sheets = std::sync::Arc::default();
         *tile_overlay = crate::tile_view::TileOverlay::default();
         *preview_hour = None;
+        *brushing = crate::brushing::Brushing::default();
     }
 
     /// Whether the right mouse button is held on the viewport, so W A S D,
@@ -388,7 +394,13 @@ impl Viewport {
         let shown = self.shown(full);
         // The view to use from now: the one being dragged or flown in, or
         // else one just pressed or scrolled in.
-        let busy = self.is_flying() || self.tools.pressing != viewport_tools::Pressing::Nothing;
+        let busy = self.is_flying()
+            || self.tools.pressing != viewport_tools::Pressing::Nothing
+            || self
+                .brushing
+                .draw
+                .as_ref()
+                .is_some_and(crate::brushing::draw::Draw::is_under_way);
         let (pointer, poked) = ui.input(|i| {
             (
                 i.pointer.latest_pos(),

@@ -303,8 +303,8 @@ The problems found by the full review's second pass ([the report](docs/reviews/2
 
 Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)); what the tools are: [decision 0111](docs/decisions/0111-tools-1-brushes-and-ground.md); plan: [docs/plans/tools-1.md](docs/plans/tools-1.md). Mocked up and approved before it's built; every tool has a scale case.
 
-- **B1 The shape core** (built): an editable polygon mesh (Aventail's, decision 0007, the `mesh` crate), the list's shapes, a Brush component saved in the area (area files' version 3), drawn and solid; until B2, a Box brush is added from Create › More.
-- **B2 The list and drawing out:** **B** opens the list over the view, each **B** moves down, **Space** confirms, **Esc** closes; drag the footprint, pull up the height, click.
+- **B1 The shape core** (built): an editable polygon mesh (Aventail's, decision 0007, the `mesh` crate), the list's shapes, a Brush component saved in the area (area files' version 3), drawn and solid.
+- **B2 The list and drawing out** (built): **B** opens the list over the view (or Home › Create › Shape), each **B** moves down, **Space** confirms, **Esc** closes; drag the footprint on the grid, pull up the height, click; one undo step a brush.
 - **B3 Editing the insides:** **Tab**, then **1** points, **2** edges, **3** faces, moved with the gizmos.
 - **B4 Extrude and shaping:** **E** then move and click, or Shift + drag on the gizmo; inset, split, delete.
 - **B5 Materials, speed, the manual.**

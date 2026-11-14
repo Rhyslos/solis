@@ -30,6 +30,8 @@ pub(crate) struct Look {
     /// What a screen reader calls it, where that is more than the word
     /// drawn on it: its command's name ("Add entity" for "Empty").
     name: String,
+    /// Its key, drawn small beside its word (Shape B).
+    key: Option<&'static str>,
 }
 
 impl Look {
@@ -45,7 +47,13 @@ impl Look {
                 Some(_) => String::new(),
                 None => command.name(w),
             },
+            key: None,
         }
+    }
+
+    /// The same look, with `key` drawn small beside the word.
+    pub(crate) fn with_key(self, key: Option<&'static str>) -> Self {
+        Self { key, ..self }
     }
 
     /// A control that only opens a list.
@@ -56,6 +64,7 @@ impl Look {
             on: None,
             hover: String::new(),
             name: String::new(),
+            key: None,
         }
     }
 
@@ -139,7 +148,27 @@ pub(crate) fn big(
         pos2(spot.left(), at.bottom() + size::RIBBON_BIG_GAP),
         pos2(spot.right(), at.bottom() + size::RIBBON_BIG_GAP + label_h),
     );
-    if width_of(ui, label, font.clone()) <= line.width() {
+    if let Some(key) = look.key {
+        // The word and its key, together in the middle.
+        let key_font = text::ribbon_key();
+        let word_w = width_of(ui, label, font.clone());
+        let key_w = width_of(ui, key, key_font.clone());
+        let left = line.center().x - (word_w + size::RIBBON_KEY_GAP + key_w) / 2.0;
+        let word = Rect::from_min_max(pos2(left, line.top()), pos2(left + word_w, line.bottom()));
+        words(ui, word, Align2::LEFT_CENTER, label, font, ink);
+        let after = Rect::from_min_max(
+            pos2(word.right() + size::RIBBON_KEY_GAP, line.top()),
+            pos2(word.right() + size::RIBBON_KEY_GAP + key_w, line.bottom()),
+        );
+        words(
+            ui,
+            after,
+            Align2::LEFT_CENTER,
+            key,
+            key_font,
+            tokens::text_meta(),
+        );
+    } else if width_of(ui, label, font.clone()) <= line.width() {
         words(ui, line, Align2::CENTER_CENTER, label, font, ink);
     } else {
         widgets::cut_off(ui, line.shrink2(vec2(2.0, 0.0)), label, font, ink);

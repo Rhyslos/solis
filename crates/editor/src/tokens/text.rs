@@ -73,6 +73,12 @@ pub fn ribbon_label() -> FontId {
     regular(RIBBON_LABEL_SIZE)
 }
 
+/// A large button's key, small beside its word (Shape B, the approved
+/// mock-up `docs/design/tools-1/01-brush-list.png`): mono 9.5.
+pub fn ribbon_key() -> FontId {
+    FontId::new(9.5, FontFamily::Monospace)
+}
+
 /// A small ribbon row: 11 / 400.
 pub fn ribbon_small() -> FontId {
     regular(SMALL_SIZE)

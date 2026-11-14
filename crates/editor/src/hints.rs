@@ -49,7 +49,7 @@ pub(crate) fn about(component: &str) -> Option<&'static str> {
             "Screen shows one of the game's screens (a HUD, a menu) over the game while it plays: pick it, then press Play."
         }
         "Brush" => {
-            "Brush is a shape made here, drawn flat: move and stretch it with the gizmos, and with Solid ticked the game's characters stand on it."
+            "Brush is a shape made here, drawn flat: move and stretch it with the gizmos, and with Solid ticked the game's characters stand on it. Press `B` over the 3D view to draw another."
         }
         _ => return None,
     })
@@ -61,7 +61,14 @@ impl Workbench {
     pub fn hints(&self) -> Vec<String> {
         let mut hints = Vec::new();
         let selected: Vec<_> = self.open.document.selection.iter().collect();
+        // While the brush list is open or a brush is drawn out (B2), that
+        // is what the card is about.
+        let brushing = self
+            .viewport
+            .brushing
+            .hint(self.viewport.snapping.grid_step);
         match selected.as_slice() {
+            _ if brushing.is_some() => hints.extend(brushing),
             [] => hints.push(
                 "Select something in the viewport or the Area column to see what it is and what you \
                  can do with it. Press Space to search for any action, file or entity."

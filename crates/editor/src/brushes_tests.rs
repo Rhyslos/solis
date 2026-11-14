@@ -159,13 +159,21 @@ fn the_view_draws_brushes_where_their_entities_are_and_picks_them() {
 
 use std::collections::HashSet;
 
+/// Create › More › Box brush went with B2: a brush is drawn out now, and
+/// each one drawn is added this way (`workbench_brushes_tests.rs` draws
+/// them with the mouse).
 #[test]
-fn the_box_brush_command_adds_a_solid_box_as_one_undo_step() {
+fn a_brush_drawn_out_is_a_solid_box_added_as_one_undo_step_and_drawn() {
     let mut w = crate::Workbench::new(crate::test_support::info());
-    let ctx = egui::Context::default();
     let before = w.document().area().len();
-    crate::test_support::do_command(&mut w, &ctx, "Add box brush");
-    crate::test_support::do_command(&mut w, &ctx, "Add box brush");
+    let planned = crate::brushing::draw::Planned {
+        shape: Shape::Box,
+        position: Vec3::ZERO,
+        rotation: glam::Quat::IDENTITY,
+        settings: Shape::Box.standard(),
+    };
+    w.add_drawn_brush(planned);
+    w.add_drawn_brush(planned);
     let area = w.document().area();
     assert_eq!(area.len(), before + 2);
     let mut names: Vec<String> = area

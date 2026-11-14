@@ -57,6 +57,9 @@ pub const RIBBON_BIG_WORD_PAD: f32 = 6.0;
 pub const RIBBON_BIG_ICON: f32 = 18.0;
 /// The gap between a large ribbon button's icon and its label.
 pub const RIBBON_BIG_GAP: f32 = 4.0;
+/// The gap before a large button's key, small beside its word (Shape B,
+/// the approved mock-up `docs/design/tools-1/01-brush-list.png`).
+pub const RIBBON_KEY_GAP: f32 = 3.0;
 /// A small ribbon row's height.
 pub const RIBBON_ROW_H: f32 = 20.0;
 /// A small ribbon row's padding at each side.
@@ -147,6 +150,24 @@ pub const ASSETS_TILE_MIN_W: f32 = 64.0;
 pub const PLACEMENT_COLUMN_W: f32 = 260.0;
 /// How far right of the pointer the placing label starts. Solis's own.
 pub const PLACE_LABEL_OFFSET: f32 = 18.0;
+/// The brush list B opens (Tools 1a, B2; the approved mock-up
+/// `docs/design/tools-1/01-brush-list.png`): its width.
+pub const BRUSH_LIST_W: f32 = 236.0;
+/// The brush list: a row's height, and its foot's.
+pub const BRUSH_LIST_ROW_H: f32 = 26.0;
+/// The brush list: a row's padding at each side.
+pub const BRUSH_LIST_PAD: f32 = 9.0;
+/// The brush list: a shape's icon, and the gap after it.
+pub const BRUSH_LIST_ICON: [f32; 2] = [15.0, 9.0];
+/// Drawing a brush out (the approved mock-up `02-brush-draw.png`): the
+/// squares at the footprint's corners.
+pub const BRUSH_CORNER: f32 = 6.0;
+/// Drawing a brush out: how far a size's label stands off its edge.
+pub const BRUSH_LABEL_OFFSET: f32 = 18.0;
+/// Drawing a brush out: the height arrow's head, and the dot at its foot.
+pub const BRUSH_ARROW: [f32; 2] = [7.0, 3.0];
+/// Drawing a brush out: how far below the view's pills its steps are.
+pub const BRUSH_STEPS_DROP: f32 = 22.0;
 /// The placing hint strip's height (spec 254).
 pub const PLACE_HINT_H: f32 = 30.0;
 /// The placing hint strip's widest. Solis's own: room for its five keys.

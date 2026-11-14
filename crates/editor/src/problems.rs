@@ -44,6 +44,9 @@ pub enum ProblemKind {
     /// A sprite resting between pixels by accident: the game draws it on
     /// the nearest one, so it may seem to jump a pixel when it moves.
     SpriteBetweenPixels,
+    /// A brush whose points or faces couldn't be read from the file: it
+    /// shows nothing and isn't solid (Tools 1a, B2).
+    DamagedBrush,
 }
 
 /// One mistake, and the entity it's on.
@@ -61,6 +64,8 @@ pub struct Problem {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct Fingerprint {
     revision: u64,
+    /// The document's brush revision: a brush's mesh written again.
+    brushes: u64,
     sources: u64,
     file: Option<std::path::PathBuf>,
 }
@@ -92,6 +97,9 @@ pub(crate) struct Sources<'a> {
     /// What each tile map file's tileset still needs drawn, by the map
     /// file's asset (Phase 9, D5).
     pub(crate) tile_gaps: &'a std::collections::HashMap<AssetId, String>,
+    /// The brushes whose mesh couldn't be read (from the brushes' models,
+    /// which read every brush already).
+    pub(crate) damaged_brushes: &'a HashSet<EntityId>,
 }
 
 impl Problems {
@@ -182,6 +190,7 @@ impl Fingerprint {
         Self {
             // Not every revision: moving things changes nothing checked.
             revision: document.shape(),
+            brushes: document.brushes(),
             sources,
             file: document.file().map(std::path::Path::to_path_buf),
         }
@@ -332,6 +341,21 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                     }
                 }
             }
+        }
+        if sources.damaged_brushes.contains(&id) {
+            let why = entity
+                .components
+                .get(<area::builtin::Brush as reflect::Component>::NAME)
+                .and_then(area::builtin::damage_of)
+                .unwrap_or("its points or faces couldn't be read");
+            found.push(Problem {
+                kind: ProblemKind::DamagedBrush,
+                entity: id,
+                text: format!(
+                    "{name}'s brush shows nothing and isn't solid: {why}. Its file's text is \
+                     kept as it was, to put right by hand, or delete the brush and draw it again"
+                ),
+            });
         }
         // Only the copy's root names its assembly.
         if let Some(origin) = &entity.origin
@@ -511,6 +535,7 @@ mod tests {
         known: HashSet<AssetId>,
         assemblies: HashSet<AssetId>,
         tile_gaps: std::collections::HashMap<AssetId, String>,
+        damaged_brushes: HashSet<EntityId>,
     }
 
     impl World {
@@ -522,6 +547,7 @@ mod tests {
                 known: HashSet::new(),
                 assemblies: HashSet::new(),
                 tile_gaps: std::collections::HashMap::new(),
+                damaged_brushes: HashSet::new(),
             }
         }
 
@@ -533,6 +559,7 @@ mod tests {
                 known: &self.known,
                 assemblies: &self.assemblies,
                 tile_gaps: &self.tile_gaps,
+                damaged_brushes: &self.damaged_brushes,
             })
         }
 
@@ -658,6 +685,7 @@ mod tests {
             known: &w.known,
             assemblies: &w.assemblies,
             tile_gaps: &w.tile_gaps,
+            damaged_brushes: &w.damaged_brushes,
         };
         let print = Fingerprint::of(&document, 0);
         assert_eq!(problems.refresh(print.clone(), &sources), 1, "one new");
@@ -711,6 +739,7 @@ mod tests {
                 known: &w.known,
                 assemblies: &w.assemblies,
                 tile_gaps: &w.tile_gaps,
+                damaged_brushes: &w.damaged_brushes,
             }
         }
         problems.refresh(Fingerprint::of(&document, 7), &sources(&w));

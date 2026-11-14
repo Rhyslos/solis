@@ -9,8 +9,8 @@ use super::group;
 use crate::icons::Icon;
 use crate::shell::ShellCommand as C;
 use crate::shell::ribbon::{
-    Control, Group, Shape, Steps, big, big_list, item, row, row_list, switch, switch_with_steps,
-    unbuilt_at,
+    Control, Group, Shape, Steps, big, big_keyed, big_list, item, row, row_list, switch,
+    switch_with_steps, unbuilt_at,
 };
 use crate::unbuilt::{Entry, RowKind, UnbuiltId};
 use crate::viewport::Tool;
@@ -22,7 +22,7 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
     }
     vec![
         edit(),
-        create("Create"),
+        create(w, "Create"),
         snapping(w, false),
         group!(
             Some("Lighting"),
@@ -58,12 +58,13 @@ fn build_form(w: &Workbench) -> Vec<Group> {
             label,
             command: C::UseTool(tool),
             lit: w.viewport.tool == tool,
+            keyed: false,
         };
         (Shape::Big(icon), vec![Entry::Built(control)])
     };
     vec![
         edit(),
-        create("Place"),
+        create(w, "Place"),
         snapping(w, true),
         group!(
             Some("Paint"),
@@ -103,7 +104,9 @@ fn edit() -> Group {
 }
 
 /// The things to make, under `label` (Create, or Place while placing).
-fn create(label: &'static str) -> Group {
+/// Shape opens the brush list, and is lit while it is open or a brush is
+/// being drawn out (Tools 1a, B2).
+fn create(w: &Workbench, label: &'static str) -> Group {
     group!(
         Some(label),
         [
@@ -128,6 +131,12 @@ fn create(label: &'static str) -> Group {
                 ],
             ),
             big(Icon::Camera, "Camera", C::AddCamera),
+            big_keyed(
+                Icon::Shape,
+                "Shape",
+                C::ChooseShapeBrush,
+                w.viewport.brushing.is_active(),
+            ),
             unbuilt_at(
                 Shape::Big(Icon::Volume),
                 Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),
@@ -137,7 +146,6 @@ fn create(label: &'static str) -> Group {
                 "More",
                 vec![
                     item("Reverb zone", C::AddReverbZone),
-                    item("Box brush", C::AddBoxBrush),
                     item("Assembly from selection", C::CreateAssembly),
                 ],
             ),

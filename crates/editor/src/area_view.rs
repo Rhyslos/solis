@@ -48,6 +48,10 @@ pub struct ViewModel {
     /// Its number for picking: its entity is `pickable[pick - 1]` of the
     /// [`AreaView`]; 0 when it can't be picked.
     pub pick: u32,
+    /// The box the whole model fits in, in its own space (lowest and
+    /// highest corners); none for one of its parts. A brush drawn out on
+    /// it starts on its top (Tools 1a, B2).
+    pub bounds: Option<(Vec3, Vec3)>,
 }
 
 /// What the viewport draws.
@@ -418,6 +422,7 @@ fn view_model(
             node,
             transform,
             pick: 0,
+            bounds: node.is_none().then_some((info.min, info.max)),
         },
         triangles,
     ))
@@ -520,6 +525,7 @@ mod tests {
                 node: None,
                 transform: glam::Mat4::IDENTITY,
                 pick: 1,
+                bounds: Some((Vec3::ZERO, Vec3::ONE)),
             }]
         );
         assert_eq!(view.pickable.len(), 1);

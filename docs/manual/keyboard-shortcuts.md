@@ -80,6 +80,21 @@ These are the area's keys: they wait while the pointer is over a tab with keys o
 
 See [Selecting and moving things](selecting-and-moving.md).
 
+## Shape brushes (pointer over the 3D or 2D view)
+
+| Action | Shortcut |
+|---|---|
+| Open the brush list (or Home › Create › **Shape**) | `B` |
+| Move down the list, wrapping round at its end | `B`, while it's open |
+| Take the highlighted shape | `Space`, while it's open (before the search), or click its row |
+| Close the list | `Esc`, while it's open, or click elsewhere |
+| Draw the footprint | Drag on the ground (on top of a brush, to stack on it) |
+| Then the height | Move the mouse up; click to keep it |
+| Draw freely, off the grid, for this drag | Hold `Ctrl` |
+| Give the brush up, leaving nothing | `Esc`, or right-click |
+
+With a tile map picked, `B` is the tile map's Brush instead (below). See [Brushes](brushes.md).
+
 ## The Frames tab (a clips file open)
 
 The keys work while the pointer is over the Frames tab (undo and redo over the Clip tab too); see [Animating sprites](sprite-animation.md).
