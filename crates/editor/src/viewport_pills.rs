@@ -37,7 +37,7 @@ impl Viewport {
             menu::caps(ui, "Show in the viewport");
             menu::check(ui, &mut overlays.stats, "Frame time and frame rate");
             menu::check(ui, &mut overlays.snapping, "Axis locks and camera speed");
-            menu::check(ui, &mut overlays.tools, "Toolbox");
+            menu::check(ui, &mut overlays.tools, "Tools");
             menu::line(ui);
             menu::caps(ui, "While you edit");
             menu::check(ui, &mut overlays.preview_animation, "Preview animation").on_hover_text(

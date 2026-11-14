@@ -36,7 +36,7 @@ impl ShellCommand {
                 "Stop snapping scale",
                 w.viewport.snapping.scale,
             ),
-            C::ViewportTools => switch(w.viewport.overlays.tools, "the toolbox"),
+            C::ViewportTools => switch(w.viewport.overlays.tools, "the viewport's tools"),
             C::ViewportSnapping => switch(
                 w.viewport.overlays.snapping,
                 "the viewport's axis locks and camera speed",

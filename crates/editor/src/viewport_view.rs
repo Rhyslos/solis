@@ -5,6 +5,7 @@
 use super::{VIEWPORT_IMAGE, Viewport, ViewportRenderer, cursor_readout};
 use crate::camera::{Camera, ViewKind};
 use crate::theme::{self, Accent};
+use crate::tokens::size;
 use crate::transforming::Snapping;
 use crate::viewport_tools::{self, ToolInput};
 use egui::{Color32, Rect, Sense, Ui, vec2};
@@ -98,18 +99,24 @@ impl Viewport {
             let world = self.area.brushes.iter().find(|b| b.entity == edit.entity)?;
             Some((edit, world.transform))
         });
-        let edit_covers = match edited {
-            Some(edited) => crate::brushing::edit_draw::show(ui, rect, &frame.seen, edited, in_use),
-            None => Vec::new(),
-        };
+        if let Some(edited) = edited {
+            crate::brushing::edit_draw::show(ui, rect, &frame.seen, edited);
+        }
         // The pills over the view (spec 182): the view's own at the top
-        // left; the frame rate and the locks, space and camera speed on
-        // the view in use only.
-        self.covered = self.view_pills(ui, rect, several, in_use, frame.two_d);
-        self.covered.extend(edit_covers);
-        if in_use && let Some(draw) = &self.brushing.draw {
-            let covered =
-                crate::brushing::ghost::show(ui, rect, &frame.seen, draw, self.snapping.grid_step);
+        // left; the frame rate, the locks, space and camera speed and the
+        // tool bar on the view in use only.
+        let (covered, strip) = self.view_pills(ui, rect, several, in_use, frame.two_d);
+        self.covered = covered;
+        if !in_use {
+            return;
+        }
+        if let Some(edit) = &self.brushing.edit {
+            let words = crate::brushing::edit_draw::words(ui, rect, edit, strip);
+            self.covered.extend(words);
+        }
+        if let Some(draw) = &self.brushing.draw {
+            let grid = self.snapping.grid_step;
+            let covered = crate::brushing::ghost::show(ui, rect, &frame.seen, (draw, grid), strip);
             self.covered.extend(covered);
         }
     }
@@ -405,9 +412,11 @@ impl Viewport {
     }
 
     /// The pills over the view (spec 182): the view's own at the top left;
-    /// the frame rate and the locks, space and camera speed on the view in
-    /// use only, and the tile painter's keys over its foot. Where they
-    /// cover the view.
+    /// the frame rate, the locks, space and camera speed and the tool bar
+    /// (decision 0114) on the view in use only, and the tile painter's
+    /// keys over its foot. Returns where they cover the view, and where
+    /// the foot of a strip of keys over the view's foot goes: over the
+    /// tool bar, or else over the bottom pills.
     fn view_pills(
         &mut self,
         ui: &mut Ui,
@@ -415,11 +424,12 @@ impl Viewport {
         several: bool,
         in_use: bool,
         two_d: bool,
-    ) -> Vec<Rect> {
+    ) -> (Vec<Rect>, f32) {
         let mut covered = vec![self.top_left_pills(ui, rect, several)];
         if self.overlays.stats && in_use {
             covered.push(self.stats_pill(ui, rect));
         }
+        let mut corner = None;
         if self.overlays.snapping && in_use {
             let pills = if two_d {
                 self.pixel_pills(ui, rect)
@@ -427,12 +437,29 @@ impl Viewport {
                 self.space_pills(ui, rect)
             };
             covered.push(pills);
+            corner = Some(pills);
         }
+        let mut bar = None;
+        if self.overlays.tools && in_use && !self.placing {
+            let at = self.tool_bar(ui, rect, corner);
+            covered.push(at);
+            bar = Some(at);
+        }
+        let strip = bar.map_or(
+            rect.bottom() - size::PILL_H - 2.0 * size::PILL_MARGIN,
+            |bar| bar.top() - size::TOOL_BAR_STRIP_GAP,
+        );
         if in_use && let Some(keys) = self.tile_overlay.paint.hint_keys() {
-            // The painter's keys, over the view's foot (round 3).
-            covered.push(crate::widgets::pill::key_hints(ui, rect, keys));
+            // The painter's keys, over the view's foot (round 3), or over
+            // the tool bar.
+            let foot = bar.map_or(rect.bottom(), |_| strip + size::PILL_MARGIN);
+            covered.push(crate::widgets::pill::key_hints(
+                ui,
+                rect.with_max_y(foot),
+                keys,
+            ));
         }
-        covered
+        (covered, strip)
     }
 }
 

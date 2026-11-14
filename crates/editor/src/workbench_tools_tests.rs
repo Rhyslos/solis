@@ -382,7 +382,7 @@ fn the_select_tool_shows_no_gizmo_and_others_do_on_a_selection() {
 }
 
 #[test]
-fn clicking_a_pill_or_the_toolbox_never_clicks_the_viewport_behind_it() {
+fn clicking_a_pill_or_the_tool_bar_never_clicks_the_viewport_behind_it() {
     let (mut w, id) = with_a_crate();
     w.open.document.selection.select_only(id);
     let mut h = harness(w);

@@ -2,7 +2,8 @@
 //! 1a, B3; the approved mock-up `03-brush-edit-faces.png`): the brush's
 //! edges, a dot on each point (points mode) or at each face's middle
 //! (faces mode), what's picked in the accent and what's under the
-//! pointer lit, the text at the top of the view and the keys at its foot.
+//! pointer lit; and, on the view in use, the text at its top and the
+//! keys at its foot, over the tool bar.
 //!
 //! Only the sides facing the camera are drawn, worked out from the
 //! brush's own few faces each frame by the painter: never through the
@@ -32,24 +33,20 @@ const DOT_LIT: f32 = 4.5;
 /// How see-through a picked face's fill is.
 const FACE_FILL: f32 = 0.35;
 
-/// Draws `edit` (its brush placed by `world`) over the view at `view`,
-/// seen by `camera`; the view in use (`in_use`) has the text at its top
-/// and the keys at its foot too. Returns where those cover the view
-/// (presses there aren't the view's).
-pub(crate) fn show(
-    ui: &mut Ui,
-    view: Rect,
-    camera: &Camera,
-    (edit, world): (&Editing, Mat4),
-    in_use: bool,
-) -> Vec<Rect> {
+/// Draws `edit`'s brush (placed by `world`) over the view at `view`,
+/// seen by `camera`: its edges, dots and what's picked.
+pub(crate) fn show(ui: &mut Ui, view: Rect, camera: &Camera, (edit, world): (&Editing, Mat4)) {
     if let Some(mesh) = edit.mesh() {
         parts(ui, view, camera, (edit, mesh, world));
     }
-    if !in_use {
-        return Vec::new();
-    }
-    vec![top(ui, view, &edit.top_words()), keys(ui, view)]
+}
+
+/// The view in use's words while `edit` goes on: the text at its top,
+/// and the keys with their foot at `strip` (over the tool bar, or the
+/// bottom pills). Returns where they cover the view (presses there
+/// aren't the view's).
+pub(crate) fn words(ui: &mut Ui, view: Rect, edit: &Editing, strip: f32) -> Vec<Rect> {
+    vec![top(ui, view, &edit.top_words()), keys(ui, view, strip)]
 }
 
 /// Which faces of `mesh` face the camera, by face slot.
@@ -304,9 +301,9 @@ fn top(ui: &mut Ui, view: Rect, words: &str) -> Rect {
     rect
 }
 
-/// The keys at the foot of the view, over its bottom pills as the mock-up
-/// draws them.
-fn keys(ui: &mut Ui, view: Rect) -> Rect {
-    let above = view.with_max_y(view.bottom() - size::PILL_H - size::PILL_MARGIN);
+/// The keys at the foot of the view, their own foot at `strip`: over the
+/// tool bar, or the bottom pills, as the mock-ups draw them.
+fn keys(ui: &mut Ui, view: Rect, strip: f32) -> Rect {
+    let above = view.with_max_y(strip + size::PILL_MARGIN);
     widgets::pill::key_hints(ui, above, &KEYS)
 }

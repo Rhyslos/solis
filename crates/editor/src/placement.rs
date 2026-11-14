@@ -2,7 +2,7 @@
 //! `06-placing-a.png`): the Placement column of Home's Place shelf tab,
 //! and what the viewport shows while a file is dragged over it. Bringing
 //! the Place tab to the front is the placing mode (the project lead's
-//! answer 20): the ribbon takes its build form and the toolbox goes.
+//! answer 20): the ribbon takes its build form and the tool bar goes.
 //!
 //! What lands where: a file dropped on the viewport lands on the surface
 //! under the pointer and, with **Align to Grid**, its X and Y on the

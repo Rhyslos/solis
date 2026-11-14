@@ -94,7 +94,7 @@ fn four_views_draw_four_images_each_with_its_own_kind() {
         ]
     );
     assert!(views.iter().all(|v| v.editor_lines));
-    // One toolbox for the group, and each view its own pill.
+    // One tool bar, in the view in use, and each view its own pill.
     assert_eq!(h.query_all_by_label("Move (W)").count(), 1);
     for pill in ["Perspective ▾", "Top ▾", "Front ▾", "Right ▾"] {
         assert_eq!(h.query_all_by_label(pill).count(), 1, "{pill}");

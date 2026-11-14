@@ -151,12 +151,12 @@ fn clicking_a_tool_button_picks_it() {
 }
 
 #[test]
-fn the_show_pill_hides_the_toolbox() {
+fn the_show_pill_hides_the_tool_bar() {
     let mut h = harness();
     h.run();
     h.get_by_label("Show ▾").click();
     h.run();
-    h.get_by_label("Toolbox").click();
+    h.get_by_label("Tools").click();
     h.run();
     assert!(!h.state().overlays().tools);
     assert!(h.query_by_label("Move (W)").is_none());

@@ -395,7 +395,7 @@ fn the_setting_in_use_is_what_filter_reads() {
 /// no control of their own to draw: the plan's inventory says "not
 /// drawn" of each. They are in the table so they are counted and
 /// planned, and the walk below doesn't expect to meet them.
-const NOTHING_TO_DRAW: [(UnbuiltId, &str); 12] = [
+const NOTHING_TO_DRAW: [(UnbuiltId, &str); 16] = [
     (
         UnbuiltId::ShadingPreview,
         "a group of an unbuilt screen, which is one page card (D2)",
@@ -435,13 +435,28 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 12] = [
         UnbuiltId::CrossBakeNow,
         "the problem it belongs to can't arise yet",
     ),
+    // The toolbox column went: the tools float in the view (decision
+    // 0114), and these come back where their own work puts them.
+    (UnbuiltId::HomeToolPose, "the toolbox went (decision 0114)"),
+    (
+        UnbuiltId::HomeToolMotionPath,
+        "the toolbox went (decision 0114)",
+    ),
+    (
+        UnbuiltId::HomeToolAddKey,
+        "the toolbox went (decision 0114)",
+    ),
+    (
+        UnbuiltId::HomeToolMeasure,
+        "the toolbox went (decision 0114)",
+    ),
 ];
 
 /// The unfinished parts the editor draws somewhere today. Each milestone
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 143] = [
+const DRAWN_SO_FAR: [UnbuiltId; 139] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
@@ -493,11 +508,6 @@ const DRAWN_SO_FAR: [UnbuiltId; 143] = [
     UnbuiltId::HomeShelfTransport,
     UnbuiltId::HomeShelfFrameCounter,
     UnbuiltId::LibShelfImportQueue,
-    // Home's toolbox.
-    UnbuiltId::HomeToolPose,
-    UnbuiltId::HomeToolMotionPath,
-    UnbuiltId::HomeToolAddKey,
-    UnbuiltId::HomeToolMeasure,
     UnbuiltId::AnimShelfSequencer,
     UnbuiltId::AnimShelfKey,
     UnbuiltId::DebugShelfHottest,

@@ -1,6 +1,6 @@
-//! The viewport panel: the 3D image, the toolbox down its left edge
-//! (`toolbox.rs`) and the pills drawn over each view (`viewport_pills.rs`;
-//! spec 177-182).
+//! The viewport panel: the 3D image, the pills drawn over each view
+//! (`viewport_pills.rs`; spec 177-182) and the tool bar floating at the
+//! foot of the view in use (`viewport_tool_bar.rs`, decision 0114).
 //!
 //! The image itself comes from a [`ViewportRenderer`], so this crate never
 //! touches the GPU and runs in tests without one.
@@ -10,7 +10,6 @@ use crate::camera::{Camera, ViewKind};
 use crate::icons;
 use crate::look::Look;
 use crate::theme::{self, Accent};
-use crate::tokens::size;
 use crate::transforming::Snapping;
 use crate::viewport_tools::{self, Tools};
 use egui::{Rect, Ui, UiBuilder};
@@ -88,7 +87,8 @@ impl Tool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Overlays {
-    /// The tools, bottom centre.
+    /// The tool bar, floating at the foot of the view in use (Show ›
+    /// Tools).
     pub tools: bool,
     /// Grid, angle and camera speed, bottom right.
     pub snapping: bool,
@@ -172,7 +172,7 @@ pub struct Viewport {
     /// When Preview animation was turned on (its clips play from there).
     preview_since: std::cell::Cell<Option<std::time::Instant>>,
     /// Whether the editor is placing (the Place shelf tab is in front):
-    /// there is no toolbox then (the workbench hands it over each frame).
+    /// there is no tool bar then (the workbench hands it over each frame).
     pub(crate) placing: bool,
     /// The brush list B opens, and a brush being drawn out (Tools 1a,
     /// B2).
@@ -383,13 +383,7 @@ impl Viewport {
         if !self.idle && dt.is_finite() && dt > 0.0 && dt < IDLE_GAP {
             self.frame_time += (dt - self.frame_time) * FRAME_TIME_SMOOTHING;
         }
-        let mut full = ui.max_rect();
-        if self.overlays.tools && !self.placing {
-            // The toolbox down the group's left edge, the views beside it.
-            let (column, views) = full.split_left_right_at_x(full.left() + size::TOOLBOX_W);
-            self.toolbox(ui, column);
-            full = views;
-        }
+        let full = ui.max_rect();
         self.full = full;
         let shown = self.shown(full);
         // The view to use from now: the one being dragged or flown in, or
@@ -494,15 +488,6 @@ impl Viewport {
         crate::placement::drag_label(ui, pointer, name, ground, snap);
         crate::placement::hint_strip(ui, rect);
     }
-
-    /// The toolbox in `column`, and the tool it picks.
-    fn toolbox(&mut self, ui: &mut Ui, column: Rect) {
-        let paint = &mut self.tile_overlay.paint;
-        if let Some(tool) = crate::toolbox::toolbox(ui, column, self.tool, paint) {
-            self.tool = tool;
-            paint.tool = None;
-        }
-    }
 }
 
 /// Where `ground` (a point on the ground, in metres) is, in the game's
@@ -533,6 +518,8 @@ mod layout;
 mod navigate;
 #[path = "viewport_pills.rs"]
 mod pills;
+#[path = "viewport_tool_bar.rs"]
+pub(crate) mod tool_bar;
 #[path = "viewport_view.rs"]
 mod view;
 

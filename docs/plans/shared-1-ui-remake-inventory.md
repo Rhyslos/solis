@@ -251,10 +251,10 @@ Counts are at the end of this part.
 | `home.tool.move` | Toolbox › Move | EXISTS | `Tool::Move` (W) | |
 | `home.tool.rotate` | Toolbox › Rotate | EXISTS | `Tool::Rotate` (R) | |
 | `home.tool.scale` | Toolbox › Scale | EXISTS | `Tool::Scale` (S) | |
-| `home.tool.pose` | Toolbox › Pose bones | PLACEHOLDER | Placeholder tool button | 3D 1: 3D animation |
-| `home.tool.motion-path` | Toolbox › Motion path | PLACEHOLDER | Placeholder tool button | Shared 4: paths drawn in the editor |
-| `home.tool.add-key` | Toolbox › Add key | PLACEHOLDER | Placeholder tool button | Shared 10: the cutscene timeline |
-| `home.tool.measure` | Toolbox › Measure | PLACEHOLDER | Placeholder tool button | not on the roadmap |
+| `home.tool.pose` | Toolbox › Pose bones | PLACEHOLDER | Not drawn for now: the toolbox column went, the tools float in the view (decision 0114) | 3D 1: 3D animation |
+| `home.tool.motion-path` | Toolbox › Motion path | PLACEHOLDER | Not drawn for now: the toolbox column went, the tools float in the view (decision 0114) | Shared 4: paths drawn in the editor |
+| `home.tool.add-key` | Toolbox › Add key | PLACEHOLDER | Not drawn for now: the toolbox column went, the tools float in the view (decision 0114) | Shared 10: the cutscene timeline |
+| `home.tool.measure` | Toolbox › Measure | PLACEHOLDER | Not drawn for now: the toolbox column went, the tools float in the view (decision 0114) | not on the roadmap |
 | `home.view.scene` | The viewport's picture, outline and gizmo (spec 184-185) | EXISTS | `ViewportRenderer`, `viewport_tools::Outline`, `gizmo.rs`; axis colours from the tokens | |
 | `home.view.motion-curve` | The dashed animation path over the selection (spec 184) | PLACEHOLDER | Nothing is drawn (a sample drawing, not a control); registered so it is counted | Shared 10 |
 | `home.pill.view` | "Perspective ▾" (spec 186) | EXISTS | `camera::ViewKind` (Perspective, Top, Front, Right, 2D), and the views count | |

@@ -157,7 +157,7 @@ impl Workbench {
                 &mut self.viewport.overlays.snapping,
                 name,
             )),
-            Setting::Toolbox => drop(toggle::toggle(ui, &mut self.viewport.overlays.tools, name)),
+            Setting::Tools => drop(toggle::toggle(ui, &mut self.viewport.overlays.tools, name)),
             Setting::PreviewAnimation => {
                 drop(toggle::toggle(
                     ui,

@@ -27,7 +27,7 @@ pub enum ShelfTab {
     /// Placing: the area's entities, how placed things land, and the
     /// files to drag in (spec 262-276). Its being in front is the
     /// placing mode (the project lead's answer 20): the ribbon takes its
-    /// build form and the toolbox goes.
+    /// build form and the tool bar goes.
     Place,
     /// The area's entities, the selected one's Properties and the
     /// Library's files (the design's Object tab, in Solis's words).

@@ -109,7 +109,11 @@ const MOVED: [(&str, &str, Place); 43] = [
         "Project settings",
         Place::File("Project settings"),
     ),
-    ("View > Viewport tools", "Hide the toolbox", Place::Search),
+    (
+        "View > Viewport tools",
+        "Hide the viewport's tools",
+        Place::Search,
+    ),
     (
         "View > Grid, angle and camera speed",
         "Hide the viewport's axis locks and camera speed",

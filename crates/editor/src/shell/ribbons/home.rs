@@ -3,7 +3,7 @@
 //! Project. The Play group follows on every tab. While the Place shelf
 //! tab is in front, the build form (spec 240-249; round 2,
 //! `06-placing-a.png`): Edit, Place, Snapping with Snap to surface,
-//! Paint, Transform (the toolbox's tools, as there is no toolbox then).
+//! Paint, Transform (the tool bar's tools, as there is no tool bar then).
 
 use super::group;
 use crate::icons::Icon;

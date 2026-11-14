@@ -1,5 +1,5 @@
 //! Home's level editor as the design's first screen draws it (milestone
-//! M5): the toolbox, the pills, the snapping steps on the ribbon, the
+//! M5): the pills, the snapping steps on the ribbon, the
 //! cards, the Assets column and the Console's rows.
 
 use crate::console::LogLevel;
@@ -38,46 +38,6 @@ fn the_status_bar_says_what_moves_snap_to() {
     assert_eq!(snap_words(&snapping, false), "Snap off \u{b7} Object");
     snapping.pixel_snap = PixelSnap::Tiles;
     assert_eq!(snap_words(&snapping, true), "Snap tiles");
-}
-
-#[test]
-fn the_toolbox_runs_down_the_viewport_s_left_edge_at_the_design_s_size() {
-    let (w, _) = with_a_crate();
-    let mut h = harness(w);
-    h.run();
-    h.run();
-    let viewport = h.state().0.shell.drawn_at(Panel::Viewport).unwrap();
-    let mut top = 0.0;
-    for name in [
-        "Select (Q)",
-        "Move (W)",
-        "Rotate (R)",
-        "Scale (S)",
-        "Transform (T)",
-    ] {
-        let tool = h.get_by_label(name).rect();
-        assert_eq!(
-            [tool.width(), tool.height()],
-            [size::TOOL_BUTTON; 2],
-            "{name}"
-        );
-        assert_eq!(
-            tool.center().x,
-            viewport.left() + size::TOOLBOX_W / 2.0,
-            "{name}: in the column's middle"
-        );
-        assert!(tool.top() > top, "{name}: under the one before");
-        top = tool.top();
-    }
-    // The views start right of the column.
-    assert_eq!(
-        h.state().0.viewport.full.left(),
-        viewport.left() + size::TOOLBOX_W
-    );
-    // A click on a tool picks it.
-    h.get_by_label("Rotate (R)").click();
-    h.run();
-    assert_eq!(h.state().0.tool(), crate::viewport::Tool::Rotate);
 }
 
 #[test]
