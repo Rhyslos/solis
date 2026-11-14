@@ -13,15 +13,19 @@ pub mod extrude;
 pub mod flat;
 pub mod intact;
 pub mod material;
+pub mod merge;
 pub mod parallel;
 pub mod polygon;
 pub mod primitives;
+pub mod repair;
 #[cfg(test)]
 mod samples;
 pub mod shading;
 pub mod shapes;
+pub mod split;
 pub mod topology;
 pub mod triangulate;
+pub mod whole;
 
 pub use attributes::{
     AttributeElement, AttributeError, AttributeKind, AttributeValues, Domain, Value,
@@ -43,3 +47,4 @@ pub use shading::{
 pub use shapes::{Shape, ShapeSettings};
 pub use topology::{EdgeUse, Topology};
 pub use triangulate::{face_triangles, triangulate};
+pub use whole::check_whole;

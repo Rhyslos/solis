@@ -190,6 +190,82 @@ fn damaged_lists_read_as_an_empty_brush() {
     assert!(Brush::from_data(&half).damaged);
 }
 
+/// A 2 m box's lists, as `Brush::to_data` writes them.
+fn box_lists() -> (Value, Value) {
+    let data = Brush::default().to_data();
+    (
+        data.get("points").unwrap().clone(),
+        data.get("faces").unwrap().clone(),
+    )
+}
+
+/// The faces list with face `n` (from 0) left out, or turned round.
+fn faces_changed(faces: &Value, n: usize, turn: bool) -> Value {
+    let Value::List(numbers) = faces else {
+        panic!("a list")
+    };
+    let mut out = Vec::new();
+    let mut at = 0;
+    for index in 0.. {
+        let Some(Value::Int(count)) = numbers.get(at) else {
+            break;
+        };
+        let count = *count as usize;
+        let mut corners = numbers[at + 1..at + 1 + count].to_vec();
+        at += 1 + count;
+        if index == n {
+            if !turn {
+                continue;
+            }
+            corners.reverse();
+        }
+        out.push(Value::Int(count as i64));
+        out.extend(corners);
+    }
+    Value::List(out)
+}
+
+#[test]
+fn an_open_or_inside_out_brush_is_mended_as_it_is_read() {
+    let (points, faces) = box_lists();
+    let whole = Brush::from_data(&data_with(points.clone(), faces.clone()));
+    // A face left out: the hole has one flat border, so it is filled.
+    let open = data_with(points.clone(), faces_changed(&faces, 0, false));
+    let read = Brush::from_data(&open);
+    assert!(!read.damaged);
+    assert_eq!(read.mesh.face_count(), 6);
+    assert!(MeshReport::new(&read.mesh).is_closed());
+    assert_eq!(mesh::repair::why_not_whole(&read.mesh), None);
+    assert_eq!(damage_of(&open), None, "not damaged: mended");
+    // A face turned round: turned back, the same box.
+    let turned = data_with(points.clone(), faces_changed(&faces, 2, true));
+    assert_eq!(*Brush::from_data(&turned).mesh, *whole.mesh);
+    // The file's own values aren't touched by reading.
+    assert_eq!(open.get("faces"), Some(&faces_changed(&faces, 0, false)));
+}
+
+#[test]
+fn a_brush_that_cant_be_mended_is_read_as_it_is_and_says_why() {
+    let (points, faces) = box_lists();
+    // Two neighbouring faces left out: the hole bends round a corner.
+    let one_out = faces_changed(&faces, 0, false);
+    let mut gone = None;
+    for second in 0..5 {
+        let both = faces_changed(&one_out, second, false);
+        let read = Brush::from_data(&data_with(points.clone(), both));
+        if read.mesh.face_count() == 4 {
+            gone = Some(read);
+            break;
+        }
+    }
+    let read = gone.expect("a pair of faces whose hole can't be filled");
+    assert!(!read.damaged, "drawn as it is");
+    assert_eq!(
+        mesh::repair::why_not_whole(&read.mesh),
+        Some("it has a hole")
+    );
+}
+
 #[test]
 fn counts_past_the_limits_are_refused_before_anything_is_made() {
     let (_, faces) = triangle();

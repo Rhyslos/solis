@@ -9,10 +9,11 @@ Polygon meshes: the data structure brushes are made of, how its parts connect, t
 - **The mesh** (`Mesh`): points joined into faces with any number of corners (n-gons), each point and face with an id that stays the same for its whole life and is never given to another, even after it's deleted. Copies share their parts until one changes, so copying a mesh (as undo does) is cheap.
 - **How it connects** (`Topology`): which faces use an edge, which edges meet at a point, neighbours, loops and rings, worked out once per set of faces.
 - **Named values on its parts** (`attributes`): layers of values per point, edge, face or corner, such as hard edges and each face's material slot (`material`). Operations carry them over to what they make (`Builder`).
-- **Operations as plain functions** (`edit`): moving points, extruding and insetting faces, extruding border edges, setting materials. Each takes the mesh and ids, and works on the ids that are still there.
+- **Operations as plain functions** (`edit`): moving points, extruding and insetting faces, extruding border edges, splitting faces and edges (`split`), deleting parts and closing the gap by merging the faces around them (`merge`), setting materials. Each takes the mesh and ids, and works on the ids that are still there.
 - **Cutting into triangles** (`triangulate`, `flat`): any face, bent or dented, cut the same way every time; `flat_triangles` gives a brush's triangles to draw flat, `solid_triangles` the same triangles over shared points for physics.
 - **Checking** (`MeshReport`): open borders, faces facing the wrong way, edges shared by three faces, faces with no area.
-- **Staying whole** (`intact::check_moved`): after some points move, whether any face that uses them would fold over itself, flatten to nothing, or pass through another face (Tools 1a, B3). Only the faces touching what moved are looked at, and passing through is found with a grid of boxes, so it costs the same in a big brush when a few parts move. A face left bent is fine.
+- **Staying whole** (`intact::check_moved`): after some points move, whether any face that uses them would fold over itself, flatten to nothing, or pass through another face (Tools 1a, B3). Only the faces touching what moved are looked at, and passing through is found with a grid of boxes, so it costs the same in a big brush when a few parts move. A face left bent is fine. After an operation that adds, removes or rewires faces (B4), `whole::check_whole` asks the same of the faces around the change and more: closed, facing out (neighbours running opposite ways, and the room inside positive), not flat, at least four faces.
+- **Mending** (`repair`): a mesh read from a file that has faces facing the wrong way, or a hole whose border is one flat loop, is mended (faces turned round, the hole filled with one face); anything else is left, with why (`why_not_whole`).
 - **Shapes** (`shapes`): Box, Ramp, Cylinder, Stairs, Arch, Sphere and Wedge, in metres, each filling the box its size gives, standing on the ground, closed and facing out, every setting within limits (`ShapeSettings::clamped`: 1 cm to 10 km a side, 3 to 64 sides, 1 to 64 steps). The plain primitives the round ones are built on are in `primitives` (in the mesh's own units).
 
 ## Must never
@@ -32,4 +33,4 @@ Copied from Aventail's mesh crate, the project lead's own 3D modelling program, 
 
 ## Status
 
-Tools 1a, B1: the mesh, its topology, attribute layers and builder, triangulation and shading, the primitives, extrude and inset, and the brushes' shapes. B3: the check that a mesh stays whole after points move.
+Tools 1a, B1: the mesh, its topology, attribute layers and builder, triangulation and shading, the primitives, extrude and inset, and the brushes' shapes. B3: the check that a mesh stays whole after points move. B4: splitting, deleting parts with their faces merged, the whole check after them, and mending a mesh read from a file.

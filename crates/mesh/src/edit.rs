@@ -6,14 +6,17 @@
 //! that still match and says how many didn't, instead of failing. The
 //! caller can turn that count into a warning.
 //!
-//! Extruding and insetting are in [`crate::extrude`]; they are re-exported
-//! here so every operation is found in one place.
+//! Extruding and insetting are in [`crate::extrude`], splitting in
+//! [`crate::split`] and deleting parts in [`crate::merge`]; they are
+//! re-exported here so every operation is found in one place.
 
 pub use crate::extrude::{
     ExtrudeDirection, ExtrudeShape, Grouping, MAX_END_SIZE, MAX_EXTRUDE_STEPS, extrude_edges,
     extrude_polygons, extrude_shaped, inset_polygons,
 };
 pub use crate::material::set_material;
+pub use crate::merge::{dissolve_edges, dissolve_points, merge_faces};
+pub use crate::split::{split_edges, split_face_between, split_faces_across};
 use crate::{Mesh, VertexId};
 use glam::{Mat4, Vec3};
 

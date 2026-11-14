@@ -17,6 +17,13 @@
 //! reads as an empty brush ([`Brush::damaged`]), never a crash; why is
 //! [`damage_of`], which the editor's Problems list shows. The file's own
 //! values stay in the area untouched until the brush is changed.
+//!
+//! A mesh that reads but is open (a hole) or inside out is mended as it
+//! is read, when that is simple and safe (Tools 1a, B4): faces facing the
+//! wrong way are turned round, and a hole whose border is one flat loop
+//! is filled with one face ([`mesh::repair::repair`]). Otherwise it is
+//! used as read, and the editor's Problems list says what's wrong
+//! ([`mesh::repair::why_not_whole`]).
 
 use mesh::material::set_material;
 use mesh::{FaceId, Mesh, Shape, VertexId};
@@ -155,7 +162,7 @@ impl Component for Brush {
             // Neither: a brush written by hand as only its shape.
             (None, None) => (shape.build(&shape.standard()), false),
             (points, faces) => match mesh_of(points, faces, data.get("materials")) {
-                Ok(mesh) => (mesh, false),
+                Ok(mesh) => (mended(mesh), false),
                 Err(_) => (Mesh::new(), true),
             },
         };
@@ -165,6 +172,15 @@ impl Component for Brush {
             mesh: Arc::new(mesh),
             damaged,
         }
+    }
+}
+
+/// `mesh` mended if it is open or inside out and that is simple and
+/// safe, or as it is.
+fn mended(mesh: Mesh) -> Mesh {
+    match mesh::repair::repair(&mesh) {
+        Ok(Some((fixed, _))) => fixed,
+        Ok(None) | Err(_) => mesh,
     }
 }
 
