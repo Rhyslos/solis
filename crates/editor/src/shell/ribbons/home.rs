@@ -117,7 +117,8 @@ fn create(w: &Workbench, label: &'static str) -> Group {
                 C::ImportModel,
                 vec![
                     item("Import model…", C::ImportModel),
-                    Entry::Unbuilt(UnbuiltId::HomeCreateShapes),
+                    // Ready-made shapes are shape brushes (Tools 1a).
+                    item("Shape brush…", C::ChooseShapeBrush),
                 ],
             ),
             big(Icon::Sprite, "Sprite", C::AddSprite),
@@ -154,7 +155,7 @@ fn create(w: &Workbench, label: &'static str) -> Group {
 }
 
 /// Snapping's three rows, and while placing Snap to surface beside them.
-fn snapping(w: &Workbench, placing: bool) -> Group {
+pub(super) fn snapping(w: &Workbench, placing: bool) -> Group {
     let snapping = w.viewport.snapping;
     let mut slots = vec![
         switch_with_steps(

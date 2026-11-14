@@ -200,7 +200,7 @@ pub fn targets_placed(
 
 /// A world matrix's own axes, unit length; the world's when it's squashed
 /// flat.
-fn own_axes(world: Mat4) -> [Vec3; 3] {
+pub(crate) fn own_axes(world: Mat4) -> [Vec3; 3] {
     match taken_apart(world) {
         Some((_, rotation)) => [rotation * Vec3::X, rotation * Vec3::Y, rotation * Vec3::Z],
         None => WORLD_AXES,
@@ -407,7 +407,7 @@ fn scaled(t: &Target, targets: &Targets, to_parent: Mat4, f: Vec3) -> Transform 
     }
 }
 
-fn clamp_scale(f: f32) -> f32 {
+pub(crate) fn clamp_scale(f: f32) -> f32 {
     if !f.is_finite() {
         1.0
     } else if f.abs() < MIN_SCALE {

@@ -32,7 +32,8 @@ struct Frame {
     ground: vec4<f32>,
     // How models are shaded: x = 0 standard, 1 stylized, 2 unlit; y = the
     // stylized look's bands of light; z = its outline width in pixels
-    // (0 for none).
+    // (0 for none); w = the pick number of the one placement drawn as it
+    // is while every other model is dimmed (0: none dimmed).
     shading: vec4<f32>,
     // The image size in pixels (xy).
     screen: vec4<f32>,
@@ -365,18 +366,24 @@ struct MeshOut {
     @location(0) normal: vec3<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) world: vec3<f32>,
+    // The placement's pick number, to dim all but one (frame.shading.w).
+    @location(3) @interpolate(flat) pick: u32,
 };
 
 @vertex
-fn mesh_vs(in: MeshIn, instance: Instance) -> MeshOut {
+fn mesh_vs(in: MeshIn, instance: Instance, @location(10) pick: u32) -> MeshOut {
     let world = instance_world(instance, in.position);
     var out: MeshOut;
     out.clip = frame.view_proj * vec4<f32>(world, 1.0);
     out.normal = instance_normal(instance, in.normal);
     out.uv = in.uv;
     out.world = world;
+    out.pick = pick;
     return out;
 }
+
+// How far a dimmed model fades into the sky's horizon colour.
+const DIMMED: f32 = 0.6;
 
 const PI: f32 = 3.14159265;
 
@@ -589,7 +596,10 @@ fn mesh_fs(in: MeshOut, @builtin(front_facing) front: bool) -> @location(0) vec4
     // the alpha is how covered the pixel is: a solid surface covers it
     // whole, whatever the look.
     let visibility = fog_visibility(in.world);
-    let fogged = mix(frame.fog.rgb, lit + glow, visibility);
+    var fogged = mix(frame.fog.rgb, lit + glow, visibility);
+    if frame.shading.w > 0.5 && f32(in.pick) != frame.shading.w {
+        fogged = mix(fogged, frame.sky_horizon.rgb, DIMMED);
+    }
     let mask = select(
         select(world_mask(visibility), 0.0, frame.shading.x == 2.0),
         1.0,

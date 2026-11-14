@@ -62,6 +62,15 @@ pub(crate) enum ViewportEvent {
     },
     /// A brush was drawn out (Tools 1a, B2): add it, as one undo step.
     BrushDrawn(crate::brushing::draw::Planned),
+    /// While a brush's insides are edited (B3): a click or a box found
+    /// these parts of it.
+    Parts {
+        /// The parts under the click (one, or none on empty space) or in
+        /// the box.
+        hits: Vec<crate::brushing::edit::Part>,
+        /// Replace, toggle or add.
+        how: crate::brushing::edit::PickHow,
+    },
     /// An asset dragged from the Library was dropped here.
     Drop {
         /// The model or assembly.
@@ -130,7 +139,7 @@ pub(crate) enum Pressing {
 }
 
 /// What the selection's outline is drawn around.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Outline {
     /// A model's box, placed in the world.
     Box {
@@ -143,6 +152,13 @@ pub enum Outline {
     },
     /// A point (an entity without a model, such as a lamp).
     Point(Vec3),
+    /// A brush's real edges, placed in the world (Tools 1a, B3).
+    Lines {
+        /// Where the entity is.
+        world: Mat4,
+        /// Each edge's two ends, in the brush's own space.
+        lines: std::sync::Arc<[[Vec3; 2]]>,
+    },
     /// A collider's shape, placed in the world: what physics bumps into.
     Collider {
         /// Where the entity is (with its scale, which the shape grows by).
@@ -248,6 +264,22 @@ pub(crate) struct Tools {
     /// A pick asked for while another was in flight; sent after it.
     pub(crate) next: Option<Pick>,
     pub(crate) events: Vec<ViewportEvent>,
+    /// Whether a brush's insides are being edited (B3): clicks and boxes
+    /// then ask about its parts ([`PartAsk`]), not the renderer.
+    pub(crate) parts: bool,
+    /// Clicks and boxes on a brush's parts, for the view to answer this
+    /// frame with what it sees.
+    pub(crate) part_asks: Vec<PartAsk>,
+}
+
+/// A click or a box while a brush's insides are edited, in points from
+/// the view's corner.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum PartAsk {
+    /// A click there.
+    At(Vec2, crate::brushing::edit::PickHow),
+    /// A box between these corners.
+    In(Vec2, Vec2, crate::brushing::edit::PickHow),
 }
 
 /// The mouse and keys this frame, as the tools need them.
@@ -374,6 +406,16 @@ impl Tools {
         size: Vec2,
         ppp: f32,
     ) {
+        if self.parts {
+            use crate::brushing::edit::PickHow;
+            let how = if ctrl {
+                PickHow::Toggle
+            } else {
+                PickHow::Replace
+            };
+            self.part_asks.push(PartAsk::At(at, how));
+            return;
+        }
         let mode = if ctrl {
             PickMode::Toggle
         } else {
@@ -415,6 +457,12 @@ impl Tools {
         ppp: f32,
     ) {
         let (min, max) = (a.min(b).max(Vec2::ZERO), a.max(b).min(size));
+        if self.parts {
+            use crate::brushing::edit::PickHow;
+            let how = if ctrl { PickHow::Add } else { PickHow::Replace };
+            self.part_asks.push(PartAsk::In(min, max, how));
+            return;
+        }
         let markers = area
             .markers()
             .filter(|(_, position)| {
@@ -643,6 +691,17 @@ pub(crate) fn draw(
     let outline = Stroke::new(1.5, accent.colors().light);
     for mark in &tools.outlines {
         match *mark {
+            Outline::Lines { world, ref lines } => {
+                for [a, b] in lines.iter() {
+                    let ends = (
+                        camera.project(world.transform_point3(*a), size),
+                        camera.project(world.transform_point3(*b), size),
+                    );
+                    if let (Some(p), Some(q)) = ends {
+                        painter.line_segment([at(p), at(q)], outline);
+                    }
+                }
+            }
             Outline::Box { world, min, max } => {
                 let corner = |i: usize| {
                     world.transform_point3(Vec3::new(

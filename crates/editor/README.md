@@ -19,7 +19,7 @@ Draw the editor with egui, keep its state between frames (the frame's arrangemen
 - `area_panel.rs`, `properties.rs`, `console.rs`: those panels' contents.
 - `viewport.rs`: the viewport, its views (one, two or four, each with its own camera) and their corner controls.
 - `layout.rs`: the standard layout (Reset layout), and restoring a saved one.
-- `brushes.rs`, `brushing/`, `workbench_brushes.rs`: shape brushes (Tools 1a): each brush cut into triangles once; the brush list **B** opens and drawing a brush out (footprint, height, click), each one undo step.
+- `brushes.rs`, `brushing/`, `workbench_brushes.rs`, `workbench_brush_edit.rs`, `workbench_brush_parts.rs`: shape brushes (Tools 1a): each brush cut into triangles once; the brush list **B** opens and drawing a brush out (footprint, height, click), each one undo step; editing a brush's insides (**Tab**, then **1**, **2**, **3**: picking its points, edges and faces and moving them with the gizmo, each drag one undo step, a change that would break the brush put back).
 - `icons/`: the icons, as a table of line drawings and the reader that draws them.
 - `widgets/`: the kit, the design's own controls (fields, switch, segmented control, chips, buttons, cards, rows and more), which the screens take up one milestone at a time.
 - `unbuilt.rs` and `unbuilt/`: the one way an unfinished part is drawn, the table of them, and the filter that takes them out when **Hide unfinished parts** is on (decision 0101).

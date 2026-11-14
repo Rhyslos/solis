@@ -82,10 +82,12 @@ impl Workbench {
     /// Draws the brush list while it is open, and does what was done with
     /// it: a row clicked takes its shape, a click elsewhere closes it. A
     /// page standing in place of the editor (File), or a tab without the
-    /// 3D or 2D view, closes it and gives up a brush being drawn.
+    /// 3D or 2D view, closes it and gives up a brush being drawn (a
+    /// brush whose insides are edited stays so, B3).
     pub(crate) fn brush_list_frame(&mut self, ctx: &egui::Context) {
         if self.shell.covers_center() || !self.in_front.contains(&Panel::Viewport) {
-            self.viewport.brushing = crate::brushing::Brushing::default();
+            self.viewport.brushing.list = None;
+            self.viewport.brushing.draw = None;
         }
         let Some(list) = self.viewport.brushing.list.as_mut() else {
             return;

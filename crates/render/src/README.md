@@ -12,7 +12,7 @@ Draws viewports on the GPU with wgpu, into offscreen images: the sky, every copy
 | `target.rs` | The images one viewport draws into, and making them (`create_target`). | `ViewportTarget` |
 | `frame_resources.rs` | The GPU data one viewport's frames use (uniforms, copies, projectiles, sprites, shadow map, lamp markers), each buffer grown when it must be. | |
 | `pipelines.rs` | The viewport's own pipelines: sky, grid, lines and the last pass. | |
-| `frame.rs` | What the renderer needs each frame (camera, colours, look, grid plane, the day's tint and lit sprites) and how it is laid out for the GPU. | `FrameParams`, `Look`, `Shading`, `GridPlane` |
+| `frame.rs` | What the renderer needs each frame (camera, colours, look, grid plane, the day's tint and lit sprites; `Shading::focus`, the one placement drawn as it is while every other model fades toward the sky's horizon, for a brush whose insides are edited) and how it is laid out for the GPU. | `FrameParams`, `Look`, `Shading`, `GridPlane` |
 | `gpu_model.rs` | Models on the GPU: an `assets::Model` uploaded once into buffers and textures, then drawn every frame; also the outline and shadow passes. | `GpuModel` |
 | `instances.rs` | Where each copy of a mesh is drawn: all placements gathered into one buffer each frame, grouped so each mesh is drawn once for all its copies; copies out of view are left out, far ones get simpler levels. | `Placement` |
 | `lighting.rs` | The sun and lamps, the sun's shadow map fitted to what's in view, and the markers drawn where lamps are. | `Sun`, `Light`, `LightKind`, `sun_view_fitted` |

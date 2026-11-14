@@ -442,9 +442,13 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
     let mut with_keys = 0;
     for command in ShellCommand::ALL {
         // The 2D editors' keys act over their own tab, and are tried
-        // there (`key_owner_tests.rs`).
+        // there (`key_owner_tests.rs`); a brush's need one picked, and are
+        // tried in `workbench_brush_edit_tests.rs`.
         if command.keys().is_empty()
-            || matches!(command.place(), "Tile map" | "Picture" | "Animate")
+            || matches!(
+                command.place(),
+                "Tile map" | "Picture" | "Animate" | "Brush"
+            )
         {
             continue;
         }

@@ -1,7 +1,9 @@
-//! The brush list open and a box being drawn out, drawn for real in the
-//! sample project as the approved mock-ups show them
-//! (`docs/design/tools-1/01-brush-list.png`, `02-brush-draw.png`), each
-//! held to an approved picture of Solis's own.
+//! The brush list open, a box being drawn out, and a box's insides being
+//! edited in faces and in points mode, drawn for real in the sample
+//! project as the approved mock-ups show them
+//! (`docs/design/tools-1/01-brush-list.png`, `02-brush-draw.png`,
+//! `03-brush-edit-faces.png`), each held to an approved picture of
+//! Solis's own.
 
 use crate::picture_support::{Picture, drawn, editor_window, matches_approved, sample_project};
 use egui::{Pos2, pos2};
@@ -97,6 +99,79 @@ pub(crate) fn drawing_out() -> Option<Picture> {
         "{draw:?}"
     );
     Some(drawn(&mut h))
+}
+
+/// Box_03, 4 × 2.5 × 3 m, being edited as mock-up 3 draws it: its side
+/// facing the camera picked in faces mode, the Move gizmo on it; or, in
+/// points mode, that face's corners.
+pub(crate) fn editing(points: bool) -> Option<Picture> {
+    use area::builtin::{Brush, Transform};
+    let mut h = editor()?;
+    let w = h.state_mut();
+    let size = Vec3::new(4.0, 2.5, 3.0);
+    let brush = Brush {
+        mesh: std::sync::Arc::new(
+            mesh::Shape::Box.build(&super::settings_for(mesh::Shape::Box, size)),
+        ),
+        ..Brush::default()
+    };
+    let at = Vec3::new(2.0, 0.0, 0.0);
+    w.spawn_selected(
+        area::EntityData::new("Box_03")
+            .with(&Transform {
+                position: at,
+                ..Transform::default()
+            })
+            .with(&brush),
+    );
+    w.viewport.tool = crate::viewport::Tool::Move;
+    let camera = &mut w.viewport.camera;
+    camera.position = at + Vec3::new(-4.5, -7.0, 5.5);
+    camera.look_at(at + Vec3::new(0.0, 0.0, 1.2));
+    h.run();
+    h.key_press(egui::Key::Tab);
+    h.run();
+    let w = h.state();
+    let rect = w.viewport.rect;
+    let front = w
+        .viewport
+        .camera
+        .project(
+            at + Vec3::new(0.0, -1.25, 1.5),
+            glam::Vec2::new(rect.width(), rect.height()),
+        )
+        .expect("in view");
+    let front = rect.min + egui::vec2(front.x, front.y);
+    h.hover_at(front);
+    h.run();
+    press(&h, true, front);
+    h.run();
+    press(&h, false, front);
+    h.run();
+    if points {
+        h.key_press(egui::Key::Num1);
+        h.run();
+    }
+    h.hover_at(POINTER);
+    h.run();
+    h.run();
+    let edit = h.state().viewport.brushing.edit.as_ref().expect("editing");
+    assert_eq!(edit.picked.len(), if points { 4 } else { 1 });
+    Some(drawn(&mut h))
+}
+
+#[test]
+fn editing_a_brush_s_faces_is_its_approved_picture() {
+    if let Some(picture) = editing(false) {
+        matches_approved("brush-edit-faces", &picture);
+    }
+}
+
+#[test]
+fn editing_a_brush_s_points_is_its_approved_picture() {
+    if let Some(picture) = editing(true) {
+        matches_approved("brush-edit-points", &picture);
+    }
 }
 
 #[test]

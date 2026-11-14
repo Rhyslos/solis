@@ -375,3 +375,18 @@ fn scale_check_an_area_of_10000_box_brushes_read() {
     );
     assert!(ms <= TARGET_MS);
 }
+
+#[test]
+fn points_of_is_the_points_list_the_brush_writes() {
+    // Editing a brush's insides (Tools 1a, B3) writes this list alone.
+    for shape in Shape::ALL {
+        let brush = Brush::of_shape(shape);
+        let data = brush.to_data();
+        assert_eq!(
+            data.get("points"),
+            Some(&Value::List(points_of(&brush.mesh))),
+            "{shape:?}"
+        );
+    }
+    assert!(points_of(&Mesh::new()).is_empty());
+}

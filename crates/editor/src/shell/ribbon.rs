@@ -297,8 +297,17 @@ fn columns(ui: &Ui, group: &Group) -> Vec<Column> {
                 stacking = true;
             }
             Shape::Big(_) | Shape::Light(_) => {
-                // A working button whose word is longer than the button
-                // ("Eyedropper") is widened to show it whole.
+                // A button whose word is longer than the button
+                // ("Eyedropper", the unfinished "Trigger zone") is widened
+                // to show it whole.
+                if let Entry::Unbuilt(id) = entry {
+                    columns.push(Column {
+                        width: unbuilt::ribbon_big_width(ui, *id),
+                        slots: vec![slot.clone()],
+                    });
+                    stacking = false;
+                    continue;
+                }
                 let (word, key) = match entry {
                     Entry::Built(Control::Do {
                         label,

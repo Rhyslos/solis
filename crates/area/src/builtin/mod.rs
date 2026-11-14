@@ -23,7 +23,7 @@ mod transform;
 pub use animator::Animator;
 pub use audio_source::AudioSource;
 pub use brush::{
-    Brush, MAX_CORNERS, MAX_CORNERS_PER_FACE, MAX_FACES, MAX_POINTS, MAX_SLOT, damage_of,
+    Brush, MAX_CORNERS, MAX_CORNERS_PER_FACE, MAX_FACES, MAX_POINTS, MAX_SLOT, damage_of, points_of,
 };
 pub use camera::{Camera, CameraView};
 pub use collider_2d::{Collider2D, Shape2D};

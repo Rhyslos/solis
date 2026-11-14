@@ -180,6 +180,7 @@ fn shading(look: Look) -> Shading {
         look,
         bands: 3,
         outline_px: 2.0,
+        focus: 0,
     }
 }
 

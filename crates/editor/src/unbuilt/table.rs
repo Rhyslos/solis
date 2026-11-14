@@ -13,7 +13,7 @@
 
 use super::Phase::{
     NotPlanned, Shared4, Shared6, Shared7, Shared8, Shared10, Shared11, Shared13, ThreeD1, ThreeD5,
-    TwoD2,
+    Tools1a, TwoD2,
 };
 use super::Unbuilt;
 
@@ -47,8 +47,13 @@ unbuilt! {
     ShellStatusBranch: "shell.status.branch" => ("Branch and changes", Shared11, "Shows the Git branch you are on and how many files you changed"),
 
     // Home: the level editor.
-    HomeCreateShapes: "home.create.shapes" => ("Ready-made shapes", NotPlanned, "Adds a cube, a ball or another simple shape without a model file"),
     HomeCreateTrigger: "home.create.trigger" => ("Trigger zone", TwoD2, "Adds a zone that tells game code when something enters or leaves it"),
+    BrushShapeExtrude: "brush.shape.extrude" => ("Extrude", Tools1a, "Pulls the picked faces out into new parts of the brush, as E does"),
+    BrushShapeInset: "brush.shape.inset" => ("Inset", Tools1a, "Makes a smaller face inside each picked face, with a ring of faces round it"),
+    BrushShapeSplit: "brush.shape.split" => ("Split", Tools1a, "Cuts the picked faces or edges in two"),
+    BrushShapeDelete: "brush.shape.delete" => ("Delete", Tools1a, "Takes the picked points, edges or faces out of the brush, never leaving it with a hole"),
+    BrushRibbonMaterial: "brush.ribbon.material" => ("Material", Tools1a, "Gives the picked faces a material: concrete, planks, grass"),
+    BrushCardMaterial: "brush.card.material" => ("Material", Tools1a, "Gives the brush's faces a material: concrete, planks, grass"),
     HomeLightingBake: "home.lighting.bake" => ("Bake", ThreeD5, "Works out bounced light for the area"),
     HomeLightingQuality: "home.lighting.quality" => ("Quality", ThreeD5, "Chooses how carefully bounced light is worked out"),
     HomeLightingLightmapView: "home.lighting.lightmap-view" => ("Light map view", ThreeD5, "Shows the worked-out light on its own in the viewport"),

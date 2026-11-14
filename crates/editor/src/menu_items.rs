@@ -72,6 +72,11 @@ impl Workbench {
 
     /// Selects every entity in the area (Ctrl+A).
     pub(crate) fn select_all(&mut self) {
+        // While a brush's insides are edited: every part of the mode.
+        if let Some(edit) = self.viewport.brushing.edit.as_mut() {
+            edit.pick_all();
+            return;
+        }
         let ids: Vec<_> = self.open.document.area().iter().map(|(id, _)| id).collect();
         if let Some(&first) = ids.first() {
             let primary = self.open.document.selection.primary().unwrap_or(first);

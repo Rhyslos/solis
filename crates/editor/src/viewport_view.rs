@@ -94,10 +94,19 @@ impl Viewport {
         }
         self.draw_picture(ui, renderer, &response, &frame);
         self.draw_over_view(ui, &response, &frame, accent);
+        let edited = self.brushing.edit.as_ref().and_then(|edit| {
+            let world = self.area.brushes.iter().find(|b| b.entity == edit.entity)?;
+            Some((edit, world.transform))
+        });
+        let edit_covers = match edited {
+            Some(edited) => crate::brushing::edit_draw::show(ui, rect, &frame.seen, edited, in_use),
+            None => Vec::new(),
+        };
         // The pills over the view (spec 182): the view's own at the top
         // left; the frame rate and the locks, space and camera speed on
         // the view in use only.
         self.covered = self.view_pills(ui, rect, several, in_use, frame.two_d);
+        self.covered.extend(edit_covers);
         if in_use && let Some(draw) = &self.brushing.draw {
             let covered =
                 crate::brushing::ghost::show(ui, rect, &frame.seen, draw, self.snapping.grid_step);
@@ -236,6 +245,58 @@ impl Viewport {
             frame.size,
             frame.ppp,
         );
+        if self.brushing.edit.is_some() {
+            self.find_parts(input, frame);
+        }
+    }
+
+    /// While a brush's insides are edited (Tools 1a, B3): the clicks and
+    /// boxes of this frame answered with its parts this view sees, and
+    /// the part under the pointer found (only the brush being edited is
+    /// tried, its box first, then its faces).
+    fn find_parts(&mut self, input: ToolInput, frame: &ViewFrame) {
+        let asks = std::mem::take(&mut self.tools.part_asks);
+        let Some(edit) = self.brushing.edit.as_mut() else {
+            return;
+        };
+        let Some(world) = self
+            .area
+            .brushes
+            .iter()
+            .find(|b| b.entity == edit.entity)
+            .map(|b| b.transform)
+        else {
+            return;
+        };
+        let Some(parts) = edit.parts.clone() else {
+            return;
+        };
+        let project = frame.seen.projector(frame.size);
+        let mode = edit.mode;
+        let under = |at: glam::Vec2| {
+            let ray = frame.seen.ray_through(at, frame.size);
+            parts.under(mode, (world, ray), &project, at)
+        };
+        for ask in asks {
+            let (hits, how) = match ask {
+                viewport_tools::PartAsk::At(at, how) => (under(at).into_iter().collect(), how),
+                viewport_tools::PartAsk::In(min, max, how) => {
+                    (parts.in_box(mode, world, &project, (min, max)), how)
+                }
+            };
+            self.tools
+                .events
+                .push(viewport_tools::ViewportEvent::Parts { hits, how });
+        }
+        let free = self.tools.pressing == viewport_tools::Pressing::Nothing
+            && self.tools.hovered.is_none()
+            && edit.drag.is_none();
+        if input.on_viewport
+            && free
+            && let Some(mouse) = input.mouse
+        {
+            edit.hovered = under(mouse);
+        }
     }
 
     /// The renderer's picture of the view, or why there's none.

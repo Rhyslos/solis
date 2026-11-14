@@ -564,6 +564,7 @@ fn canvas_image(size_px: [u32; 2], screen: Arc<ui::Screen>) -> ViewportView {
         brushes: Vec::new(),
         look: crate::look::Look::default(),
         outline_px: 0.0,
+        dim_all_but: None,
         sun: None,
         lamps: Vec::new(),
         environment: area::builtin::Environment::default(),

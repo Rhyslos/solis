@@ -167,6 +167,8 @@ pub struct Workbench {
 /// the view is too.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ViewKey {
+    /// The document's placed revision: brushes' own values follow their
+    /// models instead (`Document::placed`).
     revision: u64,
     sources: u64,
     models: usize,

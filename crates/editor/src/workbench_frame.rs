@@ -131,6 +131,12 @@ impl Workbench {
         let hints =
             (self.hints && self.in_front.contains(&Panel::Properties)).then(|| self.hints());
         let hints_off = !self.hints;
+        // What the Brush card shows (Tools 1a, B3), while Properties does.
+        let brush_facts = self
+            .in_front
+            .contains(&Panel::Properties)
+            .then(|| self.brush_facts())
+            .flatten();
         let atlas_problem = self.atlas_picture().1;
         let frames = self.open.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
@@ -238,6 +244,7 @@ impl Workbench {
             requests: &mut asks.properties,
             help: crate::properties::Help {
                 places: self.open.program.as_ref().map(|p| &p.places),
+                brush: brush_facts.as_ref(),
             },
             accent: self.accent,
             in_front: &self.in_front,
@@ -328,6 +335,9 @@ impl Workbench {
         // First: the brush list's B, Space and Esc come before the tile
         // painter's B, the search's Space and Esc's other jobs.
         self.brush_keys(ui);
+        // Tab, 1, 2 and 3 while a brush's insides are edited, before the
+        // tile painter's Tab and Delete's other jobs.
+        self.brush_edit_keys(ui);
         self.tool_keys(ui);
         self.paint_keys(ui);
         self.tool_extra_keys(ui);
@@ -368,7 +378,7 @@ impl Workbench {
         // phase review, speed): the key holds what was picked, which is
         // small.
         let key = ViewKey {
-            revision: self.open.document.revision(),
+            revision: self.open.document.placed(),
             sources: self.sources,
             models: self.open.models.len(),
             hidden: self.open.area_panel.hidden.clone(),
@@ -394,10 +404,16 @@ impl Workbench {
                 (hidden, locked),
             );
             self.open.editor_view = Some(key);
+        } else if self.open.brushes.refresh(&mut self.open.document) {
+            // Only brushes' own values changed (a brush's insides edited,
+            // Tools 1a B3): their entries take their new models, and
+            // nothing else is worked out again.
+            self.viewport.area.refresh_brush_models(&self.open.brushes);
         }
         self.viewport.entities = self.open.document.area().len();
         self.viewport.placing = self.placing();
         self.set_tile_overlay();
+        self.sync_brush_edit();
         self.prepare_tools();
         self.find_problems();
         self.refresh_screen_pictures();

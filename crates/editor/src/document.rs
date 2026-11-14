@@ -106,6 +106,9 @@ pub struct Document {
     /// A number that changes whenever the area does: see
     /// [`Self::revision`].
     revision: u64,
+    /// A number that changes whenever the area does, except for edits of
+    /// brushes' own values alone: see [`Self::placed`].
+    placed: u64,
     /// What changed since last asked: see [`Self::take_changes`].
     changes: Changes,
     /// A number that changes whenever what Problems checks does: see
@@ -288,6 +291,7 @@ impl Document {
             file: None,
             saved: 0,
             revision: next_revision(),
+            placed: next_revision(),
             changes: Changes {
                 everything: true,
                 ..Changes::default()
@@ -431,6 +435,17 @@ impl Document {
         self.revision
     }
 
+    /// A number standing for the area as everything but its brushes'
+    /// own values (their shapes, Solid) sees it: it changes with every
+    /// edit, undo and redo, except an edit made only of Brush fields (a
+    /// brush's insides edited, Tools 1a B3). What's worked out from where
+    /// entities are and what they hold (the view, where each is in the
+    /// world, who uses each file) is worked out again only when it
+    /// changes; the brushes' own models follow [`Self::brushes`].
+    pub fn placed(&self) -> u64 {
+        self.placed
+    }
+
     /// A number standing for what the Problems panel checks: it changes
     /// with every edit except moving, turning and resizing (a Transform's
     /// fields) and other component values, other than which model a
@@ -475,13 +490,13 @@ impl Document {
     /// [`Self::revision`] (parents first, one multiplication each), for
     /// everything that draws or measures the area in a frame.
     pub fn world_matrices(&self) -> Placed {
-        if let Some((revision, world)) = &*self.world.borrow()
-            && *revision == self.revision
+        if let Some((placed, world)) = &*self.world.borrow()
+            && *placed == self.placed
         {
             return Arc::clone(world);
         }
         let world = Arc::new(self.tree().world_matrices(&self.area));
-        *self.world.borrow_mut() = Some((self.revision, Arc::clone(&world)));
+        *self.world.borrow_mut() = Some((self.placed, Arc::clone(&world)));
         world
     }
 
@@ -490,8 +505,8 @@ impl Document {
     /// after every file field, and walking the whole area for each, every
     /// frame, took milliseconds in a big area (the review, BUG-28).
     pub fn asset_users(&self) -> AssetUsers {
-        if let Some((revision, users)) = &*self.users.borrow()
-            && *revision == self.revision
+        if let Some((placed, users)) = &*self.users.borrow()
+            && *placed == self.placed
         {
             return Arc::clone(users);
         }
@@ -512,7 +527,7 @@ impl Document {
             }
         }
         let users = Arc::new(users);
-        *self.users.borrow_mut() = Some((self.revision, Arc::clone(&users)));
+        *self.users.borrow_mut() = Some((self.placed, Arc::clone(&users)));
         users
     }
 
@@ -530,6 +545,7 @@ impl Document {
     /// out again unless it's the same (`same_tree`).
     fn changed(&mut self, values_only: bool, same_tree: bool) {
         self.revision = next_revision();
+        self.placed = self.revision;
         if !values_only {
             self.shape = next_revision();
             self.brushes = self.shape;
@@ -577,9 +593,16 @@ impl Document {
         let brushes = edits.iter().any(|e| {
             matches!(e, Edit::SetField { component, .. } if component == area::builtin::Brush::NAME)
         });
+        let brushes_only = edits.iter().all(|e| {
+            matches!(e, Edit::SetField { component, .. } if component == area::builtin::Brush::NAME)
+        });
+        let placed = self.placed;
         self.history
             .apply(&mut self.area, label, edits, merge, before, after.clone())?;
         self.changed(values_only, same_tree);
+        if brushes_only {
+            self.placed = placed;
+        }
         if brushes {
             self.brushes = next_revision();
         }

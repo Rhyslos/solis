@@ -8,6 +8,7 @@
 
 pub(crate) mod animate;
 mod audio;
+mod brush;
 mod build;
 mod debug;
 mod home;
@@ -29,6 +30,7 @@ pub(crate) fn of(tab: RibbonTab, w: &Workbench) -> Vec<Group> {
     match tab {
         RibbonTab::File => Vec::new(),
         RibbonTab::Ui => ui::groups(w),
+        RibbonTab::Home if w.brush_tools_in_front() => brush::groups(w),
         RibbonTab::Home if w.map_tools_in_front() => tile_map::groups(w),
         RibbonTab::Home => home::groups(w),
         RibbonTab::Library => library::groups(w),

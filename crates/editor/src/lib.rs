@@ -118,6 +118,8 @@ mod workbench_animate_tools;
 mod workbench_animator;
 mod workbench_atlas;
 mod workbench_audio_tools;
+mod workbench_brush_edit;
+mod workbench_brush_parts;
 mod workbench_brushes;
 mod workbench_frames;
 mod workbench_library;

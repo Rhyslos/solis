@@ -378,13 +378,13 @@ mod frame_layout {
         let w = &h.state().0;
         let made = w.document().area().get(w.selection().unwrap()).unwrap();
         assert_eq!(made.name, "Spotlight 1");
-        // The small arrow does the same, and an unfinished kind is in
-        // the list as one.
+        // The small arrow does the same; ready-made shapes are shape
+        // brushes, so the list leads to the brush list (Tools 1a, B3).
         h.get_by_label("Model: more kinds").click();
         h.run();
         // (The button itself is called by the usual kind it makes.)
         assert!(h.query_all_by_label("Import model…").count() >= 2);
-        let _ = h.get_by_label("Ready-made shapes");
+        let _ = h.get_by_label("Shape brush…");
         h.key_press(egui::Key::Escape);
         h.run();
         // More is a list and nothing else.

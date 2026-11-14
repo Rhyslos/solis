@@ -382,6 +382,28 @@ impl Workbench {
         self.shell.tab == RibbonTab::Home && self.shelf_tab() == Some(workspaces::ShelfTab::Map)
     }
 
+    /// Whether HOME TOOLS · Brush is the tab in front: a brush's insides
+    /// are being edited and Home's own ribbon hasn't been asked for
+    /// (Tools 1a, B3).
+    pub(crate) fn brush_tools_in_front(&self) -> bool {
+        self.shell.tab == RibbonTab::Home
+            && self
+                .viewport
+                .brushing
+                .edit
+                .as_ref()
+                .is_some_and(|edit| !edit.home_ribbon)
+    }
+
+    /// Brings HOME TOOLS · Brush to the front, with the view.
+    pub(crate) fn show_brush_tools(&mut self) {
+        if let Some(edit) = self.viewport.brushing.edit.as_mut() {
+            edit.home_ribbon = false;
+        }
+        self.show_panel(Panel::Viewport);
+        self.show_tab(RibbonTab::Home);
+    }
+
     /// The shelf tab in front on the tab in front, if it has a shelf.
     pub fn shelf_tab(&self) -> Option<workspaces::ShelfTab> {
         let tabs = workspaces::built_shelf_tabs(self.shell.tab, self.open_now());
@@ -502,6 +524,14 @@ impl Workbench {
     /// drops down over the center until something on it is chosen or the
     /// pointer leaves it.
     pub(crate) fn tab_clicked(&mut self, tab: RibbonTab) {
+        if tab == self.shell.tab && self.brush_tools_in_front() {
+            // Home's own ribbon, while the brush is still edited: its
+            // tools tab brings them back.
+            if let Some(edit) = self.viewport.brushing.edit.as_mut() {
+                edit.home_ribbon = true;
+            }
+            return;
+        }
         if tab == self.shell.tab && self.map_tools_in_front() {
             // Home again, from its tile map's tools: the Entity tab, or in
             // a side layout (which has none) the Console.

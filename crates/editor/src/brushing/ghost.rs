@@ -224,7 +224,7 @@ fn arrow(
 
 /// How far a step is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Progress {
+pub(crate) enum Progress {
     Done,
     Now,
     Later,
@@ -284,7 +284,7 @@ fn steps(ui: &mut Ui, view: Rect, draw: &Draw) -> Rect {
 
 /// One step's pill: the step in hand outlined in the accent; a done one
 /// ticked.
-fn step_pill(ui: &Ui, rect: Rect, icon: Option<Icon>, words: &str, progress: Progress) {
+pub(crate) fn step_pill(ui: &Ui, rect: Rect, icon: Option<Icon>, words: &str, progress: Progress) {
     let painter = ui.painter();
     let radius = size::radius::CONTROL;
     painter.rect_filled(rect, CornerRadius::same(radius), tokens::pill_fill());

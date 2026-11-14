@@ -404,6 +404,9 @@ impl Workbench {
                 let made_as = (component == Brush::NAME && field == "shape")
                     .then(|| self.made_as_edits(entity, &value))
                     .flatten();
+                if made_as.is_some() {
+                    self.tell_if_edits_replaced(entity);
+                }
                 let edits = made_as.unwrap_or_else(|| {
                     vec![Edit::SetField {
                         entity,
@@ -508,6 +511,9 @@ impl Workbench {
                 component,
             } => self.reset_component(&entities, &component),
             PropertyRequest::HintsOff => self.hints = false,
+            PropertyRequest::BrushSize { entity, size } => {
+                self.resize_brush(entity, size, gesture);
+            }
         }
     }
 
@@ -1145,6 +1151,13 @@ impl Workbench {
     /// Deletes the selected entities and everything below them, as one step
     /// (Delete).
     pub fn delete_selection(&mut self) {
+        if self.viewport.brushing.edit.is_some() {
+            // Never the brush whose insides are edited (B4 deletes parts).
+            self.viewport
+                .brushing
+                .tell(crate::workbench_brush_edit::NO_DELETING_YET);
+            return;
+        }
         let roots = self.selected_roots();
         match roots.as_slice() {
             [] => {}

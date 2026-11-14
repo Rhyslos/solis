@@ -88,8 +88,10 @@ pub struct Status {
     /// World" (spec 233).
     pub snap: String,
     /// While the brush list is open or a brush is drawn out (Tools 1a,
-    /// B2), what is going on: "Choosing a shape brush: Ramp". The saved
-    /// and playing parts give way to it.
+    /// B2), what is going on: "Choosing a shape brush: Ramp"; while a
+    /// brush's insides are edited (B3), "Editing Box_03 · Faces · 1 face
+    /// picked"; or for a moment why a change was put back. The saved and
+    /// playing parts give way to it.
     pub brushing: Option<String>,
 }
 
@@ -145,10 +147,7 @@ impl Workbench {
                 &self.viewport.snapping,
                 self.viewport.camera.kind == crate::camera::ViewKind::TwoD,
             ),
-            brushing: self
-                .viewport
-                .brushing
-                .status_words(self.viewport.snapping.grid_step),
+            brushing: self.brush_status(),
         }
     }
 

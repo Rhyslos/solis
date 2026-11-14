@@ -109,6 +109,15 @@ impl ShellCommand {
                 w.open.mixer.listening.all_muted,
             ),
             C::HeardAtOnce(n) => format!("Hear {n} sounds at once"),
+            C::EditBrushInsides if w.viewport.brushing.edit.is_some() => {
+                "Stop editing the brush's insides".to_owned()
+            }
+            C::BrushMode(mode) => format!("Pick the brush's {}", mode.name().to_lowercase()),
+            C::BrushSolid => on_off(
+                "Make the brush solid",
+                "Make the brush not solid",
+                w.edited_brush_solid().unwrap_or(false),
+            ),
             other => other.fixed_name().to_owned(),
         }
     }
@@ -140,6 +149,7 @@ impl ShellCommand {
             C::AddCamera => "Add camera",
             C::AddReverbZone => "Add reverb zone",
             C::ChooseShapeBrush => "Choose a shape brush",
+            C::EditBrushInsides => "Edit the brush's insides",
             C::NewTileMap => "New tile map",
             C::CreateAssembly => "Create assembly from selection",
             C::Play => "Play",
@@ -222,6 +232,8 @@ impl ShellCommand {
             | C::ScreenSnap
             | C::MuteGame
             | C::HeardAtOnce(_)
+            | C::BrushMode(_)
+            | C::BrushSolid
             | C::About => "",
         }
     }
@@ -299,6 +311,7 @@ impl ShellCommand {
             | C::ClearSolo
             | C::MuteGame
             | C::HeardAtOnce(_) => "Audio",
+            C::EditBrushInsides | C::BrushMode(_) | C::BrushSolid => "Brush",
             _ => "Home",
         }
     }
@@ -321,6 +334,8 @@ impl ShellCommand {
             C::SelectNone => "Esc",
             C::FoldShelf => "Ctrl+Space",
             C::ChooseShapeBrush => "B",
+            C::EditBrushInsides => "Tab",
+            C::BrushMode(mode) => mode.key().name(),
             C::UseTool(tool) => tool.key().name(),
             // The 2D editors' keys, which act where their tab is under
             // the pointer (`key_owner.rs`).
@@ -364,6 +379,20 @@ impl ShellCommand {
             C::NewTileMap => {
                 "A new tile map file in the Library's folder, to place in the area and paint"
             }
+            C::EditBrushInsides => {
+                "Edits the picked brush's points, edges and faces: pick them, then move, turn or \
+                 stretch them with the gizmo. Tab again (or Done) ends it"
+            }
+            C::BrushMode(crate::brushing::edit::Mode::Points) => {
+                "Clicks pick the brush's points (its corners)"
+            }
+            C::BrushMode(crate::brushing::edit::Mode::Edges) => {
+                "Clicks pick the brush's edges (where two faces meet)"
+            }
+            C::BrushMode(crate::brushing::edit::Mode::Faces) => {
+                "Clicks pick the brush's faces (its flat sides)"
+            }
+            C::BrushSolid => "Whether characters and bodies in the game collide with it",
             C::CreateAssembly => {
                 "Saves the selected entity, and everything under it, as an assembly in the project, \
                  and turns it into a copy of it"
