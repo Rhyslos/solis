@@ -644,4 +644,40 @@ icons! {
             "M5.5 4A6.5 6.5 0 0112 10.5",
             "M10 8.5l2 2 2-2",
         ];
+    // The brush list's (Tools 1a, B2; drawn on the approved mock-up
+    // `docs/design/tools-1/01-brush-list.png`).
+    /// A block with a corner folded in: Home › Create › Shape.
+    Shape = "shape", Line,
+        lines: ["M2.5 13.5h11v-5l-4-4h-7z", "M9.5 4.5v4h4"];
+    /// A box seen from above a corner: the Box shape brush.
+    ShapeBox = "shape-box", Line,
+        lines: ["M8 1.8l5.5 3v6.4L8 14.2 2.5 11.2V4.8z", "M2.5 4.8L8 7.8l5.5-3M8 7.8v6.4"];
+    /// A slope: the Ramp shape brush.
+    ShapeRamp = "shape-ramp", Line,
+        lines: [
+            "M1.5 12.5h10l3-2.5v-6l-3 2.5z",
+            "M1.5 12.5l10-6M11.5 6.5v6",
+            "M1.5 12.5L4.5 10l10-6",
+        ];
+    /// An upright drum: the Cylinder shape brush.
+    ShapeCylinder = "shape-cylinder", Line,
+        lines: [
+            "M3 4a5 2 0 1 0 10 0a5 2 0 1 0 -10 0z",
+            "M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4",
+        ];
+    /// A flight of steps: the Stairs shape brush.
+    ShapeStairs = "shape-stairs", Line,
+        lines: ["M2 14V11h3V8h3V5h3V2h3v12z"];
+    /// A doorway's round top: the Arch shape brush.
+    ShapeArch = "shape-arch", Line,
+        lines: ["M2 14V7.5a6 6 0 0112 0V14h-3V8a3 3 0 00-6 0v6z"];
+    /// A ball with its middle line: the Sphere shape brush.
+    ShapeSphere = "shape-sphere", Line,
+        lines: [
+            "M2 8a6 6 0 1 0 12 0a6 6 0 1 0 -12 0z",
+            "M2 8a6 2.2 0 1 0 12 0a6 2.2 0 1 0 -12 0z",
+        ];
+    /// A roof seen from its end: the Wedge shape brush.
+    ShapeWedge = "shape-wedge", Line,
+        lines: ["M1.5 12.5L6 4l8.5 2.5L10 13z", "M6 4l4 9"];
 }

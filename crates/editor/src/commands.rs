@@ -11,7 +11,7 @@ use crate::properties::AssemblyPart;
 use crate::properties::PropertyRequest;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::assembly::Expander;
-use area::builtin::{Light, LightKind, Model, Transform};
+use area::builtin::{Brush, Light, LightKind, Model, Transform};
 use area::text::{AreaFile, FileKind};
 use area::{Edit, EntityData, MergeKey};
 use glam::{Quat, Vec3};
@@ -400,17 +400,19 @@ impl Workbench {
                 }
                 let label = format!("Change {component}.{field}");
                 let merge = merge_key((entity, &component, &field), gesture);
-                self.command(
-                    &label,
+                // A brush's Made as makes its mesh again too (B2).
+                let made_as = (component == Brush::NAME && field == "shape")
+                    .then(|| self.made_as_edits(entity, &value))
+                    .flatten();
+                let edits = made_as.unwrap_or_else(|| {
                     vec![Edit::SetField {
                         entity,
                         component,
                         field,
                         value: Some(value),
-                    }],
-                    Some(merge),
-                    None,
-                );
+                    }]
+                });
+                self.command(&label, edits, Some(merge), None);
             }
             PropertyRequest::Rename { entity, name } => {
                 let merge = merge_key((entity, "name"), gesture);

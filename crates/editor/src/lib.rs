@@ -17,6 +17,7 @@ mod atlas_view;
 #[cfg(test)]
 mod audio_screen_tests;
 pub mod brushes;
+mod brushing;
 mod bus_view;
 pub mod camera;
 mod canvas_tools;
@@ -117,6 +118,7 @@ mod workbench_animate_tools;
 mod workbench_animator;
 mod workbench_atlas;
 mod workbench_audio_tools;
+mod workbench_brushes;
 mod workbench_frames;
 mod workbench_library;
 mod workbench_library_tools;

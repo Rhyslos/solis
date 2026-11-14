@@ -47,7 +47,9 @@ pub(crate) enum ShellCommand {
     AddSpotlight,
     AddCamera,
     AddReverbZone,
-    AddBoxBrush,
+    /// Opens the brush list (Tools 1a, B2): Home › Create › Shape, and B
+    /// over the 3D or 2D view.
+    ChooseShapeBrush,
     NewTileMap,
     CreateAssembly,
     SnapToGrid,
@@ -261,7 +263,7 @@ impl ShellCommand {
         C::AddSpotlight,
         C::AddCamera,
         C::AddReverbZone,
-        C::AddBoxBrush,
+        C::ChooseShapeBrush,
         C::NewTileMap,
         C::CreateAssembly,
         C::SnapToGrid,
@@ -556,8 +558,11 @@ impl ShellCommand {
             C::AddReverbZone => {
                 w.add_reverb_zone();
             }
-            C::AddBoxBrush => {
-                w.add_box_brush();
+            C::ChooseShapeBrush => {
+                // Brought into view first: the shape is drawn out there.
+                w.show_panel(crate::panel::Panel::Viewport);
+                let pointer = ctx.input(|i| i.pointer.latest_pos());
+                w.open_brush_list(pointer);
             }
             C::NewTileMap => {
                 let folder = w.open.library_state.folder.clone();

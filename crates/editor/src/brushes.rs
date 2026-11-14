@@ -26,6 +26,9 @@ pub struct BrushModel {
     pub model: assets::Model,
     /// How many triangles it has.
     pub triangles: usize,
+    /// Whether the brush's mesh couldn't be read, so it is drawn as
+    /// nothing (the Problems list names it, Tools 1a B2).
+    pub damaged: bool,
 }
 
 impl BrushModel {
@@ -78,6 +81,7 @@ impl BrushModel {
                 warnings: Vec::new(),
             },
             triangles,
+            damaged: brush.damaged,
         }
     }
 }
@@ -230,6 +234,15 @@ impl BrushModels {
     #[cfg(test)]
     pub(crate) fn made(&self) -> usize {
         self.made
+    }
+
+    /// The brushes whose mesh couldn't be read, in no particular order:
+    /// looked at again only when a brush may have changed.
+    pub(crate) fn damaged(&self) -> impl Iterator<Item = EntityId> + '_ {
+        self.by_entity
+            .iter()
+            .filter(|(_, model)| model.damaged)
+            .map(|(id, _)| *id)
     }
 
     /// How many brushes' values have been looked at since the start.

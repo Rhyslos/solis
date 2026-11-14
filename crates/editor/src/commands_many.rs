@@ -7,7 +7,7 @@ use crate::console::LogLevel;
 use crate::inspector::{degrees_of, rotation_of};
 use crate::workbench::Workbench;
 use area::Edit;
-use reflect::{ComponentData, EntityId, FieldKind, Value};
+use reflect::{Component, ComponentData, EntityId, FieldKind, Value};
 
 impl Workbench {
     /// Sets a field on every one of `entities` that has the component: the
@@ -62,13 +62,22 @@ impl Workbench {
                     }
                     _ => value.clone(),
                 };
-                (playing || new != *old).then(|| Edit::SetField {
-                    entity,
-                    component: component.to_string(),
-                    field: field.to_string(),
-                    value: Some(new),
+                (playing || new != *old).then(|| {
+                    // A brush's Made as makes its mesh again too (B2).
+                    let made_as = (component == area::builtin::Brush::NAME && field == "shape")
+                        .then(|| self.made_as_edits(entity, &new))
+                        .flatten();
+                    made_as.unwrap_or_else(|| {
+                        vec![Edit::SetField {
+                            entity,
+                            component: component.to_string(),
+                            field: field.to_string(),
+                            value: Some(new),
+                        }]
+                    })
                 })
             })
+            .flatten()
             .collect();
         let label = format!("Change {component}.{field} on {} entities", entities.len());
         let merge = merge_key((component, field, entities), gesture);

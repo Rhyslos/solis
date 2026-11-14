@@ -1,0 +1,14 @@
+# editor/src/brushing
+
+Making shape brushes (Tools 1a, B2; [decision 0111](../../../../docs/decisions/0111-tools-1-brushes-and-ground.md); the approved mock-ups [`01-brush-list.png` and `02-brush-draw.png`](../../../../docs/design/tools-1/README.md)): the brush list **B** opens, and drawing the shape taken out on the ground. `../brushing.rs` holds `Brushing` (the list and the drawing, kept by the viewport), what the status bar and the Hints card say, each shape's icon, and the counts a drawn-out shape starts with (`settings_for`).
+
+| File | What it does |
+| --- | --- |
+| `list.rs` | `List`, the brush list while open: the shape highlighted (B moves it down, wrapping), where it floats beside the pointer; `show` draws it over everything ("SHAPE BRUSHES", a row a shape with its icon, "B next · Space use · Esc close") and says whether a row was clicked or a click landed elsewhere. |
+| `draw.rs` | `Draw`, a brush being drawn out, as arithmetic: `update` takes each frame's mouse (`DrawInput`) and what the view shows (`DrawView`) and steps from waiting, to the footprint dragged (snapped to the grid unless Ctrl is held), to the height pulled up (`Lift`: up a line standing on the footprint's middle, or up the screen when the camera looks straight down), to a `Planned` brush on a click; a footprint or height of nothing makes nothing and says why (`Nothing`), and a right-click under way gives up. `Plane` is where the footprint lies: on the ground or on top of what's under the pointer, or a flat view's own plane (2D, Front, Right: one grid step deep, no height). The Ramp and Stairs are turned to climb the longer side from where the drag started (`climb`). Tests in `draw_tests.rs`. |
+| `ghost.rs` | What's drawn over the view meanwhile: the footprint and its corners, the shape's ghost (its few edges and faces, by the painter, never through the area's brushes), each size in metres beside its edge, the height's arrow, the steps at the top of the view and the keys at its foot. |
+| `surface.rs` | What a drag starts on: the first brush triangle (or model box) the pointer's ray meets, found once as the button goes down; each brush's box first, only the boxes hit tried triangle by triangle, nearest first. |
+| `tests.rs` | The counts a drawn-out shape starts with, the icons, and what the status bar and Hints say. |
+| `picture_tests.rs` | The list open and a box being drawn out, drawn for real in the sample project and held to their approved pictures (`crates/editor/tests/pictures/brush-list.png`, `brush-draw.png`). |
+
+The workbench's side (B, Space and Esc; the list drawn at the frame's end; the brush added as one undo step, named and picked; Made as making a brush again) is `../workbench_brushes.rs`, tested as a person uses it in `../workbench_brushes_tests.rs`; the Shape button is a line of `../shell/ribbons/home.rs`; the viewport hands the mouse over in `../viewport_view.rs` (`draw_out`).

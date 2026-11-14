@@ -25,6 +25,7 @@ impl Workbench {
         let known: HashSet<AssetId> = self.open.library.iter().filter_map(|i| i.id).collect();
         let assemblies: HashSet<AssetId> = self.open.assemblies.keys().copied().collect();
         let tile_gaps = self.viewport.sheets.tile_gaps();
+        let damaged_brushes: HashSet<reflect::EntityId> = self.open.brushes.damaged().collect();
         self.open.problems.refresh(
             print,
             &Sources {
@@ -34,6 +35,7 @@ impl Workbench {
                 known: &known,
                 assemblies: &assemblies,
                 tile_gaps: &tile_gaps,
+                damaged_brushes: &damaged_brushes,
             },
         );
     }

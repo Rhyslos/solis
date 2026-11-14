@@ -87,6 +87,10 @@ pub struct Status {
     /// What moves snap to and which axes the gizmo follows: "Snap 0.25 ·
     /// World" (spec 233).
     pub snap: String,
+    /// While the brush list is open or a brush is drawn out (Tools 1a,
+    /// B2), what is going on: "Choosing a shape brush: Ramp". The saved
+    /// and playing parts give way to it.
+    pub brushing: Option<String>,
 }
 
 impl Workbench {
@@ -141,6 +145,10 @@ impl Workbench {
                 &self.viewport.snapping,
                 self.viewport.camera.kind == crate::camera::ViewKind::TwoD,
             ),
+            brushing: self
+                .viewport
+                .brushing
+                .status_words(self.viewport.snapping.grid_step),
         }
     }
 
@@ -190,6 +198,10 @@ impl Workbench {
                     return;
                 }
                 part(ui, &Part::new(status.area.clone(), tokens::text_label()));
+                if let Some(brushing) = &status.brushing {
+                    part(ui, &Part::new(brushing.clone(), tokens::text_primary()));
+                    return;
+                }
                 part(ui, &status.saved);
                 if let Some(playing) = &status.playing {
                     part(ui, playing);

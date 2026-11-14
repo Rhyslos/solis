@@ -42,11 +42,13 @@ pub(crate) fn item(words: impl Into<Cow<'static, str>>, command: ShellCommand) -
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Control {
     /// Does a command when clicked. `lit` draws it as the thing in
-    /// force (Pause, while paused).
+    /// force (Pause, while paused); `keyed` shows its command's key small
+    /// beside its word (Shape B).
     Do {
         label: &'static str,
         command: ShellCommand,
         lit: bool,
+        keyed: bool,
     },
     /// A switch: a row with a box, ticked while it is on. With `steps`,
     /// the value after its "·" opens the list of steps (spec 172:
@@ -87,6 +89,19 @@ pub(crate) fn big(icon: Icon, label: &'static str, command: ShellCommand) -> Slo
         label,
         command,
         lit: false,
+        keyed: false,
+    };
+    (Shape::Big(icon), vec![Entry::Built(control)])
+}
+
+/// A large button that does `command`, its key small beside its word,
+/// lit while what it opened is in use (Home › Create › Shape).
+pub(crate) fn big_keyed(icon: Icon, label: &'static str, command: ShellCommand, lit: bool) -> Slot {
+    let control = Control::Do {
+        label,
+        command,
+        lit,
+        keyed: true,
     };
     (Shape::Big(icon), vec![Entry::Built(control)])
 }
@@ -113,6 +128,7 @@ pub(crate) fn row(label: &'static str, command: ShellCommand) -> Slot {
         label,
         command,
         lit: false,
+        keyed: false,
     };
     (Shape::Row(RowKind::Plain), vec![Entry::Built(control)])
 }
@@ -283,13 +299,21 @@ fn columns(ui: &Ui, group: &Group) -> Vec<Column> {
             Shape::Big(_) | Shape::Light(_) => {
                 // A working button whose word is longer than the button
                 // ("Eyedropper") is widened to show it whole.
-                let word = match entry {
-                    Entry::Built(Control::Do { label, .. }) => Some(*label),
-                    Entry::Built(Control::List { label, .. }) => Some(label.as_ref()),
-                    _ => None,
+                let (word, key) = match entry {
+                    Entry::Built(Control::Do {
+                        label,
+                        command,
+                        keyed,
+                        ..
+                    }) => (Some(*label), keyed.then(|| command.keys())),
+                    Entry::Built(Control::List { label, .. }) => (Some(label.as_ref()), None),
+                    _ => (None, None),
                 };
+                let key_w = key.map_or(0.0, |k| {
+                    size::RIBBON_KEY_GAP + width_of(ui, k, text::ribbon_key())
+                });
                 let words_w = word.map_or(0.0, |w| {
-                    width_of(ui, w, text::ribbon_label()) + 2.0 * size::RIBBON_BIG_WORD_PAD
+                    width_of(ui, w, text::ribbon_label()) + key_w + 2.0 * size::RIBBON_BIG_WORD_PAD
                 });
                 columns.push(Column {
                     width: size::RIBBON_BIG[0].max(words_w),
@@ -522,10 +546,11 @@ fn draw_slot(
                 label,
                 command,
                 lit,
+                keyed,
             },
             _,
         ) => {
-            let look = Look::of(*command, w, *lit);
+            let look = Look::of(*command, w, *lit).with_key(keyed.then(|| command.keys()));
             let response = match shape {
                 Shape::Big(icon) => controls::big(ui, spot, id, icon, label, &look, false).0,
                 Shape::Light(icon) => controls::big(ui, spot, id, icon, label, &look, true).0,

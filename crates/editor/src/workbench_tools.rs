@@ -174,6 +174,9 @@ impl Workbench {
                     );
                     self.open.area_panel.reveal = self.open.document.selection.primary();
                 }
+                ViewportEvent::BrushDrawn(planned) => {
+                    self.add_drawn_brush(planned);
+                }
                 ViewportEvent::Drop { asset, at, free } => {
                     let at = crate::placement::landing(at, &self.viewport.snapping, free);
                     self.place_dropped(asset, at, None);
@@ -246,10 +249,15 @@ impl Workbench {
             )
         });
         // Esc does one thing: the Library's drawer, while it's up, is
-        // tucked away by it (where the drawer is drawn); else a stroke, a
-        // copy held or a painting tool is given up; else a drag; and only
-        // then is nothing selected.
-        if escape && !self.paint_escape() && !self.viewport.tools.cancel() {
+        // tucked away by it (where the drawer is drawn); else a brush
+        // being drawn out is given up (the brush list closes in
+        // `brush_keys`); else a stroke, a copy held or a painting tool is
+        // given up; else a drag; and only then is nothing selected.
+        if escape
+            && !self.viewport.brushing.escape()
+            && !self.paint_escape()
+            && !self.viewport.tools.cancel()
+        {
             self.open.document.selection.clear();
         }
         if all {

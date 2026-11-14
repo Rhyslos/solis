@@ -19,6 +19,7 @@ pub(super) fn group(w: &Workbench) -> Group {
             label,
             command,
             lit: false,
+            keyed: false,
         };
         (Shape::Light(icon), vec![Entry::Built(control)])
     };
@@ -32,6 +33,7 @@ pub(super) fn group(w: &Workbench) -> Group {
             label: "Pause",
             command: C::Pause,
             lit: state == PlayState::Paused,
+            keyed: false,
         };
         slots.push((Shape::Big(Icon::Pause), vec![Entry::Built(pause)]));
         slots.push(big(Icon::Step, "Step", C::Step));

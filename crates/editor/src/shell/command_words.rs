@@ -139,7 +139,7 @@ impl ShellCommand {
             C::AddSpotlight => "Add spotlight",
             C::AddCamera => "Add camera",
             C::AddReverbZone => "Add reverb zone",
-            C::AddBoxBrush => "Add box brush",
+            C::ChooseShapeBrush => "Choose a shape brush",
             C::NewTileMap => "New tile map",
             C::CreateAssembly => "Create assembly from selection",
             C::Play => "Play",
@@ -320,6 +320,7 @@ impl ShellCommand {
             C::SelectAll => "Ctrl+A",
             C::SelectNone => "Esc",
             C::FoldShelf => "Ctrl+Space",
+            C::ChooseShapeBrush => "B",
             C::UseTool(tool) => tool.key().name(),
             // The 2D editors' keys, which act where their tab is under
             // the pointer (`key_owner.rs`).
@@ -356,9 +357,9 @@ impl ShellCommand {
                 "A camera where you're looking from: the game looks through the first one in the area"
             }
             C::AddReverbZone => "A place where sounds echo, at the point the camera looks at",
-            C::AddBoxBrush => {
-                "A solid box made in the editor, at the point the camera looks at: for blocking \
-                 out a level"
+            C::ChooseShapeBrush => {
+                "Opens the list of shape brushes beside the pointer: B moves down it and Space \
+                 takes one, to draw out on the ground. B over the 3D or 2D view opens it too"
             }
             C::NewTileMap => {
                 "A new tile map file in the Library's folder, to place in the area and paint"

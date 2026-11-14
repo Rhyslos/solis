@@ -21,6 +21,7 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
             label: each.name(),
             command: C::PaintWith(each),
             lit: paint.painting() && paint.tool == Some(each),
+            keyed: false,
         };
         (Shape::Big(each.icon()), vec![Entry::Built(control)])
     };
