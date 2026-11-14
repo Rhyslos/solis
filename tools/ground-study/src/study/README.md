@@ -11,3 +11,4 @@ The measurements behind [the report](../../../../docs/reports/ground-study.md). 
 | `solid.rs` | Each chunk's collider, and 2,000 characters walking over the whole ground. |
 | `frames.rs` | A dab's chunks made on the frame against on a worker, and the frame's own work while workers mesh. |
 | `gpu.rs` | With the `gpu` feature: uploads through the engine's renderer, and the report's pictures. |
+| [`worlds/`](worlds/README.md) | The open-worlds study's measurements and pictures (`-- worlds`, `-- worlds-pictures <folder>`). |

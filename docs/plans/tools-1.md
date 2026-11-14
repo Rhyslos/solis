@@ -74,7 +74,7 @@ In [docs/design/tools-1/](../design/tools-1/README.md), drawn in the design's la
 The project lead answered the study's questions on 2026-11-14 ([decision 0116](../decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)):
 
 - **The ground's file:** text settings plus binary 256 × 256 m region files.
-- **Its size:** 1 × 1 km in Tools 1b (2 × 2 km tested). Vast open worlds (20 km and more) come in a following "Open worlds" phase, planned by its own study.
+- **Its size:** 1 × 1 km in Tools 1b (2 × 2 km tested). Vast open worlds (20 km and more) come in a following "Open worlds" phase, planned by [its own study](../reports/open-worlds-study.md): big worlds are streamed and drawn coarser far away there, not in Tools 1b ([ROADMAP.md](../../ROADMAP.md#open-worlds-proposed), milestones W1 to W5, proposed).
 - **Its edges:** the ground just stops.
 - **Game code** may change everything the editor can.
 - **Painting** uses a palette of up to 256 ground kinds until materials exist.
