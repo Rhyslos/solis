@@ -11,9 +11,12 @@
 //!   figure that opens larger when clicked ([`crate::pictures`]);
 //! - three fenced blocks one after another, `lust`, `rust` and `lua`, are
 //!   one example with a switch between the languages
-//!   ([`mod@crate::examples`]).
+//!   ([`mod@crate::examples`]);
+//! - Lust, Rust and Lua are coloured as Ledger colours code
+//!   ([`mod@crate::colour`]).
 
 use crate::blocks::{Block, List, Table};
+use crate::colour;
 use crate::examples::{self, LANGUAGES};
 use crate::inline::{self, Places, escape};
 
@@ -205,7 +208,7 @@ impl<'a> Writer<'a> {
         for ((word, name), code) in LANGUAGES.iter().zip(codes) {
             self.out.push_str(&format!(
                 "<pre data-lang=\"{word}\" data-name=\"{name}\"><code>{}</code></pre>\n",
-                escape(code)
+                colour::code(word, code)
             ));
         }
         self.out.push_str("</div>\n");
@@ -272,7 +275,7 @@ impl<'a> Writer<'a> {
                 };
                 self.out.push_str(&format!(
                     "<pre{class}><code>{}</code></pre>\n",
-                    escape(text)
+                    colour::code(language, text)
                 ));
             }
             Block::List(list) => self.list(list),
