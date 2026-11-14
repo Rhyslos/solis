@@ -1,0 +1,38 @@
+# Tools 1b, G0: the ground study (CONTRIBUTING.md rule 22). Small working
+# versions of the ways a ground with caves could be stored and drawn,
+# measured against each other. The engine never depends on this crate;
+# its findings are in docs/reports/ground-study.md.
+#
+#     cargo run --release -p ground-study                  # the numbers
+#     WGPU_BACKEND=gl xvfb-run -a cargo run --release -p ground-study \
+#         --features gpu -- pictures docs/reports/ground-study  # pictures
+
+[package]
+name = "ground-study"
+description = "Tools 1b's ground study: voxel storage and meshing measured against each other"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[features]
+# Uploads through the engine's renderer and draws the report's pictures
+# with it (needs a graphics driver; Mesa's software one works).
+gpu = ["dep:render", "dep:assets", "dep:wgpu", "dep:pollster"]
+
+[dependencies]
+glam.workspace = true
+rayon.workspace = true
+flate2.workspace = true
+physics.workspace = true
+reflect.workspace = true
+render = { workspace = true, optional = true }
+assets = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
+
+[lints]
+workspace = true

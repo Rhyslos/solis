@@ -15,6 +15,8 @@ Each crate's `README.md` states its purpose and what it **must never** do. Read 
 
 Planned: a networking crate in a later phase. See ROADMAP.md.
 
+Outside the layers, three tools are workspace members so they build with the same libraries and checks: `tools/layer-check`, `tools/user-guide` (below) and `tools/ground-study`, Tools 1b's study of how to keep and draw the ground ([docs/reports/ground-study.md](docs/reports/ground-study.md)): prototypes of voxel storage and meshing and the program that measures them, which nothing in the program depends on.
+
 ## The area
 
 The editor edits a **area document** (`area::Area`): entities by stable random ID, each with a name, a parent, an order among its siblings, and components stored as plain values (`reflect::ComponentData`). A component's fields are described by a **schema** looked up by name in a `reflect::Registry`, so Properties draws any component (built-in, or a game's own in Lust, Lua or Rust, registered through `Workbench::register_component`) without knowing it, and a component nobody registered is kept untouched and shown as missing ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)). Built-in components (the 17 in `area::builtin::registry`, from `Transform`, `Light`, `Model` and `Environment` to `Sprite`, `TileMap` and `Screen`) are Rust structs that convert to and from their values.
