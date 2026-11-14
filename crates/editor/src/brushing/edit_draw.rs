@@ -94,23 +94,34 @@ fn pulled(ui: &Ui, view: Rect, camera: &Camera, (pull, mesh, world): (&Pull, &Me
         batch.face(mesh, face, &screen, fill);
     }
     ui.painter_at(view).add(Shape::mesh(batch.0));
-    // An extrude's distance below the part lowest on screen, as the
-    // mock-up draws it; an inset's border to the right of the part
-    // furthest right, clear of the keys at the foot.
-    let away = match pull.kind {
-        PullKind::Inset => vec2(1.0, 0.0),
-        PullKind::Extrude | PullKind::ExtrudeEdges => vec2(0.0, 1.0),
-    };
-    let furthest = pull
+    // Beside the moving part furthest out from the rest, square to its
+    // own line, so the measure stands clear of the brush as the mock-up
+    // draws it (below a side pulled sideways, beside a top pulled up).
+    let lines: Vec<(Pos2, Pos2)> = pull
         .moved()
         .filter_map(|(from, to)| Some((at(from)?, at(to)?)))
-        .max_by(|a, b| {
-            let reach = |(p, q): &(Pos2, Pos2)| (p.to_vec2() + q.to_vec2()).dot(away);
-            reach(a).total_cmp(&reach(b))
-        });
-    if let Some((from, to)) = furthest {
+        .collect();
+    let centre = lines
+        .iter()
+        .fold(egui::Vec2::ZERO, |sum, (_, to)| sum + to.to_vec2())
+        / lines.len().max(1) as f32;
+    let outward = |(from, to): &(Pos2, Pos2)| {
+        let along = *to - *from;
+        let square = if along.length() > 1e-3 {
+            along.normalized().rot90()
+        } else {
+            vec2(0.0, 1.0)
+        };
+        let middle = (from.to_vec2() + to.to_vec2()) / 2.0 - centre;
+        let away = if middle.dot(square) < 0.0 { -square } else { square };
+        (middle.dot(away), away)
+    };
+    let furthest = lines
+        .iter()
+        .max_by(|a, b| outward(a).0.total_cmp(&outward(b).0));
+    if let Some(line) = furthest {
         let words = format!("{:.2} m", pull.metres.abs());
-        measure(ui, (from, to), away, &words, accent);
+        measure(ui, *line, outward(line).1, &words, accent);
     }
 }
 
@@ -133,7 +144,11 @@ fn measure(ui: &Ui, (from, to): (Pos2, Pos2), away: egui::Vec2, words: &str, acc
     for end in [a, b] {
         painter.line_segment([end - tick, end + tick], stroke);
     }
-    let middle = a + (b - a) / 2.0 + down * if away.x != 0.0 { 4.0 } else { 2.0 };
+    // The label's box clear of the line, whichever way it stands off.
+    let width = widgets::width_of(ui, words, text::mono_small()) + 2.0 * size::FIELD_PAD;
+    let height = widgets::line_height(ui, &text::mono_small()) + size::FIELD_PAD;
+    let clear = away.x.abs() * width / 2.0 + away.y.abs() * height / 2.0;
+    let middle = a + (b - a) / 2.0 + away * (size::BRUSH_LABEL_OFFSET + clear);
     super::ghost::label(ui, middle, words, accent);
 }
 

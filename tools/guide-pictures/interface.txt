@@ -2,8 +2,10 @@
 # guide's pictures were last taken, with a hash of each (FNV-1a, 64 bits).
 # Written by tools/guide-pictures/take-pictures.sh; a test fails when they change.
 brush-draw.png 4f1ad2a57f0f49cb
-brush-edit-faces.png 77949abb6eba5bbc
-brush-edit-points.png 9f4ad7fb996d038d
+brush-edit-faces.png f983a4e0a184fd6e
+brush-edit-points.png 5e150ed530b4e37c
+brush-extrude.png 4e314a47f6867e19
+brush-inset.png db3c16218ca9eac8
 brush-list.png 37eb11c816a16f7a
 editor.png c4d838296d51d5f3
 home-area-and-assets-left.png 415ab56390e468b6
@@ -19,7 +21,7 @@ tab-audio.png dda17d6872266d7f
 tab-library.png ede86d725a39c60f
 tab-ui.png de4b522fa1882a53
 token-sheet.png 6b1f716a3202b855
-tool-bar-editing.png 3b60f358d202dfea
+tool-bar-editing.png dd88de125f763e02
 tool-bar-narrow.png 9b5840270d934d7f
 tool-bar.png 79ddfe66973a0fec
 widget-sheet.png 3add3c477c3021a0
