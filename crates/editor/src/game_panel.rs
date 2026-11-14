@@ -357,6 +357,7 @@ pub(crate) fn game_panel(
         // The game's own look, whatever the viewport uses.
         look: Look::default(),
         outline_px: 0.0,
+        dim_all_but: None,
         sun: scene.view.sun,
         lamps: scene.view.lamps.clone(),
         environment: scene.view.environment,

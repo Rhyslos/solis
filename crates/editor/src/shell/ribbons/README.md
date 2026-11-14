@@ -4,9 +4,10 @@ Each tab's ribbon as a small table of groups: what is on it, in what shape, and 
 
 | File | Tab | What is real on it |
 | --- | --- | --- |
-| `mod.rs` | | `of(tab, editor)` gives a tab's table (Home's is the tile map's while HOME TOOLS · Tile map is in front); the `group!` macro. File has a page instead of a ribbon. |
-| `home.rs` | Home | Edit (Undo, Redo), Create (Empty, Model, Sprite, Light, Camera, Tile map, More), the three snapping switches, Project (Save, Build). Lighting is unfinished. |
+| `mod.rs` | | `of(tab, editor)` gives a tab's table (Home's is the brush's while HOME TOOLS · Brush is in front, or the tile map's while HOME TOOLS · Tile map is); the `group!` macro. File has a page instead of a ribbon. |
+| `home.rs` | Home | Edit (Undo, Redo), Create (Empty, Model, whose list leads to Shape brush too, Sprite, Light, Camera, Shape, Tile map, More), the three snapping switches, Project (Save, Build). Lighting and the Trigger zone are unfinished. |
 | `library.rs` | Library | Import. The rest of the Library's working controls stay on its panel's own bar until the Library's screen is rebuilt. |
+| `brush.rs` | HOME TOOLS · Brush | While a brush's insides are edited (Tools 1a, B3): Edit (Points 1, Edges 2, Faces 3, Done Tab), Brush's Solid, Snapping (Grid, Angle). Shape's Extrude, Inset, Split, Delete (B4) and Brush's Material (B5) are unfinished. |
 | `tile_map.rs` | HOME TOOLS · Tile map | Paint (the five tools), what is in hand (the terrain or copy, Layer, Exact), Show (Map as, Values, Chunks, Walls), Copy (Flip X, Flip Y, Turn, Put away). |
 | `tileset.rs` | LIBRARY TOOLS · Tileset | Terrain (Add, Remove), Kind (the list, Save its template…), Picture (the tile size, Zoom). No Play group. |
 | `picture.rs` | LIBRARY TOOLS · Picture | Crop (Every tile, Delete), Grid (its size, Zoom). No Play group. |

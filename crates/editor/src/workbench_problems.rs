@@ -12,7 +12,8 @@ impl Workbench {
     /// changed.
     pub(crate) fn find_problems(&mut self) {
         use crate::problems::{Fingerprint, Sources};
-        let print = Fingerprint::of(&self.open.document, self.sources);
+        let print = Fingerprint::of(&self.open.document, self.sources)
+            .with_brushes(self.open.brushes.damaged_print());
         self.open.problems.refresh_between(
             self.open.document.revision(),
             self.open.pixels.pixels_per_unit,

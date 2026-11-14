@@ -166,8 +166,12 @@ pub const BRUSH_CORNER: f32 = 6.0;
 pub const BRUSH_LABEL_OFFSET: f32 = 18.0;
 /// Drawing a brush out: the height arrow's head, and the dot at its foot.
 pub const BRUSH_ARROW: [f32; 2] = [7.0, 3.0];
-/// Drawing a brush out: how far below the view's pills its steps are.
+/// Drawing a brush out: how far below the view's pills its steps are
+/// (and, while a brush's insides are edited, the text saying so).
 pub const BRUSH_STEPS_DROP: f32 = 22.0;
+/// The Brush card's boxes counting points, edges and faces: their height
+/// (the approved mock-up `03-brush-edit-faces.png`).
+pub const BRUSH_COUNT_H: f32 = 44.0;
 /// The placing hint strip's height (spec 254).
 pub const PLACE_HINT_H: f32 = 30.0;
 /// The placing hint strip's widest. Solis's own: room for its five keys.

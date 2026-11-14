@@ -228,10 +228,16 @@ Counts are at the end of this part.
 
 | id | Element | Mark | Driven by, or what the placeholder shows | Filled in |
 | --- | --- | --- | --- | --- |
-| `home.create.mesh` | Create › **Mesh** (spec 174) | PARTLY | Places a model from the project or runs Import model… (`WorkbenchAction::PlaceAsset`, `ImportModel`). Ready-made shapes (cube, sphere) don't exist: unbuilt piece `home.create.shapes` in the long-press list. Word: "Model" (D4). | not on the roadmap |
+| `home.create.mesh` | Create › **Mesh** (spec 174) | EXISTS | Places a model from the project or runs Import model… (`WorkbenchAction::PlaceAsset`, `ImportModel`). Ready-made shapes are shape brushes (Tools 1a): the long-press list's "Shape brush…" opens the brush list, as Create › Shape does. Word: "Model" (D4). | |
 | `home.create.light` | Create › **Light** | EXISTS | `MenuCommand` Add point light, Add spotlight (`menu_items.rs`) | |
 | `home.create.camera` | Create › **Camera** | EXISTS | `MenuCommand` Add camera | |
 | `home.create.volume` | Create › **Volume** | PARTLY | Adds an entity with a ReverbZone, the one volume Solis has. Unbuilt piece: `home.create.trigger` (a trigger zone) in the long-press list. | 2D 2: triggers |
+| `brush.shape.extrude` | HOME TOOLS · Brush › Shape › **Extrude** (Tools 1, mock-up 3) | PLACEHOLDER | A ribbon button, while a brush's insides are edited | Tools 1a, B4 |
+| `brush.shape.inset` | HOME TOOLS · Brush › Shape › **Inset** | PLACEHOLDER | A ribbon button | Tools 1a, B4 |
+| `brush.shape.split` | HOME TOOLS · Brush › Shape › **Split** | PLACEHOLDER | A ribbon button | Tools 1a, B4 |
+| `brush.shape.delete` | HOME TOOLS · Brush › Shape › **Delete** | PLACEHOLDER | A ribbon button; Delete and Backspace say it comes with the next update | Tools 1a, B4 |
+| `brush.ribbon.material` | HOME TOOLS · Brush › Brush › "Material ▾" | PLACEHOLDER | A ribbon row | Tools 1a, B5 |
+| `brush.card.material` | The Brush card's **Material** row (mock-up 3) | PLACEHOLDER | A field row | Tools 1a, B5 |
 | `home.create.long-press` | Long press opens a type list (spec 174) | EXISTS | (shell); a new mouse action: decision D15 | |
 | `home.snap.grid` | Snapping › "Grid · 0.25" (spec 175) | EXISTS | `transforming::Snapping`, `viewport_tools.rs` | |
 | `home.snap.angle` | Snapping › "Angle · 15°" | EXISTS | The same | |
@@ -614,12 +620,12 @@ The contextual tab is real (b.0); this user of it is not. Double-clicking a mode
 
 ### b.15 Counts
 
-332 elements: **124 EXISTS** (of which 40 are pure shell, built in this phase), **44 PARTLY**, **164 PLACEHOLDER**. By screen:
+338 elements: **125 EXISTS** (of which 40 are pure shell, built in this phase), **43 PARTLY**, **170 PLACEHOLDER**. By screen:
 
 | Screen | EXISTS | PARTLY | PLACEHOLDER |
 | --- | --- | --- | --- |
 | The shell | 18 | 6 | 4 |
-| 1 Home, level editor | 23 | 7 | 13 |
+| 1 Home, level editor | 24 | 6 | 19 |
 | 2 Home, placing | 11 | 4 | 12 |
 | 3 Library | 14 | 5 | 8 |
 | 4 Shading | 0 | 0 | 17 |

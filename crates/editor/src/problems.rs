@@ -184,6 +184,17 @@ pub(crate) fn between_pixels(
 }
 
 impl Fingerprint {
+    /// The same, with the brushes counted by `damaged` (a number standing
+    /// for which brushes couldn't be read) instead of by every change to
+    /// any brush: editing a brush's insides (Tools 1a, B3) changes no
+    /// problem, and the area isn't checked again for it.
+    pub(crate) fn with_brushes(self, damaged: u64) -> Self {
+        Self {
+            brushes: damaged,
+            ..self
+        }
+    }
+
     /// What problems in `document` depend on, with `sources` counting
     /// the changes to what it's checked against.
     pub(crate) fn of(document: &crate::document::Document, sources: u64) -> Self {

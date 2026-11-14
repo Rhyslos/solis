@@ -15,18 +15,23 @@ const KEEP_FRAMES: u64 = 120;
 /// The brushes' models on the GPU, by key.
 #[derive(Default)]
 pub(crate) struct BrushUploads {
-    /// Each model, and the frame it was last drawn in.
-    uploaded: HashMap<u64, (GpuModel, u64)>,
+    /// Each model, the frame it was last drawn in, and whether it is
+    /// passing (a brush being dragged by its parts, made anew each frame).
+    uploaded: HashMap<u64, (GpuModel, u64, bool)>,
     frame: u64,
 }
 
 impl BrushUploads {
-    /// Starts a frame: lets go of models no view has drawn for a while.
+    /// Starts a frame: lets go of models no view has drawn for a while,
+    /// and of a passing one as soon as a frame didn't draw it (Tools 1a,
+    /// B3: a drag makes one a frame, which must not pile up).
     pub(crate) fn begin_frame(&mut self) {
         self.frame += 1;
         let now = self.frame;
-        self.uploaded
-            .retain(|_, (_, drawn)| now.saturating_sub(*drawn) <= KEEP_FRAMES);
+        self.uploaded.retain(|_, (_, drawn, passing)| {
+            let keep = if *passing { 1 } else { KEEP_FRAMES };
+            now.saturating_sub(*drawn) <= keep
+        });
     }
 
     /// Uploads the models of `brushes` not on the GPU yet, and notes that
@@ -40,10 +45,11 @@ impl BrushUploads {
         for brush in brushes {
             let key = brush.model.key;
             match self.uploaded.get_mut(&key) {
-                Some((_, drawn)) => *drawn = self.frame,
+                Some((_, drawn, _)) => *drawn = self.frame,
                 None => {
                     let model = renderer.upload_model(device, queue, &brush.model.model);
-                    self.uploaded.insert(key, (model, self.frame));
+                    let passing = brush.model.passing;
+                    self.uploaded.insert(key, (model, self.frame, passing));
                 }
             }
         }
@@ -55,12 +61,14 @@ impl BrushUploads {
         brushes: &'a [ViewBrush],
     ) -> impl Iterator<Item = Placement<'a>> + 'a {
         brushes.iter().filter_map(|b| {
-            self.uploaded.get(&b.model.key).map(|(model, _)| Placement {
-                model,
-                node: None,
-                transform: b.transform,
-                pick: b.pick,
-            })
+            self.uploaded
+                .get(&b.model.key)
+                .map(|(model, _, _)| Placement {
+                    model,
+                    node: None,
+                    transform: b.transform,
+                    pick: b.pick,
+                })
         })
     }
 }

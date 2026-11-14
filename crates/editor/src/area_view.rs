@@ -349,6 +349,21 @@ impl AreaView {
         }
     }
 
+    /// Gives each brush shown the model `brushes` holds for it now, after
+    /// only brushes' own values changed (Tools 1a, B3): nothing else is
+    /// worked out again.
+    pub(crate) fn refresh_brush_models(&mut self, brushes: &crate::brushes::BrushModels) {
+        for shown in &mut self.brushes {
+            if let Some(model) = brushes.get(shown.entity)
+                && model.key != shown.model.key
+            {
+                self.triangles =
+                    self.triangles.saturating_sub(shown.model.triangles) + model.triangles;
+                shown.model = std::sync::Arc::clone(model);
+            }
+        }
+    }
+
     /// Adds the running `world`'s brushes, each `t` of the way between the
     /// last tick and the next, drawn with `brushes`' models (the editor's,
     /// made from the area the game started from: game code doesn't change

@@ -126,6 +126,14 @@ pub(crate) enum PropertyRequest {
     OpenCode(String),
     /// Turn hints off (the Hints card's "Turn hints off").
     HintsOff,
+    /// Stretch a brush about its middle to a size, in metres (the Brush
+    /// card's Size; Tools 1a, B3).
+    BrushSize {
+        /// The entity.
+        entity: EntityId,
+        /// Its new size.
+        size: glam::Vec3,
+    },
     /// Put a component's fields back to their starting values.
     ResetComponent {
         /// The entities.
@@ -155,6 +163,10 @@ pub(crate) struct AssemblyPart {
 pub(crate) struct Help<'a> {
     /// Each game code component's file and line.
     pub places: Option<&'a BTreeMap<String, (String, u32)>>,
+    /// What the Brush card shows that a brush's values don't say outright
+    /// (its counts and size, what's picked while it is edited; Tools 1a,
+    /// B3), for the entity Properties shows.
+    pub brush: Option<&'a crate::brushing::card::BrushFacts>,
 }
 
 /// While the game plays: game code's values as they are now (for the
@@ -405,6 +417,13 @@ impl Card<'_> {
             .filter_map(|&e| area.get(e))
             .filter_map(|d| d.components.get(component))
             .collect();
+        if component == <area::builtin::Brush as reflect::Component>::NAME
+            && !many
+            && let Some(facts) = self.help.brush
+        {
+            self.brush_card(ui, (schema, data), facts, requests);
+            return;
+        }
         for change in inspector::fields(
             ui,
             schema,
@@ -443,6 +462,47 @@ impl Card<'_> {
         }
         if component == "Model" {
             cards::model_rows_to_come(ui);
+        }
+    }
+}
+
+impl Card<'_> {
+    /// The Brush card's rows (`brushing::card`), and what changing them
+    /// asks for.
+    fn brush_card(
+        &self,
+        ui: &mut Ui,
+        brush: (&reflect::ComponentSchema, &reflect::ComponentData),
+        facts: &crate::brushing::card::BrushFacts,
+        requests: &mut Vec<PropertyRequest>,
+    ) {
+        use crate::brushing::card::CardChange;
+        let entity = self.selected[0];
+        let component = <area::builtin::Brush as reflect::Component>::NAME.to_owned();
+        let changes =
+            crate::brushing::card::rows(ui, brush, facts, self.assets, self.document.area());
+        for change in changes {
+            requests.push(match change {
+                CardChange::Size(size) => PropertyRequest::BrushSize { entity, size },
+                CardChange::Field(FieldChange::Set { field, value, .. }) => {
+                    PropertyRequest::SetField {
+                        entity,
+                        component: component.clone(),
+                        field,
+                        value,
+                    }
+                }
+                CardChange::Field(FieldChange::Revert(field)) => PropertyRequest::RevertField {
+                    entity,
+                    component: component.clone(),
+                    field,
+                },
+                CardChange::Field(FieldChange::Apply(field)) => PropertyRequest::ApplyField {
+                    entity,
+                    component: component.clone(),
+                    field,
+                },
+            });
         }
     }
 }

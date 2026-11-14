@@ -56,6 +56,8 @@
 - **Brush list:** the list of shapes a brush can start as (Box, Ramp, Cylinder, Stairs, Arch, Sphere, Wedge), opened with `B` over the view or Home's **Shape** button. See [Brushes](brushes.md).
 - **Drawing out:** making a brush with the mouse: drag its **footprint** (the shape's outline on the ground, its two sides), then move the mouse up for its height and click. See [Brushes](brushes.md).
 - **Mesh:** a shape made of **points** joined into flat **faces**, each face's sides being its **edges**. Models and brushes are meshes; a brush's faces can have any number of corners, and are cut into triangles to draw.
+- **Point, edge, face:** the parts of a mesh. A **point** (a corner, also called a vertex) is one spot; an **edge** is the straight side between two points, where two faces meet; a **face** is one flat side, its edges all the way round. Editing a brush's insides moves these. A face is **bent** when its corners aren't all on one flat plane: allowed, and cut into triangles to draw. See [Brushes](brushes.md).
+- **Editing a brush's insides:** working on a brush's points, edges or faces instead of the whole brush, started with `Tab`. See [Brushes](brushes.md).
 - **Block-out:** a first, rough version of a level made of simple shapes, to try how it plays before anything is modelled.
 - **Instance:** one copy of a mesh drawn somewhere. A mesh used many times (a crate in a hundred places) is stored once and drawn as many instances, which is much faster than storing a hundred crates.
 

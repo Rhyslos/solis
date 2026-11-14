@@ -416,6 +416,11 @@ impl Viewport {
         overlay.hovered = None;
         overlay.pointer = None;
         overlay.input = crate::tile_paint::PaintInput::default();
+        // The brush part under the pointer is found anew each frame, by
+        // the view the pointer is in (Tools 1a, B3).
+        if let Some(edit) = self.brushing.edit.as_mut() {
+            edit.hovered = None;
+        }
         let mut next = self.active;
         if !busy
             && poked

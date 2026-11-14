@@ -723,3 +723,33 @@ fn over_properties_showing_the_screen_the_keys_are_the_screen_s() {
     h.run();
     assert_ne!(area_now(&h.state().0), before, "the Crate went");
 }
+
+#[test]
+fn over_the_canvas_one_two_and_three_pick_its_tools_even_while_a_brush_is_edited() {
+    use crate::brushing::edit::{Editing, Mode};
+    use crate::canvas_tools::CanvasTool;
+    let mut h = pointer_over(Panel::Canvas);
+    // A brush's insides being edited (Tools 1a, B3), on Home.
+    let w = &mut h.state_mut().0;
+    let brush =
+        w.spawn_selected(area::EntityData::new("Box_01").with(&area::builtin::Brush::default()));
+    w.viewport.brushing.edit = Some(Editing::new(brush, w.open.document.history().state()));
+    let canvas = body_of(&h, Panel::Canvas);
+    h.hover_at(canvas.center());
+    h.run();
+    for (key, tool) in [
+        (egui::Key::Num2, CanvasTool::Box),
+        (egui::Key::Num3, CanvasTool::Ellipse),
+        (egui::Key::Num1, CanvasTool::Select),
+    ] {
+        h.key_press(key);
+        h.run();
+        let w = &h.state().0;
+        assert_eq!(w.open.screen_doc.as_ref().unwrap().tool, tool);
+        let mode = w.viewport.brushing.edit.as_ref().map(|e| e.mode);
+        assert!(
+            mode.is_none() || mode == Some(Mode::Faces),
+            "the brush's mode stays"
+        );
+    }
+}

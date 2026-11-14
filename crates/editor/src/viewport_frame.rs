@@ -35,6 +35,10 @@ pub struct ViewportView {
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.
     pub outline_px: f32,
+    /// The pick number of the one model or brush drawn as it is while
+    /// every other is dimmed: the brush whose insides are being edited
+    /// (Tools 1a, B3).
+    pub dim_all_but: Option<u32>,
     /// The sun, if the area has one.
     pub sun: Option<ViewLight>,
     /// The other lights.
@@ -282,6 +286,13 @@ impl Viewport {
             brushes: self.area.brushes.clone(),
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
+            dim_all_but: self.brushing.edit.as_ref().and_then(|edit| {
+                self.area
+                    .brushes
+                    .iter()
+                    .find(|b| b.entity == edit.entity && b.pick > 0)
+                    .map(|b| b.pick)
+            }),
             sun: self.area.sun,
             lamps: self.area.lamps.clone(),
             environment: if self.camera.is_flat() {

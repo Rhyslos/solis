@@ -89,6 +89,10 @@ pub struct Shading {
     pub bands: u32,
     /// The stylized look's outline width in pixels; 0 for none.
     pub outline_px: f32,
+    /// The pick number of the one placement drawn as it is while every
+    /// other model is dimmed (a brush whose insides are being edited,
+    /// Tools 1a B3); 0 dims nothing.
+    pub focus: u32,
 }
 
 impl Default for Shading {
@@ -97,6 +101,7 @@ impl Default for Shading {
             look: Look::Standard,
             bands: 3,
             outline_px: 0.0,
+            focus: 0,
         }
     }
 }
@@ -258,7 +263,8 @@ impl FrameUniforms {
                 } else {
                     0.0
                 },
-                0.0,
+                // Exact as a float up to 16 million placements.
+                params.shading.focus.min(1 << 24) as f32,
             ],
             screen: [params.size_px[0] as f32, params.size_px[1] as f32, 0.0, 0.0],
             sun_view_proj: light.sun_view_projection.to_cols_array_2d(),
@@ -390,6 +396,7 @@ mod tests {
             look: Look::Stylized,
             bands: 2,
             outline_px: 3.0,
+            focus: 0,
         };
         let u = FrameUniforms::new(&p, &FrameLight::default());
         assert_eq!(u.shading, [1.0, 2.0, 3.0, 0.0]);
@@ -405,9 +412,18 @@ mod tests {
             look: Look::Stylized,
             bands: 999,
             outline_px: f32::INFINITY,
+            focus: u32::MAX,
         };
         let u = FrameUniforms::new(&p, &FrameLight::default());
         assert_eq!(u.shading[1], 8.0);
+        // A focus kept where a float holds it exactly (a brush being
+        // edited dims every other model, Tools 1a B3).
+        assert_eq!(u.shading[3], (1u32 << 24) as f32);
+        p.shading.focus = 7;
+        assert_eq!(
+            FrameUniforms::new(&p, &FrameLight::default()).shading[3],
+            7.0
+        );
         assert_eq!(u.shading[2], 16.0);
     }
 }

@@ -10,7 +10,7 @@ use crate::transforming::{Targets, moved, snapped, snapped_in_2d, targets_placed
 use crate::viewport::Tool;
 use crate::viewport_tools::{Outline, ViewportEvent};
 use crate::workbench::Workbench;
-use area::builtin::{Model, Transform};
+use area::builtin::{Brush, Model, Transform};
 use reflect::Component;
 
 impl Workbench {
@@ -24,6 +24,10 @@ impl Workbench {
             Tool::Scale => GizmoTool::Scale,
             Tool::Transform => GizmoTool::All,
         };
+        if self.viewport.brushing.edit.is_some() {
+            // On the parts picked (Tools 1a, B3).
+            return self.part_gizmo(tool);
+        }
         let world = self.open.document.world_matrices();
         let t = targets_placed(
             self.open.document.area(),
@@ -39,16 +43,18 @@ impl Workbench {
     }
 
     /// What the selection's outline goes around: each selected model's
-    /// box, or a point for anything else; and each selected collider's
-    /// shape.
+    /// box, a brush's own edges, or a point for anything else; and each
+    /// selected collider's shape. A brush whose insides are edited draws
+    /// its own edges instead.
     fn outlines(&self, hidden: &std::collections::HashSet<reflect::EntityId>) -> Vec<Outline> {
         let area = self.open.document.area();
         let placed = self.open.document.world_matrices();
+        let edited = self.viewport.brushing.edit.as_ref().map(|e| e.entity);
         self.open
             .document
             .selection
             .iter()
-            .filter(|id| !hidden.contains(id))
+            .filter(|id| !hidden.contains(id) && Some(*id) != edited)
             .flat_map(|id| {
                 let Some(entity) = area.get(id) else {
                     return Vec::new();
@@ -59,13 +65,22 @@ impl Workbench {
                     .and_then(|m| m.asset)
                     .filter(|r| r.part.is_none())
                     .and_then(|r| self.open.models.get(&r.asset));
-                let mut marks = vec![match whole_model {
-                    Some(info) => Outline::Box {
+                let brush = self
+                    .open
+                    .brushes
+                    .get(id)
+                    .filter(|_| entity.has(Brush::NAME));
+                let mut marks = vec![match (whole_model, brush) {
+                    (Some(info), _) => Outline::Box {
                         world,
                         min: info.min,
                         max: info.max,
                     },
-                    None => match self.sprite_box(entity) {
+                    (None, Some(brush)) => Outline::Lines {
+                        world,
+                        lines: brush.edge_lines(),
+                    },
+                    (None, None) => match self.sprite_box(entity) {
                         Some((min, max)) => Outline::Box { world, min, max },
                         None => Outline::Point(world.w_axis.truncate()),
                     },
@@ -136,6 +151,9 @@ impl Workbench {
     /// Carries out what the viewport's tools did this frame.
     pub(crate) fn tool_events(&mut self) {
         for event in std::mem::take(&mut self.viewport.tools.events) {
+            if self.viewport.brushing.edit.is_some() && self.part_event(&event) {
+                continue;
+            }
             match event {
                 ViewportEvent::GizmoStart => {
                     let world = self.open.document.world_matrices();
@@ -177,6 +195,8 @@ impl Workbench {
                 ViewportEvent::BrushDrawn(planned) => {
                     self.add_drawn_brush(planned);
                 }
+                // Only while a brush's insides are edited (above).
+                ViewportEvent::Parts { .. } => {}
                 ViewportEvent::Drop { asset, at, free } => {
                     let at = crate::placement::landing(at, &self.viewport.snapping, free);
                     self.place_dropped(asset, at, None);
@@ -192,6 +212,21 @@ impl Workbench {
                 }
             }
         }
+    }
+
+    /// Carries out `event` on the brush whose insides are edited (Tools
+    /// 1a, B3): a gizmo drag of its parts, or a click or box picking
+    /// them. Whether it was one of those.
+    fn part_event(&mut self, event: &ViewportEvent) -> bool {
+        match event {
+            ViewportEvent::GizmoStart => self.part_drag_start(),
+            ViewportEvent::GizmoChange { change, flip } => self.part_drag_change(*change, *flip),
+            ViewportEvent::GizmoEnd => self.part_drag_end(),
+            ViewportEvent::GizmoCancel => self.part_drag_cancel(),
+            ViewportEvent::Parts { hits, how } => self.pick_parts(hits, *how),
+            _ => return false,
+        }
+        true
     }
 
     /// Sets every target's transform for `change` (or back to where it
@@ -258,7 +293,11 @@ impl Workbench {
             && !self.paint_escape()
             && !self.viewport.tools.cancel()
         {
-            self.open.document.selection.clear();
+            match self.viewport.brushing.edit.as_mut() {
+                // While a brush's insides are edited: its parts.
+                Some(edit) => edit.picked.clear(),
+                None => self.open.document.selection.clear(),
+            }
         }
         if all {
             self.select_all();

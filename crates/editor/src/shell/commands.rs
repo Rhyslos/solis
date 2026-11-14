@@ -50,6 +50,14 @@ pub(crate) enum ShellCommand {
     /// Opens the brush list (Tools 1a, B2): Home › Create › Shape, and B
     /// over the 3D or 2D view.
     ChooseShapeBrush,
+    /// Starts or ends editing the picked brush's insides (Tools 1a, B3):
+    /// Tab, and HOME TOOLS · Brush › Done.
+    EditBrushInsides,
+    /// Picks points, edges or faces while a brush's insides are edited
+    /// (1, 2, 3).
+    BrushMode(crate::brushing::edit::Mode),
+    /// Makes the brush being edited solid, or not.
+    BrushSolid,
     NewTileMap,
     CreateAssembly,
     SnapToGrid,
@@ -237,7 +245,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 138] = [
+    pub(crate) const ALL: [Self; 143] = [
         C::NewProject,
         C::OpenProject,
         C::RecentProjects,
@@ -264,6 +272,11 @@ impl ShellCommand {
         C::AddCamera,
         C::AddReverbZone,
         C::ChooseShapeBrush,
+        C::EditBrushInsides,
+        C::BrushMode(crate::brushing::edit::Mode::Points),
+        C::BrushMode(crate::brushing::edit::Mode::Edges),
+        C::BrushMode(crate::brushing::edit::Mode::Faces),
+        C::BrushSolid,
         C::NewTileMap,
         C::CreateAssembly,
         C::SnapToGrid,
@@ -431,6 +444,11 @@ impl ShellCommand {
                 }
             }
             C::FoldShelf => when(!w.shell.covers_center(), "This tab has no shelf"),
+            C::EditBrushInsides => w.why_not_edit_brush(),
+            C::BrushMode(_) | C::BrushSolid => when(
+                w.viewport.brushing.edit.is_some(),
+                "Pick one brush and press Tab first",
+            ),
             C::NewInLibrary(_) => when(project, "Open or make a project first (File)"),
             C::PlacePicked => when(
                 w.picked_placeable().is_some(),
@@ -506,6 +524,7 @@ impl ShellCommand {
         Some(match self {
             C::SnapToGrid => w.viewport.snapping.grid,
             C::SnapAngles => w.viewport.snapping.angle,
+            C::BrushSolid => w.edited_brush_solid()?,
             C::SnapScale => w.viewport.snapping.scale,
             C::ViewportTools => w.viewport.overlays.tools,
             C::ViewportSnapping => w.viewport.overlays.snapping,
@@ -568,6 +587,9 @@ impl ShellCommand {
                 let folder = w.open.library_state.folder.clone();
                 w.new_tile_map(&folder);
             }
+            C::EditBrushInsides => w.toggle_brush_editing(),
+            C::BrushMode(mode) => w.brush_mode(mode),
+            C::BrushSolid => w.switch_edited_brush_solid(),
             C::SnapToGrid => w.viewport.snapping.grid ^= true,
             C::SnapAngles => w.viewport.snapping.angle ^= true,
             C::SnapScale => w.viewport.snapping.scale ^= true,

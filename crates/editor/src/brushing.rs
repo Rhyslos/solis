@@ -14,16 +14,27 @@
 //!   step deep. What is drawn over the view while it happens is
 //!   [`ghost`]; where a drag starts on top of a brush is [`surface`].
 //!
+//! - **Editing the insides** ([`edit`], Tools 1a B3): **Tab** with one
+//!   brush picked, then **1**, **2** and **3** for points, edges and
+//!   faces; picking them ([`parts`]), moving, turning and stretching them
+//!   with the gizmo ([`reshape`]), what's drawn over the view meanwhile
+//!   ([`edit_draw`]) and the Brush card ([`card`]).
+//!
 //! The viewport keeps this state ([`Brushing`]) and reports a brush drawn
 //! as a [`crate::viewport_tools::ViewportEvent::BrushDrawn`]; the
 //! workbench adds it as one undo step (`workbench_brushes.rs`). Nothing
 //! here walks the area: opening and stepping the list cost the same in
 //! any area, and drawing out tests what's under the pointer once, as a
-//! drag starts.
+//! drag starts; editing tries only the brush being edited.
 
+pub(crate) mod card;
 pub(crate) mod draw;
+pub(crate) mod edit;
+pub(crate) mod edit_draw;
 pub(crate) mod ghost;
 pub(crate) mod list;
+pub(crate) mod parts;
+pub(crate) mod reshape;
 pub(crate) mod surface;
 
 use crate::icons::Icon;
@@ -37,7 +48,16 @@ pub(crate) struct Brushing {
     pub(crate) list: Option<list::List>,
     /// The shape taken from the list, while it is drawn out.
     pub(crate) draw: Option<draw::Draw>,
+    /// The brush whose insides are being edited (B3).
+    pub(crate) edit: Option<edit::Editing>,
+    /// Something the status bar says for a moment (why a change was put
+    /// back, that Made as replaced the edits), and when it was said.
+    pub(crate) note: Option<(String, std::time::Instant)>,
 }
+
+/// How long a note stays in the status bar, in seconds: as long as what
+/// a click on an unfinished part says.
+const NOTE_FOR: f64 = crate::unbuilt::SAID_FOR;
 
 impl Brushing {
     /// Whether the list is open or a brush is being drawn out: the Shape
@@ -50,6 +70,19 @@ impl Brushing {
     /// nothing. Whether there was anything to close.
     pub(crate) fn escape(&mut self) -> bool {
         self.list.take().is_some() || self.draw.take().is_some()
+    }
+
+    /// Says `words` in the status bar for a moment.
+    pub(crate) fn tell(&mut self, words: impl Into<String>) {
+        self.note = Some((words.into(), std::time::Instant::now()));
+    }
+
+    /// What was said, while it is still shown.
+    pub(crate) fn note_now(&self) -> Option<&str> {
+        self.note
+            .as_ref()
+            .filter(|(_, at)| at.elapsed().as_secs_f64() < NOTE_FOR)
+            .map(|(words, _)| words.as_str())
     }
 
     /// What the status bar says while the list is open or a brush is
@@ -65,6 +98,15 @@ impl Brushing {
     /// being drawn out. Keys are in backticks, which the card draws as
     /// keycaps.
     pub(crate) fn hint(&self, grid: f32) -> Option<String> {
+        if self.edit.is_some() {
+            return Some(
+                "Editing a brush's insides: `1` picks points, `2` edges, `3` faces. Click one, \
+                 `Ctrl` + click to add or take away, or drag a box. Move, turn or stretch them \
+                 with the gizmo (`W`, `R`, `S`); `Ctrl` turns snapping off for one drag. \
+                 `Tab` when done."
+                    .to_owned(),
+            );
+        }
         if self.list.is_some() {
             return Some(
                 "Shape brushes are blocks you build a level from: floors, walls, ramps, stairs. \

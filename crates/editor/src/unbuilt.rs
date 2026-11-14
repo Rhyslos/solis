@@ -31,8 +31,8 @@ mod table;
 
 pub use draw::{
     RowKind, card, chip, column, corner, field_row, icon_button, link, menu_item, ribbon_big,
-    ribbon_row, ribbon_row_width, setting_row, shelf_tab, status_item, sub_tab, tab, template,
-    tool,
+    ribbon_big_width, ribbon_row, ribbon_row_width, setting_row, shelf_tab, status_item, sub_tab,
+    tab, template, tool,
 };
 pub use page::{PageAnswer, page};
 pub use table::{ALL, UnbuiltId};
@@ -83,13 +83,15 @@ pub enum Phase {
     ThreeD4,
     /// Bounced light.
     ThreeD5,
+    /// Shape brushes.
+    Tools1a,
     /// No phase of the roadmap builds it yet.
     NotPlanned,
 }
 
 impl Phase {
     /// Every phase.
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::Shared2,
         Self::Shared3,
         Self::Shared4,
@@ -109,6 +111,7 @@ impl Phase {
         Self::ThreeD3,
         Self::ThreeD4,
         Self::ThreeD5,
+        Self::Tools1a,
         Self::NotPlanned,
     ];
 
@@ -137,6 +140,7 @@ impl Phase {
             Self::ThreeD3 => "3D 3: Night, clouds and shadows",
             Self::ThreeD4 => "3D 4: Lamps, fog and reflections",
             Self::ThreeD5 => "3D 5: Bounced light",
+            Self::Tools1a => "Tools 1a: Shape brushes",
             Self::NotPlanned => return None,
         })
     }

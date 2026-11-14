@@ -29,15 +29,22 @@ pub fn pill(ui: &mut Ui, label: &str) -> Response {
 
 /// The hint over the bottom middle of `view` while a tool is in use: each
 /// key as a keycap and what it does after it ("Drag paint · Esc give
-/// up"), on the label box's dark fill. Only today's keys are named.
-/// Returns where it was drawn.
+/// up"), on the label box's dark fill. Keys held together are written
+/// "Ctrl + Click" and drawn as a keycap each. Only today's keys are
+/// named. Returns where it was drawn.
 pub fn key_hints(ui: &mut Ui, view: egui::Rect, keys: &[(&str, &str)]) -> egui::Rect {
     let cap = |key: &str| {
         (width_of(ui, key, text::mono_small()) + 2.0 * size::FIELD_PAD).max(size::KEYCAP)
     };
+    let caps = |keys: &str| {
+        keys.split(" + ")
+            .map(|key| cap(key) + size::GAP)
+            .sum::<f32>()
+            - size::GAP
+    };
     let width: f32 = keys
         .iter()
-        .map(|(key, what)| cap(key) + width_of(ui, what, text::ui()) + 3.0 * size::GAP)
+        .map(|(key, what)| caps(key) + width_of(ui, what, text::ui()) + 3.0 * size::GAP)
         .sum::<f32>()
         + 2.0 * size::PILL_PAD
         - size::GAP;
@@ -65,7 +72,9 @@ pub fn key_hints(ui: &mut Ui, view: egui::Rect, keys: &[(&str, &str)]) -> egui::
         if index > 0 {
             row.add_space(size::GAP);
         }
-        super::keycap::keycap(&mut row, key, super::keycap::KeycapState::Bound);
+        for key in key.split(" + ") {
+            super::keycap::keycap(&mut row, key, super::keycap::KeycapState::Bound);
+        }
         row.label(
             egui::RichText::new(*what)
                 .font(text::ui())

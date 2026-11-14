@@ -95,11 +95,18 @@ fn marked_words(ui: &Ui, rect: Rect, left: f32, label: &str, font: FontId, colou
     );
 }
 
+/// How wide [`ribbon_big`] draws `id`: a large button's width, or wider
+/// to show its name whole, as a working button is ("Trigger zone").
+pub fn ribbon_big_width(ui: &Ui, id: UnbuiltId) -> f32 {
+    let words = width_of(ui, get(id).name, text::ribbon_label()) + 2.0 * size::RIBBON_BIG_WORD_PAD;
+    size::RIBBON_BIG[0].max(words)
+}
+
 /// A large ribbon button that isn't built: its icon over its name, the
 /// mark in its top right corner.
 pub fn ribbon_big(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> Response {
     let part = begin(ui, id);
-    let [width, height] = size::RIBBON_BIG;
+    let (width, height) = (ribbon_big_width(ui, id), size::RIBBON_BIG[1]);
     let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::click());
     if ui.is_rect_visible(rect) {
         // The icon, a gap and the label, together in the middle.

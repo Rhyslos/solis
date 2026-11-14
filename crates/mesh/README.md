@@ -12,6 +12,7 @@ Polygon meshes: the data structure brushes are made of, how its parts connect, t
 - **Operations as plain functions** (`edit`): moving points, extruding and insetting faces, extruding border edges, setting materials. Each takes the mesh and ids, and works on the ids that are still there.
 - **Cutting into triangles** (`triangulate`, `flat`): any face, bent or dented, cut the same way every time; `flat_triangles` gives a brush's triangles to draw flat, `solid_triangles` the same triangles over shared points for physics.
 - **Checking** (`MeshReport`): open borders, faces facing the wrong way, edges shared by three faces, faces with no area.
+- **Staying whole** (`intact::check_moved`): after some points move, whether any face that uses them would fold over itself, flatten to nothing, or pass through another face (Tools 1a, B3). Only the faces touching what moved are looked at, and passing through is found with a grid of boxes, so it costs the same in a big brush when a few parts move. A face left bent is fine.
 - **Shapes** (`shapes`): Box, Ramp, Cylinder, Stairs, Arch, Sphere and Wedge, in metres, each filling the box its size gives, standing on the ground, closed and facing out, every setting within limits (`ShapeSettings::clamped`: 1 cm to 10 km a side, 3 to 64 sides, 1 to 64 steps). The plain primitives the round ones are built on are in `primitives` (in the mesh's own units).
 
 ## Must never
@@ -31,4 +32,4 @@ Copied from Aventail's mesh crate, the project lead's own 3D modelling program, 
 
 ## Status
 
-Tools 1a, B1: the mesh, its topology, attribute layers and builder, triangulation and shading, the primitives, extrude and inset, and the brushes' shapes.
+Tools 1a, B1: the mesh, its topology, attribute layers and builder, triangulation and shading, the primitives, extrude and inset, and the brushes' shapes. B3: the check that a mesh stays whole after points move.

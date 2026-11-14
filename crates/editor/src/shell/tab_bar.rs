@@ -72,6 +72,16 @@ impl Workbench {
         let open = &self.open;
         [
             (
+                self.viewport.brushing.edit.is_some(),
+                ContextTab {
+                    after: RibbonTab::Home,
+                    prefix: "Home tools",
+                    name: "Brush",
+                    panel: Panel::Viewport,
+                    opens: None,
+                },
+            ),
+            (
                 open.map_edits.path.is_some(),
                 ContextTab {
                     after: RibbonTab::Home,
@@ -124,6 +134,7 @@ impl Workbench {
         }
         match extra.panel {
             Panel::Map => self.map_tools_in_front(),
+            Panel::Viewport => self.brush_tools_in_front(),
             Panel::Tileset => self.shell.tab == RibbonTab::Tileset,
             Panel::AtlasCrop => self.shell.tab == RibbonTab::Picture,
             panel => self.in_front.contains(&panel),
@@ -227,6 +238,7 @@ impl Workbench {
         if let Some(extra) = bring {
             match extra.opens {
                 Some(tab) => self.show_tab(tab),
+                None if extra.panel == Panel::Viewport => self.show_brush_tools(),
                 None => self.show_panel(extra.panel),
             }
         }

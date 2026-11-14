@@ -29,12 +29,66 @@ pub struct BrushModel {
     /// Whether the brush's mesh couldn't be read, so it is drawn as
     /// nothing (the Problems list names it, Tools 1a B2).
     pub damaged: bool,
+    /// Whether it is drawn only for a moment: a brush being dragged by
+    /// its parts (Tools 1a, B3), made anew each frame of the drag. The
+    /// renderer lets it go as soon as a frame doesn't draw it.
+    pub passing: bool,
+    /// The brush's mesh, as read: what editing its insides picks from.
+    pub(crate) mesh: Arc<mesh::Mesh>,
+    /// Its edges as lines in its own space, for the picked brush's
+    /// outline: worked out the first time it is outlined.
+    edges: std::sync::OnceLock<Arc<[[Vec3; 2]]>>,
 }
 
 impl BrushModel {
     /// `brush` cut into flat triangles.
     fn of(brush: &Brush, key: u64) -> Self {
-        let flat = mesh::flat_triangles(&brush.mesh);
+        let mut model = Self::of_mesh(&brush.mesh, key);
+        model.damaged = brush.damaged;
+        model
+    }
+
+    /// A brush being dragged by its parts, as `mesh`: drawn for a moment,
+    /// with a key no other model has.
+    pub(crate) fn passing(mesh: &Arc<mesh::Mesh>) -> Self {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let mut model = Self::of_mesh(mesh, passing_key(n));
+        model.passing = true;
+        model
+    }
+
+    /// The same triangles kept as a brush's model (a drag's last frame,
+    /// let go), under the same key, so the renderer has it already.
+    pub(crate) fn kept(&self) -> Self {
+        Self {
+            key: self.key,
+            model: self.model.clone(),
+            triangles: self.triangles,
+            damaged: false,
+            passing: false,
+            mesh: Arc::clone(&self.mesh),
+            edges: std::sync::OnceLock::new(),
+        }
+    }
+
+    /// The brush's edges, as lines in its own space.
+    pub(crate) fn edge_lines(&self) -> Arc<[[Vec3; 2]]> {
+        Arc::clone(self.edges.get_or_init(|| {
+            let mesh = &self.mesh;
+            mesh.edges()
+                .iter()
+                .filter_map(|e| {
+                    let (a, b) = e.ends();
+                    Some([mesh.position(a)?, mesh.position(b)?])
+                })
+                .collect()
+        }))
+    }
+
+    /// `mesh` cut into flat triangles.
+    fn of_mesh(mesh: &Arc<mesh::Mesh>, key: u64) -> Self {
+        let flat = mesh::flat_triangles(mesh);
         let vertices: Vec<assets::Vertex> = flat
             .positions
             .iter()
@@ -81,9 +135,22 @@ impl BrushModel {
                 warnings: Vec::new(),
             },
             triangles,
-            damaged: brush.damaged,
+            damaged: false,
+            passing: false,
+            mesh: Arc::clone(mesh),
+            edges: std::sync::OnceLock::new(),
         }
     }
+}
+
+/// A key for the `n`th passing model: mixed, so it is never a brush's
+/// fingerprint in practice.
+fn passing_key(n: u64) -> u64 {
+    use std::hash::Hasher;
+    let mut hash = std::hash::DefaultHasher::new();
+    hash.write(b"a brush being dragged");
+    hash.write_u64(n);
+    hash.finish()
 }
 
 /// A brush to draw, where it is.
@@ -127,6 +194,9 @@ pub(crate) struct BrushModels {
     /// How many brushes' values have been looked at (for the tests: a
     /// change to one brush looks at that one alone).
     looked: usize,
+    /// A brush whose model was just taken from a mesh in hand
+    /// ([`Self::adopt`]): the next look at what changed needn't read it.
+    adopted: Option<EntityId>,
 }
 
 impl BrushModels {
@@ -142,6 +212,7 @@ impl BrushModels {
         let first = self.seen.is_none();
         self.seen = Some(document.brushes());
         let changes = document.take_brush_changes();
+        let adopted = self.adopted.take();
         let area = document.area();
         if changes.all || first {
             // Every brush again, keeping the models made so far to hand:
@@ -171,6 +242,9 @@ impl BrushModels {
             }
         }
         for id in changes.entities {
+            if Some(id) == adopted {
+                continue;
+            }
             match area.get(id).and_then(|e| e.components.get(Brush::NAME)) {
                 Some(data) => self.hold(id, data, &HashMap::new()),
                 None => self.let_go(id),
@@ -187,17 +261,37 @@ impl BrushModels {
         if self.by_entity.get(&id).is_some_and(|m| m.key == key) {
             return;
         }
+        self.give(id, key, || match spare.get(&key) {
+            Some(model) => (Arc::clone(model), false),
+            None => (Arc::new(BrushModel::of(&Brush::from_data(data), key)), true),
+        });
+    }
+
+    /// Gives `id` the model with `key`, one already held, or else the one
+    /// `make` gives (and whether it made it).
+    fn give(&mut self, id: EntityId, key: u64, make: impl FnOnce() -> (Arc<BrushModel>, bool)) {
         self.let_go(id);
         let made = &mut self.made;
         let (model, users) = self.by_key.entry(key).or_insert_with(|| {
-            let model = spare.get(&key).cloned().unwrap_or_else(|| {
-                *made += 1;
-                Arc::new(BrushModel::of(&Brush::from_data(data), key))
-            });
+            let (model, new) = make();
+            *made += usize::from(new);
             (model, 0)
         });
         *users += 1;
         self.by_entity.insert(id, Arc::clone(model));
+    }
+
+    /// Takes `model` as the model of `id`'s brush, whose values were just
+    /// written from it (Tools 1a, B3: a drag of its parts let go, its
+    /// triangles already made), so the brush is never read back from its
+    /// values or cut into triangles again; its faces' topology, worked
+    /// out before the drag, is kept with it. Its key is its own, not a
+    /// fingerprint of the values: the next change to the brush makes its
+    /// model as any change does.
+    pub(crate) fn adopt(&mut self, id: EntityId, model: Arc<BrushModel>) {
+        self.adopted = Some(id);
+        let key = model.key;
+        self.give(id, key, || (model, true));
     }
 
     /// Forgets `id`'s brush, and its model once no brush uses it.
@@ -243,6 +337,17 @@ impl BrushModels {
             .iter()
             .filter(|(_, model)| model.damaged)
             .map(|(id, _)| *id)
+    }
+
+    /// A number standing for which brushes couldn't be read: the same
+    /// while they are the same, whatever else changed.
+    pub(crate) fn damaged_print(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut damaged: Vec<EntityId> = self.damaged().collect();
+        damaged.sort_unstable();
+        let mut hash = std::hash::DefaultHasher::new();
+        damaged.hash(&mut hash);
+        hash.finish()
     }
 
     /// How many brushes' values have been looked at since the start.

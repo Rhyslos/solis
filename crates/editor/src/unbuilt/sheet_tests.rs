@@ -132,7 +132,11 @@ fn a_part_is_in_place_at_the_real_thing_s_size() {
         [rect.width(), rect.height()]
     };
     assert_eq!(size_of(UnbuiltId::HomeLightingBake), size::RIBBON_BIG);
-    assert_eq!(size_of(UnbuiltId::ShellPlaySimulate), size::RIBBON_BIG);
+    // A name longer than a large button widens it, as it does a working
+    // one ("Simulate", "Trigger zone"), so it is never cut off.
+    let simulate = size_of(UnbuiltId::ShellPlaySimulate);
+    assert_eq!(simulate[1], size::RIBBON_BIG[1]);
+    assert!(simulate[0] > size::RIBBON_BIG[0], "{simulate:?}");
     assert_eq!(
         size_of(UnbuiltId::HomeLightingQuality)[1],
         size::RIBBON_ROW_H

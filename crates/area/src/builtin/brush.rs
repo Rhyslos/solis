@@ -168,16 +168,25 @@ impl Component for Brush {
     }
 }
 
+/// The mesh's points as the area file's list of them: x, y, z for each,
+/// in id order (gaps left by deleted ones closed up, as
+/// [`Brush::to_data`] writes them). When only points moved (editing a
+/// brush's insides, Tools 1a B3), this is the one list that changes.
+pub fn points_of(mesh: &Mesh) -> Vec<Value> {
+    mesh.vertices()
+        .flat_map(|(_, at)| at.to_array().map(|v| Value::Float(f64::from(v))))
+        .collect()
+}
+
 /// The mesh as the three lists an area file holds: its points (in id
 /// order, gaps left by deleted ones closed up), its faces by those places,
 /// and each face's material slot.
 fn lists_of(mesh: &Mesh) -> (Vec<Value>, Vec<Value>, Vec<Value>) {
     let mut place: HashMap<VertexId, i64> = HashMap::with_capacity(mesh.vertex_count());
-    let mut points = Vec::with_capacity(mesh.vertex_count() * 3);
-    for (id, at) in mesh.vertices() {
+    for (id, _) in mesh.vertices() {
         place.insert(id, place.len() as i64);
-        points.extend(at.to_array().map(|v| Value::Float(f64::from(v))));
     }
+    let points = points_of(mesh);
     let mut faces = Vec::new();
     let mut materials = Vec::with_capacity(mesh.face_count());
     for (face, corners) in mesh.faces() {

@@ -166,6 +166,10 @@ impl Workbench {
         }
         if tab {
             paint.meaning = !paint.meaning;
+            // Taken from egui too, which would move the keyboard's focus
+            // to the first field this frame draws.
+            ui.ctx()
+                .memory_mut(|m| m.move_focus(egui::FocusDirection::None));
         }
         if let Some(turn) = turn {
             self.turn_stamp(turn);
