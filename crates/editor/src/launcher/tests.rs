@@ -141,6 +141,7 @@ fn the_program_starts_on_the_launcher_and_comes_back_to_it() {
     assert!(!w.launcher_shown(), "only when the app asks");
     w.open_launcher();
     assert!(w.launcher_shown());
+    assert_eq!(w.title(), "Test Engine", "the program's own window");
     assert_eq!(w.launcher.page, Page::Projects);
     assert!(
         w.open.outbox.contains(&WorkbenchAction::ListProjects),

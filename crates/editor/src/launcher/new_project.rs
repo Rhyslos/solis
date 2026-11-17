@@ -283,9 +283,11 @@ fn dialog_body(
     label(ui, "Name");
     let width = ui.available_width();
     let name = field::text_field(ui, "Name", &mut dialog.name, "My game", width);
+    // Asked until the field has the keys: the click that opened the
+    // dialog can take them away again as it ends.
     if !dialog.focused {
         name.request_focus();
-        dialog.focused = true;
+        dialog.focused = name.has_focus();
     }
     let enter = name.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
     folder_line(ui, dialog);

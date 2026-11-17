@@ -425,8 +425,13 @@ impl Workbench {
         self.console.push(level, text.into());
     }
 
-    /// The window title: the program, its version and the open area.
+    /// The window title: the program, its version and the open area; on
+    /// the launcher, the program's name alone.
     pub fn title(&self) -> String {
+        // The launcher's window is the program's own (board 01).
+        if self.launcher.shown {
+            return self.info.name.clone();
+        }
         let mut area = self.open.document.name();
         if self.open.document.is_dirty() {
             area.push_str(" •");

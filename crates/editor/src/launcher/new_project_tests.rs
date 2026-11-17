@@ -66,7 +66,11 @@ fn the_name_makes_the_folder_and_create_asks_for_it() {
         "the folder it makes"
     );
     h.run();
-    assert_eq!(looked_at(&h), [folder.clone()], "asked about once");
+    assert_eq!(
+        looked_at(&h),
+        std::slice::from_ref(&folder),
+        "asked about once"
+    );
     assert!(!dialog(&h).ready(), "not until the app has looked");
     h.state_mut()
         .0
