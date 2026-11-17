@@ -7,19 +7,19 @@ When finding your way around, or making the layout suit your screen.
 
 ## How to use it
 
-This page follows what you see, in the order you meet it: Recent projects, the File page Solis starts on, then the editor from its tab bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in **File › Preferences** ([Settings](settings.md)).
+This page follows what you see, in the order you meet it: the launcher Solis starts in, then the editor from its tab bar down to its status bar. All of it is drawn in one look: dark neutral greys, lighter the nearer a surface is to you, with one [accent colour](concepts.md#the-window) for what's chosen. The accent, and how large the editor is drawn, are yours to choose in **File › Preferences** ([Settings](settings.md)).
 
 ![The whole editor, its parts numbered](pictures/editor.png)
 The editor with the playground open: **1** the tabs, **2** the search, **3** the ribbon, **4** Play, **5** the Area list, **6** the area in the viewport, **7** the tool bar, **8** Assets, **9** Properties, **10** the shelf (here the Console), **11** the status bar. Each is explained below.
 
-**[Recent projects](launcher.md)** is what Solis always starts on, in its full window: the **File** tab's first page. Your projects are cards (pinned ones first, with **Search projects**, **Sort by**, **Open… ▾** and **New project**); double-click one and the editor opens with it. Under them, **Start from a template**: an empty project or one of the four examples. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. Until a project is open the other tabs are dimmed; **Esc**, or **Carry on without a project**, opens the editor with none. See [Projects](launcher.md).
+**[The launcher](launcher.md)** is what Solis always starts on: a small window of its own. Your projects are cards, each with its kind (**2D**, **3D** or **2D + 3D**), with **Search projects**, a filter by kind, **Sort by**, **Open folder…** and **New project**; down its left side, **Projects**, **Learn** and **Updates**, with **Preferences** and the **User guide** at the foot. Double-click a card and the window becomes the editor, with that project open, at the editor's own size and place. Why start there? Solis doesn't open the last project by itself, so you always choose what to work on. **File › Close project** brings the launcher back.
 
 **The tab bar** is the dark strip along the very top. From left to right:
 - **The logo**, in a small light tile.
 - **The [tabs](concepts.md#the-window):** **File**, **Home**, **Library**, **Shading**, **Animate**, **UI**, **VFX**, **Audio**, **Debug** and **Build**. Each is one kind of work, and a click on one changes the [ribbon](concepts.md#the-window) under it and what the editor shows (see **The tabs** below). The tab in front is lit, with a line of the accent colour under it. **Shading** and **VFX** are grey with a small hollow square after their names: those screens aren't built yet ([Unfinished parts](unfinished-parts.md)).
 - **A tab that comes with a file** (a [contextual tab](concepts.md#the-window)): while a tileset, a picture's crops or a selected tile map is open, a tab such as **LIBRARY TOOLS · Tileset** stands right after the tab it belongs to, with a ribbon of that file's own tools. Click it to bring that file to the front; it goes when the file closes. A tileset and a picture's crops fill their tab (with **‹ Back to Library** at the right of the document's tab); a tile map's tab is Home with the **Map** shelf tab in front.
 - **Search or run a command**, in the middle: one search for everything (see below). Its right end shows its key, **Space**.
-- **The project and the area**, as in `Harbour / docks`, with an amber dot after the area's name while it has unsaved changes. Before a project is open it says **No project open**.
+- **The project and the area**, as in `Harbour / docks`, with an amber dot after the area's name while it has unsaved changes.
 - **Documentation** opens the [user guide](user-guide.md), this manual as one page in your browser, with a search. It is there on every tab, the File pages too, project or not.
 - **The chevron** at the far right collapses the ribbon (see below).
 
@@ -47,19 +47,16 @@ The editor with the playground open: **1** the tabs, **2** the search, **3** the
 
 Each tab remembers its own shelf tab, the shelf's height, the split between its groups and every border you dragged, separately.
 
-**File** is different: it is a page in place of the ribbon and the editor, with a column of items down its left side. **Back to editor** (or **Esc**) returns to the tab you came from.
+**File** is different: it is a page in place of the ribbon and the editor, with a column of items down its left side. **Back to editor** (or **Esc**) returns to the tab you came from. It holds what belongs to the open project and the editor; your projects, Learn and Updates are the [launcher](launcher.md)'s, which **Close project** goes back to.
 
 | Item | What it does |
 |---|---|
-| Recent projects | Every project Solis knows, as cards, and templates to start from: where Solis starts ([Projects](launcher.md)). |
-| New project, Open… | Make a project in a folder, or open one ([Projects and the Library](projects-and-the-library.md)). |
 | Save all | Saves the open area. Every other file saves as you change it. |
 | Project settings | This project's settings: General, 2D, Input (the game's actions and their keys, see [Input](input.md)) and Build ([Settings](settings.md)). |
 | Preferences | The editor's own settings, such as its accent colour ([Settings](settings.md)). |
 | Plugins | Not built yet. |
-| Learn | Four examples to start from, the first steps, the [user guide](user-guide.md) and the sample area. |
-| Updates | The build you have, the newest one, and **Check now** ([Installing and updating](installing-and-updating.md)). |
-| About | The program's name, version and build, its licences, and the [user guide](user-guide.md). |
+| About | The program's name, version and build, its licences, **Check for updates** and the [user guide](user-guide.md). |
+| Close project | Closes the project, asking about unsaved work first, and goes back to the [launcher](launcher.md). Closing the editor's window does the same. |
 | Exit | Closes Solis, asking about unsaved work first. |
 
 ![The search open](pictures/search.png)
@@ -71,7 +68,7 @@ The search, opened with `Space`, with "new" typed: actions with their tab and ke
 - every **entity** in the area, which selects it and points the camera at it;
 - a **panel** by its name, which comes to the front.
 
-Up and Down choose, **Enter** does it, **Esc** closes. Why? You don't have to remember which tab something is on: type what you want. Things without a button on the ribbon are found here too, wherever else they are: **New area** and **Open area…** (the **+** after the area's tab), **Save area as…** (a right-click on the area's tab), **Duplicate**, **Delete**, **Rename**, **Select all** and **Select nothing** (a right-click in the Area list), **Reset layout** (**File › Preferences**), **Documentation ↗** (the tab bar) and **Add the sample area** (**File › Learn**), **Check for updates** (**File › Updates**), and showing or hiding the viewport's corner controls (its **Show ▾** pill). Things that can't be done right now (Pause while editing, Delete with nothing selected) aren't listed. In the Frames tab, Space still plays and stops the clip, so point somewhere else first.
+Up and Down choose, **Enter** does it, **Esc** closes. Why? You don't have to remember which tab something is on: type what you want. Things without a button on the ribbon are found here too, wherever else they are: **New area** and **Open area…** (the **+** after the area's tab), **Save area as…** (a right-click on the area's tab), **Duplicate**, **Delete**, **Rename**, **Select all** and **Select nothing** (a right-click in the Area list), **Reset layout** (**File › Preferences**), **Documentation ↗** (the tab bar), **Add the sample area**, **Check for updates** (**File › About**), **Close project** (**File**), and showing or hiding the viewport's corner controls (its **Show ▾** pill). Things that can't be done right now (Pause while editing, Delete with nothing selected) aren't listed. In the Frames tab, Space still plays and stops the clip, so point somewhere else first.
 
 **The middle of the window** is the same on every tab: one or two [editor groups](concepts.md#the-window) on top, the [shelf](concepts.md#the-window) under them, the status bar along the bottom; on Home, the Area list, Properties and Assets sit where the panel layout puts them. Why the same everywhere? Each tab of the tab bar is one kind of work, and its screen keeps your things in the same places: what you're working on big in the middle, the tools and lists for it round it. Panels don't move between places; every tab remembers how you sized it.
 
@@ -177,7 +174,7 @@ See [Keyboard shortcuts](keyboard-shortcuts.md) for the rest.
 - **Problem:** two of a tab's documents are side by side, or one group holds them all. **Why:** a tab was dragged. **Fix:** drag it back, or **Reset layout**.
 
 ## Related
-- [Projects](launcher.md): Recent projects, the page Solis starts on, and Learn, Updates and About.
+- [The launcher](launcher.md): the window Solis starts in, with your projects, New project, Learn and Updates.
 - [Projects and the Library](projects-and-the-library.md): the Library.
 - [Play mode](play-mode.md): Play, Pause, Step and Stop.
 - [Unfinished parts](unfinished-parts.md): what is greyed with a hollow square, and the setting that hides it all.

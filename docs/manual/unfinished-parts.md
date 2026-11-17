@@ -9,7 +9,7 @@ Read this page when you see a grey control with a small hollow square beside it 
 
 **Why show them at all?** So the editor's layout stays the same as it grows: what you learn now is where things will still be, and you can see what's coming and roughly when. If you'd rather work with only what works today, hide them: nothing you can use disappears with them.
 
-They are on the [ribbon](concepts.md#the-window), the [shelf](concepts.md#the-window), the File pages (templates on Recent projects, sub-tabs and rows of Preferences and Project settings, Input's Contexts and Fires on), Build's full export, Audio's effects, the Profiler's thread lanes, and whole screens: Shading, VFX and the model viewer (a model's right-click in the Library, **Open in the model viewer**), each in its own place. **File › Preferences › General** has a small card showing what one looks like.
+They are on the [ribbon](concepts.md#the-window), the [shelf](concepts.md#the-window), the File pages (sub-tabs and rows of Preferences and Project settings, Input's Contexts and Fires on), Build's full export, Audio's effects, the Profiler's thread lanes, and whole screens: Shading, VFX and the model viewer (a model's right-click in the Library, **Open in the model viewer**), each in its own place. **File › Preferences › General** has a small card showing what one looks like.
 
 ## How to use it
 1. **Recognise one.** An unfinished part has three signs, always together:

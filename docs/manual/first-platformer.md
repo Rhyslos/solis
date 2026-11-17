@@ -18,7 +18,7 @@ Each step says *why* as well as *what*, so you can change things and make the ga
 ### 1. Make a project and an area
 A [project](concepts.md#projects) is a folder holding everything your game is made of. An [area](concepts.md#the-area) is one level (or menu, or room) in it.
 
-1. **File › New project** (or **New project** on Recent projects), make an empty folder called `Platformer`, and choose it.
+1. On the [launcher](launcher.md), click **New project**, name it `Platformer`, choose **2D** and **Empty**, and click **Create**. Solis makes the project's folder and opens it.
 2. Save the empty area: **Ctrl + S**, name it `level`. Solis suggests the `assets/areas` folder; that's fine.
 3. Look in pixels: click the **Perspective ▾** pill at the top left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
 

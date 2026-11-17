@@ -6,7 +6,7 @@
 //!
 //! The launcher is drawn by the workbench, in the one window the app
 //! keeps (`Workbench::show` draws it in place of the editor while
-//! [`Launcher::shown`]); the app gives the window the launcher's own size
+//! `Launcher::shown`); the app gives the window the launcher's own size
 //! and place while it shows, and the editor's while the editor does.
 //! Nothing here reads a file: the app hands over the projects and answers
 //! New project's questions about folders.

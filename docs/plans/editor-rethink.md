@@ -62,6 +62,23 @@ One pull request each, in this order. Each builds against the mock-ups, updates 
 | R5 | **Prefabs** | Prefab as its own asset with a format, version and fuzz target. Make prefab… from picked entities. A prefab's own page (its own tab). Placed copies linked and marked, with changed settings shown and resettable. Properties shows "Prefab: Chicken · Open · Unlink". Editing the prefab updates every copy. Game code reaches prefabs through the Lust file the editor writes (decision 0065). | 5 |
 | R6 | **2D projects, and the gate** | A 2D project hides every 3D-only tab, tool and setting (the project's kind from R1). Speed checked. The guide's pictures taken again. The gate. | 8 |
 
+## As built
+
+### R1: the launcher and new projects
+
+> **Built** (branch `rethink/r1-launcher`) as boards 01 and 02 draw it, with these choices:
+
+- **One window, two places.** The launcher and the editor are drawn in the one native window, which takes the launcher's size and place (1100 × 700 at first) while it shows and the editor's while a project is open, each remembered on the computer (`launcher_place`, `editor_place`; the editor's earlier `editor_size` is read once). Two real windows were weighed: each would need its own surface on the graphics card and its own copy of what the editor uploads there, and closing the first window eframe opens ends the program, so the launcher's would have to stay open and hidden while the editor works. One window keeps one GPU device, one sound card and one download, with nothing hidden; the window test checks both sizes.
+- **Closing the editor's window closes the project** and comes back to the launcher (asking about unsaved work first), as File › Close project does; closing the launcher quits. The editor can't be opened without a project any more ("Carry on without a project" went).
+- **File** keeps Back to editor, Save all, Project settings, Preferences, Plugins (unfinished), About (its "Go to Updates" became **Check for updates**), the new **Close project**, and Exit. The status bar's "Build N is out" asks the update question (the launcher's Updates has the notes). The search lost New project, Open project, Recent projects, Learn, Updates and Make the … (the launcher's); **Add the sample area** stays in the search, since it needs an open project (Learn's row for it went).
+- **The card's ⋯ menu** is Open, Show in Explorer and Remove from list as drawn, then, under a line, what the launcher before it could do: Pin to the top, Rename… and Make a copy… (nothing became unreachable). A missing folder's card keeps Locate… and Remove. The build that last opened a project is in the card's hover text; arrows and Enter walk and open the cards as before. **Open folder…** opens a project's folder, and looks through any other folder for projects (what Scan a folder… did).
+- **A card's picture** is its kind's (a field of tiles, a block, both): projects keep no picture of their last view yet (`recent.card.thumbnail` stays an unfinished part with nothing drawn).
+- **Starters** are the empty project and Learn's four examples (all 3D, so greyed for 2D). A sample starter is made under the name typed and the kind chosen. The design's First-person, Top-down and Platformer templates aren't shown (none exists); their unfinished parts stay in the table with nothing drawn.
+- **Create in** is remembered when a project is made (not on Browse… alone); the first is `Documents\Solis projects` (`branding::projects_folder`).
+- **The kind** is an optional `kind` key in `project.solis` ("2d", "3d", "both"; any case read; anything else refused with why), read as both when missing, like `saved_by`. An older build passes it by and keeps it when it writes the file, so the format's version stays 1 (rule 23 needs no upgrader): a fixture (`tests/fixtures/project/v1/kind-2d.solis`) and a fuzz test cover it, and the fuzz target `project_file` reads it.
+- **No forced assets folder:** neither making nor opening a project makes `assets/`. What depended on it: the watcher (the project's own folder is watched, flat, until `assets` appears, then the watcher moves into it), the savers and new files (`Projects::place`, new folders and sound events, imports' `copy_in` make it first), the area's Save and Open windows (they start in it, so it's made then), and the engine's description files for game code (written once it's there). Exports need a saved area, so they need it anyway.
+- **A project's folder named on the command line** (`solis <folder>`) opens the editor straight away, as `--sample` does; the window test uses it.
+
 **Gate:**
 1. Start the program: the launcher opens.
 2. Make a new 2D project by its name; its folder is made.

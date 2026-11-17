@@ -238,7 +238,7 @@ Space, or a click on **Search or run a command** in the tab bar, opens it (the b
 
 Over the Frames tab, Space plays and stops the clip instead, so point somewhere else first.
 
-The list shows each thing's shortcut beside it, so it is also the quickest place to look a key up. It finds the things without a button on the ribbon too, such as New area, Open area… and Save area as… (on the area's tab: its **+** and a right-click), Reset layout (File › Preferences), the examples (File › Learn), and showing or hiding the viewport's corner controls (the **Show ▾** pill).
+The list shows each thing's shortcut beside it, so it is also the quickest place to look a key up. It finds the things without a button on the ribbon too, such as New area, Open area… and Save area as… (on the area's tab: its **+** and a right-click), Reset layout (File › Preferences), Close project (File), and showing or hiding the viewport's corner controls (the **Show ▾** pill).
 
 ## The tab bar and the ribbon
 
@@ -321,17 +321,16 @@ See [The Profiler](profiler.md).
 
 See [The Console](console.md).
 
-## Recent projects
+## The launcher
 
-File › Recent projects is what Solis starts on; see [Projects](launcher.md).
+The window Solis starts in; see [The launcher](launcher.md).
 
 | Action | Shortcut |
 |---|---|
 | Open the project picked | `Enter`, or double-click its card |
 | Walk the cards | `Left`, `Right`, `Up`, `Down` |
-| A card's menu (Open, Pin, Show in Explorer, Rename…, Make a copy…, Remove from list) | Right-click it |
-| Back to the editor, or carry on without a project | `Esc` |
-| In Rename…: keep the new name, or leave it as it was | `Enter`, `Esc` |
+| A card's menu (Open, Show in Explorer, Remove from list, Pin to the top, Rename…, Make a copy…) | Right-click it, or click its **⋯** |
+| In New project or Rename…: make it, or close it | `Enter`, `Esc` |
 
 ## Project settings › Input
 

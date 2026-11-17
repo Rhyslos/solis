@@ -16,10 +16,10 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 The Library tab: the project's folders down the left, the open folder's files as tiles, the chips that show one kind, and the file picked in Details below.
 
 **Make a project**
-1. **File › New project** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
-2. Solis makes `project.solis`, an `assets` folder, and a hidden `.solis` folder for its cache. If you use Git, it also adds `.gitignore` and `.gitattributes` files set up for games.
+1. On the [launcher](launcher.md), click **New project**, type its name and choose its kind (2D, 3D or Both). Solis makes a folder of that name in **Create in** (a **Solis projects** folder in your Documents, the first time).
+2. Solis makes only what the project needs to open: `project.solis`, a hidden `.solis` folder for its cache, and `.gitignore` and `.gitattributes` files set up for games, for Git. The `assets` folder the Library shows is made when the first file goes in it: an import, a new folder or file, a saved area.
 
-**Open a project:** **File › Open…** and choose the project's folder, or pick it from **File › Recent projects** ([Projects](launcher.md)). Solis doesn't open the last project again when it starts: it always starts on Recent projects, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
+**Open a project:** pick it on the [launcher](launcher.md), where Solis always starts, or use its **Open folder…** and choose the project's folder. Solis doesn't open the last project again when it starts, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away. **File › Close project** goes back to the launcher.
 
 **Opening another project starts afresh.** Everything of the project you leave goes with it: its area, the files open in tabs (Clips, Frames, Animator, Map, Tileset, Atlas Crop, the UI canvas) and their undo steps, components' values you copied, and a `seed` chosen in the Console. Nothing of one project can then be saved into another by mistake, which matters most with a copy of a project, whose files have the same names. What's yours stays as it is: the layout, the cameras, the theme and the Console's messages.
 

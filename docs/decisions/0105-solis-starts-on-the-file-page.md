@@ -1,6 +1,6 @@
 # 0105: Solis starts on the File page
 
-- **Status:** Accepted (the project lead, 2026-11-11, answers 22 and 23 of the Shared 1 plan; replaces [0090](0090-always-through-the-launcher.md)'s small launcher window and keeps its two promises; carries out [0099](0099-the-g-layout.md)'s File tab)
+- **Status:** Accepted (the project lead, 2026-11-11, answers 22 and 23 of the Shared 1 plan; replaces [0090](0090-always-through-the-launcher.md)'s small launcher window and keeps its two promises; carries out [0099](0099-the-g-layout.md)'s File tab) Replaced by [decision 0118](0118-the-editor-rethink.md): the launcher is a window of its own again, and Recent projects, Learn and Updates leave the File tab for it.
 - **Date:** 2026-11-12
 
 ## Problem

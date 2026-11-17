@@ -15,7 +15,7 @@ For a thing that's pushed around by physics (a ball, a crate) use a [RigidBody](
 
 ## How to use it
 
-**Try the playground first.** **Make the playground…** (press **Space** and type it, or use **File › Learn**) makes a new project with a level to walk around in: steps, a gentle ramp and one too steep to climb, crates to push, a moving platform to ride, and a character with the third-person camera. Press **Play**, click the **Game panel**, and walk with **W A S D**, look with the **mouse**, jump with **Space**, sprint with **Shift**. **F6** saves the game and **F7** loads it. **Esc** gives the editor the mouse back.
+**Try the playground first.** **Playground** on the [launcher](launcher.md)'s **Learn** (**Make it in a folder…**), or a **New project** started from **Playground**, makes a new project with a level to walk around in: steps, a gentle ramp and one too steep to climb, crates to push, a moving platform to ride, and a character with the third-person camera. Press **Play**, click the **Game panel**, and walk with **W A S D**, look with the **mouse**, jump with **Space**, sprint with **Shift**. **F6** saves the game and **F7** loads it. **Esc** gives the editor the mouse back.
 
 It has sounds too ([Sound events](sound-events.md)): footsteps as the character walks (faster when it runs, made by the playground's `Footsteps` code), music, a radio on a crate whose chatter makes the music dip as you come near (the [Mixer](mixer.md)'s Voice ducking Music), and a cave with a drip, where every step echoes (a [reverb zone](reverb-zones.md)). The sounds are Solis's own, free to use for anything.
 

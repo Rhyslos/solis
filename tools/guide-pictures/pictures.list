@@ -264,19 +264,17 @@ picture ui-canvas.png
 
 picture learn.png
   page getting-started.md
-  shows File > Learn: the four examples, the first steps and the user guide
+  shows The launcher's Learn: the four examples, the first steps and the user guide
   click 64 17
-  click 66 418
+  click 90 342
+  wait 4
+  click 236 228
   move 1300 800
-  shot 220 40 1220 620 1000
+  shot 170 100 1100 700 1000
 
 picture launcher.png
   page launcher.md
-  shows Recent projects, where Solis starts: two projects as cards, and the templates
-  click 60 532
-  restart playground
-  click 64 17
-  click 60 532
-  restart
+  shows The launcher, where Solis starts: each project a card, with its kind in its corner
+  click 236 190
   move 1300 800
-  shot 220 40 1220 560 1000
+  shot 170 100 1100 700 1000

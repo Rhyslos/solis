@@ -15,7 +15,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 ![Preferences](pictures/preferences.png)
 **File › Preferences › General**: each setting with what it does, and the search at the top, which looks through every sub-tab.
 
-1. Click the **File** tab, then **Preferences** or **Project settings** in its column. Or press **Space** and type *Preferences*.
+1. Click the **File** tab, then **Preferences** or **Project settings** in its column. Or press **Space** and type *Preferences*. Preferences are on the [launcher](launcher.md) too, at the foot of its column.
 2. Pick a sub-tab under the heading: Preferences has **General**, **Appearance**, **Viewport** and **Shortcuts**; Project settings has **General**, **2D**, **Input** and **Build**. The faint sub-tabs with a small square (Source control, Physics, Platforms and others) are [unfinished parts](unfinished-parts.md).
 3. Each setting is a row, with its name and a line about it on the left and its control on the right: a switch, a row of choices side by side, a drop-down list, colour swatches, a number or a button. They work from the keyboard too: **Tab** moves from one to the next (a thin ring in the accent colour shows where you are), **Space** or **Enter** presses or flips it, and the **arrow keys** move along the swatches and the choices, or step through a drop-down list without opening it.
 4. Can't find something? Type in the search at the top right: it looks through every sub-tab of the page, at the settings' names and their lines, and shows the matches together.
@@ -25,7 +25,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 ## Preferences
 | Setting | What it does |
 |---|---|
-| General › Look for updates when Solis starts | Asks GitHub for a newer build at each start, in the background. Off, nothing is asked until you choose **Check now** on **File › Updates**. |
+| General › Look for updates when Solis starts | Asks GitHub for a newer build at each start, in the background. Off, nothing is asked until you choose **Check now** on the launcher's **Updates**. |
 | General › Show hints | The Hints card, last under Properties, says what's selected and what you can do with it. Its **Turn hints off** does the same as this switch. |
 | General › Open the guide in | Which program shows the [user guide](user-guide.md) when you click **Documentation**: **Default browser** (the standard), a browser Windows lists as installed on this computer, or **A program you choose…**. A browser that's gone falls back to the default, and the status bar says so. |
 | General › Hide unfinished parts | Some places in the editor are for features that come in later updates. They are shown faint with a small hollow square, and do nothing yet. Switch this on to hide every one of them, so only what works is on screen. The card beside it shows what one looks like. See [Unfinished parts](unfinished-parts.md). |
@@ -49,7 +49,8 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 ## Project settings
 | Setting | What it does |
 |---|---|
-| General › Project name | Its name in the window's title and on Recent projects. Type a new one and click elsewhere; the folder keeps its own name. |
+| General › Project name | Its name in the window's title and on the [launcher](launcher.md). Type a new one and click elsewhere; the folder keeps its own name. |
+| General › Kind | **2D**, **3D** or **Both**: what the game is made of ([project kind](concepts.md#projects)). Chosen when the project was made; a click here changes it, and it's kept in the project's `project.solis` at once. Projects made before it was asked are **Both**. For now the kind is kept and shown on the project's card; a later update makes a 2D project hide every tab, tool and setting only 3D games use. |
 | General › Game starts in | The area the exported game opens in (the same setting as on Build). |
 | General › Engine version | The build of Solis that last opened the project, with **Check now**. |
 | General › Scripting | Game code is written in Lust and opens in your code editor. |
@@ -65,14 +66,14 @@ A number you drag is saved once, when you let go.
 ## Tips and common problems
 - **Problem:** everything in the editor is tiny. **Why:** on a very sharp screen each pixel is small. **Fix:** raise **Appearance › Interface scale**.
 - **Problem:** a setting is faint, has a small square after its name, and its switch won't move. **Why:** it's an [unfinished part](unfinished-parts.md). **Fix:** rest the pointer on it to read what it will do; switch on **General › Hide unfinished parts** if you'd rather not see it.
-- **Problem:** Project settings says **Open a project first**. **Why:** its settings belong to a project, and none is open. **Fix:** open or make one (**File › Recent projects**).
+- **Problem:** Project settings says **Open a project first**. **Why:** its settings belong to a project, and none is open. **Fix:** open or make one in the [launcher](launcher.md) (**File › Close project** goes back to it).
 - **Problem:** the Console says `pixels.solpix` had a mistake. **Why:** the file was edited by hand and can't be read. **Fix:** the standard 2D settings are used meanwhile; change anything on the 2D tab and the file is written again, with the damaged one kept beside it as `pixels.solpix.bak`.
 - **Problem:** the shelf is so tall (or folded) that what you want isn't in sight. **Why:** its height and fold are remembered per tab. **Fix:** **Ctrl + Space** unfolds it; double-click its grip, or **Reset layout**, puts it back.
 - **Problem:** after an update, Home's Area list and Properties are columns beside the area, not on the shelf. **Why:** that is the new standard panel layout. **Fix:** choose **The shelf (as designed)** under **Appearance › Panel layout** to have them back on the shelf.
 - **Problem:** I can't find the Settings window, or File › Input. **Why:** they became these pages. **Fix:** Preferences and Project settings are in the File column; Input is a sub-tab of Project settings.
 
 ## Related
-- [Projects](launcher.md): Recent projects, Learn, Updates and About, the File column's other pages.
+- [The launcher](launcher.md): your projects, New project (where the kind is first chosen), Learn and Updates.
 - [Input](input.md): the game's controls, on Project settings › Input.
 - [Export for playtesting](playtest-export.md): on Project settings › Build.
 - [2D: the pixel-perfect view](2d-pixel-perfect.md): what the 2D settings do.
