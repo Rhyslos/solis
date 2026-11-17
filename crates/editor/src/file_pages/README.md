@@ -1,6 +1,6 @@
 # editor/src/file_pages
 
-The File tab's own pages (the design's Screens 8, 12 and 13, and the approved additions of round 2), drawn in the page area beside the File column (`shell/file_page.rs`): what belongs to the open project and the editor. The projects, Learn and Updates moved into the launcher ([decision 0118](../../../../docs/decisions/0118-the-editor-rethink.md), [`../launcher/`](../launcher/README.md)), which File › Close project goes back to. Nothing here reads a file: the app hands over the build and the project's settings, and the pages ask for changes with `WorkbenchAction`s.
+The File tab's own pages (the design's Screens 8, 12 and 13, and the approved additions of round 2), drawn in the page level beside the File column (`shell/file_page.rs`): what belongs to the open project and the editor. The projects, Learn and Updates moved into the launcher ([decision 0118](../../../../docs/decisions/0118-the-editor-rethink.md), [`../launcher/`](../launcher/README.md)), which File › Close project goes back to. Nothing here reads a file: the app hands over the build and the project's settings, and the pages ask for changes with `WorkbenchAction`s.
 
 | File | What it holds |
 | --- | --- |

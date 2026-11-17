@@ -33,7 +33,7 @@ Each question was asked with a recommended answer and alternatives:
 
 - **The launcher is its own window.** One install. Opening a project closes the launcher and opens the editor window, and Close project goes back to it.
 - **A new project makes its own folder** from its name, in a remembered parent folder. The project is **2D, 3D or both**, asked then and changeable in Project settings. A 2D project hides every 3D-only part.
-- **"Area" is "Level", everywhere:** the interface, the manual, file names and game code. Saved projects are upgraded on opening (rule 23), and game code's old names keep working with a note for a set time.
+- **"Area" is "Level", everywhere:** the interface, the manual, file names and game code. Saved projects are upgraded on opening (rule 23). Game code's old names stop working right away, each a mistake naming the new one (the project lead, 2026-11-17, answering when R2 began; it was "keep working with a note for a set time").
 - **Prefab is a kind of asset:** an entity saved to be placed many times, with its own page (its own tab). Placed copies are entities linked to it.
 - **One frame on every tab:**
   - left, centre and right, with a bottom panel under the view;
@@ -52,7 +52,7 @@ Each question was asked with a recommended answer and alternatives:
 ## Consequences
 
 - The launcher code moves out of the editor's File pages into a window of its own. The app opens one window or the other.
-- The area format is renamed, with a version raise, an upgrader and fixtures. Game-code calls are renamed, with the old names kept as aliases for a while. The manual and the guide change throughout.
+- The area format is renamed, with a version raise, an upgrader and fixtures. Game-code calls are renamed, with no aliases: an old name is a mistake that names the new one. The manual and the guide change throughout.
 - Prefabs add an asset format (version, fuzz target), linking, and changed settings on copies.
 - The G layout's screens stay the lead's own design. Where the rethink differs, the mock-ups in `docs/design/ui-rethink/` and this decision win.
 - Tools 1b and the Open worlds phase move after the rethink in ROADMAP.md.

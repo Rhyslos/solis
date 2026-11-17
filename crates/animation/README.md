@@ -23,7 +23,7 @@ Say which frame a clip shows at a time, and which events it passes between two t
 
 ## Depends on
 
-`assets` (sprite sheets and Aseprite's directions), `area` (the settings-file reader), `reflect` (asset IDs and values).
+`assets` (sprite sheets and Aseprite's directions), `level` (the settings-file reader), `reflect` (asset IDs and values).
 
 ## Status
 

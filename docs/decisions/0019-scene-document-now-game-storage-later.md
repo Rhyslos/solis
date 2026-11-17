@@ -1,5 +1,7 @@
 # 0019. A scene document now; the game's fast storage in Phase 3
 
+> **Scenes became areas ([decision 0023](0023-areas-and-assemblies.md)), and areas are levels now** ([decision 0118](0118-the-editor-rethink.md)): what this record calls a scene is a level, and its file ends `.sollevel`. The record keeps the words of its time.
+
 - **Status:** Accepted
 - **Date:** 2026-10-23
 - **Followed by:** [0024](0024-game-storage-is-hecs.md), which chose `hecs` for the game's storage.
