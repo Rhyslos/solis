@@ -79,7 +79,7 @@ impl Workbench {
                 std::sync::Arc::default()
             };
         let open_now = self.open_now();
-        let layout = self.interface.layout;
+        let placing = self.placing();
         let map_shown = self.map_shown();
         let map_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
         let map_name = self
@@ -207,6 +207,7 @@ impl Workbench {
             ui_test: self.ui_test.clone(),
             game_screens: &self.open.game_screens.pictures,
             playing,
+            placing,
             game_input: self.game_input,
             pixels: self.open.pixels,
             game_out: &mut asks.game,
@@ -268,7 +269,7 @@ impl Workbench {
             self.shell.drawn.clear();
             Default::default()
         } else {
-            crate::shell::middle(ui, &mut self.shell, open_now, layout, &mut viewer)
+            crate::shell::middle(ui, &mut self.shell, open_now, &mut viewer)
         };
         self.in_front = shown;
         // The Tileset tab's animated tiles move on by themselves, while it
@@ -316,6 +317,7 @@ impl Workbench {
         // follow the density read it there, and so does everything that
         // draws an unfinished part or leaves it out.
         crate::interface_look::use_look(self.interface_look());
+        self.shell.sizes.per_tab = self.interface.sizes_per_tab;
         self.settle_tab();
         self.profiler.add(
             crate::profiler::Stage::Sound,
@@ -349,7 +351,7 @@ impl Workbench {
         self.editing_keys(ui, &mut actions);
         self.file_keys(ui, &mut actions);
         self.console_key(ui);
-        self.shelf_keys(ui);
+        self.bottom_keys(ui);
         self.search_key(ui);
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);

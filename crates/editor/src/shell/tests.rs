@@ -77,23 +77,31 @@ fn a_hover_text_gives_the_name_the_shortcut_and_the_reason() {
 }
 
 #[test]
-fn each_tab_shows_its_own_documents_and_shelf() {
+fn each_tab_shows_its_own_documents_slots_and_bottom_panel() {
     let mut h = harness(fresh());
     h.run();
     assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);
-    for (tab, documents, shelf) in [
+    for (tab, shown, bottom) in [
         // Nothing open: the sequencer's page, and the Console (round 3).
-        (RibbonTab::Animate, vec![], ShelfTab::Console),
-        (RibbonTab::Debug, vec![Panel::Profiler], ShelfTab::Console),
-        (RibbonTab::Ui, vec![Panel::Canvas], ShelfTab::Screen),
-        (RibbonTab::Library, vec![Panel::Library], ShelfTab::Details),
+        (RibbonTab::Animate, vec![], BottomTab::Console),
+        (RibbonTab::Debug, vec![Panel::Profiler], BottomTab::Console),
+        (
+            RibbonTab::Ui,
+            vec![Panel::Canvas, Panel::Elements, Panel::Properties],
+            BottomTab::Library,
+        ),
+        // The Library tab's browser fills it: its bottom panel folded.
+        (
+            RibbonTab::Library,
+            vec![Panel::Library, Panel::Properties],
+            BottomTab::Code,
+        ),
         (
             RibbonTab::Audio,
-            vec![Panel::Mixer, Panel::Bus],
-            ShelfTab::SoundEvents,
+            vec![Panel::Mixer, Panel::Bus, Panel::SoundEvents],
+            BottomTab::Library,
         ),
-        // The standard layout: the lists beside the level, the Console in
-        // front on the shelf (decision 0109).
+        // Board 03: Level, the view, Properties, the Library under it.
         (
             RibbonTab::Home,
             vec![
@@ -102,21 +110,21 @@ fn each_tab_shows_its_own_documents_and_shelf() {
                 Panel::Properties,
                 Panel::Assets,
             ],
-            ShelfTab::Console,
+            BottomTab::Library,
         ),
     ] {
         ribbon_tab(&mut h, tab);
         h.run();
         let w = &h.state().0;
         assert_eq!(w.ribbon_tab(), tab);
-        assert_eq!(w.shelf_tab(), Some(shelf), "{tab:?}");
-        for panel in documents {
+        assert_eq!(w.bottom_tab(), Some(bottom), "{tab:?}");
+        for panel in shown {
             assert!(w.in_front.contains(&panel), "{tab:?} shows {panel:?}");
         }
-        for panel in shelf.panels(w.open_now().layout) {
+        if !w.bottom_folded() {
             assert!(
-                w.in_front.contains(&panel),
-                "{tab:?}'s shelf shows {panel:?}"
+                w.in_front.contains(&bottom.panel()),
+                "{tab:?}'s bottom panel shows {bottom:?}"
             );
         }
     }
@@ -177,7 +185,6 @@ mod frame_layout {
                 Some("Create"),
                 None,
                 Some("Lighting"),
-                Some("Project"),
                 Some("Play")
             ]
         );
@@ -193,11 +200,11 @@ mod frame_layout {
         }
         // Each group starts where the one before it ends; Play is pushed
         // to the window's right edge.
-        for pair in groups[..5].windows(2) {
+        for pair in groups[..4].windows(2) {
             assert_eq!(pair[1].1.left(), pair[0].1.right());
         }
-        assert_eq!(groups[5].1.right(), left + wide);
-        assert!(groups[5].1.left() > groups[4].1.right() + 100.0);
+        assert_eq!(groups[4].1.right(), left + wide);
+        assert!(groups[4].1.left() > groups[3].1.right() + 100.0);
         // A large button is 50 by 44; a row is 20 tall, or 19 where three
         // are stacked.
         assert_eq!(
@@ -205,7 +212,8 @@ mod frame_layout {
             egui::vec2(size::RIBBON_BIG[0], size::RIBBON_BIG[1])
         );
         assert_eq!(h.get_by_label("Play").rect().size(), egui::vec2(50.0, 44.0));
-        assert_eq!(h.get_by_label("New tile map").rect().height(), 20.0);
+        // Edit's two rows (board 03).
+        assert_eq!(h.get_by_label("Redo").rect().height(), 20.0);
         let rows = ["Grid · 1", "Angle · 15°", "Scale · 10%"].map(|l| h.get_by_label(l).rect());
         for row in rows {
             assert_eq!(row.height(), size::RIBBON_ROW_H_TIGHT);
@@ -234,16 +242,10 @@ mod frame_layout {
         let labels: Vec<_> = groups.iter().map(|(label, _)| *label).collect();
         assert_eq!(
             labels,
-            [
-                Some("Edit"),
-                Some("Create"),
-                None,
-                Some("Project"),
-                Some("Play")
-            ],
+            [Some("Edit"), Some("Create"), None, Some("Play")],
             "Lighting had nothing built, so the whole group went"
         );
-        for pair in groups[..4].windows(2) {
+        for pair in groups[..3].windows(2) {
             assert_eq!(pair[1].1.left(), pair[0].1.right());
         }
         // The tabs close up too.
@@ -254,15 +256,18 @@ mod frame_layout {
         run(&mut h, "Show unfinished parts");
     }
 
+    /// A window too narrow for Home's ribbon (tidied, it fits 900).
+    const NARROW: f32 = 680.0;
+
     #[test]
     fn a_narrow_window_scrolls_the_ribbon_sideways_and_the_wheel_moves_it() {
-        let mut h = window(900.0, fresh());
+        let mut h = window(NARROW, fresh());
         let before = ribbon::groups_drawn(&h.ctx);
         // Nothing wraps: every group is still in the one band.
         let band_top = before[0].1.top();
         assert!(before.iter().all(|(_, r)| r.top() == band_top));
         let play = before.last().unwrap().1;
-        assert!(play.right() > 900.0, "the Play group is off to the right");
+        assert!(play.right() > NARROW, "the Play group is off to the right");
         let right_edge = h.get_by_label("Collapse the ribbon").rect().right() + size::TAB_BAR_PAD;
         // The wheel over the ribbon moves it sideways.
         // (Stepped frame by frame: a hover text over a button keeps

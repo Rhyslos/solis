@@ -185,7 +185,7 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
     w.do_search(SearchTarget::Entity(lamp), &ctx, &mut actions);
     assert_eq!(w.selection(), Some(lamp));
     w.do_search(SearchTarget::Panel(Panel::Console), &ctx, &mut actions);
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Console));
+    assert_eq!(w.bottom_tab(), Some(crate::shell::BottomTab::Console));
     // An entity since deleted is ignored.
     w.delete_selection();
     w.do_search(SearchTarget::Entity(lamp), &ctx, &mut actions);
@@ -304,13 +304,16 @@ fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_no
             crate::library::Filter::All,
             "{path}: no chip hides it"
         );
-        // The Assets list comes up: on the shelf's Entity tab, or beside
-        // the level in a side layout, where it is always in view.
+        // The Library comes up: in front in the bottom panel, or in its
+        // column where the layout puts it there.
         use crate::shell::workspaces::{Home, home_of};
         let home = home_of(w.ribbon_tab(), w.open_now(), crate::panel::Panel::Assets);
         match home {
-            Some(Home::Shelf(shelf)) => assert_eq!(w.shelf_tab(), Some(shelf), "{path}"),
-            other => assert_eq!(other, Some(Home::Beside), "{path}: the Library comes up"),
+            Some(Home::Bottom(bottom)) => {
+                assert_eq!(w.bottom_tab(), Some(bottom), "{path}");
+                assert!(!w.bottom_folded(), "{path}");
+            }
+            other => panic!("{path}: the Library is {other:?}"),
         }
     }
 }

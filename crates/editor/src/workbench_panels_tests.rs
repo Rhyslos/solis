@@ -485,7 +485,7 @@ fn the_level_header_searches_folds_and_unhides() {
     h.get_by_label("Fold everything").click();
     h.run();
     assert!(h.state().0.open.level_panel.collapsed.contains(&room));
-    h.get_by_label("More of the Level column").click();
+    h.get_by_label("More of Level").click();
     h.run();
     h.get_by_label("Show everything hidden").click();
     h.run();

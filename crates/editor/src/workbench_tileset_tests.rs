@@ -97,7 +97,8 @@ fn double_clicking_a_tileset_opens_it_in_library_tools() {
         crate::shell::workspaces::groups(w.ribbon_tab(), w.open_now()),
         [vec![Panel::Tileset]],
     );
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Terrains));
+    let terrains = crate::shell::workspaces::left_slot(w.ribbon_tab(), w.open_now());
+    assert_eq!(terrains.map(|c| c.title), Some("Terrains"));
     let mut h = harness(w);
     h.run();
     h.run();

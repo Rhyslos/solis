@@ -168,6 +168,10 @@ fn stack(ui: &mut Ui, rect: Rect, pad: f32) -> Ui {
     child
 }
 
+/// The bar along the sheet's foot: the design's shelf bar, as the sheet
+/// was approved with it.
+const SHELF_BAR_H: f32 = 34.0;
+
 /// What a click on the sheet asked for.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Asked {
@@ -181,7 +185,7 @@ pub(crate) fn show(ui: &mut Ui) -> Asked {
     let (tabs, rest) = whole.split_top_bottom_at_y(size::TAB_BAR_H);
     let (ribbon, rest) = rest.split_top_bottom_at_y(tabs.bottom() + size::RIBBON_H);
     let (rest, status) = rest.split_top_bottom_at_y(whole.bottom() - size::STATUS_BAR_H);
-    let (body, shelf) = rest.split_top_bottom_at_y(rest.bottom() - size::SHELF_BAR_H);
+    let (body, shelf) = rest.split_top_bottom_at_y(rest.bottom() - SHELF_BAR_H);
     let (menu, body) = body.split_left_right_at_x(MENU_W);
     let (settings, right) = body.split_left_right_at_x(RIGHT_X);
     let (page, column) = right.split_top_bottom_at_y(PAGE_FOOT);
@@ -453,7 +457,7 @@ fn shelf_bar(ui: &mut Ui) {
                 let fill = front.then(tokens::line);
                 tab(ui, label, size::shelf_tab_h(), size::ROW_PAD, fill);
             }
-            Unbuilt(id) => drop(super::shelf_tab(ui, id)),
+            Unbuilt(id) => drop(super::bottom_tab(ui, id)),
         }
     }
     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

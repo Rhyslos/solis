@@ -2,7 +2,7 @@
 # Window smoke test: opens the real editor on a virtual screen and checks
 # what a script can: the window opens, the viewport is drawn in the right
 # colours, a tool key picks a tool, the camera flies (right mouse and W),
-# the shelf's grip and the editor groups' divider can be dragged, File >
+# the bottom panel's grip and the right slot's edge can be dragged, File >
 # Exit quits, the next launch puts the tab, the split and the camera back
 # where they were, (with SAMPLE_MODEL set) an imported model is drawn,
 # and the launcher (decision 0118) opens at its own size when no project
@@ -20,13 +20,14 @@
 # crates/app/src/branding.rs); CI passes it in, so this script never names
 # the program. Screenshots land in the output folder for looking at in CI.
 #
-# Positions are for the design's frame (decisions 0099 and 0104) in the
-# standard panel layout (decision 0109) on a 1440x900 screen: the tab bar
-# and ribbon along the top; the Level list from x 0 to 240 and Properties
-# from 1100 to 1440, down to the shelf; the level's group between them
-# (its tab strip at 100, the viewport from 130 to 491, its tool bar
-# floating at its foot from 590 to 752, 450 to 488), the Assets strip under it from 492; the shelf's bar at 682 and
-# the status bar at 876. On Audio the shelf's bar is at 542.
+# Positions are for the frame (decision 0118, board 03) in the Standard
+# layout on a 1440x900 screen: the tab bar and ribbon along the top; the
+# Level slot from x 0 to 250 and Properties from 1120 to 1440, both down
+# to the status line at 876; the level's group between them (its tab
+# strip at 100, the viewport from 130 to 636, its tool bar floating at its
+# foot from 608 to 766, 598 to 630); the bottom panel under the centre
+# alone, its edge at 636 with a grip at its middle (x 686). On Audio the
+# right slot (Bus) starts at the edge at x 1119.
 #
 # Nothing here waits a fixed time for the program: after each step it
 # waits until the screen shows what the step does (`wait_for`: the File
@@ -175,7 +176,7 @@ pixel() {
 SKY_X="${SKY_X:-700}"
 SKY_Y="${SKY_Y:-200}"
 # The tool bar's buttons: a region (WxH+X+Y) at the foot of the view.
-TOOLS="150x30+${TOOLS_X:-596}+${TOOLS_Y:-455}"
+TOOLS="150x30+${TOOLS_X:-612}+${TOOLS_Y:-600}"
 # Most of the viewport, clear of its tool bar.
 VIEW="800x300+280+140"
 
@@ -296,23 +297,24 @@ drag() {
     xdotool mouseup 1
 }
 
-# 4. Drag the shelf's grip up: the shelf grows and the viewport shrinks.
-drag "${GRIP_X:-28}" "${GRIP_Y:-699}" 0 -100
+# 4. Drag the bottom panel's grip up: the panel grows and the viewport
+#    shrinks.
+drag "${GRIP_X:-686}" "${GRIP_Y:-636}" 0 -100
 shot grown
 GROW_CHANGE="$(changed_pixels flown grown 1440x300+0+450)"
-echo "Pixels changed by dragging the shelf's grip: $GROW_CHANGE"
-[ "$GROW_CHANGE" -gt 5000 ] || fail "dragging the shelf's grip moved nothing"
+echo "Pixels changed by dragging the bottom panel's grip: $GROW_CHANGE"
+[ "$GROW_CHANGE" -gt 5000 ] || fail "dragging the bottom panel's grip moved nothing"
 
-# 5. On the Audio tab (the mixer beside the Bus group, split 60 / 40),
-#    drag the divider between the two groups to the left.
+# 5. On the Audio tab (the mixer, the Bus in the right slot), drag the
+#    right slot's edge to the left.
 xdotool mousemove "${AUDIO_TAB_X:-481}" "${AUDIO_TAB_Y:-19}" click 1
 wait_for tab_open "${AUDIO_TAB_X:-481}" || fail "the Audio tab did not open"
 shot audio
-drag "${DIVIDER_X:-864}" "${DIVIDER_Y:-300}" -200 0
+drag "${DIVIDER_X:-1119}" "${DIVIDER_Y:-300}" -200 0
 shot dragged
 SPLIT_CHANGE="$(changed_pixels audio dragged 1440x400+0+100)"
-echo "Pixels changed by dragging the divider: $SPLIT_CHANGE"
-[ "$SPLIT_CHANGE" -gt 5000 ] || fail "dragging the groups' divider moved nothing"
+echo "Pixels changed by dragging the right slot's edge: $SPLIT_CHANGE"
+[ "$SPLIT_CHANGE" -gt 5000 ] || fail "dragging the right slot's edge moved nothing"
 
 # 6. Quit, and the frame was saved under its own key.
 quit
@@ -320,7 +322,7 @@ SAVED="$(grep -rl '"shell"' "$TEST_HOME" 2>/dev/null | head -1 || true)"
 [ -n "$SAVED" ] || fail "the frame was not saved"
 echo "Frame saved in: ${SAVED#"$TEST_HOME"/}"
 
-# 7. The next launch opens on Audio with the divider where it was dragged
+# 7. The next launch opens on Audio with the edge where it was dragged
 #    (and the camera where it flew): the screen matches the dragged one,
 #    not the first one.
 launch "$PROJECT"

@@ -87,7 +87,7 @@ impl Workbench {
             self.file_pages.prefs_tab
         };
         // The input page and the shortcuts are tables with tools of their
-        // own; the rest scroll as rows.
+        // own, and the layouts cards; the rest scroll as rows.
         if words.is_empty() && tab == Tab::Input {
             self.input_page(ui);
             return;
@@ -115,6 +115,10 @@ impl Workbench {
                 }
                 if tab == Tab::Shortcuts {
                     self.shortcuts(ui);
+                    return;
+                }
+                if tab == Tab::Layout {
+                    self.layout_page(ui, asked);
                     return;
                 }
                 with_side(

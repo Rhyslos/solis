@@ -126,7 +126,7 @@ fn a_double_click_in_the_library_tab_only_selects_and_place_places() {
 }
 
 #[test]
-fn the_shelf_bar_counts_the_folder_s_files() {
+fn the_bottom_line_counts_the_folder_s_files() {
     let mut w = with_a_model();
     w.show_tab(RibbonTab::Library);
     let mut h = harness(w);

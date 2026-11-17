@@ -1,0 +1,11 @@
+{
+    "auto_update": "false",
+    "console_history": "[\"help\",\"seed 4\"]",
+    "hints": "true",
+    "interface_look": "(accent:Teal,scale:125,density:Compact,ribbon_labels:true,hide_unfinished:false,shelf_opens_on:Entity,layout:LevelAndAssetsLeft)",
+    "known_projects": "[(root:\"C:\\\\Games\\\\Farm\",pinned:true,last_opened:Some(1763300000),name:Some(\"Farm\"),exported_to:None)]",
+    "shell": "(tab:\"Debug\",ribbon_collapsed:false,workspaces:{\"Animate\":(shelf_tab:\"Console\",shelf_height:360.0,shelf_folded:false,split:0.5,sizes:{}),\"Audio\":(shelf_tab:\"Sound events\",shelf_height:300.0,shelf_folded:false,split:0.6,sizes:{}),\"Debug\":(shelf_tab:\"Problems\",shelf_height:420.0,shelf_folded:true,split:0.5,sizes:{}),\"Home\":(shelf_tab:\"Console\",shelf_height:300.0,shelf_folded:false,split:0.5,sizes:{\"level and assets left\":{\"left\":330.0,\"left share\":0.6,\"shelf\":210.0},\"shelf\":{\"column Entity 0\":260.0,\"column Place 1\":280.0}})})",
+    "skipped_build": "None",
+    "viewport_look": "(kind:Standard,bands:3,outlines:true)",
+    "viewport_overlays": "(tools:true,snapping:true,stats:true,preview_animation:false)",
+}

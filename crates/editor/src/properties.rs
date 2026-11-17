@@ -9,8 +9,8 @@ use crate::models::ModelInfo;
 use crate::panels::empty_note;
 use crate::properties_cards as cards;
 use crate::properties_header as head;
-use crate::tokens::{self, size, text};
-use egui::{RichText, Ui};
+use crate::tokens::size;
+use egui::Ui;
 use reflect::{AssetId, EntityId, Value};
 use std::collections::BTreeMap;
 
@@ -225,17 +225,13 @@ pub(crate) fn properties(
     (help, hints): (Help<'_>, Option<&[String]>),
 ) -> Vec<PropertyRequest> {
     let mut requests = Vec::new();
-    let mut strip = head::header_strip(ui);
     let Some((id, entity)) = document
         .selection
         .primary()
         .and_then(|id| document.level().get(id).map(|e| (id, e)))
     else {
-        strip.label(
-            RichText::new("Properties")
-                .font(text::header())
-                .color(tokens::text_emphasis()),
-        );
+        // The slot's own header says Properties (decision 0118): no strip
+        // of its own over the note.
         empty_note(
             ui,
             "Nothing selected. Pick something in the viewport or the Level column.",
@@ -251,6 +247,7 @@ pub(crate) fn properties(
         }
         return requests;
     };
+    let mut strip = head::header_strip(ui);
     // The one Properties shows first, then the rest of the selection.
     let mut selected = vec![id];
     selected.extend(

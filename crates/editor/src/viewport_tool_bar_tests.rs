@@ -491,7 +491,7 @@ fn the_tool_bar_in_the_narrowest_view_is_its_approved_picture() {
     // 236 points).
     if let Some(mut h) = drawn_editor(
         [960.0, 600.0],
-        (PanelLayout::LevelLeftAssetsRight, ViewLayout::SideBySide),
+        (PanelLayout::LibraryRight, ViewLayout::SideBySide),
         true,
     ) {
         let view = h.state().viewport.rect;

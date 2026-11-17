@@ -141,9 +141,11 @@ fn it_opens_on_the_animate_tab_with_its_preview_beside_it() {
         "a document beside the viewport's, and its preview a group of its own (round 3)"
     );
     assert_eq!(
-        w.shelf_tab(),
-        Some(crate::shell::ShelfTab::Properties),
-        "what is picked, on the shelf"
+        crate::shell::workspaces::home_of(w.ribbon_tab(), w.open_now(), Panel::Properties),
+        Some(crate::shell::workspaces::Home::Slot(
+            crate::shell::Slot::Right
+        )),
+        "what is picked, in the right slot"
     );
     let mut h = harness(w);
     h.run();

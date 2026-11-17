@@ -49,7 +49,8 @@ impl ShellCommand {
             C::ProfilerGpu => switch(!w.profiler.hide_gpu, "the GPU's times in the Profiler"),
             C::HideUnfinished => switch(!w.interface_look().hide_unfinished, "unfinished parts"),
             C::CollapseRibbon if w.shell.collapsed => "Show the ribbon".to_owned(),
-            C::FoldShelf if w.shelf_folded() => "Unfold the shelf".to_owned(),
+            C::FoldBottom if w.bottom_folded() => "Open the bottom panel".to_owned(),
+            C::Placing if w.placing() => "Stop placing".to_owned(),
             C::AutoUpdate => on_off(
                 "Check for updates when starting",
                 "Don't check for updates when starting",
@@ -162,7 +163,9 @@ impl ShellCommand {
             C::PlayAndRecord => "Play and record inputs",
             C::ReplayRecording => "Replay a recording…",
             C::ResetLayout => "Reset layout",
-            C::FoldShelf => "Fold the shelf",
+            C::FoldBottom => "Fold the bottom panel",
+            C::Placing => "Start placing",
+            C::ShowHiddenPanels => "Show hidden panels",
             C::CollapseRibbon => "Collapse the ribbon",
             C::OpenGuide => "Documentation ↗",
             C::AddSampleLevel => "Add the sample level",
@@ -262,7 +265,12 @@ impl ShellCommand {
             | C::ProfilerGpu => "Debug",
             C::Play | C::Pause | C::Step | C::Stop => "Play",
             C::ViewportTools | C::ViewportSnapping | C::ViewportStats => "Viewport",
-            C::ResetLayout | C::HideUnfinished | C::CollapseRibbon | C::FoldShelf => "Preferences",
+            C::ResetLayout
+            | C::HideUnfinished
+            | C::CollapseRibbon
+            | C::FoldBottom
+            | C::ShowHiddenPanels => "Preferences",
+            C::Placing => "Home",
             C::Tab(_) => "Tabs",
             C::PaintWith(_)
             | C::PaintOnLayer(_)
@@ -326,7 +334,7 @@ impl ShellCommand {
             C::Rename => "F2",
             C::SelectAll => "Ctrl+A",
             C::SelectNone => "Esc",
-            C::FoldShelf => "Ctrl+Space",
+            C::FoldBottom => "Ctrl+Space",
             C::ChooseShapeBrush => "B",
             C::EditBrushInsides => "Tab",
             C::BrushMode(mode) => mode.key().name(),
@@ -427,9 +435,15 @@ impl ShellCommand {
             }
             C::ResetLayout => "Puts this tab's panels back where they started",
             C::CollapseRibbon => "Leaves only the tabs, giving the ribbon's room to the editor",
-            C::FoldShelf => {
-                "Folds the shelf to its bar, giving its room to the editor, or opens it again"
+            C::FoldBottom => {
+                "Folds the bottom panel to one line, giving its room to the editor, or opens it \
+                 again"
             }
+            C::Placing => {
+                "Home's Library places files into the level: the ribbon shows how, and how they \
+                 land"
+            }
+            C::ShowHiddenPanels => "Shows every panel hidden from its ⋯ menu on this tab again",
             C::OpenGuide => {
                 "The user guide: every part of the editor explained, in your web browser (File › \
                  Preferences chooses which)"

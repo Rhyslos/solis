@@ -74,9 +74,10 @@ fn the_mixer_and_the_bus_are_the_audio_tab_s_groups_with_master_last() {
     for bus in ["Music", "Effects", "Voice", "Ambience", "UI"] {
         assert!(strip_left(&h, bus) < master, "{bus} before Master");
     }
-    // The mixer's tab is its file; the Bus group is headed by the bus.
+    // The mixer's tab is its file; the bus picked is the right slot,
+    // headed Bus (with the bus's name after it).
     assert!(h.query_all_by_label("mixer.solmix").next().is_some());
-    assert!(h.query_all_by_label("Master \u{203a} Bus").next().is_some());
+    assert!(h.query_all_by_label("Bus").next().is_some());
 }
 
 #[test]

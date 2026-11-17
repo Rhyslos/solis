@@ -1,19 +1,20 @@
-//! The status bar along the window's bottom (spec 160-164; the frame of
-//! decision 0099). On the left: a dot and "Ready" while the game's code
-//! is clean (red, with the count, while it has mistakes), the branch
-//! (not built yet), and the problems as coloured dots with counts, which
-//! open the Problems tab when clicked. On the right: the context (playing
-//! or paused, saved or not, the level's name with 2D or 3D and a 2D game's
-//! size), then the version in mono, and Restart to update while a newer
-//! build waits. For three seconds after a click on an unfinished part,
-//! the context gives way to a line saying so (`unbuilt::said`).
+//! The status line along the window's bottom (spec 160-164; one thin
+//! line, as board 05 of decision 0118 draws it). On the left: a dot and
+//! "Ready" while the game's code is clean (red, with the count, while it
+//! has mistakes), the branch (not built yet), whether the level is saved
+//! (a click saves it: Save left Home's ribbon), playing or paused, and
+//! what is selected. On the right: what moves snap to, the level's name
+//! with 2D or 3D and a 2D game's size, then the version in mono, and
+//! Restart to update while a newer build waits. The problems' counts are
+//! the bottom panel's now, on its Problems tab. For three seconds after a
+//! click on an unfinished part, the left's words give way to a line
+//! saying so (`unbuilt::said`).
 //!
 //! What it shows is read from counts kept by the code check and by
 //! Problems (each worked out once per change to what it looks at), never
 //! by walking the level here.
 
 use crate::icons::Icon;
-use crate::panel::Panel;
 use crate::play::PlayState;
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, Entry, UnbuiltId};
@@ -84,6 +85,9 @@ pub struct Status {
     pub playing: Option<Part>,
     /// The level's name, 2D or 3D, and a 2D game's size.
     pub level: String,
+    /// What is selected: "Crate 1 selected", "3 selected"; none while
+    /// nothing is.
+    pub selected: Option<String>,
     /// What moves snap to and which axes the gizmo follows: "Snap 0.25 ·
     /// World" (spec 233).
     pub snap: String,
@@ -113,12 +117,12 @@ impl Workbench {
         });
         let saved = if self.open.document.is_dirty() {
             Part::new("Unsaved changes", tokens::text_primary())
-                .more("Home \u{203a} Save (Ctrl+S) keeps them.")
+                .more("Click to save them (Ctrl+S).")
         } else if self.open.document.file().is_none() {
             Part::new("Not saved yet", tokens::text_label())
-                .more("This level has no file yet: Home \u{203a} Save (Ctrl+S) gives it one.")
+                .more("This level has no file yet: click to give it one (Ctrl+S).")
         } else {
-            Part::new("Saved", tokens::text_label())
+            Part::new("Saved", tokens::text_label()).more("Click to save it again (Ctrl+S).")
         };
         let playing = match self.play_state() {
             PlayState::Editing => None,
@@ -136,6 +140,15 @@ impl Workbench {
         } else {
             format!("{} \u{b7} 3D", self.open.document.name())
         };
+        let selection = &self.open.document.selection;
+        let selected = match selection.len() {
+            0 => None,
+            1 => selection
+                .primary()
+                .and_then(|id| self.open.document.level().get(id))
+                .map(|entity| format!("{} selected", entity.name)),
+            n => Some(format!("{n} selected")),
+        };
         Status {
             code,
             problems: self.open.problems.list.len() + mistakes,
@@ -143,6 +156,7 @@ impl Workbench {
             saved,
             playing,
             level,
+            selected,
             snap: snap_words(
                 &self.viewport.snapping,
                 self.viewport.camera.kind == crate::camera::ViewKind::TwoD,
@@ -182,31 +196,52 @@ impl Workbench {
                     unbuilt::status_item(ui, part);
                 }
             }
-            if counts(ui, &status).clicked() {
-                self.show_panel(Panel::Problems);
-            }
+            self.status_left(ui, &status, actions);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 self.restart_button(ui, actions);
                 let version = format!("v{}", self.info.version);
                 words(ui, &version, text::mono(), tokens::text_label());
-                words(ui, &status.snap, text::ribbon_small(), tokens::text_label());
-                // For three seconds after a click on a part that isn't
-                // built, the context says so instead.
-                if let Some(said) = unbuilt::said(ui.ctx()).or_else(|| told(ui.ctx())) {
-                    part(ui, &Part::new(said, tokens::text_label()));
-                    return;
-                }
                 part(ui, &Part::new(status.level.clone(), tokens::text_label()));
-                if let Some(brushing) = &status.brushing {
-                    part(ui, &Part::new(brushing.clone(), tokens::text_primary()));
-                    return;
-                }
-                part(ui, &status.saved);
-                if let Some(playing) = &status.playing {
-                    part(ui, playing);
-                }
+                words(ui, &status.snap, text::ribbon_small(), tokens::text_label());
             });
         });
+    }
+
+    /// The status line's left after Ready: saved or not (a click saves),
+    /// playing, and what is selected; or what's going on with a brush; or
+    /// for three seconds what a click on an unfinished part said.
+    fn status_left(&mut self, ui: &mut Ui, status: &Status, actions: &mut Vec<WorkbenchAction>) {
+        if let Some(said) = unbuilt::said(ui.ctx()).or_else(|| told(ui.ctx())) {
+            part(ui, &Part::new(said, tokens::text_label()));
+            return;
+        }
+        if let Some(brushing) = &status.brushing {
+            part(ui, &Part::new(brushing.clone(), tokens::text_primary()));
+            return;
+        }
+        if saved_part(ui, &status.saved).clicked() {
+            crate::shell::ShellCommand::SaveLevel.run(self, &ui.ctx().clone(), actions);
+        }
+        if let Some(playing) = &status.playing {
+            part(ui, playing);
+        }
+        if let Some(selected) = &status.selected {
+            words(ui, selected, text::ribbon_small(), tokens::text_label());
+        }
+    }
+}
+
+/// Whether the level is saved, as a button: a click saves it.
+fn saved_part(ui: &mut Ui, saved: &Part) -> egui::Response {
+    let shown = words(ui, &saved.text, text::ribbon_small(), saved.colour).interact(Sense::click());
+    let name = format!("{}: click to save", saved.text);
+    shown.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
+    if shown.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    match &saved.more {
+        Some(more) => shown.on_hover_text(more),
+        None => shown,
     }
 }
 
@@ -288,41 +323,6 @@ fn ready(ui: &mut Ui, code: Option<&Part>) {
     if let Some(more) = more {
         shown.on_hover_text(more);
     }
-}
-
-/// The problems as coloured dots with counts: the code's mistakes in red,
-/// the levels' problems in amber. Called "No problems" or "N problems"
-/// for screen readers and tests.
-fn counts(ui: &mut Ui, status: &Status) -> egui::Response {
-    let others = status.problems - status.code_mistakes;
-    let shown = ui
-        .scope(|ui| {
-            ui.spacing_mut().item_spacing.x = size::ROW_GAP;
-            for (n, colour) in [
-                (status.code_mistakes, tokens::ERROR),
-                (others, tokens::WARNING),
-            ] {
-                dot(ui, colour);
-                words(
-                    ui,
-                    &n.to_string(),
-                    text::ribbon_small(),
-                    tokens::text_label(),
-                );
-            }
-        })
-        .response
-        .interact(Sense::click());
-    let name = match status.problems {
-        0 => "No problems".to_owned(),
-        1 => "1 problem".to_owned(),
-        n => format!("{n} problems"),
-    };
-    shown.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
-    if shown.hovered() {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
-    }
-    shown.on_hover_text(format!("{name}: opens the Problems tab"))
 }
 
 /// A 6 px round dot in `colour`.

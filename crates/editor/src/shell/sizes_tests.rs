@@ -1,124 +1,121 @@
-//! What each border remembers: standards, limits, keys, and forgetting.
+//! What each edge was dragged to: kept per tab and per layout, or shared
+//! by every tab while tabs don't keep their own, held to its limits, and
+//! forgotten again.
 
 use super::*;
 
-const EDGES: [Edge; 9] = [
-    Edge::ShelfHeight,
-    Edge::Split,
-    Edge::Left,
-    Edge::Right,
-    Edge::Strip,
-    Edge::LeftShare,
-    Edge::RightShare,
-    Edge::Column(ShelfTab::Entity, 0),
-    Edge::Column(ShelfTab::Frames, 0),
-];
-
 #[test]
 fn every_edge_reads_back_by_its_key() {
-    for edge in EDGES {
-        assert_eq!(Edge::from_key(&edge.key()), Some(edge), "{edge:?}");
+    for edge in Edge::ALL {
+        assert_eq!(Edge::from_key(edge.key()), Some(edge));
     }
-    for unknown in [
-        "",
-        "middle",
-        "column",
-        "column Entity",
-        "column Entity x",
-        "column Nowhere 0",
-        "column Entity 9",
-        // Properties takes what's left: it has no width of its own.
-        "column Entity 1",
-        "column Entity 300",
-    ] {
-        assert_eq!(Edge::from_key(unknown), None, "{unknown:?}");
+    // Decision 0109's keys held points: `saved.rs` reads them, not this.
+    for old in ["left", "right", "strip", "shelf", "column Place 1", ""] {
+        assert_eq!(Edge::from_key(old), None, "{old}");
     }
 }
 
 #[test]
 fn every_standard_is_inside_its_limits() {
-    for tab in RibbonTab::ALL.into_iter().chain(RibbonTab::CONTEXT) {
+    for tab in RibbonTab::ALL {
         for layout in PanelLayout::ALL {
-            for edge in EDGES {
-                let standard = edge.standard(tab, layout);
+            for edge in Edge::ALL {
+                let value = edge.standard(tab, layout);
                 assert!(
-                    edge.limits().contains(&standard),
+                    edge.limits().contains(&value),
                     "{tab:?} {layout:?} {edge:?}"
                 );
             }
         }
     }
-    // Home's shelf holds less beside the lists, so it starts shorter.
-    let home = |layout| Edge::ShelfHeight.standard(RibbonTab::Home, layout);
-    assert!(home(PanelLayout::LevelLeftAssetsBottom) < home(PanelLayout::Shelf));
+    // The board's: Properties wider in Tall properties, the timeline
+    // taller on Animate.
+    let tall = Edge::Right.standard(RibbonTab::Home, PanelLayout::TallProperties);
+    assert!(tall > Edge::Right.standard(RibbonTab::Home, PanelLayout::Standard));
+    let animate = Edge::Bottom.standard(RibbonTab::Animate, PanelLayout::Standard);
+    assert!(animate > Edge::Bottom.standard(RibbonTab::Home, PanelLayout::Standard));
 }
 
 #[test]
-fn a_size_is_kept_per_tab_and_per_layout_on_home_only() {
+fn a_size_is_kept_per_tab_and_per_layout() {
     let mut sizes = Sizes::default();
-    let (side, shelf) = (PanelLayout::LevelLeftAssetsBottom, PanelLayout::Shelf);
-    sizes.set(RibbonTab::Home, side, Edge::ShelfHeight, 222.0);
-    assert_eq!(sizes.get(RibbonTab::Home, side, Edge::ShelfHeight), 222.0);
+    let layout = PanelLayout::Standard;
+    sizes.set(RibbonTab::Home, layout, Edge::Left, 0.3);
+    assert_eq!(sizes.get(RibbonTab::Home, layout, Edge::Left), 0.3);
+    let other_tab = sizes.get(RibbonTab::Ui, layout, Edge::Left);
+    assert_eq!(other_tab, Edge::Left.standard(RibbonTab::Ui, layout));
+    let other_layout = sizes.get(RibbonTab::Home, PanelLayout::WideView, Edge::Left);
     assert_eq!(
-        sizes.get(RibbonTab::Home, shelf, Edge::ShelfHeight),
-        size::SHELF_H,
-        "the shelf layout's own"
+        other_layout,
+        Edge::Left.standard(RibbonTab::Home, PanelLayout::WideView)
     );
-    // Another tab looks the same in every layout: one size for all.
-    sizes.set(RibbonTab::Audio, side, Edge::Split, 0.3);
-    for layout in PanelLayout::ALL {
-        assert_eq!(sizes.get(RibbonTab::Audio, layout, Edge::Split), 0.3);
+}
+
+#[test]
+fn with_tabs_sharing_sizes_the_frame_s_edges_are_one_set() {
+    let mut sizes = Sizes {
+        per_tab: false,
+        ..Sizes::default()
+    };
+    let layout = PanelLayout::Standard;
+    sizes.set(RibbonTab::Ui, layout, Edge::Right, 0.3);
+    sizes.set(RibbonTab::Debug, layout, Edge::Bottom, 0.5);
+    for tab in [RibbonTab::Home, RibbonTab::Audio, RibbonTab::Ui] {
+        assert_eq!(sizes.get(tab, layout, Edge::Right), 0.3, "{tab:?}");
+        assert_eq!(sizes.get(tab, layout, Edge::Bottom), 0.5, "{tab:?}");
     }
-    assert_eq!(sizes.get(RibbonTab::Debug, side, Edge::Split), size::SPLIT);
+    // What a tab shows keeps its own: the split between its groups.
+    sizes.set(RibbonTab::Animate, layout, Edge::Split, 0.3);
+    assert_eq!(
+        sizes.get(RibbonTab::Debug, layout, Edge::Split),
+        size::SPLIT
+    );
+    // On again, each tab has what it had kept before.
+    sizes.per_tab = true;
+    assert_eq!(
+        sizes.get(RibbonTab::Ui, layout, Edge::Right),
+        Edge::Right.standard(RibbonTab::Ui, layout)
+    );
 }
 
 #[test]
 fn a_size_is_held_to_its_limits_and_nothing_unusable_is_kept() {
     let mut sizes = Sizes::default();
-    let home = RibbonTab::Home;
-    let layout = PanelLayout::LevelLeftAssetsRight;
-    sizes.set(home, layout, Edge::Left, 1.0);
-    assert_eq!(sizes.get(home, layout, Edge::Left), size::COLUMN_MIN_W);
-    sizes.set(home, layout, Edge::RightShare, 2.0);
-    assert_eq!(sizes.get(home, layout, Edge::RightShare), 0.85);
-    sizes.set(home, layout, Edge::Strip, f32::NAN);
-    assert_eq!(sizes.get(home, layout, Edge::Strip), size::ASSETS_STRIP_H);
-    for value in [f32::NAN, f32::INFINITY, -1.0, 0.0, SIZE_MAX * 2.0] {
-        assert!(
-            !sizes.take_saved(home, layout, Edge::Right, value),
-            "{value}"
-        );
-    }
-    assert!(sizes.take_saved(home, layout, Edge::Right, 500.0));
-    assert_eq!(sizes.get(home, layout, Edge::Right), 500.0);
+    let layout = PanelLayout::Standard;
+    sizes.set(RibbonTab::Home, layout, Edge::Left, 5.0);
+    assert_eq!(
+        sizes.get(RibbonTab::Home, layout, Edge::Left),
+        *Edge::Left.limits().end()
+    );
+    sizes.set(RibbonTab::Home, layout, Edge::Bottom, f32::NAN);
+    sizes.set(RibbonTab::Home, layout, Edge::Bottom, f32::INFINITY);
+    assert_eq!(
+        sizes.get(RibbonTab::Home, layout, Edge::Bottom),
+        Edge::Bottom.standard(RibbonTab::Home, layout)
+    );
+    assert!(!sizes.take_saved(RibbonTab::Home, layout, Edge::Split, 0.99));
+    assert!(!sizes.take_saved(RibbonTab::Home, layout, Edge::Placement, -3.0));
+    assert!(sizes.take_saved(RibbonTab::Home, layout, Edge::Split, 0.3));
 }
 
 #[test]
 fn forgetting_puts_the_standard_back() {
     let mut sizes = Sizes::default();
-    let layout = PanelLayout::LevelAndAssetsLeft;
-    sizes.set(RibbonTab::Home, layout, Edge::Left, 420.0);
-    sizes.set(
-        RibbonTab::Home,
-        PanelLayout::Shelf,
-        Edge::ShelfHeight,
-        420.0,
-    );
-    sizes.set(RibbonTab::Ui, layout, Edge::Split, 0.7);
-    sizes.forget(RibbonTab::Home, layout, Edge::Left);
+    let (standard, wide) = (PanelLayout::Standard, PanelLayout::WideView);
+    for tab in [RibbonTab::Home, RibbonTab::Ui] {
+        for layout in [standard, wide] {
+            sizes.set(tab, layout, Edge::Left, 0.3);
+        }
+    }
+    sizes.forget(RibbonTab::Home, standard, Edge::Left);
     assert_eq!(
-        sizes.get(RibbonTab::Home, layout, Edge::Left),
-        Edge::Left.standard(RibbonTab::Home, layout)
+        sizes.get(RibbonTab::Home, standard, Edge::Left),
+        Edge::Left.standard(RibbonTab::Home, standard)
     );
     sizes.forget_tab(RibbonTab::Home);
-    assert_eq!(
-        sizes.get(RibbonTab::Home, PanelLayout::Shelf, Edge::ShelfHeight),
-        size::SHELF_H
-    );
-    assert_eq!(
-        sizes.get(RibbonTab::Ui, layout, Edge::Split),
-        0.7,
-        "another tab's kept"
-    );
+    assert_eq!(sizes.kept().count(), 2);
+    // Reset sizes: every tab's in the layout in use, the rest kept.
+    sizes.forget_layout(wide);
     assert_eq!(sizes.kept().count(), 1);
+    assert_eq!(sizes.get(RibbonTab::Ui, standard, Edge::Left), 0.3);
 }

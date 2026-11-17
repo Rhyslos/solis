@@ -85,7 +85,11 @@ pub(crate) enum ShellCommand {
     ProfilerCpu,
     ProfilerGpu,
     ResetLayout,
-    FoldShelf,
+    FoldBottom,
+    /// Home's Library's Place switch: starts placing, or stops.
+    Placing,
+    /// Shows every slot hidden on the tab in front again.
+    ShowHiddenPanels,
     HideUnfinished,
     CollapseRibbon,
     /// Picks one of the tool bar's tools (the build form's Transform
@@ -248,7 +252,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 139] = [
+    pub(crate) const ALL: [Self; 141] = [
         C::CloseProject,
         C::NewLevel,
         C::OpenLevel,
@@ -300,7 +304,9 @@ impl ShellCommand {
         C::ProfilerCpu,
         C::ProfilerGpu,
         C::ResetLayout,
-        C::FoldShelf,
+        C::FoldBottom,
+        C::Placing,
+        C::ShowHiddenPanels,
         C::HideUnfinished,
         C::CollapseRibbon,
         C::UseTool(Tool::Select),
@@ -435,7 +441,14 @@ impl ShellCommand {
                     w.why_not_play().map(str::to_owned)
                 }
             }
-            C::FoldShelf => when(!w.shell.covers_center(), "This tab has no shelf"),
+            C::FoldBottom => when(
+                w.bottom_tab().is_some() && !w.shell.covers_center(),
+                "This tab has no bottom panel",
+            ),
+            C::ShowHiddenPanels => when(
+                !w.shell.covers_center() && w.shell.arrangement(w.shell.tab).hidden.any(),
+                "No panel is hidden on this tab",
+            ),
             C::EditBrushInsides => w.why_not_edit_brush(),
             C::BrushMode(_) | C::BrushSolid => when(
                 w.viewport.brushing.edit.is_some(),
@@ -597,7 +610,12 @@ impl ShellCommand {
             C::ProfilerCpu => w.profiler.hide_cpu ^= true,
             C::ProfilerGpu => w.profiler.hide_gpu ^= true,
             C::ResetLayout => w.reset_layout(),
-            C::FoldShelf => w.fold_shelf(!w.shelf_folded()),
+            C::FoldBottom => w.fold_bottom(!w.bottom_folded()),
+            C::Placing => w.set_placing(!w.placing()),
+            C::ShowHiddenPanels => {
+                let tab = w.shell.tab;
+                w.shell.arrangement_mut(tab).hidden = super::workspaces::Hidden::default();
+            }
             C::HideUnfinished => {
                 let hide = !w.interface_look().hide_unfinished;
                 w.hide_unfinished(ctx, hide);

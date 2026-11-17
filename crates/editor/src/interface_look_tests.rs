@@ -12,7 +12,8 @@ fn changed() -> InterfaceLook {
         ribbon_labels: false,
         hide_unfinished: true,
         shelf_opens_on: ShelfOpensOn::Entity,
-        layout: PanelLayout::LevelLeftAssetsRight,
+        layout: PanelLayout::LibraryRight,
+        sizes_per_tab: false,
     }
 }
 
@@ -27,7 +28,11 @@ fn the_standard_look_is_the_design_s() {
     assert_eq!(
         look.shelf_opens_on,
         ShelfOpensOn::AsItIs,
-        "the shelf stays as it is, as it always did"
+        "the panels stay as they are, as they always did"
+    );
+    assert!(
+        look.sizes_per_tab,
+        "each tab keeps its own sizes (board 06)"
     );
 }
 
@@ -97,7 +102,13 @@ fn the_layout_is_saved_and_one_from_before_it_or_after_it_still_reads() {
     }
     // A build before the layouts had none: the new standard.
     let before = ron::from_str::<InterfaceLook>("(accent:Teal,shelf_opens_on:Entity)").unwrap();
-    assert_eq!(before.layout, PanelLayout::LevelLeftAssetsBottom);
+    assert_eq!(before.layout, PanelLayout::Standard);
+    assert!(before.sizes_per_tab);
+    // One of decision 0109's reads as its nearest.
+    let side = ron::from_str::<InterfaceLook>("(layout:LevelAndAssetsLeft)").unwrap();
+    assert_eq!(side.layout, PanelLayout::LibraryLeft);
+    let shelf = ron::from_str::<InterfaceLook>("(layout:Shelf)").unwrap();
+    assert_eq!(shelf.layout, PanelLayout::Standard);
     // A layout a later build adds reads as the standard, keeping the rest.
     let later = ron::from_str::<InterfaceLook>("(accent:Purple,layout:Diagonal)").unwrap();
     assert_eq!(later.layout, PanelLayout::default());

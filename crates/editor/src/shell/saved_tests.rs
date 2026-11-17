@@ -1,5 +1,9 @@
 use super::*;
-use crate::shell::workspaces::{Arrangement, SPLIT_LIMIT};
+use crate::shell::workspaces::SPLIT_LIMIT;
+
+/// The standard layout, and one with the Library beside Level.
+const STANDARD: PanelLayout = PanelLayout::Standard;
+const LIBRARY_LEFT: PanelLayout = PanelLayout::LibraryLeft;
 
 fn rearranged() -> Shell {
     let mut shell = Shell {
@@ -8,42 +12,18 @@ fn rearranged() -> Shell {
         ..Shell::default()
     };
     let home = shell.arrangement_mut(RibbonTab::Home);
-    home.shelf_tab = ShelfTab::Console;
-    home.shelf_folded = true;
+    home.bottom_tab = BottomTab::Console;
+    home.bottom_folded = true;
+    home.hidden.set(Slot::Right, true);
     let sizes = &mut shell.sizes;
-    sizes.set(
-        RibbonTab::Home,
-        PanelLayout::Shelf,
-        Edge::ShelfHeight,
-        420.0,
-    );
-    sizes.set(
-        RibbonTab::Home,
-        PanelLayout::Shelf,
-        Edge::Column(ShelfTab::Entity, 2),
-        350.0,
-    );
-    sizes.set(RibbonTab::Home, SIDE, Edge::ShelfHeight, 210.0);
-    sizes.set(RibbonTab::Home, SIDE, Edge::Left, 333.0);
-    sizes.set(RibbonTab::Home, SIDE, Edge::Strip, 250.0);
-    sizes.set(
-        RibbonTab::Home,
-        PanelLayout::LevelLeftAssetsRight,
-        Edge::RightShare,
-        0.4,
-    );
-    sizes.set(RibbonTab::Debug, PanelLayout::Shelf, Edge::Split, 0.3);
-    sizes.set(
-        RibbonTab::Ui,
-        PanelLayout::Shelf,
-        Edge::Column(ShelfTab::Screen, 0),
-        300.0,
-    );
+    sizes.set(RibbonTab::Home, STANDARD, Edge::Left, 0.25);
+    sizes.set(RibbonTab::Home, STANDARD, Edge::Bottom, 0.4);
+    sizes.set(RibbonTab::Home, LIBRARY_LEFT, Edge::LeftShare, 0.6);
+    sizes.set(RibbonTab::Home, STANDARD, Edge::Placement, 300.0);
+    sizes.set(RibbonTab::Debug, STANDARD, Edge::Split, 0.3);
+    sizes.set(RibbonTab::Ui, PanelLayout::WideView, Edge::Right, 0.3);
     shell
 }
-
-/// The standard layout.
-const SIDE: PanelLayout = PanelLayout::LevelLeftAssetsBottom;
 
 #[test]
 fn a_frame_reads_back_as_it_was_saved() {
@@ -53,23 +33,16 @@ fn a_frame_reads_back_as_it_was_saved() {
     let restored = Shell::restored(&back);
     assert_eq!(restored.tab, RibbonTab::Library);
     assert!(restored.collapsed);
-    assert_eq!(
-        restored.arrangement(RibbonTab::Home),
-        Arrangement {
-            shelf_tab: ShelfTab::Console,
-            shelf_folded: true,
-            front: [None, None],
-            alone: None,
-            merged: false,
-        }
-    );
+    let home = restored.arrangement(RibbonTab::Home);
+    assert_eq!(home.bottom_tab, BottomTab::Console);
+    assert!(home.bottom_folded);
+    assert!(home.hidden.has(Slot::Right) && !home.hidden.has(Slot::Left));
     // Every size, in every layout, as it was.
     assert_eq!(restored.sizes, shell.sizes);
-    assert_eq!(restored.size(RibbonTab::Debug, SIDE, Edge::Split), 0.3);
-    assert_eq!(restored.size(RibbonTab::Home, SIDE, Edge::Left), 333.0);
+    assert_eq!(restored.size(RibbonTab::Home, STANDARD, Edge::Left), 0.25);
     assert_eq!(
-        restored.size(RibbonTab::Home, PanelLayout::Shelf, Edge::Left),
-        Edge::Left.standard(RibbonTab::Home, PanelLayout::Shelf),
+        restored.size(RibbonTab::Home, PanelLayout::WideView, Edge::Left),
+        Edge::Left.standard(RibbonTab::Home, PanelLayout::WideView),
         "each layout its own"
     );
     // A tab never changed is its standard.
@@ -77,30 +50,38 @@ fn a_frame_reads_back_as_it_was_saved() {
         restored.arrangement(RibbonTab::Audio),
         Arrangement::standard(RibbonTab::Audio)
     );
+    // Old builds' keys are kept for the bottom tab and its fold, and
+    // the sizes in points of before are never written again.
+    assert!(
+        text.contains("shelf_tab") && text.contains("shelf_folded"),
+        "{text}"
+    );
+    assert!(
+        !text.contains("shelf_height") && !text.contains("split:0.5"),
+        "{text}"
+    );
 }
 
-/// N-22: a contextual tab's shelf (the Tileset's, the Picture's) comes
-/// back as it was left; such a tab is never the one in front at the start.
 #[test]
-fn a_contextual_tab_s_shelf_comes_back_too() {
+fn a_contextual_tab_s_frame_comes_back_too() {
     let mut shell = Shell {
         tab: RibbonTab::Tileset,
         ..Shell::default()
     };
     let tileset = shell.arrangement_mut(RibbonTab::Tileset);
-    tileset.shelf_tab = ShelfTab::Console;
-    tileset.shelf_folded = true;
-    shell.arrangement_mut(RibbonTab::Picture).shelf_tab = ShelfTab::Problems;
+    tileset.bottom_tab = BottomTab::Console;
+    tileset.bottom_folded = true;
+    shell.arrangement_mut(RibbonTab::Picture).bottom_tab = BottomTab::Problems;
     let text = ron::to_string(&shell.saved()).unwrap();
     let restored = Shell::restored(&ron::from_str(&text).unwrap());
     let tileset = restored.arrangement(RibbonTab::Tileset);
     assert_eq!(
-        (tileset.shelf_tab, tileset.shelf_folded),
-        (ShelfTab::Console, true)
+        (tileset.bottom_tab, tileset.bottom_folded),
+        (BottomTab::Console, true)
     );
     assert_eq!(
-        restored.arrangement(RibbonTab::Picture).shelf_tab,
-        ShelfTab::Problems
+        restored.arrangement(RibbonTab::Picture).bottom_tab,
+        BottomTab::Problems
     );
     assert_eq!(restored.tab, RibbonTab::Library, "its parent in front");
     let named: ShellState = ron::from_str("(tab: \"Tileset\")").unwrap();
@@ -115,38 +96,86 @@ fn nothing_saved_is_the_standard() {
     for tab in RibbonTab::ALL {
         assert_eq!(restored.arrangement(tab), Arrangement::standard(tab));
     }
+    assert_eq!(restored.sizes.kept().count(), 0);
     // Missing fields are their standard too.
     let back: ShellState = ron::from_str("(tab: \"Debug\")").unwrap();
     assert_eq!(Shell::restored(&back).tab, RibbonTab::Debug);
-    let back: WorkspaceState = ron::from_str("(split: 0.7)").unwrap();
-    assert_eq!(back.shelf_height, crate::tokens::size::SHELF_H);
+    let back: WorkspaceState = ron::from_str("(hidden: [\"left\"])").unwrap();
     assert!(back.sizes.is_empty());
+    let mut sizes = Sizes::default();
+    let arrangement = back.restore(RibbonTab::Home, &mut sizes);
+    assert!(arrangement.hidden.has(Slot::Left));
+    assert_eq!(sizes.kept().count(), 0);
+}
+
+/// The frame as the rethink's R2 wrote it (the same as
+/// `tests/fixtures/editor-settings/before-frame/side-layouts.ron`): the
+/// shelf's tabs, heights in points, and decision 0109's side layouts.
+const BEFORE_THE_FRAME: &str = "(tab:\"Debug\",ribbon_collapsed:false,workspaces:{\
+    \"Animate\":(shelf_tab:\"Console\",shelf_height:360.0,shelf_folded:false,split:0.5,sizes:{}),\
+    \"Audio\":(shelf_tab:\"Sound events\",shelf_height:300.0,shelf_folded:false,split:0.6,sizes:{}),\
+    \"Debug\":(shelf_tab:\"Problems\",shelf_height:420.0,shelf_folded:true,split:0.5,sizes:{}),\
+    \"Home\":(shelf_tab:\"Console\",shelf_height:300.0,shelf_folded:false,split:0.5,sizes:{\
+    \"level and assets left\":{\"left\":330.0,\"left share\":0.6,\"shelf\":210.0},\
+    \"shelf\":{\"column Entity 0\":260.0,\"column Place 1\":280.0}})})";
+
+#[test]
+fn a_frame_saved_before_it_reads_into_its_nearest() {
+    let restored = Shell::restored(&ron::from_str(BEFORE_THE_FRAME).unwrap());
+    assert_eq!(restored.tab, RibbonTab::Debug);
+    let [w, h] = OLD_MIDDLE;
+    // Home's side columns: their widths in points become shares of the
+    // window they were made in, in the layout each became.
+    let left = restored.size(RibbonTab::Home, LIBRARY_LEFT, Edge::Left);
+    assert!((left - 330.0 / w).abs() < 1e-6, "{left}");
+    assert_eq!(
+        restored.size(RibbonTab::Home, LIBRARY_LEFT, Edge::LeftShare),
+        0.6
+    );
+    // The Place tab's Placement column is the placing column now.
+    assert_eq!(
+        restored.size(RibbonTab::Home, STANDARD, Edge::Placement),
+        280.0
+    );
+    // The bottom tab: the Console as it was; the shelf's Sound events,
+    // a slot now, gives the standard.
+    let home = restored.arrangement(RibbonTab::Home);
+    assert_eq!(home.bottom_tab, BottomTab::Console);
+    assert_eq!(
+        restored.arrangement(RibbonTab::Audio).bottom_tab,
+        Arrangement::standard(RibbonTab::Audio).bottom_tab
+    );
+    // Debug's shelf, dragged taller and folded, is its bottom panel.
+    let debug = restored.arrangement(RibbonTab::Debug);
+    assert_eq!(
+        (debug.bottom_tab, debug.bottom_folded),
+        (BottomTab::Problems, true)
+    );
+    let bottom = restored.size(RibbonTab::Debug, STANDARD, Edge::Bottom);
+    assert!((bottom - 420.0 / h).abs() < 1e-6, "{bottom}");
+    // What was the standard then isn't kept: Animate's taller shelf, and
+    // every split that wasn't dragged.
+    assert_eq!(
+        restored.size(RibbonTab::Animate, STANDARD, Edge::Bottom),
+        Edge::Bottom.standard(RibbonTab::Animate, STANDARD)
+    );
+    assert_eq!(
+        restored.size(RibbonTab::Home, STANDARD, Edge::Split),
+        size::SPLIT
+    );
+    // And what this build writes of it reads back the same.
+    let again =
+        Shell::restored(&ron::from_str(&ron::to_string(&restored.saved()).unwrap()).unwrap());
+    assert_eq!(again.sizes, restored.sizes);
+    assert_eq!(again.arrangements, restored.arrangements);
 }
 
 #[test]
-fn a_frame_saved_before_the_layouts_reads_its_height_and_split() {
-    // As a build before decision 0109 wrote it: no sizes.
-    let text = "(tab: \"Audio\", ribbon_collapsed: false, workspaces: {\
-                \"Home\": (shelf_tab: \"Entity\", shelf_height: 380.0, shelf_folded: false, split: 0.5),\
-                \"Audio\": (shelf_tab: \"Console\", shelf_height: 300.0, shelf_folded: true, split: 0.7)})";
+fn a_size_saved_since_wins_over_one_from_before() {
+    let text = "(workspaces: {\"Home\": (sizes: {\"level left assets bottom\": \
+                {\"left\": 400.0, \"left width\": 0.3}, \"shelf\": {\"strip\": 200.0}})})";
     let restored = Shell::restored(&ron::from_str(text).unwrap());
-    let shelf = PanelLayout::Shelf;
-    assert_eq!(
-        restored.size(RibbonTab::Home, shelf, Edge::ShelfHeight),
-        380.0
-    );
-    assert_eq!(restored.size(RibbonTab::Audio, SIDE, Edge::Split), 0.7);
-    // The side layouts start at their own standard.
-    assert_eq!(
-        restored.size(RibbonTab::Home, SIDE, Edge::ShelfHeight),
-        crate::tokens::size::SHELF_H_SIDE
-    );
-    // And what this build writes, an earlier one still reads.
-    let saved = ron::to_string(&rearranged().saved()).unwrap();
-    assert!(
-        saved.contains("shelf_height:420.0") || saved.contains("shelf_height: 420.0"),
-        "{saved}"
-    );
+    assert_eq!(restored.size(RibbonTab::Home, STANDARD, Edge::Left), 0.3);
 }
 
 #[test]
@@ -154,17 +183,16 @@ fn what_cant_be_used_is_repaired() {
     let mut saved = rearranged().saved();
     saved.tab = "Shading".into();
     let home = saved.workspaces.get_mut("Home").unwrap();
-    home.shelf_tab = "Object".into();
-    home.shelf_height = f32::NAN;
-    home.split = 0.99;
-    let side = home.sizes.entry(SIDE.key().into()).or_default();
-    side.insert("left".into(), -4.0);
-    side.insert("strip".into(), f32::INFINITY);
-    side.insert("middle".into(), 300.0);
+    home.bottom_tab = "Object".into();
+    home.hidden.push("middle".into());
+    let standard = home.sizes.entry(STANDARD.key().into()).or_default();
+    standard.insert("left width".into(), -4.0);
+    standard.insert("bottom height".into(), f32::INFINITY);
+    standard.insert("middle".into(), 0.3);
     home.sizes
         .entry("diagonal".into())
         .or_default()
-        .insert("left".into(), 300.0);
+        .insert("left width".into(), 0.3);
     saved
         .workspaces
         .insert("Sequencer".into(), WorkspaceState::default());
@@ -172,29 +200,38 @@ fn what_cant_be_used_is_repaired() {
     // An unbuilt screen isn't opened on.
     assert_eq!(restored.tab, RibbonTab::Home);
     let home = restored.arrangement(RibbonTab::Home);
-    let standard = Arrangement::standard(RibbonTab::Home);
-    let shelf = PanelLayout::Shelf;
-    let size = |edge| restored.size(RibbonTab::Home, shelf, edge);
-    assert_eq!(home.shelf_tab, standard.shelf_tab);
-    assert_eq!(size(Edge::ShelfHeight), crate::tokens::size::SHELF_H);
-    assert_eq!(size(Edge::Split), crate::tokens::size::SPLIT);
-    assert!(home.shelf_folded, "what could be read is kept");
-    // Damaged side sizes are their standard; what could be read is kept.
-    let side = |edge| restored.size(RibbonTab::Home, SIDE, edge);
-    assert_eq!(side(Edge::Left), Edge::Left.standard(RibbonTab::Home, SIDE));
-    assert_eq!(side(Edge::Strip), crate::tokens::size::ASSETS_STRIP_H);
-    assert_eq!(side(Edge::ShelfHeight), 210.0);
-    for height in [0.0, -5.0, 1.0e9, f32::INFINITY] {
+    assert_eq!(
+        home.bottom_tab,
+        Arrangement::standard(RibbonTab::Home).bottom_tab
+    );
+    assert!(home.bottom_folded, "what could be read is kept");
+    assert!(home.hidden.has(Slot::Right) && !home.hidden.has(Slot::Left));
+    let size = |edge| restored.size(RibbonTab::Home, STANDARD, edge);
+    assert_eq!(
+        size(Edge::Left),
+        Edge::Left.standard(RibbonTab::Home, STANDARD)
+    );
+    assert_eq!(
+        size(Edge::Bottom),
+        Edge::Bottom.standard(RibbonTab::Home, STANDARD)
+    );
+    assert_eq!(size(Edge::Placement), 300.0);
+    // Old sizes that were never usable stay out too.
+    for height in [0.0, -5.0, 1.0e9, f32::INFINITY, f32::NAN] {
         let state = WorkspaceState {
             shelf_height: height,
+            split: height,
             ..WorkspaceState::default()
         };
         let mut sizes = Sizes::default();
-        state.restore(RibbonTab::Home, &mut sizes);
+        state.restore(RibbonTab::Debug, &mut sizes);
         assert_eq!(
-            sizes.get(RibbonTab::Home, shelf, Edge::ShelfHeight),
-            crate::tokens::size::SHELF_H
+            sizes.get(RibbonTab::Debug, STANDARD, Edge::Split),
+            size::SPLIT,
+            "{height}"
         );
+        let bottom = sizes.get(RibbonTab::Debug, STANDARD, Edge::Bottom);
+        assert!(Edge::Bottom.limits().contains(&bottom), "{height}");
     }
 }
 
@@ -208,37 +245,28 @@ fn the_file_page_saves_the_tab_before_it() {
     assert_eq!(shell.saved().tab, "Home");
 }
 
-/// Every kind of border.
-const EDGES: [Edge; 9] = [
-    Edge::ShelfHeight,
-    Edge::Split,
-    Edge::Left,
-    Edge::Right,
-    Edge::Strip,
-    Edge::LeftShare,
-    Edge::RightShare,
-    Edge::Column(ShelfTab::Entity, 0),
-    Edge::Column(ShelfTab::Screen, 2),
-];
-
-/// Random damage to a saved frame, thousands of times: reading it never
-/// crashes, and what comes back is always usable.
+/// Random damage to a saved frame, this build's and one from before,
+/// thousands of times: reading it never crashes, and what comes back is
+/// always usable.
 #[test]
 fn random_damage_to_a_saved_frame_never_gives_an_unusable_one() {
-    let saved = ron::to_string(&rearranged().saved()).unwrap();
-    let bytes = saved.as_bytes();
+    let ours = ron::to_string(&rearranged().saved()).unwrap();
     let words = [
         "Home",
         "Console",
-        "Entity",
+        "Library",
+        "Place",
         "Object",
         "Debug",
         "true",
         "left",
+        "left width",
+        "bottom height",
         "strip",
         "shelf",
+        "library",
         "level left assets bottom",
-        "column Entity 0",
+        "column Place 1",
     ];
     let mut seed: u64 = 7;
     let mut next = |n: usize| {
@@ -248,8 +276,13 @@ fn random_damage_to_a_saved_frame_never_gives_an_unusable_one() {
         (seed >> 33) as usize % n.max(1)
     };
     let mut read_back = 0;
-    for _ in 0..3_000 {
-        let mut damaged = bytes.to_vec();
+    for round in 0..4_000 {
+        let source = if round % 2 == 0 {
+            ours.as_str()
+        } else {
+            BEFORE_THE_FRAME
+        };
+        let mut damaged = source.as_bytes().to_vec();
         for _ in 0..1 + next(3) {
             let at = next(damaged.len());
             let cut = next(6).min(damaged.len() - at);
@@ -273,18 +306,18 @@ fn random_damage_to_a_saved_frame_never_gives_an_unusable_one() {
         );
         for tab in RibbonTab::ALL {
             for layout in PanelLayout::ALL {
-                for edge in EDGES {
+                for edge in Edge::ALL {
                     let value = shell.size(tab, layout, edge);
                     assert!(edge.limits().contains(&value), "{edge:?} {value} {text}");
                 }
             }
             assert!(
-                (SPLIT_LIMIT..=1.0 - SPLIT_LIMIT).contains(&shell.size(tab, SIDE, Edge::Split)),
+                (SPLIT_LIMIT..=1.0 - SPLIT_LIMIT).contains(&shell.size(tab, STANDARD, Edge::Split)),
                 "{text}"
             );
         }
     }
-    assert!(read_back > 0);
+    assert!(read_back > 100, "{read_back}");
 }
 
 #[test]

@@ -291,14 +291,9 @@ fn assert_flat(picture: &Picture, what: &str, point: [f32; 2], scale: f32) {
 const EDITOR_SIZE: [f32; 2] = [1440.0, 900.0];
 
 /// Today's editor with the sample project open, drawn for real in the
-/// new look, Home's lists on the shelf as the design's first screen has
-/// them (the other panel layouts' pictures are in
+/// new look, in the standard frame (the other layouts' pictures are in
 /// `shell/middle_picture_tests.rs`).
 fn editor_picture(look: InterfaceLook) -> Option<Picture> {
-    let look = InterfaceLook {
-        layout: crate::shell::PanelLayout::Shelf,
-        ..look
-    };
     let mut harness = editor_window(sample_project(), look, EDITOR_SIZE)?;
     harness.run();
     harness.run();
@@ -380,21 +375,25 @@ fn the_editor_s_surfaces_are_the_design_s() {
     for (what, point, token) in [
         ("the tab bar", [645.0, 17.0], tokens::app()),
         ("the ribbon", [1150.0, 67.0], tokens::ribbon()),
-        ("a tab strip", [200.0, 115.0], tokens::app()),
-        ("another tab strip", [800.0, 115.0], tokens::app()),
+        ("a tab strip", [800.0, 115.0], tokens::app()),
+        ("another tab strip", [1000.0, 115.0], tokens::app()),
         (
             "the document tab in front",
-            [5.0, 122.0],
+            [340.0, 122.0],
             tokens::viewport(),
         ),
-        ("the shelf bar", [800.0, 559.0], tokens::shelf_bar()),
-        ("the Level column's header", [100.0, 591.0], tokens::panel()),
         (
-            "the Properties column's header",
-            [700.0, 591.0],
+            "the bottom panel's bar",
+            [900.0, 652.0],
+            tokens::shelf_bar(),
+        ),
+        ("the Level slot", [100.0, 600.0], tokens::panel()),
+        (
+            "the Properties slot's header",
+            [1200.0, 115.0],
             tokens::panel(),
         ),
-        ("the Library column", [1160.0, 850.0], tokens::panel()),
+        ("the Library", [900.0, 850.0], tokens::panel()),
         ("the search box", [1000.0, 17.0], tokens::ribbon()),
         ("Play", [1336.0, 50.0], tokens::PLAY_FILL),
         ("the status bar", [700.0, 889.0], tokens::code()),
@@ -403,6 +402,27 @@ fn the_editor_s_surfaces_are_the_design_s() {
         assert_eq!(picture.at(point, 1.0), token, "{what} at {point:?}");
     }
     matches_approved("editor", &picture);
+}
+
+/// Board 06: Preferences › Layout, the layouts as drawn miniatures, Wide
+/// view pointed at and shown large in the Preview box.
+#[test]
+fn preferences_layout_with_one_pointed_at_is_its_approved_picture() {
+    use egui_kittest::kittest::Queryable as _;
+    let mut workbench = sample_project();
+    workbench.show_settings(crate::file_pages::Tab::Layout);
+    let Some(mut harness) = editor_window(workbench, InterfaceLook::default(), EDITOR_SIZE) else {
+        return;
+    };
+    harness.run();
+    harness.run();
+    let wide = harness.get_by_label("Wide view").rect().center();
+    harness.hover_at(wide);
+    harness.run();
+    harness.run();
+    let _ = harness.get_by_label("while you point at it");
+    let picture = drawn(&mut harness);
+    matches_approved("preferences-layout", &picture);
 }
 
 /// D18's menus: on the ribbon's grey. (Their border and corners are in

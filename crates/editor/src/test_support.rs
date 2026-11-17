@@ -343,9 +343,9 @@ pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: 
     let file = |path: &str| path.rsplit('/').next().unwrap_or(path).to_owned();
     let w = &h.state().0;
     let open = &w.open;
-    // On the shelf, the × is on the shelf tab the panel is a column of.
+    // In the bottom panel, the × is on the tab the panel is.
     let shelf = match crate::shell::workspaces::home_of(w.ribbon_tab(), w.open_now(), panel) {
-        Some(crate::shell::workspaces::Home::Shelf(shelf)) => Some(shelf.name().to_owned()),
+        Some(crate::shell::workspaces::Home::Bottom(bottom)) => Some(bottom.name().to_owned()),
         _ => None,
     };
     let title = match panel {
@@ -450,29 +450,22 @@ pub(crate) fn has_panel(w: &Workbench, panel: Panel) -> bool {
     }
 }
 
-/// Gives Properties the most room it can have in the test window, for
-/// tests that click far down it: where it is a column of the shelf (on
-/// every tab but Home, and on Home in the shelf layout), the tallest
-/// shelf; where it is a column of its own beside the groups (Home in a
-/// side layout, decision 0109), the shortest shelf, so the column is
-/// tall.
+/// Gives the bottom panel the most room it can have in the test window,
+/// open on every tab, for tests that click far down a panel in it (the
+/// side columns run full height whatever it is).
 pub(crate) fn roomy_shelf(w: &mut Workbench) {
     use crate::shell::{PanelLayout, RibbonTab, sizes::Edge};
-    for tab in RibbonTab::ALL {
+    for tab in RibbonTab::ALL.into_iter().chain(RibbonTab::CONTEXT) {
         for layout in PanelLayout::ALL {
-            let height = if tab == RibbonTab::Home && layout.is_side() {
-                crate::tokens::size::SHELF_MIN_H
-            } else {
-                ROOMY_SHELF
-            };
-            w.shell.sizes.set(tab, layout, Edge::ShelfHeight, height);
+            w.shell.sizes.set(tab, layout, Edge::Bottom, ROOMY_BOTTOM);
         }
+        w.shell.arrangement_mut(tab).bottom_folded = false;
     }
 }
 
-/// The shelf's height in [`roomy_shelf`]: as tall as the test window lets
-/// it be, the center keeping its least.
-const ROOMY_SHELF: f32 = 600.0;
+/// The bottom panel's share in [`roomy_shelf`]: as tall as the test
+/// window lets it be, the centre keeping its least.
+const ROOMY_BOTTOM: f32 = 0.9;
 
 /// Whether `panel` was drawn in the last frame: in front of its group,
 /// or on the shelf tab in front.

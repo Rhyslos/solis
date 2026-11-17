@@ -10,10 +10,10 @@ use crate::viewport::Tool;
 use crate::workbench::Workbench;
 use egui_kittest::kittest::Queryable;
 
-/// Placing as the design's Screen 2 draws it, on the shelf (the other
+/// Placing from Home's Library in the standard frame (the other
 /// layouts' placing is in `shell/layout_tests.rs`).
 fn with_models() -> Workbench {
-    let mut w = crate::test_support::in_layout(crate::shell::PanelLayout::Shelf);
+    let mut w = crate::test_support::in_layout(crate::shell::PanelLayout::Standard);
     w.set_project(Some(ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -45,14 +45,15 @@ fn placing() -> egui_kittest::Harness<'static, State> {
 }
 
 #[test]
-fn home_opens_on_entity_and_place_is_the_first_shelf_tab() {
+fn home_opens_on_the_library_with_its_place_switch_off() {
     let mut h = harness(with_models());
     h.run();
     h.run();
     assert!(!h.state().0.placing());
+    // The switch sits in the Library's bar, right of the tabs.
     let place = h.get_by_label("Place").rect();
-    let entity = h.get_by_label("Entity").rect();
-    assert!(place.left() < entity.left(), "Place comes first");
+    let library = h.get_by_label("Library").rect();
+    assert!(place.left() > library.right(), "in the Library's bar");
     assert!(
         h.query_by_label("Select (Q)").is_some(),
         "the level editor's tool bar"
@@ -73,14 +74,14 @@ fn place_in_front_is_the_mode_the_ribbon_and_tool_bar_follow() {
     h.get_by_label("Rotate tool").click();
     h.run();
     assert_eq!(h.state().0.tool(), Tool::Rotate);
-    // The Placement column sits between the Level and the Assets.
-    let level = h.state().0.shell.drawn_at(Panel::Level).unwrap();
+    // How placed things land sits beside the files, under the view.
+    let view = h.state().0.shell.drawn_at(Panel::Viewport).unwrap();
     let placement = h.state().0.shell.drawn_at(Panel::Placement).unwrap();
     let assets = h.state().0.shell.drawn_at(Panel::Assets).unwrap();
-    assert!(level.right() <= placement.left() && placement.right() <= assets.left());
+    assert!(placement.top() > view.bottom() && placement.right() <= assets.left());
     assert!((placement.width() - size::PLACEMENT_COLUMN_W).abs() <= 1.0);
-    // Back to Entity: the level editor again.
-    h.get_by_label("Entity").click();
+    // Another tab of the bottom panel: the level editor again.
+    h.get_by_label("Console").click();
     h.run();
     h.run();
     assert!(!h.state().0.placing());
@@ -154,11 +155,8 @@ fn placing_matches_its_approved_picture() {
     w.open.library_state.folder = "props".into();
     w.viewport.snapping.grid = true;
     w.viewport.snapping.grid_step = 0.25;
-    // Screen 2 as the design draws it: on the shelf.
-    let look = crate::theme::InterfaceLook {
-        layout: crate::shell::PanelLayout::Shelf,
-        ..Default::default()
-    };
+    // Placing from the Library under the view, in the standard frame.
+    let look = crate::theme::InterfaceLook::default();
     let Some(mut h) = editor_window(w, look, [1440.0, 900.0]) else {
         return;
     };

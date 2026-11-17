@@ -171,8 +171,9 @@ fn the_sizes_are_the_specification_s() {
         ("Ribbon", format!("large button {}", by(size::RIBBON_BIG))),
         ("Ribbon", format!("small row {}", px(size::RIBBON_ROW_H))),
         ("Editor tab strip", px(size::DOC_TAB_H)),
-        ("Shelf bar", px(size::SHELF_BAR_H)),
-        ("Shelf bar", format!("drag grip {}", by(size::SHELF_GRIP))),
+        // The shelf's bar and grip became the bottom panel's 30 px bar
+        // and the edges' grips (decision 0118's boards win over the
+        // specification).
         ("Shelf column header", px(size::COLUMN_HEADER_H)),
         ("Fields", px(Density::Default.field_h()) + " tall"),
         ("Fields", format!("radius {}", size::radius::CONTROL)),

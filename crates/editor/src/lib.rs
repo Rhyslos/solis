@@ -151,7 +151,7 @@ pub use own_files::OwnFile;
 pub use panel::Panel;
 pub use play::PlayState;
 pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back, save_reads};
-pub use shell::{RibbonTab, ShelfTab, ShellState};
+pub use shell::{BottomTab, RibbonTab, ShellState};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use transforming::Snapping;

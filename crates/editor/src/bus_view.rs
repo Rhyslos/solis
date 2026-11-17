@@ -12,7 +12,7 @@ use crate::mixer_view::{MixerRequest, MixerState, with_bus_shown};
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, UnbuiltId};
 use crate::widgets;
-use egui::{Align, Layout, Rect, RichText, Ui, UiBuilder};
+use egui::{Align, Layout, RichText, Ui};
 use sound::mixer::{Bus, Ducking, MASTER, MAX_FADE_S, MAX_RULES, MOST_DUCKING_DB, VOLUME_RANGE_DB};
 
 /// The width of a name beside its field in the Bus group.
@@ -44,21 +44,15 @@ pub(crate) fn bus(ui: &mut Ui, state: &MixerState) -> Vec<MixerRequest> {
     out
 }
 
-/// The switch at the right of the Bus group's strip: Ducking, or the
+/// The switch in the Bus column's header: Ducking, or the
 /// bus's Effects (unfinished; with them hidden there is no switch).
-pub(crate) fn switch(ui: &mut Ui, strip: Rect, state: &MixerState) -> Option<MixerRequest> {
+pub(crate) fn switch(ui: &mut Ui, state: &MixerState) -> Option<MixerRequest> {
     if unbuilt::hidden() {
         return None;
     }
-    let mut side = ui.new_child(
-        UiBuilder::new()
-            .id_salt("bus switch")
-            .max_rect(strip.shrink2(egui::vec2(size::ROW_PAD, 0.0)))
-            .layout(Layout::right_to_left(Align::Center)),
-    );
     let mut effects = state.effects;
     let choices = [(false, "Ducking"), (true, "Effects")];
-    widgets::segmented::segmented(&mut side, "Ducking or effects", &mut effects, &choices)
+    widgets::segmented::segmented(ui, "Ducking or effects", &mut effects, &choices)
         .then_some(MixerRequest::ShowEffects(effects))
 }
 
@@ -235,25 +229,21 @@ fn ducking(ui: &mut Ui, state: &MixerState, at: usize, bus: &Bus, out: &mut Vec<
     for (r, rule) in bus.ducking.iter().enumerate() {
         rule_card(ui, state, (at, r), rule, ducked, out);
     }
-    ui.horizontal(|ui| {
-        let room = bus.ducking.len() < MAX_RULES && state.mixer.buses.len() > 1;
-        if room && widgets::button::dashed(ui, "+ Add a ducking rule").clicked() {
-            out.extend(add_rule(state));
+    // One under the other: the Bus is a slot of the frame now, often
+    // too narrow for both side by side.
+    let room = bus.ducking.len() < MAX_RULES && state.mixer.buses.len() > 1;
+    if room && widgets::button::dashed(ui, "+ Add a ducking rule").clicked() {
+        out.extend(add_rule(state));
+    }
+    if at > 0 {
+        let remove = widgets::button::Button::plain("Remove bus")
+            .icon(Icon::Trash)
+            .show(ui)
+            .on_hover_text("Buses inside it move up; sound events on it play through Master");
+        if remove.clicked() {
+            out.extend(remove_bus(state));
         }
-        if at > 0 {
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let remove = widgets::button::Button::plain("Remove bus")
-                    .icon(Icon::Trash)
-                    .show(ui)
-                    .on_hover_text(
-                        "Buses inside it move up; sound events on it play through Master",
-                    );
-                if remove.clicked() {
-                    out.extend(remove_bus(state));
-                }
-            });
-        }
-    });
+    }
 }
 
 /// A new ducking rule on the bus shown, while another bus plays: the

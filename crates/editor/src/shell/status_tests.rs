@@ -74,36 +74,59 @@ fn playing_and_paused_show_on_the_right() {
     assert_eq!(w.status().playing, None);
 }
 
+/// Save left Home's ribbon (decision 0118): the status line's "Not saved
+/// yet" or "Saved" saves with a click, as Ctrl + S does.
 #[test]
-fn clicking_the_problems_opens_the_problems_panel() {
+fn clicking_saved_or_not_saves_the_level() {
     use egui_kittest::kittest::Queryable;
     let mut h = crate::test_support::harness(fresh());
     h.run();
-    assert!(!h.state().0.in_front.contains(&Panel::Problems));
-    h.get_by_label("No problems").click();
+    h.get_by_label("Not saved yet: click to save").click();
     h.run();
-    h.run();
-    assert!(h.state().0.in_front.contains(&Panel::Problems));
-    // The rest of the bar is there too.
-    assert!(h.query_by_label("Not saved yet").is_some());
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&crate::WorkbenchAction::SaveLevel),
+        "{:?}",
+        h.state().1.actions
+    );
+    // The rest of the line is there too; the problems' counts are the
+    // bottom panel's now.
     assert!(h.query_by_label_contains(" · 3D").is_some());
+    assert!(h.query_by_label("No problems").is_none());
 }
 
 #[test]
-fn a_click_on_an_unfinished_part_is_said_at_the_right_for_three_seconds() {
+fn what_is_selected_is_said() {
+    let mut w = fresh();
+    assert_eq!(w.status().selected, None);
+    let one = w.add_entity();
+    let name = w.open.document.level().get(one).unwrap().name.clone();
+    assert_eq!(w.status().selected, Some(format!("{name} selected")));
+    let two = w.add_entity();
+    w.open.document.selection.select_all([one, two], two);
+    assert_eq!(w.status().selected.as_deref(), Some("2 selected"));
+}
+
+#[test]
+fn a_click_on_an_unfinished_part_is_said_on_the_left_for_three_seconds() {
     use crate::unbuilt::{self, UnbuiltId};
     use egui_kittest::kittest::Queryable;
     let mut h = crate::test_support::harness(fresh());
     h.run();
-    assert!(h.query_by_label_contains(" · 3D").is_some());
+    let saved = "Not saved yet: click to save";
+    assert!(h.query_by_label(saved).is_some());
     // What a click on the part does, and nothing else.
     unbuilt::say(&h.ctx, UnbuiltId::HomeLightingBake);
     h.step();
     let words = unbuilt::get(UnbuiltId::HomeLightingBake).click_text();
     assert_eq!(words, "Bake isn't built yet (3D 5: Bounced light)");
     assert!(h.query_by_label(&words).is_some());
-    // The words it took the place of come back by themselves.
-    assert!(h.query_by_label_contains(" · 3D").is_none());
+    // The words it took the place of come back by themselves; the
+    // right's stay.
+    assert!(h.query_by_label(saved).is_none());
+    assert!(h.query_by_label_contains(" · 3D").is_some());
     // A step of the test window is a quarter of a second.
     for _ in 0..10 {
         h.step();
@@ -116,7 +139,7 @@ fn a_click_on_an_unfinished_part_is_said_at_the_right_for_three_seconds() {
         h.step();
     }
     assert!(h.query_by_label(&words).is_none(), "gone after 3 s");
+    assert!(h.query_by_label(saved).is_some());
+    // The Console wasn't told, and the rest of the line never changed.
     assert!(h.query_by_label_contains(" · 3D").is_some());
-    // The Console wasn't told, and the rest of the bar never changed.
-    assert!(h.query_by_label("Not saved yet").is_some());
 }

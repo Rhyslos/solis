@@ -12,13 +12,16 @@
 //!   is the table of their sub-tabs and settings, `settings_page.rs` the
 //!   page they share, `preferences.rs`, `project_settings.rs` and
 //!   `build.rs` the controls, `shortcuts.rs` and `input_page.rs` the two
-//!   sub-tabs that are tables.
+//!   sub-tabs that are tables, `layout_page.rs` Preferences › Layout's
+//!   cards and `layout_miniature.rs` the layouts drawn small.
 
 mod about;
 mod build;
 mod input_card;
 mod input_page;
 mod input_table;
+mod layout_miniature;
+mod layout_page;
 mod page_parts;
 mod preferences;
 mod project_settings;

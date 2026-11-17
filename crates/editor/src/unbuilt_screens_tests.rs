@@ -36,8 +36,8 @@ fn build_s_page_is_export_for_playtesting_with_the_console_on_its_shelf() {
     h.run();
     assert!(in_view(&h.state().0, Panel::Export));
     assert_eq!(
-        h.state().0.shelf_tab(),
-        Some(crate::shell::ShelfTab::Console)
+        h.state().0.bottom_tab(),
+        Some(crate::shell::BottomTab::Console)
     );
     for words in ["Export for playtesting", "Game's name", "Window"] {
         assert!(h.query_all_by_label(words).next().is_some(), "{words}");

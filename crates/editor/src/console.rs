@@ -41,7 +41,7 @@ impl LogLevel {
     }
 
     /// The word before a line of this level (spec 226).
-    fn word(self) -> &'static str {
+    pub(crate) fn word(self) -> &'static str {
         match self {
             Self::Info => "INFO",
             Self::Warning => "WARN",
@@ -57,7 +57,8 @@ impl LogLevel {
         }
     }
 
-    fn color(self) -> Color32 {
+    /// Its colour, in the Console and the bottom panel's line.
+    pub(crate) fn color(self) -> Color32 {
         match self {
             Self::Info => theme::text_console(),
             Self::Warning => theme::WARNING,
@@ -112,6 +113,9 @@ pub(crate) struct Console {
     /// The message clicked, shown in full under the list until it's
     /// clicked again (one row is often too short for a whole message).
     pub(crate) reading: Option<LogLine>,
+    /// The newest warning or error, which the bottom panel's folded line
+    /// shows faintly.
+    newest_notice: Option<LogLine>,
     /// The time every message is given instead of the clock's, when set:
     /// the picture tests' frames stay the same from run to run.
     fixed_time: Option<String>,
@@ -153,7 +157,7 @@ impl Console {
     #[cfg(test)]
     pub(crate) fn fix_time(&mut self, time: &str) {
         self.fixed_time = Some(time.to_string());
-        for line in &mut self.lines {
+        for line in self.lines.iter_mut().chain(&mut self.newest_notice) {
             line.time = time.to_string();
         }
     }
@@ -161,7 +165,11 @@ impl Console {
     pub(crate) fn push(&mut self, level: LogLevel, text: String) {
         let time = self.now();
         self.lowered.push(text.to_lowercase());
-        self.lines.push(LogLine { time, level, text });
+        let line = LogLine { time, level, text };
+        if level != LogLevel::Info {
+            self.newest_notice = Some(line.clone());
+        }
+        self.lines.push(line);
         self.pushed += 1;
         self.counts[level.slot()] += 1;
         if self.lines.len() > CONSOLE_LIMIT {
@@ -183,7 +191,13 @@ impl Console {
         &self.lines
     }
 
+    /// The newest warning or error still in the Console, if any.
+    pub(crate) fn newest_notice(&self) -> Option<&LogLine> {
+        self.newest_notice.as_ref()
+    }
+
     pub(crate) fn clear(&mut self) {
+        self.newest_notice = None;
         self.lines.clear();
         self.lowered.clear();
         self.counts = [0; 3];
@@ -266,10 +280,10 @@ impl Console {
     }
 }
 
-/// The Console's tools, on the shelf bar's right while it's in front
-/// (mock-up round 1, `09-console-shelf`): a filter for each level with
-/// its count, the search, Clear and Copy. Laid out from the right, so
-/// drawn last first.
+/// The Console's tools, on the bottom panel's bar while it's in front
+/// (board 05): a filter for each level with its name and count, Search
+/// the log, Clear and Copy. Laid out from the right, so drawn last
+/// first.
 pub(crate) fn console_tools(ui: &mut Ui, console: &mut Console) {
     let copy = crate::widgets::button::icon(ui, Icon::Copy, "Copy")
         .on_hover_text("Copies the messages shown");
@@ -281,13 +295,13 @@ pub(crate) fn console_tools(ui: &mut Ui, console: &mut Console) {
         ui.ctx().copy_text(text.join("\n"));
     }
     let clear =
-        crate::widgets::button::icon(ui, Icon::Clear, "Clear").on_hover_text("Clears the Console");
+        crate::widgets::button::icon(ui, Icon::Trash, "Clear").on_hover_text("Clears the Console");
     if clear.clicked() {
         console.clear();
     }
     let search = ui.add(
         egui::TextEdit::singleline(&mut console.search)
-            .hint_text("Search")
+            .hint_text("Search the log")
             .desired_width(SEARCH_W),
     );
     search.widget_info(|| {
@@ -305,12 +319,13 @@ pub(crate) fn console_tools(ui: &mut Ui, console: &mut Console) {
     }
 }
 
-/// The Console's search field's width on the shelf bar.
+/// The Console's search field's width on the bottom panel's bar.
 const SEARCH_W: f32 = 180.0;
 
 /// The console: the messages with their times, and the command line
-/// (its filters, search, Clear and Copy are on the shelf bar,
-/// [`console_tools`]). Returns what the command line asks for.
+/// (its filters, search, Clear and Copy are on the bottom panel's bar,
+/// [`console_tools`]). The command line is the Console's own, so it shows
+/// only on the Console's tab. Returns what the command line asks for.
 pub(crate) fn console(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
     // Only the rows in view are laid out, so a full console (2,000
     // messages) costs no more per frame than a short one.
@@ -513,9 +528,9 @@ fn show_choices(ui: &mut Ui, choices: &[String]) {
 /// The height of one console row, as in the mockup.
 pub(crate) const CONSOLE_ROW: f32 = 18.0;
 
-/// One level's filter button: its icon and count, filled with the level's
-/// own colour while that level is shown (decision 0060: grey, amber, red,
-/// whatever the accent).
+/// One level's filter button (board 05): its icon, its name and its
+/// count, filled with the level's own colour while that level is shown
+/// (decision 0060: grey, amber, red, whatever the accent).
 pub(crate) fn level_filter(ui: &mut Ui, level: LogLevel, count: usize, on: bool) -> egui::Response {
     let font = egui::TextStyle::Button.resolve(ui.style());
     let (text_color, fill) = if on {
@@ -528,11 +543,11 @@ pub(crate) fn level_filter(ui: &mut Ui, level: LogLevel, count: usize, on: bool)
     } else {
         (theme::text_weak(), theme::menu_row())
     };
-    let number = ui
+    let words = ui
         .painter()
-        .layout_no_wrap(count.to_string(), font, text_color);
+        .layout_no_wrap(format!("{} {count}", level.name()), font, text_color);
     let icon_size = 11.0;
-    let size = egui::vec2(8.0 + icon_size + 5.0 + number.size().x + 8.0, 20.0);
+    let size = egui::vec2(8.0 + icon_size + 5.0 + words.size().x + 8.0, 20.0);
     let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
     let response = response.on_hover_text(format!(
         "{}: {} (click to {} them)",
@@ -565,9 +580,9 @@ pub(crate) fn level_filter(ui: &mut Ui, level: LogLevel, count: usize, on: bool)
     painter.galley(
         egui::pos2(
             rect.left() + 8.0 + icon_size + 5.0,
-            rect.center().y - number.size().y / 2.0,
+            rect.center().y - words.size().y / 2.0,
         ),
-        number,
+        words,
         text_color,
     );
     response
