@@ -958,7 +958,9 @@ impl App {
     /// The folder Open and Save windows start in: the project's areas, or
     /// its assets.
     fn areas_folder(&self) -> Option<PathBuf> {
-        let assets = self.projects.db()?.project().assets();
+        // A new project's assets folder is made here, for the area about
+        // to go in it (decision 0118).
+        let assets = self.projects.db()?.project().assets_folder().ok()?;
         let areas = assets.join("areas");
         Some(if areas.is_dir() { areas } else { assets })
     }
