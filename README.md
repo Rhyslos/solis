@@ -390,16 +390,16 @@ What each left for later is listed in one place at the top of the [plan](docs/pl
 
 **Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened. Built; waiting for the project lead.
 
-### Shared 1f · The editor rethink — 2 of 6
+### Shared 1f · The editor rethink — 3 of 6
 
-`████░░░░░░░░░` 33%
+`██████░░░░░░░` 50%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] R1 The launcher and new projects: the launcher as its own window, New project making its folder, a project's kind (2D, 3D or both), Close project back to the launcher (pull request 270)
 - [x] R2 Level, everywhere: "Area" is "Level" in the interface, the manual, file names (`.sollevel`) and the code; a project's areas are renamed levels when it opens, with backups
-- [ ] R3 One frame on every tab
+- [x] R3 One frame on every tab: left and right slots full height, the centre, and a bottom panel (Library, Console, Problems) under it that folds to one line; every edge drags and is remembered per tab; any panel hidden and shown; layouts in Preferences as drawn cards with Undo; Save and Build off Home's ribbon
 - [ ] R4 One Library browser
 - [ ] R5 Prefabs
 - [ ] R6 2D projects, and the gate

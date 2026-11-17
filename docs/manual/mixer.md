@@ -23,7 +23,7 @@ The Audio tab: a strip for each bus with **Master** last, and the bus picked bes
 
 **Mute and solo** are for listening while you work, and aren't saved: **M** silences a bus (its strip goes faint), **S** plays only the soloed buses (and the buses they're inside), so you can hear one part of the game on its own. **Clear solo** on the ribbon hears every bus again. **Mute the game** on the ribbon, or the speaker in the **Game** tab's top right corner, mutes everything.
 
-**The sound events** are on the shelf's **Sound events** tab: every event in the project as a row (its bus, volume, where it's heard and how many takes), and the one you click beside them, to change and play ([Sound events](sound-events.md)).
+**The sound events** are in the Audio tab's left slot, **Sound events**: every event in the project as a row (its bus, volume, where it's heard and how many takes), and the one you click beside them, to change and play ([Sound events](sound-events.md)).
 
 ## Settings
 | Setting | What it does |

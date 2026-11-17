@@ -21,7 +21,7 @@ Solis is now in the Start menu (with its logo, a glowing swirl round a dark cent
 
 **How updates work:**
 1. When Solis starts, it asks GitHub in the background whether there's a newer build, and opens the [launcher](launcher.md) straight away: nothing waits for the answer, and offline nothing happens.
-2. If there's a newer build, **Updates** in the launcher's column gets a **1 new** mark, and its page has a card across its top about it. In the editor, the status bar says so at its right: *Build 58 is out* (click it to be asked whether to get it now).
+2. If there's a newer build, **Updates** in the launcher's column gets a **1 new** mark, and its page has a card across its top about it. In the editor, the status line says so at its right: *Build 58 is out* (click it to be asked whether to get it now).
 3. Choose, on that card:
    - **Download:** the card says *Downloading build 58…* while Solis checks the download's [SHA-256](concepts.md#getting-solis) against the one GitHub published (and throws it away if they differ). Then it says the build is downloaded: **Restart to update** closes Solis (asking about unsaved work first), installs it and opens the new build; or keep working, and it installs when you close Solis.
    - What the build brings is beside it, on the same page.
@@ -37,7 +37,7 @@ Solis is now in the Start menu (with its logo, a glowing swirl round a dark cent
 ## Settings
 | Setting | What it does |
 |---|---|
-| Check for updates when starting (press Space and type it) | On (the usual): Solis asks GitHub for a newer build each time it starts, and the launcher's Updates and the editor's status bar say so when there is one. The same switch is on Preferences › General and on the Updates page. Off: nothing is asked of GitHub unless you choose Check for updates. Remembered between starts. |
+| Check for updates when starting (press Space and type it) | On (the usual): Solis asks GitHub for a newer build each time it starts, and the launcher's Updates and the editor's status line say so when there is one. The same switch is on Preferences › General and on the Updates page. Off: nothing is asked of GitHub unless you choose Check for updates. Remembered between starts. |
 | Skip this version (in the update window Check for updates opens) | Stops Solis mentioning that one build. A newer build is shown again; Check for updates always shows what's newest. |
 
 ## Shortcuts

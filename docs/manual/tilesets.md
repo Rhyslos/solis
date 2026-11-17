@@ -22,12 +22,12 @@ How many tiles you need depends on the terrain's **[kind](concepts.md#2d)**:
 ## How to use it
 
 ![A tileset open](pictures/tileset.png)
-A new tileset on its own tab: its terrains on the shelf (grass, tilled and water), the picture its tiles come from, and a patch to try them on.
+A new tileset on its own tab: its terrains (grass, tilled and water; on the shelf of an older build, in the left slot now), the picture its tiles come from, and a patch to try them on.
 
 1. **Draw your tiles** in one picture: a PNG, or an Aseprite file (handy for animated tiles), with every tile the same size in a grid. Not sure what to draw? Open the tileset, choose a terrain's kind, and press **Save … template** (or the ribbon's **Save its template…**): Solis saves a picture beside the tileset with every slot laid out at your tile size, ready to draw over.
-2. **Open the tileset:** double-click it in the Library. A **Library tools · Tileset** tab joins the tab bar after Library and comes to the front: a [contextual tab](concepts.md#the-window), there only while the tileset is open. Its document is the tileset itself (the picture on the left, the chosen terrain's slots on the right, **Try it** under them), its **Terrains** shelf tab lists the terrains beside the slot picked, and its ribbon has **Terrain** (Add, Remove), **Kind** and **Picture** (the tile size and the **Zoom**). **‹ Back to Library**, at the right of the document's tab, goes back and leaves the tileset open.
-3. **Choose the picture** on the Terrains shelf tab, under the terrains. Solis cuts it into tiles at the tile size shown. If the art looks cut differently, it offers the size it found: click it.
-4. **Choose a terrain** on the Terrains shelf tab, and give it a **kind** (the ribbon's **Kind** list, or the tab's own). While it has no tiles, the tab guesses its kind from the picture (pick the top-left tile of its block first) and asks you to confirm. **Kind** at the top right changes it any time.
+2. **Open the tileset:** double-click it in the Library. A **Library tools · Tileset** tab joins the tab bar after Library and comes to the front: a [contextual tab](concepts.md#the-window), there only while the tileset is open. Its document is the tileset itself (the picture on the left, the chosen terrain's slots on the right, **Try it** under them), its **Terrains** slot at the left lists the terrains, the slot picked is at the right, and its ribbon has **Terrain** (Add, Remove), **Kind** and **Picture** (the tile size and the **Zoom**). **‹ Back to Library**, at the right of the document's tab, goes back and leaves the tileset open.
+3. **Choose the picture** in the **Terrains** slot, under the terrains. Solis cuts it into tiles at the tile size shown. If the art looks cut differently, it offers the size it found: click it.
+4. **Choose a terrain** in the **Terrains** slot, and give it a **kind** (the ribbon's **Kind** list, or the tab's own). While it has no tiles, the tab guesses its kind from the picture (pick the top-left tile of its block first) and asks you to confirm. **Kind** at the top right changes it any time.
 5. **Fill its slots** on the right. Each slot shows the neighbours it's for: the terrain's colour where they're the terrain, dark where they're not.
    - Click a tile in the picture, then the slot it's for, or drag the tile onto the slot.
    - Drawn over the template? Pick the template's top-left tile and press **Mark up from the template**: every slot is filled from its place in one go.
@@ -56,7 +56,7 @@ Click a slot, then in Properties set a tile's **Animation**:
 - **the picture's frames** (an Aseprite picture): the same tile in each of its frames, each for its own time.
 
 ## Settings
-In the tileset's tab (the Terrains shelf tab and the ribbon):
+In the tileset's tab (the Terrains slot, the Slot at the right and the ribbon):
 
 | Setting | What it does |
 |---|---|

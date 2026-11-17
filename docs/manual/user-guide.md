@@ -32,7 +32,7 @@ In **File › Preferences › General**, under **Help**:
 
 | Setting | What it does |
 |---|---|
-| Open the guide in | Which program shows the guide. **Default browser** (the standard) is the one Windows opens web pages in. Below it are the browsers Windows lists as installed on this computer, and **A program you choose…** asks for any program file. If the browser chosen isn't there any more, the guide opens in the default browser and the status bar says so. |
+| Open the guide in | Which program shows the guide. **Default browser** (the standard) is the one Windows opens web pages in. Below it are the browsers Windows lists as installed on this computer, and **A program you choose…** asks for any program file. If the browser chosen isn't there any more, the guide opens in the default browser and the status line says so. |
 
 ## Shortcuts
 
@@ -47,7 +47,7 @@ The editor has no key for the guide: **Documentation** is a click. Inside the gu
 
 ## Tips and common problems
 - **Problem:** clicking Documentation only says "The user guide isn't beside this build". **Why:** this copy of Solis was built on your own computer, not installed: the guide is made and put beside the program when a build is published. **Fix:** the Console gives the line to make it, `cargo run -p user-guide -- --out <the program's folder>/user-guide/index.html`. The same page, as it is in the repository, is in `docs/user-guide/index.html`.
-- **Problem:** the guide opened in a different browser from the one chosen. **Why:** the browser chosen was uninstalled or moved, so the default browser opened it instead (the status bar said so). **Fix:** choose again in **File › Preferences › General › Open the guide in**.
+- **Problem:** the guide opened in a different browser from the one chosen. **Why:** the browser chosen was uninstalled or moved, so the default browser opened it instead (the status line said so). **Fix:** choose again in **File › Preferences › General › Open the guide in**.
 - **Problem:** the theme choice or the place you were reading is forgotten. **Why:** some browsers don't let a page opened from a file remember anything. **Fix:** nothing is lost: the guide follows your computer's light or dark setting instead.
 
 ## Related

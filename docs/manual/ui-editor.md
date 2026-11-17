@@ -13,8 +13,8 @@ The canvas never takes your file away from you. It changes only the letters it h
 The UI tab with the UI sample's HUD on the canvas: the screen's pieces in **Elements**, the picked piece's settings in **Properties**, and the pictures it uses.
 
 1. In the Library, open the `ui` folder and **double-click a screen's file** (`pauseMenu`). Solis switches to the **UI** tab and draws the screen on the **Canvas**.
-2. **Pick a piece**: click it on the canvas, or its row in **Elements**, on the shelf under the canvas. Shift-click (Ctrl-click in Elements) picks more; drag a box round pieces on an empty part of the canvas to pick everything inside it.
-3. **Change it in Properties**, beside Elements on the shelf's **Screen** tab: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
+2. **Pick a piece**: click it on the canvas, or its row in **Elements**, the left slot beside the canvas. Shift-click (Ctrl-click in Elements) picks more; drag a box round pieces on an empty part of the canvas to pick everything inside it.
+3. **Change it in Properties**, the right slot: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
 4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. A piece inside a `canvas` goes exactly where you drag it instead: an outline follows the pointer, and the piece is moved there when you let go (one `Ctrl + Z` puts it back). In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.
 5. **Size it**: pick one piece and drag the small square on its right edge, bottom edge or corner.
 6. Check the screen on other screen sizes with the size list in the **UI** tab's [ribbon](concepts.md#the-window) (Full HD, 4K, ultrawide, a phone), and with players' bigger text with its **Text** list (150% and 200%). The dashed line is the **safe area**: keep text and buttons inside it, since some TVs cut the edges off.
@@ -27,7 +27,7 @@ The **toolbox** down the canvas's left edge holds the tools: **Select** (picking
 - **Box, Ellipse, Line:** drag where it goes. Inside a `canvas` piece the shape is placed where you drew it (its `x` and `y`); anywhere else it gets a small canvas of its own, just big enough, among the pieces where you started the drag. (Shapes only exist inside a canvas in Lust, so a lone box is a canvas holding one.)
 - **Pen:** click each corner, then press `Enter` or double-click to finish. Each corner-to-corner part becomes a `line`. Curves wait for Lust to have paths.
 - **Text, Button:** click where it goes. In a column or a row it goes *between* the pieces where you click (a blue line shows where), so the column stays tidy.
-- **Image:** choose the picture in the **Pictures** column of the Screen shelf tab first (a click there takes the Image tool too), then click.
+- **Image:** choose the picture in the **Pictures** tab of the bottom panel first (a click there takes the Image tool too), then click.
 
 The new piece is picked at once, so Properties is ready to change it. `Esc` goes back to Select (or, with the Pen, forgets the corners so far).
 

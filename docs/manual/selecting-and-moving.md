@@ -39,7 +39,7 @@ When several things are selected, the gizmo sits in the middle of them and they 
 
 ## Settings
 
-The axis locks and the axes are the [pills](concepts.md#pill) at the viewport's bottom right; snapping is the ribbon's **Snapping** group on the Home tab. Solis remembers them on this computer, and the [status bar](interface-tour.md) says what moves snap to ("Snap 0.25 · World").
+The axis locks and the axes are the [pills](concepts.md#pill) at the viewport's bottom right; snapping is the ribbon's **Snapping** group on the Home tab. Solis remembers them on this computer, and the [status line](interface-tour.md) says what moves snap to ("Snap 0.25 · World").
 
 | Setting | What it does |
 |---|---|

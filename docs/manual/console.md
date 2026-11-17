@@ -9,16 +9,16 @@
 ## How to use it
 
 ![The Console](pictures/console.png)
-The Console on the shelf: its messages, the counts of each kind (click one to show only those), its search, and the command line at the bottom.
+The Console on the shelf of an older build: its messages, the counts of each kind (click one to show only those), its search, and the command line at the bottom. It is a tab of the [bottom panel](concepts.md#the-window) now, with its filter in the panel's bar (the picture is taken again when the editor rethink is finished).
 
 **Reading messages**
 1. Each message shows its time, how serious it is as a word in its colour (**INFO**, **WARN** in amber, **ERROR** in red, with the row faintly tinted), and the text. A long message is cut short: **click it** to read it in full in a strip below the list (with **Copy**, to paste it somewhere), and click it again or **Close** to put the strip away.
-2. The three buttons at the top count the messages of each kind: information (ⓘ), warnings (⚠) and errors (✕). Click one to hide those messages, and again to show them.
-3. Type in **Search** to show only messages containing that text (capitals don't matter).
-4. **Clear** empties the Console.
+2. The bottom panel's bar, while the Console's tab is in front, has its filter: **Info**, **Warnings** and **Errors**, each with how many there are. Click one to hide those messages, and again to show them. The Console's tab counts its warnings and errors too, even while the panel is folded, and the folded line shows the newest warning or error faintly.
+3. Type in **Search the log** to show only messages containing that text (capitals don't matter).
+4. **Clear** (the bin) empties the Console; **Copy** copies the messages shown.
 
 **Typing commands**
-1. Press **'** (on a Norwegian keyboard, the key with ' and * next to Æ) to jump to the command line at the bottom of the Console. You can also click in it.
+1. Press **'** (on a Norwegian keyboard, the key with ' and * next to Æ) to jump to the command line at the bottom of the Console: the Console's tab comes to the front of the bottom panel, opened if it was folded. You can also click in it. The command line is the Console's own, so it shows only while the Console's tab is in front.
 2. Type a command, such as `select Crate`, and press **Enter**. The Console repeats it after a `›`, then answers: what it found, or, if something's wrong, why (in red).
 3. The command line keeps the keyboard, ready for the next command. Press **Esc** or click elsewhere to leave it.
 4. **Up** and **Down** bring back earlier commands. Solis remembers the last 100, even after it's closed.
