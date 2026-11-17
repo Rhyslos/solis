@@ -190,8 +190,8 @@ mod tests {
     fn a_copy_leaves_out_the_cache_and_links_and_is_named() {
         let root = test_folder("tidy-copy-from");
         Project::create(&root, "Farm").unwrap();
-        std::fs::write(root.join("assets/main.lst"), "end\n").unwrap();
         std::fs::create_dir_all(root.join("assets/art")).unwrap();
+        std::fs::write(root.join("assets/main.lst"), "end\n").unwrap();
         std::fs::write(root.join("assets/art/a.txt"), "art").unwrap();
         std::fs::create_dir_all(root.join(".solis/cache")).unwrap();
         std::fs::write(root.join(".solis/cache/big.solbin"), "cache").unwrap();

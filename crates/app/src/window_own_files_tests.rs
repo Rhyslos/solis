@@ -40,7 +40,13 @@ pub(super) fn editor_with_project(name: &str) -> (egui::Context, App, PathBuf) {
         crate::sound::RETRY,
     );
     app.open_project(&root, true);
-    let assets = app.projects.db().expect("opened").project().assets();
+    let assets = app
+        .projects
+        .db()
+        .expect("opened")
+        .project()
+        .assets_folder()
+        .unwrap();
     (ctx, app, assets)
 }
 

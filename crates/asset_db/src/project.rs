@@ -102,6 +102,60 @@ pub const GITATTRIBUTES: &str = "\
 *.flac filter=lfs diff=lfs merge=lfs -text
 ";
 
+/// What a project makes: 2D, 3D or both (decision 0118). Asked when the
+/// project is made and changed in Project settings. Projects from before
+/// it was asked have no `kind` and are both, so nothing they use is
+/// hidden from them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub enum ProjectKind {
+    /// Sprites and tile maps.
+    TwoD,
+    /// Models, lights and cameras.
+    ThreeD,
+    /// 2D and 3D: everything.
+    #[default]
+    Both,
+}
+
+impl ProjectKind {
+    /// Every kind, in the order they're offered.
+    pub const ALL: [Self; 3] = [Self::TwoD, Self::ThreeD, Self::Both];
+
+    /// The word the project file keeps.
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::TwoD => "2d",
+            Self::ThreeD => "3d",
+            Self::Both => "both",
+        }
+    }
+
+    /// The kind a project file's word names (any case), if any.
+    pub fn from_word(word: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|kind| kind.word().eq_ignore_ascii_case(word.trim()))
+    }
+}
+
+impl Serialize for ProjectKind {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.word())
+    }
+}
+
+impl<'de> Deserialize<'de> for ProjectKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let word = String::deserialize(d)?;
+        Self::from_word(&word).ok_or_else(|| {
+            serde::de::Error::custom(format!(
+                "its kind \"{}\" isn't 2d, 3d or both",
+                word.chars().take(20).collect::<String>()
+            ))
+        })
+    }
+}
+
 /// What `project.solis` holds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct ProjectFile {
@@ -114,6 +168,13 @@ struct ProjectFile {
     /// leave it out.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     saved_by: Option<u64>,
+    /// 2D, 3D or both (decision 0118). An optional key, like `saved_by`:
+    /// older files leave it out and are both, and an older Solis reading
+    /// a newer file passes it by and keeps it when it writes the file
+    /// (it changes keys through the file's table), so the format's
+    /// version stays 1.
+    #[serde(default)]
+    kind: ProjectKind,
 }
 
 /// What the launcher shows of a project, read from its project file alone.
@@ -123,6 +184,8 @@ pub struct Summary {
     pub name: String,
     /// The build of Solis that last opened it, if recorded.
     pub saved_by: Option<u64>,
+    /// 2D, 3D or both (both for a project from before it was asked).
+    pub kind: ProjectKind,
 }
 
 /// An open project.
@@ -130,6 +193,7 @@ pub struct Summary {
 pub struct Project {
     root: PathBuf,
     name: String,
+    kind: ProjectKind,
 }
 
 /// Why a project couldn't be made or opened, in plain words.
@@ -171,14 +235,22 @@ impl From<std::io::Error> for ProjectError {
 }
 
 impl Project {
-    /// Makes `root` a new project called `name`: its project file, the
-    /// assets and cache folders, and Git's `.gitignore` and
-    /// `.gitattributes` (kept if the folder already has them).
+    /// Makes `root` a new project called `name`, of both kinds: see
+    /// [`Project::create_kind`].
     pub fn create(root: &Path, name: &str) -> Result<Self, ProjectError> {
+        Self::create_kind(root, name, ProjectKind::Both)
+    }
+
+    /// Makes `root` (and the folders above it) a new project called
+    /// `name`, of `kind`: its project file, the cache folder, and Git's
+    /// `.gitignore` and `.gitattributes` (kept if the folder already has
+    /// them). Only what it needs to open: the assets folder is made when
+    /// something is first put in it (decision 0118).
+    pub fn create_kind(root: &Path, name: &str, kind: ProjectKind) -> Result<Self, ProjectError> {
         if root.join(PROJECT_FILE).exists() {
             return Err(ProjectError::AlreadyAProject(root.to_path_buf()));
         }
-        std::fs::create_dir_all(root.join(ASSETS_FOLDER))?;
+        std::fs::create_dir_all(root)?;
         // Solis's own folder, where the cache is written: never a link.
         own_folder(root, CACHE_FOLDER)?;
         for (file, text) in [(".gitignore", GITIGNORE), (".gitattributes", GITATTRIBUTES)] {
@@ -191,30 +263,34 @@ impl Project {
             name: name.to_string(),
             format: FORMAT,
             saved_by: None,
+            kind,
         };
         let text = toml::to_string(&file).map_err(|e| ProjectError::Damaged(e.to_string()))?;
         write_atomically(&root.join(PROJECT_FILE), text.as_bytes())?;
         Ok(Self {
             root: root.to_path_buf(),
             name: name.to_string(),
+            kind,
         })
     }
 
-    /// Opens the project in `root`, making its assets and cache folders if
-    /// they're missing (a fresh clone has no cache).
+    /// Opens the project in `root`, making its cache folder if it's
+    /// missing (a fresh clone has no cache). A missing assets folder is
+    /// left missing (decision 0118): it's made when something is first
+    /// put in it ([`Project::assets_folder`]).
     pub fn open(root: &Path) -> Result<Self, ProjectError> {
         let path = root.join(PROJECT_FILE);
         if !path.is_file() {
             return Err(ProjectError::NotAProject(root.to_path_buf()));
         }
         let text = read_text_limited(&path, 64 * 1024)?;
-        let name = Self::read_file(&text)?;
-        std::fs::create_dir_all(root.join(ASSETS_FOLDER))?;
+        let summary = Self::read_summary(&text)?;
         // Solis's own folder, where the cache is written: never a link.
         own_folder(root, CACHE_FOLDER)?;
         Ok(Self {
             root: root.to_path_buf(),
-            name,
+            name: summary.name,
+            kind: summary.kind,
         })
     }
 
@@ -236,6 +312,7 @@ impl Project {
         Ok(Summary {
             name: file.name,
             saved_by: file.saved_by,
+            kind: file.kind,
         })
     }
 
@@ -253,16 +330,40 @@ impl Project {
     /// everything else the file says. Returns whether the file changed:
     /// it's left alone when it already says so.
     pub fn record_build(&self, build: u64) -> Result<bool, ProjectError> {
+        let number = i64::try_from(build)
+            .map_err(|_| ProjectError::Damaged("the build number is too big".into()))?;
+        self.change_file("saved_by", toml::Value::Integer(number), |s| {
+            s.saved_by == Some(build)
+        })
+    }
+
+    /// Gives the project the kind `kind` in its project file (Project
+    /// settings), keeping everything else the file says. Returns whether
+    /// the file changed: it's left alone when it already says so.
+    pub fn set_kind(&mut self, kind: ProjectKind) -> Result<bool, ProjectError> {
+        let changed = self.change_file("kind", toml::Value::String(kind.word().into()), |s| {
+            s.kind == kind
+        })?;
+        self.kind = kind;
+        Ok(changed)
+    }
+
+    /// Sets `key` to `value` in the project file, keeping everything else
+    /// it says, unless `already` says the file has it so.
+    fn change_file(
+        &self,
+        key: &str,
+        value: toml::Value,
+        already: impl Fn(&Summary) -> bool,
+    ) -> Result<bool, ProjectError> {
         let path = self.root.join(PROJECT_FILE);
         let text = read_text_limited(&path, 64 * 1024)?;
-        if Self::read_summary(&text)?.saved_by == Some(build) {
+        if already(&Self::read_summary(&text)?) {
             return Ok(false);
         }
         let mut table: toml::Table =
             toml::from_str(&text).map_err(|e| ProjectError::Damaged(e.to_string()))?;
-        let build = i64::try_from(build)
-            .map_err(|_| ProjectError::Damaged("the build number is too big".into()))?;
-        table.insert("saved_by".into(), toml::Value::Integer(build));
+        table.insert(key.into(), value);
         let text = toml::to_string(&table).map_err(|e| ProjectError::Damaged(e.to_string()))?;
         write_atomically(&path, text.as_bytes())?;
         Ok(true)
@@ -273,14 +374,27 @@ impl Project {
         &self.name
     }
 
+    /// 2D, 3D or both.
+    pub fn kind(&self) -> ProjectKind {
+        self.kind
+    }
+
     /// Its top folder.
     pub fn root(&self) -> &Path {
         &self.root
     }
 
-    /// The folder of its assets.
+    /// The folder of its assets. It may not be there yet: a new project
+    /// gets it when something is first put in it
+    /// ([`Project::assets_folder`]).
     pub fn assets(&self) -> PathBuf {
         self.root.join(ASSETS_FOLDER)
+    }
+
+    /// The folder of its assets, made now if it isn't there (never
+    /// through a link), for something about to be put in it.
+    pub fn assets_folder(&self) -> std::io::Result<PathBuf> {
+        own_folder(&self.root, ASSETS_FOLDER)
     }
 
     /// The import cache's folder.
@@ -431,6 +545,7 @@ mod tests {
         let none = Summary {
             name: "Farm".into(),
             saved_by: None,
+            kind: ProjectKind::Both,
         };
         assert_eq!(
             Project::summary(&root).unwrap(),
@@ -540,7 +655,10 @@ mod tests {
     fn a_new_project_has_its_folders_and_git_files_and_opens_again() {
         let root = test_folder("new-project");
         let made = Project::create(&root, "Harbour").unwrap();
-        assert!(root.join("assets").is_dir() && root.join(".solis").is_dir());
+        assert!(root.join(".solis").is_dir());
+        // Only what it needs to open (decision 0118): no assets folder
+        // until something is put in it.
+        assert!(!root.join("assets").exists());
         let ignore = std::fs::read_to_string(root.join(".gitignore")).unwrap();
         assert!(ignore.contains("/.solis/"));
         assert!(ignore.contains("/saves/"));
@@ -554,6 +672,10 @@ mod tests {
         let opened = Project::open(&root).unwrap();
         assert_eq!(opened, made);
         assert_eq!(opened.name(), "Harbour");
+        assert!(!root.join("assets").exists(), "opening makes none either");
+        let assets = opened.assets_folder().unwrap();
+        assert!(assets.is_dir() && assets == opened.assets());
+        assert_eq!(opened.assets_folder().unwrap(), assets, "again");
         assert!(matches!(
             Project::create(&root, "Again"),
             Err(ProjectError::AlreadyAProject(_))
@@ -597,5 +719,93 @@ mod tests {
         let project = Project::open(&root).unwrap();
         assert!(project.root().join(".solis").is_dir());
         assert!(project.cache().starts_with(project.root()));
+    }
+
+    #[test]
+    fn a_project_s_kind_is_kept_and_old_projects_are_both() {
+        let root = test_folder("kind");
+        let made = Project::create_kind(&root.join("deeper/Farm"), "Farm", ProjectKind::TwoD);
+        let mut project = made.unwrap();
+        assert_eq!(project.kind(), ProjectKind::TwoD);
+        let summary = Project::summary(project.root()).unwrap();
+        assert_eq!(summary.kind, ProjectKind::TwoD, "read back");
+        let text = std::fs::read_to_string(project.root().join(PROJECT_FILE)).unwrap();
+        assert!(text.contains("kind = \"2d\""), "{text}");
+        // Changed in Project settings, keeping what else the file says.
+        let path = project.root().join(PROJECT_FILE);
+        std::fs::write(&path, text + "later = 1\n").unwrap();
+        assert!(project.set_kind(ProjectKind::ThreeD).unwrap());
+        assert!(!project.set_kind(ProjectKind::ThreeD).unwrap(), "the same");
+        assert_eq!(project.kind(), ProjectKind::ThreeD);
+        let opened = Project::open(project.root()).unwrap();
+        assert_eq!(opened.kind(), ProjectKind::ThreeD);
+        assert!(std::fs::read_to_string(&path).unwrap().contains("later = 1"));
+        // A project from before the kind was asked is both.
+        std::fs::write(&path, "name = \"Old\"\nformat = 1\n").unwrap();
+        assert_eq!(Project::open(project.root()).unwrap().kind(), ProjectKind::Both);
+        // Any case; anything else is explained, never guessed.
+        for (word, kind) in [("2D", ProjectKind::TwoD), (" Both ", ProjectKind::Both)] {
+            std::fs::write(&path, format!("name = \"X\"\nformat = 1\nkind = \"{word}\"\n"))
+                .unwrap();
+            assert_eq!(Project::summary(project.root()).unwrap().kind, kind, "{word}");
+        }
+        for wrong in ["\"4d\"", "3", "[]", "\"\""] {
+            std::fs::write(&path, format!("name = \"X\"\nformat = 1\nkind = {wrong}\n"))
+                .unwrap();
+            let err = Project::summary(project.root()).unwrap_err();
+            assert!(matches!(err, ProjectError::Damaged(_)), "{wrong}: {err}");
+        }
+        let err = Project::read_summary("name = \"X\"\nformat = 1\nkind = \"vr\"\n");
+        assert!(err.unwrap_err().to_string().contains("isn't 2d, 3d or both"));
+    }
+
+    #[test]
+    fn every_kind_is_written_and_read_back() {
+        for kind in ProjectKind::ALL {
+            assert_eq!(ProjectKind::from_word(kind.word()), Some(kind));
+            let root = test_folder(&format!("kind-{}", kind.word()));
+            Project::create_kind(&root, "Round", kind).unwrap();
+            assert_eq!(Project::open(&root).unwrap().kind(), kind);
+        }
+        assert_eq!(ProjectKind::default(), ProjectKind::Both);
+    }
+
+    /// Thousands of damaged project files, around the kind especially:
+    /// each is read or refused in plain words, never a crash (rule 9).
+    #[test]
+    fn damaged_project_files_never_crash_the_reader() {
+        let good = "name = \"Farm\"\nformat = 1\nsaved_by = 57\nkind = \"2d\"\n";
+        assert_eq!(Project::read_summary(good).unwrap().kind, ProjectKind::TwoD);
+        let pieces = [
+            "kind", "=", "\"", "2d", "3d", "both", "[", "]", "{", "}", "\n", "format", "1", "99",
+            "name", "-", "é", "\u{0}", "#", "saved_by", ".", "'", "\\", "true",
+        ];
+        let mut seed: u64 = 0x50_115;
+        let mut next = |n: usize| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) as usize % n
+        };
+        for _ in 0..5_000 {
+            let mut text: Vec<char> = good.chars().collect();
+            for _ in 0..=next(4) {
+                let at = next(text.len() + 1);
+                match next(3) {
+                    0 if at < text.len() => drop(text.remove(at)),
+                    1 => {
+                        let piece = pieces[next(pieces.len())];
+                        for (i, c) in piece.chars().enumerate() {
+                            text.insert((at + i).min(text.len()), c);
+                        }
+                    }
+                    _ => text.truncate(at),
+                }
+            }
+            let text: String = text.into_iter().collect();
+            if let Err(err) = Project::read_summary(&text) {
+                assert!(!err.to_string().is_empty(), "{text:?}");
+            }
+        }
     }
 }

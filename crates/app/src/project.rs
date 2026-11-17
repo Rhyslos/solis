@@ -38,6 +38,10 @@ pub struct Projects {
     scanning: Option<Receiver<Scanned>>,
     /// Whether the folder changed again while that look ran.
     again: bool,
+    /// Whether `watcher` watches only the project's own folder, because
+    /// it has no assets folder yet (decision 0118): when one is made
+    /// there, the watcher moves into it.
+    watching_root: bool,
 }
 
 /// What opening a project found.
@@ -85,7 +89,7 @@ impl Projects {
         // Older files Solis made move to Lust first (decision 0081), so
         // the asset database finds them under their new names.
         let moved = crate::to_lust::move_older_files(root, &project.assets());
-        let watcher = Watcher::new(&project.assets()).ok();
+        let (watcher, watching_root) = watch(root, &project.assets());
         let (db, _, mut notes) = AssetDb::open(project, limits);
         notes.splice(0..0, moved);
         // The cache keeps within its size, on a worker: a model whose entry
@@ -120,6 +124,7 @@ impl Projects {
         let watching = watcher.is_some();
         self.db = Some(db);
         self.watcher = watcher;
+        self.watching_root = watching_root;
         // A look at the last project's folder is no longer wanted.
         self.scanning = None;
         self.again = false;
@@ -128,6 +133,26 @@ impl Projects {
             notes,
             watching,
         })
+    }
+
+    /// Closes the open project (File › Close project): its database and
+    /// watcher go, and nothing of it is looked at again.
+    pub fn close(&mut self) {
+        self.db = None;
+        self.watcher = None;
+        self.watching_root = false;
+        self.scanning = None;
+        self.again = false;
+        self.changed = false;
+    }
+
+    /// Gives the open project the kind `kind` (Project settings), in its
+    /// project file.
+    pub fn set_kind(&mut self, kind: asset_db::ProjectKind) -> Result<(), String> {
+        let db = self.db.as_mut().ok_or("no project is open")?;
+        db.set_project_kind(kind)
+            .map(drop)
+            .map_err(|e| e.to_string())
     }
 
     /// The asset database, if a project is open.
@@ -182,7 +207,11 @@ impl Projects {
                 Err(TryRecvError::Disconnected) => self.scanning = None,
             }
         }
-        self.again |= self.watcher.as_ref().is_some_and(Watcher::changed);
+        let heard = self.watcher.as_ref().is_some_and(Watcher::changed);
+        if heard && self.watching_root {
+            self.follow_new_assets_folder();
+        }
+        self.again |= heard;
         // A new file left waiting for its sidecar is looked at again once
         // it has settled, even if nothing else happens.
         self.again |= self.scanning.is_none()
@@ -195,6 +224,22 @@ impl Projects {
             self.start_scan();
         }
         found
+    }
+
+    /// Something changed in the project's own folder while it had no
+    /// assets folder: if one is there now (made by Solis or anyone else),
+    /// the watcher moves into it.
+    fn follow_new_assets_folder(&mut self) {
+        let Some(db) = &self.db else {
+            return;
+        };
+        let assets = db.project().assets();
+        if assets.is_dir()
+            && let Ok(watcher) = Watcher::new(&assets)
+        {
+            self.watcher = Some(watcher);
+            self.watching_root = false;
+        }
     }
 
     /// Starts a look at the assets folder on a worker.
@@ -311,6 +356,7 @@ impl Projects {
         if !assets_or_inside(parent) {
             return Err(outside(parent));
         }
+        db.project().assets_folder().map_err(|e| e.to_string())?;
         db.new_folder(parent).map_err(|e| e.to_string())
     }
 
@@ -321,6 +367,9 @@ impl Projects {
     pub fn new_sound_event(&mut self, folder: &Path, text: &str) -> Result<PathBuf, String> {
         let db = self.db.as_mut().ok_or("no project is open")?;
         let assets = db.project().assets();
+        if folder.as_os_str().is_empty() {
+            db.project().assets_folder().map_err(|e| e.to_string())?;
+        }
         let dir = assets.join(folder);
         // The path is checked before the disk is asked about it.
         if !assets_or_inside(folder) || !dir.is_dir() {
@@ -360,7 +409,9 @@ impl Projects {
         if !plain_inside(path) || !is_kind(path) {
             return Err(format!("it isn't {what} in the assets"));
         }
-        Ok((db, db.project().assets().join(path)))
+        // A new project gets its assets folder with its first file.
+        let assets = db.project().assets_folder().map_err(|e| e.to_string())?;
+        Ok((db, assets.join(path)))
     }
 
     /// Saves `text` as the file of `kind` at `path` (inside the assets). A
@@ -596,6 +647,20 @@ struct Saved<'a> {
     read_back: fn(&str) -> Result<String, String>,
 }
 
+/// A watcher on the project in `root`: on its assets folder and all in
+/// it, or, while it has none (a new project, decision 0118), on the
+/// project's own folder alone, to see one made (the `bool` says so).
+/// None if the system won't watch.
+fn watch(root: &Path, assets: &Path) -> (Option<Watcher>, bool) {
+    if assets.is_dir() {
+        (Watcher::new(assets).ok(), false)
+    } else {
+        let watcher = Watcher::new_flat(root).ok();
+        let flat = watcher.is_some();
+        (watcher, flat)
+    }
+}
+
 /// Whether `path` is a plain path inside the assets: names only, with no
 /// `..`, root or drive, so joined to the assets folder it stays inside it
 /// on every system (`editor::plain_relative`). The one rule for a path a
@@ -721,7 +786,7 @@ mod tests {
     #[test]
     fn a_change_in_the_assets_is_looked_at_on_a_worker() {
         let root = folder("scan-worker");
-        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(root.join("assets")).unwrap();
         let mut projects = Projects::default();
         projects
             .open(&root, true, assets::Limits::default())
@@ -742,6 +807,44 @@ mod tests {
         );
     }
 
+    /// A new project has no assets folder (decision 0118): the project's
+    /// own folder is watched until one is made, outside Solis here, and
+    /// the watcher then moves into it and sees what's put there.
+    #[test]
+    fn an_assets_folder_made_later_is_watched() {
+        let root = folder("assets-later");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut projects = Projects::default();
+        let opened = projects
+            .open(&root, true, assets::Limits::default())
+            .unwrap();
+        assert!(opened.watching, "the project's own folder is watched");
+        assert!(!root.join("assets").exists(), "none is made by opening");
+        assert!(projects.watching_root);
+        std::fs::create_dir_all(root.join("assets")).unwrap();
+        let file = root.join("assets/crate.glb");
+        std::fs::write(&file, assets::sample::sample_glb()).unwrap();
+        let (changes, _, _) = poll_until_found(&mut projects);
+        assert!(!projects.watching_root, "it moved into the assets folder");
+        assert!(
+            matches!(changes.as_slice(), [Change::Added(_)]),
+            "{changes:?}"
+        );
+        // A file Solis saves makes the folder too.
+        projects.close();
+        let fresh = folder("assets-by-saving");
+        std::fs::create_dir_all(&fresh).unwrap();
+        projects
+            .open(&fresh, true, assets::Limits::default())
+            .unwrap();
+        projects
+            .save_new_text(Path::new("main.lst"), "end\n")
+            .unwrap();
+        assert!(fresh.join("assets/main.lst").is_file());
+        projects.close();
+        assert!(projects.db().is_none() && projects.root().is_none(), "closed");
+    }
+
     /// The review, BUG-32: a new 256 MB sound settled in the assets. Its
     /// first look hashes it whole; that was the frame's wait before.
     #[test]
@@ -749,7 +852,7 @@ mod tests {
     fn scale_check_a_big_new_file_in_the_assets() {
         const TARGET_MS: f64 = 1.0;
         let root = folder("scale-scan");
-        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(root.join("assets")).unwrap();
         let mut projects = Projects::default();
         projects
             .open(&root, true, assets::Limits::default())
