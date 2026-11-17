@@ -256,6 +256,15 @@ impl AssetDb {
         &self.project
     }
 
+    /// Gives the project the kind `kind`, in its project file (see
+    /// [`Project::set_kind`]).
+    pub fn set_project_kind(
+        &mut self,
+        kind: crate::ProjectKind,
+    ) -> Result<bool, crate::ProjectError> {
+        self.project.set_kind(kind)
+    }
+
     /// Every asset, by ID.
     pub fn records(&self) -> &BTreeMap<AssetId, AssetRecord> {
         self.records.as_ref()
@@ -391,7 +400,8 @@ impl AssetDb {
     /// project's assets, under a name not yet taken, and returns where it
     /// went. The next rescan adds it.
     pub fn copy_in(&self, source: &Path) -> std::io::Result<PathBuf> {
-        let assets = self.project.assets();
+        // A new project's assets folder is made by the first file in it.
+        let assets = self.project.assets_folder()?;
         let name = source
             .file_name()
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "no file name"))?;
@@ -750,7 +760,7 @@ mod tests {
     fn project(name: &str) -> (Project, PathBuf, TempFolder) {
         let root = test_folder(name);
         let project = Project::create(&root, "Test").unwrap();
-        let assets = project.assets();
+        let assets = project.assets_folder().unwrap();
         (project, assets, root)
     }
 

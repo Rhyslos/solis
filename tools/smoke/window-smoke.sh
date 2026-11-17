@@ -4,7 +4,13 @@
 # colours, a tool key picks a tool, the camera flies (right mouse and W),
 # the shelf's grip and the editor groups' divider can be dragged, File >
 # Exit quits, the next launch puts the tab, the split and the camera back
-# where they were, and (with SAMPLE_MODEL set) an imported model is drawn.
+# where they were, (with SAMPLE_MODEL set) an imported model is drawn,
+# and the launcher (decision 0118) opens at its own size when no project
+# is named, opens the project on a double-click and comes back on File >
+# Close project.
+#
+# The editor is started with a project's folder on the command line, which
+# skips the launcher: the script makes an empty project for it.
 #
 # Usage (needs Xvfb, xdotool, ImageMagick and a GPU driver, such as Mesa's
 # software one):
@@ -46,6 +52,11 @@ export HOME="$TEST_HOME"
 export XDG_CONFIG_HOME="$TEST_HOME/.config"
 export XDG_DATA_HOME="$TEST_HOME/.local/share"
 
+# An empty project (its project file alone, as New project makes one).
+PROJECT="$TEST_HOME/Smoke project"
+mkdir -p "$PROJECT"
+printf 'name = "Smoke project"\nformat = 1\nkind = "both"\n' >"$PROJECT/project.solis"
+
 PID=""
 fail() {
     echo "SMOKE TEST FAILED: $1"
@@ -78,12 +89,10 @@ launch() {
     # The first frames are drawn (software rendering is slow).
     wait_for drawn || fail "the window stayed empty"
     xdotool windowfocus --sync "$WINDOW_ID" 2>/dev/null || true
-    # On File › Recent projects (decision 0105), Esc carries on without a
-    # project, into the editor.
-    if tab_open "${FILE_TAB_X:-64}"; then
-        xdotool key --window "$WINDOW_ID" Escape 2>/dev/null || true
+    # A project named on the command line opens in the editor at once.
+    if [ "$#" -gt 0 ]; then
+        wait_for editor_shown || fail "the editor isn't shown (still on the File page)"
     fi
-    wait_for editor_shown || fail "the editor isn't shown (still on the File page)"
 }
 
 # A picture of the screen, as `$1`.
@@ -201,12 +210,12 @@ ended_within() {
 # File > Exit with the mouse, then wait for the program to end.
 quit() {
     # The File tab is the first tab after the logo; Exit is the last item
-    # of the File page's column, under Learn, Updates and About (the
+    # of the File page's column, under About and Close project (the
     # column's own sizes are FILE_MENU_* in crates/editor/src/tokens/size.rs).
     xdotool mousemove "${FILE_TAB_X:-64}" "${FILE_TAB_Y:-19}" click 1
     wait_for tab_open "${FILE_TAB_X:-64}" || fail "File did not open the File page"
     snap file-page
-    xdotool mousemove "${EXIT_X:-110}" "${EXIT_Y:-534}" click 1
+    xdotool mousemove "${EXIT_X:-110}" "${EXIT_Y:-380}" click 1
     # With unsaved changes (an imported model), Solis asks first: answer
     # Don't save, on the left of the box in the middle, once it's shown.
     for _ in $(seq 1 240); do
@@ -224,7 +233,7 @@ quit() {
     PID=""
 }
 
-launch
+launch "$PROJECT"
 wait_for sky_drawn || true
 shot first
 
@@ -314,7 +323,7 @@ echo "Frame saved in: ${SAVED#"$TEST_HOME"/}"
 # 7. The next launch opens on Audio with the divider where it was dragged
 #    (and the camera where it flew): the screen matches the dragged one,
 #    not the first one.
-launch
+launch "$PROJECT"
 shot reopened
 SAME="$(changed_pixels dragged reopened)"
 FIRST="$(changed_pixels first reopened)"
@@ -337,7 +346,7 @@ model_drawn() { [ "$(red_pixels now)" -gt 2000 ]; }
 #    reopens on the tab used last (Audio, step 5), and an import doesn't
 #    change the tab: Home shows the 3D view.
 if [ -n "${SAMPLE_MODEL:-}" ]; then
-    launch --import "$SAMPLE_MODEL"
+    launch "$PROJECT" --import "$SAMPLE_MODEL"
     xdotool mousemove "${HOME_TAB_X:-114}" "${HOME_TAB_Y:-19}" click 1
     wait_for model_drawn || true
     shot imported
@@ -347,5 +356,50 @@ if [ -n "${SAMPLE_MODEL:-}" ]; then
     grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
     quit
 fi
+
+# The window's size now, as "W H".
+window_size() {
+    eval "$(xdotool getwindowgeometry --shell "$WINDOW_ID")"
+    echo "$WIDTH $HEIGHT"
+}
+
+# 9. With no project named, the launcher opens at its own size (board 01,
+#    1100 x 700), listing the project opened above. A double-click on its
+#    card opens it in the editor, at the editor's size; File > Close
+#    project comes back to the launcher at its size.
+launch
+sleep 2
+shot launcher
+read -r LW LH <<<"$(window_size)"
+echo "The launcher's window: $LW x $LH"
+[ "$LW" = 1100 ] && [ "$LH" = 700 ] || fail "the launcher isn't its own size: $LW x $LH"
+eval "$(xdotool getwindowgeometry --shell "$WINDOW_ID")"
+# The first card: under the heading and the search, left of the page.
+xdotool mousemove $((X + ${CARD_X:-371})) $((Y + ${CARD_Y:-250}))
+sleep 0.3
+xdotool click --repeat 2 --delay 80 1
+for _ in $(seq 1 120); do
+    read -r EW EH <<<"$(window_size)"
+    [ "$EW" != "$LW" ] && break
+    sleep 0.5
+done
+echo "The editor's window: $EW x $EH"
+[ "$EW" != 1100 ] || fail "a double-click on the card didn't open the editor"
+wait_for editor_shown || fail "the editor isn't shown after opening the project"
+shot opened-from-launcher
+xdotool mousemove "${FILE_TAB_X:-64}" "${FILE_TAB_Y:-19}" click 1
+wait_for tab_open "${FILE_TAB_X:-64}" || fail "File did not open the File page"
+xdotool mousemove "${CLOSE_PROJECT_X:-110}" "${CLOSE_PROJECT_Y:-342}" click 1
+for _ in $(seq 1 120); do
+    read -r BW BH <<<"$(window_size)"
+    [ "$BW" = 1100 ] && break
+    sleep 0.5
+done
+[ "$BW" = 1100 ] && [ "$BH" = 700 ] || fail "Close project didn't go back to the launcher: $BW x $BH"
+shot back-to-launcher
+# The launcher has no File > Exit (closing its window quits, which a
+# virtual screen without a window manager can't ask): stopped here.
+kill "$PID" 2>/dev/null || true
+PID=""
 
 echo "Window smoke test passed."

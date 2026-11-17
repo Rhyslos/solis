@@ -127,6 +127,7 @@ fn game_without_code(dir: &Path, extra: impl Fn(&Path)) -> (egui::Context, App) 
     let root = dir.join("game");
     asset_db::Project::create(&root, "Plain").unwrap();
     let assets = root.join(asset_db::ASSETS_FOLDER);
+    std::fs::create_dir_all(&assets).unwrap();
     extra(&assets);
     let mut area = area::Area::new();
     area.spawn(area::EntityData::new("Rock").with(&area::builtin::Transform::default()));

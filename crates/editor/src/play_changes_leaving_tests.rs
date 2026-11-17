@@ -41,7 +41,7 @@ fn leaving() -> Vec<WorkbenchAction> {
         WorkbenchAction::NewArea,
         WorkbenchAction::OpenArea,
         WorkbenchAction::OpenAreaFile("/p/assets/other.solarea".into()),
-        WorkbenchAction::NewProject,
+        WorkbenchAction::CloseProject,
         WorkbenchAction::OpenProject,
         WorkbenchAction::OpenRecent("/other".into()),
         WorkbenchAction::MakeSampleGame,
@@ -174,13 +174,14 @@ fn a_quit_handed_straight_to_the_app_while_playing_waits_too() {
 }
 
 #[test]
-fn the_question_is_asked_over_recent_projects() {
-    // Closing the editor's window with a project open goes back to
-    // Recent projects, stopping the game: the question must be drawn
-    // over the page, never left unseen while another project opens.
+fn the_question_is_asked_before_the_project_closes() {
+    // Closing the project (File › Close project, or the editor's window)
+    // stops the game: the question about its edits is asked in the
+    // editor, never left unseen while another project opens.
     let (mut w, lamp) = playing_with_an_edit();
-    w.show_recent_projects();
-    assert!(w.file_page_open());
+    let mut first = Vec::new();
+    w.request(WorkbenchAction::CloseProject, &mut first);
+    assert_eq!(first, [], "waits for the answer");
     assert_eq!(w.play_state(), PlayState::Editing);
     let mut h = harness(w);
     h.run();

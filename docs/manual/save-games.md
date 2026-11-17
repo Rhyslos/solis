@@ -90,7 +90,7 @@ Save games have no settings: everything is saved.
 None of its own. A game chooses its own save and load keys through [input actions](input.md).
 
 ## Tips and common problems
-- **Problem:** the Console says the game wasn't saved because save games are kept in a project. **Why:** saves are files in a project's folder. **Fix:** open or make a project (File › New project).
+- **Problem:** the Console says the game wasn't saved because save games are kept in a project. **Why:** saves are files in a project's folder. **Fix:** open or make a project on the [launcher](launcher.md).
 - **Problem:** "the saves folder is a link to somewhere else". **Why:** Solis only writes saves into a real folder in the project, so a project you downloaded can't send them elsewhere on your computer. **Fix:** delete the `saves` link (or move the real folder into the project).
 - **Problem:** "Couldn't load quick: it was saved by the project …". **Why:** a save belongs to the project that made it. **Fix:** load it in that project.
 - **Problem:** "Couldn't load …: it's damaged". **Why:** the file was cut short or changed (a save carries a checksum, so a damaged one is refused rather than half loaded). **Fix:** save again.

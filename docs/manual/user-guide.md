@@ -14,7 +14,7 @@ The guide is a single file on your computer, in the `user-guide` folder beside t
 **Documentation**, at the right of the tab bar, beside the project's name: one click opens this guide.
 
 1. Click **Documentation** at the right end of the tab bar, beside the project's name. It is always there: on every tab, on the File pages, and before any project is open.
-2. The guide opens in your browser (which one is a setting; see below), at the welcome. **File › Learn** and **File › About** open it too, and a component's **?** in [Properties](entities.md) opens the chapter about that component.
+2. The guide opens in your browser (which one is a setting; see below), at the welcome. The launcher's **User guide** and **Learn**, and **File › About**, open it too, and a component's **?** in [Properties](entities.md) opens the chapter about that component.
 3. Find what you're after:
    - **Search:** press `/` or `Ctrl + K` (or click the box at the top) and type. Every part of the guide holding all the words you typed is listed, with the words around them; `Up` and `Down` choose, `Enter` goes there and marks the words on the page, `Esc` clears the search.
    - **Contents:** the list on the left has every chapter, numbered and in groups. The chapter you're reading opens out to show its sections, and the one you're in is lit. Above the list, how much of the guide you've read so far.

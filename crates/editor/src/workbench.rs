@@ -69,11 +69,14 @@ pub struct Workbench {
     pub(crate) console: Console,
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
-    /// The File tab's own pages: which is in front, and how Recent
-    /// projects is searched and ordered.
+    /// The File tab's own pages: which is in front, and each one's
+    /// sub-tab and search.
     pub(crate) file_pages: crate::file_pages::FilePages,
-    /// The projects Solis knows, for Recent projects (the app reads them).
-    pub(crate) known_projects: Vec<crate::file_pages::KnownProject>,
+    /// The launcher (decision 0118): whether it shows in place of the
+    /// editor, its page, and New project.
+    pub(crate) launcher: crate::launcher::Launcher,
+    /// The projects Solis knows, for the launcher (the app reads them).
+    pub(crate) known_projects: Vec<crate::launcher::KnownProject>,
     /// This copy's build number, for the project cards and About.
     pub(crate) this_build: Option<u64>,
     /// Which program the user guide opens in, and the browsers found.
@@ -203,6 +206,7 @@ impl Workbench {
             console: Console::default(),
             files_hovering: false,
             file_pages: Default::default(),
+            launcher: Default::default(),
             known_projects: Vec::new(),
             this_build: None,
             guide: Default::default(),
@@ -421,8 +425,13 @@ impl Workbench {
         self.console.push(level, text.into());
     }
 
-    /// The window title: the program, its version and the open area.
+    /// The window title: the program, its version and the open area; on
+    /// the launcher, the program's name alone.
     pub fn title(&self) -> String {
+        // The launcher's window is the program's own (board 01).
+        if self.launcher.shown {
+            return self.info.name.clone();
+        }
         let mut area = self.open.document.name();
         if self.open.document.is_dirty() {
             area.push_str(" •");

@@ -16,6 +16,7 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant: Linux screen-reader support inside egui (accesskit, through zbus); unmaintained, not a vulnerability, no replacement upstream yet" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names: as zvariant, Linux screen-reader support inside egui" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: as zvariant, Linux screen-reader support inside egui" },
+    { id = "RUSTSEC-2026-0543", reason = "chrono: unmaintained, not a vulnerability; walled (docs/dependencies.md: times on Console messages and backup folder names in asset_db and editor), and trash (the Recycle Bin) needs it too; replace it with the standard library's clock when trash moves on" },
 ]
 
 [licenses]

@@ -62,6 +62,9 @@ pub(crate) struct ProjectState {
     /// hasn't taken when another project opens is let go: it names a file
     /// of the old project, and would be carried out in the new one.
     pub(crate) outbox: Vec<WorkbenchAction>,
+    /// 2D, 3D or both, as its project file says (Project settings ›
+    /// Kind; decision 0118).
+    pub(crate) kind: crate::launcher::ProjectKind,
     /// What waits for an answer about unsaved changes: Save, Don't save
     /// or Cancel.
     pub(crate) unsaved_prompt: Option<WorkbenchAction>,
@@ -220,8 +223,11 @@ impl Workbench {
     /// the Console, and the components the program itself registered.
     pub fn set_project(&mut self, project: Option<ProjectInfo>) {
         if project.is_some() {
-            // A project is open: Recent projects has done its job.
+            // A project is open: the launcher has done its job, and the
+            // editor fills the window.
             self.back_to_editor();
+            self.launcher.shown = false;
+            self.launcher.new_project = None;
         }
         if project == self.open.project {
             return;

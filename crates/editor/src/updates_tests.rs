@@ -43,13 +43,11 @@ fn check_for_updates_asks_the_app_and_the_updates_page_says_how_it_went() {
     h.run();
     command(&mut h, "Check for updates");
     assert!(h.state().1.contains(&WorkbenchAction::CheckForUpdates));
-    // File, Updates: the page that says where updating stands.
-    command(&mut h, "Updates");
-    assert_eq!(h.state().0.ribbon_tab(), crate::shell::RibbonTab::File);
-    assert_eq!(
-        h.state().0.file_pages.page,
-        crate::file_pages::Page::Updates
-    );
+    // The page that says where updating stands is the launcher's.
+    h.state_mut().0.open_launcher();
+    h.run();
+    h.get_by_label("Updates").click();
+    h.run();
     assert!(h.query_by_label_contains("Check now").is_some());
 }
 

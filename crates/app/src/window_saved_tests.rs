@@ -65,7 +65,7 @@ fn a_first_run_s_settings_start_the_new_look_with_everything_else_kept() {
     assert_eq!(workbench.interface_look(), InterfaceLook::default());
     assert_eq!(workbench.accent(), Accent::Blue);
     // What the look doesn't touch is as it was saved.
-    assert_eq!(saved.editor_size, FIRST_SIZE);
+    assert_eq!(saved.editor_place.size, FIRST_SIZE);
     assert_eq!(saved.known.saved().len(), 2);
     assert!(saved.auto_update);
     assert_eq!(saved.skipped, None);
@@ -111,14 +111,12 @@ fn frame(ctx: &egui::Context, app: &mut super::super::App, events: Vec<egui::Eve
     output.textures_delta.clear();
 }
 
-/// The second review pass's N-04: every start opens on File › Recent
-/// projects, the frame saved last time behind it, through `App::new` in
-/// the window's own order. The saved tab used to be put back after
-/// Recent projects was chosen, and covered it at every start but the
-/// first. Search projects doesn't take the keys at the start, so Esc
-/// carries on into the editor at once, on the tab left in front.
+/// The second review pass's N-04, with the launcher of decision 0118:
+/// every start opens on the launcher, the frame saved last time behind
+/// it, through `App::new` in the window's own order; a project opened
+/// from it shows the tab left in front.
 #[test]
-fn every_start_opens_on_recent_projects_with_the_saved_frame_behind_it() {
+fn every_start_opens_on_the_launcher_with_the_saved_frame_behind_it() {
     let mut storage = Memory::default();
     // Nothing is asked of the network: checking for updates is off.
     eframe::set_value(&mut storage, AUTO_UPDATE_KEY, &false);
@@ -139,16 +137,11 @@ fn every_start_opens_on_recent_projects_with_the_saved_frame_behind_it() {
         || Err("there's no sound card".to_owned()),
         crate::sound::RETRY,
     );
-    assert!(app.workbench.file_page_open(), "on Recent projects");
+    assert!(app.workbench.launcher_shown(), "on the launcher");
     app.splashing = false;
     frame(&ctx, &mut app, Vec::new());
     frame(&ctx, &mut app, Vec::new());
-    assert!(app.workbench.file_page_open(), "still on Recent projects");
-    assert_eq!(
-        ctx.memory(egui::Memory::focused),
-        None,
-        "Search projects doesn't have the keys"
-    );
+    assert!(app.workbench.launcher_shown(), "still on the launcher");
     let esc = egui::Event::Key {
         key: egui::Key::Escape,
         physical_key: None,
@@ -157,6 +150,13 @@ fn every_start_opens_on_recent_projects_with_the_saved_frame_behind_it() {
         modifiers: egui::Modifiers::NONE,
     };
     frame(&ctx, &mut app, vec![esc]);
+    assert!(app.workbench.launcher_shown(), "Esc never skips it");
+    // A project opened from it: the editor, on the tab left in front.
+    let root = reflect::test_support::TempFolder::new("saved-frame-project").unwrap();
+    asset_db::Project::create(&root, "Farm").unwrap();
+    app.open_project(&root, false);
+    frame(&ctx, &mut app, Vec::new());
+    assert!(!app.workbench.launcher_shown());
     assert_eq!(app.workbench.ribbon_tab(), editor::RibbonTab::Audio);
 }
 
@@ -177,7 +177,7 @@ fn graphite_rounded_panels_and_plum_become_the_one_theme_and_purple() {
     assert_eq!(workbench.interface_look().scale, Scale::default());
     assert_eq!(workbench.interface_look().density, Density::Default);
     // Everything else that was changed is still changed.
-    assert_eq!(saved.editor_size, [1600.0, 1000.0]);
+    assert_eq!(saved.editor_place.size, [1600.0, 1000.0]);
     assert_eq!(saved.skipped, Some(79));
     assert!(!saved.auto_update);
     assert!(!workbench.auto_update());
@@ -215,7 +215,7 @@ fn settings_from_before_the_second_accent_key_start_too() {
     assert_eq!(workbench.accent(), Accent::Blue);
     // The recent projects of that time become the known projects.
     assert_eq!(saved.known.saved().len(), 2);
-    assert_eq!(saved.editor_size, FIRST_SIZE, "never saved then");
+    assert_eq!(saved.editor_place.size, FIRST_SIZE, "never saved then");
     assert!(saved.auto_update, "never saved then");
     assert_eq!(
         workbench.camera().position,
@@ -304,7 +304,7 @@ fn every_earlier_accent_under_either_key_is_mapped() {
 fn no_settings_and_damaged_settings_both_start_as_standard() {
     let fresh = Saved::read(None);
     assert_eq!(fresh.look, InterfaceLook::default());
-    assert_eq!(fresh.editor_size, FIRST_SIZE);
+    assert_eq!(fresh.editor_place.size, FIRST_SIZE);
     assert!(fresh.auto_update);
     // Every key holding nonsense: nothing is an error, everything is its
     // standard value.
@@ -327,7 +327,7 @@ fn no_settings_and_damaged_settings_both_start_as_standard() {
     }
     let (saved, workbench) = started(&storage);
     assert_eq!(saved.look, InterfaceLook::default());
-    assert_eq!(saved.editor_size, FIRST_SIZE);
+    assert_eq!(saved.editor_place.size, FIRST_SIZE);
     assert!(saved.known.saved().is_empty());
     assert_eq!(workbench.camera(), Camera::default());
     assert_eq!(workbench.accent(), Accent::Blue);

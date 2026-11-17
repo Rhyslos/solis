@@ -236,6 +236,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         library,
         assemblies,
         outbox,
+        kind,
         unsaved_prompt,
         pending_reload,
         moving,
@@ -308,6 +309,11 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(export.is_none() && last_export.is_none());
     assert_eq!(last_export_folder, &None);
     assert_eq!(outbox, &Vec::new(), "nothing still to be carried out");
+    assert_eq!(
+        kind,
+        &crate::launcher::ProjectKind::Both,
+        "until the app says"
+    );
     assert_eq!(unsaved_prompt, &None);
     assert!(pending_reload.is_none() && play_changes.is_none());
     assert!(moving.is_none() && copied.is_empty());

@@ -13,6 +13,12 @@ pub const APP_ID: &str = "solis";
 /// `branding/logo.ico`, built in by `build.rs` on Windows.
 pub const LOGO_PNG: &[u8] = include_bytes!("../../../branding/logo-256.png");
 
+/// The folder in the user's Documents that New project first makes
+/// projects in (decision 0118): "Solis projects".
+pub fn projects_folder() -> String {
+    format!("{APP_NAME} projects")
+}
+
 /// The GitHub repository whose releases hold each build, as `owner/name`
 /// (updates, decision 0043).
 pub const UPDATE_REPO: &str = "Rhyslos/solis";
@@ -36,6 +42,12 @@ mod tests {
         // 0081); it can't name the app's folder itself, so this keeps the
         // two the same.
         assert_eq!(area::lust_data::ENGINE_FOLDER, CODE_FOLDER);
+    }
+
+    #[test]
+    fn the_projects_folder_is_named_after_the_program() {
+        assert_eq!(projects_folder(), format!("{APP_NAME} projects"));
+        assert!(asset_db::valid_file_name(&projects_folder()));
     }
 
     #[test]

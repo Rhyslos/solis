@@ -215,6 +215,12 @@ impl GameCode {
     /// paths) and cues, and each animator's own file
     /// (`solis/animators/…`; those no longer wanted are taken away).
     pub fn describe_with(assets: &Path, made_by: &str, animation: &Animation) -> Vec<String> {
+        // A project with no assets folder yet (a new one, decision 0118)
+        // has no game code to describe the engine to: the files are
+        // written once the folder is made, which the watcher reports.
+        if !assets.is_dir() {
+            return Vec::new();
+        }
         let Animation {
             clips,
             cues,

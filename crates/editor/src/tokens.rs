@@ -16,6 +16,7 @@
 //! A colour is written as numbers here and in `theme.rs` only; a test
 //! (`source_rules_tests.rs`) fails on one anywhere else.
 
+pub mod launcher;
 pub mod size;
 pub mod text;
 
@@ -445,6 +446,30 @@ pub fn mix(colour: Color32, surface: Color32, share: f32) -> Color32 {
         channel(colour.g(), surface.g()),
         channel(colour.b(), surface.b()),
     )
+}
+
+/// The colours of the plain pictures that stand for a project's kind (a
+/// 2D field, a 3D block) on the launcher's cards and in New project
+/// (decision 0118, boards 01 and 02), until a project has a picture of
+/// its own. Solis's own, from the boards.
+pub mod picture {
+    use super::hex;
+    use egui::Color32;
+
+    /// A 2D field's grass.
+    pub const GRASS: Color32 = hex(0x4c8a3c);
+    /// The lines between its tiles.
+    pub const GRASS_LINE: Color32 = hex(0x3c6f30);
+    /// Its path and soil.
+    pub const SOIL: Color32 = hex(0x8a6942);
+    /// A 3D block's top, lit.
+    pub const BLOCK_TOP: Color32 = hex(0x9a9a9a);
+    /// Its side towards the light.
+    pub const BLOCK_LIT: Color32 = hex(0x727272);
+    /// Its side in shade.
+    pub const BLOCK_SHADE: Color32 = hex(0x535353);
+    /// The floor it stands on.
+    pub const FLOOR: Color32 = hex(0x333333);
 }
 
 /// How much accent goes into each mixed fill. The specification gives

@@ -1,7 +1,10 @@
-//! The command line: `--version`, `--help`, or nothing to open the editor
-//! (with `--import <file>` to bring models in as it opens, and `--sample
-//! <which> <folder>` to make a sample project and open it, as File ›
-//! Learn does: the guide's picture script starts the editor this way).
+//! The command line: `--version`, `--help`, or nothing to open the
+//! launcher (decision 0118). A project's folder named on its own opens
+//! that project in the editor straight away, as does `--sample <which>
+//! <folder>`, which makes a sample project and opens it, as the
+//! launcher's Learn does (the guide's picture script and the window test
+//! start the editor this way); `--import <file>` brings models in as it
+//! opens.
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -27,6 +30,16 @@ pub struct Launch {
     pub imports: Vec<PathBuf>,
     /// A sample project to make in an empty folder and open.
     pub sample: Option<(Sample, PathBuf)>,
+    /// A project's folder to open in the editor, skipping the launcher.
+    pub project: Option<PathBuf>,
+}
+
+impl Launch {
+    /// Whether the editor opens straight away, with a project: one is
+    /// named, or a sample is to be made. Otherwise the launcher opens.
+    pub fn skips_the_launcher(&self) -> bool {
+        self.project.is_some() || self.sample.is_some()
+    }
 }
 
 /// The sample projects File › Learn makes.
@@ -101,6 +114,14 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
                     }
                 }
             }
+            Some(word) if !word.starts_with('-') && !word.trim().is_empty() => {
+                if launch.project.is_some() {
+                    return Err(format!(
+                        "Only one project opens at a time: {word} is a second. Try --help."
+                    ));
+                }
+                launch.project = Some(PathBuf::from(word));
+            }
             _ => {
                 return Err(format!(
                     "Unknown option {}. Try --help.",
@@ -119,14 +140,15 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
 /// How to use the program, for `--help`.
 pub fn usage(program: &str) -> String {
     format!(
-        "Usage: {program} [--import <file>]... [--sample <which> <folder>] [--version | --help]\n       \
+        "Usage: {program} [<project folder>] [--import <file>]... [--sample <which> <folder>] [--version | --help]\n       \
          {program} --check-project <folder>\n\n\
-         Opens the {name} editor.\n\n\
+         Opens the {name} launcher, or with a project's folder, that project in the editor.\n\n\
          Options:\n  \
+         <project folder> Open this project in the editor straight away\n  \
          --import <file>  Import a glTF model (.gltf or .glb) as the editor opens\n  \
          --sample <which> <folder>\n                   \
          Make a sample project (game, ui, playground or benchmark) in an\n                   \
-         empty folder and open it, as File > Learn does\n  \
+         empty folder and open it, as the launcher's Learn does\n  \
          --check-project <folder>\n                   \
          Check a project without opening the editor: read every file, check\n                   \
          the game's code and play back recordings/checks/; the report is\n                   \
@@ -179,6 +201,7 @@ mod tests {
             Ok(Command::Run(Launch {
                 imports: vec![PathBuf::from("a.glb"), PathBuf::from("b c.gltf")],
                 sample: None,
+                project: None,
             }))
         );
         let err = parse(args(&["--import"])).unwrap_err();
@@ -193,6 +216,7 @@ mod tests {
                 Ok(Command::Run(Launch {
                     imports: Vec::new(),
                     sample: Some((sample, PathBuf::from("games/try"))),
+                    project: None,
                 }))
             );
         }
@@ -208,6 +232,29 @@ mod tests {
             );
         }
         assert!(usage("solis").contains("--sample <which> <folder>"));
+    }
+
+    #[test]
+    fn a_project_named_on_its_own_skips_the_launcher() {
+        let Ok(Command::Run(launch)) = parse(args(&["games/farm", "--import", "a.glb"])) else {
+            panic!("a project to open");
+        };
+        assert_eq!(launch.project, Some(PathBuf::from("games/farm")));
+        assert!(launch.skips_the_launcher());
+        let Ok(Command::Run(plain)) = parse(args(&[])) else {
+            panic!("the launcher");
+        };
+        assert!(!plain.skips_the_launcher(), "nothing named: the launcher");
+        let Ok(Command::Run(sample)) = parse(args(&["--sample", "ui", "x"])) else {
+            panic!("a sample");
+        };
+        assert!(sample.skips_the_launcher());
+        let err = parse(args(&["a", "b"])).unwrap_err();
+        assert!(
+            err.contains("Only one project") && err.contains("--help"),
+            "{err}"
+        );
+        assert!(usage("solis").contains("<project folder>"));
     }
 
     #[test]
@@ -258,19 +305,28 @@ mod tests {
             let list: Vec<OsString> = (0..count)
                 .map(|_| OsString::from(pieces[next(pieces.len())]))
                 .collect();
-            // Every argument is a known option or the file after --import.
+            // Every argument is a known option, the file after --import,
+            // or the one project to open (a word not starting with -).
             let mut only_known = true;
             let mut after_import = false;
+            let mut projects = 0;
             for a in &list {
                 let known = matches!(
                     a.to_str(),
                     Some("--version" | "-V" | "--help" | "-h" | "--import")
                 );
-                if !after_import && !known {
+                let project = a
+                    .to_str()
+                    .is_some_and(|w| !w.starts_with('-') && !w.trim().is_empty());
+                if !after_import && project {
+                    projects += 1;
+                }
+                if !after_import && !known && !project {
                     only_known = false;
                 }
                 after_import = !after_import && a.to_str() == Some("--import");
             }
+            only_known &= projects <= 1;
             let help = list
                 .iter()
                 .any(|a| matches!(a.to_str(), Some("--help" | "-h")));

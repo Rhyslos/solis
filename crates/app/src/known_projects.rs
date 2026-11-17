@@ -201,10 +201,11 @@ impl KnownProjects {
         self.list
             .iter_mut()
             .map(|known| {
-                let (name, saved_by, problem) = match asset_db::Project::summary(&known.root) {
+                let (name, saved_by, kind, problem) = match asset_db::Project::summary(&known.root)
+                {
                     Ok(summary) => {
                         known.name = Some(summary.name.clone());
-                        (summary.name, summary.saved_by, None)
+                        (summary.name, summary.saved_by, summary.kind, None)
                     }
                     Err(why) => {
                         let name = known.name.clone().unwrap_or_else(|| {
@@ -230,7 +231,7 @@ impl KnownProjects {
                             }
                             other => format!("Can't be read: {other}"),
                         };
-                        (name, None, Some(problem))
+                        (name, None, asset_db::ProjectKind::Both, Some(problem))
                     }
                 };
                 KnownProject {
@@ -240,9 +241,28 @@ impl KnownProjects {
                     pinned: known.pinned,
                     last_opened: known.last_opened,
                     saved_by,
+                    kind: editor_kind(kind),
                 }
             })
             .collect()
+    }
+}
+
+/// A project file's kind, as the editor names it.
+pub fn editor_kind(kind: asset_db::ProjectKind) -> editor::ProjectKind {
+    match kind {
+        asset_db::ProjectKind::TwoD => editor::ProjectKind::TwoD,
+        asset_db::ProjectKind::ThreeD => editor::ProjectKind::ThreeD,
+        asset_db::ProjectKind::Both => editor::ProjectKind::Both,
+    }
+}
+
+/// The editor's kind, as a project file keeps it.
+pub fn file_kind(kind: editor::ProjectKind) -> asset_db::ProjectKind {
+    match kind {
+        editor::ProjectKind::TwoD => asset_db::ProjectKind::TwoD,
+        editor::ProjectKind::ThreeD => asset_db::ProjectKind::ThreeD,
+        editor::ProjectKind::Both => asset_db::ProjectKind::Both,
     }
 }
 
@@ -433,6 +453,7 @@ mod tests {
         let rows = list.rows();
         assert_eq!(rows[0].name, "Farm");
         assert_eq!(rows[0].saved_by, Some(57));
+        assert_eq!(rows[0].kind, editor::ProjectKind::Both, "from before kinds");
         assert!(rows[0].problem.is_none());
         assert!(rows[1].problem.as_deref().unwrap().contains("gone from"));
         assert_eq!(rows[2].name, "gone", "the folder's name when none was read");
@@ -448,5 +469,17 @@ mod tests {
         let rows = list.rows();
         assert_eq!(rows[0].name, "Farm");
         assert!(rows[0].problem.is_some());
+    }
+
+    #[test]
+    fn a_project_s_kind_is_read_for_its_card_and_maps_both_ways() {
+        let base = reflect::test_support::TempFolder::new("known-kind").unwrap();
+        let farm = base.join("farm");
+        asset_db::Project::create_kind(&farm, "Farm", asset_db::ProjectKind::TwoD).unwrap();
+        let mut list = KnownProjects::from_saved(Some(vec![known(farm.to_str().unwrap())]), vec![]);
+        assert_eq!(list.rows()[0].kind, editor::ProjectKind::TwoD);
+        for kind in asset_db::ProjectKind::ALL {
+            assert_eq!(file_kind(editor_kind(kind)), kind);
+        }
     }
 }

@@ -1,97 +1,105 @@
-# Projects
+# The launcher
 
-> File › Recent projects, where Solis starts: every project you've worked on as a card, the templates to start a new one from, and beside it Learn, Updates and About.
+> The small window Solis starts in: every project you've worked on as a card, New project, and beside them Learn and Updates. Opening a project turns it into the editor; File › Close project brings it back.
 
 ## When to use it
 
-Solis always starts here, in its own full window: the **File** tab's **Recent projects** page. You pick the project to work on, and the editor opens on it. Solis never reopens the last project by itself, so you always choose; the projects you opened most recently come first, so it's one double-click.
+Solis always starts on the launcher, a window of its own (about 1100 × 700). You pick the project to work on, and the window becomes the editor, at the editor's own size and place. Solis never reopens the last project by itself, so you always choose; the projects you opened most recently come first, so it's one double-click.
 
-Until a project is open, the other tabs along the top are dimmed and the top right says **No project open**. They still work: clicking one, or **Carry on without a project** at the top of the File column (or **Esc**), opens the editor with nothing open, which is handy for looking at a model on its own. The editor opens on the tab you left in front last time.
+Why a window of its own? The launcher only has to show and organise projects, so it stays small and calm; the editor gets the whole screen for your game. Each remembers its own size and place on your computer: move the launcher to one corner and it opens there next time, and the editor still opens where you left it.
 
-Closing the editor's window brings you back to this page, with the project still open behind it (**Back to editor** returns to it). Closing the window while a File page is in front quits Solis, asking about unsaved work first. The page is also there at any time from **File › Recent projects**.
+When you've finished with a project, **File › Close project** (or closing the editor's window) asks about unsaved work, closes the project and comes back to the launcher. Closing the launcher's window quits Solis.
 
 Use it to:
 
 - open a project you've worked on before, without hunting for its folder;
-- keep the projects you're working on now at the front (pin them);
-- see, before opening a project, which build of Solis last opened it: useful after an update, or when a project comes from someone with a newer copy;
-- tidy the list: a project you've finished with, or one whose folder has gone, can be removed from it, and one you moved can be found again;
+- see at a glance which projects are [2D, 3D or both](concepts.md#projects), and show only one kind;
+- make a new project: Solis makes its folder from the name you type ([New project](#new-project));
+- tidy the list: a project you've finished with, or one whose folder has gone, can be removed from it (its files stay), and one you moved can be found again;
 - rename a project, make a copy of it to try something risky, or open its folder in Explorer;
-- find projects already on your computer (copied from a USB stick, cloned from Git) without opening each one;
-- start something new: an empty project, or one of the four examples to learn from.
+- learn with the examples ([Learn](#learn-and-updates)), and update Solis ([Updates](#learn-and-updates)).
 
 ## How to use it
 
-![Recent projects](pictures/launcher.png)
-**Recent projects**, where Solis starts: each project a card, the newest first, and the templates under them.
+![The launcher](pictures/launcher.png)
+**The launcher**, where Solis starts: each project a card, the newest first.
 
-1. Each project is a **card**: a large letter where its picture will be (pictures are an [unfinished part](unfinished-parts.md)), its name, its folder, when you last opened it, and the [build](concepts.md#projects) that last opened it. [Pinned](#settings) projects come first.
-2. **Double-click** a card to open it, or click it once and press **Enter** (Enter in **Search projects** opens it too, while the search still shows it; with no card picked, Enter there opens nothing). The **arrow keys** walk from card to card: left and right along a row, up and down between rows. With unsaved changes in the open area, Solis asks first.
-3. The **pin** at the right of a project's name keeps it at the front; click it again to unpin.
-4. **Right-click** a card for its menu:
+1. Each project is a **card**: a picture of its kind (a field of tiles for 2D, a block for 3D, both for both), its kind in the picture's corner (**2D**, **3D** or **2D + 3D**), its name, its folder, and when you last opened it. A project can't keep a picture of its own yet: its kind's picture stands in. Pinned projects come first.
+2. **Double-click** a card to open it, or click **Open** on it (shown on the card under the pointer or picked). Clicking a card once picks it; **Enter** then opens it, and the **arrow keys** walk from card to card.
+3. **⋯** at the right of a card's name (or a right-click on the card) opens its menu:
    - **Open**.
-   - **Pin** (or **Unpin**).
    - **Show in Explorer**: opens the project's folder.
-   - **Rename…**: changes the project's name (in the title bar and on its card). Its folder keeps its name, so nothing that points at the folder breaks. Type the new name and press **Enter**; **Esc** leaves it as it was.
-   - **Make a copy…**: choose an empty folder, and the whole project is copied there, named "… copy". Handy before trying something you may want to undo. The import cache is left out (the copy makes its own when it opens), and so are links to elsewhere on the computer. A big project takes a while: a note under the heading says when it's done, and the copy joins the list.
-   - **Remove from list**: only forgets the project here. Its folder and files stay exactly where they are, and **Open…** brings it back.
-5. **Search projects** narrows the cards as you type, by name or folder. Every word you type must appear somewhere, in any order. Click it to type: when Solis starts, the keys are the cards' (the arrows walk them, **Esc** carries on into the editor).
-6. **Sort by** orders the cards by when each was last opened, or by name. Pinned projects always come first.
-7. **New project** makes a folder into a new project. **Open… ▾** has **Open a project folder…** (one that isn't in the list yet) and **Scan a folder for projects…**, which looks through a folder you choose, and the folders inside it (four levels down), and adds every project it finds, without opening them. It doesn't look inside projects or hidden folders.
-8. **Start from a template**, under the cards: **Blank project** is the same as New project; **Playground**, **Turret sample**, **UI sample** and **Benchmark** each make one of Solis's [examples](getting-started.md) as a new project, in a folder you choose. The faint tiles after them (First-person, Top-down, Platformer, and **All templates**) are [unfinished parts](unfinished-parts.md): templates to come. The four examples can be made from the command line too, for a script: `solis --sample playground "C:\Games\Try"` makes the playground in that empty folder and opens it (the others are `game`, `ui` and `benchmark`).
+   - **Remove from list**: only forgets the project here. Its folder and files stay exactly where they are, and **Open folder…** brings it back.
+   - **Pin to the top** (or **Unpin**): keeps it first, whatever the order.
+   - **Rename…**: changes the project's name (in the title bar and on its card). Its folder keeps its name, so nothing that points at the folder breaks. Type the new name and press `Enter`; `Esc` leaves it as it was.
+   - **Make a copy…**: choose an empty folder, and the whole project is copied there, named "… copy". The import cache is left out (the copy makes its own), and so are links to elsewhere on the computer. A note under the heading says when it's done, and the copy joins the list.
+4. **Search projects** narrows the cards as you type, by name or folder. Every word you type must appear somewhere, in any order.
+5. The **filter** beside it shows **All** projects, or only **2D**, **3D** or **2D + 3D** ones.
+6. **Sort by** orders the cards by when each was last opened, or by name.
+7. **Open folder…** opens a project that isn't in the list yet: choose its folder. Choose a folder that isn't a project (such as Documents) and Solis looks through it, and the folders inside it (four levels down), for projects, and adds every one it finds without opening them.
+8. **New project** opens [New project](#new-project).
+9. **Preferences**, at the foot of the column, are the editor's own settings, the same as **File › Preferences** in the editor ([Settings](settings.md)). **User guide** opens this guide in your browser.
 
-## Learn, Updates and About
+## New project
 
-The File column has three more pages:
+Type a name, and Solis makes the project's folder for you.
 
-- **Learn**: the four examples again, each with a sentence about it and **Make it in a folder…**; **Your first hour**, five steps for someone new; **Open the user guide** (this manual, as one page in your browser: [The user guide](user-guide.md)); and **Add the sample area**, which adds a small ready-made area to the open project to look around in.
-- **Updates**: when a newer build of Solis is out, Updates has a **New** mark in the File column, the status bar says **Build N is out** (click it to come here), and a card across the top of the page says what it is, with **Not now** and **Download** (it downloads while you work), then **Restart to update** (Solis asks about unsaved work, closes, installs it and opens again). In a copy you didn't install with the setup file, the step is **Open the releases page** instead. Under the card: the build you have, the newest build with **Check now**, the **Look for updates when Solis starts** switch, the releases page and the list of every change. Beside them, what the new build brings, from its release on GitHub. See [Installing and updating](installing-and-updating.md).
-- **About**: the program's name, version and build, what it is, **Open LICENSE** (its licence), **Open the notices** (the libraries and fonts built into it, each with its licence), and the way to Updates and the user guide.
+1. **Name**: what the project is called. The line under it shows the folder it makes, **Create in** followed by the name (`C:\Users\Sam\Documents\Solis projects\Farm Days\`). If that folder already exists and isn't empty, or the name can't be a folder's name on Windows, the line says why instead, and **Create** waits.
+2. **Create in**: the folder new projects go in. The first time it's a **Solis projects** folder in your Documents; **Browse…** chooses another. The folder you make a project in is remembered for the next one.
+3. **Kind**: **2D** (sprites and tile maps), **3D** (models, lights and cameras) or **Both** (2D and 3D). It's kept in the project and can be changed later in **Project settings › General › Kind** ([Settings](settings.md#project-settings)). For now the kind is kept and shown on the project's card; a later update makes a 2D project hide the parts only 3D games use.
+4. **Start from**: **Empty** (only what a project needs to open), or one of Solis's examples (**Playground**, **Turret sample**, **UI sample**, **Benchmark**), made as your project, under your name. Each example is marked with the kind it was made for: they are all **3D**, so they're greyed while **2D** is chosen.
+5. **Create** makes the folder, writes the project and opens it in the editor. **Cancel** (or `Esc`) closes the dialog and makes nothing.
+
+> **Good to know:** a new project gets only what it needs to open: its `project.solis`, Solis's `.solis` folder, and Git's `.gitignore` and `.gitattributes`. Its **assets** folder is made when you put the first file in it (an import, a new folder or file in the Library, a saved area).
+
+A name is refused, with the reason, when it's empty, longer than 100 letters, holds a character Windows doesn't allow in a folder's name (`< > : " / \ | ? *`) or a line break, starts with a dot (a hidden folder) or ends with one, or is a name Windows keeps for itself (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`). A folder too deep for Windows (its whole path near 260 characters) is refused too.
+
+## Learn and Updates
+
+The column has two more pages:
+
+- **Learn**: the four examples, each with a sentence about it and **Make it in a folder…** (choose an empty folder; it opens in the editor); **Your first hour**, five steps for someone new; and **Open the user guide**. The sample area, which goes into an open project, is in the editor's search: press `Space` and type *sample area*.
+- **Updates**: when a newer build of Solis is out, Updates has a **1 new** mark in the column, and a card across the top of the page says what it is, with **Not now** and **Download** (it downloads while you work), then **Restart to update** (Solis closes, installs it and opens again). In a copy you didn't install with the setup file, the step is **Open the releases page** instead. Under the card: the build you have, the newest build with **Check now**, the **Look for updates when Solis starts** switch, the releases page and the list of every change. Beside them, what the new build brings. See [Installing and updating](installing-and-updating.md).
+
+## Opening a project from the command line
+
+A project's folder named after the program opens it in the editor straight away, without the launcher: `solis "C:\Games\Farm Days"`. The four examples can be made the same way, for a script: `solis --sample playground "C:\Games\Try"` makes the playground in that empty folder and opens it (the others are `game`, `ui` and `benchmark`).
 
 ## Settings
 
 | Setting | What it does |
 |---|---|
-| Pin | Keeps a project at the front, whatever the order. Use it for the projects you're working on now. |
-| Sort by | **Last opened** (the most recent first; projects whose time isn't known come last) or **Name** (A to Z). |
+| Filter | **All**, or only **2D**, **3D** or **2D + 3D** projects. |
+| Sort by | **Last opened** (the most recent first; projects whose time isn't known come last) or **Name** (A to Z). Pinned projects always come first. |
+| Create in (New project) | Where new projects' folders are made. Remembered: the folder of the last project you made. |
 | Look for updates when Solis starts (Updates) | Asks GitHub for a newer build at each start, in the background. Off, nothing is asked until you press **Check now**. The same switch is on **Preferences › General**. |
 
 ## The build each project was last opened with
 
-Every copy of Solis installed from GitHub has a build number (build 57, then 58, and so on). When a project opens, Solis writes its build number into the project's `project.solis` file, so its card can tell you about it before you open the project:
-
-| Mark | Meaning |
-|---|---|
-| **build 57 · this one** | Last opened with the build you're using. Nothing to think about. |
-| **build 52 · older** (amber) | Last opened with an older build. It opens as usual; any of its files laid out the old way are upgraded when saved, with a backup first ([Backups and upgrades](backups-and-upgrades.md)). |
-| **build 60 · newer** (amber) | Last opened with a newer build than yours. Update Solis first ([Installing and updating](installing-and-updating.md)): parts made with the newer build may not open in yours. |
-| **—** | Not known: the project hasn't been opened since builds were noted, or only by a copy built from source. |
-
-A copy built from source has no build number of its own: it shows each project's build without comparing.
+When a project opens, Solis writes its build number into the project's `project.solis` file. Rest the pointer on a card to see which build last opened it: the one you're using, an older one (it opens as usual, and its files are upgraded when saved, with a backup first: [Backups and upgrades](backups-and-upgrades.md)), or a newer one (update Solis first: parts made with the newer build may not open in yours).
 
 ## Shortcuts
 
 | Action | Shortcut |
 |---|---|
-| Open the project picked | `Enter`, or double-click |
+| Open the project picked | `Enter`, or double-click its card |
 | Walk the cards | `←` `→` `↑` `↓` |
-| A card's menu | Right-click it |
-| Back to the editor (or carry on without a project) | `Esc` |
-| In **Rename…**: keep the new name, or leave it as it was | `Enter`, `Esc` |
+| A card's menu | Right-click it, or its **⋯** |
+| In **New project** or **Rename…**: make it, or close it | `Enter`, `Esc` |
 
 ## Tips and common problems
 
-- **Problem:** a card says **Folder not found** and its letter is a **?**. **Why:** the folder was moved, renamed or deleted, or it's on a drive that isn't plugged in. **Fix:** plug the drive in and come back to Recent projects (it looks each time). If you moved the folder, click **Locate…** and choose where it is now: the project keeps its pin. Otherwise click **Remove**.
+- **Problem:** a card says **Folder not found**. **Why:** the folder was moved, renamed or deleted, or it's on a drive that isn't plugged in. **Fix:** plug the drive in and come back to Projects (it looks each time). If you moved the folder, click **Locate…** on the card and choose where it is now. Otherwise click **Remove**.
 - **Problem:** a card says **project.solis is gone from its folder**. **Why:** the folder is there, but the file that makes it a project isn't. **Fix:** if the project is in Git, get the file back from there; otherwise **Remove** it.
-- **Problem:** `project.solis` shows as changed in Git after opening a project. **Why:** Solis noted its build number in it (`saved_by`). **Fix:** commit it with your other changes: it tells your teammates which build last opened the project.
-- **Problem:** Make a copy… says the folder **isn't empty**. **Why:** a copy never goes over other files. **Fix:** make a new, empty folder for it (the folder window has a New folder button).
-- **Problem:** Scan a folder for projects… says **it stopped early**. **Why:** it looks through at most 20,000 folders, so choosing a whole drive can't keep it busy for long. **Fix:** choose the folder your projects are in, such as Documents.
-- **Problem:** the arrow keys move the search's caret instead of walking the cards. **Why:** the search has the keys while you type in it. **Fix:** click a card first; the arrows walk from there.
+- **Problem:** New project says the folder **already exists and isn't empty**. **Why:** Solis never makes a project over other files. **Fix:** choose another name, or another **Create in**.
+- **Problem:** `project.solis` shows as changed in Git after opening a project. **Why:** Solis noted its build number in it (`saved_by`), and a kind changed in Project settings is kept there too (`kind`). **Fix:** commit it with your other changes.
+- **Problem:** a project made with an earlier Solis shows **2D + 3D**. **Why:** projects from before the kind was asked are both, so nothing they use is ever hidden. **Fix:** choose its kind in **Project settings › General › Kind**.
+- **Problem:** Open folder… on a big folder says **it stopped early**. **Why:** it looks through at most 20,000 folders, so choosing a whole drive can't keep it busy for long. **Fix:** choose the folder your projects are in, such as Documents.
 
 ## Related
 
 - [Projects and the Library](projects-and-the-library.md): what a project is and what's in it.
-- [Settings](settings.md): Preferences and Project settings, the File column's other pages.
+- [Settings](settings.md): Preferences, and Project settings with the kind.
 - [Installing and updating](installing-and-updating.md): getting a newer build.
 - [Backups and upgrades](backups-and-upgrades.md): what happens to a project made with an older build.
-- [Concepts](concepts.md): [project](concepts.md#projects), [build](concepts.md#projects), [File page](concepts.md#the-window).
+- [Concepts](concepts.md): [launcher, project, project kind and build](concepts.md#projects).

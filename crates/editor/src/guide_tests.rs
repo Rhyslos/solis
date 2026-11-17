@@ -90,7 +90,7 @@ fn asked_for_the_guide(h: &egui_kittest::Harness<'static, State>) -> bool {
 #[test]
 fn documentation_is_in_the_tab_bar_with_no_project_and_opens_the_guide() {
     let mut w = Workbench::new(info());
-    w.start_on_recent_projects();
+    w.show_file_page(crate::file_pages::Page::About);
     let mut h = harness(w);
     h.run();
     assert!(h.state().0.open.project.is_none());

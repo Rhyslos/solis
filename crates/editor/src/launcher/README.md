@@ -1,0 +1,18 @@
+# editor/src/launcher
+
+The launcher ([decision 0118](../../../../docs/decisions/0118-the-editor-rethink.md); the approved boards `01-launcher.png` and `02-new-project.png` in [`docs/design/ui-rethink/`](../../../../docs/design/ui-rethink/README.md)): the window the program starts in. `Workbench::show` draws it in place of the editor while `Launcher::shown`; the app gives the one window the launcher's size and place then, and the editor's once a project opens (`crates/app/src/window_launcher.rs`). Opening a project (`Workbench::set_project`) hides it; File › Close project asks the app to close the project (`WorkbenchAction::CloseProject`, after the question about unsaved work), which shows it again (`Workbench::open_launcher`).
+
+Nothing here reads a file: the app hands over the projects (`KnownProject`, with each one's kind from its project file) and answers New project's questions about folders (`WorkbenchAction::LookAtFolder`, `Workbench::set_folder_state`), on workers.
+
+| File | What it holds |
+| --- | --- |
+| `mod.rs` | The launcher's state (`Launcher`: shown, the page in front, the search, filter by kind, order, the card picked, the app's notice, Rename…, New project, Create in), `ProjectKind` (2D, 3D, Both, with their words), `KnownProject`, the cards' order (`shown`: pinned first, then by last opened or name, kept by kind and search), `ago`, and `Workbench::show_launcher`, which draws the column, the page and the dialogs. |
+| `side.rs` | The column: the logo, name and version; Projects, Learn and Updates (with "1 new" while a newer build is out); Preferences and the user guide at the foot. |
+| `projects.rs` | Projects: the heading with Open folder… and New project, the search, the kind filter and Sort by, the cards in rows and what the four arrows and Enter do to them, the app's notice, and the Rename… question. |
+| `card.rs` | One project's card: its kind's picture with the kind in its corner, its name with ⋯, its folder (shortened to its last two folders), when it was last opened, Open; Locate… and Remove for one that's gone; its menu (Open, Show in Explorer, Remove from list, then Pin to the top, Rename…, Make a copy…). |
+| `pictures.rs` | The plain pictures of the kinds (a field of tiles, a block, both), drawn from the colours in `tokens::picture`, on the cards and New project's kind cards. |
+| `new_project.rs` | New project: its state (`NewProject`: the name, Create in, the kind, the starter, what the app found at the folder), `Starter` (Empty and Learn's four examples, each marked with the kind it suits, greyed for a kind it doesn't), `NewProjectPlan` (what Create asks the app to make), and the dialog. |
+| `names.rs` | The rules a new project's name keeps, as it names a folder on Windows (`name_problem`: empty, too long, forbidden characters, line breaks, a leading or trailing dot, names Windows keeps such as CON), a folder too deep for Windows (`path_problem`), and `FolderState`, what the app found at the folder. |
+| `learn.rs`, `updates_page.rs` | Learn (the four examples, the first hour, the user guide) and Updates (the notice card, this copy, the newest build, the releases page and the changes, what's new). |
+
+Tests: `tests.rs` (the list's order, search and filter, the cards and their menu, Learn and Updates, opening and closing, the accent's tints) and `new_project_tests.rs` (the folder the name makes, a folder that isn't empty refused, bad names, Create in, the starters greyed by kind, Project settings' Kind). The pictures are in `picture_tests.rs` (`launcher.png`, `new-project.png`); the items of the old menus the launcher took are walked in `shell_reach_tests.rs`.

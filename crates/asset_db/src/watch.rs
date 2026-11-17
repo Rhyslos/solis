@@ -35,13 +35,24 @@ impl std::fmt::Debug for Watcher {
 }
 
 impl Watcher {
-    /// Starts watching `folder`.
+    /// Starts watching `folder` and everything in it.
     pub fn new(folder: &Path) -> notify::Result<Self> {
+        Self::watching(folder, notify::RecursiveMode::Recursive)
+    }
+
+    /// Starts watching only what is directly in `folder`: a project's
+    /// folder while it has no assets folder yet (decision 0118), to
+    /// notice one being made without hearing the cache being written.
+    pub fn new_flat(folder: &Path) -> notify::Result<Self> {
+        Self::watching(folder, notify::RecursiveMode::NonRecursive)
+    }
+
+    fn watching(folder: &Path, mode: notify::RecursiveMode) -> notify::Result<Self> {
         let (sender, events) = channel();
         let mut watcher = notify::recommended_watcher(move |_: notify::Result<notify::Event>| {
             let _ = sender.send(Instant::now());
         })?;
-        watcher.watch(folder, notify::RecursiveMode::Recursive)?;
+        watcher.watch(folder, mode)?;
         Ok(Self {
             _watcher: watcher,
             events,

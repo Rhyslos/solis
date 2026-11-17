@@ -30,7 +30,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 
 ## Projects and files
 
-- [Projects: Recent projects, Learn, Updates and About](launcher.md)
+- [The launcher: your projects, New project, 2D or 3D, Learn and Updates](launcher.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Backups and upgrades: older files keep opening, and a copy is kept before they change](backups-and-upgrades.md)
 - [Checking a project before updating: does this build still play my game the same?](checking-a-project.md)

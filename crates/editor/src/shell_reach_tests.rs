@@ -5,7 +5,9 @@
 //!
 //! [`MOVED`] is the old menu bar, item by item, as the plan's inventory
 //! lists it (part a.2): where each was, what it is called now, and where
-//! it is drawn. The tests walk it.
+//! it is drawn. The tests walk it. The items that became the launcher's
+//! (decision 0118: new and open projects, the examples) are
+//! [`TO_THE_LAUNCHER`], walked there.
 
 use crate::shell::{RibbonTab, ShellCommand};
 use crate::test_support::{do_command, harness, info};
@@ -34,21 +36,11 @@ enum Place {
 }
 
 /// The old menu bar: each item, its command's name now, and its place.
-const MOVED: [(&str, &str, Place); 43] = [
-    (
-        "File > New project…",
-        "New project…",
-        Place::File("New project"),
-    ),
-    (
-        "File > Open project…",
-        "Open project…",
-        Place::File("Open…"),
-    ),
+const MOVED: [(&str, &str, Place); 37] = [
     (
         "File > Projects…",
-        "Recent projects",
-        Place::File("Recent projects"),
+        "Close project",
+        Place::File("Close project"),
     ),
     (
         "File > New area",
@@ -180,31 +172,70 @@ const MOVED: [(&str, &str, Place); 43] = [
         Place::Search,
     ),
     (
-        "Help > Make the sample game…",
-        "Make the sample game…",
-        Place::Search,
-    ),
-    (
-        "Help > Make the UI sample…",
-        "Make the UI sample…",
-        Place::Search,
-    ),
-    (
-        "Help > Make the benchmark…",
-        "Make the benchmark…",
-        Place::Search,
-    ),
-    (
-        "Help > Make the playground…",
-        "Make the playground…",
-        Place::Search,
-    ),
-    (
         "Help > Check for updates",
         "Check for updates",
         Place::Search,
     ),
 ];
+
+/// The old menu's items that are the launcher's now: where each was, the
+/// launcher's page, its words there, and what clicking them asks of the
+/// app (none: New project opens its dialog in the launcher).
+const TO_THE_LAUNCHER: [(&str, &str, &str, Option<WorkbenchAction>); 6] = [
+    ("File > New project…", "Projects", "New project", None),
+    (
+        "File > Open project…",
+        "Projects",
+        "Open folder…",
+        Some(WorkbenchAction::OpenProject),
+    ),
+    (
+        "Help > Make the sample game…",
+        "Learn",
+        "Make the Turret sample",
+        Some(WorkbenchAction::MakeSampleGame),
+    ),
+    (
+        "Help > Make the UI sample…",
+        "Learn",
+        "Make the UI sample",
+        Some(WorkbenchAction::MakeUiSample),
+    ),
+    (
+        "Help > Make the benchmark…",
+        "Learn",
+        "Make the Benchmark",
+        Some(WorkbenchAction::MakeBenchmark),
+    ),
+    (
+        "Help > Make the playground…",
+        "Learn",
+        "Make the Playground",
+        Some(WorkbenchAction::MakePlayground),
+    ),
+];
+
+#[test]
+fn every_old_menu_item_the_launcher_took_is_there_and_does_it() {
+    for (was, page, words, asks) in TO_THE_LAUNCHER {
+        let mut w = Workbench::new(info());
+        w.open_launcher();
+        let mut h = harness(w);
+        h.run();
+        // The column's page (the page's heading has the same words).
+        h.get_all_by_label(page)
+            .min_by(|a, b| a.rect().left().total_cmp(&b.rect().left()))
+            .expect("the launcher's column has it")
+            .click();
+        h.run();
+        h.get_by_label(words).click();
+        h.run();
+        match asks {
+            Some(action) => assert!(h.state().1.actions.contains(&action), "{was}"),
+            None => assert!(h.state().0.launcher.new_project.is_some(), "{was}"),
+        }
+    }
+}
 
 /// An editor in which every old item can be done at some moment: a
 /// project open, something selected, a step to undo.

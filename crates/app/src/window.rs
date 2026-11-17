@@ -3,6 +3,7 @@
 
 use crate::area_file::{AreaFiles, Purpose};
 use crate::branding;
+use crate::cli::Sample;
 use crate::external::{External, Handed, open_externally};
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, FolderFor, Importer};
@@ -45,9 +46,19 @@ const ACCENT_KEY: &str = "accent2";
 /// The accent as saved before that: amber there was the standard of its
 /// day, so it reads as the standard. Read once, likewise; never written.
 const OLD_ACCENT_KEY: &str = "accent";
-/// Key under which the editor window's size is remembered: the window
-/// opens at it, on Recent projects (decision 0105).
+/// Key under which the editor window's size was remembered before the
+/// launcher had a window of its own: read for the editor's size while
+/// [`EDITOR_PLACE_KEY`] isn't there yet, never written again.
 const EDITOR_SIZE_KEY: &str = "editor_size";
+/// Key under which the editor's size and place are remembered: the
+/// window takes them when a project opens (decision 0118).
+const EDITOR_PLACE_KEY: &str = "editor_place";
+/// Key under which the launcher's size and place are remembered: the
+/// window takes them when the program starts, and when a project closes.
+const LAUNCHER_PLACE_KEY: &str = "launcher_place";
+/// Key under which the folder New project makes projects in is
+/// remembered (the one last used).
+const CREATE_IN_KEY: &str = "new_project_folder";
 /// Key under which whether the Hints card shows hints is remembered.
 const HINTS_KEY: &str = "hints";
 /// Key under which the viewport's corner controls are remembered.
@@ -136,13 +147,23 @@ struct App {
     tidying: crate::known_projects::Tidying,
     /// Whether the splash screen still shows, until the editor opens.
     splashing: bool,
-    /// File › Exit (or closing the window on a File page) asked to quit:
-    /// the window's close isn't turned into going back to Recent projects.
+    /// File › Exit (or closing the launcher) asked to quit: the window's
+    /// close isn't turned into closing the project.
     quitting: bool,
-    /// The editor window's size as last left, to open at next time.
-    editor_size: [f32; 2],
-    /// Whether the window has been given its size yet (the first frame).
-    sized: bool,
+    /// The editor's size and place as last left.
+    editor_place: launcher_window::WindowPlace,
+    /// The launcher's size and place as last left.
+    launcher_place: launcher_window::WindowPlace,
+    /// Which the window was last given the place of (the launcher's when
+    /// true), so it's given again only when that changes.
+    placed_as: Option<bool>,
+    /// Frames left to wait for the window to take a new place before
+    /// its place is remembered again.
+    settling: u32,
+    /// The folder New project makes projects in, as last used.
+    create_in: PathBuf,
+    /// New project's questions about folders, answered on workers.
+    folder_looks: launcher_window::FolderLooks,
     /// When the splash appeared.
     began: std::time::Instant,
     /// The logo, for the splash.
@@ -161,6 +182,9 @@ pub use playtest_window::run_playtest;
 
 #[path = "window_saved.rs"]
 mod saved;
+
+#[path = "window_launcher.rs"]
+mod launcher_window;
 
 impl App {
     fn new(
@@ -231,8 +255,12 @@ impl App {
             tidying: Default::default(),
             splashing: playtest.is_none(),
             quitting: false,
-            editor_size: saved.editor_size,
-            sized: false,
+            editor_place: saved.editor_place,
+            launcher_place: saved.launcher_place,
+            placed_as: None,
+            settling: 0,
+            create_in: saved.create_in.clone(),
+            folder_looks: Default::default(),
             began: std::time::Instant::now(),
             logo: load_logo(&cc.egui_ctx),
             playtest: None,
@@ -253,16 +281,19 @@ impl App {
         }
         app.list_projects();
         app.guide.start_looking();
-        // The frame as it was left first, then Recent projects in front
-        // of it: Solis always opens there, and a project opens from it
-        // (decision 0105, keeping 0090's promises): the last project
-        // isn't reopened. The other way round, the tab put back covered
-        // Recent projects at every start but the first (the second review
-        // pass's N-04).
+        app.workbench.set_create_in(app.create_in.clone());
+        // The frame as it was left, then the launcher: the program always
+        // starts there, and no project is reopened by itself (decisions
+        // 0090 and 0118), unless the command line names one.
         saved.settle(&mut app.workbench);
-        app.workbench.start_on_recent_projects();
+        if let Some(project) = &launch.project {
+            app.open_project(project, false);
+        }
         if let Some((sample, folder)) = &launch.sample {
             app.make_sample(*sample, folder);
+        }
+        if app.workbench.project().is_none() {
+            app.workbench.open_launcher();
         }
         for path in launch.imports {
             app.import(&path);
@@ -461,6 +492,12 @@ impl App {
                 for note in notes {
                     self.workbench.log(LogLevel::Warning, note);
                 }
+                self.workbench
+                    .set_project_kind(crate::known_projects::editor_kind(
+                        self.projects
+                            .db()
+                            .map_or(asset_db::ProjectKind::Both, |db| db.project().kind()),
+                    ));
                 for note in opened.notes {
                     self.workbench.log(LogLevel::Warning, note);
                 }
@@ -485,10 +522,7 @@ impl App {
                 self.refresh_library();
                 self.list_projects();
             }
-            Err(why) => self.workbench.log(
-                LogLevel::Error,
-                format!("Couldn't open {}: {why}.", root.display()),
-            ),
+            Err(why) => self.say_failed(format!("Couldn't open {}: {why}.", root.display())),
         }
     }
 
@@ -924,7 +958,9 @@ impl App {
     /// The folder Open and Save windows start in: the project's areas, or
     /// its assets.
     fn areas_folder(&self) -> Option<PathBuf> {
-        let assets = self.projects.db()?.project().assets();
+        // A new project's assets folder is made here, for the area about
+        // to go in it (decision 0118).
+        let assets = self.projects.db()?.project().assets_folder().ok()?;
         let areas = assets.join("areas");
         Some(if areas.is_dir() { areas } else { assets })
     }
@@ -998,8 +1034,12 @@ impl App {
                 }
                 WorkbenchAction::PickGuideBrowser => self.guide.ask_for_program(),
                 WorkbenchAction::ImportModel => self.importer.ask(),
-                WorkbenchAction::NewProject => self.importer.ask_folder(FolderFor::NewProject),
                 WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
+                WorkbenchAction::CreateProject(plan) => self.create_project(plan),
+                WorkbenchAction::LookAtFolder(folder) => self.look_at_folder(folder),
+                WorkbenchAction::ChooseCreateIn => self.importer.ask_folder(FolderFor::CreateIn),
+                WorkbenchAction::CloseProject => self.close_project(),
+                WorkbenchAction::SetProjectKind(kind) => self.set_project_kind(kind),
                 WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
                 WorkbenchAction::ListProjects => self.list_projects(),
                 WorkbenchAction::PinProject(root, pinned) => {
@@ -1563,119 +1603,6 @@ impl App {
 
     /// Makes one of File › Learn's samples in `folder` and opens it (the
     /// command line's `--sample`).
-    fn make_sample(&mut self, sample: crate::cli::Sample, folder: &Path) {
-        use crate::cli::Sample;
-        match sample {
-            Sample::Game => self.make_sample_game(folder),
-            Sample::Ui => self.make_ui_sample(folder),
-            Sample::Playground => self.make_playground(folder),
-            Sample::Benchmark => self.make_benchmark(folder),
-        }
-    }
-
-    /// Makes the turret sample in `folder` as a new project, opens it and
-    /// its area, or says why it couldn't.
-    fn make_sample_game(&mut self, folder: &Path) {
-        if let Err(why) = crate::sample_game::make(folder) {
-            self.workbench.log(
-                LogLevel::Error,
-                format!(
-                    "Couldn't make the sample game in {}: {why}.",
-                    folder.display()
-                ),
-            );
-            return;
-        }
-        self.open_project(folder, false);
-        let area = folder
-            .join(asset_db::ASSETS_FOLDER)
-            .join(crate::sample_game::AREA);
-        self.open_area(&area);
-        self.workbench.log(
-            LogLevel::Info,
-            "The sample game is ready. Press Play: the turret shoots at the drone, and the \
-             Console tells the story. Its code is in the Library's Code tab.",
-        );
-    }
-
-    /// Makes the UI sample in `folder` as a new project, opens it and its
-    /// area, or says why it couldn't.
-    fn make_ui_sample(&mut self, folder: &Path) {
-        if let Err(why) = crate::ui_sample::make(folder) {
-            self.workbench.log(
-                LogLevel::Error,
-                format!(
-                    "Couldn't make the UI sample in {}: {why}.",
-                    folder.display()
-                ),
-            );
-            return;
-        }
-        self.open_project(folder, false);
-        let area = folder
-            .join(asset_db::ASSETS_FOLDER)
-            .join(crate::ui_sample::AREA);
-        self.open_area(&area);
-        self.workbench.log(
-            LogLevel::Info,
-            "The UI sample is ready. Press Play, click the Game panel, and press Space to fire \
-             and P to pause. Double-click a screen in the Library's ui folder to see it on the \
-             canvas.",
-        );
-    }
-
-    /// Makes the playground in `folder` as a new project, opens it and
-    /// its area, or says why it couldn't.
-    fn make_playground(&mut self, folder: &Path) {
-        if let Err(why) = crate::playground::make(folder) {
-            self.workbench.log(
-                LogLevel::Error,
-                format!(
-                    "Couldn't make the playground in {}: {why}.",
-                    folder.display()
-                ),
-            );
-            return;
-        }
-        self.open_project(folder, false);
-        let area = folder
-            .join(asset_db::ASSETS_FOLDER)
-            .join(crate::playground::AREA);
-        self.open_area(&area);
-        self.workbench.log(
-            LogLevel::Info,
-            "The playground is ready. Press Play and click the Game panel: W A S D walk, the \
-             mouse looks, Space jumps, Shift sprints, F6 saves and F7 loads. Esc gives the \
-             editor the mouse back.",
-        );
-    }
-
-    /// Makes the benchmark in `folder` as a new project, opens it and its
-    /// target area, or says why it couldn't.
-    fn make_benchmark(&mut self, folder: &Path) {
-        if let Err(why) = crate::benchmark::make(folder) {
-            self.workbench.log(
-                LogLevel::Error,
-                format!(
-                    "Couldn't make the benchmark in {}: {why}.",
-                    folder.display()
-                ),
-            );
-            return;
-        }
-        self.open_project(folder, false);
-        let area = folder
-            .join(asset_db::ASSETS_FOLDER)
-            .join(crate::benchmark::FIRST_AREA);
-        self.open_area(&area);
-        self.workbench.log(
-            LogLevel::Info,
-            "The benchmark is ready. Press Play and open the Profiler: target.solarea is 2,000 \
-             ships and 20,000 lasers, stress.solarea 10,000 and 100,000, and ceiling.solarea \
-             adds ships until 60 frames a second ends, then says where in the Console.",
-        );
-    }
-
     /// Adds the sample area. With a project open it becomes a file in the
     /// project's assets, imported like any other, so a saved area that
     /// uses it finds it again; without one it's read straight from memory.
@@ -1781,38 +1708,6 @@ impl App {
 }
 
 impl App {
-    /// Gives the window its size as last left, centred, on the first
-    /// frame; then remembers its size as it's changed (not while
-    /// maximized: the size to come back to).
-    fn fit_window(&mut self, ctx: &egui::Context) {
-        if self.sized {
-            let (inner, maximized) =
-                ctx.input(|i| (i.viewport().inner_rect, i.viewport().maximized));
-            if maximized != Some(true)
-                && let Some(rect) = inner
-                && rect.width() >= MIN_SIZE[0]
-                && rect.height() >= MIN_SIZE[1]
-            {
-                self.editor_size = [rect.width(), rect.height()];
-            }
-            return;
-        }
-        self.sized = true;
-        let size = self.editor_size;
-        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
-            size[0], size[1],
-        )));
-        // Centred for its size (egui's own centring goes by the size it
-        // has now).
-        if let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) {
-            let at = (monitor - egui::vec2(size[0], size[1])) / 2.0;
-            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
-                at.x.max(0.0),
-                at.y.max(0.0),
-            )));
-        }
-    }
-
     /// One frame of the splash screen, opening the editor once it has
     /// shown for long enough.
     fn splash(&mut self, ui: &mut egui::Ui) {
@@ -1866,16 +1761,26 @@ fn models_wanted<'a>(
         .collect()
 }
 
-/// The editor window's size as saved, if it's a sensible one (at least
-/// the smallest the window gets); the first launch's size otherwise.
-fn saved_editor_size(storage: &dyn eframe::Storage) -> [f32; 2] {
-    eframe::get_value::<[f32; 2]>(storage, EDITOR_SIZE_KEY)
-        .filter(|s| {
-            s.iter()
-                .zip(MIN_SIZE)
-                .all(|(v, min)| v.is_finite() && *v >= min && *v <= 100_000.0)
-        })
-        .unwrap_or(FIRST_SIZE)
+/// The editor's size and place as saved, if sensible; before it had a
+/// place of its own, the size it was left at; the first launch's size,
+/// centred, otherwise.
+fn saved_editor_place(storage: &dyn eframe::Storage) -> launcher_window::WindowPlace {
+    let place = eframe::get_value(storage, EDITOR_PLACE_KEY).or_else(|| {
+        eframe::get_value::<[f32; 2]>(storage, EDITOR_SIZE_KEY)
+            .map(launcher_window::WindowPlace::centred)
+    });
+    launcher_window::WindowPlace::checked(place, MIN_SIZE, FIRST_SIZE)
+}
+
+/// The launcher's size and place as saved, if sensible; its own size
+/// (board 01), centred, otherwise.
+fn saved_launcher_place(storage: &dyn eframe::Storage) -> launcher_window::WindowPlace {
+    use editor::tokens::launcher::{MIN_WINDOW, WINDOW};
+    launcher_window::WindowPlace::checked(
+        eframe::get_value(storage, LAUNCHER_PLACE_KEY),
+        MIN_WINDOW,
+        WINDOW,
+    )
 }
 
 /// Whether two paths are the same folder (however they're written).
@@ -1949,22 +1854,23 @@ impl eframe::App for App {
             && self.workbench.play_changes().is_none();
         if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
             match purpose {
-                FolderFor::SampleGame => self.make_sample_game(&folder),
-                FolderFor::UiSample => self.make_ui_sample(&folder),
-                FolderFor::Benchmark => self.make_benchmark(&folder),
-                FolderFor::Playground => self.make_playground(&folder),
+                FolderFor::SampleGame => self.make_sample(Sample::Game, &folder),
+                FolderFor::UiSample => self.make_sample(Sample::Ui, &folder),
+                FolderFor::Benchmark => self.make_sample(Sample::Benchmark, &folder),
+                FolderFor::Playground => self.make_sample(Sample::Playground, &folder),
                 FolderFor::CopyProject(from) => self.copy_project(from, folder),
                 FolderFor::LocateProject(old) => self.locate_project(&old, &folder),
                 FolderFor::ScanFolder => self.scan_for_projects(folder),
                 FolderFor::ExportFolder => self.workbench.set_export_folder(folder),
-                FolderFor::NewProject => self.open_project(&folder, true),
-                FolderFor::OpenProject => self.open_project(&folder, false),
+                FolderFor::CreateIn => self.workbench.set_create_in(folder),
+                FolderFor::OpenProject => self.open_folder(folder),
             }
         }
         if let Some(done) = self.tidying.done() {
             self.tidied(done);
         }
         self.guide.take_in(&ctx, &mut self.workbench);
+        self.follow_folder_looks();
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);
         if self.projects.take_changed() {
@@ -2034,14 +1940,17 @@ impl eframe::App for App {
             }
         }
         if ctx.input(|i| i.viewport().close_requested()) {
-            // Closing the editor goes back to Recent projects (the project
-            // stays open behind it); closing a File page, File › Exit or
-            // Restart to update quits, asking about unsaved work first.
-            let quit =
-                self.quitting || self.workbench.file_page_open() || self.workbench.restarting();
+            // Closing the editor's window closes the project and goes back
+            // to the launcher, asking about unsaved work first (decision
+            // 0118); closing the launcher, File › Exit or Restart to
+            // update quits.
+            let quit = self.quitting
+                || self.workbench.launcher_shown()
+                || self.workbench.project().is_none()
+                || self.workbench.restarting();
             if !quit {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                self.workbench.show_recent_projects();
+                self.workbench.close_project_asked();
             } else if !self.workbench.close_requested() {
                 self.quitting = false;
                 ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -2131,6 +2040,7 @@ impl eframe::App for App {
             || self.projects.waiting()
             || self.game_code.waiting()
             || self.area_files.is_asking()
+            || self.folder_looks.waiting()
         {
             ctx.request_repaint_after(WAITING_FRAME);
         } else {
@@ -2153,7 +2063,9 @@ impl eframe::App for App {
             INTERFACE_LOOK_KEY,
             &self.workbench.interface_look(),
         );
-        eframe::set_value(storage, EDITOR_SIZE_KEY, &self.editor_size);
+        eframe::set_value(storage, EDITOR_PLACE_KEY, &self.editor_place);
+        eframe::set_value(storage, LAUNCHER_PLACE_KEY, &self.launcher_place);
+        eframe::set_value(storage, CREATE_IN_KEY, &self.create_in);
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
         eframe::set_value(storage, SNAPPING_KEY, &self.workbench.snapping());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
@@ -2175,12 +2087,20 @@ impl eframe::App for App {
 pub fn run(info: AppInfo, launch: crate::cli::Launch) -> Result<(), String> {
     start_jobs();
     let title = format!("{} {}", info.name, info.version);
+    // The size it opens at until the first frame gives it the place of
+    // what it shows: the launcher's, unless a project was named.
+    let (size, min) = if launch.skips_the_launcher() {
+        (FIRST_SIZE, MIN_SIZE)
+    } else {
+        use editor::tokens::launcher::{MIN_WINDOW, WINDOW};
+        (WINDOW, MIN_WINDOW)
+    };
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title(title)
             .with_app_id(branding::APP_ID)
-            .with_inner_size(FIRST_SIZE)
-            .with_min_inner_size(MIN_SIZE)
+            .with_inner_size(size)
+            .with_min_inner_size(min)
             .with_icon(window_icon()),
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu_options(),
@@ -2373,14 +2293,40 @@ mod tests {
 
     #[test]
     fn the_editor_s_size_comes_back_as_saved_when_it_s_sensible() {
+        use launcher_window::WindowPlace;
         let mut storage = Memory::default();
-        assert_eq!(saved_editor_size(&storage), FIRST_SIZE, "first launch");
+        let size = |s: &Memory| saved_editor_place(s).size;
+        assert_eq!(size(&storage), FIRST_SIZE, "first launch");
+        // The size an earlier build kept is carried over, centred.
         eframe::set_value(&mut storage, EDITOR_SIZE_KEY, &[1600.0_f32, 1000.0]);
-        assert_eq!(saved_editor_size(&storage), [1600.0, 1000.0]);
+        assert_eq!(
+            saved_editor_place(&storage),
+            WindowPlace::centred([1600.0, 1000.0])
+        );
         for odd in [[10.0_f32, 10.0], [f32::NAN, 900.0], [1.0e9, 900.0]] {
             eframe::set_value(&mut storage, EDITOR_SIZE_KEY, &odd);
-            assert_eq!(saved_editor_size(&storage), FIRST_SIZE, "{odd:?}");
+            assert_eq!(size(&storage), FIRST_SIZE, "{odd:?}");
         }
+        // Its own place wins, once there is one.
+        let place = WindowPlace {
+            size: [1500.0, 950.0],
+            at: Some([40.0, 30.0]),
+        };
+        eframe::set_value(&mut storage, EDITOR_PLACE_KEY, &place);
+        assert_eq!(saved_editor_place(&storage), place);
+        // The launcher keeps its own, apart from the editor's.
+        let first = saved_launcher_place(&storage);
+        assert_eq!(
+            first,
+            WindowPlace::centred(editor::tokens::launcher::WINDOW)
+        );
+        let launcher = WindowPlace {
+            size: [1000.0, 650.0],
+            at: Some([300.0, 200.0]),
+        };
+        eframe::set_value(&mut storage, LAUNCHER_PLACE_KEY, &launcher);
+        assert_eq!(saved_launcher_place(&storage), launcher);
+        assert_eq!(saved_editor_place(&storage), place, "untouched");
     }
 
     /// The known projects as the settings in `storage` hold them.

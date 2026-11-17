@@ -1,9 +1,10 @@
-//! File › Updates (round 2's `10-file-updates`): the notice card while a
+//! The launcher's Updates (round 2's `10-file-updates`, moved into the
+//! launcher by decision 0118): the notice card while a
 //! newer build is out, this copy, the newest build with Check now,
 //! looking for updates at start, the releases page and the changes list,
 //! and beside them what the newer build brings.
 
-use super::{ProgramFile, page_head, plain, section, sentence};
+use crate::file_pages::{ProgramFile, button_row, page_head, plain, section, sentence, with_side};
 use crate::tokens::{self, size, text};
 use crate::updates::UpdateNotice as N;
 use crate::widgets::{self, button::Button, rows, toggle};
@@ -68,7 +69,7 @@ impl Workbench {
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                super::with_side(
+                with_side(
                     ui,
                     self,
                     |ui, w| w.update_rows(ui, asked),
@@ -197,7 +198,7 @@ impl Workbench {
             asked.push(WorkbenchAction::SetAutoUpdate(auto));
         }
         section(ui, "Elsewhere");
-        let releases = super::button_row(
+        let releases = button_row(
             ui,
             "The releases page",
             "Every build, with its setup file.",
@@ -207,7 +208,7 @@ impl Workbench {
         if releases.clicked() {
             asked.push(WorkbenchAction::OpenUpdatePage);
         }
-        let changes = super::button_row(
+        let changes = button_row(
             ui,
             "Every change, build by build",
             "The full list of what changed.",

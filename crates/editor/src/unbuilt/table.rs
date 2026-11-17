@@ -152,7 +152,6 @@ unbuilt! {
     // File: projects.
     FilePlugins: "file.plugins" => ("Plugins", Shared11, "Adds to the editor with plugins, and manages the ones you have"),
     RecentCardThumbnail: "recent.card.thumbnail" => ("Project picture", NotPlanned, "Shows a picture of the project on its card"),
-    RecentCardBadge: "recent.card.badge" => ("2D or 3D badge", NotPlanned, "Marks a project as 2D or 3D on its card"),
     RecentTemplateFirstPerson: "recent.template.first-person" => ("First-person", Shared13, "Starts a project with a first-person player ready to walk around"),
     RecentTemplateTopDown: "recent.template.top-down" => ("Top-down", Shared13, "Starts a project seen from above, with a player to steer"),
     RecentTemplatePlatformer: "recent.template.platformer" => ("Platformer", Shared13, "Starts a 2D project with a player that runs and jumps"),

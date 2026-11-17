@@ -27,9 +27,10 @@ pub struct Finished {
 /// What a folder is being chosen for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderFor {
-    /// A new project.
-    NewProject,
-    /// An existing project to open.
+    /// The folder New project makes projects in (Browse…).
+    CreateIn,
+    /// An existing project to open, or a folder to look for projects in
+    /// (the launcher's Open folder…).
     OpenProject,
     /// A folder to make the sample game in.
     SampleGame,
@@ -91,8 +92,8 @@ impl Importer {
         let asked = purpose.clone();
         std::thread::spawn(move || {
             let title = match asked {
-                FolderFor::NewProject => "Choose a folder for the new project",
-                FolderFor::OpenProject => "Open project",
+                FolderFor::CreateIn => "Choose where new projects are made",
+                FolderFor::OpenProject => "Open a project's folder",
                 FolderFor::SampleGame => "Choose an empty folder for the sample game",
                 FolderFor::UiSample => "Choose an empty folder for the UI sample",
                 FolderFor::Benchmark => "Choose an empty folder for the benchmark",

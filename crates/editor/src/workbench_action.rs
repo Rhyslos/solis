@@ -28,13 +28,31 @@ pub enum WorkbenchAction {
     /// physics and saves) as a new project, in a folder the app asks for
     /// (Make the playground, on File > Learn).
     MakePlayground,
-    /// Make a new project in a folder the user picks (File > New project).
-    NewProject,
-    /// Open a project from a folder the user picks (File > Open…).
+    /// Make the project New project describes (the launcher, decision
+    /// 0118): its folder, its project file, what it starts from; then
+    /// open it. Refused, with why, if its folder isn't free or empty
+    /// ([`Workbench::new_project_failed`](crate::Workbench::new_project_failed)).
+    CreateProject(crate::launcher::NewProjectPlan),
+    /// Look at what is at this folder, for New project (on a worker), and
+    /// answer with [`Workbench::set_folder_state`](crate::Workbench::set_folder_state).
+    LookAtFolder(std::path::PathBuf),
+    /// Ask for the folder New project makes projects in (Browse…), and
+    /// answer with [`Workbench::set_create_in`](crate::Workbench::set_create_in).
+    ChooseCreateIn,
+    /// Close the open project and go back to the launcher (File › Close
+    /// project, or closing the editor's window), after the question about
+    /// unsaved changes.
+    CloseProject,
+    /// Give the open project this kind, in its project file (Project
+    /// settings › Kind).
+    SetProjectKind(crate::launcher::ProjectKind),
+    /// Open a project from a folder the user picks (the launcher's Open
+    /// folder…); a folder that isn't a project is looked through for
+    /// projects to add to the list.
     OpenProject,
-    /// Open the project in this folder (File › Recent projects).
+    /// Open the project in this folder (a card on the launcher).
     OpenRecent(std::path::PathBuf),
-    /// Read the projects Solis knows afresh, for Recent projects.
+    /// Read the projects Solis knows afresh, for the launcher.
     ListProjects,
     /// Pin (true) or unpin a project in the list on Recent projects.
     PinProject(std::path::PathBuf, bool),

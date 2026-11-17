@@ -1,14 +1,11 @@
 # Getting started
 
-> How to get Solis onto your computer and open it.
+> How to get Solis onto your computer, open it, and make your first project.
 
 ## When to use it
 The first time, and whenever you want the newest version.
 
 ## How to use it
-
-![File › Learn](pictures/learn.png)
-**File › Learn**: the four examples, each with **Make it in a folder…**, the first steps, and this guide.
 
 **Install it (Windows, recommended):** download `solis-setup.exe` from the newest release on the repository's **Releases** page and run it. Solis then updates itself whenever a new build is merged. See [Installing and updating](installing-and-updating.md).
 
@@ -27,6 +24,21 @@ A copy run this way doesn't update itself. Each download stays available for 30 
 
 **Opening with a model:** `solis --import ship.glb` opens Solis and imports the model straight away (repeat `--import` for more than one).
 
+## Making your first project
+
+Solis starts on the [launcher](launcher.md), a small window listing your projects. Why a project? A game is many files (pictures, models, sounds, code, levels), and a [project](concepts.md#projects) is the folder that keeps them together, so Solis can find them all and keep them in step.
+
+1. Click **New project** at the top right of the launcher.
+2. Type a **Name**, such as *Farm Days*. Solis makes a folder of that name for the project; the line under the name shows where (in a **Solis projects** folder in your Documents, the first time).
+3. Choose its **Kind**: **2D**, **3D** or **Both**. It's kept with the project and can be changed later ([Project kind](concepts.md#projects)).
+4. **Start from** **Empty**, or from one of the examples to take apart (they're 3D games, so they're greyed while 2D is chosen).
+5. Click **Create**. The launcher becomes the editor, with your project open. **File › Close project** brings the launcher back.
+
+![The launcher's Learn](pictures/learn.png)
+**Learn**, in the launcher: the four examples, each with **Make it in a folder…**, the first steps, and this guide.
+
+New to making games? **Learn**, down the launcher's left side, makes one of the four examples as a project, ready to play and take apart.
+
 ## Settings
 Solis remembers your panel layout, accent colour, interface scale, camera and viewport controls in your user folder, so each start looks like the last.
 
@@ -35,5 +47,6 @@ Solis remembers your panel layout, accent colour, interface scale, camera and vi
 - **Problem:** the viewport says "No 3D view" and a reason. **Why:** Solis couldn't use the graphics card. **Fix:** update your graphics drivers. The rest of the editor still works.
 
 ## Related
+- [The launcher](launcher.md): your projects, New project, Learn and Updates.
 - [Interface tour](interface-tour.md)
 - [Your first 2D platformer](first-platformer.md): once Solis is running, start here.

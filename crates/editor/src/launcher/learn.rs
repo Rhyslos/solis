@@ -1,9 +1,11 @@
-//! File › Learn (round 2's `10-file-learn`): the four examples to make
-//! and take apart, the first hour's five steps, the user guide, and the
-//! sample area.
+//! The launcher's Learn (round 2's `10-file-learn`, moved into the
+//! launcher by decision 0118): the four examples to make and take apart,
+//! the first hour's five steps, and the user guide. (The sample area,
+//! which needs an open project, is in the editor's search.)
 
-use super::{examples, page_head, plain, section, sentence};
+use crate::file_pages::{button_row, page_head, plain, section, sentence, with_side};
 use crate::icons;
+use crate::icons::Icon;
 use crate::tokens::{self, size, text};
 use crate::widgets::{self, button::Button, keycap};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -18,6 +20,45 @@ const FIRST_HOUR: [&str; 5] = [
     "Press *Play* to try it.",
     "Stuck? Tap [Space] and type what you want to do.",
 ];
+
+/// An example project, made in a folder the user picks.
+pub(crate) struct Example {
+    pub(crate) name: &'static str,
+    pub(crate) about: &'static str,
+    pub(crate) icon: Icon,
+    pub(crate) make: WorkbenchAction,
+}
+
+/// Solis's four examples, on Learn (New project starts from them too, as
+/// its starters).
+pub(crate) fn examples() -> [Example; 4] {
+    [
+        Example {
+            name: "Playground",
+            about: "Walk a character around a 3D level: steps, ramps, crates and a moving platform",
+            icon: Icon::Gamepad,
+            make: WorkbenchAction::MakePlayground,
+        },
+        Example {
+            name: "Turret sample",
+            about: "Game code in Lust, Lua and Rust, talking through events",
+            icon: Icon::Code,
+            make: WorkbenchAction::MakeSampleGame,
+        },
+        Example {
+            name: "UI sample",
+            about: "A HUD and a pause menu with the player's settings, drawn on the canvas",
+            icon: Icon::Screen,
+            make: WorkbenchAction::MakeUiSample,
+        },
+        Example {
+            name: "Benchmark",
+            about: "Fleets of ships firing lasers: how much this computer can run",
+            icon: Icon::Profiler,
+            make: WorkbenchAction::MakeBenchmark,
+        },
+    ]
+}
 
 impl Workbench {
     pub(super) fn learn_page(&mut self, ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {
@@ -34,7 +75,7 @@ impl Workbench {
                 section(ui, "Examples to open and take apart");
                 ui.add_space(size::CARD_INNER_GAP);
                 example_cards(ui, asked);
-                super::with_side(
+                with_side(
                     ui,
                     self,
                     |ui, _| {
@@ -43,9 +84,9 @@ impl Workbench {
                             step_row(ui, n + 1, step);
                         }
                     },
-                    |ui, w| {
+                    |ui, _| {
                         section(ui, "Help");
-                        if super::button_row(
+                        if button_row(
                             ui,
                             "The user guide",
                             "Every part of the editor, with the why as well as the how.",
@@ -55,27 +96,6 @@ impl Workbench {
                         .clicked()
                         {
                             asked.push(WorkbenchAction::OpenGuide(None));
-                        }
-                        let open = w.open.project.is_some();
-                        let add = ui
-                            .add_enabled_ui(open, |ui| {
-                                super::button_row(
-                                    ui,
-                                    "The sample area",
-                                    "Adds a small ready-made area to the open project, to look \
-                                     around in.",
-                                    "Add the sample area",
-                                    false,
-                                )
-                            })
-                            .inner;
-                        let add = if open {
-                            add
-                        } else {
-                            add.on_disabled_hover_text("Open a project first")
-                        };
-                        if add.clicked() {
-                            asked.push(WorkbenchAction::AddSampleArea);
                         }
                     },
                 );
@@ -88,7 +108,7 @@ impl Workbench {
 fn example_cards(ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {
     let all = examples();
     let gap = size::PROJECT_CARD_GAP;
-    let across = super::recent::cards_across(ui.available_width()).min(all.len());
+    let across = super::projects::cards_across(ui.available_width()).min(all.len());
     let width = (ui.available_width() - gap * (across as f32 - 1.0)) / across as f32;
     for row in all.chunks(across) {
         ui.horizontal_top(|ui| {

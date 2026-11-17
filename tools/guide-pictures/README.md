@@ -4,7 +4,7 @@ The user guide's pictures, taken from the real editor ([decision 0113](../../doc
 
 | File | What it is |
 | --- | --- |
-| `take-pictures.sh` | Starts the editor on a virtual screen (1440 × 900, Mesa's software driver), in a throwaway home folder, on a new copy of one of File › Learn's samples (`--sample`), drives it with `xdotool` as `pictures.list` says, and saves each picture, cropped and made small, into [`docs/manual/pictures`](../../docs/README.md). Then it writes `interface.txt` and builds the guide again (`cargo run -p user-guide`). The program and its window's title come from `branding.rs`, so it never names the program. |
+| `take-pictures.sh` | Starts the editor on a virtual screen (1440 × 900, Mesa's software driver), in a throwaway home folder, on a new copy of one of the launcher's Learn samples (`--sample`, which opens the editor straight away), drives it with `xdotool` as `pictures.list` says, and saves each picture, cropped and made small, into [`docs/manual/pictures`](../../docs/README.md). Then it writes `interface.txt` and builds the guide again (`cargo run -p user-guide`). The program and its window's title come from `branding.rs`, so it never names the program. |
 | `pictures.list` | Every picture, one block each: its file, the manual page that shows it, what it shows, and the steps that make it (keys, clicks, drags, a file written into the project, then `shot`, the part of the screen to keep). A `session` line starts the editor afresh on a sample. Read the top of the file for every step. |
 | `interface.txt` | The stamp: the editor's approved picture-test images (`crates/editor/tests/pictures`) and a hash of each, as they were when the pictures were last taken. Written by the script; never by hand. |
 

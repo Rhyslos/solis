@@ -142,6 +142,7 @@ fn a_file_bigger_than_its_kind_allows_fails_without_being_read() {
     // editor's own limit, so a planted huge sidecar can't use up memory.
     let root = reflect::test_support::TempFolder::new("check-big").unwrap();
     asset_db::Project::create(&root, "Big").unwrap();
+    std::fs::create_dir_all(root.join("assets")).unwrap();
     let big = vec![b'#'; asset_db::sidecar::MAX_BYTES as usize + 1];
     std::fs::write(root.join("assets/huge.glb.solmeta"), big).unwrap();
     let report = check(&root, MADE_BY);
@@ -170,6 +171,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     let root = reflect::test_support::TempFolder::new("check-hop").unwrap();
     asset_db::Project::create(&root, "Hop").unwrap();
     let assets = root.join("assets");
+    std::fs::create_dir_all(&assets).unwrap();
     std::fs::write(assets.join("main.lst"), CODE).unwrap();
     let mut area = area::Area::new();
     let mut hopper = area::EntityData::new("Hopper").with(&area::builtin::Transform::default());
