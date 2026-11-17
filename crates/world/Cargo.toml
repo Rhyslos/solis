@@ -1,6 +1,6 @@
 [package]
 name = "world"
-description = "The game's fast storage while it runs: entities built from an area into hecs, stepped and looked up by ID"
+description = "The game's fast storage while it runs: entities built from a level into hecs, stepped and looked up by ID"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,7 +16,7 @@ layer = 1
 
 [dependencies]
 rayon.workspace = true
-area.workspace = true
+level.workspace = true
 mesh.workspace = true
 animation.workspace = true
 tiles.workspace = true

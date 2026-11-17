@@ -145,35 +145,35 @@ fn sprites_gather_into_a_run_per_sheet_and_see_through_ones_last_far_to_near() {
         ..sprite(id)
     };
     let list = vec![
-        AreaSprite {
+        LevelSprite {
             entity: entity(),
             sprite: sprite(a),
             transform: at(0.0, 0.0, 0.0),
             pick: 1,
             parallax: None,
         },
-        AreaSprite {
+        LevelSprite {
             entity: entity(),
             sprite: sprite(b),
             transform: at(1.0, 0.0, 0.0),
             pick: 2,
             parallax: None,
         },
-        AreaSprite {
+        LevelSprite {
             entity: entity(),
             sprite: sprite(a),
             transform: at(2.0, 0.0, 0.0),
             pick: 3,
             parallax: None,
         },
-        AreaSprite {
+        LevelSprite {
             entity: entity(),
             sprite: clear(a),
             transform: at(0.0, 0.0, 5.0),
             pick: 4,
             parallax: None,
         },
-        AreaSprite {
+        LevelSprite {
             entity: entity(),
             sprite: clear(a),
             transform: at(0.0, 3.0, 1.0),
@@ -181,14 +181,14 @@ fn sprites_gather_into_a_run_per_sheet_and_see_through_ones_last_far_to_near() {
             parallax: None,
         },
         // No sheet, and a sheet not read: left out.
-        AreaSprite {
+        LevelSprite {
             entity: entity(),
             sprite: Sprite::default(),
             transform: at(0.0, 0.0, 0.0),
             pick: 6,
             parallax: None,
         },
-        AreaSprite {
+        LevelSprite {
             entity: entity(),
             sprite: sprite(AssetId::random()),
             transform: at(0.0, 0.0, 0.0),
@@ -241,8 +241,8 @@ fn scale_check_batching_100000_sprites() {
             .insert(path.clone(), SheetState::Read(Arc::new(test_sheet())));
         sheets.paths.insert(*id, path);
     }
-    let list: Vec<AreaSprite> = (0..100_000u32)
-        .map(|i| AreaSprite {
+    let list: Vec<LevelSprite> = (0..100_000u32)
+        .map(|i| LevelSprite {
             entity: EntityId::random(),
             sprite: Sprite {
                 see_through: i % 10 == 0,

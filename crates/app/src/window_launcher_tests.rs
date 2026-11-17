@@ -210,7 +210,11 @@ fn a_sample_starter_is_made_under_the_name_and_kind_chosen() {
     let summary = asset_db::Project::summary(&root).unwrap();
     assert_eq!(summary.name, "My turret");
     assert_eq!(summary.kind, asset_db::ProjectKind::Both);
-    assert!(root.join("assets").join(crate::sample_game::AREA).is_file());
+    assert!(
+        root.join("assets")
+            .join(crate::sample_game::LEVEL)
+            .is_file()
+    );
     assert_eq!(app.workbench.project().unwrap().name, "My turret");
 }
 

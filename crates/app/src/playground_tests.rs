@@ -16,7 +16,7 @@ fn compiled(assets: &Path) -> script::Compiled {
 
 fn find(w: &editor::Workbench, name: &str) -> EntityId {
     w.document()
-        .area()
+        .level()
         .iter()
         .find(|(_, e)| e.name == name)
         .map(|(id, _)| id)
@@ -29,12 +29,12 @@ fn at(w: &editor::Workbench, id: EntityId) -> Vec3 {
 
 #[test]
 fn its_files_read_back() {
-    let registry = area::builtin::registry().unwrap();
+    let registry = level::builtin::registry().unwrap();
     for (path, bytes) in files() {
         let text = String::from_utf8_lossy(&bytes);
         if path.ends_with(".solarea") {
-            let area = area::text::read(&text, &registry).unwrap();
-            assert!(area.len() > 15, "{path}");
+            let level = level::text::read(&text, &registry).unwrap();
+            assert!(level.len() > 15, "{path}");
         }
         if path.ends_with(".solmeta") {
             Sidecar::parse(&text).unwrap();
@@ -104,9 +104,9 @@ fn the_playground_is_made_as_a_project_and_plays() {
     }
     let bindings = std::fs::read_to_string(root.join(input::FILE)).unwrap();
     w.set_bindings(input::Bindings::read(&bindings).unwrap());
-    let text = std::fs::read_to_string(assets.join(AREA)).unwrap();
-    let area = area::text::read(&text, &w.document().registry).unwrap();
-    w.open_area(area, assets.join(AREA));
+    let text = std::fs::read_to_string(assets.join(LEVEL)).unwrap();
+    let level = level::text::read(&text, &w.document().registry).unwrap();
+    w.open_level(level, assets.join(LEVEL));
     let (player, camera, platform, stacked) = (
         find(&w, "Player"),
         find(&w, "Camera"),
@@ -172,8 +172,8 @@ fn the_playground_never_replaces_a_file_of_the_person_s() {
 }
 
 #[test]
-fn entity_fields_survive_the_area_opening_before_the_code_is_checked() {
-    // The user test: making the playground opens its area at once, before
+fn entity_fields_survive_the_level_opening_before_the_code_is_checked() {
+    // The user test: making the playground opens its level at once, before
     // its new code is checked, so the camera's target and the
     // character's camera were read as text and showed as nothing.
     let temp = reflect::test_support::TempFolder::new("playground-order").unwrap();
@@ -185,15 +185,15 @@ fn entity_fields_survive_the_area_opening_before_the_code_is_checked() {
         name: "Test".into(),
         version: "1.0".into(),
     });
-    // The area first, as the app does.
-    let text = std::fs::read_to_string(assets.join(AREA)).unwrap();
-    let area = area::text::read(&text, &w.document().registry).unwrap();
-    w.open_area(area, assets.join(AREA));
+    // The level first, as the app does.
+    let text = std::fs::read_to_string(assets.join(LEVEL)).unwrap();
+    let level = level::text::read(&text, &w.document().registry).unwrap();
+    w.open_level(level, assets.join(LEVEL));
     w.set_program(Some(std::sync::Arc::new(compiled)));
     let (player, camera) = (find(&w, "Player"), find(&w, "Camera"));
     let field = |entity: EntityId, component: &str, field: &str| {
         w.document()
-            .area()
+            .level()
             .get(entity)
             .unwrap()
             .components
@@ -226,7 +226,7 @@ fn footsteps_follow_ground_covered_and_never_while_still() {
     w.set_program(Some(std::sync::Arc::new(compiled(&assets))));
     // A walker carried 10 m along the ground in 3 s (the platform's
     // code moves it), and one standing still.
-    let mut area = area::Area::new();
+    let mut level = level::Level::new();
     let mut walk = ComponentData::default();
     walk.set("from", Value::vec3(Vec3::ZERO));
     walk.set("to", Value::vec3(Vec3::new(10.0, 0.0, 0.0)));
@@ -236,13 +236,13 @@ fn footsteps_follow_ground_covered_and_never_while_still() {
     walker
         .components
         .insert("Footsteps".into(), ComponentData::default());
-    let walker = area.spawn(walker);
+    let walker = level.spawn(walker);
     let mut still = EntityData::new("Still").with(&Transform::default());
     still
         .components
         .insert("Footsteps".into(), ComponentData::default());
-    let still = area.spawn(still);
-    w.open_area(area, assets.join("steps.solarea"));
+    let still = level.spawn(still);
+    w.open_level(level, assets.join("steps.solarea"));
     w.play();
     for _ in 0..(60 * 3) {
         w.play_for(1.0 / 60.0);

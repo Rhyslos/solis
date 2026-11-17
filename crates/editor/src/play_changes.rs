@@ -1,22 +1,22 @@
 //! Nothing is lost by playing (the editor overhaul's O5, decision 0085).
-//! Changes made to the area while playing aren't thrown away silently on
-//! Stop: Stop lists them and asks **Keep** (the area as it was
+//! Changes made to the level while playing aren't thrown away silently on
+//! Stop: Stop lists them and asks **Keep** (the level as it was
 //! before Play with those changes made, every one still undoable) or
-//! **Undo all** (the area as it was before Play). Only the user's own
+//! **Undo all** (the level as it was before Play). Only the user's own
 //! edits are kept, never what the game did: their edits are undo steps
 //! and the game's aren't (`Document::edit_by_game`), so Stop makes the
-//! steps again on the area from before Play (`Document::follow`).
+//! steps again on the level from before Play (`Document::follow`).
 //!
-//! Nothing leaves the area while the question waits: quitting, closing
-//! the window, another area or project (`Workbench::request`) and a file
+//! Nothing leaves the level while the question waits: quitting, closing
+//! the window, another level or project (`Workbench::request`) and a file
 //! changed on disk wait for the answer and go on after it, and the
 //! question is asked over the launcher too.
 
 use crate::document::Document;
 use crate::theme;
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::text::AreaFile;
 use egui::{RichText, Ui};
+use level::text::LevelFile;
 use reflect::AssetId;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -30,20 +30,20 @@ const NAMED: usize = 3;
 /// Changes made while playing, waiting for Keep or Undo all.
 #[derive(Clone)]
 pub(crate) struct PlayChanges {
-    /// The area as it was before Play with the user's changes made, and
+    /// The level as it was before Play with the user's changes made, and
     /// its history with a step for each.
     pub(crate) document: Box<Document>,
-    /// The assemblies as they were at Play: what that area's copies were
+    /// The assemblies as they were at Play: what that level's copies were
     /// built from, so Keep can rebuild the ones whose files changed since.
-    assemblies: BTreeMap<AssetId, Arc<AreaFile>>,
+    assemblies: BTreeMap<AssetId, Arc<LevelFile>>,
     /// What was done, oldest first.
     pub(crate) labels: Vec<String>,
-    /// The area as its file holds it now, if the file changed on disk
+    /// The level as its file holds it now, if the file changed on disk
     /// while playing or since: offered once the question is answered,
-    /// since Keep puts another area in the open one's place.
-    pub(crate) reload: Option<area::Area>,
-    /// What waits for the answer: something that leaves the area (a quit,
-    /// another area or project), asked for again once it's given.
+    /// since Keep puts another level in the open one's place.
+    pub(crate) reload: Option<level::Level>,
+    /// What waits for the answer: something that leaves the level (a quit,
+    /// another level or project), asked for again once it's given.
     pub(crate) then: Option<WorkbenchAction>,
 }
 
@@ -57,7 +57,7 @@ impl Workbench {
     pub(crate) fn note_play_changes(
         &mut self,
         before: &Document,
-        assemblies: &BTreeMap<AssetId, Arc<AreaFile>>,
+        assemblies: &BTreeMap<AssetId, Arc<LevelFile>>,
     ) -> bool {
         let start = before.history().state();
         if self.open.document.history().state() == start {
@@ -112,12 +112,12 @@ impl Workbench {
         self.open.play_changes.as_ref().map(|c| c.labels.as_slice())
     }
 
-    /// Keep: the area as it was before Play with the user's changes made,
+    /// Keep: the level as it was before Play with the user's changes made,
     /// every one still undoable. Nothing the game did comes with them.
     pub fn keep_play_changes(&mut self) {
         if let Some(changes) = self.open.play_changes.take() {
             // Its copies of assemblies are as they were at Play; the open
-            // area's were rebuilt at Stop (or since) if their files
+            // level's were rebuilt at Stop (or since) if their files
             // changed, and these are now.
             let now = std::mem::replace(&mut self.open.assemblies, changes.assemblies);
             self.replace_document(*changes.document);
@@ -134,7 +134,7 @@ impl Workbench {
         }
     }
 
-    /// Undo all: the area stays as it was before Play.
+    /// Undo all: the level stays as it was before Play.
     pub fn undo_play_changes(&mut self) {
         if let Some(changes) = self.open.play_changes.take() {
             self.log(
@@ -150,11 +150,11 @@ impl Workbench {
 
     /// Keep or Undo all was chosen: what waited for it goes on. A file
     /// changed on disk is offered (`reload`), and what was leaving the
-    /// area (`then`) is asked for again, so it asks about unsaved changes
+    /// level (`then`) is asked for again, so it asks about unsaved changes
     /// as it would have; the app gets it with the next actions.
-    fn answered(&mut self, reload: Option<area::Area>, then: Option<WorkbenchAction>) {
-        if let Some(area) = reload {
-            self.offer_reload(area);
+    fn answered(&mut self, reload: Option<level::Level>, then: Option<WorkbenchAction>) {
+        if let Some(level) = reload {
+            self.offer_reload(level);
         }
         if let Some(action) = then {
             let mut actions = Vec::new();

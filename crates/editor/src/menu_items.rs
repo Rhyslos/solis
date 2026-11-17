@@ -1,5 +1,5 @@
-//! The commands of the Area column's menus (its header's ⋯ and a row's
-//! right-click menu, drawn in `area_panel.rs`): each returns the
+//! The commands of the Level column's menus (its header's ⋯ and a row's
+//! right-click menu, drawn in `level_panel.rs`): each returns the
 //! [`MenuCommand`] picked, and [`Workbench::run`] carries it out. The
 //! editor's commands (`shell/commands.rs`) run the same ones, so a thing
 //! is done one way wherever it is asked for.
@@ -37,9 +37,9 @@ impl Workbench {
             MenuCommand::Delete => self.delete_selection(),
             MenuCommand::Rename => {
                 if let Some(id) = self.open.document.selection.primary()
-                    && let Some(entity) = self.open.document.area().get(id)
+                    && let Some(entity) = self.open.document.level().get(id)
                 {
-                    crate::area_panel::begin_rename(ctx, id, &entity.name);
+                    crate::level_panel::begin_rename(ctx, id, &entity.name);
                 }
             }
             MenuCommand::SelectAll => self.select_all(),
@@ -61,23 +61,29 @@ impl Workbench {
                     self.open.outbox.push(WorkbenchAction::CreateAssembly(id));
                 }
             }
-            MenuCommand::ExpandAll => self.open.area_panel.collapsed.clear(),
+            MenuCommand::ExpandAll => self.open.level_panel.collapsed.clear(),
             MenuCommand::CollapseAll => {
-                let area = self.open.document.area();
-                let parents: Vec<_> = area.iter().filter_map(|(_, e)| e.parent).collect();
-                self.open.area_panel.collapsed.extend(parents);
+                let level = self.open.document.level();
+                let parents: Vec<_> = level.iter().filter_map(|(_, e)| e.parent).collect();
+                self.open.level_panel.collapsed.extend(parents);
             }
         }
     }
 
-    /// Selects every entity in the area (Ctrl+A).
+    /// Selects every entity in the level (Ctrl+A).
     pub(crate) fn select_all(&mut self) {
         // While a brush's insides are edited: every part of the mode.
         if let Some(edit) = self.viewport.brushing.edit.as_mut() {
             edit.pick_all();
             return;
         }
-        let ids: Vec<_> = self.open.document.area().iter().map(|(id, _)| id).collect();
+        let ids: Vec<_> = self
+            .open
+            .document
+            .level()
+            .iter()
+            .map(|(id, _)| id)
+            .collect();
         if let Some(&first) = ids.first() {
             let primary = self.open.document.selection.primary().unwrap_or(first);
             self.open.document.selection.select_all(ids, primary);

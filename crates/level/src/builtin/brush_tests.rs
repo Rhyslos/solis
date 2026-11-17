@@ -2,7 +2,7 @@
 //! and damaged or hostile lists read as an empty brush, never a crash.
 
 use super::*;
-use crate::document::{Area, EntityData};
+use crate::document::{EntityData, Level};
 use crate::text;
 use mesh::{MeshReport, ShapeSettings};
 
@@ -97,8 +97,8 @@ fn materials_and_gaps_left_by_deleted_points_survive() {
 }
 
 #[test]
-fn a_brush_round_trips_through_an_area_file_a_few_numbers_to_a_line() {
-    let mut area = Area::new();
+fn a_brush_round_trips_through_an_level_file_a_few_numbers_to_a_line() {
+    let mut level = Level::new();
     let settings = ShapeSettings {
         sides: 64,
         ..Shape::Sphere.standard()
@@ -107,9 +107,9 @@ fn a_brush_round_trips_through_an_area_file_a_few_numbers_to_a_line() {
         mesh: Arc::new(Shape::Sphere.build(&settings)),
         ..Brush::of_shape(Shape::Sphere)
     };
-    area.spawn(EntityData::new("Ball").with(&sphere));
-    area.spawn(EntityData::new("Step").with(&Brush::of_shape(Shape::Stairs)));
-    let written = text::write(&area, &registry(), &|_| None);
+    level.spawn(EntityData::new("Ball").with(&sphere));
+    level.spawn(EntityData::new("Step").with(&Brush::of_shape(Shape::Stairs)));
+    let written = text::write(&level, &registry(), &|_| None);
     assert!(
         written.contains("    Brush.points = [\n        "),
         "{written}"
@@ -117,7 +117,7 @@ fn a_brush_round_trips_through_an_area_file_a_few_numbers_to_a_line() {
     let longest = written.lines().map(str::len).max().unwrap();
     assert!(longest < 400, "a line of {longest} characters");
     let read = text::read(&written, &registry()).unwrap();
-    assert_eq!(read, area);
+    assert_eq!(read, level);
     let (_, back) = read
         .with::<Brush>()
         .find(|(_, b)| b.shape == Shape::Sphere)
@@ -325,9 +325,9 @@ impl Stream {
 
 #[test]
 fn thousands_of_damaged_brush_files_are_read_or_refused_never_a_crash() {
-    let mut area = Area::new();
-    area.spawn(EntityData::new("Arch").with(&Brush::of_shape(Shape::Arch)));
-    let written = text::write(&area, &registry(), &|_| None);
+    let mut level = Level::new();
+    level.spawn(EntityData::new("Arch").with(&Brush::of_shape(Shape::Arch)));
+    let written = text::write(&level, &registry(), &|_| None);
     let bytes = written.as_bytes();
     let mut stream = Stream(7);
     let junk = *b"09-,[];\n.e\" ";
@@ -363,17 +363,17 @@ fn thousands_of_damaged_brush_files_are_read_or_refused_never_a_crash() {
 
 #[test]
 fn the_version_3_example_is_what_this_build_writes() {
-    // tests/fixtures/area/v3: a box floor, a ramp and stairs.
+    // tests/fixtures/level/v3: a box floor, a ramp and stairs.
     let blockout = include_str!("../../../../tests/fixtures/area/v3/blockout.solarea");
     assert_eq!((text::FORMAT.version_of)(blockout), Some(3));
-    let area = text::read(blockout, &registry()).unwrap();
-    let shapes: Vec<Shape> = area.with::<Brush>().map(|(_, b)| b.shape).collect();
+    let level = text::read(blockout, &registry()).unwrap();
+    let shapes: Vec<Shape> = level.with::<Brush>().map(|(_, b)| b.shape).collect();
     assert_eq!(shapes, [Shape::Box, Shape::Ramp, Shape::Stairs]);
-    for (_, brush) in area.with::<Brush>() {
+    for (_, brush) in level.with::<Brush>() {
         assert!(!brush.damaged);
         assert!(MeshReport::new(&brush.mesh).is_closed());
     }
-    assert_eq!(text::write(&area, &registry(), &|_| None), blockout);
+    assert_eq!(text::write(&level, &registry(), &|_| None), blockout);
 }
 
 #[test]
@@ -414,11 +414,11 @@ fn scale_check_a_5000_face_brush_written_read_and_cut_into_triangles() {
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 #[allow(clippy::print_stdout)]
-fn scale_check_an_area_of_10000_box_brushes_read() {
-    // Opening an area of 10,000 box brushes, each its own size: the file
+fn scale_check_an_level_of_10000_box_brushes_read() {
+    // Opening a level of 10,000 box brushes, each its own size: the file
     // read, and every brush's mesh made from its values.
     const TARGET_MS: f64 = 1_000.0;
-    let mut area = Area::new();
+    let mut level = Level::new();
     for i in 0..10_000 {
         let size = glam::Vec3::new(
             1.0 + (i % 100) as f32 * 0.01,
@@ -432,9 +432,9 @@ fn scale_check_an_area_of_10000_box_brushes_read() {
             })),
             ..Brush::default()
         };
-        area.spawn(EntityData::new("Box").with(&brush));
+        level.spawn(EntityData::new("Box").with(&brush));
     }
-    let text = text::write(&area, &registry(), &|_| None);
+    let text = text::write(&level, &registry(), &|_| None);
     let start = std::time::Instant::now();
     let read = text::read(&text, &registry()).unwrap();
     let read_ms = start.elapsed().as_secs_f64() * 1000.0;

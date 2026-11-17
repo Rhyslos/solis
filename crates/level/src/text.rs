@@ -1,10 +1,10 @@
-//! Areas as text ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
+//! Levels as text ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
 //! Lust-style data blocks, one per entity, sorted by ID, one line per
 //! field, made so Git merges two people's changes cleanly.
 //!
 //! ```text
-//! -- An area. Safe to edit by hand: one block per entity, one line per field.
-//! area version 3;
+//! -- A level. Safe to edit by hand: one block per entity, one line per field.
+//! level version 3;
 //!
 //! entity 2B8D4NE6TV0HC {
 //!     name = "Sun";
@@ -21,12 +21,12 @@
 //! part was moved under, or is `""` for a part moved out from under every
 //! parent ([`ParentChange`]; version 2).
 //!
-//! This module only turns text into an [`Area`] and back; reading and
+//! This module only turns text into a [`Level`] and back; reading and
 //! writing files is the app's job. The reader is written for hostile
 //! files (CONTRIBUTING.md, rule 9): sizes are checked before anything is
 //! kept, and every mistake is reported with its line, never a crash.
 
-use crate::document::{Area, EntityData, Origin};
+use crate::document::{EntityData, Level, Origin};
 use reflect::{AssetId, AssetRef, ComponentData, EntityId, FieldKind, Registry, Value};
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
@@ -37,13 +37,13 @@ use std::fmt::{self, Write as _};
 /// of numbers written over several lines ([`NUMBERS_PER_LINE`]).
 pub const VERSION: u32 = 3;
 
-/// Areas' and assemblies' version and upgraders (Phase 8, C1): each step
+/// Levels' and assemblies' version and upgraders (Phase 8, C1): each step
 /// turns a file read at one version into the next, after its blocks are
 /// read (so a step can rename a field or a component, but the layout
 /// itself, header, IDs and blocks, is read as this build reads it).
 /// Every version ever released keeps an example file in
-/// `tests/fixtures/area/` that the app's tests open.
-pub static FORMAT: reflect::upgrade::Format<AreaFile> = reflect::upgrade::Format {
+/// `tests/fixtures/level/` that the app's tests open.
+pub static FORMAT: reflect::upgrade::Format<LevelFile> = reflect::upgrade::Format {
     name: "area",
     current: VERSION,
     version_of: |text| reflect::upgrade::header_version(text, &["area", "assembly"]),
@@ -54,14 +54,14 @@ pub static FORMAT: reflect::upgrade::Format<AreaFile> = reflect::upgrade::Format
 /// part say it was moved out to the top level (`parent = "";` in its
 /// block), which version 1 had no way to write, so no version 1 file
 /// holds one and every one reads as it always did.
-fn parts_at_the_top_level(_: &mut AreaFile) -> Result<(), String> {
+fn parts_at_the_top_level(_: &mut LevelFile) -> Result<(), String> {
     Ok(())
 }
 
 /// Version 2 to 3: nothing to change. Version 3 has the Brush component,
 /// whose lists of numbers run over several lines; no version 2 file holds
 /// one, and every one reads as it always did.
-fn brushes(_: &mut AreaFile) -> Result<(), String> {
+fn brushes(_: &mut LevelFile) -> Result<(), String> {
     Ok(())
 }
 
@@ -71,7 +71,7 @@ fn brushes(_: &mut AreaFile) -> Result<(), String> {
 /// the lines it touches. Shorter lists (positions, colours) stay on one
 /// line, as they always were.
 pub const NUMBERS_PER_LINE: usize = 12;
-/// The biggest area file read.
+/// The biggest level file read.
 pub const MAX_BYTES: usize = 64 << 20;
 /// The longest line read.
 pub const MAX_LINE: usize = 64 << 10;
@@ -105,11 +105,11 @@ impl std::error::Error for ParseError {}
 
 // ---------------------------------------------------------------- write ---
 
-/// What a file holds: an area, or an assembly with its root.
+/// What a file holds: a level, or an assembly with its root.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileKind {
-    /// An area (`.solarea`).
-    Area,
+    /// A level (`.sollevel`).
+    Level,
     /// An assembly (`.solassembly`), whose entities all sit under `root`.
     Assembly {
         /// The assembly's top entity.
@@ -127,7 +127,7 @@ pub enum ParentChange {
     /// The parent the assembly gives it: nothing is written.
     #[default]
     Unchanged,
-    /// No parent: moved out to the area's top level (`parent = "";`).
+    /// No parent: moved out to the level's top level (`parent = "";`).
     TopLevel,
     /// Moved under this entity (`parent = "ID";`).
     Under(EntityId),
@@ -168,35 +168,35 @@ impl Override {
 /// A file as written: its entities, with placed assemblies as their root
 /// entity plus overrides, never copies.
 #[derive(Debug, Clone, PartialEq)]
-pub struct AreaFile {
-    /// Area or assembly.
+pub struct LevelFile {
+    /// Level or assembly.
     pub kind: FileKind,
     /// The plain entities, and each placed assembly's root (with its
     /// [`Origin`] and no components: its changes are in `overrides`).
-    pub area: Area,
+    pub level: Level,
     /// Overrides, by placed root and the way to the entity inside (empty
     /// for the root itself).
     pub overrides: BTreeMap<(EntityId, Vec<EntityId>), Override>,
 }
 
-impl AreaFile {
-    /// A file holding the plain `area`.
-    pub fn plain(area: Area) -> Self {
+impl LevelFile {
+    /// A file holding the plain `level`.
+    pub fn plain(level: Level) -> Self {
         Self {
-            kind: FileKind::Area,
-            area,
+            kind: FileKind::Level,
+            level,
             overrides: BTreeMap::new(),
         }
     }
 }
 
-/// A plain `area` (no placed assemblies) as text: see [`write_file`].
+/// A plain `level` (no placed assemblies) as text: see [`write_file`].
 pub fn write(
-    area: &Area,
+    level: &Level,
     registry: &Registry,
     asset_path: &dyn Fn(AssetId) -> Option<String>,
 ) -> String {
-    write_file(&AreaFile::plain(area.clone()), registry, asset_path)
+    write_file(&LevelFile::plain(level.clone()), registry, asset_path)
 }
 
 /// `file` as text. Components `registry` knows write their fields in their
@@ -205,13 +205,13 @@ pub fn write(
 /// ID, which is only for people: it's never read back. Blocks are sorted
 /// by their name, so an override block (`root/inner`) follows its root.
 pub fn write_file(
-    file: &AreaFile,
+    file: &LevelFile,
     registry: &Registry,
     asset_path: &dyn Fn(AssetId) -> Option<String>,
 ) -> String {
     let mut out = String::new();
     match file.kind {
-        FileKind::Area => {
+        FileKind::Level => {
             out.push_str(
                 "-- An area. Safe to edit by hand: one block per entity, one line per field.\n",
             );
@@ -225,7 +225,7 @@ pub fn write_file(
         }
     }
     let mut blocks: Vec<(String, String)> = Vec::new();
-    for (id, entity) in file.area.iter() {
+    for (id, entity) in file.level.iter() {
         let mut body = String::new();
         let _ = writeln!(body, "    name = {};", quoted(&entity.name));
         if let Some(parent) = entity.parent {
@@ -454,37 +454,37 @@ pub(crate) fn write_value(out: &mut String, value: &Value) {
 
 // ----------------------------------------------------------------- read ---
 
-/// Reads a plain area (one with no placed assemblies) from `text`: see
+/// Reads a plain level (one with no placed assemblies) from `text`: see
 /// [`read_file`]. Placed assemblies need their contents to be read; use
 /// [`crate::assembly`]. Parents that lead round in a loop are put right
-/// ([`Area::mend_loops`]), as expanding a file's assemblies does, so no
-/// area read has one.
-pub fn read(text: &str, registry: &Registry) -> Result<Area, ParseError> {
+/// ([`Level::mend_loops`]), as expanding a file's assemblies does, so no
+/// level read has one.
+pub fn read(text: &str, registry: &Registry) -> Result<Level, ParseError> {
     let file = read_file(text, registry)?;
-    if file.kind != FileKind::Area {
+    if file.kind != FileKind::Level {
         return Err(ParseError {
             line: 1,
             message: "this is an assembly, not an area".into(),
         });
     }
-    if let Some((id, _)) = file.area.iter().find(|(_, e)| e.origin.is_some()) {
+    if let Some((id, _)) = file.level.iter().find(|(_, e)| e.origin.is_some()) {
         return Err(ParseError {
             line: 0,
             message: format!("{id} is a placed assembly, which needs its assembly to be read"),
         });
     }
-    let mut area = file.area;
-    area.mend_loops();
-    Ok(area)
+    let mut level = file.level;
+    level.mend_loops();
+    Ok(level)
 }
 
-/// Reads an area or assembly file from `text`. Values are turned into the
+/// Reads a level or assembly file from `text`. Values are turned into the
 /// kinds `registry` declares (asset and entity references, decimals written
 /// as whole numbers); components it doesn't know are kept exactly as read.
 /// A file from a newer version is refused, never half-read. Parents are
 /// kept as written: one may be a part of a placed assembly, known only
 /// once the file is expanded, which is where loops of them are put right.
-pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError> {
+pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseError> {
     if text.len() > MAX_BYTES {
         return Err(ParseError {
             line: 0,
@@ -507,9 +507,9 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
         line: 1,
     };
     let (kind, version) = p.header()?;
-    let mut file = AreaFile {
+    let mut file = LevelFile {
         kind,
-        area: Area::new(),
+        level: Level::new(),
         overrides: BTreeMap::new(),
     };
     let mut lines: BTreeMap<Vec<EntityId>, (usize, String)> = BTreeMap::new();
@@ -593,7 +593,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
                     entity.components = block.components;
                 }
             }
-            file.area.insert(root, entity);
+            file.level.insert(root, entity);
         } else {
             if block.assembly.is_some() {
                 return fail("an assembly can't be placed inside another's override");
@@ -613,7 +613,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
     }
     // Every override belongs to a placed assembly in this file.
     for (root, path) in file.overrides.keys() {
-        let placed = file.area.get(*root).is_some_and(|e| e.origin.is_some());
+        let placed = file.level.get(*root).is_some_and(|e| e.origin.is_some());
         if !placed {
             let ids: Vec<EntityId> = std::iter::once(*root).chain(path.iter().copied()).collect();
             let key = ids
@@ -629,7 +629,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
         }
     }
     if let FileKind::Assembly { root } = file.kind
-        && !file.area.contains(root)
+        && !file.level.contains(root)
     {
         return Err(ParseError {
             line: 1,
@@ -747,7 +747,7 @@ impl Parser<'_> {
         }
     }
 
-    /// `area version N;` or `assembly version N root ID;`, refusing newer
+    /// `level version N;` or `assembly version N root ID;`, refusing newer
     /// versions.
     fn header(&mut self) -> Result<(FileKind, u32), ParseError> {
         if !self.skip_space() {
@@ -779,7 +779,7 @@ impl Parser<'_> {
             let root: EntityId = root.parse().or_else(|e| self.fail(&format!("{e}")))?;
             FileKind::Assembly { root }
         } else {
-            FileKind::Area
+            FileKind::Level
         };
         self.expect(';')?;
         Ok((kind, version))
@@ -1046,7 +1046,7 @@ fn read_float(v: f64, text: &str) -> f64 {
 /// asset and entity references are written as text, and a decimal field
 /// may be written as a whole number by hand. Anything that doesn't fit is
 /// kept as it is. Also for values read before their component's schema
-/// was known (game code checked after the area was opened).
+/// was known (game code checked after the level was opened).
 pub fn fit_value(value: Value, kind: &FieldKind) -> Value {
     coerce(value, kind)
 }
@@ -1096,10 +1096,10 @@ mod tests {
         None
     }
 
-    fn sample() -> Area {
-        let mut area = builtin::starter_area();
+    fn sample() -> Level {
+        let mut level = builtin::starter_level();
         let asset = AssetId::random();
-        let model = area.spawn(
+        let model = level.spawn(
             EntityData::new("Crate \"big\"\n2")
                 .with(&Transform {
                     position: glam::Vec3::new(1.5, -2.25, 1e-7),
@@ -1115,9 +1115,9 @@ mod tests {
         let mut lamp = EntityData::new("Lamp").with(&Light::point());
         lamp.parent = Some(model);
         lamp.order = "a1".into();
-        let lamp = area.spawn(lamp);
+        let lamp = level.spawn(lamp);
         // A component nobody registered, with every kind of value.
-        area.get_mut(lamp).unwrap().components.insert(
+        level.get_mut(lamp).unwrap().components.insert(
             "Health".into(),
             ComponentData {
                 fields: BTreeMap::from([
@@ -1134,18 +1134,19 @@ mod tests {
                 ]),
             },
         );
-        area.get_mut(lamp)
+        level
+            .get_mut(lamp)
             .unwrap()
             .components
             .insert("Marker".into(), ComponentData::default());
-        area
+        level
     }
 
     fn id(n: u64) -> EntityId {
         EntityId(reflect::Id::from_raw(n).unwrap())
     }
 
-    /// A post placed in an area with three of its parts changed: one
+    /// A post placed in a level with three of its parts changed: one
     /// renamed where it is, one moved under the shed, one moved out to the
     /// top level.
     fn parts_moved(version: u32) -> String {
@@ -1239,7 +1240,7 @@ mod tests {
 
     #[test]
     fn the_version_2_example_is_written_as_it_was_but_for_its_version() {
-        // tests/fixtures/area/v2: a yard with a crate placed in it, its
+        // tests/fixtures/level/v2: a yard with a crate placed in it, its
         // lid moved out to the top level (BUG-13).
         let yard = include_str!("../../../tests/fixtures/area/v2/yard.solarea");
         let file = read_file(yard, &registry()).unwrap();
@@ -1297,20 +1298,20 @@ mod tests {
     fn a_loop_of_parents_in_a_file_is_put_right_as_it_is_read() {
         // The review of Phase 9, BUG-12: a crate and a shelf written
         // inside each other, and a lid inside the crate.
-        let mut area = Area::new();
-        let crate_ = area.spawn(EntityData::new("Crate"));
+        let mut level = Level::new();
+        let crate_ = level.spawn(EntityData::new("Crate"));
         let mut shelf = EntityData::new("Shelf");
         shelf.parent = Some(crate_);
-        let shelf = area.spawn(shelf);
+        let shelf = level.spawn(shelf);
         let mut lid = EntityData::new("Lid");
         lid.parent = Some(crate_);
-        let lid = area.spawn(lid);
-        area.get_mut(crate_).unwrap().parent = Some(shelf);
-        let text = write(&area, &registry(), &no_paths);
+        let lid = level.spawn(lid);
+        level.get_mut(crate_).unwrap().parent = Some(shelf);
+        let text = write(&level, &registry(), &no_paths);
         // The file is read as written (a parent may be a part of a placed
         // assembly, not there yet)…
-        assert_eq!(read_file(&text, &registry()).unwrap().area, area);
-        // …and an area made from it has no loop: the lower ID of the two
+        assert_eq!(read_file(&text, &registry()).unwrap().level, level);
+        // …and a level made from it has no loop: the lower ID of the two
         // is at the top, the other and the lid still under theirs.
         let read = read(&text, &registry()).unwrap();
         let (top, under) = (crate_.min(shelf), crate_.max(shelf));
@@ -1321,11 +1322,11 @@ mod tests {
     }
 
     #[test]
-    fn an_area_round_trips_through_text() {
-        let area = sample();
-        let text = write(&area, &registry(), &no_paths);
+    fn a_level_round_trips_through_text() {
+        let level = sample();
+        let text = write(&level, &registry(), &no_paths);
         let back = read(&text, &registry()).unwrap();
-        assert_eq!(back, area, "{text}");
+        assert_eq!(back, level, "{text}");
         // And writing it again gives the same text.
         assert_eq!(write(&back, &registry(), &no_paths), text);
     }
@@ -1343,10 +1344,10 @@ mod tests {
 
     #[test]
     fn the_text_reads_as_intended() {
-        let mut area = Area::new();
+        let mut level = Level::new();
         let id: EntityId = "2B8D4NE6TV0HC".parse().unwrap();
         let asset: AssetId = "4WQ0B7M2KD9TS".parse().unwrap();
-        area.insert(
+        level.insert(
             id,
             EntityData::new("Sun")
                 .with(&Light {
@@ -1357,7 +1358,7 @@ mod tests {
                     asset: Some(AssetRef { asset, part: None }),
                 }),
         );
-        let text = write(&area, &registry(), &|_| Some("props/sun.glb".into()));
+        let text = write(&level, &registry(), &|_| Some("props/sun.glb".into()));
         assert!(text.contains(
             "area version 3;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
         ));
@@ -1372,8 +1373,8 @@ mod tests {
     #[test]
     fn hand_edits_windows_line_ends_and_comments_are_read() {
         let text = "\u{feff}-- my level\r\narea version 1;\r\n\r\nentity 0000000000001 { -- the box\r\n  name = \"Box\";\r\n  Transform.position = [1, 2, 3];  -- whole numbers\r\n  Light.strength = 5;\r\n}\r\n";
-        let area = read(text, &registry()).unwrap();
-        let e = area.get("0000000000001".parse().unwrap()).unwrap();
+        let level = read(text, &registry()).unwrap();
+        let e = level.get("0000000000001".parse().unwrap()).unwrap();
         assert_eq!(e.name, "Box");
         assert_eq!(
             e.get::<Transform>().unwrap().position,

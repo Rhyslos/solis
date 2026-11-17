@@ -1,10 +1,10 @@
 //! What the search can find: the editor's commands (from the one table,
-//! `shell/commands.rs`), the panels, the area's entities and the
+//! `shell/commands.rs`), the panels, the level's entities and the
 //! project's files.
 //!
 //! The entities and files are read into a list once and kept until the
-//! area or the project's files change, and scored once for what's typed,
-//! so an open search doesn't walk the whole area every frame.
+//! level or the project's files change, and scored once for what's typed,
+//! so an open search doesn't walk the whole level every frame.
 
 use super::{SearchItem, SearchKind, SearchTarget};
 use crate::panel::Panel;
@@ -12,11 +12,11 @@ use crate::shell::ShellCommand;
 use crate::workbench::Workbench;
 use std::sync::Arc;
 
-/// The area's entities and the project's files as results, and what
+/// The level's entities and the project's files as results, and what
 /// they were read from.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Found {
-    /// The area as it was ([`crate::Document::revision`]).
+    /// The level as it was ([`crate::Document::revision`]).
     revision: u64,
     /// The project's files as they were (`Workbench::sources`).
     sources: u64,
@@ -51,7 +51,7 @@ impl Found {
 impl Workbench {
     /// Everything the search can find now: the commands that can be done
     /// (one that can't, such as Pause while editing, is left out), the
-    /// panels, the area's entities and the project's files. The open
+    /// panels, the level's entities and the project's files. The open
     /// search shows the best of these through [`Self::search_results`],
     /// without copying them all; tests look at the whole list.
     #[cfg(test)]
@@ -123,12 +123,12 @@ impl Workbench {
             && found.files == self.open.library.len()
     }
 
-    /// Reads the area's entities and the project's files as results.
+    /// Reads the level's entities and the project's files as results.
     fn find_entities_and_files(&self) -> Found {
         let entities = self
             .open
             .document
-            .area()
+            .level()
             .iter()
             .map(|(id, entity)| SearchItem {
                 name: entity.name.clone(),
@@ -158,7 +158,7 @@ impl Workbench {
         }
     }
 
-    /// Keeps the entities and files found until the area or the files
+    /// Keeps the entities and files found until the level or the files
     /// change: called each frame the search is open.
     pub(crate) fn keep_found(&mut self) {
         let current = self
@@ -178,7 +178,7 @@ impl Workbench {
         Some(Arc::clone(best))
     }
 
-    /// How many times the area was walked for the list kept: none while
+    /// How many times the level was walked for the list kept: none while
     /// nothing changed.
     #[cfg(test)]
     pub(crate) fn found_from(&self) -> Option<(u64, u64)> {

@@ -1,17 +1,17 @@
-//! The Area panel's search, folding, hiding and locking, its menus, and
+//! The Level panel's search, folding, hiding and locking, its menus, and
 //! Properties with several entities selected.
 
-use crate::area_panel::AreaRequest;
-use crate::area_view::AreaView;
+use crate::level_panel::LevelRequest;
+use crate::level_view::LevelView;
 use crate::menu_items::MenuCommand;
 use crate::properties::PropertyRequest;
 use crate::test_support::*;
 use crate::viewport_tools::PickAnswer;
 use crate::workbench::Workbench;
-use area::EntityData;
-use area::builtin::{Light, Transform};
 use egui_kittest::kittest::Queryable;
 use glam::{Quat, Vec3};
+use level::EntityData;
+use level::builtin::{Light, Transform};
 use reflect::{EntityId, Value};
 
 /// A workbench with a room holding a lamp, and a crate beside it.
@@ -20,7 +20,7 @@ fn a_room() -> (Workbench, EntityId, EntityId, EntityId) {
     let room = w.add_entity();
     w.open.document.selection.select_only(room);
     let lamp = w.add_point_light();
-    w.apply_area_request(AreaRequest::Reparent {
+    w.apply_level_request(LevelRequest::Reparent {
         entity: lamp,
         onto: Some(room),
     });
@@ -28,7 +28,7 @@ fn a_room() -> (Workbench, EntityId, EntityId, EntityId) {
     (w, room, lamp, crate_id)
 }
 
-/// Whether the Area panel lists a row called `name`.
+/// Whether the Level panel lists a row called `name`.
 fn listed(h: &egui_kittest::Harness<'_, State>, name: &str) -> bool {
     h.query_all_by_label(name).next().is_some()
 }
@@ -36,14 +36,14 @@ fn listed(h: &egui_kittest::Harness<'_, State>, name: &str) -> bool {
 #[test]
 fn the_search_box_lists_matches_with_their_parents() {
     let (mut w, room, _, _) = a_room();
-    let room_name = w.open.document.area().get(room).unwrap().name.clone();
-    w.open.area_panel.search = "point".into();
+    let room_name = w.open.document.level().get(room).unwrap().name.clone();
+    w.open.level_panel.search = "point".into();
     let mut h = harness(w);
     h.run();
     assert!(listed(&h, "Point light 1"), "the match");
     assert!(listed(&h, &room_name), "its parent");
     assert!(!listed(&h, "Crate"), "not the rest");
-    h.state_mut().0.open.area_panel.search = "nothing like it".into();
+    h.state_mut().0.open.level_panel.search = "nothing like it".into();
     h.run();
     let _ = h.get_by_label("Nothing has that name.");
 }
@@ -57,7 +57,7 @@ fn folding_hides_children_and_the_view_menu_unfolds_everything() {
     h.get_by_label("Fold").click();
     h.run();
     assert!(!listed(&h, "Point light 1"), "folded away");
-    assert!(h.state().0.open.area_panel.collapsed.contains(&room));
+    assert!(h.state().0.open.level_panel.collapsed.contains(&room));
     h.state_mut()
         .0
         .run(MenuCommand::ExpandAll, &egui::Context::default());
@@ -73,8 +73,8 @@ fn folding_hides_children_and_the_view_menu_unfolds_everything() {
 #[test]
 fn picking_something_folded_away_unfolds_the_way_to_it() {
     let (mut w, room, lamp, _) = a_room();
-    w.open.area_panel.collapsed.insert(room);
-    let at = w.open.document.area().world_matrix(lamp).w_axis.truncate();
+    w.open.level_panel.collapsed.insert(room);
+    let at = w.open.document.level().world_matrix(lamp).w_axis.truncate();
     w.viewport.camera.look_at(at);
     let mut h = harness(w);
     h.run();
@@ -82,7 +82,7 @@ fn picking_something_folded_away_unfolds_the_way_to_it() {
         .state()
         .0
         .viewport
-        .area
+        .level
         .lamps
         .iter()
         .position(|l| l.entity == lamp);
@@ -96,7 +96,7 @@ fn picking_something_folded_away_unfolds_the_way_to_it() {
         let p = w
             .viewport
             .camera
-            .project(w.viewport.area.lamps[n.unwrap()].position, size)
+            .project(w.viewport.level.lamps[n.unwrap()].position, size)
             .unwrap();
         rect.min + egui::vec2(p.x, p.y)
     };
@@ -104,7 +104,7 @@ fn picking_something_folded_away_unfolds_the_way_to_it() {
     h.run();
     assert_eq!(h.state().0.selection(), Some(lamp));
     assert!(
-        !h.state().0.open.area_panel.collapsed.contains(&room),
+        !h.state().0.open.level_panel.collapsed.contains(&room),
         "unfolded"
     );
     assert!(listed(&h, "Point light 1"));
@@ -114,22 +114,22 @@ fn picking_something_folded_away_unfolds_the_way_to_it() {
 fn hidden_entities_and_their_children_are_not_drawn_and_locked_ones_not_picked() {
     let (mut w, room, lamp, crate_id) = a_room();
     let view = |w: &mut Workbench| {
-        let in_effect = w.open.area_panel.in_effect(&w.open.document);
+        let in_effect = w.open.level_panel.in_effect(&w.open.document);
         let (hidden, locked) = &*in_effect;
-        AreaView::of_shown(w.open.document.area(), &w.open.models, hidden, locked)
+        LevelView::of_shown(w.open.document.level(), &w.open.models, hidden, locked)
     };
     assert_eq!(view(&mut w).lamps.len(), 1);
-    w.open.area_panel.hidden.insert(room);
+    w.open.level_panel.hidden.insert(room);
     let v = view(&mut w);
     assert!(v.lamps.is_empty(), "the lamp is under the hidden room");
     assert_eq!(v.models.len(), 1, "the crate is still drawn");
-    w.open.area_panel.hidden.clear();
-    w.open.area_panel.locked.insert(crate_id);
+    w.open.level_panel.hidden.clear();
+    w.open.level_panel.locked.insert(crate_id);
     let v = view(&mut w);
     assert_eq!(v.models.len(), 1, "a locked crate is still drawn…");
     assert_eq!(v.models[0].pick, 0, "…but can't be picked");
     assert!(v.pickable.is_empty());
-    w.open.area_panel.locked.insert(lamp);
+    w.open.level_panel.locked.insert(lamp);
     assert!(view(&mut w).locked.contains(&lamp));
 }
 
@@ -139,22 +139,22 @@ fn hidden_entities_and_their_children_are_not_drawn_and_locked_ones_not_picked()
 #[test]
 fn what_is_hidden_in_effect_is_worked_out_again_only_after_a_change() {
     let (mut w, room, lamp, crate_id) = a_room();
-    w.open.area_panel.hidden.insert(room);
-    let first = w.open.area_panel.in_effect(&w.open.document);
+    w.open.level_panel.hidden.insert(room);
+    let first = w.open.level_panel.in_effect(&w.open.document);
     assert!(first.0.contains(&lamp), "under the hidden room");
-    let again = w.open.area_panel.in_effect(&w.open.document);
+    let again = w.open.level_panel.in_effect(&w.open.document);
     assert!(std::sync::Arc::ptr_eq(&first, &again), "nothing changed");
     // A switch changed.
-    w.open.area_panel.locked.insert(crate_id);
-    let locked = w.open.area_panel.in_effect(&w.open.document);
+    w.open.level_panel.locked.insert(crate_id);
+    let locked = w.open.level_panel.in_effect(&w.open.document);
     assert!(!std::sync::Arc::ptr_eq(&first, &locked));
     assert!(locked.1.contains(&crate_id));
     // The tree changed: the lamp out of the room is no longer hidden.
-    w.apply_area_request(AreaRequest::Reparent {
+    w.apply_level_request(LevelRequest::Reparent {
         entity: lamp,
         onto: None,
     });
-    let moved = w.open.area_panel.in_effect(&w.open.document);
+    let moved = w.open.level_panel.in_effect(&w.open.document);
     assert!(!moved.0.contains(&lamp));
     assert!(moved.0.contains(&room));
 }
@@ -164,49 +164,49 @@ fn the_hide_and_lock_switches_appear_on_the_row_and_switch() {
     let (w, _, _, crate_id) = a_room();
     let mut h = harness(w);
     h.run();
-    // The Area column is on the left of Home's Entity shelf tab: its
+    // The Level column is on the left of Home's Entity shelf tab: its
     // crate's row, where the pointer shows its switches.
-    let area = body_of(&h, crate::panel::Panel::Area);
+    let level = body_of(&h, crate::panel::Panel::Level);
     let row = h
         .get_all_by_label("Crate")
         .map(|n| n.rect())
-        .find(|r| area.contains(r.center()))
+        .find(|r| level.contains(r.center()))
         .expect("the crate's row");
-    h.hover_at(egui::pos2(area.right() - 40.0, row.center().y));
+    h.hover_at(egui::pos2(level.right() - 40.0, row.center().y));
     h.run();
     h.get_by_label("Hide Crate").click();
     h.run();
-    assert!(h.state().0.open.area_panel.hidden.contains(&crate_id));
+    assert!(h.state().0.open.level_panel.hidden.contains(&crate_id));
     let steps = h.state().0.open.document.history().undo_len();
     h.get_by_label("Lock Crate").click();
     h.run();
-    assert!(h.state().0.open.area_panel.locked.contains(&crate_id));
+    assert!(h.state().0.open.level_panel.locked.contains(&crate_id));
     // Neither is an undo step.
     assert_eq!(h.state().0.open.document.history().undo_len(), steps);
 }
 
 #[test]
-fn the_area_panels_menus_are_the_top_bars() {
+fn the_level_panels_menus_are_the_top_bars() {
     let (mut w, _, _, crate_id) = a_room();
     w.open.document.selection.select_only(crate_id);
     let mut h = harness(w);
     h.run();
-    let before = h.state().0.open.document.area().len();
+    let before = h.state().0.open.document.level().len();
     h.state_mut()
         .0
-        .apply_area_request(AreaRequest::Command(MenuCommand::Duplicate));
+        .apply_level_request(LevelRequest::Command(MenuCommand::Duplicate));
     // Commands are run by the workbench where it has the window.
     h.state_mut()
         .0
         .run(MenuCommand::Duplicate, &egui::Context::default());
     h.run();
-    assert_eq!(h.state().0.open.document.area().len(), before + 1);
+    assert_eq!(h.state().0.open.document.level().len(), before + 1);
     h.state_mut()
         .0
         .run(MenuCommand::SelectAll, &egui::Context::default());
     assert_eq!(
         h.state().0.open.document.selection.iter().count(),
-        h.state().0.open.document.area().len()
+        h.state().0.open.document.level().len()
     );
     h.state_mut()
         .0
@@ -239,7 +239,7 @@ fn two_crates() -> (Workbench, EntityId, EntityId) {
 fn transform(w: &Workbench, id: EntityId) -> Transform {
     w.open
         .document
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .get::<Transform>()
@@ -317,10 +317,10 @@ fn properties_shows_what_several_share_with_differences_marked() {
     // The Name box is only there for one entity.
     assert_eq!(h.query_all_by_label("Name").count(), 0);
     // The positions differ in X and Y but not Z.
-    let schema = area::builtin::registry().unwrap();
+    let schema = level::builtin::registry().unwrap();
     let field = schema.get("Transform").unwrap().fields[0].clone();
-    let data_b = h.state().0.open.document.area().get(b).unwrap().components["Transform"].clone();
-    let data_a = h.state().0.open.document.area().get(a).unwrap().components["Transform"].clone();
+    let data_b = h.state().0.open.document.level().get(b).unwrap().components["Transform"].clone();
+    let data_a = h.state().0.open.document.level().get(a).unwrap().components["Transform"].clone();
     let mixed = crate::inspector::Mixed::of(&field, data_a.get("position").unwrap(), &[&data_b]);
     assert!(mixed.whole);
     assert_eq!(mixed.parts, [true, true, false]);
@@ -344,8 +344,15 @@ fn copying_and_pasting_values_adds_what_is_missing_and_reset_puts_defaults_back(
         },
         2,
     );
-    let pasted: Light = w.open.document.area().get(crate_id).unwrap().get().unwrap();
-    let original: Light = w.open.document.area().get(lamp).unwrap().get().unwrap();
+    let pasted: Light = w
+        .open
+        .document
+        .level()
+        .get(crate_id)
+        .unwrap()
+        .get()
+        .unwrap();
+    let original: Light = w.open.document.level().get(lamp).unwrap().get().unwrap();
     assert_eq!(pasted, original, "the crate glows like the lamp");
     assert_eq!(
         w.open.document.history().undo_label(),
@@ -367,10 +374,24 @@ fn copying_and_pasting_values_adds_what_is_missing_and_reset_puts_defaults_back(
         },
         4,
     );
-    let reset: Light = w.open.document.area().get(crate_id).unwrap().get().unwrap();
+    let reset: Light = w
+        .open
+        .document
+        .level()
+        .get(crate_id)
+        .unwrap()
+        .get()
+        .unwrap();
     assert_eq!(reset, Light::default());
     w.undo();
-    let back: Light = w.open.document.area().get(crate_id).unwrap().get().unwrap();
+    let back: Light = w
+        .open
+        .document
+        .level()
+        .get(crate_id)
+        .unwrap()
+        .get()
+        .unwrap();
     assert_eq!(back.strength, 1234.0);
 }
 
@@ -386,8 +407,8 @@ fn components_are_added_to_and_removed_from_several_at_once() {
         },
         1,
     );
-    assert!(w.open.document.area().get(a).unwrap().has("Light"));
-    assert!(w.open.document.area().get(b).unwrap().has("Light"));
+    assert!(w.open.document.level().get(a).unwrap().has("Light"));
+    assert!(w.open.document.level().get(b).unwrap().has("Light"));
     assert_eq!(w.open.document.history().undo_label(), Some("Add Light"));
     w.apply_property(
         PropertyRequest::RemoveComponentMany {
@@ -396,20 +417,20 @@ fn components_are_added_to_and_removed_from_several_at_once() {
         },
         2,
     );
-    assert!(!w.open.document.area().get(a).unwrap().has("Light"));
+    assert!(!w.open.document.level().get(a).unwrap().has("Light"));
     w.undo();
     assert!(
-        w.open.document.area().get(b).unwrap().has("Light"),
+        w.open.document.level().get(b).unwrap().has("Light"),
         "one step back"
     );
-    assert!(w.open.document.area().get(a).unwrap().has("Light"));
+    assert!(w.open.document.level().get(a).unwrap().has("Light"));
     let _ = lit;
 }
 
 #[test]
 fn a_right_click_on_a_row_selects_it_and_opens_its_menu_of_commands() {
     let (w, _, _, crate_id) = a_room();
-    let crate_name = w.open.document.area().get(crate_id).unwrap().name.clone();
+    let crate_name = w.open.document.level().get(crate_id).unwrap().name.clone();
     let mut h = harness(w);
     h.run();
     // The same things the search does by name.
@@ -425,7 +446,7 @@ fn a_right_click_on_a_row_selects_it_and_opens_its_menu_of_commands() {
             "{item}"
         );
     }
-    let before = h.state().0.open.document.area().len();
+    let before = h.state().0.open.document.level().len();
     h.get_by_label(&crate_name).click_secondary();
     h.run();
     h.run();
@@ -449,45 +470,45 @@ fn a_right_click_on_a_row_selects_it_and_opens_its_menu_of_commands() {
     h.run();
     h.run();
     assert_eq!(
-        h.state().0.open.document.area().len(),
+        h.state().0.open.document.level().len(),
         before + 1,
         "a copy was made"
     );
 }
 
 #[test]
-fn the_area_header_searches_folds_and_unhides() {
+fn the_level_header_searches_folds_and_unhides() {
     let (mut w, room, _, crate_id) = a_room();
-    w.open.area_panel.hidden.insert(crate_id);
+    w.open.level_panel.hidden.insert(crate_id);
     let mut h = harness(w);
     h.run();
     h.get_by_label("Fold everything").click();
     h.run();
-    assert!(h.state().0.open.area_panel.collapsed.contains(&room));
+    assert!(h.state().0.open.level_panel.collapsed.contains(&room));
     h.get_by_label("More of the Area column").click();
     h.run();
     h.get_by_label("Show everything hidden").click();
     h.run();
-    assert!(h.state().0.open.area_panel.hidden.is_empty());
+    assert!(h.state().0.open.level_panel.hidden.is_empty());
     h.get_by_label("Search the area by name").click();
     h.run();
     h.get_by_label("Search the area").type_text("point");
     h.run();
     h.run();
-    assert_eq!(h.state().0.open.area_panel.search, "point");
+    assert_eq!(h.state().0.open.level_panel.search, "point");
     assert!(listed(&h, "Point light 1"));
 }
 
 #[test]
 fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
-    let mut area = area::builtin::starter_area();
+    let mut level = level::builtin::starter_level();
     let odd = EntityId::random();
     let mut data = EntityData::new("Odd one");
     data.components
         .insert("Wobble".into(), reflect::ComponentData::default());
-    area.insert(odd, data);
+    level.insert(odd, data);
     let mut w = Workbench::new(info());
-    w.open_area(area, "odd.solarea".into());
+    w.open_level(level, "odd.solarea".into());
     let mut h = harness(w);
     h.run();
     assert_eq!(h.state().0.problems().len(), 1);
@@ -552,8 +573,8 @@ fn mistakes_in_the_game_code_are_listed_first_and_a_click_opens_the_file() {
 }
 
 #[test]
-fn components_registered_by_game_code_survive_new_areas_and_projects() {
-    // Found by review: each new or opened area started with only the
+fn components_registered_by_game_code_survive_new_levels_and_projects() {
+    // Found by review: each new or opened level started with only the
     // built-in components.
     let mut w = Workbench::new(info());
     let schema = reflect::ComponentSchema {
@@ -562,9 +583,9 @@ fn components_registered_by_game_code_survive_new_areas_and_projects() {
         fields: Vec::new(),
     };
     w.register_component(schema).unwrap();
-    w.new_area();
+    w.new_level();
     assert!(w.open.document.registry.get("Wobble").is_some());
-    w.open_area(area::builtin::starter_area(), "a.solarea".into());
+    w.open_level(level::builtin::starter_level(), "a.solarea".into());
     assert!(w.open.document.registry.get("Wobble").is_some());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
@@ -577,7 +598,7 @@ fn components_registered_by_game_code_survive_new_areas_and_projects() {
 #[test]
 fn another_project_starts_without_the_last_ones_assemblies_and_questions() {
     let (mut w, asset, _, _) = with_a_lamp_post();
-    w.open.pending_reload = Some(area::builtin::starter_area());
+    w.open.pending_reload = Some(level::builtin::starter_level());
     w.open.place_targets.insert(asset, (glam::Vec3::ONE, None));
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Copy of Harbour".into(),
@@ -590,11 +611,11 @@ fn another_project_starts_without_the_last_ones_assemblies_and_questions() {
 }
 
 #[test]
-fn the_open_area_follows_its_file_when_the_library_moves_or_deletes_it() {
+fn the_open_level_follows_its_file_when_the_library_moves_or_deletes_it() {
     use std::path::{Path, PathBuf};
     let mut w = Workbench::new(info());
-    w.open_area(
-        area::builtin::starter_area(),
+    w.open_level(
+        level::builtin::starter_level(),
         "/p/assets/areas/harbour.solarea".into(),
     );
     // Another file: nothing changes.

@@ -1,8 +1,8 @@
 //! A brush (Tools 1a, decision 0111): a shape made in the editor, a
-//! polygon mesh of n-sided faces held in the area itself, drawn flat and,
+//! polygon mesh of n-sided faces held in the level itself, drawn flat and,
 //! when Solid, something the game's characters stand on and bump into.
 //!
-//! In an area file its mesh is three lists of numbers, written a few to a
+//! In a level file its mesh is three lists of numbers, written a few to a
 //! line ([`crate::text`]):
 //!
 //! - `points`: x, y, z for each point, in metres, in the entity's space;
@@ -16,7 +16,7 @@
 //! breaks one, or a face that names a point twice or one that isn't there,
 //! reads as an empty brush ([`Brush::damaged`]), never a crash; why is
 //! [`damage_of`], which the editor's Problems list shows. The file's own
-//! values stay in the area untouched until the brush is changed.
+//! values stay in the level untouched until the brush is changed.
 //!
 //! A mesh that reads but is open (a hole) or inside out is mended as it
 //! is read, when that is simple and safe (Tools 1a, B4): faces facing the
@@ -184,7 +184,7 @@ fn mended(mesh: Mesh) -> Mesh {
     }
 }
 
-/// The mesh's points as the area file's list of them: x, y, z for each,
+/// The mesh's points as the level file's list of them: x, y, z for each,
 /// in id order (gaps left by deleted ones closed up, as
 /// [`Brush::to_data`] writes them). When only points moved (editing a
 /// brush's insides, Tools 1a B3), this is the one list that changes.
@@ -194,7 +194,7 @@ pub fn points_of(mesh: &Mesh) -> Vec<Value> {
         .collect()
 }
 
-/// The mesh as the three lists an area file holds: its points (in id
+/// The mesh as the three lists a level file holds: its points (in id
 /// order, gaps left by deleted ones closed up), its faces by those places,
 /// and each face's material slot.
 fn lists_of(mesh: &Mesh) -> (Vec<Value>, Vec<Value>, Vec<Value>) {

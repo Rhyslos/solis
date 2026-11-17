@@ -1,4 +1,4 @@
-//! The Problems panel's lists: the area's problems, found again only
+//! The Problems panel's lists: the level's problems, found again only
 //! when something they depend on changed, and the code's, from its last
 //! check, with the notes the compiler gave.
 
@@ -8,7 +8,7 @@ use reflect::AssetId;
 use std::collections::HashSet;
 
 impl Workbench {
-    /// Looks for problems in the area again, if anything they depend on
+    /// Looks for problems in the level again, if anything they depend on
     /// changed.
     pub(crate) fn find_problems(&mut self) {
         use crate::problems::{Fingerprint, Sources};
@@ -17,8 +17,8 @@ impl Workbench {
         self.open.problems.refresh_between(
             self.open.document.revision(),
             self.open.pixels.pixels_per_unit,
-            self.open.document.area(),
-            &self.viewport.area.sprites,
+            self.open.document.level(),
+            &self.viewport.level.sprites,
         );
         if self.open.problems.is_from(&print) {
             return;
@@ -30,7 +30,7 @@ impl Workbench {
         self.open.problems.refresh(
             print,
             &Sources {
-                area: self.open.document.area(),
+                level: self.open.document.level(),
                 registry: &self.open.document.registry,
                 models: &self.open.models,
                 known: &known,
@@ -87,7 +87,7 @@ impl Workbench {
         }
     }
 
-    /// The problems found in the area, for the app and tests.
+    /// The problems found in the level, for the app and tests.
     pub fn problems(&self) -> &[crate::problems::Problem] {
         &self.open.problems.list
     }

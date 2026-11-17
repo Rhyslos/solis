@@ -1,24 +1,24 @@
-//! An area's tree, worked out once: each entity's children in sibling
+//! A level's tree, worked out once: each entity's children in sibling
 //! order, every entity in tree order, and where each one is in the world.
-//! The editor keeps one until the tree changes, so the Area panel, the
-//! viewport and "the first sun" don't each walk the area again every
+//! The editor keeps one until the tree changes, so the Level panel, the
+//! viewport and "the first sun" don't each walk the level again every
 //! frame.
 //!
 //! Also the two things that keep a loop of parents (a damaged file) from
-//! doing harm. [`Area::mend_loops`] takes the loops out of an area as
-//! it's read, so that no area in use has one. And [`Area::ancestors`] is
+//! doing harm. [`Level::mend_loops`] takes the loops out of a level as
+//! it's read, so that no level in use has one. And [`Level::ancestors`] is
 //! the one walk up through an entity's parents, which ends in a loop
 //! instead of going round: an entity it finds in one stands alone, placed
 //! by its own Transform, here and in the game's world alike.
 
 use crate::builtin::Transform;
-use crate::document::{Area, EntityData};
+use crate::document::{EntityData, Level};
 use glam::Mat4;
 use reflect::EntityId;
 use std::collections::HashMap;
 use std::fmt;
 
-/// An area's tree at one moment. It doesn't follow later changes: work it
+/// A level's tree at one moment. It doesn't follow later changes: work it
 /// out again when entities are added, deleted or given another parent.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Tree {
@@ -29,12 +29,12 @@ pub struct Tree {
 }
 
 impl Tree {
-    /// The tree of `area`, in one pass over it (and a sort of each
+    /// The tree of `level`, in one pass over it (and a sort of each
     /// entity's children).
-    pub fn of(area: &Area) -> Self {
-        let children = area.hierarchy();
-        let mut order = Vec::with_capacity(area.len());
-        let mut place = HashMap::with_capacity(area.len());
+    pub fn of(level: &Level) -> Self {
+        let children = level.hierarchy();
+        let mut order = Vec::with_capacity(level.len());
+        let mut place = HashMap::with_capacity(level.len());
         let mut todo: Vec<EntityId> = children.get(&None).cloned().unwrap_or_default();
         todo.reverse();
         while let Some(id) = todo.pop() {
@@ -48,9 +48,9 @@ impl Tree {
             }
         }
         let reachable = order.len();
-        // Entities caught in a loop of a damaged area: last, so nothing is
+        // Entities caught in a loop of a damaged level: last, so nothing is
         // ever left out.
-        for (id, _) in area.iter() {
+        for (id, _) in level.iter() {
             if let std::collections::hash_map::Entry::Vacant(free) = place.entry(id) {
                 free.insert(order.len());
                 order.push(id);
@@ -70,13 +70,13 @@ impl Tree {
     }
 
     /// Every entity in tree order: each parent, then its children, as the
-    /// Area panel lists them; entities caught in a loop come last.
+    /// Level panel lists them; entities caught in a loop come last.
     pub fn order(&self) -> &[EntityId] {
         &self.order
     }
 
     /// The entities a walk down from the top reaches, in tree order: all
-    /// of them, unless a damaged area has a loop of parents.
+    /// of them, unless a damaged level has a loop of parents.
     pub fn reachable(&self) -> &[EntityId] {
         &self.order[..self.reachable]
     }
@@ -96,14 +96,14 @@ impl Tree {
             .map(|(_, id)| id)
     }
 
-    /// Where every entity of `area` (the area this tree is of) is in the
+    /// Where every entity of `level` (the level this tree is of) is in the
     /// world, worked out parents first, so each is one multiplication.
-    /// The same as [`Area::world_matrix`] for each: an entity caught in a
+    /// The same as [`Level::world_matrix`] for each: an entity caught in a
     /// loop of parents stands alone, at its own Transform.
-    pub fn world_matrices(&self, area: &Area) -> HashMap<EntityId, Mat4> {
+    pub fn world_matrices(&self, level: &Level) -> HashMap<EntityId, Mat4> {
         let mut world: HashMap<EntityId, Mat4> = HashMap::with_capacity(self.order.len());
         for (at, &id) in self.order.iter().enumerate() {
-            let Some(entity) = area.get(id) else {
+            let Some(entity) = level.get(id) else {
                 continue;
             };
             let local = entity
@@ -121,10 +121,10 @@ impl Tree {
     }
 }
 
-/// The entities above one, nearest first: see [`Area::ancestors`].
+/// The entities above one, nearest first: see [`Level::ancestors`].
 #[derive(Debug, Clone)]
 pub struct Ancestors<'a> {
-    area: &'a Area,
+    level: &'a Level,
     next: Option<EntityId>,
     /// One entity passed on the way: meeting it again means the walk is
     /// going round a loop. It moves up to where the walk is after 1, 2,
@@ -153,7 +153,7 @@ impl<'a> Iterator for Ancestors<'a> {
             self.looped = true;
             return None;
         }
-        let entity = self.area.get(id)?;
+        let entity = self.level.get(id)?;
         if self.since_mark == self.reach {
             self.mark = id;
             self.reach = self.reach.saturating_mul(2);
@@ -165,7 +165,7 @@ impl<'a> Iterator for Ancestors<'a> {
     }
 }
 
-/// An entity [`Area::mend_loops`] moved to the top level.
+/// An entity [`Level::mend_loops`] moved to the top level.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Mended {
     /// The entity.
@@ -186,16 +186,16 @@ impl fmt::Display for Mended {
     }
 }
 
-impl Area {
+impl Level {
     /// The entities above `id`: its parent, that one's parent, and so on
-    /// up to the top level or a parent that isn't in the area. In a
-    /// damaged area whose parents lead round in a loop the walk ends
+    /// up to the top level or a parent that isn't in the level. In a
+    /// damaged level whose parents lead round in a loop the walk ends
     /// (having passed an entity of the loop a few times at most) and
     /// [`Ancestors::looped`] says so. Every walk up the tree goes through
     /// here, so none can hang.
     pub fn ancestors(&self, id: EntityId) -> Ancestors<'_> {
         Ancestors {
-            area: self,
+            level: self,
             next: self.get(id).and_then(|e| e.parent),
             mark: id,
             since_mark: 1,
@@ -204,12 +204,12 @@ impl Area {
         }
     }
 
-    /// Takes every loop of parents out of the area, and says what it
+    /// Takes every loop of parents out of the level, and says what it
     /// did. A loop can't be made in the editor (the edit is refused), so
     /// one is a damaged or hand-edited file: each loop's entity with the
     /// lowest ID is moved to the top level, which leaves the others under
     /// it, as close to the file as a tree can be. The readers call this,
-    /// so that no area in use has a loop. One pass over the area.
+    /// so that no level in use has a loop. One pass over the level.
     pub fn mend_loops(&mut self) -> Vec<Mended> {
         // Each entity is walked up from once: `walk` says which walk
         // first passed it, so meeting one of this same walk again is a

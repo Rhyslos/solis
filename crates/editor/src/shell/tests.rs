@@ -57,20 +57,20 @@ fn a_command_that_cant_be_done_says_why_and_does_nothing() {
     assert!(actions.is_empty());
     w.play();
     assert_eq!(
-        ShellCommand::SaveArea.why_not(&w).as_deref(),
+        ShellCommand::SaveLevel.why_not(&w).as_deref(),
         Some("Stop the game first")
     );
-    ShellCommand::SaveArea.run(&mut w, &ctx, &mut actions);
+    ShellCommand::SaveLevel.run(&mut w, &ctx, &mut actions);
     assert!(actions.is_empty(), "nothing is saved while the game runs");
     w.stop();
-    ShellCommand::SaveArea.run(&mut w, &ctx, &mut actions);
-    assert_eq!(actions, [WorkbenchAction::SaveArea]);
+    ShellCommand::SaveLevel.run(&mut w, &ctx, &mut actions);
+    assert_eq!(actions, [WorkbenchAction::SaveLevel]);
 }
 
 #[test]
 fn a_hover_text_gives_the_name_the_shortcut_and_the_reason() {
     let w = fresh();
-    let save = ShellCommand::SaveArea.hover_text(&w);
+    let save = ShellCommand::SaveLevel.hover_text(&w);
     assert!(save.starts_with("Save area (Ctrl+S)\n"), "{save}");
     let undo = ShellCommand::Undo.hover_text(&w);
     assert_eq!(undo, "Undo (Ctrl+Z)\nNothing to undo");
@@ -92,13 +92,13 @@ fn each_tab_shows_its_own_documents_and_shelf() {
             vec![Panel::Mixer, Panel::Bus],
             ShelfTab::SoundEvents,
         ),
-        // The standard layout: the lists beside the area, the Console in
+        // The standard layout: the lists beside the level, the Console in
         // front on the shelf (decision 0109).
         (
             RibbonTab::Home,
             vec![
                 Panel::Viewport,
-                Panel::Area,
+                Panel::Level,
                 Panel::Properties,
                 Panel::Assets,
             ],
@@ -328,11 +328,11 @@ mod frame_layout {
         assert!(h.state().0.shell.dropped);
         assert_eq!(viewport_top(&h), open - size::RIBBON_H);
         // Choosing something on it puts it away again.
-        let entities = h.state().0.document().area().len();
+        let entities = h.state().0.document().level().len();
         h.get_by_label("Add entity").click();
         h.run();
         h.run();
-        assert_eq!(h.state().0.document().area().len(), entities + 1);
+        assert_eq!(h.state().0.document().level().len(), entities + 1);
         assert!(!h.state().0.shell.dropped);
         assert!(h.query_by_label("Add camera").is_none());
         // So does the pointer leaving it.
@@ -369,14 +369,14 @@ mod frame_layout {
         h.run();
         assert!(h.query_by_label("Spotlight").is_none(), "the list is shut");
         // A right-click opens the list; nothing is made.
-        let before = h.state().0.document().area().len();
+        let before = h.state().0.document().level().len();
         h.get_by_label("Add point light").click_secondary();
         h.run();
-        assert_eq!(h.state().0.document().area().len(), before);
+        assert_eq!(h.state().0.document().level().len(), before);
         h.get_by_label("Spotlight").click();
         h.run();
         let w = &h.state().0;
-        let made = w.document().area().get(w.selection().unwrap()).unwrap();
+        let made = w.document().level().get(w.selection().unwrap()).unwrap();
         assert_eq!(made.name, "Spotlight 1");
         // The small arrow does the same; ready-made shapes are shape
         // brushes, so the list leads to the brush list (Tools 1a, B3).
@@ -395,7 +395,7 @@ mod frame_layout {
         let w = &h.state().0;
         assert!(
             w.document()
-                .area()
+                .level()
                 .get(w.selection().unwrap())
                 .unwrap()
                 .has("ReverbZone")
@@ -477,13 +477,13 @@ mod frame_layout {
                 .windows(2)
                 .all(|pair| pair[0].bottom() <= pair[1].top())
         );
-        // The area's keys rest while its page isn't on screen.
-        let entities = h.state().0.document().area().len();
+        // The level's keys rest while its page isn't on screen.
+        let entities = h.state().0.document().level().len();
         h.state_mut().0.open.document.selection.clear();
         h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
         h.key_press(egui::Key::Delete);
         h.run();
-        assert_eq!(h.state().0.document().area().len(), entities);
+        assert_eq!(h.state().0.document().level().len(), entities);
         // About is a page; Esc goes back to the tab before.
         h.get_by_label("About").click();
         h.run();

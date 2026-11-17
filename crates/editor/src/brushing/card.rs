@@ -51,7 +51,7 @@ pub(crate) fn rows(
         &std::collections::BTreeMap<reflect::AssetId, crate::models::ModelInfo>,
         &crate::sprite_sheets::SpriteSheets,
     ),
-    area: &area::Area,
+    level: &level::Level,
 ) -> Vec<CardChange> {
     let mut changes = Vec::new();
     let field = |name: &str| schema.fields.iter().find(|f| f.name == name);
@@ -79,7 +79,7 @@ pub(crate) fn rows(
         (None, &Default::default()),
         &[],
         assets,
-        (area, &users),
+        (level, &users),
     ) {
         changes.push(match change {
             FieldChange::Set { field, value, .. } if field == "size" => {
@@ -97,7 +97,7 @@ pub(crate) fn rows(
         }
     }
     if let Some(solid) = field("solid") {
-        changes.extend(solid_row(ui, solid, data, assets, area));
+        changes.extend(solid_row(ui, solid, data, assets, level));
     }
     counts(ui, facts);
     picked_line(ui, facts);
@@ -113,7 +113,7 @@ fn solid_row(
         &std::collections::BTreeMap<reflect::AssetId, crate::models::ModelInfo>,
         &crate::sprite_sheets::SpriteSheets,
     ),
-    area: &area::Area,
+    level: &level::Level,
 ) -> Option<CardChange> {
     let value = data.get("solid").unwrap_or(&solid.default);
     inspector::row(ui, &solid.label, solid.hint.help, |ui| {
@@ -122,7 +122,7 @@ fn solid_row(
             solid,
             value,
             (models, sheets, data),
-            area,
+            level,
             inspector::Mixed::default(),
         );
         ui.label(

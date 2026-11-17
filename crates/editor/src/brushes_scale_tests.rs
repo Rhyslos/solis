@@ -1,5 +1,5 @@
 //! Scale checks for brushes (Tools 1a, B1; CONTRIBUTING.md, rule 18): an
-//! area of 10,000 box brushes opened, shown, edited and played, and a
+//! level of 10,000 box brushes opened, shown, edited and played, and a
 //! brush of 5,000 faces made again after a change. Run by
 //! `tools/scale/scale-check.sh`.
 
@@ -7,12 +7,12 @@
 
 use super::*;
 use crate::document::Document;
-use area::builtin::{CharacterBody, Transform};
-use area::{Area, Edit, EntityData};
+use level::builtin::{CharacterBody, Transform};
+use level::{Edit, EntityData, Level};
 use mesh::Shape;
 use std::time::Instant;
 
-/// The editor's frame target with a big area (as the 10,000-entity
+/// The editor's frame target with a big level (as the 10,000-entity
 /// check's).
 const FRAME_MS: f64 = 8.0;
 
@@ -26,8 +26,8 @@ fn verdict(ms: f64, target: f64) -> &'static str {
 
 /// 10,000 box brushes on a grid, each its own size (so none share a
 /// model: the most work), and a character standing on the first.
-fn ten_thousand_boxes() -> Area {
-    let mut area = Area::new();
+fn ten_thousand_boxes() -> Level {
+    let mut level = Level::new();
     for i in 0..10_000 {
         let size = Vec3::new(
             1.0 + (i % 100) as f32 * 0.01,
@@ -41,7 +41,7 @@ fn ten_thousand_boxes() -> Area {
             })),
             ..Brush::default()
         };
-        area.spawn(
+        level.spawn(
             EntityData::new(&format!("Box_{i:05}"))
                 .with(&Transform {
                     position: Vec3::new((i % 100) as f32 * 3.0, (i / 100) as f32 * 3.0, 0.0),
@@ -50,7 +50,7 @@ fn ten_thousand_boxes() -> Area {
                 .with(&brush),
         );
     }
-    area.spawn(
+    level.spawn(
         EntityData::new("Walker")
             .with(&Transform {
                 position: Vec3::new(0.0, 0.0, 1.5),
@@ -58,21 +58,21 @@ fn ten_thousand_boxes() -> Area {
             })
             .with(&CharacterBody::default()),
     );
-    area
+    level
 }
 
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
-fn scale_check_an_area_of_10000_box_brushes() {
-    let registry = area::builtin::registry().unwrap();
-    let text = area::text::write(&ten_thousand_boxes(), &registry, &|_| None);
+fn scale_check_an_level_of_10000_box_brushes() {
+    let registry = level::builtin::registry().unwrap();
+    let text = level::text::write(&ten_thousand_boxes(), &registry, &|_| None);
     // Opening: reading the file, and cutting every brush into triangles.
     let start = Instant::now();
-    let area = area::text::read(&text, &registry).unwrap();
+    let level = level::text::read(&text, &registry).unwrap();
     let read_ms = ms_since(start);
     let mut w = crate::Workbench::new(crate::test_support::info());
     // One edit for each, as each is a tree of its own.
-    let spawns: Vec<Edit> = area
+    let spawns: Vec<Edit> = level
         .iter()
         .map(|(id, e)| Edit::Spawn {
             entities: vec![(id, e.clone())],
@@ -104,7 +104,7 @@ fn scale_check_an_area_of_10000_box_brushes() {
     );
     // One brush changed: every brush is looked at again, one is made.
     let (w, _) = h.state_mut();
-    let first = w.document().area().with::<CharacterBody>().count();
+    let first = w.document().level().with::<CharacterBody>().count();
     assert_eq!(first, 1);
     let some = w.open.brushes.iter().next().map(|(id, _)| id).unwrap();
     w.open
@@ -138,11 +138,11 @@ fn scale_check_an_area_of_10000_box_brushes() {
     // Play: the world built (every brush solid), then ticks of physics
     // with a character walking over them.
     let start = Instant::now();
-    let mut world = world::World::from_area(w.document().area());
+    let mut world = world::World::from_level(w.document().level());
     let play_ms = ms_since(start);
     let walker = w
         .document()
-        .area()
+        .level()
         .with::<CharacterBody>()
         .next()
         .map(|(id, _)| id)
@@ -186,13 +186,13 @@ fn scale_check_a_5000_face_brush_made_again_after_a_change() {
         mesh: Arc::new(cube),
         ..Brush::default()
     };
-    let mut area = Area::new();
-    let id = area.spawn(EntityData::new("Big").with(&brush));
-    let mut document = Document::new(area);
+    let mut level = Level::new();
+    let id = level.spawn(EntityData::new("Big").with(&brush));
+    let mut document = Document::new(level);
     let mut models = BrushModels::default();
     models.refresh(&mut document);
     // The change: every point moved a little (as a tool would), written
-    // into the area as one edit.
+    // into the level as one edit.
     let mut moved = (*brush.mesh).clone();
     let points: Vec<_> = moved.vertices().map(|(v, _)| v).collect();
     mesh::edit::move_points(&mut moved, &points, Vec3::Z * 0.5);
@@ -228,11 +228,11 @@ fn scale_check_a_5000_face_brush_made_again_after_a_change() {
     assert!(written_ms + made_ms <= FRAME_MS);
 }
 
-/// Drawing a brush out with 10,000 brushes in the area (Tools 1a, B2;
+/// Drawing a brush out with 10,000 brushes in the level (Tools 1a, B2;
 /// decision 0108, "all fast"): the brush list opened and stepped, the
 /// press that finds what's under the pointer (once), and editor frames
 /// while the footprint is dragged and the height pulled up, each within
-/// the frame target. The ghost is drawn by the painter, so the area's
+/// the frame target. The ghost is drawn by the painter, so the level's
 /// brushes are never looked at again while drawing.
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
@@ -240,9 +240,9 @@ fn scale_check_drawing_out_among_10000_brushes() {
     use crate::panel::Panel;
     use crate::test_support::{State, harness, rest_over};
     type H = egui_kittest::Harness<'static, State>;
-    let area = ten_thousand_boxes();
+    let level = ten_thousand_boxes();
     let mut w = crate::Workbench::new(crate::test_support::info());
-    let spawns: Vec<Edit> = area
+    let spawns: Vec<Edit> = level
         .iter()
         .map(|(id, e)| Edit::Spawn {
             entities: vec![(id, e.clone())],
@@ -252,7 +252,7 @@ fn scale_check_drawing_out_among_10000_brushes() {
     let mut h = rest_over(harness(w), Panel::Viewport);
     h.run();
     let made = h.state().0.open.brushes.made();
-    let entities = h.state().0.document().area().len();
+    let entities = h.state().0.document().level().len();
     // Each frame timed alone.
     let timed = |h: &mut H| {
         let start = Instant::now();
@@ -260,7 +260,7 @@ fn scale_check_drawing_out_among_10000_brushes() {
         ms_since(start)
     };
     // The list: opened, then stepped through and round again, here and
-    // in an empty area (once first, so its words are laid out already).
+    // in an empty level (once first, so its words are laid out already).
     let list_frames = |h: &mut H| {
         for key in [egui::Key::B, egui::Key::Escape] {
             h.key_press(key);
@@ -321,7 +321,7 @@ fn scale_check_drawing_out_among_10000_brushes() {
             glam::Vec2::new(at.x, at.y),
             glam::Vec2::new(rect.width(), rect.height()),
         );
-        crate::brushing::surface::height_under(&ray, &w.viewport.area)
+        crate::brushing::surface::height_under(&ray, &w.viewport.level)
     };
     let under_ms = ms_since(start);
     assert_eq!(under, Some(1.0), "the first box's top");
@@ -345,7 +345,7 @@ fn scale_check_drawing_out_among_10000_brushes() {
     h.step();
     let w = &h.state().0;
     assert_eq!(
-        w.document().area().len(),
+        w.document().level().len(),
         entities + 1,
         "the brush was made"
     );

@@ -1,7 +1,7 @@
 //! The game's physics ([decision 0036](../../../docs/decisions/0036-physics-is-rapier-strict-on-every-pc.md)):
 //! Rapier in its strict mode, so the same game gives exactly the same
 //! result on every PC. Bodies and colliders belong to entities, by their
-//! area IDs; places and directions are Solis's (`glam`, Z up), turned into
+//! level IDs; places and directions are Solis's (`glam`, Z up), turned into
 //! Rapier's at this crate's edge, so games never meet Rapier itself.
 //!
 //! The state ([`State`]) is shared (`Arc`) with game code while a tick's

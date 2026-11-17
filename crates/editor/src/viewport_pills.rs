@@ -122,10 +122,10 @@ impl Viewport {
         };
         let s = if self.entities == 1 { "y" } else { "ies" };
         let mut counts = format!("{} entit{s}", crate::models::grouped(self.entities));
-        if self.area.triangles > 0 {
+        if self.level.triangles > 0 {
             counts.push_str(&format!(
                 " · {} triangles",
-                crate::models::grouped(self.area.triangles)
+                crate::models::grouped(self.level.triangles)
             ));
         }
         mono_pill(&mut row, &words).on_hover_text(counts);

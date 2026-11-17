@@ -39,7 +39,7 @@ fn the_code_is_checked_or_has_mistakes() {
 }
 
 #[test]
-fn an_area_says_whether_it_is_saved() {
+fn a_level_says_whether_it_is_saved() {
     let mut w = fresh();
     assert_eq!(w.status().saved.text, "Not saved yet");
     w.add_point_light();
@@ -47,15 +47,15 @@ fn an_area_says_whether_it_is_saved() {
 }
 
 #[test]
-fn the_area_is_named_with_2d_or_3d_and_a_2d_games_size() {
+fn the_level_is_named_with_2d_or_3d_and_a_2d_games_size() {
     let mut w = fresh();
-    assert!(w.status().area.ends_with(" · 3D"), "{}", w.status().area);
+    assert!(w.status().level.ends_with(" · 3D"), "{}", w.status().level);
     w.viewport.camera.kind = crate::camera::ViewKind::TwoD;
     w.open.pixels.base = [480, 270];
     assert!(
-        w.status().area.ends_with(" · 2D · 480 × 270"),
+        w.status().level.ends_with(" · 2D · 480 × 270"),
         "{}",
-        w.status().area
+        w.status().level
     );
 }
 

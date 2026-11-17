@@ -3,8 +3,8 @@
 //! read, now or between two ticks for drawing.
 
 use crate::{Global, Id, Place, Previous, World, between};
-use area::builtin::{Camera, Transform};
 use glam::Mat4;
+use level::builtin::{Camera, Transform};
 use reflect::EntityId;
 
 impl World {
@@ -150,7 +150,7 @@ impl World {
         }
     }
 
-    /// Where every entity is in the world, in the area's tree order (as
+    /// Where every entity is in the world, in the level's tree order (as
     /// [`Self::entities`]), into `out`.
     pub fn globals(&self, out: &mut Vec<Mat4>) {
         out.clear();
@@ -167,7 +167,7 @@ impl World {
         self.get::<Global>(id).map(|g| g.0)
     }
 
-    /// Every entity with a `T`, with it and where it is, in the area's
+    /// Every entity with a `T`, with it and where it is, in the level's
     /// tree order.
     pub fn placed<T: hecs::Component + Clone>(&self) -> Vec<(EntityId, T, Mat4)> {
         self.placed_between(1.0)
@@ -204,7 +204,7 @@ impl World {
             .collect()
     }
 
-    /// The first entity with a `T` in the area's tree order, with it and
+    /// The first entity with a `T` in the level's tree order, with it and
     /// where it is.
     pub fn first<T: hecs::Component + Clone>(&self) -> Option<(EntityId, T, Mat4)> {
         self.ecs
@@ -216,7 +216,7 @@ impl World {
             })
     }
 
-    /// The camera the game looks through: the first in the area's tree
+    /// The camera the game looks through: the first in the level's tree
     /// order.
     pub fn camera(&self) -> Option<(EntityId, Camera, Mat4)> {
         self.first::<Camera>()

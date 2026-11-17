@@ -2,7 +2,7 @@
 //! at before they're scaled up to the screen, how many of those pixels
 //! make a metre, the tile size, and how the picture fills the screen.
 //! Kept in the project's `pixels.solpix`, a settings file in the same
-//! Lust style as areas, so it travels with the project and Git merges it.
+//! Lust style as levels, so it travels with the project and Git merges it.
 //!
 //! ```text
 //! -- The project's 2D settings. Safe to edit by hand.

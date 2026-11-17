@@ -95,12 +95,12 @@ fn placing_a_map_selects_it_and_opens_the_map_tab_beside_properties() {
     let mut actions = Vec::new();
     w.library_request(LibraryRequest::Place(map), &mut actions);
     let placed = w.open.document.selection.primary().expect("selected");
-    let entity = w.open.document.area().get(placed).unwrap();
+    let entity = w.open.document.level().get(placed).unwrap();
     assert_eq!(entity.name, "farm");
-    let component = entity.get::<area::builtin::TileMap>().unwrap();
+    let component = entity.get::<level::builtin::TileMap>().unwrap();
     assert_eq!(component.map.unwrap().asset, map);
     // Its corner on a whole tile.
-    let at = entity.get::<area::builtin::Transform>().unwrap().position;
+    let at = entity.get::<level::builtin::Transform>().unwrap().position;
     let [tx, ty] = w.open.pixels.tile_size();
     assert_eq!((at.x / tx).fract(), 0.0);
     assert_eq!((at.y / ty).fract(), 0.0);

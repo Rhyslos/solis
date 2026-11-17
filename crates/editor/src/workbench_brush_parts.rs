@@ -14,9 +14,9 @@ use crate::commands::merge_key;
 use crate::gizmo::{Change, Gizmo, GizmoTool};
 use crate::transforming::{WORLD_AXES, own_axes, snapped, snapped_in_2d};
 use crate::workbench::Workbench;
-use area::Edit;
-use area::builtin::Brush;
 use glam::{Mat4, Vec3};
+use level::Edit;
+use level::builtin::Brush;
 use reflect::{Component, EntityId, Value};
 use std::sync::Arc;
 
@@ -202,7 +202,7 @@ impl Workbench {
         let Some(Brush { shape, .. }) = self
             .open
             .document
-            .area()
+            .level()
             .get(entity)
             .and_then(|e| e.get::<Brush>())
         else {
@@ -239,6 +239,6 @@ pub(crate) fn points_edit(entity: EntityId, mesh: &mesh::Mesh) -> Edit {
         entity,
         component: Brush::NAME.into(),
         field: "points".into(),
-        value: Some(Value::List(area::builtin::points_of(mesh))),
+        value: Some(Value::List(level::builtin::points_of(mesh))),
     }
 }

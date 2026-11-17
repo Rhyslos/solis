@@ -416,8 +416,8 @@ icons! {
     /// Sheets lying on each other: Tile map › Layers.
     Layers = "layers", Line,
         lines: ["M8 2.5l6 3-6 3-6-3z", "M2 8.25l6 3 6-3", "M2 11l6 3 6-3"];
-    /// Hills under a sun: An area file; its document tab.
-    AreaFile = "area", Line,
+    /// Hills under a sun: A level file; its document tab.
+    LevelFile = "area", Line,
         lines: ["M1.5 13L6 6.5l3 4 2-2.5 3.5 5z", "M10 4.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0z"];
     /// Angle brackets round a slash: Game code; the Code filter.
     Code = "code", Line,
@@ -433,7 +433,7 @@ icons! {
     /// A page with lines: A text file.
     TextFile = "text-file", Line,
         lines: ["M3.5 2.5H9l3.5 3.5v7.5h-9z", "M9 2.5V6h3.5", "M5.5 8.5h5M5.5 11h3.5"];
-    /// A page with a plus: New area; + New in the Library.
+    /// A page with a plus: New level; + New in the Library.
     NewFile = "new-file", Line,
         lines: ["M3.5 2.5H9l3.5 3.5v7.5h-9z", "M9 2.5V6h3.5", "M8 8v4M6 10h4"];
     /// A sheet of frames, one still empty: A sprite sheet.
@@ -488,8 +488,8 @@ icons! {
             "M3 3h10a1 1 0 0 1 1 1v6.5a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1v-6.5a1 1 0 0 1 1 -1z",
             "M8 11.5V14M5.5 14h5",
         ];
-    /// A trunk with two branches: The Area column.
-    Area = "area-tree", Line,
+    /// A trunk with two branches: The Level column.
+    Level = "area-tree", Line,
         lines: ["M2.5 3h5", "M4 3v9.5h2.5", "M4 7.75h2.5", "M8.5 7.75h5", "M8.5 12.5h5"];
     /// Names with their values: The Properties column.
     Properties = "properties", Line,
@@ -547,10 +547,10 @@ icons! {
     /// A funnel: Filter a list by kind.
     Filter = "filter", Line,
         lines: ["M2.5 3.5h11l-4 5v4.5l-3-1.5v-3z"];
-    /// Two arrowheads closing: Area column › fold all.
+    /// Two arrowheads closing: Level column › fold all.
     FoldAll = "fold-all", Line,
         lines: ["M4.5 2.5L8 6l3.5-3.5", "M4.5 13.5L8 10l3.5 3.5"];
-    /// Two arrowheads opening: Area column › unfold all.
+    /// Two arrowheads opening: Level column › unfold all.
     UnfoldAll = "unfold-all", Line,
         lines: ["M4.5 6L8 2.5 11.5 6", "M4.5 10L8 13.5 11.5 10"];
     /// The design's chevron, turned down: Expand the ribbon; open a list.

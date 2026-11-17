@@ -1,5 +1,5 @@
 //! Helpers shared by the editor's whole-window tests: a test window, a
-//! stand-in renderer that answers picks, and small areas to work on.
+//! stand-in renderer that answers picks, and small levels to work on.
 
 use crate::models::ModelInfo;
 use crate::panel::Panel;
@@ -407,19 +407,19 @@ pub(crate) fn drag_for_frames<S>(
 }
 
 /// A lamp-post assembly file: a post with a lamp under it.
-pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<area::text::AreaFile>) {
+pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<level::text::LevelFile>) {
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
-    let mut area = area::Area::new();
-    area.insert(
+    let mut level = level::Level::new();
+    level.insert(
         id(1),
-        area::EntityData::new("Lamp post").with(&area::builtin::Transform::default()),
+        level::EntityData::new("Lamp post").with(&level::builtin::Transform::default()),
     );
-    let mut lamp = area::EntityData::new("Lamp").with(&area::builtin::Light::point());
+    let mut lamp = level::EntityData::new("Lamp").with(&level::builtin::Light::point());
     lamp.parent = Some(id(1));
-    area.insert(id(2), lamp);
-    let file = area::text::AreaFile {
-        kind: area::text::FileKind::Assembly { root: id(1) },
-        area,
+    level.insert(id(2), lamp);
+    let file = level::text::LevelFile {
+        kind: level::text::FileKind::Assembly { root: id(1) },
+        level,
         overrides: Default::default(),
     };
     (
@@ -435,7 +435,7 @@ pub(crate) fn with_a_lamp_post() -> (Workbench, AssetId, EntityId, EntityId) {
     w.set_assembly(asset, file);
     w.place_assembly(asset);
     let root = w.selection().unwrap();
-    let lamp = area::assembly::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
+    let lamp = level::assembly::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
     (w, asset, root, lamp)
 }
 

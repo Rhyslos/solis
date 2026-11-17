@@ -11,7 +11,7 @@
 
 use crate::brushes::BrushModel;
 use crate::brushing::parts::PartCache;
-use area::builtin::Brush;
+use level::builtin::Brush;
 use mesh::{Broken, Mesh, VertexId};
 use reflect::Component;
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
@@ -40,7 +40,7 @@ impl Kept {
         }
         .to_data();
         let read = if has_gaps(written) {
-            Arc::new(area::builtin::compacted(written)?)
+            Arc::new(level::builtin::compacted(written)?)
         } else {
             Arc::clone(written)
         };

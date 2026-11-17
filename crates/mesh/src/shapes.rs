@@ -64,7 +64,7 @@ impl Shape {
         Self::Wedge,
     ];
 
-    /// Its name, as shown and as written in area files.
+    /// Its name, as shown and as written in level files.
     pub fn name(self) -> &'static str {
         match self {
             Self::Box => "Box",

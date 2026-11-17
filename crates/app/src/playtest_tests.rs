@@ -23,7 +23,7 @@ fn project(dir: &Path) -> (PathBuf, PathBuf) {
 fn farm() -> Playtest {
     Playtest {
         name: "Turret: test".into(),
-        area: "ui.solarea".into(),
+        level: "ui.solarea".into(),
         fullscreen: false,
         size: [1600, 900],
     }
@@ -48,7 +48,7 @@ fn an_export_holds_the_program_renamed_the_game_and_what_to_play() {
     let found = beside(&exe).unwrap().unwrap();
     assert_eq!(found.root, folder.join("game"));
     assert_eq!(found.playtest.name, "Turret test");
-    assert_eq!(found.playtest.area, "ui.solarea");
+    assert_eq!(found.playtest.level, "ui.solarea");
     let shipped = std::fs::read_to_string(folder.join(PLAYTEST_FILE)).unwrap();
     assert!(!shipped.contains("folder"), "where it went isn't shipped");
     // And the editor itself, anywhere else, doesn't.
@@ -75,14 +75,14 @@ fn an_export_never_mixes_with_or_replaces_anything() {
     // Inside the project, it would copy itself.
     let why = export(&root, &program, &farm(), &root.join("builds/new")).unwrap_err();
     assert!(why.contains("inside the project"), "{why}");
-    // An area that isn't there, or one outside the assets.
+    // A level that isn't there, or one outside the assets.
     let gone = Playtest {
-        area: "gone.solarea".into(),
+        level: "gone.solarea".into(),
         ..farm()
     };
     assert!(export(&root, &program, &gone, &dir.join("a")).is_err());
     let out = Playtest {
-        area: "../project.solis".into(),
+        level: "../project.solis".into(),
         ..farm()
     };
     assert!(export(&root, &program, &out, &dir.join("b")).is_err());
@@ -219,7 +219,7 @@ fn a_project_s_file_never_says_where_to_export() {
             read,
             Playtest {
                 name: "Farm".into(),
-                area: "ui.solarea".into(),
+                level: "ui.solarea".into(),
                 ..Playtest::default()
             },
             "{folder}"
@@ -248,15 +248,15 @@ fn a_project_s_last_export_is_read_as_a_stranger_s_file() {
     assert_eq!(editor::export_dialog::game_name(&read.name), read.name);
     assert!(read.name.chars().all(|c| c == 'n'), "{}", read.name);
     assert!(read.size.iter().all(|s| (320..=16_384).contains(s)));
-    // An area outside the assets, or none: not read at all.
-    for area in [
+    // A level outside the assets, or none: not read at all.
+    for level in [
         "../../secret.solarea",
         "/etc/x.solarea",
         r"C:\x.solarea",
         "",
     ] {
-        write_last_export(&dir, &format!("playtest 1\nname Farm\narea {area}\n"));
-        assert_eq!(last_export(&dir), None, "{area}");
+        write_last_export(&dir, &format!("playtest 1\nname Farm\narea {level}\n"));
+        assert_eq!(last_export(&dir), None, "{level}");
     }
     // Too big to be one, or not text: not read.
     write_last_export(

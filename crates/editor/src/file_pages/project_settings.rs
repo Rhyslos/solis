@@ -13,8 +13,8 @@ use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, UnbuiltId};
 use crate::widgets::{self, field, segmented::segmented};
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::pixels::{PixelSettings, Scaling};
 use egui::Ui;
+use level::pixels::{PixelSettings, Scaling};
 
 /// Common base resolutions for a pixel-art game, offered in the list.
 pub(crate) const BASE_SIZES: [[u32; 2]; 6] = [
@@ -239,11 +239,16 @@ impl Workbench {
                 number(
                     ui,
                     &mut new.base[1],
-                    area::pixels::BASE_RANGE,
+                    level::pixels::BASE_RANGE,
                     "Base height",
                 );
                 times(ui);
-                number(ui, &mut new.base[0], area::pixels::BASE_RANGE, "Base width");
+                number(
+                    ui,
+                    &mut new.base[0],
+                    level::pixels::BASE_RANGE,
+                    "Base width",
+                );
                 let words = BASE_SIZES.map(|[w, h]| ([w, h], format!("{w} × {h}")));
                 let choices: Vec<([u32; 2], &str)> =
                     words.iter().map(|(s, w)| (*s, w.as_str())).collect();
@@ -264,7 +269,7 @@ impl Workbench {
                 number(
                     ui,
                     &mut new.pixels_per_unit,
-                    area::pixels::PIXELS_PER_UNIT_RANGE,
+                    level::pixels::PIXELS_PER_UNIT_RANGE,
                     "Pixels per unit",
                 );
             }
@@ -273,11 +278,16 @@ impl Workbench {
                 number(
                     ui,
                     &mut new.tile[1],
-                    area::pixels::TILE_RANGE,
+                    level::pixels::TILE_RANGE,
                     "Tile height",
                 );
                 times(ui);
-                number(ui, &mut new.tile[0], area::pixels::TILE_RANGE, "Tile width");
+                number(
+                    ui,
+                    &mut new.tile[0],
+                    level::pixels::TILE_RANGE,
+                    "Tile width",
+                );
             }
             Setting::Scaling => {
                 let choices = Scaling::ALL.map(|s| (s, s.label()));

@@ -1,5 +1,5 @@
 //! Export for playtesting ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
-//! what File › Project settings › Build asks (the game's name, the area it
+//! what File › Project settings › Build asks (the game's name, the level it
 //! starts in, the window and the folder; `file_pages/build.rs` draws it),
 //! and [`Playtest`], what an exported game reads to know them (and what a
 //! project remembers for next time).
@@ -23,7 +23,7 @@ pub const MAX_PLAYTEST_BYTES: u64 = 16 << 10;
 /// The longest remembered folder kept.
 pub const MAX_FOLDER: usize = 1024;
 
-/// An exported game: its name, the area it starts in, and its window as
+/// An exported game: its name, the level it starts in, and its window as
 /// it first opens (players change it in the game's own menu, or with
 /// Alt+Enter, and their choice is kept).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,8 +31,8 @@ pub struct Playtest {
     /// The game's name: the program's, its window's title and its saves
     /// folder's.
     pub name: String,
-    /// The area it starts in, inside the assets, with `/` between folders.
-    pub area: String,
+    /// The level it starts in, inside the assets, with `/` between folders.
+    pub level: String,
     /// Whether it starts filling the screen.
     pub fullscreen: bool,
     /// Its window's size in pixels, when it isn't fullscreen.
@@ -43,7 +43,7 @@ impl Default for Playtest {
     fn default() -> Self {
         Self {
             name: "Game".into(),
-            area: String::new(),
+            level: String::new(),
             fullscreen: false,
             size: [1280, 720],
         }
@@ -83,17 +83,17 @@ fn device_name(name: &str) -> bool {
         && matches!(rest[0], '1'..='9' | '¹' | '²' | '³')
 }
 
-/// Whether `area` is an area's path inside the assets: relative, with `/`
-/// between folders, never going up, ending `.solarea`.
-pub fn usable_area(area: &str) -> bool {
-    !area.is_empty()
-        && area.len() < 1024
-        && area.ends_with(".solarea")
-        && !area.starts_with('/')
-        && !area.contains('\\')
-        && !area.contains(':')
-        && !area.chars().any(char::is_control)
-        && area
+/// Whether `level` is a level's path inside the assets: relative, with `/`
+/// between folders, never going up, ending `.sollevel`.
+pub fn usable_level(level: &str) -> bool {
+    !level.is_empty()
+        && level.len() < 1024
+        && level.ends_with(".solarea")
+        && !level.starts_with('/')
+        && !level.contains('\\')
+        && !level.contains(':')
+        && !level.chars().any(char::is_control)
+        && level
             .split('/')
             .all(|part| !part.is_empty() && part != "." && part != "..")
 }
@@ -123,7 +123,7 @@ impl Playtest {
         format!(
             "{HEADER}\nname {}\narea {}\nwindow {} {} {}\n",
             game_name(&self.name),
-            self.area,
+            self.level,
             if self.fullscreen {
                 "fullscreen"
             } else {
@@ -136,7 +136,7 @@ impl Playtest {
 
     /// Reads a playtest file. Anything odd is put right (a name made
     /// usable, a window size kept within what Solis opens); only a file
-    /// that isn't one, or names no usable area, is refused. Nothing in it
+    /// that isn't one, or names no usable level, is refused. Nothing in it
     /// is a folder on this computer: a `folder` line, which a project's
     /// own copy held before, is passed over like any line not known.
     pub fn parse(text: &str) -> Result<Self, String> {
@@ -149,7 +149,7 @@ impl Playtest {
             let (key, value) = line.split_once(' ').unwrap_or((line, ""));
             match key {
                 "name" => found.name = game_name(value),
-                "area" => found.area = value.trim().to_owned(),
+                "area" => found.level = value.trim().to_owned(),
                 "window" => {
                     let mut words = value.split_whitespace();
                     found.fullscreen = words.next() == Some("fullscreen");
@@ -163,7 +163,7 @@ impl Playtest {
                 _ => {}
             }
         }
-        if !usable_area(&found.area) {
+        if !usable_level(&found.level) {
             return Err("it doesn't name an area to start in".into());
         }
         Ok(found)
@@ -216,10 +216,10 @@ pub(crate) struct ExportForm {
 }
 
 impl ExportForm {
-    /// Whether Export can go: none is going, and the area and the folder
+    /// Whether Export can go: none is going, and the level and the folder
     /// are chosen.
     pub(crate) fn ready(&self) -> bool {
-        usable_area(&self.playtest.area) && !self.folder.trim().is_empty() && !self.busy
+        usable_level(&self.playtest.level) && !self.folder.trim().is_empty() && !self.busy
     }
 }
 
@@ -277,7 +277,7 @@ impl Workbench {
 
     /// The export the form asks for, its game's name made usable, and the
     /// form busy until it's done; none while one is going, or before the
-    /// area and the folder are chosen.
+    /// level and the folder are chosen.
     pub(crate) fn export_from_form(&mut self) -> Option<ExportRequest> {
         let form = self.open.export.as_mut()?;
         if !form.ready() {
@@ -294,7 +294,7 @@ impl Workbench {
     }
 
     /// Fills in Export for playtesting: the game named after the project,
-    /// starting in the open area, unless it was exported before.
+    /// starting in the open level, unless it was exported before.
     pub(crate) fn prepare_export(&mut self) {
         let Some(project) = &self.open.project else {
             self.log(
@@ -304,21 +304,21 @@ impl Workbench {
             return;
         };
         let assets = project.assets.clone();
-        let open_area = self
+        let open_level = self
             .open
             .document
             .file()
             .and_then(|f| f.strip_prefix(&assets).ok())
             .and_then(|f| f.to_str())
             .map(|f| f.replace('\\', "/"))
-            .filter(|f| usable_area(f));
+            .filter(|f| usable_level(f));
         let mut playtest = self.open.last_export.clone().unwrap_or_else(|| Playtest {
             name: game_name(&project.name),
             ..Playtest::default()
         });
-        if !usable_area(&playtest.area) || !self.areas().contains(&playtest.area) {
-            playtest.area = open_area
-                .or_else(|| self.areas().into_iter().next())
+        if !usable_level(&playtest.level) || !self.levels().contains(&playtest.level) {
+            playtest.level = open_level
+                .or_else(|| self.levels().into_iter().next())
                 .unwrap_or_default();
         }
         let date = chrono::Local::now().format("%Y-%m-%d").to_string();
@@ -347,17 +347,17 @@ impl Workbench {
         });
     }
 
-    /// The project's areas, inside the assets.
-    pub(crate) fn areas(&self) -> Vec<String> {
-        let mut areas: Vec<String> = self
+    /// The project's levels, inside the assets.
+    pub(crate) fn levels(&self) -> Vec<String> {
+        let mut levels: Vec<String> = self
             .open
             .library
             .iter()
-            .filter(|i| i.kind == crate::library::LibraryKind::Area && usable_area(&i.path))
+            .filter(|i| i.kind == crate::library::LibraryKind::Level && usable_level(&i.path))
             .map(|i| i.path.clone())
             .collect();
-        areas.sort();
-        areas
+        levels.sort();
+        levels
     }
 
     /// The folder chosen with the Build page's "…" button.

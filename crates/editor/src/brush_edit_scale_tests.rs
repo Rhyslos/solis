@@ -1,5 +1,5 @@
 //! The scale check for editing a brush's insides (Tools 1a, B3 and B4;
-//! decision 0108, "all fast"): a brush of 5,000 faces edited in an area
+//! decision 0108, "all fast"): a brush of 5,000 faces edited in a level
 //! of 10,000 brushes. B4 adds extruding and insetting 1,000 of its faces
 //! (each frame while pulling, and letting go) and a delete merging 100
 //! faces into one. The frame that starts editing, frames hovering over it,
@@ -20,15 +20,15 @@ use crate::brushing::edit::{Part, PickHow};
 use crate::gizmo::Change;
 use crate::panel::Panel;
 use crate::test_support::{State, harness, info, rest_over};
-use area::builtin::{Brush, Transform};
-use area::{Edit, EntityData};
 use glam::Vec3;
+use level::builtin::{Brush, Transform};
+use level::{Edit, EntityData};
 use std::sync::Arc;
 use std::time::Instant;
 
 type H = egui_kittest::Harness<'static, State>;
 
-/// The editor's frame target with a big area.
+/// The editor's frame target with a big level.
 const FRAME_MS: f64 = 8.0;
 
 fn ms_since(start: Instant) -> f64 {
@@ -133,7 +133,7 @@ fn editor() -> (H, reflect::EntityId) {
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_editing_a_5000_face_brush_among_10000_brushes() {
     let (mut h, id) = editor();
-    let entities = h.state().0.document().area().len();
+    let entities = h.state().0.document().level().len();
     // The frame that starts editing (its picking geometry made once):
     // the first time the ribbon's and the card's words are laid out, and
     // then again as it is every time after.
@@ -237,7 +237,7 @@ fn scale_check_editing_a_5000_face_brush_among_10000_brushes() {
     h.state_mut().0.pick_parts(&picked, PickHow::Replace);
     h.step();
     // Frames dragging the gizmo: the drag's change made and drawn (only
-    // this brush's mesh, never the area's).
+    // this brush's mesh, never the level's).
     let made = h.state().0.open.brushes.made();
     {
         let w = &mut h.state_mut().0;
@@ -409,7 +409,7 @@ fn pulled_frames(
 fn scale_check_shaping_a_5000_face_brush_among_10000_brushes() {
     use crate::shell::ShellCommand as C;
     let (mut h, id) = editor();
-    let entities = h.state().0.document().area().len();
+    let entities = h.state().0.document().level().len();
     h.key_press(egui::Key::Tab);
     h.step();
     assert!(h.state().0.viewport.brushing.edit.is_some());

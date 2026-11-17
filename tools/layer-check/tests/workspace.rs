@@ -29,11 +29,11 @@ fn every_planned_crate_exists() {
         [
             "animation",
             "app",
-            "area",
             "asset_db",
             "assets",
             "editor",
             "input",
+            "level",
             "mesh",
             "physics",
             "reflect",

@@ -64,7 +64,7 @@ impl Default for Light {
 }
 
 impl Light {
-    /// A sun as a new area has it.
+    /// A sun as a new level has it.
     pub fn sun() -> Self {
         Self {
             kind: LightKind::Sun,
@@ -263,7 +263,7 @@ impl Component for Light {
             shadows: f.bool("shadows", d.shadows),
             only_at_night: f.bool("only_at_night", false),
         }
-        // Here a light's numbers come in (an area file, an assembly game
+        // Here a light's numbers come in (a level file, an assembly game
         // code spawns, a save, a change made while a game plays): put
         // right once, for everything that reads them. A cone below zero
         // used to crash the viewport.

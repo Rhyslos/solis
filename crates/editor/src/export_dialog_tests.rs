@@ -26,9 +26,9 @@ fn game_names_are_usable_as_file_names() {
 }
 
 #[test]
-fn only_areas_inside_the_assets_can_start_a_game() {
-    assert!(usable_area("areas/farm.solarea"));
-    assert!(usable_area("farm.solarea"));
+fn only_levels_inside_the_assets_can_start_a_game() {
+    assert!(usable_level("areas/farm.solarea"));
+    assert!(usable_level("farm.solarea"));
     for bad in [
         "",
         "farm.lst",
@@ -40,7 +40,7 @@ fn only_areas_inside_the_assets_can_start_a_game() {
         "areas//farm.solarea",
         "areas/far\nm.solarea",
     ] {
-        assert!(!usable_area(bad), "{bad}");
+        assert!(!usable_level(bad), "{bad}");
     }
 }
 
@@ -48,7 +48,7 @@ fn only_areas_inside_the_assets_can_start_a_game() {
 fn a_playtest_file_reads_back_as_written() {
     let p = Playtest {
         name: "Farm".into(),
-        area: "areas/farm.solarea".into(),
+        level: "areas/farm.solarea".into(),
         fullscreen: true,
         size: [1920, 1080],
     };
@@ -57,7 +57,7 @@ fn a_playtest_file_reads_back_as_written() {
         p.text()
             .starts_with("playtest 1\nname Farm\narea areas/farm.solarea\n")
     );
-    // Odd values put right; a missing or unsafe area refused.
+    // Odd values put right; a missing or unsafe level refused.
     let odd = Playtest::parse("playtest 1\nname a/b\narea x.solarea\nwindow huge 5 99999\nmore\n")
         .unwrap();
     assert_eq!(odd.name, "ab");
@@ -74,7 +74,7 @@ fn playtest_files_survive_being_damaged() {
     // panics, and what reads is always safe to use.
     let text = Playtest {
         name: "Farm".into(),
-        area: "areas/farm.solarea".into(),
+        level: "areas/farm.solarea".into(),
         fullscreen: false,
         size: [1280, 720],
     }
@@ -91,7 +91,7 @@ fn playtest_files_survive_being_damaged() {
         broken[at] = b" \n/.:\\abc019-areasolfullscreen"[(seed >> 40) as usize % 30];
         let text = String::from_utf8_lossy(&broken);
         if let Ok(p) = Playtest::parse(&text) {
-            assert!(usable_area(&p.area), "{text}");
+            assert!(usable_level(&p.level), "{text}");
             assert_eq!(game_name(&p.name), p.name);
             assert!(p.size[0] >= 320 && p.size[1] >= 320, "{:?}", p.size);
         }
@@ -106,7 +106,7 @@ fn exports_go_in_a_dated_folder_in_documents() {
     );
 }
 
-/// A workbench with a project holding two areas, the farm open.
+/// A workbench with a project holding two levels, the farm open.
 fn farm() -> Workbench {
     let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
@@ -116,14 +116,14 @@ fn farm() -> Workbench {
     }));
     let item = |path: &str| crate::library::LibraryItem {
         id: None,
-        kind: crate::library::LibraryKind::Area,
+        kind: crate::library::LibraryKind::Level,
         name: path.into(),
         path: path.into(),
         thumbnail: None,
     };
     w.open.library = vec![item("areas/town.solarea"), item("areas/farm.solarea")].into();
-    w.open_area(
-        area::Area::new(),
+    w.open_level(
+        level::Level::new(),
         std::path::PathBuf::from("/projects/farm/assets/areas/farm.solarea"),
     );
     w.set_documents_folder(Some("/home/me/Documents".into()));
@@ -131,12 +131,12 @@ fn farm() -> Workbench {
 }
 
 #[test]
-fn the_window_starts_from_the_project_and_the_open_area() {
+fn the_window_starts_from_the_project_and_the_open_level() {
     let mut w = farm();
     w.open_export();
     let window = w.open.export.as_ref().unwrap();
     assert_eq!(window.playtest.name, "Farm the game");
-    assert_eq!(window.playtest.area, "areas/farm.solarea");
+    assert_eq!(window.playtest.level, "areas/farm.solarea");
     let folder = PathBuf::from(&window.folder);
     assert_eq!(
         folder.parent(),
@@ -147,7 +147,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     // Remembered from last time: a new dated folder beside the last.
     w.set_last_export(Some(Playtest {
         name: "Farm".into(),
-        area: "areas/town.solarea".into(),
+        level: "areas/town.solarea".into(),
         fullscreen: true,
         size: [1600, 900],
     }));
@@ -155,21 +155,21 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     // A form filled in afresh (opening the page again keeps the one there).
     w.prepare_export();
     let window = w.open.export.as_ref().unwrap();
-    assert_eq!(window.playtest.area, "areas/town.solarea");
+    assert_eq!(window.playtest.level, "areas/town.solarea");
     assert!(window.playtest.fullscreen);
     let folder = PathBuf::from(&window.folder);
     assert_eq!(folder.parent(), Some(local("/elsewhere").as_path()));
     let name = folder.file_name().unwrap().to_string_lossy().into_owned();
     assert!(name.starts_with("Farm playtest "), "{name}");
     assert!(!name.ends_with("2026-01-01"));
-    // An area that's gone: the open one instead.
+    // A level that's gone: the open one instead.
     w.set_last_export(Some(Playtest {
-        area: "areas/gone.solarea".into(),
+        level: "areas/gone.solarea".into(),
         ..Playtest::default()
     }));
     w.prepare_export();
     assert_eq!(
-        w.open.export.as_ref().unwrap().playtest.area,
+        w.open.export.as_ref().unwrap().playtest.level,
         "areas/farm.solarea"
     );
 }
@@ -208,7 +208,7 @@ fn export_asks_the_app_and_says_where_it_went() {
         })
         .collect();
     assert_eq!(asked.len(), 1, "once");
-    assert_eq!(asked[0].playtest.area, "areas/farm.solarea");
+    assert_eq!(asked[0].playtest.level, "areas/farm.solarea");
     assert!(asked[0].folder.starts_with("/home/me/Documents"));
     assert!(asked[0].suggested, "the window's own folder, unchanged");
     assert!(h.query_by_label("Exporting…").is_some(), "busy until done");
@@ -424,7 +424,7 @@ fn opening_the_window_never_looks_at_the_disk() {
     let mut w = farm();
     w.set_last_export(Some(Playtest {
         name: "Farm".into(),
-        area: "areas/farm.solarea".into(),
+        level: "areas/farm.solarea".into(),
         ..Playtest::default()
     }));
     w.set_last_export_folder(Some(dir.join("Farm playtest 2020-01-01")));

@@ -6,7 +6,7 @@ use crate::theme::backdrop::rgb;
 
 #[test]
 fn the_cursor_readout_is_in_the_game_s_pixels_y_counting_down() {
-    let pixels = area::pixels::PixelSettings {
+    let pixels = level::pixels::PixelSettings {
         pixels_per_unit: 16,
         ..Default::default()
     };
@@ -19,7 +19,7 @@ fn the_cursor_readout_is_in_the_game_s_pixels_y_counting_down() {
         "x 8 · y -4 px"
     );
     // A nonsense density counts as one pixel a metre.
-    let none = area::pixels::PixelSettings {
+    let none = level::pixels::PixelSettings {
         pixels_per_unit: 0,
         ..Default::default()
     };

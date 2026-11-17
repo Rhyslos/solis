@@ -48,7 +48,7 @@ impl Viewport {
         let rect = ui.max_rect();
         self.rect = rect;
         self.tile_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
-        if !self.area.tile_maps.is_empty() && self.sheets.tiles_animate() {
+        if !self.level.tile_maps.is_empty() && self.sheets.tiles_animate() {
             // Animated tiles move on by themselves.
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_millis(40));
@@ -99,14 +99,18 @@ impl Viewport {
                 asset,
                 (at, free),
                 &frame.seen,
-                &self.area,
+                &self.level,
                 (frame.size, frame.ppp),
             );
         }
         self.draw_picture(ui, renderer, &response, &frame);
         self.draw_over_view(ui, &response, &frame, accent);
         let edited = self.brushing.edit.as_ref().and_then(|edit| {
-            let world = self.area.brushes.iter().find(|b| b.entity == edit.entity)?;
+            let world = self
+                .level
+                .brushes
+                .iter()
+                .find(|b| b.entity == edit.entity)?;
             Some((edit, world.transform))
         });
         if let Some(edited) = edited {
@@ -153,7 +157,7 @@ impl Viewport {
         let view = DrawView {
             camera: &frame.seen,
             size: frame.size,
-            area: &self.area,
+            level: &self.level,
             grid: self.snapping.grid_step,
         };
         let Some(draw) = self.brushing.draw.as_mut() else {
@@ -286,7 +290,7 @@ impl Viewport {
         self.tools.interact(
             input,
             &frame.seen,
-            &self.area,
+            &self.level,
             &frame.snapping,
             frame.size,
             frame.ppp,
@@ -306,7 +310,7 @@ impl Viewport {
             return;
         };
         let Some(world) = self
-            .area
+            .level
             .brushes
             .iter()
             .find(|b| b.entity == edit.entity)
@@ -355,7 +359,7 @@ impl Viewport {
     ) {
         let rect = frame.rect;
         let mut view = self.view(frame.size_px, frame.ppp);
-        view.pick = self.tools.send_with(&self.area.pickable);
+        view.pick = self.tools.send_with(&self.level.pickable);
         let painter = ui.painter_at(rect);
         match renderer.render(&view) {
             Ok(texture) => {
@@ -397,9 +401,9 @@ impl Viewport {
         let (rect, seen, mouse) = (frame.rect, &frame.seen, frame.mouse);
         let painter = ui.painter_at(rect);
         if frame.two_d {
-            draw_screens(ui, rect, &self.area.screens, seen, self.pixels);
+            draw_screens(ui, rect, &self.level.screens, seen, self.pixels);
         }
-        viewport_tools::draw_cameras(ui, rect, &self.area.cameras, seen);
+        viewport_tools::draw_cameras(ui, rect, &self.level.cameras, seen);
         crate::tile_view::draw_overlay(
             ui,
             rect,
@@ -510,7 +514,7 @@ fn draw_screens(
     rect: Rect,
     screens: &[(Vec3, bool)],
     camera: &Camera,
-    pixels: area::pixels::PixelSettings,
+    pixels: level::pixels::PixelSettings,
 ) {
     let painter = ui.painter_at(rect);
     let size = glam::Vec2::new(rect.width(), rect.height());

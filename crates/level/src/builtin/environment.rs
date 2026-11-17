@@ -1,6 +1,6 @@
 //! The world around the models: the sky, fog, exposure and tone mapping
 //! ([decision 0017](../../../../docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md)).
-//! Saved with each area.
+//! Saved with each level.
 
 use super::field;
 use reflect::{

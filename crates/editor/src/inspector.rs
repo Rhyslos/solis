@@ -1,6 +1,6 @@
 //! Fields drawn from a component's schema (decision 0019): the inspector
 //! knows no component by name, so built-in, Lust and Lua components all
-//! show the same way. Widgets never change the area: they report the
+//! show the same way. Widgets never change the level: they report the
 //! values the user typed or dragged, and the caller applies them (as undo
 //! steps, decision 0022).
 
@@ -183,7 +183,7 @@ pub(crate) fn field_widget(
     field: &FieldInfo,
     value: &Value,
     (models, sheets, data): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets, &ComponentData),
-    area: &area::Area,
+    level: &level::Level,
     mixed: Mixed,
 ) -> Option<(Value, Option<(usize, f64)>)> {
     let whole = |v: Option<Value>| v.map(|v| (v, None));
@@ -382,7 +382,7 @@ pub(crate) fn field_widget(
             ui.label(text);
             None
         }
-        FieldKind::Entity => whole(entity_picker(ui, (&field.label, value, mixed.whole), area)),
+        FieldKind::Entity => whole(entity_picker(ui, (&field.label, value, mixed.whole), level)),
         FieldKind::Numbers => {
             // Made by tools (a brush's points), never typed: only how
             // many there are.
@@ -635,12 +635,12 @@ fn clip_picker(
 const MAX_LISTED: usize = 200;
 
 /// An entity field: the entity's name, and a list to pick another (or
-/// None) from, with a box to find one by name in a big area. Built from
+/// None) from, with a box to find one by name in a big level. Built from
 /// the kit's drop-down pieces, since its list has the box at the top.
 fn entity_picker(
     ui: &mut Ui,
     (label, value, mixed): (&str, &Value, bool),
-    area: &area::Area,
+    level: &level::Level,
 ) -> Option<Value> {
     let current = match value {
         Value::Entity(Some(id)) => Some(*id),
@@ -651,7 +651,7 @@ fn entity_picker(
     } else {
         match current {
             None => "None".to_string(),
-            Some(id) => area
+            Some(id) => level
                 .get(id)
                 .map_or_else(|| "Missing entity".to_string(), |e| e.name.clone()),
         }
@@ -677,7 +677,7 @@ fn entity_picker(
                 let wanted = find.to_lowercase();
                 let mut listed = 0usize;
                 let mut more = false;
-                for (id, entity) in area.iter() {
+                for (id, entity) in level.iter() {
                     if !wanted.is_empty() && !entity.name.to_lowercase().contains(&wanted) {
                         continue;
                     }
@@ -877,7 +877,7 @@ mod tests {
             assert!((rz.to_degrees() - z).abs() < 1e-3);
         }
         // The starting sun reads as a tilt of 40° turned 30° round.
-        let sun = area::builtin::sun_rotation(150.0, 50.0);
+        let sun = level::builtin::sun_rotation(150.0, 50.0);
         let (z, x, _) = sun.to_euler(EULER);
         assert!((x.to_degrees() - 40.0).abs() < 0.5, "{}", x.to_degrees());
         assert!((z.to_degrees() - 30.0).abs() < 0.5, "{}", z.to_degrees());

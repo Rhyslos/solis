@@ -48,7 +48,7 @@ fn a_standard_value_is_shown_in_a_few_characters() {
 
 #[test]
 fn every_engine_component_has_a_manual_page_that_exists() {
-    let registry = area::builtin::registry().unwrap();
+    let registry = level::builtin::registry().unwrap();
     for schema in registry.iter() {
         let page = manual_page(&schema.name)
             .unwrap_or_else(|| panic!("{} has no manual page", schema.name));
@@ -76,7 +76,7 @@ fn with_a_lamp() -> (Workbench, EntityId) {
 }
 
 fn strength(w: &Workbench, id: EntityId) -> Option<Value> {
-    w.document().area().get(id).unwrap().components["Light"]
+    w.document().level().get(id).unwrap().components["Light"]
         .get("strength")
         .cloned()
 }
@@ -148,7 +148,7 @@ fn a_component_s_card_has_its_menu_and_manual_page() {
     }
     h.get_by_label("Remove Light").click();
     h.run();
-    assert!(!h.state().0.document().area().get(id).unwrap().has("Light"));
+    assert!(!h.state().0.document().level().get(id).unwrap().has("Light"));
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn the_entity_menu_holds_what_the_bottom_buttons_did() {
     h.run();
     h.get_by_label("Delete").click();
     h.run();
-    assert!(!h.state().0.document().area().contains(id));
+    assert!(!h.state().0.document().level().contains(id));
 }
 
 #[test]
@@ -190,13 +190,13 @@ fn renaming_still_works_from_the_name_field() {
         h.state()
             .0
             .document()
-            .area()
+            .level()
             .get(id)
             .unwrap()
             .name
             .ends_with('!'),
         "{}",
-        h.state().0.document().area().get(id).unwrap().name
+        h.state().0.document().level().get(id).unwrap().name
     );
 }
 
@@ -208,10 +208,10 @@ fn a_file_used_by_several_entities_says_so() {
     let b = w.add_model(model, &[], 0.1, &[]);
     let asset = w
         .document()
-        .area()
+        .level()
         .get(a)
         .unwrap()
-        .get::<area::builtin::Model>()
+        .get::<level::builtin::Model>()
         .unwrap()
         .asset
         .unwrap()
@@ -248,7 +248,7 @@ fn a_search_with_no_match_says_so_and_enter_does_nothing() {
         .state()
         .0
         .document()
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .components
@@ -259,7 +259,7 @@ fn a_search_with_no_match_says_so_and_enter_does_nothing() {
         h.state()
             .0
             .document()
-            .area()
+            .level()
             .get(id)
             .unwrap()
             .components

@@ -187,9 +187,9 @@ fn a_click_on_each_tool_picks_it_and_the_keys_light_it() {
 fn editing() -> H {
     let mut w = Workbench::new(info());
     w.spawn_selected(
-        area::EntityData::new("Box_03")
-            .with(&area::builtin::Transform::default())
-            .with(&area::builtin::Brush::default()),
+        level::EntityData::new("Box_03")
+            .with(&level::builtin::Transform::default())
+            .with(&level::builtin::Brush::default()),
     );
     let mut h = rest_over(harness(w), Panel::Viewport);
     h.key_press(Key::Tab);
@@ -380,9 +380,9 @@ fn narrow_case(window: egui::Vec2, layout: PanelLayout, views: ViewLayout) -> H 
     };
     let mut w = Workbench::new(info()).with_interface_look(look);
     w.spawn_selected(
-        area::EntityData::new("Box_03")
-            .with(&area::builtin::Transform::default())
-            .with(&area::builtin::Brush::default()),
+        level::EntityData::new("Box_03")
+            .with(&level::builtin::Transform::default())
+            .with(&level::builtin::Brush::default()),
     );
     w.viewport.layout = views;
     let mut h = harness(w);
@@ -412,9 +412,9 @@ fn drawn_editor(
     w.viewport.layout = views;
     if editing {
         w.spawn_selected(
-            area::EntityData::new("Box_03")
-                .with(&area::builtin::Transform::default())
-                .with(&area::builtin::Brush::default()),
+            level::EntityData::new("Box_03")
+                .with(&level::builtin::Transform::default())
+                .with(&level::builtin::Brush::default()),
         );
     } else {
         w.open.document.selection.clear();
@@ -491,7 +491,7 @@ fn the_tool_bar_in_the_narrowest_view_is_its_approved_picture() {
     // 236 points).
     if let Some(mut h) = drawn_editor(
         [960.0, 600.0],
-        (PanelLayout::AreaLeftAssetsRight, ViewLayout::SideBySide),
+        (PanelLayout::LevelLeftAssetsRight, ViewLayout::SideBySide),
         true,
     ) {
         let view = h.state().viewport.rect;

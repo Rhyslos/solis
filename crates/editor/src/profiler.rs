@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 pub enum Stage {
     /// Lust, Lua and Rust components: ticks, events, taking in changes.
     GameCode,
-    /// The game's world: stepping, placing, taking in the area's changes.
+    /// The game's world: stepping, placing, taking in the level's changes.
     World,
     /// Working out what each view draws.
     Prepare,
@@ -61,7 +61,7 @@ pub struct Sample {
     pub drawn: DrawReport,
     /// Game components running.
     pub components: usize,
-    /// Entities in the game's world (or the area, when not playing).
+    /// Entities in the game's world (or the level, when not playing).
     pub entities: usize,
 }
 

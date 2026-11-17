@@ -1,8 +1,8 @@
-//! Settings files in the same Lust style as areas
+//! Settings files in the same Lust style as levels
 //! ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
 //! a sound event (`.solsound`), and later the mixer. A header
 //! `<kind> version N;`, then one `key = value;` line per setting, with
-//! `--` comments, so Git merges them as cleanly as areas.
+//! `--` comments, so Git merges them as cleanly as levels.
 //!
 //! ```text
 //! -- A sound event. Safe to edit by hand.
@@ -41,9 +41,9 @@ pub struct Settings {
     pub fields: Vec<Field>,
 }
 
-/// Reads a settings file in the same Lust style as areas (a sound event,
+/// Reads a settings file in the same Lust style as levels (a sound event,
 /// the mixer): a header `<kind> version N;`, then `key = value;` lines,
-/// with `--` comments. Read as a hostile file, like an area: within
+/// with `--` comments. Read as a hostile file, like a level: within
 /// limits, refusing a newer layout than `newest`, a key used twice, or
 /// anything malformed, always with its line.
 pub fn read_settings(text: &str, kind: &str, newest: u32) -> Result<Settings, ParseError> {

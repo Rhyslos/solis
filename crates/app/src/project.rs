@@ -527,7 +527,7 @@ impl Projects {
     }
 
     /// Makes a new text file inside the assets (E1): a Lust code file
-    /// (`.lst`) or an area (`.solarea`). Never replaces a file.
+    /// (`.lst`) or a level (`.sollevel`). Never replaces a file.
     pub fn save_new_text(&self, path: &Path, text: &str) -> Result<(), String> {
         let (_, file) = self.place(path, "a code file or an area", |path| {
             ends_in(path, &["lst", "solarea"])
@@ -722,7 +722,7 @@ pub fn library_kind(kind: FileKind) -> LibraryKind {
     match kind {
         FileKind::Model => LibraryKind::Model,
         FileKind::Assembly => LibraryKind::Assembly,
-        FileKind::Area => LibraryKind::Area,
+        FileKind::Level => LibraryKind::Level,
         FileKind::Texture => LibraryKind::Texture,
         FileKind::Code => LibraryKind::Code,
         FileKind::Sound => LibraryKind::Sound,
@@ -933,7 +933,7 @@ mod tests {
     }
 
     #[test]
-    fn new_code_files_and_areas_are_made_but_never_replace_or_stray() {
+    fn new_code_files_and_levels_are_made_but_never_replace_or_stray() {
         let root = folder("new-text");
         std::fs::create_dir_all(&root).unwrap();
         let mut projects = Projects::default();
@@ -950,7 +950,7 @@ mod tests {
         projects
             .save_new_text(Path::new("level.solarea"), "area version 3;\n")
             .unwrap();
-        // Never over a file, never outside the assets, only code and areas.
+        // Never over a file, never outside the assets, only code and levels.
         for (path, why) in [
             ("main.lst", "already"),
             ("../escape.lst", "isn't"),

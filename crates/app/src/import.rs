@@ -172,7 +172,7 @@ impl Importer {
         });
     }
 
-    /// Starts reading the built-in sample area, as if from a file named
+    /// Starts reading the built-in sample level, as if from a file named
     /// `name`, and returns the asset it's given.
     pub fn start_sample(&mut self, name: &str) -> AssetId {
         let limits = self.limits;
@@ -269,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn the_sample_area_reads_in_the_background() {
+    fn the_sample_level_reads_in_the_background() {
         let mut importer = Importer::new(4096, 256 << 20);
         let id = importer.start_sample("Sample area");
         let done = wait(&mut importer);

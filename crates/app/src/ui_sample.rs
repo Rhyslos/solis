@@ -9,8 +9,8 @@ use std::path::Path;
 /// The sample's name, as its project file has it.
 pub const NAME: &str = "UI sample";
 
-/// The area the sample opens on.
-pub const AREA: &str = "ui.solarea";
+/// The level the sample opens on.
+pub const LEVEL: &str = "ui.solarea";
 
 /// The sample's files, inside its assets.
 pub const FILES: &[(&str, &str)] = &[
@@ -18,7 +18,7 @@ pub const FILES: &[(&str, &str)] = &[
         "main.lst",
         include_str!("../../../samples/ui/assets/main.lst"),
     ),
-    (AREA, include_str!("../../../samples/ui/assets/ui.solarea")),
+    (LEVEL, include_str!("../../../samples/ui/assets/ui.solarea")),
     (
         "ui/hud.lst",
         include_str!("../../../samples/ui/assets/ui/hud.lst"),

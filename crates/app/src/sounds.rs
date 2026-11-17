@@ -671,21 +671,21 @@ mod tests {
         job_id(Path::new(path))
     }
 
-    /// A workbench playing an area with a camera at the origin and
+    /// A workbench playing a level with a camera at the origin and
     /// `count` entities a metre apart along X, each with an AudioSource
     /// playing "hum".
     fn hum_world(count: usize) -> (editor::Workbench, Vec<reflect::EntityId>) {
-        use area::builtin::{AudioSource, Camera, Transform};
+        use level::builtin::{AudioSource, Camera, Transform};
         let mut w = editor::Workbench::new(editor::AppInfo {
             name: "Test".into(),
             version: "1.0".into(),
         });
-        let mut area = area::Area::new();
-        area.spawn(area::EntityData::new("Camera").with(&Camera::default()));
+        let mut level = level::Level::new();
+        level.spawn(level::EntityData::new("Camera").with(&Camera::default()));
         let ids = (1..=count)
             .map(|i| {
-                area.spawn(
-                    area::EntityData::new(&format!("Hum {i}"))
+                level.spawn(
+                    level::EntityData::new(&format!("Hum {i}"))
                         .with(&Transform {
                             position: glam::Vec3::new(i as f32, 0.0, 0.0),
                             ..Transform::default()
@@ -697,7 +697,7 @@ mod tests {
                 )
             })
             .collect();
-        w.open_area(area, PathBuf::from("hum.solarea"));
+        w.open_level(level, PathBuf::from("hum.solarea"));
         (w, ids)
     }
 
@@ -751,7 +751,7 @@ mod tests {
 
     #[test]
     fn only_what_the_listener_should_hear_is_heard() {
-        use area::builtin::{AudioSource, Camera, Listener, Transform};
+        use level::builtin::{AudioSource, Camera, Listener, Transform};
         use sound::event::HeardBy;
         let dir = folder("heard");
         std::fs::write(dir.join("sfx/hum.wav"), wav()).unwrap();
@@ -789,35 +789,37 @@ mod tests {
             name: "Test".into(),
             version: "1.0".into(),
         });
-        let mut area = area::Area::new();
-        let player = area.spawn(
-            area::EntityData::new("Player")
+        let mut level = level::Level::new();
+        let player = level.spawn(
+            level::EntityData::new("Player")
                 .with(&Camera::default())
                 .with(&Listener {
                     hears_now: true,
                     groups: "Team Red, Radio".into(),
                 }),
         );
-        let source =
-            |area: &mut area::Area, name: &str, event: &str, parent: Option<reflect::EntityId>| {
-                let mut data = area::EntityData::new(name)
-                    .with(&Transform {
-                        position: glam::Vec3::new(1.0, 0.0, 0.0),
-                        ..Transform::default()
-                    })
-                    .with(&AudioSource {
-                        event: event.into(),
-                        ..AudioSource::default()
-                    });
-                data.parent = parent;
-                area.spawn(data).0.raw()
-            };
-        let radio = source(&mut area, "Radio", "radio", None);
-        let blue = source(&mut area, "Blue radio", "blue", None);
-        let mine = source(&mut area, "My steps", "mine", Some(player));
-        let theirs = source(&mut area, "Their steps", "mine", None);
-        let all = source(&mut area, "Birds", "all", None);
-        w.open_area(area, PathBuf::from("heard.solarea"));
+        let source = |level: &mut level::Level,
+                      name: &str,
+                      event: &str,
+                      parent: Option<reflect::EntityId>| {
+            let mut data = level::EntityData::new(name)
+                .with(&Transform {
+                    position: glam::Vec3::new(1.0, 0.0, 0.0),
+                    ..Transform::default()
+                })
+                .with(&AudioSource {
+                    event: event.into(),
+                    ..AudioSource::default()
+                });
+            data.parent = parent;
+            level.spawn(data).0.raw()
+        };
+        let radio = source(&mut level, "Radio", "radio", None);
+        let blue = source(&mut level, "Blue radio", "blue", None);
+        let mine = source(&mut level, "My steps", "mine", Some(player));
+        let theirs = source(&mut level, "Their steps", "mine", None);
+        let all = source(&mut level, "Birds", "all", None);
+        w.open_level(level, PathBuf::from("heard.solarea"));
         let mut device = SoundDevice::for_tests();
         let mut audio = crate::game_audio::GameAudio::default();
         let ctx = eframe::egui::Context::default();
@@ -862,7 +864,7 @@ mod tests {
     /// A workbench playing a camera and one entity running `component`
     /// from `code`, a game code file.
     fn coded_world(code: &str, component: &str) -> editor::Workbench {
-        use area::builtin::{Camera, Transform};
+        use level::builtin::{Camera, Transform};
         // Names stale from the project's files, as after one is deleted:
         // Nothing and Nope aren't there any more.
         let names = script::project_names::Names::with_assemblies(&[])
@@ -884,17 +886,17 @@ mod tests {
             version: "1.0".into(),
         });
         w.set_program(Some(compiled));
-        let mut area = area::Area::new();
-        area.spawn(area::EntityData::new("Camera").with(&Camera::default()));
-        let mut speaker = area::EntityData::new("Speaker").with(&Transform {
+        let mut level = level::Level::new();
+        level.spawn(level::EntityData::new("Camera").with(&Camera::default()));
+        let mut speaker = level::EntityData::new("Speaker").with(&Transform {
             position: glam::Vec3::new(1.0, 0.0, 0.0),
             ..Transform::default()
         });
         speaker
             .components
             .insert(component.into(), reflect::ComponentData::default());
-        area.spawn(speaker);
-        w.open_area(area, PathBuf::from("coded.solarea"));
+        level.spawn(speaker);
+        w.open_level(level, PathBuf::from("coded.solarea"));
         w
     }
 

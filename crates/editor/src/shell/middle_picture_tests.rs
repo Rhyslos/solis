@@ -126,7 +126,7 @@ fn the_shelf_and_the_status_bar_are_the_design_s_colours() {
     assert_eq!(home.pixel(800, shelf as u32), tokens::line());
     assert_eq!(home.pixel(800, columns as u32 - 1), tokens::line());
     assert_eq!(home.pixel(800, status as u32), tokens::line());
-    // The tab strip's ground right of the area's tab and its +.
+    // The tab strip's ground right of the level's tab and its +.
     let strip = bands(SIZES[0][1])[0] + size::DOC_TAB_H / 2.0;
     assert_eq!(
         colour_at(&home, "the tab strip", [800.0, strip], 1.0),
@@ -203,10 +203,10 @@ fn the_grip_and_a_fold_change_only_the_shelf() {
     );
 }
 
-/// Home in each panel layout with Home's lists beside the area (decision
+/// Home in each panel layout with Home's lists beside the level (decision
 /// 0109), against its approved picture; in the shelf layout it is
 /// `editor.png` (`picture_tests.rs`). The lists are panels on the panel's
-/// grey, with a line between each and the area.
+/// grey, with a line between each and the level.
 #[test]
 fn home_in_each_side_layout_is_its_approved_picture() {
     for layout in PanelLayout::ALL.into_iter().filter(|l| l.is_side()) {
@@ -223,16 +223,16 @@ fn home_in_each_side_layout_is_its_approved_picture() {
         };
         harness.run();
         harness.run();
-        let area = harness.state().shell.drawn_at(crate::panel::Panel::Area);
+        let level = harness.state().shell.drawn_at(crate::panel::Panel::Level);
         let picture = drawn(&mut harness);
-        let area = area.expect("the Area list is drawn");
-        // Below the Area list's rows, and the line at its right edge.
-        let below = [area.center().x, area.bottom() - 20.0];
+        let level = level.expect("the Area list is drawn");
+        // Below the Level list's rows, and the line at its right edge.
+        let below = [level.center().x, level.bottom() - 20.0];
         assert_eq!(
             colour_at(&picture, "the Area list", below, 1.0),
             tokens::panel()
         );
-        let edge = [area.right() + 0.5, area.bottom() - 20.0];
+        let edge = [level.right() + 0.5, level.bottom() - 20.0];
         assert_eq!(picture.at(edge, 1.0), tokens::line(), "{layout:?}");
         let name = format!("home-{}", layout.key().replace(' ', "-"));
         matches_approved(&name, &picture);

@@ -18,8 +18,8 @@
 //! - **The Ramp and the Stairs** climb along the footprint's longer side,
 //!   from where the drag started.
 
-use crate::area_view::AreaView;
 use crate::camera::{Camera, ViewKind};
+use crate::level_view::LevelView;
 use crate::screen::Ray;
 use glam::{Quat, Vec2, Vec3};
 use mesh::shapes::MIN_SIZE;
@@ -177,7 +177,7 @@ pub(crate) struct DrawView<'a> {
     /// The view's size in points.
     pub(crate) size: Vec2,
     /// What is drawn in it (the brushes a drag can start on).
-    pub(crate) area: &'a AreaView,
+    pub(crate) level: &'a LevelView,
     /// The grid's step, in metres.
     pub(crate) grid: f32,
 }
@@ -298,7 +298,7 @@ impl Draw {
     /// A press: the footprint starts where `ray` meets the ground (or the
     /// top of what's under the pointer), or the view's plane.
     fn start(&mut self, ray: &Ray, view: &DrawView, ctrl: bool) {
-        let base = super::surface::height_under(ray, view.area).unwrap_or(0.0);
+        let base = super::surface::height_under(ray, view.level).unwrap_or(0.0);
         let plane = Plane::for_view(view.camera.kind, base);
         if let Some(at) = plane.meet(ray) {
             let at = snap2(at, view.grid, ctrl);

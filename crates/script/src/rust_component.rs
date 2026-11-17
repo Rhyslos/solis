@@ -28,12 +28,12 @@ pub trait RustComponent {
 }
 
 /// A kind of Rust component: its schema, and how to make one from the
-/// area's values (a missing or wrong value takes the starting one).
+/// level's values (a missing or wrong value takes the starting one).
 #[derive(Clone)]
 pub struct RustKind {
     /// Its name, fields and starting values.
     pub schema: ComponentSchema,
-    /// Makes one from the area's values.
+    /// Makes one from the level's values.
     pub make: fn(&ComponentData) -> Box<dyn RustComponent>,
 }
 

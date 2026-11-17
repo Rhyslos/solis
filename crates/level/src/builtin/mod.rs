@@ -1,6 +1,6 @@
 //! The built-in components. Each is a typed Rust struct that turns into
 //! values and back (`reflect::Component`); missing or damaged values take
-//! their defaults, so an older or damaged area still loads.
+//! their defaults, so an older or damaged level still loads.
 
 mod animator;
 mod audio_source;
@@ -41,7 +41,7 @@ pub use sprite::Sprite;
 pub use tile_map::TileMap;
 pub use transform::Transform;
 
-use crate::document::{Area, EntityData};
+use crate::document::{EntityData, Level};
 use reflect::{Registry, RegistryError};
 
 /// A registry holding every built-in component.
@@ -68,11 +68,11 @@ pub fn registry() -> Result<Registry, RegistryError> {
     Ok(registry)
 }
 
-/// A new area, as File > New area makes: a sun and an environment (the
-/// sun, sky and fog live in each area).
-pub fn starter_area() -> Area {
-    let mut area = Area::new();
-    area.spawn(
+/// A new level, as File > New level makes: a sun and an environment (the
+/// sun, sky and fog live in each level).
+pub fn starter_level() -> Level {
+    let mut level = Level::new();
+    level.spawn(
         EntityData::new("Sun")
             .with(&Transform {
                 rotation: light::sun_rotation(150.0, 50.0),
@@ -80,14 +80,14 @@ pub fn starter_area() -> Area {
             })
             .with(&Light::sun()),
     );
-    // New areas light their sprites (decision 0092): with no lamps and
-    // day and night off, they look exactly as drawn. Older areas, without
+    // New levels light their sprites (decision 0092): with no lamps and
+    // day and night off, they look exactly as drawn. Older levels, without
     // the field, keep sprites unlit.
-    area.spawn(EntityData::new("Environment").with(&Environment {
+    level.spawn(EntityData::new("Environment").with(&Environment {
         light_sprites: true,
         ..Environment::default()
     }));
-    area
+    level
 }
 
 /// Field-building shorthand for the built-in schemas.
@@ -280,11 +280,11 @@ mod tests {
     }
 
     #[test]
-    fn a_new_area_has_a_sun_and_an_environment() {
-        let area = starter_area();
-        assert_eq!(area.len(), 2);
-        let (_, sun) = area.with::<Light>().next().unwrap();
+    fn a_new_level_has_a_sun_and_an_environment() {
+        let level = starter_level();
+        assert_eq!(level.len(), 2);
+        let (_, sun) = level.with::<Light>().next().unwrap();
         assert_eq!(sun.kind, LightKind::Sun);
-        assert_eq!(area.with::<Environment>().count(), 1);
+        assert_eq!(level.with::<Environment>().count(), 1);
     }
 }

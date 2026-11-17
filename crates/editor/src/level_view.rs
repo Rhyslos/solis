@@ -1,10 +1,10 @@
-//! What the viewport draws, worked out from the area each frame: the
+//! What the viewport draws, worked out from the level each frame: the
 //! models, the sun, the lamps and the environment, in the world's terms.
 
 use crate::models::ModelInfo;
-use area::Area;
-use area::builtin::{Camera, Environment, Light, LightKind, Model, Sprite};
 use glam::Vec3;
+use level::Level;
+use level::builtin::{Camera, Environment, Light, LightKind, Model, Sprite};
 use reflect::AssetId;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -46,7 +46,7 @@ pub struct ViewModel {
     /// Where its entity is in the world.
     pub transform: glam::Mat4,
     /// Its number for picking: its entity is `pickable[pick - 1]` of the
-    /// [`AreaView`]; 0 when it can't be picked.
+    /// [`LevelView`]; 0 when it can't be picked.
     pub pick: u32,
     /// The box the whole model fits in, in its own space (lowest and
     /// highest corners); none for one of its parts. A brush drawn out on
@@ -56,20 +56,20 @@ pub struct ViewModel {
 
 /// What the viewport draws.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct AreaView {
+pub struct LevelView {
     /// The models to draw.
     pub models: Vec<ViewModel>,
     /// The brushes to draw (Tools 1a, B1).
     pub brushes: Vec<crate::brushes::ViewBrush>,
     /// The entity behind each pick number (number 1 is the first).
     pub pickable: Vec<reflect::EntityId>,
-    /// Entities that can't be picked (locked in the Area panel).
+    /// Entities that can't be picked (locked in the Level panel).
     pub locked: HashSet<reflect::EntityId>,
-    /// The sun (the first sun in the area), if there is one.
+    /// The sun (the first sun in the level), if there is one.
     pub sun: Option<ViewLight>,
     /// Every other light.
     pub lamps: Vec<ViewLight>,
-    /// The sky, fog and picture settings (the first in the area).
+    /// The sky, fog and picture settings (the first in the level).
     pub environment: Environment,
     /// The hour it's shown at (decision 0092): the game's time of day, or
     /// the Environment's start while editing.
@@ -83,15 +83,15 @@ pub struct AreaView {
     /// what each shows.
     pub screens: Vec<(Vec3, bool)>,
     /// The sprites (Phase 9, D2), with their pick numbers.
-    pub sprites: Vec<crate::sprite_sheets::AreaSprite>,
+    pub sprites: Vec<crate::sprite_sheets::LevelSprite>,
     /// The tile maps (Phase 9, D4): each one's file (in the editor) or its
     /// map as the game has it, and where it is.
-    pub tile_maps: Vec<AreaTileMap>,
+    pub tile_maps: Vec<LevelTileMap>,
 }
 
-/// A tile map an area or the running game draws.
+/// A tile map a level or the running game draws.
 #[derive(Debug, Clone)]
-pub struct AreaTileMap {
+pub struct LevelTileMap {
     /// Its entity.
     pub entity: reflect::EntityId,
     /// Where it is: its top-left corner at the entity.
@@ -104,7 +104,7 @@ pub struct AreaTileMap {
 
 /// The same map in the same place: the game's map by its copy (never
 /// cell by cell, which would be slow for a big map).
-impl PartialEq for AreaTileMap {
+impl PartialEq for LevelTileMap {
     fn eq(&self, other: &Self) -> bool {
         self.entity == other.entity
             && self.transform == other.transform
@@ -117,7 +117,7 @@ impl PartialEq for AreaTileMap {
     }
 }
 
-impl AreaView {
+impl LevelView {
     /// The maps to draw, their files' read from `sheets`.
     pub fn view_tile_maps(
         &self,
@@ -141,32 +141,32 @@ impl AreaView {
     }
 }
 
-impl AreaView {
-    /// What to draw of `area`, with `models` saying which assets are
+impl LevelView {
+    /// What to draw of `level`, with `models` saying which assets are
     /// loaded.
-    pub fn of(area: &Area, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
-        Self::of_shown(area, models, &HashSet::new(), &HashSet::new())
+    pub fn of(level: &Level, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
+        Self::of_shown(level, models, &HashSet::new(), &HashSet::new())
     }
 
     /// [`Self::of`], leaving out entities `hidden` in the editor, and
     /// making `locked` ones impossible to pick.
     pub fn of_shown(
-        area: &Area,
+        level: &Level,
         models: &BTreeMap<AssetId, ModelInfo>,
         hidden: &HashSet<reflect::EntityId>,
         locked: &HashSet<reflect::EntityId>,
     ) -> Self {
-        let tree = area::Tree::of(area);
-        let world = tree.world_matrices(area);
-        Self::of_placed(area, &tree, &world, models, hidden, locked)
+        let tree = level::Tree::of(level);
+        let world = tree.world_matrices(level);
+        Self::of_placed(level, &tree, &world, models, hidden, locked)
     }
 
-    /// [`Self::of_shown`], with the area's `tree` and `world` matrices
+    /// [`Self::of_shown`], with the level's `tree` and `world` matrices
     /// already worked out (the document keeps them), so a frame doesn't
     /// walk up every entity's parents again.
     pub fn of_placed(
-        area: &Area,
-        tree: &area::Tree,
+        level: &Level,
+        tree: &level::Tree,
         world: &HashMap<reflect::EntityId, glam::Mat4>,
         models: &BTreeMap<AssetId, ModelInfo>,
         hidden: &HashSet<reflect::EntityId>,
@@ -175,14 +175,14 @@ impl AreaView {
         let at = |id| world.get(&id).copied().unwrap_or_default();
         let mut view = Self {
             environment: tree
-                .first_of(area.with::<Environment>().map(|(id, _)| id))
-                .and_then(|id| area.get(id)?.get::<Environment>())
+                .first_of(level.with::<Environment>().map(|(id, _)| id))
+                .and_then(|id| level.get(id)?.get::<Environment>())
                 .unwrap_or_default(),
             ..Self::default()
         };
         view.hour = f64::from(view.environment.day_start);
         view.locked = locked.clone();
-        for (id, model) in area.with::<Model>() {
+        for (id, model) in level.with::<Model>() {
             if hidden.contains(&id) {
                 continue;
             }
@@ -191,7 +191,7 @@ impl AreaView {
         }
         // The sun is the first in tree order, as the game has it.
         let mut suns = Vec::new();
-        for (id, light) in area.with::<Light>() {
+        for (id, light) in level.with::<Light>() {
             if hidden.contains(&id) {
                 continue;
             }
@@ -206,7 +206,7 @@ impl AreaView {
         {
             view.add_light(*id, light, at(*id));
         }
-        for (id, sprite) in area.with::<Sprite>() {
+        for (id, sprite) in level.with::<Sprite>() {
             if hidden.contains(&id) || sprite.sheet.is_none() {
                 continue;
             }
@@ -216,33 +216,33 @@ impl AreaView {
                 view.pickable.push(id);
                 view.pickable.len() as u32
             };
-            view.sprites.push(crate::sprite_sheets::AreaSprite {
+            view.sprites.push(crate::sprite_sheets::LevelSprite {
                 entity: id,
                 sprite,
                 transform: at(id),
                 pick,
-                parallax: area
+                parallax: level
                     .get(id)
-                    .and_then(|e| e.get::<area::builtin::Parallax>()),
+                    .and_then(|e| e.get::<level::builtin::Parallax>()),
             });
         }
-        for (id, tile_map) in area.with::<area::builtin::TileMap>() {
+        for (id, tile_map) in level.with::<level::builtin::TileMap>() {
             if hidden.contains(&id) {
                 continue;
             }
-            view.tile_maps.push(AreaTileMap {
+            view.tile_maps.push(LevelTileMap {
                 entity: id,
                 transform: at(id),
                 file: tile_map.map.map(|m| m.asset),
                 game: None,
             });
         }
-        let first = tree.first_of(area.with::<Camera>().map(|(id, _)| id));
-        for (id, camera) in area.with::<Camera>() {
+        let first = tree.first_of(level.with::<Camera>().map(|(id, _)| id));
+        for (id, camera) in level.with::<Camera>() {
             if !hidden.contains(&id) {
                 view.cameras.push((id, at(id)));
             }
-            if camera.view == area::builtin::CameraView::TwoD {
+            if camera.view == level::builtin::CameraView::TwoD {
                 view.screens
                     .push((at(id).w_axis.truncate(), Some(id) == first));
             }
@@ -292,20 +292,20 @@ impl AreaView {
             .into_iter()
             .filter(|(_, s, _)| s.sheet.is_some())
             .map(
-                |(entity, sprite, transform)| crate::sprite_sheets::AreaSprite {
+                |(entity, sprite, transform)| crate::sprite_sheets::LevelSprite {
                     entity,
                     sprite,
                     transform,
                     pick: 0,
-                    parallax: world.get::<area::builtin::Parallax>(entity),
+                    parallax: world.get::<level::builtin::Parallax>(entity),
                 },
             )
             .collect();
         view.tile_maps = world
-            .placed_between::<area::builtin::TileMap>(t)
+            .placed_between::<level::builtin::TileMap>(t)
             .into_iter()
             .filter_map(|(entity, component, transform)| {
-                Some(AreaTileMap {
+                Some(LevelTileMap {
                     entity,
                     transform,
                     file: component.map.map(|m| m.asset),
@@ -316,17 +316,17 @@ impl AreaView {
         view
     }
 
-    /// Adds the area's brushes (`brushes`, made from the same area), placed
+    /// Adds the level's brushes (`brushes`, made from the same level), placed
     /// by `world`, leaving out `hidden` ones and making `locked` ones
-    /// impossible to pick, in the area's order.
+    /// impossible to pick, in the level's order.
     pub(crate) fn add_brushes(
         &mut self,
-        area: &Area,
+        level: &Level,
         brushes: &crate::brushes::BrushModels,
         world: &HashMap<reflect::EntityId, glam::Mat4>,
         (hidden, locked): (&HashSet<reflect::EntityId>, &HashSet<reflect::EntityId>),
     ) {
-        for (id, _) in area.iter() {
+        for (id, _) in level.iter() {
             let Some(model) = brushes.get(id) else {
                 continue;
             };
@@ -366,7 +366,7 @@ impl AreaView {
 
     /// Adds the running `world`'s brushes, each `t` of the way between the
     /// last tick and the next, drawn with `brushes`' models (the editor's,
-    /// made from the area the game started from: game code doesn't change
+    /// made from the level the game started from: game code doesn't change
     /// a brush's shape). None can be picked.
     pub(crate) fn add_world_brushes(
         &mut self,
@@ -374,7 +374,7 @@ impl AreaView {
         brushes: &crate::brushes::BrushModels,
         t: f32,
     ) {
-        for (id, _, transform) in world.placed_between::<area::builtin::Brush>(t) {
+        for (id, _, transform) in world.placed_between::<level::builtin::Brush>(t) {
             if let Some(model) = brushes.get(id) {
                 self.triangles += model.triangles;
                 self.brushes.push(crate::brushes::ViewBrush {
@@ -473,12 +473,12 @@ fn place(entity: reflect::EntityId, light: &Light, world: glam::Mat4) -> ViewLig
 #[cfg(test)]
 mod tests {
     use super::*;
-    use area::EntityData;
-    use area::builtin::Transform;
+    use level::EntityData;
+    use level::builtin::Transform;
 
     #[test]
-    fn the_starter_area_has_a_sun_shining_down_and_no_lamps() {
-        let view = AreaView::of(&area::builtin::starter_area(), &BTreeMap::new());
+    fn the_starter_level_has_a_sun_shining_down_and_no_lamps() {
+        let view = LevelView::of(&level::builtin::starter_level(), &BTreeMap::new());
         let sun = view.sun.unwrap();
         assert!(sun.direction.z < -0.7);
         assert!(view.lamps.is_empty());
@@ -487,8 +487,8 @@ mod tests {
 
     #[test]
     fn lamps_are_placed_by_their_parents() {
-        let mut area = Area::new();
-        let parent = area.spawn(EntityData::new("Post").with(&Transform {
+        let mut level = Level::new();
+        let parent = level.spawn(EntityData::new("Post").with(&Transform {
             position: Vec3::new(5.0, 0.0, 0.0),
             ..Transform::default()
         }));
@@ -502,8 +502,8 @@ mod tests {
                 ..Light::spot()
             });
         bulb.parent = Some(parent);
-        area.spawn(bulb);
-        let view = AreaView::of(&area, &BTreeMap::new());
+        level.spawn(bulb);
+        let view = LevelView::of(&level, &BTreeMap::new());
         assert!(view.sun.is_none());
         let lamp = view.lamps[0];
         assert!(lamp.position.abs_diff_eq(Vec3::new(5.0, 0.0, 3.0), 1e-5));
@@ -514,11 +514,11 @@ mod tests {
 
     #[test]
     fn models_draw_only_when_their_asset_is_loaded() {
-        let mut area = Area::new();
+        let mut level = Level::new();
         let asset = AssetId::random();
         let r = reflect::AssetRef { asset, part: None };
-        area.spawn(EntityData::new("Crate").with(&Model { asset: Some(r) }));
-        assert!(AreaView::of(&area, &BTreeMap::new()).models.is_empty());
+        level.spawn(EntityData::new("Crate").with(&Model { asset: Some(r) }));
+        assert!(LevelView::of(&level, &BTreeMap::new()).models.is_empty());
         let mut models = BTreeMap::new();
         models.insert(
             asset,
@@ -532,7 +532,7 @@ mod tests {
                 nodes: Vec::new(),
             },
         );
-        let view = AreaView::of(&area, &models);
+        let view = LevelView::of(&level, &models);
         assert_eq!(
             view.models,
             [ViewModel {
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     fn the_game_s_view_is_the_same_on_one_core_or_many() {
         // Decision 0031: jobs never change the result.
-        let mut area = Area::new();
+        let mut level = Level::new();
         let asset = AssetId::random();
         let mut info = crate::test_support::crate_model();
         info.asset = asset;
@@ -565,21 +565,21 @@ mod tests {
                     asset: Some(reflect::AssetRef { asset, part: None }),
                 });
             }
-            data.order = area.order_at_end(None);
-            area.spawn(data);
+            data.order = level.order_at_end(None);
+            level.spawn(data);
         }
-        let world = world::World::from_area(&area);
+        let world = world::World::from_level(&level);
         let on = |cores: usize| {
             rayon::ThreadPoolBuilder::new()
                 .num_threads(cores)
                 .build()
                 .unwrap()
-                .install(|| AreaView::of_world(&world, &models, 1.0))
+                .install(|| LevelView::of_world(&world, &models, 1.0))
         };
         let one = on(1);
         assert_eq!(one.models.len(), 2_400);
         assert_eq!(one, on(4));
-        // In the area's order: the copies go along x.
+        // In the level's order: the copies go along x.
         assert!(
             one.models
                 .windows(2)
@@ -589,12 +589,12 @@ mod tests {
 
     #[test]
     fn the_game_sees_everything_and_picks_nothing() {
-        let mut area = area::builtin::starter_area();
+        let mut level = level::builtin::starter_level();
         let asset = AssetId::random();
         let mut info = crate::test_support::crate_model();
         info.asset = asset;
         let models = BTreeMap::from([(asset, info)]);
-        let boat = area.spawn(
+        let boat = level.spawn(
             EntityData::new("Boat")
                 .with(&Transform {
                     position: Vec3::new(4.0, 0.0, 0.0),
@@ -604,9 +604,9 @@ mod tests {
                     asset: Some(reflect::AssetRef { asset, part: None }),
                 }),
         );
-        area.spawn(EntityData::new("Lens").with(&Camera::default()));
-        let world = world::World::from_area(&area);
-        let game = AreaView::of_world(&world, &models, 1.0);
+        level.spawn(EntityData::new("Lens").with(&Camera::default()));
+        let world = world::World::from_level(&level);
+        let game = LevelView::of_world(&world, &models, 1.0);
         assert_eq!(game.models.len(), 1);
         assert_eq!(game.models[0].pick, 0);
         assert!(game.pickable.is_empty());
@@ -616,20 +616,20 @@ mod tests {
         );
         assert!(game.sun.is_some());
         assert!(game.cameras.is_empty(), "no markers in the game");
-        // The editor's view of the same area: hidden things left out,
+        // The editor's view of the same level: hidden things left out,
         // cameras marked.
         let hidden = HashSet::from([boat]);
-        let editor = AreaView::of_shown(&area, &models, &hidden, &HashSet::new());
+        let editor = LevelView::of_shown(&level, &models, &hidden, &HashSet::new());
         assert!(editor.models.is_empty());
         assert_eq!(editor.cameras.len(), 1);
         assert_eq!(editor.markers().count(), 1);
     }
 
     #[test]
-    fn the_editor_and_the_game_light_the_area_with_the_same_sun() {
+    fn the_editor_and_the_game_light_the_level_with_the_same_sun() {
         // Two suns (a duplicated one, or one from an assembly): both pick
         // the first in tree order, whatever their IDs.
-        let mut area = Area::new();
+        let mut level = Level::new();
         let low = reflect::EntityId(reflect::Id::from_raw(1).unwrap());
         let high = reflect::EntityId(reflect::Id::from_raw(u64::MAX).unwrap());
         let mut first = EntityData::new("A").with(&Light {
@@ -639,11 +639,11 @@ mod tests {
         first.order = "a0".into();
         let mut second = EntityData::new("B").with(&Light::sun());
         second.order = "a1".into();
-        area.insert(high, first);
-        area.insert(low, second);
-        assert_eq!(area.depth_first()[0], high);
-        let editor = AreaView::of(&area, &BTreeMap::new());
-        let game = AreaView::of_world(&world::World::from_area(&area), &BTreeMap::new(), 1.0);
+        level.insert(high, first);
+        level.insert(low, second);
+        assert_eq!(level.depth_first()[0], high);
+        let editor = LevelView::of(&level, &BTreeMap::new());
+        let game = LevelView::of_world(&world::World::from_level(&level), &BTreeMap::new(), 1.0);
         assert_eq!(editor.sun.unwrap().entity, high);
         assert_eq!(game.sun.unwrap().entity, high);
         assert!(editor.lamps.is_empty() && game.lamps.is_empty());
@@ -692,7 +692,7 @@ mod tests {
         }
     }
 
-    /// An area file with one spotlight, its cone and soft edge as written.
+    /// A level file with one spotlight, its cone and soft edge as written.
     fn spot_file(cone: &str, soft_edge: &str) -> String {
         format!(
             "area version 1;\n\nentity 0000000000001 {{\n    name = \"Torch\";\n    \
@@ -702,8 +702,8 @@ mod tests {
     }
 
     #[test]
-    fn an_area_file_with_a_bad_cone_loads_and_draws() {
-        let registry = area::builtin::registry().unwrap();
+    fn a_level_file_with_a_bad_cone_loads_and_draws() {
+        let registry = level::builtin::registry().unwrap();
         // Numbers the file format reads: each loads, and draws.
         for (cone, soft_edge) in [
             ("-5", "10"),
@@ -715,9 +715,11 @@ mod tests {
             ("-1.0e30", "1.0e30"),
         ] {
             let text = spot_file(cone, soft_edge);
-            let area = area::text::read(&text, &registry).unwrap_or_else(|e| panic!("{text}{e:?}"));
-            let editor = AreaView::of(&area, &BTreeMap::new());
-            let game = AreaView::of_world(&world::World::from_area(&area), &BTreeMap::new(), 1.0);
+            let level =
+                level::text::read(&text, &registry).unwrap_or_else(|e| panic!("{text}{e:?}"));
+            let editor = LevelView::of(&level, &BTreeMap::new());
+            let game =
+                LevelView::of_world(&world::World::from_level(&level), &BTreeMap::new(), 1.0);
             for view in [editor, game] {
                 assert_eq!(view.lamps.len(), 1, "{text}");
                 assert!(drawable(&view.lamps[0]), "{text}{:?}", view.lamps[0]);
@@ -727,9 +729,9 @@ mod tests {
         // standard cone, and draws if it's read.
         for odd in ["NaN", "nan", "inf", "-inf", "Infinity", "1e999", "-1e999"] {
             for text in [spot_file(odd, "10.0"), spot_file("30.0", odd)] {
-                match area::text::read(&text, &registry) {
-                    Ok(area) => {
-                        let view = AreaView::of(&area, &BTreeMap::new());
+                match level::text::read(&text, &registry) {
+                    Ok(level) => {
+                        let view = LevelView::of(&level, &BTreeMap::new());
                         assert!(view.lamps.iter().all(drawable), "{text}");
                     }
                     Err(why) => assert!(!why.message.is_empty(), "{text}"),
@@ -742,25 +744,26 @@ mod tests {
     fn a_light_changed_to_a_bad_cone_while_playing_is_drawn_safely() {
         // The game's world takes a light's values as they change (edited
         // in Properties while playing, an assembly spawned by game code).
-        let mut area = Area::new();
-        let id = area.spawn(EntityData::new("Torch").with(&Light::spot()));
-        let mut world = world::World::from_area(&area);
+        let mut level = Level::new();
+        let id = level.spawn(EntityData::new("Torch").with(&Light::spot()));
+        let mut world = world::World::from_level(&level);
         let mut bad = reflect::Component::to_data(&Light::spot());
         bad.set("cone", reflect::Value::Float(-5.0));
         bad.set("soft_edge", reflect::Value::Float(-40.0));
-        area.get_mut(id)
+        level
+            .get_mut(id)
             .unwrap()
             .components
             .insert("Light".into(), bad.clone());
-        world.update(&area, [(id, true)]);
-        let view = AreaView::of_world(&world, &BTreeMap::new(), 1.0);
+        world.update(&level, [(id, true)]);
+        let view = LevelView::of_world(&world, &BTreeMap::new(), 1.0);
         assert!(drawable(&view.lamps[0]), "{:?}", view.lamps[0]);
         // And one that arrives while playing.
         let spawned = reflect::EntityId(reflect::Id::from_raw(77).unwrap());
         let mut torch = EntityData::new("Spawned");
         torch.components.insert("Light".into(), bad);
         world.add_subtree(&[(spawned, torch)]);
-        let view = AreaView::of_world(&world, &BTreeMap::new(), 1.0);
+        let view = LevelView::of_world(&world, &BTreeMap::new(), 1.0);
         assert_eq!(view.lamps.len(), 2);
         assert!(view.lamps.iter().all(drawable), "{:?}", view.lamps);
     }

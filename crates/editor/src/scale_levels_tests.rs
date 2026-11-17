@@ -12,9 +12,9 @@
 use crate::profiler::Stage;
 use crate::test_support::*;
 use crate::workbench::Workbench;
-use area::EntityData;
-use area::builtin::Transform;
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::Transform;
 use reflect::EntityId;
 use std::sync::Arc;
 
@@ -63,12 +63,12 @@ fn fleet(units: usize) -> Workbench {
                 position: start_of(i),
                 ..Transform::default()
             });
-            data.set(&area::builtin::Model {
+            data.set(&level::builtin::Model {
                 asset: Some(reflect::AssetRef { asset, part: None }),
             });
             data.components
                 .insert("Ship".into(), reflect::ComponentData::default());
-            area::Edit::Spawn {
+            level::Edit::Spawn {
                 entities: vec![(EntityId::random(), data)],
             }
         })

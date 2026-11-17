@@ -1,13 +1,13 @@
-//! Making running components from the area's values, and giving running
+//! Making running components from the level's values, and giving running
 //! ones what changed (see [`crate::Runtime::sync_many`]). The natives are
 //! lent by the caller, once for a whole batch.
 //!
-//! "What changed" is worked out from the area's values as they were last
+//! "What changed" is worked out from the level's values as they were last
 //! given ([`Running::seen`]), so a value the game has changed itself is
 //! left alone when another field is edited. That alone can't tell a field
-//! set by hand to what the area already holds (ammo fired, then typed
+//! set by hand to what the level already holds (ammo fired, then typed
 //! back to full): those are named by the caller, and given whatever the
-//! area held.
+//! level held.
 
 use crate::code::CodeProblem;
 use crate::convert::to_lua;
@@ -21,7 +21,7 @@ use mlua::Table;
 use reflect::{ComponentData, EntityId};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// A component to sync: its entity, its name, the area's values for it,
+/// A component to sync: its entity, its name, the level's values for it,
 /// and the names of its fields set by hand since the last time.
 pub(crate) type Edited<'a> = (EntityId, &'a str, &'a ComponentData, &'a BTreeSet<String>);
 
@@ -38,9 +38,9 @@ pub(crate) struct Syncing<'a> {
 }
 
 impl Syncing<'_> {
-    /// Makes `entity`'s component `name` run with the area's `data`, or
+    /// Makes `entity`'s component `name` run with the level's `data`, or
     /// gives it the fields that changed and those in `set` (set by hand
-    /// since the last time, whether or not the area's value changed).
+    /// since the last time, whether or not the level's value changed).
     /// Nothing for a component there's no code for, or one left out.
     pub(crate) fn sync(
         &self,
@@ -139,7 +139,7 @@ impl Syncing<'_> {
     }
 
     /// A new Lust component (Lust's `new`, its start values), with the
-    /// area's values where they fit. The natives are lent already.
+    /// level's values where they fit. The natives are lent already.
     fn make_lust(
         &self,
         program: &LustProgram,

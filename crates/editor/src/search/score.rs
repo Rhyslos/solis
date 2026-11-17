@@ -9,7 +9,7 @@ pub(crate) const MAX_SHOWN: usize = 50;
 /// How well `query` matches `text`, or none: each word of the query must
 /// be in the text. A word at the start of one of the text's words counts
 /// most, anywhere in it less, and its letters in order (`svar` for "Save
-/// area") least.
+/// level") least.
 pub(crate) fn score(query: &str, text: &str) -> Option<u32> {
     let text = text.to_lowercase();
     let starts: Vec<usize> = std::iter::once(0)

@@ -1,6 +1,6 @@
 //! The workbench's side of the Library: turning its requests into actions
 //! for the app (which changes files), and placing what's dropped on the
-//! viewport or the Area panel where it was dropped.
+//! viewport or the Level panel where it was dropped.
 
 use crate::console::LogLevel;
 use crate::library::{LibraryKind, LibraryRequest};
@@ -256,21 +256,22 @@ impl Workbench {
                 self.show_in_library(&path);
                 self.library_request(LibraryRequest::Open(LibraryKind::Code, path), actions);
             }
-            LibraryRequest::NewArea(folder) => {
+            LibraryRequest::NewLevel(folder) => {
                 let path = crate::workbench_tiles::free_path(&folder, "area", "solarea", |p| {
                     self.open.library.iter().any(|i| i.path == p)
                 });
                 let fresh = crate::document::Document::default();
-                let text = area::text::write(fresh.area(), &self.open.document.registry, &|_| None);
+                let text =
+                    level::text::write(fresh.level(), &self.open.document.registry, &|_| None);
                 actions.push(WorkbenchAction::NewTextFile {
                     path: path.clone().into(),
                     text,
                 });
                 self.show_in_library(&path);
-                self.library_request(LibraryRequest::Open(LibraryKind::Area, path), actions);
+                self.library_request(LibraryRequest::Open(LibraryKind::Level, path), actions);
             }
-            LibraryRequest::Open(LibraryKind::Area, path) => {
-                self.request(WorkbenchAction::OpenAreaFile(full(&path)), actions);
+            LibraryRequest::Open(LibraryKind::Level, path) => {
+                self.request(WorkbenchAction::OpenLevelFile(full(&path)), actions);
             }
             // A screen's file opens on the canvas (decision 0089), unless
             // the canvas is what asked for it as code.
@@ -503,7 +504,7 @@ impl Workbench {
         self.open.sound_events = events;
     }
 
-    /// Stops showing a sound file in Properties once the area's selection
+    /// Stops showing a sound file in Properties once the level's selection
     /// has changed or the file is gone. Called before the panels are
     /// drawn, so the change shows in the same frame.
     pub(crate) fn drop_stale_sound(&mut self) {
@@ -582,10 +583,10 @@ impl Workbench {
             .map_or_else(|| "Sprite".to_owned(), |p| crate::sprite_sheets::name_of(p));
         let (at, parent) = match target {
             Some((at, parent)) => {
-                let area = self.open.document.area();
-                let parent = parent.filter(|&p| area.contains(p));
+                let level = self.open.document.level();
+                let parent = parent.filter(|&p| level.contains(p));
                 let local = match parent {
-                    Some(p) => area.world_matrix(p).inverse().transform_point3(at),
+                    Some(p) => level.world_matrix(p).inverse().transform_point3(at),
                     None => at,
                 };
                 (local, parent)
@@ -601,18 +602,18 @@ impl Workbench {
             .into_iter()
             .find(|n| info.slice(n).is_some())
             .unwrap_or_default();
-        let mut data = area::EntityData::new(&name)
-            .with(&area::builtin::Transform {
+        let mut data = level::EntityData::new(&name)
+            .with(&level::builtin::Transform {
                 position: Vec3::new(on_pixel(at.x), on_pixel(at.y), at.z),
-                ..area::builtin::Transform::default()
+                ..level::builtin::Transform::default()
             })
-            .with(&area::builtin::Sprite {
+            .with(&level::builtin::Sprite {
                 sheet: Some(reflect::AssetRef {
                     asset: sheet,
                     part: None,
                 }),
                 pivot: pivot.to_owned(),
-                ..area::builtin::Sprite::default()
+                ..level::builtin::Sprite::default()
             });
         data.parent = parent;
         Some(self.spawn_selected(data))
@@ -629,10 +630,10 @@ impl Workbench {
     /// entity, or `None` to place it where the camera looks.
     pub(crate) fn take_place_target(&mut self, asset: AssetId) -> Option<(Vec3, Option<EntityId>)> {
         let (at, parent) = self.open.place_targets.remove(&asset)?;
-        let area = self.open.document.area();
-        let parent = parent.filter(|&p| area.contains(p));
+        let level = self.open.document.level();
+        let parent = parent.filter(|&p| level.contains(p));
         let local = match parent {
-            Some(p) => area.world_matrix(p).inverse().transform_point3(at),
+            Some(p) => level.world_matrix(p).inverse().transform_point3(at),
             None => at,
         };
         local.is_finite().then_some((local, parent))
@@ -652,9 +653,9 @@ pub fn plain_relative(path: &str) -> bool {
 
 impl Workbench {
     /// For each code file, the components written in it and how many
-    /// entities in the area use each: `Player · 1, Crop · 12`, or the
+    /// entities in the level use each: `Player · 1, Crop · 12`, or the
     /// components alone when none is used. For the Code panel, so it shows
-    /// what each file does in this area.
+    /// what each file does in this level.
     pub(crate) fn code_uses(&self) -> BTreeMap<String, String> {
         let Some(program) = &self.open.program else {
             return BTreeMap::new();
@@ -664,7 +665,7 @@ impl Workbench {
             let users = self
                 .open
                 .document
-                .area()
+                .level()
                 .iter()
                 .filter(|(_, e)| e.has(component))
                 .count();
@@ -685,10 +686,10 @@ impl Workbench {
             .collect()
     }
 
-    /// [`Self::code_uses`], worked out again only when the area, the
+    /// [`Self::code_uses`], worked out again only when the level, the
     /// game's code or what's known of it changed (review finding BUG-28:
     /// the Library is on Home's shelf now, so it is in view nearly
-    /// always, and the area isn't walked every frame for it).
+    /// always, and the level isn't walked every frame for it).
     pub(crate) fn code_uses_now(&mut self) -> std::sync::Arc<BTreeMap<String, String>> {
         let revision = self.open.document.revision();
         let program = self.open.program.as_ref();

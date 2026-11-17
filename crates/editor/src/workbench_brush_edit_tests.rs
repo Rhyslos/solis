@@ -13,11 +13,11 @@ use crate::panel::Panel;
 use crate::test_support::*;
 use crate::viewport::Tool;
 use crate::viewport_tools::{Outline, ViewportEvent};
-use area::EntityData;
-use area::builtin::Transform;
 use egui::{Key, Pos2};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::Transform;
 use mesh::FaceId;
 
 type H = egui_kittest::Harness<'static, State>;
@@ -88,7 +88,7 @@ fn face(h: &H, normal: Vec3) -> FaceId {
 /// The box's mesh now.
 fn mesh_of(w: &Workbench, id: EntityId) -> mesh::Mesh {
     (*w.document()
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .get::<Brush>()
@@ -355,7 +355,7 @@ fn local_axes_are_the_brush_s_own() {
         id,
         w.open
             .document
-            .area()
+            .level()
             .get(id)
             .unwrap()
             .components
@@ -392,13 +392,13 @@ fn an_undo_back_past_the_start_of_editing_ends_it() {
 }
 
 #[test]
-fn picking_something_else_in_the_area_list_ends_editing_and_picks_it() {
+fn picking_something_else_in_the_level_list_ends_editing_and_picks_it() {
     let (mut h, _) = editing();
     let lamp = h
         .state()
         .0
         .document()
-        .area()
+        .level()
         .iter()
         .find(|(_, e)| e.name.starts_with("Point light"))
         .map(|(id, _)| id)
@@ -449,12 +449,12 @@ fn delete_and_backspace_while_editing_never_delete_the_brush() {
         h.key_press(key);
         h.run();
         let w = &h.state().0;
-        assert!(w.document().area().contains(id));
+        assert!(w.document().level().contains(id));
         assert_eq!(status(&h).as_deref(), Some(mesh::merge::LONE_FACE));
     }
     // The search's Delete neither.
     run(&mut h, "Delete");
-    assert!(h.state().0.document().area().contains(id));
+    assert!(h.state().0.document().level().contains(id));
 }
 
 #[test]
@@ -477,7 +477,13 @@ fn made_as_after_edits_replaces_them_and_says_so_and_undo_brings_them_back() {
     );
     h.run();
     let w = &h.state().0;
-    let brush = w.document().area().get(id).unwrap().get::<Brush>().unwrap();
+    let brush = w
+        .document()
+        .level()
+        .get(id)
+        .unwrap()
+        .get::<Brush>()
+        .unwrap();
     assert_eq!(brush.shape, mesh::Shape::Ramp, "Made as names the shape");
     assert_eq!(
         brush.mesh.bounds().unwrap().size(),
@@ -551,11 +557,17 @@ fn a_save_and_reopen_after_edits_gives_the_same_brush() {
     top_picked(&mut h);
     gizmo_drag(&mut h, Change::Translate(Vec3::new(0.3, 0.0, 1.0)), false);
     let w = &h.state().0;
-    let registry = area::builtin::registry().unwrap();
-    let text = area::text::write(w.document().area(), &registry, &|_| None);
-    let read = area::text::read(&text, &registry).unwrap();
+    let registry = level::builtin::registry().unwrap();
+    let text = level::text::write(w.document().level(), &registry, &|_| None);
+    let read = level::text::read(&text, &registry).unwrap();
     let again = read.get(id).unwrap().get::<Brush>().unwrap();
-    let now = w.document().area().get(id).unwrap().get::<Brush>().unwrap();
+    let now = w
+        .document()
+        .level()
+        .get(id)
+        .unwrap()
+        .get::<Brush>()
+        .unwrap();
     assert_eq!(*again.mesh, *now.mesh);
     assert!(!again.damaged);
 }
@@ -595,7 +607,7 @@ fn the_other_entities_are_dimmed_while_editing() {
     let w = &h.state().0;
     let pick = w
         .viewport
-        .area
+        .level
         .brushes
         .iter()
         .find(|b| b.entity == id)
@@ -639,7 +651,7 @@ fn the_brush_tab_s_keys_and_names_do_the_same_and_each_is_on_its_ribbon() {
     let w = &by_name.state().0;
     assert!(
         !w.document()
-            .area()
+            .level()
             .get(id)
             .unwrap()
             .get::<Brush>()

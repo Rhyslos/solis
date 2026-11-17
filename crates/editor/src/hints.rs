@@ -75,7 +75,7 @@ impl Workbench {
                     .to_string(),
             ),
             [one] => {
-                if let Some(entity) = self.open.document.area().get(*one) {
+                if let Some(entity) = self.open.document.level().get(*one) {
                     let mut names: Vec<&String> = entity.components.keys().collect();
                     names.sort_by_key(|n| *n != "Transform");
                     let places = self.open.program.as_ref().map(|p| &p.places);

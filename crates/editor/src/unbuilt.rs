@@ -178,7 +178,7 @@ pub const DESCRIPTION: &str = "Not built yet";
 
 impl Unbuilt {
     /// What pointing at the part says: "Not built yet: Bake. Works out
-    /// bounced light for the area. Planned for 3D 5: Bounced light."
+    /// bounced light for the level. Planned for 3D 5: Bounced light."
     pub fn hover_text(&self) -> String {
         let when = match self.phase.title() {
             Some(title) => format!("Planned for {title}."),

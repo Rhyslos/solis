@@ -1,14 +1,14 @@
-//! Reversible edits to the area document
+//! Reversible edits to the level document
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 //! Every change the editor makes is one of these. Applying an edit gives
 //! back its inverse, which is how undo works; the same edits will describe
 //! changes in the Git panel and in assembly overrides.
 
-use crate::document::{Area, EntityData, Origin};
+use crate::document::{EntityData, Level, Origin};
 use reflect::{ComponentData, EntityId, Value};
 use std::fmt;
 
-/// One reversible change to an area.
+/// One reversible change to a level.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Edit {
     /// Sets one field of a component, or clears it with `None` (it then
@@ -78,16 +78,16 @@ pub enum Edit {
     },
 }
 
-/// Why an edit couldn't be applied. The area is left unchanged.
+/// Why an edit couldn't be applied. The level is left unchanged.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EditError {
-    /// The entity isn't in the area.
+    /// The entity isn't in the level.
     NoEntity(EntityId),
     /// The entity has no such component.
     NoComponent(EntityId, String),
     /// The entity already has that component.
     HasComponent(EntityId, String),
-    /// An entity with that ID is already in the area.
+    /// An entity with that ID is already in the level.
     IdInUse(EntityId),
     /// The entities to spawn aren't one tree, parents first.
     NotATree,
@@ -170,9 +170,9 @@ fn entity_bytes(entity: &EntityData) -> usize {
             .sum::<usize>()
 }
 
-impl Area {
+impl Level {
     /// Applies `edit` and returns the edit that undoes it. On an error the
-    /// area is unchanged.
+    /// level is unchanged.
     pub fn apply(&mut self, edit: Edit) -> Result<Edit, EditError> {
         match edit {
             Edit::SetField {
@@ -307,7 +307,7 @@ impl Area {
 
     /// Applies `edits` in order and returns the edits that undo them all
     /// (in the order to apply them). If one fails, those before it are
-    /// undone, so the area is unchanged.
+    /// undone, so the level is unchanged.
     pub fn apply_all(&mut self, edits: Vec<Edit>) -> Result<Vec<Edit>, EditError> {
         let mut undo = Vec::with_capacity(edits.len());
         for edit in edits {
@@ -332,8 +332,8 @@ mod tests {
     use super::*;
     use crate::builtin::{Light, Transform};
 
-    fn sample() -> (Area, EntityId, EntityId) {
-        let mut s = Area::new();
+    fn sample() -> (Level, EntityId, EntityId) {
+        let mut s = Level::new();
         let a = s.spawn(EntityData::new("A").with(&Transform::default()));
         let mut child = EntityData::new("B").with(&Light::point());
         child.parent = Some(a);
@@ -466,10 +466,10 @@ mod tests {
 
     #[test]
     fn nothing_can_be_moved_under_itself_however_deep() {
-        // No edit makes a loop of parents: the area's readers take loops
+        // No edit makes a loop of parents: the level's readers take loops
         // out of files, and this keeps them out afterwards (the review of
         // Phase 9, BUG-12).
-        let mut s = Area::new();
+        let mut s = Level::new();
         let mut chain = vec![s.spawn(EntityData::new("Top"))];
         for n in 1..40 {
             let mut data = EntityData::new(&format!("Level {n}"));

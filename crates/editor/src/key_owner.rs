@@ -1,5 +1,5 @@
 //! Who the keys belong to. Several parts of the editor act on the same
-//! keys (Delete, Ctrl+D, Ctrl+Z, Esc): the area, and each tab that edits a
+//! keys (Delete, Ctrl+D, Ctrl+Z, Esc): the level, and each tab that edits a
 //! file of its own. [`Workbench::key_owner`] says once a frame which of
 //! them has the keys, from where the pointer rests and what is being
 //! typed, and every key handler asks that one answer, so a key is acted
@@ -8,7 +8,7 @@
 //! | Keys | Acted on by |
 //! | --- | --- |
 //! | Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z | The owner's own undo steps |
-//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The area where [`KeyOwner::is_area`]: on a tab whose groups hold the 3D or 2D view, or over a panel that edits the area (the Area list, Properties showing the area's); over a tab with a file of its own (Properties too, while it shows that file's settings), that tab alone, for the keys it has. Over the Library or the Assets column, F2 and Delete are the picked file's |
+//! | Delete, Ctrl+D, F2, F, Esc, Ctrl+A, X, Y, Z, L, the tools' and the tile painter's keys | The level where [`KeyOwner::is_level`]: on a tab whose groups hold the 3D or 2D view, or over a panel that edits the level (the Level list, Properties showing the level's); over a tab with a file of its own (Properties too, while it shows that file's settings), that tab alone, for the keys it has. Over the Library or the Assets column, F2 and Delete are the picked file's |
 //! | Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Space (the search), `'` (the Console) | The editor, where [`KeyOwner::takes_shortcuts`] (over the Frames tab, Space plays the clip instead) |
 //! | Ctrl+Space (folds the shelf) | The editor, typing or not, where [`KeyOwner::is_editor`] |
 
@@ -30,28 +30,28 @@ pub(crate) enum KeyOwner {
     /// A field being typed in: the keys are its text (Ctrl+Z undoes the
     /// typing).
     Field,
-    /// Nothing the area's keys would change is on screen: a whole page
-    /// stands where the area would be (a File page, a screen that isn't
+    /// Nothing the level's keys would change is on screen: a whole page
+    /// stands where the level would be (a File page, a screen that isn't
     /// built), or the tab in front has no 3D or 2D view and the pointer
-    /// isn't over the Area list or Properties (Mixer, Bus, Profiler,
-    /// Export, the Library on its tab). The area's keys rest; the
+    /// isn't over the Level list or Properties (Mixer, Bus, Profiler,
+    /// Export, the Library on its tab). The level's keys rest; the
     /// editor's own keys still work, and over the Library F2 and Delete
     /// are still the picked file's.
     Page,
-    /// The area: a tab with the 3D or 2D view (everywhere on it no other
+    /// The level: a tab with the 3D or 2D view (everywhere on it no other
     /// owner is named: the viewport, the Console, the Assets column), and
-    /// the Area list and Properties on any tab.
+    /// the Level list and Properties on any tab.
     #[default]
-    Area,
-    /// The Map tab, or anywhere that would be the area's while a tile
+    Level,
+    /// The Map tab, or anywhere that would be the level's while a tile
     /// painting tool is in use: undo and redo are the selected map's.
-    /// Every other key is the area's, as the tab shows the selected
+    /// Every other key is the level's, as the tab shows the selected
     /// entity's map, as Properties shows its components.
     Map,
     /// Properties while it shows a tileset's terrains (the Tileset tab's,
     /// or the one picked in the Library): undo and redo are that
     /// tileset's, so what is changed there is undone there. Every other
-    /// key is the area's, as over Properties showing anything else.
+    /// key is the level's, as over Properties showing anything else.
     TilesetProperties,
     /// The Clips tab: undo and redo are the clips file's.
     Clips,
@@ -72,10 +72,10 @@ pub(crate) enum KeyOwner {
 }
 
 impl KeyOwner {
-    /// Whether the area's own keys are acted on: the tools', the tile
+    /// Whether the level's own keys are acted on: the tools', the tile
     /// painter's, Delete, Ctrl+D, F2, F, Esc, Ctrl+A and the axis keys.
-    pub(crate) fn is_area(self) -> bool {
-        matches!(self, Self::Area | Self::Map | Self::TilesetProperties)
+    pub(crate) fn is_level(self) -> bool {
+        matches!(self, Self::Level | Self::Map | Self::TilesetProperties)
     }
 
     /// Whether the editor acts on keys at all: not while the game has
@@ -152,7 +152,7 @@ impl Workbench {
             _ => None,
         };
         own.unwrap_or_else(|| {
-            if !self.area_on_screen() {
+            if !self.level_on_screen() {
                 return KeyOwner::Page;
             }
             let painting = self.viewport.tile_overlay.paint.painting();
@@ -160,20 +160,20 @@ impl Workbench {
             if open.map_edits.path.is_some() && (over_the_map || painting) {
                 KeyOwner::Map
             } else {
-                KeyOwner::Area
+                KeyOwner::Level
             }
         })
     }
 }
 
 impl Workbench {
-    /// Whether what the area's keys change is on screen: a group of the
+    /// Whether what the level's keys change is on screen: a group of the
     /// tab in front holds the 3D or 2D view, or the pointer rests over a
-    /// panel that edits the area (the Area list, Properties). Without
+    /// panel that edits the level (the Level list, Properties). Without
     /// this, Delete over the Mixer deleted an entity no one could see (the
     /// second review pass's N-02).
-    fn area_on_screen(&self) -> bool {
-        matches!(self.pointer_over, Some(Panel::Area | Panel::Properties))
+    fn level_on_screen(&self) -> bool {
+        matches!(self.pointer_over, Some(Panel::Level | Panel::Properties))
             || workspaces::groups(self.shell.tab, self.open_now())
                 .iter()
                 .flatten()

@@ -1,5 +1,5 @@
-//! The Area column: the area's entities as a tree (spec 197; the
-//! approved additions, round 2, `05-area-column*.png`). Clicking one
+//! The Level column: the level's entities as a tree (spec 197; the
+//! approved additions, round 2, `05-level-column*.png`). Clicking one
 //! selects it and shows it in Properties. The column's header holds the
 //! search, Fold everything and a ⋯ menu; a right-click on a row opens its
 //! menu; each row can be folded, and shows its hide and lock switches
@@ -12,17 +12,17 @@ use crate::models::ModelInfo;
 use crate::theme::{self, Accent};
 use crate::tokens::{self, size, text};
 use crate::widgets;
-use area::EntityData;
-use area::builtin::{Light, LightKind, Model};
 use egui::{Color32, Rect, Ui};
+use level::EntityData;
+use level::builtin::{Light, LightKind, Model};
 use reflect::{AssetId, EntityId};
 use std::collections::{BTreeMap, HashSet};
 
-/// How the Area panel shows the area: what's searched for, folded, hidden
+/// How the Level panel shows the level: what's searched for, folded, hidden
 /// and locked. The editor's view only, like the selection: never saved in
-/// the area and never an undo step (decision 0022).
+/// the level and never an undo step (decision 0022).
 #[derive(Debug, Clone, Default)]
-pub(crate) struct AreaPanelState {
+pub(crate) struct LevelPanelState {
     /// Only names containing this are listed (with their parents).
     pub(crate) search: String,
     /// Entities whose children are folded away.
@@ -47,33 +47,33 @@ pub(crate) struct AreaPanelState {
 pub(crate) type InEffect = (HashSet<EntityId>, HashSet<EntityId>);
 
 /// What's hidden and locked in effect, and what it was worked out from:
-/// the area's tree (held, so it can't be another's; it changes whenever a
+/// the level's tree (held, so it can't be another's; it changes whenever a
 /// parent does) and the switches. Worked out again only when one changes
 /// (the second review pass: once anything was hidden or locked, every
 /// frame went through every entity, twice).
 #[derive(Debug, Clone)]
 struct KeptEffect {
-    tree: std::sync::Arc<area::Tree>,
+    tree: std::sync::Arc<level::Tree>,
     hidden: HashSet<EntityId>,
     locked: HashSet<EntityId>,
     in_effect: std::sync::Arc<InEffect>,
 }
 
-/// The Area column's rows (each entity and how deep it is) and what they
-/// were listed from: the area's tree (held, so it can't be another's), the
-/// entities folded, what's searched for and, while searching, the area's
+/// The Level column's rows (each entity and how deep it is) and what they
+/// were listed from: the level's tree (held, so it can't be another's), the
+/// entities folded, what's searched for and, while searching, the level's
 /// revision (names change without the tree). Listed again only when one
 /// changes (the review, BUG-28: every frame listed the whole tree).
 #[derive(Debug, Clone)]
 struct KeptRows {
-    tree: std::sync::Arc<area::Tree>,
+    tree: std::sync::Arc<level::Tree>,
     collapsed: HashSet<EntityId>,
     search: String,
     revision: Option<u64>,
     rows: std::sync::Arc<Vec<(EntityId, usize)>>,
 }
 
-impl AreaPanelState {
+impl LevelPanelState {
     /// The rows of `document`'s tree as this shows it, listed again only
     /// when what they're listed from changes.
     fn rows(&mut self, document: &Document) -> std::sync::Arc<Vec<(EntityId, usize)>> {
@@ -87,7 +87,7 @@ impl AreaPanelState {
         {
             return std::sync::Arc::clone(&kept.rows);
         }
-        let rows = std::sync::Arc::new(tree_rows(document.area(), &tree, self));
+        let rows = std::sync::Arc::new(tree_rows(document.level(), &tree, self));
         self.rows_kept = Some(KeptRows {
             tree,
             collapsed: self.collapsed.clone(),
@@ -99,7 +99,7 @@ impl AreaPanelState {
     }
 }
 
-impl AreaPanelState {
+impl LevelPanelState {
     /// Every entity hidden or locked, counting those under a hidden or
     /// locked one: (hidden, locked). Worked out again only when the tree
     /// or the switches change.
@@ -129,12 +129,12 @@ impl AreaPanelState {
     }
 
     /// [`Self::in_effect`], worked out from `tree`, parents first.
-    fn worked_out(&self, document: &crate::document::Document, tree: &area::Tree) -> InEffect {
-        let area = document.area();
+    fn worked_out(&self, document: &crate::document::Document, tree: &level::Tree) -> InEffect {
+        let level = document.level();
         let mut hidden = HashSet::new();
         let mut locked = HashSet::new();
         for &id in tree.order() {
-            let parent = area.get(id).and_then(|e| e.parent);
+            let parent = level.get(id).and_then(|e| e.parent);
             if self.hidden.contains(&id) || parent.is_some_and(|p| hidden.contains(&p)) {
                 hidden.insert(id);
             }
@@ -165,11 +165,11 @@ enum Toggle {
     Lock,
 }
 
-/// One row of the Area column, 24 tall: an icon, the name, a quiet note
+/// One row of the Level column, 24 tall: an icon, the name, a quiet note
 /// after it, the accent-mixed fill when selected, and the hide and lock
 /// switches at the right (shown while the row is pointed at, or while
 /// they're on). Returns the row's response and which switch was clicked.
-fn area_row(
+fn level_row(
     ui: &mut Ui,
     (icon, icon_color): (Icon, Color32),
     (name, note): (&str, &str),
@@ -333,7 +333,7 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
             });
         return (Icon::Model, theme::kind::MODEL, note);
     }
-    if let Some(sprite) = entity.get::<area::builtin::Sprite>() {
+    if let Some(sprite) = entity.get::<level::builtin::Sprite>() {
         let note = if sprite.sheet.is_some() {
             format!("frame {}", sprite.frame)
         } else {
@@ -359,7 +359,7 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
         );
     }
     if entity.has("Environment") {
-        return (Icon::AreaFile, theme::kind::ENVIRONMENT, "sky, fog".into());
+        return (Icon::LevelFile, theme::kind::ENVIRONMENT, "sky, fog".into());
     }
     // The root of a placed assembly.
     if entity.origin.as_ref().is_some_and(|o| o.path.is_empty()) {
@@ -368,10 +368,10 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
     (Icon::Empty, theme::kind::OTHER, String::new())
 }
 
-/// Something the user asked for in the Area panel. Like Properties, the
-/// panel never changes the area or the selection itself.
+/// Something the user asked for in the Level panel. Like Properties, the
+/// panel never changes the level or the selection itself.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum AreaRequest {
+pub(crate) enum LevelRequest {
     /// Select only this entity (a click).
     Select(EntityId),
     /// Add it to the selection, or take it out (Ctrl+click).
@@ -411,7 +411,7 @@ fn rename_key() -> egui::Id {
     egui::Id::new("area-panel-rename")
 }
 
-/// Starts renaming `id` in the Area panel (F2), with `name` to edit.
+/// Starts renaming `id` in the Level panel (F2), with `name` to edit.
 pub(crate) fn begin_rename(ctx: &egui::Context, id: EntityId, name: &str) {
     ctx.data_mut(|d| d.insert_temp(rename_key(), (id, name.to_string(), true)));
 }
@@ -426,25 +426,25 @@ fn stop_renaming(ctx: &egui::Context) {
     ctx.data_mut(|d| d.remove::<(EntityId, String, bool)>(rename_key()));
 }
 
-/// The Area column: every entity, as a tree. Click to select, Ctrl+click
+/// The Level column: every entity, as a tree. Click to select, Ctrl+click
 /// to add or remove, Shift+click for a range, drag onto another to put it
 /// under that one, or onto empty space to move it to the top level;
 /// double-click to rename; right-click for the row's menu. Returns what
 /// the user asked for.
-pub(crate) fn area_tree(
+pub(crate) fn level_tree(
     ui: &mut Ui,
     document: &Document,
     models: &BTreeMap<AssetId, ModelInfo>,
     accent: Accent,
-    state: &mut AreaPanelState,
-) -> Vec<AreaRequest> {
+    state: &mut LevelPanelState,
+) -> Vec<LevelRequest> {
     let mut requests = Vec::new();
     if state.searching || !state.search.is_empty() {
         search_row(ui, state);
     }
     if let Some(id) = state.reveal {
         // Unfold the way to it, so its row is there to scroll to.
-        for (parent, _) in document.area().ancestors(id) {
+        for (parent, _) in document.level().ancestors(id) {
             state.collapsed.remove(&parent);
         }
     }
@@ -474,7 +474,7 @@ pub(crate) fn area_tree(
             let out = scroll.show_rows(ui, row_h, rows.len(), |ui, range| {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 for &(id, depth) in &rows[range] {
-                    let Some(entity) = document.area().get(id) else {
+                    let Some(entity) = document.level().get(id) else {
                         continue;
                     };
                     ui.horizontal(|ui| {
@@ -514,7 +514,7 @@ pub(crate) fn area_tree(
                 egui::Sense::hover(),
             );
             if let Some(dragged) = empty.dnd_release_payload::<EntityId>() {
-                requests.push(AreaRequest::Reparent {
+                requests.push(LevelRequest::Reparent {
                     entity: *dragged,
                     onto: None,
                 });
@@ -525,7 +525,7 @@ pub(crate) fn area_tree(
 
 /// The search field under the header, while the search is open. Esc
 /// empties and closes it.
-fn search_row(ui: &mut Ui, state: &mut AreaPanelState) {
+fn search_row(ui: &mut Ui, state: &mut LevelPanelState) {
     let opening = state.searching && state.search.is_empty();
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(size::GAP as i8, size::GAP as i8))
@@ -548,9 +548,9 @@ fn search_row(ui: &mut Ui, state: &mut AreaPanelState) {
         });
 }
 
-/// The tools in the Area column's header, from the right: the ⋯ menu,
+/// The tools in the Level column's header, from the right: the ⋯ menu,
 /// Fold everything and the search. Returns a menu command picked.
-pub(crate) fn header_tools(ui: &mut Ui, state: &mut AreaPanelState) -> Option<MenuCommand> {
+pub(crate) fn header_tools(ui: &mut Ui, state: &mut LevelPanelState) -> Option<MenuCommand> {
     let mut picked = None;
     let more = widgets::button::icon(ui, Icon::More, "More of the Area column")
         .on_hover_text("Fold or unfold everything; show or unlock everything");
@@ -608,7 +608,7 @@ pub(crate) fn header_tools(ui: &mut Ui, state: &mut AreaPanelState) -> Option<Me
 }
 
 /// A row's right-click menu (the approved additions, round 2,
-/// `05-area-column-menu.png`): the commands the old Edit and Entity menus
+/// `05-level-column-menu.png`): the commands the old Edit and Entity menus
 /// had. The row right-clicked is selected, so each has something to act
 /// on.
 fn row_menu(ui: &mut Ui) -> Option<MenuCommand> {
@@ -650,31 +650,31 @@ fn row_menu(ui: &mut Ui) -> Option<MenuCommand> {
 /// Every entity with how deep it sits, in the order the panel lists them:
 /// depth-first, parents before children, leaving out what's folded away.
 /// With a search, only names containing it are listed, each with its
-/// parents (folded or not). A loop in a damaged area is cut where it comes
+/// parents (folded or not). A loop in a damaged level is cut where it comes
 /// round again; entities caught in one come last.
 fn tree_rows(
-    area: &area::Area,
-    tree: &area::Tree,
-    state: &AreaPanelState,
+    level: &level::Level,
+    tree: &level::Tree,
+    state: &LevelPanelState,
 ) -> Vec<(EntityId, usize)> {
     let search = state.search.trim().to_lowercase();
     // With a search: the matches and everything above them.
     let wanted: Option<HashSet<EntityId>> = (!search.is_empty()).then(|| {
         let mut wanted = HashSet::new();
-        for (id, entity) in area.iter() {
+        for (id, entity) in level.iter() {
             if entity.name.to_lowercase().contains(&search) {
                 let mut at = Some(id);
                 while let Some(e) = at {
                     if !wanted.insert(e) {
                         break;
                     }
-                    at = area.get(e).and_then(|d| d.parent);
+                    at = level.get(e).and_then(|d| d.parent);
                 }
             }
         }
         wanted
     });
-    let mut rows = Vec::with_capacity(area.len());
+    let mut rows = Vec::with_capacity(level.len());
     let mut seen = HashSet::new();
     let mut todo: Vec<(EntityId, usize)> = tree
         .children(None)
@@ -703,7 +703,8 @@ fn tree_rows(
     if wanted.is_none() {
         // Entities caught in a loop: below nothing reachable, but listed.
         rows.extend(
-            area.iter()
+            level
+                .iter()
                 .map(|(id, _)| id)
                 .filter(|&id| !seen.contains(&id) && tree.in_loop(id))
                 .map(|id| (id, 0)),
@@ -714,7 +715,7 @@ fn tree_rows(
 
 /// The ▸ or ▾ before a row with children, which folds them away or
 /// shows them; room for one otherwise.
-fn fold_button(ui: &mut Ui, id: EntityId, has_children: bool, state: &mut AreaPanelState) {
+fn fold_button(ui: &mut Ui, id: EntityId, has_children: bool, state: &mut LevelPanelState) {
     let (rect, response) = ui.allocate_exact_size(
         egui::vec2(size::TREE_FOLD_W, size::row_h()),
         egui::Sense::click(),
@@ -762,8 +763,8 @@ fn entity_row(
     accent: Accent,
     (id, entity): (EntityId, &EntityData),
     shown: Shown,
-    state: &mut AreaPanelState,
-    requests: &mut Vec<AreaRequest>,
+    state: &mut LevelPanelState,
+    requests: &mut Vec<LevelRequest>,
 ) {
     if let Some((renamed, mut text, focus)) = renaming(ui.ctx()).filter(|(r, ..)| *r == id) {
         let edit = ui.add(egui::TextEdit::singleline(&mut text).desired_width(f32::INFINITY));
@@ -781,7 +782,7 @@ fn entity_row(
         } else if edit.lost_focus() || enter {
             stop_renaming(ui.ctx());
             if text != entity.name {
-                requests.push(AreaRequest::Rename {
+                requests.push(LevelRequest::Rename {
                     entity: renamed,
                     name: text,
                 });
@@ -799,7 +800,7 @@ fn entity_row(
         shown,
     };
     let selected = document.selection.contains(id);
-    let (response, toggled) = area_row(
+    let (response, toggled) = level_row(
         ui,
         (icon, color),
         (&entity.name, &note),
@@ -809,11 +810,11 @@ fn entity_row(
     );
     if response.secondary_clicked() && !selected {
         // The menu acts on the selection: the row pointed at becomes it.
-        requests.push(AreaRequest::Select(id));
+        requests.push(LevelRequest::Select(id));
     }
     response.context_menu(|ui| {
         if let Some(command) = row_menu(ui) {
-            requests.push(AreaRequest::Command(command));
+            requests.push(LevelRequest::Command(command));
         }
     });
     let switched = match toggled {
@@ -833,7 +834,7 @@ fn entity_row(
     if let Some(dropped) = response.dnd_release_payload::<crate::library::LibraryDrag>()
         && let Some(asset) = dropped.0.id.filter(|_| dropped.0.kind.placeable())
     {
-        requests.push(AreaRequest::PlaceUnder { asset, parent: id });
+        requests.push(LevelRequest::PlaceUnder { asset, parent: id });
     } else if from_library.is_some() {
         ui.painter().rect_stroke(
             response.rect,
@@ -843,7 +844,7 @@ fn entity_row(
         );
     } else if let Some(dragged) = response.dnd_release_payload::<EntityId>() {
         if *dragged != id {
-            requests.push(AreaRequest::Reparent {
+            requests.push(LevelRequest::Reparent {
                 entity: *dragged,
                 onto: Some(id),
             });
@@ -864,11 +865,11 @@ fn entity_row(
         begin_rename(ui.ctx(), id, &entity.name);
     } else if response.clicked() {
         requests.push(if modifiers.command {
-            AreaRequest::Toggle(id)
+            LevelRequest::Toggle(id)
         } else if modifiers.shift {
-            AreaRequest::SelectRange(id)
+            LevelRequest::SelectRange(id)
         } else {
-            AreaRequest::Select(id)
+            LevelRequest::Select(id)
         });
     }
 }
@@ -876,7 +877,7 @@ fn entity_row(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use area::Origin;
+    use level::Origin;
 
     fn color_of(entity: &EntityData) -> Color32 {
         looks(entity, &BTreeMap::new()).1
@@ -884,7 +885,7 @@ mod tests {
 
     #[test]
     fn a_brush_shows_its_shape_s_icon_and_name() {
-        let ramp = area::builtin::Brush::of_shape(mesh::Shape::Ramp);
+        let ramp = level::builtin::Brush::of_shape(mesh::Shape::Ramp);
         let (icon, _, note) = looks(&EntityData::new("Ramp_01").with(&ramp), &BTreeMap::new());
         assert_eq!((icon, note.as_str()), (Icon::ShapeRamp, "Ramp"));
     }
@@ -906,7 +907,7 @@ mod tests {
             .insert("Camera".into(), reflect::ComponentData::default());
         assert_eq!(color_of(&camera), theme::kind::CAMERA);
         assert_eq!(color_of(&EntityData::new("Empty")), theme::kind::OTHER);
-        let walker = EntityData::new("Walker").with(&area::builtin::Sprite::default());
+        let walker = EntityData::new("Walker").with(&level::builtin::Sprite::default());
         assert_eq!(color_of(&walker), theme::kind::SPRITE);
         assert_eq!(looks(&walker, &BTreeMap::new()).2, "no sheet");
     }
@@ -941,7 +942,7 @@ mod tests {
 #[cfg(test)]
 mod rows_tests {
     use super::*;
-    use area::Edit;
+    use level::Edit;
     use std::sync::Arc;
 
     /// A document with a room holding a lamp, and a box.
@@ -967,17 +968,17 @@ mod rows_tests {
         (d, room, lamp)
     }
 
-    /// BUG-28: the Area column listed the whole tree again every frame.
+    /// BUG-28: the Level column listed the whole tree again every frame.
     #[test]
     fn the_rows_are_listed_again_only_when_what_they_show_changes() {
         let (mut d, room, lamp) = room();
-        let mut state = AreaPanelState::default();
+        let mut state = LevelPanelState::default();
         let rows = state.rows(&d);
         assert!(rows.iter().any(|&(id, depth)| id == lamp && depth == 1));
         for _ in 0..3 {
             assert!(Arc::ptr_eq(&rows, &state.rows(&d)), "kept");
         }
-        // Renaming changes the area, not its tree: still kept.
+        // Renaming changes the level, not its tree: still kept.
         d.edit(
             "Rename",
             vec![Edit::Rename {

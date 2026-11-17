@@ -3,14 +3,14 @@
 //! never every frame.
 //!
 //! The document says when any brush may have changed
-//! ([`crate::document::Document::brushes`]); only then are the area's
+//! ([`crate::document::Document::brushes`]); only then are the level's
 //! brushes looked at again, each by a fingerprint of its values, and only
 //! a brush whose values are new is cut into triangles. Brushes with the
 //! same values (a hundred copies of one box) share one model, which the
 //! renderer uploads once and draws in one go.
 
-use area::builtin::Brush;
 use glam::{Mat4, Vec3};
+use level::builtin::Brush;
 use reflect::{Component, ComponentData, EntityId, IdMap, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -172,7 +172,7 @@ pub struct ViewBrush {
     pub model: Arc<BrushModel>,
     /// Where its entity is in the world.
     pub transform: Mat4,
-    /// Its number for picking, as [`crate::area_view::ViewModel::pick`].
+    /// Its number for picking, as [`crate::level_view::ViewModel::pick`].
     pub pick: u32,
 }
 
@@ -187,7 +187,7 @@ impl PartialEq for ViewBrush {
     }
 }
 
-/// Every brush in the open area, cut into triangles, kept until the
+/// Every brush in the open level, cut into triangles, kept until the
 /// document says a brush may have changed, and then made again only for
 /// the brushes it names.
 #[derive(Debug, Default)]
@@ -210,7 +210,7 @@ pub(crate) struct BrushModels {
 }
 
 impl BrushModels {
-    /// Brings the models up to date with `document`'s area: nothing to do
+    /// Brings the models up to date with `document`'s level: nothing to do
     /// when its brush revision is the one already seen; otherwise only the
     /// brushes it says may have changed are looked at again (all of them
     /// after an undo, say), each by its fingerprint. Returns whether
@@ -223,7 +223,7 @@ impl BrushModels {
         self.seen = Some(document.brushes());
         let changes = document.take_brush_changes();
         let adopted = self.adopted.take();
-        let area = document.area();
+        let level = document.level();
         if changes.all || first {
             // Every brush again, keeping the models made so far to hand:
             // an undo brings back values whose model is already made.
@@ -233,7 +233,7 @@ impl BrushModels {
                 .map(|(key, (model, _))| (key, model))
                 .collect();
             self.by_entity.clear();
-            for (id, entity) in area.iter() {
+            for (id, entity) in level.iter() {
                 if let Some(data) = entity.components.get(Brush::NAME) {
                     self.hold(id, data, &spare);
                 }
@@ -245,7 +245,7 @@ impl BrushModels {
                 .by_entity
                 .keys()
                 .copied()
-                .filter(|id| !area.contains(*id))
+                .filter(|id| !level.contains(*id))
                 .collect();
             for id in gone {
                 self.let_go(id);
@@ -255,7 +255,7 @@ impl BrushModels {
             if Some(id) == adopted {
                 continue;
             }
-            match area.get(id).and_then(|e| e.components.get(Brush::NAME)) {
+            match level.get(id).and_then(|e| e.components.get(Brush::NAME)) {
                 Some(data) => self.hold(id, data, &HashMap::new()),
                 None => self.let_go(id),
             }

@@ -6,7 +6,7 @@
 //! 1. every file Solis reads is read (an older one upgraded, as opening
 //!    it would), and any that fails is reported;
 //! 2. the game's code is checked;
-//! 3. each recording in `recordings/checks/` is played back in the area it
+//! 3. each recording in `recordings/checks/` is played back in the level it
 //!    names, and must match on every tick.
 //!
 //! The report is plain text; anything that changed is a failure, and the
@@ -156,20 +156,20 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             animation::frames_file::MAX_BYTES as u64,
         ),
         "solarea" | "solassembly" => (
-            &area::text::FORMAT,
+            &level::text::FORMAT,
             |text| {
-                // Made once for every area the check reads.
+                // Made once for every level the check reads.
                 static REGISTRY: std::sync::OnceLock<Option<reflect::Registry>> =
                     std::sync::OnceLock::new();
                 let registry = REGISTRY
-                    .get_or_init(|| area::builtin::registry().ok())
+                    .get_or_init(|| level::builtin::registry().ok())
                     .as_ref()
                     .ok_or("Solis's own components couldn't be registered")?;
-                area::text::read_file(text, registry)
+                level::text::read_file(text, registry)
                     .map(drop)
                     .map_err(|e| e.to_string())
             },
-            area::text::MAX_BYTES as u64,
+            level::text::MAX_BYTES as u64,
         ),
         "solsound" => (
             &sound::event::FORMAT,
@@ -190,13 +190,13 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             sound::mixer::MAX_BYTES as u64,
         ),
         "solpix" => (
-            &area::pixels::FORMAT,
+            &level::pixels::FORMAT,
             |text| {
-                area::pixels::read(text)
+                level::pixels::read(text)
                     .map(drop)
                     .map_err(|e| e.to_string())
             },
-            area::pixels::MAX_BYTES as u64,
+            level::pixels::MAX_BYTES as u64,
         ),
         "solinput" => (
             &input::BINDINGS_FORMAT,
@@ -453,7 +453,7 @@ fn check_recordings(
     }
 }
 
-/// Plays one recording back in the area it names, with nothing but the
+/// Plays one recording back in the level it names, with nothing but the
 /// project's files. The ticks it matched on, or why it didn't.
 fn play_back(
     root: &Path,
@@ -467,19 +467,19 @@ fn play_back(
         .map_err(|e| e.to_string())
         .and_then(|b| String::from_utf8(b).map_err(|_| "it isn't text".to_string()))?;
     let recording = input::Recording::read(&text).map_err(|e| e.to_string())?;
-    let area_path = recording.area.clone().ok_or(
+    let level_path = recording.level.clone().ok_or(
         "it doesn't say which area it was recorded in (it was made before recordings did): \
          record it again",
     )?;
-    let mut w = workbench_for(root, db, program, made_by, &area_path, read)?;
+    let mut w = workbench_for(root, db, program, made_by, &level_path, read)?;
     w.replay(&text, &path.display().to_string());
-    // The area must start as it did when recorded: otherwise the build
+    // The level must start as it did when recorded: otherwise the build
     // isn't what changed.
     if w.world()
         .is_some_and(|world| world.checksum() != recording.start)
     {
         return Err(format!(
-            "its area, {area_path}, isn't as it was when this was recorded (changed since, or \
+            "its area, {level_path}, isn't as it was when this was recorded (changed since, or \
              recorded with unsaved changes): record it again"
         ));
     }
@@ -541,7 +541,7 @@ impl Saves {
 }
 
 /// The project's assemblies, read once for a whole check.
-pub(crate) type Assemblies = Vec<(reflect::AssetId, std::sync::Arc<area::text::AreaFile>)>;
+pub(crate) type Assemblies = Vec<(reflect::AssetId, std::sync::Arc<level::text::LevelFile>)>;
 
 /// What a check reads once for all its recordings: the assemblies, and
 /// the sprite sheets with the tile maps and their pictures.
@@ -554,20 +554,20 @@ pub(crate) struct Read {
 /// A workbench with the project at `root` open as the editor would have
 /// it, headless: its code, input actions, assemblies, Library and sprite
 /// sheets (with tilesets, tile maps and pictures, so a 2D game has its
-/// walls), and the area at `area_path` (inside the assets, `/` between
+/// walls), and the level at `level_path` (inside the assets, `/` between
 /// folders).
 pub(crate) fn workbench_for(
     root: &Path,
     db: &asset_db::AssetDb,
     program: Option<std::sync::Arc<script::Compiled>>,
     made_by: &str,
-    area_path: &str,
+    level_path: &str,
     read: &mut Read,
 ) -> Result<editor::Workbench, String> {
     let assets = db.project().assets();
-    let area_file = assets.join(area_path);
-    if !input::Recording::is_plain_area_path(area_path) || !area_file.starts_with(&assets) {
-        return Err(format!("its area, {area_path}, isn't in the assets"));
+    let level_file = assets.join(level_path);
+    if !input::Recording::is_plain_level_path(level_path) || !level_file.starts_with(&assets) {
+        return Err(format!("its area, {level_path}, isn't in the assets"));
     }
     let mut w = editor::Workbench::new(editor::AppInfo {
         name: crate::branding::APP_NAME.to_string(),
@@ -599,7 +599,8 @@ pub(crate) fn workbench_for(
             // One the editor can't read is left out, as the editor does
             // (the Files step reports it); only a game that uses it fails.
             .filter_map(|(id, file)| {
-                let read = crate::area_file::AreaFiles::read(&file, &w.document().registry).ok()?;
+                let read =
+                    crate::level_file::LevelFiles::read(&file, &w.document().registry).ok()?;
                 Some((id, std::sync::Arc::new(read)))
             })
             .collect()
@@ -611,10 +612,10 @@ pub(crate) fn workbench_for(
     w.set_folders(folders);
     let sheets = read.sheets.get_or_insert_with(|| read_sheets(db));
     w.set_sprite_sheets(sheets.clone());
-    let file = crate::area_file::AreaFiles::read(&area_file, &w.document().registry)
-        .map_err(|why| format!("its area, {area_path}: {why}"))?;
-    let area = w.expand_file(&file).map_err(|e| e.to_string())?;
-    w.open_area(area, area_file);
+    let file = crate::level_file::LevelFiles::read(&level_file, &w.document().registry)
+        .map_err(|why| format!("its area, {level_path}: {why}"))?;
+    let level = w.expand_file(&file).map_err(|e| e.to_string())?;
+    w.open_level(level, level_file);
     Ok(w)
 }
 

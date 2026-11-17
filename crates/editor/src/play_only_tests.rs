@@ -40,13 +40,13 @@ fn quitting_at(play_only: bool, tick: u32) -> Workbench {
         assets: "/projects/farm/assets".into(),
     }));
     w.set_program(Some(program));
-    let mut entity = area::EntityData::new("Quitter");
+    let mut entity = level::EntityData::new("Quitter");
     entity
         .components
         .insert("Quitter".into(), reflect::ComponentData::default());
-    let mut area = area::Area::new();
-    area.spawn(entity);
-    w.open_area(area, std::path::PathBuf::from("farm.solarea"));
+    let mut level = level::Level::new();
+    level.spawn(entity);
+    w.open_level(level, std::path::PathBuf::from("farm.solarea"));
     w
 }
 
@@ -174,9 +174,9 @@ fn code_with_mistakes_says_why_the_game_can_t_start() {
 fn a_game_with_no_code_is_ready_once_checked_and_plays() {
     let mut w = Workbench::new(info());
     w.set_play_only();
-    let mut area = area::Area::new();
-    area.spawn(area::EntityData::new("Rock"));
-    w.open_area(area, std::path::PathBuf::from("farm.solarea"));
+    let mut level = level::Level::new();
+    level.spawn(level::EntityData::new("Rock"));
+    w.open_level(level, std::path::PathBuf::from("farm.solarea"));
     assert!(!w.code_ready(), "not checked yet");
     w.set_program(None);
     assert!(w.code_ready());

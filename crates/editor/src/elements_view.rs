@@ -1,5 +1,5 @@
 //! The Elements panel (decision 0089): the open screen's pieces as a tree
-//! in drawing order, like the Area panel. Click to pick (Shift or Ctrl
+//! in drawing order, like the Level panel. Click to pick (Shift or Ctrl
 //! for more), drag a row onto another to move it there (into a container
 //! when dropped on its middle), the eye hides a piece while editing and
 //! the lock stops it being picked on the canvas. Code in the view is

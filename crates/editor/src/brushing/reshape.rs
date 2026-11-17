@@ -6,7 +6,7 @@
 //! A drag works from the brush as it was when the drag began: each frame
 //! the change so far is made again on that copy, in the brush's own
 //! space, so only the brush being dragged is drawn anew. Nothing reaches
-//! the area until the drag is let go: then the brush is checked (only
+//! the level until the drag is let go: then the brush is checked (only
 //! the faces touching what moved, [`mesh::check_moved`]) and either
 //! becomes one undo step or snaps back, and the status bar says why.
 

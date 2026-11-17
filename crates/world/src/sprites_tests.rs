@@ -5,9 +5,9 @@
 use super::*;
 use crate::TICK;
 use animation::{Clip, ClipFrame, Direction};
-use area::Area;
-use area::EntityData;
-use area::builtin::Transform;
+use level::EntityData;
+use level::Level;
+use level::builtin::Transform;
 use reflect::AssetRef;
 
 /// A sheet with two clips: walk (4 frames of 100 ms, over and over, a
@@ -51,19 +51,19 @@ fn walker(sheet: AssetId) -> Sprite {
 }
 
 fn world_with(sprites: &[Sprite]) -> (World, Vec<EntityId>) {
-    let mut area = Area::new();
+    let mut level = Level::new();
     let ids = sprites
         .iter()
         .enumerate()
         .map(|(i, s)| {
-            area.spawn(
+            level.spawn(
                 EntityData::new(&format!("S{i}"))
                     .with(&Transform::default())
                     .with(s),
             )
         })
         .collect();
-    (World::from_area(&area), ids)
+    (World::from_level(&level), ids)
 }
 
 fn time_of(world: &World, id: EntityId) -> f32 {
@@ -190,12 +190,12 @@ fn play_clip_carries_on_the_same_clip_and_starts_another() {
 fn the_same_ticks_give_the_same_checksum_and_playback_is_in_it() {
     let (sheet, sets) = sets();
     let run = |ticks: usize| {
-        let mut area = Area::new();
+        let mut level = Level::new();
         for n in 1..=2 {
             let id = EntityId(reflect::Id::from_raw(n).unwrap());
-            area.insert(id, EntityData::new("W").with(&walker(sheet)));
+            level.insert(id, EntityData::new("W").with(&walker(sheet)));
         }
-        let mut world = World::from_area(&area);
+        let mut world = World::from_level(&level);
         world.set_clip_sets(Arc::clone(&sets));
         for _ in 0..ticks {
             world.step_sprites(TICK);
@@ -209,9 +209,9 @@ fn the_same_ticks_give_the_same_checksum_and_playback_is_in_it() {
 #[test]
 fn an_edit_while_playing_keeps_the_game_s_playback_unless_it_changed_it() {
     let (sheet, sets) = sets();
-    let mut area = Area::new();
-    let id = area.spawn(EntityData::new("W").with(&walker(sheet)));
-    let mut world = World::from_area(&area);
+    let mut level = Level::new();
+    let id = level.spawn(EntityData::new("W").with(&walker(sheet)));
+    let mut world = World::from_level(&level);
     world.set_clip_sets(sets);
     for _ in 0..9 {
         world.step_sprites(TICK);
@@ -222,12 +222,12 @@ fn an_edit_while_playing_keeps_the_game_s_playback_unless_it_changed_it() {
         tint: [1.0, 0.5, 0.5],
         ..walker(sheet)
     };
-    area.get_mut(id).unwrap().set(&tinted);
-    world.update(&area, [(id, false)]);
+    level.get_mut(id).unwrap().set(&tinted);
+    world.update(&level, [(id, false)]);
     assert_eq!(time_of(&world, id), walked);
     assert_eq!(world.get::<Sprite>(id).unwrap().tint, [1.0, 0.5, 0.5]);
     // A rebuild keeps it too, and the clip sets.
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert_eq!(time_of(&world, id), walked);
     assert!(!world.clip_sets().is_empty());
     // Choosing another clip in the editor: the editor's choice.
@@ -235,8 +235,8 @@ fn an_edit_while_playing_keeps_the_game_s_playback_unless_it_changed_it() {
         clip: "swing".into(),
         ..tinted
     };
-    area.get_mut(id).unwrap().set(&swinging);
-    world.update(&area, [(id, false)]);
+    level.get_mut(id).unwrap().set(&swinging);
+    world.update(&level, [(id, false)]);
     let s = world.get::<Sprite>(id).unwrap();
     assert_eq!((s.clip.as_str(), s.time), ("swing", 0.0));
 }

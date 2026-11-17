@@ -7,7 +7,7 @@ use super::{Save, objects_of, one_line};
 use crate::console::LogLevel;
 use crate::game_code::{GameEdit, PlayWorld, ViewCache};
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::Area;
+use level::Level;
 use reflect::EntityId;
 use std::sync::Arc;
 
@@ -30,7 +30,7 @@ struct Loaded {
 impl Workbench {
     /// Loads a save game (`text`, from the file called `name`): the game
     /// is put back exactly as it was saved, and carries on from there.
-    /// Plays first if nothing is running. Stop still puts the area back
+    /// Plays first if nothing is running. Stop still puts the level back
     /// as it was before Play. The editor gets the mouse and keys back (a
     /// load from the Play menu).
     pub fn load_game(&mut self, text: &str, name: &str) {
@@ -44,7 +44,7 @@ impl Workbench {
     }
 
     fn load_game_with(&mut self, text: &str, name: &str, keep_input: bool) {
-        let Some((mut save, area, values, bindings)) = self.read_for_loading(text, name) else {
+        let Some((mut save, level, values, bindings)) = self.read_for_loading(text, name) else {
             return;
         };
         // An older save loads, saying what couldn't be carried over.
@@ -55,14 +55,14 @@ impl Workbench {
         // out, and nothing queued from before it plays after.
         self.plays += 1;
         self.open.game_sounds.clear();
-        let mut world = world_of_save(&area, &mut save);
+        let mut world = world_of_save(&level, &mut save);
         if self.open.playing.is_none() {
             self.play();
         }
         if self.open.playing.is_none() {
             return;
         }
-        // The area as it was saved, for the editor's panels; not undone
+        // The level as it was saved, for the editor's panels; not undone
         // steps, and Stop still goes back to before Play.
         if keep_input {
             // What's held now isn't held in the loaded game.
@@ -70,7 +70,7 @@ impl Workbench {
         } else {
             self.give_back_input();
         }
-        self.open.document.replace_by_game(&area);
+        self.open.document.replace_by_game(&level);
         let _ = self.open.document.take_changes();
         let mut view = ViewCache::default();
         // The player's settings aren't the game's: a load keeps them.
@@ -78,7 +78,7 @@ impl Workbench {
         // Game code starts on a world of its own, thrown away after: what
         // starts do (spawn, move, set the seed) already happened in the
         // saved game, so they mustn't happen again on top of it.
-        let mut scratch = world::World::from_area_without_physics(&area);
+        let mut scratch = world::World::from_level_without_physics(&level);
         let mut scratch_view = ViewCache::default();
         let (mut game, _) = self.start_game_saying(&mut scratch, &mut scratch_view, false);
         drop(scratch);
@@ -86,7 +86,7 @@ impl Workbench {
         // The running components take their saved values.
         if let Some(game) = &mut game {
             let mut host = PlayWorld::new(&mut world, &mut view, save.time);
-            self.give_saved_values(game, &mut host, &area, &values, name);
+            self.give_saved_values(game, &mut host, &level, &values, name);
             pending.extend(std::mem::take(&mut host.edits));
             // And the game-wide objects theirs (decision 0080).
             self.give_saved_objects(game, &save.objects, name);
@@ -103,13 +103,13 @@ impl Workbench {
     }
 
     /// The save in `text` (from the file called `name`) read, with its
-    /// area, its running components' values and its input actions; none,
+    /// level, its running components' values and its input actions; none,
     /// saying why in the Console, when it can't be loaded here.
     fn read_for_loading(
         &mut self,
         text: &str,
         name: &str,
-    ) -> Option<(Save, Area, Area, input::Bindings)> {
+    ) -> Option<(Save, Level, Level, input::Bindings)> {
         let save = match Save::read(text) {
             Ok(save) => save,
             Err(why) => {
@@ -130,11 +130,11 @@ impl Workbench {
             return None;
         }
         let registry = &self.open.document.registry;
-        let (area, values) = match (
-            area::text::read(&save.area, registry),
-            area::text::read(&save.values, registry),
+        let (level, values) = match (
+            level::text::read(&save.level, registry),
+            level::text::read(&save.values, registry),
         ) {
-            (Ok(area), Ok(values)) => (area, values),
+            (Ok(level), Ok(values)) => (level, values),
             (Err(why), _) | (_, Err(why)) => {
                 self.log(LogLevel::Error, format!("Couldn't load {name}: {why}."));
                 return None;
@@ -150,11 +150,11 @@ impl Workbench {
                 return None;
             }
         };
-        Some((save, area, values, bindings))
+        Some((save, level, values, bindings))
     }
 
     /// The running components take their saved `values`: only values for
-    /// components the saved `area` has on that entity (which are what's
+    /// components the saved `level` has on that entity (which are what's
     /// running), so a hand-made save can't give an entity a component
     /// this way. Values of components the code no longer has are left
     /// out, said once each; the starts' failures are told.
@@ -162,14 +162,14 @@ impl Workbench {
         &mut self,
         game: &mut script::Game,
         host: &mut PlayWorld<'_>,
-        area: &Area,
-        values: &Area,
+        level: &Level,
+        values: &Level,
         name_shown: &str,
     ) {
         let components: Vec<(EntityId, String, reflect::ComponentData)> = values
             .iter()
             .flat_map(|(id, data)| {
-                let has = area.get(id).map(|e| &e.components);
+                let has = level.get(id).map(|e| &e.components);
                 data.components
                     .iter()
                     .filter(move |(n, _)| has.is_some_and(|c| c.contains_key(*n)))
@@ -197,7 +197,7 @@ impl Workbench {
         }
         let failures = game.sync_many(components.iter().map(|(e, n, d)| (*e, n.as_str(), d)), host);
         for failure in failures {
-            let text = crate::game_code::failure_text(self.open.document.area(), &failure);
+            let text = crate::game_code::failure_text(self.open.document.level(), &failure);
             self.log(LogLevel::Error, text);
         }
     }
@@ -277,13 +277,13 @@ impl Workbench {
     }
 }
 
-/// The world as `save` has it, built from its `area`: each entity where
+/// The world as `save` has it, built from its `level`: each entity where
 /// the game had it (noted as the game's move, as in the saved game),
 /// physics built from each body's place and motion as saving built the
 /// running game's, the clock, seed, speed and day, projectiles, animators
 /// and tile maps. Takes those last three out of `save`.
-fn world_of_save(area: &Area, save: &mut Save) -> world::World {
-    let mut world = world::World::from_area_without_physics(area);
+fn world_of_save(level: &Level, save: &mut Save) -> world::World {
+    let mut world = world::World::from_level_without_physics(level);
     for (id, t) in &save.places {
         world.set_transform(*id, *t);
     }

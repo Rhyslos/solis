@@ -7,9 +7,9 @@ use crate::brushing::draw::{Draw, Planned};
 use crate::brushing::list::{Answer, List};
 use crate::panel::Panel;
 use crate::workbench::Workbench;
-use area::builtin::{Brush, Transform};
-use area::{Edit, EntityData};
 use egui::{Key, Modifiers};
+use level::builtin::{Brush, Transform};
+use level::{Edit, EntityData};
 use mesh::Shape;
 use reflect::{Component, EntityId, Value};
 use std::sync::Arc;
@@ -49,7 +49,7 @@ impl Workbench {
             .draw
             .as_ref()
             .is_some_and(Draw::is_under_way);
-        if !self.keys.is_area()
+        if !self.keys.is_level()
             || !over_a_view
             || drawing
             || self.viewport.tile_overlay.paint.allowed
@@ -119,7 +119,7 @@ impl Workbench {
                 })
                 .with(&brush),
         );
-        self.open.area_panel.reveal = Some(id);
+        self.open.level_panel.reveal = Some(id);
         id
     }
 
@@ -131,7 +131,7 @@ impl Workbench {
         let highest = self
             .open
             .document
-            .area()
+            .level()
             .iter()
             .filter_map(|(_, e)| e.name.strip_prefix(&start)?.parse::<u32>().ok())
             .max()
@@ -149,7 +149,7 @@ impl Workbench {
             return None;
         };
         let shape = Shape::from_name(name)?;
-        let brush = self.open.document.area().get(entity)?.get::<Brush>()?;
+        let brush = self.open.document.level().get(entity)?.get::<Brush>()?;
         let was = brush.mesh.bounds();
         let size = was.map_or(shape.standard().size, |b| b.size());
         let mut mesh = shape.build(&crate::brushing::settings_for(shape, size));

@@ -44,7 +44,7 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
         group!(
             Some("Project"),
             [
-                big(Icon::Save, "Save", C::SaveArea),
+                big(Icon::Save, "Save", C::SaveLevel),
                 big(Icon::Build, "Build", C::ExportPlaytest),
             ]
         ),

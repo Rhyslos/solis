@@ -15,9 +15,9 @@
 
 use crate::tile_maps::MapState;
 use crate::{Id, World};
-use area::builtin::{Collider2D, Shape2D, TileMap as TileMapComponent};
-use area::pixels::PixelSettings;
 use glam::{Vec2, Vec3};
+use level::builtin::{Collider2D, Shape2D, TileMap as TileMapComponent};
+use level::pixels::PixelSettings;
 use physics::flat::{FlatCollider, FlatShape};
 use reflect::{AssetId, EntityId};
 use std::collections::HashMap;

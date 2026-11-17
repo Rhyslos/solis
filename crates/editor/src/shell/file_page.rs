@@ -20,7 +20,7 @@ use egui::{Align2, CornerRadius, Rect, Response, Sense, Ui, WidgetInfo, pos2, ve
 pub(crate) enum FileItem {
     /// Leaves File for the tab that was in front.
     Back,
-    /// Shows one of the pages in the page area.
+    /// Shows one of the pages in the page level.
     Show(Page),
     /// Does a command.
     Do(ShellCommand),
@@ -39,7 +39,7 @@ pub(crate) fn blocks() -> Vec<((), Vec<Entry<Row>>)> {
             (),
             vec![
                 item(Icon::ChevronLeft, "Back to editor", FileItem::Back),
-                item(Icon::Save, "Save all", FileItem::Do(C::SaveArea)),
+                item(Icon::Save, "Save all", FileItem::Do(C::SaveLevel)),
             ],
         ),
         (

@@ -1,12 +1,12 @@
 //! The editor window: opens it with eframe (winit + wgpu), restores the
 //! settings saved last time, and hands each frame to the workbench.
 
-use crate::area_file::{AreaFiles, Purpose};
 use crate::branding;
 use crate::cli::Sample;
 use crate::external::{External, Handed, open_externally};
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, FolderFor, Importer};
+use crate::level_file::{LevelFiles, Purpose};
 use crate::project::Projects;
 use asset_db::Change;
 use editor::{
@@ -113,7 +113,7 @@ struct App {
     game_audio: crate::game_audio::GameAudio,
     /// The open project and its assets.
     projects: Projects,
-    /// Models being read to be placed in the area when they arrive (the
+    /// Models being read to be placed in the level when they arrive (the
     /// rest being read are reloads).
     to_place: HashSet<AssetId>,
     /// The Library's thumbnails.
@@ -129,12 +129,12 @@ struct App {
     /// Assemblies that couldn't be read ahead for the Library's listing:
     /// not tried again until the listing changes.
     unreadable: HashSet<AssetId>,
-    /// The open area's file: saving, opening, and changes on disk.
+    /// The open level's file: saving, opening, and changes on disk.
     /// The Open window for a recording of play.
     recordings: crate::play_files::RecordingDialog,
     /// Reads the gamepad.
     gamepads: crate::gamepad::Gamepads,
-    area_files: AreaFiles,
+    level_files: LevelFiles,
     /// Actions waiting for a Save window to close (Save, then quit).
     queued: VecDeque<WorkbenchAction>,
     /// The window title last set, to change it only when it changes.
@@ -244,7 +244,7 @@ impl App {
             rust_note: None,
             listing: asset_db::Listing::default(),
             unreadable: HashSet::new(),
-            area_files: AreaFiles::default(),
+            level_files: LevelFiles::default(),
             recordings: crate::play_files::RecordingDialog::default(),
             gamepads: crate::gamepad::Gamepads::new(),
             queued: VecDeque::new(),
@@ -437,7 +437,7 @@ impl App {
 
     fn open_project(&mut self, root: &Path, create: bool) {
         // Opening the open project again changes nothing: going through
-        // with it would empty the viewport and stop watching the area.
+        // with it would empty the viewport and stop watching the level.
         if self
             .projects
             .root()
@@ -464,7 +464,7 @@ impl App {
                 }
                 self.game_code.forget();
                 self.to_place.clear();
-                self.area_files.forget();
+                self.level_files.forget();
                 let assets = opened.info.assets.clone();
                 self.workbench.set_project(Some(opened.info));
                 self.workbench
@@ -691,7 +691,7 @@ impl App {
                             format!("Couldn't read the changed assembly: {why}; copies stay as they were."),
                         );
                     }
-                    self.load_area_models();
+                    self.load_level_models();
                     continue;
                 }
                 Change::Changed(id) => {
@@ -730,10 +730,10 @@ impl App {
                 _ => {}
             }
         }
-        // A model the area uses that was missing may be back (from the
+        // A model the level uses that was missing may be back (from the
         // Recycle Bin, a Git pull): it's read now, not on the next opening.
         if changes.iter().any(|c| matches!(c, Change::Added(_))) {
-            self.load_area_models();
+            self.load_level_models();
         }
     }
 
@@ -803,13 +803,13 @@ impl App {
         }
     }
 
-    /// Starts reading every model the open area uses that isn't loaded
-    /// yet (after opening or reloading an area).
-    fn load_area_models(&mut self) {
+    /// Starts reading every model the open level uses that isn't loaded
+    /// yet (after opening or reloading a level).
+    fn load_level_models(&mut self) {
         let Some(db) = self.projects.db() else { return };
         let wanted: Vec<AssetId> = models_wanted(
-            self.workbench.document().area(),
-            self.workbench.assemblies().values().map(|file| &file.area),
+            self.workbench.document().level(),
+            self.workbench.assemblies().values().map(|file| &file.level),
         )
         .into_iter()
         .filter(|id| !self.workbench.has_model(*id))
@@ -826,9 +826,9 @@ impl App {
     }
 
     /// `file` as text, with the asset paths for comments.
-    fn file_text(&self, file: &area::text::AreaFile) -> String {
+    fn file_text(&self, file: &level::text::LevelFile) -> String {
         let db = self.projects.db();
-        area::text::write_file(file, &self.workbench.document().registry, &|id| {
+        level::text::write_file(file, &self.workbench.document().registry, &|id| {
             db.and_then(|db| db.get(id))
                 .map(|r| r.path.display().to_string().replace('\\', "/"))
         })
@@ -852,10 +852,10 @@ impl App {
                 .db()
                 .and_then(|db| db.file(next))
                 .ok_or_else(|| format!("the assembly {next} isn't in the project"))?;
-            let file = AreaFiles::read(&path, &self.workbench.document().registry)
+            let file = LevelFiles::read(&path, &self.workbench.document().registry)
                 .map_err(|why| format!("{}: {why}", file_name(&path)))?;
             todo.extend(
-                file.area
+                file.level
                     .iter()
                     .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.assembly)),
             );
@@ -870,10 +870,10 @@ impl App {
         Ok(())
     }
 
-    /// Reads every assembly an area file places.
-    fn load_assemblies_of(&mut self, file: &area::text::AreaFile) {
+    /// Reads every assembly a level file places.
+    fn load_assemblies_of(&mut self, file: &level::text::LevelFile) {
         let wanted: HashSet<AssetId> = file
-            .area
+            .level
             .iter()
             .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.assembly))
             .collect();
@@ -887,9 +887,9 @@ impl App {
         }
     }
 
-    /// Saves the area to `path`; whether it worked.
+    /// Saves the level to `path`; whether it worked.
     fn save_to(&mut self, path: &Path) -> bool {
-        let text = match self.workbench.area_file() {
+        let text = match self.workbench.level_file() {
             Ok(file) => self.file_text(&file),
             Err(why) => {
                 self.workbench
@@ -901,14 +901,14 @@ impl App {
         let registry = &self.workbench.document().registry;
         let db = self.projects.db();
         let read_back = |text: &str| {
-            let file = area::text::read_file(text, registry).map_err(|e| e.to_string())?;
-            Ok(area::text::write_file(&file, registry, &|id| {
+            let file = level::text::read_file(text, registry).map_err(|e| e.to_string())?;
+            Ok(level::text::write_file(&file, registry, &|id| {
                 db.and_then(|db| db.get(id))
                     .map(|r| r.path.display().to_string().replace('\\', "/"))
             }))
         };
         match self
-            .area_files
+            .level_files
             .save(root.as_deref(), path, &text, read_back)
         {
             Ok(copy) => {
@@ -929,10 +929,10 @@ impl App {
         }
     }
 
-    /// Opens the area file at `path`.
-    fn open_area(&mut self, path: &Path) {
+    /// Opens the level file at `path`.
+    fn open_level(&mut self, path: &Path) {
         let mut older = None;
-        let read = AreaFiles::read_noting(path, &self.workbench.document().registry).and_then(
+        let read = LevelFiles::read_noting(path, &self.workbench.document().registry).and_then(
             |(file, note)| {
                 older = note;
                 self.load_assemblies_of(&file);
@@ -940,13 +940,13 @@ impl App {
             },
         );
         match read {
-            Ok(area) => {
-                self.workbench.open_area(area, path.to_path_buf());
+            Ok(level) => {
+                self.workbench.open_level(level, path.to_path_buf());
                 if let Some(note) = older {
                     self.workbench.log(LogLevel::Info, note);
                 }
-                self.area_files.watch(path);
-                self.load_area_models();
+                self.level_files.watch(path);
+                self.load_level_models();
             }
             Err(why) => self.workbench.log(
                 LogLevel::Error,
@@ -955,14 +955,14 @@ impl App {
         }
     }
 
-    /// The folder Open and Save windows start in: the project's areas, or
+    /// The folder Open and Save windows start in: the project's levels, or
     /// its assets.
-    fn areas_folder(&self) -> Option<PathBuf> {
-        // A new project's assets folder is made here, for the area about
+    fn levels_folder(&self) -> Option<PathBuf> {
+        // A new project's assets folder is made here, for the level about
         // to go in it (decision 0118).
         let assets = self.projects.db()?.project().assets_folder().ok()?;
-        let areas = assets.join("areas");
-        Some(if areas.is_dir() { areas } else { assets })
+        let levels = assets.join("areas");
+        Some(if levels.is_dir() { levels } else { assets })
     }
 
     /// Saves a file the editor changed itself (a clips file, an animator,
@@ -993,8 +993,8 @@ impl App {
     /// window pauses the rest until it closes.
     fn run_queue(&mut self, ctx: &egui::Context) {
         // Nothing goes on while an Open or Save window is open: a quit or a
-        // new area waits for the save before it.
-        while !self.area_files.is_asking()
+        // new level waits for the save before it.
+        while !self.level_files.is_asking()
             && let Some(action) = self.queued.pop_front()
         {
             match action {
@@ -1124,7 +1124,7 @@ impl App {
                     field,
                     value,
                 } => self.apply_to_assembly(assembly, &path, &component, &field, value),
-                WorkbenchAction::AddSampleArea => self.add_sample(),
+                WorkbenchAction::AddSampleLevel => self.add_sample(),
                 WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
                 WorkbenchAction::MakeUiSample => self.importer.ask_folder(FolderFor::UiSample),
                 WorkbenchAction::ChooseExportFolder => {
@@ -1133,15 +1133,15 @@ impl App {
                 WorkbenchAction::ExportPlaytest(request) => self.export_playtest(request),
                 WorkbenchAction::MakeBenchmark => self.importer.ask_folder(FolderFor::Benchmark),
                 WorkbenchAction::MakePlayground => self.importer.ask_folder(FolderFor::Playground),
-                WorkbenchAction::NewArea => {
-                    self.workbench.new_area();
-                    self.area_files.forget();
+                WorkbenchAction::NewLevel => {
+                    self.workbench.new_level();
+                    self.level_files.forget();
                 }
-                WorkbenchAction::OpenArea => {
-                    let folder = self.areas_folder();
-                    self.area_files.ask(Purpose::Open, folder, "");
+                WorkbenchAction::OpenLevel => {
+                    let folder = self.levels_folder();
+                    self.level_files.ask(Purpose::Open, folder, "");
                 }
-                WorkbenchAction::SaveArea => {
+                WorkbenchAction::SaveLevel => {
                     match self.workbench.document().file().map(Path::to_path_buf) {
                         Some(path) => {
                             if !self.save_to(&path) {
@@ -1151,16 +1151,16 @@ impl App {
                         }
                         None => {
                             let (folder, name) =
-                                (self.areas_folder(), self.workbench.document().name());
-                            self.area_files.ask(Purpose::Save, folder, &name);
+                                (self.levels_folder(), self.workbench.document().name());
+                            self.level_files.ask(Purpose::Save, folder, &name);
                         }
                     }
                 }
-                WorkbenchAction::SaveAreaAs => {
-                    let (folder, name) = (self.areas_folder(), self.workbench.document().name());
-                    self.area_files.ask(Purpose::Save, folder, &name);
+                WorkbenchAction::SaveLevelAs => {
+                    let (folder, name) = (self.levels_folder(), self.workbench.document().name());
+                    self.level_files.ask(Purpose::Save, folder, &name);
                 }
-                WorkbenchAction::OpenAreaFile(path) => self.open_area(&path),
+                WorkbenchAction::OpenLevelFile(path) => self.open_level(&path),
                 WorkbenchAction::SaveBindings(text) => {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {
                         let saved = crate::play_files::save_bindings(&root, &text);
@@ -1225,7 +1225,7 @@ impl App {
                         match crate::play_files::save_pixels(&root, &settings) {
                             Ok(Some(crate::play_files::Kept::Older(copy))) => self.workbench.log(
                                 LogLevel::Info,
-                                crate::upgrades::kept_note(&root, area::pixels::FILE_NAME, &copy),
+                                crate::upgrades::kept_note(&root, level::pixels::FILE_NAME, &copy),
                             ),
                             Ok(Some(crate::play_files::Kept::Damaged(backup))) => {
                                 self.workbench.log(
@@ -1368,7 +1368,7 @@ impl App {
                                 LogLevel::Info,
                                 format!("Moved {} to {}.", from.display(), to.display()),
                             );
-                            self.follow_area_file(&from, Some(&to));
+                            self.follow_level_file(&from, Some(&to));
                         }
                         Err(why) => self.workbench.log(
                             LogLevel::Error,
@@ -1395,7 +1395,7 @@ impl App {
                                     path.display()
                                 ),
                             );
-                            self.follow_area_file(&path, None);
+                            self.follow_level_file(&path, None);
                         }
                         Err(why) => self.workbench.log(
                             LogLevel::Error,
@@ -1409,17 +1409,17 @@ impl App {
     }
 
     /// After the Library moved (or deleted) `from` to `to`, both inside the
-    /// assets: if the open area's file went with it, the area and the
+    /// assets: if the open level's file went with it, the level and the
     /// watch on its file follow, so the next save goes to the new place
     /// instead of making the old file again.
-    fn follow_area_file(&mut self, from: &Path, to: Option<&Path>) {
+    fn follow_level_file(&mut self, from: &Path, to: Option<&Path>) {
         let Some(assets) = self.projects.db().map(|db| db.project().assets()) else {
             return;
         };
         let to = to.map(|to| assets.join(to));
         match self.workbench.file_moved(&assets.join(from), to.as_deref()) {
-            Some(Some(path)) => self.area_files.watch(&path),
-            Some(None) => self.area_files.forget(),
+            Some(Some(path)) => self.level_files.watch(&path),
+            Some(None) => self.level_files.forget(),
             None => {}
         }
     }
@@ -1491,7 +1491,7 @@ impl App {
         }
         // And their models, so what game code makes is drawn.
         if read_some {
-            self.load_area_models();
+            self.load_level_models();
         }
     }
 
@@ -1511,11 +1511,11 @@ impl App {
         let name = self
             .workbench
             .document()
-            .area()
+            .level()
             .get(root)
             .map_or_else(|| "Assembly".to_string(), |e| e.name.clone());
         // A name that works on every system (not a device's, say), from
-        // the entity's name, which an area file can set to anything.
+        // the entity's name, which a level file can set to anything.
         let safe = asset_db::file_name_from(&name, "Assembly");
         let folder = db.project().assets().join("assemblies");
         let mut path = folder.join(format!("{safe}.{}", asset_db::ASSEMBLY_EXTENSION));
@@ -1566,20 +1566,20 @@ impl App {
             return;
         };
         let mut file = (*file).clone();
-        if !area::assembly::set_in_file(&mut file, path, component, field, value) {
+        if !level::assembly::set_in_file(&mut file, path, component, field, value) {
             return;
         }
         let text = self.file_text(&file);
         let root = self.projects.root().map(Path::to_path_buf);
         let registry = &self.workbench.document().registry;
         let read_back = |text: &str| {
-            let file = area::text::read_file(text, registry).map_err(|e| e.to_string())?;
+            let file = level::text::read_file(text, registry).map_err(|e| e.to_string())?;
             Ok(self.file_text(&file))
         };
         // An older assembly is copied to the backups first (Phase 8, C1).
         let saved = match &root {
             Some(root) => {
-                crate::upgrades::save(root, &on_disk, &text, &area::text::FORMAT, read_back)
+                crate::upgrades::save(root, &on_disk, &text, &level::text::FORMAT, read_back)
             }
             None => asset_db::write_atomically(&on_disk, text.as_bytes())
                 .map(|()| None)
@@ -1603,8 +1603,8 @@ impl App {
 
     /// Makes one of File › Learn's samples in `folder` and opens it (the
     /// command line's `--sample`).
-    /// Adds the sample area. With a project open it becomes a file in the
-    /// project's assets, imported like any other, so a saved area that
+    /// Adds the sample level. With a project open it becomes a file in the
+    /// project's assets, imported like any other, so a saved level that
     /// uses it finds it again; without one it's read straight from memory.
     fn add_sample(&mut self) {
         const NAME: &str = "Sample area";
@@ -1678,7 +1678,7 @@ impl App {
             match self.load_assembly(id, false) {
                 Ok(()) => {
                     self.workbench.place_assembly(id);
-                    self.load_area_models();
+                    self.load_level_models();
                 }
                 Err(why) => {
                     self.workbench.placing_failed(id);
@@ -1743,19 +1743,19 @@ fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
     Some(ctx.load_texture("logo", image, egui::TextureOptions::LINEAR))
 }
 
-/// The models the open project needs loaded: those the area uses, and
+/// The models the open project needs loaded: those the level uses, and
 /// every model any of the project's assemblies uses, since game code can
 /// make copies of any assembly while playing (`spawn`). Without the
 /// second, copies made only by game code had no model to draw (the
-/// benchmark's stress area showed only its lasers).
+/// benchmark's stress level showed only its lasers).
 fn models_wanted<'a>(
-    area: &'a area::Area,
-    assemblies: impl Iterator<Item = &'a area::Area>,
+    level: &'a level::Level,
+    assemblies: impl Iterator<Item = &'a level::Level>,
 ) -> HashSet<AssetId> {
-    std::iter::once(area)
+    std::iter::once(level)
         .chain(assemblies)
         .flat_map(|a| {
-            a.with::<area::builtin::Model>()
+            a.with::<level::builtin::Model>()
                 .filter_map(|(_, m)| m.asset.map(|r| r.asset))
         })
         .collect()
@@ -1846,10 +1846,10 @@ impl eframe::App for App {
         if let Some(path) = self.importer.chosen() {
             self.import(&path);
         }
-        // A project or area chosen in a window opened before Play waits
+        // A project or level chosen in a window opened before Play waits
         // until the game stops, so it never replaces the game's copy, and
         // until Keep or Undo all is answered, so the edits made while
-        // playing never go with the area unasked.
+        // playing never go with the level unasked.
         let editing = self.workbench.play_state() == editor::PlayState::Editing
             && self.workbench.play_changes().is_none();
         if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
@@ -1890,11 +1890,11 @@ impl eframe::App for App {
             self.show_library();
         }
         match if editing {
-            self.area_files.chosen()
+            self.level_files.chosen()
         } else {
             None
         } {
-            Some((Purpose::Open, Some(path))) => self.open_area(&path),
+            Some((Purpose::Open, Some(path))) => self.open_level(&path),
             Some((Purpose::Save, Some(path))) => {
                 if self.save_to(&path) {
                     self.run_queue(&ctx);
@@ -1905,7 +1905,7 @@ impl eframe::App for App {
             // Cancelled: whatever waited for the save (a quit) doesn't
             // happen.
             Some((_, None)) => {
-                if let Some(path) = self.area_files.take_refused() {
+                if let Some(path) = self.level_files.take_refused() {
                     self.workbench.log(
                         LogLevel::Warning,
                         format!(
@@ -1919,16 +1919,16 @@ impl eframe::App for App {
             }
             None => {}
         }
-        if let Some(path) = self.area_files.changed_on_disk() {
+        if let Some(path) = self.level_files.changed_on_disk() {
             let read =
-                AreaFiles::read(&path, &self.workbench.document().registry).and_then(|file| {
+                LevelFiles::read(&path, &self.workbench.document().registry).and_then(|file| {
                     self.load_assemblies_of(&file);
                     self.workbench.expand_file(&file).map_err(|e| e.to_string())
                 });
             match read {
-                Ok(area) => {
-                    self.workbench.offer_reload(area);
-                    self.load_area_models();
+                Ok(level) => {
+                    self.workbench.offer_reload(level);
+                    self.load_level_models();
                 }
                 Err(why) => self.workbench.log(
                     LogLevel::Warning,
@@ -2039,7 +2039,7 @@ impl eframe::App for App {
             || self.sound.is_opening()
             || self.projects.waiting()
             || self.game_code.waiting()
-            || self.area_files.is_asking()
+            || self.level_files.is_asking()
             || self.folder_looks.waiting()
         {
             ctx.request_repaint_after(WAITING_FRAME);
@@ -2182,7 +2182,7 @@ mod own_files_tests;
 mod tests {
     #[test]
     fn models_only_game_code_places_are_loaded_too() {
-        use area::builtin::Model;
+        use level::builtin::Model;
         use reflect::AssetRef;
         let model = |id: AssetId| Model {
             asset: Some(AssetRef {
@@ -2190,15 +2190,15 @@ mod tests {
                 part: None,
             }),
         };
-        let (in_area, in_assembly, nowhere) =
+        let (in_level, in_assembly, nowhere) =
             (AssetId::random(), AssetId::random(), AssetId::random());
-        let mut area = area::Area::new();
-        area.spawn(area::EntityData::new("Rock").with(&model(in_area)));
-        area.spawn(area::EntityData::new("Empty"));
-        let mut fighter = area::Area::new();
-        fighter.spawn(area::EntityData::new("Fighter").with(&model(in_assembly)));
-        let wanted = super::models_wanted(&area, [&fighter].into_iter());
-        assert!(wanted.contains(&in_area));
+        let mut level = level::Level::new();
+        level.spawn(level::EntityData::new("Rock").with(&model(in_level)));
+        level.spawn(level::EntityData::new("Empty"));
+        let mut fighter = level::Level::new();
+        fighter.spawn(level::EntityData::new("Fighter").with(&model(in_assembly)));
+        let wanted = super::models_wanted(&level, [&fighter].into_iter());
+        assert!(wanted.contains(&in_level));
         assert!(
             wanted.contains(&in_assembly),
             "spawned by game code: needed too"
@@ -2206,7 +2206,7 @@ mod tests {
         assert!(!wanted.contains(&nowhere));
         assert_eq!(wanted.len(), 2);
         // Nothing placed anywhere: nothing wanted.
-        assert!(super::models_wanted(&area::Area::new(), std::iter::empty()).is_empty());
+        assert!(super::models_wanted(&level::Level::new(), std::iter::empty()).is_empty());
     }
 
     use super::*;

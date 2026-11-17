@@ -141,12 +141,12 @@ pub fn export(
     playtest: &Playtest,
     folder: &Path,
 ) -> Result<Exported, String> {
-    if !editor::export_dialog::usable_area(&playtest.area) {
+    if !editor::export_dialog::usable_level(&playtest.level) {
         return Err("choose an area for the game to start in".into());
     }
     let assets = root.join(asset_db::ASSETS_FOLDER);
-    if !assets.join(&playtest.area).is_file() {
-        return Err(format!("the area {} isn't in the project", playtest.area));
+    if !assets.join(&playtest.level).is_file() {
+        return Err(format!("the area {} isn't in the project", playtest.level));
     }
     if folder.as_os_str().is_empty() || folder.is_relative() {
         return Err("choose a whole folder path, such as one in Documents".into());
@@ -294,7 +294,7 @@ fn copy_tree(from: &Path, to: &Path, top: bool, made: &mut Exported) -> Result<(
 const LAST_EXPORT: &str = "last export.txt";
 
 /// How the project in `root` was last exported, if it was: the game's
-/// name, the area it starts in and its window, each put right as it's
+/// name, the level it starts in and its window, each put right as it's
 /// read ([`Playtest::parse`]). The file comes with the project, perhaps
 /// from someone else, so it never says where on this computer to export:
 /// that is kept in the program's own settings

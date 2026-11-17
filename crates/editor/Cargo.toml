@@ -17,7 +17,7 @@ layer = 2
 [dependencies]
 rayon.workspace = true
 reflect.workspace = true
-area.workspace = true
+level.workspace = true
 mesh.workspace = true
 world.workspace = true
 animation.workspace = true

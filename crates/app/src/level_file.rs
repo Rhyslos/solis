@@ -1,4 +1,4 @@
-//! Area files on disk ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
+//! Level files on disk ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
 //! reading and saving them, the Open and Save windows, and noticing when
 //! the open one changes on disk (a Git pull, another program).
 
@@ -6,17 +6,17 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant, SystemTime};
 
-/// The extension of area files.
+/// The extension of level files.
 pub const EXTENSION: &str = "solarea";
-/// How often the open area's file is looked at for changes.
+/// How often the open level's file is looked at for changes.
 const CHECK_EVERY: Duration = Duration::from_secs(1);
 
 /// What a file window was opened for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Purpose {
-    /// Opening an area.
+    /// Opening a level.
     Open,
-    /// Saving the area under a new name.
+    /// Saving the level under a new name.
     Save,
 }
 
@@ -28,44 +28,47 @@ fn stamp(path: &Path) -> Option<Stamp> {
     Some((meta.len(), meta.modified().ok()))
 }
 
-/// The open area's file, as the window sees it.
+/// The open level's file, as the window sees it.
 #[derive(Debug, Default)]
-pub struct AreaFiles {
+pub struct LevelFiles {
     dialog: Option<(Purpose, Receiver<Option<PathBuf>>)>,
-    /// The open area's file, and how it looked when last read or written.
+    /// The open level's file, and how it looked when last read or written.
     watched: Option<(PathBuf, Option<Stamp>)>,
     last_check: Option<Instant>,
     /// A name chosen in the Save window that would have replaced another
-    /// file once `.solarea` was added, so it wasn't used.
+    /// file once `.sollevel` was added, so it wasn't used.
     refused: Option<PathBuf>,
 }
 
-impl AreaFiles {
-    /// Reads the area or assembly file at `path`, within the reader's
+impl LevelFiles {
+    /// Reads the level or assembly file at `path`, within the reader's
     /// limits (placed assemblies not yet expanded).
-    pub fn read(path: &Path, registry: &reflect::Registry) -> Result<area::text::AreaFile, String> {
+    pub fn read(
+        path: &Path,
+        registry: &reflect::Registry,
+    ) -> Result<level::text::LevelFile, String> {
         Self::read_noting(path, registry).map(|(file, _)| file)
     }
 
-    /// [`AreaFiles::read`], with a note for the Console when the file was
+    /// [`LevelFiles::read`], with a note for the Console when the file was
     /// saved by an older version (it's upgraded as it's read).
     pub fn read_noting(
         path: &Path,
         registry: &reflect::Registry,
-    ) -> Result<(area::text::AreaFile, Option<String>), String> {
-        let bytes = asset_db::read_limited(path, area::text::MAX_BYTES as u64).map_err(|e| {
+    ) -> Result<(level::text::LevelFile, Option<String>), String> {
+        let bytes = asset_db::read_limited(path, level::text::MAX_BYTES as u64).map_err(|e| {
             if e.kind() == std::io::ErrorKind::FileTooLarge {
-                format!("it's bigger than {} MB", area::text::MAX_BYTES >> 20)
+                format!("it's bigger than {} MB", level::text::MAX_BYTES >> 20)
             } else {
                 e.to_string()
             }
         })?;
         let text = String::from_utf8(bytes).map_err(|_| "it isn't text".to_string())?;
-        let file = area::text::read_file(&text, registry).map_err(|e| e.to_string())?;
+        let file = level::text::read_file(&text, registry).map_err(|e| e.to_string())?;
         let name = path
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        let note = crate::upgrades::older_note(&name, &text, &area::text::FORMAT);
+        let note = crate::upgrades::older_note(&name, &text, &level::text::FORMAT);
         Ok((file, note))
     }
 
@@ -95,7 +98,7 @@ impl AreaFiles {
         let root = root.map(canonical).filter(|r| resolved.starts_with(r));
         let copy = match root {
             Some(root) => {
-                crate::upgrades::save(&root, &resolved, text, &area::text::FORMAT, read_back)?
+                crate::upgrades::save(&root, &resolved, text, &level::text::FORMAT, read_back)?
             }
             // Outside a project there's nowhere to keep a copy: Git, if
             // any, is its undo.
@@ -113,7 +116,7 @@ impl AreaFiles {
         self.watched = Some((path.to_path_buf(), stamp(path)));
     }
 
-    /// Stops watching (a new, unsaved area).
+    /// Stops watching (a new, unsaved level).
     pub fn forget(&mut self) {
         self.watched = None;
     }
@@ -173,7 +176,7 @@ impl AreaFiles {
 
     /// The file chosen in the Open or Save window, and what for, once it's
     /// closed: `Some((purpose, None))` if it was cancelled. A Save name
-    /// without `.solarea` whose `.solarea` file already exists is refused
+    /// without `.sollevel` whose `.sollevel` file already exists is refused
     /// too (the window only asked about replacing the name as typed).
     pub fn chosen(&mut self) -> Option<(Purpose, Option<PathBuf>)> {
         let (purpose, receiver) = self.dialog.as_ref()?;
@@ -200,7 +203,7 @@ impl AreaFiles {
     }
 }
 
-/// `path`, ending in `.solarea` (a Save window may leave it off).
+/// `path`, ending in `.sollevel` (a Save window may leave it off).
 pub fn with_extension(path: &Path) -> PathBuf {
     if path
         .extension()
@@ -224,17 +227,17 @@ mod tests {
     }
 
     #[test]
-    fn an_area_is_saved_read_back_and_its_changes_noticed() {
+    fn a_level_is_saved_read_back_and_its_changes_noticed() {
         let dir = folder("save");
-        let registry = area::builtin::registry().unwrap();
-        let area = area::builtin::starter_area();
-        let text = area::text::write(&area, &registry, &|_| None);
-        let mut files = AreaFiles::default();
+        let registry = level::builtin::registry().unwrap();
+        let level = level::builtin::starter_level();
+        let text = level::text::write(&level, &registry, &|_| None);
+        let mut files = LevelFiles::default();
         let path = dir.join("areas/harbour.solarea");
         files
             .save(None, &path, &text, |t| Ok(t.to_owned()))
             .unwrap();
-        assert_eq!(AreaFiles::read(&path, &registry).unwrap().area, area);
+        assert_eq!(LevelFiles::read(&path, &registry).unwrap().level, level);
         assert_eq!(
             files.changed_on_disk(),
             None,
@@ -253,25 +256,25 @@ mod tests {
     #[test]
     fn bad_files_are_explained() {
         let dir = folder("bad");
-        let registry = area::builtin::registry().unwrap();
+        let registry = level::builtin::registry().unwrap();
         let path = dir.join("x.solarea");
         std::fs::write(&path, [0xff, 0xfe, 0x00]).unwrap();
         assert!(
-            AreaFiles::read(&path, &registry)
+            LevelFiles::read(&path, &registry)
                 .unwrap_err()
                 .contains("text")
         );
         std::fs::write(&path, "area version 9;").unwrap();
         assert!(
-            AreaFiles::read(&path, &registry)
+            LevelFiles::read(&path, &registry)
                 .unwrap_err()
                 .contains("newer")
         );
-        assert!(AreaFiles::read(&dir.join("missing.solarea"), &registry).is_err());
+        assert!(LevelFiles::read(&dir.join("missing.solarea"), &registry).is_err());
     }
 
     /// An Open or Save window that has already been answered with `choice`.
-    fn answered(files: &mut AreaFiles, purpose: Purpose, choice: Option<PathBuf>) {
+    fn answered(files: &mut LevelFiles, purpose: Purpose, choice: Option<PathBuf>) {
         let (sender, receiver) = channel();
         sender.send(choice).unwrap();
         files.dialog = Some((purpose, receiver));
@@ -281,10 +284,10 @@ mod tests {
     fn a_save_name_that_would_replace_another_file_is_refused() {
         let dir = folder("refuse");
         std::fs::write(dir.join("harbour.solarea"), "area;").unwrap();
-        let mut files = AreaFiles::default();
+        let mut files = LevelFiles::default();
         assert!(!files.is_asking());
         // Typed without the extension: the window never asked about
-        // replacing harbour.solarea.
+        // replacing harbour.sollevel.
         answered(&mut files, Purpose::Save, Some(dir.join("harbour")));
         assert!(files.is_asking());
         assert_eq!(files.chosen(), Some((Purpose::Save, None)));

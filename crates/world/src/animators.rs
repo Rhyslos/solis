@@ -9,7 +9,7 @@
 
 use crate::{Id, World};
 use animation::{Animator as Machine, ParamValue, Run, SetError};
-use area::builtin::{Animator, Sprite};
+use level::builtin::{Animator, Sprite};
 use reflect::{AssetId, EntityId};
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -10,7 +10,7 @@
 
 use crate::{Id, World};
 use animation::ClipSet;
-use area::builtin::Sprite;
+use level::builtin::Sprite;
 use reflect::{AssetId, EntityId};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -29,7 +29,7 @@ pub enum SpriteCue {
 }
 
 /// A Sprite's clip, whether it's playing, and how far in: the game's own
-/// playback is kept over an edit unless the edit changed the area's (see
+/// playback is kept over an edit unless the edit changed the level's (see
 /// `game_set`).
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Playback {

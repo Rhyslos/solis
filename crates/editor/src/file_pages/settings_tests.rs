@@ -194,7 +194,7 @@ fn reset_layout_puts_the_tab_s_middle_back() {
         // A border in two layouts: both are put back.
         let shelf = PanelLayout::Shelf;
         w.shell.sizes.set(tab, shelf, Edge::ShelfHeight, 410.0);
-        w.shell.sizes.set(tab, PanelLayout::AreaAndAssetsLeft, Edge::Left, 410.0);
+        w.shell.sizes.set(tab, PanelLayout::LevelAndAssetsLeft, Edge::Left, 410.0);
     }
     h.get_all_by_label("Reset layout").next().unwrap().click();
     h.run();

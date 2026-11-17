@@ -2,7 +2,7 @@
 //! sets them.
 
 use crate::{Id, Values, World, game_set};
-use area::builtin::AudioSource;
+use level::builtin::AudioSource;
 use reflect::EntityId;
 
 impl World {
@@ -53,7 +53,7 @@ impl World {
     /// hides it only if it shows `screen`. Nothing happens for an entity
     /// not in the world, or a name a Screen can't hold.
     pub fn set_screen(&mut self, id: EntityId, screen: &str, shown: bool) {
-        use area::builtin::Screen;
+        use level::builtin::Screen;
         use reflect::Component;
         let Some(&entity) = self.by_id.get(&id) else {
             return;
@@ -90,7 +90,7 @@ impl World {
 
     /// The screen an entity's Screen shows, if it has one and it's shown.
     pub fn screen_shown(&self, id: EntityId) -> Option<String> {
-        use area::builtin::Screen;
+        use level::builtin::Screen;
         use reflect::Component;
         let entity = *self.by_id.get(&id)?;
         let values = self.ecs.get::<&Values>(entity).ok()?;
@@ -100,7 +100,7 @@ impl World {
 
     /// The screen each entity's Screen shows, for those shown.
     pub fn screens_shown(&self) -> std::collections::HashMap<EntityId, String> {
-        use area::builtin::Screen;
+        use level::builtin::Screen;
         use reflect::Component;
         self.values_named(Screen::NAME)
             .into_iter()

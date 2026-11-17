@@ -2,11 +2,11 @@
 //! the clock, the entity list, physics asks, cameras between ticks.
 
 use super::*;
-use area::builtin::{CharacterBody, Collider};
+use level::builtin::{CharacterBody, Collider};
 
 #[test]
 fn the_seed_and_clock_are_kept_as_set_and_count_as_changes() {
-    let mut world = World::from_area(&area::builtin::starter_area());
+    let mut world = World::from_level(&level::builtin::starter_level());
     let before = world.changes();
     world.set_seed(42);
     assert_eq!(world.seed(), 42);
@@ -26,12 +26,12 @@ fn the_seed_and_clock_are_kept_as_set_and_count_as_changes() {
 
 #[test]
 fn the_entity_list_is_every_entity_in_tree_order_with_names() {
-    let mut area = Area::new();
-    let parent = area.spawn(EntityData::new("Parent").with(&at(1.0, 0.0, 0.0)));
+    let mut level = Level::new();
+    let parent = level.spawn(EntityData::new("Parent").with(&at(1.0, 0.0, 0.0)));
     let mut data = EntityData::new("Child").with(&at(0.0, 2.0, 0.0));
     data.parent = Some(parent);
-    let child = area.spawn(data);
-    let world = World::from_area(&area);
+    let child = level.spawn(data);
+    let world = World::from_level(&level);
     assert_eq!(
         world.entities(),
         vec![
@@ -47,13 +47,13 @@ fn the_entity_list_is_every_entity_in_tree_order_with_names() {
     assert_eq!(globals.len(), 2);
     assert_eq!(globals[0].w_axis.x, 1.0);
     assert_eq!((globals[1].w_axis.x, globals[1].w_axis.y), (1.0, 2.0));
-    assert!(World::from_area(&Area::new()).is_empty());
+    assert!(World::from_level(&Level::new()).is_empty());
 }
 
 #[test]
 fn a_push_lands_at_the_next_physics_step() {
-    let (area, _, crate_id) = floor_and_crate(0.5);
-    let mut world = World::from_area(&area);
+    let (level, _, crate_id) = floor_and_crate(0.5);
+    let mut world = World::from_level(&level);
     world.push(crate_id, Vec3::new(50.0, 0.0, 0.0));
     let speed = |w: &World| w.physics().state().velocity(crate_id).unwrap().x;
     assert_eq!(speed(&world), 0.0, "not yet");
@@ -63,8 +63,8 @@ fn a_push_lands_at_the_next_physics_step() {
 
 #[test]
 fn a_character_moves_at_the_next_physics_step() {
-    let mut area = Area::new();
-    area.spawn(
+    let mut level = Level::new();
+    level.spawn(
         EntityData::new("Floor")
             .with(&at(0.0, 0.0, -0.5))
             .with(&Collider {
@@ -72,12 +72,12 @@ fn a_character_moves_at_the_next_physics_step() {
                 ..Collider::default()
             }),
     );
-    let walker = area.spawn(
+    let walker = level.spawn(
         EntityData::new("Walker")
             .with(&at(0.0, 0.0, 0.05))
             .with(&CharacterBody::default()),
     );
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     assert!(
         world.get::<CharacterBody>(walker).is_some(),
         "kept as its type"
@@ -91,8 +91,8 @@ fn a_character_moves_at_the_next_physics_step() {
 
 #[test]
 fn physics_states_hold_every_body_and_nothing_broke() {
-    let (area, floor, crate_id) = floor_and_crate(3.0);
-    let mut world = World::from_area(&area);
+    let (level, floor, crate_id) = floor_and_crate(3.0);
+    let mut world = World::from_level(&level);
     for _ in 0..10 {
         world.step_physics();
     }
@@ -105,13 +105,13 @@ fn physics_states_hold_every_body_and_nothing_broke() {
 
 #[test]
 fn the_camera_is_drawn_between_ticks_too() {
-    let mut area = Area::new();
-    let camera = area.spawn(
+    let mut level = Level::new();
+    let camera = level.spawn(
         EntityData::new("Camera")
             .with(&at(0.0, 0.0, 0.0))
             .with(&Camera::default()),
     );
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     let x = |world: &World, t: f32| world.camera_between(t).unwrap().2.w_axis.x;
     assert_eq!(x(&world, 0.5), 0.0, "no tick yet: where it is");
     world.remember();
@@ -119,29 +119,33 @@ fn the_camera_is_drawn_between_ticks_too() {
     assert_eq!(x(&world, 0.5), 5.0);
     assert_eq!(x(&world, 1.0), 10.0);
     assert_eq!(world.camera_between(0.5).unwrap().0, camera);
-    assert!(World::from_area(&Area::new()).camera_between(0.5).is_none());
+    assert!(
+        World::from_level(&Level::new())
+            .camera_between(0.5)
+            .is_none()
+    );
 }
 
 #[test]
-fn models_and_the_environment_arrive_as_they_are_in_the_area() {
-    use area::builtin::{Environment, Model};
-    let mut area = Area::new();
+fn models_and_the_environment_arrive_as_they_are_in_the_level() {
+    use level::builtin::{Environment, Model};
+    let mut level = Level::new();
     let environment = Environment {
         fog: true,
         fog_distance: 77.0,
         sky_strength: 0.25,
         ..Environment::default()
     };
-    area.spawn(EntityData::new("Sky").with(&environment));
-    let ship = area.spawn(EntityData::new("Ship").with(&Model::default()));
-    let world = World::from_area(&area);
+    level.spawn(EntityData::new("Sky").with(&environment));
+    let ship = level.spawn(EntityData::new("Ship").with(&Model::default()));
+    let world = World::from_level(&level);
     assert_eq!(world.environment(), Some(environment));
     assert_eq!(world.get::<Model>(ship), Some(Model::default()));
 }
 
 #[test]
 fn projectiles_count_while_flying_and_go_when_their_time_is_up() {
-    let mut world = World::from_area(&Area::new());
+    let mut world = World::from_level(&Level::new());
     assert!(world.projectiles().is_empty());
     world.projectiles_mut().fire(Shot {
         from: Vec3::ZERO,

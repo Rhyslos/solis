@@ -1,6 +1,6 @@
 //! The workbench's side of editing a brush's insides (Tools 1a, B3):
 //! Tab starting and ending it, 1, 2 and 3 choosing what clicks pick,
-//! E, Delete and Backspace shaping it (B4), editing kept in step with the area
+//! E, Delete and Backspace shaping it (B4), editing kept in step with the level
 //! each frame (and ended when the brush goes, something else is picked,
 //! the game plays or an undo goes back past its start), the status bar's
 //! words, the Brush card's facts and Solid.
@@ -13,8 +13,8 @@ use crate::brushing::edit::{Editing, Mode};
 use crate::brushing::parts::PartCache;
 use crate::play::PlayState;
 use crate::workbench::Workbench;
-use area::builtin::Brush;
 use egui::{Key, Modifiers};
+use level::builtin::Brush;
 use reflect::{Component, EntityId, Value};
 use std::sync::Arc;
 
@@ -24,10 +24,10 @@ impl Workbench {
     /// picked faces, and Delete and Backspace delete the picked parts
     /// (never the brush; B4). While an extrude or inset is under way Esc
     /// gives it up and the other keys wait. Only where the keys are the
-    /// area's: the tile map's Tab (its Meaning view, with a map picked)
+    /// level's: the tile map's Tab (its Meaning view, with a map picked)
     /// and the UI canvas's 1, 2 and 3 are theirs.
     pub(crate) fn brush_edit_keys(&mut self, ui: &egui::Ui) {
-        if !self.keys.is_area()
+        if !self.keys.is_level()
             || self.viewport.is_flying()
             || self.viewport.tile_overlay.paint.allowed
             || self.viewport.brushing.list.is_some()
@@ -92,7 +92,7 @@ impl Workbench {
         let brush = one.filter(|id| {
             self.open
                 .document
-                .area()
+                .level()
                 .get(*id)
                 .is_some_and(|e| e.has(Brush::NAME))
         });
@@ -147,7 +147,7 @@ impl Workbench {
     /// Whether the brush being edited is solid, or `None` when none is.
     pub(crate) fn edited_brush_solid(&self) -> Option<bool> {
         let edit = self.viewport.brushing.edit.as_ref()?;
-        let brush = self.open.document.area().get(edit.entity)?;
+        let brush = self.open.document.level().get(edit.entity)?;
         match brush.components.get(Brush::NAME)?.get("solid") {
             Some(Value::Bool(solid)) => Some(*solid),
             _ => Some(true),
@@ -160,7 +160,7 @@ impl Workbench {
         else {
             return;
         };
-        let edits = vec![area::Edit::SetField {
+        let edits = vec![level::Edit::SetField {
             entity: edit.entity,
             component: Brush::NAME.into(),
             field: "solid".into(),
@@ -174,7 +174,7 @@ impl Workbench {
         self.command(label, edits, None, None);
     }
 
-    /// Keeps editing in step with the area, each frame before the tools
+    /// Keeps editing in step with the level, each frame before the tools
     /// are prepared: it ends when the brush goes or loses its Brush,
     /// something else is picked, the game plays, or an undo goes back
     /// past where editing began; otherwise the picking geometry follows
@@ -207,7 +207,7 @@ impl Workbench {
                 edit.preview = None;
             }
         }
-        if let Some(name) = self.open.document.area().get(entity).map(|e| &e.name)
+        if let Some(name) = self.open.document.level().get(entity).map(|e| &e.name)
             && *name != edit.name
         {
             edit.name.clone_from(name);
@@ -229,7 +229,7 @@ impl Workbench {
         };
         if let Some(shown) = self
             .viewport
-            .area
+            .level
             .brushes
             .iter_mut()
             .find(|b| b.entity == entity)

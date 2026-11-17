@@ -1,4 +1,4 @@
-//! A tile map in an area (Phase 9, D4): a tile map file (`.tilemap.lst`)
+//! A tile map in a level (Phase 9, D4): a tile map file (`.tilemap.lst`)
 //! placed at the entity, its top-left corner on the entity's place.
 
 use reflect::{

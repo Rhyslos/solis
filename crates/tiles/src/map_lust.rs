@@ -32,8 +32,8 @@
 //! checks (`map_file`) makes the map from either.
 
 use crate::map::{CHUNK, MAX_LAYERS, MAX_SIDE, MAX_VALUES};
-use area::lust_data::{self as data, DataError, Fixed, Values};
-use area::settings::{Block, BlockOut, BlockSettings, Field};
+use level::lust_data::{self as data, DataError, Fixed, Values};
+use level::settings::{Block, BlockOut, BlockSettings, Field};
 use reflect::Value;
 use std::collections::HashMap;
 

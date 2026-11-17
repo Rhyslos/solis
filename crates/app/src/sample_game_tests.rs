@@ -1,23 +1,23 @@
 use super::*;
 use reflect::Value;
 
-/// Writes the sample's area (run once with SOLIS_WRITE_SAMPLE=1 to make
-/// `samples/turret/assets/turret.solarea`; the file is committed).
+/// Writes the sample's level (run once with SOLIS_WRITE_SAMPLE=1 to make
+/// `samples/turret/assets/turret.sollevel`; the file is committed).
 #[test]
 #[ignore = "makes the sample's area file"]
-fn write_the_sample_area() {
-    use area::builtin::{Camera, Transform};
-    use area::{Area, EntityData};
+fn write_the_sample_level() {
     use glam::{Mat3, Quat, Vec3};
-    let mut area = Area::new();
-    let starter = area::builtin::starter_area();
-    // Each after the last, so the Area panel lists them as written here.
-    let add = |area: &mut Area, mut data: EntityData| {
-        data.order = area.order_at_end(None);
-        area.spawn(data)
+    use level::builtin::{Camera, Transform};
+    use level::{EntityData, Level};
+    let mut level = Level::new();
+    let starter = level::builtin::starter_level();
+    // Each after the last, so the Level panel lists them as written here.
+    let add = |level: &mut Level, mut data: EntityData| {
+        data.order = level.order_at_end(None);
+        level.spawn(data)
     };
     for (_, entity) in starter.iter() {
-        add(&mut area, entity.clone());
+        add(&mut level, entity.clone());
     }
     let place = |x: f32, y: f32, z: f32| Transform {
         position: Vec3::new(x, y, z),
@@ -30,13 +30,13 @@ fn write_the_sample_area() {
             .insert(component.into(), reflect::ComponentData::default());
     }
     // Its health bar (decision 0087): the screen in ui/droneHealth.lst.
-    let drone = drone.with(&area::builtin::Screen::showing("DroneHealth"));
-    let drone = add(&mut area, drone);
+    let drone = drone.with(&level::builtin::Screen::showing("DroneHealth"));
+    let drone = add(&mut level, drone);
     let mut turret = EntityData::new("Turret").with(&place(0.0, 0.0, 1.0));
     let mut gun = reflect::ComponentData::default();
     gun.set("target", Value::Entity(Some(drone)));
     turret.components.insert("Turret".into(), gun);
-    add(&mut area, turret);
+    add(&mut level, turret);
     // A camera behind and above the turret, looking at the drone.
     let eye = Vec3::new(8.0, -10.0, 6.0);
     let ahead = (Vec3::new(0.0, 10.0, 4.0) - eye).normalize();
@@ -44,7 +44,7 @@ fn write_the_sample_area() {
     let up = right.cross(ahead);
     let rotation = Quat::from_mat3(&Mat3::from_cols(right, up, -ahead));
     add(
-        &mut area,
+        &mut level,
         EntityData::new("Camera")
             .with(&Transform {
                 position: eye,
@@ -57,13 +57,13 @@ fn write_the_sample_area() {
     let mut game = EntityData::new("Game");
     game.components
         .insert("Pauser".into(), reflect::ComponentData::default());
-    add(&mut area, game);
-    let registry = area::builtin::registry().unwrap();
-    let text = area::text::write(&area, &registry, &|_| None);
+    add(&mut level, game);
+    let registry = level::builtin::registry().unwrap();
+    let text = level::text::write(&level, &registry, &|_| None);
     if std::env::var_os("SOLIS_WRITE_SAMPLE").is_some() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../samples/turret/assets")
-            .join(AREA);
+            .join(LEVEL);
         std::fs::write(path, text).unwrap();
     }
 }
@@ -98,14 +98,14 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
             "{name} in Properties"
         );
     }
-    let text = std::fs::read_to_string(assets.join(AREA)).unwrap();
-    let area = area::text::read(&text, &w.document().registry).unwrap();
-    let drone = area
+    let text = std::fs::read_to_string(assets.join(LEVEL)).unwrap();
+    let level = level::text::read(&text, &w.document().registry).unwrap();
+    let drone = level
         .iter()
         .find(|(_, e)| e.name == "Drone")
         .map(|(id, _)| id)
         .unwrap();
-    w.open_area(area, assets.join(AREA));
+    w.open_level(level, assets.join(LEVEL));
     w.play();
     // The drone's health bar (decision 0087) reads its Health.
     let words = |w: &editor::Workbench| -> Vec<String> {

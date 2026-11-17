@@ -12,7 +12,7 @@ fn changed() -> InterfaceLook {
         ribbon_labels: false,
         hide_unfinished: true,
         shelf_opens_on: ShelfOpensOn::Entity,
-        layout: PanelLayout::AreaLeftAssetsRight,
+        layout: PanelLayout::LevelLeftAssetsRight,
     }
 }
 
@@ -97,7 +97,7 @@ fn the_layout_is_saved_and_one_from_before_it_or_after_it_still_reads() {
     }
     // A build before the layouts had none: the new standard.
     let before = ron::from_str::<InterfaceLook>("(accent:Teal,shelf_opens_on:Entity)").unwrap();
-    assert_eq!(before.layout, PanelLayout::AreaLeftAssetsBottom);
+    assert_eq!(before.layout, PanelLayout::LevelLeftAssetsBottom);
     // A layout a later build adds reads as the standard, keeping the rest.
     let later = ron::from_str::<InterfaceLook>("(accent:Purple,layout:Diagonal)").unwrap();
     assert_eq!(later.layout, PanelLayout::default());

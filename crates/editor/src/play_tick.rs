@@ -47,7 +47,7 @@ struct TickInput {
 
 impl Workbench {
     /// Moves the game on by `seconds`, taking in what changed in the
-    /// area: only the entities changed, or, when entities were added,
+    /// level: only the entities changed, or, when entities were added,
     /// deleted or moved, everything. Called once a frame.
     pub(crate) fn run_game(&mut self, seconds: f32) {
         let started = Instant::now();
@@ -68,26 +68,26 @@ impl Workbench {
         self.end_frame(started, ran, run);
     }
 
-    /// The area's changes reach the game's world: rebuilt or updated, and
+    /// The level's changes reach the game's world: rebuilt or updated, and
     /// the fields set by hand taken. An edit while recording is said.
     fn take_in_changes(&mut self, changes: &Changes, run: &mut FrameRun) {
         let Some(playing) = &mut self.open.playing else {
             return;
         };
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         if changes.everything {
-            playing.world.rebuild(area);
+            playing.world.rebuild(level);
         } else if !changes.entities.is_empty() {
             playing.world.update(
-                area,
+                level,
                 changes
                     .entities
                     .iter()
                     .map(|&id| (id, changes.moved.contains(&id))),
             );
         }
-        // A field set by hand takes the area's value even where that's
-        // what the area held all along and game code had set its own
+        // A field set by hand takes the level's value even where that's
+        // what the level held all along and game code had set its own
         // meanwhile: for Solis's own components here, as for game code's
         // below. Everything else game code set on the entity stays.
         for ((id, component), fields) in &changes.set {
@@ -112,7 +112,7 @@ impl Workbench {
         let Some(playing) = &mut self.open.playing else {
             return;
         };
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let Some(game) = &mut playing.game else {
             return;
         };
@@ -125,15 +125,15 @@ impl Workbench {
         host.frame_time = f64::from(seconds);
         let syncing = Instant::now();
         // With the fields set by hand, which a running component
-        // takes whatever the area held (Properties shows the game's
-        // value, so setting it to the area's is a change too).
+        // takes whatever the level held (Properties shows the game's
+        // value, so setting it to the level's is a change too).
         if changes.everything {
             run.failures
-                .extend(sync_all(game, area, &changes.set, &mut host));
+                .extend(sync_all(game, level, &changes.set, &mut host));
         } else {
             run.failures.extend(sync_entities(
                 game,
-                area,
+                level,
                 changes.entities.iter().copied(),
                 &changes.set,
                 &mut host,

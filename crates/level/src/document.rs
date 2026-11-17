@@ -5,14 +5,14 @@ use reflect::{AssetId, Component, ComponentData, EntityId};
 use std::collections::BTreeMap;
 
 /// Where an entity comes from when it's part of an assembly placed in the
-/// area (decision 0020): the assembly, the placed copy's root, and the
+/// level (decision 0020): the assembly, the placed copy's root, and the
 /// way to it inside the assembly (empty for the root itself; one ID per
 /// assembly nested on the way).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Origin {
     /// The assembly.
     pub assembly: AssetId,
-    /// The placed copy's root entity in the area.
+    /// The placed copy's root entity in the level.
     pub instance: EntityId,
     /// The entity inside the assembly: empty for the root, else the IDs
     /// leading to it through nested assemblies.
@@ -22,7 +22,7 @@ pub struct Origin {
 /// One entity: its name, where it sits in the tree, and its components.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct EntityData {
-    /// The name shown in the Area panel.
+    /// The name shown in the Level panel.
     pub name: String,
     /// The entity it belongs to, if any.
     pub parent: Option<EntityId>,
@@ -71,14 +71,14 @@ impl EntityData {
     }
 }
 
-/// An area: its entities, by ID. Sorted by ID, as area files are.
+/// A level: its entities, by ID. Sorted by ID, as level files are.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Area {
+pub struct Level {
     entities: BTreeMap<EntityId, EntityData>,
 }
 
-impl Area {
-    /// An empty area.
+impl Level {
+    /// An empty level.
     pub fn new() -> Self {
         Self::default()
     }
@@ -123,13 +123,13 @@ impl Area {
             return vec![id];
         }
         // The children of every entity at once, rather than a look over
-        // the whole area for each one under `id`.
+        // the whole level for each one under `id`.
         let children = self.hierarchy();
         let mut out = vec![id];
         let mut seen = std::collections::HashSet::from([id]);
         let mut i = 0;
         while i < out.len() {
-            // A damaged area could loop; never visit an entity twice.
+            // A damaged level could loop; never visit an entity twice.
             for &child in children.get(&Some(out[i])).map_or(&[][..], Vec::as_slice) {
                 if seen.insert(child) {
                     out.push(child);
@@ -205,13 +205,13 @@ impl Area {
     }
 
     /// Every entity in tree order: each parent, then its children, as the
-    /// Area panel lists them. Entities caught in a loop of a damaged area
+    /// Level panel lists them. Entities caught in a loop of a damaged level
     /// come last, so nothing is ever left out.
     pub fn depth_first(&self) -> Vec<EntityId> {
         crate::Tree::of(self).order().to_vec()
     }
 
-    /// Which of `ids` comes first in tree order (the Area panel's order):
+    /// Which of `ids` comes first in tree order (the Level panel's order):
     /// how "the first sun" or "the first camera" is chosen everywhere, in
     /// the editor and the game alike. Cheap for one candidate; with a
     /// [`crate::Tree`] kept, [`crate::Tree::first_of`] is cheap for many.
@@ -238,7 +238,7 @@ impl Area {
 
     /// Where `id` is in the world: its transform after its parents'. An
     /// entity without a `Transform` sits where its parent is. One caught
-    /// in a loop of parents (a damaged area) stands alone, at its own
+    /// in a loop of parents (a damaged level) stands alone, at its own
     /// transform, as [`crate::Tree::world_matrices`] and the game's world
     /// place it.
     pub fn world_matrix(&self, id: EntityId) -> glam::Mat4 {
@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn entities_are_spawned_found_and_removed() {
-        let mut s = Area::new();
+        let mut s = Level::new();
         let a = s.spawn(EntityData::new("A").with(&Transform::default()));
         let b = s.spawn(EntityData::new("B"));
         assert_eq!(s.len(), 2);
@@ -333,7 +333,7 @@ mod tests {
 
     #[test]
     fn trees_come_out_parents_first_and_in_order() {
-        let mut s = Area::new();
+        let mut s = Level::new();
         let root = s.spawn(EntityData::new("Root"));
         let mut second = EntityData::new("Second");
         second.parent = Some(root);
@@ -354,7 +354,7 @@ mod tests {
 
     #[test]
     fn world_matrices_add_up_parents() {
-        let mut s = Area::new();
+        let mut s = Level::new();
         let parent = s.spawn(EntityData::new("P").with(&Transform {
             position: glam::Vec3::new(10.0, 0.0, 0.0),
             ..Transform::default()
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn an_orphan_shows_at_the_top_and_a_loop_never_hangs() {
-        let mut s = Area::new();
+        let mut s = Level::new();
         let ghost = EntityId::random();
         let mut orphan = EntityData::new("Orphan");
         orphan.parent = Some(ghost);
@@ -423,7 +423,7 @@ mod tests {
 
     #[test]
     fn the_tree_comes_out_in_order_and_new_entities_go_last() {
-        let mut s = Area::new();
+        let mut s = Level::new();
         let root = s.spawn(EntityData::new("Root"));
         let mut a = EntityData::new("A");
         a.parent = Some(root);

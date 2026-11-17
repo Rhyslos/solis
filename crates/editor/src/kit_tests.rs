@@ -7,9 +7,9 @@
 
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::EntityData;
-use area::builtin::{Camera, CharacterBody, Collider, Transform};
 use glam::{Quat, Vec3};
+use level::EntityData;
+use level::builtin::{Camera, CharacterBody, Collider, Transform};
 use reflect::{ComponentData, EntityId, Value};
 use std::sync::Arc;
 
@@ -90,7 +90,7 @@ fn level(camera: &str, fields: &[(&str, Value)]) -> Workbench {
         data.set(name, value.clone());
     }
     eye.components.insert(camera.into(), data);
-    let spawn = |n: u64, data: EntityData| area::Edit::Spawn {
+    let spawn = |n: u64, data: EntityData| level::Edit::Spawn {
         entities: vec![(id(n), data)],
     };
     w.open
@@ -401,7 +401,7 @@ fn a_recorded_walk_plays_back_exactly() {
     w.play();
     let playing = w.open.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording {
-        area: None,
+        level: None,
         seed: playing.world.seed(),
         start: playing.world.checksum(),
         ticks: Vec::new(),
@@ -470,7 +470,7 @@ fn the_manual_s_hopper_is_sound_code_and_hops() {
     };
     let mut w = level("ThirdPersonCamera", &[]);
     w.set_program(Some(Arc::new(compiled)));
-    let mut data = w.open.document.area().get(id(PLAYER)).unwrap().clone();
+    let mut data = w.open.document.level().get(id(PLAYER)).unwrap().clone();
     data.components.clear();
     data.set(&Transform::default());
     data.set(&CharacterBody::default());
@@ -481,8 +481,8 @@ fn the_manual_s_hopper_is_sound_code_and_hops() {
         .edit(
             "Hopper",
             vec![
-                area::Edit::Despawn { root: id(PLAYER) },
-                area::Edit::Spawn {
+                level::Edit::Despawn { root: id(PLAYER) },
+                level::Edit::Spawn {
                     entities: vec![(id(PLAYER), data)],
                 },
             ],
@@ -503,7 +503,7 @@ fn the_character_rides_a_moving_platform_standing_or_walking() {
     // The third review: with the ready-made character not falling while
     // on the ground, its moves met nothing, and Rapier carries a character
     // with its platform only through what its moves meet.
-    use area::builtin::{BodyKind, RigidBody};
+    use level::builtin::{BodyKind, RigidBody};
     for walking in [false, true] {
         let mut w = third_person();
         let mut platform =
@@ -518,7 +518,7 @@ fn the_character_rides_a_moving_platform_standing_or_walking() {
             .document
             .edit(
                 "Platform",
-                vec![area::Edit::Spawn {
+                vec![level::Edit::Spawn {
                     entities: vec![(id(6), platform)],
                 }],
                 None,

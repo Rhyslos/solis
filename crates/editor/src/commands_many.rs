@@ -6,7 +6,7 @@ use crate::commands::merge_key;
 use crate::console::LogLevel;
 use crate::inspector::{degrees_of, rotation_of};
 use crate::workbench::Workbench;
-use area::Edit;
+use level::Edit;
 use reflect::{Component, ComponentData, EntityId, FieldKind, Value};
 
 impl Workbench {
@@ -32,17 +32,17 @@ impl Workbench {
         else {
             return;
         };
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         // While the game plays, what's shown as an entity's value (in
         // Properties, by the Console's `get`) is the game's, which may
-        // have moved on from the area's: setting the value the area
+        // have moved on from the level's: setting the value the level
         // already holds is a change too, made so that it's given to the
         // game (`Changes::set`).
         let playing = self.open.playing.is_some();
         let edits: Vec<Edit> = entities
             .iter()
             .filter_map(|&entity| {
-                let data = area.get(entity)?.components.get(component)?;
+                let data = level.get(entity)?.components.get(component)?;
                 let old = data.get(field).unwrap_or(&info.default);
                 let new = match (part, &info.kind) {
                     (Some((i, x)), FieldKind::Vec3) if i < 3 => {
@@ -64,7 +64,7 @@ impl Workbench {
                 };
                 (playing || new != *old).then(|| {
                     // A brush's Made as makes its mesh again too (B2).
-                    let made_as = (component == area::builtin::Brush::NAME && field == "shape")
+                    let made_as = (component == level::builtin::Brush::NAME && field == "shape")
                         .then(|| self.made_as_edits(entity, &new))
                         .flatten();
                     made_as.unwrap_or_else(|| {
@@ -91,10 +91,10 @@ impl Workbench {
             return;
         };
         let data = ComponentData::defaults(schema);
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let edits: Vec<Edit> = entities
             .iter()
-            .filter(|&&e| area.get(e).is_some_and(|d| !d.has(component)))
+            .filter(|&&e| level.get(e).is_some_and(|d| !d.has(component)))
             .map(|&entity| Edit::AddComponent {
                 entity,
                 component: component.to_string(),
@@ -106,10 +106,10 @@ impl Workbench {
 
     /// Takes the component off every one of `entities` that has it.
     pub(crate) fn remove_component_many(&mut self, entities: &[EntityId], component: &str) {
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let edits: Vec<Edit> = entities
             .iter()
-            .filter(|&&e| area.get(e).is_some_and(|d| d.has(component)))
+            .filter(|&&e| level.get(e).is_some_and(|d| d.has(component)))
             .map(|&entity| Edit::RemoveComponent {
                 entity,
                 component: component.to_string(),
@@ -120,7 +120,7 @@ impl Workbench {
 
     /// Copies `entity`'s components' values (or only `only`'s), to paste.
     pub(crate) fn copy_components(&mut self, entity: EntityId, only: Option<&str>) {
-        let Some(data) = self.open.document.area().get(entity) else {
+        let Some(data) = self.open.document.level().get(entity) else {
             return;
         };
         let copied: Vec<(String, ComponentData)> = data
@@ -140,14 +140,14 @@ impl Workbench {
     /// Pastes the copied values (or only `only`'s) onto `entities`: fields
     /// that differ are set, and components an entity lacks are added.
     pub(crate) fn paste_components(&mut self, entities: &[EntityId], only: Option<&str>) {
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let mut edits = Vec::new();
         for (name, values) in &self.open.copied {
             if only.is_some_and(|o| o != name) {
                 continue;
             }
             for &entity in entities {
-                let Some(data) = area.get(entity) else {
+                let Some(data) = level.get(entity) else {
                     continue;
                 };
                 match data.components.get(name) {
@@ -184,10 +184,10 @@ impl Workbench {
         let Some(schema) = self.open.document.registry.get(component) else {
             return;
         };
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let mut edits = Vec::new();
         for &entity in entities {
-            let Some(have) = area.get(entity).and_then(|d| d.components.get(component)) else {
+            let Some(have) = level.get(entity).and_then(|d| d.components.get(component)) else {
                 continue;
             };
             for field in &schema.fields {

@@ -10,7 +10,7 @@ use crate::transforming::{Targets, moved, snapped, snapped_in_2d, targets_placed
 use crate::viewport::Tool;
 use crate::viewport_tools::{Outline, ViewportEvent};
 use crate::workbench::Workbench;
-use area::builtin::{Brush, Model, Transform};
+use level::builtin::{Brush, Model, Transform};
 use reflect::Component;
 
 impl Workbench {
@@ -30,7 +30,7 @@ impl Workbench {
         }
         let world = self.open.document.world_matrices();
         let t = targets_placed(
-            self.open.document.area(),
+            self.open.document.level(),
             &|id| world.get(&id).copied().unwrap_or_default(),
             &self.open.document.selection,
             self.viewport.snapping.object_axes,
@@ -47,7 +47,7 @@ impl Workbench {
     /// selected collider's shape. A brush whose insides are edited draws
     /// its own edges instead.
     fn outlines(&self, hidden: &std::collections::HashSet<reflect::EntityId>) -> Vec<Outline> {
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let placed = self.open.document.world_matrices();
         let edited = self.viewport.brushing.edit.as_ref().map(|e| e.entity);
         self.open
@@ -56,7 +56,7 @@ impl Workbench {
             .iter()
             .filter(|id| !hidden.contains(id) && Some(*id) != edited)
             .flat_map(|id| {
-                let Some(entity) = area.get(id) else {
+                let Some(entity) = level.get(id) else {
                     return Vec::new();
                 };
                 let world = placed.get(&id).copied().unwrap_or_default();
@@ -86,30 +86,32 @@ impl Workbench {
                     },
                 }];
                 if let Some(shape) = entity
-                    .get::<area::builtin::CharacterBody>()
+                    .get::<level::builtin::CharacterBody>()
                     .map(|c| c.collider())
-                    .or_else(|| entity.get::<area::builtin::Collider>())
+                    .or_else(|| entity.get::<level::builtin::Collider>())
                 {
                     marks.push(Outline::Collider { world, shape });
                 }
                 // A 2D collider (decision 0071), from pixels to metres: a
                 // flat box, or a circle (drawn as a ball, a ring seen from
                 // above).
-                if let Some(flat) = entity.get::<area::builtin::Collider2D>() {
+                if let Some(flat) = entity.get::<level::builtin::Collider2D>() {
                     let px = self.open.pixels.pixel_size();
-                    let shape = area::builtin::Collider {
+                    let shape = level::builtin::Collider {
                         shape: match flat.shape {
-                            area::builtin::Shape2D::Circle => area::builtin::ColliderShape::Sphere,
-                            area::builtin::Shape2D::Box => area::builtin::ColliderShape::Box,
+                            level::builtin::Shape2D::Circle => {
+                                level::builtin::ColliderShape::Sphere
+                            }
+                            level::builtin::Shape2D::Box => level::builtin::ColliderShape::Box,
                         },
                         size: glam::Vec3::new(flat.width * px, flat.height * px, 0.0),
                         radius: flat.radius * px,
                         center: glam::Vec3::new(flat.across * px, flat.up * px, 0.0),
-                        ..area::builtin::Collider::default()
+                        ..level::builtin::Collider::default()
                     };
                     marks.push(Outline::Collider { world, shape });
                 }
-                if let Some(zone) = entity.get::<area::builtin::ReverbZone>() {
+                if let Some(zone) = entity.get::<level::builtin::ReverbZone>() {
                     marks.push(Outline::Zone {
                         world,
                         shape: crate::viewport_tools::zone_shape(&zone),
@@ -122,8 +124,8 @@ impl Workbench {
 
     /// A sprite's frame as a flat box in its entity's own space (its
     /// lowest and highest corners), to outline it when it's selected.
-    fn sprite_box(&self, entity: &area::EntityData) -> Option<(glam::Vec3, glam::Vec3)> {
-        let sprite = entity.get::<area::builtin::Sprite>()?;
+    fn sprite_box(&self, entity: &level::EntityData) -> Option<(glam::Vec3, glam::Vec3)> {
+        let sprite = entity.get::<level::builtin::Sprite>()?;
         let sheet = self.viewport.sheets.get(sprite.sheet?.asset)?;
         let drawn = crate::sprite_sheets::view_sprite(
             &sprite,
@@ -144,7 +146,7 @@ impl Workbench {
     /// Hands the viewport this frame's gizmo and outline.
     pub(crate) fn prepare_tools(&mut self) {
         self.viewport.tools.gizmo = self.gizmo();
-        let hidden = self.open.area_panel.in_effect(&self.open.document);
+        let hidden = self.open.level_panel.in_effect(&self.open.document);
         self.viewport.tools.outlines = self.outlines(&hidden.0);
     }
 
@@ -158,7 +160,7 @@ impl Workbench {
                 ViewportEvent::GizmoStart { .. } => {
                     let world = self.open.document.world_matrices();
                     self.open.moving = targets_placed(
-                        self.open.document.area(),
+                        self.open.document.level(),
                         &|id| world.get(&id).copied().unwrap_or_default(),
                         &self.open.document.selection,
                         self.viewport.snapping.object_axes,
@@ -185,12 +187,12 @@ impl Workbench {
                 }
                 ViewportEvent::Click { hit, mode } => {
                     self.open.document.selection = after_click(
-                        self.open.document.area(),
+                        self.open.document.level(),
                         &self.open.document.selection,
                         hit,
                         mode,
                     );
-                    self.open.area_panel.reveal = self.open.document.selection.primary();
+                    self.open.level_panel.reveal = self.open.document.selection.primary();
                 }
                 ViewportEvent::BrushDrawn(planned) => {
                     self.add_drawn_brush(planned);
@@ -203,12 +205,12 @@ impl Workbench {
                 }
                 ViewportEvent::Box { hits, mode } => {
                     self.open.document.selection = after_box(
-                        self.open.document.area(),
+                        self.open.document.level(),
                         &self.open.document.selection,
                         &hits,
                         mode,
                     );
-                    self.open.area_panel.reveal = self.open.document.selection.primary();
+                    self.open.level_panel.reveal = self.open.document.selection.primary();
                 }
             }
         }
@@ -234,7 +236,7 @@ impl Workbench {
     /// started, for `None`), merged into the drag's one undo step. A
     /// cancelled drag ends where it started, so it leaves no step.
     fn set_transforms(&mut self, targets: &Targets, change: Option<Change>, gesture: u64) {
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let new: Vec<_> = match change {
             Some(change) => moved(targets, change),
             None => targets.entities.iter().map(|t| (t.id, t.start)).collect(),
@@ -242,7 +244,7 @@ impl Workbench {
         let edits: Vec<_> = new
             .iter()
             .filter_map(|(id, transform)| {
-                let entity = area.get(*id)?;
+                let entity = level.get(*id)?;
                 Some(component_edits(
                     *id,
                     entity.components.get(Transform::NAME),
@@ -265,9 +267,9 @@ impl Workbench {
 
     /// Esc cancels a drag or selects nothing; Ctrl+A selects everything;
     /// X, Y and Z lock an axis and L switches world and object axes, where
-    /// the keys are the area's. Not while flying.
+    /// the keys are the level's. Not while flying.
     pub(crate) fn tool_extra_keys(&mut self, ui: &egui::Ui) {
-        if !self.keys.is_area() || self.viewport.is_flying() {
+        if !self.keys.is_level() || self.viewport.is_flying() {
             return;
         }
         let (escape, all, x, y, z, l) = ui.input_mut(|i| {

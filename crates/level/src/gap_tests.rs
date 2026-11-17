@@ -1,9 +1,9 @@
-//! What mutation testing (the Phase 6 hardening milestone) found the area
+//! What mutation testing (the Phase 6 hardening milestone) found the level
 //! crate's own tests didn't check: how much undo keeps, the camera's
 //! projection, a character's capsule, and reading every body and shape.
 
 use crate::builtin::{BodyKind, Camera, CharacterBody, Collider, ColliderShape, Light, RigidBody};
-use crate::{Area, Edit, EntityData, History, MergeKey, Origin};
+use crate::{Edit, EntityData, History, Level, MergeKey, Origin};
 use reflect::{ComponentData, EntityId, Id, Value};
 
 fn id(n: u64) -> EntityId {
@@ -19,10 +19,10 @@ fn set(entity: EntityId, value: Value) -> Edit {
     }
 }
 
-fn lamp() -> (Area, EntityId) {
-    let mut area = Area::new();
-    let lamp = area.spawn(EntityData::new("Lamp").with(&Light::point()));
-    (area, lamp)
+fn lamp() -> (Level, EntityId) {
+    let mut level = Level::new();
+    let lamp = level.spawn(EntityData::new("Lamp").with(&Light::point()));
+    (level, lamp)
 }
 
 // --- How much an edit keeps ---
@@ -96,10 +96,10 @@ fn spawning_weighs_each_entity_s_names_and_components() {
 
 #[test]
 fn the_history_counts_only_what_it_keeps() {
-    let (mut area, lamp) = lamp();
+    let (mut level, lamp) = lamp();
     let mut h = History::<()>::default();
     h.apply(
-        &mut area,
+        &mut level,
         "One",
         vec![set(lamp, Value::Float(5.0))],
         None,
@@ -110,7 +110,7 @@ fn the_history_counts_only_what_it_keeps() {
     let one = h.bytes();
     assert!(one > 0);
     h.apply(
-        &mut area,
+        &mut level,
         "Two",
         vec![set(lamp, Value::Float(6.0))],
         None,
@@ -119,17 +119,17 @@ fn the_history_counts_only_what_it_keeps() {
     )
     .unwrap();
     assert_eq!(h.bytes(), 2 * one, "same-sized steps");
-    h.undo(&mut area).unwrap().unwrap();
+    h.undo(&mut level).unwrap().unwrap();
     assert_eq!(h.bytes(), one, "an undone step no longer counts");
-    h.undo(&mut area).unwrap().unwrap();
+    h.undo(&mut level).unwrap().unwrap();
     assert_eq!(h.bytes(), 0);
-    h.redo(&mut area).unwrap().unwrap();
+    h.redo(&mut level).unwrap().unwrap();
     assert_eq!(h.bytes(), one, "a redone step counts again, once");
 }
 
 #[test]
 fn a_drag_merged_into_one_step_counts_once() {
-    let (mut area, lamp) = lamp();
+    let (mut level, lamp) = lamp();
     let drag = Some(MergeKey {
         target: 1,
         gesture: 7,
@@ -137,7 +137,7 @@ fn a_drag_merged_into_one_step_counts_once() {
     let mut h = History::<()>::default();
     for strength in [2.0, 3.0, 4.0, 5.0] {
         h.apply(
-            &mut area,
+            &mut level,
             "Drag",
             vec![set(lamp, Value::Float(strength))],
             drag,
@@ -148,17 +148,17 @@ fn a_drag_merged_into_one_step_counts_once() {
     }
     assert_eq!(h.undo_len(), 1);
     let merged = h.bytes();
-    h.undo(&mut area).unwrap().unwrap();
+    h.undo(&mut level).unwrap().unwrap();
     assert_eq!(h.bytes(), 0, "everything it counted goes with it: {merged}");
 }
 
 #[test]
 fn selections_count_in_a_step_s_weight() {
-    let (mut area, lamp) = lamp();
+    let (mut level, lamp) = lamp();
     let mut plain = History::<()>::default();
     plain
         .apply(
-            &mut area,
+            &mut level,
             "One",
             vec![set(lamp, Value::Float(5.0))],
             None,
@@ -166,11 +166,11 @@ fn selections_count_in_a_step_s_weight() {
             (),
         )
         .unwrap();
-    let (mut area, lamp) = self::lamp();
+    let (mut level, lamp) = self::lamp();
     let mut selected = History::<u32>::default();
     selected
         .apply(
-            &mut area,
+            &mut level,
             "One",
             vec![set(lamp, Value::Float(5.0))],
             None,
@@ -188,10 +188,10 @@ fn selections_count_in_a_step_s_weight() {
 #[test]
 fn the_oldest_steps_go_past_the_limit_and_none_at_it() {
     let step_bytes = {
-        let (mut area, lamp) = lamp();
+        let (mut level, lamp) = lamp();
         let mut h = History::<()>::default();
         h.apply(
-            &mut area,
+            &mut level,
             "Step",
             vec![set(lamp, Value::Float(1.0))],
             None,
@@ -201,12 +201,12 @@ fn the_oldest_steps_go_past_the_limit_and_none_at_it() {
         .unwrap();
         h.bytes()
     };
-    let (mut area, lamp) = lamp();
+    let (mut level, lamp) = lamp();
     // Exactly two steps' worth: two fit, a third pushes the oldest out.
     let mut h = History::<()>::with_limit(2 * step_bytes);
     for strength in [1.0, 2.0] {
         h.apply(
-            &mut area,
+            &mut level,
             "Step",
             vec![set(lamp, Value::Float(strength))],
             None,
@@ -217,7 +217,7 @@ fn the_oldest_steps_go_past_the_limit_and_none_at_it() {
     }
     assert_eq!(h.undo_len(), 2, "at the limit, both kept");
     h.apply(
-        &mut area,
+        &mut level,
         "Step",
         vec![set(lamp, Value::Float(3.0))],
         None,
@@ -230,7 +230,7 @@ fn the_oldest_steps_go_past_the_limit_and_none_at_it() {
     // Too small for even one: the newest is always kept.
     let mut tiny = History::<()>::with_limit(1);
     tiny.apply(
-        &mut area,
+        &mut level,
         "Step",
         vec![set(lamp, Value::Float(4.0))],
         None,

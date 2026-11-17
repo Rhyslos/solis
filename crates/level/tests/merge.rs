@@ -1,13 +1,13 @@
-//! Area files merge in Git (decisions 0006 and 0020): each case makes two
-//! changes to one area on two "branches" and merges them with Git's own
+//! Level files merge in Git (decisions 0006 and 0020): each case makes two
+//! changes to one level on two "branches" and merges them with Git's own
 //! three-way merge, which must succeed and keep both changes. Skipped
 //! where Git isn't installed.
 
 // Tests stop at the first surprise, as the other test files do.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use area::builtin::{self, Light, Transform};
-use area::{Area, EntityData, text};
+use level::builtin::{self, Light, Transform};
+use level::{EntityData, Level, text};
 use reflect::{EntityId, Registry};
 use std::path::Path;
 use std::process::Command;
@@ -22,8 +22,8 @@ fn id(text: &str) -> EntityId {
 
 /// A small level: twenty lamps with fixed IDs, spread through the ID range,
 /// some under others.
-fn base() -> Area {
-    let mut area = Area::new();
+fn base() -> Level {
+    let mut level = Level::new();
     let mut parent = None;
     for i in 0..20u64 {
         let raw = (i + 1) * (u64::MAX / 21);
@@ -38,28 +38,28 @@ fn base() -> Area {
             parent = Some(entity_id);
         } else {
             data.parent = parent;
-            data.order = area::order_after(Some(&format!("a{}", i % 5)));
+            data.order = level::order_after(Some(&format!("a{}", i % 5)));
         }
-        area.insert(entity_id, data);
+        level.insert(entity_id, data);
     }
-    area
+    level
 }
 
-fn nth(area: &Area, n: usize) -> EntityId {
-    area.iter().nth(n).unwrap().0
+fn nth(level: &Level, n: usize) -> EntityId {
+    level.iter().nth(n).unwrap().0
 }
 
 /// Merges `ours` and `theirs` (both changed from `base`) with
 /// `git merge-file`, or `None` without Git.
-fn merge(base: &Area, ours: &Area, theirs: &Area) -> Option<Result<Area, String>> {
+fn merge(base: &Level, ours: &Level, theirs: &Level) -> Option<Result<Level, String>> {
     let git = Command::new("git").arg("--version").output().ok()?;
     if !git.status.success() {
         return None;
     }
     let folder = reflect::test_support::TempFolder::new("merge").unwrap();
-    let write = |name: &str, area: &Area| {
+    let write = |name: &str, level: &Level| {
         let path = folder.join(name);
-        std::fs::write(&path, text::write(area, &registry(), &|_| None)).unwrap();
+        std::fs::write(&path, text::write(level, &registry(), &|_| None)).unwrap();
         path
     };
     let (o, b, t) = (
@@ -83,8 +83,8 @@ fn merge(base: &Area, ours: &Area, theirs: &Area) -> Option<Result<Area, String>
     Some(text::read(&merged, &registry()).map_err(|e| e.to_string()))
 }
 
-fn strength(area: &Area, entity: EntityId) -> f32 {
-    area.get(entity).unwrap().get::<Light>().unwrap().strength
+fn strength(level: &Level, entity: EntityId) -> f32 {
+    level.get(entity).unwrap().get::<Light>().unwrap().strength
 }
 
 #[test]
@@ -179,19 +179,19 @@ fn a_delete_next_to_an_edit_merges() {
     assert_eq!(merged.get(edited).unwrap().name, "Renamed");
 }
 
-/// Merges two changed area files as text with `git merge-file`.
+/// Merges two changed level files as text with `git merge-file`.
 fn merge_files(
-    base: &text::AreaFile,
-    ours: &text::AreaFile,
-    theirs: &text::AreaFile,
-) -> Option<text::AreaFile> {
-    let as_area = |file: &text::AreaFile| text::write_file(file, &registry(), &|_| None);
+    base: &text::LevelFile,
+    ours: &text::LevelFile,
+    theirs: &text::LevelFile,
+) -> Option<text::LevelFile> {
+    let as_level = |file: &text::LevelFile| text::write_file(file, &registry(), &|_| None);
     let folder = reflect::test_support::TempFolder::new("merge-files").unwrap();
     let paths: Vec<std::path::PathBuf> = [("ours", ours), ("base", base), ("theirs", theirs)]
         .iter()
         .map(|(name, file)| {
             let path = folder.join(name);
-            std::fs::write(&path, as_area(file)).unwrap();
+            std::fs::write(&path, as_level(file)).unwrap();
             path
         })
         .collect();
@@ -210,11 +210,11 @@ fn merge_files(
 
 #[test]
 fn changes_to_two_copies_of_an_assembly_merge() {
-    use area::Origin;
-    use text::{AreaFile, Override};
+    use level::Origin;
+    use text::{LevelFile, Override};
     let assembly: reflect::AssetId = "4WQ0B7M2KD9TS".parse().unwrap();
     let lamp = id("0000000000002");
-    let mut base = AreaFile::plain(Area::new());
+    let mut base = LevelFile::plain(Level::new());
     for root in ["1000000000001", "C000000000001"] {
         let mut placed = EntityData::new("Lamp post");
         placed.origin = Some(Origin {
@@ -222,7 +222,7 @@ fn changes_to_two_copies_of_an_assembly_merge() {
             instance: id(root),
             path: Vec::new(),
         });
-        base.area.insert(id(root), placed);
+        base.level.insert(id(root), placed);
     }
     let change = |field: &str, value: reflect::Value| {
         let mut light = reflect::ComponentData::default();

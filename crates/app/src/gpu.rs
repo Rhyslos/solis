@@ -1,11 +1,11 @@
 //! Connects the viewport renderer (the `render` crate) to the window's wgpu
 //! device and to egui, so the viewport panel can show the rendered image.
 
-use area::builtin::{Environment, LightKind, Sky, ToneMapping};
 use editor::{LookKind, PickAnswer, ViewLight, ViewportRenderer, ViewportView};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
+use level::builtin::{Environment, LightKind, Sky, ToneMapping};
 use reflect::AssetId;
 use render::{FrameParams, GpuModel, ViewportTarget};
 use std::collections::HashMap;
@@ -428,8 +428,8 @@ impl GpuViewport {
             ..world
         };
         let scaling = match pixel.scaling {
-            area::pixels::Scaling::WholeSteps => render::PixelScaling::WholeSteps,
-            area::pixels::Scaling::Fill => render::PixelScaling::Fill,
+            level::pixels::Scaling::WholeSteps => render::PixelScaling::WholeSteps,
+            level::pixels::Scaling::Fill => render::PixelScaling::Fill,
         };
         let layout = render::pixel_layout(pixel.base, images.out_size, scaling, pixel.slide);
         if view.layers.is_empty() {
@@ -543,7 +543,7 @@ fn count(report: &mut editor::DrawReport, stats: &render::FrameStats) {
     report.triangles += stats.triangles;
 }
 
-/// The area's sky, fog and exposure as the renderer takes them, with the
+/// The level's sky, fog and exposure as the renderer takes them, with the
 /// day's tint at `hour` (decision 0092).
 fn to_render_environment(env: &Environment, hour: f64) -> render::Environment {
     render::Environment {
@@ -570,7 +570,7 @@ fn to_render_environment(env: &Environment, hour: f64) -> render::Environment {
     }
 }
 
-/// The area's sun as the renderer takes it; with no sun, a dark one.
+/// The level's sun as the renderer takes it; with no sun, a dark one.
 fn to_render_sun(sun: Option<&ViewLight>) -> render::Sun {
     sun.map_or(
         render::Sun {
@@ -609,7 +609,7 @@ fn placements<'a>(
         .collect()
 }
 
-/// An area light as the renderer takes it.
+/// A level light as the renderer takes it.
 fn to_render_light(light: &ViewLight) -> render::Light {
     render::Light {
         kind: match light.kind {

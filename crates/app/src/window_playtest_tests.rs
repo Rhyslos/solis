@@ -121,7 +121,7 @@ fn the_editor_s_frames_get_the_sound_card_too() {
     assert!(!app.sound.device().is_silent());
 }
 
-/// An exported game of a project with no game code: an area with one
+/// An exported game of a project with no game code: a level with one
 /// entity, and whatever `extra` makes in its assets folder first.
 fn game_without_code(dir: &Path, extra: impl Fn(&Path)) -> (egui::Context, App) {
     let root = dir.join("game");
@@ -129,16 +129,16 @@ fn game_without_code(dir: &Path, extra: impl Fn(&Path)) -> (egui::Context, App) 
     let assets = root.join(asset_db::ASSETS_FOLDER);
     std::fs::create_dir_all(&assets).unwrap();
     extra(&assets);
-    let mut area = area::Area::new();
-    area.spawn(area::EntityData::new("Rock").with(&area::builtin::Transform::default()));
-    let registry = area::builtin::registry().unwrap();
+    let mut level = level::Level::new();
+    level.spawn(level::EntityData::new("Rock").with(&level::builtin::Transform::default()));
+    let registry = level::builtin::registry().unwrap();
     std::fs::write(
         assets.join("plain.solarea"),
-        area::text::write(&area, &registry, &|_| None),
+        level::text::write(&level, &registry, &|_| None),
     )
     .unwrap();
     let (ctx, mut app) = game(dir, fails);
-    app.playtest.as_mut().unwrap().found.playtest.area = "plain.solarea".into();
+    app.playtest.as_mut().unwrap().found.playtest.level = "plain.solarea".into();
     (ctx, app)
 }
 

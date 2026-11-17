@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn the_component_s_presets_are_these() {
         let names: Vec<&str> = Preset::ALL.iter().map(|p| p.name()).collect();
-        assert_eq!(names, area::builtin::ReverbZone::PRESETS);
+        assert_eq!(names, level::builtin::ReverbZone::PRESETS);
     }
 
     #[test]

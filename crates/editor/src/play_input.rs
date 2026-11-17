@@ -258,12 +258,12 @@ impl Workbench {
             );
             return;
         }
-        // The area it's recorded in, inside the project's assets, so the
+        // The level it's recorded in, inside the project's assets, so the
         // project's check can play it back on its own (Phase 8, C4).
-        let area = self.recorded_area();
-        // Played back on its own (a project's check), the area is read as
+        let level = self.recorded_level();
+        // Played back on its own (a project's check), the level is read as
         // saved: unsaved changes would make it play back differently.
-        if area.is_some() && self.open.document.is_dirty() {
+        if level.is_some() && self.open.document.is_dirty() {
             self.log(
                 LogLevel::Warning,
                 "The area has unsaved changes: save it before recording, or this recording \
@@ -276,7 +276,7 @@ impl Workbench {
                 seed: playing.start_seed,
                 start: playing.world.checksum(),
                 ticks: Vec::new(),
-                area,
+                level,
             });
             self.log(
                 LogLevel::Info,
@@ -285,9 +285,9 @@ impl Workbench {
         }
     }
 
-    /// The open area's file inside the project's assets, with `/` between
+    /// The open level's file inside the project's assets, with `/` between
     /// folders, when it's saved there (unsaved changes aside).
-    fn recorded_area(&self) -> Option<String> {
+    fn recorded_level(&self) -> Option<String> {
         let assets = &self.open.project.as_ref()?.assets;
         let file = self.open.document.file()?;
         // The same folder may be spelt differently (letter case on Windows,

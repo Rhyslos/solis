@@ -145,7 +145,7 @@ fn a_lust_component_becomes_a_schema_with_its_kinds_and_starting_values() {
 }
 
 #[test]
-fn the_area_s_values_reach_a_component_and_only_changes_are_sent_again() {
+fn the_level_s_values_reach_a_component_and_only_changes_are_sent_again() {
     let mut runtime = loaded(GUN);
     let me = id(7);
     let target = id(9);
@@ -365,11 +365,11 @@ impl crate::RustComponent for Tally {
 }
 
 /// The review, BUG-54 (issue 57): the editor shows a running component's
-/// values as the game has them, so a field set there to what the area
-/// already holds is a change too; but the area's values are what they
+/// values as the game has them, so a field set there to what the level
+/// already holds is a change too; but the level's values are what they
 /// were, and nothing was given. In each language.
 #[test]
-fn a_field_set_by_hand_is_given_whatever_the_area_held_in_lust_lua_and_rust() {
+fn a_field_set_by_hand_is_given_whatever_the_level_held_in_lust_lua_and_rust() {
     let mut compiled = chunk(GUN);
     compiled.lua = vec![(
         "spinner.lua".into(),
@@ -393,18 +393,18 @@ fn a_field_set_by_hand_is_given_whatever_the_area_held_in_lust_lua_and_rust() {
     });
     runtime.load(&compiled, &mut NoHost).unwrap();
     let me = id(7);
-    // Each component's counting field, and what the area holds for it.
+    // Each component's counting field, and what the level holds for it.
     let kinds = [
         ("Gun", "ammo", 30),
         ("Spinner", "turns", 0),
         ("Tally", "count", 0),
     ];
-    let area = kinds.map(|(_, field, start)| {
+    let level = kinds.map(|(_, field, start)| {
         let mut data = ComponentData::default();
         data.set(field, Value::Int(start));
         data
     });
-    let all = || (0..3).map(|i| (me, kinds[i].0, &area[i]));
+    let all = || (0..3).map(|i| (me, kinds[i].0, &level[i]));
     let now = |runtime: &Runtime| {
         kinds.map(
             |(name, field, _)| match runtime.values(me, name).unwrap().get(field) {
@@ -418,14 +418,14 @@ fn a_field_set_by_hand_is_given_whatever_the_area_held_in_lust_lua_and_rust() {
         assert!(runtime.tick(1.0 / 60.0, &mut NoHost).failures.is_empty());
     }
     assert_eq!(now(&runtime), [25, 5, 5]);
-    // The area's values again, nothing set by hand (another field of the
+    // The level's values again, nothing set by hand (another field of the
     // entity changed, say): what the game counted is kept.
     assert!(runtime.sync_many(all(), &mut NoHost).is_empty());
     assert_eq!(now(&runtime), [25, 5, 5]);
 
-    // Each set by hand to what the area holds: given.
+    // Each set by hand to what the level holds: given.
     let set = kinds.map(|(_, field, _)| BTreeSet::from([field.to_string()]));
-    let edited = (0..3).map(|i| (me, kinds[i].0, &area[i], &set[i]));
+    let edited = (0..3).map(|i| (me, kinds[i].0, &level[i], &set[i]));
     assert!(runtime.sync_edited(edited, &mut NoHost).is_empty());
     assert_eq!(now(&runtime), [30, 0, 0]);
     let shot = runtime.values(me, "Gun").unwrap().get("lastShot").cloned();
@@ -442,10 +442,10 @@ fn a_field_set_by_hand_is_given_whatever_the_area_held_in_lust_lua_and_rust() {
     assert!(runtime.sync_many(all(), &mut NoHost).is_empty());
     assert_eq!(now(&runtime), [29, 1, 1]);
 
-    // A field the component hasn't, or one the area has no value for:
+    // A field the component hasn't, or one the level has no value for:
     // nothing is given and nothing fails.
     let odd = BTreeSet::from(["nonsense".to_string(), "lastShot".to_string()]);
-    let edited = (0..3).map(|i| (me, kinds[i].0, &area[i], &odd));
+    let edited = (0..3).map(|i| (me, kinds[i].0, &level[i], &odd));
     assert!(runtime.sync_edited(edited, &mut NoHost).is_empty());
     assert_eq!(now(&runtime), [29, 1, 1]);
 }

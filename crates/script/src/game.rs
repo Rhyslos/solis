@@ -107,12 +107,12 @@ pub struct ViewIndex {
     /// Each entity's number in [`WorldView::places`].
     slots: reflect::IdMap<u32>,
     names: Vec<String>,
-    /// Each name's first entity, in the area's tree order.
+    /// Each name's first entity, in the level's tree order.
     first_named: HashMap<String, EntityId>,
 }
 
 impl ViewIndex {
-    /// The index of `entities`, in the area's tree order (as
+    /// The index of `entities`, in the level's tree order (as
     /// `world::World::entities` gives them).
     pub fn new(entities: &[Option<(EntityId, String)>]) -> Self {
         let mut index = Self::default();
@@ -501,7 +501,7 @@ impl Host for ViewHost {
     }
 
     fn show_screen(&mut self, which: EntityId, screen: &str, shown: bool) {
-        let named = screen.len() <= area::builtin::Screen::MAX_NAME
+        let named = screen.len() <= level::builtin::Screen::MAX_NAME
             && !screen.is_empty()
             && screen.chars().all(|c| c.is_ascii_alphanumeric());
         if named && self.kept.room() {
@@ -754,7 +754,7 @@ fn spawned_id(order: &Order, phase: u32, tick: u64) -> Option<EntityId> {
     reflect::Id::from_raw(hash | 1).map(EntityId)
 }
 
-/// A component for a shard to sync: its entity, its name, the area's
+/// A component for a shard to sync: its entity, its name, the level's
 /// values, and its fields set by hand (see [`Game::sync_edited`]).
 type ToSync = (EntityId, String, ComponentData, BTreeSet<String>);
 
@@ -1306,8 +1306,8 @@ impl Game {
 
     /// [`Game::sync_many`] after edits made by hand: `set` names the
     /// fields set since the last sync, by entity and component. A running
-    /// component is given each of those as the area holds it now, even
-    /// when that's what the area held before. Comparing with the area's
+    /// component is given each of those as the level holds it now, even
+    /// when that's what the level held before. Comparing with the level's
     /// last values (all `sync_many` has) can't see such an edit, and the
     /// game may have changed its own value since: ammo fired, then typed
     /// back to full.

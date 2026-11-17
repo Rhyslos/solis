@@ -27,7 +27,7 @@ fn the_kinds_colours_are_option_a_with_three_of_today_s() {
         egui::Color32::from_rgb(0x5d, 0xca, 0xa5)
     );
     assert_eq!(K::Code.color(), egui::Color32::from_rgb(0xe8, 0x87, 0x5a));
-    assert_eq!(K::Area.color(), egui::Color32::from_rgb(0x58, 0xc2, 0x6a));
+    assert_eq!(K::Level.color(), egui::Color32::from_rgb(0x58, 0xc2, 0x6a));
     assert_eq!(K::Other.color(), kind::OTHER);
 }
 

@@ -8,8 +8,8 @@ use animation::{
     AnimatorFile, Clip, ClipFrame, ClipSet, Condition, Direction, Facing, Parameter, ParameterKind,
     Plays, State, Transition,
 };
-use area::builtin::Transform;
-use area::{Area, EntityData};
+use level::builtin::Transform;
+use level::{EntityData, Level};
 use reflect::Component;
 use reflect::{AssetRef, Id as RawId};
 
@@ -104,7 +104,7 @@ fn farmer() -> AnimatorFile {
 
 struct Farm {
     world: World,
-    area: Area,
+    level: Level,
     ids: Vec<EntityId>,
     sheet: AssetId,
     file: AssetId,
@@ -112,12 +112,12 @@ struct Farm {
 
 fn farm(count: usize) -> Farm {
     let (sheet, file) = (AssetId::random(), AssetId::random());
-    let mut area = Area::new();
+    let mut level = Level::new();
     let ids = (0..count)
         .map(|i| {
             let n = i as u64 + 1;
             let entity = EntityId(RawId::from_raw(n).unwrap());
-            area.insert(
+            level.insert(
                 entity,
                 EntityData::new(&format!("Farmer {n}"))
                     .with(&Transform::default())
@@ -139,14 +139,14 @@ fn farm(count: usize) -> Farm {
             entity
         })
         .collect();
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     world.set_clip_sets(clip_sets(sheet));
     let mut machines = Animators::new();
     machines.insert(file, Arc::new(Machine::new(&farmer())));
     world.set_animators(Arc::new(machines));
     Farm {
         world,
-        area,
+        level,
         ids,
         sheet,
         file,
@@ -281,12 +281,12 @@ fn a_save_s_values_are_taken_and_sum_the_same_before_the_first_tick() {
             Some(*v)
         );
     }
-    // The "save": the area with the animator's state, and the values.
-    let mut area = f.area.clone();
-    let data = area.get_mut(me).unwrap();
+    // The "save": the level with the animator's state, and the values.
+    let mut level = f.level.clone();
+    let data = level.get_mut(me).unwrap();
     data.set(&f.world.get::<Animator>(me).unwrap());
     data.set(&sprite(&f.world, me));
-    let mut loaded = World::from_area(&area);
+    let mut loaded = World::from_level(&level);
     loaded.set_clip_sets(clip_sets(f.sheet));
     loaded.set_animators(Arc::clone(f.world.animators()));
     loaded.restore_animator_values(values);
@@ -331,15 +331,15 @@ fn edits_while_playing_keep_each_run_and_a_changed_file_carries_it_over() {
         .unwrap();
     tick(&mut f.world);
     // Tinting it in the editor keeps it walking.
-    let mut tinted = f.area.get(me).unwrap().get::<Sprite>().unwrap();
+    let mut tinted = f.level.get(me).unwrap().get::<Sprite>().unwrap();
     tinted.tint = [1.0, 0.5, 0.5];
-    f.area.get_mut(me).unwrap().set(&tinted);
-    f.world.update(&f.area, [(me, false)]);
+    f.level.get_mut(me).unwrap().set(&tinted);
+    f.world.update(&f.level, [(me, false)]);
     assert_eq!(f.world.animator_of(me).unwrap().0, "Walk");
     tick(&mut f.world);
     assert_eq!(sprite(&f.world, me).clip, "walk_down");
     // A rebuild too.
-    f.world.rebuild(&f.area);
+    f.world.rebuild(&f.level);
     assert_eq!(f.world.animator_of(me).unwrap().0, "Walk");
     // The file changes (Walk faster): the run carries over.
     let mut file = farmer();
@@ -351,40 +351,40 @@ fn edits_while_playing_keep_each_run_and_a_changed_file_carries_it_over() {
     assert_eq!(f.world.animator_of(me).unwrap().0, "Walk");
     assert_eq!(sprite(&f.world, me).speed, 3.0);
     // Its Animator taken away: the run goes with it.
-    let mut data = f.area.get(me).unwrap().clone();
+    let mut data = f.level.get(me).unwrap().clone();
     data.components.remove(Animator::NAME);
-    *f.area.get_mut(me).unwrap() = data;
-    f.world.update(&f.area, [(me, false)]);
+    *f.level.get_mut(me).unwrap() = data;
+    f.world.update(&f.level, [(me, false)]);
     assert!(f.world.animator_of(me).is_none());
     tick(&mut f.world);
 }
 
 #[test]
 fn without_its_file_or_a_sprite_it_does_no_harm() {
-    let mut area = Area::new();
-    let lone = area.spawn(EntityData::new("Lone").with(&Animator::default()));
-    let missing = area.spawn(EntityData::new("Missing").with(&Animator {
+    let mut level = Level::new();
+    let lone = level.spawn(EntityData::new("Lone").with(&Animator::default()));
+    let missing = level.spawn(EntityData::new("Missing").with(&Animator {
         animator: Some(AssetRef {
             asset: AssetId::random(),
             part: None,
         }),
         ..Animator::default()
     }));
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     tick(&mut world);
     assert!(world.animator_of(lone).is_none());
     assert!(world.animator_of(missing).is_none());
     // An animator with no sprite still changes state.
     let file = AssetId::random();
-    let mut area = Area::new();
-    let ghost = area.spawn(EntityData::new("Ghost").with(&Animator {
+    let mut level = Level::new();
+    let ghost = level.spawn(EntityData::new("Ghost").with(&Animator {
         animator: Some(AssetRef {
             asset: file,
             part: None,
         }),
         ..Animator::default()
     }));
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     let mut machines = Animators::new();
     machines.insert(file, Arc::new(Machine::new(&farmer())));
     world.set_animators(Arc::new(machines));

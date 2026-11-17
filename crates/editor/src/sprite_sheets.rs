@@ -1,5 +1,5 @@
 //! Sprite sheets in the editor (Phase 9, D2): the project's Aseprite
-//! files as the app read them, the sprites an area draws, and how each
+//! files as the app read them, the sprites a level draws, and how each
 //! becomes what the renderer draws ([`ViewSprite`], laid out as
 //! `render::SpriteInstance`). With D3, the project's clips files
 //! (`.solframes`) too, and the clips each sheet and clips file offers
@@ -8,9 +8,9 @@
 //! ([`SpriteSheets::animator_set`]).
 
 use animation::{ClipSet, FramesFile};
-use area::builtin::Sprite;
 use assets::sprite_sheet::SpriteSheet;
 use glam::{Mat4, Vec2};
+use level::builtin::Sprite;
 use reflect::{AssetId, EntityId};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -595,20 +595,20 @@ pub(crate) fn name_of(path: &str) -> String {
     reflect::data_files::path_stem(file)
 }
 
-/// A sprite an area draws: the entity's Sprite, where the entity is, and
+/// A sprite a level draws: the entity's Sprite, where the entity is, and
 /// its pick number (0: can't be picked).
 #[derive(Debug, Clone, PartialEq)]
-pub struct AreaSprite {
+pub struct LevelSprite {
     /// The entity.
     pub entity: EntityId,
     /// Its sprite.
     pub sprite: Sprite,
     /// Where it is in the world.
     pub transform: Mat4,
-    /// Its number for picking, as models have (`AreaView::pickable`).
+    /// Its number for picking, as models have (`LevelView::pickable`).
     pub pick: u32,
     /// Its entity's Parallax, which makes it a layer (decision 0094).
-    pub parallax: Option<area::builtin::Parallax>,
+    pub parallax: Option<level::builtin::Parallax>,
 }
 
 /// One sprite to draw, laid out exactly as `render::SpriteInstance`, so
@@ -756,7 +756,7 @@ pub fn view_frame(
 /// frame, `ahead` seconds after its own time (a preview; 0 to show it as
 /// it is).
 pub fn batches(
-    sprites: &[AreaSprite],
+    sprites: &[LevelSprite],
     sheets: &SpriteSheets,
     pixel: f32,
     snap: Option<f32>,

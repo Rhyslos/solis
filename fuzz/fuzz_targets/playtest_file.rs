@@ -1,9 +1,9 @@
 //! A playtest file (`playtest.txt` beside an exported game, and a
 //! project's `.solis/last export.txt`): refused or read, every part put
-//! right (a usable name and area, a window Solis can open), and written
+//! right (a usable name and level, a window Solis can open), and written
 //! back to itself.
 #![no_main]
-use editor::export_dialog::{MAX_PLAYTEST_BYTES, Playtest, game_name, usable_area};
+use editor::export_dialog::{MAX_PLAYTEST_BYTES, Playtest, game_name, usable_level};
 use script::settings::WINDOW_SIDES;
 
 libfuzzer_sys::fuzz_target!(|data: &[u8]| {
@@ -21,7 +21,7 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
         "the name is put right"
     );
     assert!(
-        usable_area(&playtest.area),
+        usable_level(&playtest.level),
         "the area is one inside the assets"
     );
     assert!(

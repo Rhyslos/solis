@@ -69,8 +69,8 @@ pub(crate) mod tests {
     pub(crate) fn formats() -> [&'static dyn Versioned; 13] {
         [
             &animation::atlas::FORMAT,
-            &area::text::FORMAT,
-            &area::pixels::FORMAT,
+            &level::text::FORMAT,
+            &level::pixels::FORMAT,
             &animation::frames_file::FORMAT,
             &animation::animator_file::FORMAT,
             &tiles::tileset::FORMAT,
@@ -89,10 +89,10 @@ pub(crate) mod tests {
         for format in formats() {
             assert!(format.current() >= 1, "{}", format.name());
         }
-        assert!(area::text::FORMAT.is_complete());
+        assert!(level::text::FORMAT.is_complete());
         assert!(sound::event::FORMAT.is_complete());
         assert!(sound::mixer::FORMAT.is_complete());
-        assert!(area::pixels::FORMAT.is_complete());
+        assert!(level::pixels::FORMAT.is_complete());
         assert!(animation::frames_file::FORMAT.is_complete());
         assert!(animation::animator_file::FORMAT.is_complete());
         assert!(tiles::tileset::FORMAT.is_complete());

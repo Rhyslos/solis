@@ -8,14 +8,14 @@ use serde::{Deserialize, Serialize};
 /// column of a shelf tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Panel {
-    /// The 3D view of the area.
+    /// The 3D view of the level.
     Viewport,
     /// The running game, beside the viewport (Phase 3).
     Game,
-    /// The area's entities, as a tree. Layouts saved before it was
-    /// renamed call it "Scene".
-    #[serde(alias = "Scene")]
-    Area,
+    /// The level's entities, as a tree. Layouts saved before it was
+    /// renamed call it "Scene", and then "Area" (decision 0118).
+    #[serde(alias = "Scene", alias = "Area")]
+    Level,
     /// The selected entity's components.
     Properties,
     /// Assets: models, textures, sounds, assemblies.
@@ -24,7 +24,7 @@ pub enum Panel {
     Code,
     /// Messages from the editor, the build and the game.
     Console,
-    /// Mistakes found in the game's code and areas.
+    /// Mistakes found in the game's code and levels.
     Problems,
     /// Where each frame's time goes (Phase 5).
     Profiler,
@@ -89,7 +89,7 @@ impl Panel {
     pub const ALL: [Self; 15] = [
         Self::Viewport,
         Self::Game,
-        Self::Area,
+        Self::Level,
         Self::Properties,
         Self::Library,
         Self::Code,
@@ -139,7 +139,7 @@ impl Panel {
         match self {
             Self::Viewport => "Viewport",
             Self::Game => "Game",
-            Self::Area => "Area",
+            Self::Level => "Area",
             Self::Properties => "Properties",
             Self::Library => "Library",
             Self::Code => "Code",
@@ -174,7 +174,7 @@ impl Panel {
         match self {
             Self::Viewport => Icon::Viewport,
             Self::Game => Icon::Game,
-            Self::Area => Icon::Area,
+            Self::Level => Icon::Level,
             Self::Properties => Icon::Properties,
             Self::Library => Icon::Library,
             Self::Code => Icon::Code,
@@ -189,7 +189,7 @@ impl Panel {
             Self::Tileset => Icon::Tileset,
             Self::AtlasCrop => Icon::Crops,
             Self::Canvas => Icon::Screen,
-            Self::Elements => Icon::Area,
+            Self::Elements => Icon::Level,
             Self::Assets => Icon::Library,
             Self::Placement => Icon::Move,
             Self::Terrains => Icon::Tileset,
@@ -218,9 +218,11 @@ mod tests {
     }
 
     #[test]
-    fn a_layout_saved_before_the_rename_still_finds_the_area_panel() {
-        let old: Panel = ron::from_str("Scene").unwrap();
-        assert_eq!(old, Panel::Area);
-        assert_eq!(ron::to_string(&Panel::Area).unwrap(), "Area");
+    fn a_layout_saved_before_the_renames_still_finds_the_level_panel() {
+        for old in ["Scene", "Area"] {
+            let read: Panel = ron::from_str(old).unwrap();
+            assert_eq!(read, Panel::Level, "{old}");
+        }
+        assert_eq!(ron::to_string(&Panel::Level).unwrap(), "Level");
     }
 }

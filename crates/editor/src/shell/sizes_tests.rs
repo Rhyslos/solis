@@ -50,13 +50,13 @@ fn every_standard_is_inside_its_limits() {
     }
     // Home's shelf holds less beside the lists, so it starts shorter.
     let home = |layout| Edge::ShelfHeight.standard(RibbonTab::Home, layout);
-    assert!(home(PanelLayout::AreaLeftAssetsBottom) < home(PanelLayout::Shelf));
+    assert!(home(PanelLayout::LevelLeftAssetsBottom) < home(PanelLayout::Shelf));
 }
 
 #[test]
 fn a_size_is_kept_per_tab_and_per_layout_on_home_only() {
     let mut sizes = Sizes::default();
-    let (side, shelf) = (PanelLayout::AreaLeftAssetsBottom, PanelLayout::Shelf);
+    let (side, shelf) = (PanelLayout::LevelLeftAssetsBottom, PanelLayout::Shelf);
     sizes.set(RibbonTab::Home, side, Edge::ShelfHeight, 222.0);
     assert_eq!(sizes.get(RibbonTab::Home, side, Edge::ShelfHeight), 222.0);
     assert_eq!(
@@ -76,7 +76,7 @@ fn a_size_is_kept_per_tab_and_per_layout_on_home_only() {
 fn a_size_is_held_to_its_limits_and_nothing_unusable_is_kept() {
     let mut sizes = Sizes::default();
     let home = RibbonTab::Home;
-    let layout = PanelLayout::AreaLeftAssetsRight;
+    let layout = PanelLayout::LevelLeftAssetsRight;
     sizes.set(home, layout, Edge::Left, 1.0);
     assert_eq!(sizes.get(home, layout, Edge::Left), size::COLUMN_MIN_W);
     sizes.set(home, layout, Edge::RightShare, 2.0);
@@ -96,7 +96,7 @@ fn a_size_is_held_to_its_limits_and_nothing_unusable_is_kept() {
 #[test]
 fn forgetting_puts_the_standard_back() {
     let mut sizes = Sizes::default();
-    let layout = PanelLayout::AreaAndAssetsLeft;
+    let layout = PanelLayout::LevelAndAssetsLeft;
     sizes.set(RibbonTab::Home, layout, Edge::Left, 420.0);
     sizes.set(
         RibbonTab::Home,

@@ -1,14 +1,14 @@
 //! The scale check's case for the frame's layouts (decision 0109): an
 //! editor frame on Home in each panel layout with 10,000 entities in the
-//! Area list and 10,000 files in the Assets list, within the editor
+//! Level list and 10,000 files in the Assets list, within the editor
 //! frame's target.
 
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::test_support::info;
 use crate::viewport::NoRenderer;
 use crate::workbench::Workbench;
-use area::builtin::Transform;
 use glam::Vec3;
+use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The target the 10,000-entity frame already has (BUG-28's case).
@@ -44,7 +44,7 @@ pub(crate) fn full(count: usize, layout: crate::shell::PanelLayout) -> Workbench
     let mut parent = None;
     for i in 0..count {
         let id = EntityId::random();
-        let mut data = area::EntityData::new(&format!("Thing {i}")).with(&Transform {
+        let mut data = level::EntityData::new(&format!("Thing {i}")).with(&Transform {
             position: Vec3::new((i % 50) as f32, (i / 50) as f32, 0.0),
             ..Transform::default()
         });
@@ -53,12 +53,12 @@ pub(crate) fn full(count: usize, layout: crate::shell::PanelLayout) -> Workbench
         } else {
             data.parent = parent;
         }
-        edits.push(area::Edit::Spawn {
+        edits.push(level::Edit::Spawn {
             entities: vec![(id, data)],
         });
     }
     w.open.document.edit("Fill", edits, None, None).unwrap();
-    let some = w.document().area().depth_first()[count / 2];
+    let some = w.document().level().depth_first()[count / 2];
     w.select(some);
     w
 }

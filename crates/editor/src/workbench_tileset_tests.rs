@@ -285,7 +285,7 @@ fn a_terrain_removed_in_properties_comes_back_whole_with_ctrl_z() {
     // The review (BUG-17): the × beside a terrain in a tileset's Properties
     // wrote its tiles and rules out of the file, and Ctrl+Z did nothing.
     let (w, set_id, whole) = with_rules();
-    let area_before = w.open.document.area().len();
+    let level_before = w.open.document.level().len();
     let mut h = properties_showing(w);
     let from = h.state().1.actions.len();
     h.get_by_label("Remove water").click();
@@ -312,8 +312,8 @@ fn a_terrain_removed_in_properties_comes_back_whole_with_ctrl_z() {
     h.run();
     assert_eq!(last_saved(&h, from), Some(without));
     assert_eq!(
-        h.state().0.open.document.area().len(),
-        area_before,
+        h.state().0.open.document.level().len(),
+        level_before,
         "the area's own steps are untouched"
     );
 }
@@ -478,25 +478,25 @@ fn a_change_in_properties_is_undone_over_the_tileset_tab_and_the_other_way_round
 }
 
 #[test]
-fn ctrl_z_over_properties_showing_a_tileset_is_never_the_area_s() {
-    // Nothing of the tileset's to undo: the area's last step stays, as it
-    // would over the Tileset tab. Elsewhere it's the area's as always.
+fn ctrl_z_over_properties_showing_a_tileset_is_never_the_level_s() {
+    // Nothing of the tileset's to undo: the level's last step stays, as it
+    // would over the Tileset tab. Elsewhere it's the level's as always.
     let (mut w, _, _) = with_rules();
-    w.spawn_selected(area::EntityData::new("Crate"));
-    let entities = w.open.document.area().len();
+    w.spawn_selected(level::EntityData::new("Crate"));
+    let entities = w.open.document.level().len();
     let mut h = properties_showing(w);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.run();
-    assert_eq!(h.state().0.open.document.area().len(), entities);
+    assert_eq!(h.state().0.open.document.level().len(), entities);
     assert!(saved(&h.state().1.actions).is_empty());
-    // Every other key over Properties is the area's still.
+    // Every other key over Properties is the level's still.
     h.key_press(egui::Key::Delete);
     h.run();
-    assert_eq!(h.state().0.open.document.area().len(), entities - 1);
+    assert_eq!(h.state().0.open.document.level().len(), entities - 1);
     let mut h = rest_over(h, Panel::Viewport);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.run();
-    assert_eq!(h.state().0.open.document.area().len(), entities);
+    assert_eq!(h.state().0.open.document.level().len(), entities);
 }
 
 #[test]

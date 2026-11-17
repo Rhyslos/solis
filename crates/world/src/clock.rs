@@ -63,7 +63,7 @@ impl World {
         }
     }
 
-    /// The game's hour (decision 0092): 0 up to 24, from the area's
+    /// The game's hour (decision 0092): 0 up to 24, from the level's
     /// Environment's day (its start and length) and the game's time,
     /// moved on by game code's `setTimeOfDay`. With no Environment, the
     /// default day's.

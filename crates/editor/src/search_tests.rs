@@ -128,13 +128,13 @@ fn space_opens_the_search_and_enter_does_the_first_result() {
     h.run();
     h.run();
     assert!(h.state().0.search.open);
-    let before = h.state().0.document().area().iter().count();
+    let before = h.state().0.document().level().iter().count();
     h.get_by_label("Search").type_text("point light");
     h.run();
     h.key_press(egui::Key::Enter);
     h.run();
     assert!(!h.state().0.search.open);
-    assert_eq!(h.state().0.document().area().iter().count(), before + 1);
+    assert_eq!(h.state().0.document().level().iter().count(), before + 1);
 }
 
 #[test]
@@ -192,11 +192,11 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
     assert_eq!(w.selection(), None);
     // A File action goes to the app.
     w.do_search(
-        SearchTarget::Command(crate::shell::ShellCommand::SaveArea),
+        SearchTarget::Command(crate::shell::ShellCommand::SaveLevel),
         &ctx,
         &mut actions,
     );
-    assert!(actions.contains(&WorkbenchAction::SaveArea));
+    assert!(actions.contains(&WorkbenchAction::SaveLevel));
 }
 
 #[test]
@@ -305,7 +305,7 @@ fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_no
             "{path}: no chip hides it"
         );
         // The Assets list comes up: on the shelf's Entity tab, or beside
-        // the area in a side layout, where it is always in view.
+        // the level in a side layout, where it is always in view.
         use crate::shell::workspaces::{Home, home_of};
         let home = home_of(w.ribbon_tab(), w.open_now(), crate::panel::Panel::Assets);
         match home {
@@ -426,7 +426,7 @@ fn unfinished_parts_are_hidden_and_shown_from_the_search_and_never_listed() {
 }
 
 #[test]
-fn an_open_search_reads_the_area_once_until_it_changes() {
+fn an_open_search_reads_the_level_once_until_it_changes() {
     let mut h = harness(fresh());
     h.run();
     assert_eq!(
@@ -454,7 +454,7 @@ fn an_open_search_reads_the_area_once_until_it_changes() {
         .state()
         .0
         .document()
-        .area()
+        .level()
         .get(lamp)
         .unwrap()
         .name
@@ -466,8 +466,8 @@ fn an_open_search_reads_the_area_once_until_it_changes() {
             .iter()
             .any(|i| i.kind == SearchKind::Entity && i.name == name)
     );
-    // Another area in its place is never answered from the old list.
-    h.state_mut().0.new_area();
+    // Another level in its place is never answered from the old list.
+    h.state_mut().0.new_level();
     h.run();
     assert!(
         !h.state()
@@ -482,13 +482,13 @@ fn an_open_search_reads_the_area_once_until_it_changes() {
 /// frame. They're scored once for what's typed, and the results are
 /// what scoring everything gives.
 #[test]
-fn the_area_and_files_are_scored_once_for_what_is_typed() {
+fn the_level_and_files_are_scored_once_for_what_is_typed() {
     let mut w = with_files();
     let lamps = (0..300)
-        .map(|i| area::Edit::Spawn {
+        .map(|i| level::Edit::Spawn {
             entities: vec![(
                 EntityId::random(),
-                area::EntityData::new(&format!("Lamp {i}")),
+                level::EntityData::new(&format!("Lamp {i}")),
             )],
         })
         .collect();

@@ -5,9 +5,9 @@
 use super::*;
 use crate::test_support::*;
 use crate::workbench::WorkbenchAction;
-use area::EntityData;
-use area::builtin::{Collider, RigidBody};
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::{Collider, RigidBody};
 use std::sync::Arc;
 
 /// A busy game: a counter that staggers randomly, kicks a crate on its
@@ -108,13 +108,13 @@ pub(super) fn busy(project: &str) -> Workbench {
         .edit(
             "Add",
             vec![
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(1), floor)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(2), crate_data)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(3), busy)],
                 },
             ],
@@ -162,12 +162,12 @@ fn a_loaded_game_carries_on_exactly_as_the_saved_one_would_have() {
     assert_eq!(sums(&mut w), saved_at, "the same as when saved");
     run_to(&mut w, 130);
     assert_eq!(sums(&mut w), carried_on, "the same, to the bit");
-    // Stop goes back to the area as it was before Play.
+    // Stop goes back to the level as it was before Play.
     w.stop();
     assert_eq!(
         w.open
             .document
-            .area()
+            .level()
             .get(raw(3))
             .unwrap()
             .get::<Transform>()
@@ -340,7 +340,7 @@ fn a_project_name_with_a_line_break_still_loads_its_saves() {
 #[test]
 fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
     // The third review: the values section was given to the game whole,
-    // so a hand-made save could start components the area doesn't have.
+    // so a hand-made save could start components the level doesn't have.
     let mut w = busy("Harbour");
     w.play();
     run_to(&mut w, 10);
@@ -348,23 +348,23 @@ fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
     let floor = w
         .open
         .document
-        .area()
+        .level()
         .iter()
         .find(|(_, e)| e.name == "Floor")
         .map(|(id, _)| id)
         .unwrap();
-    let mut extra = area::Area::new();
+    let mut extra = level::Level::new();
     let mut holder = EntityData::new("");
     holder
         .components
         .insert("Busy".into(), reflect::ComponentData::default());
     extra.insert(floor, holder);
     let registry = w.open.document.registry.clone();
-    let values = area::text::read(&save.values, &registry).unwrap();
+    let values = level::text::read(&save.values, &registry).unwrap();
     for (id, data) in values.iter() {
         extra.insert(id, data.clone());
     }
-    save.values = area::text::write(&extra, &registry, &|_| None);
+    save.values = level::text::write(&extra, &registry, &|_| None);
     let text = save.write().unwrap();
     w.load_game(&text, "hand-made");
     assert!(
@@ -437,7 +437,7 @@ fn many_saves_of_one_slot_in_a_tick_are_made_once() {
         let mut data = reflect::ComponentData::default();
         data.set("request", reflect::Value::Int(1));
         more.components.insert("Busy".into(), data);
-        spawns.push(area::Edit::Spawn {
+        spawns.push(level::Edit::Spawn {
             entities: vec![(raw(100 + n), more)],
         });
     }
@@ -587,7 +587,7 @@ fn busy_with_keys() -> Workbench {
         .document
         .edit(
             "Keys",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(raw(4), keys)],
             }],
             None,
@@ -681,7 +681,7 @@ fn a_quick_load_keeps_the_game_s_keys_and_keeps_what_was_recorded() {
 }
 
 /// Writes real files for the fuzzers to start from (decision 0042): a save
-/// game, a recording, input actions and an area, into the folder
+/// game, a recording, input actions and a level, into the folder
 /// `SOLIS_FUZZ_SEEDS` names (`fuzz/seeds`). Run by `fuzz/make-seeds.sh`.
 #[test]
 #[ignore = "writes the fuzzers' seed files; run by fuzz/make-seeds.sh"]
@@ -727,16 +727,18 @@ fn write_fuzz_seeds() {
         &input::Bindings::default().write(),
     );
     put(
-        "area_file",
+        "level_file",
         "busy.solarea",
-        &area::text::write(w.open.document.area(), &w.open.document.registry, &|_| None),
+        &level::text::write(w.open.document.level(), &w.open.document.registry, &|_| {
+            None
+        }),
     );
     put("game_code", "busy.lst", BUSY);
 }
 
 #[test]
 fn a_sound_turned_off_stays_off_after_a_load() {
-    use area::builtin::AudioSource;
+    use level::builtin::AudioSource;
     let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
         name: "Radio".into(),
@@ -930,12 +932,12 @@ fn busy_with_an_animator() -> (Workbench, EntityId) {
     sheets.paths.insert(anim, "farmer.solanim".into());
     w.set_sprite_sheets(sheets);
     let farmer = w.spawn_selected(EntityData::new("Farmer").with(&Transform::default()).with(
-        &area::builtin::Animator {
+        &level::builtin::Animator {
             animator: Some(reflect::AssetRef {
                 asset: anim,
                 part: None,
             }),
-            ..area::builtin::Animator::default()
+            ..level::builtin::Animator::default()
         },
     ));
     (w, farmer)
@@ -1023,7 +1025,7 @@ fn busy_with_a_map() -> (Workbench, EntityId) {
     sheets.paths.insert(map_id, "field.tilemap.lst".into());
     w.set_sprite_sheets(sheets);
     let field = w.spawn_selected(EntityData::new("Field").with(&Transform::default()).with(
-        &area::builtin::TileMap {
+        &level::builtin::TileMap {
             map: Some(reflect::AssetRef {
                 asset: map_id,
                 part: None,

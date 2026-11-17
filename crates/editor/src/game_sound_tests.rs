@@ -6,9 +6,9 @@ use crate::properties::PropertyRequest;
 use crate::test_support::*;
 use crate::workbench::Workbench;
 use crate::{GameSound, SoundMode};
-use area::EntityData;
-use area::builtin::{Camera, Transform};
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::{Camera, Transform};
 use reflect::EntityId;
 use std::sync::Arc;
 
@@ -74,7 +74,7 @@ fn with_a_speaker() -> (Workbench, EntityId) {
             .document
             .edit(
                 "Add",
-                vec![area::Edit::Spawn {
+                vec![level::Edit::Spawn {
                     entities: vec![(id, data)],
                 }],
                 None,
@@ -141,7 +141,7 @@ fn a_game_s_sounds_land_after_each_tick_in_order() {
 
 #[test]
 fn sound_never_changes_the_game() {
-    // The same game played twice in one area, with its sounds taken every
+    // The same game played twice in one level, with its sounds taken every
     // frame and never: the same world, tick by tick.
     let (mut w, _) = with_a_speaker();
     unhurried(&mut w);
@@ -180,7 +180,7 @@ fn the_listener_turns_with_the_camera() {
 
 #[test]
 fn the_first_listener_hearing_now_hears_or_else_the_camera() {
-    use area::builtin::{Camera, Listener};
+    use level::builtin::{Camera, Listener};
     let mut w = Workbench::new(info());
     let camera = w.add_entity();
     let off = w.add_entity();
@@ -214,7 +214,7 @@ fn the_first_listener_hearing_now_hears_or_else_the_camera() {
         groups: "Team Red, Radio".into(),
     };
     add(&mut w, on, crate::commands::component_edits(on, None, &red));
-    w.apply_area_request(crate::area_panel::AreaRequest::Reparent {
+    w.apply_level_request(crate::level_panel::LevelRequest::Reparent {
         entity: child,
         onto: Some(on),
     });
@@ -331,18 +331,18 @@ fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
         thumbnail: None,
     }]);
     let walker = EntityId(reflect::Id::from_raw(21).unwrap());
-    let sprite = area::builtin::Sprite {
+    let sprite = level::builtin::Sprite {
         sheet: Some(reflect::AssetRef {
             asset: clips,
             part: None,
         }),
-        ..area::builtin::Sprite::default()
+        ..level::builtin::Sprite::default()
     };
     w.open
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(
                     walker,
                     EntityData::new("Walker")
@@ -383,7 +383,7 @@ fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
     );
     // Finished: it holds its last frame, though animate is called every
     // tick (animateFromStart would start it again).
-    let s: area::builtin::Sprite = w.world().unwrap().get(walker).unwrap();
+    let s: level::builtin::Sprite = w.world().unwrap().get(walker).unwrap();
     assert_eq!(s.clip, "walk");
     assert!(!s.playing);
 }

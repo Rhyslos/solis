@@ -1,13 +1,13 @@
 //! File › Project settings › Build (round 2's `12-project-settings-build`):
 //! Export for playtesting ([decision 0093](../../../../docs/decisions/0093-the-playtest-export.md)),
-//! once a window of its own. The game's name, the area it starts in and
+//! once a window of its own. The game's name, the level it starts in and
 //! its window are the project's (kept in it by each export); the folder
 //! is this computer's. Export makes the folder, beside the card that
 //! says how the last one went.
 
 use super::settings::Setting;
 use super::{plain, sentence};
-use crate::export_dialog::{game_name, usable_area};
+use crate::export_dialog::{game_name, usable_level};
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, UnbuiltId};
 use crate::widgets::{self, button::Button, field, segmented::segmented};
@@ -26,7 +26,7 @@ impl Workbench {
         if self.open.export.is_none() {
             self.prepare_export();
         }
-        let areas = self.areas();
+        let levels = self.levels();
         let Some(form) = &mut self.open.export else {
             return;
         };
@@ -43,7 +43,7 @@ impl Workbench {
                 .on_hover_text("The program's name, the window's title and the saves folder's");
             }
             Setting::StartsIn => {
-                let words: Vec<(usize, &str)> = areas
+                let words: Vec<(usize, &str)> = levels
                     .iter()
                     .enumerate()
                     .map(|(n, a)| (n, a.trim_end_matches(".solarea")))
@@ -57,9 +57,9 @@ impl Workbench {
                     );
                     return;
                 }
-                let mut chosen = areas
+                let mut chosen = levels
                     .iter()
-                    .position(|a| *a == form.playtest.area)
+                    .position(|a| *a == form.playtest.level)
                     .unwrap_or(0);
                 let before = chosen;
                 field::dropdown(
@@ -69,8 +69,8 @@ impl Workbench {
                     &words,
                     size::SETTING_FIELD_W,
                 );
-                if chosen != before || form.playtest.area.is_empty() {
-                    form.playtest.area = areas[chosen].clone();
+                if chosen != before || form.playtest.level.is_empty() {
+                    form.playtest.level = levels[chosen].clone();
                 }
             }
             Setting::Window => {
@@ -99,7 +99,7 @@ impl Workbench {
                     .inner;
                 let export = if form.busy {
                     export.on_disabled_hover_text("Exporting: wait for it to finish")
-                } else if !usable_area(&form.playtest.area) {
+                } else if !usable_level(&form.playtest.level) {
                     export.on_disabled_hover_text("Choose the area the game starts in first")
                 } else {
                     export.on_disabled_hover_text("Choose a folder to export to first")

@@ -28,7 +28,7 @@ fn rearranged() -> Shell {
     sizes.set(RibbonTab::Home, SIDE, Edge::Strip, 250.0);
     sizes.set(
         RibbonTab::Home,
-        PanelLayout::AreaLeftAssetsRight,
+        PanelLayout::LevelLeftAssetsRight,
         Edge::RightShare,
         0.4,
     );
@@ -43,7 +43,7 @@ fn rearranged() -> Shell {
 }
 
 /// The standard layout.
-const SIDE: PanelLayout = PanelLayout::AreaLeftAssetsBottom;
+const SIDE: PanelLayout = PanelLayout::LevelLeftAssetsBottom;
 
 #[test]
 fn a_frame_reads_back_as_it_was_saved() {

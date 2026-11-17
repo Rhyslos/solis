@@ -15,8 +15,8 @@ pub enum LibraryKind {
     Model,
     /// An assembly.
     Assembly,
-    /// An area.
-    Area,
+    /// A level.
+    Level,
     /// A picture.
     Texture,
     /// Game code (Lust, Lua or Rust).
@@ -50,7 +50,7 @@ impl LibraryKind {
         match self {
             Self::Model => "Model",
             Self::Assembly => "Assembly",
-            Self::Area => "Area",
+            Self::Level => "Area",
             Self::Texture => "Picture",
             Self::Code => "Code",
             Self::Sound => "Sound",
@@ -67,13 +67,13 @@ impl LibraryKind {
     }
 
     /// The stripe under its thumbnail, a colour per kind (decision 0004),
-    /// the same as its icon in the Area panel (decision 0060).
+    /// the same as its icon in the Level panel (decision 0060).
     pub(crate) fn color(self) -> Color32 {
         use theme::kind as k;
         match self {
             Self::Model => k::MODEL,
             Self::Assembly => k::ASSEMBLY,
-            Self::Area => k::AREA,
+            Self::Level => k::LEVEL,
             Self::Texture | Self::SpriteSheet | Self::Atlas => k::PICTURE,
             Self::SpriteClips | Self::Animator => k::CLIPS,
             Self::Tileset | Self::TileMap => k::TILES,
@@ -90,7 +90,7 @@ impl LibraryKind {
     pub(crate) const ALL: [Self; 15] = [
         Self::Model,
         Self::Assembly,
-        Self::Area,
+        Self::Level,
         Self::Texture,
         Self::SpriteSheet,
         Self::Atlas,
@@ -110,7 +110,7 @@ impl LibraryKind {
         match self {
             Self::Model => Icon::Model,
             Self::Assembly => Icon::Assembly,
-            Self::Area => Icon::AreaFile,
+            Self::Level => Icon::LevelFile,
             Self::Texture => Icon::Picture,
             Self::Code => Icon::CodeFile,
             Self::Sound => Icon::Sound,
@@ -125,7 +125,7 @@ impl LibraryKind {
         }
     }
 
-    /// Whether it can be placed in an area (dragged in, double-clicked; a
+    /// Whether it can be placed in a level (dragged in, double-clicked; a
     /// picture, as a sprite, is only dragged in: a double-click opens it).
     pub fn placeable(self) -> bool {
         matches!(
@@ -198,7 +198,7 @@ pub(crate) enum Filter {
     Models,
     /// Sprite sheets, their clips, animators and pictures.
     Sprites,
-    /// Areas, tile maps and tilesets.
+    /// Levels, tile maps and tilesets.
     Maps,
     /// Sound files and sound events.
     Sounds,
@@ -239,7 +239,7 @@ impl Filter {
                 kind,
                 K::SpriteSheet | K::SpriteClips | K::Animator | K::Texture
             ),
-            Self::Maps => matches!(kind, K::Area | K::TileMap | K::Tileset),
+            Self::Maps => matches!(kind, K::Level | K::TileMap | K::Tileset),
             Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
             Self::Code => matches!(kind, K::Code | K::Text),
         }

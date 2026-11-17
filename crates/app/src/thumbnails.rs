@@ -296,7 +296,7 @@ mod tests {
                 },
                 asset_db::FileEntry {
                     path: "c.solarea".into(),
-                    kind: FileKind::Area,
+                    kind: FileKind::Level,
                     id: None,
                 },
             ],

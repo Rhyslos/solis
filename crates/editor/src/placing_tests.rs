@@ -73,11 +73,11 @@ fn place_in_front_is_the_mode_the_ribbon_and_tool_bar_follow() {
     h.get_by_label("Rotate tool").click();
     h.run();
     assert_eq!(h.state().0.tool(), Tool::Rotate);
-    // The Placement column sits between the Area and the Assets.
-    let area = h.state().0.shell.drawn_at(Panel::Area).unwrap();
+    // The Placement column sits between the Level and the Assets.
+    let level = h.state().0.shell.drawn_at(Panel::Level).unwrap();
     let placement = h.state().0.shell.drawn_at(Panel::Placement).unwrap();
     let assets = h.state().0.shell.drawn_at(Panel::Assets).unwrap();
-    assert!(area.right() <= placement.left() && placement.right() <= assets.left());
+    assert!(level.right() <= placement.left() && placement.right() <= assets.left());
     assert!((placement.width() - size::PLACEMENT_COLUMN_W).abs() <= 1.0);
     // Back to Entity: the level editor again.
     h.get_by_label("Entity").click();

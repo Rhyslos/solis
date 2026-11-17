@@ -1,5 +1,5 @@
 //! Day and night (decision 0092): the colours of a day as time→colour
-//! stops, written as text in an area (`6:00 #e99a6a, 9:00 #fff6e0`), the
+//! stops, written as text in a level (`6:00 #e99a6a, 9:00 #fff6e0`), the
 //! tint at any hour, and whether it's night.
 
 /// The most colour stops a day has.
@@ -106,7 +106,7 @@ impl DayColours {
         &self.stops[..self.count]
     }
 
-    /// Read from an area's text: `6:00 #e99a6a, 9:00 #fff6e0`. Parts that
+    /// Read from a level's text: `6:00 #e99a6a, 9:00 #fff6e0`. Parts that
     /// don't read are left out; nothing that reads gives the default.
     pub fn parse(text: &str) -> Self {
         let stops: Vec<(f32, [f32; 3])> = text
@@ -128,7 +128,7 @@ impl DayColours {
         Self::from_stops(&stops)
     }
 
-    /// As an area writes it.
+    /// As a level writes it.
     pub fn text(&self) -> String {
         self.stops()
             .iter()

@@ -4,7 +4,7 @@
 
 pub use crate::check_turns::NotStarted;
 use crate::check_turns::{Checked, Turns};
-use area::lust_guard::{Found, MAX_PREFIX_RUN};
+use level::lust_guard::{Found, MAX_PREFIX_RUN};
 use reflect::ComponentSchema;
 use std::io::Read;
 use std::path::Path;
@@ -344,11 +344,11 @@ pub const COMPILE_LIMIT: std::time::Duration = std::time::Duration::from_secs(30
 /// well past [`COMPILE_LIMIT`]. Any symbol Lust doesn't use costs it the
 /// same (`@` was measured alike), and those aren't looked for here: they
 /// meet the limit. Found as Lust reads the text, outside comments and
-/// strings ([`area::lust_guard`]).
+/// strings ([`level::lust_guard`]).
 fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
     let mut problems = Vec::new();
     for (path, text) in files {
-        for (line, found) in area::lust_guard::scan(text) {
+        for (line, found) in level::lust_guard::scan(text) {
             if found == Found::LongRun {
                 problems.push(CodeProblem {
                     file: path.clone(),
@@ -376,7 +376,7 @@ fn shared_names(files: &[(String, String)]) -> Vec<CodeProblem> {
     let mut problems = Vec::new();
     let mut seen: std::collections::HashMap<&str, (&str, u32)> = std::collections::HashMap::new();
     for (path, text) in files {
-        for (line, found) in area::lust_guard::scan(text) {
+        for (line, found) in level::lust_guard::scan(text) {
             let Found::Declared(
                 word @ ("component" | "class" | "object" | "node" | "schema"),
                 name,
@@ -511,7 +511,7 @@ fn compile_here(
             .filter(|s| !components.iter().any(|(n, _)| *n == s.name))
             .cloned()
             .collect();
-        if let Ok(builtin) = area::builtin::registry() {
+        if let Ok(builtin) = level::builtin::registry() {
             described.extend(builtin.iter().map(|s| (**s).clone()));
         }
         compiled.screens = crate::screens::compile(&code.files, &engine, &components, &described)?;

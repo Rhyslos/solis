@@ -11,7 +11,7 @@
 //! group. The sizes of its borders are kept apart (`sizes.rs`).
 //!
 //! On Home, the layout chosen in Preferences (decision 0109) takes the
-//! Area, Properties and Assets lists off the shelf into columns of their
+//! Level, Properties and Assets lists off the shelf into columns of their
 //! own (`layouts.rs`): the Entity shelf tab goes, and Place keeps only
 //! its Placement column.
 
@@ -24,12 +24,12 @@ use crate::unbuilt::{Entry, UnbuiltId};
 /// One tab of the shelf.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ShelfTab {
-    /// Placing: the area's entities, how placed things land, and the
+    /// Placing: the level's entities, how placed things land, and the
     /// files to drag in (spec 262-276). Its being in front is the
     /// placing mode (the project lead's answer 20): the ribbon takes its
     /// build form and the tool bar goes.
     Place,
-    /// The area's entities, the selected one's Properties and the
+    /// The level's entities, the selected one's Properties and the
     /// Library's files (the design's Object tab, in Solis's words).
     Entity,
     /// The file picked in the Library, or the tileset open.
@@ -51,7 +51,7 @@ pub enum ShelfTab {
     SoundEvents,
     /// Messages from the editor, the build and the game.
     Console,
-    /// Mistakes found in the game's code and areas.
+    /// Mistakes found in the game's code and levels.
     Problems,
     /// The selected tile map's layers, terrains and values, while one is
     /// selected.
@@ -157,16 +157,16 @@ impl ShelfTab {
         use Panel as P;
         use Width::{Fixed, Rest};
         match self {
-            // The Area and Assets lists are columns of their own: placing
+            // The Level and Assets lists are columns of their own: placing
             // keeps how placed things land on the shelf.
             Self::Place if layout.is_side() => &[column!("Placement", [P::Placement], Rest)],
             Self::Place => &[
-                column!("Area", [P::Area], Fixed(size::SCENE_COLUMN_W)),
+                column!("Area", [P::Level], Fixed(size::SCENE_COLUMN_W)),
                 column!("Placement", [P::Placement], Fixed(size::PLACEMENT_COLUMN_W)),
                 column!("Assets", [P::Assets], Rest),
             ],
             Self::Entity => &[
-                column!("Area", [P::Area], Fixed(size::SCENE_COLUMN_W)),
+                column!("Area", [P::Level], Fixed(size::SCENE_COLUMN_W)),
                 column!("Properties", [P::Properties], Rest, own_header),
                 column!("Assets", [P::Assets], Fixed(size::ASSETS_COLUMN_W)),
             ],
@@ -243,11 +243,11 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         // Export for playtesting is Build's page (round 3).
         RibbonTab::Build => vec![vec![P::Export]],
         RibbonTab::Home => {
-            let mut area = vec![P::Viewport];
+            let mut level = vec![P::Viewport];
             if open.playing {
-                area.push(P::Game);
+                level.push(P::Game);
             }
-            vec![area]
+            vec![level]
         }
         RibbonTab::Library => vec![vec![P::Library]],
         RibbonTab::Tileset if open.tileset => vec![vec![P::Tileset]],
@@ -487,7 +487,7 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
     if tab == RibbonTab::Home && open.layout.has_beside(panel) {
         return Some(Home::Beside);
     }
-    // The Area and Assets columns are on Place too, but their home is
+    // The Level and Assets columns are on Place too, but their home is
     // Entity: showing one doesn't start placing.
     built_shelf_tabs(tab, open)
         .into_iter()

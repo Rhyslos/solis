@@ -1,6 +1,6 @@
 //! Nothing became unreachable when the menus went: every item the old
 //! menu bar had can still be done, by name, from the ribbon, a File page,
-//! the area's tab or the search (the plan's rule 1,
+//! the level's tab or the search (the plan's rule 1,
 //! `docs/plans/shared-1-ui-remake.md`).
 //!
 //! [`MOVED`] is the old menu bar, item by item, as the plan's inventory
@@ -24,12 +24,12 @@ enum Place {
     RibbonList(RibbonTab, &'static str, &'static str),
     /// In the File page's column, under these words.
     File(&'static str),
-    /// In the list the **+** after the area's tab opens, under these
+    /// In the list the **+** after the level's tab opens, under these
     /// words.
-    AreaTabPlus(&'static str),
-    /// In the area's tab's right-click menu, under words starting with
+    LevelTabPlus(&'static str),
+    /// In the level's tab's right-click menu, under words starting with
     /// these (its shortcut follows them).
-    AreaTabMenu(&'static str),
+    LevelTabMenu(&'static str),
     /// In the search (and by its key, where it has one); some are in a
     /// panel's menu or on a File page too, which this table doesn't try.
     Search,
@@ -45,12 +45,12 @@ const MOVED: [(&str, &str, Place); 37] = [
     (
         "File > New area",
         "New area",
-        Place::AreaTabPlus("New area"),
+        Place::LevelTabPlus("New area"),
     ),
     (
         "File > Open area…",
         "Open area…",
-        Place::AreaTabPlus("Open area…"),
+        Place::LevelTabPlus("Open area…"),
     ),
     (
         "File > Save area",
@@ -60,7 +60,7 @@ const MOVED: [(&str, &str, Place); 37] = [
     (
         "File > Save area as…",
         "Save area as…",
-        Place::AreaTabMenu("Save as…"),
+        Place::LevelTabMenu("Save as…"),
     ),
     (
         "File > Import model…",
@@ -289,8 +289,8 @@ fn every_old_menu_item_is_a_command_that_can_be_done_and_the_search_lists_it() {
 }
 
 /// Commands whose doing shows nowhere this test looks: Rename starts
-/// typing in the Area panel, with
-/// one entity in the area Select all selects what already is, a step
+/// typing in the Level panel, with
+/// one entity in the level Select all selects what already is, a step
 /// moves the game on by a tick (`play_tests.rs` watches that), and the
 /// panels of an untouched arrangement are already where Reset layout
 /// puts them (`file_pages/settings_tests.rs` moves one first).
@@ -312,7 +312,7 @@ fn snapshot(w: &Workbench) -> impl std::fmt::Debug + use<> {
             w.open.export.is_some(),
             w.viewport.overlays,
             w.open.outbox.len(),
-            // Leaving the area asks about unsaved changes first.
+            // Leaving the level asks about unsaved changes first.
             w.open.unsaved_prompt.is_some(),
         ),
     )
@@ -361,7 +361,7 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                     "{was}: {words:?} is in the list {opener:?} opens"
                 );
             }
-            Place::AreaTabPlus(words) => {
+            Place::LevelTabPlus(words) => {
                 h.get_by_label("New or open an area").click();
                 h.run();
                 assert!(
@@ -369,7 +369,7 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                     "{was}: the area's + has {words:?}"
                 );
             }
-            Place::AreaTabMenu(words) => {
+            Place::LevelTabMenu(words) => {
                 let tab = h
                     .get_all_by_label("Untitled area")
                     .map(|node| node.rect())
@@ -446,7 +446,7 @@ fn the_file_page_s_items_do_what_the_menus_did() {
         "About is a page"
     );
     crate::test_support::file_item(&mut h, "Save all");
-    assert!(h.state().1.actions.contains(&WorkbenchAction::SaveArea));
+    assert!(h.state().1.actions.contains(&WorkbenchAction::SaveLevel));
     crate::test_support::file_item(&mut h, "Back to editor");
     assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);
     // Exit asks about the unsaved light first, as Quit did.
@@ -512,8 +512,8 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
             "{command:?} asks the app the same"
         );
         assert_eq!(
-            a.0.open.document.area().len(),
-            b.0.open.document.area().len(),
+            a.0.open.document.level().len(),
+            b.0.open.document.level().len(),
             "{command:?}"
         );
         assert_eq!(

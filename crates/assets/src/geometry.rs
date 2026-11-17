@@ -23,7 +23,7 @@ pub const Y_UP_TO_Z_UP: Mat4 = Mat4::from_cols(
 
 /// The most nodes a model's tree may have. Real models have thousands; a
 /// damaged or hostile file with millions would make every step after
-/// reading it (part IDs, the Area panel, unpacking) crawl.
+/// reading it (part IDs, the Level panel, unpacking) crawl.
 pub(crate) const MAX_NODES: usize = 200_000;
 
 /// Every node of the file's main scene (or its first), with where it is

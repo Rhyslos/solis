@@ -19,8 +19,8 @@ pub enum FileKind {
     Model,
     /// An assembly.
     Assembly,
-    /// An area (`.solarea`).
-    Area,
+    /// A level (`.sollevel`).
+    Level,
     /// A picture (PNG, JPEG).
     Texture,
     /// Game code: Lust (`.lst`), Lua or Rust.
@@ -51,8 +51,8 @@ pub enum FileKind {
 /// The extensions of plain text files the Library shows as text.
 pub const TEXT_EXTENSIONS: [&str; 6] = ["md", "txt", "json", "csv", "toml", "ron"];
 
-/// The extension of area files.
-pub const AREA_EXTENSION: &str = "solarea";
+/// The extension of level files.
+pub const LEVEL_EXTENSION: &str = "solarea";
 
 impl FileKind {
     /// The kind of the file at `path`, by its extension.
@@ -76,7 +76,7 @@ impl FileKind {
             .unwrap_or_default();
         match ext.as_str() {
             e if e == ASSEMBLY_EXTENSION => Self::Assembly,
-            e if e == AREA_EXTENSION => Self::Area,
+            e if e == LEVEL_EXTENSION => Self::Level,
             "png" | "jpg" | "jpeg" => Self::Texture,
             "lst" | "lua" | "rs" => Self::Code,
             e if SOUND_EXTENSIONS.contains(&e) => Self::Sound,
@@ -446,7 +446,7 @@ mod tests {
             kinds,
             [
                 ("crate.glb".into(), FileKind::Model, true),
-                ("main.solarea".into(), FileKind::Area, false),
+                ("main.solarea".into(), FileKind::Level, false),
                 ("notes.txt".into(), FileKind::Text, false),
                 ("props/bark.png".into(), FileKind::Texture, true),
                 ("props/rock.glb".into(), FileKind::Model, true),

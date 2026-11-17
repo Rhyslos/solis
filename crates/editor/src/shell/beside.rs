@@ -1,5 +1,5 @@
 //! Home's lists beside the editor groups in a side layout (decision
-//! 0109): the Area, Properties and Assets lists in their columns and the
+//! 0109): the Level, Properties and Assets lists in their columns and the
 //! strip, each with its header, and the borders between everything in
 //! the middle, which a drag moves and a double-click puts back.
 

@@ -6,7 +6,7 @@ use super::*;
 const MADE_BY: &str = "Test 1.0";
 
 /// A new UI sample in its own folder (removed when the first part of
-/// what's returned is dropped), open in a workbench on its area.
+/// what's returned is dropped), open in a workbench on its level.
 fn made(
     name: &str,
 ) -> (
@@ -33,7 +33,7 @@ fn made(
         &db,
         Some(std::sync::Arc::new(compiled)),
         MADE_BY,
-        AREA,
+        LEVEL,
         &mut crate::check_project::Read::default(),
     )
     .unwrap();

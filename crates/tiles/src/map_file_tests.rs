@@ -553,7 +553,7 @@ proptest! {
 
 #[test]
 fn a_character_that_can_t_be_seen_is_refused() {
-    // What the atlas fuzzer found (see `area::lust_data`) can't reach a
+    // What the atlas fuzzer found (see `level::lust_data`) can't reach a
     // map, whose names and rows are all checked; the file is refused all
     // the same, on the line its list starts.
     let fixture = include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst");

@@ -15,7 +15,7 @@ publish.workspace = true
 layer = 1
 
 [dependencies]
-area.workspace = true
+level.workspace = true
 reflect.workspace = true
 kira.workspace = true
 hound.workspace = true

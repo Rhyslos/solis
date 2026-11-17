@@ -126,10 +126,10 @@ impl ShellCommand {
     fn fixed_name(self) -> &'static str {
         match self {
             C::CloseProject => "Close project",
-            C::NewArea => "New area",
-            C::OpenArea => "Open area…",
-            C::SaveArea => "Save area",
-            C::SaveAreaAs => "Save area as…",
+            C::NewLevel => "New area",
+            C::OpenLevel => "Open area…",
+            C::SaveLevel => "Save area",
+            C::SaveLevelAs => "Save area as…",
             C::ImportModel => "Import model…",
             C::ExportPlaytest => "Export for playtesting…",
             C::ProjectSettings => "Project settings",
@@ -165,7 +165,7 @@ impl ShellCommand {
             C::FoldShelf => "Fold the shelf",
             C::CollapseRibbon => "Collapse the ribbon",
             C::OpenGuide => "Documentation ↗",
-            C::AddSampleArea => "Add the sample area",
+            C::AddSampleLevel => "Add the sample area",
             C::CheckForUpdates => "Check for updates",
             C::Exit => "Exit",
             C::PlacePicked => "Place the picked file",
@@ -243,7 +243,7 @@ impl ShellCommand {
             | C::InputActions
             | C::Preferences
             | C::OpenGuide
-            | C::AddSampleArea
+            | C::AddSampleLevel
             | C::CheckForUpdates
             | C::AutoUpdate
             | C::About
@@ -315,10 +315,10 @@ impl ShellCommand {
     /// page all say these.
     pub(crate) fn keys(self) -> &'static str {
         match self {
-            C::NewArea => "Ctrl+N",
-            C::OpenArea => "Ctrl+O",
-            C::SaveArea => "Ctrl+S",
-            C::SaveAreaAs => "Ctrl+Shift+S",
+            C::NewLevel => "Ctrl+N",
+            C::OpenLevel => "Ctrl+O",
+            C::SaveLevel => "Ctrl+S",
+            C::SaveLevelAs => "Ctrl+Shift+S",
             C::Undo => "Ctrl+Z",
             C::Redo => "Ctrl+Y",
             C::Duplicate => "Ctrl+D",
@@ -351,7 +351,7 @@ impl ShellCommand {
                 "Closes the project, asking about unsaved work first, and goes back to the \
                  launcher: your projects, Learn and Updates"
             }
-            C::SaveArea => "Saves the open area. Other files save as they change",
+            C::SaveLevel => "Saves the open area. Other files save as they change",
             C::ImportModel => {
                 "A glTF model (.gltf or .glb). You can also drop one onto the window."
             }
@@ -434,7 +434,7 @@ impl ShellCommand {
                 "The user guide: every part of the editor explained, in your web browser (File › \
                  Preferences chooses which)"
             }
-            C::AddSampleArea => {
+            C::AddSampleLevel => {
                 "A small area for trying the looks: a checker cube, rows of plastic and metal \
                  spheres, and a grooved wall with a glowing stripe"
             }

@@ -6,8 +6,8 @@
 use crate::console::LogLevel;
 use crate::document::FieldsSet;
 use crate::workbench::Workbench;
-use area::Area;
 use glam::Mat4;
+use level::Level;
 use reflect::EntityId;
 use script::{Change, CodeProblem, Failure, Game, GameWorld, ViewIndex, WorldView};
 use std::collections::HashMap;
@@ -83,13 +83,13 @@ impl Workbench {
     }
 
     /// Game code's components' values read before their schemas were
-    /// known (the area opened before the code was checked: making the
+    /// known (the level opened before the code was checked: making the
     /// playground or the sample game) as the kinds the code says: an
     /// entity field is still text until then, and would read as nothing.
-    /// In the area (not an undo step) and the assemblies.
+    /// In the level (not an undo step) and the assemblies.
     fn fit_values_to_code(&mut self) {
         let registry = &self.open.document.registry;
-        let fits = |data: &area::EntityData| -> Vec<(String, String, reflect::Value)> {
+        let fits = |data: &level::EntityData| -> Vec<(String, String, reflect::Value)> {
             let mut fitted = Vec::new();
             for (name, component) in &data.components {
                 let Some(schema) = registry.get(name) else {
@@ -97,7 +97,7 @@ impl Workbench {
                 };
                 for field in &schema.fields {
                     if let Some(value) = component.get(&field.name) {
-                        let fit = area::text::fit_value(value.clone(), &field.kind);
+                        let fit = level::text::fit_value(value.clone(), &field.kind);
                         if &fit != value {
                             fitted.push((name.clone(), field.name.clone(), fit));
                         }
@@ -107,9 +107,9 @@ impl Workbench {
             fitted
         };
         let mut edits = Vec::new();
-        for (id, data) in self.open.document.area().iter() {
+        for (id, data) in self.open.document.level().iter() {
             for (component, field, value) in fits(data) {
-                edits.push(area::Edit::SetField {
+                edits.push(level::Edit::SetField {
                     entity: id,
                     component,
                     field,
@@ -120,7 +120,7 @@ impl Workbench {
         let mut files = Vec::new();
         for (asset, file) in &self.open.assemblies {
             let changes: Vec<_> = file
-                .area
+                .level
                 .iter()
                 .flat_map(|(id, data)| fits(data).into_iter().map(move |f| (id, f)))
                 .collect();
@@ -136,7 +136,7 @@ impl Workbench {
                 let file = std::sync::Arc::make_mut(file);
                 for (id, (component, field, value)) in changes {
                     if let Some(c) = file
-                        .area
+                        .level
                         .get_mut(id)
                         .and_then(|d| d.components.get_mut(&component))
                     {
@@ -222,7 +222,7 @@ impl Workbench {
         game.leave_out(left_out.clone());
         let failures = sync_all(
             game,
-            self.open.document.area(),
+            self.open.document.level(),
             &FieldsSet::new(),
             &mut world,
         );
@@ -375,7 +375,7 @@ impl ViewCache {
     }
 }
 
-/// Something game code asked to happen to the area: a copy of an
+/// Something game code asked to happen to the level: a copy of an
 /// assembly made (as this entity, of the assembly named so, here), or an
 /// entity taken out.
 #[derive(Debug, Clone, PartialEq)]
@@ -696,19 +696,19 @@ impl GameWorld for PlayWorld<'_> {
     }
 }
 
-/// Makes the game components of each of `ids` in `area` run (or gives
+/// Makes the game components of each of `ids` in `level` run (or gives
 /// them their changed fields, and those in `set`: the fields set by hand,
-/// which a running component takes even when the area's value is what it
+/// which a running component takes even when the level's value is what it
 /// was), and stops those an entity no longer has.
 pub(crate) fn sync_entities(
     game: &mut Game,
-    area: &Area,
+    level: &Level,
     ids: impl IntoIterator<Item = EntityId> + Clone,
     set: &FieldsSet,
     world: &mut dyn GameWorld,
 ) -> Vec<Failure> {
     let components = ids.clone().into_iter().flat_map(|id| {
-        area.get(id).into_iter().flat_map(move |entity| {
+        level.get(id).into_iter().flat_map(move |entity| {
             entity
                 .components
                 .iter()
@@ -720,7 +720,7 @@ pub(crate) fn sync_entities(
         .collect();
     let failures = game.sync_edited(wanted, set, world);
     game.retain_on(ids.into_iter().map(|id| {
-        let keep = area
+        let keep = level
             .get(id)
             .map(|e| e.components.keys().cloned().collect())
             .unwrap_or_default();
@@ -729,15 +729,15 @@ pub(crate) fn sync_entities(
     failures
 }
 
-/// [`sync_entities`] for every entity in `area`, stopping components of
+/// [`sync_entities`] for every entity in `level`, stopping components of
 /// entities that are gone.
 pub(crate) fn sync_all(
     game: &mut Game,
-    area: &Area,
+    level: &Level,
     set: &FieldsSet,
     world: &mut dyn GameWorld,
 ) -> Vec<Failure> {
-    let wanted: Vec<_> = area
+    let wanted: Vec<_> = level
         .iter()
         .flat_map(|(id, entity)| {
             entity
@@ -780,8 +780,8 @@ fn swap_summary(swapped: &script::Swapped) -> String {
 
 /// A failure as the Console says it, naming the entity, and whether the
 /// component stopped.
-pub(crate) fn failure_text(area: &Area, failure: &Failure) -> String {
-    match failure.entity.and_then(|id| area.get(id)) {
+pub(crate) fn failure_text(level: &Level, failure: &Failure) -> String {
+    match failure.entity.and_then(|id| level.get(id)) {
         Some(entity) if failure.stopped => format!(
             "{} on {} stopped: {}",
             failure.component, entity.name, failure.at

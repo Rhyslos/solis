@@ -19,9 +19,9 @@ type Reader = fn(&str) -> Result<(), String>;
 
 fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
     vec![
-        ("area", &area::text::FORMAT, |text| {
-            let registry = area::builtin::registry().map_err(|e| e.to_string())?;
-            area::text::read_file(text, &registry)
+        ("area", &level::text::FORMAT, |text| {
+            let registry = level::builtin::registry().map_err(|e| e.to_string())?;
+            level::text::read_file(text, &registry)
                 .map(drop)
                 .map_err(|e| e.to_string())
         }),
@@ -41,8 +41,8 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 Err(format!("notes: {:?}", read.notes))
             }
         }),
-        ("pixels", &area::pixels::FORMAT, |text| {
-            let read = area::pixels::read(text).map_err(|e| e.to_string())?;
+        ("pixels", &level::pixels::FORMAT, |text| {
+            let read = level::pixels::read(text).map_err(|e| e.to_string())?;
             if read.notes.is_empty() {
                 Ok(())
             } else {

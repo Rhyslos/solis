@@ -1,20 +1,20 @@
-//! Commands: everything the editor does to the area, each turned into
+//! Commands: everything the editor does to the level, each turned into
 //! reversible edits and recorded as one undo step
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
-//! Nothing else in the editor changes the area.
+//! Nothing else in the editor changes the level.
 
-use crate::area_panel::AreaRequest;
 use crate::console::LogLevel;
 use crate::document::Selection;
+use crate::level_panel::LevelRequest;
 use crate::models::{FileLight, FileLightKind, ModelInfo};
 use crate::properties::AssemblyPart;
 use crate::properties::PropertyRequest;
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::assembly::Expander;
-use area::builtin::{Brush, Light, LightKind, Model, Transform};
-use area::text::{AreaFile, FileKind};
-use area::{Edit, EntityData, MergeKey};
 use glam::{Quat, Vec3};
+use level::assembly::Expander;
+use level::builtin::{Brush, Light, LightKind, Model, Transform};
+use level::text::{FileKind, LevelFile};
+use level::{Edit, EntityData, MergeKey};
 use reflect::AssetId;
 use reflect::{AssetRef, Component, ComponentData, EntityId};
 use std::collections::BTreeMap;
@@ -83,7 +83,7 @@ fn left_behind(edits: &[Edit]) -> String {
 }
 
 impl Workbench {
-    /// Changes the area as one undo step, or says in the console why it
+    /// Changes the level as one undo step, or says in the console why it
     /// couldn't. Returns whether it worked.
     pub(crate) fn command(
         &mut self,
@@ -130,18 +130,18 @@ impl Workbench {
         self.open.document.registry.register(schema)
     }
 
-    /// Selects only `id` (as clicking it in the Area panel does); nothing
-    /// if it isn't in the area. Not an undo step.
+    /// Selects only `id` (as clicking it in the Level panel does); nothing
+    /// if it isn't in the level. Not an undo step.
     pub fn select(&mut self, id: EntityId) {
-        if self.open.document.area().contains(id) {
+        if self.open.document.level().contains(id) {
             self.open.document.selection.select_only(id);
         } else {
             self.open.document.selection.clear();
         }
     }
 
-    /// Adds an imported model to the area as an entity (with any lights its
-    /// file carries as entities under it; a sun in the file sets the area's
+    /// Adds an imported model to the level as an entity (with any lights its
+    /// file carries as entities under it; a sun in the file sets the level's
     /// sun), as one undo step. Frames the camera on it, and says so in the
     /// console with its size and any `warnings` (parts of the file that
     /// were left out).
@@ -184,7 +184,7 @@ impl Workbench {
             });
         let mut model = model;
         model.parent = target.and_then(|(_, parent)| parent);
-        model.order = self.open.document.area().order_at_end(model.parent);
+        model.order = self.open.document.level().order_at_end(model.parent);
         let mut entities = vec![(id, model)];
         let mut edits = Vec::new();
         let mut order = None;
@@ -192,7 +192,7 @@ impl Workbench {
             match file_light(i, light) {
                 FromFile::Lamp(mut data) => {
                     data.parent = Some(id);
-                    let next = area::order_after(order.as_deref());
+                    let next = level::order_after(order.as_deref());
                     data.order.clone_from(&next);
                     order = Some(next);
                     entities.push((EntityId::random(), *data));
@@ -227,12 +227,13 @@ impl Workbench {
         id
     }
 
-    /// The edits that make the area's sun (adding one if there's none)
+    /// The edits that make the level's sun (adding one if there's none)
     /// shine like `light`, turned by `rotation`.
     fn sun_edits(&self, light: &Light, rotation: Quat) -> Vec<Edit> {
-        let area = self.open.document.area();
-        let sun = area.first_in_tree(
-            area.with::<Light>()
+        let level = self.open.document.level();
+        let sun = level.first_in_tree(
+            level
+                .with::<Light>()
                 .filter(|(_, l)| l.kind == LightKind::Sun)
                 .map(|(id, _)| id),
         );
@@ -246,7 +247,7 @@ impl Workbench {
                 entities: vec![(EntityId::random(), data)],
             }];
         };
-        let Some(entity) = area.get(id) else {
+        let Some(entity) = level.get(id) else {
             return Vec::new();
         };
         let old = entity.get::<Light>().unwrap_or_else(Light::sun);
@@ -300,7 +301,7 @@ impl Workbench {
             EntityData::new(&format!("Spotlight {n}"))
                 .with(&Transform {
                     position: camera.viewpoint(),
-                    rotation: area::builtin::aim(camera.forward()),
+                    rotation: level::builtin::aim(camera.forward()),
                     ..Transform::default()
                 })
                 .with(&Light::spot()),
@@ -314,8 +315,8 @@ impl Workbench {
         let n = self
             .open
             .document
-            .area()
-            .with::<area::builtin::Camera>()
+            .level()
+            .with::<level::builtin::Camera>()
             .count()
             + 1;
         let camera = &self.viewport.camera;
@@ -332,9 +333,9 @@ impl Workbench {
                         ),
                         ..Transform::default()
                     })
-                    .with(&area::builtin::Camera {
-                        view: area::builtin::CameraView::TwoD,
-                        ..area::builtin::Camera::default()
+                    .with(&level::builtin::Camera {
+                        view: level::builtin::CameraView::TwoD,
+                        ..level::builtin::Camera::default()
                     }),
             );
         }
@@ -352,9 +353,9 @@ impl Workbench {
                     rotation,
                     ..Transform::default()
                 })
-                .with(&area::builtin::Camera {
+                .with(&level::builtin::Camera {
                     fov: camera.fov_y.to_degrees(),
-                    ..area::builtin::Camera::default()
+                    ..level::builtin::Camera::default()
                 }),
         )
     }
@@ -362,7 +363,7 @@ impl Workbench {
     fn count_lights(&self, kind: LightKind) -> usize {
         self.open
             .document
-            .area()
+            .level()
             .with::<Light>()
             .filter(|(_, l)| l.kind == kind)
             .count()
@@ -370,7 +371,7 @@ impl Workbench {
 
     pub(crate) fn spawn_selected(&mut self, mut data: EntityData) -> EntityId {
         let id = EntityId::random();
-        data.order = self.open.document.area().order_at_end(data.parent);
+        data.order = self.open.document.level().order_at_end(data.parent);
         let label = format!("Add {}", data.name);
         let mut selected = Selection::default();
         selected.select_only(id);
@@ -536,9 +537,9 @@ impl Workbench {
 
     fn work_out_assembly_part(&self) -> Option<AssemblyPart> {
         let id = self.open.document.selection.primary()?;
-        let origin = self.open.document.area().get(id)?.origin.clone()?;
+        let origin = self.open.document.level().get(id)?.origin.clone()?;
         let lookup = |asset| self.open.assemblies.get(&asset).cloned();
-        let expected = Expander::new(&lookup).expected(self.open.document.area(), &origin);
+        let expected = Expander::new(&lookup).expected(self.open.document.level(), &origin);
         Some(AssemblyPart {
             name: self.asset_name(origin.assembly),
             expected,
@@ -579,7 +580,7 @@ impl Workbench {
 
     /// Asks the app to make a field's value its assembly's, for every copy.
     pub fn apply_field(&mut self, entity: EntityId, component: &str, field: &str) {
-        let Some(data) = self.open.document.area().get(entity) else {
+        let Some(data) = self.open.document.level().get(entity) else {
             return;
         };
         let (Some(origin), Some(value)) = (
@@ -601,9 +602,9 @@ impl Workbench {
     }
 
     fn part_of(&self, entity: EntityId) -> Option<AssemblyPart> {
-        let origin = self.open.document.area().get(entity)?.origin.clone()?;
+        let origin = self.open.document.level().get(entity)?.origin.clone()?;
         let lookup = |asset| self.open.assemblies.get(&asset).cloned();
-        let expected = Expander::new(&lookup).expected(self.open.document.area(), &origin);
+        let expected = Expander::new(&lookup).expected(self.open.document.level(), &origin);
         Some(AssemblyPart {
             name: self.asset_name(origin.assembly),
             expected,
@@ -615,8 +616,8 @@ impl Workbench {
     /// follow the assembly; or splits a model at `root` into one entity per
     /// part of it (the file's nodes), each drawing its own part.
     pub fn unpack(&mut self, root: EntityId) {
-        let area = self.open.document.area();
-        let whole_model = area
+        let level = self.open.document.level();
+        let whole_model = level
             .get(root)
             .filter(|e| e.origin.is_none())
             .and_then(|e| e.get::<Model>())
@@ -626,7 +627,7 @@ impl Workbench {
             self.unpack_model(root, model.asset);
             return;
         }
-        let edits: Vec<Edit> = area
+        let edits: Vec<Edit> = level
             .iter()
             .filter(|(_, e)| e.origin.as_ref().is_some_and(|o| o.instance == root))
             .map(|(entity, _)| Edit::SetOrigin {
@@ -634,7 +635,7 @@ impl Workbench {
                 origin: None,
             })
             .collect();
-        let Some(name) = area.get(root).map(|e| e.name.clone()) else {
+        let Some(name) = level.get(root).map(|e| e.name.clone()) else {
             return;
         };
         if !edits.is_empty() {
@@ -675,7 +676,7 @@ impl Workbench {
                     .and_then(|p| ids.get(p).copied())
                     .unwrap_or(root),
             );
-            let next = area::order_after(order.as_deref());
+            let next = level::order_after(order.as_deref());
             data.order.clone_from(&next);
             order = Some(next);
             entities.push((ids[i], data));
@@ -696,17 +697,17 @@ impl Workbench {
     }
 
     /// Makes the assembly `id`'s contents known (read from its file),
-    /// rebuilding every copy in the area from it while keeping each
-    /// copy's changes. Nothing to save if nothing was unsaved: the area's
+    /// rebuilding every copy in the level from it while keeping each
+    /// copy's changes. Nothing to save if nothing was unsaved: the level's
     /// file is the same. While the game plays it isn't an undo step: the
-    /// rebuilt area has the game's entities in it, and Stop rebuilds the
-    /// copies of the area from before Play itself.
-    pub fn set_assembly(&mut self, id: AssetId, file: Arc<AreaFile>) {
+    /// rebuilt level has the game's entities in it, and Stop rebuilds the
+    /// copies of the level from before Play itself.
+    pub fn set_assembly(&mut self, id: AssetId, file: Arc<LevelFile>) {
         let had = self.open.assemblies.contains_key(&id);
         let uses = self
             .open
             .document
-            .area()
+            .level()
             .iter()
             .any(|(_, e)| e.origin.is_some());
         if !had || !uses {
@@ -718,7 +719,7 @@ impl Workbench {
         // The copies' changes, worked out against the old contents…
         let collapsed = {
             let lookup = |asset| self.open.assemblies.get(&asset).cloned();
-            Expander::new(&lookup).collapse(self.open.document.area(), FileKind::Area)
+            Expander::new(&lookup).collapse(self.open.document.level(), FileKind::Level)
         };
         let collapsed = match collapsed {
             Ok(collapsed) => collapsed,
@@ -757,17 +758,17 @@ impl Workbench {
         }
         let name = self.asset_name(id);
         match rebuilt {
-            Ok(area) if area != *self.open.document.area() => {
+            Ok(level) if level != *self.open.document.level() => {
                 let updated = if self.open.playing.is_some() {
                     // Not one of the user's edits, so not a step for Keep
                     // to make again; the game takes it in as a change.
-                    self.open.document.replace_by_game(&area);
+                    self.open.document.replace_by_game(&level);
                     self.open.document.touch();
                     Ok(())
                 } else {
                     self.open
                         .document
-                        .rebuild(area, &format!("Update copies of {name}"))
+                        .rebuild(level, &format!("Update copies of {name}"))
                 };
                 if let Err(why) = updated {
                     self.log(
@@ -790,34 +791,34 @@ impl Workbench {
     }
 
     /// The assembly files known, by ID.
-    pub fn assemblies(&self) -> &BTreeMap<AssetId, Arc<AreaFile>> {
+    pub fn assemblies(&self) -> &BTreeMap<AssetId, Arc<LevelFile>> {
         &self.open.assemblies
     }
 
-    /// `file` (an area as read) with its placed assemblies expanded, from
+    /// `file` (a level as read) with its placed assemblies expanded, from
     /// the assemblies known. Entities whose parents led round in a loop (a
     /// damaged file) come out at the top level, and the Console says
     /// which.
     pub fn expand_file(
         &mut self,
-        file: &AreaFile,
-    ) -> Result<area::Area, area::assembly::AssemblyError> {
-        let (area, mended) = {
+        file: &LevelFile,
+    ) -> Result<level::Level, level::assembly::AssemblyError> {
+        let (level, mended) = {
             let lookup = |asset| self.open.assemblies.get(&asset).cloned();
             let mut expander = Expander::new(&lookup);
-            let area = expander.expand(file);
-            (area, expander.mended().to_vec())
+            let level = expander.expand(file);
+            (level, expander.mended().to_vec())
         };
-        if area.is_ok() {
+        if level.is_ok() {
             self.log_mended(&mended);
         }
-        area
+        level
     }
 
     /// Says in the Console which entities were taken out of a loop of
     /// parents: the first few each, then how many more, so a file full of
     /// them doesn't fill it.
-    fn log_mended(&mut self, mended: &[area::Mended]) {
+    fn log_mended(&mut self, mended: &[level::Mended]) {
         const EACH: usize = 5;
         for one in mended.iter().take(EACH) {
             self.log(LogLevel::Warning, format!("{one}."));
@@ -832,11 +833,11 @@ impl Workbench {
         }
     }
 
-    /// The open area as a file: placed assemblies as their root plus what
+    /// The open level as a file: placed assemblies as their root plus what
     /// differs from the assembly.
-    pub fn area_file(&self) -> Result<AreaFile, area::assembly::AssemblyError> {
+    pub fn level_file(&self) -> Result<LevelFile, level::assembly::AssemblyError> {
         let lookup = |asset| self.open.assemblies.get(&asset).cloned();
-        Expander::new(&lookup).collapse(self.open.document.area(), FileKind::Area)
+        Expander::new(&lookup).collapse(self.open.document.level(), FileKind::Level)
     }
 
     /// Places a copy of assembly `id` where the camera looks, selected.
@@ -845,7 +846,7 @@ impl Workbench {
         let target = self.take_place_target(id);
         let mut placed = EntityData::new(&self.asset_name(id));
         placed.parent = target.and_then(|(_, parent)| parent);
-        placed.order = self.open.document.area().order_at_end(placed.parent);
+        placed.order = self.open.document.level().order_at_end(placed.parent);
         let entities = {
             let lookup = |asset| self.open.assemblies.get(&asset).cloned();
             Expander::new(&lookup).place(id, root, &placed)
@@ -877,7 +878,7 @@ impl Workbench {
     /// Turns `root` and everything under it into a copy of assembly `id`
     /// (just made from them), keeping the root's ID, name and place.
     pub fn make_copy(&mut self, root: EntityId, id: AssetId) {
-        let Some(original) = self.open.document.area().get(root).cloned() else {
+        let Some(original) = self.open.document.level().get(root).cloned() else {
             return;
         };
         let entities = {
@@ -907,13 +908,13 @@ impl Workbench {
     /// `root` and everything under it as an assembly file (for Create
     /// assembly from selection): the root at the top, nested copies as
     /// copies.
-    pub fn assembly_file(&self, root: EntityId) -> Option<AreaFile> {
-        let area = self.open.document.area();
-        let tree = area.tree(root);
+    pub fn assembly_file(&self, root: EntityId) -> Option<LevelFile> {
+        let level = self.open.document.level();
+        let tree = level.tree(root);
         let inside: std::collections::HashSet<EntityId> = tree.iter().copied().collect();
-        let mut part = area::Area::new();
+        let mut part = level::Level::new();
         for id in tree {
-            let mut data = area.get(id)?.clone();
+            let mut data = level.get(id)?.clone();
             if id == root {
                 data.parent = None;
             }
@@ -934,13 +935,13 @@ impl Workbench {
             .ok()
     }
 
-    /// Carries out what the user asked for in the Area panel.
-    pub(crate) fn apply_area_request(&mut self, request: AreaRequest) {
+    /// Carries out what the user asked for in the Level panel.
+    pub(crate) fn apply_level_request(&mut self, request: LevelRequest) {
         match request {
-            AreaRequest::Select(id) => self.select(id),
-            AreaRequest::Toggle(id) => self.open.document.selection.toggle(id),
-            AreaRequest::SelectRange(id) => self.select_range(id),
-            AreaRequest::Reparent { entity, onto } => {
+            LevelRequest::Select(id) => self.select(id),
+            LevelRequest::Toggle(id) => self.open.document.selection.toggle(id),
+            LevelRequest::SelectRange(id) => self.select_range(id),
+            LevelRequest::Reparent { entity, onto } => {
                 // Dragging one of several selected moves them all.
                 let moving = if self.open.document.selection.contains(entity) {
                     self.selected_roots()
@@ -949,17 +950,17 @@ impl Workbench {
                 };
                 self.reparent(&moving, onto);
             }
-            AreaRequest::Rename { entity, name } => {
+            LevelRequest::Rename { entity, name } => {
                 self.command("Rename", vec![Edit::Rename { entity, name }], None, None);
             }
             // Menu commands need the window (to start renaming), so the
             // workbench runs them where it has it.
-            AreaRequest::Command(_) => {}
-            AreaRequest::PlaceUnder { asset, parent } => {
+            LevelRequest::Command(_) => {}
+            LevelRequest::PlaceUnder { asset, parent } => {
                 let at = self
                     .open
                     .document
-                    .area()
+                    .level()
                     .world_matrix(parent)
                     .w_axis
                     .truncate();
@@ -968,14 +969,14 @@ impl Workbench {
         }
     }
 
-    /// Selects every entity in the Area panel's order from the one shown
+    /// Selects every entity in the Level panel's order from the one shown
     /// in Properties to `id` (Shift+click).
     pub fn select_range(&mut self, id: EntityId) {
         let Some(anchor) = self.open.document.selection.primary() else {
             self.select(id);
             return;
         };
-        let order = self.open.document.area().depth_first();
+        let order = self.open.document.level().depth_first();
         let (Some(a), Some(b)) = (
             order.iter().position(|&e| e == anchor),
             order.iter().position(|&e| e == id),
@@ -993,16 +994,16 @@ impl Workbench {
     /// The selected entities that aren't below another selected one: the
     /// ones to move, copy or delete (their children come with them).
     pub(crate) fn selected_roots(&self) -> Vec<EntityId> {
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let selection = &self.open.document.selection;
-        let order = area.depth_first();
+        let order = level.depth_first();
         order
             .into_iter()
             .filter(|&id| selection.contains(id))
             .filter(|&id| {
                 // No selected entity above it (one in a loop of parents
                 // is above itself).
-                let mut above = area.ancestors(id);
+                let mut above = level.ancestors(id);
                 let under_another = above.by_ref().any(|(p, _)| selection.contains(p));
                 !under_another && !above.looped()
             })
@@ -1013,14 +1014,16 @@ impl Workbench {
     /// children, keeping where each is in the world. Ones that would go
     /// under themselves are left where they are.
     pub fn reparent(&mut self, ids: &[EntityId], parent: Option<EntityId>) {
-        let area = self.open.document.area();
-        let parent_world = parent.map_or(glam::Mat4::IDENTITY, |p| area.world_matrix(p));
+        let level = self.open.document.level();
+        let parent_world = parent.map_or(glam::Mat4::IDENTITY, |p| level.world_matrix(p));
         let inverse = parent_world.inverse();
         let mut edits = Vec::new();
-        let mut order = area.order_at_end(parent);
+        let mut order = level.order_at_end(parent);
         for &id in ids {
-            let Some(entity) = area.get(id) else { continue };
-            if entity.parent == parent || parent.is_some_and(|p| area.tree(id).contains(&p)) {
+            let Some(entity) = level.get(id) else {
+                continue;
+            };
+            if entity.parent == parent || parent.is_some_and(|p| level.tree(id).contains(&p)) {
                 continue;
             }
             edits.push(Edit::Reparent {
@@ -1028,9 +1031,9 @@ impl Workbench {
                 parent,
                 order: order.clone(),
             });
-            order = area::order_after(Some(&order));
+            order = level::order_after(Some(&order));
             if let Some(transform) = entity.get::<Transform>() {
-                let local = inverse * area.world_matrix(id);
+                let local = inverse * level.world_matrix(id);
                 if local.is_finite() && inverse.is_finite() {
                     let (scale, rotation, position) = local.to_scale_rotation_translation();
                     let kept = Transform {
@@ -1051,7 +1054,7 @@ impl Workbench {
         if edits.is_empty() {
             return;
         }
-        let label = match parent.and_then(|p| area.get(p)) {
+        let label = match parent.and_then(|p| level.get(p)) {
             Some(p) => format!("Move under {}", p.name),
             None => "Move to the top level".to_string(),
         };
@@ -1065,19 +1068,20 @@ impl Workbench {
         if roots.is_empty() {
             return;
         }
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let mut edits = Vec::new();
         let mut copies = Vec::new();
         let mut orders: std::collections::HashMap<Option<EntityId>, String> = Default::default();
         for root in roots {
-            let ids = area.tree(root);
+            let ids = level.tree(root);
             // Parts of placed assemblies get the IDs a new copy of their
             // assembly would (so they stay copies); everything else gets a
             // new random one. Parts whose copy's root stays behind become
             // plain.
             let inside: std::collections::HashSet<EntityId> = ids.iter().copied().collect();
             let part_of = |id: EntityId| {
-                area.get(id)
+                level
+                    .get(id)
                     .and_then(|e| e.origin.as_ref())
                     .filter(|o| o.instance != id && inside.contains(&o.instance))
             };
@@ -1089,12 +1093,12 @@ impl Workbench {
             for &id in &ids {
                 if let Some(o) = part_of(id) {
                     let new_instance = new_ids.get(&o.instance).copied().unwrap_or(o.instance);
-                    new_ids.insert(id, area::assembly::derive(new_instance, &o.path));
+                    new_ids.insert(id, level::assembly::derive(new_instance, &o.path));
                 }
             }
             let mut entities = Vec::new();
             for id in &ids {
-                let Some(original) = area.get(*id) else {
+                let Some(original) = level.get(*id) else {
                     continue;
                 };
                 let mut copy = original.clone();
@@ -1102,9 +1106,9 @@ impl Workbench {
                     let parent = original.parent;
                     let order = orders
                         .entry(parent)
-                        .or_insert_with(|| area.order_at_end(parent));
+                        .or_insert_with(|| level.order_at_end(parent));
                     copy.order.clone_from(order);
-                    *order = area::order_after(Some(order));
+                    *order = level::order_after(Some(order));
                 } else {
                     copy.parent = original
                         .parent
@@ -1116,7 +1120,7 @@ impl Workbench {
                     .origin
                     .as_ref()
                     .filter(|o| inside.contains(&o.instance))
-                    .map(|o| area::Origin {
+                    .map(|o| level::Origin {
                         instance: new_ids[&o.instance],
                         ..o.clone()
                     });
@@ -1163,7 +1167,7 @@ impl Workbench {
             [one] => self.delete(*one),
             many => {
                 let label = format!("Delete {} entities", many.len());
-                let edits = area::assembly::despawn(self.open.document.area(), many);
+                let edits = level::assembly::despawn(self.open.document.level(), many);
                 let left = left_behind(&edits);
                 if self.command(&label, edits, None, None) {
                     self.log(LogLevel::Info, format!("{label}.{left}"));
@@ -1176,14 +1180,14 @@ impl Workbench {
     /// (F). Models count with their whole size, other entities as a
     /// metre-wide box around them.
     pub fn frame_selection(&mut self) {
-        let area = self.open.document.area();
+        let level = self.open.document.level();
         let mut bounds: Option<(Vec3, Vec3)> = None;
         let mut add = |lo: Vec3, hi: Vec3| {
             bounds = Some(bounds.map_or((lo, hi), |(a, b)| (a.min(lo), b.max(hi))));
         };
         for id in self.open.document.selection.iter() {
-            let world = area.world_matrix(id);
-            let model = area
+            let world = level.world_matrix(id);
+            let model = level
                 .get(id)
                 .and_then(|e| e.get::<Model>())
                 .and_then(|m| m.asset)
@@ -1217,17 +1221,17 @@ impl Workbench {
 
     /// Deletes `id` and everything below it.
     pub fn delete(&mut self, id: EntityId) {
-        let area = self.open.document.area();
-        let Some(entity) = area.get(id) else {
+        let level = self.open.document.level();
+        let Some(entity) = level.get(id) else {
             return;
         };
         let label = format!("Delete {}", entity.name);
-        let extra = match area.tree(id).len() - 1 {
+        let extra = match level.tree(id).len() - 1 {
             0 => String::new(),
             1 => " and 1 entity under it".into(),
             n => format!(" and {n} entities under it"),
         };
-        let edits = area::assembly::despawn(area, &[id]);
+        let edits = level::assembly::despawn(level, &[id]);
         let left = left_behind(&edits);
         if self.command(&label, edits, None, None) {
             self.log(LogLevel::Info, format!("{label}{extra}.{left}"));
@@ -1239,14 +1243,14 @@ impl Workbench {
     /// else to the point itself.
     pub fn move_here(&mut self, id: EntityId) {
         let camera = self.viewport.camera;
-        let Some(entity) = self.open.document.area().get(id) else {
+        let Some(entity) = self.open.document.level().get(id) else {
             return;
         };
         let mut transform = entity.get::<Transform>().unwrap_or_default();
         match entity.get::<Light>().map(|l| l.kind) {
             Some(LightKind::Spot) => {
                 transform.position = camera.viewpoint();
-                transform.rotation = area::builtin::aim(camera.forward());
+                transform.rotation = level::builtin::aim(camera.forward());
             }
             Some(LightKind::Point) => {
                 transform.position = camera.focus() + Vec3::Z * POINT_LIGHT_HEIGHT;
@@ -1258,7 +1262,7 @@ impl Workbench {
     }
 }
 
-/// A light from a model's file, as the area takes it.
+/// A light from a model's file, as the level takes it.
 enum FromFile {
     /// A lamp: an entity to put under the model.
     Lamp(Box<EntityData>),
@@ -1270,7 +1274,7 @@ enum FromFile {
 /// usable ones.
 fn file_light(i: usize, light: &FileLight) -> FromFile {
     let color = light.color.map(crate::models::linear_to_srgb);
-    let rotation = area::builtin::aim(light.direction);
+    let rotation = level::builtin::aim(light.direction);
     let strength = if light.strength.is_finite() {
         light.strength.max(0.0)
     } else {

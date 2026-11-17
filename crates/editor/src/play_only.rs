@@ -1,7 +1,7 @@
 //! An exported game ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
 //! the same program, showing only the game. It fills the window, has the
 //! mouse and keys from the start (Esc included), and closes when game code
-//! calls `Window:quit()`. The app opens the project and area, starts play
+//! calls `Window:quit()`. The app opens the project and level, starts play
 //! once the code is ready, and makes the window follow the player's
 //! settings.
 
@@ -54,7 +54,7 @@ impl Workbench {
         (!mistakes.is_empty()).then(|| mistakes.join("\n"))
     }
 
-    /// Starts an exported game: plays the open area, giving the game the
+    /// Starts an exported game: plays the open level, giving the game the
     /// mouse and keys.
     pub fn start_play_only(&mut self, ctx: &egui::Context) {
         if self.open.playing.is_some() {

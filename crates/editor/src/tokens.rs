@@ -103,7 +103,7 @@ pub struct Palette {
     pub text_line_number: Color32,
     /// The slash in a path (likewise below it).
     pub text_separator: Color32,
-    /// The viewport's sky straight up, where an area has no sky of its own.
+    /// The viewport's sky straight up, where a level has no sky of its own.
     pub sky_top: Color32,
     /// That sky at the horizon.
     pub horizon: Color32,

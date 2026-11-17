@@ -1,4 +1,4 @@
-//! The area document
+//! The level document
 //! ([decision 0019](../../../docs/decisions/0019-scene-document-now-game-storage-later.md)):
 //! entities with stable IDs, and their components as values, changed only
 //! through reversible edits, which undo and redo are made of
@@ -19,7 +19,7 @@ pub mod settings;
 pub mod text;
 mod tree;
 
-pub use document::{Area, EntityData, Origin, order_after};
+pub use document::{EntityData, Level, Origin, order_after};
 pub use edit::{Edit, EditError};
 pub use history::{DEFAULT_LIMIT_BYTES, Followed, History, MergeKey, Step, Undone, Weigh};
 pub use tree::{Ancestors, Mended, Tree};

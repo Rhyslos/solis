@@ -118,7 +118,7 @@ fn a_click_in_a_view_makes_it_the_one_in_use_and_f_frames_there() {
         .0
         .open
         .document
-        .area()
+        .level()
         .iter()
         .find(|(_, e)| e.name == "Crate")
         .unwrap()
@@ -300,7 +300,7 @@ fn reading_saved_views_never_panics() {
 fn a_flat_view_has_no_fog_and_adds_cameras_above_the_ground() {
     let mut v = Viewport::default();
     v.camera = v.camera.as_kind(ViewKind::Top);
-    v.area.environment.fog = true;
+    v.level.environment.fog = true;
     let view = v.view([800, 600], 1.0);
     assert!(!view.environment.fog, "fog would hide the whole flat view");
     // Seen from in front of the view's middle, as far as it's tall, not
@@ -313,10 +313,10 @@ fn a_flat_view_has_no_fog_and_adds_cameras_above_the_ground() {
     let at = w
         .open
         .document
-        .area()
+        .level()
         .get(id)
         .unwrap()
-        .get::<area::builtin::Transform>()
+        .get::<level::builtin::Transform>()
         .unwrap()
         .position;
     assert!(at.z > 1.0, "{at}");

@@ -3,8 +3,8 @@
 //! changes, and given back by a save.
 
 use super::*;
-use area::builtin::Transform;
-use area::{Area, EntityData};
+use level::builtin::Transform;
+use level::{EntityData, Level};
 use reflect::AssetRef;
 use tiles::ValueKind;
 
@@ -14,19 +14,19 @@ fn file() -> TileMap {
     map
 }
 
-fn farm() -> (World, Area, EntityId, AssetId) {
+fn farm() -> (World, Level, EntityId, AssetId) {
     let asset = AssetId::random();
-    let mut area = Area::new();
-    let id = area.spawn(EntityData::new("Farm").with(&Transform::default()).with(
+    let mut level = Level::new();
+    let id = level.spawn(EntityData::new("Farm").with(&Transform::default()).with(
         &TileMapComponent {
             map: Some(AssetRef { asset, part: None }),
         },
     ));
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     let mut files = MapFiles::new();
     files.insert(asset, Arc::new(file()));
     world.set_tile_maps(Arc::new(files));
-    (world, area, id, asset)
+    (world, level, id, asset)
 }
 
 #[test]
@@ -70,16 +70,16 @@ fn the_checksum_follows_the_map() {
 
 #[test]
 fn edits_keep_the_game_s_map_and_a_changed_file_starts_it_again() {
-    let (mut world, mut area, id, asset) = farm();
+    let (mut world, mut level, id, asset) = farm();
     world.set_tile(id, 0, [2, 2], b't').unwrap();
     // Moving the map's entity in the editor keeps the game's cells.
-    area.get_mut(id).unwrap().set(&Transform {
+    level.get_mut(id).unwrap().set(&Transform {
         position: glam::Vec3::new(1.0, 0.0, 0.0),
         ..Transform::default()
     });
-    world.update(&area, [(id, true)]);
+    world.update(&level, [(id, true)]);
     assert_eq!(world.tile_map(id).unwrap().code(0, 2, 2), Some(b't'));
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert_eq!(world.tile_map(id).unwrap().code(0, 2, 2), Some(b't'));
     // The file changes (its design, in the editor): it starts again.
     let mut files = MapFiles::new();
@@ -94,14 +94,14 @@ fn edits_keep_the_game_s_map_and_a_changed_file_starts_it_again() {
 
 #[test]
 fn a_save_s_maps_come_back_and_sum_the_same() {
-    let (mut world, area, id, _) = farm();
+    let (mut world, level, id, _) = farm();
     world.set_tile(id, 0, [5, 6], b't').unwrap();
     world
         .set_cell_value(id, 0, [5, 6], CellValue::Switch(true))
         .unwrap();
     let saved = world.tile_maps();
     assert_eq!(saved.len(), 1);
-    let mut loaded = World::from_area(&area);
+    let mut loaded = World::from_level(&level);
     // A save's maps are given before (or after) the files arrive.
     loaded.restore_tile_maps(saved);
     // Read before its file arrives: as the save had it.
@@ -114,9 +114,9 @@ fn a_save_s_maps_come_back_and_sum_the_same() {
 
 #[test]
 fn an_entity_without_a_file_has_no_map() {
-    let mut area = Area::new();
-    let id = area.spawn(EntityData::new("Empty").with(&TileMapComponent::default()));
-    let mut world = World::from_area(&area);
+    let mut level = Level::new();
+    let id = level.spawn(EntityData::new("Empty").with(&TileMapComponent::default()));
+    let mut world = World::from_level(&level);
     world.set_tile_maps(Arc::new(MapFiles::new()));
     assert!(world.tile_map(id).is_none());
     assert!(world.tile_maps().is_empty());

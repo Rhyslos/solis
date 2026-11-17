@@ -8,7 +8,7 @@ use super::{
     BODY_WORDS, FORMAT, HEADER, MAX_SAVE_BYTES, MAX_SAVED_TICKS, MAX_SECTIONS, PLACE_WORDS,
     PROJECTILE_WORDS, SAVE_VERSION, Save, Sections, sum_of, words_of,
 };
-use area::builtin::Transform;
+use level::builtin::Transform;
 use reflect::EntityId;
 
 /// Why a save that can't be read whole is refused.
@@ -71,7 +71,7 @@ impl Save {
                 .ok_or_else(damaged)?;
             Ok(list.remove(at).1)
         };
-        let area = section("area")?.to_string();
+        let level = section("area")?.to_string();
         let values = section("values")?.to_string();
         let bindings = section("bindings")?.to_string();
         let projectiles = read_projectiles(section("projectiles")?)?;
@@ -87,7 +87,7 @@ impl Save {
             ticks,
             time,
             seed,
-            area,
+            level,
             values,
             bindings,
             projectiles,
@@ -279,7 +279,7 @@ fn read_physics(physics_text: &str) -> Result<Vec<(EntityId, physics::BodyState)
 
 /// Where the game has each entity it moved: its transform's numbers.
 fn read_places(places_text: &str) -> Result<Vec<(EntityId, Transform)>, String> {
-    if places_text.lines().count() > area::text::MAX_ENTITIES {
+    if places_text.lines().count() > level::text::MAX_ENTITIES {
         return Err(damaged());
     }
     places_text
@@ -313,7 +313,7 @@ fn read_places(places_text: &str) -> Result<Vec<(EntityId, Transform)>, String> 
 
 /// Each animator's parameters, by name.
 fn read_animators(animators_text: &str) -> Result<Vec<SavedAnimator>, String> {
-    if animators_text.lines().count() > area::text::MAX_ENTITIES {
+    if animators_text.lines().count() > level::text::MAX_ENTITIES {
         return Err(damaged());
     }
     animators_text
@@ -351,7 +351,7 @@ type SavedAnimator = (EntityId, Vec<(String, animation::ParamValue)>);
 fn read_tile_maps(mut maps_text: &str) -> Result<Vec<(EntityId, tiles::TileMap)>, String> {
     let mut tile_maps = Vec::new();
     while !maps_text.is_empty() {
-        if tile_maps.len() >= area::text::MAX_ENTITIES {
+        if tile_maps.len() >= level::text::MAX_ENTITIES {
             return Err(damaged());
         }
         let (head, after) = maps_text.split_once('\n').ok_or_else(damaged)?;
@@ -421,7 +421,7 @@ pub(super) fn physics_as_places_and_motion(sections: &mut Sections) -> Result<()
 }
 
 /// Version 2 to 3: version 2 kept where the game had moved each entity in
-/// the area itself, which loads the same with no places apart.
+/// the level itself, which loads the same with no places apart.
 pub(super) fn places_kept_apart(sections: &mut Sections) -> Result<(), String> {
     if sections.list.iter().any(|(n, _)| n == "places") {
         return Err("it already has places".into());

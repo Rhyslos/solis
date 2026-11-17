@@ -164,7 +164,7 @@ fn the_console_s_lines_say_their_level_as_a_word() {
 
 /// The selected point light's strength.
 fn strength(w: &Workbench, id: reflect::EntityId) -> f64 {
-    w.open.document.area().get(id).unwrap().components["Light"]
+    w.open.document.level().get(id).unwrap().components["Light"]
         .get("strength")
         .and_then(reflect::Value::as_f64)
         .unwrap()
@@ -203,13 +203,13 @@ fn a_name_that_is_not_a_number_does_not_drag() {
     let mut w = Workbench::new(info());
     roomy_shelf(&mut w);
     let id = w.add_point_light();
-    let before = w.open.document.area().get(id).cloned();
+    let before = w.open.document.level().get(id).cloned();
     let mut h = harness(w);
     h.run();
     h.run();
     let name = h.get_all_by_label("Shadows").next().unwrap().rect();
     drag_for_frames(&mut h, name.center(), egui::vec2(20.0, 0.0), 3);
-    assert_eq!(h.state().0.open.document.area().get(id).cloned(), before);
+    assert_eq!(h.state().0.open.document.level().get(id).cloned(), before);
 }
 
 #[test]
@@ -271,7 +271,7 @@ fn f2_and_delete_over_the_assets_act_on_the_picked_file() {
             .contains(&WorkbenchAction::DeleteFile("crate.glb".into()))
     );
     assert!(
-        h.state().0.open.document.area().contains(entity),
+        h.state().0.open.document.level().contains(entity),
         "the entity stays"
     );
     // Elsewhere Delete is the entity's still.
@@ -281,7 +281,7 @@ fn f2_and_delete_over_the_assets_act_on_the_picked_file() {
     h.run();
     h.key_press(egui::Key::Delete);
     h.run();
-    assert!(!h.state().0.open.document.area().contains(entity));
+    assert!(!h.state().0.open.document.level().contains(entity));
 }
 
 #[test]

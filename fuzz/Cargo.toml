@@ -25,7 +25,7 @@ libfuzzer-sys = "=0.4.13"
 arbitrary = "=1.5.0"
 editor = { path = "../crates/editor" }
 input = { path = "../crates/input" }
-area = { path = "../crates/area" }
+level = { path = "../crates/level" }
 mesh = { path = "../crates/mesh" }
 assets = { path = "../crates/assets" }
 asset_db = { path = "../crates/asset_db" }
@@ -81,8 +81,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "area_file"
-path = "fuzz_targets/area_file.rs"
+name = "level_file"
+path = "fuzz_targets/level_file.rs"
 test = false
 doc = false
 bench = false

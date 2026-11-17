@@ -260,7 +260,7 @@ impl Setting {
         Self::ExportFolder,
     ];
 
-    /// The sub-tab it is on (the area the game starts in is on two: its
+    /// The sub-tab it is on (the level the game starts in is on two: its
     /// home is Build, where the export reads it).
     pub(crate) fn tab(self) -> Tab {
         use Setting as S;

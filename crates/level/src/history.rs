@@ -1,10 +1,10 @@
 //! Undo and redo: steps of edits, with the selection each step had
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 //!
-//! The selection type is the caller's (`S`): the area crate doesn't know
+//! The selection type is the caller's (`S`): the level crate doesn't know
 //! what the editor selects, only that undo brings it back.
 
-use crate::document::Area;
+use crate::document::Level;
 use crate::edit::{Edit, EditError};
 use reflect::EntityId;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -138,7 +138,7 @@ pub struct History<S> {
     /// The next step's serial.
     next_serial: u64,
     /// The serial of the newest step dropped to keep within the limit (0
-    /// if none was): with every step left undone, the area is still past
+    /// if none was): with every step left undone, the level is still past
     /// it, so it mustn't look like the start.
     dropped: u64,
     /// The state [`Self::hold`] was called at, if it was: steps made after
@@ -178,13 +178,13 @@ impl<S: Clone + Weigh> History<S> {
         }
     }
 
-    /// Applies `edits` to `area` as one step called `label`. With a
+    /// Applies `edits` to `level` as one step called `label`. With a
     /// `merge` key equal to the newest step's, they join that step
     /// instead. `before` and `after` are the selection either side of it.
     /// On an error nothing changes.
     pub fn apply(
         &mut self,
-        area: &mut Area,
+        level: &mut Level,
         label: &str,
         edits: Vec<Edit>,
         merge: Option<MergeKey>,
@@ -195,7 +195,7 @@ impl<S: Clone + Weigh> History<S> {
             return Ok(());
         }
         let redo = edits.clone();
-        let undo = area.apply_all(edits)?;
+        let undo = level.apply_all(edits)?;
         self.redo.clear();
         let merging =
             self.open && merge.is_some() && self.undo.back().is_some_and(|s| s.merge == merge);
@@ -245,7 +245,7 @@ impl<S: Clone + Weigh> History<S> {
         self.next_serial - 1
     }
 
-    /// A number standing for the area as it is now: it comes back exactly
+    /// A number standing for the level as it is now: it comes back exactly
     /// when undo or redo return to the same point, so comparing it with
     /// the one at the last save says whether there are unsaved changes.
     /// 0 is the start (nothing done).
@@ -281,15 +281,15 @@ impl<S: Clone + Weigh> History<S> {
     }
 
     /// Makes here what was done in `played` since it was a copy of this
-    /// history (and `area` a copy of its area) that was then
+    /// history (and `level` a copy of its level) that was then
     /// [held](Self::hold): the steps undone there are undone here, and the
     /// steps made there are made here, as steps of their own that can be
-    /// undone. What changed `played`'s area without being a step (a
+    /// undone. What changed `played`'s level without being a step (a
     /// running game's entities) isn't made, so a step may no longer fit:
     /// for each entity, what the step did to it is made whole or left
     /// out, and a step with nothing left isn't made at all. The steps
     /// undone and not made again there can't be redone here.
-    pub fn follow(&mut self, area: &mut Area, played: &Self) -> Followed {
+    pub fn follow(&mut self, level: &mut Level, played: &Self) -> Followed {
         let there: HashSet<u64> = played.undo.iter().map(|s| s.serial).collect();
         // Steps there keep their order, so the ones undone are the newest
         // here. One dropped there to keep within the limit is still done.
@@ -298,13 +298,13 @@ impl<S: Clone + Weigh> History<S> {
             .back()
             .is_some_and(|s| s.serial > played.dropped && !there.contains(&s.serial))
         {
-            // Undoing a step on the area it was made on can't fail.
-            let _ = self.undo(area);
+            // Undoing a step on the level it was made on can't fail.
+            let _ = self.undo(level);
         }
         let here: HashSet<u64> = self.undo.iter().map(|s| s.serial).collect();
         let mut followed = Followed::default();
         for step in played.undo.iter().filter(|s| !here.contains(&s.serial)) {
-            let (undo, redo) = make_what_fits(area, &step.redo);
+            let (undo, redo) = make_what_fits(level, &step.redo);
             if redo.is_empty() {
                 followed.left_out.push(step.label.clone());
                 continue;
@@ -330,11 +330,11 @@ impl<S: Clone + Weigh> History<S> {
 
     /// Undoes the newest step, returning its label and the selection it
     /// started with; `None` if there's nothing to undo.
-    pub fn undo(&mut self, area: &mut Area) -> Option<Result<Undone<S>, EditError>> {
+    pub fn undo(&mut self, level: &mut Level) -> Option<Result<Undone<S>, EditError>> {
         let mut step = Arc::unwrap_or_clone(self.undo.pop_back()?);
         self.bytes -= step.bytes;
         self.open = false;
-        match area.apply_all(step.undo.clone()) {
+        match level.apply_all(step.undo.clone()) {
             Ok(redo) => {
                 step.redo = redo;
                 let done = Undone {
@@ -350,10 +350,10 @@ impl<S: Clone + Weigh> History<S> {
 
     /// Redoes the step undone last, returning its label and the selection
     /// it ended with; `None` if there's nothing to redo.
-    pub fn redo(&mut self, area: &mut Area) -> Option<Result<Undone<S>, EditError>> {
+    pub fn redo(&mut self, level: &mut Level) -> Option<Result<Undone<S>, EditError>> {
         let mut step = Arc::unwrap_or_clone(self.redo.pop()?);
         self.open = false;
-        match area.apply_all(step.redo.clone()) {
+        match level.apply_all(step.redo.clone()) {
             Ok(undo) => {
                 step.undo = undo;
                 let done = Undone {
@@ -394,7 +394,7 @@ impl<S: Clone + Weigh> History<S> {
         self.open = false;
     }
 
-    /// Forgets everything (a new area was opened). Serials keep counting,
+    /// Forgets everything (a new level was opened). Serials keep counting,
     /// so no old state is mistaken for a new one.
     pub fn clear(&mut self) {
         let next = self.next_serial;
@@ -403,12 +403,12 @@ impl<S: Clone + Weigh> History<S> {
     }
 }
 
-/// Makes as much of `edits` in `area` as fits, an entity at a time: what
+/// Makes as much of `edits` in `level` as fits, an entity at a time: what
 /// they do to one entity is made whole or not at all, so nothing is left
 /// half done (an entity moved under a new parent without the place that
 /// goes with it). Returns the edits that undo what was made, and the
 /// edits made, each in the order to apply them.
-fn make_what_fits(area: &mut Area, edits: &[Edit]) -> (Vec<Edit>, Vec<Edit>) {
+fn make_what_fits(level: &mut Level, edits: &[Edit]) -> (Vec<Edit>, Vec<Edit>) {
     let mut left_out: HashSet<Option<EntityId>> = HashSet::new();
     loop {
         let mut undo = Vec::new();
@@ -419,8 +419,8 @@ fn make_what_fits(area: &mut Area, edits: &[Edit]) -> (Vec<Edit>, Vec<Edit>) {
             if left_out.contains(&about) {
                 continue;
             }
-            let done = if has_its_parent(area, edit) {
-                area.apply(edit.clone()).ok()
+            let done = if has_its_parent(level, edit) {
+                level.apply(edit.clone()).ok()
             } else {
                 None
             };
@@ -444,7 +444,7 @@ fn make_what_fits(area: &mut Area, edits: &[Edit]) -> (Vec<Edit>, Vec<Edit>) {
         // least one more entity, so this ends).
         for inverse in undo {
             // Undoing what was just done can't fail.
-            let _ = area.apply(inverse);
+            let _ = level.apply(inverse);
         }
     }
 }
@@ -464,15 +464,15 @@ fn subject(edit: &Edit) -> Option<EntityId> {
     }
 }
 
-/// Whether the tree `edit` adds has the parent it goes under in `area`
+/// Whether the tree `edit` adds has the parent it goes under in `level`
 /// (true for every other edit, and for a tree at the top level): applying
 /// the edit doesn't ask, and would leave the tree under nothing.
-fn has_its_parent(area: &Area, edit: &Edit) -> bool {
+fn has_its_parent(level: &Level, edit: &Edit) -> bool {
     match edit {
         Edit::Spawn { entities } => entities
             .first()
             .and_then(|(_, data)| data.parent)
-            .is_none_or(|parent| area.contains(parent)),
+            .is_none_or(|parent| level.contains(parent)),
         _ => true,
     }
 }
@@ -519,12 +519,12 @@ mod tests {
         }
     }
 
-    fn strength(s: &Area, id: EntityId) -> f32 {
+    fn strength(s: &Level, id: EntityId) -> f32 {
         s.get(id).unwrap().get::<Light>().unwrap().strength
     }
 
-    fn lamp() -> (Area, EntityId) {
-        let mut s = Area::new();
+    fn lamp() -> (Level, EntityId) {
+        let mut s = Level::new();
         let id = s.spawn(EntityData::new("Lamp").with(&Light::point()));
         (s, id)
     }
@@ -535,7 +535,7 @@ mod tests {
     });
 
     /// A step called `label` that sets the lamp's strength.
-    fn change(h: &mut History<u32>, s: &mut Area, label: &str, id: EntityId, to: f64) {
+    fn change(h: &mut History<u32>, s: &mut Level, label: &str, id: EntityId, to: f64) {
         h.apply(s, label, vec![set(id, to)], None, 0, 0).unwrap();
     }
 
@@ -544,32 +544,32 @@ mod tests {
         let (mut s, id) = lamp();
         let mut h = History::<u32>::default();
         change(&mut h, &mut s, "Change strength", id, 5.0);
-        let (mut kept_area, mut kept) = (s.clone(), h.clone());
+        let (mut kept_level, mut kept) = (s.clone(), h.clone());
         h.hold();
         // Nothing done since: nothing to make.
-        assert_eq!(kept.follow(&mut kept_area, &h), Followed::default());
+        assert_eq!(kept.follow(&mut kept_level, &h), Followed::default());
         assert_eq!(kept.state(), h.state());
         change(&mut h, &mut s, "Brighter", id, 9.0);
         h.apply(&mut s, "Dimmer", vec![set(id, 2.0)], DRAG, 3, 4)
             .unwrap();
-        let followed = kept.follow(&mut kept_area, &h);
+        let followed = kept.follow(&mut kept_level, &h);
         assert_eq!(followed.made, ["Brighter", "Dimmer"]);
         assert!(followed.left_out.is_empty());
-        assert_eq!(kept_area, s);
+        assert_eq!(kept_level, s);
         assert_eq!(kept.undo_len(), 3);
         // Each is a step of its own, with its selections, and closed: the
         // gesture that made the last one doesn't grow it here.
-        kept.apply(&mut kept_area, "Dimmer", vec![set(id, 1.0)], DRAG, 4, 5)
+        kept.apply(&mut kept_level, "Dimmer", vec![set(id, 1.0)], DRAG, 4, 5)
             .unwrap();
         assert_eq!(kept.undo_len(), 4);
-        kept.undo(&mut kept_area).unwrap().unwrap();
-        let undone = kept.undo(&mut kept_area).unwrap().unwrap();
-        assert_eq!((strength(&kept_area, id), undone.selection), (9.0, 3));
-        kept.undo(&mut kept_area).unwrap().unwrap();
-        assert_eq!(strength(&kept_area, id), 5.0);
-        let redone = kept.redo(&mut kept_area).unwrap().unwrap();
+        kept.undo(&mut kept_level).unwrap().unwrap();
+        let undone = kept.undo(&mut kept_level).unwrap().unwrap();
+        assert_eq!((strength(&kept_level, id), undone.selection), (9.0, 3));
+        kept.undo(&mut kept_level).unwrap().unwrap();
+        assert_eq!(strength(&kept_level, id), 5.0);
+        let redone = kept.redo(&mut kept_level).unwrap().unwrap();
         assert_eq!(
-            (strength(&kept_area, id), redone.label.as_str()),
+            (strength(&kept_level, id), redone.label.as_str()),
             (9.0, "Brighter")
         );
     }
@@ -586,30 +586,30 @@ mod tests {
         h.hold();
         // Undone since, and nothing else: it can be redone in the copy too.
         h.undo(&mut s).unwrap().unwrap();
-        let (mut kept_area, mut kept) = copy.clone();
-        assert_eq!(kept.follow(&mut kept_area, &h), Followed::default());
-        assert_eq!((strength(&kept_area, id), kept.undo_len()), (1.0, 1));
+        let (mut kept_level, mut kept) = copy.clone();
+        assert_eq!(kept.follow(&mut kept_level, &h), Followed::default());
+        assert_eq!((strength(&kept_level, id), kept.undo_len()), (1.0, 1));
         assert_eq!(kept.redo_label(), Some("Two"));
         // Undone and redone: as it was, so nothing to make.
         h.redo(&mut s).unwrap().unwrap();
-        let (mut kept_area, mut kept) = copy.clone();
-        assert_eq!(kept.follow(&mut kept_area, &h), Followed::default());
+        let (mut kept_level, mut kept) = copy.clone();
+        assert_eq!(kept.follow(&mut kept_level, &h), Followed::default());
         assert_eq!(kept.state(), copy.1.state());
         // A step undone before the copy and redone since is made.
         h.redo(&mut s).unwrap().unwrap();
-        let (mut kept_area, mut kept) = copy.clone();
-        assert_eq!(kept.follow(&mut kept_area, &h).made, ["Three"]);
-        assert_eq!((strength(&kept_area, id), kept.undo_len()), (3.0, 3));
+        let (mut kept_level, mut kept) = copy.clone();
+        assert_eq!(kept.follow(&mut kept_level, &h).made, ["Three"]);
+        assert_eq!((strength(&kept_level, id), kept.undo_len()), (3.0, 3));
         // Everything undone, then something new.
         while h.undo(&mut s).is_some() {}
         change(&mut h, &mut s, "Four", id, 4.0);
-        let (mut kept_area, mut kept) = copy;
-        assert_eq!(kept.follow(&mut kept_area, &h).made, ["Four"]);
-        assert_eq!(kept_area, s);
+        let (mut kept_level, mut kept) = copy;
+        assert_eq!(kept.follow(&mut kept_level, &h).made, ["Four"]);
+        assert_eq!(kept_level, s);
         assert_eq!(kept.undo_len(), 1);
-        assert!(kept.redo(&mut kept_area).is_none());
-        kept.undo(&mut kept_area).unwrap().unwrap();
-        assert_eq!(strength(&kept_area, id), 1000.0);
+        assert!(kept.redo(&mut kept_level).is_none());
+        kept.undo(&mut kept_level).unwrap().unwrap();
+        assert_eq!(strength(&kept_level, id), 1000.0);
     }
 
     /// The game's entities: never in the copy.
@@ -646,7 +646,7 @@ mod tests {
             0,
         )
         .unwrap();
-        let (mut kept_area, mut kept) = (s.clone(), h.clone());
+        let (mut kept_level, mut kept) = (s.clone(), h.clone());
         let before = s.clone();
         h.hold();
         // The game adds a drone and takes the crate out: not steps.
@@ -716,7 +716,7 @@ mod tests {
             0,
         )
         .unwrap();
-        let followed = kept.follow(&mut kept_area, &h);
+        let followed = kept.follow(&mut kept_level, &h);
         assert_eq!(
             followed.made,
             ["Rename 2 entities", "Move under drone", "Add 2 entities"]
@@ -733,13 +733,13 @@ mod tests {
         ] {
             expected.apply(edit).unwrap();
         }
-        assert_eq!(kept_area, expected);
-        assert!(!kept_area.contains(drone) && !kept_area.contains(under_drone));
+        assert_eq!(kept_level, expected);
+        assert!(!kept_level.contains(drone) && !kept_level.contains(under_drone));
         // And each step made undoes exactly what it made.
         for _ in 0..3 {
-            kept.undo(&mut kept_area).unwrap().unwrap();
+            kept.undo(&mut kept_level).unwrap().unwrap();
         }
-        assert_eq!(kept_area, before);
+        assert_eq!(kept_level, before);
         assert_eq!(kept.undo_len(), 1);
     }
 
@@ -763,15 +763,15 @@ mod tests {
         assert!(h.bytes() > 1_000);
         // So the copy can follow: One and Two were dropped, so they're
         // still done; Three was undone; and all hundred are made.
-        let (mut kept_area, mut kept) = copy;
-        let followed = kept.follow(&mut kept_area, &h);
+        let (mut kept_level, mut kept) = copy;
+        let followed = kept.follow(&mut kept_level, &h);
         assert_eq!(followed.made.len(), 100);
-        assert_eq!(kept_area, s);
+        assert_eq!(kept_level, s);
         // The copy isn't held: it keeps to its limit again.
         assert!(kept.bytes() <= 1_000);
-        while kept.undo(&mut kept_area).is_some() {}
+        while kept.undo(&mut kept_level).is_some() {}
         assert_ne!(
-            strength(&kept_area, id),
+            strength(&kept_level, id),
             1000.0,
             "One and Two are still done"
         );
@@ -817,14 +817,14 @@ mod tests {
         let mut h = History::<()>::default();
         h.apply(&mut s, "Drag", vec![set(id, 1100.0)], DRAG, (), ())
             .unwrap();
-        let (kept_area, kept) = (s.clone(), h.clone());
+        let (kept_level, kept) = (s.clone(), h.clone());
         assert!(Arc::ptr_eq(&h.undo[0], &kept.undo[0]), "shared, not copied");
         // The drag goes on in the original (as while playing): the copy's
         // step stays as it was, and undoing the copy goes back to the start.
         h.apply(&mut s, "Drag", vec![set(id, 1200.0)], DRAG, (), ())
             .unwrap();
         h.undo(&mut s).unwrap().unwrap();
-        let (mut s2, mut kept) = (kept_area, kept);
+        let (mut s2, mut kept) = (kept_level, kept);
         assert_eq!(strength(&s2, id), 1100.0);
         kept.undo(&mut s2).unwrap().unwrap();
         assert_eq!(strength(&s2, id), 1000.0);
@@ -903,7 +903,7 @@ mod tests {
         }
         assert!(h.bytes() <= 2_000, "{}", h.bytes());
         assert!(h.undo_len() > 1 && h.undo_len() < 200);
-        // Found by review: with every step left undone, the area still has
+        // Found by review: with every step left undone, the level still has
         // the dropped steps' changes, so it isn't back at the start (which
         // would look "saved" for a file just opened).
         while h.undo(&mut s).is_some() {}
@@ -950,7 +950,7 @@ mod tests {
     }
 
     /// A random edit, often a bad one, against the entities in `s`.
-    fn random_edit(r: &mut Rng, s: &Area) -> Edit {
+    fn random_edit(r: &mut Rng, s: &Level) -> Edit {
         let mut ids: Vec<EntityId> = s.iter().map(|(id, _)| id).collect();
         ids.push(EntityId::random());
         let entity = r.pick(&ids);
@@ -1033,11 +1033,11 @@ mod tests {
             if seed % 3 == 0 {
                 let _ = h.undo(&mut s);
             }
-            let (mut kept_area, mut kept) = (s.clone(), h.clone());
+            let (mut kept_level, mut kept) = (s.clone(), h.clone());
             // The same steps, made on a copy the game never touches: what
             // following should come to. `done` and `undone` say which of
             // the played history's undo and redo steps it has.
-            let (mut alone_area, mut alone) = (s.clone(), h.clone());
+            let (mut alone_level, mut alone) = (s.clone(), h.clone());
             let mut done = vec![true; h.undo_len()];
             let mut undone = vec![true; usize::from(h.redo_label().is_some())];
             let mut exact = true;
@@ -1060,7 +1060,7 @@ mod tests {
                         Some(Ok(_)) => {
                             let had = done.pop().unwrap();
                             if had {
-                                alone.undo(&mut alone_area).unwrap().unwrap();
+                                alone.undo(&mut alone_level).unwrap().unwrap();
                             }
                             undone.push(had);
                         }
@@ -1074,7 +1074,7 @@ mod tests {
                         Some(Ok(_)) => {
                             let had = undone.pop().unwrap();
                             if had {
-                                alone.redo(&mut alone_area).unwrap().unwrap();
+                                alone.redo(&mut alone_level).unwrap().unwrap();
                             }
                             done.push(had);
                         }
@@ -1092,42 +1092,42 @@ mod tests {
                             .is_ok()
                         {
                             undone.clear();
-                            let fits = has_its_parent(&alone_area, &edit)
+                            let fits = has_its_parent(&alone_level, &edit)
                                 && alone
-                                    .apply(&mut alone_area, "Since", vec![edit], None, (), ())
+                                    .apply(&mut alone_level, "Since", vec![edit], None, (), ())
                                     .is_ok();
                             done.push(fits);
                         }
                     }
                 }
             }
-            let before = (kept_area.clone(), kept.undo_len());
-            let followed = kept.follow(&mut kept_area, &h);
+            let before = (kept_level.clone(), kept.undo_len());
+            let followed = kept.follow(&mut kept_level, &h);
             for n in 1..=made {
-                assert!(!kept_area.contains(game_id(n)), "seed {seed}");
+                assert!(!kept_level.contains(game_id(n)), "seed {seed}");
             }
-            for (_, data) in kept_area.iter() {
+            for (_, data) in kept_level.iter() {
                 assert!(
-                    data.parent.is_none_or(|p| kept_area.contains(p)),
+                    data.parent.is_none_or(|p| kept_level.contains(p)),
                     "seed {seed}"
                 );
             }
             if exact {
-                assert_eq!(kept_area, alone_area, "seed {seed}");
+                assert_eq!(kept_level, alone_level, "seed {seed}");
                 assert_eq!(kept.undo_len(), alone.undo_len(), "seed {seed}");
             }
             // What was made undoes and redoes cleanly.
-            let after = kept_area.clone();
+            let after = kept_level.clone();
             for _ in 0..followed.made.len() {
-                kept.undo(&mut kept_area).unwrap().unwrap();
+                kept.undo(&mut kept_level).unwrap().unwrap();
             }
             if kept.undo_len() == before.1 {
-                assert_eq!(kept_area, before.0, "seed {seed}");
+                assert_eq!(kept_level, before.0, "seed {seed}");
             }
             for _ in 0..followed.made.len() {
-                kept.redo(&mut kept_area).unwrap().unwrap();
+                kept.redo(&mut kept_level).unwrap().unwrap();
             }
-            assert_eq!(kept_area, after, "seed {seed}");
+            assert_eq!(kept_level, after, "seed {seed}");
         }
     }
 }

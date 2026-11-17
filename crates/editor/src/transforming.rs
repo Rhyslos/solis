@@ -8,9 +8,9 @@
 
 use crate::document::Selection;
 use crate::gizmo::{Change, snap};
-use area::Area;
-use area::builtin::Transform;
 use glam::{Mat3, Mat4, Quat, Vec3};
+use level::Level;
+use level::builtin::Transform;
 use reflect::EntityId;
 use serde::{Deserialize, Serialize};
 
@@ -72,7 +72,7 @@ pub struct Snapping {
     pub locked: [bool; 3],
     /// What moves land on in the 2D view.
     pub pixel_snap: PixelSnap,
-    /// Files dropped into the area land where pointed, never on the grid
+    /// Files dropped into the level land where pointed, never on the grid
     /// (the Place shelf tab's Align to: Free).
     pub place_free: bool,
 }
@@ -145,25 +145,25 @@ pub const WORLD_AXES: [Vec3; 3] = [Vec3::X, Vec3::Y, Vec3::Z];
 
 /// What moving the selection would move, or `None` when nothing selected
 /// has a transform (or it's all locked away).
-pub fn targets(area: &Area, selection: &Selection, object_axes: bool) -> Option<Targets> {
-    targets_placed(area, &|id| area.world_matrix(id), selection, object_axes)
+pub fn targets(level: &Level, selection: &Selection, object_axes: bool) -> Option<Targets> {
+    targets_placed(level, &|id| level.world_matrix(id), selection, object_axes)
 }
 
 /// [`targets`], with where each entity is in the world from `world` (the
 /// document's matrices, worked out once a frame).
 pub fn targets_placed(
-    area: &Area,
+    level: &Level,
     world: &dyn Fn(EntityId) -> Mat4,
     selection: &Selection,
     object_axes: bool,
 ) -> Option<Targets> {
     let selected: Vec<EntityId> = selection.iter().collect();
-    let inside_another = |id: EntityId| area.ancestors(id).any(|(p, _)| selection.contains(p));
+    let inside_another = |id: EntityId| level.ancestors(id).any(|(p, _)| selection.contains(p));
     let entities: Vec<Target> = selected
         .into_iter()
         .filter(|&id| !inside_another(id))
         .filter_map(|id| {
-            let entity = area.get(id)?;
+            let entity = level.get(id)?;
             let start = entity.get::<Transform>()?;
             let parent_world = entity.parent.map_or(Mat4::IDENTITY, world);
             Some(Target {
@@ -264,7 +264,7 @@ pub fn snapped_in_2d(
     change: Change,
     targets: &Targets,
     snapping: &Snapping,
-    pixels: area::pixels::PixelSettings,
+    pixels: level::pixels::PixelSettings,
     flip: bool,
 ) -> Change {
     let Change::Translate(v) = change else {
@@ -340,7 +340,7 @@ fn move_one(t: &Target, targets: &Targets, change: Change) -> Transform {
         Change::Scale(f) => scaled(t, targets, to_parent, f),
     };
     // Only real numbers are ever stored: an entity placed at "not a
-    // number" or at infinity vanishes, and the area would save it so. A
+    // number" or at infinity vanishes, and the level would save it so. A
     // change that can't be worked out (it lands further off than a number
     // can hold) leaves the entity as it was.
     if new.position.is_finite() && new.rotation.is_finite() && new.scale.is_finite() {

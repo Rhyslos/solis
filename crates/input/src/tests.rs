@@ -228,7 +228,7 @@ fn sample_recording() -> Recording {
         seed: 42,
         start: 0xdead_beef,
         ticks,
-        area: Some("areas/harbour.solarea".into()),
+        level: Some("areas/harbour.solarea".into()),
     }
 }
 
@@ -711,29 +711,29 @@ fn a_recording_holds_an_hour_of_ticks_and_no_more_and_says_which_line_is_wrong()
 mod edges;
 
 #[test]
-fn a_recording_names_its_area_and_older_ones_don_t() {
+fn a_recording_names_its_level_and_older_ones_don_t() {
     let r = sample_recording();
     let text = r.write();
     assert!(text.contains("\narea areas/harbour.solarea\n"), "{text}");
     assert_eq!(
-        Recording::read(&text).unwrap().area.as_deref(),
+        Recording::read(&text).unwrap().level.as_deref(),
         Some("areas/harbour.solarea")
     );
     // Not known: an empty line, read back as none.
     let none = Recording {
-        area: None,
+        level: None,
         ..r.clone()
     };
-    assert_eq!(Recording::read(&none.write()).unwrap().area, None);
+    assert_eq!(Recording::read(&none.write()).unwrap().level, None);
     let bare = none.write().replacen("\narea \n", "\narea\n", 1);
-    assert_eq!(Recording::read(&bare).unwrap().area, None);
+    assert_eq!(Recording::read(&bare).unwrap().level, None);
     // A line break in a path can't break the file.
     let odd = Recording {
-        area: Some("a\nb".into()),
+        level: Some("a\nb".into()),
         ..r.clone()
     };
     assert_eq!(
-        Recording::read(&odd.write()).unwrap().area.as_deref(),
+        Recording::read(&odd.write()).unwrap().level.as_deref(),
         Some("a b")
     );
     // Version 1 had no area line: it reads, with none.
@@ -751,7 +751,7 @@ fn a_recording_names_its_area_and_older_ones_don_t() {
         Err(RecordingError::Damaged(_))
     ));
     let read = Recording::read(&one).unwrap();
-    assert_eq!((read.area, read.ticks.len()), (None, r.ticks.len()));
+    assert_eq!((read.level, read.ticks.len()), (None, r.ticks.len()));
     // Too long, or a control character: damaged.
     let long = text.replacen("areas/harbour.solarea", &"x".repeat(2000), 1);
     assert!(matches!(
@@ -772,7 +772,7 @@ fn a_recording_names_its_area_and_older_ones_don_t() {
             "{odd}"
         );
     }
-    assert!(Recording::is_plain_area_path("areas/farm 2/barn.solarea"));
+    assert!(Recording::is_plain_level_path("areas/farm 2/barn.solarea"));
     let missing = text.replacen("area areas/harbour.solarea\n", "", 1);
     assert!(Recording::read(&missing).is_err());
 }
@@ -817,7 +817,7 @@ fn only_what_a_recording_reads_back_the_same_is_recordable() {
             world: 3,
             game: None,
         }],
-        area: None,
+        level: None,
     };
     let back = Recording::read(&recording.write()).unwrap();
     assert_eq!(back.ticks[0].frame.sent, vec![kept]);

@@ -3,8 +3,8 @@
 //! adding or taking one away; and the Preview time, which shows any hour
 //! in the viewport and is never saved.
 
-use area::builtin::{DayColours, MAX_STOPS};
 use egui::{Color32, Ui};
+use level::builtin::{DayColours, MAX_STOPS};
 use reflect::Value;
 
 /// Where the viewport's preview hour is kept between frames: the

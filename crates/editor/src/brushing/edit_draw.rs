@@ -10,7 +10,7 @@
 //!
 //! Only the sides facing the camera are drawn, worked out from the
 //! brush's own few faces each frame by the painter: never through the
-//! area's other brushes.
+//! level's other brushes.
 
 use super::edit::{Editing, Mode, Part};
 use super::ghost::{Progress, step_pill};

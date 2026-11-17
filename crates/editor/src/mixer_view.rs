@@ -9,7 +9,7 @@
 //! app). An edit is saved once the mouse button is let go
 //! (`WorkbenchAction::SaveMixer`), so dragging a fader saves once. Mute
 //! and solo aren't saved: they're for listening while working. None of it
-//! is an undo step: it's the project's sound, not the area.
+//! is an undo step: it's the project's sound, not the level.
 
 use crate::document::Selection;
 use crate::theme;
@@ -38,7 +38,7 @@ pub struct MixerState {
     pub(crate) held: Vec<(f32, f32)>,
     /// Each bus's ducking now, in decibels, while the game plays.
     pub(crate) ducked: Vec<f32>,
-    /// The bus picked, by name, and the area's selection then (a new
+    /// The bus picked, by name, and the level's selection then (a new
     /// selection on another tab forgets it; the Bus group then shows
     /// Master). By name, so the buses changing under it (one removed,
     /// the file reordered) never hands the pick to another bus (the
