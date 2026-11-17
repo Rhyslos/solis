@@ -739,24 +739,41 @@ mod tests {
         assert_eq!(project.kind(), ProjectKind::ThreeD);
         let opened = Project::open(project.root()).unwrap();
         assert_eq!(opened.kind(), ProjectKind::ThreeD);
-        assert!(std::fs::read_to_string(&path).unwrap().contains("later = 1"));
+        assert!(
+            std::fs::read_to_string(&path)
+                .unwrap()
+                .contains("later = 1")
+        );
         // A project from before the kind was asked is both.
         std::fs::write(&path, "name = \"Old\"\nformat = 1\n").unwrap();
-        assert_eq!(Project::open(project.root()).unwrap().kind(), ProjectKind::Both);
+        assert_eq!(
+            Project::open(project.root()).unwrap().kind(),
+            ProjectKind::Both
+        );
         // Any case; anything else is explained, never guessed.
         for (word, kind) in [("2D", ProjectKind::TwoD), (" Both ", ProjectKind::Both)] {
-            std::fs::write(&path, format!("name = \"X\"\nformat = 1\nkind = \"{word}\"\n"))
-                .unwrap();
-            assert_eq!(Project::summary(project.root()).unwrap().kind, kind, "{word}");
+            std::fs::write(
+                &path,
+                format!("name = \"X\"\nformat = 1\nkind = \"{word}\"\n"),
+            )
+            .unwrap();
+            assert_eq!(
+                Project::summary(project.root()).unwrap().kind,
+                kind,
+                "{word}"
+            );
         }
         for wrong in ["\"4d\"", "3", "[]", "\"\""] {
-            std::fs::write(&path, format!("name = \"X\"\nformat = 1\nkind = {wrong}\n"))
-                .unwrap();
+            std::fs::write(&path, format!("name = \"X\"\nformat = 1\nkind = {wrong}\n")).unwrap();
             let err = Project::summary(project.root()).unwrap_err();
             assert!(matches!(err, ProjectError::Damaged(_)), "{wrong}: {err}");
         }
         let err = Project::read_summary("name = \"X\"\nformat = 1\nkind = \"vr\"\n");
-        assert!(err.unwrap_err().to_string().contains("isn't 2d, 3d or both"));
+        assert!(
+            err.unwrap_err()
+                .to_string()
+                .contains("isn't 2d, 3d or both")
+        );
     }
 
     #[test]

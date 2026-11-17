@@ -9,7 +9,7 @@ use egui::{Align, Color32, Layout, RichText, Ui, UiBuilder, vec2};
 
 /// A page's heading: its title and the line under it on the left, and
 /// what `tools` adds at the right (searches and buttons), level with it.
-pub(super) fn page_head(ui: &mut Ui, title: &str, subtitle: &str, tools: impl FnOnce(&mut Ui)) {
+pub(crate) fn page_head(ui: &mut Ui, title: &str, subtitle: &str, tools: impl FnOnce(&mut Ui)) {
     ui.horizontal(|ui| {
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = size::GAP;
@@ -24,12 +24,12 @@ pub(super) fn page_head(ui: &mut Ui, title: &str, subtitle: &str, tools: impl Fn
 }
 
 /// Words that can't be selected.
-pub(super) fn plain(ui: &mut Ui, words: &str, font: egui::FontId, ink: Color32) -> egui::Response {
+pub(crate) fn plain(ui: &mut Ui, words: &str, font: egui::FontId, ink: Color32) -> egui::Response {
     ui.add(egui::Label::new(RichText::new(words).font(font).color(ink)).selectable(false))
 }
 
 /// Words that wrap, quiet: a card's or a section's sentence.
-pub(super) fn sentence(ui: &mut Ui, words: &str) {
+pub(crate) fn sentence(ui: &mut Ui, words: &str) {
     ui.add(
         egui::Label::new(
             RichText::new(words)
@@ -45,7 +45,7 @@ pub(super) fn sentence(ui: &mut Ui, words: &str) {
 /// A setting row whose control is a button: "Open the user guide". Returns
 /// whether it was clicked. `outside` marks a button that leaves Solis
 /// (the browser, another program).
-pub(super) fn button_row(
+pub(crate) fn button_row(
     ui: &mut Ui,
     name: &str,
     hint: &str,
@@ -63,7 +63,7 @@ pub(super) fn button_row(
 }
 
 /// Section capitals with the gap above them.
-pub(super) fn section(ui: &mut Ui, words: &str) {
+pub(crate) fn section(ui: &mut Ui, words: &str) {
     ui.add_space(size::SECTION_GAP);
     widgets::rows::section_caps(ui, words);
 }
@@ -71,7 +71,7 @@ pub(super) fn section(ui: &mut Ui, words: &str) {
 /// Lays a page out as its settings on the left (no wider than
 /// `size::SETTINGS_MAX_W`) and a column of cards on the right, as the
 /// round-2 pictures do. On a narrow window the column goes under them.
-pub(super) fn with_side<S>(
+pub(crate) fn with_side<S>(
     ui: &mut Ui,
     state: &mut S,
     main: impl FnOnce(&mut Ui, &mut S),

@@ -1,9 +1,10 @@
 //! The File tab (specification, Screen 7): a page in place of the
 //! ribbon and the editor, with a column of items down its left side.
 //!
-//! Recent projects, Learn, Updates and About are pages of their own
-//! (`file_pages`); Solis starts on Recent projects. Until a project is
-//! open, Back to editor reads "Carry on without a project".
+//! It keeps what belongs to the open project and the editor: Save all,
+//! Project settings, Preferences, About, Close project and Exit. The
+//! projects, Learn and Updates are the launcher's (decision 0118): Close
+//! project goes back to it.
 
 use super::{RibbonTab, ShellCommand};
 use crate::file_pages::Page;
@@ -38,13 +39,6 @@ pub(crate) fn blocks() -> Vec<((), Vec<Entry<Row>>)> {
             (),
             vec![
                 item(Icon::ChevronLeft, "Back to editor", FileItem::Back),
-                item(
-                    Icon::Clock,
-                    "Recent projects",
-                    FileItem::Show(Page::Projects),
-                ),
-                item(Icon::Plus, "New project", FileItem::Do(C::NewProject)),
-                item(Icon::FolderOpen, "Open…", FileItem::Do(C::OpenProject)),
                 item(Icon::Save, "Save all", FileItem::Do(C::SaveArea)),
             ],
         ),
@@ -67,9 +61,8 @@ pub(crate) fn blocks() -> Vec<((), Vec<Entry<Row>>)> {
         (
             (),
             vec![
-                item(Icon::Book, "Learn", FileItem::Show(Page::Learn)),
-                item(Icon::Refresh, "Updates", FileItem::Show(Page::Updates)),
                 item(Icon::Info, "About", FileItem::Show(Page::About)),
+                item(Icon::Close, "Close project", FileItem::Do(C::CloseProject)),
                 item(Icon::Exit, "Exit", FileItem::Do(C::Exit)),
             ],
         ),
@@ -80,17 +73,8 @@ impl Workbench {
     /// Brings the File tab to the front on `page`. The tab that was in
     /// front is remembered, for Back to editor.
     pub(crate) fn show_file_page(&mut self, page: Page) {
-        let entering = self.shell.tab != RibbonTab::File;
-        if entering {
+        if self.shell.tab != RibbonTab::File {
             self.shell.before_file = self.shell.tab;
-            self.file_pages.focus_search = true;
-        }
-        // The projects are read afresh each time Recent projects is shown,
-        // and only then: reading every known project's files on any visit
-        // to File (Preferences and About too) froze the window, for seconds
-        // with one on an unplugged drive (the second review pass).
-        if page == Page::Projects && (entering || self.file_pages.page != Page::Projects) {
-            self.open.outbox.push(WorkbenchAction::ListProjects);
         }
         self.shell.tab = RibbonTab::File;
         self.shell.dropped = false;
@@ -107,16 +91,11 @@ impl Workbench {
     /// Draws the File page under the tab bar: the column, and the page
     /// in front beside it.
     pub(crate) fn file_page(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
-        // Esc leaves File, as Back to editor does; while a project is
-        // being renamed it only calls that off.
+        // Esc leaves File, as Back to editor does.
         let ask_first = self.open.unsaved_prompt.is_some() || self.open.play_changes.is_some();
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !ask_first {
-            if self.file_pages.renaming.is_some() {
-                self.file_pages.renaming = None;
-            } else if !self.search.open {
-                self.back_to_editor();
-                return;
-            }
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !ask_first && !self.search.open {
+            self.back_to_editor();
+            return;
         }
         let [pad_y, pad_x] = size::FILE_MENU_PAD;
         let mut clicked = None;
@@ -139,9 +118,7 @@ impl Workbench {
                     tokens::line(),
                 );
             });
-        if self.file_page_body(ui, actions) {
-            self.back_to_editor();
-        }
+        self.file_page_body(ui, actions);
         match clicked {
             Some(FileItem::Back) => self.back_to_editor(),
             Some(FileItem::Show(page)) => self.show_file_page(page),
@@ -169,18 +146,11 @@ impl Workbench {
                 let front = what == FileItem::Show(self.file_pages.page);
                 let (why_not, hover) = match what {
                     FileItem::Do(command) => (command.why_not(self), command.hover_text(self)),
-                    FileItem::Back if self.open.project.is_none() => {
-                        (None, "The editor, with no project open (Esc)".to_string())
-                    }
                     FileItem::Back => (
                         None,
                         format!("Back to {} (Esc)", self.shell.before_file.name()),
                     ),
                     FileItem::Show(_) => (None, String::new()),
-                };
-                let label = match what {
-                    FileItem::Back if self.open.project.is_none() => "Carry on without a project",
-                    _ => label,
                 };
                 let response = file_item(ui, icon, label, front, why_not.is_none());
                 let response = if hover.is_empty() {
@@ -191,9 +161,6 @@ impl Workbench {
                 if response.clicked() && why_not.is_none() {
                     clicked = Some(what);
                 }
-                if what == FileItem::Show(Page::Updates) && self.update.newer_build().is_some() {
-                    new_badge(ui, response.rect);
-                }
                 if what == FileItem::Back {
                     ui.add_space(size::FILE_MENU_BACK_GAP);
                 }
@@ -201,32 +168,6 @@ impl Workbench {
         }
         clicked
     }
-}
-
-/// The small "New" at the right of Updates while a newer build is out.
-fn new_badge(ui: &Ui, item: Rect) {
-    let font = text::ribbon_small();
-    let width = widgets::width_of(ui, "New", font.clone()) + 2.0 * size::GAP;
-    let badge = Rect::from_center_size(
-        pos2(
-            item.right() - size::FILE_MENU_ITEM_PAD - width / 2.0,
-            item.center().y,
-        ),
-        vec2(width, size::STATUS_DOT * 3.0),
-    );
-    ui.painter().rect_filled(
-        badge,
-        CornerRadius::same(size::radius::SMALL),
-        crate::interface_look::accent_fill(),
-    );
-    words(
-        ui,
-        badge,
-        Align2::CENTER_CENTER,
-        "New",
-        font,
-        tokens::ON_ACCENT,
-    );
 }
 
 /// The line between two blocks of the column.
@@ -244,7 +185,13 @@ fn block_line(ui: &mut Ui) {
 
 /// One item of the column: its icon and its words, on a lighter fill
 /// under the pointer and while its page is the one in front.
-fn file_item(ui: &mut Ui, icon: Icon, label: &str, front: bool, enabled: bool) -> Response {
+pub(crate) fn file_item(
+    ui: &mut Ui,
+    icon: Icon,
+    label: &str,
+    front: bool,
+    enabled: bool,
+) -> Response {
     let wanted = vec2(ui.available_width(), size::FILE_MENU_ITEM_H);
     let (rect, response) = ui.allocate_exact_size(wanted, Sense::click());
     response.widget_info(|| WidgetInfo::selected(egui::WidgetType::Button, enabled, front, label));

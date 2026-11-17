@@ -139,6 +139,7 @@ impl Tab {
                     "Identity",
                     vec![
                         Built(S::ProjectName),
+                        Built(S::ProjectKind),
                         Unbuilt(UnbuiltId::ProjCompany),
                         Unbuilt(UnbuiltId::ProjVersion),
                         Unbuilt(UnbuiltId::ProjIcon),
@@ -205,6 +206,8 @@ pub(crate) enum Setting {
     Bands,
     Outlines,
     ProjectName,
+    /// 2D, 3D or both (decision 0118).
+    ProjectKind,
     StartsIn,
     EngineVersion,
     Scripting,
@@ -219,7 +222,7 @@ pub(crate) enum Setting {
 
 impl Setting {
     /// Every setting, in the pages' order.
-    pub(crate) const ALL: [Self; 34] = [
+    pub(crate) const ALL: [Self; 35] = [
         Self::AutoUpdate,
         Self::Hints,
         Self::GuideBrowser,
@@ -244,6 +247,7 @@ impl Setting {
         Self::Bands,
         Self::Outlines,
         Self::ProjectName,
+        Self::ProjectKind,
         Self::StartsIn,
         Self::EngineVersion,
         Self::Scripting,
@@ -278,7 +282,7 @@ impl Setting {
             | S::Look
             | S::Bands
             | S::Outlines => Tab::Viewport,
-            S::ProjectName | S::EngineVersion | S::Scripting => Tab::Project,
+            S::ProjectName | S::ProjectKind | S::EngineVersion | S::Scripting => Tab::Project,
             S::BaseResolution | S::PixelsPerUnit | S::TileSize | S::Scaling => Tab::TwoD,
             S::StartsIn | S::GameName | S::Window | S::ExportFolder => Tab::Build,
         }
@@ -312,6 +316,7 @@ impl Setting {
             S::Bands => "Bands of light",
             S::Outlines => "Outlines",
             S::ProjectName => "Project name",
+            S::ProjectKind => "Kind",
             S::StartsIn => "Game starts in",
             S::EngineVersion => "Engine version",
             S::Scripting => "Scripting",
@@ -391,7 +396,11 @@ impl Setting {
             }
             S::Outlines => "In the stylized look: dark edges round models.",
             S::ProjectName => {
-                "Shown in the window's title and on Recent projects. The folder keeps its own name."
+                "Shown in the window's title and on the launcher. The folder keeps its own name."
+            }
+            S::ProjectKind => {
+                "2D, 3D or both: what the game is made of. Kept in the project's file and shown \
+                 on its card in the launcher."
             }
             S::StartsIn => "The area the exported game opens in.",
             S::EngineVersion => "The build of the editor that last opened this project.",

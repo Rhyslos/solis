@@ -444,25 +444,16 @@ mod frame_layout {
         assert_eq!(h.state().0.ribbon_tab(), RibbonTab::File);
         assert!(h.query_by_label("Add entity").is_none(), "no ribbon");
         assert!(h.state().0.panels_shown().is_empty(), "no panels");
-        // The column is 220 wide, its items 36 tall, in the design's order.
-        // With no project open, Back to editor says what it does then.
-        let back = if h.query_all_by_label("Back to editor").next().is_some() {
-            "Back to editor"
-        } else {
-            "Carry on without a project"
-        };
+        // The column is 220 wide, its items 36 tall, in the design's order
+        // less what moved to the launcher (decision 0118).
         let items = [
-            back,
-            "Recent projects",
-            "New project",
-            "Open…",
+            "Back to editor",
             "Save all",
             "Project settings",
             "Preferences",
             "Plugins",
-            "Learn",
-            "Updates",
             "About",
+            "Close project",
             "Exit",
         ];
         let leftmost = |label: &str| {
@@ -493,10 +484,10 @@ mod frame_layout {
         h.key_press(egui::Key::Delete);
         h.run();
         assert_eq!(h.state().0.document().area().len(), entities);
-        // Learn and Updates are pages; Esc goes back to the tab before.
-        h.get_by_label("Learn").click();
+        // About is a page; Esc goes back to the tab before.
+        h.get_by_label("About").click();
         h.run();
-        assert_eq!(h.state().0.file_pages.page, crate::file_pages::Page::Learn);
+        assert_eq!(h.state().0.file_pages.page, crate::file_pages::Page::About);
         h.key_press(egui::Key::Escape);
         h.run();
         assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);

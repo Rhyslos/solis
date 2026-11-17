@@ -44,6 +44,10 @@ impl Workbench {
         ui: &mut Ui,
         renderer: &mut dyn ViewportRenderer,
     ) -> Vec<WorkbenchAction> {
+        // The launcher, in place of the editor, while it shows.
+        if self.launcher.shown {
+            return self.show_launcher(ui);
+        }
         let (mut actions, page) = self.begin_frame(ui);
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
         let mut shown = HashSet::new();

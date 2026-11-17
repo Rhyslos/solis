@@ -125,9 +125,7 @@ impl ShellCommand {
     /// The name of a command whose name never changes.
     fn fixed_name(self) -> &'static str {
         match self {
-            C::NewProject => "New project…",
-            C::OpenProject => "Open project…",
-            C::RecentProjects => "Recent projects",
+            C::CloseProject => "Close project",
             C::NewArea => "New area",
             C::OpenArea => "Open area…",
             C::SaveArea => "Save area",
@@ -167,13 +165,7 @@ impl ShellCommand {
             C::FoldShelf => "Fold the shelf",
             C::CollapseRibbon => "Collapse the ribbon",
             C::OpenGuide => "Documentation ↗",
-            C::Learn => "Learn",
             C::AddSampleArea => "Add the sample area",
-            C::MakeSampleGame => "Make the sample game…",
-            C::MakeUiSample => "Make the UI sample…",
-            C::MakeBenchmark => "Make the benchmark…",
-            C::MakePlayground => "Make the playground…",
-            C::Updates => "Updates",
             C::CheckForUpdates => "Check for updates",
             C::Exit => "Exit",
             C::PlacePicked => "Place the picked file",
@@ -246,20 +238,12 @@ impl ShellCommand {
     /// or File. The search shows it beside the name.
     pub(crate) fn place(self) -> &'static str {
         match self {
-            C::NewProject
-            | C::OpenProject
-            | C::RecentProjects
+            C::CloseProject
             | C::ProjectSettings
             | C::InputActions
             | C::Preferences
             | C::OpenGuide
-            | C::Learn
             | C::AddSampleArea
-            | C::MakeSampleGame
-            | C::MakeUiSample
-            | C::MakeBenchmark
-            | C::MakePlayground
-            | C::Updates
             | C::CheckForUpdates
             | C::AutoUpdate
             | C::About
@@ -363,9 +347,10 @@ impl ShellCommand {
     /// button. Empty where the name says it all.
     pub(crate) fn hint(self) -> &'static str {
         match self {
-            C::NewProject => "Makes a folder into a project: its assets, settings and areas",
-            C::OpenProject => "Opens a project's folder",
-            C::RecentProjects => "Every project, the examples, and where to begin",
+            C::CloseProject => {
+                "Closes the project, asking about unsaved work first, and goes back to the \
+                 launcher: your projects, Learn and Updates"
+            }
             C::SaveArea => "Saves the open area. Other files save as they change",
             C::ImportModel => {
                 "A glTF model (.gltf or .glb). You can also drop one onto the window."
@@ -449,28 +434,10 @@ impl ShellCommand {
                 "The user guide: every part of the editor explained, in your web browser (File › \
                  Preferences chooses which)"
             }
-            C::Learn => "The examples, the first steps and the manual",
             C::AddSampleArea => {
                 "A small area for trying the looks: a checker cube, rows of plastic and metal \
                  spheres, and a grooved wall with a glowing stripe"
             }
-            C::MakeSampleGame => {
-                "A small first game, as a new project in a folder you choose: a turret shooting at \
-                 a drone, written in Lust, Lua and Rust that talk through events"
-            }
-            C::MakeUiSample => {
-                "A game's screens, as a new project in a folder you choose: a HUD, a health bar \
-                 and a pause menu, each drawn on the UI editor's canvas"
-            }
-            C::MakeBenchmark => {
-                "Two fleets of ships firing lasers, as a new project in a folder you choose: play \
-                 its areas to see how many this computer keeps at 60 frames a second"
-            }
-            C::MakePlayground => {
-                "A level to walk around in, as a new project in a folder you choose: a character \
-                 with the third-person camera, steps, ramps, crates to push and a moving platform"
-            }
-            C::Updates => "This build, the newest one and what it brings",
             C::CheckForUpdates => {
                 "Asks GitHub for the newest build now, and asks you whether to update if there is \
                  one (even one you skipped)"

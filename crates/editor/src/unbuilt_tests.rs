@@ -172,7 +172,11 @@ fn unbuilt_pieces(cell: &str) -> Vec<String> {
 
 /// What the inventory lists as unbuilt and the table leaves out, each
 /// with why.
-const LEFT_OUT: [(&str, &str); 11] = [
+const LEFT_OUT: [(&str, &str); 12] = [
+    (
+        "recent.card.badge",
+        "built by the launcher (decision 0118): every card says 2D, 3D or 2D + 3D",
+    ),
     (
         "shell.search.settings",
         "settings as search results are built in this phase: no placeholder is needed",
@@ -395,7 +399,27 @@ fn the_setting_in_use_is_what_filter_reads() {
 /// no control of their own to draw: the plan's inventory says "not
 /// drawn" of each. They are in the table so they are counted and
 /// planned, and the walk below doesn't expect to meet them.
-const NOTHING_TO_DRAW: [(UnbuiltId, &str); 16] = [
+const NOTHING_TO_DRAW: [(UnbuiltId, &str); 20] = [
+    (
+        UnbuiltId::RecentCardThumbnail,
+        "a launcher card shows its kind's picture until projects keep their last view",
+    ),
+    (
+        UnbuiltId::RecentTemplateFirstPerson,
+        "New project offers only the starters Solis has (decision 0118)",
+    ),
+    (
+        UnbuiltId::RecentTemplateTopDown,
+        "New project offers only the starters Solis has (decision 0118)",
+    ),
+    (
+        UnbuiltId::RecentTemplatePlatformer,
+        "New project offers only the starters Solis has (decision 0118)",
+    ),
+    (
+        UnbuiltId::RecentTemplateAll,
+        "New project offers only the starters Solis has (decision 0118)",
+    ),
     (
         UnbuiltId::ShadingPreview,
         "a group of an unbuilt screen, which is one page card (D2)",
@@ -426,10 +450,6 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 16] = [
         UnbuiltId::DebugStatus,
         "its place in the status bar says what is real",
     ),
-    (
-        UnbuiltId::RecentCardBadge,
-        "a project is neither 2D nor 3D: no badge is drawn",
-    ),
     (UnbuiltId::InputGroups, "the actions are one flat list"),
     (
         UnbuiltId::CrossBakeNow,
@@ -456,7 +476,7 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 16] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 139] = [
+const DRAWN_SO_FAR: [UnbuiltId; 134] = [
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
@@ -559,11 +579,6 @@ const DRAWN_SO_FAR: [UnbuiltId; 139] = [
     UnbuiltId::DebugStatsMemory,
     // File's column, and Recent projects.
     UnbuiltId::FilePlugins,
-    UnbuiltId::RecentCardThumbnail,
-    UnbuiltId::RecentTemplateFirstPerson,
-    UnbuiltId::RecentTemplateTopDown,
-    UnbuiltId::RecentTemplatePlatformer,
-    UnbuiltId::RecentTemplateAll,
     // Preferences.
     UnbuiltId::PrefsTabInput,
     UnbuiltId::PrefsTabSourceControl,
@@ -636,6 +651,7 @@ fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
         pinned: false,
         last_opened: None,
         saved_by: None,
+        kind: crate::ProjectKind::Both,
     }]);
     let mut h = harness(w);
     theme::restyle(&h.ctx, look);
@@ -688,7 +704,9 @@ fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
         h.state_mut().0.show_settings(tab);
         look_around(&mut h);
     }
-    h.state_mut().0.start_on_recent_projects();
+    h.state_mut().0.open_launcher();
+    look_around(&mut h);
+    h.state_mut().0.start_new_project();
     look_around(&mut h);
     described.sort();
     described.dedup();

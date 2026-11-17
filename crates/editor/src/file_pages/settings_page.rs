@@ -27,7 +27,7 @@ impl Workbench {
     }
 
     /// Draws Preferences or Project settings.
-    pub(super) fn settings_page(
+    pub(crate) fn settings_page(
         &mut self,
         ui: &mut Ui,
         project: bool,

@@ -568,8 +568,6 @@ fn help_offers_the_sample_area() {
     let ctx = h.ctx.clone();
     let asked = do_command(&mut h.state_mut().0, &ctx, "Add the sample area");
     assert!(asked.contains(&WorkbenchAction::AddSampleArea));
-    let asked = do_command(&mut h.state_mut().0, &ctx, "Make the sample game…");
-    assert!(asked.contains(&WorkbenchAction::MakeSampleGame));
 }
 
 #[test]
@@ -1561,15 +1559,19 @@ fn the_library_lists_the_project_and_a_double_click_places() {
 }
 
 #[test]
-fn the_file_page_asks_for_a_new_project_or_another_one() {
-    let mut h = acting(Workbench::new(info()));
+fn the_file_page_closes_the_project_for_the_launcher() {
+    let mut w = Workbench::new(info());
+    w.set_project(Some(ProjectInfo {
+        name: "Farm".into(),
+        root: "/p".into(),
+        assets: "/p/assets".into(),
+    }));
+    let mut h = acting(w);
     h.run();
-    crate::test_support::file_item(&mut h, "New project");
-    assert!(h.state().1.contains(&WorkbenchAction::NewProject));
-    crate::test_support::file_item(&mut h, "Open…");
-    assert!(h.state().1.contains(&WorkbenchAction::OpenProject));
-    // Opening File reads the projects afresh, for its first page.
-    assert!(h.state().1.contains(&WorkbenchAction::ListProjects));
+    crate::test_support::file_item(&mut h, "Close project");
+    assert!(h.state().1.contains(&WorkbenchAction::CloseProject));
+    // The projects are read only for the launcher, never by File.
+    assert!(!h.state().1.contains(&WorkbenchAction::ListProjects));
 }
 
 #[test]

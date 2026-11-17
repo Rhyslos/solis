@@ -109,8 +109,8 @@ impl Workbench {
         let Some(offer) = self.offer.clone() else {
             return;
         };
-        // File › Updates shows the same, with its buttons.
-        if self.file_page_open() && self.file_pages.page == crate::file_pages::Page::Updates {
+        // The launcher's Updates shows the same, with its buttons.
+        if self.launcher.shown && self.launcher.page == crate::launcher::Page::Updates {
             self.offer = None;
             return;
         }
@@ -154,15 +154,18 @@ impl Workbench {
     /// The tab bar's Restart to update button, shown when a new build is
     /// ready. (It moves to the status bar with the rest of the frame.)
     pub(crate) fn restart_button(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
-        // A newer build that is out but not taken yet: its line leads to
-        // File › Updates.
+        // A newer build that is out but not taken yet: its line asks
+        // about it (the launcher's Updates has what it brings).
         if let UpdateNotice::Available(build) | UpdateNotice::NotInstalled(build) = self.update {
             let line = format!("Build {build} is out");
             if crate::widgets::button::link(ui, &line)
-                .on_hover_text("File › Updates: what it brings, and getting it")
+                .on_hover_text(
+                    "Asks whether to get it now. What it brings is on the launcher's Updates \
+                     (File › Close project)",
+                )
                 .clicked()
             {
-                self.show_file_page(crate::file_pages::Page::Updates);
+                actions.push(WorkbenchAction::CheckForUpdates);
             }
             return;
         }

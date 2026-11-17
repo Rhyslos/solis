@@ -16,10 +16,10 @@
 //! so once.
 
 use super::{
-    ACCENT_KEY, AUTO_UPDATE_KEY, CAMERA_KEY, CONSOLE_HISTORY_KEY, FIRST_SIZE, GUIDE_BROWSER_KEY,
-    HINTS_KEY, INTERFACE_LOOK_KEY, KNOWN_PROJECTS_KEY, LOOK_KEY, OLD_ACCENT_KEY, OLD_LAYOUT_KEYS,
-    OVERLAYS_KEY, RECENT_PROJECTS_KEY, SHELL_KEY, SKIPPED_BUILD_KEY, SNAPPING_KEY, VIEWS_KEY,
-    saved_editor_size,
+    ACCENT_KEY, AUTO_UPDATE_KEY, CAMERA_KEY, CONSOLE_HISTORY_KEY, CREATE_IN_KEY, FIRST_SIZE,
+    GUIDE_BROWSER_KEY, HINTS_KEY, INTERFACE_LOOK_KEY, KNOWN_PROJECTS_KEY, LOOK_KEY, OLD_ACCENT_KEY,
+    OLD_LAYOUT_KEYS, OVERLAYS_KEY, RECENT_PROJECTS_KEY, SHELL_KEY, SKIPPED_BUILD_KEY, SNAPPING_KEY,
+    VIEWS_KEY, launcher_window::WindowPlace, saved_editor_place, saved_launcher_place,
 };
 use crate::known_projects::KnownProjects;
 use editor::interface_look::AccentBefore;
@@ -30,8 +30,12 @@ use std::path::PathBuf;
 pub(super) struct Saved {
     /// The interface's accent, scale and density.
     pub(super) look: InterfaceLook,
-    /// The editor window's size while a project is open.
-    pub(super) editor_size: [f32; 2],
+    /// The editor's size and place, while a project is open.
+    pub(super) editor_place: WindowPlace,
+    /// The launcher's size and place.
+    pub(super) launcher_place: WindowPlace,
+    /// The folder New project makes projects in.
+    pub(super) create_in: PathBuf,
     /// Every project the launcher knows.
     pub(super) known: KnownProjects,
     /// Whether newer builds are looked for as Solis starts.
@@ -76,7 +80,14 @@ impl Saved {
         let recent: Vec<PathBuf> = get(storage, RECENT_PROJECTS_KEY).unwrap_or_default();
         Self {
             look: storage.map(saved_look).unwrap_or_default(),
-            editor_size: storage.map_or(FIRST_SIZE, saved_editor_size),
+            editor_place: storage.map_or(WindowPlace::centred(FIRST_SIZE), saved_editor_place),
+            launcher_place: storage.map_or(
+                WindowPlace::centred(editor::tokens::launcher::WINDOW),
+                saved_launcher_place,
+            ),
+            create_in: get::<PathBuf>(storage, CREATE_IN_KEY)
+                .filter(|p| p.is_absolute())
+                .unwrap_or_else(super::launcher_window::first_create_in),
             known: KnownProjects::from_saved(get(storage, KNOWN_PROJECTS_KEY), recent),
             auto_update: get(storage, AUTO_UPDATE_KEY).unwrap_or(true),
             skipped: get::<Option<u64>>(storage, SKIPPED_BUILD_KEY).flatten(),

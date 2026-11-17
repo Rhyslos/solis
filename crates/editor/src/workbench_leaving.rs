@@ -166,7 +166,8 @@ pub(crate) fn leaves_the_area(action: &WorkbenchAction) -> bool {
             | WorkbenchAction::OpenArea
             | WorkbenchAction::OpenAreaFile(_)
             | WorkbenchAction::OpenProject
-            | WorkbenchAction::NewProject
+            | WorkbenchAction::CreateProject(_)
+            | WorkbenchAction::CloseProject
             | WorkbenchAction::OpenRecent(_)
             | WorkbenchAction::MakeSampleGame
             | WorkbenchAction::MakeUiSample

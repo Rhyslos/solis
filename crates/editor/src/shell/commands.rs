@@ -22,9 +22,8 @@ const STOP_FIRST: &str = "Stop the game first";
 /// One thing the editor can do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum ShellCommand {
-    NewProject,
-    OpenProject,
-    RecentProjects,
+    /// Closes the project and goes back to the launcher (decision 0118).
+    CloseProject,
     NewArea,
     OpenArea,
     SaveArea,
@@ -185,13 +184,7 @@ pub(crate) enum ShellCommand {
     OpenExportFolder,
     Tab(RibbonTab),
     OpenGuide,
-    Learn,
     AddSampleArea,
-    MakeSampleGame,
-    MakeUiSample,
-    MakeBenchmark,
-    MakePlayground,
-    Updates,
     CheckForUpdates,
     AutoUpdate,
     About,
@@ -255,10 +248,8 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 147] = [
-        C::NewProject,
-        C::OpenProject,
-        C::RecentProjects,
+    pub(crate) const ALL: [Self; 139] = [
+        C::CloseProject,
         C::NewArea,
         C::OpenArea,
         C::SaveArea,
@@ -392,13 +383,7 @@ impl ShellCommand {
         C::Tab(RibbonTab::Debug),
         C::Tab(RibbonTab::Build),
         C::OpenGuide,
-        C::Learn,
         C::AddSampleArea,
-        C::MakeSampleGame,
-        C::MakeUiSample,
-        C::MakeBenchmark,
-        C::MakePlayground,
-        C::Updates,
         C::CheckForUpdates,
         C::AutoUpdate,
         C::About,
@@ -414,17 +399,10 @@ impl ShellCommand {
         let history = w.open.document.history();
         let when = |ok: bool, why: &str| (!ok).then(|| why.to_owned());
         match self {
-            C::NewProject
-            | C::OpenProject
-            | C::NewArea
-            | C::OpenArea
-            | C::SaveArea
-            | C::SaveAreaAs
-            | C::AddSampleArea
-            | C::MakeSampleGame
-            | C::MakeUiSample
-            | C::MakeBenchmark
-            | C::MakePlayground => when(!playing, STOP_FIRST),
+            C::NewArea | C::OpenArea | C::SaveArea | C::SaveAreaAs | C::AddSampleArea => {
+                when(!playing, STOP_FIRST)
+            }
+            C::CloseProject => when(project, "No project is open"),
             C::ExportPlaytest => when(project, "Open a project first"),
             C::OpenExportFolder => when(
                 w.open
@@ -582,9 +560,6 @@ impl ShellCommand {
             return;
         }
         match self {
-            C::RecentProjects => w.show_recent_projects(),
-            C::Learn => w.show_file_page(crate::file_pages::Page::Learn),
-            C::Updates => w.show_file_page(crate::file_pages::Page::Updates),
             C::ProjectSettings => w.show_settings(w.file_pages.project_tab),
             C::InputActions => w.open_input_page(),
             C::Preferences => w.show_settings(w.file_pages.prefs_tab),
@@ -716,8 +691,7 @@ impl ShellCommand {
     fn asks_the_app(self) -> Option<WorkbenchAction> {
         use WorkbenchAction as A;
         Some(match self {
-            C::NewProject => A::NewProject,
-            C::OpenProject => A::OpenProject,
+            C::CloseProject => A::CloseProject,
             C::NewArea => A::NewArea,
             C::OpenArea => A::OpenArea,
             C::SaveArea => A::SaveArea,
@@ -726,10 +700,6 @@ impl ShellCommand {
             C::LoadSave => A::OpenSave,
             C::ReplayRecording => A::OpenRecording,
             C::AddSampleArea => A::AddSampleArea,
-            C::MakeSampleGame => A::MakeSampleGame,
-            C::MakeUiSample => A::MakeUiSample,
-            C::MakeBenchmark => A::MakeBenchmark,
-            C::MakePlayground => A::MakePlayground,
             C::CheckForUpdates => A::CheckForUpdates,
             C::OpenGuide => A::OpenGuide(None),
             C::Exit => A::Quit,

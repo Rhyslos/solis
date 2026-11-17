@@ -45,7 +45,7 @@ fn the_best_match_comes_first_and_actions_before_entities() {
     );
     // Nothing typed: the actions, in menu order.
     let all = results(&items, "");
-    assert_eq!(all[0].name, "New project…");
+    assert_eq!(all[0].name, "New area", "no project is open to close");
     assert!(all.iter().all(|i| i.kind == SearchKind::Action));
     assert!(all.len() <= MAX_SHOWN);
 }

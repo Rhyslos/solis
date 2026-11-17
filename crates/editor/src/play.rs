@@ -190,7 +190,7 @@ pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
             | WorkbenchAction::OpenAreaFile(_)
             | WorkbenchAction::SaveArea
             | WorkbenchAction::SaveAreaAs
-            | WorkbenchAction::NewProject
+            | WorkbenchAction::CreateProject(_)
             | WorkbenchAction::OpenProject
             | WorkbenchAction::OpenRecent(_)
             | WorkbenchAction::AddSampleArea

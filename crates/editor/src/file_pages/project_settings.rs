@@ -160,6 +160,7 @@ impl Workbench {
         }
         match setting {
             Setting::ProjectName => self.project_name(ui, asked),
+            Setting::ProjectKind => self.project_kind_control(ui, asked),
             Setting::EngineVersion => {
                 if widgets::button::link(ui, "Check now").clicked() {
                     asked.push(WorkbenchAction::CheckForUpdates);
@@ -201,6 +202,18 @@ impl Workbench {
             if name != project.name && super::name_problem(&name).is_none() {
                 asked.push(WorkbenchAction::RenameProject(project.root, name));
             }
+        }
+    }
+
+    /// The project's kind: 2D, 3D or Both, saved in its project file at
+    /// once.
+    fn project_kind_control(&mut self, ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {
+        use crate::launcher::ProjectKind;
+        let mut kind = self.open.kind;
+        let choices = ProjectKind::ALL.map(|k| (k, k.name()));
+        if segmented(ui, "Kind", &mut kind, &choices) && kind != self.open.kind {
+            self.open.kind = kind;
+            asked.push(WorkbenchAction::SetProjectKind(kind));
         }
     }
 

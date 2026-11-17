@@ -2,7 +2,7 @@
 //! and build, what it is, its licence and the notices, and the way to
 //! Updates and the user guide. Every name on it is read from `AppInfo`.
 
-use super::{Page, ProgramFile, page_head, plain, section};
+use super::{ProgramFile, page_head, plain, section};
 use crate::tokens::{self, size, text};
 use crate::widgets::{self, rows};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -47,11 +47,11 @@ impl Workbench {
             let updates = rows::setting_row(
                 ui,
                 "Updates",
-                "This build, the newest build and what it brings.",
-                |ui| widgets::button::link(ui, "Go to Updates"),
+                "Asks GitHub for a newer build. What each brings is on the launcher's Updates.",
+                |ui| widgets::button::link(ui, "Check for updates"),
             );
             if updates.clicked() {
-                self.show_file_page(Page::Updates);
+                asked.push(WorkbenchAction::CheckForUpdates);
             }
             if super::button_row(
                 ui,

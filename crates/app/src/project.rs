@@ -842,7 +842,10 @@ mod tests {
             .unwrap();
         assert!(fresh.join("assets/main.lst").is_file());
         projects.close();
-        assert!(projects.db().is_none() && projects.root().is_none(), "closed");
+        assert!(
+            projects.db().is_none() && projects.root().is_none(),
+            "closed"
+        );
     }
 
     /// The review, BUG-32: a new 256 MB sound settled in the assets. Its
