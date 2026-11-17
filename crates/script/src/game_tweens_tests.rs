@@ -227,7 +227,7 @@ fn vec2_and_colour_fields_are_solis_s_own_kinds_and_cross_both_ways() {
         Value::floats(&[0.0, 0.0, 0.0, 0.5])
     );
     game.load(&code, &mut world).unwrap();
-    // The area's values reach game code, a see-through colour's too.
+    // The level's values reach game code, a see-through colour's too.
     let mut data = ComponentData::default();
     data.set("speed", Value::floats(&[0.5, 0.25]));
     data.set("shadow", Value::floats(&[0.0, 0.0, 1.0, 0.8]));

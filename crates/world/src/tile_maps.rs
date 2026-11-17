@@ -5,7 +5,7 @@
 //! in saves.
 
 use crate::{Id, World};
-use area::builtin::TileMap as TileMapComponent;
+use level::builtin::TileMap as TileMapComponent;
 use reflect::{AssetId, EntityId};
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -1,5 +1,5 @@
 //! The editor's basics (E1): New in the Library, a new Lust file that
-//! compiles, a new area, and what isn't built kept out of sight.
+//! compiles, a new level, and what isn't built kept out of sight.
 
 use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
 use crate::test_support::*;
@@ -88,19 +88,19 @@ fn new_code_files_compile_as_they_are() {
 }
 
 #[test]
-fn a_new_area_is_saved_where_it_was_asked_for_and_opened() {
+fn a_new_level_is_saved_where_it_was_asked_for_and_opened() {
     let mut w = Workbench::new(info());
     w.set_project(Some(farm()));
-    w.set_library(vec![item("levels/area.solarea", LibraryKind::Area)]);
+    w.set_library(vec![item("levels/level.sollevel", LibraryKind::Level)]);
     let mut actions = Vec::new();
-    w.library_request(LibraryRequest::NewArea("levels".into()), &mut actions);
+    w.library_request(LibraryRequest::NewLevel("levels".into()), &mut actions);
     let files = made(&actions);
-    assert_eq!(files[0].0, "levels/area 2.solarea", "a free name");
-    assert!(files[0].1.contains("area version"));
-    let read = area::text::read(&files[0].1, &w.open.document.registry).expect("reads");
-    assert!(!read.is_empty(), "an environment, as a new area has");
+    assert_eq!(files[0].0, "levels/level 2.sollevel", "a free name");
+    assert!(files[0].1.contains("level version"));
+    let read = level::text::read(&files[0].1, &w.open.document.registry).expect("reads");
+    assert!(!read.is_empty(), "an environment, as a new level has");
     assert!(actions.iter().any(
-        |a| matches!(a, WorkbenchAction::OpenAreaFile(p) if p.ends_with("levels/area 2.solarea"))
+        |a| matches!(a, WorkbenchAction::OpenLevelFile(p) if p.ends_with("levels/level 2.sollevel"))
     ));
 }
 
@@ -125,7 +125,7 @@ fn right_clicking_the_library_offers_new_everywhere() {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(
-        h.query_all_by_label("Area").count() >= 1,
+        h.query_all_by_label("Level").count() >= 1,
         "the New list's item"
     );
     h.get_by_label("Tile map").click();

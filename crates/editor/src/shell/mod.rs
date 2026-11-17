@@ -61,13 +61,13 @@ use crate::panel::Panel;
 use crate::workbench::Workbench;
 use workspaces::{Home, OpenNow};
 
-/// One tab of the tab bar: an area of the engine, with a ribbon of its
+/// One tab of the tab bar: a level of the engine, with a ribbon of its
 /// own.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RibbonTab {
     /// Projects, settings and leaving: a page in place of the editor.
     File,
-    /// Building areas.
+    /// Building levels.
     Home,
     /// The project's files.
     Library,
@@ -146,7 +146,7 @@ impl RibbonTab {
     pub fn help(self) -> &'static str {
         match self {
             Self::File => "Projects, settings, the manual and updates",
-            Self::Home => "Building areas: making entities, snapping, saving and playing",
+            Self::Home => "Building levels: making entities, snapping, saving and playing",
             Self::Library => "The project's files: bringing in, making, finding and placing them",
             Self::Shading => "Materials and shaders",
             Self::Animate => "Animating sprites: a clips file's clips and frames, and animators",
@@ -472,7 +472,7 @@ impl Workbench {
         if asks.hide_unfinished {
             self.hide_unfinished(ctx, true);
         }
-        if asks.show_area_in_library {
+        if asks.show_level_in_library {
             let root = self.open.project.as_ref().map(|p| p.root.clone());
             let file = self.open.document.file().map(std::path::Path::to_path_buf);
             if let (Some(root), Some(file)) = (root, file)

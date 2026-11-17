@@ -22,7 +22,7 @@ use crate::map::{
     CHUNK, CellValue, MAX_LAYERS, MAX_OPTIONS, MAX_SIDE, MAX_VALUES, TileMap, ValueKind,
 };
 use crate::tileset::{name_of, usable_code};
-use area::settings::{self, BlockOut, Field};
+use level::settings::{self, BlockOut, Field};
 use reflect::{AssetId, Id, Value};
 use std::fmt;
 
@@ -38,7 +38,7 @@ pub const OLD_EXTENSION: &str = "soltilemap";
 /// The end of a tile map file's name: `farm.tilemap.lst`.
 pub const ENDING: &str = ".tilemap.lst";
 /// The biggest map file read. Read as Lust, what's in a file costs more
-/// than its length says (`area::lust_data` refuses a file of more than 12
+/// than its length says (`level::lust_data` refuses a file of more than 12
 /// million numbers, texts and symbols), and the two limits together keep
 /// the costliest file read to about 2 GB of memory and 10 seconds. The
 /// biggest map with three layers painted all over (57 MB) is read, in
@@ -60,7 +60,7 @@ pub static FORMAT: reflect::upgrade::Format<settings::BlockSettings> = reflect::
     name: "tile map",
     current: VERSION,
     version_of: |text| {
-        area::lust_data::version_of(text)
+        level::lust_data::version_of(text)
             .or_else(|| reflect::upgrade::header_version(text, &[KIND]))
     },
     steps: &[exact_came_later, lust_came_later],
@@ -174,10 +174,10 @@ fn within_bytes(text: &str, max_bytes: usize) -> Result<(), MapFileError> {
 
 /// Whether [`read`] would take a map file of `text` for its size: its
 /// length, and how many numbers, texts and symbols it holds
-/// (`area::lust_data::fits`, the limits the reader itself keeps).
+/// (`level::lust_data::fits`, the limits the reader itself keeps).
 fn fits(text: &str, max_bytes: usize) -> Result<(), MapFileError> {
     within_bytes(text, max_bytes)?;
-    area::lust_data::fits(text, max_bytes).map_err(|e| MapFileError {
+    level::lust_data::fits(text, max_bytes).map_err(|e| MapFileError {
         line: e.line,
         message: e.message,
     })
@@ -192,7 +192,7 @@ pub fn read(text: &str) -> Result<ReadMap, MapFileError> {
 /// tests, where the edge can then be reached with a small map).
 fn read_within(text: &str, max_bytes: usize) -> Result<ReadMap, MapFileError> {
     within_bytes(text, max_bytes)?;
-    let mut read = if area::lust_data::is_data(text) {
+    let mut read = if level::lust_data::is_data(text) {
         let read = crate::map_lust::read(text, max_bytes).map_err(|e| MapFileError {
             line: e.line,
             message: e.message,

@@ -1,0 +1,290 @@
+//! The built-in components. Each is a typed Rust struct that turns into
+//! values and back (`reflect::Component`); missing or damaged values take
+//! their defaults, so an older or damaged level still loads.
+
+mod animator;
+mod audio_source;
+mod brush;
+mod camera;
+mod collider_2d;
+mod day;
+mod environment;
+mod light;
+mod listener;
+mod model;
+mod parallax;
+mod physics;
+mod reverb_zone;
+mod screen;
+mod sprite;
+mod tile_map;
+mod transform;
+
+pub use animator::Animator;
+pub use audio_source::AudioSource;
+pub use brush::{
+    Brush, MAX_CORNERS, MAX_CORNERS_PER_FACE, MAX_FACES, MAX_POINTS, MAX_SLOT, compacted,
+    damage_of, points_of,
+};
+pub use camera::{Camera, CameraView};
+pub use collider_2d::{Collider2D, Shape2D};
+pub use day::{DayColours, MAX_STOPS};
+pub use environment::{Environment, Sky, ToneMapping};
+pub use light::{Light, LightKind, aim, sun_rotation};
+pub use listener::Listener;
+pub use model::Model;
+pub use parallax::Parallax;
+pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
+pub use reverb_zone::{ReverbZone, ZoneShape};
+pub use screen::Screen;
+pub use sprite::Sprite;
+pub use tile_map::TileMap;
+pub use transform::Transform;
+
+use crate::document::{EntityData, Level};
+use reflect::{Registry, RegistryError};
+
+/// A registry holding every built-in component.
+pub fn registry() -> Result<Registry, RegistryError> {
+    let mut registry = Registry::new();
+    registry.register_type::<Transform>()?;
+    registry.register_type::<Light>()?;
+    registry.register_type::<Environment>()?;
+    registry.register_type::<Model>()?;
+    registry.register_type::<Camera>()?;
+    registry.register_type::<RigidBody>()?;
+    registry.register_type::<Collider>()?;
+    registry.register_type::<CharacterBody>()?;
+    registry.register_type::<Collider2D>()?;
+    registry.register_type::<AudioSource>()?;
+    registry.register_type::<ReverbZone>()?;
+    registry.register_type::<Sprite>()?;
+    registry.register_type::<Listener>()?;
+    registry.register_type::<Animator>()?;
+    registry.register_type::<TileMap>()?;
+    registry.register_type::<Screen>()?;
+    registry.register_type::<Parallax>()?;
+    registry.register_type::<Brush>()?;
+    Ok(registry)
+}
+
+/// A new level, as File > New level makes: a sun and an environment (the
+/// sun, sky and fog live in each level).
+pub fn starter_level() -> Level {
+    let mut level = Level::new();
+    level.spawn(
+        EntityData::new("Sun")
+            .with(&Transform {
+                rotation: light::sun_rotation(150.0, 50.0),
+                ..Transform::default()
+            })
+            .with(&Light::sun()),
+    );
+    // New levels light their sprites (decision 0092): with no lamps and
+    // day and night off, they look exactly as drawn. Older levels, without
+    // the field, keep sprites unlit.
+    level.spawn(EntityData::new("Environment").with(&Environment {
+        light_sprites: true,
+        ..Environment::default()
+    }));
+    level
+}
+
+/// Field-building shorthand for the built-in schemas.
+pub(crate) mod field {
+    use reflect::{FieldInfo, FieldKind, Hint, Value};
+
+    pub(crate) fn float(name: &str, label: &str, default: f32, hint: Hint) -> FieldInfo {
+        FieldInfo::new(
+            name,
+            label,
+            FieldKind::Float,
+            Value::Float(f64::from(default)),
+        )
+        .hint(hint)
+    }
+
+    pub(crate) fn boolean(name: &str, label: &str, default: bool, help: &'static str) -> FieldInfo {
+        FieldInfo::new(name, label, FieldKind::Bool, Value::Bool(default)).hint(Hint {
+            help,
+            ..Hint::default()
+        })
+    }
+
+    pub(crate) fn choice(
+        name: &str,
+        label: &str,
+        options: &[&str],
+        default: &str,
+        help: &'static str,
+    ) -> FieldInfo {
+        FieldInfo::new(
+            name,
+            label,
+            FieldKind::Choice(options.iter().map(|o| (*o).to_string()).collect()),
+            Value::Text(default.to_string()),
+        )
+        .hint(Hint {
+            help,
+            ..Hint::default()
+        })
+    }
+
+    pub(crate) fn color(
+        name: &str,
+        label: &str,
+        default: [f32; 3],
+        help: &'static str,
+    ) -> FieldInfo {
+        FieldInfo::new(name, label, FieldKind::Color, Value::floats(&default)).hint(Hint {
+            help,
+            ..Hint::default()
+        })
+    }
+
+    pub(crate) fn hint(
+        range: (f64, f64),
+        speed: f64,
+        unit: &'static str,
+        help: &'static str,
+    ) -> Hint {
+        Hint {
+            range: Some(range),
+            speed: Some(speed),
+            unit,
+            help,
+            ..Hint::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reflect::{Component, ComponentData, Value};
+
+    /// Every field of every built-in schema has a starting value that fits.
+    #[test]
+    fn the_built_in_components_register() {
+        let registry = registry().unwrap();
+        let names: Vec<&str> = registry.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "Animator",
+                "AudioSource",
+                "Brush",
+                "Camera",
+                "CharacterBody",
+                "Collider",
+                "Collider2D",
+                "Environment",
+                "Light",
+                "Listener",
+                "Model",
+                "Parallax",
+                "ReverbZone",
+                "RigidBody",
+                "Screen",
+                "Sprite",
+                "TileMap",
+                "Transform"
+            ]
+        );
+    }
+
+    fn round_trip<T: Component + PartialEq + std::fmt::Debug>(value: &T) {
+        let data = value.to_data();
+        let schema = T::schema();
+        for field in &schema.fields {
+            let v = data.get(&field.name).unwrap();
+            assert!(field.kind.accepts(v), "{}.{} = {v:?}", T::NAME, field.name);
+        }
+        assert_eq!(&T::from_data(&data), value);
+        // Every field written, and nothing else.
+        assert_eq!(data.fields.len(), schema.fields.len());
+    }
+
+    #[test]
+    fn every_built_in_round_trips_through_values() {
+        round_trip(&Transform::default());
+        round_trip(&Parallax::default());
+        round_trip(&Parallax {
+            scroll_x: 2.0,
+            scroll_y: 0.0,
+            repeat_x: false,
+            repeat_y: true,
+            in_front: true,
+        });
+        round_trip(&Camera::default());
+        round_trip(&Animator::default());
+        round_trip(&TileMap::default());
+        round_trip(&Animator {
+            animator: None,
+            state: "Walk".into(),
+            speed: 2.5,
+        });
+        round_trip(&AudioSource {
+            event: "sfx/engine".into(),
+            playing: false,
+            volume_db: -3.0,
+        });
+        round_trip(&Light::sun());
+        round_trip(&Light::point());
+        round_trip(&Light::spot());
+        round_trip(&Environment::default());
+        round_trip(&Model::default());
+        round_trip(&RigidBody::default());
+        round_trip(&Collider::default());
+        round_trip(&CharacterBody::default());
+        round_trip(&Collider2D::default());
+        round_trip(&Collider2D {
+            shape: Shape2D::Box,
+            width: 12.0,
+            height: 6.0,
+            up: 3.0,
+            character: true,
+            ..Collider2D::default()
+        });
+        round_trip(&RigidBody {
+            kind: BodyKind::Kinematic,
+            upright: true,
+            ..RigidBody::default()
+        });
+        round_trip(&Collider {
+            shape: ColliderShape::Capsule,
+            ..Collider::default()
+        });
+        let env = Environment {
+            sky: Sky::Daylight,
+            fog: true,
+            tone_mapping: ToneMapping::Aces,
+            ..Environment::default()
+        };
+        round_trip(&env);
+    }
+
+    #[test]
+    fn empty_or_damaged_data_gives_defaults() {
+        let mut junk = ComponentData::default();
+        junk.set("kind", Value::Text("Moon".into()));
+        junk.set("strength", Value::Float(f64::NAN));
+        junk.set("rotation", Value::Bool(true));
+        assert_eq!(Light::from_data(&junk).kind, LightKind::Point);
+        assert_eq!(Light::from_data(&junk).strength, Light::point().strength);
+        assert_eq!(Transform::from_data(&junk), Transform::default());
+        assert_eq!(
+            Environment::from_data(&ComponentData::default()),
+            Environment::default()
+        );
+    }
+
+    #[test]
+    fn a_new_level_has_a_sun_and_an_environment() {
+        let level = starter_level();
+        assert_eq!(level.len(), 2);
+        let (_, sun) = level.with::<Light>().next().unwrap();
+        assert_eq!(sun.kind, LightKind::Sun);
+        assert_eq!(level.with::<Environment>().count(), 1);
+    }
+}

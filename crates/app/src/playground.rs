@@ -10,21 +10,21 @@
 //! cave with a reverb zone and a drip. The sounds are made in code
 //! (`playground_sounds.rs`).
 
-use area::builtin::{
+use asset_db::{Project, Sidecar};
+use glam::{Quat, Vec3};
+use level::builtin::{
     AudioSource, BodyKind, Camera, CharacterBody, Collider, Model, ReverbZone, RigidBody,
     Transform, ZoneShape,
 };
-use area::{Area, EntityData};
-use asset_db::{Project, Sidecar};
-use glam::{Quat, Vec3};
+use level::{EntityData, Level};
 use reflect::{AssetId, AssetRef, ComponentData, EntityId, Id, Value};
 use std::path::Path;
 
 /// The playground's name, as its project file has it.
 pub const NAME: &str = "Playground";
 
-/// The area it opens on.
-pub const AREA: &str = "playground.solarea";
+/// The level it opens on.
+pub const LEVEL: &str = "playground.sollevel";
 
 /// The game's code, from the very file the project shows.
 pub const MAIN: &str = include_str!("../../../samples/playground/assets/main.lst");
@@ -126,7 +126,7 @@ fn sound_events() -> Vec<(&'static str, sound::SoundEvent)> {
     ]
 }
 
-/// A model's ID, fixed so the area made here can name it.
+/// A model's ID, fixed so the level made here can name it.
 fn model(name: &str) -> AssetId {
     let n = MODELS.iter().position(|(m, _)| *m == name).unwrap_or(0) as u64;
     AssetId(Id::from_raw(0x5015_9A7E_0000_0001 + n).unwrap_or_else(Id::random))
@@ -181,7 +181,7 @@ pub fn files() -> Vec<(String, Vec<u8>)> {
     for (path, event) in sound_events() {
         files.push((path.to_string(), sound::event::write(&event).into_bytes()));
     }
-    let registry = area::builtin::registry().ok();
+    let registry = level::builtin::registry().ok();
     let empty = reflect::Registry::default();
     let registry = registry.as_ref().unwrap_or(&empty);
     let path_of = |id: AssetId| {
@@ -191,8 +191,8 @@ pub fn files() -> Vec<(String, Vec<u8>)> {
             .map(|(_, path)| (*path).to_string())
     };
     files.push((
-        AREA.to_string(),
-        area::text::write(&level(), registry, &path_of).into_bytes(),
+        LEVEL.to_string(),
+        level::text::write(&level(), registry, &path_of).into_bytes(),
     ));
     files
 }
@@ -231,16 +231,16 @@ fn ramp(name: &str, foot: Vec3, long: f32, degrees: f32) -> EntityData {
 /// The level: the sun and sky, a floor, steps up to a ledge, a gentle and
 /// a steep ramp, crates, a moving platform, the character and its camera,
 /// and the quick-save entity.
-pub fn level() -> Area {
-    let mut area = area::builtin::starter_area();
+pub fn level() -> Level {
+    let mut level = level::builtin::starter_level();
     let mut n = 0;
-    let mut add = |area: &mut Area, data: EntityData| {
+    let mut add = |level: &mut Level, data: EntityData| {
         n += 1;
-        area.insert(entity(n), data);
+        level.insert(entity(n), data);
         entity(n)
     };
     add(
-        &mut area,
+        &mut level,
         block(
             "Floor",
             Vec3::new(0.0, 0.0, -0.5),
@@ -253,7 +253,7 @@ pub fn level() -> Area {
     for i in 0..4 {
         let high = 0.25 * (i + 1) as f32;
         add(
-            &mut area,
+            &mut level,
             block(
                 &format!("Step {}", i + 1),
                 Vec3::new(6.5 + i as f32, 0.0, high * 0.5),
@@ -263,7 +263,7 @@ pub fn level() -> Area {
         );
     }
     add(
-        &mut area,
+        &mut level,
         block(
             "Ledge",
             Vec3::new(12.0, 0.0, 0.5),
@@ -273,7 +273,7 @@ pub fn level() -> Area {
     );
     // A wall beside the ledge, for the camera to keep out of.
     add(
-        &mut area,
+        &mut level,
         block(
             "Wall",
             Vec3::new(12.0, 3.0, 2.0),
@@ -282,11 +282,11 @@ pub fn level() -> Area {
         ),
     );
     add(
-        &mut area,
+        &mut level,
         ramp("Gentle ramp", Vec3::new(0.0, 6.0, 0.0), 8.0, 20.0),
     );
     add(
-        &mut area,
+        &mut level,
         ramp("Steep ramp", Vec3::new(-7.0, 6.0, 0.0), 6.0, 55.0),
     );
     // Crates to push: one alone, and a small stack.
@@ -300,7 +300,7 @@ pub fn level() -> Area {
     .enumerate()
     {
         add(
-            &mut area,
+            &mut level,
             shape(
                 &format!("Crate {}", i + 1),
                 "crate",
@@ -334,7 +334,7 @@ pub fn level() -> Area {
     moves.set("from", Value::vec3(from));
     moves.set("to", Value::vec3(to));
     platform.components.insert("Platform".into(), moves);
-    add(&mut area, platform);
+    add(&mut level, platform);
     // The cave: a tunnel of blocks with a reverb zone inside, and a drip.
     let cave = Vec3::new(-20.0, -10.0, 0.0);
     for (name, offset, size) in [
@@ -359,10 +359,10 @@ pub fn level() -> Area {
             Vec3::new(6.5, 0.5, 4.0),
         ),
     ] {
-        add(&mut area, block(name, cave + offset, Quat::IDENTITY, size));
+        add(&mut level, block(name, cave + offset, Quat::IDENTITY, size));
     }
     add(
-        &mut area,
+        &mut level,
         EntityData::new("Cave echo")
             .with(&Transform {
                 position: cave + Vec3::new(0.0, 0.0, 2.0),
@@ -378,7 +378,7 @@ pub fn level() -> Area {
             }),
     );
     add(
-        &mut area,
+        &mut level,
         EntityData::new("Drip")
             .with(&Transform {
                 position: cave + Vec3::new(1.5, -3.0, 3.5),
@@ -392,7 +392,7 @@ pub fn level() -> Area {
     // A radio on a crate, chattering on the Voice bus: near it, the
     // music dips (Voice ducks Music).
     add(
-        &mut area,
+        &mut level,
         shape(
             "Radio",
             "crate",
@@ -407,7 +407,7 @@ pub fn level() -> Area {
     );
     // The music, heard the same everywhere.
     add(
-        &mut area,
+        &mut level,
         EntityData::new("Music").with(&AudioSource {
             event: "music/theme".to_owned(),
             ..AudioSource::default()
@@ -432,7 +432,7 @@ pub fn level() -> Area {
     character
         .components
         .insert("Footsteps".into(), ComponentData::default());
-    area.insert(player, character);
+    level.insert(player, character);
     let mut eye = EntityData::new("Camera")
         .with(&Transform {
             position: Vec3::new(0.0, -8.0, 2.6),
@@ -443,12 +443,12 @@ pub fn level() -> Area {
     let mut follow = ComponentData::default();
     follow.set("target", Value::Entity(Some(player)));
     eye.components.insert("ThirdPersonCamera".into(), follow);
-    area.insert(camera, eye);
+    level.insert(camera, eye);
     let mut game = EntityData::new("Quick saves");
     game.components
         .insert("QuickSave".into(), ComponentData::default());
-    area.insert(entity(102), game);
-    area
+    level.insert(entity(102), game);
+    level
 }
 
 /// Makes `root` the playground: a new project with its files and input

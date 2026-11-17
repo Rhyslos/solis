@@ -2,8 +2,8 @@
 
 use crate::test_support::*;
 use crate::workbench::Workbench;
-use area::EntityData;
-use area::builtin::Screen;
+use level::EntityData;
+use level::builtin::Screen;
 use reflect::EntityId;
 use std::sync::Arc;
 
@@ -54,7 +54,7 @@ fn showing(program: Arc<script::Compiled>, screens: &[(&str, bool, i64)]) -> Wor
             .document
             .edit(
                 "Add",
-                vec![area::Edit::Spawn {
+                vec![level::Edit::Spawn {
                     entities: vec![(EntityId::random(), entity)],
                 }],
                 None,
@@ -211,7 +211,7 @@ fn with_a_menu() -> (Workbench, EntityId) {
     let id = w
         .open
         .document
-        .area()
+        .level()
         .iter()
         .find(|(_, data)| data.get::<Screen>().is_some())
         .unwrap()
@@ -445,7 +445,7 @@ fn with_two_buttons() -> (Workbench, EntityId) {
     let id = w
         .open
         .document
-        .area()
+        .level()
         .iter()
         .find(|(_, data)| data.get::<Screen>().is_some())
         .unwrap()
@@ -544,7 +544,7 @@ fn with_no_screen_with_buttons_the_game_gets_every_action() {
         .document
         .edit(
             "Hide",
-            vec![area::Edit::SetField {
+            vec![level::Edit::SetField {
                 entity: id,
                 component: "Screen".into(),
                 field: "shown".into(),
@@ -592,7 +592,7 @@ fn a_screen_reads_lua_components_and_solis_s_own() {
     let id = w
         .open
         .document
-        .area()
+        .level()
         .iter()
         .find(|(_, data)| data.get::<Screen>().is_some())
         .unwrap()
@@ -657,7 +657,7 @@ fn game_code_sets_the_player_s_settings_and_screens_read_and_follow_them() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), settler)],
             }],
             None,
@@ -753,7 +753,7 @@ fn a_menu_shown_this_tick_has_the_keys_next_tick_however_many_ticks_a_frame_runs
         let id = w
             .open
             .document
-            .area()
+            .level()
             .iter()
             .find(|(_, data)| data.get::<Screen>().is_some())
             .unwrap()

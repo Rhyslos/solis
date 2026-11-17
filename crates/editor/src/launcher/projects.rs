@@ -140,7 +140,21 @@ impl Workbench {
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
-                    plain(ui, &notice, text::ui(), tokens::text_primary());
+                    // A long note (a folder's whole path) wraps inside the
+                    // card, beside its close button.
+                    let room = (ui.available_width() - size::ICON_BUTTON - size::GAP).max(0.0);
+                    ui.scope(|ui| {
+                        ui.set_max_width(room);
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(&notice)
+                                    .font(text::ui())
+                                    .color(tokens::text_primary()),
+                            )
+                            .wrap()
+                            .selectable(false),
+                        );
+                    });
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if widgets::button::icon(ui, Icon::Close, "Close the note").clicked() {
                             self.launcher.notice = None;

@@ -3,8 +3,8 @@
 //! saves.
 
 use crate::{Global, Id, PhysicsAsk, World};
-use area::builtin::{Brush, CharacterBody, Collider, RigidBody, Transform};
 use glam::Mat4;
+use level::builtin::{Brush, CharacterBody, Collider, RigidBody, Transform};
 use reflect::EntityId;
 
 /// What physics knows of an entity: where it's placed, its physics
@@ -87,10 +87,10 @@ impl World {
         let (scale, rotation, position) = global.to_scale_rotation_translation();
         let body = body.map(|b| physics::Body {
             kind: match b.kind {
-                area::builtin::BodyKind::Dynamic if brush.is_some() => physics::BodyKind::Fixed,
-                area::builtin::BodyKind::Dynamic => physics::BodyKind::Dynamic,
-                area::builtin::BodyKind::Kinematic => physics::BodyKind::Kinematic,
-                area::builtin::BodyKind::Fixed => physics::BodyKind::Fixed,
+                level::builtin::BodyKind::Dynamic if brush.is_some() => physics::BodyKind::Fixed,
+                level::builtin::BodyKind::Dynamic => physics::BodyKind::Dynamic,
+                level::builtin::BodyKind::Kinematic => physics::BodyKind::Kinematic,
+                level::builtin::BodyKind::Fixed => physics::BodyKind::Fixed,
             },
             mass: b.mass,
             linear_damping: b.linear_damping,
@@ -101,9 +101,9 @@ impl World {
         });
         let collider = collider.map(|c| physics::ColliderSpec {
             shape: match c.shape {
-                area::builtin::ColliderShape::Box => physics::Shape::Box(c.size),
-                area::builtin::ColliderShape::Sphere => physics::Shape::Sphere(c.radius),
-                area::builtin::ColliderShape::Capsule => physics::Shape::Capsule {
+                level::builtin::ColliderShape::Box => physics::Shape::Box(c.size),
+                level::builtin::ColliderShape::Sphere => physics::Shape::Sphere(c.radius),
+                level::builtin::ColliderShape::Capsule => physics::Shape::Capsule {
                     radius: c.radius,
                     height: c.height,
                 },

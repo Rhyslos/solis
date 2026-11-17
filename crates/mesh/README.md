@@ -18,7 +18,7 @@ Polygon meshes: the data structure brushes are made of, how its parts connect, t
 
 ## Must never
 
-- Know about areas, entities, files, the GPU, physics or the editor.
+- Know about levels, entities, files, the GPU, physics or the editor.
 - Change a mesh behind the caller's back: operations take the mesh and say what they did.
 - Reuse a deleted point's or face's id.
 - Crash or allocate without bound on awkward input (faces with no area, n-gons, open borders, edges shared by three faces): what reads a mesh from a file checks its counts before building it (`area::builtin::Brush`).

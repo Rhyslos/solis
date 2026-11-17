@@ -4,19 +4,19 @@
 //! and Stairs climbing from where the drag started.
 
 use super::*;
-use crate::area_view::AreaView;
 use crate::brushes::{BrushModels, ViewBrush};
-use area::builtin::Brush;
+use crate::level_view::LevelView;
 use glam::Mat4;
+use level::builtin::Brush;
 
 const SIZE: Vec2 = Vec2::new(800.0, 600.0);
 const GRID: f32 = 0.5;
 
-fn view<'a>(camera: &'a Camera, area: &'a AreaView) -> DrawView<'a> {
+fn view<'a>(camera: &'a Camera, level: &'a LevelView) -> DrawView<'a> {
     DrawView {
         camera,
         size: SIZE,
-        area,
+        level,
         grid: GRID,
     }
 }
@@ -76,8 +76,8 @@ fn close(a: Vec2, b: Vec2) -> bool {
 #[test]
 fn the_footprint_snaps_to_the_grid_and_ctrl_draws_freely() {
     let camera = Camera::default();
-    let area = AreaView::default();
-    let v = view(&camera, &area);
+    let level = LevelView::default();
+    let v = view(&camera, &level);
     let mut snapped = Draw::new(Shape::Box);
     drag(
         &mut snapped,
@@ -105,8 +105,8 @@ fn the_footprint_snaps_to_the_grid_and_ctrl_draws_freely() {
 #[test]
 fn the_height_follows_the_pointer_up_then_a_click_keeps_it() {
     let camera = Camera::default();
-    let area = AreaView::default();
-    let v = view(&camera, &area);
+    let level = LevelView::default();
+    let v = view(&camera, &level);
     let mut draw = Draw::new(Shape::Box);
     let corner = Vec3::new(4.0, 3.0, 0.0);
     drag(&mut draw, &v, (Vec3::ZERO, corner), false);
@@ -163,8 +163,8 @@ fn the_standing_line_gives_the_height_the_pointer_is_at() {
 #[test]
 fn looking_straight_down_the_height_follows_the_pointer_up_the_screen() {
     let camera = Camera::default().as_kind(ViewKind::Top);
-    let area = AreaView::default();
-    let v = view(&camera, &area);
+    let level = LevelView::default();
+    let v = view(&camera, &level);
     let mut draw = Draw::new(Shape::Box);
     let corner = Vec3::new(3.0, 2.0, 0.0);
     drag(&mut draw, &v, (Vec3::ZERO, corner), false);
@@ -191,8 +191,8 @@ fn looking_straight_down_the_height_follows_the_pointer_up_the_screen() {
 #[test]
 fn a_click_without_a_drag_makes_nothing_and_says_why() {
     let camera = Camera::default();
-    let area = AreaView::default();
-    let v = view(&camera, &area);
+    let level = LevelView::default();
+    let v = view(&camera, &level);
     let mut draw = Draw::new(Shape::Ramp);
     let spot = at(&camera, Vec3::new(1.0, 1.0, 0.0));
     draw.update(input(spot, Mouse::Press, false), &v);
@@ -227,8 +227,8 @@ fn a_click_without_a_drag_makes_nothing_and_says_why() {
 #[test]
 fn a_right_click_gives_up_once_under_way() {
     let camera = Camera::default();
-    let area = AreaView::default();
-    let v = view(&camera, &area);
+    let level = LevelView::default();
+    let v = view(&camera, &level);
     let mut draw = Draw::new(Shape::Box);
     let mouse = at(&camera, Vec3::ZERO);
     // Before the drag, the right button is the camera's.
@@ -254,8 +254,8 @@ fn a_right_click_gives_up_once_under_way() {
 #[test]
 fn in_the_2d_view_letting_go_makes_it_one_grid_step_deep() {
     let camera = Camera::default().as_kind(ViewKind::TwoD);
-    let area = AreaView::default();
-    let v = view(&camera, &area);
+    let level = LevelView::default();
+    let v = view(&camera, &level);
     let mut draw = Draw::new(Shape::Box);
     draw.update(input(SIZE / 2.0, Mouse::Move, false), &v);
     assert!(draw.in_plane(), "said before the drag");
@@ -276,8 +276,8 @@ fn in_the_2d_view_letting_go_makes_it_one_grid_step_deep() {
 #[test]
 fn in_the_front_view_the_footprint_stands_upright() {
     let camera = Camera::default().as_kind(ViewKind::Front);
-    let area = AreaView::default();
-    let v = view(&camera, &area);
+    let level = LevelView::default();
+    let v = view(&camera, &level);
     let mut draw = Draw::new(Shape::Box);
     let made = drag(
         &mut draw,
@@ -294,8 +294,8 @@ fn in_the_front_view_the_footprint_stands_upright() {
 
 /// A box brush 2 m on a side, 1.5 m tall, standing at `at`, as the
 /// viewport has it.
-fn area_with_a_box(at: Vec3) -> AreaView {
-    let mut area = area::Area::new();
+fn level_with_a_box(at: Vec3) -> LevelView {
+    let mut level = level::Level::new();
     let mesh = Shape::Box.build(&ShapeSettings {
         size: Vec3::new(2.0, 2.0, 1.5),
         ..ShapeSettings::default()
@@ -304,11 +304,11 @@ fn area_with_a_box(at: Vec3) -> AreaView {
         mesh: std::sync::Arc::new(mesh),
         ..Brush::default()
     };
-    let id = area.spawn(area::EntityData::new("Box").with(&brush));
-    let mut document = crate::document::Document::new(area);
+    let id = level.spawn(level::EntityData::new("Box").with(&brush));
+    let mut document = crate::document::Document::new(level);
     let mut models = BrushModels::default();
     models.refresh(&mut document);
-    let mut view = AreaView::default();
+    let mut view = LevelView::default();
     view.brushes.push(ViewBrush {
         entity: id,
         model: std::sync::Arc::clone(models.get(id).unwrap()),
@@ -321,8 +321,8 @@ fn area_with_a_box(at: Vec3) -> AreaView {
 #[test]
 fn a_drag_starting_on_a_brush_draws_on_its_top() {
     let camera = Camera::default();
-    let area = area_with_a_box(Vec3::new(5.0, 5.0, 0.0));
-    let v = view(&camera, &area);
+    let level = level_with_a_box(Vec3::new(5.0, 5.0, 0.0));
+    let v = view(&camera, &level);
     let mut draw = Draw::new(Shape::Box);
     // From a point on the box's top, to beyond it.
     drag(

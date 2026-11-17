@@ -3,15 +3,15 @@
 > Light your models with a sun that casts shadows, and with lamps you place yourself or bring in from Blender.
 
 ## When to use it
-Light decides how a model reads: which side is bright, where its shadows fall, what mood the area has. Use it to check how a model looks in daylight, under a warm lamp, or in a dark room lit by one torch.
+Light decides how a model reads: which side is bright, where its shadows fall, what mood the level has. Use it to check how a model looks in daylight, under a warm lamp, or in a dark room lit by one torch.
 
-- The **sun** ([concepts](concepts.md#light)) lights everything from one direction, like daylight, and casts shadows. A new area has one.
+- The **sun** ([concepts](concepts.md#light)) lights everything from one direction, like daylight, and casts shadows. A new level has one.
 - A **point light** shines every way from one spot, like a bare bulb or a candle.
 - A **spotlight** shines a cone, like a torch, a car headlight or a stage light.
 
 Everything also gets soft **sky light**, so shadows are never pitch black.
 
-Every light is an [entity](concepts.md#the-area) with a **Light** [component](concepts.md#the-area); where it is and which way it points come from its **Transform**. Lights are saved with the [area](saving-areas.md).
+Every light is an [entity](concepts.md#the-level) with a **Light** [component](concepts.md#the-level); where it is and which way it points come from its **Transform**. Lights are saved with the [level](saving-levels.md).
 
 ## How to use it
 
@@ -19,17 +19,17 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 The sun picked: Properties shows its **Transform** (which way it shines is its Rotation) and its **Light** card.
 
 **Change the sun**
-1. In the **Area** panel, click **Sun**.
+1. In the **Level** panel, click **Sun**.
 2. In **Properties**, under **Transform**, drag the first **Rotation** number (X) to tilt the sun: 0° shines straight down (noon), 90° skims the horizon (sunrise), so a bigger tilt gives longer shadows. Drag the third number (Z) to turn it around the sky.
 3. Under **Light**, click the **Colour** swatch for a warmer or cooler light, and drag **Strength** to brighten or dim it. Untick **Shadows** to turn them off.
 
 **Add a lamp**
 1. Fly the camera to where the light should be ([Moving around the viewport](navigating-the-viewport.md)).
 2. Choose **Home › Light** to place a bulb 2 m above the point the camera looks at, or **Home › Light**'s small arrow, then **Spotlight** to place a spotlight at the camera, shining where the camera looks (like holding a torch).
-3. The lamp appears as a small cross in its colour (a spotlight also has a line the way it shines). It's listed in the Area panel and selected, with its settings in Properties.
+3. The lamp appears as a small cross in its colour (a spotlight also has a line the way it shines). It's listed in the Level panel and selected, with its settings in Properties.
 4. To move it, fly somewhere else and choose **Move here** in the **⋯** beside its name in Properties. **Delete**, in the same menu, removes it.
 
-**Bring lamps from Blender:** export with **Punctual Lights** ticked (under Include in Blender's glTF export), then [import the model](importing-models.md). Its lamps come in as entities under the model in the Area panel, and are deleted with it. A sun in the file sets the area's sun.
+**Bring lamps from Blender:** export with **Punctual Lights** ticked (under Include in Blender's glTF export), then [import the model](importing-models.md). Its lamps come in as entities under the model in the Level panel, and are deleted with it. A sun in the file sets the level's sun.
 
 ## Settings
 
@@ -47,7 +47,7 @@ The sun picked: Properties shows its **Transform** (which way it shines is its R
 |---|---|
 | Kind | **Sun**, **Point** or **Spot**. |
 | Colour | The light's colour. Slightly warm white is daylight; orange is evening. |
-| Strength | Point lights and spotlights: in watts, as in Blender, so numbers carry over: 1000 W lights a room, 100 W is a small lamp close by. The sun: in watts per square metre; 3 is the editor's clear day, 0 turns it off for a night area lit by lamps. |
+| Strength | Point lights and spotlights: in watts, as in Blender, so numbers carry over: 1000 W lights a room, 100 W is a small lamp close by. The sun: in watts per square metre; 3 is the editor's clear day, 0 turns it off for a night level lit by lamps. |
 | Range | 0: the light fades on forever, getting weaker with distance, as real light does. More: it stops at this many metres. Games use ranges to keep many lamps cheap. |
 | Cone (spotlights) | How wide the light reaches, in degrees from the middle of the cone, from 1° to 89°. |
 | Soft edge (spotlights) | How gradually the light fades at the cone's edge: 0° for a hard circle, more for a soft one, up to 89°. A soft edge wider than the cone fades the whole cone. |
@@ -61,9 +61,9 @@ The sun picked: Properties shows its **Transform** (which way it shines is its R
 - **Problem:** in a 2D game, a lamp lights nothing on the sprites. **Why:** a lamp lights the ground beneath it, so it must be above the sprites: one level with them, or under an "over" tile layer, lights nothing. **Fix:** raise it 1 to 2 m above the sprites (and see [Light sprites](sky-fog-and-exposure.md)).
 - **Problem:** a street lamp is off at night. **Why:** **Only at night** follows the Environment's **Day and night**: it's on while the day's colour is darker than half the brightest one. **Fix:** check the night colours are darker than the day's, and that Day and night is ticked.
 - **Problem:** lamps far from the camera stop lighting. **Why:** up to 16 lamps light the view at once, the ones nearest the camera.
-- **Problem:** things far from the camera have no shadows. **Why:** the sun's shadows reach 200 m from the camera. The shadow map covers only what the view shows within that distance, so its detail goes where you're looking, however big the area. **Fix:** move closer; at that distance, shadows are too small to see anyway.
-- **Problem:** shadows look blurry. **Why:** the shadow map covers everything in view up to 200 m away, so looking out over a wide area spreads its pixels further. **Fix:** look from closer, or from higher up so less ground is in view.
-- **Problem:** a spotlight's cone isn't the number written in the area file. **Why:** an [area file](saving-areas.md) is text, so a number can be typed into it by hand or left there by a merge. A light only works with a cone from 1° to 89°, a soft edge from 0° to 89°, and a strength and range that aren't below 0, so a number outside that is read as the nearest one that works (a cone of -5 shines as 1°). **Fix:** set the number you meant in Properties.
+- **Problem:** things far from the camera have no shadows. **Why:** the sun's shadows reach 200 m from the camera. The shadow map covers only what the view shows within that distance, so its detail goes where you're looking, however big the level. **Fix:** move closer; at that distance, shadows are too small to see anyway.
+- **Problem:** shadows look blurry. **Why:** the shadow map covers everything in view up to 200 m away, so looking out over a wide level spreads its pixels further. **Fix:** look from closer, or from higher up so less ground is in view.
+- **Problem:** a spotlight's cone isn't the number written in the level file. **Why:** a [level file](saving-levels.md) is text, so a number can be typed into it by hand or left there by a merge. A light only works with a cone from 1° to 89°, a soft edge from 0° to 89°, and a strength and range that aren't below 0, so a number outside that is read as the nearest one that works (a cone of -5 shines as 1°). **Fix:** set the number you meant in Properties.
 - **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** undo (Ctrl + Z), or add an entity and give it a Light (**+ Component › Light**) with **Kind** set to Sun.
 
 ## Related

@@ -2,20 +2,20 @@
 //! the whole running game, so loading carries on exactly as the saved
 //! game would have, checksum and all.
 //!
-//! A save is text, in sections, so it can be read (and its area even
+//! A save is text, in sections, so it can be read (and its level even
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 8
+//! solis save 9
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
 //! seed 98765
 //! sum 3f2a…
-//! area 5120
-//! …the area as it stands, game's places and all (area text)…
+//! level 5120
+//! …the level as it stands, game's places and all (level text)…
 //! values 812
-//! …every running component's values (area text)…
+//! …every running component's values (level text)…
 //! bindings 640
 //! …the input actions, with game code's rebinding (TOML)…
 //! projectiles 2
@@ -30,7 +30,7 @@
 //! ID 1220
 //! …the map as the game has changed it (a tile map file)…
 //! objects 140
-//! …the game-wide objects' values, one block holding them (area text)…
+//! …the game-wide objects' values, one block holding them (level text)…
 //! speed 16
 //! 3fe0000000000000 (the game's speed's exact bits; empty when 1)
 //! day 16
@@ -47,14 +47,14 @@
 
 use crate::console::LogLevel;
 use crate::workbench::Workbench;
-use area::Area;
-use area::builtin::Transform;
+use level::Level;
+use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 8";
+const HEADER: &str = "solis save 9";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 8;
+const SAVE_VERSION: u32 = 9;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -81,6 +81,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         reading::objects_kept,
         reading::speed_kept,
         reading::day_kept,
+        reading::levels_not_areas,
     ],
 };
 
@@ -109,18 +110,18 @@ pub struct Sections {
     notes: Vec<String>,
 }
 
-/// The game-wide objects' values as a save keeps them: area text, one
+/// The game-wide objects' values as a save keeps them: level text, one
 /// entity whose components are the objects (none: empty). Written with no
 /// registry, so an object named like a component keeps its own fields.
 fn objects_text(objects: &script::ObjectValues) -> String {
     if objects.is_empty() {
         return String::new();
     }
-    let mut holder = area::EntityData::new("objects");
+    let mut holder = level::EntityData::new("objects");
     holder.components = objects.iter().cloned().collect();
-    let mut area = Area::new();
-    area.insert(objects_holder(), holder);
-    area::text::write(&area, &reflect::Registry::new(), &|_| None)
+    let mut level = Level::new();
+    level.insert(objects_holder(), holder);
+    level::text::write(&level, &reflect::Registry::new(), &|_| None)
 }
 
 /// The entity a save's objects are kept on.
@@ -137,8 +138,8 @@ fn objects_of(
     if text.is_empty() {
         return Ok(Vec::new());
     }
-    let area = area::text::read(text, &reflect::Registry::new()).map_err(|e| e.to_string())?;
-    let holder = area
+    let level = level::text::read(text, &reflect::Registry::new()).map_err(|e| e.to_string())?;
+    let holder = level
         .get(objects_holder())
         .ok_or("its objects are damaged")?;
     Ok(holder
@@ -149,7 +150,7 @@ fn objects_of(
             let mut fitted = reflect::ComponentData::default();
             for (field, value) in &data.fields {
                 let value = match schema.and_then(|s| s.fields.iter().find(|f| f.name == *field)) {
-                    Some(info) => area::text::fit_value(value.clone(), &info.kind),
+                    Some(info) => level::text::fit_value(value.clone(), &info.kind),
                     None => value.clone(),
                 };
                 fitted.set(field, value);
@@ -201,10 +202,10 @@ pub(crate) struct Save {
     pub(crate) time: f64,
     /// The random seed.
     pub(crate) seed: u64,
-    /// The area as the editor had it (copies of assemblies kept as plain
+    /// The level as the editor had it (copies of assemblies kept as plain
     /// entities): where the game moved things is in `places`, as the
     /// running game keeps them apart.
-    pub(crate) area: String,
+    pub(crate) level: String,
     /// Running components' values.
     pub(crate) values: String,
     /// The input actions.
@@ -214,14 +215,14 @@ pub(crate) struct Save {
     /// Each body's place and motion, in entity order.
     pub(crate) physics: Vec<(EntityId, physics::BodyState)>,
     /// Where the game has each entity it moved (its transform), where
-    /// that differs from the area's, in entity order.
+    /// that differs from the level's, in entity order.
     pub(crate) places: Vec<(EntityId, Transform)>,
     /// Each animator's parameters, by name, in entity order (its state is
-    /// its Animator's, in the area).
+    /// its Animator's, in the level).
     pub(crate) animators: Vec<(EntityId, Vec<(String, animation::ParamValue)>)>,
     /// Each tile map as the game has changed it, in entity order.
     pub(crate) tile_maps: Vec<(EntityId, tiles::TileMap)>,
-    /// The game-wide objects' values (decision 0080), as area text: one
+    /// The game-wide objects' values (decision 0080), as level text: one
     /// entity, `objects`, whose components are the objects. Empty when
     /// the game has none.
     pub(crate) objects: String,
@@ -263,7 +264,7 @@ impl Save {
         let mut section = |name: &str, text: &str| {
             body.push_str(&format!("{name} {}\n{text}\n", text.len()));
         };
-        section("area", &self.area);
+        section("level", &self.level);
         section("values", &self.values);
         section("bindings", &self.bindings);
         let projectiles: String = self
@@ -374,17 +375,17 @@ impl Workbench {
         // will: from here the running game and a loaded one go on alike.
         let bodies = playing.world.physics_states();
         playing.world.rebuild_physics(&bodies, true);
-        // The area as the editor has it, and apart from it where the
+        // The level as the editor has it, and apart from it where the
         // game has moved each entity: the running game keeps the two apart
         // (an edit while playing starts from the editor's, and a rebuild
         // keeps the game's), so a loaded game must too, or it goes on
         // differently from the saved one (found by the hardening
         // milestone's invariant tests, decision 0042).
-        let mut area = self.open.document.area().clone();
+        let mut level = self.open.document.level().clone();
         let mut places = Vec::new();
-        let ids: Vec<EntityId> = area.iter().map(|(id, _)| id).collect();
+        let ids: Vec<EntityId> = level.iter().map(|(id, _)| id).collect();
         for id in ids {
-            if let Some(data) = area.get_mut(id) {
+            if let Some(data) = level.get_mut(id) {
                 if let Some(t) = playing.world.get::<Transform>(id)
                     && data.get::<Transform>() != Some(t)
                 {
@@ -392,36 +393,36 @@ impl Workbench {
                 }
                 // A sound game code turned on or off stays so after a
                 // load (Phase 7, S5).
-                if let Some(source) = playing.world.get::<area::builtin::AudioSource>(id)
-                    && data.get::<area::builtin::AudioSource>().as_ref() != Some(&source)
+                if let Some(source) = playing.world.get::<level::builtin::AudioSource>(id)
+                    && data.get::<level::builtin::AudioSource>().as_ref() != Some(&source)
                 {
                     data.set(&source);
                 }
                 // And a screen game code showed or hid (decision 0087).
                 if let Some(screen) = playing
                     .world
-                    .values_named_for(id, <area::builtin::Screen as reflect::Component>::NAME)
+                    .values_named_for(id, <level::builtin::Screen as reflect::Component>::NAME)
                     && data
                         .components
-                        .get(<area::builtin::Screen as reflect::Component>::NAME)
+                        .get(<level::builtin::Screen as reflect::Component>::NAME)
                         != Some(&screen)
                 {
                     data.components.insert(
-                        <area::builtin::Screen as reflect::Component>::NAME.to_string(),
+                        <level::builtin::Screen as reflect::Component>::NAME.to_string(),
                         screen,
                     );
                 }
                 // And a sprite's clip, as far as it had played (Phase 9,
                 // D3).
-                if let Some(sprite) = playing.world.get::<area::builtin::Sprite>(id)
-                    && data.get::<area::builtin::Sprite>().as_ref() != Some(&sprite)
+                if let Some(sprite) = playing.world.get::<level::builtin::Sprite>(id)
+                    && data.get::<level::builtin::Sprite>().as_ref() != Some(&sprite)
                 {
                     data.set(&sprite);
                 }
                 // And its animator's state (D3b); its parameters are in
                 // their own section.
-                if let Some(animator) = playing.world.get::<area::builtin::Animator>(id)
-                    && data.get::<area::builtin::Animator>().as_ref() != Some(&animator)
+                if let Some(animator) = playing.world.get::<level::builtin::Animator>(id)
+                    && data.get::<level::builtin::Animator>().as_ref() != Some(&animator)
                 {
                     data.set(&animator);
                 }
@@ -433,13 +434,13 @@ impl Workbench {
                 data.origin = None;
             }
         }
-        // Every running component's values, apart: the area keeps the
+        // Every running component's values, apart: the level keeps the
         // values its components started from, as the game's world does.
-        let mut values = Area::new();
+        let mut values = Level::new();
         if let Some(game) = &mut playing.game {
             for (entity, name, data) in game.all_values() {
                 if values.get(entity).is_none() {
-                    values.insert(entity, area::EntityData::new(""));
+                    values.insert(entity, level::EntityData::new(""));
                 }
                 if let Some(holder) = values.get_mut(entity) {
                     holder.components.insert(name, data);
@@ -452,8 +453,8 @@ impl Workbench {
             ticks: clock.ticks,
             time: clock.time,
             seed: playing.world.seed(),
-            area: area::text::write(&area, registry, &|_| None),
-            values: area::text::write(&values, registry, &|_| None),
+            level: level::text::write(&level, registry, &|_| None),
+            values: level::text::write(&values, registry, &|_| None),
             bindings: playing.bindings.write(),
             projectiles: playing.world.projectiles().flying().to_vec(),
             physics: bodies,

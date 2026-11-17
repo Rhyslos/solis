@@ -1,34 +1,34 @@
-//! Building the world from an area, and adding, removing and updating
+//! Building the world from a level, and adding, removing and updating
 //! entities in it while the game plays (an edit while playing).
 
 use crate::{
     Clock, Global, Id, Name, Parent, Place, Previous, Projectiles, Values, World, flat_physics,
     game_set, next_number,
 };
-use area::Area;
-use area::builtin::{
+use glam::Mat4;
+use level::Level;
+use level::builtin::{
     Animator, AudioSource, Camera, CharacterBody, Collider, Environment, Light, Listener, Model,
     ReverbZone, RigidBody, Sprite, Transform,
 };
-use glam::Mat4;
 use reflect::{Component, EntityId};
 use std::collections::HashMap;
 
 impl World {
-    /// The world for `area`: every entity, with its components, and where
+    /// The world for `level`: every entity, with its components, and where
     /// each is in the world worked out. The clock starts at zero.
-    pub fn from_area(area: &Area) -> Self {
-        let mut world = Self::from_area_without_physics(area);
+    pub fn from_level(level: &Level) -> Self {
+        let mut world = Self::from_level_without_physics(level);
         // Physics after places: bodies start where their entities are.
         world.join_all();
         world
     }
 
-    /// As [`Self::from_area`], with physics left empty: for a world whose
+    /// As [`Self::from_level`], with physics left empty: for a world whose
     /// physics is built next anyway ([`Self::rebuild_physics`]: a rebuild,
     /// a save loaded), or one thrown away, so it isn't built twice.
-    pub fn from_area_without_physics(area: &Area) -> Self {
-        let tree = area::Tree::of(area);
+    pub fn from_level_without_physics(level: &Level) -> Self {
+        let tree = level::Tree::of(level);
         let count = tree.order().len();
         let mut ecs = hecs::World::new();
         let mut by_id = reflect::IdMap::with_capacity_and_hasher(count, Default::default());
@@ -36,13 +36,13 @@ impl World {
             reflect::IdMap::with_capacity_and_hasher(count, Default::default());
         let mut order = Vec::with_capacity(count);
         for &id in tree.order() {
-            let Some(data) = area.get(id) else {
+            let Some(data) = level.get(id) else {
                 continue;
             };
             let mut builder = components_of(id, data);
-            // An entity caught in a loop of parents (a damaged area; the
+            // An entity caught in a loop of parents (a damaged level; the
             // readers take loops out) stands alone, as the editor places
-            // it (`area::Tree::world_matrices`).
+            // it (`level::Tree::world_matrices`).
             let parent = data
                 .parent
                 .filter(|_| !tree.in_loop(id))
@@ -83,7 +83,7 @@ impl World {
             saved_maps: HashMap::new(),
             maps_revision: 0,
             flat: physics::flat::Flat::new(),
-            pixels: area::pixels::PixelSettings::default(),
+            pixels: level::pixels::PixelSettings::default(),
             solid_sets: std::sync::Arc::default(),
             walls_built: HashMap::new(),
             flat_recovery: flat_physics::FlatRecovery::default(),
@@ -115,18 +115,18 @@ impl World {
         }
     }
 
-    /// The world for `area` again (it changed in the editor while
+    /// The world for `level` again (it changed in the editor while
     /// playing), keeping the clock.
-    pub fn rebuild(&mut self, area: &Area) {
+    pub fn rebuild(&mut self, level: &Level) {
         self.touched = true;
         let clock = self.clock;
-        // Where the game put things stays, unless the area moved them
+        // Where the game put things stays, unless the level moved them
         // since (an edit, an undo).
         let kept: Vec<(EntityId, Transform, Transform)> = self
             .game_moved
             .iter()
             .filter_map(|(&id, &from)| {
-                let now = area.get(id)?.get::<Transform>().unwrap_or_default();
+                let now = level.get(id)?.get::<Transform>().unwrap_or_default();
                 let at = self.get::<Transform>(id)?;
                 (now == from).then_some((id, from, at))
             })
@@ -148,7 +148,7 @@ impl World {
         let states = self.physics.state().body_states();
         let asked = std::mem::take(&mut self.physics_asked);
         let flat_recovery = self.flat_recovery;
-        *self = Self::from_area_without_physics(area);
+        *self = Self::from_level_without_physics(level);
         self.flat_recovery = flat_recovery;
         self.clock = clock;
         self.projectiles = projectiles;
@@ -175,14 +175,14 @@ impl World {
     }
 
     /// Adds `entities` (a new subtree game code spawned, just added to the
-    /// area at the end of its tree) after everything else, without
+    /// level at the end of its tree) after everything else, without
     /// building the rest again: its root is the one whose parent isn't
     /// among them, standing at the top level. Entities already in the
     /// world are left out. Returns the IDs added, parents first.
-    pub fn add_subtree(&mut self, entities: &[(EntityId, area::EntityData)]) -> Vec<EntityId> {
+    pub fn add_subtree(&mut self, entities: &[(EntityId, level::EntityData)]) -> Vec<EntityId> {
         self.touched = true;
         let ids: std::collections::HashSet<EntityId> = entities.iter().map(|(id, _)| *id).collect();
-        let mut children: HashMap<Option<EntityId>, Vec<(&str, EntityId, &area::EntityData)>> =
+        let mut children: HashMap<Option<EntityId>, Vec<(&str, EntityId, &level::EntityData)>> =
             HashMap::new();
         for (id, data) in entities {
             let parent = data.parent.filter(|p| ids.contains(p));
@@ -194,9 +194,9 @@ impl World {
         for kids in children.values_mut() {
             kids.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
         }
-        // Depth first from the top of the subtree, as the area's tree
+        // Depth first from the top of the subtree, as the level's tree
         // order has it.
-        let mut stack: Vec<(EntityId, &area::EntityData)> = children
+        let mut stack: Vec<(EntityId, &level::EntityData)> = children
             .get(&None)
             .map(|kids| kids.iter().rev().map(|&(_, id, data)| (id, data)).collect())
             .unwrap_or_default();
@@ -326,25 +326,25 @@ impl World {
         self.index();
     }
 
-    /// Takes in changes to the components and names of entities in `area`
+    /// Takes in changes to the components and names of entities in `level`
     /// (as the editor makes them while playing), without building the
     /// rest again. Each comes with whether its Transform changed: if not,
     /// it stays where the running game put it. Anything else (an entity
     /// added, deleted or moved to another parent) builds the whole world
     /// again. Keeps the clock.
-    pub fn update(&mut self, area: &Area, changed: impl IntoIterator<Item = (EntityId, bool)>) {
+    pub fn update(&mut self, level: &Level, changed: impl IntoIterator<Item = (EntityId, bool)>) {
         self.touched = true;
         let mut rejoin = Vec::new();
         for (id, moved) in changed {
             let (Some(data), Some(&entity), Some(&at)) =
-                (area.get(id), self.by_id.get(&id), self.place.get(&id))
+                (level.get(id), self.by_id.get(&id), self.place.get(&id))
             else {
-                self.rebuild(area);
+                self.rebuild(level);
                 return;
             };
             let parent_now = self.ecs.get::<&Parent>(entity).ok().map(|p| p.0);
             if parent_now != data.parent {
-                self.rebuild(area);
+                self.rebuild(level);
                 return;
             }
             let kept = (!moved)
@@ -399,11 +399,11 @@ impl World {
 
 /// An entity's components as the world keeps them: built-in ones as
 /// their Rust types, anything else as plain values.
-fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
+fn components_of(id: EntityId, data: &level::EntityData) -> hecs::EntityBuilder {
     let mut builder = hecs::EntityBuilder::new();
     builder.add(Id(id)).add(Name(data.name.clone()));
     let mut values = Values::default();
-    // What the area gives of the things game code sets (see `game_set`).
+    // What the level gives of the things game code sets (see `game_set`).
     let mut start = game_set::GameSet::default();
     for (name, component) in &data.components {
         match name.as_str() {
@@ -419,8 +419,8 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             Collider::NAME => {
                 builder.add(Collider::from_data(component));
             }
-            area::builtin::Collider2D::NAME => {
-                builder.add(area::builtin::Collider2D::from_data(component));
+            level::builtin::Collider2D::NAME => {
+                builder.add(level::builtin::Collider2D::from_data(component));
             }
             CharacterBody::NAME => {
                 builder.add(CharacterBody::from_data(component));
@@ -428,8 +428,8 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             Model::NAME => {
                 builder.add(Model::from_data(component));
             }
-            area::builtin::Brush::NAME => {
-                builder.add(area::builtin::Brush::from_data(component));
+            level::builtin::Brush::NAME => {
+                builder.add(level::builtin::Brush::from_data(component));
             }
             Environment::NAME => {
                 builder.add(Environment::from_data(component));
@@ -445,8 +445,8 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             ReverbZone::NAME => {
                 builder.add(ReverbZone::from_data(component));
             }
-            area::builtin::Parallax::NAME => {
-                builder.add(area::builtin::Parallax::from_data(component));
+            level::builtin::Parallax::NAME => {
+                builder.add(level::builtin::Parallax::from_data(component));
             }
             Listener::NAME => {
                 builder.add(Listener::from_data(component));
@@ -461,11 +461,11 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
                 start.read_animator(&animator);
                 builder.add(animator);
             }
-            area::builtin::TileMap::NAME => {
-                builder.add(area::builtin::TileMap::from_data(component));
+            level::builtin::TileMap::NAME => {
+                builder.add(level::builtin::TileMap::from_data(component));
             }
             _ => {
-                if name == area::builtin::Screen::NAME {
+                if name == level::builtin::Screen::NAME {
                     start.read_screen(component);
                 }
                 values.0.insert(name.clone(), component.clone());

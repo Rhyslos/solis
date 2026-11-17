@@ -24,7 +24,7 @@ Draws viewports on the GPU with wgpu, into offscreen images: the sky, every copy
 | `pick.rs` | Picking: draws placement and sprite numbers and depth into a small image (sprites by their own pixels) to say what is under the mouse. | `PickResult` |
 | `timing.rs` | How long the GPU takes over each pass, for the Profiler, read back a frame or two later without waiting; and counts of what was drawn. | `GpuTimes`, `FrameStats` |
 | `readback.rs` | Copies a finished image back from the GPU, for tests and screenshots. The only place that waits on the GPU. | `read_pixels`, `read_texture` |
-| `viewport.wgsl` | The shaders (small programs that run on the GPU): sky, grid, lines, models in each look, lighting and shadows, sprites (lit by the day's tint and the lamps when the area says so, decision 0092), and the final exposure, tone mapping and sRGB pass (`post_fs`). | `mesh_vs`, `sky_fs`, `grid_fs`, `post_fs` |
+| `viewport.wgsl` | The shaders (small programs that run on the GPU): sky, grid, lines, models in each look, lighting and shadows, sprites (lit by the day's tint and the lamps when the level says so, decision 0092), and the final exposure, tone mapping and sRGB pass (`post_fs`). | `mesh_vs`, `sky_fs`, `grid_fs`, `post_fs` |
 | `pick.wgsl` | The picking shader, kept apart so the viewport shader stays as it is. | |
 | `pixel.wgsl` | The pixel stage's shader: one screen-filling triangle that picks (or, for fill, sharply blends) the small picture's pixels. | `pixel_vs`, `pixel_fs` |
 

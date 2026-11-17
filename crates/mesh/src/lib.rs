@@ -1,7 +1,7 @@
 //! Polygon meshes: the data structure, topology queries, modelling
 //! operations and the shapes brushes start as.
 //!
-//! Layer 0 (core). Knows nothing about areas, files, the GPU or the
+//! Layer 0 (core). Knows nothing about levels, files, the GPU or the
 //! editor. See this crate's README for its purpose and limits.
 
 pub mod attributes;

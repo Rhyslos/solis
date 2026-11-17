@@ -92,7 +92,7 @@ The target to decide against: **a change to one component is running in play mod
 ├──────────────────────────────────────────────┤
 │ Editor scripting (LustScript / Lua, Luau)    │
 ├──────────────────────────────────────────────┤
-│ Engine (Rust): components, areas and zones, │
+│ Engine (Rust): components, levels and zones, │
 │ simulation and netcode, rendering,           │
 │ animation, VFX, sound, game UI, the editor   │
 ├──────────────────────────────────────────────┤
@@ -140,7 +140,7 @@ object Health like Component {
 end
 ```
 
-**Storage underneath:** an area document of component values for the editor ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)), and `hecs` for the running game, built from it when Play is pressed ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)).
+**Storage underneath:** a level document of component values for the editor ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)), and `hecs` for the running game, built from it when Play is pressed ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)).
 
 **How Lust and Rust components meet:** every component is a plain Rust struct that can describe its fields to the inspector. The engine's built-in components are written that way. A Lust `object … like Component` compiles to exactly the same kind of struct, so built-in and custom components work the same way everywhere.
 
@@ -192,10 +192,10 @@ wgpu, lightweight, built for medium-poly, stylized games. **AMD first, when a ch
 
 ## 8. Worlds, zones and streaming
 
-- **Areas** are text files, made to merge in Git: one entity per block, stable IDs, fields in a fixed order (a selling point: Unity and Godot scenes are notorious for conflicts; [decision 0006](docs/decisions/0006-git-built-in.md)).
-- **File extensions:** `project.solis` for the project, `.solarea` for areas, `.solassembly` for assemblies and `.solmat` for materials ([decision 0015](docs/decisions/0015-file-extensions.md)).
+- **Levels** are text files, made to merge in Git: one entity per block, stable IDs, fields in a fixed order (a selling point: Unity and Godot scenes are notorious for conflicts; [decision 0006](docs/decisions/0006-git-built-in.md)).
+- **File extensions:** `project.solis` for the project, `.sollevel` for levels (`.solarea` while they were called areas, until [decision 0118](docs/decisions/0118-the-editor-rethink.md)), `.solassembly` for assemblies and `.solmat` for materials ([decision 0015](docs/decisions/0015-file-extensions.md)).
 - **Assemblies,** nested, with per-instance overrides.
-- **Game state above areas:** state that outlives an area (a campaign, a save), with loading an area and returning as a normal operation.
+- **Game state above levels:** state that outlives a level (a campaign, a save), with loading a level and returning as a normal operation.
 - **Zones** stream in and out by distance, each owning its memory (§3).
 - **Large worlds** need a floating origin, so precision holds far from the centre.
 - **Terrain:** heightmaps, texture painting, and scattering of grass, trees and rocks. Needed for open worlds. Sculpting the ground (heightmaps) comes first, with Tools 1 (decision 0108).
@@ -256,12 +256,12 @@ The area to spend extra time on. In order of payoff:
 
 **Uniformity comes first** ([decision 0050](docs/decisions/0050-one-way-to-work-everywhere.md)): every editor in Solis works one way: one graph editor, one Properties layout, one preview tab, one table of shortcuts, the same ideas everywhere. Learn one and you know them all.
 
-**Being remade** ([decision 0099](docs/decisions/0099-the-g-layout.md), Shared 1a to 1d in ROADMAP.md): the editor's frame becomes the project lead's own design, the "G layout" ([`docs/design/g-layout/`](docs/design/g-layout/README.md)): a tab bar, a ribbon whose tabs are the areas of the engine, one or two editor groups, a shelf of tabs along the bottom and a status bar, in one dark neutral theme with five accents ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)). What the engine lacks is shown as a placeholder, and one setting hides them all ([decision 0101](docs/decisions/0101-unfinished-parts-as-placeholders.md)). The look and the frame are built (Shared 1a); the screens inside it are rebuilt one by one (Shared 1b to 1d), and each line below is rewritten as its part is replaced.
+**Being remade** ([decision 0099](docs/decisions/0099-the-g-layout.md), Shared 1a to 1d in ROADMAP.md): the editor's frame becomes the project lead's own design, the "G layout" ([`docs/design/g-layout/`](docs/design/g-layout/README.md)): a tab bar, a ribbon whose tabs are the levels of the engine, one or two editor groups, a shelf of tabs along the bottom and a status bar, in one dark neutral theme with five accents ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)). What the engine lacks is shown as a placeholder, and one setting hides them all ([decision 0101](docs/decisions/0101-unfinished-parts-as-placeholders.md)). The look and the frame are built (Shared 1a); the screens inside it are rebuilt one by one (Shared 1b to 1d), and each line below is rewritten as its part is replaced.
 
 - **The frame:** five bands, top to bottom: the tab bar, the ribbon, the editor groups, the shelf and the status bar. Each ribbon tab shows a fixed middle, as the design draws it: one or two groups of document tabs side by side (a divider between them that a drag moves; stacked when the window is narrow) over a shelf of tabs whose contents are columns. Panels don't move: docking is Solis's own and fixed ([decision 0104](docs/decisions/0104-docking-is-solis-s-own.md)). Each tab remembers its shelf tab, the shelf's height and fold, and its split; Reset layout puts the tab in front back. Ctrl + Space folds the shelf.
-- **Inside it, today's panels** until each screen is rebuilt: the viewport with the tools as icons at its bottom centre (Select, Move, Rotate, Scale, Transform) and its other overlays in the corners, switchable from its ≡ menu; the Area tree, Properties (with Hints under it) and the Library as the columns of Home's Entity shelf tab; the Console and Problems as shelf tabs. The camera is Fly only.
+- **Inside it, today's panels** until each screen is rebuilt: the viewport with the tools as icons at its bottom centre (Select, Move, Rotate, Scale, Transform) and its other overlays in the corners, switchable from its ≡ menu; the Level tree, Properties (with Hints under it) and the Library as the columns of Home's Entity shelf tab; the Console and Problems as shelf tabs. The camera is Fly only.
 - **Theme:** one, Neutral dark: the design's neutral greys with one accent colour from the settings (blue, grey, orange, teal or purple; blue by default) and dark text on accent fills. Colours that mean something, such as warnings, errors and the axes, keep their own, and Play is the one light button ([decision 0100](docs/decisions/0100-one-theme-five-accents.md)).
-- **Basics:** undo and redo, gizmos, several viewports, and a play mode that resets the area when you stop.
+- **Basics:** undo and redo, gizmos, several viewports, and a play mode that resets the level when you stop.
 - **The scripting window** (§3).
 - **Debugging:** a frame profiler, debug drawing for physics and navigation, a command console, and stepping through Lust code.
 
@@ -275,7 +275,7 @@ The area to spend extra time on. In order of payoff:
 - **Physics:** Rapier.
 - **Save games.**
 - **Build and export:** Windows ([decision 0012](docs/decisions/0012-windows-only.md)). Linux and macOS only if that changes.
-- **Git, for teams** ([decision 0006](docs/decisions/0006-git-built-in.md)): project files made to merge, Git LFS for big files, a Git panel with commits, history and locking, and a merge tool that merges areas entity by entity.
+- **Git, for teams** ([decision 0006](docs/decisions/0006-git-built-in.md)): project files made to merge, Git LFS for big files, a Git panel with commits, history and locking, and a merge tool that merges levels entity by entity.
 
 **Later:**
 - **Navigation and AI:** navmeshes, flowfields (moving many units), behaviour trees or state machines.

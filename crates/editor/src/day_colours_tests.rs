@@ -62,13 +62,13 @@ fn the_preview_time_is_kept_for_the_viewport_and_not_saved() {
     assert_eq!(kept, Some(None));
 }
 
-/// A workbench whose area has day and night on (a day of 24 minutes,
+/// A workbench whose level has day and night on (a day of 24 minutes,
 /// starting at 8), a lamp that shines only at night, and a Sleeper that
 /// sets the time to `hour` once, and says the time.
 fn with_a_day(hour: f64) -> crate::workbench::Workbench {
     use crate::test_support::info;
-    use area::EntityData;
-    use area::builtin::{Environment, Light, Transform};
+    use level::EntityData;
+    use level::builtin::{Environment, Light, Transform};
     let main = format!(
         "fetch \"solis/world\":World;\ncomponent Sleeper {{\n    has {{ bool slept = false; }}\n    method update(float dt) {{\n        is not slept? then {{\n            World:setTimeOfDay({hour:.1});\n            slept = true;\n        }} or {{\n            World:say(\"hour \" + World:timeOfDay().text());\n        }}\n    }}\n}}\npass Sleeper;\nend\n"
     );
@@ -112,20 +112,22 @@ fn with_a_day(hour: f64) -> crate::workbench::Workbench {
             }),
         sleeper,
     ];
-    let mut area = area::Area::new();
+    let mut level = level::Level::new();
     for e in entities {
-        area.spawn(e);
+        level.spawn(e);
     }
-    w.open_area(area, std::path::PathBuf::from("day.solarea"));
+    w.open_level(level, std::path::PathBuf::from("day.sollevel"));
     w
 }
 
 #[test]
 fn game_code_sets_the_hour_and_night_lamps_follow_it() {
     let mut w = with_a_day(22.0);
-    // Editing: the area at its start, 08:00, the lamp off.
-    w.viewport.area =
-        crate::area_view::AreaView::of(w.open.document.area(), &std::collections::BTreeMap::new());
+    // Editing: the level at its start, 08:00, the lamp off.
+    w.viewport.level = crate::level_view::LevelView::of(
+        w.open.document.level(),
+        &std::collections::BTreeMap::new(),
+    );
     let view = w.viewport.view([64, 64], 1.0);
     assert_eq!(view.hour, 8.0);
     assert_eq!(view.lamps.len(), 1);

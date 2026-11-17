@@ -60,7 +60,7 @@ fn playing_and_paused_add_a_hint() {
 
 #[test]
 fn every_engine_component_has_a_hint() {
-    let registry = area::builtin::registry().unwrap();
+    let registry = level::builtin::registry().unwrap();
     for schema in registry.iter() {
         assert!(about(&schema.name).is_some(), "{}", schema.name);
     }

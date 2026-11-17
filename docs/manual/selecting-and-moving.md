@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Whenever you build an area: picking a model to change it, arranging crates, turning a lamp to face a wall, making a rock bigger. Clicking in the viewport is the quickest way to pick something you can see; the [Area panel](entities.md) is better for things you can't see (an entity with no model, or one hidden behind another).
+Whenever you build a level: picking a model to change it, arranging crates, turning a lamp to face a wall, making a rock bigger. Clicking in the viewport is the quickest way to pick something you can see; the [Level panel](entities.md) is better for things you can't see (an entity with no model, or one hidden behind another).
 
 ## How to use it
 
@@ -12,10 +12,10 @@ Whenever you build an area: picking a model to change it, arranging crates, turn
 A crate picked with the Move tool (`W`): drag an arrow to move it along that axis, or a square between two arrows to move it across that plane.
 
 **Selecting:**
-1. Click a model or a lamp's marker in the [viewport](concepts.md#the-3d-view). It's outlined in the accent colour, and the Area panel and Properties show it.
+1. Click a model or a lamp's marker in the [viewport](concepts.md#the-3d-view). It's outlined in the accent colour, and the Level panel and Properties show it.
 2. **Ctrl + click** adds another one to the selection, or takes it out if it's already selected.
 3. **Drag on empty space** to draw a box: everything you can see inside it is selected. Hold **Ctrl** while dragging to add to what's selected. To give up on a box before letting go, press **Esc** or click the **right mouse button**: the selection stays as it was.
-4. **Esc** selects nothing; **Ctrl + A** selects everything in the area.
+4. **Esc** selects nothing; **Ctrl + A** selects everything in the level.
 
 Clicking on empty sky or ground selects nothing.
 
@@ -44,7 +44,7 @@ The axis locks and the axes are the [pills](concepts.md#pill) at the viewport's 
 | Setting | What it does |
 |---|---|
 | **Lock X Y Z** | **Lock** an axis: drags leave it alone, and its handles disappear. The letter is lit in the accent colour while locked; click it or press its key again to free it. *Example:* lock **Z**, then drag the middle dot to slide something around without lifting it off the floor. |
-| **World ▾ / Object ▾** | Which way the gizmo's arrows point: along the world's axes (X, Y and Z of the whole area), or along the selected entity's own axes (useful for a turned object, to slide it along its own length). |
+| **World ▾ / Object ▾** | Which way the gizmo's arrows point: along the world's axes (X, Y and Z of the whole level), or along the selected entity's own axes (useful for a turned object, to slide it along its own length). |
 | **Grid · 1** | **Snapping** for moving: ticked, moves land on the grid lines, so things line up. Click the number (or right-click the row) to choose the step: 1, 0.5, 0.25 or 0.1 m. With object axes, moves go in steps of that size instead. |
 | **Angle · 15°** | Snapping for turning: ticked, turns go in steps. Click the number (or right-click) to choose 5°, 15°, 45° or 90°. |
 | **Scale · 10%** | Snapping for resizing: ticked, sizes change in steps of 10%. |
@@ -70,14 +70,14 @@ The axis locks and the axes are the [pills](concepts.md#pill) at the viewport's 
 
 ## Tips and common problems
 
-- **Problem:** no gizmo appears. **Why:** the Select tool (Q) is chosen, nothing is selected, or what's selected has no position (the area's Environment, for example). **Fix:** press W, R, S or T, and select something with a Transform.
+- **Problem:** no gizmo appears. **Why:** the Select tool (Q) is chosen, nothing is selected, or what's selected has no position (the level's Environment, for example). **Fix:** press W, R, S or T, and select something with a Transform.
 - **Problem:** an arrow or ring is missing. **Why:** its axis is locked (its letter is lit in the **Lock** pill), or the arrow points almost straight at you, so it's too short to grab. **Fix:** free the axis, or move the camera a little.
 - **Problem:** clicking a part of a placed assembly selects the whole thing. **Why:** copies are selected whole first. **Fix:** click the part again.
 - **Problem:** a turned box stretches oddly when scaled. **Why:** stretching a turned object along the world's axes would skew it, which a Transform can't hold, so Solis keeps the nearest shape without a skew. **Fix:** press **L** for object axes, so it stretches along its own sides.
-- **Tip:** you can't select something hidden behind another model by clicking; select it in the Area panel instead.
+- **Tip:** you can't select something hidden behind another model by clicking; select it in the Level panel instead.
 
 ## Related
-- [Entities and components](entities.md): the Area panel and Properties
+- [Entities and components](entities.md): the Level panel and Properties
 - [Undo and redo](undo.md)
 - [Moving around the viewport](navigating-the-viewport.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)

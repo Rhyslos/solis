@@ -1,0 +1,1531 @@
+//! Assemblies placed in levels ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
+//! a placed assembly is written as its root entity plus overrides, never a
+//! copy, and expanded into ordinary entities while it's edited.
+//!
+//! Each entity inside a placed copy gets an ID worked out from the copy's
+//! root and the entity's ID inside the assembly ([`derive()`]), so the same
+//! file always expands to the same IDs: undo, selection and references to
+//! them keep working when the assembly changes, and overrides find their
+//! entity again.
+//!
+//! Expanding is also where parents that lead round in a loop are put
+//! right ([`Level::mend_loops`]): only then is every entity there, a
+//! parent may be a part of a copy, and a copy's changes can make a loop
+//! too. Each assembly's contents are mended as they're expanded, and the
+//! whole file at the end, so no level that comes out has one.
+//!
+//! A copy's part is where the copy puts it: one moved to another parent
+//! or out to the top level stays when the part the assembly has it under
+//! is removed from the copy, and goes when what it was moved under goes.
+//! Deleting a copy's root leaves a part moved out from under it as an
+//! ordinary entity ([`despawn`]).
+//!
+//! Expanding counts entities before making any (a copy's changes to parts
+//! too, since one whose part is gone becomes an entity), keeps to the same
+//! limit while it makes them, refuses assemblies that place each other in a
+//! loop (naming the chain), and stops at [`MAX_NESTING`] levels, so no file
+//! can make the editor explode.
+
+use crate::document::{EntityData, Level, Origin};
+use crate::edit::Edit;
+use crate::text::{FileKind, LevelFile, MAX_ENTITIES, MAX_NESTING, Override, ParentChange};
+use crate::tree::Mended;
+use reflect::{AssetId, EntityId, Value};
+use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::sync::Arc;
+
+/// The ID of the entity reached by `path` inside the copy whose root is
+/// `instance` (the root itself for an empty path).
+pub fn derive(instance: EntityId, path: &[EntityId]) -> EntityId {
+    let mut id = instance.0.raw();
+    for step in path {
+        let mut z = id ^ step.0.raw().rotate_left(29) ^ 0xA55E_3B1E_D000_0001;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        id = z ^ (z >> 31);
+    }
+    // Zero isn't an ID; nudging it keeps the result fixed for this path.
+    EntityId(reflect::Id::from_raw(id).unwrap_or(instance.0))
+}
+
+/// Why placed assemblies couldn't be expanded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AssemblyError {
+    /// The assembly isn't in the project (or couldn't be read).
+    Missing(AssetId),
+    /// The file is a level, not an assembly.
+    NotAnAssembly(AssetId),
+    /// Assemblies place each other in a loop: this chain.
+    Loop(Vec<AssetId>),
+    /// Placed inside each other more than [`MAX_NESTING`] deep.
+    TooDeep,
+    /// Expanding would make more than [`MAX_ENTITIES`] entities.
+    TooBig,
+    /// Two entities would share an ID.
+    Clash(EntityId),
+}
+
+impl fmt::Display for AssemblyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Missing(id) => write!(f, "the assembly {id} isn't in the project"),
+            Self::NotAnAssembly(id) => write!(f, "{id} is a level, not an assembly"),
+            Self::Loop(chain) => {
+                let names: Vec<String> = chain.iter().map(ToString::to_string).collect();
+                write!(
+                    f,
+                    "assemblies place each other in a loop: {}",
+                    names.join(" → ")
+                )
+            }
+            Self::TooDeep => write!(f, "assemblies are placed more than {MAX_NESTING} deep"),
+            Self::TooBig => write!(f, "it would make more than {MAX_ENTITIES} entities"),
+            Self::Clash(id) => write!(f, "two entities would share the ID {id}"),
+        }
+    }
+}
+
+impl std::error::Error for AssemblyError {}
+
+/// Finds assembly files by ID (the app reads them from the project).
+pub type Lookup<'a> = &'a dyn Fn(AssetId) -> Option<Arc<LevelFile>>;
+
+/// Expands and collapses placed assemblies, remembering each assembly's
+/// expanded contents while it lives.
+pub struct Expander<'a> {
+    lookup: Lookup<'a>,
+    expanded: HashMap<AssetId, (Arc<Level>, EntityId)>,
+    sizes: HashMap<AssetId, usize>,
+    /// The most entities one expansion may make ([`MAX_ENTITIES`]; less in
+    /// tests).
+    most_made: usize,
+    /// Entities held in `expanded`, all assemblies together, and the
+    /// most it may hold ([`MAX_HELD`]; less in tests).
+    held: usize,
+    most_held: usize,
+    /// Every entity taken out of a loop of parents so far.
+    mended: Vec<Mended>,
+}
+
+/// The most entities an [`Expander`] keeps expanded at once, every
+/// assembly together: each expansion is limited on its own, but assemblies
+/// placed inside each other are each kept expanded, so a chain of small
+/// files could otherwise hold many times the limit.
+pub const MAX_HELD: usize = 2 * MAX_ENTITIES;
+
+impl fmt::Debug for Expander<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Expander({} assemblies)", self.expanded.len())
+    }
+}
+
+/// The way to `id` inside an expanded assembly whose root is `root`.
+fn path_in(level: &Level, root: EntityId, id: EntityId) -> Vec<EntityId> {
+    if id == root {
+        return Vec::new();
+    }
+    match level.get(id).and_then(|e| e.origin.as_ref()) {
+        Some(o) => std::iter::once(o.instance)
+            .chain(o.path.iter().copied())
+            .collect(),
+        None => vec![id],
+    }
+}
+
+/// The changes `file` makes to the copy whose root is `root`, by path.
+fn changes_of(
+    file: &LevelFile,
+    root: EntityId,
+) -> impl Iterator<Item = (&Vec<EntityId>, &Override)> {
+    file.overrides
+        .range((root, Vec::new())..)
+        .take_while(move |((copy, _), _)| *copy == root)
+        .map(|((_, path), changes)| (path, changes))
+}
+
+/// Whether `changes` to the part at `path` are kept as an entity of their
+/// own when that part is gone from the assembly: what [`Expander::count`]
+/// counts and [`Expander::place_in`] makes, asked in one place so the two
+/// can't come apart.
+fn outlives_its_part(path: &[EntityId], changes: &Override) -> bool {
+    !path.is_empty() && !changes.removed
+}
+
+/// Points every entity reference in `value` that `map` knows at its new ID.
+fn remap(value: &mut Value, map: &HashMap<EntityId, EntityId>) {
+    match value {
+        Value::Entity(Some(id)) => {
+            if let Some(new) = map.get(id) {
+                *id = *new;
+            }
+        }
+        Value::List(items) => items.iter_mut().for_each(|v| remap(v, map)),
+        _ => {}
+    }
+}
+
+impl<'a> Expander<'a> {
+    /// An expander reading assemblies through `lookup`.
+    pub fn new(lookup: Lookup<'a>) -> Self {
+        Self {
+            lookup,
+            expanded: HashMap::new(),
+            sizes: HashMap::new(),
+            most_made: MAX_ENTITIES,
+            held: 0,
+            most_held: MAX_HELD,
+            mended: Vec::new(),
+        }
+    }
+
+    /// The entities moved to the top level because their parents led
+    /// round in a loop, in everything expanded so far: what to tell the
+    /// user about a file just read.
+    pub fn mended(&self) -> &[Mended] {
+        &self.mended
+    }
+
+    /// How many entities a copy of assembly `id` is at most, counted
+    /// without making any (a copy can be refused for room before it's
+    /// made).
+    pub fn size_of(&mut self, id: AssetId) -> Result<usize, AssemblyError> {
+        self.size(id, &mut Vec::new())
+    }
+
+    /// The file of assembly `id`.
+    fn file(&self, id: AssetId) -> Result<(Arc<LevelFile>, EntityId), AssemblyError> {
+        let file = (self.lookup)(id).ok_or(AssemblyError::Missing(id))?;
+        match file.kind {
+            FileKind::Assembly { root } => Ok((file, root)),
+            FileKind::Level => Err(AssemblyError::NotAnAssembly(id)),
+        }
+    }
+
+    /// How many entities assembly `id` expands to at most, counted without
+    /// making any.
+    fn size(&mut self, id: AssetId, chain: &mut Vec<AssetId>) -> Result<usize, AssemblyError> {
+        if let Some(&n) = self.sizes.get(&id) {
+            return Ok(n);
+        }
+        if chain.contains(&id) {
+            chain.push(id);
+            return Err(AssemblyError::Loop(chain.clone()));
+        }
+        if chain.len() >= MAX_NESTING {
+            return Err(AssemblyError::TooDeep);
+        }
+        let (file, _) = self.file(id)?;
+        chain.push(id);
+        let n = self.count(&file, chain)?;
+        chain.pop();
+        self.sizes.insert(id, n);
+        Ok(n)
+    }
+
+    /// How many entities `file` expands to at most: its own, each copy's
+    /// assembly, and each change a copy makes to a part without removing
+    /// it, because a change whose part is gone from the assembly becomes an
+    /// entity. Which parts are gone isn't known until the assembly is
+    /// expanded, so changes to parts still there are counted as well:
+    /// counting high only refuses a little sooner, while counting low let
+    /// a small file expand without limit.
+    fn count(
+        &mut self,
+        file: &LevelFile,
+        chain: &mut Vec<AssetId>,
+    ) -> Result<usize, AssemblyError> {
+        let mut total = 0usize;
+        for (id, entity) in file.level.iter() {
+            let n = match &entity.origin {
+                Some(o) if o.path.is_empty() => {
+                    let kept = changes_of(file, id)
+                        .filter(|(path, changes)| outlives_its_part(path, changes))
+                        .count();
+                    self.size(o.assembly, chain)?.saturating_add(kept)
+                }
+                _ => 1,
+            };
+            total = total.checked_add(n).ok_or(AssemblyError::TooBig)?;
+            if total > self.most_made {
+                return Err(AssemblyError::TooBig);
+            }
+        }
+        Ok(total)
+    }
+
+    /// Assembly `id`'s contents with its own placed assemblies expanded,
+    /// and its root.
+    pub fn assembly(&mut self, id: AssetId) -> Result<(Arc<Level>, EntityId), AssemblyError> {
+        self.assembly_in(id, &mut Vec::new())
+    }
+
+    fn assembly_in(
+        &mut self,
+        id: AssetId,
+        chain: &mut Vec<AssetId>,
+    ) -> Result<(Arc<Level>, EntityId), AssemblyError> {
+        if let Some(found) = self.expanded.get(&id) {
+            return Ok(found.clone());
+        }
+        let size = self.size(id, &mut chain.clone())?;
+        self.held = self.held.saturating_add(size);
+        if self.held > self.most_held {
+            return Err(AssemblyError::TooBig);
+        }
+        let (file, root) = self.file(id)?;
+        chain.push(id);
+        let mut level = self.expand_in(&file, chain)?;
+        chain.pop();
+        // Its copies are made from a sound tree, whatever its file says.
+        self.mended.extend(level.mend_loops());
+        let found = (Arc::new(level), root);
+        self.expanded.insert(id, found.clone());
+        Ok(found)
+    }
+
+    /// Every placed assembly in `file` expanded into ordinary entities,
+    /// with its overrides, and with no loop of parents: any the file had
+    /// is put right, and listed in [`Self::mended`].
+    pub fn expand(&mut self, file: &LevelFile) -> Result<Level, AssemblyError> {
+        self.count(file, &mut Vec::new())?;
+        let mut level = self.expand_in(file, &mut Vec::new())?;
+        self.mended.extend(level.mend_loops());
+        Ok(level)
+    }
+
+    fn expand_in(
+        &mut self,
+        file: &LevelFile,
+        chain: &mut Vec<AssetId>,
+    ) -> Result<Level, AssemblyError> {
+        let mut level = Level::new();
+        for (id, entity) in file.level.iter() {
+            let entities = match &entity.origin {
+                Some(o) if o.path.is_empty() => {
+                    let overrides: HashMap<Vec<EntityId>, Override> = changes_of(file, id)
+                        .map(|(path, changes)| (path.clone(), changes.clone()))
+                        .collect();
+                    self.place_in(o.assembly, id, entity, &overrides, chain)?
+                }
+                _ => vec![(
+                    id,
+                    EntityData {
+                        origin: None,
+                        ..entity.clone()
+                    },
+                )],
+            };
+            for (new, data) in entities {
+                // The count has refused a file too big already; the limit
+                // is kept on what's really made as well, so that a count
+                // which is ever wrong can't let a file expand without end.
+                if level.len() >= self.most_made {
+                    return Err(AssemblyError::TooBig);
+                }
+                if level.insert(new, data).is_some() {
+                    return Err(AssemblyError::Clash(new));
+                }
+            }
+        }
+        Ok(level)
+    }
+
+    /// The entities of a copy of `assembly` whose root is `root`: `placed`
+    /// gives the root's name, parent and order; `overrides` this copy's
+    /// changes, by path (kept even when their part is gone from the
+    /// assembly).
+    fn place_in(
+        &mut self,
+        assembly: AssetId,
+        root: EntityId,
+        placed: &EntityData,
+        overrides: &HashMap<Vec<EntityId>, Override>,
+        chain: &mut Vec<AssetId>,
+    ) -> Result<Vec<(EntityId, EntityData)>, AssemblyError> {
+        let (contents, inner_root) = self.assembly_in(assembly, chain)?;
+        let order = contents.depth_first();
+        let paths: HashMap<EntityId, Vec<EntityId>> = order
+            .iter()
+            .map(|&id| (id, path_in(&contents, inner_root, id)))
+            .collect();
+        let ids: HashMap<EntityId, EntityId> = paths
+            .iter()
+            .map(|(&id, path)| (id, derive(root, path)))
+            .collect();
+        let mut out = Vec::with_capacity(order.len());
+        let mut skipped: HashSet<EntityId> = HashSet::new();
+        let mut found: HashSet<Vec<EntityId>> = HashSet::new();
+        for id in order {
+            let Some(original) = contents.get(id) else {
+                continue;
+            };
+            let path = &paths[&id];
+            found.insert(path.clone());
+            let changes = overrides.get(path);
+            // A removed part takes everything still under it. A part this
+            // copy moved (to another parent, or out to the top level) is
+            // where it was put, not where the assembly has it, so it
+            // isn't taken along: it was once, and a part dragged out and
+            // kept was gone when the level opened again (BUG-56).
+            let moved = changes.is_some_and(|c| c.parent != ParentChange::Unchanged);
+            if !moved && original.parent.is_some_and(|p| skipped.contains(&p)) {
+                skipped.insert(id);
+                continue;
+            }
+            if changes.is_some_and(|c| c.removed) {
+                skipped.insert(id);
+                continue;
+            }
+            let mut data = original.clone();
+            if path.is_empty() {
+                data.name.clone_from(&placed.name);
+                data.parent = placed.parent;
+                data.order.clone_from(&placed.order);
+            } else {
+                data.parent = original.parent.and_then(|p| ids.get(&p).copied());
+            }
+            for component in data.components.values_mut() {
+                for value in component.fields.values_mut() {
+                    remap(value, &ids);
+                }
+            }
+            if let Some(changes) = changes {
+                apply(&mut data, changes);
+            }
+            data.origin = Some(Origin {
+                assembly,
+                instance: root,
+                path: path.clone(),
+            });
+            out.push((ids[&id], data));
+        }
+        // Overrides whose part is gone from the assembly are kept as
+        // entities of their own, so nothing is lost; the editor warns.
+        // The assembly's own parts fit the limit, being an expansion;
+        // these are as many as the file says, so the limit is kept here.
+        for (path, changes) in overrides {
+            if found.contains(path) || !outlives_its_part(path, changes) {
+                continue;
+            }
+            if out.len() >= self.most_made {
+                return Err(AssemblyError::TooBig);
+            }
+            let mut data = EntityData::new(changes.name.as_deref().unwrap_or("Missing part"));
+            // With nothing said it hangs under the copy's root, so it's
+            // found with its copy; moved somewhere, it's there.
+            data.parent = match changes.parent {
+                ParentChange::Unchanged => Some(root),
+                ParentChange::TopLevel => None,
+                ParentChange::Under(parent) => Some(parent),
+            };
+            if let Some(order) = &changes.order {
+                data.order.clone_from(order);
+            }
+            data.components.clone_from(&changes.components);
+            data.origin = Some(Origin {
+                assembly,
+                instance: root,
+                path: path.clone(),
+            });
+            out.push((derive(root, path), data));
+        }
+        Ok(out)
+    }
+
+    /// A new copy of `assembly` with its root at `root`, named, parented
+    /// and ordered as `placed` says, with no changes.
+    pub fn place(
+        &mut self,
+        assembly: AssetId,
+        root: EntityId,
+        placed: &EntityData,
+    ) -> Result<Vec<(EntityId, EntityData)>, AssemblyError> {
+        self.size(assembly, &mut Vec::new())?;
+        self.place_in(assembly, root, placed, &HashMap::new(), &mut Vec::new())
+    }
+
+    /// What the assembly says the entity at `origin` should be, before its
+    /// copy's changes (for showing changes in bold, and reverting them).
+    /// `None` for a part that's gone from the assembly.
+    pub fn expected(&mut self, level: &Level, origin: &Origin) -> Option<EntityData> {
+        let placed = level.get(origin.instance)?;
+        let copy = self.place(origin.assembly, origin.instance, placed).ok()?;
+        copy.into_iter()
+            .find(|(_, e)| e.origin.as_ref().is_some_and(|o| o.path == origin.path))
+            .map(|(_, e)| e)
+    }
+
+    /// `level` as a file: placed assemblies become their root plus what
+    /// differs from the assembly; entities that belong to no placed
+    /// assembly stay as they are.
+    pub fn collapse(&mut self, level: &Level, kind: FileKind) -> Result<LevelFile, AssemblyError> {
+        let mut file = LevelFile {
+            kind,
+            level: Level::new(),
+            overrides: Default::default(),
+        };
+        let is_root = |id: EntityId| {
+            level
+                .get(id)
+                .and_then(|e| e.origin.as_ref())
+                .is_some_and(|o| o.path.is_empty() && o.instance == id)
+        };
+        let mut roots = Vec::new();
+        for (id, entity) in level.iter() {
+            match &entity.origin {
+                Some(o) if o.path.is_empty() && o.instance == id => {
+                    let mut placed = EntityData::new(&entity.name);
+                    placed.parent = entity.parent;
+                    placed.order.clone_from(&entity.order);
+                    placed.origin = Some(o.clone());
+                    file.level.insert(id, placed);
+                    roots.push((id, o.assembly));
+                }
+                Some(o) if is_root(o.instance) => {} // part of a placed copy
+                _ => {
+                    file.level.insert(
+                        id,
+                        EntityData {
+                            origin: None,
+                            ..entity.clone()
+                        },
+                    );
+                }
+            }
+        }
+        for (root, assembly) in roots {
+            let placed = file.level.get(root).cloned().unwrap_or_default();
+            let expected = self.place(assembly, root, &placed)?;
+            let mut known: HashSet<Vec<EntityId>> = HashSet::new();
+            let present: HashSet<EntityId> = expected
+                .iter()
+                .map(|(id, _)| *id)
+                .filter(|id| level.contains(*id))
+                .collect();
+            for (id, wanted) in &expected {
+                let path = wanted
+                    .origin
+                    .as_ref()
+                    .map(|o| o.path.clone())
+                    .unwrap_or_default();
+                known.insert(path.clone());
+                let changes = match level.get(*id) {
+                    // Gone: removed, unless its parent went too.
+                    None => {
+                        let parent_gone = wanted.parent.is_some_and(|p| {
+                            expected.iter().any(|(e, _)| *e == p) && !present.contains(&p)
+                        });
+                        if parent_gone {
+                            continue;
+                        }
+                        Override {
+                            removed: true,
+                            ..Override::default()
+                        }
+                    }
+                    Some(actual) => difference(wanted, actual, path.is_empty()),
+                };
+                if !changes.is_empty() {
+                    file.overrides.insert((root, path), changes);
+                }
+            }
+            // Parts whose place in the assembly is gone are written whole.
+            for (_, entity) in level.iter() {
+                let Some(o) = &entity.origin else { continue };
+                if o.instance != root || o.path.is_empty() || known.contains(&o.path) {
+                    continue;
+                }
+                file.overrides.insert(
+                    (root, o.path.clone()),
+                    Override {
+                        name: Some(entity.name.clone()),
+                        parent: ParentChange::to(entity.parent),
+                        order: Some(entity.order.clone()),
+                        components: entity.components.clone(),
+                        ..Override::default()
+                    },
+                );
+            }
+        }
+        Ok(file)
+    }
+}
+
+/// The edits that delete `roots` and everything under each (none under
+/// another). A part of a placed assembly that was moved out from under
+/// its copy isn't under the copy's root when that goes, so it stays; but
+/// it's part of nothing then, and a file has no way to say otherwise
+/// (it's written as the ordinary entity it has become). So each such
+/// part is made an ordinary entity first, in the same step: what's saved
+/// is then what opens again, and undo brings the copy back with its
+/// parts. One pass over the level, and a walk up from each part of a copy
+/// that goes.
+pub fn despawn(level: &Level, roots: &[EntityId]) -> Vec<Edit> {
+    let going: HashSet<EntityId> = roots.iter().copied().collect();
+    let goes = |id: EntityId| {
+        going.contains(&id) || level.ancestors(id).any(|(above, _)| going.contains(&above))
+    };
+    let mut copy_goes: HashMap<EntityId, bool> = HashMap::new();
+    let mut edits = Vec::new();
+    for (entity, data) in level.iter() {
+        let Some(origin) = &data.origin else {
+            continue;
+        };
+        let its_copy_goes = *copy_goes
+            .entry(origin.instance)
+            .or_insert_with(|| goes(origin.instance));
+        if its_copy_goes && !goes(entity) {
+            edits.push(Edit::SetOrigin {
+                entity,
+                origin: None,
+            });
+        }
+    }
+    edits.extend(roots.iter().map(|&root| Edit::Despawn { root }));
+    edits
+}
+
+/// Sets `component.field` of the entity at `path` inside assembly `file`
+/// (Apply to assembly): on the entity itself, or, for an entity inside an
+/// assembly placed in this one, as that copy's override.
+pub fn set_in_file(
+    file: &mut LevelFile,
+    path: &[EntityId],
+    component: &str,
+    field: &str,
+    value: Value,
+) -> bool {
+    let target = match (file.kind, path) {
+        (FileKind::Assembly { root }, []) => vec![root],
+        (_, path) => path.to_vec(),
+    };
+    match target.as_slice() {
+        [] => false,
+        [id] => match file.level.get_mut(*id) {
+            Some(entity) if entity.origin.is_none() => {
+                entity
+                    .components
+                    .entry(component.to_string())
+                    .or_default()
+                    .fields
+                    .insert(field.to_string(), value);
+                true
+            }
+            // The root of a copy placed in the assembly: its own override.
+            Some(_) => {
+                set_override(file, *id, Vec::new(), component, field, value);
+                true
+            }
+            None => false,
+        },
+        [placed, inside @ ..] => {
+            if !file.level.contains(*placed) {
+                return false;
+            }
+            set_override(file, *placed, inside.to_vec(), component, field, value);
+            true
+        }
+    }
+}
+
+fn set_override(
+    file: &mut LevelFile,
+    root: EntityId,
+    path: Vec<EntityId>,
+    component: &str,
+    field: &str,
+    value: Value,
+) {
+    file.overrides
+        .entry((root, path))
+        .or_default()
+        .components
+        .entry(component.to_string())
+        .or_default()
+        .fields
+        .insert(field.to_string(), value);
+}
+
+/// Makes `data` as `changes` say.
+fn apply(data: &mut EntityData, changes: &Override) {
+    if let Some(name) = &changes.name {
+        data.name.clone_from(name);
+    }
+    match changes.parent {
+        ParentChange::Unchanged => {}
+        ParentChange::TopLevel => data.parent = None,
+        ParentChange::Under(parent) => data.parent = Some(parent),
+    }
+    if let Some(order) = &changes.order {
+        data.order.clone_from(order);
+    }
+    for component in &changes.remove {
+        data.components.remove(component);
+    }
+    for (component, fields) in &changes.components {
+        let target = data.components.entry(component.clone()).or_default();
+        for (field, value) in &fields.fields {
+            target.fields.insert(field.clone(), value.clone());
+        }
+    }
+}
+
+/// What changed from `wanted` (the assembly's) to `actual` (the level's).
+/// The root's name, parent and order belong to the level, not the
+/// assembly, so they're never overrides.
+fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override {
+    let mut changes = Override::default();
+    if !root {
+        if actual.name != wanted.name {
+            changes.name = Some(actual.name.clone());
+        }
+        if actual.parent != wanted.parent {
+            changes.parent = ParentChange::to(actual.parent);
+        }
+        if actual.order != wanted.order {
+            changes.order = Some(actual.order.clone());
+        }
+    }
+    for component in wanted.components.keys() {
+        if !actual.components.contains_key(component) {
+            changes.remove.push(component.clone());
+        }
+    }
+    for (component, data) in &actual.components {
+        let before = wanted.components.get(component);
+        let mut fields = reflect::ComponentData::default();
+        for (field, value) in &data.fields {
+            if before.and_then(|b| b.fields.get(field)) != Some(value) {
+                fields.fields.insert(field.clone(), value.clone());
+            }
+        }
+        // A component added in this copy is kept even with no fields.
+        if !fields.fields.is_empty() || before.is_none() {
+            changes.components.insert(component.clone(), fields);
+        }
+    }
+    changes
+}
+
+#[cfg(test)]
+#[path = "assembly_moves_tests.rs"]
+mod moves_tests;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::builtin::{Light, Transform};
+    use crate::text;
+
+    fn id(n: u64) -> EntityId {
+        EntityId(reflect::Id::from_raw(n).unwrap())
+    }
+
+    fn asset(n: u64) -> AssetId {
+        AssetId(reflect::Id::from_raw(n).unwrap())
+    }
+
+    /// A lamp post: a post with a lamp under it.
+    fn lamp_post() -> LevelFile {
+        let mut level = Level::new();
+        level.insert(
+            id(1),
+            EntityData::new("Lamp post").with(&Transform::default()),
+        );
+        let mut lamp = EntityData::new("Lamp")
+            .with(&Light::point())
+            .with(&Transform {
+                position: glam::Vec3::Z * 3.0,
+                ..Transform::default()
+            });
+        lamp.parent = Some(id(1));
+        level.insert(id(2), lamp);
+        LevelFile {
+            kind: FileKind::Assembly { root: id(1) },
+            level,
+            overrides: Default::default(),
+        }
+    }
+
+    /// A street: two lamp posts, the second with a brighter lamp.
+    fn street() -> LevelFile {
+        let mut level = Level::new();
+        level.insert(id(10), EntityData::new("Street"));
+        for (n, x) in [(11, 0.0f32), (12, 5.0)] {
+            let mut post = EntityData::new("Post");
+            post.parent = Some(id(10));
+            post.origin = Some(Origin {
+                assembly: asset(100),
+                instance: id(n),
+                path: Vec::new(),
+            });
+            level.insert(id(n), post);
+            let _ = x;
+        }
+        let mut overrides = std::collections::BTreeMap::new();
+        let mut light = reflect::ComponentData::default();
+        light.fields.insert("strength".into(), Value::Float(5000.0));
+        overrides.insert(
+            (id(12), vec![id(2)]),
+            Override {
+                components: [("Light".to_string(), light)].into(),
+                ..Override::default()
+            },
+        );
+        LevelFile {
+            kind: FileKind::Assembly { root: id(10) },
+            level,
+            overrides,
+        }
+    }
+
+    fn library(files: Vec<(AssetId, LevelFile)>) -> impl Fn(AssetId) -> Option<Arc<LevelFile>> {
+        let map: HashMap<AssetId, Arc<LevelFile>> =
+            files.into_iter().map(|(a, f)| (a, Arc::new(f))).collect();
+        move |id| map.get(&id).cloned()
+    }
+
+    /// A level with one street placed at `root`.
+    fn town(root: EntityId) -> LevelFile {
+        let mut level = Level::new();
+        let mut placed = EntityData::new("Main street");
+        placed.origin = Some(Origin {
+            assembly: asset(200),
+            instance: root,
+            path: Vec::new(),
+        });
+        level.insert(root, placed);
+        LevelFile::plain(level)
+    }
+
+    fn strength(level: &Level, entity: EntityId) -> f32 {
+        level.get(entity).unwrap().get::<Light>().unwrap().strength
+    }
+
+    #[test]
+    fn a_loop_only_expanding_shows_is_mended_and_named() {
+        // The review of Phase 9, BUG-12. A sign under a copy's lamp, and
+        // the copy itself under the sign: the lamp isn't in the file, so
+        // the loop is there only once the copy is expanded.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let (post, sign) = (id(20), id(21));
+        let lamp = derive(post, &[id(2)]);
+        let mut level = Level::new();
+        let mut placed = EntityData::new("Post");
+        placed.parent = Some(sign);
+        placed.origin = Some(Origin {
+            assembly: asset(100),
+            instance: post,
+            path: Vec::new(),
+        });
+        level.insert(post, placed);
+        let mut hung = EntityData::new("Sign");
+        hung.parent = Some(lamp);
+        level.insert(sign, hung);
+        // And one whose parent isn't anywhere: kept as written.
+        let mut lost = EntityData::new("Lost");
+        lost.parent = Some(id(999));
+        level.insert(id(22), lost);
+        let file = LevelFile::plain(level);
+        let mut expander = Expander::new(&lib);
+        let level = expander.expand(&file).unwrap();
+        let lowest = [post, sign, lamp].into_iter().min().unwrap();
+        let mended = expander.mended();
+        assert_eq!(mended.len(), 1);
+        assert_eq!(mended[0].entity, lowest);
+        assert_eq!(mended[0].name, level.get(lowest).unwrap().name);
+        assert_eq!(level.get(lowest).unwrap().parent, None);
+        assert_eq!(crate::Tree::of(&level).reachable().len(), level.len());
+        assert_eq!(level.get(id(22)).unwrap().parent, Some(id(999)));
+        // Sound files have nothing to mend.
+        let mut sound = Expander::new(&lib);
+        sound.expand(&town_of_posts()).unwrap();
+        assert_eq!(sound.mended(), []);
+    }
+
+    /// A level with two lamp posts placed in it.
+    fn town_of_posts() -> LevelFile {
+        let mut level = Level::new();
+        for n in [40, 41] {
+            let mut placed = EntityData::new("Post");
+            placed.origin = Some(Origin {
+                assembly: asset(100),
+                instance: id(n),
+                path: Vec::new(),
+            });
+            level.insert(id(n), placed);
+        }
+        LevelFile::plain(level)
+    }
+
+    #[test]
+    fn copies_of_an_assembly_with_a_loop_inside_are_sound() {
+        // The assembly's own file has its lamp and a shade under each
+        // other. It's mended once, as the assembly is expanded, so every
+        // copy is the same sound tree and saves with no changes.
+        let mut looped = lamp_post();
+        let mut shade = EntityData::new("Shade");
+        shade.parent = Some(id(2));
+        looped.level.insert(id(3), shade);
+        looped.level.get_mut(id(2)).unwrap().parent = Some(id(3));
+        let lib = library(vec![(asset(100), looped)]);
+        let mut expander = Expander::new(&lib);
+        let level = expander.expand(&town_of_posts()).unwrap();
+        assert_eq!(level.len(), 6);
+        let mended = expander.mended();
+        assert_eq!(mended.len(), 1, "once, not once a copy");
+        assert_eq!((mended[0].entity, mended[0].name.as_str()), (id(2), "Lamp"));
+        assert_eq!(crate::Tree::of(&level).reachable().len(), 6);
+        for post in [id(40), id(41)] {
+            let lamp = level.get(derive(post, &[id(2)])).unwrap();
+            assert_eq!(lamp.parent, None);
+            let shade = level.get(derive(post, &[id(3)])).unwrap();
+            assert_eq!(shade.parent, Some(derive(post, &[id(2)])));
+        }
+        let saved = Expander::new(&lib)
+            .collapse(&level, FileKind::Level)
+            .unwrap();
+        assert!(saved.overrides.is_empty(), "{:?}", saved.overrides);
+        assert_eq!(Expander::new(&lib).expand(&saved).unwrap(), level);
+    }
+
+    /// `level` saved and opened again: its file as collapsed, and what
+    /// reading that file's text back expands to.
+    fn saved_and_opened(level: &Level, lib: Lookup<'_>) -> (LevelFile, Level) {
+        let registry = crate::builtin::registry().unwrap();
+        let file = Expander::new(lib).collapse(level, FileKind::Level).unwrap();
+        let written = text::write_file(&file, &registry, &|_| None);
+        let read = text::read_file(&written, &registry).unwrap();
+        assert_eq!(read, file, "{written}");
+        let opened = Expander::new(lib).expand(&read).unwrap();
+        (file, opened)
+    }
+
+    fn placed_at(x: f32, y: f32) -> Transform {
+        Transform {
+            position: glam::Vec3::new(x, y, 0.0),
+            ..Transform::default()
+        }
+    }
+
+    #[test]
+    fn a_part_moved_to_the_top_level_is_saved_there() {
+        // The review of Phase 9, BUG-13: "no parent" was written the same
+        // as "the assembly's parent" (nothing), so a part dragged out of
+        // its copy came back under its old parent when the level was
+        // opened again, with its place in the world taken as a place
+        // under that parent: it had jumped.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let post = id(40);
+        let lamp = derive(post, &[id(2)]);
+        let mut level = Expander::new(&lib).expand(&town_of_posts()).unwrap();
+        level.get_mut(post).unwrap().set(&placed_at(10.0, 20.0));
+        assert_eq!(level.get(lamp).unwrap().parent, Some(post));
+        // Out to the top level, to a place of its own in the world.
+        let moved = level.get_mut(lamp).unwrap();
+        moved.parent = None;
+        moved.set(&placed_at(7.0, 5.0));
+        let there = level.world_matrix(lamp);
+        let (file, opened) = saved_and_opened(&level, &lib);
+        let change = |file: &LevelFile| file.overrides.get(&(post, vec![id(2)])).cloned();
+        assert_eq!(change(&file).unwrap().parent, ParentChange::TopLevel);
+        assert_eq!(opened.get(lamp).unwrap().parent, None);
+        assert_eq!(opened.world_matrix(lamp), there);
+        assert_eq!(opened, level);
+        // Under another entity instead.
+        let mut shed = EntityData::new("Shed").with(&placed_at(-3.0, 0.0));
+        shed.order = "a5".into();
+        level.insert(id(60), shed);
+        level.get_mut(lamp).unwrap().parent = Some(id(60));
+        let there = level.world_matrix(lamp);
+        let (file, opened) = saved_and_opened(&level, &lib);
+        assert_eq!(change(&file).unwrap().parent, ParentChange::Under(id(60)));
+        assert_eq!(opened.get(lamp).unwrap().parent, Some(id(60)));
+        assert_eq!(opened.world_matrix(lamp), there);
+        assert_eq!(opened, level);
+        // And back where the assembly has it: nothing is left to write.
+        let home = Expander::new(&lib)
+            .expected(&level, level.get(lamp).unwrap().origin.as_ref().unwrap())
+            .unwrap();
+        *level.get_mut(lamp).unwrap() = home;
+        let (file, opened) = saved_and_opened(&level, &lib);
+        assert_eq!(change(&file), None);
+        assert_eq!(opened.get(lamp).unwrap().parent, Some(post));
+        assert_eq!(opened, level);
+        // The other copy was never touched.
+        assert!(file.overrides.keys().all(|(copy, _)| *copy == post));
+    }
+
+    #[test]
+    fn a_part_gone_from_its_assembly_stays_at_the_top_level_if_moved_there() {
+        // BUG-13 again: changes to a part the assembly no longer has are
+        // kept as an entity, under its copy until it's moved.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let mut file = town_of_posts();
+        file.overrides.insert(
+            (id(40), vec![id(9)]),
+            Override {
+                name: Some("Bulb".into()),
+                ..Override::default()
+            },
+        );
+        let mut level = Expander::new(&lib).expand(&file).unwrap();
+        let bulb = derive(id(40), &[id(9)]);
+        assert_eq!(level.get(bulb).unwrap().parent, Some(id(40)));
+        let (_, opened) = saved_and_opened(&level, &lib);
+        assert_eq!(opened, level, "under its copy, as before");
+        level.get_mut(bulb).unwrap().parent = None;
+        let (file, opened) = saved_and_opened(&level, &lib);
+        let change = &file.overrides[&(id(40), vec![id(9)])];
+        assert_eq!(change.parent, ParentChange::TopLevel);
+        assert_eq!(opened.get(bulb).unwrap().parent, None);
+        assert_eq!(opened, level);
+        // A file from before, which says nothing of its parent: under
+        // its copy, as it always was.
+        let mut old = file.clone();
+        if let Some(change) = old.overrides.get_mut(&(id(40), vec![id(9)])) {
+            change.parent = ParentChange::Unchanged;
+        }
+        let opened = Expander::new(&lib).expand(&old).unwrap();
+        assert_eq!(opened.get(bulb).unwrap().parent, Some(id(40)));
+    }
+
+    #[test]
+    fn nested_assemblies_expand_with_overrides_innermost_first() {
+        let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
+        let mut expander = Expander::new(&lib);
+        let root = id(50);
+        let level = expander.expand(&town(root)).unwrap();
+        // Street, two posts, two lamps.
+        assert_eq!(level.len(), 5);
+        let first_lamp = derive(root, &[id(11), id(2)]);
+        let second_lamp = derive(root, &[id(12), id(2)]);
+        assert_eq!(strength(&level, first_lamp), 1000.0, "the assembly's value");
+        assert_eq!(
+            strength(&level, second_lamp),
+            5000.0,
+            "the street's override"
+        );
+        assert_eq!(level.get(root).unwrap().name, "Main street");
+        assert_eq!(
+            level.get(second_lamp).unwrap().parent,
+            Some(derive(root, &[id(12)]))
+        );
+        // The same file gives the same IDs every time.
+        let again = Expander::new(&lib).expand(&town(root)).unwrap();
+        assert_eq!(again, level);
+    }
+
+    #[test]
+    fn a_copy_collapses_to_its_overrides_and_expands_back() {
+        let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
+        let root = id(50);
+        let mut level = Expander::new(&lib).expand(&town(root)).unwrap();
+        let lamp = derive(root, &[id(11), id(2)]);
+        level.get_mut(lamp).unwrap().set(&Light {
+            strength: 42.0,
+            ..Light::point()
+        });
+        level.get_mut(lamp).unwrap().name = "Bright lamp".into();
+        let gone = derive(root, &[id(12)]);
+        level.remove_tree(gone);
+        // Something the user added under the copy is plain.
+        let mut extra = EntityData::new("Bench");
+        extra.parent = Some(root);
+        level.insert(id(77), extra);
+        let file = Expander::new(&lib)
+            .collapse(&level, FileKind::Level)
+            .unwrap();
+        assert_eq!(file.level.len(), 2, "the placed root and the bench");
+        let changes = &file.overrides[&(root, vec![id(11), id(2)])];
+        assert_eq!(changes.name.as_deref(), Some("Bright lamp"));
+        assert_eq!(
+            changes.components["Light"].fields.len(),
+            1,
+            "only the changed field"
+        );
+        assert!(file.overrides[&(root, vec![id(12)])].removed);
+        assert!(
+            !file.overrides.contains_key(&(root, vec![id(12), id(2)])),
+            "its children went with it"
+        );
+        // Written, read and expanded, it's the same level.
+        let registry = crate::builtin::registry().unwrap();
+        let text = text::write_file(&file, &registry, &|_| None);
+        assert!(text.contains(&format!("entity {root}/{}/{} {{", id(11), id(2))));
+        let read = text::read_file(&text, &registry).unwrap();
+        assert_eq!(read, file);
+        assert_eq!(Expander::new(&lib).expand(&read).unwrap(), level);
+    }
+
+    #[test]
+    fn overrides_survive_edits_to_the_assembly() {
+        let root = id(50);
+        let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
+        let mut level = Expander::new(&lib).expand(&town(root)).unwrap();
+        let lamp = derive(root, &[id(11), id(2)]);
+        level.get_mut(lamp).unwrap().set(&Light {
+            strength: 42.0,
+            ..Light::point()
+        });
+        let file = Expander::new(&lib)
+            .collapse(&level, FileKind::Level)
+            .unwrap();
+        // The lamp post gets a new colour and a bench in the assembly.
+        let mut post = lamp_post();
+        post.level.get_mut(id(2)).unwrap().set(&Light {
+            color: [1.0, 0.5, 0.0],
+            ..Light::point()
+        });
+        let mut bench = EntityData::new("Bench");
+        bench.parent = Some(id(1));
+        post.level.insert(id(3), bench);
+        let lib = library(vec![(asset(100), post), (asset(200), street())]);
+        let level = Expander::new(&lib).expand(&file).unwrap();
+        let light = level.get(lamp).unwrap().get::<Light>().unwrap();
+        assert_eq!(light.strength, 42.0, "the copy's change stays");
+        assert_eq!(
+            light.color,
+            [1.0, 0.5, 0.0],
+            "the assembly's change arrives"
+        );
+        assert!(
+            level.contains(derive(root, &[id(11), id(3)])),
+            "and its new bench"
+        );
+    }
+
+    #[test]
+    fn a_change_to_a_part_gone_from_the_assembly_is_kept() {
+        let root = id(50);
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let mut file = town(root);
+        file.level
+            .get_mut(root)
+            .unwrap()
+            .origin
+            .as_mut()
+            .unwrap()
+            .assembly = asset(100);
+        let mut light = reflect::ComponentData::default();
+        light.fields.insert("strength".into(), Value::Float(9.0));
+        file.overrides.insert(
+            (root, vec![id(99)]),
+            Override {
+                name: Some("Old sign".into()),
+                components: [("Light".to_string(), light)].into(),
+                ..Override::default()
+            },
+        );
+        let level = Expander::new(&lib).expand(&file).unwrap();
+        let kept = level.get(derive(root, &[id(99)])).unwrap();
+        assert_eq!(kept.name, "Old sign");
+        assert_eq!(kept.parent, Some(root));
+        let again = Expander::new(&lib)
+            .collapse(&level, FileKind::Level)
+            .unwrap();
+        assert_eq!(
+            again.overrides[&(root, vec![id(99)])].name.as_deref(),
+            Some("Old sign")
+        );
+    }
+
+    #[test]
+    fn loops_depth_and_size_are_refused() {
+        // An assembly that places itself.
+        let mut selfish = lamp_post();
+        let mut inner = EntityData::new("Me again");
+        inner.parent = Some(id(1));
+        inner.origin = Some(Origin {
+            assembly: asset(100),
+            instance: id(5),
+            path: Vec::new(),
+        });
+        selfish.level.insert(id(5), inner);
+        let lib = library(vec![(asset(100), selfish)]);
+        let err = Expander::new(&lib).assembly(asset(100)).unwrap_err();
+        assert_eq!(err, AssemblyError::Loop(vec![asset(100), asset(100)]));
+        assert!(err.to_string().contains("loop"));
+        // A chain deeper than allowed.
+        let mut files = Vec::new();
+        for depth in 0..=MAX_NESTING as u64 + 1 {
+            let mut file = lamp_post();
+            let mut next = EntityData::new("Deeper");
+            next.parent = Some(id(1));
+            next.origin = Some(Origin {
+                assembly: asset(300 + depth + 1),
+                instance: id(5),
+                path: Vec::new(),
+            });
+            file.level.insert(id(5), next);
+            files.push((asset(300 + depth), file));
+        }
+        files.push((asset(300 + MAX_NESTING as u64 + 2), lamp_post()));
+        let lib = library(files);
+        assert_eq!(
+            Expander::new(&lib).assembly(asset(300)).unwrap_err(),
+            AssemblyError::TooDeep
+        );
+        // Ten copies of ten copies… of a post: counted, refused, never made.
+        let mut files = vec![(asset(400), lamp_post())];
+        for depth in 0..8u64 {
+            let mut level = Level::new();
+            level.insert(id(1), EntityData::new("Crowd"));
+            for n in 0..10u64 {
+                let mut copy = EntityData::new("Copy");
+                copy.parent = Some(id(1));
+                copy.origin = Some(Origin {
+                    assembly: asset(400 + depth),
+                    instance: id(100 + n),
+                    path: Vec::new(),
+                });
+                level.insert(id(100 + n), copy);
+            }
+            files.push((
+                asset(401 + depth),
+                LevelFile {
+                    kind: FileKind::Assembly { root: id(1) },
+                    level,
+                    overrides: Default::default(),
+                },
+            ));
+        }
+        let lib = library(files);
+        assert_eq!(
+            Expander::new(&lib).assembly(asset(408)).unwrap_err(),
+            AssemblyError::TooBig
+        );
+        assert_eq!(
+            Expander::new(&lib).assembly(asset(999)).unwrap_err(),
+            AssemblyError::Missing(asset(999))
+        );
+    }
+
+    #[test]
+    fn assemblies_inside_each_other_hold_at_most_their_share_expanded() {
+        // The third security audit: each level placed the next once, so
+        // every level's expansion was the size of the whole crowd, each
+        // kept: thirteen tiny files took over 5 GB.
+        let mut files = vec![(asset(500), lamp_post())];
+        for depth in 0..6u64 {
+            let mut level = Level::new();
+            level.insert(id(1), EntityData::new("Wrapper"));
+            let mut copy = EntityData::new("Copy");
+            copy.parent = Some(id(1));
+            copy.origin = Some(Origin {
+                assembly: asset(500 + depth),
+                instance: id(100),
+                path: Vec::new(),
+            });
+            level.insert(id(100), copy);
+            files.push((
+                asset(501 + depth),
+                LevelFile {
+                    kind: FileKind::Assembly { root: id(1) },
+                    level,
+                    overrides: Default::default(),
+                },
+            ));
+        }
+        let lib = library(files);
+        // Each level is a few entities; held together, more than allowed.
+        let mut expander = Expander::new(&lib);
+        let size = expander.size_of(asset(506)).unwrap();
+        expander.most_held = size + 3;
+        assert_eq!(
+            expander.assembly(asset(506)).unwrap_err(),
+            AssemblyError::TooBig
+        );
+        // With room for them all, it expands.
+        let mut expander = Expander::new(&lib);
+        expander.most_held = size * 7;
+        assert_eq!(expander.assembly(asset(506)).unwrap().0.len(), size);
+    }
+
+    /// An assembly holding one lamp post (`asset(100)`), with `gone`
+    /// empty changes to parts the lamp post doesn't have.
+    fn padded(gone: u64) -> LevelFile {
+        let mut level = Level::new();
+        level.insert(id(10), EntityData::new("Padded"));
+        let mut post = EntityData::new("Post");
+        post.parent = Some(id(10));
+        post.origin = Some(Origin {
+            assembly: asset(100),
+            instance: id(11),
+            path: Vec::new(),
+        });
+        level.insert(id(11), post);
+        LevelFile {
+            kind: FileKind::Assembly { root: id(10) },
+            level,
+            overrides: (0..gone)
+                .map(|n| ((id(11), vec![id(1000 + n)]), Override::default()))
+                .collect(),
+        }
+    }
+
+    /// A level of `copies` copies of the padded assembly (`asset(700)`),
+    /// their roots numbered from 50.
+    fn crowd(copies: u64) -> LevelFile {
+        let mut level = Level::new();
+        for n in 0..copies {
+            let mut copy = EntityData::new("Copy");
+            copy.origin = Some(Origin {
+                assembly: asset(700),
+                instance: id(50 + n),
+                path: Vec::new(),
+            });
+            level.insert(id(50 + n), copy);
+        }
+        LevelFile::plain(level)
+    }
+
+    #[test]
+    fn changes_to_parts_gone_from_the_assembly_are_counted_before_expanding() {
+        // Found in a full code review: a change to a part that's gone becomes
+        // an entity, but wasn't counted. An assembly of a few megabytes
+        // with 100,000 such changes counted as 3 entities, so a level
+        // placing it 1,000 times passed the count and expanded to a
+        // hundred million: the third security audit's bomb by another way.
+        let lib = library(vec![
+            (asset(100), lamp_post()),
+            (asset(700), padded(100_000)),
+        ]);
+        let mut expander = Expander::new(&lib);
+        assert_eq!(expander.size_of(asset(700)).unwrap(), 100_003);
+        assert_eq!(
+            expander.expand(&crowd(1_000)).unwrap_err(),
+            AssemblyError::TooBig
+        );
+        // Counted and refused: not one assembly was expanded to find out.
+        assert!(expander.expanded.is_empty());
+        assert_eq!(expander.held, 0);
+    }
+
+    #[test]
+    fn a_few_changes_to_parts_gone_still_expand_as_they_did() {
+        let lib = library(vec![(asset(100), lamp_post()), (asset(700), padded(3))]);
+        let (first, second) = (id(50), id(51));
+        let mut file = crowd(2);
+        // The level keeps a change of its own to a part that's gone.
+        file.overrides.insert(
+            (first, vec![id(11), id(555)]),
+            Override {
+                name: Some("Old sign".into()),
+                ..Override::default()
+            },
+        );
+        let level = Expander::new(&lib).expand(&file).unwrap();
+        // Twice the root, the post, its lamp and three kept parts; and the sign.
+        assert_eq!(level.len(), 2 * 6 + 1);
+        for copy in [first, second] {
+            let post = derive(copy, &[id(11)]);
+            assert_eq!(level.get(post).unwrap().name, "Post");
+            assert_eq!(level.get(post).unwrap().parent, Some(copy));
+            assert!(level.contains(derive(copy, &[id(11), id(2)])), "its lamp");
+            for n in 0..3 {
+                let path = vec![id(11), id(1000 + n)];
+                let kept = level.get(derive(copy, &path)).unwrap();
+                assert_eq!(kept.name, "Missing part");
+                assert_eq!(kept.parent, Some(post));
+                assert!(kept.components.is_empty());
+                assert_eq!(
+                    kept.origin,
+                    Some(Origin {
+                        assembly: asset(700),
+                        instance: copy,
+                        path,
+                    })
+                );
+            }
+        }
+        let sign = level.get(derive(first, &[id(11), id(555)])).unwrap();
+        assert_eq!(sign.name, "Old sign");
+        assert_eq!(sign.parent, Some(first));
+        assert!(!level.contains(derive(second, &[id(11), id(555)])));
+        // Saved and opened again, nothing is lost or added.
+        let saved = Expander::new(&lib)
+            .collapse(&level, FileKind::Level)
+            .unwrap();
+        assert_eq!(Expander::new(&lib).expand(&saved).unwrap(), level);
+    }
+
+    #[test]
+    fn empty_change_blocks_read_from_a_file_are_counted() {
+        // As a hostile file would hold them: `entity <copy>/<part> {}`.
+        let registry = crate::builtin::registry().unwrap();
+        let written = text::write_file(&padded(4), &registry, &|_| None);
+        assert_eq!(written.matches(&format!("entity {}/", id(11))).count(), 4);
+        let read = text::read_file(&written, &registry).unwrap();
+        assert_eq!(read.overrides.len(), 4);
+        let lib = library(vec![(asset(100), lamp_post()), (asset(700), read)]);
+        let mut expander = Expander::new(&lib);
+        assert_eq!(expander.size_of(asset(700)).unwrap(), 7);
+        assert_eq!(expander.assembly(asset(700)).unwrap().0.len(), 7);
+    }
+
+    #[test]
+    fn making_entities_stops_at_the_limit_even_if_the_count_is_wrong() {
+        // The padded assembly is 8 entities: its root, the post, its lamp
+        // and five kept parts. Its size is put in as 1, the kind of
+        // mistake the count once made.
+        let lib = library(vec![(asset(100), lamp_post()), (asset(700), padded(5))]);
+        let expand = |limit: usize| {
+            let mut expander = Expander::new(&lib);
+            expander.most_made = limit;
+            expander.sizes.insert(asset(700), 1);
+            expander.assembly(asset(700)).map(|(level, _)| level.len())
+        };
+        assert_eq!(expand(8), Ok(8), "room for it all");
+        // One short: stopped as the last entity goes into the level.
+        assert_eq!(expand(7), Err(AssemblyError::TooBig));
+        // Too little for the post's copy alone: stopped while it's made.
+        assert_eq!(expand(5), Err(AssemblyError::TooBig));
+        assert_eq!(expand(0), Err(AssemblyError::TooBig));
+    }
+
+    #[test]
+    fn the_count_is_never_below_what_expanding_makes() {
+        // Everything a file can say about a part: nothing, a change, an
+        // empty block, or that it's removed.
+        let says = |n: u32| match n % 4 {
+            0 => None,
+            1 => Some(Override {
+                name: Some("Changed".into()),
+                ..Override::default()
+            }),
+            2 => Some(Override::default()),
+            _ => Some(Override {
+                removed: true,
+                ..Override::default()
+            }),
+        };
+        // In the assembly, about its lamp post's lamp and two parts the
+        // post doesn't have; in the level, about the first copy's lamp, a
+        // part the assembly may have kept, and one nobody has: every mix.
+        let inner = [vec![id(2)], vec![id(98)], vec![id(99)]];
+        let outer = [
+            vec![id(11), id(2)],
+            vec![id(11), id(99)],
+            vec![id(11), id(77)],
+        ];
+        for mix in 0..4u32.pow(6) {
+            let mut assembly = padded(0);
+            for (n, path) in inner.iter().enumerate() {
+                if let Some(changes) = says(mix >> (2 * n)) {
+                    assembly.overrides.insert((id(11), path.clone()), changes);
+                }
+            }
+            let mut file = crowd(2);
+            for (n, path) in outer.iter().enumerate() {
+                if let Some(changes) = says(mix >> (6 + 2 * n)) {
+                    file.overrides.insert((id(50), path.clone()), changes);
+                }
+            }
+            let lib = library(vec![(asset(100), lamp_post()), (asset(700), assembly)]);
+            let mut expander = Expander::new(&lib);
+            let counted = expander.count(&file, &mut Vec::new()).unwrap();
+            let made = expander.expand(&file).unwrap().len();
+            assert!(made <= counted, "mix {mix}: {made} made, {counted} counted");
+            let size = expander.size_of(asset(700)).unwrap();
+            let held = expander.assembly(asset(700)).unwrap().0.len();
+            assert!(held <= size, "mix {mix}: {held} held, {size} counted");
+            // What the count lets through is never stopped part-way.
+            let mut exact = Expander::new(&lib);
+            exact.most_made = counted;
+            assert_eq!(exact.expand(&file).unwrap().len(), made, "mix {mix}");
+            // And nothing gets past a limit below what would be made.
+            let mut tight = Expander::new(&lib);
+            tight.most_made = made - 1;
+            assert_eq!(
+                tight.expand(&file).unwrap_err(),
+                AssemblyError::TooBig,
+                "mix {mix}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_copy_s_references_to_its_own_parts_point_at_the_copy_s_parts() {
+        // The hardening milestone's mutation testing: emptying `remap`
+        // went unnoticed, so a placed turret would aim with the assembly's
+        // own barrel (or none) instead of its copy's.
+        let mut level = Level::new();
+        let mut turret = EntityData::new("Turret").with(&Transform::default());
+        let mut aim = reflect::ComponentData::default();
+        aim.set("barrel", Value::Entity(Some(id(2))));
+        aim.set(
+            "spares",
+            Value::List(vec![
+                Value::Entity(Some(id(2))),
+                Value::Entity(Some(id(77))),
+            ]),
+        );
+        aim.set("nothing", Value::Entity(None));
+        turret.components.insert("Aim".into(), aim);
+        level.insert(id(1), turret);
+        let mut barrel = EntityData::new("Barrel").with(&Transform::default());
+        barrel.parent = Some(id(1));
+        level.insert(id(2), barrel);
+        let lib = library(vec![(
+            asset(600),
+            LevelFile {
+                kind: FileKind::Assembly { root: id(1) },
+                level,
+                overrides: Default::default(),
+            },
+        )]);
+        let copy = id(500);
+        let placed = Expander::new(&lib)
+            .place(asset(600), copy, &EntityData::new("Turret 2"))
+            .unwrap();
+        let barrel = placed
+            .iter()
+            .find(|(_, e)| e.name == "Barrel")
+            .map(|(id, _)| *id)
+            .unwrap();
+        assert_ne!(barrel, id(2), "the copy's barrel is its own");
+        let aim = &placed
+            .iter()
+            .find(|(e, _)| *e == copy)
+            .unwrap()
+            .1
+            .components["Aim"];
+        assert_eq!(aim.get("barrel"), Some(&Value::Entity(Some(barrel))));
+        assert_eq!(
+            aim.get("spares"),
+            Some(&Value::List(vec![
+                Value::Entity(Some(barrel)),
+                // Not one of its parts: left as it is.
+                Value::Entity(Some(id(77))),
+            ]))
+        );
+        assert_eq!(aim.get("nothing"), Some(&Value::Entity(None)));
+    }
+
+    #[test]
+    fn expected_values_come_from_the_assembly() {
+        let root = id(50);
+        let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
+        let level = Expander::new(&lib).expand(&town(root)).unwrap();
+        let lamp = derive(root, &[id(12), id(2)]);
+        let origin = level.get(lamp).unwrap().origin.clone().unwrap();
+        let wanted = Expander::new(&lib).expected(&level, &origin).unwrap();
+        // The street's own override is part of what the street assembly
+        // says; only this copy's changes differ from it.
+        assert_eq!(wanted.get::<Light>().unwrap().strength, 5000.0);
+    }
+
+    #[test]
+    fn derived_ids_differ_by_copy_and_path() {
+        let a = derive(id(1), &[id(2)]);
+        assert_ne!(a, derive(id(3), &[id(2)]));
+        assert_ne!(a, derive(id(1), &[id(4)]));
+        assert_ne!(
+            derive(id(1), &[id(2), id(3)]),
+            derive(id(1), &[id(3), id(2)])
+        );
+        assert_eq!(derive(id(1), &[]), id(1));
+    }
+}

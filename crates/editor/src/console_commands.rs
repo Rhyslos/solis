@@ -93,7 +93,7 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "save",
         usage: "save",
-        help: "Saves the area (Ctrl+S).",
+        help: "Saves the level (Ctrl+S).",
     },
     CommandInfo {
         name: "look",
@@ -108,7 +108,7 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "play",
         usage: "play",
-        help: "Runs the area as a game (the Play button), or carries on after pause.",
+        help: "Runs the level as a game (the Play button), or carries on after pause.",
     },
     CommandInfo {
         name: "pause",
@@ -138,12 +138,12 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "stop",
         usage: "stop",
-        help: "Stops the game: the area goes back to how it was before Play.",
+        help: "Stops the game: the level goes back to how it was before Play.",
     },
     CommandInfo {
         name: "stats",
         usage: "stats",
-        help: "Counts what's in the area, and how fast the editor draws.",
+        help: "Counts what's in the level, and how fast the editor draws.",
     },
 ];
 
@@ -255,7 +255,7 @@ impl Workbench {
                 let id = self.add_entity();
                 let name = args.join(" ");
                 if !name.trim().is_empty() {
-                    self.apply_area_request(crate::area_panel::AreaRequest::Rename {
+                    self.apply_level_request(crate::level_panel::LevelRequest::Rename {
                         entity: id,
                         name: name.trim().to_string(),
                     });
@@ -276,7 +276,7 @@ impl Workbench {
                 Ok(String::new())
             }
             "save" => {
-                actions.push(WorkbenchAction::SaveArea);
+                actions.push(WorkbenchAction::SaveLevel);
                 Ok(String::new())
             }
             "look" => self.choose_look(args),
@@ -346,8 +346,8 @@ impl Workbench {
     /// The entities `word` names: every one with that name (any capitals),
     /// or the one with that ID.
     fn named(&self, word: &str) -> Vec<EntityId> {
-        let area = self.open.document.area();
-        let by_name: Vec<EntityId> = area
+        let level = self.open.document.level();
+        let by_name: Vec<EntityId> = level
             .iter()
             .filter(|(_, e)| e.name.eq_ignore_ascii_case(word))
             .map(|(id, _)| id)
@@ -357,7 +357,7 @@ impl Workbench {
         }
         word.parse::<EntityId>()
             .ok()
-            .filter(|id| area.contains(*id))
+            .filter(|id| level.contains(*id))
             .into_iter()
             .collect()
     }
@@ -388,7 +388,7 @@ impl Workbench {
             .document
             .selection
             .select_all(found.clone(), first);
-        self.open.area_panel.reveal = Some(first);
+        self.open.level_panel.reveal = Some(first);
         let s = if found.len() == 1 { "y" } else { "ies" };
         Ok(format!("Selected {} entit{s}.", found.len()))
     }
@@ -401,7 +401,7 @@ impl Workbench {
         let found: Vec<String> = self
             .open
             .document
-            .area()
+            .level()
             .iter()
             .filter(|(_, e)| e.name.to_lowercase().contains(&text))
             .map(|(id, e)| format!("{} ({id})", e.name))
@@ -475,9 +475,9 @@ impl Workbench {
         let entity = self
             .open
             .document
-            .area()
+            .level()
             .get(id)
-            .ok_or("it isn't in the area")?;
+            .ok_or("it isn't in the level")?;
         let (name, components): (String, Vec<String>) = (
             entity.name.clone(),
             entity.components.keys().cloned().collect(),
@@ -520,7 +520,7 @@ impl Workbench {
         let entity = self
             .open
             .document
-            .area()
+            .level()
             .get(id)
             .ok_or("nothing is selected")?;
         if !entity.has(&component) {
@@ -568,7 +568,7 @@ impl Workbench {
             .filter(|&e| {
                 self.open
                     .document
-                    .area()
+                    .level()
                     .get(e)
                     .is_some_and(|d| d.has(&component))
             })
@@ -697,9 +697,9 @@ impl Workbench {
     }
 
     fn stats(&self) -> String {
-        let area = self.open.document.area();
-        let models = area.with::<area::builtin::Model>().count();
-        let lights = area.with::<area::builtin::Light>().count();
+        let level = self.open.document.level();
+        let models = level.with::<level::builtin::Model>().count();
+        let lights = level.with::<level::builtin::Light>().count();
         let lights = if lights == 1 {
             "1 light".to_string()
         } else {
@@ -708,8 +708,8 @@ impl Workbench {
         format!(
             "{} entities ({models} with a model, {lights}), {} triangles, {} selected.\n\
              {:.0} fps ({:.1} ms a frame); {} undo steps.",
-            crate::models::grouped(area.len()),
-            crate::models::grouped(self.viewport.area.triangles),
+            crate::models::grouped(level.len()),
+            crate::models::grouped(self.viewport.level.triangles),
             self.open.document.selection.iter().count(),
             self.viewport.frames_per_second(),
             1000.0 / self.viewport.frames_per_second().max(1e-3),
@@ -737,7 +737,7 @@ impl Workbench {
                 let mut names: Vec<String> = self
                     .open
                     .document
-                    .area()
+                    .level()
                     .iter()
                     .map(|(_, e)| e.name.clone())
                     .chain(["all".to_string(), "none".to_string()])

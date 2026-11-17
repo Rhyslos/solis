@@ -146,7 +146,7 @@ macro_rules! typed_id {
 }
 
 typed_id!(
-    /// An entity in an area, stable forever: in files, undo, selection and
+    /// An entity in a level, stable forever: in files, undo, selection and
     /// assembly overrides.
     EntityId
 );

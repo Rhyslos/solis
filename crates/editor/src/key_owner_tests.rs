@@ -1,6 +1,6 @@
 //! Who the keys belong to, in the whole editor: with the pointer over a
 //! tab that edits a file of its own, a key acts on what that tab shows
-//! and never on the area as well; everywhere else it's the area's.
+//! and never on the level as well; everywhere else it's the level's.
 
 use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
 use crate::panel::Panel;
@@ -26,7 +26,7 @@ const SCREEN: &str = "ui/pauseMenu.lst";
 
 /// A project with a file for every tab that edits one (a tileset and a
 /// map of it, a sheet with a clips file and an animator, a picture to
-/// crop, a screen), none of them open yet, and an area of a Barrel and a
+/// crop, a screen), none of them open yet, and a level of a Barrel and a
 /// Crate, the Crate selected. Returns the map's ID with it.
 fn farm() -> (Workbench, AssetId) {
     let mut w = Workbench::new(info());
@@ -130,8 +130,8 @@ fn farm() -> (Workbench, AssetId) {
         sheets.paths.insert(id, path.into());
     }
     w.set_sprite_sheets(sheets);
-    w.spawn_selected(area::EntityData::new("Barrel"));
-    w.spawn_selected(area::EntityData::new("Crate"));
+    w.spawn_selected(level::EntityData::new("Barrel"));
+    w.spawn_selected(level::EntityData::new("Crate"));
     (w, map)
 }
 
@@ -166,28 +166,28 @@ fn open_the_screen(w: &mut Workbench) {
     );
 }
 
-/// What the area's own keys change.
+/// What the level's own keys change.
 #[derive(Debug, Clone, PartialEq)]
-struct AreaNow {
+struct LevelNow {
     entities: usize,
     selected: usize,
     tool: Tool,
     x_locked: bool,
 }
 
-fn area_now(w: &Workbench) -> AreaNow {
-    AreaNow {
-        entities: w.open.document.area().len(),
+fn level_now(w: &Workbench) -> LevelNow {
+    LevelNow {
+        entities: w.open.document.level().len(),
         selected: w.open.document.selection.iter().count(),
         tool: w.viewport.tool,
         x_locked: w.viewport.snapping.locked[0],
     }
 }
 
-/// A key of the area's, and what it does to an area whose one selected
+/// A key of the level's, and what it does to a level whose one selected
 /// entity was the last thing added.
 #[derive(Debug, Clone, Copy)]
-enum AreaKey {
+enum LevelKey {
     Delete,
     Duplicate,
     SelectNothing,
@@ -197,7 +197,7 @@ enum AreaKey {
     Undo,
 }
 
-impl AreaKey {
+impl LevelKey {
     const ALL: [Self; 7] = [
         Self::Delete,
         Self::Duplicate,
@@ -220,8 +220,8 @@ impl AreaKey {
         }
     }
 
-    /// The area after this key acted on it as it was `before`.
-    fn done_to(self, before: &AreaNow) -> AreaNow {
+    /// The level after this key acted on it as it was `before`.
+    fn done_to(self, before: &LevelNow) -> LevelNow {
         let mut after = before.clone();
         match self {
             Self::Delete => {
@@ -241,14 +241,14 @@ impl AreaKey {
     }
 }
 
-/// Every panel the pointer can rest over, whether the area's keys are
-/// acted on there, and whether Ctrl+Z there is the area's. They are on a
-/// tab that shows the 3D or 2D view, and over the Area list and
-/// Properties; on a tab without one, where the area can't be seen, they
+/// Every panel the pointer can rest over, whether the level's keys are
+/// acted on there, and whether Ctrl+Z there is the level's. They are on a
+/// tab that shows the 3D or 2D view, and over the Level list and
+/// Properties; on a tab without one, where the level can't be seen, they
 /// rest (the second review pass's N-02).
 const OWNERS: [(Panel, bool, bool); 23] = [
     (Panel::Viewport, true, true),
-    (Panel::Area, true, true),
+    (Panel::Level, true, true),
     (Panel::Properties, true, true),
     // Home's panels: the view is beside them.
     (Panel::Assets, true, true),
@@ -276,20 +276,20 @@ const OWNERS: [(Panel, bool, bool); 23] = [
 ];
 
 #[test]
-fn each_key_of_the_area_s_acts_on_it_only_where_the_area_owns_the_keys() {
-    for (panel, area_keys, area_undo) in OWNERS {
-        for key in AreaKey::ALL {
+fn each_key_of_the_level_s_acts_on_it_only_where_the_level_owns_the_keys() {
+    for (panel, level_keys, level_undo) in OWNERS {
+        for key in LevelKey::ALL {
             let mut h = pointer_over(panel);
-            let before = area_now(&h.state().0);
+            let before = level_now(&h.state().0);
             assert_eq!(before.selected, 1, "{panel:?}: one entity selected");
             key.press(&h);
             h.run();
             let acts = match key {
-                AreaKey::Undo => area_undo,
+                LevelKey::Undo => level_undo,
                 // Over the Assets column, Delete is the picked file's
                 // (the project lead's answer 25).
-                AreaKey::Delete if panel == Panel::Assets => false,
-                _ => area_keys,
+                LevelKey::Delete if panel == Panel::Assets => false,
+                _ => level_keys,
             };
             let expected = if acts {
                 key.done_to(&before)
@@ -297,7 +297,7 @@ fn each_key_of_the_area_s_acts_on_it_only_where_the_area_owns_the_keys() {
                 before.clone()
             };
             assert_eq!(
-                area_now(&h.state().0),
+                level_now(&h.state().0),
                 expected,
                 "{key:?} with the pointer over {panel:?}"
             );
@@ -305,13 +305,13 @@ fn each_key_of_the_area_s_acts_on_it_only_where_the_area_owns_the_keys() {
     }
 }
 
-/// N-02: on the Library tab the area's keys rest, but F2 and Delete are
+/// N-02: on the Library tab the level's keys rest, but F2 and Delete are
 /// still the picked file's.
 #[test]
-fn on_the_library_tab_f2_and_delete_are_the_picked_file_s_and_never_the_area_s() {
+fn on_the_library_tab_f2_and_delete_are_the_picked_file_s_and_never_the_level_s() {
     let mut h = pointer_over(Panel::Library);
     h.state_mut().0.open.library_state.selected = Some(PICTURE.into());
-    let before = area_now(&h.state().0);
+    let before = level_now(&h.state().0);
     h.key_press(egui::Key::F2);
     h.run();
     let renaming = h.state().0.open.library_state.renaming.clone();
@@ -328,7 +328,7 @@ fn on_the_library_tab_f2_and_delete_are_the_picked_file_s_and_never_the_area_s()
                 PICTURE.into()
             ))
     );
-    assert_eq!(area_now(&h.state().0), before, "the area is as it was");
+    assert_eq!(level_now(&h.state().0), before, "the level is as it was");
 }
 
 /// The screen's text with the pointer over `panel` (the Canvas or
@@ -347,10 +347,10 @@ fn screen_text(h: &Harness<'static, State>) -> String {
 #[test]
 fn delete_over_the_canvas_or_elements_removes_the_piece_and_not_the_entity() {
     // The review (BUG-06): Delete was read twice, by the canvas and by the
-    // area's keys, so a button and the selected entity both went.
+    // level's keys, so a button and the selected entity both went.
     for panel in [Panel::Canvas, Panel::Elements] {
         let mut h = screen_with(panel, &[0, 0, 1]);
-        let before = area_now(&h.state().0);
+        let before = level_now(&h.state().0);
         assert!(screen_text(&h).contains("Resume"));
         h.key_press(egui::Key::Delete);
         h.run();
@@ -359,20 +359,20 @@ fn delete_over_the_canvas_or_elements_removes_the_piece_and_not_the_entity() {
             "{panel:?}: the piece went"
         );
         assert_eq!(
-            area_now(&h.state().0),
+            level_now(&h.state().0),
             before,
-            "{panel:?}: the area is as it was"
+            "{panel:?}: the level is as it was"
         );
     }
 }
 
 #[test]
 fn ctrl_d_over_the_canvas_or_elements_copies_the_piece_and_not_the_entity() {
-    // The review (BUG-06): the area's keys took Ctrl+D first, so it never
+    // The review (BUG-06): the level's keys took Ctrl+D first, so it never
     // reached the canvas and the selected entity was duplicated instead.
     for panel in [Panel::Canvas, Panel::Elements] {
         let mut h = screen_with(panel, &[0, 0, 0]);
-        let before = area_now(&h.state().0);
+        let before = level_now(&h.state().0);
         h.key_press_modifiers(Modifiers::COMMAND, egui::Key::D);
         h.run();
         assert_eq!(
@@ -381,22 +381,22 @@ fn ctrl_d_over_the_canvas_or_elements_copies_the_piece_and_not_the_entity() {
             "{panel:?}: the piece was copied"
         );
         assert_eq!(
-            area_now(&h.state().0),
+            level_now(&h.state().0),
             before,
-            "{panel:?}: the area is as it was"
+            "{panel:?}: the level is as it was"
         );
     }
 }
 
 #[test]
-fn esc_over_the_canvas_picks_no_piece_and_keeps_the_area_s_selection() {
+fn esc_over_the_canvas_picks_no_piece_and_keeps_the_level_s_selection() {
     let mut h = screen_with(Panel::Canvas, &[0, 0, 1]);
-    let before = area_now(&h.state().0);
+    let before = level_now(&h.state().0);
     h.key_press(egui::Key::Escape);
     h.run();
     let w = &h.state().0;
     assert!(w.open.screen_doc.as_ref().unwrap().picked.is_empty());
-    assert_eq!(area_now(w), before);
+    assert_eq!(level_now(w), before);
 }
 
 /// The Atlas Crop tab under the pointer, with two crops, the first picked.
@@ -417,26 +417,26 @@ fn crops(h: &Harness<'static, State>) -> usize {
 fn delete_over_the_atlas_crop_tab_removes_the_crop_and_not_the_entity() {
     // The review (BUG-06): the picked crop and the selected entity both went.
     let mut h = atlas_with_crops();
-    let before = area_now(&h.state().0);
+    let before = level_now(&h.state().0);
     h.key_press(egui::Key::Delete);
     h.run();
     assert_eq!(crops(&h), 1, "the picked crop went");
-    assert_eq!(area_now(&h.state().0), before, "the area is as it was");
+    assert_eq!(level_now(&h.state().0), before, "the level is as it was");
 }
 
 #[test]
 fn ctrl_d_over_the_atlas_crop_tab_duplicates_nothing() {
-    // The tab has no Ctrl+D of its own, and the area's isn't for it.
+    // The tab has no Ctrl+D of its own, and the level's isn't for it.
     let mut h = atlas_with_crops();
-    let before = area_now(&h.state().0);
+    let before = level_now(&h.state().0);
     h.key_press_modifiers(Modifiers::COMMAND, egui::Key::D);
     h.run();
     assert_eq!(crops(&h), 2);
-    assert_eq!(area_now(&h.state().0), before);
+    assert_eq!(level_now(&h.state().0), before);
 }
 
 #[test]
-fn delete_and_ctrl_d_over_the_viewport_are_still_the_area_s() {
+fn delete_and_ctrl_d_over_the_viewport_are_still_the_level_s() {
     // With a screen open and a piece picked: the pointer decides, not
     // what happens to be open.
     let (mut w, _) = farm();
@@ -444,17 +444,17 @@ fn delete_and_ctrl_d_over_the_viewport_are_still_the_area_s() {
     let mut h = rest_over(harness(w), Panel::Viewport);
     let doc = h.state_mut().0.open.screen_doc.as_mut().expect("open");
     doc.picked = vec![vec![0, 0, 1]];
-    let before = area_now(&h.state().0);
+    let before = level_now(&h.state().0);
     h.key_press_modifiers(Modifiers::COMMAND, egui::Key::D);
     h.run();
     assert_eq!(
-        area_now(&h.state().0).entities,
+        level_now(&h.state().0).entities,
         before.entities + 1,
         "the Crate was duplicated"
     );
     h.key_press(egui::Key::Delete);
     h.run();
-    assert_eq!(area_now(&h.state().0).entities, before.entities);
+    assert_eq!(level_now(&h.state().0).entities, before.entities);
     assert!(screen_text(&h).contains("Resume"), "the piece is untouched");
     assert_eq!(screen_text(&h).matches("text \"Paused\"").count(), 1);
 }
@@ -518,7 +518,7 @@ fn ctrl_z_and_ctrl_y_over_a_tab_are_for_that_tab_s_own_changes() {
         let mut h = pointer_over(panel);
         change(&mut h.state_mut().0);
         assert!(changed(&h.state().0), "{panel:?}: changed");
-        let before = area_now(&h.state().0);
+        let before = level_now(&h.state().0);
         h.key_press_modifiers(Modifiers::COMMAND, egui::Key::Z);
         h.run();
         assert!(!changed(&h.state().0), "{panel:?}: undone over its tab");
@@ -526,9 +526,9 @@ fn ctrl_z_and_ctrl_y_over_a_tab_are_for_that_tab_s_own_changes() {
         h.run();
         assert!(changed(&h.state().0), "{panel:?}: redone over its tab");
         assert_eq!(
-            area_now(&h.state().0),
+            level_now(&h.state().0),
             before,
-            "{panel:?}: the area is as it was"
+            "{panel:?}: the level is as it was"
         );
     }
 }
@@ -565,7 +565,7 @@ fn a_key_pressed_to_be_bound_is_bound_and_does_nothing_else() {
         let jump = h.state().0.bindings().get("Jump").unwrap();
         jump.inputs.len()
     };
-    let (before, bound) = (area_now(&h.state().0), jumps(&h));
+    let (before, bound) = (level_now(&h.state().0), jumps(&h));
     // Jump's + (the third action); the click itself isn't bound, so a
     // frame or two pass first.
     let window = h.state_mut().0.open.input_page.as_mut().unwrap();
@@ -576,7 +576,7 @@ fn a_key_pressed_to_be_bound_is_bound_and_does_nothing_else() {
     h.key_press(egui::Key::Delete);
     h.run();
     assert_eq!(jumps(&h), bound + 1, "bound to Jump");
-    assert_eq!(area_now(&h.state().0), before, "and nothing deleted");
+    assert_eq!(level_now(&h.state().0), before, "and nothing deleted");
 }
 
 #[test]
@@ -586,7 +586,7 @@ fn a_tab_has_the_keys_only_while_its_file_is_open() {
     // An empty Canvas (no screen open) has nothing to act on.
     let (mut w, _) = farm();
     w.pointer_over = Some(Panel::Canvas);
-    assert_eq!(w.key_owner(&ctx), KeyOwner::Area);
+    assert_eq!(w.key_owner(&ctx), KeyOwner::Level);
     open_the_screen(&mut w);
     assert_eq!(w.key_owner(&ctx), KeyOwner::Canvas);
     // A key being bound comes before wherever the pointer rests, and the
@@ -690,7 +690,7 @@ fn the_2d_editors_shown_keys_do_what_their_commands_do() {
 }
 
 /// N-28: on the UI tab, Properties shows the screen's settings, but the
-/// keys over it were still the area's: a Delete there deleted the selected
+/// keys over it were still the level's: a Delete there deleted the selected
 /// entity, which isn't on screen. They're the screen's now, as over
 /// Elements and Pictures beside it.
 #[test]
@@ -709,19 +709,19 @@ fn over_properties_showing_the_screen_the_keys_are_the_screen_s() {
         .expect("open")
         .picked = vec![vec![0, 0, 1]];
     h.run();
-    let before = area_now(&h.state().0);
+    let before = level_now(&h.state().0);
     h.key_press(egui::Key::Delete);
     h.run();
-    assert_eq!(area_now(&h.state().0), before, "the area is as it was");
+    assert_eq!(level_now(&h.state().0), before, "the level is as it was");
     assert!(!screen_text(&h).contains("Resume"), "the piece went");
-    // On Home, Properties shows the area's again, and the keys are its.
+    // On Home, Properties shows the level's again, and the keys are its.
     h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);
     let mut h = rest_over(h, Panel::Properties);
     let ctx = h.ctx.clone();
-    assert_eq!(h.state().0.key_owner(&ctx), KeyOwner::Area);
+    assert_eq!(h.state().0.key_owner(&ctx), KeyOwner::Level);
     h.key_press(egui::Key::Delete);
     h.run();
-    assert_ne!(area_now(&h.state().0), before, "the Crate went");
+    assert_ne!(level_now(&h.state().0), before, "the Crate went");
 }
 
 #[test]
@@ -732,7 +732,7 @@ fn over_the_canvas_one_two_and_three_pick_its_tools_even_while_a_brush_is_edited
     // A brush's insides being edited (Tools 1a, B3), on Home.
     let w = &mut h.state_mut().0;
     let brush =
-        w.spawn_selected(area::EntityData::new("Box_01").with(&area::builtin::Brush::default()));
+        w.spawn_selected(level::EntityData::new("Box_01").with(&level::builtin::Brush::default()));
     w.viewport.brushing.edit = Some(Editing::new(brush, w.open.document.history().state()));
     let canvas = body_of(&h, Panel::Canvas);
     h.hover_at(canvas.center());

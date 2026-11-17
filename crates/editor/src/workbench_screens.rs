@@ -10,7 +10,7 @@ use crate::screen_doc::ScreenDoc;
 use crate::workbench::{Workbench, WorkbenchAction};
 
 /// The entity a screen's view is drawn for on the canvas: none of the
-/// area's, so the screen reads only starting values.
+/// level's, so the screen reads only starting values.
 pub(crate) fn preview_entity() -> reflect::EntityId {
     reflect::Id::from_raw(0x5c4e_e0fc_a4a5)
         .map_or_else(reflect::EntityId::random, reflect::EntityId)

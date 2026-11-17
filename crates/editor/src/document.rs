@@ -1,14 +1,14 @@
-//! The open area as the editor holds it: the area document, the
+//! The open level as the editor holds it: the level document, the
 //! registry of components, what's selected, and the undo history.
-//! The user's changes to the area all go through [`Document::edit`], so
+//! The user's changes to the level all go through [`Document::edit`], so
 //! every one can be undone ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 //! The running game's go through [`Document::edit_by_game`] and
-//! [`Document::replace_by_game`], never as undo steps: Stop puts the area
+//! [`Document::replace_by_game`], never as undo steps: Stop puts the level
 //! back.
 
-use area::builtin::{Model, Sprite, Transform};
-use area::{Area, Edit, EditError, History, MergeKey, Tree};
 use glam::Mat4;
+use level::builtin::{Model, Sprite, Transform};
+use level::{Edit, EditError, History, Level, MergeKey, Tree};
 use reflect::{Component, EntityId, Registry};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -71,29 +71,29 @@ impl Selection {
         self.entities.iter().copied()
     }
 
-    /// Forgets entities that are gone from `area`.
-    pub fn retain_existing(&mut self, area: &Area) {
-        self.entities.retain(|&id| area.contains(id));
-        if self.primary.is_some_and(|id| !area.contains(id)) {
+    /// Forgets entities that are gone from `level`.
+    pub fn retain_existing(&mut self, level: &Level) {
+        self.entities.retain(|&id| level.contains(id));
+        if self.primary.is_some_and(|id| !level.contains(id)) {
             self.primary = self.entities.iter().next().copied();
         }
     }
 }
 
-impl area::Weigh for Selection {
+impl level::Weigh for Selection {
     fn weight(&self) -> usize {
         // Each ID, and the set's own bookkeeping per entry.
         self.entities.len() * (std::mem::size_of::<EntityId>() * 2) + 32
     }
 }
 
-/// The open area, its components' schemas, the selection and the undo
+/// The open level, its components' schemas, the selection and the undo
 /// history.
 #[derive(Debug, Clone)]
 pub struct Document {
-    /// The area: read it with [`Self::area`], change it with
+    /// The level: read it with [`Self::level`], change it with
     /// [`Self::edit`].
-    area: Area,
+    level: Level,
     /// Every component the editor knows.
     pub registry: Registry,
     /// What's selected. Changing it is not an undo step.
@@ -103,10 +103,10 @@ pub struct Document {
     file: Option<std::path::PathBuf>,
     /// The history's state when it was last saved (or opened).
     saved: u64,
-    /// A number that changes whenever the area does: see
+    /// A number that changes whenever the level does: see
     /// [`Self::revision`].
     revision: u64,
-    /// A number that changes whenever the area does, except for edits of
+    /// A number that changes whenever the level does, except for edits of
     /// brushes' own values alone: see [`Self::placed`].
     placed: u64,
     /// What changed since last asked: see [`Self::take_changes`].
@@ -120,7 +120,7 @@ pub struct Document {
     /// Which brushes may have changed since last asked: see
     /// [`Self::take_brush_changes`].
     brush_changes: BrushChanges,
-    /// The area's tree, kept until entities are added, deleted or given
+    /// The level's tree, kept until entities are added, deleted or given
     /// another parent: see [`Self::tree`].
     tree: RefCell<Option<Arc<Tree>>>,
     /// Where every entity is in the world, for one revision: see
@@ -141,7 +141,7 @@ pub type AssetUsers = Arc<HashMap<reflect::AssetId, usize>>;
 /// Fields set by hand, by entity and component: see [`Changes::set`].
 pub type FieldsSet = BTreeMap<(EntityId, String), BTreeSet<String>>;
 
-/// What changed in the area since last asked.
+/// What changed in the level since last asked.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Changes {
     /// Entities whose name or components changed.
@@ -150,10 +150,10 @@ pub struct Changes {
     /// the others keep where the running game put them.
     pub moved: std::collections::BTreeSet<reflect::EntityId>,
     /// Whether anything more changed: entities added, deleted or moved to
-    /// another parent, an undo or redo, or a whole new area.
+    /// another parent, an undo or redo, or a whole new level.
     pub everything: bool,
     /// The fields set by hand, by entity and component, whether or not
-    /// the area's value changed: the running game is given each as it is
+    /// the level's value changed: the running game is given each as it is
     /// now, since it may have changed its own value meanwhile (a counter
     /// set back to what it started at). A Transform's aren't listed:
     /// `moved` says the same of those.
@@ -200,7 +200,7 @@ impl Changes {
         }
         // Past a few hundred, building everything again is as quick. The
         // fields set stay listed: building again gives the game only what
-        // differs from the area's last values.
+        // differs from the level's last values.
         if self.entities.len() > MAX_CHANGED_ENTITIES {
             self.everything = true;
             self.entities.clear();
@@ -231,7 +231,7 @@ pub struct BrushChanges {
 impl BrushChanges {
     /// Notes what `edits` may change of brushes.
     fn note(&mut self, edits: &[Edit]) {
-        let brush = area::builtin::Brush::NAME;
+        let brush = level::builtin::Brush::NAME;
         for edit in edits {
             match edit {
                 Edit::SetField {
@@ -263,7 +263,7 @@ impl BrushChanges {
 /// The most changed entities [`Changes`] lists; more count as everything.
 const MAX_CHANGED_ENTITIES: usize = 512;
 
-/// Revision numbers, shared by every document, so no two areas (or two
+/// Revision numbers, shared by every document, so no two levels (or two
 /// versions of one) ever have the same one.
 static NEXT_REVISION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
@@ -273,19 +273,19 @@ fn next_revision() -> u64 {
 
 impl Default for Document {
     fn default() -> Self {
-        Self::new(area::builtin::starter_area())
+        Self::new(level::builtin::starter_level())
     }
 }
 
 impl Document {
-    /// A document for `area`, with the built-in components and no
+    /// A document for `level`, with the built-in components and no
     /// history.
-    pub fn new(area: Area) -> Self {
+    pub fn new(level: Level) -> Self {
         Self {
-            area,
+            level,
             // The built-in schemas are fixed and tested; an error here would
             // be a bug caught by the tests, never by users.
-            registry: area::builtin::registry().unwrap_or_default(),
+            registry: level::builtin::registry().unwrap_or_default(),
             selection: Selection::default(),
             history: History::default(),
             file: None,
@@ -308,11 +308,11 @@ impl Document {
         }
     }
 
-    /// A document for `area`, read from `file`: nothing to save yet.
-    pub fn opened(area: Area, file: std::path::PathBuf) -> Self {
+    /// A document for `level`, read from `file`: nothing to save yet.
+    pub fn opened(level: Level, file: std::path::PathBuf) -> Self {
         Self {
             file: Some(file),
-            ..Self::new(area)
+            ..Self::new(level)
         }
     }
 
@@ -321,10 +321,10 @@ impl Document {
         self.file.as_deref()
     }
 
-    /// Its name: its file's, without the extension, or "Untitled area".
+    /// Its name: its file's, without the extension, or "Untitled level".
     pub fn name(&self) -> String {
         self.file.as_ref().and_then(|f| f.file_stem()).map_or_else(
-            || "Untitled area".to_string(),
+            || "Untitled level".to_string(),
             |n| n.to_string_lossy().into_owned(),
         )
     }
@@ -351,49 +351,49 @@ impl Document {
         self.saved = self.history.state();
     }
 
-    /// Replaces the whole area with `area` (its file changed on disk), as
+    /// Replaces the whole level with `level` (its file changed on disk), as
     /// one undo step called `label`; still counts as saved, since it now
     /// matches the file.
-    pub fn reload(&mut self, area: Area, label: &str) -> Result<(), EditError> {
-        self.replace_all(area, label)?;
+    pub fn reload(&mut self, level: Level, label: &str) -> Result<(), EditError> {
+        self.replace_all(level, label)?;
         self.saved = self.history.state();
         Ok(())
     }
 
-    /// Replaces the whole area with `area` (copies rebuilt from a changed
+    /// Replaces the whole level with `level` (copies rebuilt from a changed
     /// assembly), as one undo step called `label`. If nothing was unsaved,
-    /// nothing is now: the area's file would be the same.
-    pub fn rebuild(&mut self, area: Area, label: &str) -> Result<(), EditError> {
+    /// nothing is now: the level's file would be the same.
+    pub fn rebuild(&mut self, level: Level, label: &str) -> Result<(), EditError> {
         let clean = !self.is_dirty();
-        self.replace_all(area, label)?;
+        self.replace_all(level, label)?;
         if clean {
             self.saved = self.history.state();
         }
         Ok(())
     }
 
-    fn replace_all(&mut self, area: Area, label: &str) -> Result<(), EditError> {
-        let edits = self.replace_edits(&area);
+    fn replace_all(&mut self, level: Level, label: &str) -> Result<(), EditError> {
+        let edits = self.replace_edits(&level);
         let selection = self.selection.clone();
         self.edit(label, edits, None, Some(selection))
     }
 
-    /// Replaces the whole area with `area` for the running game (a save
+    /// Replaces the whole level with `level` for the running game (a save
     /// game loaded, or copies rebuilt from an assembly that changed on
-    /// disk meanwhile), not as an undo step: Stop puts the area back, and
+    /// disk meanwhile), not as an undo step: Stop puts the level back, and
     /// Keep takes only the undo steps made while playing
     /// (`Document::follow`). Returns how many edits couldn't be made.
-    pub fn replace_by_game(&mut self, area: &Area) -> usize {
-        let edits = self.replace_edits(area);
+    pub fn replace_by_game(&mut self, level: &Level) -> usize {
+        let edits = self.replace_edits(level);
         self.edit_by_game(edits)
     }
 
-    /// The edits that turn the area into `area`: everything there goes,
-    /// and `area`'s entities come in, tree by tree.
-    fn replace_edits(&self, area: &Area) -> Vec<Edit> {
+    /// The edits that turn the level into `level`: everything there goes,
+    /// and `level`'s entities come in, tree by tree.
+    fn replace_edits(&self, level: &Level) -> Vec<Edit> {
         let mut edits: Vec<Edit> = Vec::new();
         // Everything there now goes, tree by tree…
-        let old = &self.area;
+        let old = &self.level;
         let mut gone = std::collections::HashSet::new();
         for id in old.depth_first() {
             if gone.contains(&id) {
@@ -406,36 +406,36 @@ impl Document {
         }
         // …and the file's entities come in, tree by tree.
         let mut placed = std::collections::HashSet::new();
-        for id in area.depth_first() {
+        for id in level.depth_first() {
             if placed.contains(&id) {
                 continue;
             }
-            let entities: Vec<_> = area
+            let entities: Vec<_> = level
                 .tree(id)
                 .into_iter()
                 .filter(|e| placed.insert(*e))
-                .filter_map(|e| area.get(e).map(|data| (e, data.clone())))
+                .filter_map(|e| level.get(e).map(|data| (e, data.clone())))
                 .collect();
             edits.push(Edit::Spawn { entities });
         }
         edits
     }
 
-    /// The area.
-    pub fn area(&self) -> &Area {
-        &self.area
+    /// The level.
+    pub fn level(&self) -> &Level {
+        &self.level
     }
 
-    /// A number standing for the area exactly as it is now: it changes
+    /// A number standing for the level exactly as it is now: it changes
     /// with every edit, undo and redo (each frame of a drag too, though a
     /// drag is one undo step), and no other document ever has it. What's
-    /// worked out from the area (the running game, Problems) is worked
+    /// worked out from the level (the running game, Problems) is worked
     /// out again when it changes.
     pub fn revision(&self) -> u64 {
         self.revision
     }
 
-    /// A number standing for the area as everything but its brushes'
+    /// A number standing for the level as everything but its brushes'
     /// own values (their shapes, Solid) sees it: it changes with every
     /// edit, undo and redo, except an edit made only of Brush fields (a
     /// brush's insides edited, Tools 1a B3). What's worked out from where
@@ -455,7 +455,7 @@ impl Document {
         self.shape
     }
 
-    /// A number standing for the area's brushes (Tools 1a, B1): it changes
+    /// A number standing for the level's brushes (Tools 1a, B1): it changes
     /// with every edit that may change one (a Brush's field, a component
     /// added or taken off, entities added or deleted, an undo), but not
     /// with moving, turning or resizing, so a drag never makes brushes'
@@ -478,32 +478,32 @@ impl Document {
             changes.all || self.brush_changes.entities.len() > MAX_CHANGED_ENTITIES;
     }
 
-    /// The area's tree: children in order, tree order, the first of some
+    /// The level's tree: children in order, tree order, the first of some
     /// entities. Worked out once, and again only after entities are
     /// added, deleted or given another parent.
     pub fn tree(&self) -> Arc<Tree> {
         let mut kept = self.tree.borrow_mut();
-        Arc::clone(kept.get_or_insert_with(|| Arc::new(Tree::of(&self.area))))
+        Arc::clone(kept.get_or_insert_with(|| Arc::new(Tree::of(&self.level))))
     }
 
     /// Where every entity is in the world, worked out once per
     /// [`Self::revision`] (parents first, one multiplication each), for
-    /// everything that draws or measures the area in a frame.
+    /// everything that draws or measures the level in a frame.
     pub fn world_matrices(&self) -> Placed {
         if let Some((placed, world)) = &*self.world.borrow()
             && *placed == self.placed
         {
             return Arc::clone(world);
         }
-        let world = Arc::new(self.tree().world_matrices(&self.area));
+        let world = Arc::new(self.tree().world_matrices(&self.level));
         *self.world.borrow_mut() = Some((self.placed, Arc::clone(&world)));
         world
     }
 
     /// How many entities use each file (in any field of any component),
     /// worked out once per [`Self::revision`]: Properties says "shared by"
-    /// after every file field, and walking the whole area for each, every
-    /// frame, took milliseconds in a big area (the review, BUG-28).
+    /// after every file field, and walking the whole level for each, every
+    /// frame, took milliseconds in a big level (the review, BUG-28).
     pub fn asset_users(&self) -> AssetUsers {
         if let Some((placed, users)) = &*self.users.borrow()
             && *placed == self.placed
@@ -512,7 +512,7 @@ impl Document {
         }
         let mut users: HashMap<reflect::AssetId, usize> = HashMap::new();
         let mut uses = Vec::new();
-        for (_, entity) in self.area.iter() {
+        for (_, entity) in self.level.iter() {
             uses.clear();
             uses.extend(entity.components.values().flat_map(|c| {
                 c.fields.values().filter_map(|v| match v {
@@ -532,7 +532,7 @@ impl Document {
     }
 
     /// Where `id` is in the world (identity for an entity not in the
-    /// area), from [`Self::world_matrices`].
+    /// level), from [`Self::world_matrices`].
     pub fn world_matrix(&self, id: EntityId) -> Mat4 {
         self.world_matrices()
             .get(&id)
@@ -540,7 +540,7 @@ impl Document {
             .unwrap_or(Mat4::IDENTITY)
     }
 
-    /// Notes a change to the area: a new revision; a new shape unless
+    /// Notes a change to the level: a new revision; a new shape unless
     /// only component values changed (`values_only`); and the tree worked
     /// out again unless it's the same (`same_tree`).
     fn changed(&mut self, values_only: bool, same_tree: bool) {
@@ -555,13 +555,13 @@ impl Document {
         }
     }
 
-    /// What changed in the area since this was last asked (everything,
+    /// What changed in the level since this was last asked (everything,
     /// for a new document).
     pub fn take_changes(&mut self) -> Changes {
         std::mem::take(&mut self.changes)
     }
 
-    /// Changes the area by `edits`, as one undo step called `label`.
+    /// Changes the level by `edits`, as one undo step called `label`.
     /// Steps with the same `merge` key in a row become one (a whole drag).
     /// `select` is the selection afterwards, if it changes. On an error
     /// nothing changes.
@@ -591,14 +591,14 @@ impl Document {
         let mut brush_changes = BrushChanges::default();
         brush_changes.note(&edits);
         let brushes = edits.iter().any(|e| {
-            matches!(e, Edit::SetField { component, .. } if component == area::builtin::Brush::NAME)
+            matches!(e, Edit::SetField { component, .. } if component == level::builtin::Brush::NAME)
         });
         let brushes_only = edits.iter().all(|e| {
-            matches!(e, Edit::SetField { component, .. } if component == area::builtin::Brush::NAME)
+            matches!(e, Edit::SetField { component, .. } if component == level::builtin::Brush::NAME)
         });
         let placed = self.placed;
         self.history
-            .apply(&mut self.area, label, edits, merge, before, after.clone())?;
+            .apply(&mut self.level, label, edits, merge, before, after.clone())?;
         self.changed(values_only, same_tree);
         if brushes_only {
             self.placed = placed;
@@ -614,13 +614,13 @@ impl Document {
             self.changes.set.entry(of).or_default().extend(fields);
         }
         self.selection = after;
-        self.selection.retain_existing(&self.area);
+        self.selection.retain_existing(&self.level);
         Ok(())
     }
 
-    /// Changes the area by `edits` made by the running game (copies of
+    /// Changes the level by `edits` made by the running game (copies of
     /// assemblies it spawned, entities it took out), each on its own and
-    /// not as an undo step: Stop puts the area back, and that they aren't
+    /// not as an undo step: Stop puts the level back, and that they aren't
     /// steps is how Keep tells them from the user's own edits
     /// (`Document::follow`). They aren't [`Self::take_changes`]' changes:
     /// the game made them in its world too. Returns how many couldn't be
@@ -631,27 +631,27 @@ impl Document {
         self.add_brush_changes(brush_changes);
         let mut failed = 0;
         for edit in edits {
-            if self.area.apply(edit).is_err() {
+            if self.level.apply(edit).is_err() {
                 failed += 1;
             }
         }
         // The game's world has them already: they aren't changes for it
-        // to take in, only for the editor's own views of the area.
+        // to take in, only for the editor's own views of the level.
         self.changed(false, false);
-        self.selection.retain_existing(&self.area);
+        self.selection.retain_existing(&self.level);
         failed
     }
 
     /// Undoes the newest step and brings back the selection it started
     /// with. Returns its label, or `None` if there was nothing to undo.
     pub fn undo(&mut self) -> Option<Result<String, EditError>> {
-        let done = self.history.undo(&mut self.area)?;
+        let done = self.history.undo(&mut self.level)?;
         self.changed(false, false);
         self.brush_changes.all = true;
         self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
-            self.selection.retain_existing(&self.area);
+            self.selection.retain_existing(&self.level);
             done.label
         }))
     }
@@ -659,13 +659,13 @@ impl Document {
     /// Redoes the step undone last and brings back the selection it ended
     /// with. Returns its label, or `None` if there was nothing to redo.
     pub fn redo(&mut self) -> Option<Result<String, EditError>> {
-        let done = self.history.redo(&mut self.area)?;
+        let done = self.history.redo(&mut self.level)?;
         self.changed(false, false);
         self.brush_changes.all = true;
         self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
-            self.selection.retain_existing(&self.area);
+            self.selection.retain_existing(&self.level);
             done.label
         }))
     }
@@ -687,18 +687,18 @@ impl Document {
     /// steps](Self::hold_steps): the steps they undid are undone and the
     /// ones they made are made, each undoable, and the selection is
     /// theirs. Only undo steps are followed, so nothing the running game
-    /// did to `played`'s area comes with them; a step (or an entity's
+    /// did to `played`'s level comes with them; a step (or an entity's
     /// share of one) that changed something only the game had is left
     /// out, and steps wholly left out are named in what comes back.
-    pub(crate) fn follow(&mut self, played: &Self) -> area::Followed {
-        let followed = self.history.follow(&mut self.area, &played.history);
+    pub(crate) fn follow(&mut self, played: &Self) -> level::Followed {
+        let followed = self.history.follow(&mut self.level, &played.history);
         self.selection = played.selection.clone();
-        self.selection.retain_existing(&self.area);
+        self.selection.retain_existing(&self.level);
         self.touch();
         followed
     }
 
-    /// Gives the area a new revision number, as if it changed (it was put
+    /// Gives the level a new revision number, as if it changed (it was put
     /// back after playing).
     pub(crate) fn touch(&mut self) {
         self.changed(false, false);
@@ -715,12 +715,12 @@ impl Document {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use area::EntityData;
+    use level::EntityData;
 
     #[test]
-    fn a_new_document_has_the_starter_area_and_every_built_in() {
+    fn a_new_document_has_the_starter_level_and_every_built_in() {
         let d = Document::default();
-        assert_eq!(d.area().len(), 2);
+        assert_eq!(d.level().len(), 2);
         assert!(d.registry.get("Light").is_some());
         assert_eq!(d.selection.primary(), None);
     }
@@ -728,19 +728,19 @@ mod tests {
     #[test]
     fn the_selection_forgets_entities_that_are_gone() {
         let mut d = Document::default();
-        let mut area = d.area().clone();
-        let id = area.spawn(EntityData::new("Box"));
+        let mut level = d.level().clone();
+        let id = level.spawn(EntityData::new("Box"));
         d.selection.select_only(id);
         assert!(d.selection.contains(id));
-        let area = d.area().clone();
-        d.selection.retain_existing(&area);
+        let level = d.level().clone();
+        d.selection.retain_existing(&level);
         assert_eq!(d.selection.primary(), None);
         assert_eq!(d.selection.iter().count(), 0);
     }
 
     #[test]
     fn the_kept_tree_and_places_follow_every_change() {
-        use area::builtin::Transform;
+        use level::builtin::Transform;
         let mut d = Document::default();
         let id = EntityId::random();
         d.edit(
@@ -771,7 +771,7 @@ mod tests {
         .unwrap();
         assert!(Arc::ptr_eq(&tree, &d.tree()));
         assert_eq!(d.shape(), shape, "Problems needn't look again");
-        assert_eq!(d.world_matrix(id), d.area().world_matrix(id));
+        assert_eq!(d.world_matrix(id), d.level().world_matrix(id));
         assert_eq!(d.world_matrix(id).w_axis.x, 1.0);
         // Renaming changes the shape; deleting changes the tree too.
         d.edit(
@@ -796,10 +796,10 @@ mod tests {
     }
 
     /// BUG-28: Properties asked how many entities use a file by walking
-    /// the whole area, for every file field, every frame.
+    /// the whole level, for every file field, every frame.
     #[test]
     fn who_uses_each_file_is_counted_once_per_change() {
-        use area::builtin::{Model, Sprite};
+        use level::builtin::{Model, Sprite};
         let mut d = Document::default();
         let (crate_model, sheet) = (reflect::AssetId::random(), reflect::AssetId::random());
         let model = |asset| Model {
@@ -847,9 +847,9 @@ mod tests {
     }
 
     #[test]
-    fn undo_brings_back_the_area_and_the_selection() {
+    fn undo_brings_back_the_level_and_the_selection() {
         let mut d = Document::default();
-        let start = d.area().clone();
+        let start = d.level().clone();
         let id = EntityId::random();
         let mut selected = Selection::default();
         selected.select_only(id);
@@ -869,7 +869,7 @@ mod tests {
         assert_eq!(d.undo().unwrap().unwrap(), "Delete Box");
         assert_eq!(d.selection, selected, "selected again, as before the step");
         assert_eq!(d.undo().unwrap().unwrap(), "Add Box");
-        assert_eq!(d.area(), &start);
+        assert_eq!(d.level(), &start);
         assert_eq!(d.selection.primary(), None);
         assert!(d.undo().is_none());
         assert_eq!(d.redo().unwrap().unwrap(), "Add Box");
@@ -893,9 +893,9 @@ mod tests {
     #[test]
     fn changes_name_the_entities_touched_or_say_everything() {
         let mut d = Document::default();
-        assert!(d.take_changes().everything, "a new area is all new");
+        assert!(d.take_changes().everything, "a new level is all new");
         assert!(d.take_changes().is_empty(), "taken once");
-        let sun = d.area().iter().next().unwrap().0;
+        let sun = d.level().iter().next().unwrap().0;
         d.edit(
             "Rename",
             vec![Edit::Rename {
@@ -945,8 +945,8 @@ mod tests {
         let mut d = Document::default();
         let _ = d.take_changes();
         // By what it is: entities come in the order of their random IDs.
-        let sun = d.area().with::<area::builtin::Light>().next().unwrap().0;
-        let held = d.area().get(sun).unwrap().components["Light"]
+        let sun = d.level().with::<level::builtin::Light>().next().unwrap().0;
+        let held = d.level().get(sun).unwrap().components["Light"]
             .get("strength")
             .cloned();
         let set = |d: &mut Document, component: &str, field: &str, value| {

@@ -3,7 +3,7 @@
 //! repeated across the view, and gathered into layers drawn behind
 //! everything or in front of it.
 
-use crate::sprite_sheets::{AreaSprite, SpriteBatch, SpriteSheets, ViewSprite, view_frame};
+use crate::sprite_sheets::{LevelSprite, SpriteBatch, SpriteSheets, ViewSprite, view_frame};
 use assets::sprite_sheet::SpriteSheet;
 use glam::{Mat4, Vec2};
 use reflect::{AssetId, EntityId};
@@ -65,7 +65,7 @@ struct Gathered {
 /// `snap`, and repeated across `view`'s ground if it asks. Sprites with
 /// the same speeds and side make one layer.
 pub fn parallax_layers(
-    sprites: &[AreaSprite],
+    sprites: &[LevelSprite],
     sheets: &SpriteSheets,
     pixel: f32,
     snap: Option<f32>,
@@ -166,7 +166,7 @@ pub fn parallax_layers(
 fn repeats(
     one: &ViewSprite,
     sheet: &SpriteSheet,
-    parallax: area::builtin::Parallax,
+    parallax: level::builtin::Parallax,
     seen: Option<[Vec2; 2]>,
 ) -> Vec<ViewSprite> {
     let step_x = Vec2::from(one.axis_x) * sheet.size[0] as f32;

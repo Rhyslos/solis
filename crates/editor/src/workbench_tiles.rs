@@ -201,18 +201,18 @@ impl Workbench {
             return None;
         }
         let [tx, ty] = self.open.pixels.tile_size();
-        let mut data = area::EntityData::new(&name)
-            .with(&area::builtin::Transform {
+        let mut data = level::EntityData::new(&name)
+            .with(&level::builtin::Transform {
                 position: Vec3::new((at.x / tx).round() * tx, (at.y / ty).round() * ty, at.z),
-                ..area::builtin::Transform::default()
+                ..level::builtin::Transform::default()
             })
-            .with(&area::builtin::TileMap {
+            .with(&level::builtin::TileMap {
                 map: Some(reflect::AssetRef {
                     asset: map,
                     part: None,
                 }),
             });
-        data.parent = parent.filter(|&p| self.open.document.area().contains(p));
+        data.parent = parent.filter(|&p| self.open.document.level().contains(p));
         Some(self.spawn_selected(data))
     }
 
@@ -301,9 +301,9 @@ impl Workbench {
         let component = self
             .open
             .document
-            .area()
+            .level()
             .get(id)?
-            .get::<area::builtin::TileMap>()?;
+            .get::<level::builtin::TileMap>()?;
         let path = self.viewport.sheets.paths.get(&component.map?.asset)?;
         Some((id, path.clone()))
     }

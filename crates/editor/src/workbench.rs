@@ -25,14 +25,14 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[path = "workbench_action.rs"]
 mod action;
-#[path = "workbench_area_files.rs"]
-mod area_files;
 #[path = "workbench_frame.rs"]
 mod frame;
 #[path = "workbench_keys.rs"]
 mod keys;
 #[path = "workbench_leaving.rs"]
 mod leaving;
+#[path = "workbench_level_files.rs"]
+mod level_files;
 #[path = "workbench_problems.rs"]
 mod problems;
 
@@ -49,7 +49,7 @@ pub struct AppInfo {
 }
 
 /// What [`Workbench::assembly_part`] was worked out for: the selected
-/// entity, the area's revision and the sources' count.
+/// entity, the level's revision and the sources' count.
 pub(crate) type PartKey = (Option<reflect::EntityId>, u64, u64);
 
 /// The editor's state, kept between frames.
@@ -128,7 +128,7 @@ pub struct Workbench {
     /// Who the keys belong to this frame (`key_owner.rs`): every key
     /// handler asks this, and none decides for itself.
     pub(crate) keys: KeyOwner,
-    /// Goes up whenever what Problems checks the area against changes:
+    /// Goes up whenever what Problems checks the level against changes:
     /// the models loaded, the Library, the assemblies, the components
     /// known. It only ever goes up, another project included, so nothing
     /// worked out for one count is taken for a later one's.
@@ -166,7 +166,7 @@ pub struct Workbench {
     pub(crate) unhurried: crate::game_code::Unhurried,
 }
 
-/// What the viewport's view of the area depends on: when it's the same,
+/// What the viewport's view of the level depends on: when it's the same,
 /// the view is too.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ViewKey {
@@ -195,7 +195,7 @@ pub(crate) struct GameKey {
 }
 
 impl Workbench {
-    /// A workbench with a new area, its frame as the design draws it.
+    /// A workbench with a new level, its frame as the design draws it.
     pub fn new(info: AppInfo) -> Self {
         Self {
             info,
@@ -283,7 +283,7 @@ impl Workbench {
         &self.open.models
     }
 
-    /// The open area and its selection.
+    /// The open level and its selection.
     pub fn document(&self) -> &Document {
         &self.open.document
     }
@@ -319,14 +319,14 @@ impl Workbench {
         self.open.models.contains_key(&id)
     }
 
-    /// Swaps in a model that changed on disk (or loads one an opened area
-    /// uses): everything using it now draws it. Not an undo step: the area
+    /// Swaps in a model that changed on disk (or loads one an opened level
+    /// uses): everything using it now draws it. Not an undo step: the level
     /// didn't change.
     pub fn reload_model(&mut self, info: ModelInfo, warnings: &[String]) {
         let (name, triangles) = (info.name.clone(), info.triangles);
         self.sources += 1;
         if self.open.models.insert(info.asset, info).is_none() {
-            // First loaded for an opened area: nothing to announce.
+            // First loaded for an opened level: nothing to announce.
             return;
         }
         self.log(
@@ -425,23 +425,23 @@ impl Workbench {
         self.console.push(level, text.into());
     }
 
-    /// The window title: the program, its version and the open area; on
+    /// The window title: the program, its version and the open level; on
     /// the launcher, the program's name alone.
     pub fn title(&self) -> String {
         // The launcher's window is the program's own (board 01).
         if self.launcher.shown {
             return self.info.name.clone();
         }
-        let mut area = self.open.document.name();
+        let mut level = self.open.document.name();
         if self.open.document.is_dirty() {
-            area.push_str(" •");
+            level.push_str(" •");
         }
         match &self.open.project {
             Some(project) => format!(
-                "{} {} · {} · {area}",
+                "{} {} · {} · {level}",
                 self.info.name, self.info.version, project.name
             ),
-            None => format!("{} {} · {area}", self.info.name, self.info.version),
+            None => format!("{} {} · {level}", self.info.name, self.info.version),
         }
     }
 
@@ -486,14 +486,14 @@ impl Workbench {
                     state,
                 );
                 scene.camera_start =
-                    crate::game_panel::GameScene::camera_start_in(playing.before.area());
+                    crate::game_panel::GameScene::camera_start_in(playing.before.level());
                 scene
             }),
         })
     }
 
     /// The Environment's Preview time (decision 0092), set in Properties:
-    /// the hour the viewport shows the area at. It's forgotten with its
+    /// the hour the viewport shows the level at. It's forgotten with its
     /// project, and never used while playing, when the viewport shows the
     /// game's own hour.
     pub(crate) fn preview_hour(&mut self, ctx: &egui::Context) -> Option<f64> {
@@ -548,7 +548,7 @@ impl Workbench {
 
     /// Entity `id`'s component `name` as it is now: while the game plays,
     /// as game code (or, for Solis's own components, the running world)
-    /// has it; otherwise as the area has it. For the Console's `get` and
+    /// has it; otherwise as the level has it. For the Console's `get` and
     /// `values`, and for tests reading a game as it plays.
     pub fn values_now(&mut self, id: EntityId, name: &str) -> Option<reflect::ComponentData> {
         if let Some(playing) = &mut self.open.playing {
@@ -561,7 +561,7 @@ impl Workbench {
         }
         self.open
             .document
-            .area()
+            .level()
             .get(id)?
             .components
             .get(name)

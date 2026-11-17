@@ -1,6 +1,6 @@
 //! The tab bar, along the top of the window (specification, "Tab bar"):
 //! the logo in its light tile, the ribbon's tabs, the tabs that come with
-//! an open file, the search box, the project and area, Documentation
+//! an open file, the search box, the project and level, Documentation
 //! (`documentation.rs`), and the chevron that collapses the ribbon.
 
 use super::RibbonTab;
@@ -246,7 +246,7 @@ impl Workbench {
     }
 
     /// The bar's right end, laid out from the right: the chevron,
-    /// Documentation, and the project and area. Returns where it starts.
+    /// Documentation, and the project and level. Returns where it starts.
     fn right_end(&mut self, ui: &mut Ui, bar: Rect) -> f32 {
         let mut side = ui.new_child(
             UiBuilder::new()
@@ -269,8 +269,8 @@ impl Workbench {
         ui.min_rect().left()
     }
 
-    /// The project and the area: "Harbour / docks", with the unsaved dot
-    /// after an area that has changes.
+    /// The project and the level: "Harbour / docks", with the unsaved dot
+    /// after a level that has changes.
     fn path(&self, ui: &mut Ui) {
         let font = text::row();
         if self.open.project.is_none() && self.shell.tab == RibbonTab::File {
@@ -288,7 +288,7 @@ impl Workbench {
             );
             return;
         }
-        let area = self.open.document.name();
+        let level = self.open.document.name();
         let project = self.open.project.as_ref().map(|p| p.name.as_str());
         let dot = if self.open.document.is_dirty() {
             size::GAP + size::STATUS_DOT
@@ -299,12 +299,12 @@ impl Workbench {
         let project_w = project.map_or(0.0, |name| {
             width_of(ui, name, font.clone()) + width_of(ui, slash, font.clone())
         });
-        let width = project_w + width_of(ui, &area, font.clone()) + dot;
+        let width = project_w + width_of(ui, &level, font.clone()) + dot;
         let height = ui.available_height();
         let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
         let label = match project {
-            Some(project) => format!("{project} / {area}"),
-            None => area.clone(),
+            Some(project) => format!("{project} / {level}"),
+            None => level.clone(),
         };
         response.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Label, true, &label));
         let mut room = rect;
@@ -332,7 +332,7 @@ impl Workbench {
             ui,
             room,
             Align2::LEFT_CENTER,
-            &area,
+            &level,
             font,
             tokens::text_primary(),
         );
@@ -343,7 +343,7 @@ impl Workbench {
             );
             ui.painter()
                 .circle_filled(middle, size::STATUS_DOT / 2.0, tokens::WARNING);
-            response.on_hover_text("The area has changes that aren't saved");
+            response.on_hover_text("The level has changes that aren't saved");
         }
     }
 

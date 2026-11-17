@@ -2,7 +2,7 @@
 //! insides are edited (Tools 1a, B3): its points, edges and faces in its
 //! own space, worked out once each time the brush's mesh changes.
 //!
-//! Only the brush being edited is tried, never the area's other
+//! Only the brush being edited is tried, never the level's other
 //! triangles, and narrowly: the ray first against the brush's box, then
 //! against each face's box, and only the faces it reaches triangle by
 //! triangle. A point or an edge is found as the corner or side of the

@@ -136,7 +136,7 @@ fn a_game_code_block_on_its_own_is_a_problem_and_other_code_is_not() {
     let (_, problems) = told("```\ncomponent Mover {\n}\n```\n");
     assert!(problems[0].contains("reads as Lust"), "{problems:?}");
     let (out, problems) =
-        told("```text\nsolis --check-project farm\n```\n\n```\narea version 3;\n```\n");
+        told("```text\nsolis --check-project farm\n```\n\n```\nlevel version 3;\n```\n");
     assert!(problems.is_empty(), "{problems:?}");
     assert!(out.contains("<pre data-lang=\"text\">"));
 }

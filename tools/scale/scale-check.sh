@@ -9,7 +9,7 @@
 # Usage:
 #   tools/scale/scale-check.sh
 #
-# Today it times the editor's frames (with big areas, several views, play
+# Today it times the editor's frames (with big levels, several views, play
 # mode and game code), the scale levels (decision 0030: target, stress and
 # the ceiling, the CPU's share), a Lust edit reaching a running game, and
 # one viewport frame at 1920x1080. From Phase 5 (Scale) it grows into the scale target in DESIGN.md §2
@@ -31,7 +31,7 @@ run -p world scale_check
 run -p tiles scale_check
 run -p ui scale_check
 run -p physics scale_check
-run -p area scale_check
+run -p level scale_check
 run -p render --test gpu scale_check
 if [ "$failed" -ne 0 ]; then
     echo "Something missed its target (marked SLOW above), or a check failed."

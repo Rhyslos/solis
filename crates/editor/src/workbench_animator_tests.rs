@@ -11,8 +11,8 @@ use crate::workbench::WorkbenchAction;
 use animation::{
     AnimatorFile, Condition, Facing, Parameter, ParameterKind, Plays, State, Transition,
 };
-use area::builtin::{Animator, Sprite, Transform};
 use egui_kittest::kittest::Queryable;
+use level::builtin::{Animator, Sprite, Transform};
 use reflect::{AssetId, AssetRef, Id};
 
 fn id(n: u64) -> Id {
@@ -308,7 +308,7 @@ fn a_new_animator_is_made_saved_and_opened_and_a_damaged_one_says_why() {
 fn it_runs_in_the_game_and_the_selected_entity_s_state_is_live() {
     let (mut w, clips, anim) = with_animator();
     let walker = w.spawn_selected(
-        area::EntityData::new("Walker")
+        level::EntityData::new("Walker")
             .with(&Transform::default())
             .with(&Sprite {
                 sheet: Some(AssetRef {

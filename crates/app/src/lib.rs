@@ -5,7 +5,6 @@
 //! `main.rs`; this library part holds what the entry point and its tests
 //! share. See this crate's README for its purpose and limits.
 
-pub mod area_file;
 pub mod benchmark;
 pub mod branding;
 mod browsers;
@@ -21,7 +20,9 @@ pub mod gamepad;
 pub mod gpu;
 pub mod import;
 pub mod known_projects;
+pub mod level_file;
 pub mod logger;
+mod older_files;
 pub mod play_files;
 pub mod playground;
 mod playground_sounds;
@@ -34,7 +35,6 @@ pub mod sprites;
 pub mod startup;
 pub mod text_files;
 pub mod thumbnails;
-mod to_lust;
 pub mod ui_sample;
 pub mod updates;
 mod upgrades;

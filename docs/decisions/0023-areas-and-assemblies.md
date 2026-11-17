@@ -1,5 +1,7 @@
 # 0023. "Area" instead of "scene", "assembly" instead of "prefab"
 
+> **Areas are levels now** ([decision 0118](0118-the-editor-rethink.md)): what this record calls an area is a level, and its file ends `.sollevel`. The record keeps the words of its time.
+
 - **Status:** Accepted
 - **Date:** 2026-10-23
 

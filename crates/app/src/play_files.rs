@@ -204,31 +204,31 @@ pub fn load_mixer(root: &Path) -> (sound::Mixer, Vec<String>) {
 
 /// The project's 2D settings (`pixels.solpix`), or the standard ones when
 /// it has none; with notes for the Console, as [`load_mixer`] gives.
-pub fn load_pixels(root: &Path) -> (area::pixels::PixelSettings, Vec<String>) {
-    let file = area::pixels::FILE_NAME;
-    let limit = area::pixels::MAX_BYTES as u64;
+pub fn load_pixels(root: &Path) -> (level::pixels::PixelSettings, Vec<String>) {
+    let file = level::pixels::FILE_NAME;
+    let limit = level::pixels::MAX_BYTES as u64;
     let text = match read_limited(&root.join(file), limit) {
         Ok(Some(text)) => text,
-        Ok(None) => return (area::pixels::PixelSettings::default(), Vec::new()),
+        Ok(None) => return (level::pixels::PixelSettings::default(), Vec::new()),
         Err(why) => {
             return (
-                area::pixels::PixelSettings::default(),
+                level::pixels::PixelSettings::default(),
                 vec![format!(
                     "Couldn't read {file}: {why}; the standard 2D settings are used."
                 )],
             );
         }
     };
-    match area::pixels::read(&text) {
+    match level::pixels::read(&text) {
         Ok(read) => (
             read.settings,
-            crate::upgrades::older_note(file, &text, &area::pixels::FORMAT)
+            crate::upgrades::older_note(file, &text, &level::pixels::FORMAT)
                 .into_iter()
                 .chain(read.notes.into_iter().map(|n| format!("{file}, {n}.")))
                 .collect(),
         ),
         Err(why) => (
-            area::pixels::PixelSettings::default(),
+            level::pixels::PixelSettings::default(),
             vec![format!(
                 "{file} {why}, so the standard 2D settings are used until it's fixed (a change \
                  in Settings > 2D writes it again, keeping this one as a backup)."
@@ -241,16 +241,16 @@ pub fn load_pixels(root: &Path) -> (area::pixels::PixelSettings, Vec<String>) {
 /// backup and an older one in the backups, as [`save_mixer`] does.
 pub fn save_pixels(
     root: &Path,
-    settings: &area::pixels::PixelSettings,
+    settings: &level::pixels::PixelSettings,
 ) -> std::io::Result<Option<Kept>> {
     save_keeping_damaged(
         root,
-        area::pixels::FILE_NAME,
-        &area::pixels::write(settings),
-        &area::pixels::FORMAT,
+        level::pixels::FILE_NAME,
+        &level::pixels::write(settings),
+        &level::pixels::FORMAT,
         |text| {
-            area::pixels::read(text)
-                .map(|read| area::pixels::write(&read.settings))
+            level::pixels::read(text)
+                .map(|read| level::pixels::write(&read.settings))
                 .map_err(|e| e.to_string())
         },
     )
@@ -471,7 +471,7 @@ mod tests {
 
     #[test]
     fn the_2d_settings_are_the_project_s_or_the_standard_ones_and_a_damaged_file_is_kept() {
-        use area::pixels::{FILE_NAME, PixelSettings, Scaling};
+        use level::pixels::{FILE_NAME, PixelSettings, Scaling};
         let root = scratch("pixels");
         assert_eq!(load_pixels(&root), (PixelSettings::default(), Vec::new()));
         let mine = PixelSettings {

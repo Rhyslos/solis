@@ -13,7 +13,9 @@ pub const ASSETS_FOLDER: &str = "assets";
 /// The rebuildable cache, never committed.
 pub const CACHE_FOLDER: &str = ".solis";
 /// The project file's format version this build writes and reads.
-pub const FORMAT: u32 = 1;
+/// Version 2 is a project whose levels are `.sollevel` files (decision
+/// 0118: areas renamed levels).
+pub const FORMAT: u32 = 2;
 
 /// The project file's version and upgraders (Phase 8, C1): each step
 /// turns the file's table at one version into the next, before it's
@@ -23,8 +25,17 @@ pub static PROJECT_FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgr
     name: "project",
     current: FORMAT,
     version_of: format_key_version,
-    steps: &[],
+    steps: &[levels_not_areas],
 };
+
+/// Version 1 to 2 (decision 0118): nothing in the file itself changes.
+/// A project at version 2 keeps its levels as `.sollevel` files, moved
+/// from `.solarea` when it was opened, which a build from before can't
+/// see: such a build refuses the project as one from a newer Solis,
+/// rather than opening it with no levels.
+fn levels_not_areas(_: &mut toml::Table) -> Result<(), String> {
+    Ok(())
+}
 
 /// The `format = N` key of a TOML file (the project file, sidecars): a
 /// format's `version_of`.
@@ -75,6 +86,7 @@ pub const GITIGNORE: &str = "\
 pub const GITATTRIBUTES: &str = "\
 # Solis's own text files: the same line endings everywhere, so they merge.
 *.solis text eol=lf
+*.sollevel text eol=lf
 *.solarea text eol=lf
 *.solassembly text eol=lf
 *.solmat text eol=lf
@@ -169,10 +181,9 @@ struct ProjectFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     saved_by: Option<u64>,
     /// 2D, 3D or both (decision 0118). An optional key, like `saved_by`:
-    /// older files leave it out and are both, and an older Solis reading
-    /// a newer file passes it by and keeps it when it writes the file
-    /// (it changes keys through the file's table), so the format's
-    /// version stays 1.
+    /// older files leave it out and are both, and a Solis that didn't know
+    /// it passed it by and kept it when it wrote the file (it changes keys
+    /// through the file's table), so the key needed no version of its own.
     #[serde(default)]
     kind: ProjectKind,
 }
@@ -324,6 +335,55 @@ impl Project {
             return Err(ProjectError::NotAProject(root.to_path_buf()));
         }
         Self::read_summary(&read_text_limited(&path, 64 * 1024)?)
+    }
+
+    /// The project file's text brought up to this build's format, keeping
+    /// everything else it says, when it's older: `None` when it's current.
+    pub fn upgraded_file(&self) -> Result<Option<String>, ProjectError> {
+        let text = read_text_limited(&self.root.join(PROJECT_FILE), 64 * 1024)?;
+        let Some(found) = format_key_version(&text).filter(|v| *v < FORMAT) else {
+            return Ok(None);
+        };
+        let mut table: toml::Table =
+            toml::from_str(&text).map_err(|e| ProjectError::Damaged(e.to_string()))?;
+        PROJECT_FORMAT
+            .upgrade(found, &mut table)
+            .map_err(|e| ProjectError::Damaged(e.to_string()))?;
+        table.insert("format".into(), toml::Value::Integer(i64::from(FORMAT)));
+        toml::to_string(&table)
+            .map(Some)
+            .map_err(|e| ProjectError::Damaged(e.to_string()))
+    }
+
+    /// Saves the project file in this build's format when it's older,
+    /// keeping a copy of the older one in the backups first
+    /// (`crate::backup::save`, rule 23), once the project's older files
+    /// have moved to their new names (decision 0118: format 2 once its
+    /// levels are `.sollevel`). Returns where the copy went, or `None`
+    /// when the file was already current.
+    pub fn upgrade_file(&self) -> Result<Option<PathBuf>, String> {
+        let Some(text) = self.upgraded_file().map_err(|e| e.to_string())? else {
+            return Ok(None);
+        };
+        let read_back = |new: &str| {
+            let table: toml::Table = toml::from_str(new).map_err(|e| e.to_string())?;
+            let again = toml::to_string(&table).map_err(|e| e.to_string())?;
+            Self::read_summary(&again).map_err(|e| e.to_string())?;
+            if again == new {
+                Ok(())
+            } else {
+                Err("it read back differently".into())
+            }
+        };
+        let path = self.root.join(PROJECT_FILE);
+        crate::backup::save(
+            &self.root,
+            &path,
+            text.as_bytes(),
+            &PROJECT_FORMAT,
+            read_back,
+        )
+        .map_err(|e| e.to_string())
     }
 
     /// Notes in the project file that `build` opened it last, keeping
@@ -627,7 +687,7 @@ mod tests {
     fn atomic_writes_replace_the_file_and_leave_nothing_behind() {
         let folder = test_folder("atomic");
         std::fs::create_dir_all(&folder).unwrap();
-        let path = folder.join("harbour.solarea");
+        let path = folder.join("harbour.sollevel");
         write_atomically(&path, b"first").unwrap();
         write_atomically(&path, b"second").unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"second");
@@ -646,9 +706,9 @@ mod tests {
             .filter_map(Result::ok)
             .map(|e| e.file_name())
             .collect();
-        assert_eq!(left, ["harbour.solarea"], "{left:?}");
+        assert_eq!(left, ["harbour.sollevel"], "{left:?}");
         // A write into a folder that isn't there fails, leaving nothing.
-        assert!(write_atomically(&folder.join("gone/x.solarea"), b"x").is_err());
+        assert!(write_atomically(&folder.join("gone/x.sollevel"), b"x").is_err());
     }
 
     #[test]
@@ -663,7 +723,11 @@ mod tests {
         assert!(ignore.contains("/.solis/"));
         assert!(ignore.contains("/saves/"));
         let attributes = std::fs::read_to_string(root.join(".gitattributes")).unwrap();
-        assert!(attributes.contains("*.solarea text eol=lf"));
+        assert!(attributes.contains("*.sollevel text eol=lf"), "levels");
+        assert!(
+            attributes.contains("*.solarea text eol=lf"),
+            "levels before 0118"
+        );
         assert!(attributes.contains("*.lst text eol=lf"), "Lust's files");
         assert!(attributes.contains("*.solinput text eol=lf"));
         assert!(attributes.contains("*.solanim text eol=lf"), "animators");
@@ -719,6 +783,61 @@ mod tests {
         let project = Project::open(&root).unwrap();
         assert!(project.root().join(".solis").is_dir());
         assert!(project.cache().starts_with(project.root()));
+    }
+
+    #[test]
+    fn a_project_of_format_1_is_brought_to_format_2_keeping_what_it_says() {
+        // Decision 0118: format 2 is a project whose levels are .sollevel.
+        assert_eq!(FORMAT, 2);
+        assert!(PROJECT_FORMAT.is_complete());
+        let root = test_folder("format-2");
+        let old = "name = \"Harbour\"\nformat = 1\nsaved_by = 211\nkind = \"2d\"\nlater = 1\n";
+        std::fs::write(root.join(PROJECT_FILE), old).unwrap();
+        let project = Project::open(&root).unwrap();
+        assert_eq!(project.name(), "Harbour");
+        let new = project.upgraded_file().unwrap().expect("format 1 is older");
+        assert_eq!(format_key_version(&new), Some(2));
+        let mut kept: toml::Table = toml::from_str(&new).unwrap();
+        let mut was: toml::Table = toml::from_str(old).unwrap();
+        kept.remove("format");
+        was.remove("format");
+        assert_eq!(kept, was, "nothing else changes");
+        // Opening alone never writes it (the app saves it, with a backup).
+        assert_eq!(
+            std::fs::read_to_string(root.join(PROJECT_FILE)).unwrap(),
+            old
+        );
+        std::fs::write(root.join(PROJECT_FILE), &new).unwrap();
+        assert_eq!(Project::read_summary(&new).unwrap().kind, ProjectKind::TwoD);
+        assert!(project.upgraded_file().unwrap().is_none(), "current");
+        // A new project is made at format 2.
+        let made = Project::create(&root.join("new"), "New").unwrap();
+        assert!(made.upgraded_file().unwrap().is_none());
+    }
+
+    #[test]
+    fn a_build_from_before_levels_refuses_a_format_2_project_as_newer() {
+        // The reader of the build before decision 0118: format 1 at most.
+        let before = reflect::upgrade::Format::<toml::Table> {
+            name: "project",
+            current: 1,
+            version_of: format_key_version,
+            steps: &[],
+        };
+        let text = "name = \"Harbour\"\nformat = 2\n";
+        let mut table: toml::Table = toml::from_str(text).unwrap();
+        let refused = before.upgrade(2, &mut table).unwrap_err().to_string();
+        assert!(refused.contains("saved by a newer version"), "{refused}");
+        // And how that build's project reader said it (its check of the
+        // format key before reading on), word for word.
+        assert_eq!(
+            ProjectError::TooNew(2).to_string(),
+            "it was made by a newer version (format 2); update to open it"
+        );
+        assert!(matches!(
+            Project::read_summary("name = \"X\"\nformat = 3\n"),
+            Err(ProjectError::TooNew(3))
+        ));
     }
 
     #[test]

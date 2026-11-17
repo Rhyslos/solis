@@ -2,7 +2,7 @@
 //! (the full review, BUG-16): every one of game code's calls is listed
 //! here as setting something on an entity or not, and each that does is
 //! played, then an edit of another component of that entity (which makes
-//! the one entity again from the area) and an edit that builds the whole
+//! the one entity again from the level) and an edit that builds the whole
 //! world again leave the game exactly where the same game without the
 //! edits is.
 //!
@@ -15,12 +15,12 @@ use crate::properties::PropertyRequest;
 use crate::test_support::*;
 use crate::workbench::Workbench;
 use animation::{AnimatorFile, Parameter, ParameterKind, Plays, State};
-use area::EntityData;
-use area::builtin::{
+use glam::{Quat, Vec3};
+use level::EntityData;
+use level::builtin::{
     Animator, AudioSource, CharacterBody, Collider, Light, RigidBody, Screen, Sprite, TileMap,
     Transform,
 };
-use glam::{Quat, Vec3};
 use reflect::{AssetId, AssetRef, Component, EntityId, Value};
 use script::{AnimatorValue, Change, GameWorld};
 use std::sync::Arc;
@@ -113,7 +113,7 @@ const ON_AN_ENTITY: &[(&str, Asks)] = &[
 
 /// Every other call: it asks something, or what it sets isn't on an
 /// entity (the whole game's, the sound mixer's, the player's settings,
-/// input) or is the area's own (an entity made or taken out).
+/// input) or is the level's own (an entity made or taken out).
 const NOT_ON_AN_ENTITY: &[&str] = &[
     "World_say",
     "World_time",
@@ -242,8 +242,8 @@ fn stage(files: (AssetId, AssetId)) -> Workbench {
     let mut w = Workbench::new(info());
     // Its games are compared with each other.
     unhurried(&mut w);
-    // No starter area: its entities' IDs are new every time.
-    w.open.document = crate::document::Document::new(area::Area::new());
+    // No starter level: its entities' IDs are new every time.
+    w.open.document = crate::document::Document::new(level::Level::new());
     let sign = EntityData::new("Sign")
         .with(&Transform::default())
         .with(&Light::default())
@@ -270,7 +270,7 @@ fn stage(files: (AssetId, AssetId)) -> Workbench {
         })
         .with(&Light::default())
         .with(&CharacterBody::default());
-    let spawn = |n: u64, data: EntityData| area::Edit::Spawn {
+    let spawn = |n: u64, data: EntityData| level::Edit::Spawn {
         entities: vec![(id(n), data)],
     };
     w.open
@@ -324,7 +324,7 @@ fn ask(w: &mut Workbench, asks: Asks) {
 }
 
 /// Another component of `entity` edited by hand: with nothing else
-/// changed, the game makes that one entity again from the area.
+/// changed, the game makes that one entity again from the level.
 fn edit_another_component(w: &mut Workbench, entity: u64) {
     w.apply_property(
         PropertyRequest::SetField {
@@ -337,7 +337,7 @@ fn edit_another_component(w: &mut Workbench, entity: u64) {
     );
 }
 
-/// An entity added and taken out again: the area is as it was, and the
+/// An entity added and taken out again: the level is as it was, and the
 /// game builds its whole world again from it.
 fn build_everything_again(w: &mut Workbench) {
     let passer_by = id(99);
@@ -346,10 +346,10 @@ fn build_everything_again(w: &mut Workbench) {
         .edit(
             "Pass by",
             vec![
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(passer_by, EntityData::new("Passer-by"))],
                 },
-                area::Edit::Despawn { root: passer_by },
+                level::Edit::Despawn { root: passer_by },
             ],
             None,
             None,
@@ -366,7 +366,7 @@ fn game_has(w: &mut Workbench) -> String {
         let names: Vec<String> = w
             .open
             .document
-            .area()
+            .level()
             .get(entity)
             .unwrap()
             .components
@@ -404,7 +404,7 @@ fn what_each_call_sets_on_an_entity_outlives_edits_while_playing() {
         let mut played = stage(files);
         ask(&mut played, *asks);
         let asked = game_has(&mut played);
-        // One entity made again from the area: nothing of the game moves.
+        // One entity made again from the level: nothing of the game moves.
         let mut edited = stage(files);
         ask(&mut edited, *asks);
         edit_another_component(&mut edited, entity);
@@ -441,7 +441,7 @@ fn what_each_call_sets_on_an_entity_outlives_edits_while_playing() {
 
 /// The other side (the review's BUG-54, kept working): what's set by
 /// hand in the editor wins for the field set, even set to the value the
-/// area held all along, and everything else game code set stays.
+/// level held all along, and everything else game code set stays.
 #[test]
 fn a_field_set_by_hand_wins_over_what_game_code_set_and_the_rest_stays() {
     for rebuild in [false, true] {
@@ -456,7 +456,7 @@ fn a_field_set_by_hand_wins_over_what_game_code_set_and_the_rest_stays() {
             )
         };
         assert_eq!(playing(&mut w), (false, true), "as game code set them");
-        // Playing, as the area holds it already.
+        // Playing, as the level holds it already.
         w.apply_property(
             PropertyRequest::SetField {
                 entity: id(SIGN),

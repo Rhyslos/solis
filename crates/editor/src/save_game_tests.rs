@@ -5,9 +5,9 @@
 use super::*;
 use crate::test_support::*;
 use crate::workbench::WorkbenchAction;
-use area::EntityData;
-use area::builtin::{Collider, RigidBody};
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::{Collider, RigidBody};
 use std::sync::Arc;
 
 /// A busy game: a counter that staggers randomly, kicks a crate on its
@@ -108,13 +108,13 @@ pub(super) fn busy(project: &str) -> Workbench {
         .edit(
             "Add",
             vec![
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(1), floor)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(2), crate_data)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(3), busy)],
                 },
             ],
@@ -162,12 +162,12 @@ fn a_loaded_game_carries_on_exactly_as_the_saved_one_would_have() {
     assert_eq!(sums(&mut w), saved_at, "the same as when saved");
     run_to(&mut w, 130);
     assert_eq!(sums(&mut w), carried_on, "the same, to the bit");
-    // Stop goes back to the area as it was before Play.
+    // Stop goes back to the level as it was before Play.
     w.stop();
     assert_eq!(
         w.open
             .document
-            .area()
+            .level()
             .get(raw(3))
             .unwrap()
             .get::<Transform>()
@@ -269,9 +269,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 8", "solis save 9", 1),
-        text.replacen("solis save 8", "solis save 2", 1),
-        text.replacen("solis save 8", "solis save 1", 1),
+        text.replacen("solis save 9", "solis save 10", 1),
+        text.replacen("solis save 9", "solis save 2", 1),
+        text.replacen("solis save 9", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -306,12 +306,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 8\r", "solis save 8 "] {
-        let why = Save::read(&text.replacen("solis save 8", header, 1)).unwrap_err();
+    for header in ["solis save 9\r", "solis save 9 "] {
+        let why = Save::read(&text.replacen("solis save 9", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 8", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 9", "solis save 10", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -340,7 +340,7 @@ fn a_project_name_with_a_line_break_still_loads_its_saves() {
 #[test]
 fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
     // The third review: the values section was given to the game whole,
-    // so a hand-made save could start components the area doesn't have.
+    // so a hand-made save could start components the level doesn't have.
     let mut w = busy("Harbour");
     w.play();
     run_to(&mut w, 10);
@@ -348,23 +348,23 @@ fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
     let floor = w
         .open
         .document
-        .area()
+        .level()
         .iter()
         .find(|(_, e)| e.name == "Floor")
         .map(|(id, _)| id)
         .unwrap();
-    let mut extra = area::Area::new();
+    let mut extra = level::Level::new();
     let mut holder = EntityData::new("");
     holder
         .components
         .insert("Busy".into(), reflect::ComponentData::default());
     extra.insert(floor, holder);
     let registry = w.open.document.registry.clone();
-    let values = area::text::read(&save.values, &registry).unwrap();
+    let values = level::text::read(&save.values, &registry).unwrap();
     for (id, data) in values.iter() {
         extra.insert(id, data.clone());
     }
-    save.values = area::text::write(&extra, &registry, &|_| None);
+    save.values = level::text::write(&extra, &registry, &|_| None);
     let text = save.write().unwrap();
     w.load_game(&text, "hand-made");
     assert!(
@@ -437,7 +437,7 @@ fn many_saves_of_one_slot_in_a_tick_are_made_once() {
         let mut data = reflect::ComponentData::default();
         data.set("request", reflect::Value::Int(1));
         more.components.insert("Busy".into(), data);
-        spawns.push(area::Edit::Spawn {
+        spawns.push(level::Edit::Spawn {
             entities: vec![(raw(100 + n), more)],
         });
     }
@@ -587,7 +587,7 @@ fn busy_with_keys() -> Workbench {
         .document
         .edit(
             "Keys",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(raw(4), keys)],
             }],
             None,
@@ -681,7 +681,7 @@ fn a_quick_load_keeps_the_game_s_keys_and_keeps_what_was_recorded() {
 }
 
 /// Writes real files for the fuzzers to start from (decision 0042): a save
-/// game, a recording, input actions and an area, into the folder
+/// game, a recording, input actions and a level, into the folder
 /// `SOLIS_FUZZ_SEEDS` names (`fuzz/seeds`). Run by `fuzz/make-seeds.sh`.
 #[test]
 #[ignore = "writes the fuzzers' seed files; run by fuzz/make-seeds.sh"]
@@ -727,16 +727,18 @@ fn write_fuzz_seeds() {
         &input::Bindings::default().write(),
     );
     put(
-        "area_file",
-        "busy.solarea",
-        &area::text::write(w.open.document.area(), &w.open.document.registry, &|_| None),
+        "level_file",
+        "busy.sollevel",
+        &level::text::write(w.open.document.level(), &w.open.document.registry, &|_| {
+            None
+        }),
     );
     put("game_code", "busy.lst", BUSY);
 }
 
 #[test]
 fn a_sound_turned_off_stays_off_after_a_load() {
-    use area::builtin::AudioSource;
+    use level::builtin::AudioSource;
     let mut w = Workbench::new(info());
     w.open.project = Some(crate::library::ProjectInfo {
         name: "Radio".into(),
@@ -840,6 +842,56 @@ fn every_version_of_a_save_loads_and_plays_on() {
 }
 
 #[test]
+fn the_version_8_example_is_written_as_the_version_9_one() {
+    // Decision 0118: version 9 calls the level's section `level` (it was
+    // `area`); everything else, the level's own text too, is as it was.
+    let eight = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
+    let nine = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
+    let section = |text: &str, name: &str| {
+        text.lines().any(|l| {
+            l.strip_prefix(name)
+                .and_then(|n| n.strip_prefix(' '))
+                .is_some_and(|n| n.parse::<usize>().is_ok())
+        })
+    };
+    assert!(section(&eight, "area") && !section(&eight, "level"));
+    assert!(section(&nine, "level") && !section(&nine, "area"));
+    assert_eq!(super::save_read_back(&eight).unwrap(), nine);
+    assert_eq!(super::save_read_back(&nine).unwrap(), nine);
+    // A version 8 save with no area, or a level already, isn't one.
+    let sections = |text: &str| {
+        let mut read = Sections::default();
+        let body = text
+            .split_once("\nsum ")
+            .unwrap()
+            .1
+            .split_once('\n')
+            .unwrap()
+            .1;
+        let mut rest = body;
+        while let Some((head, after)) = rest.split_once('\n') {
+            let (name, len) = head.split_once(' ').unwrap();
+            let len: usize = len.parse().unwrap();
+            read.list.push((name.to_string(), after[..len].to_string()));
+            rest = &after[(len + 1).min(after.len())..];
+        }
+        read
+    };
+    let mut found = sections(&eight);
+    assert!(super::reading::levels_not_areas(&mut found).is_ok());
+    assert!(found.list.iter().any(|(n, _)| n == "level"));
+    assert!(
+        super::reading::levels_not_areas(&mut found).is_err(),
+        "a level already"
+    );
+    found.list.retain(|(n, _)| n != "level");
+    assert!(
+        super::reading::levels_not_areas(&mut found).is_err(),
+        "no area"
+    );
+}
+
+#[test]
 fn a_save_whose_component_the_game_no_longer_has_still_loads() {
     // The game's code changed since the save: its component is gone. The
     // save loads, and the Console says what was left out.
@@ -930,12 +982,12 @@ fn busy_with_an_animator() -> (Workbench, EntityId) {
     sheets.paths.insert(anim, "farmer.solanim".into());
     w.set_sprite_sheets(sheets);
     let farmer = w.spawn_selected(EntityData::new("Farmer").with(&Transform::default()).with(
-        &area::builtin::Animator {
+        &level::builtin::Animator {
             animator: Some(reflect::AssetRef {
                 asset: anim,
                 part: None,
             }),
-            ..area::builtin::Animator::default()
+            ..level::builtin::Animator::default()
         },
     ));
     (w, farmer)
@@ -956,7 +1008,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 8\n"));
+    assert!(text.starts_with("solis save 9\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);
@@ -1023,7 +1075,7 @@ fn busy_with_a_map() -> (Workbench, EntityId) {
     sheets.paths.insert(map_id, "field.tilemap.lst".into());
     w.set_sprite_sheets(sheets);
     let field = w.spawn_selected(EntityData::new("Field").with(&Transform::default()).with(
-        &area::builtin::TileMap {
+        &level::builtin::TileMap {
             map: Some(reflect::AssetRef {
                 asset: map_id,
                 part: None,
@@ -1117,7 +1169,7 @@ fn a_game_whose_map_couldn_t_be_loaded_again_isn_t_saved() {
 
 #[test]
 fn a_save_keeps_the_game_s_speed() {
-    let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.speed, 0.5);
     assert_eq!(save.write().unwrap(), text, "read back as written");
@@ -1165,7 +1217,7 @@ fn loading_a_game_keeps_the_player_s_settings() {
 
 #[test]
 fn a_save_keeps_the_time_of_day() {
-    let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.day_shift, 6.0);
     assert_eq!(save.write().unwrap(), text, "read back as written");

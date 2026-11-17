@@ -22,8 +22,8 @@ mod armour {
 /// The sample's name, as its project file has it.
 pub const NAME: &str = "Turret sample";
 
-/// The area the sample opens on.
-pub const AREA: &str = "turret.solarea";
+/// The level the sample opens on.
+pub const LEVEL: &str = "turret.sollevel";
 
 /// The sample's files, inside its assets.
 pub const FILES: &[(&str, &str)] = &[
@@ -40,8 +40,8 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../samples/turret/assets/armour.rs"),
     ),
     (
-        AREA,
-        include_str!("../../../samples/turret/assets/turret.solarea"),
+        LEVEL,
+        include_str!("../../../samples/turret/assets/turret.sollevel"),
     ),
     (
         "ui/droneHealth.lst",

@@ -183,7 +183,7 @@ const LEFT_OUT: [(&str, &str); 12] = [
     ),
     (
         "shell.groups.second-area",
-        "a second area's tab simply isn't drawn: there is nothing to show",
+        "a second level's tab simply isn't drawn: there is nothing to show",
     ),
     (
         "debug.graph.select",
@@ -276,7 +276,7 @@ fn each_part_s_phase_is_the_one_the_inventory_gives() {
 #[test]
 fn the_reader_of_the_inventory_finds_pieces_however_they_are_listed() {
     assert_eq!(
-        unbuilt_pieces("Real for one. Unbuilt piece: `lib.used-by.all-kinds` (which areas)."),
+        unbuilt_pieces("Real for one. Unbuilt piece: `lib.used-by.all-kinds` (which levels)."),
         ["lib.used-by.all-kinds"]
     );
     assert_eq!(
@@ -304,7 +304,7 @@ fn what_a_part_says_names_it_what_it_will_do_and_when() {
     let bake = get(UnbuiltId::HomeLightingBake);
     assert_eq!(
         bake.hover_text(),
-        "Not built yet: Bake. Works out bounced light for the area. Planned for 3D 5: Bounced \
+        "Not built yet: Bake. Works out bounced light for the level. Planned for 3D 5: Bounced \
          light."
     );
     assert_eq!(
@@ -442,7 +442,7 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 20] = [
     ),
     (
         UnbuiltId::PlaceClickToPlace,
-        "a way of placing: click a tile, then the area",
+        "a way of placing: click a tile, then the level",
     ),
     (UnbuiltId::LibMultiSelect, "a way of selecting"),
     (UnbuiltId::LibDragToHome, "a way of dragging"),

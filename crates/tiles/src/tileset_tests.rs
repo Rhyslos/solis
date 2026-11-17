@@ -216,7 +216,7 @@ fn a_tileset_as_full_as_one_gets_reads_back() {
     assert_eq!(set.terrains.len(), MAX_TERRAINS);
     let text = write(&set);
     assert!(
-        area::lust_data::is_data(&text) && text.len() < MAX_BYTES,
+        level::lust_data::is_data(&text) && text.len() < MAX_BYTES,
         "{}",
         text.len()
     );
@@ -466,7 +466,7 @@ fn two_classes_with_one_name_are_refused_never_a_hang() {
 
 #[test]
 fn a_character_that_can_t_be_seen_is_refused_in_lust_and_skipped_in_the_older_layout() {
-    // What the atlas fuzzer found (see `area::lust_data`): a control
+    // What the atlas fuzzer found (see `level::lust_data`): a control
     // character in a data file's text is read by Lust and left out when
     // written. A terrain's name with one was always skipped, and no other
     // text of a tileset is kept as it's read; now the Lust file is

@@ -106,7 +106,7 @@ type H = Harness<'static, crate::workbench::Workbench>;
 /// Box_03, 4 × 2.5 × 3 m, standing at `AT`, its insides edited with the
 /// Move tool, seen as the mock-ups 3 and 4 see it.
 fn box_edited() -> Option<H> {
-    use area::builtin::{Brush, Transform};
+    use level::builtin::{Brush, Transform};
     let mut h = editor()?;
     let w = h.state_mut();
     let size = Vec3::new(4.0, 2.5, 3.0);
@@ -117,7 +117,7 @@ fn box_edited() -> Option<H> {
         ..Brush::default()
     };
     w.spawn_selected(
-        area::EntityData::new("Box_03")
+        level::EntityData::new("Box_03")
             .with(&Transform {
                 position: AT,
                 ..Transform::default()

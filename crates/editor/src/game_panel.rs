@@ -1,8 +1,8 @@
 //! The Game panel: the running game, through the first camera in the
-//! area (or the editor's view, with a note, when there's none).
+//! level (or the editor's view, with a note, when there's none).
 
-use crate::area_view::AreaView;
 use crate::camera::Camera;
+use crate::level_view::LevelView;
 use crate::look::Look;
 use crate::models::ModelInfo;
 use crate::play::PlayState;
@@ -17,9 +17,9 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone)]
 pub(crate) struct GameScene {
     /// What to draw.
-    pub(crate) view: AreaView,
-    /// The camera looked through and where it is, if the area has one.
-    pub(crate) camera: Option<(area::builtin::Camera, Mat4)>,
+    pub(crate) view: LevelView,
+    /// The camera looked through and where it is, if the level has one.
+    pub(crate) camera: Option<(level::builtin::Camera, Mat4)>,
     /// Running or paused.
     pub(crate) state: PlayState,
     /// The game's time, in seconds.
@@ -50,7 +50,7 @@ impl GameScene {
             PlayState::Playing => world.progress(),
             _ => 1.0,
         };
-        let mut view = AreaView::of_world(world, models, t);
+        let mut view = LevelView::of_world(world, models, t);
         view.add_world_brushes(world, brushes, t);
         Self {
             view,
@@ -74,11 +74,12 @@ impl GameScene {
         }
     }
 
-    /// Where the first camera in `area`'s tree order is, as the game's
+    /// Where the first camera in `level`'s tree order is, as the game's
     /// starts.
-    pub(crate) fn camera_start_in(area: &area::Area) -> Option<Vec3> {
-        let first = area.first_in_tree(area.with::<area::builtin::Camera>().map(|(id, _)| id))?;
-        Some(area.world_matrix(first).w_axis.truncate())
+    pub(crate) fn camera_start_in(level: &level::Level) -> Option<Vec3> {
+        let first =
+            level.first_in_tree(level.with::<level::builtin::Camera>().map(|(id, _)| id))?;
+        Some(level.world_matrix(first).w_axis.truncate())
     }
 }
 
@@ -107,7 +108,7 @@ pub(crate) fn camera_view(global: Mat4) -> (Mat4, Vec3) {
 /// that. `near` and `far` are how far below the camera it sees.
 pub(crate) fn pixel_camera(
     position: Vec3,
-    settings: area::pixels::PixelSettings,
+    settings: level::pixels::PixelSettings,
     near: f32,
     far: f32,
 ) -> (Mat4, PixelView) {
@@ -172,9 +173,9 @@ pub(crate) const MAX_SMOOTH_LAYERS: usize = 8;
 /// first, then those in front, slowest first. `None` when there are none,
 /// or more than [`MAX_SMOOTH_LAYERS`].
 pub(crate) fn smooth_layers(
-    sprites: &[crate::sprite_sheets::AreaSprite],
+    sprites: &[crate::sprite_sheets::LevelSprite],
     sheets: &crate::sprite_sheets::SpriteSheets,
-    pixels: area::pixels::PixelSettings,
+    pixels: level::pixels::PixelSettings,
     position: Vec3,
     start: Vec3,
     (near, far): (f32, f32),
@@ -239,7 +240,7 @@ pub(crate) fn game_panel(
     playing: bool,
     has_input: bool,
     editor_camera: &Camera,
-    pixels: area::pixels::PixelSettings,
+    pixels: level::pixels::PixelSettings,
     sheets: &crate::sprite_sheets::SpriteSheets,
     renderer: &mut dyn ViewportRenderer,
     screens: Vec<std::sync::Arc<ui::Screen>>,
@@ -253,8 +254,8 @@ pub(crate) fn game_panel(
         }
         crate::panels::empty_note(
             ui,
-            "Press Play (at the top) to run the area here. The game looks through the first \
-             camera in the area: Home > Camera adds one where you're looking from.",
+            "Press Play (at the top) to run the level here. The game looks through the first \
+             camera in the level: Home > Camera adds one where you're looking from.",
         );
         return GamePanelOut::default();
     };
@@ -273,7 +274,7 @@ pub(crate) fn game_panel(
     let mut pixel = None;
     let mut near_far = (0.1, 2000.0);
     let (view_projection, position) = match scene.camera {
-        Some((camera, global)) if camera.view == area::builtin::CameraView::TwoD => {
+        Some((camera, global)) if camera.view == level::builtin::CameraView::TwoD => {
             let position = global.w_axis.truncate();
             let c = camera.sanitized();
             near_far = (c.near, c.far);
@@ -384,7 +385,7 @@ pub(crate) fn game_panel(
             let a = ui::layout::picture_area(
                 p.base,
                 size_px,
-                p.scaling == area::pixels::Scaling::WholeSteps,
+                p.scaling == level::pixels::Scaling::WholeSteps,
             );
             crate::game_screens::ScreensArea {
                 origin: a.origin,
@@ -440,7 +441,7 @@ pub(crate) fn game_panel(
         ));
     }
     if scene.camera.is_none() {
-        notes.push("No camera in the area: showing the editor's view".into());
+        notes.push("No camera in the level: showing the editor's view".into());
     }
     notes.push(if has_input {
         "The game has the mouse and keys · Esc gives them back".into()
@@ -472,7 +473,7 @@ pub(crate) fn game_panel(
 #[cfg(test)]
 mod pixel_tests {
     use super::*;
-    use area::pixels::PixelSettings;
+    use level::pixels::PixelSettings;
 
     /// Where world point `p` lands in the small picture, in its pixels
     /// from the top-left (the picture is the base plus a pixel each side).
@@ -547,22 +548,22 @@ mod pixel_tests {
 
     #[test]
     fn each_parallax_layer_has_a_camera_of_its_own_sliding_smoothly() {
-        use crate::sprite_sheets::{AreaSprite, tests::sheets_with};
+        use crate::sprite_sheets::{LevelSprite, tests::sheets_with};
         let s = PixelSettings::default();
         let id = reflect::AssetId::random();
         let sheets = sheets_with(id);
-        let layer = |scroll: f32, in_front: bool| AreaSprite {
+        let layer = |scroll: f32, in_front: bool| LevelSprite {
             entity: reflect::EntityId::random(),
-            sprite: area::builtin::Sprite {
+            sprite: level::builtin::Sprite {
                 sheet: Some(reflect::AssetRef {
                     asset: id,
                     part: None,
                 }),
-                ..area::builtin::Sprite::default()
+                ..level::builtin::Sprite::default()
             },
             transform: Mat4::IDENTITY,
             pick: 0,
-            parallax: Some(area::builtin::Parallax {
+            parallax: Some(level::builtin::Parallax {
                 scroll_x: scroll,
                 scroll_y: scroll,
                 repeat_x: false,
@@ -595,7 +596,7 @@ mod pixel_tests {
         assert_eq!(layers[1].sprites[0].sprites[0].foot, [0.0, 0.0]);
         // None to draw, or too many: the world's picture draws them.
         assert!(smooth_layers(&[], &sheets, s, now, start, (0.1, 100.0)).is_none());
-        let many: Vec<AreaSprite> = (0..=MAX_SMOOTH_LAYERS)
+        let many: Vec<LevelSprite> = (0..=MAX_SMOOTH_LAYERS)
             .map(|n| layer(n as f32 * 0.1, false))
             .collect();
         assert!(smooth_layers(&many, &sheets, s, now, start, (0.1, 100.0)).is_none());

@@ -1,0 +1,4 @@
+playtest 1
+name Harbour
+area areas/docks.solarea
+window windowed 1280 720

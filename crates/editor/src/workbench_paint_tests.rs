@@ -419,7 +419,7 @@ fn scale_check_painting_a_1000_by_1000_map() {
     w.set_tile_overlay();
     w.viewport.tile_overlay.paint.tool = Some(PaintTool::Brush);
     w.viewport.tile_overlay.paint.code = Some(b't');
-    w.viewport.area = crate::area_view::AreaView::of(w.open.document.area(), &w.open.models);
+    w.viewport.level = crate::level_view::LevelView::of(w.open.document.level(), &w.open.models);
     // Warm: the chunks in view drawn once, tile by tile from the art.
     let view = w.viewport.view([1280, 720], 1.0);
     let atlas = view

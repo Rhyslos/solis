@@ -1,6 +1,6 @@
 //! The launcher's Learn (round 2's `10-file-learn`, moved into the
 //! launcher by decision 0118): the four examples to make and take apart,
-//! the first hour's five steps, and the user guide. (The sample area,
+//! the first hour's five steps, and the user guide. (The sample level,
 //! which needs an open project, is in the editor's search.)
 
 use crate::file_pages::{button_row, page_head, plain, section, sentence, with_side};

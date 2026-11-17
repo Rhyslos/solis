@@ -6,9 +6,9 @@
 
 use crate::test_support::*;
 use crate::workbench::Workbench;
-use area::EntityData;
-use area::builtin::{Collider2D, Shape2D, Transform};
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::{Collider2D, Shape2D, Transform};
 use reflect::{ComponentData, EntityId, Value};
 use std::sync::Arc;
 
@@ -70,7 +70,7 @@ fn farm(fields: &[(&str, Value)]) -> Workbench {
             height: 320.0,
             ..Collider2D::default()
         });
-    let spawn = |n: u64, data: EntityData| area::Edit::Spawn {
+    let spawn = |n: u64, data: EntityData| level::Edit::Spawn {
         entities: vec![(id(n), data)],
     };
     w.open
@@ -241,10 +241,10 @@ fn a_2d_character_knows_it_s_grounded_and_how_fast_it_goes() {
         .edit(
             "Add",
             vec![
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(id(1), hero)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(id(2), floor)],
                 },
             ],
@@ -357,13 +357,13 @@ fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
         .edit(
             "Add",
             vec![
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(id(HERO), hero)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(id(FLOOR), floor)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(id(COIN), coin)],
                 },
             ],

@@ -6,9 +6,9 @@ use crate::panel::Panel;
 use crate::test_support::*;
 use crate::viewport_tools::PickAnswer;
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::builtin::Transform;
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::builtin::Transform;
 use reflect::AssetId;
 
 fn item(path: &str, kind: LibraryKind, id: Option<AssetId>) -> LibraryItem {
@@ -28,7 +28,7 @@ fn item(path: &str, kind: LibraryKind, id: Option<AssetId>) -> LibraryItem {
 }
 
 /// A workbench with a project holding a crate, a rock in a folder, an
-/// area, a picture and some code; the Library in front.
+/// level, a picture and some code; the Library in front.
 fn with_a_project() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info());
     w.set_project(Some(ProjectInfo {
@@ -41,7 +41,7 @@ fn with_a_project() -> (Workbench, AssetId, AssetId) {
     w.set_library(vec![
         item("crate.glb", LibraryKind::Model, Some(crate_id)),
         item("props/rock.glb", LibraryKind::Model, Some(rock_id)),
-        item("docks.solarea", LibraryKind::Area, None),
+        item("docks.sollevel", LibraryKind::Level, None),
         item("props/bark.png", LibraryKind::Texture, None),
         item("turret.lst", LibraryKind::Code, None),
     ]);
@@ -88,7 +88,7 @@ fn the_code_panel_lists_code() {
 }
 
 #[test]
-fn placing_models_and_opening_areas() {
+fn placing_models_and_opening_levels() {
     let (mut w, crate_id, rock_id) = with_a_project();
     // An earlier drop that never arrived (its import failed, say) doesn't
     // send a later placing to the old drop point.
@@ -105,15 +105,15 @@ fn placing_models_and_opening_areas() {
     h.run();
     let actions = &h.state().1.actions;
     assert!(actions.contains(&WorkbenchAction::PlaceAsset(crate_id)));
-    assert!(actions.contains(&WorkbenchAction::OpenAreaFile(
-        "/projects/harbour/assets/docks.solarea".into()
+    assert!(actions.contains(&WorkbenchAction::OpenLevelFile(
+        "/projects/harbour/assets/docks.sollevel".into()
     )));
     // The click placed it where the camera looks, not at the old drop.
     assert!(h.state_mut().0.take_place_target(crate_id).is_none());
 }
 
 #[test]
-fn opening_an_area_with_unsaved_changes_asks_first() {
+fn opening_an_level_with_unsaved_changes_asks_first() {
     let (mut w, _, _) = with_a_project();
     w.add_point_light();
     let mut h = harness(w);
@@ -125,7 +125,7 @@ fn opening_an_area_with_unsaved_changes_asks_first() {
             .1
             .actions
             .iter()
-            .any(|a| matches!(a, WorkbenchAction::OpenAreaFile(_))),
+            .any(|a| matches!(a, WorkbenchAction::OpenLevelFile(_))),
         "not before the answer"
     );
     let _ = h.get_by_label("Don't save");
@@ -216,7 +216,7 @@ fn a_model_dropped_on_the_viewport_goes_on_the_surface_under_the_mouse() {
     };
     let id = h.state_mut().0.add_model(info, &[], 0.1, &[]);
     let w = &h.state().0;
-    let t: Transform = w.open.document.area().get(id).unwrap().get().unwrap();
+    let t: Transform = w.open.document.level().get(id).unwrap().get().unwrap();
     assert_eq!(t.position, point);
     assert_eq!(w.selection(), Some(id), "and is selected");
 }
@@ -239,7 +239,7 @@ fn a_model_dropped_where_nothing_is_lands_on_the_ground() {
         .0
         .open
         .document
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .get()
@@ -251,7 +251,7 @@ fn a_model_dropped_where_nothing_is_lands_on_the_ground() {
 fn a_model_dropped_on_an_entity_goes_under_it() {
     let (mut w, crate_id, _) = with_a_project();
     let room = w.add_entity();
-    w.apply_area_request(crate::area_panel::AreaRequest::Rename {
+    w.apply_level_request(crate::level_panel::LevelRequest::Rename {
         entity: room,
         name: "Boathouse".into(),
     });
@@ -278,7 +278,7 @@ fn a_model_dropped_on_an_entity_goes_under_it() {
     };
     let id = h.state_mut().0.add_model(info, &[], 0.1, &[]);
     let w = &h.state().0;
-    let placed = w.open.document.area().get(id).unwrap();
+    let placed = w.open.document.level().get(id).unwrap();
     assert_eq!(placed.parent, Some(room));
     let t: Transform = placed.get().unwrap();
     assert!(t.position.length() < 1e-4, "at the room's own place");
@@ -350,20 +350,20 @@ fn a_sprite_sheet_dropped_on_the_viewport_becomes_a_sprite_on_a_whole_pixel() {
     );
     let w = &h.state().0;
     let placed = w.selection().expect("selected");
-    let entity = w.open.document.area().get(placed).unwrap();
+    let entity = w.open.document.level().get(placed).unwrap();
     assert_eq!(entity.name, "walker");
     let t: Transform = entity.get().unwrap();
     let pixels = t.position * 16.0;
     assert!((pixels.x - pixels.x.round()).abs() < 1e-4, "{}", t.position);
     assert!((t.position.x - 3.03).abs() < 1.0 / 16.0);
     assert_eq!(t.position.y, 4.0);
-    let sprite: area::builtin::Sprite = entity.get().unwrap();
+    let sprite: level::builtin::Sprite = entity.get().unwrap();
     assert_eq!(sprite.sheet.map(|r| r.asset), Some(id));
     assert_eq!(sprite.pivot, "feet", "stands on its feet");
     assert!(!sprite.flip_x, "as drawn");
     // One undo step takes it away.
     h.state_mut().0.undo();
-    assert!(h.state().0.open.document.area().get(placed).is_none());
+    assert!(h.state().0.open.document.level().get(placed).is_none());
 }
 
 #[test]
@@ -404,9 +404,9 @@ fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
     sheets.paths.insert(id, "hill.png".into());
     let wanted = std::sync::Arc::clone(&sheets.pictures_wanted);
     w.set_sprite_sheets(sheets.clone());
-    let before = w.open.document.area().len();
+    let before = w.open.document.level().len();
     w.place_dropped(id, Vec3::new(2.0, 1.0, 0.0), None);
-    assert_eq!(w.open.document.area().len(), before, "not read yet");
+    assert_eq!(w.open.document.level().len(), before, "not read yet");
     assert_eq!(w.open.pictures_placing.len(), 1);
     // The app is asked to read it.
     w.set_sprite_sheets(sheets.clone());
@@ -420,14 +420,14 @@ fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
     );
     w.set_sprite_sheets(sheets.clone());
     assert!(w.open.pictures_placing.is_empty());
-    assert_eq!(w.open.document.area().len(), before + 1);
+    assert_eq!(w.open.document.level().len(), before + 1);
     let placed = w.selection().expect("selected");
     let sprite = w
         .open
         .document
-        .area()
+        .level()
         .get(placed)
-        .and_then(|e| e.get::<area::builtin::Sprite>())
+        .and_then(|e| e.get::<level::builtin::Sprite>())
         .expect("a sprite");
     assert_eq!(sprite.sheet.map(|r| r.asset), Some(id));
     // One that can't be read says why, and isn't placed.
@@ -477,12 +477,12 @@ fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
     h.run();
     h.get_by_label("Bottom middle").click();
     h.run();
-    let sprite = |h: &egui_kittest::Harness<'_, State>| -> area::builtin::Sprite {
+    let sprite = |h: &egui_kittest::Harness<'_, State>| -> level::builtin::Sprite {
         h.state()
             .0
             .open
             .document
-            .area()
+            .level()
             .get(placed)
             .unwrap()
             .get()
@@ -505,7 +505,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
     for kind in [
         K::Model,
         K::Assembly,
-        K::Area,
+        K::Level,
         K::Texture,
         K::Code,
         K::Sound,
@@ -524,7 +524,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
         let (open, place) = match kind {
             K::Model | K::Assembly | K::SpriteSheet | K::TileMap => (0, 1),
             K::SpriteClips | K::Texture => (1, 1),
-            K::Area
+            K::Level
             | K::Code
             | K::Sound
             | K::SoundEvent

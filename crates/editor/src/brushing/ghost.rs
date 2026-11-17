@@ -5,7 +5,7 @@
 //! the steps at the top of the view and the keys at its foot.
 //!
 //! Only the brush's own few lines and faces are drawn, by the painter,
-//! each frame: never through the area's brushes, which stay as they are.
+//! each frame: never through the level's brushes, which stay as they are.
 
 use super::draw::{Draw, Plane, Step, footprint_words};
 use crate::camera::Camera;

@@ -20,9 +20,9 @@ pub(crate) fn about(component: &str) -> Option<&'static str> {
         "Light" => {
             "Light makes it shine. Change its colour and strength here; Kind turns a bulb into a spotlight or the sun."
         }
-        "Environment" => "Environment is the sky, the fog and how bright the whole area looks.",
+        "Environment" => "Environment is the sky, the fog and how bright the whole level looks.",
         "Camera" => {
-            "Camera is what the game looks through: the first camera in the area is the one used when you press Play."
+            "Camera is what the game looks through: the first camera in the level is the one used when you press Play."
         }
         "RigidBody" => "Rigid body makes it fall, bump and roll with physics when the game runs.",
         "Collider" => "Collider gives it a solid shape, so things bump into it.",
@@ -70,12 +70,12 @@ impl Workbench {
         match selected.as_slice() {
             _ if brushing.is_some() => hints.extend(brushing),
             [] => hints.push(
-                "Select something in the viewport or the Area column to see what it is and what you \
+                "Select something in the viewport or the Level column to see what it is and what you \
                  can do with it. Press Space to search for any action, file or entity."
                     .to_string(),
             ),
             [one] => {
-                if let Some(entity) = self.open.document.area().get(*one) {
+                if let Some(entity) = self.open.document.level().get(*one) {
                     let mut names: Vec<&String> = entity.components.keys().collect();
                     names.sort_by_key(|n| *n != "Transform");
                     let places = self.open.program.as_ref().map(|p| &p.places);

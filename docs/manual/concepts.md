@@ -9,17 +9,17 @@
 
 ## The window
 
-- **Panel:** one area of the editor with one job, such as the Viewport or the Console. Each lives in a fixed place: a document in an editor group, or a column of a shelf tab.
-- **Editor group:** the top part of the middle of the window: a strip of document tabs (the area, the running game, an animator) over the one in front. A tab can show two groups side by side, with a line between them you can drag. See [Interface tour](interface-tour.md).
-- **Document:** what an editor group shows, with a tab of its own: the area, the Game, an animator, a tileset, a screen. A document that is a file has a **×** that closes it.
+- **Panel:** one part of the editor with one job, such as the Viewport or the Console. Each lives in a fixed place: a document in an editor group, or a column of a shelf tab.
+- **Editor group:** the top part of the middle of the window: a strip of document tabs (the level, the running game, an animator) over the one in front. A tab can show two groups side by side, with a line between them you can drag. See [Interface tour](interface-tour.md).
+- **Document:** what an editor group shows, with a tab of its own: the level, the Game, an animator, a tileset, a screen. A document that is a file has a **×** that closes it.
 - **Docking:** in some programs, dragging panels to any place you like. Solis doesn't do that: each tab's screen is laid out as its design draws it, and you size its parts instead (every border between them drags). Home's three lists can sit in one of four [panel layouts](#the-window). A document's tab can be dragged to a half of the middle, or onto another group's tabs, to split or join groups.
 - **Page:** a screen that is one sheet of settings or words rather than panels: a File page, the Build tab's Export for playtesting, an unfinished screen's card.
 - **Dialog card:** a question that stops your work until you answer it, as a card over the dimmed window: unsaved changes, a file changed on disk, keeping what you changed while playing. The main answer is in the accent colour at the right; one that sets your work aside stands at the left.
 - **Layout:** how a tab's screen is sized: the shelf tab in front, whether the shelf is folded, the size of every border you dragged (the shelf's height, the split between groups, the side columns, the Assets strip, the shelf's columns), and any document dragged to a group of its own. Each tab remembers its own, for each panel layout; a double-click on a border puts that one back, and **Reset layout** (in the search, and in **File › Preferences**) puts the whole tab back as it started.
-- **Panel layout:** where Home's three lists (the Area tree, Properties and Assets) sit, chosen in **File › Preferences › Appearance**: as tall columns beside the area, with Assets as a strip under it (**Area left, Assets bottom**, the standard), stacked on the left (**Area and Assets on the left**), stacked on the right (**Area left, Assets right**), or side by side on the shelf (**The shelf (as designed)**). See [Interface tour](interface-tour.md).
-- **Border:** the thin line between two parts of the window (two columns, a column and the area, the shelf and what's above it, two editor groups). Point at one and the pointer becomes a two-headed arrow: drag to give one side more room, double-click to put it back.
-- **Tab bar:** the dark strip along the top of the window: the logo, the tabs (File, Home, Library and so on), the search box, the open project and area, and the chevron that collapses the ribbon. See [Interface tour](interface-tour.md).
-- **Workspace:** what one tab of the tab bar shows for one kind of work: **Home** for building areas, **Library** for files, **Animate** for sprites, **UI** for game screens, **Audio** for the mixer, **Debug** for testing the game, **Build** for exporting it. Each has its own editor groups and shelf, and remembers its own layout. See [Interface tour](interface-tour.md).
+- **Panel layout:** where Home's three lists (the Level tree, Properties and Assets) sit, chosen in **File › Preferences › Appearance**: as tall columns beside the level, with Assets as a strip under it (**Level left, Assets bottom**, the standard), stacked on the left (**Level and Assets on the left**), stacked on the right (**Level left, Assets right**), or side by side on the shelf (**The shelf (as designed)**). See [Interface tour](interface-tour.md).
+- **Border:** the thin line between two parts of the window (two columns, a column and the level, the shelf and what's above it, two editor groups). Point at one and the pointer becomes a two-headed arrow: drag to give one side more room, double-click to put it back.
+- **Tab bar:** the dark strip along the top of the window: the logo, the tabs (File, Home, Library and so on), the search box, the open project and level, and the chevron that collapses the ribbon. See [Interface tour](interface-tour.md).
+- **Workspace:** what one tab of the tab bar shows for one kind of work: **Home** for building levels, **Library** for files, **Animate** for sprites, **UI** for game screens, **Audio** for the mixer, **Debug** for testing the game, **Build** for exporting it. Each has its own editor groups and shelf, and remembers its own layout. See [Interface tour](interface-tour.md).
 - **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Everything else is a neutral grey, so the accent is easy to spot. Blue unless you pick another of the five in [Settings](settings.md). Colours that mean something keep their own: Play (Stop, while the game runs) is the one light button, and errors are red.
 - **Interface scale:** how large the whole editor is drawn, as a percentage, set in [Settings](settings.md). At 150% every button, word and gap is half as large again. It's for screens whose pixels are too small to read at 100%; it doesn't change your game.
 - **Density:** how much room the editor's controls take, set in [Settings](settings.md): Compact, Default or Comfortable. It changes the height of buttons and fields, not the size of text.
@@ -27,8 +27,8 @@
 - **Ribbon:** the band of buttons under the tabs along the top: each tab (Home, Library, Animate and so on) shows its own buttons there, gathered into named groups, with the Play group at its right end. It took the place of the menus. See [Interface tour](interface-tour.md).
 - **Contextual tab:** a tab of the tab bar that is there only while something it works on is open or selected, after the tab it belongs to: **Home tools · Tile map** while a tile map is selected, **Library tools · Tileset** while a tileset is open, **Library tools · Picture** while a picture's crops are, **Library tools · Model** while the model viewer (not built yet) is in front. Its small capitals say which tab it belongs to. Its ribbon holds the tools for that one thing, so they are out of the way the rest of the time. See [Painting tiles](painting-tiles.md), [Tilesets](tilesets.md) and [Atlas Crop](atlas-crop.md).
 - **File page:** what the **File** tab shows in place of the ribbon and the editor: a column of items down the left (Back to editor, Save all, Project settings, Preferences, About, Close project, Exit) and the page chosen beside it. **Esc** or **Back to editor** leaves it; **Close project** goes back to the [launcher](launcher.md). See [Settings](settings.md).
-- **Placing:** Home with its **Place** shelf tab in front: the ribbon in its building form and the files that can be placed in the Assets list, ready to drag into the area. See [Projects and the Library](projects-and-the-library.md).
-- **Shelf:** the wide band along the bottom of the window, under the editor groups, with tabs of its own on its bar: on Home, **Place**, the Console, Problems and, in the shelf [panel layout](#the-window), **Entity** (the Area tree, Properties and the Assets column side by side). Drag its grip or its top edge to size it; **Ctrl + Space** folds it to its bar and back. See [Interface tour](interface-tour.md).
+- **Placing:** Home with its **Place** shelf tab in front: the ribbon in its building form and the files that can be placed in the Assets list, ready to drag into the level. See [Projects and the Library](projects-and-the-library.md).
+- **Shelf:** the wide band along the bottom of the window, under the editor groups, with tabs of its own on its bar: on Home, **Place**, the Console, Problems and, in the shelf [panel layout](#the-window), **Entity** (the Level tree, Properties and the Assets column side by side). Drag its grip or its top edge to size it; **Ctrl + Space** folds it to its bar and back. See [Interface tour](interface-tour.md).
 - <a id="pill"></a>**Pill:** a small see-through button floating over the viewport, such as **Perspective ▾** or the frame time. Pills keep the picture as large as it can be. See [Moving around the viewport](navigating-the-viewport.md).
 - **Card:** a lifted box holding a few settings that belong together, such as one component in Properties. Cards sit side by side as many as fit.
 - **Status bar:** the thin strip along the very bottom: whether the code is clean, the problems' counts, what's going on, and the version. See [Interface tour](interface-tour.md).
@@ -43,16 +43,17 @@
 - **Flat view (orthographic):** a view from straight above, the front or the side, where things keep their size however far away they are, so edges and heights line up exactly. The usual view, where far things look smaller, is **perspective**. See [Moving around the viewport](navigating-the-viewport.md).
 - **View:** one picture in the viewport, with its own camera. The viewport can show one, two or four at once.
 - **Fly camera:** the way you move around the viewport: you steer the camera like a drone. See [Moving around the viewport](navigating-the-viewport.md).
-## The area
+## The level
 
-- **Area:** everything in one place of your game (a level, a menu, a room), made of entities. Other engines call this a *scene*. Each area is saved as one `.solarea` text file; see [Saving areas](saving-areas.md). See [Entities and components](entities.md).
-- **Entity:** one thing in an area: a model, a light, the sky. On its own it's only a name; its components make it something.
+- **Level:** everything in one place of your game (a stage, a menu, a room), made of entities: what you build in the editor, save, and play. Other engines call this a *scene*. Each level is saved as one `.sollevel` text file; see [Saving levels](saving-levels.md). See [Entities and components](entities.md).
+- **Area:** the old name for a level. Solis called levels areas until late 2026, and their files ended `.solarea`; a project from then is renamed as it opens (see [Backups and upgrades](backups-and-upgrades.md)).
+- **Entity:** one thing in a level: a model, a light, the sky. On its own it's only a name; its components make it something.
 - **Component:** one part of what an entity is, with settings. A **Transform** says where it is; a **Light** makes it shine; a **Model** draws an imported model. Mixing components makes different things, the way one Lego brick goes into many builds.
 - **Transform:** an entity's position, rotation and scale.
 - **Assembly:** a group of entities saved once and placed many times; each placed **copy** follows the assembly but can have its own changes. Other engines call it a *prefab*. See [Assemblies](assemblies.md).
 - **Unpack:** turning a copy of an assembly, or an imported model, into separate ordinary entities.
 - **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children. A child's position is measured from its parent, so moving the parent carries it along.
-- **Brush:** a shape made in the editor itself (a box, a ramp, stairs), kept in the area and solid in the game, for blocking out a level before (or instead of) making models. See [Brushes](brushes.md).
+- **Brush:** a shape made in the editor itself (a box, a ramp, stairs), kept in the level and solid in the game, for blocking out a level before (or instead of) making models. See [Brushes](brushes.md).
 - **Brush list:** the list of shapes a brush can start as (Box, Ramp, Cylinder, Stairs, Arch, Sphere, Wedge), opened with `B` over the view or Home's **Shape** button. See [Brushes](brushes.md).
 - **Drawing out:** making a brush with the mouse: drag its **footprint** (the shape's outline on the ground, its two sides), then move the mouse up for its height and click. See [Brushes](brushes.md).
 - **Mesh:** a shape made of **points** joined into flat **faces**, each face's sides being its **edges**. Models and brushes are meshes; a brush's faces can have any number of corners, and are cut into triangles to draw.
@@ -67,7 +68,7 @@
 ## Projects
 
 - **Lust data file:** a Lust file that only holds values, read by Solis without running anything. Everything Solis makes (tile maps, tilesets, and the rest as they move over) is one, named for what it holds: `farm.tilemap.lst`. See [Backups and upgrades](backups-and-upgrades.md).
-- **Project:** a folder holding one game: its assets, settings and areas. See [Projects and the Library](projects-and-the-library.md).
+- **Project:** a folder holding one game: its assets, settings and levels. See [Projects and the Library](projects-and-the-library.md).
 - **Launcher:** the small window Solis starts in, listing your projects as cards, where you open, make, pin and tidy them, with Learn and Updates beside them. Opening a project turns it into the editor; **File › Close project** brings it back. See [The launcher](launcher.md).
 - **Project kind:** whether a project is **2D** (sprites and tile maps), **3D** (models, lights and cameras) or **both**. It's chosen when the project is made, kept in its `project.solis`, shown on its card in the launcher, and changed in **Project settings › General › Kind**. Projects made before it was asked are both. For now it's kept and shown; a later update makes a 2D project hide the parts only 3D games use. See [The launcher](launcher.md#new-project).
 - **Build:** one numbered version of Solis, made from the code at one moment (build 57, then 58). Installed copies update from one build to the next; each project remembers the build that last opened it.
@@ -95,11 +96,11 @@
 
 ## Light
 
-- **Sun:** light from very far away, arriving in parallel from one direction everywhere, like daylight. One per area. See [Lights and shadows](lights.md).
-- **Lamp:** a light in the area. A **point light** shines every way from one spot, like a bare bulb; a **spotlight** shines a cone, like a torch or a stage light.
+- **Sun:** light from very far away, arriving in parallel from one direction everywhere, like daylight. One per level. See [Lights and shadows](lights.md).
+- **Lamp:** a light in the level. A **point light** shines every way from one spot, like a bare bulb; a **spotlight** shines a cone, like a torch or a stage light.
 - **Watts (W):** how strong a lamp is, in the same units as Blender, so numbers carry over. The sun's strength is in watts per square metre (W/m²).
 - **Range:** how far a lamp reaches. Real light fades on forever, getting weaker with distance; a range makes it stop sooner, which games use to keep many lamps cheap.
-- **Shadow:** where something blocks a light. Solis draws the sun's shadows with a **shadow map**: the area drawn once more from the sun's side, so each point can be checked for whether it sees the sun.
+- **Shadow:** where something blocks a light. Solis draws the sun's shadows with a **shadow map**: the level drawn once more from the sun's side, so each point can be checked for whether it sees the sun.
 - **Sky light (ambient light):** the soft light that comes from the whole sky rather than from the sun, so shadows are never black.
 - **HDR (high dynamic range):** working out light brighter than a screen's white, as the real world is: a sunlit wall can be many times brighter than a shaded one.
 - **Exposure:** how bright the picture is made, in stops (EV) as on a camera: +1 doubles the brightness, -1 halves it.
@@ -109,7 +110,7 @@
 ## Tools
 
 - **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform, chosen on the **tool bar** (floating at the foot of the viewport) or by key. See [Selecting and moving things](selecting-and-moving.md).
-- **Selection:** the entities you're working on. Selected things are outlined in the accent colour in the viewport and highlighted in the Area panel; Properties shows one of them.
+- **Selection:** the entities you're working on. Selected things are outlined in the accent colour in the viewport and highlighted in the Level panel; Properties shows one of them.
 - **Gizmo:** the coloured arrows, rings and boxes drawn on the selection, which you drag to move, turn or resize it. Each handle works along one axis, in its colour.
 - **Pivot:** the point a selection turns and grows around: the middle of the selected entities.
 - **Snapping:** making moves, turns and sizes jump in steps (to the grid lines, 15° at a time, 10% at a time) so things line up exactly.
@@ -118,7 +119,7 @@
 - **World and object axes:** the world's X, Y and Z are the same everywhere; an object's own axes turn with it. The gizmo can follow either.
 - **Console:** the panel where the editor reports what it's doing, and where you can type commands. See [The Console](console.md).
 - **Command:** a short instruction typed in the Console's command line, such as `select Crate` or `set Transform.position 0 0 2`. Commands do the same things as the menus, so each change can be undone.
-- **Problem:** a mistake in the area that Solis can't fix by itself, such as a model whose file is gone. The Problems panel lists them. See [Problems](problems.md).
+- **Problem:** a mistake in the level that Solis can't fix by itself, such as a model whose file is gone. The Problems panel lists them. See [Problems](problems.md).
 
 ## Playing
 
@@ -130,15 +131,15 @@
 - <a id="playtest"></a>**Playtest build:** a folder holding your game and a program named after it, for someone else to play without the editor. It runs the game's code as Play does, so it's made in seconds; a finished release comes later. [More](playtest-export.md).
 - <a id="focus"></a>**Focus (of a screen's buttons):** the button the keys or a gamepad are on, shown with a blue ring. The arrow keys or the stick move it to the nearest button that way, and Space, Enter or A chooses it. See [Game screens](screens.md).
 - <a id="canvas"></a>**Canvas (UI editor):** where a screen is drawn on the editor's **UI** tab to pick its pieces and change them. Each change rewrites only the letters it must in the screen's Lust file. See [The UI editor](ui-editor.md).
-- **Play mode:** running the area as a game inside the editor. Press Play to start and Stop to finish. Stop puts the area back as it was, then asks whether to keep the changes you made yourself meanwhile; what the game did (entities it spawned or removed, values it changed) is never kept. See [Play mode](play-mode.md).
+- **Play mode:** running the level as a game inside the editor. Press Play to start and Stop to finish. Stop puts the level back as it was, then asks whether to keep the changes you made yourself meanwhile; what the game did (entities it spawned or removed, values it changed) is never kept. See [Play mode](play-mode.md).
 - **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
-- **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.
-- **World:** the game's own copy of the area while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.
+- **Camera:** an entity the game looks through. The game uses the first camera in the level. Its **field of view** is how wide it sees.
+- **World:** the game's own copy of the level while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.
 - **Drawing between ticks** (interpolation): showing everything part way between where it was at the last tick and where it is now, so a screen faster than the game's 60 ticks a second shows smooth movement. See [Play mode](play-mode.md).
 - **Frame:** one picture on screen. Games aim for 60 **frames a second** (fps), which leaves about 16.7 milliseconds (thousandths of a second) for each; 30 fps still feels playable. See [The Profiler](profiler.md).
 - **Frame-time graph and timeline:** the Profiler's two pictures of frames: a bar for each of the last 240 frames, and, for the one picked, its parts laid end to end along a ruler of milliseconds. See [The Profiler](profiler.md).
 - **CPU and GPU:** the computer's processor, which runs game code and the editor, and its graphics card, which draws. They work at the same time; the slower one sets the frame rate.
-- **Culling:** leaving out what the camera can't see before drawing. Each copy of a model is checked against the view (a ball around it is enough), so a huge area costs only what's in view. Things just out of view are still drawn into the sun's shadow map when their shadow can fall into it.
+- **Culling:** leaving out what the camera can't see before drawing. Each copy of a model is checked against the view (a ball around it is enough), so a huge level costs only what's in view. Things just out of view are still drawn into the sun's shadow map when their shadow can fall into it.
 
 ## Game code
 

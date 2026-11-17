@@ -25,8 +25,8 @@
 //! The viewport keeps this state ([`Brushing`]) and reports a brush drawn
 //! as a [`crate::viewport_tools::ViewportEvent::BrushDrawn`]; the
 //! workbench adds it as one undo step (`workbench_brushes.rs`). Nothing
-//! here walks the area: opening and stepping the list cost the same in
-//! any area, and drawing out tests what's under the pointer once, as a
+//! here walks the level: opening and stepping the list cost the same in
+//! any level, and drawing out tests what's under the pointer once, as a
 //! drag starts; editing tries only the brush being edited.
 
 pub(crate) mod card;

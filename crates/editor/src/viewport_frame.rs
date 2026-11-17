@@ -3,8 +3,8 @@
 //! reports back, and the images it draws into.
 
 use super::Viewport;
-use crate::area_view::{ViewLight, ViewModel};
 use crate::camera::ViewKind;
+use crate::level_view::{ViewLight, ViewModel};
 use crate::look::Look;
 use crate::theme;
 use crate::viewport_tools::PickAnswer;
@@ -39,12 +39,12 @@ pub struct ViewportView {
     /// every other is dimmed: the brush whose insides are being edited
     /// (Tools 1a, B3).
     pub dim_all_but: Option<u32>,
-    /// The sun, if the area has one.
+    /// The sun, if the level has one.
     pub sun: Option<ViewLight>,
     /// The other lights.
     pub lamps: Vec<ViewLight>,
     /// The sky, fog and exposure.
-    pub environment: area::builtin::Environment,
+    pub environment: level::builtin::Environment,
     /// The hour it's drawn at (decision 0092), for the day's tint and the
     /// lamps that shine only at night.
     pub hour: f64,
@@ -118,7 +118,7 @@ pub struct PixelView {
     /// The base resolution, in pixels.
     pub base: [u32; 2],
     /// How it fills the screen.
-    pub scaling: area::pixels::Scaling,
+    pub scaling: level::pixels::Scaling,
     /// The bit of a pixel the camera has moved beyond the whole pixel the
     /// picture is drawn at, in pixels (x right, y down the picture).
     pub slide: [f32; 2],
@@ -261,7 +261,7 @@ impl Viewport {
         let camera = self.seen(size_px);
         let view_projection = camera.view_projection(aspect);
         let (tile_pictures, tile_batches) = self.sheets.tile_pictures.draw(
-            &self.area.view_tile_maps(&self.sheets),
+            &self.level.view_tile_maps(&self.sheets),
             &self.sheets,
             self.pixels.tile_size(),
             &self.tile_overlay.hidden,
@@ -282,30 +282,30 @@ impl Viewport {
             sky_top: rgb(theme::backdrop::sky_top()),
             sky_horizon: rgb(theme::backdrop::horizon()),
             ground: rgb(theme::backdrop::ground()),
-            models: self.area.models.clone(),
-            brushes: self.area.brushes.clone(),
+            models: self.level.models.clone(),
+            brushes: self.level.brushes.clone(),
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
             dim_all_but: self.brushing.edit.as_ref().and_then(|edit| {
-                self.area
+                self.level
                     .brushes
                     .iter()
                     .find(|b| b.entity == edit.entity && b.pick > 0)
                     .map(|b| b.pick)
             }),
-            sun: self.area.sun,
-            lamps: self.area.lamps.clone(),
+            sun: self.level.sun,
+            lamps: self.level.lamps.clone(),
             environment: if self.camera.is_flat() {
                 // Fog grows with distance, which a flat view doesn't show:
                 // it would only hide the whole view.
-                area::builtin::Environment {
+                level::builtin::Environment {
                     fog: false,
-                    ..self.area.environment
+                    ..self.level.environment
                 }
             } else {
-                self.area.environment
+                self.level.environment
             },
-            hour: self.preview_hour.unwrap_or(self.area.hour),
+            hour: self.preview_hour.unwrap_or(self.level.hour),
             pick: None,
             image: VIEWPORT_IMAGE + self.active,
             editor_lines: true,
@@ -323,7 +323,7 @@ impl Viewport {
                 // Parallax layers where they're placed: the editor's
                 // camera isn't the game's (decision 0094).
                 let (behind, front) = crate::sprite_parallax::parallax_layers(
-                    &self.area.sprites,
+                    &self.level.sprites,
                     &self.sheets,
                     self.pixels.pixel_size(),
                     snap,
@@ -337,7 +337,7 @@ impl Viewport {
                     behind,
                     tile_batches,
                     crate::sprite_sheets::batches(
-                        &self.area.sprites,
+                        &self.level.sprites,
                         &self.sheets,
                         self.pixels.pixel_size(),
                         snap,

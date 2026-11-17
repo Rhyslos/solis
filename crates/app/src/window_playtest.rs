@@ -1,5 +1,5 @@
 //! The window as an exported game ([decision 0093](../../../docs/decisions/0093-the-playtest-export.md)):
-//! the project beside the program opened, its area played as soon as its
+//! the project beside the program opened, its level played as soon as its
 //! code is ready, only the game drawn, the window following the player's
 //! settings, saves and settings kept in the player's Saved Games folder,
 //! and what the game said written to a log there. And, in the editor,
@@ -37,7 +37,7 @@ pub(super) struct Run {
     found: Found,
     /// The player's own folder: saves, settings, the log.
     saved: Option<PathBuf>,
-    /// Whether the project and area were opened.
+    /// Whether the project and level were opened.
     opened: bool,
     /// Whether play started.
     started: bool,
@@ -101,17 +101,17 @@ impl App {
         if !run.opened {
             run.opened = true;
             let root = run.found.root.clone();
-            let area = root
+            let level = root
                 .join(asset_db::ASSETS_FOLDER)
-                .join(&run.found.playtest.area);
+                .join(&run.found.playtest.level);
             self.open_project(&root, false);
             if self.projects.root().is_some() {
-                self.open_area(&area);
+                self.open_level(&level);
             }
             // Either failing is said in the Console, which the player
             // can't see: the window says it instead.
             let opened = self.projects.root().is_some()
-                && self.workbench.document().file() == Some(area.as_path());
+                && self.workbench.document().file() == Some(level.as_path());
             if !opened {
                 let why = self.last_problem();
                 if let Some(run) = self.playtest.as_mut() {

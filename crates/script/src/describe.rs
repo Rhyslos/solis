@@ -377,7 +377,7 @@ pub const NATIVES: &[Native] = &[
         name: "find",
         owner: "World",
         lust: "method entity find(string name) native;",
-        about: "The first entity with this name, in the Area panel's order, or nothing.",
+        about: "The first entity with this name, in the Level panel's order, or nothing.",
     },
     Native {
         file: "world",
@@ -825,7 +825,7 @@ pub const NATIVES: &[Native] = &[
         name: "name",
         owner: "entity",
         lust: "method string entity:name() native;",
-        about: "The entity's name, as the Area panel shows it.",
+        about: "The entity's name, as the Level panel shows it.",
     },
     Native {
         file: "screens",
@@ -1059,7 +1059,7 @@ fn descriptions_with(
         .chain(std::iter::once((format!("{folder}/project.lst"), project)))
         .chain(DATA_CLASSES.iter().map(|(kind, classes)| {
             (
-                format!("{folder}/{}/{kind}.lst", area::lust_data::CLASSES_FOLDER),
+                format!("{folder}/{}/{kind}.lst", level::lust_data::CLASSES_FOLDER),
                 format!(
                     "-- Made by {made_by}: what a {kind} file holds, which the files Solis makes\n\
                      -- fetch. It's written again whenever the project opens, so changes made here\n\
@@ -1105,18 +1105,18 @@ pub const ENGINE_FILE: &str = ": what game code can ask of the engine.";
 /// Whether `path` (inside the assets, `/` between folders) is in the engine's own folder
 /// (`solis/`): the files describing the engine, the data files' classes, the project's names
 /// and the screens' readers, which Solis writes there. One rule, from the program's branding
-/// (`area::lust_data::ENGINE_FOLDER`, which the app keeps equal to its `CODE_FOLDER`): a file
+/// (`level::lust_data::ENGINE_FOLDER`, which the app keeps equal to its `CODE_FOLDER`): a file
 /// in it is the engine's, never the game's own, whatever it says.
 pub fn in_engine_folder(path: &str) -> bool {
     path.split_once('/')
-        .is_some_and(|(top, _)| top == area::lust_data::ENGINE_FOLDER)
+        .is_some_and(|(top, _)| top == level::lust_data::ENGINE_FOLDER)
 }
 
 /// The engine's own folders, as Lust's host folders (decision 0072): only their files give
 /// `entity` methods, and Lust makes them part of every program. The one of
 /// [`in_engine_folder`].
 pub fn engine_folders() -> Vec<String> {
-    vec![area::lust_data::ENGINE_FOLDER.to_string()]
+    vec![level::lust_data::ENGINE_FOLDER.to_string()]
 }
 
 /// `lust`, a native's method line, with its name `new` changed to `old`.
@@ -1241,7 +1241,7 @@ mod tests {
     /// branding's folder, whatever a file says.
     #[test]
     fn the_engines_folder_is_the_brandings_whatever_a_file_says() {
-        use area::lust_data::ENGINE_FOLDER;
+        use level::lust_data::ENGINE_FOLDER;
         assert_eq!(engine_folders(), [ENGINE_FOLDER]);
         for (path, engine) in [
             (format!("{ENGINE_FOLDER}/world.lst"), true),

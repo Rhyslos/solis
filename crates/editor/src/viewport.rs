@@ -5,9 +5,9 @@
 //! The image itself comes from a [`ViewportRenderer`], so this crate never
 //! touches the GPU and runs in tests without one.
 
-use crate::area_view::AreaView;
 use crate::camera::{Camera, ViewKind};
 use crate::icons;
+use crate::level_view::LevelView;
 use crate::look::Look;
 use crate::theme::{self, Accent};
 use crate::transforming::Snapping;
@@ -127,9 +127,9 @@ pub struct Viewport {
     pub(crate) idle: bool,
     /// How models are shaded.
     pub look: Look,
-    /// What the area shows, worked out each frame by the workbench.
-    pub area: AreaView,
-    /// How many entities the area has, for the corner.
+    /// What the level shows, worked out each frame by the workbench.
+    pub level: LevelView,
+    /// How many entities the level has, for the corner.
     pub entities: usize,
     /// While looking around with the right mouse button: where the mouse
     /// was when it started, to put it back afterwards.
@@ -158,13 +158,13 @@ pub struct Viewport {
     pub(crate) full: Rect,
     /// The project's 2D settings, for the 2D view (the workbench hands
     /// them over each frame).
-    pub(crate) pixels: area::pixels::PixelSettings,
+    pub(crate) pixels: level::pixels::PixelSettings,
     /// The project's sprite sheets, to draw sprites with.
     pub(crate) sheets: std::sync::Arc<crate::sprite_sheets::SpriteSheets>,
     /// The selected tile map's values laid over it, its hidden layers,
     /// and the cell under the pointer (Phase 9, D4).
     pub(crate) tile_overlay: crate::tile_view::TileOverlay,
-    /// The hour the viewport shows the area at, from the Environment's
+    /// The hour the viewport shows the level at, from the Environment's
     /// Preview time (decision 0092); never saved. `None`: its start.
     pub(crate) preview_hour: Option<f64>,
     /// The time animated tiles show, in milliseconds (the editor's clock).
@@ -224,7 +224,7 @@ impl Default for Viewport {
             flying_from: None,
             wheel_carry: 0.0,
             look: Look::default(),
-            area: AreaView::default(),
+            level: LevelView::default(),
             entities: 0,
             tools: Tools::default(),
             snapping: Snapping::default(),
@@ -234,7 +234,7 @@ impl Default for Viewport {
             maximized: None,
             active: 0,
             full: Rect::NOTHING,
-            pixels: area::pixels::PixelSettings::default(),
+            pixels: level::pixels::PixelSettings::default(),
             sheets: std::sync::Arc::default(),
             tile_overlay: crate::tile_view::TileOverlay::default(),
             preview_hour: None,
@@ -286,10 +286,10 @@ impl Viewport {
             tile_ms: _,
             preview_since: _,
             placing: _,
-            // The project's: what its area shows, its files, the map
+            // The project's: what its level shows, its files, the map
             // selected and the painter's stamp of its cells, and picks and
             // drags under way in any view.
-            area,
+            level,
             entities,
             tools,
             panes,
@@ -299,13 +299,13 @@ impl Viewport {
             preview_hour,
             brushing,
         } = self;
-        *area = AreaView::default();
+        *level = LevelView::default();
         *entities = 0;
         *tools = Tools::default();
         for pane in panes {
             pane.tools = Tools::default();
         }
-        *pixels = area::pixels::PixelSettings::default();
+        *pixels = level::pixels::PixelSettings::default();
         *sheets = std::sync::Arc::default();
         *tile_overlay = crate::tile_view::TileOverlay::default();
         *preview_hour = None;
@@ -336,7 +336,7 @@ impl Viewport {
     /// animation is on and a sprite has a clip to play.
     pub fn previewing(&self) -> bool {
         self.overlays.preview_animation
-            && self.area.sprites.iter().any(|s| {
+            && self.level.sprites.iter().any(|s| {
                 s.sprite.playing
                     && s.sprite
                         .sheet
@@ -496,7 +496,7 @@ impl Viewport {
 /// the picture, so y counts downward from the top as pixel-art programs do.
 pub(crate) fn cursor_readout(
     ground: glam::Vec3,
-    pixels: area::pixels::PixelSettings,
+    pixels: level::pixels::PixelSettings,
     cell: Option<[u32; 2]>,
 ) -> String {
     let per = pixels.pixels_per_unit.max(1) as f32;

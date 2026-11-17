@@ -6,7 +6,7 @@ The game's physics: Rapier in its strict mode ([decision 0036](../../docs/decisi
 
 ## Purpose
 
-Wrap Rapier (`rapier3d`, built with `enhanced-determinism`) so the rest of Solis never meets it: bodies and colliders belong to entities by their area IDs, and places and directions are Solis's (`glam`, Z up). Rapier speaks the same glam version (the workspace holds it there), so a vector passes straight through; only the handles and shapes are Rapier's.
+Wrap Rapier (`rapier3d`, built with `enhanced-determinism`) so the rest of Solis never meets it: bodies and colliders belong to entities by their level IDs, and places and directions are Solis's (`glam`, Z up). Rapier speaks the same glam version (the workspace holds it there), so a vector passes straight through; only the handles and shapes are Rapier's.
 
 - `Physics::add` makes an entity's body (`Body`: dynamic, kinematic or fixed; mass, damping, gravity, upright, fast) and collider (`ColliderSpec`: a box, sphere or capsule, scaled with the entity; friction, bounciness). An entity with a collider and no body gets a fixed one. `remove` takes it out.
 - `set_pose` follows game code's moves (a kinematic body moves there over the next step, pushing what's in its way; others jump there); `set_velocity` and `push` (an impulse) change how a body moves.
@@ -25,7 +25,7 @@ Everything is kept in entity order (a `BTreeMap`), never a hash map's, so the sa
 
 - Let a game reach Rapier's types: games use natives in `script`, the world uses this crate's own.
 - Use Rapier's `parallel` feature, or anything whose result depends on timing or the number of cores.
-- Panic on what game code or a damaged area gives it.
+- Panic on what game code or a damaged level gives it.
 
 ## Depends on
 

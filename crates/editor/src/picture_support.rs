@@ -171,7 +171,7 @@ fn text_of(path: &Path) -> String {
 fn kind_of(file: &Path) -> Option<LibraryKind> {
     match file.extension()?.to_str()? {
         "glb" => Some(LibraryKind::Model),
-        "solarea" => Some(LibraryKind::Area),
+        "sollevel" | "solarea" => Some(LibraryKind::Level),
         "png" => Some(LibraryKind::Texture),
         "wav" => Some(LibraryKind::Sound),
         "lst" => Some(LibraryKind::Code),
@@ -213,8 +213,8 @@ fn listed(assets: &Path, folder: &Path, folders: &mut Vec<String>, files: &mut V
 }
 
 /// The editor with the small sample project of `tests/fixtures/ui-sample/`
-/// open, as the app would hand it over: its area, its files in the
-/// Library, and its lamp selected, so that the Area panel, Properties and
+/// open, as the app would hand it over: its level, its files in the
+/// Library, and its lamp selected, so that the Level panel, Properties and
 /// the Library all have real content to show. Named after the design's
 /// own sample (a harbour at night), so the two can be laid side by side.
 pub(crate) fn sample_project() -> Workbench {
@@ -238,17 +238,17 @@ pub(crate) fn sample_project() -> Workbench {
     listed(&assets, &assets, &mut folders, &mut files);
     workbench.set_folders(folders);
     workbench.set_library(files);
-    let file = assets.join("docks_night.solarea");
-    let area = area::text::read(&text_of(&file), &workbench.document().registry)
-        .unwrap_or_else(|e| panic!("the sample project's area doesn't read: {e:?}"));
-    workbench.open_area(area, file);
+    let file = assets.join("docks_night.sollevel");
+    let level = level::text::read(&text_of(&file), &workbench.document().registry)
+        .unwrap_or_else(|e| panic!("the sample project's level doesn't read: {e:?}"));
+    workbench.open_level(level, file);
     let lamp = workbench
         .document()
-        .area()
+        .level()
         .iter()
         .find(|(_, entity)| entity.name == "Dock_Lamp")
         .map(|(id, _)| id)
-        .expect("the sample area has its lamp");
+        .expect("the sample level has its lamp");
     workbench.open.document.selection.select_only(lamp);
     workbench
 }

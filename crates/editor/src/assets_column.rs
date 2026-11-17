@@ -2,7 +2,7 @@
 //! shelf tab, or in a side layout a column or strip of its own (decision
 //! 0109). The files of the Library's open folder as square tiles, as many
 //! across as fit (four in the shelf's column), and an Import tile last. A tile is dragged into the viewport to place it,
-//! onto an entity in the Area column to place it under that, or onto a
+//! onto an entity in the Level column to place it under that, or onto a
 //! card's field to assign it; a double-click places it where the camera
 //! looks (or opens what isn't placed); a right-click has the Library's
 //! menu for it.

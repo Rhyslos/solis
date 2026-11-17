@@ -11,7 +11,7 @@ const WAITING_LIMIT: usize = 500;
 
 /// Solis's own crates, whose information messages are shown too.
 const OWN: &[&str] = &[
-    "app", "editor", "render", "assets", "asset_db", "area", "reflect", "world",
+    "app", "editor", "render", "assets", "asset_db", "level", "reflect", "world",
 ];
 
 /// Libraries whose warnings say nothing a game maker can act on (the

@@ -17,21 +17,21 @@ The samples Solis makes (the turret sample, the benchmark and the playground) ar
 
 3. **Read the report.** It's printed, and kept in the project as `.solis/check-report.txt` (on Windows, Solis has no window to print to, so open that file). Each line says `ok`, `note` (fine, but worth knowing: an older file that was upgraded as it's read) or `FAIL`. The last line says whether the project checks out.
 
-The check opens the project the way the editor does (with its input actions, 2D settings and Mixer), so it also writes the engine's description files (`assets/solis/`) and any missing [sidecars](concepts.md#projects), as opening it in the editor would. It never changes your areas, code or other files.
+The check opens the project the way the editor does (with its input actions, 2D settings and Mixer), so it also writes the engine's description files (`assets/solis/`) and any missing [sidecars](concepts.md#projects), as opening it in the editor would. It never changes your levels, code or other files.
 
 ## What it checks
 | Step | What fails |
 |---|---|
-| Files | Any area, assembly, sound event, Mixer, input actions, 2D settings, tile map, tileset, Atlas Crop file, animator, clips file, recording, save game, sidecar or project file that this build can't read. An older one that's upgraded as it's read is a note, not a failure. |
+| Files | Any level, assembly, sound event, Mixer, input actions, 2D settings, tile map, tileset, Atlas Crop file, animator, clips file, recording, save game, sidecar or project file that this build can't read. An older one that's upgraded as it's read is a note, not a failure. |
 | Game code | Any mistake in the game's Lust or Lua. A call to a name that was renamed is a note. |
-| Recordings | Each recording in `recordings/checks/` is played back in the area it was recorded in, with the project's sprite sheets, tilesets and tile maps read as the editor reads them (so a 2D game's walls are there). If the game comes out differently from the same input on any tick, it fails, with the tick. It also fails, saying so, if the area isn't as it was when recorded (record it again), or if it was made before recordings said their area. Saves the game makes while it plays back are kept by the check, never written into your project. |
+| Recordings | Each recording in `recordings/checks/` is played back in the level it was recorded in, with the project's sprite sheets, tilesets and tile maps read as the editor reads them (so a 2D game's walls are there). If the game comes out differently from the same input on any tick, it fails, with the tick. It also fails, saying so, if the level isn't as it was when recorded (record it again), or if it was made before recordings said their level. Saves the game makes while it plays back are kept by the check, never written into your project. |
 
 ## Tips and common problems
-- **Problem:** a recording fails that used to pass, and you changed the area or the code since. **Why:** the check compares the game with what it did when recorded; your change makes it play differently, which is what it's for. **Fix:** record the check again after your change.
+- **Problem:** a recording fails that used to pass, and you changed the level or the code since. **Why:** the check compares the game with what it did when recorded; your change makes it play differently, which is what it's for. **Fix:** record the check again after your change.
 - **Problem:** a recording fails with only a Solis update in between. **Why:** the new build plays your game differently. **Fix:** keep using the build you had (the last ten are on the Releases page; see [Installing and updating](installing-and-updating.md)) and report it, with the recording.
-- **Problem:** "its area isn't as it was when this was recorded". **Why:** the area was changed and saved since, or the recording was made with unsaved changes (the check reads the saved area; Solis warns when you start recording with unsaved changes). **Fix:** save the area, then record the check again.
+- **Problem:** "its level isn't as it was when this was recorded". **Why:** the level was changed and saved since, or the recording was made with unsaved changes (the check reads the saved level; Solis warns when you start recording with unsaved changes). **Fix:** save the level, then record the check again.
 - **Problem:** the check takes a couple of seconds longer after you've just made a file. **Why:** a new file gets its sidecar (the small file beside it holding its ID) once it has been still for two seconds, so a file Git is still writing isn't given a wrong ID. The check waits for it, so the file is checked with its ID in the same run. **Fix:** nothing: it's on purpose.
-- **Problem:** "it doesn't say which area it was recorded in". **Why:** recordings made before this version didn't name their area. **Fix:** record it again.
+- **Problem:** "it doesn't say which level it was recorded in". **Why:** recordings made before this version didn't name their level. **Fix:** record it again.
 
 ## Related
 - [Input](input.md): recording and replaying play.

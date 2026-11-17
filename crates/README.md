@@ -10,7 +10,7 @@ The engine and editor's code, split into small crates (Rust packages), one job e
 | [`render`](render/README.md) | 1 Engine | Draws viewports on the GPU: sky, models, lights, shadows, grid, projectiles. |
 | [`assets`](assets/README.md) | 1 Engine | Reads model files (glTF) and textures into plain data, safely. |
 | [`asset_db`](asset_db/README.md) | 1 Engine | The project folder: its assets by stable ID, sidecars, the import cache, watching for changes. |
-| [`world`](world/README.md) | 1 Engine | The running game's fast storage, built from the area when Play is pressed. |
+| [`world`](world/README.md) | 1 Engine | The running game's fast storage, built from the level when Play is pressed. |
 | [`script`](script/README.md) | 1 Engine | Game code: Lust, Lua and Rust components, run safely on every core. |
 | [`physics`](physics/README.md) | 1 Engine | Physics, the same result on every PC. |
 | [`input`](input/README.md) | 1 Engine | Keys and buttons turned into named actions, and recordings of play. |
@@ -18,7 +18,7 @@ The engine and editor's code, split into small crates (Rust packages), one job e
 | [`animation`](animation/README.md) | 1 Engine | Clips of frames played by time with their events, and sprites' clips files. |
 | [`tiles`](tiles/README.md) | 1 Engine | Tilesets' terrains and tile maps: layers of terrain codes and values per cell, in chunks, and their files. |
 | [`ui`](ui/README.md) | 1 Engine | Game UI: screens as trees of elements pinned by anchors, laid out on any screen by a scale rule into shapes to draw. |
-| [`area`](area/README.md) | 0 Core | The area document the editor edits, its undo, its text files, and the built-in components. |
+| [`level`](level/README.md) | 0 Core | The level document the editor edits, its undo, its text files, and the built-in components. |
 | [`mesh`](mesh/README.md) | 0 Core | Polygon meshes for brushes: points and n-sided faces by stable id, how they connect, extrude and inset, cutting into triangles, and the brushes' shapes. |
 | [`reflect`](reflect/README.md) | 0 Core | Stable IDs, plain values, component schemas and the registry; the one way a file is opened. |
 

@@ -42,7 +42,7 @@ pub struct InterfaceLook {
     /// (Preferences › Appearance). Builds before it had none: they read
     /// the standard, which keeps the shelf as it is.
     pub shelf_opens_on: ShelfOpensOn,
-    /// Where Home's Area, Properties and Assets lists sit (Preferences ›
+    /// Where Home's Level, Properties and Assets lists sit (Preferences ›
     /// Appearance; decision 0109). Builds before it had them on the
     /// shelf; they read the standard, the lists beside the groups.
     pub layout: PanelLayout,

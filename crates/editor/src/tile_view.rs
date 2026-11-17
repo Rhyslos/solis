@@ -37,7 +37,7 @@ pub const MOST_CHUNKS: usize = 256;
 /// The white patch at the bottom of a picture's atlas, in texels.
 const WHITE: u32 = 4;
 
-/// A map in an area or the running game, to draw.
+/// A map in a level or the running game, to draw.
 #[derive(Debug, Clone)]
 pub struct ViewTileMap {
     /// Its entity.

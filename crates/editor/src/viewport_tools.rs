@@ -3,12 +3,12 @@
 //! over the image for them (the gizmo, the selection's outline, the box,
 //! and the snapping corner).
 //!
-//! The viewport never changes the area: it reports [`ViewportEvent`]s,
+//! The viewport never changes the level: it reports [`ViewportEvent`]s,
 //! which the workbench turns into selections and undoable edits.
 
-use crate::area_view::AreaView;
 use crate::camera::Camera;
 use crate::gizmo::{Change, Drag, Gizmo, Handle, Shape};
+use crate::level_view::LevelView;
 use crate::picking::PickMode;
 use crate::theme::{self, Accent};
 use crate::transforming::Snapping;
@@ -173,7 +173,7 @@ pub enum Outline {
         /// Where the entity is (with its scale, which the shape grows by).
         world: Mat4,
         /// Its shape and size.
-        shape: area::builtin::Collider,
+        shape: level::builtin::Collider,
     },
     /// A reverb zone's shape (Phase 7, S6), in sound's colour: where
     /// sounds echo.
@@ -181,29 +181,32 @@ pub enum Outline {
         /// Where the entity is (with its scale, which the zone grows by).
         world: Mat4,
         /// Its shape and size, as a collider's.
-        shape: area::builtin::Collider,
+        shape: level::builtin::Collider,
     },
 }
 
 /// A reverb zone's shape as a collider's, to draw it the same way.
-pub(crate) fn zone_shape(zone: &area::builtin::ReverbZone) -> area::builtin::Collider {
-    use area::builtin::{ColliderShape, ZoneShape};
-    area::builtin::Collider {
+pub(crate) fn zone_shape(zone: &level::builtin::ReverbZone) -> level::builtin::Collider {
+    use level::builtin::{ColliderShape, ZoneShape};
+    level::builtin::Collider {
         shape: match zone.shape {
             ZoneShape::Box => ColliderShape::Box,
             ZoneShape::Ball => ColliderShape::Sphere,
         },
         size: zone.size,
         radius: zone.radius,
-        ..area::builtin::Collider::default()
+        ..level::builtin::Collider::default()
     }
 }
 
 /// The lines that draw `collider` at `world`, as pairs of points in the
 /// world: a box's edges, a sphere's three rings, or a capsule's rings and
 /// sides.
-pub(crate) fn collider_lines(world: Mat4, collider: &area::builtin::Collider) -> Vec<(Vec3, Vec3)> {
-    use area::builtin::ColliderShape;
+pub(crate) fn collider_lines(
+    world: Mat4,
+    collider: &level::builtin::Collider,
+) -> Vec<(Vec3, Vec3)> {
+    use level::builtin::ColliderShape;
     let c = collider.center;
     let mut lines = Vec::new();
     let place = |p: Vec3| world.transform_point3(c + p);
@@ -314,7 +317,7 @@ impl Tools {
         &mut self,
         input: ToolInput,
         camera: &Camera,
-        area: &AreaView,
+        level: &LevelView,
         snapping: &Snapping,
         size: Vec2,
         ppp: f32,
@@ -347,7 +350,7 @@ impl Tools {
             Pressing::Click { at } => {
                 let mouse = input.mouse.unwrap_or(at);
                 if input.released || !input.down {
-                    self.click(at, input.ctrl, camera, area, size, ppp);
+                    self.click(at, input.ctrl, camera, level, size, ppp);
                 } else if mouse.distance(at) > CLICK_SLOP {
                     self.pressing = Pressing::Box { from: at };
                 } else {
@@ -361,7 +364,7 @@ impl Tools {
                     // viewport starts no flight while a press is under
                     // way, so this press always gets here.)
                 } else if input.released || !input.down {
-                    self.boxed(from, mouse, input.ctrl, camera, area, size, ppp);
+                    self.boxed(from, mouse, input.ctrl, camera, level, size, ppp);
                 } else {
                     self.pressing = Pressing::Box { from };
                 }
@@ -418,7 +421,7 @@ impl Tools {
         at: Vec2,
         ctrl: bool,
         camera: &Camera,
-        area: &AreaView,
+        level: &LevelView,
         size: Vec2,
         ppp: f32,
     ) {
@@ -437,7 +440,7 @@ impl Tools {
         } else {
             PickMode::Replace
         };
-        let marker = area
+        let marker = level
             .markers()
             .filter_map(|(entity, position)| {
                 let p = camera.project(position, size)?;
@@ -456,7 +459,7 @@ impl Tools {
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],
             PickPurpose::Click(mode),
-            area,
+            level,
         );
     }
 
@@ -468,7 +471,7 @@ impl Tools {
         b: Vec2,
         ctrl: bool,
         camera: &Camera,
-        area: &AreaView,
+        level: &LevelView,
         size: Vec2,
         ppp: f32,
     ) {
@@ -479,7 +482,7 @@ impl Tools {
             self.part_asks.push(PartAsk::In(min, max, how));
             return;
         }
-        let markers = area
+        let markers = level
             .markers()
             .filter(|(_, position)| {
                 camera
@@ -506,7 +509,7 @@ impl Tools {
                 (hi.y - lo.y).max(1.0) as u32,
             ],
             PickPurpose::Box { mode, markers },
-            area,
+            level,
         );
     }
 
@@ -518,7 +521,7 @@ impl Tools {
         asset: reflect::AssetId,
         (at, free): (Vec2, bool),
         camera: &Camera,
-        area: &AreaView,
+        level: &LevelView,
         (size, ppp): (Vec2, f32),
     ) {
         let ray = camera.ray_through(at, size);
@@ -539,19 +542,19 @@ impl Tools {
                 fallback,
                 free,
             },
-            area,
+            level,
         );
     }
 
     /// Asks the renderer about `rect`. A newer question replaces one not
     /// yet sent.
-    fn ask(&mut self, rect: [u32; 4], purpose: PickPurpose, area: &AreaView) {
+    fn ask(&mut self, rect: [u32; 4], purpose: PickPurpose, level: &LevelView) {
         if self.pick.as_ref().is_some_and(|p| p.waited.is_some()) {
             // One is in flight: this one goes after it.
             self.next = Some(Pick {
                 rect,
                 purpose,
-                pickable: area.pickable.clone(),
+                pickable: level.pickable.clone(),
                 waited: None,
             });
             return;
@@ -559,7 +562,7 @@ impl Tools {
         self.pick = Some(Pick {
             rect,
             purpose,
-            pickable: area.pickable.clone(),
+            pickable: level.pickable.clone(),
             waited: None,
         });
     }

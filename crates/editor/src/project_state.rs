@@ -3,7 +3,7 @@
 //! The editor's state is in two places. [`Workbench`] itself holds what is
 //! the program's and the user's: the layout, the theme, the cameras, the
 //! Console, the launcher, updates. [`ProjectState`] holds everything that
-//! belongs to the open project (or to working without one): the area and
+//! belongs to the open project (or to working without one): the level and
 //! its undo history, the Library, the files open in tabs with their undo
 //! steps, the running game, the questions waiting for an answer.
 //! [`Workbench::set_project`] replaces it whole with a new one, so nothing
@@ -28,7 +28,7 @@ use std::collections::{BTreeMap, HashMap};
 /// Everything the editor holds that belongs to the open project (or to
 /// working without one), kept between frames. Another project starts
 /// with a new one ([`Workbench::set_project`]).
-/// Which entities use each code file's components, with the area's
+/// Which entities use each code file's components, with the level's
 /// revision, the sources' count and the build of the game's code it was
 /// worked out for.
 pub(crate) type CodeUses = (
@@ -42,7 +42,7 @@ pub(crate) type CodeUses = (
 pub(crate) struct ProjectState {
     /// The open project, if any.
     pub(crate) project: Option<ProjectInfo>,
-    /// The open area and what's selected in it.
+    /// The open level and what's selected in it.
     pub(crate) document: Document,
     /// What the editor knows about the imported models, by asset.
     pub(crate) models: BTreeMap<AssetId, ModelInfo>,
@@ -55,8 +55,8 @@ pub(crate) struct ProjectState {
     pub(crate) last_export_folder: Option<std::path::PathBuf>,
     /// The project's assets, for the Library.
     pub(crate) library: crate::library::LibraryFiles,
-    /// The project's assemblies the area uses, as read from their files.
-    pub(crate) assemblies: BTreeMap<AssetId, std::sync::Arc<area::text::AreaFile>>,
+    /// The project's assemblies the level uses, as read from their files.
+    pub(crate) assemblies: BTreeMap<AssetId, std::sync::Arc<level::text::LevelFile>>,
     /// Actions asked for outside `Workbench::show`'s own flow (menus,
     /// Properties), handed to the app with the next frame's. One the app
     /// hasn't taken when another project opens is let go: it names a file
@@ -68,14 +68,14 @@ pub(crate) struct ProjectState {
     /// What waits for an answer about unsaved changes: Save, Don't save
     /// or Cancel.
     pub(crate) unsaved_prompt: Option<WorkbenchAction>,
-    /// The area as the file now on disk holds it, waiting for Keep mine
+    /// The level as the file now on disk holds it, waiting for Keep mine
     /// or Load the file.
-    pub(crate) pending_reload: Option<area::Area>,
+    pub(crate) pending_reload: Option<level::Level>,
     /// While a gizmo is dragged: what moves, as it was when the drag
     /// began, and the drag's gesture.
     pub(crate) moving: Option<(crate::transforming::Targets, u64)>,
-    /// What the Area panel searches for, folds, hides and locks.
-    pub(crate) area_panel: crate::area_panel::AreaPanelState,
+    /// What the Level panel searches for, folds, hides and locks.
+    pub(crate) level_panel: crate::level_panel::LevelPanelState,
     /// Components' values copied in Properties, to paste. They go with
     /// their project: they are shaped by its game code and name its
     /// assets and entities, which mean nothing in another.
@@ -93,8 +93,8 @@ pub(crate) struct ProjectState {
     /// The sound being listened to, and how far it has got.
     pub(crate) preview: Option<crate::sound_view::Preview>,
     /// The sound file Properties shows (picked in the Library), with the
-    /// area's selection as it was then: picking something else in the
-    /// area shows that instead.
+    /// level's selection as it was then: picking something else in the
+    /// level shows that instead.
     pub(crate) sound_shown: Option<(String, crate::document::Selection)>,
     /// The text file shown in Properties, as the app last read it (by
     /// path inside the assets), made ready to show.
@@ -102,7 +102,7 @@ pub(crate) struct ProjectState {
     /// The project's buses, mute and solo, and the meters (the Mixer).
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
-    pub(crate) pixels: area::pixels::PixelSettings,
+    pub(crate) pixels: level::pixels::PixelSettings,
     /// When the game's code was last checked (the local time, for the
     /// status bar); none before the first check.
     pub(crate) code_checked: Option<String>,
@@ -142,7 +142,7 @@ pub(crate) struct ProjectState {
     /// Pictures being placed as sprites, waiting to be read as sheets:
     /// where each goes (`None`: where the camera looks).
     pub(crate) pictures_placing: BTreeMap<AssetId, Option<(glam::Vec3, Option<EntityId>)>>,
-    /// Mistakes found in the area, for the Problems panel.
+    /// Mistakes found in the level, for the Problems panel.
     pub(crate) problems: crate::problems::Problems,
     /// The game, while it runs.
     pub(crate) playing: Option<crate::play::Playing>,
@@ -155,9 +155,9 @@ pub(crate) struct ProjectState {
     pub(crate) program_given: bool,
     /// The components it put in the registry, by name.
     pub(crate) game_components: std::collections::BTreeSet<String>,
-    /// What the viewport's `AreaView` was last worked out for.
+    /// What the viewport's `LevelView` was last worked out for.
     pub(crate) editor_view: Option<ViewKey>,
-    /// The area's brushes cut into triangles to draw (Tools 1a, B1), made
+    /// The level's brushes cut into triangles to draw (Tools 1a, B1), made
     /// again only when a brush changes.
     pub(crate) brushes: crate::brushes::BrushModels,
     /// The project's input actions (decision 0037), from its
@@ -183,7 +183,7 @@ pub(crate) struct ProjectState {
     /// What the open screen can be tied to and send, and the build of the
     /// game's code it's for.
     /// Which entities use each code file's components (the Library's
-    /// Code view), and the area's revision, the sources' count and the
+    /// Code view), and the level's revision, the sources' count and the
     /// build of the game's code it was worked out for.
     pub(crate) code_uses: Option<CodeUses>,
     pub(crate) screen_game: Option<(
@@ -217,7 +217,7 @@ pub(crate) struct ProjectState {
 
 impl Workbench {
     /// Shows `project` as the open one (or none). A different project
-    /// starts from nothing: a new area, and nothing of the old project's
+    /// starts from nothing: a new level, and nothing of the old project's
     /// (everything in `ProjectState`). What is the program's stays: the
     /// layout without the tabs of the old project's files, the cameras,
     /// the Console, and the components the program itself registered.

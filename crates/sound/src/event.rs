@@ -4,7 +4,7 @@
 //! different: a random take, volume and pitch within a range.
 //!
 //! An event is a `.solsound` file in the project, one per event, in the
-//! same Lust style as areas so Git merges it cleanly:
+//! same Lust style as levels so Git merges it cleanly:
 //!
 //! ```text
 //! -- A sound event. Safe to edit by hand: one line per setting.
@@ -35,7 +35,7 @@
 //! a random stream of its own ([`pick`]), made from the game's seed, the
 //! tick and the request's place, never the game's own random numbers.
 
-use area::settings::{self, Field};
+use level::settings::{self, Field};
 use reflect::{AssetId, Value};
 use std::fmt;
 

@@ -14,8 +14,8 @@ pub enum WorkbenchAction {
     ChooseExportFolder,
     /// Ask which model file to import (Library > Import).
     ImportModel,
-    /// Bring in the built-in sample area (Add the sample area, in the search).
-    AddSampleArea,
+    /// Bring in the built-in sample level (Add the sample level, in the search).
+    AddSampleLevel,
     /// Make the turret sample game as a new project, in a folder the app
     /// asks for (Make the sample game, on File > Learn).
     MakeSampleGame,
@@ -74,23 +74,23 @@ pub enum WorkbenchAction {
     /// Place the project's asset where the camera looks (a double-click in
     /// the Library).
     PlaceAsset(AssetId),
-    /// Start a new area (New area, after the area's tab, Ctrl+N): the app calls
-    /// [`Workbench::new_area`](crate::Workbench::new_area).
-    NewArea,
-    /// Ask which area file to open (Open area…, after the area's tab,
+    /// Start a new level (New level, after the level's tab, Ctrl+N): the app calls
+    /// [`Workbench::new_level`](crate::Workbench::new_level).
+    NewLevel,
+    /// Ask which level file to open (Open level…, after the level's tab,
     /// Ctrl+O).
-    OpenArea,
-    /// Save the area to its file, or ask where if it has none (Ctrl+S).
-    SaveArea,
-    /// Ask where to save the area (Ctrl+Shift+S).
-    SaveAreaAs,
+    OpenLevel,
+    /// Save the level to its file, or ask where if it has none (Ctrl+S).
+    SaveLevel,
+    /// Ask where to save the level (Ctrl+Shift+S).
+    SaveLevelAs,
     /// Save this entity and everything under it as an assembly in the
     /// project, then turn it into a copy of it with
     /// [`Workbench::make_copy`](crate::Workbench::make_copy).
     CreateAssembly(EntityId),
-    /// Open this area file (a double-click in the Library); the app reads
-    /// it and calls [`Workbench::open_area`](crate::Workbench::open_area).
-    OpenAreaFile(std::path::PathBuf),
+    /// Open this level file (a double-click in the Library); the app reads
+    /// it and calls [`Workbench::open_level`](crate::Workbench::open_level).
+    OpenLevelFile(std::path::PathBuf),
     /// Open this file of the project's assets in the program the computer
     /// has for it, or show this folder of them in the file browser. The
     /// app opens a file only if its kind is one that's safe to
@@ -110,7 +110,7 @@ pub enum WorkbenchAction {
     },
     /// Make a new folder inside this one (inside the assets).
     NewFolder(std::path::PathBuf),
-    /// Make a new text file inside the assets: a Lust code file or an area
+    /// Make a new text file inside the assets: a Lust code file or a level
     /// (E1). Never replaces a file.
     NewTextFile {
         /// The file, inside the assets.
@@ -171,7 +171,7 @@ pub enum WorkbenchAction {
     },
     /// Save the project's 2D settings to its `pixels.solpix` (Settings >
     /// 2D).
-    SavePixels(area::pixels::PixelSettings),
+    SavePixels(level::pixels::PixelSettings),
     /// Change one field of an entity inside an assembly's file (Apply to
     /// assembly); the app saves it and hands it back with
     /// [`Workbench::set_assembly`](crate::Workbench::set_assembly), which updates every copy.

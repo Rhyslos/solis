@@ -147,9 +147,9 @@ fn undo_over_the_map_tab_never_reaches_into_another_project() {
     assert_eq!(saved_maps(&w.open.outbox), Vec::new(), "nor about to be");
     assert_eq!(w.map_file(MAP).unwrap().layers().len(), 3, "nothing undone");
     assert_eq!(
-        w.open.document.area().len(),
+        w.open.document.level().len(),
         3,
-        "nor the area's own last step"
+        "nor the level's own last step"
     );
 }
 
@@ -200,10 +200,10 @@ fn same<T: std::fmt::Debug>(now: &T, fresh: &T, what: &str) {
     assert_eq!(format!("{now:?}"), format!("{fresh:?}"), "{what}");
 }
 
-/// The names of the entities in `document`'s area, sorted.
+/// The names of the entities in `document`'s level, sorted.
 fn names(document: &crate::document::Document) -> Vec<String> {
     let mut names: Vec<String> = document
-        .area()
+        .level()
         .iter()
         .map(|(_, e)| e.name.clone())
         .collect();
@@ -240,7 +240,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         unsaved_prompt,
         pending_reload,
         moving,
-        area_panel,
+        level_panel,
         copied,
         folders,
         library_state,
@@ -293,7 +293,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         code_uses,
     } = now;
     assert_eq!(project, &fresh.project);
-    // The area: a new one, saved nowhere, with nothing to undo or redo.
+    // The level: a new one, saved nowhere, with nothing to undo or redo.
     assert_eq!(names(document), names(&fresh.document));
     assert_eq!(document.file(), None);
     assert!(!document.is_dirty());
@@ -317,7 +317,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert_eq!(unsaved_prompt, &None);
     assert!(pending_reload.is_none() && play_changes.is_none());
     assert!(moving.is_none() && copied.is_empty());
-    same(area_panel, &fresh.area_panel, "the Area panel");
+    same(level_panel, &fresh.level_panel, "the Level panel");
     assert_eq!(library_state, &fresh.library_state);
     assert!(sounds.is_empty() && sound_events.is_empty());
     assert!(preview.is_none() && sound_shown.is_none() && text_file.is_none());
@@ -388,9 +388,9 @@ fn work_on_the_farm(w: &mut Workbench, ids: Ids) {
         crate::screen_doc::tests::MENU,
     )));
     w.set_code_problems(Vec::new(), &[]);
-    w.set_pixels(area::pixels::PixelSettings {
+    w.set_pixels(level::pixels::PixelSettings {
         pixels_per_unit: 48,
-        ..area::pixels::PixelSettings::default()
+        ..level::pixels::PixelSettings::default()
     });
     let mut mixer = sound::Mixer::default();
     mixer.buses[0].volume_db = -6.0;
@@ -400,12 +400,12 @@ fn work_on_the_farm(w: &mut Workbench, ids: Ids) {
         "moo.ogg".to_string(),
         crate::sound_view::SoundState::Measuring,
     )]));
-    // The area: a map placed and changed, hidden, its values copied.
+    // The level: a map placed and changed, hidden, its values copied.
     let placed = w.place_tile_map(ids.map, None).unwrap();
     w.follow_map_selection();
     w.map_requests_done(vec![MapRequest::AddLayer, MapRequest::PaintWith(b'~')]);
     w.copy_components(placed, None);
-    w.open.area_panel.hidden.insert(placed);
+    w.open.level_panel.hidden.insert(placed);
     w.open
         .place_targets
         .insert(ids.sheet, (glam::Vec3::ONE, None));
@@ -434,8 +434,8 @@ fn work_on_the_farm(w: &mut Workbench, ids: Ids) {
     w.delete_selection();
     w.stop();
     assert!(w.play_changes().is_some());
-    w.open.unsaved_prompt = Some(WorkbenchAction::NewArea);
-    w.offer_reload(area::builtin::starter_area());
+    w.open.unsaved_prompt = Some(WorkbenchAction::NewLevel);
+    w.offer_reload(level::builtin::starter_level());
     // Drawn, so everything worked out for the farm is.
     let mut h = harness(std::mem::replace(w, started()));
     h.run();
@@ -461,7 +461,7 @@ fn another_project_starts_as_it_would_in_a_workbench_just_started() {
             &fresh.viewport.tile_overlay,
             "the selected map and the painter",
         );
-        assert!(w.viewport.area.models.is_empty());
+        assert!(w.viewport.level.models.is_empty());
         assert_eq!(w.viewport.entities, 0);
         // No tab of the old project's files is left.
         for panel in Panel::OPEN_WITH_A_FILE {
@@ -493,7 +493,7 @@ fn opening_the_open_project_again_changes_nothing() {
     let placed = w.place_tile_map(ids.map, None).unwrap();
     w.open_frames(CLIPS);
     w.set_project(Some(project("farm")));
-    assert!(w.open.document.area().contains(placed));
+    assert!(w.open.document.level().contains(placed));
     assert!(w.open.document.is_dirty());
     assert!(w.open.frames_editor.is_some());
     assert!(has_panel(&w, Panel::Clips));
@@ -503,7 +503,7 @@ fn opening_the_open_project_again_changes_nothing() {
 #[test]
 fn a_game_still_running_goes_with_its_project() {
     // Opening a project waits for Stop, so the app never does this; if it
-    // did, Stop afterwards would put the old project's area back.
+    // did, Stop afterwards would put the old project's level back.
     let mut w = started();
     open_farm(&mut w, "farm", Ids::new());
     w.play();

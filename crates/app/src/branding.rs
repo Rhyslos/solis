@@ -41,7 +41,7 @@ mod tests {
         // Data files Solis writes fetch their classes from here (decision
         // 0081); it can't name the app's folder itself, so this keeps the
         // two the same.
-        assert_eq!(area::lust_data::ENGINE_FOLDER, CODE_FOLDER);
+        assert_eq!(level::lust_data::ENGINE_FOLDER, CODE_FOLDER);
     }
 
     #[test]

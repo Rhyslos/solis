@@ -4,8 +4,8 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 
 | File | What it reads |
 | --- | --- |
-| `area_file.rs` | An area or assembly file: refused or read, its assemblies expanded, written and read back. |
-| `brush.rs` | An area file holding brushes: refused or read, each brush within the limits (points, faces, corners), written back to itself, and cut into the triangles it's drawn and made solid with. |
+| `level_file.rs` | A level or assembly file: refused or read, its assemblies expanded, written and read back. |
+| `brush.rs` | A level file holding brushes: refused or read, each brush within the limits (points, faces, corners), written back to itself, and cut into the triangles it's drawn and made solid with. |
 | `aseprite.rs` | An Aseprite file (`.aseprite`): refused or read within the limits, every frame the canvas's size, tags within the frames, then packed into a sheet whose frames draw back the same. |
 | `atlas.rs` | An atlas file (`.atlas.lst`): refused or read, within the limits, each crop's name good and used once, and written back to itself. |
 | `animator.rs` | An animator file (`.solanim`): refused or read, within the limits, written back to itself, and run with every parameter set every way. |
@@ -27,7 +27,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `tileset.rs` | A tileset (`.tileset.lst`, or an older `.soltileset`): refused or read, within the limits, each terrain's name and code used once, and written back to itself. |
 | `tile_art.rs` | A tileset's picture (the first byte chooses PNG or JPEG, or Aseprite): refused or read whole within the limits, every frame its size, then its grid found and its tiles weighed. |
 | `tile_map.rs` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`): refused or read, within the limits, written back to itself (or refused by the writer, when it would be more than is read back), then changed cell by cell (inside and past its edges), resized and summed. |
-| `playtest_file.rs` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`): refused or read, every part put right (a usable name and area, a window Solis opens), and written back to itself. |
+| `playtest_file.rs` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`): refused or read, every part put right (a usable name and level, a window Solis opens), and written back to itself. |
 | `update_answer.rs` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte): a release read only ever points at the repository's own downloads. |
 
 Each target starts with `fuzz_support::quiet_caught_panics()` (in [`../src`](../src/README.md)), so a library's panic that Solis catches isn't printed but the target's own `assert!` messages are.

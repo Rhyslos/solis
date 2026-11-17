@@ -1,5 +1,7 @@
 # 0015. File extensions: .solscene, .solprefab, .solmat and project.solis
 
+> **Scenes became areas ([decision 0023](0023-areas-and-assemblies.md)), and areas are levels now** ([decision 0118](0118-the-editor-rethink.md)): what this record calls a scene is a level, and its file ends `.sollevel`. The record keeps the words of its time.
+
 - **Status:** Accepted
 - **Date:** 2026-10-22
 - **Amended by:** [0023](0023-areas-and-assemblies.md): scenes are now called *areas* (`.solarea`) and prefabs *assemblies* (`.solassembly`).

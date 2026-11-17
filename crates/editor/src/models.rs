@@ -76,7 +76,7 @@ impl ModelInfo {
 /// What kind of light a model's file carries.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum FileLightKind {
-    /// A sun: it sets the area's sun.
+    /// A sun: it sets the level's sun.
     Sun,
     /// A point light.
     Point,

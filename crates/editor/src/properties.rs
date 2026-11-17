@@ -1,6 +1,6 @@
 //! The Properties panel: the selected entity's name and components, with
 //! fields drawn from each component's schema (decision 0019). It never
-//! changes the area itself: it returns what the user asked for, and the
+//! changes the level itself: it returns what the user asked for, and the
 //! workbench applies it (as undo steps, decision 0022).
 
 use crate::document::Document;
@@ -150,7 +150,7 @@ pub(crate) struct AssemblyPart {
     pub name: String,
     /// The entity as the assembly has it, or `None` if its part is gone
     /// from the assembly.
-    pub expected: Option<area::EntityData>,
+    pub expected: Option<level::EntityData>,
     /// Whether it's the placed copy's root.
     pub root: bool,
 }
@@ -229,7 +229,7 @@ pub(crate) fn properties(
     let Some((id, entity)) = document
         .selection
         .primary()
-        .and_then(|id| document.area().get(id).map(|e| (id, e)))
+        .and_then(|id| document.level().get(id).map(|e| (id, e)))
     else {
         strip.label(
             RichText::new("Properties")
@@ -238,7 +238,7 @@ pub(crate) fn properties(
         );
         empty_note(
             ui,
-            "Nothing selected. Pick something in the viewport or the Area column.",
+            "Nothing selected. Pick something in the viewport or the Level column.",
         );
         if let Some(hints) = hints {
             egui::Frame::new()
@@ -257,13 +257,13 @@ pub(crate) fn properties(
         document
             .selection
             .iter()
-            .filter(|&e| e != id && document.area().contains(e)),
+            .filter(|&e| e != id && document.level().contains(e)),
     );
     let many = selected.len() > 1;
     let whole_model = !many
         && entity.origin.is_none()
         && entity
-            .get::<area::builtin::Model>()
+            .get::<level::builtin::Model>()
             .and_then(|m| m.asset)
             .filter(|r| r.part.is_none())
             .and_then(|r| models.get(&r.asset))
@@ -298,9 +298,9 @@ pub(crate) fn properties(
                         .filter(|n| {
                             !many
                                 || (document.registry.get(n).is_some()
-                                    && selected
-                                        .iter()
-                                        .all(|&e| document.area().get(e).is_some_and(|d| d.has(n))))
+                                    && selected.iter().all(|&e| {
+                                        document.level().get(e).is_some_and(|d| d.has(n))
+                                    }))
                         })
                         .collect();
                     names.sort_by_key(|n| (n.as_str() != "Transform", n.as_str()));
@@ -358,8 +358,8 @@ impl Card<'_> {
     ) {
         let id = self.selected[0];
         let many = self.selected.len() > 1;
-        let area = self.document.area();
-        let Some(entity) = area.get(id) else {
+        let level = self.document.level();
+        let Some(entity) = level.get(id) else {
             return;
         };
         let Some(schema) = self.document.registry.get(component) else {
@@ -414,10 +414,10 @@ impl Card<'_> {
             .and_then(|e| e.components.get(component));
         let others: Vec<&reflect::ComponentData> = self.selected[1..]
             .iter()
-            .filter_map(|&e| area.get(e))
+            .filter_map(|&e| level.get(e))
             .filter_map(|d| d.components.get(component))
             .collect();
-        if component == <area::builtin::Brush as reflect::Component>::NAME
+        if component == <level::builtin::Brush as reflect::Component>::NAME
             && !many
             && let Some(facts) = self.help.brush
         {
@@ -431,7 +431,7 @@ impl Card<'_> {
             (assembly, &yours),
             &others,
             self.assets,
-            (area, &self.document.asset_users()),
+            (level, &self.document.asset_users()),
         ) {
             let component = component.to_owned();
             requests.push(match change {
@@ -478,9 +478,9 @@ impl Card<'_> {
     ) {
         use crate::brushing::card::CardChange;
         let entity = self.selected[0];
-        let component = <area::builtin::Brush as reflect::Component>::NAME.to_owned();
+        let component = <level::builtin::Brush as reflect::Component>::NAME.to_owned();
         let changes =
-            crate::brushing::card::rows(ui, brush, facts, self.assets, self.document.area());
+            crate::brushing::card::rows(ui, brush, facts, self.assets, self.document.level());
         for change in changes {
             requests.push(match change {
                 CardChange::Size(size) => PropertyRequest::BrushSize { entity, size },

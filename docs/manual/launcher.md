@@ -50,7 +50,7 @@ Type a name, and Solis makes the project's folder for you.
 4. **Start from**: **Empty** (only what a project needs to open), or one of Solis's examples (**Playground**, **Turret sample**, **UI sample**, **Benchmark**), made as your project, under your name. Each example is marked with the kind it was made for: they are all **3D**, so they're greyed while **2D** is chosen.
 5. **Create** makes the folder, writes the project and opens it in the editor. **Cancel** (or `Esc`) closes the dialog and makes nothing.
 
-> **Good to know:** a new project gets only what it needs to open: its `project.solis`, Solis's `.solis` folder, and Git's `.gitignore` and `.gitattributes`. Its **assets** folder is made when you put the first file in it (an import, a new folder or file in the Library, a saved area).
+> **Good to know:** a new project gets only what it needs to open: its `project.solis`, Solis's `.solis` folder, and Git's `.gitignore` and `.gitattributes`. Its **assets** folder is made when you put the first file in it (an import, a new folder or file in the Library, a saved level).
 
 A name is refused, with the reason, when it's empty, longer than 100 letters, holds a character Windows doesn't allow in a folder's name (`< > : " / \ | ? *`) or a line break, starts with a dot (a hidden folder) or ends with one, or is a name Windows keeps for itself (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`). A folder too deep for Windows (its whole path near 260 characters) is refused too.
 
@@ -58,7 +58,7 @@ A name is refused, with the reason, when it's empty, longer than 100 letters, ho
 
 The column has two more pages:
 
-- **Learn**: the four examples, each with a sentence about it and **Make it in a folder…** (choose an empty folder; it opens in the editor); **Your first hour**, five steps for someone new; and **Open the user guide**. The sample area, which goes into an open project, is in the editor's search: press `Space` and type *sample area*.
+- **Learn**: the four examples, each with a sentence about it and **Make it in a folder…** (choose an empty folder; it opens in the editor); **Your first hour**, five steps for someone new; and **Open the user guide**. The sample level, which goes into an open project, is in the editor's search: press `Space` and type *sample level*.
 - **Updates**: when a newer build of Solis is out, Updates has a **1 new** mark in the column, and a card across the top of the page says what it is, with **Not now** and **Download** (it downloads while you work), then **Restart to update** (Solis closes, installs it and opens again). In a copy you didn't install with the setup file, the step is **Open the releases page** instead. Under the card: the build you have, the newest build with **Check now**, the **Look for updates when Solis starts** switch, the releases page and the list of every change. Beside them, what the new build brings. See [Installing and updating](installing-and-updating.md).
 
 ## Opening a project from the command line

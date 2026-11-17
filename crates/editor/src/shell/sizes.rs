@@ -96,7 +96,7 @@ impl Edge {
                 RibbonTab::Audio => size::SPLIT_AUDIO,
                 _ => size::SPLIT,
             },
-            Self::Left if layout == PanelLayout::AreaAndAssetsLeft => size::ASSETS_COLUMN_W,
+            Self::Left if layout == PanelLayout::LevelAndAssetsLeft => size::ASSETS_COLUMN_W,
             Self::Left => size::SCENE_COLUMN_W,
             Self::Right => size::PROPERTIES_COLUMN_W,
             Self::Strip => size::ASSETS_STRIP_H,

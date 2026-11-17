@@ -26,21 +26,21 @@ fn game_names_are_usable_as_file_names() {
 }
 
 #[test]
-fn only_areas_inside_the_assets_can_start_a_game() {
-    assert!(usable_area("areas/farm.solarea"));
-    assert!(usable_area("farm.solarea"));
+fn only_levels_inside_the_assets_can_start_a_game() {
+    assert!(usable_level("levels/farm.sollevel"));
+    assert!(usable_level("farm.sollevel"));
     for bad in [
         "",
         "farm.lst",
-        "/areas/farm.solarea",
-        "../farm.solarea",
-        "areas/../../farm.solarea",
-        "areas\\farm.solarea",
-        "C:/farm.solarea",
-        "areas//farm.solarea",
-        "areas/far\nm.solarea",
+        "/levels/farm.sollevel",
+        "../farm.sollevel",
+        "levels/../../farm.sollevel",
+        "levels\\farm.sollevel",
+        "C:/farm.sollevel",
+        "levels//farm.sollevel",
+        "levels/far\nm.sollevel",
     ] {
-        assert!(!usable_area(bad), "{bad}");
+        assert!(!usable_level(bad), "{bad}");
     }
 }
 
@@ -48,24 +48,52 @@ fn only_areas_inside_the_assets_can_start_a_game() {
 fn a_playtest_file_reads_back_as_written() {
     let p = Playtest {
         name: "Farm".into(),
-        area: "areas/farm.solarea".into(),
+        level: "levels/farm.sollevel".into(),
         fullscreen: true,
         size: [1920, 1080],
     };
     assert_eq!(Playtest::parse(&p.text()), Ok(p.clone()));
     assert!(
         p.text()
-            .starts_with("playtest 1\nname Farm\narea areas/farm.solarea\n")
+            .starts_with("playtest 2\nname Farm\nlevel levels/farm.sollevel\n")
     );
-    // Odd values put right; a missing or unsafe area refused.
-    let odd = Playtest::parse("playtest 1\nname a/b\narea x.solarea\nwindow huge 5 99999\nmore\n")
-        .unwrap();
+    // Odd values put right; a missing or unsafe level refused.
+    let odd =
+        Playtest::parse("playtest 2\nname a/b\nlevel x.sollevel\nwindow huge 5 99999\nmore\n")
+            .unwrap();
     assert_eq!(odd.name, "ab");
     assert!(!odd.fullscreen);
     assert_eq!(odd.size, [320, 16384], "kept within what Solis opens");
-    assert!(Playtest::parse("playtest 1\nname Farm\n").is_err());
-    assert!(Playtest::parse("playtest 1\narea ../../x.solarea\n").is_err());
-    assert!(Playtest::parse("not one\narea x.solarea\n").is_err());
+    assert!(Playtest::parse("playtest 2\nname Farm\n").is_err());
+    assert!(Playtest::parse("playtest 2\nlevel ../../x.sollevel\n").is_err());
+    assert!(Playtest::parse("not one\nlevel x.sollevel\n").is_err());
+    assert!(
+        Playtest::parse("playtest 3\nlevel x.sollevel\n").is_err(),
+        "newer"
+    );
+}
+
+#[test]
+fn a_version_1_playtest_file_names_its_level_by_the_new_ending() {
+    // Decision 0118: version 1 said `area`, and its level's file ended
+    // `.solarea`, which became `.sollevel` when the project opened.
+    let one = "playtest 1\nname Farm\narea areas/farm.solarea\nwindow fullscreen 1920 1080\n";
+    let read = Playtest::parse(one).unwrap();
+    assert_eq!(read.level, "areas/farm.sollevel");
+    assert_eq!(
+        read.text(),
+        "playtest 2\nname Farm\nlevel areas/farm.sollevel\nwindow fullscreen 1920 1080\n"
+    );
+    assert_eq!(Playtest::parse(&read.text()).unwrap(), read);
+    // Each version reads only its own word for the level.
+    assert!(Playtest::parse("playtest 1\nlevel x.sollevel\n").is_err());
+    assert!(Playtest::parse("playtest 2\narea x.sollevel\n").is_err());
+    // The examples kept for good: version 1 is written as version 2.
+    let fixtures =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/playtest");
+    let read_fixture = |v: &str| std::fs::read_to_string(fixtures.join(v)).unwrap();
+    let one = Playtest::parse(&read_fixture("v1/playtest.txt")).unwrap();
+    assert_eq!(one.text(), read_fixture("v2/playtest.txt"));
 }
 
 #[test]
@@ -74,7 +102,7 @@ fn playtest_files_survive_being_damaged() {
     // panics, and what reads is always safe to use.
     let text = Playtest {
         name: "Farm".into(),
-        area: "areas/farm.solarea".into(),
+        level: "levels/farm.sollevel".into(),
         fullscreen: false,
         size: [1280, 720],
     }
@@ -88,10 +116,10 @@ fn playtest_files_survive_being_damaged() {
         let mut broken = bytes.to_vec();
         broken.truncate(1 + (seed as usize) % bytes.len());
         let at = (seed >> 20) as usize % broken.len();
-        broken[at] = b" \n/.:\\abc019-areasolfullscreen"[(seed >> 40) as usize % 30];
+        broken[at] = b" \n/.:\\abc019-levelsolfullscreen"[(seed >> 40) as usize % 30];
         let text = String::from_utf8_lossy(&broken);
         if let Ok(p) = Playtest::parse(&text) {
-            assert!(usable_area(&p.area), "{text}");
+            assert!(usable_level(&p.level), "{text}");
             assert_eq!(game_name(&p.name), p.name);
             assert!(p.size[0] >= 320 && p.size[1] >= 320, "{:?}", p.size);
         }
@@ -106,7 +134,7 @@ fn exports_go_in_a_dated_folder_in_documents() {
     );
 }
 
-/// A workbench with a project holding two areas, the farm open.
+/// A workbench with a project holding two levels, the farm open.
 fn farm() -> Workbench {
     let mut w = Workbench::new(info());
     w.set_project(Some(crate::library::ProjectInfo {
@@ -116,27 +144,27 @@ fn farm() -> Workbench {
     }));
     let item = |path: &str| crate::library::LibraryItem {
         id: None,
-        kind: crate::library::LibraryKind::Area,
+        kind: crate::library::LibraryKind::Level,
         name: path.into(),
         path: path.into(),
         thumbnail: None,
     };
-    w.open.library = vec![item("areas/town.solarea"), item("areas/farm.solarea")].into();
-    w.open_area(
-        area::Area::new(),
-        std::path::PathBuf::from("/projects/farm/assets/areas/farm.solarea"),
+    w.open.library = vec![item("levels/town.sollevel"), item("levels/farm.sollevel")].into();
+    w.open_level(
+        level::Level::new(),
+        std::path::PathBuf::from("/projects/farm/assets/levels/farm.sollevel"),
     );
     w.set_documents_folder(Some("/home/me/Documents".into()));
     w
 }
 
 #[test]
-fn the_window_starts_from_the_project_and_the_open_area() {
+fn the_window_starts_from_the_project_and_the_open_level() {
     let mut w = farm();
     w.open_export();
     let window = w.open.export.as_ref().unwrap();
     assert_eq!(window.playtest.name, "Farm the game");
-    assert_eq!(window.playtest.area, "areas/farm.solarea");
+    assert_eq!(window.playtest.level, "levels/farm.sollevel");
     let folder = PathBuf::from(&window.folder);
     assert_eq!(
         folder.parent(),
@@ -147,7 +175,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     // Remembered from last time: a new dated folder beside the last.
     w.set_last_export(Some(Playtest {
         name: "Farm".into(),
-        area: "areas/town.solarea".into(),
+        level: "levels/town.sollevel".into(),
         fullscreen: true,
         size: [1600, 900],
     }));
@@ -155,22 +183,22 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     // A form filled in afresh (opening the page again keeps the one there).
     w.prepare_export();
     let window = w.open.export.as_ref().unwrap();
-    assert_eq!(window.playtest.area, "areas/town.solarea");
+    assert_eq!(window.playtest.level, "levels/town.sollevel");
     assert!(window.playtest.fullscreen);
     let folder = PathBuf::from(&window.folder);
     assert_eq!(folder.parent(), Some(local("/elsewhere").as_path()));
     let name = folder.file_name().unwrap().to_string_lossy().into_owned();
     assert!(name.starts_with("Farm playtest "), "{name}");
     assert!(!name.ends_with("2026-01-01"));
-    // An area that's gone: the open one instead.
+    // A level that's gone: the open one instead.
     w.set_last_export(Some(Playtest {
-        area: "areas/gone.solarea".into(),
+        level: "levels/gone.sollevel".into(),
         ..Playtest::default()
     }));
     w.prepare_export();
     assert_eq!(
-        w.open.export.as_ref().unwrap().playtest.area,
-        "areas/farm.solarea"
+        w.open.export.as_ref().unwrap().playtest.level,
+        "levels/farm.sollevel"
     );
 }
 
@@ -208,7 +236,7 @@ fn export_asks_the_app_and_says_where_it_went() {
         })
         .collect();
     assert_eq!(asked.len(), 1, "once");
-    assert_eq!(asked[0].playtest.area, "areas/farm.solarea");
+    assert_eq!(asked[0].playtest.level, "levels/farm.sollevel");
     assert!(asked[0].folder.starts_with("/home/me/Documents"));
     assert!(asked[0].suggested, "the window's own folder, unchanged");
     assert!(h.query_by_label("Exporting…").is_some(), "busy until done");
@@ -329,7 +357,7 @@ fn a_project_s_file_never_chooses_the_folder() {
         "//server.example/share/x",
         "../../x",
     ] {
-        let text = format!("playtest 1\nname Farm\narea areas/farm.solarea\nfolder {folder}\n");
+        let text = format!("playtest 2\nname Farm\nlevel levels/farm.sollevel\nfolder {folder}\n");
         let read = Playtest::parse(&text).unwrap();
         assert!(!read.text().contains("folder"), "never written back");
         let mut w = farm();
@@ -424,7 +452,7 @@ fn opening_the_window_never_looks_at_the_disk() {
     let mut w = farm();
     w.set_last_export(Some(Playtest {
         name: "Farm".into(),
-        area: "areas/farm.solarea".into(),
+        level: "levels/farm.sollevel".into(),
         ..Playtest::default()
     }));
     w.set_last_export_folder(Some(dir.join("Farm playtest 2020-01-01")));

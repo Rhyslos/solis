@@ -2,7 +2,7 @@
 //! box in the tab bar, or **Space** with nothing being typed, opens a list
 //! that finds everything the editor can do (with its shortcut beside it, so
 //! the list teaches the keys), every file in the project, every entity in
-//! the area and every panel. Type to narrow it, Up and Down to choose,
+//! the level and every panel. Type to narrow it, Up and Down to choose,
 //! Enter to do it, Esc to close.
 
 //!
@@ -35,7 +35,7 @@ pub(crate) enum SearchKind {
     Action,
     /// A panel to bring to the front.
     Panel,
-    /// An entity in the area.
+    /// An entity in the level.
     Entity,
     /// A file in the project.
     File,
@@ -56,7 +56,7 @@ impl SearchKind {
 /// What picking a result does.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum SearchTarget {
-    /// Something the editor does (Undo, Save area, Play…).
+    /// Something the editor does (Undo, Save level, Play…).
     Command(ShellCommand),
     /// Bring a panel to the front (opening it if it's closed).
     Panel(Panel),
@@ -94,7 +94,7 @@ pub(crate) struct SearchState {
     pub(crate) chosen: usize,
     /// Set on the frame it opens, to put the cursor in its box.
     pub(crate) focus: bool,
-    /// The area's entities and the project's files, as last read.
+    /// The level's entities and the project's files, as last read.
     pub(crate) found: Option<list::Found>,
 }
 
@@ -135,7 +135,7 @@ impl Workbench {
             SearchTarget::Command(command) => command.run(self, ctx, actions),
             SearchTarget::Panel(panel) => self.show_panel(panel),
             SearchTarget::Entity(id) => {
-                if self.open.document.area().contains(id) {
+                if self.open.document.level().contains(id) {
                     self.select(id);
                     self.frame_selection();
                 }

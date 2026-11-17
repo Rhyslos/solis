@@ -1,9 +1,9 @@
 use crate::properties::PropertyRequest;
 use crate::test_support::*;
 use crate::workbench::Workbench;
-use area::EntityData;
-use area::builtin::Transform;
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::Transform;
 use reflect::{EntityId, Value};
 use std::sync::Arc;
 
@@ -68,7 +68,7 @@ fn mover_on(mut w: Workbench) -> (Workbench, EntityId) {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(id, EntityData::new("Cart").with(&Transform::default()))],
             }],
             None,
@@ -158,11 +158,11 @@ fn play_runs_the_game_s_components_and_stop_puts_everything_back() {
         w.log_lines().iter().any(|l| l.text == "Cart sets off"),
         "said once, in the Console"
     );
-    // The area itself didn't move: only the game's world.
+    // The level itself didn't move: only the game's world.
     assert_eq!(
-        w.document().area().world_matrix(id).w_axis.x,
+        w.document().level().world_matrix(id).w_axis.x,
         0.0,
-        "the editor's area is untouched"
+        "the editor's level is untouched"
     );
     w.stop();
     assert!(w.world().is_none());
@@ -215,25 +215,25 @@ fn steps_in_game(w: &mut Workbench, id: EntityId) -> i64 {
 }
 
 /// The review, BUG-54 (issue 57): Properties shows the running value (5
-/// steps counted), the area still holds the one it started with (0), and
-/// setting the field to 0 changed nothing in the area, so the running
+/// steps counted), the level still holds the one it started with (0), and
+/// setting the field to 0 changed nothing in the level, so the running
 /// component was never given it. A change made in Properties reaches the
-/// game whatever the area held.
+/// game whatever the level held.
 #[test]
-fn a_field_set_to_what_the_area_already_holds_still_reaches_the_running_component() {
+fn a_field_set_to_what_the_level_already_holds_still_reaches_the_running_component() {
     let (mut w, id) = with_a_mover();
     w.play();
     for _ in 0..5 {
         w.run_game(1.0 / 60.0);
     }
     assert_eq!(steps_in_game(&mut w, id), 5);
-    let in_area = |w: &Workbench| {
-        let area = w.open.document.area();
-        area.get(id).unwrap().components["Mover"]
+    let in_level = |w: &Workbench| {
+        let level = w.open.document.level();
+        level.get(id).unwrap().components["Mover"]
             .get("steps")
             .cloned()
     };
-    assert_eq!(in_area(&w), Some(Value::Int(0)), "the area's is 0 still");
+    assert_eq!(in_level(&w), Some(Value::Int(0)), "the level's is 0 still");
     w.apply_property(
         PropertyRequest::SetField {
             entity: id,
@@ -245,7 +245,7 @@ fn a_field_set_to_what_the_area_already_holds_still_reaches_the_running_componen
     );
     w.run_game(1.0 / 60.0);
     assert_eq!(steps_in_game(&mut w, id), 1, "counting again from 0");
-    assert_eq!(in_area(&w), Some(Value::Int(0)));
+    assert_eq!(in_level(&w), Some(Value::Int(0)));
     // Given once: the next change to the entity (its speed) doesn't put
     // the steps back again.
     w.apply_property(
@@ -266,7 +266,7 @@ fn a_field_set_to_what_the_area_already_holds_still_reaches_the_running_componen
 }
 
 /// BUG-54 with several entities at once (Properties with several
-/// selected, the Console's `set`): a Transform set to the place the area
+/// selected, the Console's `set`): a Transform set to the place the level
 /// holds puts the entity back there, and in a frame that also builds
 /// everything again (an entity was added) each running component is
 /// still given its field.
@@ -293,7 +293,7 @@ fn fields_set_on_several_entities_reach_the_game_when_everything_is_built_again(
     );
     w.run_game(1.0 / 60.0);
     let x = x_in_game(&w, first);
-    assert!((x - 0.1).abs() < 1e-4, "a tick on from the area's: {x}");
+    assert!((x - 0.1).abs() < 1e-4, "a tick on from the level's: {x}");
     w.apply_property(
         PropertyRequest::SetFieldMany {
             entities: vec![first, second],
@@ -308,7 +308,7 @@ fn fields_set_on_several_entities_reach_the_game_when_everything_is_built_again(
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), EntityData::new("Crate"))],
             }],
             None,
@@ -338,7 +338,7 @@ fn a_failing_component_is_reported_once_naming_its_entity() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(id, data)],
             }],
             None,
@@ -376,7 +376,7 @@ fn scale_check_playing_with_2000_lust_components() {
             });
             data.components
                 .insert("Mover".into(), reflect::ComponentData::default());
-            area::Edit::Spawn {
+            level::Edit::Spawn {
                 entities: vec![(EntityId::random(), data)],
             }
         })
@@ -475,7 +475,7 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(id, data)],
             }],
             None,
@@ -574,7 +574,7 @@ fn a_lua_component_joins_properties_and_play_mode() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(id, data)],
             }],
             None,
@@ -629,7 +629,7 @@ fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
             .document
             .edit(
                 "Add",
-                vec![area::Edit::Spawn {
+                vec![level::Edit::Spawn {
                     entities: vec![(EntityId::random(), data)],
                 }],
                 None,
@@ -699,7 +699,7 @@ fn adding_an_entity_while_playing_keeps_where_the_game_moved_things() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), EntityData::new("New"))],
             }],
             None,
@@ -815,8 +815,8 @@ fn a_lust_component_named_like_a_rust_one_says_so_and_the_rust_one_runs() {
 
 #[test]
 fn a_failure_that_doesn_t_stop_its_component_isn_t_said_to() {
-    let area = area::builtin::starter_area();
-    let (id, sun) = area.iter().next().unwrap();
+    let level = level::builtin::starter_level();
+    let (id, sun) = level.iter().next().unwrap();
     let failure = script::Failure {
         entity: Some(id),
         component: "Health".into(),
@@ -828,7 +828,7 @@ fn a_failure_that_doesn_t_stop_its_component_isn_t_said_to() {
         },
         stopped: false,
     };
-    let text = crate::game_code::failure_text(&area, &failure);
+    let text = crate::game_code::failure_text(&level, &failure);
     assert_eq!(
         text,
         format!("Health on {}: couldn't take the event Hit", sun.name)
@@ -851,7 +851,7 @@ fn crowd_with(main: &str, component: &str, count: usize) -> (Workbench, Vec<Enti
                 .insert(component.into(), reflect::ComponentData::default());
             let id = EntityId::random();
             ids.push(id);
-            area::Edit::Spawn {
+            level::Edit::Spawn {
                 entities: vec![(id, data)],
             }
         })
@@ -907,7 +907,7 @@ fn scale_check_2000_lust_components_finding_by_name() {
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_pressing_play_with_2000_lust_components() {
     // Play starts every component: the code's start, then each one made
-    // from the area.
+    // from the level.
     let (mut w, _) = crowd_with(MOVER, "Mover", 2_000);
     let start = std::time::Instant::now();
     w.play();
@@ -961,7 +961,7 @@ fn scale_check_dragging_512_entities_with_running_components() {
     for frame in 0..frames {
         let edits = ids[..512]
             .iter()
-            .map(|&entity| area::Edit::SetField {
+            .map(|&entity| level::Edit::SetField {
                 entity,
                 component: "Transform".into(),
                 field: "position".into(),
@@ -1026,7 +1026,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), data)],
             }],
             None,
@@ -1086,7 +1086,7 @@ fn past_the_projectile_limit_the_console_says_so_once() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), data)],
             }],
             None,
@@ -1125,15 +1125,15 @@ fn past_the_projectile_limit_the_console_says_so_once() {
 /// Library) whose root carries a Lust `Drone` component, playing `main`.
 fn with_drones(main: &str) -> Workbench {
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
-    let mut area = area::Area::new();
+    let mut level = level::Level::new();
     let mut drone = EntityData::new("Drone").with(&Transform::default());
     drone
         .components
         .insert("Drone".into(), reflect::ComponentData::default());
-    area.insert(id(1), drone);
-    let file = area::text::AreaFile {
-        kind: area::text::FileKind::Assembly { root: id(1) },
-        area,
+    level.insert(id(1), drone);
+    let file = level::text::LevelFile {
+        kind: level::text::FileKind::Assembly { root: id(1) },
+        level,
         overrides: Default::default(),
     };
     let asset = reflect::AssetId(reflect::Id::from_raw(901).unwrap());
@@ -1191,7 +1191,7 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), hive)],
             }],
             None,
@@ -1199,7 +1199,7 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
         )
         .unwrap();
     let steps = w.open.document.history().undo_len();
-    let before = w.open.document.area().len();
+    let before = w.open.document.level().len();
     w.play();
     w.run_game(1.0 / 60.0);
     // Three made; the fourth is named in the project file but isn't an
@@ -1207,7 +1207,7 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     let drones: Vec<EntityId> = w
         .open
         .document
-        .area()
+        .level()
         .iter()
         .filter(|(_, e)| e.name == "drone")
         .map(|(id, _)| id)
@@ -1239,16 +1239,16 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     assert!(
         drones
             .iter()
-            .all(|&d| w.open.document.area().get(d).is_none())
+            .all(|&d| w.open.document.level().get(d).is_none())
     );
     assert!(
         drones
             .iter()
             .all(|&d| w.open.playing.as_ref().unwrap().world.global(d).is_none())
     );
-    // Stop puts the area back as it was.
+    // Stop puts the level back as it was.
     w.stop();
-    assert_eq!(w.open.document.area().len(), before);
+    assert_eq!(w.open.document.level().len(), before);
 }
 
 #[test]
@@ -1266,7 +1266,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
             .document
             .edit(
                 "Add",
-                vec![area::Edit::Spawn {
+                vec![level::Edit::Spawn {
                     entities: vec![(hive_id, hive)],
                 }],
                 None,
@@ -1278,7 +1278,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
         let mut ids: Vec<EntityId> = w
             .open
             .document
-            .area()
+            .level()
             .iter()
             .filter(|(_, e)| e.name == "drone")
             .map(|(id, _)| id)
@@ -1337,7 +1337,7 @@ fn random_numbers_and_spawns_carry_on_while_the_game_s_speed_is_0_and_after_a_lo
             .document
             .edit(
                 "Add",
-                vec![area::Edit::Spawn {
+                vec![level::Edit::Spawn {
                     entities: vec![(hive_id, hive)],
                 }],
                 None,
@@ -1371,8 +1371,8 @@ fn random_numbers_and_spawns_carry_on_while_the_game_s_speed_is_0_and_after_a_lo
         rolled
     };
     let drones = |w: &Workbench| {
-        let area = w.open.document.area();
-        area.iter().filter(|(_, e)| e.name == "drone").count()
+        let level = w.open.document.level();
+        level.iter().filter(|(_, e)| e.name == "drone").count()
     };
     let all_differ = |rolled: &[(u64, EntityId)]| {
         let numbers: std::collections::HashSet<u64> = rolled.iter().map(|r| r.0).collect();
@@ -1451,7 +1451,7 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
             .document
             .edit(
                 "Add",
-                vec![area::Edit::Spawn {
+                vec![level::Edit::Spawn {
                     entities: vec![(EntityId::random(), hive)],
                 }],
                 None,
@@ -1459,13 +1459,13 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
             )
             .unwrap();
     }
-    let before = w.open.document.area().len();
+    let before = w.open.document.level().len();
     w.play();
     w.run_game(1.0 / 60.0);
     w.run_game(1.0 / 60.0);
     assert!(w.log_lines().iter().all(|l| !l.text.contains("stopped")));
     assert_eq!(
-        w.open.document.area().len(),
+        w.open.document.level().len(),
         before + crate::play::MAX_SPAWNS_PER_TICK
     );
     let told = w
@@ -1489,27 +1489,27 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), hive)],
             }],
             None,
             None,
         )
         .unwrap();
-    let last = w.open.document.area().children(None).last().copied();
+    let last = w.open.document.level().children(None).last().copied();
     w.play();
     w.run_game((5.5 * world::TICK) as f32);
     let playing = w.open.playing.as_ref().unwrap();
     let drones: Vec<EntityId> = w
         .open
         .document
-        .area()
+        .level()
         .children(None)
         .into_iter()
         .filter(|&id| {
             w.open
                 .document
-                .area()
+                .level()
                 .get(id)
                 .is_some_and(|e| e.name == "drone")
         })
@@ -1519,8 +1519,8 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
         let z = playing.world.global(drone).unwrap().w_axis.z;
         assert!((z - 5.0).abs() < 1e-4, "four ticks of climbing: {z}");
     }
-    // They join at the end of the area's tree, in the order spawned.
-    let roots = w.open.document.area().children(None);
+    // They join at the end of the level's tree, in the order spawned.
+    let roots = w.open.document.level().children(None);
     let at = roots.iter().position(|&r| Some(r) == last).unwrap();
     assert_eq!(&roots[at + 1..], &drones[..]);
     let xs: Vec<f32> = drones
@@ -1570,7 +1570,7 @@ fn an_event_sent_to_an_entity_spawned_in_the_same_tick_reaches_it() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId::random(), hive)],
             }],
             None,
@@ -1583,13 +1583,13 @@ fn an_event_sent_to_an_entity_spawned_in_the_same_tick_reaches_it() {
     let drone = w
         .open
         .document
-        .area()
+        .level()
         .children(None)
         .into_iter()
         .find(|&id| {
             w.open
                 .document
-                .area()
+                .level()
                 .get(id)
                 .is_some_and(|e| e.name == "drone")
         })
@@ -1686,7 +1686,7 @@ const DRUNKARD: &str = "fetch \"solis/world\":World;\n\n\
     }\n\
     pass Drunkard;\nend\n";
 
-/// A workbench with a drunkard (entity 5) in its area.
+/// A workbench with a drunkard (entity 5) in its level.
 fn with_a_drunkard() -> Workbench {
     let mut w = Workbench::new(info());
     w.set_program(Some(program(DRUNKARD)));
@@ -1697,7 +1697,7 @@ fn with_a_drunkard() -> Workbench {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId(reflect::Id::from_raw(5).unwrap()), data)],
             }],
             None,
@@ -1764,7 +1764,7 @@ const KICKER: &str = "fetch \"solis/physics\":Physics;\nfetch \"solis/world\":Wo
 
 /// A workbench with a floor, a crate on it and a kicker, playing.
 fn kicked() -> (Workbench, EntityId) {
-    use area::builtin::{Collider, RigidBody};
+    use level::builtin::{Collider, RigidBody};
     let mut w = Workbench::new(info());
     w.set_program(Some(program(KICKER)));
     let raw = |n| EntityId(reflect::Id::from_raw(n).unwrap());
@@ -1800,13 +1800,13 @@ fn kicked() -> (Workbench, EntityId) {
         .edit(
             "Add",
             vec![
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(1), floor)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(2), crate_data)],
                 },
-                area::Edit::Spawn {
+                level::Edit::Spawn {
                     entities: vec![(raw(3), kicker)],
                 },
             ],
@@ -1852,7 +1852,7 @@ fn game_code_kicks_a_crate_and_physics_slides_it_the_same_every_play() {
     assert_eq!(
         w.open
             .document
-            .area()
+            .level()
             .get(crate_id)
             .unwrap()
             .get::<Transform>()
@@ -1866,9 +1866,9 @@ fn game_code_kicks_a_crate_and_physics_slides_it_the_same_every_play() {
 /// in circles on a floor (each tick's moves are asked for as game code
 /// does, then physics steps), over three seconds.
 fn characters_walking(characters: u32) -> (f64, f64) {
-    use area::builtin::{CharacterBody, Collider};
-    let mut area = area::Area::new();
-    area.spawn(
+    use level::builtin::{CharacterBody, Collider};
+    let mut level = level::Level::new();
+    level.spawn(
         EntityData::new("Floor")
             .with(&Transform {
                 position: Vec3::new(0.0, 0.0, -0.5),
@@ -1884,7 +1884,7 @@ fn characters_walking(characters: u32) -> (f64, f64) {
     for n in 0..characters {
         let (x, y) = ((n % across) as f32 * 3.0, (n / across) as f32 * 3.0);
         ids.push(
-            area.spawn(
+            level.spawn(
                 EntityData::new("Walker")
                     .with(&Transform {
                         position: Vec3::new(x, y, 0.0),
@@ -1894,7 +1894,7 @@ fn characters_walking(characters: u32) -> (f64, f64) {
             ),
         );
     }
-    let mut world = world::World::from_area(&area);
+    let mut world = world::World::from_level(&level);
     let (mut worst, mut total) = (0.0_f64, 0.0_f64);
     let ticks = 180;
     for tick in 0..ticks {
@@ -1942,9 +1942,9 @@ fn scale_check_1000_bodies_falling_into_a_pile() {
     // Phase 6, M2: physics in its strict mode (decision 0036). A thousand
     // crates dropped in ten columns onto a floor: the worst tick while
     // they tumble and pile up, physics only.
-    use area::builtin::{Collider, RigidBody};
-    let mut area = area::Area::new();
-    area.spawn(
+    use level::builtin::{Collider, RigidBody};
+    let mut level = level::Level::new();
+    level.spawn(
         EntityData::new("Floor")
             .with(&Transform {
                 position: Vec3::new(0.0, 0.0, -0.5),
@@ -1956,21 +1956,21 @@ fn scale_check_1000_bodies_falling_into_a_pile() {
             }),
     );
     for n in 0..1000 {
-        let (column, level) = (n % 100, n / 100);
+        let (column, layer) = (n % 100, n / 100);
         let x = (column % 10) as f32 * 3.0;
         let y = (column / 10) as f32 * 3.0;
-        area.spawn(
+        level.spawn(
             EntityData::new("Crate")
                 .with(&Transform {
-                    position: Vec3::new(x + 0.1 * level as f32, y, 1.0 + 1.3 * level as f32),
-                    rotation: glam::Quat::from_rotation_z(0.2 * level as f32),
+                    position: Vec3::new(x + 0.1 * layer as f32, y, 1.0 + 1.3 * layer as f32),
+                    rotation: glam::Quat::from_rotation_z(0.2 * layer as f32),
                     ..Transform::default()
                 })
                 .with(&RigidBody::default())
                 .with(&Collider::default()),
         );
     }
-    let mut world = world::World::from_area(&area);
+    let mut world = world::World::from_level(&level);
     let mut worst = 0.0_f64;
     let mut total = 0.0_f64;
     let ticks = 300;
@@ -2123,7 +2123,7 @@ fn churning(language: &str) -> Workbench {
             let mut data = EntityData::new(&format!("Churner {i}")).with(&Transform::default());
             data.components
                 .insert("Churn".into(), reflect::ComponentData::default());
-            area::Edit::Spawn {
+            level::Edit::Spawn {
                 entities: vec![(EntityId::random(), data)],
             }
         })
@@ -2259,14 +2259,14 @@ fn game_code_mirrors_a_sprite_with_set_flip() {
     let id = EntityId::random();
     let mut data = EntityData::new("Hero")
         .with(&Transform::default())
-        .with(&area::builtin::Sprite::default());
+        .with(&level::builtin::Sprite::default());
     data.components
         .insert("Facer".into(), reflect::ComponentData::default());
     w.open
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(id, data)],
             }],
             None,
@@ -2275,7 +2275,11 @@ fn game_code_mirrors_a_sprite_with_set_flip() {
         .unwrap();
     w.play();
     let flipped = |w: &Workbench| {
-        let s = w.world().unwrap().get::<area::builtin::Sprite>(id).unwrap();
+        let s = w
+            .world()
+            .unwrap()
+            .get::<level::builtin::Sprite>(id)
+            .unwrap();
         (s.flip_x, s.flip_y)
     };
     let tick = |w: &mut Workbench| {
@@ -2289,14 +2293,14 @@ fn game_code_mirrors_a_sprite_with_set_flip() {
     tick(&mut w);
     tick(&mut w);
     assert_eq!(flipped(&w), (false, false), "facing right again");
-    // The area itself is as it was: the flip is the running game's.
+    // The level itself is as it was: the flip is the running game's.
     let sprite = w
         .open
         .document
-        .area()
+        .level()
         .get(id)
         .unwrap()
-        .get::<area::builtin::Sprite>()
+        .get::<level::builtin::Sprite>()
         .unwrap();
     assert!(!sprite.flip_x);
 }

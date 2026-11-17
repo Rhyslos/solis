@@ -4,8 +4,8 @@ use crate::library::{LibraryItem, LibraryKind};
 use crate::sprite_sheets::{ArtState, AtlasState};
 use crate::test_support::*;
 use crate::workbench::Workbench;
-use area::EntityData;
-use area::builtin::Screen;
+use level::EntityData;
+use level::builtin::Screen;
 use reflect::EntityId;
 use std::sync::Arc;
 
@@ -148,7 +148,7 @@ fn a_name_worked_out_as_the_game_runs_is_read_shown_and_said_once_if_wrong() {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(
                     EntityId::random(),
                     EntityData::new("Shower").with(&Screen {

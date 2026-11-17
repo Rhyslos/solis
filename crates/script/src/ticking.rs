@@ -31,7 +31,7 @@ pub(crate) struct Running {
     /// Its name, shared: each thing it does carries it in its [`Order`],
     /// and a shared name is copied without a new string each time.
     pub(crate) name: std::sync::Arc<str>,
-    /// The area's values it was last given, to send only what changes.
+    /// The level's values it was last given, to send only what changes.
     pub(crate) seen: ComponentData,
     /// Stopped after a failure, until the code changes.
     pub(crate) stopped: bool,

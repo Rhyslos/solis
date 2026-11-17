@@ -435,7 +435,7 @@ mod tests {
         );
         table.raw_set("a", "half").unwrap();
         assert_eq!(from_lua(&FieldKind::Color, &LuaValue::Table(table)), None);
-        // A colour the area holds out of range (written by hand) reaches
+        // A colour the level holds out of range (written by hand) reaches
         // game code within 0 and 1, solid when it has three numbers.
         let there = to_lua(&lua, &FieldKind::Color, &Value::floats(&[1.5, 0.5, -2.0])).unwrap();
         assert_eq!(colour_of(&there), Some([1.0, 0.5, 0.0, 1.0]));

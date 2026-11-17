@@ -9,8 +9,6 @@
 
 pub mod animator_editor;
 mod animator_view;
-mod area_panel;
-pub mod area_view;
 mod assets_column;
 mod atlas_editor;
 mod atlas_view;
@@ -55,6 +53,8 @@ mod inspector;
 pub mod interface_look;
 mod key_owner;
 pub mod launcher;
+mod level_panel;
+pub mod level_view;
 pub mod library;
 pub mod look;
 mod made_from;
@@ -133,7 +133,6 @@ mod workbench_tiles;
 mod workbench_tileset;
 mod workbench_tools;
 
-pub use area_view::{AreaView, ViewLight, ViewModel};
 pub use brushes::{BrushModel, ViewBrush};
 pub use camera::{Camera, FlyInput, ViewKind};
 pub use console::{LogLevel, LogLine};
@@ -143,6 +142,7 @@ pub use game_sound::{GameSound, Hearer, SoundMode};
 pub use guide::{FoundBrowser, GuideBrowser};
 pub use interface_look::InterfaceLook;
 pub use launcher::{FolderState, KnownProject, NewProjectPlan, ProjectKind, Starter};
+pub use level_view::{LevelView, ViewLight, ViewModel};
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
 pub use mixer_view::MixerState;
@@ -175,6 +175,8 @@ mod invariant_tests;
 mod kit_tests;
 #[cfg(test)]
 mod kit_topdown_tests;
+#[cfg(test)]
+mod level_words_tests;
 #[cfg(test)]
 mod library_screen_tests;
 #[cfg(test)]

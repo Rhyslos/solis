@@ -61,7 +61,7 @@ In **File › Project settings › Input**, after clicking **+ Add binding**, th
 | Scale | `S` |
 | Transform (move, rotate and scale) | `T` |
 
-These are the area's keys: they wait while the pointer is over a tab with keys of its own (see [Editing](#editing)).
+These are the level's keys: they wait while the pointer is over a tab with keys of its own (see [Editing](#editing)).
 
 ## Selecting and moving (in the viewport)
 
@@ -209,10 +209,10 @@ These work in the viewport while a tile map's entity is selected; the same tools
 |---|---|
 | Undo | `Ctrl + Z` |
 | Redo | `Ctrl + Y`, or `Ctrl + Shift + Z` |
-| New area | `Ctrl + N` |
-| Open area | `Ctrl + O` |
-| Save area | `Ctrl + S` |
-| Save area as | `Ctrl + Shift + S` |
+| New level | `Ctrl + N` |
+| Open level | `Ctrl + O` |
+| Save level | `Ctrl + S` |
+| Save level as | `Ctrl + Shift + S` |
 | Delete the selection | `Delete` |
 | Duplicate the selection | `Ctrl + D` |
 | Rename | `F2` |
@@ -222,7 +222,7 @@ These work in the viewport while a tile map's entity is selected; the same tools
 
 All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md).
 
-**Where the pointer rests decides what a key acts on**, so one press never does two things. With the pointer over a tab that edits a file of its own (Clips and Frames, Animator, Tileset, Atlas Crop, the UI editor's Canvas and Elements), the keys are that tab's alone: undo and redo, Delete, Ctrl + D and Esc act on what the tab shows, as its table above says, and never on the area as well. The area's other keys (the tools' and the tile painter's keys, F, F2, Ctrl + A, and X, Y, Z and L) wait until the pointer is back over the viewport or another panel. Over the Map tab, undo and redo are the map's, and every other key is still the area's; the same goes for Properties while it shows a tileset's terrains, where undo and redo are that tileset's. On the UI tab, Properties shows the screen's settings, so over it the keys are the screen's, as over Elements: Delete removes the picked piece, never an entity. On a tab that doesn't show the area (Library, Audio, Debug, Build), the area's keys, undo and redo among them, rest too, since what they would change isn't on screen: a Delete over the Mixer never deletes an entity you can't see. They still work over the Area list and Properties wherever those are, and over the Library, F2 and Delete rename and delete the file picked there. New, open and save, the search and Ctrl + Space work wherever the pointer is.
+**Where the pointer rests decides what a key acts on**, so one press never does two things. With the pointer over a tab that edits a file of its own (Clips and Frames, Animator, Tileset, Atlas Crop, the UI editor's Canvas and Elements), the keys are that tab's alone: undo and redo, Delete, Ctrl + D and Esc act on what the tab shows, as its table above says, and never on the level as well. The level's other keys (the tools' and the tile painter's keys, F, F2, Ctrl + A, and X, Y, Z and L) wait until the pointer is back over the viewport or another panel. Over the Map tab, undo and redo are the map's, and every other key is still the level's; the same goes for Properties while it shows a tileset's terrains, where undo and redo are that tileset's. On the UI tab, Properties shows the screen's settings, so over it the keys are the screen's, as over Elements: Delete removes the picked piece, never an entity. On a tab that doesn't show the level (Library, Audio, Debug, Build), the level's keys, undo and redo among them, rest too, since what they would change isn't on screen: a Delete over the Mixer never deletes an entity you can't see. They still work over the Level list and Properties wherever those are, and over the Library, F2 and Delete rename and delete the file picked there. New, open and save, the search and Ctrl + Space work wherever the pointer is.
 
 ## The search list
 
@@ -238,7 +238,7 @@ Space, or a click on **Search or run a command** in the tab bar, opens it (the b
 
 Over the Frames tab, Space plays and stops the clip instead, so point somewhere else first.
 
-The list shows each thing's shortcut beside it, so it is also the quickest place to look a key up. It finds the things without a button on the ribbon too, such as New area, Open area… and Save area as… (on the area's tab: its **+** and a right-click), Reset layout (File › Preferences), Close project (File), and showing or hiding the viewport's corner controls (the **Show ▾** pill).
+The list shows each thing's shortcut beside it, so it is also the quickest place to look a key up. It finds the things without a button on the ribbon too, such as New level, Open level… and Save level as… (on the level's tab: its **+** and a right-click), Reset layout (File › Preferences), Close project (File), and showing or hiding the viewport's corner controls (the **Show ▾** pill).
 
 ## The tab bar and the ribbon
 
@@ -263,17 +263,17 @@ See [Projects and the Library](projects-and-the-library.md).
 | Action | Shortcut |
 |---|---|
 | Place a model, assembly, sprite sheet or tile map where the camera looks | Double-click it in the Assets list; in the Library tab a double-click only picks it (**Place** on the ribbon places it) |
-| Open any other file (an area, a picture in its program) | Double-click it |
+| Open any other file (a level, a picture in its program) | Double-click it |
 | Drop without snapping to the grid, this once | Hold `Ctrl` as you let go |
 | Rename or delete the file picked | `F2`, `Delete`, with the pointer over the Library or the Assets list |
 | Place a model, assembly, sprite, picture or tile map where you point | Drag it into the viewport |
-| Place one under an entity | Drag it onto the entity in the Area panel |
+| Place one under an entity | Drag it onto the entity in the Level panel |
 | Move a file to another folder | Drag it onto the folder in the tree |
 | Add a sound to a [sound event](sound-events.md) as a take | Drag the sound onto the event |
 | Menus (New, Place or Open, Show in Explorer, Rename…, Delete) | Right-click a file, a folder or empty space |
 | In Rename…: keep the new name, or leave it as it was | `Enter`, `Esc` |
 
-## In the Area panel
+## In the Level panel
 
 | Action | Shortcut |
 |---|---|
@@ -351,8 +351,8 @@ Panels stay where each tab's screen puts them (on Home, where the [panel layout]
 |---|---|
 | Bring a document to the front of its group | Click its tab |
 | Close a file's document (an animator, a tileset, a picture's crops, a screen) | Its **×** |
-| New area, Open area… | The **+** after the area's tab |
-| Save, Save as…, Close others, Show in the Library | Right-click the area's tab |
+| New level, Open level… | The **+** after the level's tab |
+| Save, Save as…, Close others, Show in the Library | Right-click the level's tab |
 | Give one of two groups more room | Drag the line between them |
 | Make a column, the Assets strip or one of two stacked lists bigger or smaller | Drag the line at its edge (the pointer becomes a two-headed arrow over it) |
 | Put a border back to its standard size | Double-click it (the shelf's grip and top edge too) |

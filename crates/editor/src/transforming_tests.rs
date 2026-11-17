@@ -1,5 +1,5 @@
 use super::*;
-use area::EntityData;
+use level::EntityData;
 use std::f32::consts::FRAC_PI_2;
 
 fn at(position: Vec3) -> Transform {
@@ -9,15 +9,15 @@ fn at(position: Vec3) -> Transform {
     }
 }
 
-fn area_with(entities: &[(&str, Transform, Option<usize>)]) -> (Area, Vec<EntityId>) {
-    let mut area = Area::new();
+fn level_with(entities: &[(&str, Transform, Option<usize>)]) -> (Level, Vec<EntityId>) {
+    let mut level = Level::new();
     let mut ids = Vec::new();
     for (name, t, parent) in entities {
         let mut data = EntityData::new(name).with(t);
         data.parent = parent.map(|p| ids[p]);
-        ids.push(area.spawn(data));
+        ids.push(level.spawn(data));
     }
-    (area, ids)
+    (level, ids)
 }
 
 fn select(ids: &[EntityId]) -> Selection {
@@ -30,12 +30,12 @@ fn select(ids: &[EntityId]) -> Selection {
 
 #[test]
 fn the_gizmo_sits_in_the_middle_and_children_move_with_their_parent() {
-    let (area, ids) = area_with(&[
+    let (level, ids) = level_with(&[
         ("A", at(Vec3::new(0.0, 0.0, 0.0)), None),
         ("B", at(Vec3::new(4.0, 2.0, 0.0)), None),
         ("Child of A", at(Vec3::new(1.0, 0.0, 0.0)), Some(0)),
     ]);
-    let t = targets(&area, &select(&ids), false).unwrap();
+    let t = targets(&level, &select(&ids), false).unwrap();
     let moving: Vec<EntityId> = t.entities.iter().map(|e| e.id).collect();
     assert_eq!(moving.len(), 2, "the child moves with A, not twice");
     assert!(!moving.contains(&ids[2]));
@@ -45,10 +45,10 @@ fn the_gizmo_sits_in_the_middle_and_children_move_with_their_parent() {
 
 #[test]
 fn nothing_to_move_without_a_transform() {
-    let mut area = Area::new();
-    let id = area.spawn(EntityData::new("Settings"));
-    assert!(targets(&area, &select(&[id]), false).is_none());
-    assert!(targets(&area, &Selection::default(), false).is_none());
+    let mut level = Level::new();
+    let id = level.spawn(EntityData::new("Settings"));
+    assert!(targets(&level, &select(&[id]), false).is_none());
+    assert!(targets(&level, &Selection::default(), false).is_none());
 }
 
 #[test]
@@ -58,8 +58,8 @@ fn a_move_keeps_rotation_and_scale_exactly() {
         rotation: Quat::from_rotation_z(0.3),
         scale: Vec3::new(1.0, 2.0, 0.5),
     };
-    let (area, ids) = area_with(&[("A", start, None)]);
-    let t = targets(&area, &select(&ids), false).unwrap();
+    let (level, ids) = level_with(&[("A", start, None)]);
+    let t = targets(&level, &select(&ids), false).unwrap();
     let new = moved(&t, Change::Translate(Vec3::new(5.0, 0.0, 0.0)));
     assert_eq!(new[0].1.position, Vec3::new(6.0, 2.0, 3.0));
     assert_eq!(new[0].1.rotation, start.rotation);
@@ -73,9 +73,9 @@ fn a_child_moves_in_the_world_however_its_parent_is_turned() {
         rotation: Quat::from_rotation_z(FRAC_PI_2),
         scale: Vec3::splat(2.0),
     };
-    let (area, ids) = area_with(&[("P", parent, None), ("C", at(Vec3::X), Some(0))]);
-    let t = targets(&area, &select(&[ids[1]]), false).unwrap();
-    let before = area.world_matrix(ids[1]).w_axis.truncate();
+    let (level, ids) = level_with(&[("P", parent, None), ("C", at(Vec3::X), Some(0))]);
+    let t = targets(&level, &select(&[ids[1]]), false).unwrap();
+    let before = level.world_matrix(ids[1]).w_axis.truncate();
     let new = moved(&t, Change::Translate(Vec3::new(0.0, 0.0, 4.0)));
     let world = parent.matrix() * new[0].1.matrix();
     assert!(
@@ -88,11 +88,11 @@ fn a_child_moves_in_the_world_however_its_parent_is_turned() {
 
 #[test]
 fn turning_several_goes_round_the_pivot() {
-    let (area, ids) = area_with(&[
+    let (level, ids) = level_with(&[
         ("A", at(Vec3::new(-1.0, 0.0, 0.0)), None),
         ("B", at(Vec3::new(1.0, 0.0, 0.0)), None),
     ]);
-    let t = targets(&area, &select(&ids), false).unwrap();
+    let t = targets(&level, &select(&ids), false).unwrap();
     let new = moved(
         &t,
         Change::Rotate {
@@ -116,8 +116,8 @@ fn scaling_along_own_axes_multiplies_the_scale_exactly() {
         rotation: Quat::from_rotation_z(0.7),
         scale: Vec3::new(1.0, 3.0, 1.0),
     };
-    let (area, ids) = area_with(&[("A", start, None)]);
-    let t = targets(&area, &select(&ids), true).unwrap();
+    let (level, ids) = level_with(&[("A", start, None)]);
+    let t = targets(&level, &select(&ids), true).unwrap();
     let new = moved(&t, Change::Scale(Vec3::new(2.0, 1.0, 1.0)));
     assert_eq!(new[0].1.scale, Vec3::new(2.0, 3.0, 1.0));
     assert_eq!(new[0].1.rotation, start.rotation);
@@ -126,8 +126,8 @@ fn scaling_along_own_axes_multiplies_the_scale_exactly() {
 
 #[test]
 fn scaling_never_squashes_flat() {
-    let (area, ids) = area_with(&[("A", at(Vec3::ZERO), None)]);
-    let t = targets(&area, &select(&ids), false).unwrap();
+    let (level, ids) = level_with(&[("A", at(Vec3::ZERO), None)]);
+    let t = targets(&level, &select(&ids), false).unwrap();
     let new = moved(&t, Change::Scale(Vec3::new(0.0, f32::NAN, -0.0)));
     assert!(new[0].1.scale.x > 0.0);
     assert_eq!(new[0].1.scale.y, 1.0, "not a number: unchanged");
@@ -135,8 +135,8 @@ fn scaling_never_squashes_flat() {
 
 #[test]
 fn snapping_puts_moves_on_the_grid_and_ctrl_flips_it() {
-    let (area, ids) = area_with(&[("A", at(Vec3::new(0.3, 0.0, 0.0)), None)]);
-    let t = targets(&area, &select(&ids), false).unwrap();
+    let (level, ids) = level_with(&[("A", at(Vec3::new(0.3, 0.0, 0.0)), None)]);
+    let t = targets(&level, &select(&ids), false).unwrap();
     let on = Snapping {
         grid: true,
         ..Snapping::default()
@@ -157,8 +157,8 @@ fn snapping_puts_moves_on_the_grid_and_ctrl_flips_it() {
 
 #[test]
 fn turns_and_scaling_snap_to_their_steps() {
-    let (area, ids) = area_with(&[("A", at(Vec3::ZERO), None)]);
-    let t = targets(&area, &select(&ids), false).unwrap();
+    let (level, ids) = level_with(&[("A", at(Vec3::ZERO), None)]);
+    let t = targets(&level, &select(&ids), false).unwrap();
     let on = Snapping {
         angle: true,
         scale: true,
@@ -207,11 +207,11 @@ fn scaling_a_flat_child_keeps_its_rotation_and_multiplies_its_scale() {
         rotation: Quat::from_rotation_z(0.3),
         scale: Vec3::new(1.0, 0.0, 1.0),
     };
-    let (area, ids) = area_with(&[
+    let (level, ids) = level_with(&[
         ("P", at(Vec3::new(10.0, 0.0, 0.0)), None),
         ("C", flat, Some(0)),
     ]);
-    let t = targets(&area, &select(&[ids[1]]), false).unwrap();
+    let t = targets(&level, &select(&[ids[1]]), false).unwrap();
     let new = moved(&t, Change::Scale(Vec3::new(2.0, 1.0, 3.0)))[0].1;
     assert!(is_real(&new), "{new:?}");
     assert_eq!(new.rotation, flat.rotation);
@@ -231,9 +231,9 @@ fn scaling_a_flat_entity_along_anothers_axes_keeps_real_numbers() {
         rotation: Quat::from_rotation_y(0.4),
         scale: Vec3::new(1.0, 1.0, 0.0),
     };
-    let (area, ids) = area_with(&[("Flat", flat, None), ("Turned", turned, None)]);
+    let (level, ids) = level_with(&[("Flat", flat, None), ("Turned", turned, None)]);
     // The one selected last gives the axes.
-    let t = targets(&area, &select(&ids), true).unwrap();
+    let t = targets(&level, &select(&ids), true).unwrap();
     assert!(t.axes[0].abs_diff_eq(turned.rotation * Vec3::X, 1e-6));
     let new = moved(&t, Change::Scale(Vec3::new(2.0, 1.0, 1.0)));
     let new_flat = new.iter().find(|(id, _)| *id == ids[0]).unwrap().1;
@@ -261,8 +261,8 @@ fn turning_under_a_parent_too_thin_to_measure_changes_nothing() {
         rotation: Quat::from_rotation_x(0.2),
         ..at(Vec3::new(0.0, 1.0, 0.0))
     };
-    let (area, ids) = area_with(&[("P", thin, None), ("C", child, Some(0))]);
-    let t = targets(&area, &select(&[ids[1]]), false).unwrap();
+    let (level, ids) = level_with(&[("P", thin, None), ("C", child, Some(0))]);
+    let t = targets(&level, &select(&[ids[1]]), false).unwrap();
     assert!(
         t.entities[0].parent_world.inverse().is_finite(),
         "this parent passes the flat check"
@@ -287,8 +287,8 @@ fn a_move_past_the_largest_number_changes_nothing() {
         ..at(Vec3::ZERO)
     };
     let child = at(Vec3::new(0.0, 1.0, 0.0));
-    let (area, ids) = area_with(&[("P", thin, None), ("C", child, Some(0))]);
-    let t = targets(&area, &select(&[ids[1]]), false).unwrap();
+    let (level, ids) = level_with(&[("P", thin, None), ("C", child, Some(0))]);
+    let t = targets(&level, &select(&[ids[1]]), false).unwrap();
     assert!(t.entities[0].parent_world.inverse().is_finite());
     let new = moved(&t, Change::Translate(Vec3::new(1e9, 0.0, 0.0)))[0].1;
     assert_eq!(new, child);
@@ -346,14 +346,14 @@ fn no_drag_ever_gives_a_transform_that_is_not_a_number() {
                         rotation,
                         scale,
                     };
-                    let (area, ids) = area_with(&[
+                    let (level, ids) = level_with(&[
                         ("P", parent, None),
                         ("C", child, Some(0)),
                         ("Alone", child, None),
                         ("Other", at(Vec3::new(-2.0, 0.0, 4.0)), None),
                     ]);
                     for object_axes in [false, true] {
-                        let t = targets(&area, &select(&ids[1..]), object_axes).unwrap();
+                        let t = targets(&level, &select(&ids[1..]), object_axes).unwrap();
                         for change in changes {
                             for (_, new) in moved(&t, change) {
                                 assert!(

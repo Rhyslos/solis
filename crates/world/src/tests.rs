@@ -1,8 +1,8 @@
-//! Building worlds from areas, stepping them, and finding things in them.
+//! Building worlds from levels, stepping them, and finding things in them.
 
 use super::*;
-use area::{Area, EntityData};
 use glam::Vec3;
+use level::{EntityData, Level};
 use reflect::{Component, Value};
 
 fn at(x: f32, y: f32, z: f32) -> Transform {
@@ -14,15 +14,15 @@ fn at(x: f32, y: f32, z: f32) -> Transform {
 
 #[test]
 fn every_entity_arrives_with_its_built_in_components_as_rust_types() {
-    let area = area::builtin::starter_area();
-    let world = World::from_area(&area);
-    assert_eq!(world.len(), area.len());
+    let level = level::builtin::starter_level();
+    let world = World::from_level(&level);
+    assert_eq!(world.len(), level.len());
     let suns = world.placed::<Light>();
     assert_eq!(suns.len(), 1);
     assert_eq!(suns[0].1, Light::sun());
     assert!(world.environment().is_some());
     assert!(world.camera().is_none());
-    for (id, data) in area.iter() {
+    for (id, data) in level.iter() {
         assert_eq!(world.get::<Name>(id), Some(Name(data.name.clone())));
         assert_eq!(world.get::<Id>(id), Some(Id(id)));
     }
@@ -30,36 +30,36 @@ fn every_entity_arrives_with_its_built_in_components_as_rust_types() {
 
 #[test]
 fn children_are_placed_by_their_parents() {
-    let mut area = Area::new();
-    let boat = area.spawn(EntityData::new("Boat").with(&at(10.0, 0.0, 0.0)));
+    let mut level = Level::new();
+    let boat = level.spawn(EntityData::new("Boat").with(&at(10.0, 0.0, 0.0)));
     let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 5.0));
     mast.parent = Some(boat);
-    let mast = area.spawn(mast);
+    let mast = level.spawn(mast);
     // No Transform: it sits where its parent is.
     let mut flag = EntityData::new("Flag");
     flag.parent = Some(mast);
-    let flag = area.spawn(flag);
-    let world = World::from_area(&area);
+    let flag = level.spawn(flag);
+    let world = World::from_level(&level);
     let point = |id| world.global(id).unwrap().transform_point3(Vec3::ZERO);
     assert_eq!(point(boat), Vec3::new(10.0, 0.0, 0.0));
     assert_eq!(point(mast), Vec3::new(10.0, 0.0, 5.0));
     assert_eq!(point(flag), Vec3::new(10.0, 0.0, 5.0));
     assert_eq!(world.get::<Parent>(mast), Some(Parent(boat)));
-    // The same as the area works it out.
+    // The same as the level works it out.
     for id in [boat, mast, flag] {
-        assert_eq!(world.global(id), Some(area.world_matrix(id)));
+        assert_eq!(world.global(id), Some(level.world_matrix(id)));
     }
 }
 
 #[test]
 fn components_without_a_type_are_kept_as_values() {
-    let mut area = Area::new();
+    let mut level = Level::new();
     let mut data = EntityData::new("Turret");
     let mut aim = ComponentData::default();
     aim.set("speed", Value::Float(2.5));
     data.components.insert("Aim".into(), aim.clone());
-    let id = area.spawn(data);
-    let world = World::from_area(&area);
+    let id = level.spawn(data);
+    let world = World::from_level(&level);
     let values = world.get::<Values>(id).unwrap();
     assert_eq!(values.0.get("Aim"), Some(&aim));
     assert!(world.get::<Transform>(id).is_none());
@@ -67,31 +67,31 @@ fn components_without_a_type_are_kept_as_values() {
 
 #[test]
 fn the_first_camera_in_tree_order_is_the_one_looked_through() {
-    let mut area = Area::new();
-    let a = area.spawn(EntityData::new("A").with(&Camera {
+    let mut level = Level::new();
+    let a = level.spawn(EntityData::new("A").with(&Camera {
         fov: 70.0,
         ..Camera::default()
     }));
-    let b = area.spawn(EntityData::new("B").with(&Camera::default()));
-    let world = World::from_area(&area);
-    let first = area.depth_first()[0];
+    let b = level.spawn(EntityData::new("B").with(&Camera::default()));
+    let world = World::from_level(&level);
+    let first = level.depth_first()[0];
     assert_eq!(world.camera().unwrap().0, first);
     assert!([a, b].contains(&first));
     // A damaged camera is made usable.
-    let mut area = Area::new();
-    area.spawn(EntityData::new("Odd").with(&Camera {
+    let mut level = Level::new();
+    level.spawn(EntityData::new("Odd").with(&Camera {
         fov: -3.0,
         near: 0.0,
         far: f32::NAN,
         ..Camera::default()
     }));
-    let (_, camera, _) = World::from_area(&area).camera().unwrap();
+    let (_, camera, _) = World::from_level(&level).camera().unwrap();
     assert_eq!(camera, camera.sanitized());
 }
 
 #[test]
 fn the_clock_runs_in_whole_ticks_and_skips_ahead_after_a_stall() {
-    let mut world = World::from_area(&Area::new());
+    let mut world = World::from_level(&Level::new());
     assert_eq!(world.step(TICK / 2.0), 0);
     assert_eq!(world.step(TICK / 2.0 + 1e-9), 1, "the halves add up");
     assert_eq!(world.step(1.0), MAX_TICKS_PER_STEP, "at most a few at once");
@@ -105,13 +105,13 @@ fn the_clock_runs_in_whole_ticks_and_skips_ahead_after_a_stall() {
 }
 
 #[test]
-fn rebuilding_keeps_the_clock_and_takes_the_new_area() {
-    let mut area = area::builtin::starter_area();
-    let mut world = World::from_area(&area);
+fn rebuilding_keeps_the_clock_and_takes_the_new_level() {
+    let mut level = level::builtin::starter_level();
+    let mut world = World::from_level(&level);
     world.step(0.5);
     let clock = world.clock();
-    let crate_id = area.spawn(EntityData::new("Crate").with(&at(1.0, 2.0, 3.0)));
-    world.rebuild(&area);
+    let crate_id = level.spawn(EntityData::new("Crate").with(&at(1.0, 2.0, 3.0)));
+    world.rebuild(&level);
     assert_eq!(world.clock(), clock);
     assert_eq!(
         world.global(crate_id).unwrap().transform_point3(Vec3::ZERO),
@@ -120,55 +120,55 @@ fn rebuilding_keeps_the_clock_and_takes_the_new_area() {
 }
 
 #[test]
-fn rebuilding_keeps_where_the_game_put_things_unless_the_area_moved_them() {
-    let mut area = area::builtin::starter_area();
-    let cart = area.spawn(EntityData::new("Cart").with(&at(0.0, 0.0, 0.0)));
-    let crate_id = area.spawn(EntityData::new("Crate").with(&at(5.0, 0.0, 0.0)));
-    let mut world = World::from_area(&area);
+fn rebuilding_keeps_where_the_game_put_things_unless_the_level_moved_them() {
+    let mut level = level::builtin::starter_level();
+    let cart = level.spawn(EntityData::new("Cart").with(&at(0.0, 0.0, 0.0)));
+    let crate_id = level.spawn(EntityData::new("Crate").with(&at(5.0, 0.0, 0.0)));
+    let mut world = World::from_level(&level);
     world.set_transform(cart, at(3.0, 0.0, 0.0));
     world.set_transform(crate_id, at(7.0, 0.0, 0.0));
     // Adding an entity builds everything again: the cart stays where the
     // game put it.
-    area.spawn(EntityData::new("New"));
-    // The crate was moved in the area meanwhile (an undo, say): the
-    // area's place wins.
-    area.get_mut(crate_id).unwrap().set(&at(9.0, 0.0, 0.0));
-    world.rebuild(&area);
+    level.spawn(EntityData::new("New"));
+    // The crate was moved in the level meanwhile (an undo, say): the
+    // level's place wins.
+    level.get_mut(crate_id).unwrap().set(&at(9.0, 0.0, 0.0));
+    world.rebuild(&level);
     let x = |w: &World, id| w.global(id).unwrap().w_axis.x;
     assert_eq!(x(&world, cart), 3.0);
     assert_eq!(x(&world, crate_id), 9.0);
     // And again, still.
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert_eq!(x(&world, cart), 3.0);
 }
 
 #[test]
-fn a_damaged_area_with_a_parent_loop_still_builds() {
-    let mut area = Area::new();
+fn a_damaged_level_with_a_parent_loop_still_builds() {
+    let mut level = Level::new();
     let a = EntityId::random();
     let b = EntityId::random();
     let mut ea = EntityData::new("A").with(&at(1.0, 0.0, 0.0));
     ea.parent = Some(b);
     let mut eb = EntityData::new("B").with(&at(0.0, 1.0, 0.0));
     eb.parent = Some(a);
-    area.insert(a, ea);
-    area.insert(b, eb);
+    level.insert(a, ea);
+    level.insert(b, eb);
     // A parent that isn't there at all.
     let mut lost = EntityData::new("Lost");
     lost.parent = Some(EntityId::random());
-    let lost = area.spawn(lost);
-    let mut world = World::from_area(&area);
+    let lost = level.spawn(lost);
+    let mut world = World::from_level(&level);
     assert_eq!(world.len(), 3);
     assert!(world.global(a).unwrap().is_finite());
     assert!(world.global(lost).is_some());
     world.step(TICK);
 }
 
-/// Areas whose parents go wrong in each way a damaged file's can: two
+/// Levels whose parents go wrong in each way a damaged file's can: two
 /// and three entities in a loop, one that is its own parent, a chain
 /// hanging under a loop, and a parent that isn't there. Each with a
 /// Transform that moves and scales, so a loop gone round shows.
-fn damaged_areas() -> Vec<Area> {
+fn damaged_levels() -> Vec<Level> {
     let placed = |name: &str, n: f32, parent: Option<EntityId>| {
         let mut data = EntityData::new(name).with(&Transform {
             position: Vec3::new(n, 2.0 * n, 0.0),
@@ -180,12 +180,12 @@ fn damaged_areas() -> Vec<Area> {
     };
     let ids: Vec<EntityId> = (0..6).map(|_| EntityId::random()).collect();
     let build = |parents: &[Option<usize>]| {
-        let mut area = Area::new();
+        let mut level = Level::new();
         for (i, parent) in parents.iter().enumerate() {
             let parent = parent.map(|p| ids.get(p).copied().unwrap_or_else(EntityId::random));
-            area.insert(ids[i], placed(&format!("E{i}"), i as f32 + 1.0, parent));
+            level.insert(ids[i], placed(&format!("E{i}"), i as f32 + 1.0, parent));
         }
-        area
+        level
     };
     vec![
         build(&[Some(1), Some(0)]),
@@ -195,42 +195,42 @@ fn damaged_areas() -> Vec<Area> {
         // 0 and 1 are a loop; 2, 3 and 4 hang under it in a chain; 5 is
         // sound.
         build(&[Some(1), Some(0), Some(1), Some(2), Some(3), None]),
-        // A parent that isn't in the area (99), and a child of that one.
+        // A parent that isn't in the level (99), and a child of that one.
         build(&[Some(99), Some(0), None]),
     ]
 }
 
 #[test]
-fn the_editor_and_the_game_place_a_damaged_area_alike() {
+fn the_editor_and_the_game_place_a_damaged_level_alike() {
     // The editor draws from the tree's matrices and the game from the
     // world's: with a loop of parents they used to disagree (the review
     // of Phase 9, BUG-12).
-    for area in damaged_areas() {
-        let world = World::from_area(&area);
-        let editor = area::Tree::of(&area).world_matrices(&area);
-        for (id, data) in area.iter() {
+    for level in damaged_levels() {
+        let world = World::from_level(&level);
+        let editor = level::Tree::of(&level).world_matrices(&level);
+        for (id, data) in level.iter() {
             let game = world.global(id).unwrap();
             assert!(game.is_finite(), "{}", data.name);
-            assert_eq!(editor[&id], game, "{} in {area:?}", data.name);
-            assert_eq!(area.world_matrix(id), game, "{} alone", data.name);
+            assert_eq!(editor[&id], game, "{} in {level:?}", data.name);
+            assert_eq!(level.world_matrix(id), game, "{} alone", data.name);
         }
     }
 }
 
 #[test]
-fn a_big_area_builds_and_steps() {
+fn a_big_level_builds_and_steps() {
     // The scale target's order of size (DESIGN.md §2): checked for being
     // right here; timed by the scale check.
-    let mut area = Area::new();
+    let mut level = Level::new();
     let mut parent = None;
     for i in 0..20_000 {
         let mut e = EntityData::new(&format!("Post {i}")).with(&at(1.0, 0.0, 0.0));
         if i % 100 != 0 {
             e.parent = parent;
         }
-        parent = Some(area.spawn(e));
+        parent = Some(level.spawn(e));
     }
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     assert_eq!(world.len(), 20_000);
     assert_eq!(world.step(TICK), 1);
     let last = parent.unwrap();
@@ -243,19 +243,19 @@ fn a_big_area_builds_and_steps() {
 
 #[test]
 fn an_update_takes_in_changed_entities_and_keeps_the_rest() {
-    let mut area = Area::new();
-    let boat = area.spawn(EntityData::new("Boat").with(&at(10.0, 0.0, 0.0)));
+    let mut level = Level::new();
+    let boat = level.spawn(EntityData::new("Boat").with(&at(10.0, 0.0, 0.0)));
     let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 5.0));
     mast.parent = Some(boat);
-    let mast = area.spawn(mast);
-    let mut world = World::from_area(&area);
+    let mast = level.spawn(mast);
+    let mut world = World::from_level(&level);
     world.step(0.5);
     let clock = world.clock();
     // The boat moves and gets a light: its child follows.
-    let mut moved = area.get(boat).unwrap().clone().with(&at(20.0, 0.0, 0.0));
+    let mut moved = level.get(boat).unwrap().clone().with(&at(20.0, 0.0, 0.0));
     moved.set(&Light::point());
-    area.insert(boat, moved);
-    world.update(&area, [(boat, true)]);
+    level.insert(boat, moved);
+    world.update(&level, [(boat, true)]);
     assert_eq!(world.clock(), clock);
     assert_eq!(world.len(), 2);
     assert!(world.get::<Light>(boat).is_some());
@@ -264,18 +264,18 @@ fn an_update_takes_in_changed_entities_and_keeps_the_rest() {
     assert_eq!(world.placed::<Light>().len(), 1);
     // A new parent, or an entity the world doesn't have, builds it all
     // again, and the answer is the same as building from scratch.
-    let mut freed = area.get(mast).unwrap().clone();
+    let mut freed = level.get(mast).unwrap().clone();
     freed.parent = None;
-    area.insert(mast, freed);
-    let extra = area.spawn(EntityData::new("Crate").with(&at(1.0, 1.0, 1.0)));
-    world.update(&area, [(mast, true), (extra, true)]);
-    let fresh = World::from_area(&area);
+    level.insert(mast, freed);
+    let extra = level.spawn(EntityData::new("Crate").with(&at(1.0, 1.0, 1.0)));
+    world.update(&level, [(mast, true), (extra, true)]);
+    let fresh = World::from_level(&level);
     for id in [boat, mast, extra] {
         assert_eq!(world.global(id), fresh.global(id));
     }
     assert_eq!(world.len(), 3);
     // An entity that's gone does the same.
-    let mut smaller = area.clone();
+    let mut smaller = level.clone();
     let _ = smaller.remove(extra);
     world.update(&smaller, [(extra, true)]);
     assert_eq!(world.len(), 2);
@@ -283,35 +283,35 @@ fn an_update_takes_in_changed_entities_and_keeps_the_rest() {
 
 #[test]
 fn an_update_that_didn_t_move_an_entity_keeps_where_the_game_put_it() {
-    let mut area = Area::new();
-    let cart = area.spawn(EntityData::new("Cart").with(&at(0.0, 0.0, 0.0)));
-    let mut world = World::from_area(&area);
+    let mut level = Level::new();
+    let cart = level.spawn(EntityData::new("Cart").with(&at(0.0, 0.0, 0.0)));
+    let mut world = World::from_level(&level);
     world.set_transform(cart, at(5.0, 0.0, 0.0));
     world.settle();
     // A light is added in the editor: the cart stays where the game put it.
-    let mut lit = area.get(cart).unwrap().clone();
+    let mut lit = level.get(cart).unwrap().clone();
     lit.set(&Light::point());
-    area.insert(cart, lit);
-    world.update(&area, [(cart, false)]);
+    level.insert(cart, lit);
+    world.update(&level, [(cart, false)]);
     assert!(world.get::<Light>(cart).is_some());
     assert_eq!(world.global(cart).unwrap().w_axis.x, 5.0);
     // Moved in the editor: the editor's place wins.
-    world.update(&area, [(cart, true)]);
+    world.update(&level, [(cart, true)]);
     assert_eq!(world.global(cart).unwrap().w_axis.x, 0.0);
 }
 
 #[test]
 fn game_code_moves_an_entity_and_those_under_it_follow_when_settled() {
-    let mut area = Area::default();
-    let ship = area.spawn(EntityData::new("Ship").with(&at(10.0, 0.0, 0.0)));
+    let mut level = Level::default();
+    let ship = level.spawn(EntityData::new("Ship").with(&at(10.0, 0.0, 0.0)));
     let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 2.0));
     mast.parent = Some(ship);
-    let mast = area.spawn(mast);
+    let mast = level.spawn(mast);
     let mut flag = EntityData::new("Flag").with(&at(0.0, 0.0, 1.0));
     flag.parent = Some(mast);
-    let flag = area.spawn(flag);
-    let bare = area.spawn(EntityData::new("Bare"));
-    let mut world = World::from_area(&area);
+    let flag = level.spawn(flag);
+    let bare = level.spawn(EntityData::new("Bare"));
+    let mut world = World::from_level(&level);
     assert_eq!(world.find("Mast"), Some(mast));
     assert_eq!(world.find("Nobody"), None);
     assert_eq!(
@@ -341,21 +341,21 @@ fn game_code_moves_an_entity_and_those_under_it_follow_when_settled() {
 
 #[test]
 fn settling_works_out_only_what_moved_and_finds_follow_renames() {
-    let mut area = Area::default();
+    let mut level = Level::default();
     // A comes before B in the tree.
     let mut first = EntityData::new("A").with(&at(1.0, 0.0, 0.0));
-    first.order = area.order_at_end(None);
-    let a = area.spawn(first);
+    first.order = level.order_at_end(None);
+    let a = level.spawn(first);
     let mut under_a = EntityData::new("Under A").with(&at(0.0, 1.0, 0.0));
     under_a.parent = Some(a);
-    let under_a = area.spawn(under_a);
+    let under_a = level.spawn(under_a);
     let mut second = EntityData::new("B").with(&at(5.0, 0.0, 0.0));
-    second.order = area.order_at_end(None);
-    let b = area.spawn(second);
+    second.order = level.order_at_end(None);
+    let b = level.spawn(second);
     let mut under_b = EntityData::new("Under B").with(&at(0.0, 1.0, 0.0));
     under_b.parent = Some(b);
-    let under_b = area.spawn(under_b);
-    let mut world = World::from_area(&area);
+    let under_b = level.spawn(under_b);
+    let mut world = World::from_level(&level);
     // Both parents and one child move; settling gets every place right.
     world.set_transform(a, at(2.0, 0.0, 0.0));
     world.set_transform(under_a, at(0.0, 3.0, 0.0));
@@ -365,12 +365,12 @@ fn settling_works_out_only_what_moved_and_finds_follow_renames() {
     assert_eq!(place(&world, under_a), Vec3::new(2.0, 3.0, 0.0));
     assert_eq!(place(&world, under_b), Vec3::new(6.0, 1.0, 0.0));
     // Two entities share a name: find gives the first in tree order.
-    area.get_mut(b).unwrap().name = "A".into();
-    world.update(&area, [(b, false)]);
+    level.get_mut(b).unwrap().name = "A".into();
+    world.update(&level, [(b, false)]);
     assert_eq!(world.find("A"), Some(a));
     assert_eq!(world.find("B"), None);
-    area.get_mut(a).unwrap().name = "Z".into();
-    world.update(&area, [(a, false)]);
+    level.get_mut(a).unwrap().name = "Z".into();
+    world.update(&level, [(a, false)]);
     assert_eq!(world.find("A"), Some(b));
     assert_eq!(world.find("Z"), Some(a));
     // Change in place with one lookup: from the parent's place.
@@ -421,27 +421,28 @@ fn inside_agrees_with_subtree(world: &World) {
 
 #[test]
 fn spawned_subtrees_join_and_leave_as_if_the_world_were_built_again() {
-    let mut area = area::builtin::starter_area();
-    let rock = area.spawn(EntityData::new("Rock").with(&at(1.0, 2.0, 0.0)));
-    let mut world = World::from_area(&area);
+    let mut level = level::builtin::starter_level();
+    let rock = level.spawn(EntityData::new("Rock").with(&at(1.0, 2.0, 0.0)));
+    let mut world = World::from_level(&level);
     // A ship with a turret under it, spawned at the end of the tree.
     let ship = EntityId::random();
     let turret = EntityId::random();
     let mut ship_data = EntityData::new("Ship").with(&at(10.0, 0.0, 0.0));
-    ship_data.order = area.order_at_end(None);
+    ship_data.order = level.order_at_end(None);
     let mut turret_data = EntityData::new("Turret").with(&at(0.0, 0.0, 2.0));
     turret_data.parent = Some(ship);
     let spawned = vec![(ship, ship_data), (turret, turret_data)];
-    area.apply(area::Edit::Spawn {
-        entities: spawned.clone(),
-    })
-    .unwrap();
+    level
+        .apply(level::Edit::Spawn {
+            entities: spawned.clone(),
+        })
+        .unwrap();
     let revision = world.revision();
     // Children listed before their parent: the world works out the order.
     let reversed: Vec<_> = spawned.iter().rev().cloned().collect();
     assert_eq!(world.add_subtree(&reversed), vec![ship, turret]);
     assert_ne!(world.revision(), revision);
-    assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));
+    assert_eq!(snapshot(&world), snapshot(&World::from_level(&level)));
     assert_eq!(
         world.global(turret).unwrap().w_axis.truncate(),
         Vec3::new(10.0, 0.0, 2.0)
@@ -453,14 +454,14 @@ fn spawned_subtrees_join_and_leave_as_if_the_world_were_built_again() {
     // Adding it again changes nothing.
     assert!(world.add_subtree(&spawned).is_empty());
     // The rock (before it) and the ship (after it) leave.
-    area.apply(area::Edit::Despawn { root: rock }).unwrap();
+    level.apply(level::Edit::Despawn { root: rock }).unwrap();
     world.remove_subtrees(&[rock]);
-    assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));
+    assert_eq!(snapshot(&world), snapshot(&World::from_level(&level)));
     inside_agrees_with_subtree(&world);
     assert!(!world.is_inside(rock, rock));
-    area.apply(area::Edit::Despawn { root: ship }).unwrap();
+    level.apply(level::Edit::Despawn { root: ship }).unwrap();
     world.remove_subtrees(&[ship, EntityId::random()]);
-    assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));
+    assert_eq!(snapshot(&world), snapshot(&World::from_level(&level)));
     assert!(world.global(turret).is_none());
     // Moving the rest still works through the new places.
     let sun = world.find("Sun").unwrap();
@@ -469,8 +470,8 @@ fn spawned_subtrees_join_and_leave_as_if_the_world_were_built_again() {
 
 #[test]
 fn projectiles_fly_on_when_the_world_is_built_again() {
-    let area = area::builtin::starter_area();
-    let mut world = World::from_area(&area);
+    let level = level::builtin::starter_level();
+    let mut world = World::from_level(&level);
     world.projectiles_mut().fire(Shot {
         from: Vec3::ZERO,
         direction: Vec3::Y,
@@ -478,15 +479,15 @@ fn projectiles_fly_on_when_the_world_is_built_again() {
         life: 1.0,
         colour: [1.0; 3],
     });
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert_eq!(world.projectiles().len(), 1);
 }
 
 #[test]
 fn the_change_number_moves_only_when_something_seen_changes() {
-    let mut area = Area::new();
-    let a = area.spawn(EntityData::new("A").with(&at(0.0, 0.0, 0.0)));
-    let mut world = World::from_area(&area);
+    let mut level = Level::new();
+    let a = level.spawn(EntityData::new("A").with(&at(0.0, 0.0, 0.0)));
+    let mut world = World::from_level(&level);
     let first = world.changes();
     assert_eq!(world.changes(), first, "nothing happened");
     // Too short for a tick, and settling nothing: still the same.
@@ -504,15 +505,15 @@ fn the_change_number_moves_only_when_something_seen_changes() {
     assert_ne!(world.changes(), moved);
     // A world built again never repeats an old number.
     let before = world.changes();
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert_ne!(world.changes(), before);
 }
 
 #[test]
 fn drawing_between_ticks_moves_from_the_last_tick_to_now() {
-    let mut area = Area::new();
-    let a = area.spawn(EntityData::new("A").with(&at(0.0, 0.0, 0.0)));
-    let mut world = World::from_area(&area);
+    let mut level = Level::new();
+    let a = level.spawn(EntityData::new("A").with(&at(0.0, 0.0, 0.0)));
+    let mut world = World::from_level(&level);
     let x_at = |world: &World, t: f32| {
         world
             .placed_between::<Transform>(t)
@@ -552,14 +553,14 @@ fn between_leaves_still_things_exactly_where_they_are() {
     assert_eq!(half.w_axis.x, 1.0);
 }
 
-/// An area with a floor (a fixed collider, its top at 0) and a crate
+/// A level with a floor (a fixed collider, its top at 0) and a crate
 /// (dynamic, 1 m) above it at `height`.
-fn floor_and_crate(height: f32) -> (Area, EntityId, EntityId) {
-    use area::builtin::{Collider, RigidBody};
-    let mut area = Area::new();
+fn floor_and_crate(height: f32) -> (Level, EntityId, EntityId) {
+    use level::builtin::{Collider, RigidBody};
+    let mut level = Level::new();
     let floor = EntityId(reflect::Id::from_raw(101).unwrap());
     let crate_id = EntityId(reflect::Id::from_raw(102).unwrap());
-    area.insert(
+    level.insert(
         floor,
         EntityData::new("Floor")
             .with(&at(0.0, 0.0, -0.5))
@@ -568,14 +569,14 @@ fn floor_and_crate(height: f32) -> (Area, EntityId, EntityId) {
                 ..Collider::default()
             }),
     );
-    area.insert(
+    level.insert(
         crate_id,
         EntityData::new("Crate")
             .with(&at(0.0, 0.0, height))
             .with(&RigidBody::default())
             .with(&Collider::default()),
     );
-    (area, floor, crate_id)
+    (level, floor, crate_id)
 }
 
 fn z_of(world: &World, id: EntityId) -> f32 {
@@ -584,8 +585,8 @@ fn z_of(world: &World, id: EntityId) -> f32 {
 
 #[test]
 fn physics_moves_entities_and_the_world_follows() {
-    let (area, floor, crate_id) = floor_and_crate(4.0);
-    let mut world = World::from_area(&area);
+    let (level, floor, crate_id) = floor_and_crate(4.0);
+    let mut world = World::from_level(&level);
     assert_eq!(world.physics().state().len(), 2);
     for _ in 0..30 {
         world.step_physics();
@@ -610,8 +611,8 @@ fn physics_moves_entities_and_the_world_follows() {
 #[test]
 fn physics_plays_the_same_every_time_and_counts_in_the_checksum() {
     let run = || {
-        let (area, _, crate_id) = floor_and_crate(4.0);
-        let mut world = World::from_area(&area);
+        let (level, _, crate_id) = floor_and_crate(4.0);
+        let mut world = World::from_level(&level);
         world.push(crate_id, Vec3::new(1.0, 0.5, 0.0));
         (0..120)
             .map(|_| {
@@ -630,16 +631,16 @@ fn physics_plays_the_same_every_time_and_counts_in_the_checksum() {
 
 #[test]
 fn bodies_join_and_leave_with_their_entities_and_keep_their_speed() {
-    use area::builtin::{Collider, RigidBody};
-    let (mut area, _, crate_id) = floor_and_crate(4.0);
-    let mut world = World::from_area(&area);
+    use level::builtin::{Collider, RigidBody};
+    let (mut level, _, crate_id) = floor_and_crate(4.0);
+    let mut world = World::from_level(&level);
     for _ in 0..20 {
         world.step_physics();
     }
     let falling = world.physics().state().velocity(crate_id).unwrap().z;
     assert!(falling < -1.0);
     // Built again (an edit while playing): where it was, as fast.
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert!((world.physics().state().velocity(crate_id).unwrap().z - falling).abs() < 1e-4);
     assert!(z_of(&world, crate_id) < 4.0, "where the game had it");
     // A spawned ball joins physics, and leaves with its entity.
@@ -650,7 +651,7 @@ fn bodies_join_and_leave_with_their_entities_and_keep_their_speed() {
             .with(&at(3.0, 0.0, 2.0))
             .with(&RigidBody::default())
             .with(&Collider {
-                shape: area::builtin::ColliderShape::Sphere,
+                shape: level::builtin::ColliderShape::Sphere,
                 ..Collider::default()
             }),
     )]);
@@ -659,17 +660,17 @@ fn bodies_join_and_leave_with_their_entities_and_keep_their_speed() {
     world.remove_subtrees(&[ball]);
     assert!(!world.physics().state().contains(ball));
     // A changed collider (Properties while playing) takes effect.
-    let mut crate_data = area.get(crate_id).unwrap().clone();
+    let mut crate_data = level.get(crate_id).unwrap().clone();
     crate_data.components.remove(Collider::NAME);
     crate_data.components.remove(RigidBody::NAME);
-    area.insert(crate_id, crate_data);
-    world.update(&area, [(crate_id, false)]);
+    level.insert(crate_id, crate_data);
+    world.update(&level, [(crate_id, false)]);
     assert!(!world.physics().state().contains(crate_id));
 }
 
 #[test]
 fn ticks_count_on_the_clock_only_as_they_begin() {
-    let mut world = World::from_area(&Area::new());
+    let mut world = World::from_level(&Level::new());
     // Three ticks due, but the clock only moves as each begins: a frame
     // that stops after one (a pause, a load) counts one.
     assert_eq!(world.due(TICK * 3.5), 3);
@@ -686,16 +687,16 @@ fn ticks_count_on_the_clock_only_as_they_begin() {
 
 #[test]
 fn a_collider_under_something_that_moves_goes_with_it() {
-    use area::builtin::{BodyKind, RigidBody};
+    use level::builtin::{BodyKind, RigidBody};
     // A lift (no physics itself) with a floor under it, and a kinematic
     // platform under it too.
-    let mut area = Area::new();
-    let lift = area.spawn(EntityData::new("Lift").with(&Transform::default()));
+    let mut level = Level::new();
+    let lift = level.spawn(EntityData::new("Lift").with(&Transform::default()));
     let mut floor = EntityData::new("Floor")
         .with(&Transform::default())
         .with(&Collider::default());
     floor.parent = Some(lift);
-    let floor = area.spawn(floor);
+    let floor = level.spawn(floor);
     let mut platform = EntityData::new("Platform")
         .with(&Transform {
             position: glam::Vec3::new(3.0, 0.0, 0.0),
@@ -707,8 +708,8 @@ fn a_collider_under_something_that_moves_goes_with_it() {
         })
         .with(&Collider::default());
     platform.parent = Some(lift);
-    let platform = area.spawn(platform);
-    let mut world = World::from_area(&area);
+    let platform = level.spawn(platform);
+    let mut world = World::from_level(&level);
     // Game code lifts it 5 m.
     world.set_transform(
         lift,
@@ -723,13 +724,13 @@ fn a_collider_under_something_that_moves_goes_with_it() {
     assert!((at(floor).z - 5.0).abs() < 1e-4, "floor at {}", at(floor));
     assert!((at(platform) - glam::Vec3::new(3.0, 0.0, 5.0)).length() < 1e-4);
     // An edit in the editor moving the lift does the same.
-    let mut moved = area.get(lift).unwrap().clone();
+    let mut moved = level.get(lift).unwrap().clone();
     moved.set(&Transform {
         position: glam::Vec3::new(0.0, 0.0, -2.0),
         ..Transform::default()
     });
-    area.insert(lift, moved);
-    world.update(&area, [(lift, true)]);
+    level.insert(lift, moved);
+    world.update(&level, [(lift, true)]);
     world.step_physics();
     let at = |id| world.physics().state().pose(id).unwrap().0;
     assert!((at(floor).z + 2.0).abs() < 1e-4, "floor at {}", at(floor));
@@ -737,11 +738,11 @@ fn a_collider_under_something_that_moves_goes_with_it() {
 
 #[test]
 fn a_resting_crate_lifted_or_left_without_a_floor_by_an_edit_falls() {
-    use area::builtin::RigidBody;
+    use level::builtin::RigidBody;
     // The second review: bodies built again kept sleeping, so a crate
     // lifted while it rested, or whose floor was deleted, hung in the air.
-    let mut area = Area::new();
-    let floor = area.spawn(
+    let mut level = Level::new();
+    let floor = level.spawn(
         EntityData::new("Floor")
             .with(&Transform {
                 position: glam::Vec3::new(0.0, 0.0, -0.5),
@@ -750,7 +751,7 @@ fn a_resting_crate_lifted_or_left_without_a_floor_by_an_edit_falls() {
             })
             .with(&Collider::default()),
     );
-    let crate_id = area.spawn(
+    let crate_id = level.spawn(
         EntityData::new("Crate")
             .with(&Transform {
                 position: glam::Vec3::new(0.0, 0.0, 0.5),
@@ -759,7 +760,7 @@ fn a_resting_crate_lifted_or_left_without_a_floor_by_an_edit_falls() {
             .with(&RigidBody::default())
             .with(&Collider::default()),
     );
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     for _ in 0..600 {
         world.step_physics();
     }
@@ -773,13 +774,13 @@ fn a_resting_crate_lifted_or_left_without_a_floor_by_an_edit_falls() {
         "at rest"
     );
     // Lifted 4 m by an edit: it falls back.
-    let mut lifted = area.get(crate_id).unwrap().clone();
+    let mut lifted = level.get(crate_id).unwrap().clone();
     lifted.set(&Transform {
         position: glam::Vec3::new(0.0, 0.0, 4.5),
         ..Transform::default()
     });
-    area.insert(crate_id, lifted);
-    world.update(&area, [(crate_id, true)]);
+    level.insert(crate_id, lifted);
+    world.update(&level, [(crate_id, true)]);
     for _ in 0..120 {
         world.step_physics();
     }
@@ -789,8 +790,8 @@ fn a_resting_crate_lifted_or_left_without_a_floor_by_an_edit_falls() {
         world.step_physics();
     }
     // The floor deleted (the world built again): it falls through.
-    area.remove(floor);
-    world.rebuild(&area);
+    level.remove(floor);
+    world.rebuild(&level);
     for _ in 0..60 {
         world.step_physics();
     }
@@ -800,9 +801,9 @@ fn a_resting_crate_lifted_or_left_without_a_floor_by_an_edit_falls() {
 
 #[test]
 fn a_crate_in_a_group_game_code_moves_goes_with_it() {
-    use area::builtin::RigidBody;
-    let mut area = Area::new();
-    let group = area.spawn(EntityData::new("Group").with(&Transform::default()));
+    use level::builtin::RigidBody;
+    let mut level = Level::new();
+    let group = level.spawn(EntityData::new("Group").with(&Transform::default()));
     let mut crate_data = EntityData::new("Crate")
         .with(&Transform::default())
         .with(&RigidBody {
@@ -811,8 +812,8 @@ fn a_crate_in_a_group_game_code_moves_goes_with_it() {
         })
         .with(&Collider::default());
     crate_data.parent = Some(group);
-    let crate_id = area.spawn(crate_data);
-    let mut world = World::from_area(&area);
+    let crate_id = level.spawn(crate_data);
+    let mut world = World::from_level(&level);
     world.step_physics();
     world.set_transform(
         group,
@@ -833,7 +834,7 @@ fn a_crate_in_a_group_game_code_moves_goes_with_it() {
 #[test]
 fn an_entity_turned_is_placed_the_same_built_or_moved() {
     // The hardening milestone's invariant tests: a world built from an
-    // area placed a turned entity with a -0.0 where moving it there made
+    // level placed a turned entity with a -0.0 where moving it there made
     // 0.0, so a loaded game's checksum didn't match the saved game's.
     let turned = Transform {
         position: Vec3::new(0.2, 0.0, 0.01),
@@ -841,11 +842,11 @@ fn an_entity_turned_is_placed_the_same_built_or_moved() {
         ..Transform::default()
     };
     let id = EntityId::random();
-    let mut area = Area::new();
-    area.insert(id, EntityData::new("Turned").with(&turned));
-    let built = World::from_area(&area);
-    let mut moved = World::from_area(&{
-        let mut a = Area::new();
+    let mut level = Level::new();
+    level.insert(id, EntityData::new("Turned").with(&turned));
+    let built = World::from_level(&level);
+    let mut moved = World::from_level(&{
+        let mut a = Level::new();
         a.insert(id, EntityData::new("Turned").with(&Transform::default()));
         a
     });
@@ -860,19 +861,19 @@ fn what_s_under_a_turned_and_scaled_parent_follows_it_exactly_when_settled() {
     // The hardening milestone's mutation testing: the settle test only
     // moved things in straight lines, where adding places instead of
     // multiplying them gives the same answer.
-    let mut area = Area::default();
-    let ship = area.spawn(EntityData::new("Ship").with(&at(10.0, 0.0, 0.0)));
+    let mut level = Level::default();
+    let ship = level.spawn(EntityData::new("Ship").with(&at(10.0, 0.0, 0.0)));
     let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 2.0));
     mast.parent = Some(ship);
-    let mast = area.spawn(mast);
+    let mast = level.spawn(mast);
     let mut flag = EntityData::new("Flag").with(&Transform {
         position: Vec3::new(0.5, 0.0, 1.0),
         rotation: glam::Quat::from_rotation_y(0.3),
         scale: Vec3::splat(0.5),
     });
     flag.parent = Some(mast);
-    let flag = area.spawn(flag);
-    let mut world = World::from_area(&area);
+    let flag = level.spawn(flag);
+    let mut world = World::from_level(&level);
     let turned = Transform {
         position: Vec3::new(1.0, 2.0, 2.0),
         rotation: glam::Quat::from_rotation_z(0.7),
@@ -889,9 +890,9 @@ fn what_s_under_a_turned_and_scaled_parent_follows_it_exactly_when_settled() {
     let expected = world.global(mast).unwrap() * world.get::<Transform>(flag).unwrap().matrix();
     assert_eq!(world.global(flag).unwrap(), expected);
     // Built from scratch with the mast there, it's the same.
-    let mut moved = area.clone();
+    let mut moved = level.clone();
     moved.get_mut(mast).unwrap().set(&turned);
-    let rebuilt = World::from_area(&moved);
+    let rebuilt = World::from_level(&moved);
     assert!(
         rebuilt
             .global(flag)
@@ -904,7 +905,7 @@ fn what_s_under_a_turned_and_scaled_parent_follows_it_exactly_when_settled() {
 fn a_frame_time_that_isn_t_a_number_never_jams_the_clock() {
     // The hardening milestone's mutation testing: NaN or a negative time
     // reaching the carried time would stop every tick after it.
-    let mut world = World::from_area(&Area::default());
+    let mut world = World::from_level(&Level::default());
     for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 0.0] {
         assert_eq!(world.due(bad), 0, "{bad}");
     }
@@ -920,20 +921,20 @@ mod api;
 
 #[test]
 fn sprites_arrive_as_rust_types_and_are_drawn_where_they_stand() {
-    let mut area = Area::new();
+    let mut level = Level::new();
     let sprite = Sprite {
         frame: 3,
         flip_x: true,
         pivot: "feet".into(),
         ..Sprite::default()
     };
-    let a = area.spawn(
+    let a = level.spawn(
         EntityData::new("Hero")
             .with(&at(2.0, 3.0, 0.0))
             .with(&sprite),
     );
-    area.spawn(EntityData::new("Rock").with(&at(1.0, 1.0, 0.0)));
-    let world = World::from_area(&area);
+    level.spawn(EntityData::new("Rock").with(&at(1.0, 1.0, 0.0)));
+    let world = World::from_level(&level);
     let drawn = world.placed_between::<Sprite>(1.0);
     assert_eq!(drawn.len(), 1, "only entities with a Sprite");
     let (entity, got, place) = &drawn[0];
@@ -944,16 +945,16 @@ fn sprites_arrive_as_rust_types_and_are_drawn_where_they_stand() {
 
 #[test]
 fn game_code_shows_and_hides_screens_and_the_checksum_follows() {
-    use area::builtin::Screen;
-    let mut area = Area::new();
-    let menu = area.spawn(EntityData::new("Menu").with(&Screen {
+    use level::builtin::Screen;
+    let mut level = Level::new();
+    let menu = level.spawn(EntityData::new("Menu").with(&Screen {
         screen: "Menu".into(),
         shown: true,
         order: 3,
         ..Screen::default()
     }));
-    let bare = area.spawn(EntityData::new("Bare"));
-    let mut world = World::from_area(&area);
+    let bare = level.spawn(EntityData::new("Bare"));
+    let mut world = World::from_level(&level);
     assert_eq!(world.screen_shown(menu).as_deref(), Some("Menu"));
     assert_eq!(world.screen_shown(bare), None);
     let before = world.checksum();
@@ -984,14 +985,14 @@ fn game_code_shows_and_hides_screens_and_the_checksum_follows() {
 
 #[test]
 fn the_game_s_speed_scales_game_time_and_stops_physics_at_0() {
-    let mut area = Area::new();
-    let ball = area.spawn(
+    let mut level = Level::new();
+    let ball = level.spawn(
         EntityData::new("Ball")
             .with(&at(0.0, 0.0, 10.0))
-            .with(&area::builtin::RigidBody::default())
-            .with(&area::builtin::Collider::default()),
+            .with(&level::builtin::RigidBody::default())
+            .with(&level::builtin::Collider::default()),
     );
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     assert_eq!(world.speed(), 1.0);
     let before = world.checksum();
     world.set_speed(0.0);
@@ -1019,22 +1020,22 @@ fn the_game_s_speed_scales_game_time_and_stops_physics_at_0() {
     // Kept when the world is built again, as game code's screens are.
     world.set_speed(0.5);
     world.set_screen(ball, "Hud", true);
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert_eq!(world.speed(), 0.5);
     assert_eq!(world.screen_shown(ball).as_deref(), Some("Hud"));
 }
 
 #[test]
 fn the_time_of_day_runs_with_the_game_and_game_code_can_set_it() {
-    use area::builtin::Environment;
-    let mut area = Area::new();
-    area.spawn(EntityData::new("Environment").with(&Environment {
+    use level::builtin::Environment;
+    let mut level = Level::new();
+    level.spawn(EntityData::new("Environment").with(&Environment {
         day_night: true,
         day_minutes: 24.0,
         day_start: 8.0,
         ..Environment::default()
     }));
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     assert_eq!(world.time_of_day(), 8.0, "as it starts");
     // A day of 24 minutes: an hour a minute of game time.
     world.set_clock(3600, 60.0);
@@ -1047,7 +1048,7 @@ fn the_time_of_day_runs_with_the_game_and_game_code_can_set_it() {
     world.set_clock(7200, 120.0);
     assert!((world.time_of_day() - 7.0).abs() < 1e-9);
     // Kept when the world is built again (an edit while playing).
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert!((world.time_of_day() - 7.0).abs() < 1e-9);
     // Round midnight, and nonsense changes nothing.
     world.set_time_of_day(23.5);
@@ -1061,7 +1062,7 @@ fn the_time_of_day_runs_with_the_game_and_game_code_can_set_it() {
     );
     // A save's shift comes back.
     let shift = world.day_shift();
-    let mut other = World::from_area(&area);
+    let mut other = World::from_level(&level);
     other.set_clock(9000, 150.0);
     other.set_day_shift(shift);
     assert_eq!(other.time_of_day(), world.time_of_day());
@@ -1072,7 +1073,7 @@ fn a_shift_that_rounds_to_a_whole_day_is_midnight() {
     // The phase review: a hair below 0 wraps to exactly 24.0 in
     // floating point, which saves refuse.
     assert_eq!((-1e-17f64).rem_euclid(24.0), 24.0, "the rounding itself");
-    let mut world = World::from_area(&area::Area::new());
+    let mut world = World::from_level(&level::Level::new());
     world.set_day_shift(-1e-17);
     assert_eq!(world.day_shift(), 0.0);
     world.set_day_shift(25.0);

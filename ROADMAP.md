@@ -12,8 +12,8 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | --- | --- |
 | 0. Groundwork | The editor window opens, in Solis's theme |
 | 1. Seeing things | Models, materials, lights and shadows in the viewport |
-| 2. The world | Entities, components, areas and assemblies, saved as text |
-| 3. The editor | Building an area by hand, with play mode |
+| 2. The world | Entities, components, levels and assemblies, saved as text |
+| 3. The editor | Building a level by hand, with play mode |
 | 4. Lust and Lua join | Components written in Lust or Lua, in play mode within 2 seconds |
 | 5. Scale | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
 | 6. Simulation and play | Physics, input, a deterministic simulation |
@@ -54,7 +54,7 @@ Lust joins in Phase 4, right after the editor, so game logic can be written in L
 - A Cargo workspace with layered crates and a test that enforces the layers (as in Aventail).
 - CI following [decision 0001](docs/decisions/0001-builds-on-demand.md): ready pull requests and manual runs only.
 - A window (winit) with wgpu drawing into it.
-- The egui editor shell, as in [decision 0004](docs/decisions/0004-editor-layout.md): the one-row top bar with document tabs, and dockable panels (`egui_dock`) for Area, Properties, the viewport, the library and the console, empty for now. Layouts saved per computer, with the three presets.
+- The egui editor shell, as in [decision 0004](docs/decisions/0004-editor-layout.md): the one-row top bar with document tabs, and dockable panels (`egui_dock`) for Level, Properties, the viewport, the library and the console, empty for now. Layouts saved per computer, with the three presets.
 - **The theme:** dark greys and one accent colour, kept in one file so it's easy to adjust.
 
 **Decided:** MIT, and Aventail's foundation code is copied in and adapted rather than shared ([decision 0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md)).
@@ -79,29 +79,29 @@ Milestones, one pull request each:
 
 The working plan, with the order milestones are built in, is [docs/plans/phase-2.md](docs/plans/phase-2.md).
 
-- Entities and components, in an area document ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
+- Entities and components, in a level document ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
 - Transforms and parenting.
 - Components that describe themselves, so the inspector can show any component, built-in or custom.
-- Areas as text files that merge cleanly in Git: one entity per block, stable IDs, fields in a fixed order ([decision 0006](docs/decisions/0006-git-built-in.md)).
+- Levels as text files that merge cleanly in Git: one entity per block, stable IDs, fields in a fixed order ([decision 0006](docs/decisions/0006-git-built-in.md)).
 - New projects come with a `.gitignore` and `.gitattributes` (Git LFS for models, textures and sound); generated files stay out of the repository.
 - Assemblies: nested, with per-instance overrides.
 - The asset database: stable IDs kept in a small text file beside each asset, so renaming a file doesn't break anything; assets reload when changed on disk.
 - Undo and redo for every edit.
 
-**Decided:** an area document now and the game's fast storage in Phase 3 (0019); Lust-style area files (0020); the asset database and models as node trees (0021); undo as reversible edits (0022).
+**Decided:** a level document now and the game's fast storage in Phase 3 (0019); Lust-style level files (0020); the asset database and models as node trees (0021); undo as reversible edits (0022).
 
-**Gate:** save an area, change it in a text editor, and see it reload. Rename a texture and nothing breaks. Two people change different entities in the same area on two branches, and Git merges them without a conflict.
+**Gate:** save a level, change it in a text editor, and see it reload. Rename a texture and nothing breaks. Two people change different entities in the same level on two branches, and Git merges them without a conflict.
 
 ## Phase 3: The editor
 
-- **First:** the game's fast storage, chosen with a benchmark at the scale target (`hecs` or Solis's own), built from the area document when Play is pressed ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)). Chosen: `hecs` ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)). The working plan is [docs/plans/phase-3.md](docs/plans/phase-3.md).
+- **First:** the game's fast storage, chosen with a benchmark at the scale target (`hecs` or Solis's own), built from the level document when Play is pressed ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)). Chosen: `hecs` ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)). The working plan is [docs/plans/phase-3.md](docs/plans/phase-3.md).
 - Picking and selection in the viewport, and move, rotate and scale gizmos.
 - The entity list and the inspector.
 - The library: assets and code, with a collapsible panel.
 - The console: logs, errors and commands.
-- Play mode, which resets the area when you stop. Several viewports.
+- Play mode, which resets the level when you stop. Several viewports.
 
-**Gate:** build a small area from scratch in the editor, press Play, stop, and everything is back as it was.
+**Gate:** build a small level from scratch in the editor, press Play, stop, and everything is back as it was.
 
 ## Phase 4: Lust and Lua join
 
@@ -169,7 +169,7 @@ The working plan is [docs/plans/phase-7-sound.md](docs/plans/phase-7-sound.md) (
 The project lead's game moves to Solis next, so before it does, updates must never lose work or break a game ([decision 0053](docs/decisions/0053-compatibility-before-2d.md)). The working plan is [docs/plans/compatibility.md](docs/plans/compatibility.md). Safety here is automatic: nothing to remember to use.
 
 - **A backup before every upgrade:** before Solis changes any file in a project, it saves a dated copy and checks the upgraded file reads back correctly; if any step fails, nothing changes.
-- **Old files keep opening, forever:** every format (areas, assemblies, the project, settings, input, recordings, and later tile maps) has an upgrader from every older version, and an example file of each old version is kept as a test.
+- **Old files keep opening, forever:** every format (levels, assemblies, the project, settings, input, recordings, and later tile maps) has an upgrader from every older version, and an example file of each old version is kept as a test.
 - **Save games survive updates,** so a game's update never wipes its players' progress.
 - **The game-code interface is guarded:** a test fails if what game code can call changes by accident; a deliberate rename keeps the old name working, warns in Problems and offers to fix the code.
 - **Real projects are tested:** a project (the samples, and the project lead's game if wanted, from a private repository or on their own PC) is opened and played from a recording before an update ships; if it breaks, the update is stopped.
@@ -267,7 +267,7 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 - **File: projects, Learn and updates** ([decision 0105](docs/decisions/0105-solis-starts-on-the-file-page.md)). *Built.*
 - **File: Preferences, Project settings and Input.** *Built.*
 
-**Gate:** build a small area, place things from the shelf, change a setting and a key, and open another project, all on screens that match their pictures.
+**Gate:** build a small level, place things from the shelf, change a setting and a key, and open another project, all on screens that match their pictures.
 
 ## Shared 1c: 2D and its editors
 
@@ -288,9 +288,9 @@ Added 10 November 2026: the editor's interface rebuilt from scratch, with the pr
 
 ## Shared 1e: Layouts and resizing
 
-Added 13 November 2026 by the project lead, after trying the remade interface: the Area and Assets lists out of the compact bottom shelf, into a more usual layout, and every edge between panels draggable ([decision 0109](docs/decisions/0109-layouts-as-a-setting.md)).
+Added 13 November 2026 by the project lead, after trying the remade interface: the Level and Assets lists out of the compact bottom shelf, into a more usual layout, and every edge between panels draggable ([decision 0109](docs/decisions/0109-layouts-as-a-setting.md)).
 
-- **Layouts as a setting:** three layouts (Area left and Assets along the bottom; Area and Assets stacked on the left; Area left and Assets right) and today's shelf, chosen in Preferences, so the project lead can try them before picking one. *Built.*
+- **Layouts as a setting:** three layouts (Level left and Assets along the bottom; Level and Assets stacked on the left; Level left and Assets right) and today's shelf, chosen in Preferences, so the project lead can try them before picking one. *Built.*
 - **Every edge resizable:** every border between panels and columns can be dragged, each tab remembers its sizes, and a double-click puts a border back. *Built.*
 
 **Gate:** each layout can be chosen and works on every tab, every border drags and is remembered after a restart, and the editor's frame stays inside the scale check's targets.
@@ -303,7 +303,7 @@ The problems found by the full review's second pass ([the report](docs/reviews/2
 
 Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)); what the tools are: [decision 0111](docs/decisions/0111-tools-1-brushes-and-ground.md); plan: [docs/plans/tools-1.md](docs/plans/tools-1.md). Mocked up and approved before it's built; every tool has a scale case.
 
-- **B1 The shape core** (built): an editable polygon mesh (Aventail's, decision 0007, the `mesh` crate), the list's shapes, a Brush component saved in the area (area files' version 3), drawn and solid.
+- **B1 The shape core** (built): an editable polygon mesh (Aventail's, decision 0007, the `mesh` crate), the list's shapes, a Brush component saved in the level (level files' version 3), drawn and solid.
 - **B2 The list and drawing out** (built): **B** opens the list over the view (or Home › Create › Shape), each **B** moves down, **Space** confirms, **Esc** closes; drag the footprint on the grid, pull up the height, click; one undo step a brush.
 - **B3 Editing the insides** (built): **Tab**, then **1** points, **2** edges, **3** faces; click, Ctrl + click and box to pick; moved, turned and stretched with the gizmos, one undo step a drag; a change that would break the brush is put back.
 - **B4 Extrude and shaping** (built): **E** then move and click, or Shift + drag on the gizmo; Inset with the mouse; Split and Delete as the mode says; every result checked whole, one undo step each; a brush read open or inside out mended.
@@ -316,7 +316,7 @@ Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decision
 The project lead's review of the remade interface (2026-11-17): nine points, answered and mocked up, then approved ([decision 0118](docs/decisions/0118-the-editor-rethink.md); plan: [docs/plans/editor-rethink.md](docs/plans/editor-rethink.md); mock-ups: [docs/design/ui-rethink/](docs/design/ui-rethink/README.md)). **Comes before Tools 1b**, which waits.
 
 - **R1 The launcher and new projects:** the launcher as its own window; opening a project opens the editor window; New project makes its folder; Kind 2D / 3D / Both; Close project goes back.
-- **R2 Level, everywhere:** "Area" becomes "Level" in the interface, the manual, file names and game code, with upgraders and the old names kept working for a while.
+- **R2 Level, everywhere:** "Area" becomes "Level" in the interface, the manual, file names and game code, with upgraders for saved projects; game code's old names stop working at once (the project lead, 2026-11-17).
 - **R3 One frame on every tab:** left, centre, right and a bottom panel under the view; every edge drags; Library, Console and Problems in the bottom panel, collapsing to one thin line; layouts chosen from drawn miniatures; a tidier ribbon.
 - **R4 One Library browser:** the same everywhere; the project's own folders; right-click to create, double-click to rename, drag to move; the left side toggles between the Level panel and the folder tree; several folder trees side by side.
 - **R5 Prefabs:** an entity saved to be placed many times, with its own page; linked copies; changed settings shown and resettable.
@@ -327,7 +327,7 @@ The project lead's review of the remade interface (2026-11-17): nine points, ans
 ## Tools 1b: World sculpting
 
 - **G0 The study** (rule 22): competing ways to store and draw a ground with caves, measured.
-- **G1 The ground, Smooth:** one per area, in chunks made on workers, solid, saved.
+- **G1 The ground, Smooth:** one per level, in chunks made on workers, solid, saved.
 - **G2 Sculpting:** left-drag adds, Ctrl digs, Shift smooths, [ and ] size, Shift + [ and ] strength; Flatten.
 - **G3 Blocky and Sharp:** the ground's look as a setting per ground.
 - **G4 Painting:** materials painted with the same brush.
@@ -486,11 +486,11 @@ Was Phase 18. Before 3D, so finished 2D games can ship.
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits.
 - **The full export:** finished games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), with the game's own Rust built in and Lust compiled for speed, an installer, and Build-and-Play from the top bar. It grows from the playtest export.
-- **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language area summaries, commit, pull and push, branches, history, Git LFS locking, and new projects from or published to a repository.
-- **The area merge tool:** merges areas and assemblies entity by entity; when two people changed the same field, asks which to keep.
+- **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language level summaries, commit, pull and push, branches, history, Git LFS locking, and new projects from or published to a repository.
+- **The level merge tool:** merges levels and assemblies entity by entity; when two people changed the same field, asks which to keep.
 - **Mods:** players change and add to a game with LustScript (`.lsc`), which is what LustScript was made for, with the same sandbox as the scripting window. (Was idea 31.)
 
-**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed; two people work on the same project through GitHub for an evening and resolve one real area conflict in the editor.
+**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed; two people work on the same project through GitHub for an evening and resolve one real level conflict in the editor.
 
 ## 3D 1: 3D animation and navigation
 
@@ -564,7 +564,7 @@ Was Phase 17. What it needs (fixed ticks, determinism, checksums, save games) is
 
 **Decide before starting:** how relays are run.
 
-**Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
+**Gate:** two PCs on different networks play the benchmark level together without desyncing, with simulated lag.
 
 ## Shared 13: Solis 0.1
 

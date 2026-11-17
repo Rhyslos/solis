@@ -21,7 +21,7 @@ The remake (Shared 1a to 1e, pull requests 236 to 242 and 252) was "a step in th
 Every answer came from the project lead, 2026-11-17.
 
 - **The launcher is its own window.** One install: starting the program opens a small launcher window (Projects, Learn, Updates). Opening a project closes it and opens the editor window. File › Close project goes back to the launcher.
-- **"Area" becomes "Level", everywhere:** the interface, the manual, file names and game code. Saved projects are upgraded when they open (rule 23). Game code that uses the old name still works for a while, with a note saying what to change.
+- **"Area" becomes "Level", everywhere:** the interface, the manual, file names and game code. Saved projects are upgraded when they open (rule 23). Game code that uses an old name stops working right away, with a mistake that names the new one (the project lead, 2026-11-17: "Right away").
 - **A reusable thing is a "Prefab".** Every thing placed in a level is still an *entity*. A prefab is an entity, with its parts and settings, saved to be placed many times, and each placed copy is an entity linked to it. ("Entity" was the first wish, but Solis already uses it for everything placed in a level, so the project lead's second choice, Prefab, was taken.)
   - **A prefab has its own page:** New prefab, or opening one, puts it in its own tab, where it's built on its own, as a level is.
 - **A project is 2D, 3D or both.** This is asked when it's made and can be changed in Project settings. A 2D project hides every 3D-only tab, tool and setting.
@@ -56,7 +56,7 @@ One pull request each, in this order. Each builds against the mock-ups, updates 
 | # | Milestone | Gives | Points |
 | --- | --- | --- | --- |
 | R1 | **The launcher and new projects** | The launcher as its own window, and the editor window opening a project. New project makes its folder, in a remembered parent folder. Kind 2D / 3D / Both is saved in the project. Templates. Close project goes back to the launcher. | 1, 6 |
-| R2 | **Level, everywhere** | "Area" becomes "Level" in the interface, the manual, file names, the Lust files the editor writes, and game code. Saved projects are upgraded on opening, with an upgrader and fixtures (rule 23). Old names in game code still work with a note, until a set version. | 5 |
+| R2 | **Level, everywhere** | "Area" becomes "Level" in the interface, the manual, file names, the Lust files the editor writes, and game code. Saved projects are upgraded on opening, with an upgrader and fixtures (rule 23). Old names in game code stop working right away. | 5 |
 | R3 | **One frame on every tab** | The frame: left, centre, right, and a bottom panel under the view. Every edge draggable and remembered. The same division on every tab. The bottom panel holds Library, Console and Problems as small tabs, and collapses to one thin line above the status line. The command line shows only on the Console tab. Layouts in Preferences as drawn miniatures, applied at once with Undo. The ribbon tidied (Save and Build off Home). | 2, 4, 9 |
 | R4 | **One Library browser** | One browser, the same on Home and the Library tab. The project's own folders, with no forced assets folder (and an existing one left alone). Breadcrumb, grid or list, kind filter, search, thumbnails per kind. Right-click on empty space or an item to create, rename, duplicate, delete or show in Explorer. Double-click to rename. Drag to move. The left side's toggle between the Level panel and the folder tree. Several folder trees side by side to move files. | 3, 7, 8 |
 | R5 | **Prefabs** | Prefab as its own asset with a format, version and fuzz target. Make prefab… from picked entities. A prefab's own page (its own tab). Placed copies linked and marked, with changed settings shown and resettable. Properties shows "Prefab: Chicken · Open · Unlink". Editing the prefab updates every copy. Game code reaches prefabs through the Lust file the editor writes (decision 0065). | 5 |
@@ -79,6 +79,19 @@ One pull request each, in this order. Each builds against the mock-ups, updates 
 - **No forced assets folder:** neither making nor opening a project makes `assets/`. What depended on it: the watcher (the project's own folder is watched, flat, until `assets` appears, then the watcher moves into it), the savers and new files (`Projects::place`, new folders and sound events, imports' `copy_in` make it first), the area's Save and Open windows (they start in it, so it's made then), and the engine's description files for game code (written once it's there). Exports need a saved area, so they need it anyway.
 - **A project's folder named on the command line** (`solis <folder>`) opens the editor straight away, as `--sample` does; the window test uses it.
 
+
+### R2: Level, everywhere
+
+> **Built** (branch `rethink/r2-level`), with these choices:
+
+- **Only the concept changed.** The `area` crate is `level`, and every type, function, file and word named for the thing you build and play follows (`Level`, `LevelFile`, `level_panel.rs`, the Level panel, **New level**, **Add the sample level**, the panel layouts **Level left, Assets bottom** and the rest, the manual's [Saving levels](../manual/saving-levels.md)). Words for a region of the screen or a shape's size keep "area": egui's `Area` and `ScrollArea`, the canvas's **Safe area**, a rectangle's `area()`, the mesh's faces with no area, a tile map's copied area, and area lights in the plans. A check (`crates/editor/src/level_words_tests.rs`) reads every string in the program's code, the manual and the guide's captions, and allows "area" only where its list says why.
+- **Levels are format 4** (`level version 4;`), the same layout as format 3 under the new word; both words are read. Assemblies share the format, so only their number moves.
+- **Opening a project renames its areas** (`app::older_files`, beside the move to Lust): `x.solarea` becomes `x.sollevel` with only its first line (and the first comment) changed, checked to read exactly as the area did, its sidecar moved, the area kept in the backups. One that can't move stays and still opens as a level (the Library, the Open window and the check still read `.solarea`). New projects' `.gitattributes` names both endings.
+- **The project file is format 2**, though nothing in it changes: it says the project's levels are `.sollevel` files, so a build from before refuses the project ("made by a newer version") instead of opening it with no levels. It's saved through the backups once its areas have moved.
+- **Everything that names a level** finds it under its new name: recordings are format 4 (`level` line), playtest files format 2 (`level` line; now a format with an upgrader and examples, `tests/fixtures/playtest/`), save games format 9 (`level` section). Saved panel layouts and sizes keep their places (old names and keys still read). The fixtures' folder for levels keeps its name, `tests/fixtures/area/`, since released examples never move.
+- **Game code had nothing named for areas** (`docs/game-code-interface.txt` has no such call, type or file), so the project lead's "right away" needed no refusals: nothing that built before stops building. Only two descriptions of `World:find` and `entity:name` (the Level panel's order) changed.
+- **Pictures:** the approved pictures and the guide's keep what they show until R6 (no picture test needed them taken again); their names and captions follow (`home-level-*.png`, `level-list.png`).
+
 **Gate:**
 1. Start the program: the launcher opens.
 2. Make a new 2D project by its name; its folder is made.
@@ -90,5 +103,4 @@ One pull request each, in this order. Each builds against the mock-ups, updates 
 
 ## Still to settle (asked when its milestone starts)
 
-- R2: the version after which game code's old names stop working.
 - R5: which settings a copy may change without unlinking (all, or chosen ones), and what happens to a copy's changes when the prefab changes the same setting.

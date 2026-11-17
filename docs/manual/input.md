@@ -15,7 +15,7 @@ Whenever the player controls something. Game code never asks "is W down?"; it as
 
 **Playing with the keys and mouse**
 1. Press **Play**.
-2. **Click the Game panel.** The game now has the mouse and keys: the pointer disappears (moving the mouse turns, instead of moving a pointer), and the editor's own keys (W for the move tool, Delete, Ctrl + Z…) are off, so they can't change your area by accident while you play.
+2. **Click the Game panel.** The game now has the mouse and keys: the pointer disappears (moving the mouse turns, instead of moving a pointer), and the editor's own keys (W for the move tool, Delete, Ctrl + Z…) are off, so they can't change your level by accident while you play.
 3. Press **Esc** to give the mouse and keys back to the editor. Stop does too.
 
 A connected **gamepad** works whenever the game is playing; it has nothing of the editor's to clash with. Solis uses the first one connected, Xbox layout.
@@ -134,7 +134,7 @@ Input is read **once per [tick](concepts.md#game-code)**, so every component, on
 2. Press **Stop**. The recording is saved in the project's `recordings` folder (the Console says its name).
 3. Choose **Debug › Replay a recording…** and pick it. (While it replays, the game's `Saves:saveTo` makes its save as the recorded play did, but doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or by which tick it stopped matching (the world is compared every tick, game code's own values once a second).
 
-A replay that stops matching means the game came out differently from the same input: the area or code changed since recording, or something in the game isn't deterministic. That's how you find it the tick it starts.
+A replay that stops matching means the game came out differently from the same input: the level or code changed since recording, or something in the game isn't deterministic. That's how you find it the tick it starts.
 
 ## Settings
 | Setting | What it does |
@@ -162,7 +162,7 @@ While the game has them, every key is the game's: the editor's shortcuts are off
 - **Problem:** the Console says the input actions couldn't be read. **Why:** `input.solinput` was changed by hand and has a mistake. **Fix:** the Console says what; fix it, or change any action in the window, which writes it again.
 - **Problem:** the Console says the input actions file had a mistake and was kept as `input.solinput.bak`. **Why:** the file couldn't be read, so the ready-made actions were used; changing anything in the window writes the file again, so Solis kept yours first. **Fix:** copy what you need from the `.bak` file, then delete it.
 - **Problem:** recording paused, saying it reached the most Solis keeps. **Why:** a recording is at most an hour, or 64 MB. **Fix:** Stop saves what was recorded; record shorter plays.
-- **Problem:** a replay stops matching at once. **Why:** the area or the code changed since it was recorded, or it was recorded with an earlier Solis, whose checks were worked out differently. **Fix:** record again.
+- **Problem:** a replay stops matching at once. **Why:** the level or the code changed since it was recorded, or it was recorded with an earlier Solis, whose checks were worked out differently. **Fix:** record again.
 
 ## Related
 - [Game code](game-code.md)

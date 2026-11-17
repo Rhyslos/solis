@@ -1,7 +1,7 @@
 //! Leaving while Keep or Undo all is unanswered (the review, BUG-04):
 //! decision 0085 promises the edits made while playing are "kept or
 //! undone, never lost", so quitting, closing the window, the launcher,
-//! another area or project and a file changed on disk all wait for the
+//! another level or project and a file changed on disk all wait for the
 //! answer. Each path is pinned to one outcome here.
 
 use super::*;
@@ -11,11 +11,11 @@ use crate::workbench::WorkbenchAction;
 use egui_kittest::kittest::Queryable;
 use reflect::EntityId;
 
-/// A workbench whose area is saved (nothing unsaved), playing, with one
+/// A workbench whose level is saved (nothing unsaved), playing, with one
 /// edit of the user's made while playing: the lamp.
 fn playing_with_an_edit() -> (Workbench, EntityId) {
     let mut w = Workbench::new(info());
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let lamp = w.add_point_light();
     (w, lamp)
@@ -34,13 +34,13 @@ fn handed_over(w: &mut Workbench) -> Vec<WorkbenchAction> {
     std::mem::take(&mut w.open.outbox)
 }
 
-/// Every action that puts another area or project in the open one's
+/// Every action that puts another level or project in the open one's
 /// place, or closes the editor.
 fn leaving() -> Vec<WorkbenchAction> {
     vec![
-        WorkbenchAction::NewArea,
-        WorkbenchAction::OpenArea,
-        WorkbenchAction::OpenAreaFile("/p/assets/other.solarea".into()),
+        WorkbenchAction::NewLevel,
+        WorkbenchAction::OpenLevel,
+        WorkbenchAction::OpenLevelFile("/p/assets/other.sollevel".into()),
         WorkbenchAction::CloseProject,
         WorkbenchAction::OpenProject,
         WorkbenchAction::OpenRecent("/other".into()),
@@ -54,7 +54,7 @@ fn leaving() -> Vec<WorkbenchAction> {
 
 #[test]
 fn quitting_while_playing_asks_about_the_edits_before_it_closes() {
-    // File > Exit while playing, after an edit, with a saved area: the
+    // File > Exit while playing, after an edit, with a saved level: the
     // editor closed with no question and the edit was gone.
     let (mut w, lamp) = playing_with_an_edit();
     let mut actions = Vec::new();
@@ -67,15 +67,15 @@ fn quitting_while_playing_asks_about_the_edits_before_it_closes() {
     w.undo_play_changes();
     assert_eq!(handed_over(&mut w), [WorkbenchAction::Quit]);
     assert!(w.close_requested());
-    assert!(!w.document().area().contains(lamp));
+    assert!(!w.document().level().contains(lamp));
 
-    // Keep: the edit is in the area and isn't saved, so that is asked
+    // Keep: the edit is in the level and isn't saved, so that is asked
     // next, as for any unsaved change.
     let (mut w, lamp) = playing_with_an_edit();
     let mut actions = Vec::new();
     w.request(WorkbenchAction::Quit, &mut actions);
     w.keep_play_changes();
-    assert!(w.document().area().contains(lamp));
+    assert!(w.document().level().contains(lamp));
     assert_eq!(handed_over(&mut w), [], "not closed");
     assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
     assert!(!w.close_requested());
@@ -89,7 +89,7 @@ fn closing_the_window_while_playing_asks_about_the_edits_first() {
     assert!(w.play_changes().is_some());
     assert!(w.open.unsaved_prompt.is_none(), "one question at a time");
     w.keep_play_changes();
-    assert!(w.document().area().contains(lamp));
+    assert!(w.document().level().contains(lamp));
     assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
 
     let (mut w, _) = playing_with_an_edit();
@@ -115,7 +115,7 @@ fn closing_the_window_with_the_question_waiting_waits_for_the_answer() {
 }
 
 #[test]
-fn nothing_that_leaves_the_area_goes_ahead_until_the_question_is_answered() {
+fn nothing_that_leaves_the_level_goes_ahead_until_the_question_is_answered() {
     for action in leaving() {
         // Undo all: the action goes ahead once answered.
         let (mut w, _) = asked();
@@ -135,14 +135,14 @@ fn nothing_that_leaves_the_area_goes_ahead_until_the_question_is_answered() {
         let mut actions = Vec::new();
         w.request(action.clone(), &mut actions);
         w.keep_play_changes();
-        assert!(w.document().area().contains(lamp), "{action:?}: kept");
+        assert!(w.document().level().contains(lamp), "{action:?}: kept");
         assert_eq!(handed_over(&mut w), [], "{action:?}");
         assert_eq!(w.open.unsaved_prompt, Some(action));
     }
 }
 
 #[test]
-fn what_doesn_t_leave_the_area_goes_ahead_while_the_question_waits() {
+fn what_doesn_t_leave_the_level_goes_ahead_while_the_question_waits() {
     let (mut w, _) = asked();
     for action in [
         WorkbenchAction::ImportModel,
@@ -195,7 +195,7 @@ fn the_question_is_asked_before_the_project_closes() {
     h.run();
     let (w, picker) = h.state();
     assert!(w.play_changes().is_none());
-    assert!(w.document().area().contains(lamp), "kept");
+    assert!(w.document().level().contains(lamp), "kept");
     assert!(
         !picker.actions.contains(&other),
         "the kept edits aren't saved"
@@ -206,59 +206,62 @@ fn the_question_is_asked_before_the_project_closes() {
 #[test]
 fn a_file_changed_on_disk_waits_for_the_answer() {
     let theirs = || {
-        let mut area = area::builtin::starter_area();
-        let id = area.spawn(area::EntityData::new("Theirs"));
-        (area, id)
+        let mut level = level::builtin::starter_level();
+        let id = level.spawn(level::EntityData::new("Theirs"));
+        (level, id)
     };
     // Changed while the question waits. Undo all: nothing is unsaved, so
     // the file is loaded.
     let (mut w, _) = asked();
-    let (area, theirs_id) = theirs();
-    w.offer_reload(area);
-    assert!(!w.document().area().contains(theirs_id), "not yet");
+    let (level, theirs_id) = theirs();
+    w.offer_reload(level);
+    assert!(!w.document().level().contains(theirs_id), "not yet");
     assert!(w.open.pending_reload.is_none());
     w.undo_play_changes();
-    assert!(w.document().area().contains(theirs_id), "loaded");
+    assert!(w.document().level().contains(theirs_id), "loaded");
     // Keep: the kept edits are unsaved, so Keep mine or Load the file is
-    // asked, where Keep used to put the old area back over the new file.
+    // asked, where Keep used to put the old level back over the new file.
     let (mut w, lamp) = asked();
-    let (area, theirs_id) = theirs();
-    w.offer_reload(area);
+    let (level, theirs_id) = theirs();
+    w.offer_reload(level);
     w.keep_play_changes();
-    assert!(w.document().area().contains(lamp));
-    assert!(!w.document().area().contains(theirs_id));
+    assert!(w.document().level().contains(lamp));
+    assert!(!w.document().level().contains(theirs_id));
     assert!(w.open.pending_reload.is_some(), "asked which to keep");
     // Changed while playing: offered after Stop, so after the answer too.
     let (mut w, _) = playing_with_an_edit();
-    let (area, theirs_id) = theirs();
-    w.offer_reload(area);
+    let (level, theirs_id) = theirs();
+    w.offer_reload(level);
     w.stop();
     assert!(w.play_changes().is_some());
-    assert!(!w.document().area().contains(theirs_id));
+    assert!(!w.document().level().contains(theirs_id));
     assert!(w.open.pending_reload.is_none());
     w.undo_play_changes();
-    assert!(w.document().area().contains(theirs_id));
+    assert!(w.document().level().contains(theirs_id));
 }
 
 #[test]
-fn another_area_put_in_place_takes_the_question_with_the_old_one() {
-    // Asking comes before `new_area` and `open_area` (`request`); if one
-    // is called all the same, Keep must not put the old area back over
+fn another_level_put_in_place_takes_the_question_with_the_old_one() {
+    // Asking comes before `new_level` and `open_level` (`request`); if one
+    // is called all the same, Keep must not put the old level back over
     // the one just opened.
     let (mut w, lamp) = asked();
-    w.open_area(area::builtin::starter_area(), "/p/assets/b.solarea".into());
+    w.open_level(
+        level::builtin::starter_level(),
+        "/p/assets/b.sollevel".into(),
+    );
     assert!(w.play_changes().is_none());
     w.keep_play_changes();
-    assert!(!w.document().area().contains(lamp));
+    assert!(!w.document().level().contains(lamp));
     assert_eq!(
         w.document().file(),
-        Some(std::path::Path::new("/p/assets/b.solarea"))
+        Some(std::path::Path::new("/p/assets/b.sollevel"))
     );
     let (mut w, lamp) = asked();
-    w.new_area();
+    w.new_level();
     assert!(w.play_changes().is_none());
     w.keep_play_changes();
-    assert!(!w.document().area().contains(lamp));
+    assert!(!w.document().level().contains(lamp));
 }
 
 #[test]
@@ -285,7 +288,7 @@ fn edits_made_while_the_unsaved_question_was_up_are_asked_about_too() {
     h.get_by_label("Keep").click();
     h.run();
     h.run();
-    assert!(h.state().0.document().area().contains(lamp));
+    assert!(h.state().0.document().level().contains(lamp));
     assert!(!h.state().1.actions.contains(&WorkbenchAction::Quit));
     h.get_by_label("Don't save").click();
     h.run();
@@ -296,7 +299,7 @@ fn edits_made_while_the_unsaved_question_was_up_are_asked_about_too() {
 
 #[test]
 fn the_sample_projects_ask_about_unsaved_changes_like_any_other_project() {
-    // They put another project and area in the open one's place, so they
+    // They put another project and level in the open one's place, so they
     // go through the same check.
     for action in leaving() {
         let mut w = Workbench::new(info());

@@ -6,7 +6,7 @@
 Start here if you're new to Solis, to Lust, or to making games at all. It takes about an hour, and needs no art skills: the level is drawn in plain colours, and the hero and coins are two tiny pictures you can make in any paint program.
 
 You'll learn:
-- the editor's parts: the [Library](projects-and-the-library.md), the viewport, [Properties](concepts.md#the-window) and the Area panel;
+- the editor's parts: the [Library](projects-and-the-library.md), the viewport, [Properties](concepts.md#the-window) and the Level panel;
 - [entities and components](entities.md): how everything in a game is built;
 - [tile maps](tile-maps.md) for the level, and [2D settings](2d-pixel-perfect.md) that keep pixel art crisp;
 - writing [components](concepts.md#game-code) in Lust: fields, `update`, `dt`, input, and fetching one file from another.
@@ -15,11 +15,11 @@ Each step says *why* as well as *what*, so you can change things and make the ga
 
 ## How to use it
 
-### 1. Make a project and an area
-A [project](concepts.md#projects) is a folder holding everything your game is made of. An [area](concepts.md#the-area) is one level (or menu, or room) in it.
+### 1. Make a project and a level
+A [project](concepts.md#projects) is a folder holding everything your game is made of. A [level](concepts.md#the-level) is one level (or menu, or room) in it.
 
 1. On the [launcher](launcher.md), click **New project**, name it `Platformer`, choose **2D** and **Empty**, and click **Create**. Solis makes the project's folder and opens it.
-2. Save the empty area: **Ctrl + S**, name it `level`. Solis suggests the `assets/areas` folder; that's fine.
+2. Save the empty level: **Ctrl + S**, name it `level`. Solis suggests the `assets/levels` folder; that's fine.
 3. Look in pixels: click the **Perspective ▾** pill at the top left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
 
 **Why 2D?** A platformer is seen from the side. In Solis, a 2D game lies flat and is seen from straight above, so across the screen is *x* and up the screen is *y*. The project's 2D settings (**File › Project settings**) say 16 pixels make one metre, so one 16-pixel tile is one metre. Every number in this guide is in metres, so think of a metre as a tile.
@@ -32,7 +32,7 @@ A [tile map](tile-maps.md) is a grid of cells, each painted with a [terrain](con
 3. **Turn tilled into ground:** rename it `ground` and make it brown. Leave water as it is.
 4. **Make the map:** **New › Tile map** in the Library. It's filled with sky. Click it in the Library and, in Properties, set its **Size** to 60 across and 17 up: 17 tiles is about one screen high.
 5. **Place it:** double-click the map in the Library. It appears in the viewport, where you're looking.
-6. **Select it** in the Area panel. The **Map** tab opens beside Properties, and the painting tools appear at the bottom of the viewport.
+6. **Select it** in the Level panel. The **Map** tab opens beside Properties, and the painting tools appear at the bottom of the viewport.
 7. **Make ground solid:** in the Map tab, under **Terrains**, **right-click** ground's swatch and tick **Solid**. Solid cells are walls and floors: nothing with a body passes into them.
 8. **Paint the level:** left-click ground's swatch, then paint with the brush (**B**) or the rectangle (**U**). Make a floor along the bottom two rows, a wall up both ends (so the hero can't run off), and a few floating platforms two or three tiles above the floor and each other. Leave a gap in the floor somewhere if you like a challenge.
 9. Press **Walls** at the top of the viewport: green boxes show what's solid. Check the floor and walls have them.
@@ -348,7 +348,7 @@ end
 - `entity player = nothing;` is a field holding another entity: the one you pick in Properties. `nothing` means none is picked yet, and `return` stops `update` early, so a coin without a player does nothing instead of going wrong.
 - `player:position()` asks *another* entity where it is; `position()` on its own asks this one.
 - `gap.x * gap.x + gap.y * gap.y < reach * reach` checks the distance without a square root (Pythagoras, both sides squared): the player is within `reach` metres.
-- `despawn()` removes the coin from the running game. When you Stop, it comes back, since Play never changes your area.
+- `despawn()` removes the coin from the running game. When you Stop, it comes back, since Play never changes your level.
 
 ### 8. Where to go next
 You've built a game and written two components. Some ideas, each with its page:

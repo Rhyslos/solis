@@ -29,7 +29,7 @@
 //! Everything here is plain data and sums; [`crate::SoundDevice`] carries
 //! it out on Kira's tracks.
 
-use area::settings;
+use level::settings;
 use reflect::Value;
 use std::fmt;
 

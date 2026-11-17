@@ -144,11 +144,11 @@ pub(super) fn folder_state(folder: &Path) -> FolderState {
     }
 }
 
-/// What making a sample takes: its maker, the area it opens on and what
+/// What making a sample takes: its maker, the level it opens on and what
 /// the Console says once it's ready.
 struct SampleParts {
     make: fn(&Path) -> Result<(), asset_db::ProjectError>,
-    area: &'static str,
+    level: &'static str,
     what: &'static str,
     ready: &'static str,
 }
@@ -157,14 +157,14 @@ fn sample_parts(sample: Sample) -> SampleParts {
     match sample {
         Sample::Game => SampleParts {
             make: crate::sample_game::make,
-            area: crate::sample_game::AREA,
+            level: crate::sample_game::LEVEL,
             what: "the sample game",
             ready: "The sample game is ready. Press Play: the turret shoots at the drone, and \
                     the Console tells the story. Its code is in the Library's Code tab.",
         },
         Sample::Ui => SampleParts {
             make: crate::ui_sample::make,
-            area: crate::ui_sample::AREA,
+            level: crate::ui_sample::LEVEL,
             what: "the UI sample",
             ready: "The UI sample is ready. Press Play, click the Game panel, and press Space to \
                     fire and P to pause. Double-click a screen in the Library's ui folder to see \
@@ -172,7 +172,7 @@ fn sample_parts(sample: Sample) -> SampleParts {
         },
         Sample::Playground => SampleParts {
             make: crate::playground::make,
-            area: crate::playground::AREA,
+            level: crate::playground::LEVEL,
             what: "the playground",
             ready: "The playground is ready. Press Play and click the Game panel: W A S D walk, \
                     the mouse looks, Space jumps, Shift sprints, F6 saves and F7 loads. Esc \
@@ -180,11 +180,11 @@ fn sample_parts(sample: Sample) -> SampleParts {
         },
         Sample::Benchmark => SampleParts {
             make: crate::benchmark::make,
-            area: crate::benchmark::FIRST_AREA,
+            level: crate::benchmark::FIRST_LEVEL,
             what: "the benchmark",
-            ready: "The benchmark is ready. Press Play and open the Profiler: target.solarea is \
-                    2,000 ships and 20,000 lasers, stress.solarea 10,000 and 100,000, and \
-                    ceiling.solarea adds ships until 60 frames a second ends, then says where \
+            ready: "The benchmark is ready. Press Play and open the Profiler: target.sollevel is \
+                    2,000 ships and 20,000 lasers, stress.sollevel 10,000 and 100,000, and \
+                    ceiling.sollevel adds ships until 60 frames a second ends, then says where \
                     in the Console.",
         },
     }
@@ -211,16 +211,19 @@ pub(super) fn first_create_in() -> PathBuf {
 
 impl App {
     /// A failure the person must see: in the Console, and on the
-    /// launcher while it shows (it has no Console).
+    /// launcher while it shows (it has no Console) or when no project is
+    /// open, so the launcher shows it next (a project named on the
+    /// command line that couldn't be opened, say because a newer Solis
+    /// made it, is said as the program starts on the launcher).
     pub(super) fn say_failed(&mut self, text: String) {
-        if self.workbench.launcher_shown() {
+        if self.workbench.launcher_shown() || self.projects.db().is_none() {
             self.workbench.projects_notice(text.clone());
         }
         self.workbench.log(LogLevel::Error, text);
     }
 
     /// Makes `sample` in `folder` as a new project and opens it on its
-    /// area, or says why it couldn't.
+    /// level, or says why it couldn't.
     pub(super) fn make_sample(&mut self, sample: Sample, folder: &Path) {
         let parts = sample_parts(sample);
         if let Err(why) = (parts.make)(folder) {
@@ -236,8 +239,8 @@ impl App {
 
     fn open_sample(&mut self, parts: &SampleParts, folder: &Path) {
         self.open_project(folder, false);
-        let area = folder.join(asset_db::ASSETS_FOLDER).join(parts.area);
-        self.open_area(&area);
+        let level = folder.join(asset_db::ASSETS_FOLDER).join(parts.level);
+        self.open_level(&level);
         self.workbench.log(LogLevel::Info, parts.ready);
     }
 
@@ -297,7 +300,7 @@ impl App {
         self.sprites.clear();
         self.game_code.forget();
         self.to_place.clear();
-        self.area_files.forget();
+        self.level_files.forget();
         self.projects.close();
         self.workbench.set_project(None);
         self.workbench.set_sounds(self.sounds.states());

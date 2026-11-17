@@ -3,14 +3,14 @@
 //! is clean (red, with the count, while it has mistakes), the branch
 //! (not built yet), and the problems as coloured dots with counts, which
 //! open the Problems tab when clicked. On the right: the context (playing
-//! or paused, saved or not, the area's name with 2D or 3D and a 2D game's
+//! or paused, saved or not, the level's name with 2D or 3D and a 2D game's
 //! size), then the version in mono, and Restart to update while a newer
 //! build waits. For three seconds after a click on an unfinished part,
 //! the context gives way to a line saying so (`unbuilt::said`).
 //!
 //! What it shows is read from counts kept by the code check and by
 //! Problems (each worked out once per change to what it looks at), never
-//! by walking the area here.
+//! by walking the level here.
 
 use crate::icons::Icon;
 use crate::panel::Panel;
@@ -78,12 +78,12 @@ pub struct Status {
     pub problems: usize,
     /// Of them, the mistakes in the game's code and pictures (red).
     pub code_mistakes: usize,
-    /// Whether the area is saved.
+    /// Whether the level is saved.
     pub saved: Part,
     /// Playing or paused; none while editing.
     pub playing: Option<Part>,
-    /// The area's name, 2D or 3D, and a 2D game's size.
-    pub area: String,
+    /// The level's name, 2D or 3D, and a 2D game's size.
+    pub level: String,
     /// What moves snap to and which axes the gizmo follows: "Snap 0.25 ·
     /// World" (spec 233).
     pub snap: String,
@@ -116,7 +116,7 @@ impl Workbench {
                 .more("Home \u{203a} Save (Ctrl+S) keeps them.")
         } else if self.open.document.file().is_none() {
             Part::new("Not saved yet", tokens::text_label())
-                .more("This area has no file yet: Home \u{203a} Save (Ctrl+S) gives it one.")
+                .more("This level has no file yet: Home \u{203a} Save (Ctrl+S) gives it one.")
         } else {
             Part::new("Saved", tokens::text_label())
         };
@@ -127,7 +127,7 @@ impl Workbench {
             }
             PlayState::Paused => Some(Part::new("Paused", tokens::WARNING).marked(Mark::Paused)),
         };
-        let area = if self.viewport.camera.kind == crate::camera::ViewKind::TwoD {
+        let level = if self.viewport.camera.kind == crate::camera::ViewKind::TwoD {
             let [w, h] = self.open.pixels.base;
             format!(
                 "{} \u{b7} 2D \u{b7} {w} \u{d7} {h}",
@@ -142,7 +142,7 @@ impl Workbench {
             code_mistakes: mistakes,
             saved,
             playing,
-            area,
+            level,
             snap: snap_words(
                 &self.viewport.snapping,
                 self.viewport.camera.kind == crate::camera::ViewKind::TwoD,
@@ -196,7 +196,7 @@ impl Workbench {
                     part(ui, &Part::new(said, tokens::text_label()));
                     return;
                 }
-                part(ui, &Part::new(status.area.clone(), tokens::text_label()));
+                part(ui, &Part::new(status.level.clone(), tokens::text_label()));
                 if let Some(brushing) = &status.brushing {
                     part(ui, &Part::new(brushing.clone(), tokens::text_primary()));
                     return;
@@ -291,7 +291,7 @@ fn ready(ui: &mut Ui, code: Option<&Part>) {
 }
 
 /// The problems as coloured dots with counts: the code's mistakes in red,
-/// the areas' problems in amber. Called "No problems" or "N problems"
+/// the levels' problems in amber. Called "No problems" or "N problems"
 /// for screen readers and tests.
 fn counts(ui: &mut Ui, status: &Status) -> egui::Response {
     let others = status.problems - status.code_mistakes;

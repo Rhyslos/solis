@@ -22,7 +22,7 @@ fn playground_with_a_check(name: &str) -> (reflect::test_support::TempFolder, Pa
         &db,
         program,
         MADE_BY,
-        crate::playground::AREA,
+        crate::playground::LEVEL,
         &mut Read::default(),
     )
     .unwrap();
@@ -31,7 +31,7 @@ fn playground_with_a_check(name: &str) -> (reflect::test_support::TempFolder, Pa
         w.play_for(1.0 / 60.0);
     }
     let text = w.recording_text().expect("recording");
-    assert!(text.contains(&format!("\narea {}\n", crate::playground::AREA)));
+    assert!(text.contains(&format!("\nlevel {}\n", crate::playground::LEVEL)));
     let checks = root.join(RECORDINGS).join(CHECKS);
     std::fs::create_dir_all(&checks).unwrap();
     std::fs::write(checks.join("walk.solrec"), text).unwrap();
@@ -54,11 +54,11 @@ fn an_unchanged_project_checks_out() {
 }
 
 #[test]
-fn a_changed_area_or_a_damaged_file_fails() {
+fn a_changed_level_or_a_damaged_file_fails() {
     let (_temp, root) = playground_with_a_check("changed");
-    // A crate moved in the area: the recording no longer plays the same.
-    let area = root.join("assets").join(crate::playground::AREA);
-    let text = std::fs::read_to_string(&area).unwrap();
+    // A crate moved in the level: the recording no longer plays the same.
+    let level = root.join("assets").join(crate::playground::LEVEL);
+    let text = std::fs::read_to_string(&level).unwrap();
     let moved = text.replacen("name = \"Crate", "name = \"Crate moved", 1);
     let moved = {
         let at = moved.find("name = \"Crate moved").unwrap();
@@ -66,8 +66,8 @@ fn a_changed_area_or_a_damaged_file_fails() {
         let start = line + "Transform.position = [".len();
         format!("{}9.5, {}", &moved[..start], &moved[start..])
     };
-    std::fs::write(&area, moved).unwrap();
-    // A damaged sound event, and a recording that names no area.
+    std::fs::write(&level, moved).unwrap();
+    // A damaged sound event, and a recording that names no level.
     std::fs::write(
         root.join("assets/broken.solsound"),
         "sound version 1;\nvolume = \"loud\";",
@@ -82,7 +82,7 @@ fn a_changed_area_or_a_damaged_file_fails() {
     let text = report.text();
     assert!(report.failed >= 3, "{text}");
     assert!(text.contains("FAIL  assets/broken.solsound"), "{text}");
-    assert!(text.contains("doesn't say which area"), "{text}");
+    assert!(text.contains("doesn't say which level"), "{text}");
     assert!(text.contains("walk.solrec"), "{text}");
     assert!(
         text.contains("isn't as it was when this was recorded"),
@@ -99,17 +99,17 @@ fn a_folder_that_isn_t_a_project_fails_at_once() {
 }
 
 #[test]
-fn an_area_outside_the_assets_is_refused() {
+fn a_level_outside_the_assets_is_refused() {
     let root = reflect::test_support::TempFolder::new("check-outside").unwrap();
     asset_db::Project::create(&root, "Out").unwrap();
     let project = asset_db::Project::open(&root).unwrap();
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
     for bad in [
         "../project.solis",
-        "a//b.solarea",
+        "a//b.sollevel",
         "",
-        "a\\..\\..\\x.solarea",
-        "C:/x.solarea",
+        "a\\..\\..\\x.sollevel",
+        "C:/x.sollevel",
     ] {
         let refused = workbench_for(&root, &db, None, MADE_BY, bad, &mut Read::default())
             .err()
@@ -173,16 +173,16 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     std::fs::write(assets.join("main.lst"), CODE).unwrap();
-    let mut area = area::Area::new();
-    let mut hopper = area::EntityData::new("Hopper").with(&area::builtin::Transform::default());
+    let mut level = level::Level::new();
+    let mut hopper = level::EntityData::new("Hopper").with(&level::builtin::Transform::default());
     hopper
         .components
         .insert("Hopper".into(), reflect::ComponentData::default());
-    area.spawn(hopper);
-    let registry = area::builtin::registry().unwrap();
+    level.spawn(hopper);
+    let registry = level::builtin::registry().unwrap();
     std::fs::write(
-        assets.join("hop.solarea"),
-        area::text::write(&area, &registry, &|_| None),
+        assets.join("hop.sollevel"),
+        level::text::write(&level, &registry, &|_| None),
     )
     .unwrap();
     let project = asset_db::Project::open(&root).unwrap();
@@ -195,7 +195,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
         &db,
         program,
         MADE_BY,
-        "hop.solarea",
+        "hop.sollevel",
         &mut Read::default(),
     )
     .unwrap();
@@ -255,7 +255,7 @@ fn a_recording_plays_back_with_the_project_s_tile_maps_and_tilesets() {
         &db,
         None,
         MADE_BY,
-        crate::playground::AREA,
+        crate::playground::LEVEL,
         &mut read,
     )
     .unwrap();
@@ -270,7 +270,7 @@ fn the_check_plays_with_the_project_s_own_2d_settings() {
     // The phase review: the check used the standard 2D settings, so a
     // project with its own tile size played differently there.
     let (_temp, root) = playground_with_a_check("pixels");
-    let settings = area::pixels::PixelSettings {
+    let settings = level::pixels::PixelSettings {
         tile: [32, 32],
         ..Default::default()
     };
@@ -282,7 +282,7 @@ fn the_check_plays_with_the_project_s_own_2d_settings() {
         &db,
         None,
         MADE_BY,
-        crate::playground::AREA,
+        crate::playground::LEVEL,
         &mut Read::default(),
     )
     .unwrap();

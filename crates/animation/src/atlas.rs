@@ -19,7 +19,7 @@
 //! Game code names a crop with the picture's path and its name
 //! (`Picture.Sprites.Tools.Axe` for `sprites/tools.png`'s Axe).
 
-use area::lust_data::{self as data, DataError};
+use level::lust_data::{self as data, DataError};
 
 /// The word before `.lst` in an atlas file's name (`tools.atlas.lst`).
 pub const KIND: &str = "atlas";

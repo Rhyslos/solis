@@ -29,7 +29,7 @@ pub trait Host {
     fn say(&mut self, words: &str);
     /// How long the game has been running, in seconds of game time.
     fn time(&self) -> f64;
-    /// The first entity with this name, in the area's tree order.
+    /// The first entity with this name, in the level's tree order.
     fn find(&self, name: &str) -> Option<EntityId>;
     /// Where an entity is in the world.
     fn position(&self, which: EntityId) -> Option<Vec3>;

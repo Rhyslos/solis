@@ -2,7 +2,7 @@
 //! telling whether a replay matches the game it recorded.
 
 use crate::{Global, Id, Name, Values, World};
-use area::builtin::AudioSource;
+use level::builtin::AudioSource;
 use reflect::EntityId;
 
 impl World {
@@ -18,7 +18,7 @@ impl World {
         // known wherever checksums are compared.
         sum.u64(self.seed);
         // Which entities, in what tree, with what names and component
-        // values: these change only with the area (which starts a new
+        // values: these change only with the level (which starts a new
         // revision), so they're worked out once for it.
         sum.u64(*self.structure.get_or_init(|| {
             let mut structure = reflect::Checksum::new();

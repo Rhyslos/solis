@@ -1,5 +1,5 @@
 //! A toolbox: a column of tools down the left of an editor's view, as
-//! the UI canvas has (round 3, `07-ui-editor-a.png`). The area's own
+//! the UI canvas has (round 3, `07-ui-editor-a.png`). The level's own
 //! tools float at the foot of the view instead (`viewport_tool_bar.rs`,
 //! decision 0114).
 //!

@@ -20,7 +20,7 @@ use std::collections::HashMap;
 /// `solis/maps/…`.
 pub(crate) fn made_in_an_editor(path: &str) -> bool {
     let Some((folder, rest)) = path
-        .strip_prefix(area::lust_data::ENGINE_FOLDER)
+        .strip_prefix(level::lust_data::ENGINE_FOLDER)
         .and_then(|rest| rest.strip_prefix('/'))
         .and_then(|rest| rest.split_once('/'))
     else {
@@ -52,7 +52,7 @@ pub(crate) fn for_lust<'a>(
         if std::mem::replace(&mut reached[at], true) {
             continue;
         }
-        for path in area::lust_guard::fetched(&files[at].1) {
+        for path in level::lust_guard::fetched(&files[at].1) {
             if let Some(&target) = place.get(file_of(path).as_str()) {
                 todo.push(target);
             }

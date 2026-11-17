@@ -4,9 +4,9 @@
 use super::*;
 use crate::console::LogLevel;
 use crate::test_support::*;
-use area::builtin::{Light, Transform};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::builtin::{Light, Transform};
 
 fn run(w: &mut Workbench, line: &str) -> Vec<WorkbenchAction> {
     let mut actions = Vec::new();
@@ -37,7 +37,7 @@ fn answer(w: &Workbench) -> String {
 fn position(w: &Workbench, id: EntityId) -> Vec3 {
     w.open
         .document
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .get::<Transform>()
@@ -60,7 +60,7 @@ fn words_are_split_on_spaces_and_quotes_keep_them_together() {
 
 #[test]
 fn numbers_colours_choices_and_switches_are_read_for_their_field() {
-    let registry = area::builtin::registry().unwrap();
+    let registry = level::builtin::registry().unwrap();
     let field = |c: &str, f: &str| {
         registry
             .get(c)
@@ -181,7 +181,7 @@ fn select_finds_entities_by_name_or_id_and_says_when_nothing_matches() {
     run(&mut w, "select all");
     assert_eq!(
         w.open.document.selection.iter().count(),
-        w.open.document.area().len()
+        w.open.document.level().len()
     );
     run(&mut w, "select Nothing");
     assert_eq!(said(&w).0, LogLevel::Error);
@@ -211,7 +211,7 @@ fn set_changes_every_selected_entity_in_one_undo_step() {
     let light = w
         .open
         .document
-        .area()
+        .level()
         .get(lamp)
         .unwrap()
         .get::<Light>()
@@ -224,7 +224,7 @@ fn set_changes_every_selected_entity_in_one_undo_step() {
     let light = w
         .open
         .document
-        .area()
+        .level()
         .get(lamp)
         .unwrap()
         .get::<Light>()
@@ -246,9 +246,9 @@ fn set_can_t_give_a_light_a_cone_that_crashes_the_viewport() {
     ] {
         run(&mut w, &format!("set Light.cone {typed}"));
         run(&mut w, &format!("set Light.soft_edge {typed}"));
-        let light = w.open.document.area().get(torch).unwrap().get::<Light>();
+        let light = w.open.document.level().get(torch).unwrap().get::<Light>();
         assert_eq!(light.unwrap().cone, cone, "{typed}");
-        let view = crate::area_view::AreaView::of(w.open.document.area(), w.models());
+        let view = crate::level_view::LevelView::of(w.open.document.level(), w.models());
         let lamp = view.lamps[0];
         assert!(
             0.0 <= lamp.inner && lamp.inner <= lamp.outer,
@@ -320,22 +320,22 @@ fn get_shows_a_component_or_one_setting() {
 #[test]
 fn the_other_commands_do_what_their_menus_do() {
     let (mut w, crate_id) = with_a_crate();
-    let entities = w.open.document.area().len();
+    let entities = w.open.document.level().len();
     run(&mut w, "new Harbour wall");
-    assert_eq!(w.open.document.area().len(), entities + 1);
+    assert_eq!(w.open.document.level().len(), entities + 1);
     let new = w.open.document.selection.primary().unwrap();
     assert_eq!(
-        w.open.document.area().get(new).unwrap().name,
+        w.open.document.level().get(new).unwrap().name,
         "Harbour wall"
     );
     run(&mut w, "duplicate");
-    assert_eq!(w.open.document.area().len(), entities + 2);
+    assert_eq!(w.open.document.level().len(), entities + 2);
     run(&mut w, "delete");
-    assert_eq!(w.open.document.area().len(), entities + 1);
+    assert_eq!(w.open.document.level().len(), entities + 1);
     run(&mut w, "undo");
-    assert_eq!(w.open.document.area().len(), entities + 2);
+    assert_eq!(w.open.document.level().len(), entities + 2);
     run(&mut w, "redo");
-    assert_eq!(w.open.document.area().len(), entities + 1);
+    assert_eq!(w.open.document.level().len(), entities + 1);
     w.open.document.selection.clear();
     run(&mut w, "delete");
     assert_eq!(said(&w), (LogLevel::Error, "nothing is selected".into()));
@@ -351,7 +351,7 @@ fn the_other_commands_do_what_their_menus_do() {
     run(&mut w, "find zebra");
     assert!(said(&w).1.contains("Nothing's name"));
 
-    assert_eq!(run(&mut w, "save"), [WorkbenchAction::SaveArea]);
+    assert_eq!(run(&mut w, "save"), [WorkbenchAction::SaveLevel]);
     run(&mut w, "tool rotate");
     assert_eq!(w.tool(), Tool::Rotate);
     run(&mut w, "look unlit");
@@ -466,7 +466,7 @@ fn the_history_walks_back_and_forth_and_keeps_what_was_typed() {
 #[test]
 fn any_command_line_is_answered_without_a_panic() {
     // A small fuzz: random lines from command names, field names, numbers,
-    // quotes and junk. Each gets an answer, and the area stays sound.
+    // quotes and junk. Each gets an answer, and the level stays sound.
     let (mut w, crate_id) = with_a_crate();
     w.add_point_light();
     let pieces = [
@@ -525,8 +525,8 @@ fn any_command_line_is_answered_without_a_panic() {
             assert!(!w.log_lines().is_empty(), "{line:?} got an answer");
         }
         let _ = w.complete(&line);
-        if w.open.document.area().len() > 200 {
-            w.new_area();
+        if w.open.document.level().len() > 200 {
+            w.new_level();
         }
     }
     let _ = crate_id;
@@ -580,8 +580,8 @@ fn the_quote_key_is_left_alone_while_typing_elsewhere() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    // The first text box (the Area column's search), not the command line.
-    h.get_by_label("Search the area by name").click();
+    // The first text box (the Level column's search), not the command line.
+    h.get_by_label("Search the level by name").click();
     h.run();
     h.query_all_by_role(egui::accesskit::Role::TextInput)
         .next()
@@ -660,14 +660,14 @@ fn hero_with_a_score() -> (Workbench, EntityId) {
     unhurried(&mut w);
     w.set_program(Some(program));
     let id = EntityId::random();
-    let mut hero = area::EntityData::new("Hero").with(&Transform::default());
+    let mut hero = level::EntityData::new("Hero").with(&Transform::default());
     hero.components
         .insert("Score".into(), reflect::ComponentData::default());
     w.open
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(id, hero)],
             }],
             None,
@@ -712,14 +712,14 @@ fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
 }
 
 /// The review, BUG-54: `get` shows the game's value, so `set` to the
-/// value the area already holds is a change too. It made no edit at all,
+/// value the level already holds is a change too. It made no edit at all,
 /// and the game never had it.
 #[test]
-fn set_while_playing_reaches_the_game_even_with_the_value_the_area_holds() {
+fn set_while_playing_reaches_the_game_even_with_the_value_the_level_holds() {
     let (mut w, id) = hero_with_a_score();
     w.open.document.selection.select_all([id], id);
     let steps = w.open.document.history().undo_len();
-    // Not playing: the area holds 0 already, so nothing is changed.
+    // Not playing: the level holds 0 already, so nothing is changed.
     run(&mut w, "set Score.points 0");
     assert_eq!(w.open.document.history().undo_len(), steps);
     w.play();
@@ -731,7 +731,7 @@ fn set_while_playing_reaches_the_game_even_with_the_value_the_area_holds() {
     run(&mut w, "get Score.points");
     assert_eq!(answer(&w), "Score.points = 10", "from 0 again");
     // A change of yours, so Stop asks about it; keeping it leaves the
-    // area holding what it held.
+    // level holding what it held.
     w.stop();
     assert_eq!(
         w.play_changes().unwrap(),

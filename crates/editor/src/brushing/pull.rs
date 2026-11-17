@@ -9,7 +9,7 @@
 //! The operation is made once, as it starts, at no distance ([`Pull`]
 //! keeps that mesh and, for each point that moves, where it starts and
 //! which way it goes): every frame after only moves those points, so only
-//! the brush's own preview is drawn anew, never the area's. Extruding and
+//! the brush's own preview is drawn anew, never the level's. Extruding and
 //! insetting move each point in a straight line as the distance grows,
 //! so this is exact.
 //!

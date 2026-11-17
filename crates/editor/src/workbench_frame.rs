@@ -4,7 +4,7 @@
 //! carried out.
 
 use super::{GameKey, ViewKey, Workbench, WorkbenchAction};
-use crate::area_view::AreaView;
+use crate::level_view::LevelView;
 use crate::made_from::MadeFrom;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
@@ -16,8 +16,8 @@ use std::collections::{BTreeMap, HashSet};
 /// (`Workbench::apply_panel_asks`).
 #[derive(Default)]
 struct PanelAsks {
-    /// The Area column's.
-    area: Vec<crate::area_panel::AreaRequest>,
+    /// The Level column's.
+    level: Vec<crate::level_panel::LevelRequest>,
     /// The Library's.
     library: Vec<crate::library::LibraryRequest>,
     /// The Mixer's.
@@ -71,7 +71,7 @@ impl Workbench {
         let live = self.live_animator();
         // Which entities use each code file's components, for the Code
         // panel and the Library (decision 0085): only worked out while
-        // either is in view, and then only when the area changed.
+        // either is in view, and then only when the level changed.
         let code_uses =
             if self.in_front.contains(&Panel::Code) || self.in_front.contains(&Panel::Library) {
                 self.code_uses_now()
@@ -195,7 +195,7 @@ impl Workbench {
             )
         });
         let mut viewer = PanelViewer {
-            area_state: &mut self.open.area_panel,
+            level_state: &mut self.open.level_panel,
             copied: &copied,
             viewport: &mut self.viewport,
             renderer: &mut renderer,
@@ -212,7 +212,7 @@ impl Workbench {
             game_out: &mut asks.game,
             document: &self.open.document,
             models: &self.open.models,
-            area_requests: &mut asks.area,
+            level_requests: &mut asks.level,
             project: self.open.project.as_ref(),
             library: &self.open.library,
             folders: &self.open.folders,
@@ -298,7 +298,7 @@ impl Workbench {
                 playing.game.as_mut().map_or(0, script::Game::len),
                 playing.world.len(),
             ),
-            None => (0, self.open.document.area().len()),
+            None => (0, self.open.document.level().len()),
         };
         let drawn = renderer.inner.take_report();
         self.profiler.end(drawn, components, entities);
@@ -323,7 +323,7 @@ impl Workbench {
         );
         let mut actions = std::mem::take(&mut self.open.outbox);
         // The Environment's Preview time (decision 0092), set in
-        // Properties: the viewport shows the area at that hour.
+        // Properties: the viewport shows the level at that hour.
         self.viewport.preview_hour = self.preview_hour(ui.ctx());
         self.refresh_sheet_pictures(ui.ctx());
         self.viewport.idle = !self.wants_frames(ui.ctx());
@@ -363,7 +363,7 @@ impl Workbench {
         (actions, page)
     }
 
-    /// What the panels show, worked out before they're drawn: the area as
+    /// What the panels show, worked out before they're drawn: the level as
     /// the viewport shows it (again only when something it shows
     /// changed), the tile overlay, the tools, problems and screens. Gives
     /// the code's problems, the names copied and the Game panel's scene
@@ -377,7 +377,7 @@ impl Workbench {
     ) {
         let preparing = std::time::Instant::now();
         // Worked out again only when something it shows changed: while
-        // playing, the area usually doesn't. What's hidden or locked
+        // playing, the level usually doesn't. What's hidden or locked
         // (with everything inside it) is only worked out then too (the
         // phase review, speed): the key holds what was picked, which is
         // small.
@@ -385,15 +385,15 @@ impl Workbench {
             revision: self.open.document.placed(),
             sources: self.sources,
             models: self.open.models.len(),
-            hidden: self.open.area_panel.hidden.clone(),
-            locked: self.open.area_panel.locked.clone(),
+            hidden: self.open.level_panel.hidden.clone(),
+            locked: self.open.level_panel.locked.clone(),
         };
         if self.open.editor_view.as_ref() != Some(&key) {
-            let in_effect = self.open.area_panel.in_effect(&self.open.document);
+            let in_effect = self.open.level_panel.in_effect(&self.open.document);
             let (hidden, locked) = &*in_effect;
             let world = self.open.document.world_matrices();
-            self.viewport.area = AreaView::of_placed(
-                self.open.document.area(),
+            self.viewport.level = LevelView::of_placed(
+                self.open.document.level(),
                 &self.open.document.tree(),
                 &world,
                 &self.open.models,
@@ -401,8 +401,8 @@ impl Workbench {
                 locked,
             );
             self.open.brushes.refresh(&mut self.open.document);
-            self.viewport.area.add_brushes(
-                self.open.document.area(),
+            self.viewport.level.add_brushes(
+                self.open.document.level(),
                 &self.open.brushes,
                 &world,
                 (hidden, locked),
@@ -412,9 +412,9 @@ impl Workbench {
             // Only brushes' own values changed (a brush's insides edited,
             // Tools 1a B3): their entries take their new models, and
             // nothing else is worked out again.
-            self.viewport.area.refresh_brush_models(&self.open.brushes);
+            self.viewport.level.refresh_brush_models(&self.open.brushes);
         }
-        self.viewport.entities = self.open.document.area().len();
+        self.viewport.entities = self.open.document.level().len();
         self.viewport.placing = self.placing();
         self.set_tile_overlay();
         self.sync_brush_edit();
@@ -454,7 +454,7 @@ impl Workbench {
                 let names: Vec<String> = self
                     .open
                     .document
-                    .area()
+                    .level()
                     .get(id)
                     .map(|e| e.components.keys().cloned().collect())
                     .unwrap_or_default();
@@ -515,7 +515,7 @@ impl Workbench {
     /// Carries out what the panels asked for while they were drawn, in
     /// order: the Build page, the file tabs, the map, the tile overlay and
     /// painting, the Game panel, the tools, Properties, the Library, the
-    /// Mixer, the sound picked, the Console and the Area column.
+    /// Mixer, the sound picked, the Console and the Level column.
     fn apply_panel_asks(
         &mut self,
         ui: &mut Ui,
@@ -554,10 +554,10 @@ impl Workbench {
         for request in asks.console {
             self.console_request(request, ui.ctx(), actions);
         }
-        for request in asks.area {
+        for request in asks.level {
             match request {
-                crate::area_panel::AreaRequest::Command(command) => self.run(command, ui.ctx()),
-                other => self.apply_area_request(other),
+                crate::level_panel::LevelRequest::Command(command) => self.run(command, ui.ctx()),
+                other => self.apply_level_request(other),
             }
         }
     }

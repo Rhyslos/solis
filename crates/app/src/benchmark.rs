@@ -1,30 +1,30 @@
 //! The benchmark (Phase 5, decision 0030): **Make the benchmark…** (File > Learn, or the search)
 //! writes a project into a folder: two fleets of ships (a model Solis
 //! makes, nothing proprietary) flying loops and firing lasers, written in
-//! Lust, in three areas: the target level (2,000 ships and 20,000
+//! Lust, in three levels: the target level (2,000 ships and 20,000
 //! lasers), the stress level (10,000 and 100,000) and the ceiling run,
 //! which adds ships until 60 frames a second ends and says where.
 
-use area::builtin::{Camera, Model, Transform};
-use area::text::{AreaFile, FileKind};
-use area::{Area, EntityData};
 use asset_db::{Project, Sidecar};
 use glam::{Quat, Vec3};
+use level::builtin::{Camera, Model, Transform};
+use level::text::{FileKind, LevelFile};
+use level::{EntityData, Level};
 use reflect::{AssetId, AssetRef, ComponentData, EntityId, Id, Value};
 use std::path::Path;
 
 /// The benchmark's name, as its project file has it.
 pub const NAME: &str = "Benchmark";
 
-/// The areas, as (file in the assets, ships made; 0 for the ceiling run).
-pub const AREAS: [(&str, u32); 3] = [
-    ("target.solarea", 2_000),
-    ("stress.solarea", 10_000),
-    ("ceiling.solarea", 0),
+/// The levels, as (file in the assets, ships made; 0 for the ceiling run).
+pub const LEVELS: [(&str, u32); 3] = [
+    ("target.sollevel", 2_000),
+    ("stress.sollevel", 10_000),
+    ("ceiling.sollevel", 0),
 ];
 
-/// The area the benchmark opens on.
-pub const FIRST_AREA: &str = AREAS[0].0;
+/// The level the benchmark opens on.
+pub const FIRST_LEVEL: &str = LEVELS[0].0;
 
 /// The ship's model, its assembly, and the game's code, inside the assets.
 const SHIP_MODEL: &str = "ships/fighter.glb";
@@ -60,18 +60,18 @@ pub fn files() -> Vec<(String, Vec<u8>)> {
         format!("{SHIP_MODEL}.{}", asset_db::sidecar::EXTENSION),
         sidecar.to_text().into_bytes(),
     ));
-    let registry = area::builtin::registry().ok();
+    let registry = level::builtin::registry().ok();
     let empty = reflect::Registry::default();
     let registry = registry.as_ref().unwrap_or(&empty);
     let path_of = |id: AssetId| (id == ship_model()).then(|| SHIP_MODEL.to_string());
     files.push((
         SHIP_ASSEMBLY.to_string(),
-        area::text::write_file(&fighter(), registry, &path_of).into_bytes(),
+        level::text::write_file(&fighter(), registry, &path_of).into_bytes(),
     ));
-    for (name, ships) in AREAS {
+    for (name, ships) in LEVELS {
         files.push((
             name.to_string(),
-            area::text::write(&level(ships), registry, &path_of).into_bytes(),
+            level::text::write(&level(ships), registry, &path_of).into_bytes(),
         ));
     }
     files
@@ -79,7 +79,7 @@ pub fn files() -> Vec<(String, Vec<u8>)> {
 
 /// The fighter assembly: one entity with the ship's model and its Lust
 /// component.
-fn fighter() -> AreaFile {
+fn fighter() -> LevelFile {
     let root = entity(1);
     let mut ship = EntityData::new("Fighter").with(&Transform::default());
     ship.set(&Model {
@@ -90,20 +90,20 @@ fn fighter() -> AreaFile {
     });
     ship.components
         .insert("Ship".into(), ComponentData::default());
-    let mut area = Area::new();
-    area.insert(root, ship);
-    AreaFile {
+    let mut level = Level::new();
+    level.insert(root, ship);
+    LevelFile {
         kind: FileKind::Assembly { root },
-        area,
+        level,
         overrides: Default::default(),
     }
 }
 
-/// An area for a level making `ships` ships (the ceiling run for 0): the
+/// A level for a level making `ships` ships (the ceiling run for 0): the
 /// sun and sky, a camera looking over the field from one end, and the
 /// entity whose component makes the fleets.
-fn level(ships: u32) -> Area {
-    let mut area = area::builtin::starter_area();
+fn level(ships: u32) -> Level {
+    let mut level = level::builtin::starter_level();
     // Looking along +Y, tilted 35° down, from behind the field and above.
     let camera = EntityData::new("Camera")
         .with(&Transform {
@@ -115,7 +115,7 @@ fn level(ships: u32) -> Area {
             far: 3000.0,
             ..Camera::default()
         });
-    area.insert(entity(10), camera);
+    level.insert(entity(10), camera);
     let mut fleets = EntityData::new("Fleets");
     let mut data = ComponentData::default();
     if ships == 0 {
@@ -124,8 +124,8 @@ fn level(ships: u32) -> Area {
         data.set("ships", Value::Int(i64::from(ships)));
         fleets.components.insert("Fleets".into(), data);
     }
-    area.insert(entity(11), fleets);
-    area
+    level.insert(entity(11), fleets);
+    level
 }
 
 /// Makes `root` the benchmark: a new project with its files. Refuses a
@@ -193,13 +193,13 @@ mod tests {
 
     #[test]
     fn its_files_read_back() {
-        let registry = area::builtin::registry().unwrap();
+        let registry = level::builtin::registry().unwrap();
         for (path, bytes) in files() {
             let text = String::from_utf8_lossy(&bytes);
-            if path.ends_with(".solarea") || path.ends_with(".solassembly") {
-                let file = area::text::read_file(&text, &registry)
+            if path.ends_with(".sollevel") || path.ends_with(".solassembly") {
+                let file = level::text::read_file(&text, &registry)
                     .unwrap_or_else(|e| panic!("{path}: {e}"));
-                assert!(!file.area.is_empty(), "{path}");
+                assert!(!file.level.is_empty(), "{path}");
             }
             if path.ends_with(".solmeta") {
                 let sidecar = Sidecar::parse(&text).unwrap();
@@ -213,7 +213,7 @@ mod tests {
         let folder = reflect::test_support::TempFolder::new("benchmark").unwrap();
         make(&folder).unwrap();
         assert!(folder.join("assets/ships/fighter.glb").exists());
-        assert!(folder.join("assets/ceiling.solarea").exists());
+        assert!(folder.join("assets/ceiling.sollevel").exists());
         assert!(make(&folder).is_err());
     }
 }
@@ -223,11 +223,11 @@ mod play_tests {
     use super::*;
 
     /// The benchmark made in a fresh folder, its code running in a
-    /// workbench that knows its fighter, with `area` open and its fleets
+    /// workbench that knows its fighter, with the level `file` open and its fleets
     /// (or ceiling run) changed by `tweak`.
     pub(super) fn playing(
         name: &str,
-        area: &str,
+        file: &str,
         tweak: impl Fn(&mut ComponentData),
     ) -> editor::Workbench {
         let root = reflect::test_support::TempFolder::new(&format!("bench-{name}")).unwrap();
@@ -245,7 +245,7 @@ mod play_tests {
         });
         w.set_program(Some(std::sync::Arc::new(compiled)));
         let registry = w.document().registry.clone();
-        let fighter = area::text::read_file(
+        let fighter = level::text::read_file(
             &std::fs::read_to_string(assets.join(SHIP_ASSEMBLY)).unwrap(),
             &registry,
         )
@@ -259,8 +259,8 @@ mod play_tests {
             path: SHIP_ASSEMBLY.into(),
             thumbnail: None,
         }]);
-        let mut level = area::text::read(
-            &std::fs::read_to_string(assets.join(area)).unwrap(),
+        let mut level = level::text::read(
+            &std::fs::read_to_string(assets.join(file)).unwrap(),
             &registry,
         )
         .unwrap();
@@ -272,13 +272,13 @@ mod play_tests {
         for data in level.get_mut(fleets).unwrap().components.values_mut() {
             tweak(data);
         }
-        w.open_area(level, assets.join(area));
+        w.open_level(level, assets.join(file));
         w
     }
 
     #[test]
     fn the_target_level_makes_its_fleets_and_they_fly_and_fire() {
-        let mut w = playing("target", "target.solarea", |d| {
+        let mut w = playing("target", "target.sollevel", |d| {
             d.set("ships", Value::Int(60));
         });
         w.play();
@@ -294,7 +294,7 @@ mod play_tests {
             "{said:?}"
         );
         let world = w.world().unwrap();
-        let ships = world.placed::<area::builtin::Model>();
+        let ships = world.placed::<level::builtin::Model>();
         assert_eq!(ships.len(), 60, "{said:?}");
         // Ten lasers a ship once they've been flying long enough; after a
         // second and a half, nearly that.
@@ -308,7 +308,7 @@ mod play_tests {
 
     #[test]
     fn the_ceiling_run_adds_ships_until_60_fps_ends_and_says_where() {
-        let mut w = playing("ceiling", "ceiling.solarea", |d| {
+        let mut w = playing("ceiling", "ceiling.sollevel", |d| {
             d.set("step", Value::Int(20));
         });
         w.play();
@@ -351,7 +351,7 @@ mod picture_tests {
         let Some(dir) = std::env::var_os("DUMP_DIR") else {
             return;
         };
-        let mut w = playing("picture", "target.solarea", |_| {});
+        let mut w = playing("picture", "target.sollevel", |_| {});
         w.play();
         for _ in 0..150 {
             w.play_for(1.0 / 60.0);
@@ -376,7 +376,7 @@ mod picture_tests {
         .unwrap();
         let ship = renderer.upload_model(&device, &queue, &model);
         let placed: Vec<render::Placement<'_>> = world
-            .placed::<area::builtin::Model>()
+            .placed::<level::builtin::Model>()
             .into_iter()
             .map(|(_, _, transform)| render::Placement {
                 model: &ship,

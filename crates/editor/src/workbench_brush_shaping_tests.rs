@@ -14,11 +14,11 @@ use crate::panel::Panel;
 use crate::test_support::*;
 use crate::viewport::Tool;
 use crate::viewport_tools::ViewportEvent;
-use area::EntityData;
-use area::builtin::Transform;
 use egui::{Key, Modifiers, Pos2};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::Transform;
 use reflect::EntityId;
 
 type H = egui_kittest::Harness<'static, State>;
@@ -59,13 +59,13 @@ fn steps(h: &H) -> usize {
     h.state().0.document().history().undo_len()
 }
 
-/// The brush's mesh as the area holds it.
+/// The brush's mesh as the level holds it.
 fn mesh_of(h: &H, id: EntityId) -> mesh::Mesh {
     let brush = h
         .state()
         .0
         .document()
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .get::<Brush>();
@@ -139,12 +139,12 @@ fn keep(h: &mut H) {
     h.run();
 }
 
-/// The area written and read back: the brush's mesh as reopened.
+/// The level written and read back: the brush's mesh as reopened.
 fn reopened(h: &H, id: EntityId) -> mesh::Mesh {
     let w = &h.state().0;
-    let registry = area::builtin::registry().unwrap();
-    let text = area::text::write(w.document().area(), &registry, &|_| None);
-    let read = area::text::read(&text, &registry).unwrap();
+    let registry = level::builtin::registry().unwrap();
+    let text = level::text::write(w.document().level(), &registry, &|_| None);
+    let read = level::text::read(&text, &registry).unwrap();
     let brush = read.get(id).unwrap().get::<Brush>().unwrap();
     assert!(!brush.damaged);
     (*brush.mesh).clone()
@@ -342,7 +342,7 @@ fn shift_on_the_gizmo_is_extruding_and_not_fine_moves() {
     w.viewport.tools.events.clear();
     w.viewport
         .tools
-        .interact(press, &camera, &w.viewport.area, &snapping, size, 1.0);
+        .interact(press, &camera, &w.viewport.level, &snapping, size, 1.0);
     assert_eq!(
         w.viewport.tools.events,
         [ViewportEvent::GizmoStart { extrude: true }]
@@ -633,7 +633,7 @@ fn delete_outside_editing_still_deletes_the_entity() {
     let mut h = rest_over(harness(w), Panel::Viewport);
     h.key_press(Key::Delete);
     h.run();
-    assert!(!h.state().0.document().area().contains(id));
+    assert!(!h.state().0.document().level().contains(id));
 }
 
 /// A box's lists with its first face left out (`turn`: turned round

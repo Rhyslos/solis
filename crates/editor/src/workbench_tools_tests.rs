@@ -48,7 +48,7 @@ fn ctrl_click_adds_and_takes_away() {
         .state()
         .0
         .viewport
-        .area
+        .level
         .pickable
         .iter()
         .position(|&e| e == id)
@@ -224,7 +224,7 @@ fn dragging_the_x_arrow() -> (egui_kittest::Harness<'static, State>, EntityId, P
 fn position(w: &Workbench, id: EntityId) -> Vec3 {
     w.open
         .document
-        .area()
+        .level()
         .get(id)
         .and_then(|e| e.get::<Transform>())
         .unwrap()
@@ -314,7 +314,7 @@ fn esc_selects_nothing_and_ctrl_a_selects_everything() {
     h.run();
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
     h.run();
-    let count = h.state().0.open.document.area().len();
+    let count = h.state().0.open.document.level().len();
     assert_eq!(h.state().0.open.document.selection.iter().count(), count);
     assert!(h.state().0.open.document.selection.contains(id));
     h.key_press(egui::Key::Escape);

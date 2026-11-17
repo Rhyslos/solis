@@ -19,9 +19,9 @@ type Reader = fn(&str) -> Result<(), String>;
 
 fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
     vec![
-        ("area", &area::text::FORMAT, |text| {
-            let registry = area::builtin::registry().map_err(|e| e.to_string())?;
-            area::text::read_file(text, &registry)
+        ("area", &level::text::FORMAT, |text| {
+            let registry = level::builtin::registry().map_err(|e| e.to_string())?;
+            level::text::read_file(text, &registry)
                 .map(drop)
                 .map_err(|e| e.to_string())
         }),
@@ -41,8 +41,8 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 Err(format!("notes: {:?}", read.notes))
             }
         }),
-        ("pixels", &area::pixels::FORMAT, |text| {
-            let read = area::pixels::read(text).map_err(|e| e.to_string())?;
+        ("pixels", &level::pixels::FORMAT, |text| {
+            let read = level::pixels::read(text).map_err(|e| e.to_string())?;
             if read.notes.is_empty() {
                 Ok(())
             } else {
@@ -107,6 +107,11 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
         ("sidecar", &asset_db::SIDECAR_FORMAT, |text| {
             asset_db::Sidecar::parse(text).map(drop)
         }),
+        (
+            "playtest",
+            &editor::export_dialog::PLAYTEST_FORMAT,
+            |text| editor::export_dialog::Playtest::parse(text).map(drop),
+        ),
     ]
 }
 
@@ -238,7 +243,7 @@ fn an_older_save_in_a_slot_is_kept_before_it_s_replaced() {
     let slot = crate::play_files::save_path(&root, "quick").unwrap();
     std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
     std::fs::write(&slot, &old).unwrap();
-    let current = std::fs::read_to_string(fixtures().join("save/v8/harbour.solsave")).unwrap();
+    let current = std::fs::read_to_string(fixtures().join("save/v9/harbour.solsave")).unwrap();
     let (path, copy) = crate::play_files::save_game(&root, "quick", &current).unwrap();
     let copy = copy.expect("kept");
     assert_eq!(std::fs::read(&copy).unwrap(), old);
@@ -253,8 +258,8 @@ fn a_newer_save_in_a_slot_is_kept_before_it_s_replaced() {
     // Regression (the Phase 8 review): a save from a newer Solis (tried,
     // then gone back from) was overwritten with no copy.
     let root = project("newer-save");
-    let current = std::fs::read_to_string(fixtures().join("save/v8/harbour.solsave")).unwrap();
-    let newer = current.replacen("solis save 8", "solis save 9", 1);
+    let current = std::fs::read_to_string(fixtures().join("save/v9/harbour.solsave")).unwrap();
+    let newer = current.replacen("solis save 9", "solis save 10", 1);
     let slot = crate::play_files::save_path(&root, "quick").unwrap();
     std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
     std::fs::write(&slot, &newer).unwrap();

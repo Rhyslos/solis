@@ -455,7 +455,7 @@ impl GameAudio {
     /// take and how it's varied), and a new one starts its clock.
     fn loop_candidates<'a>(
         &mut self,
-        sources: &[(EntityId, area::builtin::AudioSource, glam::Vec3)],
+        sources: &[(EntityId, level::builtin::AudioSource, glam::Vec3)],
         (hearing, hearer): ([f32; 3], Option<&editor::Hearer>),
         workbench: &Workbench,
         sounds: &'a crate::sounds::Sounds,
@@ -579,7 +579,7 @@ impl GameAudio {
 /// The reverbs heard from `hearing` among `zones` (each with where it's
 /// drawn now): each zone's preset and how much of it.
 fn reverbs_heard(
-    zones: &[(area::builtin::ReverbZone, glam::Mat4)],
+    zones: &[(level::builtin::ReverbZone, glam::Mat4)],
     hearing: [f32; 3],
 ) -> Vec<(sound::reverb::Preset, f32)> {
     use sound::reverb::{Preset, Shape, ZoneHere};
@@ -594,8 +594,8 @@ fn reverbs_heard(
                 .to_array();
             ZoneHere {
                 shape: match zone.shape {
-                    area::builtin::ZoneShape::Box => Shape::Box(zone.size.to_array()),
-                    area::builtin::ZoneShape::Ball => Shape::Ball(zone.radius),
+                    level::builtin::ZoneShape::Box => Shape::Box(zone.size.to_array()),
+                    level::builtin::ZoneShape::Ball => Shape::Ball(zone.radius),
                 },
                 soft_m: zone.soft_edge,
                 preset: Preset::named(&zone.preset).unwrap_or_default(),
@@ -774,8 +774,8 @@ mod tests {
 #[cfg(test)]
 mod reverb_tests {
     use super::*;
-    use area::builtin::{ReverbZone, ZoneShape};
     use glam::{Mat4, Quat, Vec3};
+    use level::builtin::{ReverbZone, ZoneShape};
     use sound::reverb::Preset;
 
     #[test]

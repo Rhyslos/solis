@@ -7,9 +7,9 @@ use super::*;
 use crate::camera::{FIRST_ZOOM, ZOOM_STEPS};
 use crate::test_support::*;
 use crate::transforming::{PixelSnap, Snapping, Targets, snapped_in_2d};
-use area::pixels::{PixelSettings, Scaling};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::pixels::{PixelSettings, Scaling};
 
 fn two_d(position: Vec3, zoom: f32) -> Camera {
     Camera {
@@ -244,18 +244,18 @@ fn a_camera_added_in_the_2d_view_is_a_2d_camera_on_a_whole_pixel_and_is_framed()
     let mut w = crate::workbench::Workbench::new(info());
     w.viewport.camera = two_d(Vec3::new(3.01, -1.47, 0.0), 2.0);
     let id = w.add_camera();
-    let entity = w.open.document.area().get(id).unwrap();
-    let camera = entity.get::<area::builtin::Camera>().unwrap();
-    assert_eq!(camera.view, area::builtin::CameraView::TwoD);
-    let at = entity.get::<area::builtin::Transform>().unwrap().position;
+    let entity = w.open.document.level().get(id).unwrap();
+    let camera = entity.get::<level::builtin::Camera>().unwrap();
+    assert_eq!(camera.view, level::builtin::CameraView::TwoD);
+    let at = entity.get::<level::builtin::Transform>().unwrap().position;
     assert_eq!((at.x * 16.0, at.y * 16.0), (48.0, -24.0));
     assert!(at.z > 10.0, "above what it sees");
     // The 2D view frames what it shows; it's the game's own.
-    let view = crate::area_view::AreaView::of(w.open.document.area(), &w.open.models);
+    let view = crate::level_view::LevelView::of(w.open.document.level(), &w.open.models);
     assert_eq!(view.screens, vec![(at, true)]);
     // A second 2D camera is framed too, but isn't the game's.
     let second = w.add_camera();
-    let view = crate::area_view::AreaView::of(w.open.document.area(), &w.open.models);
+    let view = crate::level_view::LevelView::of(w.open.document.level(), &w.open.models);
     assert_eq!(view.screens.len(), 2);
     assert_eq!(view.screens.iter().filter(|(_, game)| *game).count(), 1);
     let _ = second;
@@ -265,12 +265,12 @@ fn a_camera_added_in_the_2d_view_is_a_2d_camera_on_a_whole_pixel_and_is_framed()
     let camera = w
         .open
         .document
-        .area()
+        .level()
         .get(third)
         .unwrap()
-        .get::<area::builtin::Camera>()
+        .get::<level::builtin::Camera>()
         .unwrap();
-    assert_eq!(camera.view, area::builtin::CameraView::Perspective);
+    assert_eq!(camera.view, level::builtin::CameraView::Perspective);
 }
 
 /// Opens File > Preferences on the 2D page, with a project open or not.

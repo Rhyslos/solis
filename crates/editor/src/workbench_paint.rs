@@ -134,9 +134,9 @@ impl Workbench {
 
     /// B, U, N, G and I pick a painting tool while a map is selected; Tab
     /// shows its art or its meaning; X, Y and Z flip and turn a copy
-    /// held, where the keys are the area's. Not while flying.
+    /// held, where the keys are the level's. Not while flying.
     pub(crate) fn paint_keys(&mut self, ui: &egui::Ui) {
-        if !self.keys.is_area()
+        if !self.keys.is_level()
             || self.viewport.is_flying()
             || !self.viewport.tile_overlay.paint.allowed
         {

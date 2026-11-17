@@ -370,7 +370,7 @@ impl GameCode {
                     let code = script::gather(&assets);
                     let found = hash(&code);
                     // Most changes in the assets aren't code (a model, the
-                    // area saved): then there's nothing to compile.
+                    // level saved): then there's nothing to compile.
                     let compiled = (last != Some(found)).then(|| check(&code));
                     (described, found, code, compiled)
                 });
@@ -891,12 +891,12 @@ mod fast_changes {
             }
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
-        let mut area = area::builtin::starter_area();
-        let mut cart = area::EntityData::new("Cart");
+        let mut level = level::builtin::starter_level();
+        let mut cart = level::EntityData::new("Cart");
         cart.components
             .insert("Mover".into(), reflect::ComponentData::default());
-        area.spawn(cart);
-        w.open_area(area, "cart.solarea".into());
+        level.spawn(cart);
+        w.open_level(level, "cart.sollevel".into());
         w.play();
         let watcher = asset_db::Watcher::new(&assets).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(800));

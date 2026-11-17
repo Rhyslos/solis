@@ -8,10 +8,10 @@ use crate::viewport::Tool;
 use egui::Ui;
 
 impl Workbench {
-    /// Q, W, R, S and T pick the tools, where the keys are the area's.
+    /// Q, W, R, S and T pick the tools, where the keys are the level's.
     pub(crate) fn tool_keys(&mut self, ui: &Ui) {
         // While flying, W A S D, Q and E move the camera instead.
-        if !self.keys.is_area() || self.viewport.is_flying() {
+        if !self.keys.is_level() || self.viewport.is_flying() {
             return;
         }
         let pressed = ui.input(|i| {
@@ -91,8 +91,8 @@ impl Workbench {
             | KeyOwner::Binding
             | KeyOwner::Field
             | KeyOwner::Page => {}
-            KeyOwner::Area if redo => self.redo(),
-            KeyOwner::Area => self.undo(),
+            KeyOwner::Level if redo => self.redo(),
+            KeyOwner::Level => self.undo(),
             // Over the Map tab, or painting: the map's changes.
             KeyOwner::Map => self.map_undo(redo, undo),
             KeyOwner::Clips | KeyOwner::Frames => self.frames_undo(redo, undo),
@@ -120,18 +120,18 @@ impl Workbench {
             let save_as =
                 egui::KeyboardShortcut::new(command | egui::Modifiers::SHIFT, egui::Key::S);
             [
-                (save_as, WorkbenchAction::SaveAreaAs),
+                (save_as, WorkbenchAction::SaveLevelAs),
                 (
                     egui::KeyboardShortcut::new(command, egui::Key::S),
-                    WorkbenchAction::SaveArea,
+                    WorkbenchAction::SaveLevel,
                 ),
                 (
                     egui::KeyboardShortcut::new(command, egui::Key::N),
-                    WorkbenchAction::NewArea,
+                    WorkbenchAction::NewLevel,
                 ),
                 (
                     egui::KeyboardShortcut::new(command, egui::Key::O),
-                    WorkbenchAction::OpenArea,
+                    WorkbenchAction::OpenLevel,
                 ),
             ]
             .into_iter()
@@ -145,18 +145,18 @@ impl Workbench {
 
     /// Delete deletes the selection, Ctrl+D duplicates it, F2 renames it
     /// and F frames it (decided with the project lead, 2026-10-23), where
-    /// the keys are the area's: over a tab with a file of its own they are
-    /// that tab's, and never reach the area as well. Not while flying.
+    /// the keys are the level's: over a tab with a file of its own they are
+    /// that tab's, and never reach the level as well. Not while flying.
     pub(crate) fn editing_keys(&mut self, ui: &Ui, actions: &mut Vec<WorkbenchAction>) {
         if self.viewport.is_flying() {
             return;
         }
         // Over the Library or the Assets column, F2 and Delete are the
-        // picked file's: on the Library tab too, where the area's own
+        // picked file's: on the Library tab too, where the level's own
         // keys rest.
-        let files = (self.keys.is_area() || self.keys == KeyOwner::Page)
+        let files = (self.keys.is_level() || self.keys == KeyOwner::Page)
             && self.file_keys_over_the_library(ui, actions);
-        if !self.keys.is_area() {
+        if !self.keys.is_level() {
             return;
         }
         let (delete, duplicate, rename, frame) = ui.input_mut(|i| {
@@ -180,9 +180,9 @@ impl Workbench {
         if rename
             && !files
             && let Some(id) = self.open.document.selection.primary()
-            && let Some(entity) = self.open.document.area().get(id)
+            && let Some(entity) = self.open.document.level().get(id)
         {
-            crate::area_panel::begin_rename(ui.ctx(), id, &entity.name);
+            crate::level_panel::begin_rename(ui.ctx(), id, &entity.name);
         }
         if frame {
             self.frame_selection();

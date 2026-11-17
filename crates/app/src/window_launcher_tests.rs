@@ -153,6 +153,31 @@ fn the_program_starts_on_the_launcher_unless_a_project_is_named() {
         ..Default::default()
     });
     assert!(app.workbench.launcher_shown());
+    let said = app
+        .workbench
+        .launcher_notice()
+        .expect("said on the launcher");
+    assert!(said.contains("nothing here"), "{said}");
+    // One a newer Solis made: the launcher says so, as the program starts
+    // (found trying R1's build on a project R2 had upgraded, which went
+    // to the launcher without a word).
+    let newer = base.join("Newer");
+    std::fs::create_dir_all(&newer).unwrap();
+    std::fs::write(
+        newer.join(asset_db::PROJECT_FILE),
+        "name = \"Newer\"\nformat = 99\n",
+    )
+    .unwrap();
+    let (_, app) = app_with(crate::cli::Launch {
+        project: Some(newer),
+        ..Default::default()
+    });
+    assert!(app.workbench.launcher_shown());
+    let said = app
+        .workbench
+        .launcher_notice()
+        .expect("said on the launcher");
+    assert!(said.contains("made by a newer version"), "{said}");
 }
 
 #[test]
@@ -210,7 +235,11 @@ fn a_sample_starter_is_made_under_the_name_and_kind_chosen() {
     let summary = asset_db::Project::summary(&root).unwrap();
     assert_eq!(summary.name, "My turret");
     assert_eq!(summary.kind, asset_db::ProjectKind::Both);
-    assert!(root.join("assets").join(crate::sample_game::AREA).is_file());
+    assert!(
+        root.join("assets")
+            .join(crate::sample_game::LEVEL)
+            .is_file()
+    );
     assert_eq!(app.workbench.project().unwrap().name, "My turret");
 }
 

@@ -1,5 +1,7 @@
 # 0020. Scene and prefab files: Lust-style data, made for Git
 
+> **Scenes became areas ([decision 0023](0023-areas-and-assemblies.md)), and areas are levels now** ([decision 0118](0118-the-editor-rethink.md)): what this record calls a scene is a level, and its file ends `.sollevel`. The record keeps the words of its time.
+
 - **Status:** Accepted
 - **Date:** 2026-10-23
 - **Wording:** scenes are now called *areas* and prefabs *assemblies* ([decision 0023](0023-areas-and-assemblies.md)).

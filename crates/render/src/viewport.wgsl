@@ -939,7 +939,7 @@ fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
         discard;
     }
     var colour = decode(texel.rgb) * in.tint.rgb;
-    // Lit by the day and the lamps, when the area says so; a hit's flash
+    // Lit by the day and the lamps, when the level says so; a hit's flash
     // goes on top, as bright at night as by day.
     if frame.sprite_light.w >= 0.0 {
         colour = colour * sprite_lit(in.world);

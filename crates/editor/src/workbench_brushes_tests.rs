@@ -7,10 +7,10 @@
 use super::*;
 use crate::test_support::*;
 use crate::workbench_tiles::tests::with_map;
-use area::builtin::Brush;
 use egui::{Key, Pos2};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::builtin::Brush;
 use reflect::{Component, Value};
 
 type H = egui_kittest::Harness<'static, State>;
@@ -124,8 +124,8 @@ fn a_click_on_a_row_takes_it_and_a_click_elsewhere_closes_the_list() {
     let w = &h.state().0;
     assert!(!w.viewport.brushing.is_active(), "closed, nothing taken");
     assert_eq!(
-        w.document().area().len(),
-        Workbench::new(info()).document().area().len()
+        w.document().level().len(),
+        Workbench::new(info()).document().level().len()
     );
 }
 
@@ -199,10 +199,10 @@ fn pull_up_and_click(h: &mut H, from: Pos2, up: f32) {
 }
 
 fn brushes(w: &Workbench) -> Vec<(String, Brush)> {
-    let area = w.document().area();
-    let mut found: Vec<(String, Brush)> = area
+    let level = w.document().level();
+    let mut found: Vec<(String, Brush)> = level
         .with::<Brush>()
-        .map(|(id, b)| (area.get(id).unwrap().name.clone(), b))
+        .map(|(id, b)| (level.get(id).unwrap().name.clone(), b))
         .collect();
     found.sort_by(|a, b| a.0.cmp(&b.0));
     found
@@ -231,13 +231,13 @@ fn a_brush_drawn_out_is_one_undo_step_named_after_its_shape_and_picked() {
         "on the grid's step: {size}"
     );
     let id = w.selection().expect("picked");
-    assert_eq!(w.document().area().get(id).unwrap().name, "Box_01");
+    assert_eq!(w.document().level().get(id).unwrap().name, "Box_01");
     let transform = w
         .document()
-        .area()
+        .level()
         .get(id)
         .unwrap()
-        .get::<area::builtin::Transform>()
+        .get::<level::builtin::Transform>()
         .unwrap();
     assert_eq!(transform.position, Vec3::new(2.0, 1.5, 0.0));
     assert_eq!(w.document().history().undo_len(), undo_before + 1);
@@ -283,12 +283,12 @@ fn a_brush_drawn_on_top_of_another_stands_on_it() {
     let id = w.selection().unwrap();
     let placed = w
         .document()
-        .area()
+        .level()
         .get(id)
         .unwrap()
-        .get::<area::builtin::Transform>()
+        .get::<level::builtin::Transform>()
         .unwrap();
-    assert_eq!(w.document().area().get(id).unwrap().name, "Box_02");
+    assert_eq!(w.document().level().get(id).unwrap().name, "Box_02");
     assert!(
         (placed.position.z - top).abs() < 1e-4,
         "{} on {top}",
@@ -406,11 +406,11 @@ fn a_damaged_brush_is_named_in_the_problems_list_with_why() {
             Value::Int(99),
         ]),
     );
-    let mut area = area::Area::new();
-    let mut entity = area::EntityData::new("Broken");
+    let mut level = level::Level::new();
+    let mut entity = level::EntityData::new("Broken");
     entity.components.insert(Brush::NAME.into(), data);
-    area.spawn(entity);
-    w.open_area(area, std::path::PathBuf::from("broken.solarea"));
+    level.spawn(entity);
+    w.open_level(level, std::path::PathBuf::from("broken.sollevel"));
     let mut h = harness(w);
     h.run();
     h.run();

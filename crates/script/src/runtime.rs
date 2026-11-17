@@ -350,7 +350,7 @@ impl Runtime {
     /// code's start fails, the old code keeps running. If giving the
     /// running components the new code fails partway (out of time or
     /// memory), they all stop, and the next [`Runtime::sync`] starts them
-    /// again from the area's values, with a note saying so. Rust
+    /// again from the level's values, with a note saying so. Rust
     /// components carry on.
     pub fn swap(&mut self, code: &Compiled, host: &mut dyn Host) -> Result<Swapped, Failure> {
         let (lust, classes) = self.prepare(code, host)?;
@@ -382,7 +382,7 @@ impl Runtime {
                 .retain(|_, r| matches!(r.instance, Instance::Rust(_)));
             swapped.notes.push(format!(
                 "The running components couldn't all take the new code ({}), so they started \
-                 again from the area's values.",
+                 again from the level's values.",
                 lua_problem("", &err).message
             ));
         }
@@ -482,7 +482,7 @@ impl Runtime {
         self.running.is_empty()
     }
 
-    /// Makes `entity`'s component `name` run, with the area's `data` (a
+    /// Makes `entity`'s component `name` run, with the level's `data` (a
     /// missing or wrong value keeps the starting one), or gives it the
     /// changed fields if it's running already. Does nothing for a
     /// component there's no code for. See [`Runtime::sync_many`].
@@ -520,8 +520,8 @@ impl Runtime {
 
     /// [`Runtime::sync_many`], each component with the names of its
     /// fields set by hand since the last time: a running component is
-    /// given those as the area holds them now even when that's what the
-    /// area held before, because the game may have changed its own value
+    /// given those as the level holds them now even when that's what the
+    /// level held before, because the game may have changed its own value
     /// since. See `Game::sync_edited`.
     pub(crate) fn sync_edited<'a>(
         &mut self,
@@ -587,7 +587,7 @@ impl Runtime {
     }
 
     /// Stops every running component `keep` says no to (its entity or
-    /// component is gone from the area).
+    /// component is gone from the level).
     pub fn retain(&mut self, mut keep: impl FnMut(EntityId, &str) -> bool) {
         self.running.retain(|(entity, name), _| keep(*entity, name));
     }

@@ -34,7 +34,7 @@
 //! The first terrain is what a new map's ground is filled with. Read as a
 //! hostile file: within limits, anything it can't use skipped with a note.
 
-use area::settings::{self, BlockOut, Field};
+use level::settings::{self, BlockOut, Field};
 use reflect::{AssetId, Id, Value};
 use std::fmt;
 
@@ -63,7 +63,7 @@ class Rule {\n    has {\n        string id = \"\";\n        string terrain = \"\
 pass Tileset, Terrain, Piece, Rule;\nend\n";
 
 /// How a tileset's parts are kept as Lust.
-const SHAPE: area::lust_data::Shape<'static> = area::lust_data::Shape {
+const SHAPE: level::lust_data::Shape<'static> = level::lust_data::Shape {
     kind: KIND,
     fetches: &["Tileset", "Terrain", "Piece", "Rule"],
     top: ("Tileset", "tileset"),
@@ -103,7 +103,7 @@ pub static FORMAT: reflect::upgrade::Format<settings::BlockSettings> = reflect::
     name: "tileset",
     current: VERSION,
     version_of: |text| {
-        area::lust_data::version_of(text)
+        level::lust_data::version_of(text)
             .or_else(|| reflect::upgrade::header_version(text, &[KIND]))
     },
     steps: &[art_came_later, solid_came_later, lust_came_later],
@@ -480,13 +480,14 @@ pub fn read(text: &str) -> Result<ReadTileset, TilesetError> {
             ),
         });
     }
-    let mut read = if area::lust_data::is_data(text) {
-        let read = area::lust_data::read_blocks(text, &SHAPE, CLASSES, MAX_BYTES).map_err(|e| {
-            TilesetError {
-                line: e.line,
-                message: e.message,
-            }
-        })?;
+    let mut read = if level::lust_data::is_data(text) {
+        let read =
+            level::lust_data::read_blocks(text, &SHAPE, CLASSES, MAX_BYTES).map_err(|e| {
+                TilesetError {
+                    line: e.line,
+                    message: e.message,
+                }
+            })?;
         if read.version > VERSION {
             return Err(TilesetError {
                 line: 0,
@@ -918,7 +919,7 @@ pub fn write(tileset: &Tileset) -> String {
             ]),
         ));
     }
-    area::lust_data::write_blocks(
+    level::lust_data::write_blocks(
         &SHAPE,
         "A tileset. Written by Solis; safe to edit by hand.\n\
          Each terrain is something a tile map's cell can be: its name, the one character\n\

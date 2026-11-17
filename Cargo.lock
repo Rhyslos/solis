@@ -219,8 +219,8 @@ dependencies = [
 name = "animation"
 version = "0.0.1"
 dependencies = [
- "area",
  "assets",
+ "level",
  "proptest",
  "reflect",
 ]
@@ -230,7 +230,6 @@ name = "app"
 version = "0.0.1"
 dependencies = [
  "animation",
- "area",
  "asset_db",
  "assets",
  "bytemuck",
@@ -240,6 +239,7 @@ dependencies = [
  "glam 0.33.12",
  "image",
  "input",
+ "level",
  "log",
  "opener",
  "pollster 1.0.1",
@@ -283,17 +283,6 @@ dependencies = [
  "percent-encoding",
  "windows-sys 0.60.2",
  "x11rb",
-]
-
-[[package]]
-name = "area"
-version = "0.0.1"
-dependencies = [
- "glam 0.33.12",
- "lust",
- "mesh",
- "proptest",
- "reflect",
 ]
 
 [[package]]
@@ -1093,7 +1082,6 @@ name = "editor"
 version = "0.0.1"
 dependencies = [
  "animation",
- "area",
  "assets",
  "bytemuck",
  "chrono",
@@ -1101,6 +1089,7 @@ dependencies = [
  "egui_kittest",
  "glam 0.33.12",
  "input",
+ "level",
  "mesh",
  "physics",
  "proptest",
@@ -2371,6 +2360,17 @@ name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
+
+[[package]]
+name = "level"
+version = "0.0.1"
+dependencies = [
+ "glam 0.33.12",
+ "lust",
+ "mesh",
+ "proptest",
+ "reflect",
+]
 
 [[package]]
 name = "lewton"
@@ -4140,9 +4140,9 @@ name = "script"
 version = "0.0.1"
 dependencies = [
  "animation",
- "area",
  "glam 0.33.12",
  "input",
+ "level",
  "lust",
  "mlua",
  "physics",
@@ -4447,9 +4447,9 @@ dependencies = [
 name = "sound"
 version = "0.0.1"
 dependencies = [
- "area",
  "hound",
  "kira",
+ "level",
  "lewton",
  "mint",
  "ogg",
@@ -4621,7 +4621,7 @@ dependencies = [
 name = "tiles"
 version = "0.0.1"
 dependencies = [
- "area",
+ "level",
  "proptest",
  "reflect",
 ]
@@ -5813,9 +5813,9 @@ name = "world"
 version = "0.0.1"
 dependencies = [
  "animation",
- "area",
  "glam 0.33.12",
  "hecs",
+ "level",
  "mesh",
  "physics",
  "rayon",

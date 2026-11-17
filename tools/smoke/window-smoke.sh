@@ -22,8 +22,8 @@
 #
 # Positions are for the design's frame (decisions 0099 and 0104) in the
 # standard panel layout (decision 0109) on a 1440x900 screen: the tab bar
-# and ribbon along the top; the Area list from x 0 to 240 and Properties
-# from 1100 to 1440, down to the shelf; the area's group between them
+# and ribbon along the top; the Level list from x 0 to 240 and Properties
+# from 1100 to 1440, down to the shelf; the level's group between them
 # (its tab strip at 100, the viewport from 130 to 491, its tool bar
 # floating at its foot from 590 to 752, 450 to 488), the Assets strip under it from 492; the shelf's bar at 682 and
 # the status bar at 876. On Audio the shelf's bar is at 542.

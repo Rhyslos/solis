@@ -125,7 +125,7 @@ pub fn pictures_named(files: &[(String, String)]) -> Vec<PictureUse> {
 /// folder ([`crate::describe::in_engine_folder`]), as the screen editor
 /// writes it into a screen's `fetch` lines.
 pub fn readers_module() -> String {
-    format!("{}/screen", area::lust_data::ENGINE_FOLDER)
+    format!("{}/screen", level::lust_data::ENGINE_FOLDER)
 }
 
 /// The reading method for a component called `name` (`Health` gives
@@ -288,7 +288,7 @@ pub fn readers_file(
     let mut written = Vec::new();
     // Solis's own components (Screen, Transform…) left out aren't worth a
     // note: nobody can rename them.
-    let own = area::builtin::registry().ok();
+    let own = level::builtin::registry().ok();
     for schema in described {
         if lust.iter().any(|(n, _)| *n == schema.name) {
             continue;

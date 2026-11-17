@@ -2,18 +2,18 @@
 //! with egui_kittest, without a GPU.
 
 use super::*;
-use crate::area_panel::AreaRequest;
-use crate::area_view::AreaView;
 use crate::commands::POINT_LIGHT_HEIGHT;
+use crate::level_panel::LevelRequest;
+use crate::level_view::LevelView;
 use crate::models::{FileLight, FileLightKind};
 use crate::properties::PropertyRequest;
 use crate::test_support::{do_command, lamp_post_file, with_a_lamp_post};
 use crate::viewport::NoRenderer;
-use area::Edit;
-use area::builtin::Environment;
-use area::builtin::{Light, LightKind, Transform};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::Edit;
+use level::builtin::Environment;
+use level::builtin::{Light, LightKind, Transform};
 
 fn info() -> AppInfo {
     AppInfo {
@@ -23,20 +23,20 @@ fn info() -> AppInfo {
 }
 
 #[test]
-fn the_title_names_program_version_and_area() {
+fn the_title_names_program_version_and_level() {
     let w = Workbench::new(info());
-    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled area");
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled level");
 }
 
 #[test]
 fn a_new_workbench_starts_on_home_as_the_design_draws_it() {
     let w = Workbench::new(info());
     assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Home);
-    // The standard layout (decision 0109): Home's lists beside the area,
+    // The standard layout (decision 0109): Home's lists beside the level,
     // the Console in front on the shelf; in the design's own, Entity.
     assert_eq!(
         w.interface_look().layout,
-        crate::shell::PanelLayout::AreaLeftAssetsBottom
+        crate::shell::PanelLayout::LevelLeftAssetsBottom
     );
     assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Console));
     let shelf = crate::test_support::in_layout(crate::shell::PanelLayout::Shelf);
@@ -114,18 +114,21 @@ fn harness_with(workbench: Workbench) -> egui_kittest::Harness<'static, Workbenc
 fn the_editor_draws_every_panel_without_a_gpu() {
     let mut h = harness();
     h.run();
-    // The area's document tab, the shelf's tabs and Home's lists.
+    // The level's document tab, the shelf's tabs and Home's lists.
     for label in [
         "Place",
         "Console",
         "Problems",
-        "Area",
+        "Level",
         "Properties",
         "Assets",
     ] {
         assert!(h.query_all_by_label(label).count() >= 1, "{label}");
     }
-    let _ = h.get_all_by_label("Untitled area").next().expect("its tab");
+    let _ = h
+        .get_all_by_label("Untitled level")
+        .next()
+        .expect("its tab");
     let _ = h.get_by_label("No 3D view: testing");
 }
 
@@ -174,7 +177,7 @@ fn play_says_what_it_does() {
     let last = h.state().log_lines().last().map(|l| l.text.clone());
     assert!(
         last.as_deref().is_some_and(
-            |l| l.starts_with("Playing. Stop puts the area back as it is now, and asks")
+            |l| l.starts_with("Playing. Stop puts the level back as it is now, and asks")
         ),
         "{last:?}"
     );
@@ -471,14 +474,14 @@ fn with_a_model() -> (Workbench, EntityId) {
 #[test]
 fn an_imported_model_becomes_an_entity() {
     let (w, id) = with_a_model();
-    let entity = w.document().area().get(id).unwrap();
+    let entity = w.document().level().get(id).unwrap();
     assert_eq!(entity.name, "Crate");
     assert!(entity.has("Transform") && entity.has("Model"));
     assert_eq!(w.models().len(), 1);
 }
 
 #[test]
-fn the_row_menu_in_the_area_column_deletes_a_model() {
+fn the_row_menu_in_the_level_column_deletes_a_model() {
     let (w, id) = with_a_model();
     let mut h = acting(w);
     h.run();
@@ -488,7 +491,7 @@ fn the_row_menu_in_the_area_column_deletes_a_model() {
     h.get_by_label("Delete").click();
     h.run();
     h.run();
-    assert!(!h.state().0.document().area().contains(id));
+    assert!(!h.state().0.document().level().contains(id));
     // The model stays loaded (an undo can bring it back).
     assert_eq!(h.state().0.models().len(), 1);
 }
@@ -509,7 +512,7 @@ fn delete_in_properties_deletes_the_selected_entity() {
     h.run();
     h.get_by_label("Delete").click();
     h.run();
-    assert!(!h.state().0.document().area().contains(id));
+    assert!(!h.state().0.document().level().contains(id));
     assert_eq!(h.state().0.selection(), None);
 }
 
@@ -562,16 +565,16 @@ fn a_console_message_clicked_is_shown_in_full() {
 }
 
 #[test]
-fn help_offers_the_sample_area() {
+fn help_offers_the_sample_level() {
     let mut h = acting(Workbench::new(info()));
     h.run();
     let ctx = h.ctx.clone();
-    let asked = do_command(&mut h.state_mut().0, &ctx, "Add the sample area");
-    assert!(asked.contains(&WorkbenchAction::AddSampleArea));
+    let asked = do_command(&mut h.state_mut().0, &ctx, "Add the sample level");
+    assert!(asked.contains(&WorkbenchAction::AddSampleLevel));
 }
 
 #[test]
-fn the_ribbon_s_light_button_adds_lights_shown_in_area_and_properties() {
+fn the_ribbon_s_light_button_adds_lights_shown_in_level_and_properties() {
     let mut h = harness();
     h.run();
     // Home, Create, Light: a plain click makes the usual kind.
@@ -579,14 +582,14 @@ fn the_ribbon_s_light_button_adds_lights_shown_in_area_and_properties() {
     h.run();
     let w = h.state();
     let id = w.selection().unwrap();
-    let lamp = w.document().area().get(id).unwrap();
+    let lamp = w.document().level().get(id).unwrap();
     assert_eq!(lamp.name, "Point light 1");
     assert_eq!(lamp.get::<Light>().unwrap().kind, LightKind::Point);
     assert_eq!(
         lamp.get::<Transform>().unwrap().position,
         w.camera().focus() + Vec3::Z * POINT_LIGHT_HEIGHT
     );
-    // Listed in the Area panel, its fields in Properties.
+    // Listed in the Level panel, its fields in Properties.
     assert!(h.query_all_by_label("Point light 1").next().is_some());
     let _ = h.get_by_label("Strength");
     h.get_by_label("Entity menu").click();
@@ -600,7 +603,7 @@ fn the_ribbon_s_light_button_adds_lights_shown_in_area_and_properties() {
     h.get_by_label("Spotlight").click();
     h.run();
     let spot = h.state().selection().unwrap();
-    let data = h.state().document().area().get(spot).unwrap();
+    let data = h.state().document().level().get(spot).unwrap();
     assert_eq!(
         data.get::<Transform>().unwrap().position,
         h.state().camera().position
@@ -611,17 +614,17 @@ fn the_ribbon_s_light_button_adds_lights_shown_in_area_and_properties() {
     h.run();
     h.get_by_label("Delete").click();
     h.run();
-    assert!(!h.state().document().area().contains(spot));
+    assert!(!h.state().document().level().contains(spot));
     assert_eq!(h.state().selection(), None);
 }
 
 #[test]
 fn add_entity_adds_an_empty_one_at_the_focus() {
     let mut w = Workbench::new(info());
-    let before = w.document().area().len();
+    let before = w.document().level().len();
     let id = w.add_entity();
-    assert_eq!(w.document().area().len(), before + 1);
-    let entity = w.document().area().get(id).unwrap();
+    assert_eq!(w.document().level().len(), before + 1);
+    let entity = w.document().level().get(id).unwrap();
     assert_eq!(entity.components.len(), 1);
     assert_eq!(
         entity.get::<Transform>().unwrap().position,
@@ -631,13 +634,13 @@ fn add_entity_adds_an_empty_one_at_the_focus() {
 }
 
 #[test]
-fn the_sun_is_selected_from_the_area_panel() {
+fn the_sun_is_selected_from_the_level_panel() {
     let mut h = harness();
     h.run();
     h.get_all_by_label("Sun").next().unwrap().click();
     h.run();
     let id = h.state().selection().unwrap();
-    assert_eq!(h.state().document().area().get(id).unwrap().name, "Sun");
+    assert_eq!(h.state().document().level().get(id).unwrap().name, "Sun");
     let _ = h.get_by_label("Rotation");
     let _ = h.get_by_label("Shadows");
 }
@@ -667,12 +670,12 @@ fn lights_from_a_file_join_the_model_and_leave_with_it() {
     };
     let model = w.add_model(crate_info(), &[], 0.1, &[bulb, broken]);
     let hand_placed = w.add_point_light();
-    let area = w.document().area();
-    let children = area.children(Some(model));
+    let level = w.document().level();
+    let children = level.children(Some(model));
     assert_eq!(children.len(), 2);
-    assert_eq!(area.get(children[0]).unwrap().name, "Bulb");
+    assert_eq!(level.get(children[0]).unwrap().name, "Bulb");
     // A light with bad numbers is still usable.
-    let second = area.get(children[1]).unwrap();
+    let second = level.get(children[1]).unwrap();
     assert_eq!(second.name, "Light 2");
     let t = second.get::<Transform>().unwrap();
     let l = second.get::<Light>().unwrap();
@@ -682,10 +685,10 @@ fn lights_from_a_file_join_the_model_and_leave_with_it() {
     w.select(children[0]);
     w.delete(model);
     assert!(
-        w.document().area().contains(hand_placed),
+        w.document().level().contains(hand_placed),
         "the hand-placed light stays"
     );
-    assert!(!w.document().area().contains(children[0]));
+    assert!(!w.document().level().contains(children[0]));
     assert_eq!(w.selection(), None);
     // Selecting something that isn't there selects nothing.
     w.select(children[0]);
@@ -724,11 +727,11 @@ fn a_file_s_spotlight_with_any_cone_angles_is_placed_safely() {
     }
     let mut w = Workbench::new(info());
     let model = w.add_model(crate_info(), &[], 0.1, &lights);
-    let area = w.document().area();
-    let children = area.children(Some(model));
+    let level = w.document().level();
+    let children = level.children(Some(model));
     assert_eq!(children.len(), lights.len());
     for (child, from) in children.iter().zip(&lights) {
-        let entity = area.get(*child).unwrap();
+        let entity = level.get(*child).unwrap();
         // As the file's values hold it, and as it's read back.
         let written = &entity.components["Light"];
         let read = entity.get::<Light>().unwrap();
@@ -751,17 +754,17 @@ fn a_file_s_spotlight_with_any_cone_angles_is_placed_safely() {
         }
     }
     // And the viewport draws them.
-    let view = AreaView::of(area, w.models());
+    let view = LevelView::of(level, w.models());
     assert_eq!(view.lamps.len(), lights.len());
     assert!(view.lamps.iter().all(|l| l.inner <= l.outer));
 }
 
 #[test]
-fn a_sun_from_a_file_sets_the_area_sun() {
+fn a_sun_from_a_file_sets_the_level_sun() {
     let mut w = Workbench::new(info());
     let suns = |w: &Workbench| {
         w.document()
-            .area()
+            .level()
             .with::<Light>()
             .filter(|(_, l)| l.kind == LightKind::Sun)
             .collect::<Vec<_>>()
@@ -780,16 +783,16 @@ fn a_sun_from_a_file_sets_the_area_sun() {
     assert_eq!(
         found.len(),
         1,
-        "the area's sun is changed, not a second added"
+        "the level's sun is changed, not a second added"
     );
     let (id, light) = &found[0];
     assert_eq!((light.color, light.strength), ([1.0, 0.0, 0.0], 7.0));
-    let view = AreaView::of(w.document().area(), w.models());
+    let view = LevelView::of(w.document().level(), w.models());
     let direction = view.sun.unwrap().direction;
     assert!(direction.abs_diff_eq(-Vec3::Z, 1e-4), "{direction}");
     assert!(
         w.document()
-            .area()
+            .level()
             .get(*id)
             .unwrap()
             .get::<Light>()
@@ -801,7 +804,7 @@ fn a_sun_from_a_file_sets_the_area_sun() {
 #[test]
 fn fields_change_through_property_requests() {
     let mut w = Workbench::new(info());
-    let env = w.document().area().with::<Environment>().next().unwrap().0;
+    let env = w.document().level().with::<Environment>().next().unwrap().0;
     w.apply_property(
         PropertyRequest::SetField {
             entity: env,
@@ -818,7 +821,7 @@ fn fields_change_through_property_requests() {
         },
         0,
     );
-    let data = w.document().area().get(env).unwrap();
+    let data = w.document().level().get(env).unwrap();
     assert!(data.get::<Environment>().unwrap().fog);
     assert_eq!(data.name, "World");
     w.apply_property(
@@ -828,7 +831,7 @@ fn fields_change_through_property_requests() {
         },
         0,
     );
-    assert!(!w.document().area().get(env).unwrap().has("Environment"));
+    assert!(!w.document().level().get(env).unwrap().has("Environment"));
     // Requests about entities that are gone change nothing.
     w.delete(env);
     w.apply_property(
@@ -839,7 +842,7 @@ fn fields_change_through_property_requests() {
         0,
     );
     w.apply_property(PropertyRequest::MoveHere(env), 0);
-    assert!(!w.document().area().contains(env));
+    assert!(!w.document().level().contains(env));
 }
 
 #[test]
@@ -876,12 +879,12 @@ fn a_component_nobody_knows_is_kept_and_can_be_removed() {
     let _ = h.get_by_label("Missing component: Wobble");
     h.get_by_label("Remove").click();
     h.run();
-    assert!(!h.state().document().area().get(id).unwrap().has("Wobble"));
+    assert!(!h.state().document().level().get(id).unwrap().has("Wobble"));
 }
 
 fn strength_of(w: &Workbench, id: EntityId) -> f32 {
     w.document()
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .get::<Light>()
@@ -925,10 +928,10 @@ fn a_drag_undoes_in_one_step_with_ctrl_z_and_redoes_from_the_edit_menu() {
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.run();
-    assert!(!h.state().document().area().contains(lamp));
+    assert!(!h.state().document().level().contains(lamp));
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Y);
     h.run();
-    assert!(h.state().document().area().contains(lamp));
+    assert!(h.state().document().level().contains(lamp));
     h.key_press_modifiers(
         egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
         egui::Key::Z,
@@ -955,7 +958,7 @@ fn separate_drags_are_separate_steps() {
 #[test]
 fn an_import_is_one_step_with_its_lights_and_sun() {
     let mut w = Workbench::new(info());
-    let start = w.document().area().clone();
+    let start = w.document().level().clone();
     let lights = [
         FileLight {
             name: "Bulb".into(),
@@ -981,12 +984,12 @@ fn an_import_is_one_step_with_its_lights_and_sun() {
     assert_eq!(w.document().history().undo_len(), 1);
     w.undo();
     assert_eq!(
-        w.document().area(),
+        w.document().level(),
         &start,
         "model, lamp and sun change all undone"
     );
     w.redo();
-    assert_eq!(w.document().area().children(Some(model)).len(), 1);
+    assert_eq!(w.document().level().children(Some(model)).len(), 1);
 }
 
 #[test]
@@ -1002,17 +1005,17 @@ fn delete_undoes_with_everything_under_it() {
         range: None,
     };
     let model = w.add_model(crate_info(), &[], 0.1, &[bulb]);
-    let before = w.document().area().clone();
+    let before = w.document().level().clone();
     w.select(model);
     w.delete(model);
     assert_eq!(w.selection(), None);
     w.undo();
-    assert_eq!(w.document().area(), &before);
+    assert_eq!(w.document().level(), &before);
     assert_eq!(w.selection(), Some(model));
     // Move here is undoable too.
     w.move_here(model);
     w.undo();
-    assert_eq!(w.document().area(), &before);
+    assert_eq!(w.document().level(), &before);
 }
 
 /// A workbench with three lights in a row at the top level.
@@ -1027,7 +1030,7 @@ fn three_lights() -> (Workbench, [EntityId; 3]) {
 #[test]
 fn new_entities_go_to_the_end_of_the_list() {
     let (w, [a, b, c]) = three_lights();
-    let order = w.document().area().depth_first();
+    let order = w.document().level().depth_first();
     let at = |id| order.iter().position(|&e| e == id).unwrap();
     assert!(at(a) < at(b) && at(b) < at(c), "{order:?}");
 }
@@ -1036,13 +1039,13 @@ fn new_entities_go_to_the_end_of_the_list() {
 fn ctrl_and_shift_clicks_build_a_selection() {
     let (mut w, [a, b, c]) = three_lights();
     w.select(a);
-    w.apply_area_request(AreaRequest::SelectRange(c));
+    w.apply_level_request(LevelRequest::SelectRange(c));
     let selected: Vec<_> = w.document().selection.iter().collect();
     assert!(selected.contains(&a) && selected.contains(&b) && selected.contains(&c));
     assert_eq!(w.selection(), Some(a), "Properties keeps the first one");
-    w.apply_area_request(AreaRequest::Toggle(b));
+    w.apply_level_request(LevelRequest::Toggle(b));
     assert!(!w.document().selection.contains(b));
-    w.apply_area_request(AreaRequest::Toggle(b));
+    w.apply_level_request(LevelRequest::Toggle(b));
     assert_eq!(w.selection(), Some(b));
 }
 
@@ -1059,43 +1062,43 @@ fn dragging_onto_another_keeps_the_place_in_the_world_and_undoes() {
         },
         1,
     );
-    let before = w.document().area().world_matrix(b);
-    w.apply_area_request(AreaRequest::Reparent {
+    let before = w.document().level().world_matrix(b);
+    w.apply_level_request(LevelRequest::Reparent {
         entity: b,
         onto: Some(a),
     });
-    let area = w.document().area();
-    assert_eq!(area.get(b).unwrap().parent, Some(a));
-    let after = area.world_matrix(b);
+    let level = w.document().level();
+    assert_eq!(level.get(b).unwrap().parent, Some(a));
+    let after = level.world_matrix(b);
     assert!(after.abs_diff_eq(before, 1e-4), "stays put in the world");
     assert_eq!(
         w.document().history().undo_label(),
         Some("Move under Point light 1")
     );
     // A parent can't go under its own child.
-    w.apply_area_request(AreaRequest::Reparent {
+    w.apply_level_request(LevelRequest::Reparent {
         entity: a,
         onto: Some(b),
     });
-    assert_eq!(w.document().area().get(a).unwrap().parent, None);
+    assert_eq!(w.document().level().get(a).unwrap().parent, None);
     // Dropping on empty space goes back to the top level.
-    w.apply_area_request(AreaRequest::Reparent {
+    w.apply_level_request(LevelRequest::Reparent {
         entity: b,
         onto: None,
     });
-    assert_eq!(w.document().area().get(b).unwrap().parent, None);
+    assert_eq!(w.document().level().get(b).unwrap().parent, None);
     assert!(
         w.document()
-            .area()
+            .level()
             .world_matrix(b)
             .abs_diff_eq(before, 1e-4)
     );
     w.undo();
     w.undo();
-    assert_eq!(w.document().area().get(b).unwrap().parent, None);
+    assert_eq!(w.document().level().get(b).unwrap().parent, None);
     assert!(
         w.document()
-            .area()
+            .level()
             .world_matrix(b)
             .abs_diff_eq(before, 1e-4)
     );
@@ -1105,12 +1108,12 @@ fn dragging_onto_another_keeps_the_place_in_the_world_and_undoes() {
 fn dragging_a_selected_entity_moves_the_whole_selection() {
     let (mut w, [a, b, c]) = three_lights();
     w.select(b);
-    w.apply_area_request(AreaRequest::Toggle(c));
-    w.apply_area_request(AreaRequest::Reparent {
+    w.apply_level_request(LevelRequest::Toggle(c));
+    w.apply_level_request(LevelRequest::Reparent {
         entity: c,
         onto: Some(a),
     });
-    assert_eq!(w.document().area().children(Some(a)), [b, c]);
+    assert_eq!(w.document().level().children(Some(a)), [b, c]);
     assert_eq!(
         w.document().history().undo_len(),
         4,
@@ -1121,22 +1124,22 @@ fn dragging_a_selected_entity_moves_the_whole_selection() {
 #[test]
 fn duplicate_copies_the_tree_selects_the_copy_and_undoes_in_one_step() {
     let (mut w, [a, b, _]) = three_lights();
-    w.apply_area_request(AreaRequest::Reparent {
+    w.apply_level_request(LevelRequest::Reparent {
         entity: b,
         onto: Some(a),
     });
-    let count = w.document().area().len();
+    let count = w.document().level().len();
     w.select(a);
     w.duplicate_selection();
-    let area = w.document().area();
-    assert_eq!(area.len(), count + 2, "the light and the one under it");
+    let level = w.document().level();
+    assert_eq!(level.len(), count + 2, "the light and the one under it");
     let copy = w.selection().unwrap();
     assert_ne!(copy, a);
-    assert_eq!(area.get(copy).unwrap().name, "Point light 1");
-    assert_eq!(area.children(Some(copy)).len(), 1, "with its own child");
-    assert_eq!(area.children(Some(a)), [b], "the original keeps its child");
+    assert_eq!(level.get(copy).unwrap().name, "Point light 1");
+    assert_eq!(level.children(Some(copy)).len(), 1, "with its own child");
+    assert_eq!(level.children(Some(a)), [b], "the original keeps its child");
     w.undo();
-    assert_eq!(w.document().area().len(), count);
+    assert_eq!(w.document().level().len(), count);
     assert_eq!(w.selection(), Some(a));
 }
 
@@ -1144,21 +1147,21 @@ fn duplicate_copies_the_tree_selects_the_copy_and_undoes_in_one_step() {
 fn the_delete_key_deletes_the_whole_selection_in_one_step() {
     let (mut w, [a, b, c]) = three_lights();
     w.select(a);
-    w.apply_area_request(AreaRequest::Toggle(c));
+    w.apply_level_request(LevelRequest::Toggle(c));
     let mut h = harness_with(w);
     h.run();
     h.key_press(egui::Key::Delete);
     h.run();
-    let area = h.state().document().area();
-    assert!(!area.contains(a) && !area.contains(c) && area.contains(b));
+    let level = h.state().document().level();
+    assert!(!level.contains(a) && !level.contains(c) && level.contains(b));
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
     h.run();
-    assert!(h.state().document().area().contains(a));
-    assert!(h.state().document().area().contains(c));
+    assert!(h.state().document().level().contains(a));
+    assert!(h.state().document().level().contains(c));
 }
 
 #[test]
-fn f2_renames_in_the_area_panel_and_ctrl_d_duplicates() {
+fn f2_renames_in_the_level_panel_and_ctrl_d_duplicates() {
     let (mut w, [a, ..]) = three_lights();
     w.select(a);
     let mut h = harness_with(w);
@@ -1170,11 +1173,11 @@ fn f2_renames_in_the_area_panel_and_ctrl_d_duplicates() {
     h.event(egui::Event::Text("Lantern".into()));
     h.key_press(egui::Key::Enter);
     h.run();
-    assert_eq!(h.state().document().area().get(a).unwrap().name, "Lantern");
-    let count = h.state().document().area().len();
+    assert_eq!(h.state().document().level().get(a).unwrap().name, "Lantern");
+    let count = h.state().document().level().len();
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::D);
     h.run();
-    assert_eq!(h.state().document().area().len(), count + 1);
+    assert_eq!(h.state().document().level().len(), count + 1);
 }
 
 #[test]
@@ -1182,13 +1185,13 @@ fn f_frames_the_selection() {
     let (mut w, _) = with_a_model();
     let far = Workbench::new(info()).camera().focus() + Vec3::new(50.0, 0.0, 0.0);
     w.viewport.camera.frame(far, far + Vec3::ONE);
-    let model = w.document().area().depth_first()[0];
+    let model = w.document().level().depth_first()[0];
     let model = w
         .document()
-        .area()
+        .level()
         .depth_first()
         .into_iter()
-        .find(|&id| w.document().area().get(id).unwrap().has("Model"))
+        .find(|&id| w.document().level().get(id).unwrap().has("Model"))
         .unwrap_or(model);
     w.select(model);
     w.frame_selection();
@@ -1244,7 +1247,7 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
     h.key_press(egui::Key::Enter);
     h.run();
     h.run();
-    assert!(h.state().document().area().get(id).unwrap().has("Health"));
+    assert!(h.state().document().level().get(id).unwrap().has("Health"));
     // Its fields are drawn from its schema, with no code for it.
     let _ = h.get_by_label("Max HP");
     assert!(h.query_all_by_label("Team").next().is_some());
@@ -1258,7 +1261,7 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
         9,
     );
     let hp = |w: &Workbench| {
-        w.document().area().get(id).unwrap().components["Health"]
+        w.document().level().get(id).unwrap().components["Health"]
             .get("max_hp")
             .cloned()
     };
@@ -1275,12 +1278,12 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
     h.run();
     h.get_by_label("Remove Health").click();
     h.run();
-    assert!(!h.state().document().area().get(id).unwrap().has("Health"));
+    assert!(!h.state().document().level().get(id).unwrap().has("Health"));
     h.state_mut().undo();
     assert_eq!(hp(h.state()), Some(reflect::Value::Float(100.0)));
 }
 
-/// An area of `count` entities: models, lights and empties, some under
+/// A level of `count` entities: models, lights and empties, some under
 /// others, as a scale check's worth of a level.
 fn crowded(count: usize) -> Workbench {
     let mut w = Workbench::new(info());
@@ -1291,13 +1294,13 @@ fn crowded(count: usize) -> Workbench {
     let mut parent = None;
     for i in 0..count {
         let id = EntityId::random();
-        let mut data = area::EntityData::new(&format!("Thing {i}")).with(&Transform {
+        let mut data = level::EntityData::new(&format!("Thing {i}")).with(&Transform {
             position: Vec3::new((i % 50) as f32, (i / 50) as f32, 0.0),
             ..Transform::default()
         });
         match i % 3 {
             0 => {
-                data.set(&area::builtin::Model {
+                data.set(&level::builtin::Model {
                     asset: Some(reflect::AssetRef { asset, part: None }),
                 });
             }
@@ -1310,7 +1313,7 @@ fn crowded(count: usize) -> Workbench {
         } else {
             data.parent = parent;
         }
-        data.order = area::order_after(Some(&format!("a{}", i % 10)));
+        data.order = level::order_after(Some(&format!("a{}", i % 10)));
         entities.push(Edit::Spawn {
             entities: vec![(id, data)],
         });
@@ -1325,7 +1328,7 @@ fn crowded(count: usize) -> Workbench {
 fn scale_check_editor_with_2000_entities() {
     const TARGET_MS: f64 = 4.0;
     let mut w = crowded(2_000);
-    let some = w.document().area().depth_first()[1_000];
+    let some = w.document().level().depth_first()[1_000];
     w.select(some);
     let mut h = harness_with(w);
     h.run();
@@ -1345,21 +1348,21 @@ fn scale_check_editor_with_2000_entities() {
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_editor_with_10000_entities_listed_inspected_and_searched() {
-    // BUG-28: with nothing changing, every frame the Area column listed
+    // BUG-28: with nothing changing, every frame the Level column listed
     // the whole tree again, Properties counted every entity using the
     // inspected model's file, and the open search copied and scored every
     // entity. The second review pass: once anything was hidden or locked,
     // every frame went through every entity to find what's under it.
     const TARGET_MS: f64 = 8.0;
     let mut w = crowded(10_000);
-    let top = w.document().area().depth_first()[0];
-    w.open.area_panel.hidden.insert(top);
+    let top = w.document().level().depth_first()[0];
+    w.open.level_panel.hidden.insert(top);
     let model = w
         .document()
-        .area()
+        .level()
         .depth_first()
         .into_iter()
-        .find(|&id| w.document().area().get(id).is_some_and(|e| e.has("Model")))
+        .find(|&id| w.document().level().get(id).is_some_and(|e| e.has("Model")))
         .unwrap();
     w.select(model);
     w.open_search();
@@ -1386,7 +1389,7 @@ fn scale_check_editor_with_four_views() {
     const TARGET_MS: f64 = 4.0;
     let mut w = crowded(2_000);
     w.viewport.layout = crate::viewport::ViewLayout::Four;
-    let some = w.document().area().depth_first()[1_000];
+    let some = w.document().level().depth_first()[1_000];
     w.select(some);
     w.viewport.tool = Tool::Move;
     let mut h = harness_with(w);
@@ -1407,11 +1410,11 @@ fn scale_check_editor_with_four_views() {
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_playing_while_dragging() {
-    // While playing, the game is built again whenever the area changes:
+    // While playing, the game is built again whenever the level changes:
     // every frame of a drag. Timed with a change each frame.
     const TARGET_MS: f64 = 4.0;
     let mut w = crowded(2_000);
-    let some = w.document().area().depth_first()[1_000];
+    let some = w.document().level().depth_first()[1_000];
     w.select(some);
     w.play();
     let mut h = harness_with(w);
@@ -1516,14 +1519,14 @@ fn scale_check_unpacked_model_with_1000_parts() {
 }
 
 #[test]
-fn a_crowded_area_still_lists_and_inspects() {
+fn a_crowded_level_still_lists_and_inspects() {
     let mut w = crowded(200);
-    let some = w.document().area().depth_first()[100];
+    let some = w.document().level().depth_first()[100];
     w.select(some);
     let mut h = harness_with(w);
     h.run();
     let _ = h.get_by_label("Position");
-    assert_eq!(h.state().document().area().len(), 202);
+    assert_eq!(h.state().document().level().len(), 202);
 }
 
 #[test]
@@ -1540,7 +1543,7 @@ fn the_library_lists_the_project_and_a_double_click_places() {
         root: "/projects/harbour".into(),
         assets: "/projects/harbour/assets".into(),
     }));
-    assert_eq!(w.title(), "Test Engine 9.9.9 · Harbour · Untitled area");
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Harbour · Untitled level");
     let id = AssetId(reflect::Id::from_raw(42).unwrap());
     w.set_library(vec![crate::library::LibraryItem {
         id: Some(id),
@@ -1575,7 +1578,7 @@ fn the_file_page_closes_the_project_for_the_launcher() {
 }
 
 #[test]
-fn opening_another_project_starts_a_new_area_and_reloads_swap_models() {
+fn opening_another_project_starts_a_new_level_and_reloads_swap_models() {
     let (mut w, _) = with_a_model();
     assert!(w.has_model(crate_info().asset));
     let mut bigger = crate_info();
@@ -1593,7 +1596,7 @@ fn opening_another_project_starts_a_new_area_and_reloads_swap_models() {
         assets: std::path::PathBuf::from("/other").join("assets"),
     }));
     assert!(w.models().is_empty());
-    assert_eq!(w.document().area().len(), 2, "a fresh area");
+    assert_eq!(w.document().level().len(), 2, "a fresh level");
 }
 
 #[test]
@@ -1602,12 +1605,12 @@ fn the_tab_and_title_show_unsaved_changes_and_saving_clears_them() {
     assert!(!w.document().is_dirty());
     w.add_point_light();
     assert!(w.document().is_dirty());
-    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled area •");
-    w.mark_saved("/levels/harbour.solarea".into());
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled level •");
+    w.mark_saved("/levels/harbour.sollevel".into());
     assert_eq!(w.title(), "Test Engine 9.9.9 · harbour");
     let mut h = harness_with(w);
     h.run();
-    // On the area's document tab, and in the tab bar's path.
+    // On the level's document tab, and in the tab bar's path.
     assert!(h.query_all_by_label("harbour").count() >= 1);
     // Undo after saving is a change; redo is back at the save.
     h.state_mut().undo();
@@ -1634,10 +1637,10 @@ fn ctrl_s_saves_and_ctrl_shift_s_saves_as() {
     assert_eq!(
         h.state().1,
         [
-            WorkbenchAction::SaveArea,
-            WorkbenchAction::SaveAreaAs,
-            WorkbenchAction::OpenArea,
-            WorkbenchAction::NewArea
+            WorkbenchAction::SaveLevel,
+            WorkbenchAction::SaveLevelAs,
+            WorkbenchAction::OpenLevel,
+            WorkbenchAction::NewLevel
         ]
     );
 }
@@ -1660,7 +1663,7 @@ fn leaving_unsaved_changes_asks_first() {
     h.run();
     assert_eq!(
         h.state().1,
-        [WorkbenchAction::SaveArea, WorkbenchAction::NewArea]
+        [WorkbenchAction::SaveLevel, WorkbenchAction::NewLevel]
     );
     // Closing the window asks too; Don't save lets it close.
     assert!(!h.state_mut().0.close_requested());
@@ -1672,52 +1675,52 @@ fn leaving_unsaved_changes_asks_first() {
 }
 
 #[test]
-fn an_area_changed_on_disk_reloads_as_one_undoable_step() {
+fn a_level_changed_on_disk_reloads_as_one_undoable_step() {
     let mut w = Workbench::new(info());
-    let start = w.document().area().clone();
-    w.open_area(start.clone(), "/levels/harbour.solarea".into());
+    let start = w.document().level().clone();
+    w.open_level(start.clone(), "/levels/harbour.sollevel".into());
     let mut changed = start.clone();
-    changed.spawn(area::EntityData::new("From Git"));
+    changed.spawn(level::EntityData::new("From Git"));
     w.offer_reload(changed.clone());
-    assert_eq!(w.document().area(), &changed);
+    assert_eq!(w.document().level(), &changed);
     assert!(!w.document().is_dirty(), "it matches the file");
     assert_eq!(
         w.document().history().undo_label(),
-        Some("Reloaded harbour.solarea from disk")
+        Some("Reloaded harbour.sollevel from disk")
     );
     w.undo();
-    assert_eq!(w.document().area(), &start);
+    assert_eq!(w.document().level(), &start);
 }
 
 #[test]
 fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
     let mut w = Workbench::new(info());
-    w.open_area(
-        area::builtin::starter_area(),
-        "/levels/harbour.solarea".into(),
+    w.open_level(
+        level::builtin::starter_level(),
+        "/levels/harbour.sollevel".into(),
     );
     let mine = w.add_point_light();
-    let mut theirs = w.document().area().clone();
+    let mut theirs = w.document().level().clone();
     theirs.remove(mine);
-    theirs.spawn(area::EntityData::new("From Git"));
+    theirs.spawn(level::EntityData::new("From Git"));
     w.offer_reload(theirs.clone());
     assert!(
-        w.document().area().contains(mine),
+        w.document().level().contains(mine),
         "nothing changes before the answer"
     );
     let mut h = acting(w);
     h.run();
     h.get_by_label("Keep mine").click();
     h.run();
-    assert!(h.state().0.document().area().contains(mine));
+    assert!(h.state().0.document().level().contains(mine));
     h.state_mut().0.offer_reload(theirs.clone());
     h.run();
     h.get_by_label("Load the file").click();
     h.run();
-    assert_eq!(h.state().0.document().area(), &theirs);
+    assert_eq!(h.state().0.document().level(), &theirs);
     // Ctrl+Z brings back what was there.
     h.state_mut().0.undo();
-    assert!(h.state().0.document().area().contains(mine));
+    assert!(h.state().0.document().level().contains(mine));
 }
 
 #[test]
@@ -1725,26 +1728,26 @@ fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
     // The review of Phase 9, BUG-12: a crate and a shelf written inside
     // each other, and seven more entities each inside itself.
     let mut w = Workbench::new(info());
-    let mut area = area::Area::new();
+    let mut level = level::Level::new();
     let moved = |name: &str, x: f32| {
-        area::EntityData::new(name).with(&Transform {
+        level::EntityData::new(name).with(&Transform {
             position: Vec3::new(x, 0.0, 0.0),
             scale: Vec3::splat(2.0),
             ..Transform::default()
         })
     };
-    let crate_ = area.spawn(moved("Crate", 1.0));
-    let shelf = area.spawn(moved("Shelf", 2.0));
-    area.get_mut(crate_).unwrap().parent = Some(shelf);
-    area.get_mut(shelf).unwrap().parent = Some(crate_);
+    let crate_ = level.spawn(moved("Crate", 1.0));
+    let shelf = level.spawn(moved("Shelf", 2.0));
+    level.get_mut(crate_).unwrap().parent = Some(shelf);
+    level.get_mut(shelf).unwrap().parent = Some(crate_);
     let mut owns = Vec::new();
     for n in 0..7 {
-        let own = area.spawn(moved(&format!("Own {n}"), 3.0));
-        area.get_mut(own).unwrap().parent = Some(own);
+        let own = level.spawn(moved(&format!("Own {n}"), 3.0));
+        level.get_mut(own).unwrap().parent = Some(own);
         owns.push(own);
     }
     let read = w
-        .expand_file(&area::text::AreaFile::plain(area))
+        .expand_file(&level::text::LevelFile::plain(level))
         .expect("a loop is mended, not refused");
     let top = crate_.min(shelf);
     assert_eq!(read.get(top).unwrap().parent, None);
@@ -1778,23 +1781,23 @@ fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
         "3 more entities were inside themselves; each is now at the top level."
     );
     // The editor and the game place every one of them alike.
-    w.open_area(read, "/levels/damaged.solarea".into());
-    let game = world::World::from_area(w.document().area());
-    for (id, _) in w.document().area().iter() {
+    w.open_level(read, "/levels/damaged.sollevel".into());
+    let game = world::World::from_level(w.document().level());
+    for (id, _) in w.document().level().iter() {
         assert_eq!(Some(w.document().world_matrix(id)), game.global(id));
     }
 }
 
 #[test]
 fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round() {
-    // No file read has a loop, and no edit makes one; an area handed
+    // No file read has a loop, and no edit makes one; a level handed
     // over with one is still placed the same by the editor and the game,
     // and the walks up from a selection end.
-    let mut area = area::builtin::starter_area();
+    let mut level = level::builtin::starter_level();
     let ids: Vec<EntityId> = (0..3)
         .map(|n| {
-            area.spawn(
-                area::EntityData::new(&format!("Ring {n}")).with(&Transform {
+            level.spawn(
+                level::EntityData::new(&format!("Ring {n}")).with(&Transform {
                     position: Vec3::new(1.0 + n as f32, 0.0, 0.0),
                     scale: Vec3::splat(3.0),
                     ..Transform::default()
@@ -1803,19 +1806,19 @@ fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round(
         })
         .collect();
     for (n, &id) in ids.iter().enumerate() {
-        area.get_mut(id).unwrap().parent = Some(ids[(n + 1) % 3]);
+        level.get_mut(id).unwrap().parent = Some(ids[(n + 1) % 3]);
     }
-    let mut lost = area::EntityData::new("Lost");
+    let mut lost = level::EntityData::new("Lost");
     lost.parent = Some(EntityId::random());
-    let lost = area.spawn(lost);
+    let lost = level.spawn(lost);
     let mut w = Workbench::new(info());
-    w.open_area(area, "/levels/ring.solarea".into());
-    let game = world::World::from_area(w.document().area());
-    for (id, data) in w.document().area().iter() {
+    w.open_level(level, "/levels/ring.sollevel".into());
+    let game = world::World::from_level(w.document().level());
+    for (id, data) in w.document().level().iter() {
         let editor = w.document().world_matrix(id);
         assert_eq!(Some(editor), game.global(id), "{}", data.name);
     }
-    let own = w.document().area().get(ids[0]).unwrap().get::<Transform>();
+    let own = w.document().level().get(ids[0]).unwrap().get::<Transform>();
     assert_eq!(w.document().world_matrix(ids[0]), own.unwrap().matrix());
     // One in a loop is above itself, so it's never a root to move; one
     // whose parent isn't there is.
@@ -1823,13 +1826,13 @@ fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round(
     assert_eq!(w.selected_roots(), [lost]);
 }
 
-/// The open area saved and opened again: what its file's text reads
+/// The open level saved and opened again: what its file's text reads
 /// back and expands to.
-fn saved_and_opened(w: &mut Workbench) -> area::Area {
-    let file = w.area_file().unwrap();
+fn saved_and_opened(w: &mut Workbench) -> level::Level {
+    let file = w.level_file().unwrap();
     let registry = w.document().registry.clone();
-    let text = area::text::write_file(&file, &registry, &|_| None);
-    let read = area::text::read_file(&text, &registry).unwrap();
+    let text = level::text::write_file(&file, &registry, &|_| None);
+    let read = level::text::read_file(&text, &registry).unwrap();
     assert_eq!(read, file, "{text}");
     w.expand_file(&read).unwrap()
 }
@@ -1837,21 +1840,21 @@ fn saved_and_opened(w: &mut Workbench) -> area::Area {
 #[test]
 fn a_part_dragged_out_of_its_copy_is_where_it_was_left_after_opening_again() {
     // The review of Phase 9, BUG-13: a copy's part dragged to the top
-    // level in the Area panel was back under its copy after saving and
-    // opening the area again.
+    // level in the Level panel was back under its copy after saving and
+    // opening the level again.
     let (mut w, _, root, lamp) = with_a_lamp_post();
-    assert_eq!(w.document().area().get(lamp).unwrap().parent, Some(root));
+    assert_eq!(w.document().level().get(lamp).unwrap().parent, Some(root));
     w.reparent(&[lamp], None);
-    assert_eq!(w.document().area().get(lamp).unwrap().parent, None);
+    assert_eq!(w.document().level().get(lamp).unwrap().parent, None);
     let opened = saved_and_opened(&mut w);
     assert_eq!(opened.get(lamp).unwrap().parent, None);
-    assert_eq!(opened, *w.document().area());
+    assert_eq!(opened, *w.document().level());
     // Under another entity.
     let light = w.add_point_light();
     w.reparent(&[lamp], Some(light));
     let opened = saved_and_opened(&mut w);
     assert_eq!(opened.get(lamp).unwrap().parent, Some(light));
-    assert_eq!(opened, *w.document().area());
+    assert_eq!(opened, *w.document().level());
 }
 
 #[test]
@@ -1860,15 +1863,15 @@ fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
     // arm: the lamp dragged out to the top level, then the arm deleted.
     // Saved and opened again, the lamp was gone with the arm.
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
-    let mut parts = area::Area::new();
+    let mut parts = level::Level::new();
     for (n, name, parent) in [(1, "Post", None), (2, "Arm", Some(1)), (3, "Lamp", Some(2))] {
-        let mut part = area::EntityData::new(name).with(&Transform::default());
+        let mut part = level::EntityData::new(name).with(&Transform::default());
         part.parent = parent.map(id);
         parts.insert(id(n), part);
     }
-    let file = area::text::AreaFile {
-        kind: area::text::FileKind::Assembly { root: id(1) },
-        area: parts,
+    let file = level::text::LevelFile {
+        kind: level::text::FileKind::Assembly { root: id(1) },
+        level: parts,
         overrides: Default::default(),
     };
     let asset = AssetId(reflect::Id::from_raw(901).unwrap());
@@ -1876,34 +1879,34 @@ fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
     w.set_assembly(asset, std::sync::Arc::new(file));
     w.place_assembly(asset);
     let root = w.selection().unwrap();
-    let arm = area::assembly::derive(root, &[id(2)]);
-    let lamp = area::assembly::derive(root, &[id(3)]);
+    let arm = level::assembly::derive(root, &[id(2)]);
+    let lamp = level::assembly::derive(root, &[id(3)]);
     w.reparent(&[lamp], None);
     w.delete(arm);
-    assert!(w.document().area().contains(lamp));
+    assert!(w.document().level().contains(lamp));
     let opened = saved_and_opened(&mut w);
     assert!(opened.contains(lamp), "the lamp went with the arm");
-    assert_eq!(opened, *w.document().area());
+    assert_eq!(opened, *w.document().level());
     // The copy itself deleted: the lamp isn't under it, so it stays, as
     // an ordinary entity (a part of nothing), and the Console says so.
-    assert!(w.document().area().get(lamp).unwrap().origin.is_some());
+    assert!(w.document().level().get(lamp).unwrap().origin.is_some());
     w.delete(root);
-    let area = w.document().area();
-    assert!(!area.contains(root));
-    assert_eq!(area.get(lamp).unwrap().origin, None);
+    let level = w.document().level();
+    assert!(!level.contains(root));
+    assert_eq!(level.get(lamp).unwrap().origin, None);
     let said = &w.log_lines().last().unwrap().text;
     assert!(
         said.ends_with("A part moved out of the copy stays, as an ordinary entity."),
         "{said}"
     );
     let opened = saved_and_opened(&mut w);
-    assert_eq!(opened, *w.document().area());
+    assert_eq!(opened, *w.document().level());
     // Undo: the copy is back, and the lamp is its part again.
     w.undo();
-    let area = w.document().area();
-    assert!(area.contains(root));
+    let level = w.document().level();
+    assert!(level.contains(root));
     assert_eq!(
-        area.get(lamp).unwrap().origin.as_ref().unwrap().instance,
+        level.get(lamp).unwrap().origin.as_ref().unwrap().instance,
         root
     );
 }
@@ -1911,18 +1914,26 @@ fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
 #[test]
 fn placing_an_assembly_makes_a_copy_that_saves_as_one_line() {
     let (mut w, _, root, lamp) = with_a_lamp_post();
-    let area = w.document().area();
-    assert_eq!(area.get(lamp).unwrap().parent, Some(root));
+    let level = w.document().level();
+    assert_eq!(level.get(lamp).unwrap().parent, Some(root));
     assert_eq!(
-        area.get(root).unwrap().get::<Transform>().unwrap().position,
+        level
+            .get(root)
+            .unwrap()
+            .get::<Transform>()
+            .unwrap()
+            .position,
         w.camera().focus(),
         "placed where the camera looks"
     );
-    let file = w.area_file().unwrap();
-    assert!(!file.area.contains(lamp), "the copy's parts aren't written");
+    let file = w.level_file().unwrap();
+    assert!(
+        !file.level.contains(lamp),
+        "the copy's parts aren't written"
+    );
     // Only the root's new position is a change.
     assert_eq!(file.overrides.len(), 1);
-    assert_eq!(w.expand_file(&file).unwrap(), *w.document().area());
+    assert_eq!(w.expand_file(&file).unwrap(), *w.document().level());
 }
 
 #[test]
@@ -1961,7 +1972,7 @@ fn changed_fields_show_in_bold_and_revert_or_apply() {
         .state()
         .0
         .document()
-        .area()
+        .level()
         .get(lamp)
         .unwrap()
         .get::<Light>()
@@ -1974,23 +1985,23 @@ fn an_assembly_that_now_places_an_unknown_one_keeps_its_old_version() {
     // A Git pull: the lamp post now holds a copy of a sign, whose file
     // isn't read yet.
     let (mut w, asset, root, lamp) = with_a_lamp_post();
-    let before = w.document().area().clone();
+    let before = w.document().level().clone();
     let sign = AssetId(reflect::Id::from_raw(901).unwrap());
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
     let one = EntityId(reflect::Id::from_raw(1).unwrap());
     let holder = EntityId(reflect::Id::from_raw(3).unwrap());
-    let mut copy = area::EntityData::new("Sign");
+    let mut copy = level::EntityData::new("Sign");
     copy.parent = Some(one);
-    copy.origin = Some(area::Origin {
+    copy.origin = Some(level::Origin {
         assembly: sign,
         instance: holder,
         path: Vec::new(),
     });
-    file.area.insert(holder, copy);
+    file.level.insert(holder, copy);
     let file = std::sync::Arc::new(file);
     w.set_assembly(asset, file.clone());
-    assert_eq!(*w.document().area(), before, "nothing changed");
+    assert_eq!(*w.document().level(), before, "nothing changed");
     assert!(
         !std::sync::Arc::ptr_eq(&w.assemblies()[&asset], &file),
         "the version the copies were made from stays in use"
@@ -1998,28 +2009,28 @@ fn an_assembly_that_now_places_an_unknown_one_keeps_its_old_version() {
     assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Error);
     // Once the sign is read (first, as the app now does), the update
     // goes through.
-    let mut sign_area = area::Area::new();
-    sign_area.insert(
+    let mut sign_level = level::Level::new();
+    sign_level.insert(
         EntityId(reflect::Id::from_raw(5).unwrap()),
-        area::EntityData::new("Sign board").with(&Transform::default()),
+        level::EntityData::new("Sign board").with(&Transform::default()),
     );
     w.set_assembly(
         sign,
-        std::sync::Arc::new(area::text::AreaFile {
-            kind: area::text::FileKind::Assembly {
+        std::sync::Arc::new(level::text::LevelFile {
+            kind: level::text::FileKind::Assembly {
                 root: EntityId(reflect::Id::from_raw(5).unwrap()),
             },
-            area: sign_area,
+            level: sign_level,
             overrides: Default::default(),
         }),
     );
     w.set_assembly(asset, file.clone());
     assert!(std::sync::Arc::ptr_eq(&w.assemblies()[&asset], &file));
     assert!(
-        w.document().area().len() > before.len(),
+        w.document().level().len() > before.len(),
         "the sign arrived in the copy"
     );
-    assert!(w.document().area().contains(root) && w.document().area().contains(lamp));
+    assert!(w.document().level().contains(root) && w.document().level().contains(lamp));
 }
 
 #[test]
@@ -2038,7 +2049,7 @@ fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
     let two = EntityId(reflect::Id::from_raw(2).unwrap());
-    assert!(area::assembly::set_in_file(
+    assert!(level::assembly::set_in_file(
         &mut file,
         &[two],
         "Light",
@@ -2048,7 +2059,7 @@ fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
     w.set_assembly(asset, std::sync::Arc::new(file));
     let light = w
         .document()
-        .area()
+        .level()
         .get(lamp)
         .unwrap()
         .get::<Light>()
@@ -2059,23 +2070,23 @@ fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
         "the assembly's change arrives"
     );
     assert_eq!(light.strength, 42.0, "the copy's own change stays");
-    assert!(w.document().area().contains(root));
+    assert!(w.document().level().contains(root));
 }
 
 #[test]
 fn unpack_turns_a_copy_into_plain_entities() {
     let (mut w, _, root, lamp) = with_a_lamp_post();
     w.unpack(root);
-    let area = w.document().area();
-    assert!(area.get(root).unwrap().origin.is_none());
-    assert!(area.get(lamp).unwrap().origin.is_none());
-    let file = w.area_file().unwrap();
+    let level = w.document().level();
+    assert!(level.get(root).unwrap().origin.is_none());
+    assert!(level.get(lamp).unwrap().origin.is_none());
+    let file = w.level_file().unwrap();
     assert!(
-        file.overrides.is_empty() && file.area.contains(lamp),
+        file.overrides.is_empty() && file.level.contains(lamp),
         "written whole now"
     );
     w.undo();
-    assert!(w.document().area().get(lamp).unwrap().origin.is_some());
+    assert!(w.document().level().get(lamp).unwrap().origin.is_some());
 }
 
 #[test]
@@ -2085,10 +2096,14 @@ fn a_duplicated_copy_is_still_a_copy() {
     w.duplicate_selection();
     let copy = w.selection().unwrap();
     assert_ne!(copy, root);
-    let file = w.area_file().unwrap();
-    let placed = file.area.iter().filter(|(_, e)| e.origin.is_some()).count();
+    let file = w.level_file().unwrap();
+    let placed = file
+        .level
+        .iter()
+        .filter(|(_, e)| e.origin.is_some())
+        .count();
     assert_eq!(placed, 2, "two copies of the assembly");
-    assert_eq!(file.area.len(), 4, "with the starter sun and environment");
+    assert_eq!(file.level.len(), 4, "with the starter sun and environment");
 }
 
 #[test]
@@ -2098,20 +2113,20 @@ fn a_selection_becomes_an_assembly_and_a_copy_of_it() {
     let lamp = w.add_point_light();
     w.reparent(&[lamp], Some(post));
     let file = w.assembly_file(post).unwrap();
-    assert_eq!(file.kind, area::text::FileKind::Assembly { root: post });
-    assert_eq!(file.area.len(), 2);
+    assert_eq!(file.kind, level::text::FileKind::Assembly { root: post });
+    assert_eq!(file.level.len(), 2);
     let asset = AssetId::random();
     w.set_assembly(asset, std::sync::Arc::new(file));
     w.make_copy(post, asset);
-    let area = w.document().area();
+    let level = w.document().level();
     assert!(
-        area.get(post).unwrap().origin.is_some(),
+        level.get(post).unwrap().origin.is_some(),
         "the root is now a copy"
     );
-    assert_eq!(area.tree(post).len(), 2);
-    let saved = w.area_file().unwrap();
+    assert_eq!(level.tree(post).len(), 2);
+    let saved = w.level_file().unwrap();
     assert_eq!(
-        saved.area.len(),
+        saved.level.len(),
         3,
         "the starter sun, environment and the copy"
     );
@@ -2140,29 +2155,29 @@ fn a_model_unpacks_into_its_parts() {
     ];
     w.reload_model(info, &[]);
     w.unpack(model);
-    let area = w.document().area();
+    let level = w.document().level();
     assert!(
-        !area.get(model).unwrap().has("Model"),
+        !level.get(model).unwrap().has("Model"),
         "the whole isn't drawn twice"
     );
-    let tree = area.tree(model);
+    let tree = level.tree(model);
     assert_eq!(tree.len(), 4);
     let sail = tree
         .iter()
-        .find(|&&id| area.get(id).unwrap().name == "Sail")
+        .find(|&&id| level.get(id).unwrap().name == "Sail")
         .copied()
         .unwrap();
-    let part = area
+    let part = level
         .get(sail)
         .unwrap()
-        .get::<area::builtin::Model>()
+        .get::<level::builtin::Model>()
         .unwrap();
     assert_eq!(part.asset.unwrap().part, Some(3));
     // Each part sits where it did inside the model: three steps of 1 m.
-    let at = area.world_matrix(sail).transform_point3(Vec3::ZERO);
+    let at = level.world_matrix(sail).transform_point3(Vec3::ZERO);
     assert!(at.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-5), "{at}");
     // The viewport draws the parts, not the whole.
-    let view = AreaView::of(area, w.models());
+    let view = LevelView::of(level, w.models());
     let mut drawn: Vec<_> = view.models.iter().map(|m| (m.asset, m.node)).collect();
     drawn.sort();
     assert_eq!(drawn, [(asset, Some(1)), (asset, Some(2))]);
@@ -2177,11 +2192,11 @@ fn a_model_unpacks_into_its_parts() {
         "looks at the sail: {focus}"
     );
     w.undo();
-    assert!(w.document().area().get(model).unwrap().has("Model"));
+    assert!(w.document().level().get(model).unwrap().has("Model"));
 }
 
 #[test]
-fn an_entity_field_shows_a_name_and_picks_from_the_area() {
+fn an_entity_field_shows_a_name_and_picks_from_the_level() {
     // The user test: an entity field showed a long ID and couldn't be set
     // in Properties at all.
     let mut w = Workbench::new(info());
@@ -2216,10 +2231,10 @@ fn an_entity_field_shows_a_name_and_picks_from_the_area() {
     crate::test_support::roomy_shelf(&mut w);
     let mut h = harness_with(w);
     h.run();
-    // None, as a word; the list offers the area's entities by name.
+    // None, as a word; the list offers the level's entities by name.
     h.get_by_value("None").click();
     h.run();
-    // The Area panel (on the left) lists it too: the list's is the one
+    // The Level panel (on the left) lists it too: the list's is the one
     // under the field, in Properties on the right.
     h.query_all_by_label("Flagship")
         .max_by(|a, b| a.rect().left().total_cmp(&b.rect().left()))
@@ -2227,7 +2242,7 @@ fn an_entity_field_shows_a_name_and_picks_from_the_area() {
         .click();
     h.run();
     let target = |w: &Workbench| {
-        w.document().area().get(follower).unwrap().components["Follow"]
+        w.document().level().get(follower).unwrap().components["Follow"]
             .get("target")
             .cloned()
     };
@@ -2298,7 +2313,7 @@ fn a_sound_picked_in_the_library_shows_in_properties_and_plays() {
     h.get_by_label("Stop the sound").click();
     h.run();
     assert!(h.state().1.contains(&WorkbenchAction::StopSound));
-    // Picking something else in the area (here, nothing) shows that.
+    // Picking something else in the level (here, nothing) shows that.
     h.state_mut().0.open.document.selection.clear();
     h.run();
     assert!(h.query_by_label("Sample rate").is_none());

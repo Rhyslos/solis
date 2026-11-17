@@ -1,7 +1,7 @@
-//! What the running game sets on an entity that the area's data doesn't
+//! What the running game sets on an entity that the level's data doesn't
 //! hold: all of it, listed in this one place.
 //!
-//! An edit while playing makes entities again from the area: the ones
+//! An edit while playing makes entities again from the level: the ones
 //! edited ([`World::update`]) or all of them ([`World::rebuild`]). What
 //! the game made of an entity meanwhile has to outlive that, or the edit
 //! undoes it: a screen game code showed is hidden, a sound it stopped
@@ -21,23 +21,23 @@
 //! | An animator's state and parameters | its run, beside its components | `Animators:setNumber`, `setSwitch`, `fire`, `setDirection`, `jumpTo` |
 //! | A tile map's cells and values | its map, beside its components | `Maps:setTerrain`, `setNumber`, `setSwitch`, `setChoice` |
 //!
-//! All but the last two are fields the area holds too ([`Part`]). For
-//! each the rule is the same: the game's is kept while the area still
+//! All but the last two are fields the level holds too ([`Part`]). For
+//! each the rule is the same: the game's is kept while the level still
 //! gives what it gave when the world took the entity in ([`Start`]). An
-//! edit that changes the area's wins, and so does one that sets the field
-//! by hand to what the area held all along ([`World::set_by_hand`]). The
+//! edit that changes the level's wins, and so does one that sets the field
+//! by hand to what the level held all along ([`World::set_by_hand`]). The
 //! last two are kept as long as the entity keeps the component they
 //! belong to.
 //!
 //! A new call of game code's that sets something on an entity gets a row
-//! here, and a [`Part`] if the area holds what it sets. The editor's
+//! here, and a [`Part`] if the level holds what it sets. The editor's
 //! `game_set_tests.rs` lists every call and plays each that sets
 //! something, so one added without being kept fails there.
 //!
 //! Two more things are the game's and are kept by rules of their own,
 //! which both ways already share: where the game put an entity (`moveTo`,
 //! `turnTo`, `face`, `walk` and physics: `World::set_transform` notes the
-//! area's Transform, and the game's place stays while the area still has
+//! level's Transform, and the game's place stays while the level still has
 //! that one) and how its body moves (`push`, `setVelocity`: physics isn't
 //! made again with the entity).
 
@@ -45,7 +45,7 @@ use crate::animators::Running;
 use crate::sprites::Playback;
 use crate::tile_maps::MapState;
 use crate::{Id, Values, World};
-use area::builtin::{Animator, AudioSource, Screen, Sprite, TileMap};
+use level::builtin::{Animator, AudioSource, Screen, Sprite, TileMap};
 use reflect::{Component, ComponentData, EntityId};
 
 /// One thing game code sets on an entity's own component: some of the
@@ -80,7 +80,7 @@ impl Part {
         Self::Screen,
     ];
 
-    /// The component it's on and its fields there, as the area names
+    /// The component it's on and its fields there, as the level names
     /// them.
     pub(crate) fn fields(self) -> (&'static str, &'static [&'static str]) {
         match self {
@@ -258,26 +258,26 @@ pub(crate) fn put_screen(ecs: &mut hecs::World, entity: hecs::Entity, screen: &s
     let _ = ecs.insert_one(entity, values);
 }
 
-/// An entity's [`GameSet`] as the area gave it when the world took the
+/// An entity's [`GameSet`] as the level gave it when the world took the
 /// entity in. Only entities with one of the components have it.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Start(pub(crate) GameSet);
 
 /// What the game made of one entity, taken off it before it's made again
-/// from the area.
+/// from the level.
 #[derive(Debug)]
 pub(crate) struct Carried {
     id: EntityId,
-    /// Its parts as the area gave them, and as the game has them.
+    /// Its parts as the level gave them, and as the game has them.
     start: GameSet,
     now: GameSet,
-    /// Its animator's run and its tile map, which the area doesn't hold.
+    /// Its animator's run and its tile map, which the level doesn't hold.
     run: Option<Running>,
     map: Option<MapState>,
 }
 
 impl World {
-    /// The parts the area gave `entity` (none for one without any of the
+    /// The parts the level gave `entity` (none for one without any of the
     /// components).
     fn start_of(&self, entity: hecs::Entity) -> GameSet {
         self.ecs
@@ -287,7 +287,7 @@ impl World {
     }
 
     /// Takes off `entity` everything the game made of it that making it
-    /// again from the area would lose; nothing, if there's nothing.
+    /// again from the level would lose; nothing, if there's nothing.
     pub(crate) fn carry(&mut self, entity: hecs::Entity) -> Option<Carried> {
         let id = self.ecs.get::<&Id>(entity).ok()?.0;
         let start = self.start_of(entity);
@@ -332,7 +332,7 @@ impl World {
     }
 
     /// Puts back what was carried, on the entity made again from the
-    /// area: each part the game had changed, while the area still gives
+    /// level: each part the game had changed, while the level still gives
     /// what it gave (an edit that changed it wins); its run and its map,
     /// while it still has an Animator and a TileMap.
     pub(crate) fn put_back(&mut self, carried: Carried) {
@@ -361,11 +361,11 @@ impl World {
     }
 
     /// A field of `id`'s component was set by hand in the editor while
-    /// playing: if game code sets that field too, the area's value takes
-    /// the place of the game's, even when it's the value the area held
+    /// playing: if game code sets that field too, the level's value takes
+    /// the place of the game's, even when it's the value the level held
     /// all along (so [`Self::update`] and [`Self::rebuild`], which keep
-    /// the game's while the area is unchanged, kept it). Call it after
-    /// them. Any other field is the area's already.
+    /// the game's while the level is unchanged, kept it). Call it after
+    /// them. Any other field is the level's already.
     pub fn set_by_hand(&mut self, id: EntityId, component: &str, field: &str) {
         let (Some(part), Some(&entity)) = (Part::of(component, field), self.by_id.get(&id)) else {
             return;

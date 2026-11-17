@@ -1,9 +1,9 @@
-//! Play mode: the area running as a game, beside the editor.
+//! Play mode: the level running as a game, beside the editor.
 //!
-//! Play keeps a copy of the document (the area, its undo history and the
-//! selection; the history's steps are shared, so this is cheap) and builds the game's world from the area
+//! Play keeps a copy of the document (the level, its undo history and the
+//! selection; the history's steps are shared, so this is cheap) and builds the game's world from the level
 //! ([`world::World`]). While it runs, the editor keeps working: changes
-//! reach the game, which is built again from the area when it changes.
+//! reach the game, which is built again from the level when it changes.
 //! Stop throws the world away and puts the copy back, so everything is
 //! exactly as it was before Play; the edits the user made meanwhile wait
 //! for Keep or Undo all (`play_changes.rs`). Saving and opening wait
@@ -14,7 +14,7 @@ use crate::document::{Document, FieldsSet};
 use crate::game_code::{GameEdit, PlayWorld, ViewCache, failure_text, new_game, sync_all};
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::text::AreaFile;
+use level::text::LevelFile;
 use reflect::{AssetId, EntityId};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -22,7 +22,7 @@ use std::sync::Arc;
 /// Whether the game is running.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayState {
-    /// Not playing: editing the area.
+    /// Not playing: editing the level.
     Editing,
     /// The game is running.
     Playing,
@@ -39,15 +39,15 @@ pub(crate) struct Playing {
     /// Step was pressed: the next frame runs one tick while paused.
     pub(crate) step: bool,
     /// The document as it was when Play was pressed, put back on Stop.
-    /// Only its file changes meanwhile: it follows the area's file when
+    /// Only its file changes meanwhile: it follows the level's file when
     /// the Library moves or deletes it (`Workbench::file_moved`).
     pub(crate) before: Box<Document>,
     /// The assemblies as they were when Play was pressed, to rebuild
     /// copies from on Stop if any changed meanwhile.
-    assemblies_before: BTreeMap<AssetId, Arc<AreaFile>>,
-    /// The area as its file holds it now, if the file changed on disk
+    assemblies_before: BTreeMap<AssetId, Arc<LevelFile>>,
+    /// The level as its file holds it now, if the file changed on disk
     /// while playing: offered again after Stop.
-    pub(crate) reload: Option<area::Area>,
+    pub(crate) reload: Option<level::Level>,
     /// The game's code running, if there is code (and it started), on
     /// every core (decision 0033).
     pub(crate) game: Option<script::Game>,
@@ -105,7 +105,7 @@ impl Playing {
     /// value from before Play the first time. An entity the game made
     /// has no value from before, and isn't noted.
     pub(crate) fn note_yours(&mut self, entity: EntityId, component: &str, field: &str) {
-        let Some(was) = self.before.area().get(entity) else {
+        let Some(was) = self.before.level().get(entity) else {
             return;
         };
         let key = (entity, component.to_owned(), field.to_owned());
@@ -166,7 +166,7 @@ pub(crate) fn collapse_saves(saves: Vec<(String, bool)>) -> (Vec<(String, bool)>
 
 /// The most copies of assemblies game code may make in one tick; more
 /// aren't made, and the Console says so (a component spawning every tick by
-/// mistake would otherwise grow the area until the computer runs out of
+/// mistake would otherwise grow the level until the computer runs out of
 /// memory).
 pub const MAX_SPAWNS_PER_TICK: usize = 10_000;
 
@@ -180,20 +180,20 @@ impl std::fmt::Debug for Playing {
 }
 
 /// Whether `action` must wait until the game stops: it saves or replaces
-/// the area (or writes an assembly), which would save the game's changes
+/// the level (or writes an assembly), which would save the game's changes
 /// or lose the copy kept for Stop.
 pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
     matches!(
         action,
-        WorkbenchAction::NewArea
-            | WorkbenchAction::OpenArea
-            | WorkbenchAction::OpenAreaFile(_)
-            | WorkbenchAction::SaveArea
-            | WorkbenchAction::SaveAreaAs
+        WorkbenchAction::NewLevel
+            | WorkbenchAction::OpenLevel
+            | WorkbenchAction::OpenLevelFile(_)
+            | WorkbenchAction::SaveLevel
+            | WorkbenchAction::SaveLevelAs
             | WorkbenchAction::CreateProject(_)
             | WorkbenchAction::OpenProject
             | WorkbenchAction::OpenRecent(_)
-            | WorkbenchAction::AddSampleArea
+            | WorkbenchAction::AddSampleLevel
             | WorkbenchAction::MakeSampleGame
             | WorkbenchAction::MakeUiSample
             | WorkbenchAction::MakeBenchmark
@@ -230,7 +230,7 @@ impl Workbench {
         }
     }
 
-    /// Play: runs the area as a game (or carries on, if paused). The
+    /// Play: runs the level as a game (or carries on, if paused). The
     /// Game panel comes to the front.
     pub fn play(&mut self) {
         // Changes from the last play wait for Keep or Undo all first.
@@ -257,14 +257,14 @@ impl Workbench {
         self.plays += 1;
         self.open.game_sounds.clear();
         self.open.quit_asked = false;
-        let mut world = world::World::from_area(self.open.document.area());
+        let mut world = world::World::from_level(self.open.document.level());
         // A new seed each Play, unless one was chosen (`seed` in the
         // Console), so random numbers differ between plays but a play can
         // be repeated.
         let seed = self.open.fixed_seed.unwrap_or_else(fresh_seed);
         world.set_seed(seed);
         let _ = self.open.document.take_changes();
-        let cameras = world.placed::<area::builtin::Camera>().len();
+        let cameras = world.placed::<level::builtin::Camera>().len();
         let mut view = ViewCache::default();
         view.settings = self.player_settings;
         let (game, pending) = self.start_game(&mut world, &mut view);
@@ -301,7 +301,7 @@ impl Workbench {
         self.open.document.hold_steps();
         // Nothing held over from before Play.
         self.devices = input::Devices::new();
-        // The Game tab comes to the front of the area's group (the
+        // The Game tab comes to the front of the level's group (the
         // project lead's answer 10). Debug keeps its Profiler in front.
         use crate::shell::RibbonTab;
         self.show_in(
@@ -310,7 +310,7 @@ impl Workbench {
             Panel::Game,
         );
         let note = if cameras == 0 {
-            " There's no camera in the area, so the Game panel shows the editor's view \
+            " There's no camera in the level, so the Game panel shows the editor's view \
              (Home > Camera adds one)."
         } else {
             ""
@@ -318,14 +318,14 @@ impl Workbench {
         self.log(
             LogLevel::Info,
             format!(
-                "Playing. Stop puts the area back as it is now, and asks whether to keep the \
+                "Playing. Stop puts the level back as it is now, and asks whether to keep the \
                  changes you make meanwhile.{note}"
             ),
         );
     }
 
     /// The game's code started on `world`, with every entity's game
-    /// components (Lust, Lua and Rust) made from the area; `None` with no
+    /// components (Lust, Lua and Rust) made from the level; `None` with no
     /// code. If the code's start fails (said in the Console), the Rust
     /// components run on their own.
     pub(crate) fn start_game(
@@ -374,7 +374,7 @@ impl Workbench {
         }
         failures.extend(sync_all(
             &mut game,
-            self.open.document.area(),
+            self.open.document.level(),
             &FieldsSet::new(),
             &mut host,
         ));
@@ -424,7 +424,7 @@ impl Workbench {
             self.log(LogLevel::Info, words);
         }
         for failure in failures {
-            let text = failure_text(self.open.document.area(), failure);
+            let text = failure_text(self.open.document.level(), failure);
             self.log(LogLevel::Error, text);
         }
     }
@@ -457,10 +457,10 @@ impl Workbench {
         }
     }
 
-    /// Stop: throws the game away and puts the area, its undo history
+    /// Stop: throws the game away and puts the level, its undo history
     /// and the selection back as they were when Play was pressed.
     /// Assemblies changed on disk meanwhile update their copies again,
-    /// and an area file changed on disk is offered again.
+    /// and a level file changed on disk is offered again.
     pub fn stop(&mut self) {
         let Some(playing) = self.open.playing.take() else {
             self.log(LogLevel::Info, "Nothing is running.");
@@ -487,11 +487,11 @@ impl Workbench {
                     recording.write(),
                 ));
         }
-        // The user's changes to the area while playing wait for Keep or
+        // The user's changes to the level while playing wait for Keep or
         // Undo all (decision 0085): never thrown away silently. Not the
         // game's: what it spawned, took out or loaded goes with it.
         let asked = self.note_play_changes(&playing.before, &playing.assemblies_before);
-        // The area as it was, but the components known now: code that
+        // The level as it was, but the components known now: code that
         // changed while playing keeps its components in the registry.
         self.replace_document(*playing.before);
         self.open.document.touch();
@@ -501,20 +501,20 @@ impl Workbench {
             if asked {
                 format!("Stopped after {seconds:.1} s; keep the changes made while playing?")
             } else {
-                format!("Stopped after {seconds:.1} s; the area is back as it was.")
+                format!("Stopped after {seconds:.1} s; the level is back as it was.")
             },
         );
         self.update_copies(now);
-        if let Some(area) = playing.reload {
-            self.offer_reload(area);
+        if let Some(level) = playing.reload {
+            self.offer_reload(level);
         }
     }
 
     /// Makes the assemblies `now` (as their files are now) known, in
     /// place of the ones known (as they were at Play, which the open
-    /// area's copies were built from): the copies of each that changed
+    /// level's copies were built from): the copies of each that changed
     /// meanwhile are rebuilt.
-    pub(crate) fn update_copies(&mut self, now: BTreeMap<AssetId, Arc<AreaFile>>) {
+    pub(crate) fn update_copies(&mut self, now: BTreeMap<AssetId, Arc<LevelFile>>) {
         for (id, file) in now {
             let changed = self
                 .open
@@ -543,7 +543,7 @@ impl Workbench {
         PHYSICS_LIMIT
     }
 
-    /// Whether the user changed the area since Play was pressed: Stop
+    /// Whether the user changed the level since Play was pressed: Stop
     /// would ask Keep or Undo all.
     pub(crate) fn edited_while_playing(&self) -> bool {
         self.open.playing.as_ref().is_some_and(|playing| {
@@ -553,7 +553,7 @@ impl Workbench {
 
     /// Takes out of `actions` what must wait until the game stops, saying
     /// so in the Console. Quitting stops the game first, and waits for
-    /// Keep or Undo all if the area was edited meanwhile.
+    /// Keep or Undo all if the level was edited meanwhile.
     pub(crate) fn hold_while_playing(&mut self, actions: &mut Vec<WorkbenchAction>) {
         if self.open.playing.is_none() {
             return;

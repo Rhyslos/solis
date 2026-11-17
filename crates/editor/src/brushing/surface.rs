@@ -8,21 +8,21 @@
 //! hit is nearer than the next box. Ten thousand brushes cost a walk over
 //! their boxes, once, as the button goes down.
 
-use crate::area_view::AreaView;
+use crate::level_view::LevelView;
 use crate::screen::Ray;
 use glam::{Mat4, Vec3};
 
-/// The height of the first solid thing `ray` meets among `area`'s brushes
+/// The height of the first solid thing `ray` meets among `level`'s brushes
 /// and models: the point it meets, or none if it meets nothing.
-pub(crate) fn height_under(ray: &Ray, area: &AreaView) -> Option<f32> {
-    first_hit(ray, area).map(|(_, at)| at.z)
+pub(crate) fn height_under(ray: &Ray, level: &LevelView) -> Option<f32> {
+    first_hit(ray, level).map(|(_, at)| at.z)
 }
 
 /// How far along `ray` it first meets a brush's triangle or a model's
 /// box, and where.
-pub(crate) fn first_hit(ray: &Ray, area: &AreaView) -> Option<(f32, Vec3)> {
+pub(crate) fn first_hit(ray: &Ray, level: &LevelView) -> Option<(f32, Vec3)> {
     // Every brush whose box the ray goes through, by how far.
-    let mut boxes: Vec<(f32, usize)> = area
+    let mut boxes: Vec<(f32, usize)> = level
         .brushes
         .iter()
         .enumerate()
@@ -38,7 +38,7 @@ pub(crate) fn first_hit(ray: &Ray, area: &AreaView) -> Option<(f32, Vec3)> {
         if best.is_some_and(|b| b <= entry) {
             break;
         }
-        let brush = &area.brushes[n];
+        let brush = &level.brushes[n];
         if let Some(d) = hit_triangles(ray, brush.transform, &brush.model.model)
             && best.is_none_or(|b| d < b)
         {
@@ -46,7 +46,7 @@ pub(crate) fn first_hit(ray: &Ray, area: &AreaView) -> Option<(f32, Vec3)> {
         }
     }
     // A model's surface isn't known here, only its box.
-    for model in &area.models {
+    for model in &level.models {
         if let Some((min, max)) = model.bounds {
             let (min, max) = placed_box(model.transform, min, max);
             if let Some(d) = enters(ray, min, max)

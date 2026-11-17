@@ -1,6 +1,6 @@
 //! Nothing became unreachable when the menus went: every item the old
 //! menu bar had can still be done, by name, from the ribbon, a File page,
-//! the area's tab or the search (the plan's rule 1,
+//! the level's tab or the search (the plan's rule 1,
 //! `docs/plans/shared-1-ui-remake.md`).
 //!
 //! [`MOVED`] is the old menu bar, item by item, as the plan's inventory
@@ -24,12 +24,12 @@ enum Place {
     RibbonList(RibbonTab, &'static str, &'static str),
     /// In the File page's column, under these words.
     File(&'static str),
-    /// In the list the **+** after the area's tab opens, under these
+    /// In the list the **+** after the level's tab opens, under these
     /// words.
-    AreaTabPlus(&'static str),
-    /// In the area's tab's right-click menu, under words starting with
+    LevelTabPlus(&'static str),
+    /// In the level's tab's right-click menu, under words starting with
     /// these (its shortcut follows them).
-    AreaTabMenu(&'static str),
+    LevelTabMenu(&'static str),
     /// In the search (and by its key, where it has one); some are in a
     /// panel's menu or on a File page too, which this table doesn't try.
     Search,
@@ -43,24 +43,24 @@ const MOVED: [(&str, &str, Place); 37] = [
         Place::File("Close project"),
     ),
     (
-        "File > New area",
-        "New area",
-        Place::AreaTabPlus("New area"),
+        "File > New level",
+        "New level",
+        Place::LevelTabPlus("New level"),
     ),
     (
-        "File > Open area…",
-        "Open area…",
-        Place::AreaTabPlus("Open area…"),
+        "File > Open level…",
+        "Open level…",
+        Place::LevelTabPlus("Open level…"),
     ),
     (
-        "File > Save area",
-        "Save area",
+        "File > Save level",
+        "Save level",
         Place::Ribbon(RibbonTab::Home),
     ),
     (
-        "File > Save area as…",
-        "Save area as…",
-        Place::AreaTabMenu("Save as…"),
+        "File > Save level as…",
+        "Save level as…",
+        Place::LevelTabMenu("Save as…"),
     ),
     (
         "File > Import model…",
@@ -167,8 +167,8 @@ const MOVED: [(&str, &str, Place); 37] = [
     ("Window > Reset layout", "Reset layout", Place::Search),
     ("Help > Open the manual ↗", "Documentation ↗", Place::Search),
     (
-        "Help > Add the sample area",
-        "Add the sample area",
+        "Help > Add the sample level",
+        "Add the sample level",
         Place::Search,
     ),
     (
@@ -289,8 +289,8 @@ fn every_old_menu_item_is_a_command_that_can_be_done_and_the_search_lists_it() {
 }
 
 /// Commands whose doing shows nowhere this test looks: Rename starts
-/// typing in the Area panel, with
-/// one entity in the area Select all selects what already is, a step
+/// typing in the Level panel, with
+/// one entity in the level Select all selects what already is, a step
 /// moves the game on by a tick (`play_tests.rs` watches that), and the
 /// panels of an untouched arrangement are already where Reset layout
 /// puts them (`file_pages/settings_tests.rs` moves one first).
@@ -312,7 +312,7 @@ fn snapshot(w: &Workbench) -> impl std::fmt::Debug + use<> {
             w.open.export.is_some(),
             w.viewport.overlays,
             w.open.outbox.len(),
-            // Leaving the area asks about unsaved changes first.
+            // Leaving the level asks about unsaved changes first.
             w.open.unsaved_prompt.is_some(),
         ),
     )
@@ -361,20 +361,20 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                     "{was}: {words:?} is in the list {opener:?} opens"
                 );
             }
-            Place::AreaTabPlus(words) => {
-                h.get_by_label("New or open an area").click();
+            Place::LevelTabPlus(words) => {
+                h.get_by_label("New or open a level").click();
                 h.run();
                 assert!(
                     h.query_by_label(words).is_some(),
-                    "{was}: the area's + has {words:?}"
+                    "{was}: the level's + has {words:?}"
                 );
             }
-            Place::AreaTabMenu(words) => {
+            Place::LevelTabMenu(words) => {
                 let tab = h
-                    .get_all_by_label("Untitled area")
+                    .get_all_by_label("Untitled level")
                     .map(|node| node.rect())
                     .find(|r| (r.height() - crate::tokens::size::DOC_TAB_H).abs() < 0.5)
-                    .expect("the area's tab");
+                    .expect("the level's tab");
                 h.hover_at(tab.center());
                 h.run();
                 for pressed in [true, false] {
@@ -388,7 +388,7 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                 h.run();
                 assert!(
                     h.query_by_label_contains(words).is_some(),
-                    "{was}: the area's tab's menu has {words:?}"
+                    "{was}: the level's tab's menu has {words:?}"
                 );
             }
             Place::File(words) => {
@@ -446,7 +446,7 @@ fn the_file_page_s_items_do_what_the_menus_did() {
         "About is a page"
     );
     crate::test_support::file_item(&mut h, "Save all");
-    assert!(h.state().1.actions.contains(&WorkbenchAction::SaveArea));
+    assert!(h.state().1.actions.contains(&WorkbenchAction::SaveLevel));
     crate::test_support::file_item(&mut h, "Back to editor");
     assert_eq!(h.state().0.ribbon_tab(), RibbonTab::Home);
     // Exit asks about the unsaved light first, as Quit did.
@@ -512,8 +512,8 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
             "{command:?} asks the app the same"
         );
         assert_eq!(
-            a.0.open.document.area().len(),
-            b.0.open.document.area().len(),
+            a.0.open.document.level().len(),
+            b.0.open.document.level().len(),
             "{command:?}"
         );
         assert_eq!(

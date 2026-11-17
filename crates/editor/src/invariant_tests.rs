@@ -6,7 +6,7 @@
 //!   and played on gives exactly the same checksums, tick by tick, as the
 //!   game that was saved and played on.
 //! - **Replays match** their recordings, saves included.
-//! - **Stop puts everything back:** the area, the undo history and the
+//! - **Stop puts everything back:** the level, the undo history and the
 //!   selection are as they were before Play.
 //! - **Nothing breaks:** no mistakes in the Console, every place finite.
 //!
@@ -23,9 +23,9 @@ use crate::console::LogLevel;
 use crate::properties::PropertyRequest;
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::EntityData;
-use area::builtin::{BodyKind, Camera, CharacterBody, Collider, RigidBody, Transform};
 use glam::Vec3;
+use level::EntityData;
+use level::builtin::{BodyKind, Camera, CharacterBody, Collider, RigidBody, Transform};
 use proptest::prelude::*;
 use reflect::{ComponentData, EntityId, Value};
 use std::collections::BTreeMap;
@@ -158,7 +158,7 @@ fn level() -> Workbench {
     });
     w.set_program(Some(program()));
     // The drone: a small dynamic body with its component.
-    let mut drones = area::Area::new();
+    let mut drones = level::Level::new();
     let mut drone = a_crate(Vec3::ZERO);
     drone.name = "Drone".into();
     drone
@@ -168,9 +168,9 @@ fn level() -> Workbench {
     let asset = reflect::AssetId(reflect::Id::from_raw(901).unwrap());
     w.set_assembly(
         asset,
-        Arc::new(area::text::AreaFile {
-            kind: area::text::FileKind::Assembly { root: id(1) },
-            area: drones,
+        Arc::new(level::text::LevelFile {
+            kind: level::text::FileKind::Assembly { root: id(1) },
+            level: drones,
             overrides: Default::default(),
         }),
     );
@@ -249,7 +249,7 @@ fn level() -> Workbench {
     }
     let edits = entities
         .into_iter()
-        .map(|one| area::Edit::Spawn {
+        .map(|one| level::Edit::Spawn {
             entities: vec![one],
         })
         .collect();
@@ -432,7 +432,7 @@ impl Player {
         self.w
             .open
             .document
-            .area()
+            .level()
             .iter()
             .filter(|(e, _)| {
                 let raw = e.0.raw();
@@ -468,7 +468,7 @@ impl Player {
             Edit::AddCrate { x, y } => {
                 *made += 1;
                 let at = Vec3::new(f32::from(x) * 0.5, f32::from(y) * 0.5, 1.0);
-                let add = vec![area::Edit::Spawn {
+                let add = vec![level::Edit::Spawn {
                     entities: vec![(id(CRATES + 40 + *made), a_crate(at))],
                 }];
                 if let Some(alone) = &mut self.alone {
@@ -563,7 +563,7 @@ impl Player {
             .map(|l| l.text.clone())
             .collect();
         if let Some(world) = self.w.world() {
-            for (e, _) in self.w.open.document.area().iter() {
+            for (e, _) in self.w.open.document.level().iter() {
                 if let Some(m) = world.global(e)
                     && !m.is_finite()
                 {
@@ -661,11 +661,11 @@ proptest! {
         prop_assert_eq!(p.broken(), Vec::<String>::new());
     }
 
-    /// Stop puts the area, the undo history and the selection back as
+    /// Stop puts the level, the undo history and the selection back as
     /// they were before Play, whatever happened while playing. Keep then
     /// makes the edits made meanwhile, and nothing the game did (spawned,
-    /// despawned, loaded): the area is the one the same edits come to with
-    /// no game running, and undoing them is the area from before Play.
+    /// despawned, loaded): the level is the one the same edits come to with
+    /// no game running, and undoing them is the level from before Play.
     #[test]
     fn stop_puts_everything_back(steps in prop::collection::vec(step(true), 1..16)) {
         let mut p = Player::new(level());
@@ -674,15 +674,15 @@ proptest! {
         p.alone = Some(alone);
         p.w.select(id(CRATES));
         let registry = p.w.open.document.registry.clone();
-        let area = area::text::write(p.w.open.document.area(), &registry, &|_| None);
+        let level = level::text::write(p.w.open.document.level(), &registry, &|_| None);
         let undo = p.w.open.document.history().undo_len();
         let selected: Vec<EntityId> = p.w.open.document.selection.iter().collect();
         p.start(false);
         p.play(&steps);
         p.w.stop();
         prop_assert_eq!(
-            &area::text::write(p.w.open.document.area(), &registry, &|_| None),
-            &area
+            &level::text::write(p.w.open.document.level(), &registry, &|_| None),
+            &level
         );
         prop_assert_eq!(p.w.open.document.history().undo_len(), undo);
         prop_assert_eq!(p.w.open.document.selection.iter().collect::<Vec<_>>(), selected);
@@ -691,8 +691,8 @@ proptest! {
         p.w.keep_play_changes();
         let alone = p.alone.as_ref().expect("made above");
         prop_assert_eq!(
-            area::text::write(p.w.open.document.area(), &registry, &|_| None),
-            area::text::write(alone.open.document.area(), &registry, &|_| None)
+            level::text::write(p.w.open.document.level(), &registry, &|_| None),
+            level::text::write(alone.open.document.level(), &registry, &|_| None)
         );
         prop_assert_eq!(p.w.open.document.history().undo_len(), undo + kept);
         prop_assert_eq!(alone.open.document.history().undo_len(), undo + kept);
@@ -700,8 +700,8 @@ proptest! {
             p.w.undo();
         }
         prop_assert_eq!(
-            area::text::write(p.w.open.document.area(), &registry, &|_| None),
-            area
+            level::text::write(p.w.open.document.level(), &registry, &|_| None),
+            level
         );
     }
 }

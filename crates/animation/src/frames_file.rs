@@ -1,7 +1,7 @@
 //! A sprite's clips file (`.solframes`, Phase 9, D3): which sheet (an
 //! Aseprite file) it plays, what Solis adds to the sheet's tags, and
 //! clips made in Solis from any of the sheet's frames. A settings file in
-//! the same Lust style as areas, one line per clip, so Git merges it:
+//! the same Lust style as levels, one line per clip, so Git merges it:
 //!
 //! ```text
 //! -- A sprite's clips. Safe to edit by hand.
@@ -29,7 +29,7 @@
 //! refused, with its line.
 
 use crate::clip::{ClipFrame, Direction};
-use area::settings;
+use level::settings;
 use reflect::{AssetId, Value};
 use std::fmt;
 

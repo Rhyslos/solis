@@ -5,7 +5,7 @@
 ## When to use it
 When you want to change how the editor itself looks or behaves (its accent colour, how large it's drawn, what the viewport shows, where Home's lists sit, putting the shelf back as it started, or hiding the parts that aren't built yet), or a setting that belongs to the whole project, such as its 2D resolution, its game's controls or how it is exported.
 
-- **Preferences** are yours, kept on this computer. They aren't saved in the area or the project.
+- **Preferences** are yours, kept on this computer. They aren't saved in the level or the project.
 - **Project settings** are saved in the open project's folder, in small text files Git can merge, so they travel with it to other computers and other people. They need a project open.
 
 Neither is an undo step. Every change applies at once: there is no Save or Apply button.
@@ -33,7 +33,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 | Appearance › Interface scale | How large everything is drawn: **100%** to **200%**. Raise it when text is too small, common on a laptop or a very sharp (4K) screen. Everything grows together, and thin lines stay crisp. It doesn't change your game. |
 | Appearance › Density | How tall buttons, fields and drop-down lists are: **Compact** (22 pixels at 100%), **Default** (24) or **Comfortable** (28). Text stays the same size. |
 | Appearance › Shelf opens on | Which [shelf](concepts.md#the-window) tab comes to the front when you select something: **The tab in front** (the standard: the shelf stays as it is) or **Entity** (Properties comes to the front every time you pick something). |
-| Appearance › Panel layout | Where Home's three lists sit ([panel layout](concepts.md#the-window)): **Area left, Assets bottom** (the standard: the Area list and Properties as tall columns at the sides, Assets a strip under the area), **Area and Assets on the left**, **Area left, Assets right**, or **The shelf (as designed)** (all three on the shelf's Entity tab). It changes at once, so try each; see [Interface tour](interface-tour.md). With a layout other than the shelf, **Shelf opens on › Entity** does nothing: Properties is always in view. |
+| Appearance › Panel layout | Where Home's three lists sit ([panel layout](concepts.md#the-window)): **Level left, Assets bottom** (the standard: the Level list and Properties as tall columns at the sides, Assets a strip under the level), **Level and Assets on the left**, **Level left, Assets right**, or **The shelf (as designed)** (all three on the shelf's Entity tab). It changes at once, so try each; see [Interface tour](interface-tour.md). With a layout other than the shelf, **Shelf opens on › Entity** does nothing: Properties is always in view. |
 | Appearance › Sizes | **Reset layout** puts the tab you came from back as it started: the shelf on its first tab, unfolded, and every border you dragged (the shelf's height, the split between groups, the columns and the Assets strip) at its standard size, in every panel layout. To put back one border only, double-click it. |
 | Appearance › Code editor split | An [unfinished part](unfinished-parts.md): it will show game code next to the viewport. Today, game code opens in your own code editor ([Game code](game-code.md)). |
 | Viewport › Frame time and frame rate | The pill at the top right of the viewport. |
@@ -51,7 +51,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 |---|---|
 | General › Project name | Its name in the window's title and on the [launcher](launcher.md). Type a new one and click elsewhere; the folder keeps its own name. |
 | General › Kind | **2D**, **3D** or **Both**: what the game is made of ([project kind](concepts.md#projects)). Chosen when the project was made; a click here changes it, and it's kept in the project's `project.solis` at once. Projects made before it was asked are **Both**. For now the kind is kept and shown on the project's card; a later update makes a 2D project hide every tab, tool and setting only 3D games use. |
-| General › Game starts in | The area the exported game opens in (the same setting as on Build). |
+| General › Game starts in | The level the exported game opens in (the same setting as on Build). |
 | General › Engine version | The build of Solis that last opened the project, with **Check now**. |
 | General › Scripting | Game code is written in Lust and opens in your code editor. |
 | 2D › Base resolution | The size the project's 2D games are drawn at, in pixels, before they're scaled up: 480 × 270 to start. Pick a common size from the list, or type your own. See [2D](2d-pixel-perfect.md). |
@@ -69,7 +69,7 @@ A number you drag is saved once, when you let go.
 - **Problem:** Project settings says **Open a project first**. **Why:** its settings belong to a project, and none is open. **Fix:** open or make one in the [launcher](launcher.md) (**File › Close project** goes back to it).
 - **Problem:** the Console says `pixels.solpix` had a mistake. **Why:** the file was edited by hand and can't be read. **Fix:** the standard 2D settings are used meanwhile; change anything on the 2D tab and the file is written again, with the damaged one kept beside it as `pixels.solpix.bak`.
 - **Problem:** the shelf is so tall (or folded) that what you want isn't in sight. **Why:** its height and fold are remembered per tab. **Fix:** **Ctrl + Space** unfolds it; double-click its grip, or **Reset layout**, puts it back.
-- **Problem:** after an update, Home's Area list and Properties are columns beside the area, not on the shelf. **Why:** that is the new standard panel layout. **Fix:** choose **The shelf (as designed)** under **Appearance › Panel layout** to have them back on the shelf.
+- **Problem:** after an update, Home's Level list and Properties are columns beside the level, not on the shelf. **Why:** that is the new standard panel layout. **Fix:** choose **The shelf (as designed)** under **Appearance › Panel layout** to have them back on the shelf.
 - **Problem:** I can't find the Settings window, or File › Input. **Why:** they became these pages. **Fix:** Preferences and Project settings are in the File column; Input is a sub-tab of Project settings.
 
 ## Related

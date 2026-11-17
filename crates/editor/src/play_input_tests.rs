@@ -4,8 +4,8 @@
 
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};
-use area::EntityData;
-use area::builtin::Transform;
+use level::EntityData;
+use level::builtin::Transform;
 use reflect::EntityId;
 use std::sync::Arc;
 
@@ -54,7 +54,7 @@ fn program(main: &str) -> Arc<script::Compiled> {
 
 const WALKER_ID: u64 = 7;
 
-/// A workbench with a walker in its area.
+/// A workbench with a walker in its level.
 fn with_a_walker() -> Workbench {
     let mut w = Workbench::new(info());
     w.set_program(Some(program(WALKER)));
@@ -65,7 +65,7 @@ fn with_a_walker() -> Workbench {
         .document
         .edit(
             "Add",
-            vec![area::Edit::Spawn {
+            vec![level::Edit::Spawn {
                 entities: vec![(EntityId(reflect::Id::from_raw(WALKER_ID).unwrap()), data)],
             }],
             None,
@@ -181,7 +181,7 @@ fn record(w: &mut Workbench, ticks: u64) -> String {
     w.play();
     let playing = w.open.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording {
-        area: None,
+        level: None,
         seed: playing.world.seed(),
         start: playing.world.checksum(),
         ticks: Vec::new(),
@@ -360,7 +360,7 @@ fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
     unhurried(&mut w);
     w.set_program(Some(program(code)));
     let id = EntityId(reflect::Id::from_raw(WALKER_ID).unwrap());
-    let mut data = w.open.document.area().get(id).unwrap().clone();
+    let mut data = w.open.document.level().get(id).unwrap().clone();
     data.components.clear();
     data.set(&Transform::default());
     data.components
@@ -370,8 +370,8 @@ fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
         .edit(
             "Drifter",
             vec![
-                area::Edit::Despawn { root: id },
-                area::Edit::Spawn {
+                level::Edit::Despawn { root: id },
+                level::Edit::Spawn {
                     entities: vec![(id, data)],
                 },
             ],

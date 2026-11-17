@@ -4,8 +4,8 @@
 use super::*;
 use crate::sprite_sheets::batches;
 use crate::sprite_sheets::tests::sheets_with;
-use area::builtin::{Parallax, Sprite};
 use glam::Vec3;
+use level::builtin::{Parallax, Sprite};
 
 fn sprite(id: AssetId) -> Sprite {
     Sprite {
@@ -17,8 +17,8 @@ fn sprite(id: AssetId) -> Sprite {
     }
 }
 
-fn layer(id: AssetId, x: f32, y: f32, parallax: Option<Parallax>, pick: u32) -> AreaSprite {
-    AreaSprite {
+fn layer(id: AssetId, x: f32, y: f32, parallax: Option<Parallax>, pick: u32) -> LevelSprite {
+    LevelSprite {
         entity: EntityId::random(),
         sprite: sprite(id),
         transform: Mat4::from_translation(Vec3::new(x, y, 0.0)),

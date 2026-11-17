@@ -7,8 +7,8 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `save_game` | A save game, loaded into an editor and played on a few ticks |
 | `recording` | A recording of play; read back after writing |
 | `input_actions` | `input.solinput`; read back the same after writing |
-| `area_file` | An area or assembly file, its assemblies expanded (it may place itself) |
-| `brush` | An area file holding brushes (Tools 1a, B1); every brush read is within the limits, writes back to itself and is cut into triangles without panicking |
+| `level_file` | A level or assembly file, its assemblies expanded (it may place itself) |
+| `brush` | A level file holding brushes (Tools 1a, B1); every brush read is within the limits, writes back to itself and is cut into triangles without panicking |
 | `aseprite` | An Aseprite file, read within the limits and packed into a sprite sheet whose frames draw back the same |
 | `model` | A glb model, imported within limits; every number finite |
 | `import_cache` | An import cache entry (`.solis/cache/*.solbin`) |
@@ -28,7 +28,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `tile_art` | A tileset's picture (PNG, JPEG or Aseprite, the first byte choosing); a picture read is within the limits, every frame its size, and its grid and kind are found without panicking |
 | `tile_map` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`); a map read is within the limits, writes back to itself (or isn't written, when its file would be more than is read back), is autotiled, painted (a fill, a stamp flipped and turned, exact tiles) and changed cell by cell, resized and summed without panicking |
 | `sound_file` | A WAV or Ogg Vorbis sound file (`sound::read_bytes`); a sound read is within the limits, as long as its overview, and every sample a number between -1 and 1 |
-| `playtest_file` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`); a file read has a usable name and area and a window Solis opens, and writes back to itself |
+| `playtest_file` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`); a file read has a usable name and level and a window Solis opens, and writes back to itself |
 
 The targets are in [`fuzz_targets/`](fuzz_targets/README.md), what they share in [`src/`](src/README.md), and the files they start from in [`seeds/`](seeds/README.md).
 

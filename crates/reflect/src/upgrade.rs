@@ -9,7 +9,7 @@
 //! (`asset_db::backup`).
 //!
 //! A step works on the format's own read-but-not-yet-checked form (an
-//! area's entities, a settings file's fields, a TOML table), so it can
+//! level's entities, a settings file's fields, a TOML table), so it can
 //! rename a field or change a value without caring how it's written.
 //! A newer file than the build understands is refused, never changed.
 
@@ -21,7 +21,7 @@ pub type Step<T> = fn(&mut T) -> Result<(), String>;
 
 /// A file format's version and its upgraders.
 pub struct Format<T: 'static> {
-    /// What the file is, in plain words ("area", "input actions").
+    /// What the file is, in plain words ("level", "input actions").
     pub name: &'static str,
     /// The version this build writes.
     pub current: u32,
@@ -176,7 +176,7 @@ impl<T> Versioned for Format<T> {
     }
 }
 
-/// The version in a header line `<kind> version N` (areas, assemblies,
+/// The version in a header line `<kind> version N` (levels, assemblies,
 /// sound events, the mixer), after any `--` comments and blank lines:
 /// for a format's `version_of`.
 pub fn header_version(text: &str, kinds: &[&str]) -> Option<u32> {

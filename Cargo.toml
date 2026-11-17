@@ -19,7 +19,7 @@ assets = { path = "crates/assets" }
 render = { path = "crates/render" }
 editor = { path = "crates/editor" }
 reflect = { path = "crates/reflect" }
-area = { path = "crates/area" }
+level = { path = "crates/level" }
 asset_db = { path = "crates/asset_db" }
 world = { path = "crates/world" }
 script = { path = "crates/script" }

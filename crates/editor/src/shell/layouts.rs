@@ -2,7 +2,7 @@
 //! the middle goes, worked out from the room there is and the sizes the
 //! tab remembers: plain arithmetic, never anything the panels hold.
 //!
-//! - [`PanelLayout`] is the choice in File › Preferences: the Area,
+//! - [`PanelLayout`] is the choice in File › Preferences: the Level,
 //!   Properties and Assets lists as columns of their own beside and under
 //!   the editor groups (three ways), or on the shelf as the design draws
 //!   them.
@@ -25,42 +25,45 @@ use egui::{Pos2, Rect, pos2};
 use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
 
-/// Where Home's Area, Properties and Assets lists sit.
+/// Where Home's Level, Properties and Assets lists sit.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
 )]
 pub enum PanelLayout {
-    /// The Area list over Assets in one column at the left, Properties
-    /// at the right.
-    AreaAndAssetsLeft,
-    /// The Area list at the left, Properties over Assets at the right.
-    AreaLeftAssetsRight,
+    /// The Level list over Assets in one column at the left, Properties
+    /// at the right. Saved before decision 0118 as `AreaAndAssetsLeft`.
+    #[serde(alias = "AreaAndAssetsLeft")]
+    LevelAndAssetsLeft,
+    /// The Level list at the left, Properties over Assets at the right.
+    #[serde(alias = "AreaLeftAssetsRight")]
+    LevelLeftAssetsRight,
     /// All three side by side on the shelf's Entity tab, as the design
     /// draws them.
     Shelf,
-    /// The Area list a tall column at the left, Properties one at the
+    /// The Level list a tall column at the left, Properties one at the
     /// right, and Assets a wide strip under the groups: the standard.
-    /// Last, so that a layout a later build adds reads as this one.
+    /// Last, so that a layout a later build adds (or one saved before
+    /// decision 0118 as `AreaLeftAssetsBottom`) reads as this one.
     #[default]
     #[serde(other)]
-    AreaLeftAssetsBottom,
+    LevelLeftAssetsBottom,
 }
 
 impl PanelLayout {
     /// Every layout, in the list's order.
     pub const ALL: [Self; 4] = [
-        Self::AreaLeftAssetsBottom,
-        Self::AreaAndAssetsLeft,
-        Self::AreaLeftAssetsRight,
+        Self::LevelLeftAssetsBottom,
+        Self::LevelAndAssetsLeft,
+        Self::LevelLeftAssetsRight,
         Self::Shelf,
     ];
 
     /// Its words in the list.
     pub fn name(self) -> &'static str {
         match self {
-            Self::AreaLeftAssetsBottom => "Area left, Assets bottom",
-            Self::AreaAndAssetsLeft => "Area and Assets on the left",
-            Self::AreaLeftAssetsRight => "Area left, Assets right",
+            Self::LevelLeftAssetsBottom => "Level left, Assets bottom",
+            Self::LevelAndAssetsLeft => "Level and Assets on the left",
+            Self::LevelLeftAssetsRight => "Level left, Assets right",
             Self::Shelf => "The shelf (as designed)",
         }
     }
@@ -68,16 +71,30 @@ impl PanelLayout {
     /// What it is, as saved among the sizes.
     pub fn key(self) -> &'static str {
         match self {
-            Self::AreaLeftAssetsBottom => "area left assets bottom",
-            Self::AreaAndAssetsLeft => "area and assets left",
-            Self::AreaLeftAssetsRight => "area left assets right",
+            Self::LevelLeftAssetsBottom => "level left assets bottom",
+            Self::LevelAndAssetsLeft => "level and assets left",
+            Self::LevelLeftAssetsRight => "level left assets right",
             Self::Shelf => "shelf",
         }
     }
 
-    /// The layout saved as `key`, if this build knows it.
+    /// What it was saved as before levels were renamed from areas
+    /// (decision 0118), still read.
+    fn old_key(self) -> Option<&'static str> {
+        match self {
+            Self::LevelLeftAssetsBottom => Some("area left assets bottom"),
+            Self::LevelAndAssetsLeft => Some("area and assets left"),
+            Self::LevelLeftAssetsRight => Some("area left assets right"),
+            Self::Shelf => None,
+        }
+    }
+
+    /// The layout saved as `key` (or its key from before decision 0118),
+    /// if this build knows it.
     pub fn from_key(key: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|layout| layout.key() == key)
+        Self::ALL
+            .into_iter()
+            .find(|layout| layout.key() == key || layout.old_key() == Some(key))
     }
 
     /// Whether the lists are columns of their own, off the shelf.
@@ -88,16 +105,16 @@ impl PanelLayout {
     /// The lists in the left column, top to bottom.
     pub fn left(self) -> &'static [Column] {
         match self {
-            Self::AreaAndAssetsLeft => &[AREA, ASSETS],
+            Self::LevelAndAssetsLeft => &[LEVEL, ASSETS],
             Self::Shelf => &[],
-            _ => &[AREA],
+            _ => &[LEVEL],
         }
     }
 
     /// The lists in the right column, top to bottom.
     pub fn right(self) -> &'static [Column] {
         match self {
-            Self::AreaLeftAssetsRight => &[PROPERTIES, ASSETS],
+            Self::LevelLeftAssetsRight => &[PROPERTIES, ASSETS],
             Self::Shelf => &[],
             _ => &[PROPERTIES],
         }
@@ -105,7 +122,7 @@ impl PanelLayout {
 
     /// The list in the strip under the groups, if there is one.
     pub fn strip(self) -> Option<Column> {
-        (self == Self::AreaLeftAssetsBottom).then_some(ASSETS)
+        (self == Self::LevelLeftAssetsBottom).then_some(ASSETS)
     }
 
     /// Whether `panel` is in a column of its own (or the strip) here.
@@ -118,10 +135,10 @@ impl PanelLayout {
     }
 }
 
-/// The Area list as a column of its own.
-const AREA: Column = Column {
-    title: "Area",
-    panels: &[Panel::Area],
+/// The Level list as a column of its own.
+const LEVEL: Column = Column {
+    title: "Level",
+    panels: &[Panel::Level],
     width: Width::Rest,
     own_header: false,
 };
@@ -190,7 +207,7 @@ pub(crate) struct Border {
 }
 
 impl Border {
-    /// Its name, for screen readers and tests: "Between Area and
+    /// Its name, for screen readers and tests: "Between Level and
     /// Properties", or an edge's own name ("Left column's edge").
     pub(crate) fn name(&self) -> String {
         match self.between {

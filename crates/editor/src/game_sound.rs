@@ -145,7 +145,7 @@ impl crate::Workbench {
         let t = playing.world.progress();
         let listener = playing
             .world
-            .placed_between::<area::builtin::Listener>(t)
+            .placed_between::<level::builtin::Listener>(t)
             .into_iter()
             .find(|(_, l, _)| l.hears_now);
         let (entity, groups, global) = match listener {
@@ -187,7 +187,7 @@ impl crate::Workbench {
     /// game.
     pub fn audio_sources(
         &self,
-    ) -> Vec<(reflect::EntityId, area::builtin::AudioSource, glam::Vec3)> {
+    ) -> Vec<(reflect::EntityId, level::builtin::AudioSource, glam::Vec3)> {
         let Some(playing) = self.open.playing.as_ref() else {
             return Vec::new();
         };
@@ -206,14 +206,14 @@ impl crate::Workbench {
     /// The game's reverb zones, with where each is drawn now (its place,
     /// turn and scale): the app works out which the listener is in
     /// (Phase 7, S6). Empty with no game.
-    pub fn reverb_zones(&self) -> Vec<(area::builtin::ReverbZone, glam::Mat4)> {
+    pub fn reverb_zones(&self) -> Vec<(level::builtin::ReverbZone, glam::Mat4)> {
         let Some(playing) = self.open.playing.as_ref() else {
             return Vec::new();
         };
         let t = playing.world.progress();
         playing
             .world
-            .placed_between::<area::builtin::ReverbZone>(t)
+            .placed_between::<level::builtin::ReverbZone>(t)
             .into_iter()
             .map(|(_, zone, place)| (zone, place))
             .collect()

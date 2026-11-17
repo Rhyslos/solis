@@ -95,7 +95,7 @@ fn colours_that_mean_something_read_as_words_on_every_surface() {
         ("collider", COLLIDER),
         ("model", kind::MODEL),
         ("assembly", kind::ASSEMBLY),
-        ("area", kind::AREA),
+        ("level", kind::LEVEL),
         ("picture", kind::PICTURE),
         ("code", kind::CODE),
         ("sound event", kind::SOUND_EVENT),

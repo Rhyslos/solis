@@ -18,7 +18,7 @@
 //!
 //! This module only does the arithmetic: the viewport draws the shapes it
 //! describes, and `transforming` turns a [`Change`] into edits. Nothing
-//! here knows about the area.
+//! here knows about the level.
 
 use crate::camera::Camera;
 use crate::screen::Ray;

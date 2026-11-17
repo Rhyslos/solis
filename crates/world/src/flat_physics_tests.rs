@@ -5,8 +5,8 @@
 
 use super::*;
 use crate::{MapFiles, TICK};
-use area::builtin::{TileMap as TileMapComponent, Transform};
-use area::{Area, EntityData};
+use level::builtin::{TileMap as TileMapComponent, Transform};
+use level::{EntityData, Level};
 use reflect::AssetRef;
 use tiles::TileMap;
 
@@ -15,8 +15,8 @@ use tiles::TileMap;
 /// metre, so a quarter metre) at cell (2, 5).
 fn farm() -> (World, EntityId, EntityId) {
     let (map_asset, tileset) = (AssetId::random(), AssetId::random());
-    let mut area = Area::new();
-    let map = area.spawn(EntityData::new("Farm").with(&Transform::default()).with(
+    let mut level = Level::new();
+    let map = level.spawn(EntityData::new("Farm").with(&Transform::default()).with(
         &TileMapComponent {
             map: Some(AssetRef {
                 asset: map_asset,
@@ -24,7 +24,7 @@ fn farm() -> (World, EntityId, EntityId) {
             }),
         },
     ));
-    let farmer = area.spawn(
+    let farmer = level.spawn(
         EntityData::new("Farmer")
             .with(&Transform {
                 position: Vec3::new(2.5, -5.5, 0.2),
@@ -36,7 +36,7 @@ fn farm() -> (World, EntityId, EntityId) {
                 ..Collider2D::default()
             }),
     );
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     let mut file = TileMap::new([20, 10], Some(tileset), Some(b'.'));
     for y in 0..10 {
         file.set_code(1, 10, y, b'#').unwrap();
@@ -125,9 +125,9 @@ fn a_solid_box_blocks_and_pixels_are_metres_by_the_project_s_settings() {
     );
     // At 32 px a metre everything halves: the bin runs 4.5 to 5.5 and the
     // farmer's circle is an eighth of a metre.
-    world.set_pixels(area::pixels::PixelSettings {
+    world.set_pixels(level::pixels::PixelSettings {
         pixels_per_unit: 32,
-        ..area::pixels::PixelSettings::default()
+        ..level::pixels::PixelSettings::default()
     });
     assert_eq!(world.pixels().pixels_per_unit, 32);
     let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 40);
@@ -205,21 +205,21 @@ fn carried() -> Transform {
 }
 
 /// `data` under `carrier`, at [`carried`].
-fn carry(area: &mut Area, carrier: EntityId, name: &str) -> EntityId {
+fn carry(level: &mut Level, carrier: EntityId, name: &str) -> EntityId {
     let mut data = EntityData::new(name).with(&carried());
     data.parent = Some(carrier);
-    area.spawn(data)
+    level.spawn(data)
 }
 
 /// A world with, if `flat`, a 2D character carrying a lantern, and, if
 /// `bodies`, a crate 3D physics drops with a label on it and a 3D
 /// character carrying a torch: each pair as (carrier, carried).
 fn carriers(flat: bool, bodies: bool) -> (World, Vec<(EntityId, EntityId)>) {
-    use area::builtin::{CharacterBody, Collider, RigidBody};
-    let mut area = Area::new();
+    use level::builtin::{CharacterBody, Collider, RigidBody};
+    let mut level = Level::new();
     let mut pairs = Vec::new();
     if flat {
-        let walker = area.spawn(
+        let walker = level.spawn(
             EntityData::new("Walker")
                 .with(&Transform {
                     position: Vec3::new(2.5, -5.5, 0.2),
@@ -230,10 +230,10 @@ fn carriers(flat: bool, bodies: bool) -> (World, Vec<(EntityId, EntityId)>) {
                     ..Collider2D::default()
                 }),
         );
-        pairs.push((walker, carry(&mut area, walker, "Lantern")));
+        pairs.push((walker, carry(&mut level, walker, "Lantern")));
     }
     if bodies {
-        let falling = area.spawn(
+        let falling = level.spawn(
             EntityData::new("Crate")
                 .with(&Transform {
                     position: Vec3::new(20.0, 0.0, 10.0),
@@ -242,8 +242,8 @@ fn carriers(flat: bool, bodies: bool) -> (World, Vec<(EntityId, EntityId)>) {
                 .with(&RigidBody::default())
                 .with(&Collider::default()),
         );
-        pairs.push((falling, carry(&mut area, falling, "Label")));
-        let hero = area.spawn(
+        pairs.push((falling, carry(&mut level, falling, "Label")));
+        let hero = level.spawn(
             EntityData::new("Hero")
                 .with(&Transform {
                     position: Vec3::new(-20.0, 0.0, 0.0),
@@ -251,9 +251,9 @@ fn carriers(flat: bool, bodies: bool) -> (World, Vec<(EntityId, EntityId)>) {
                 })
                 .with(&CharacterBody::default()),
         );
-        pairs.push((hero, carry(&mut area, hero, "Torch")));
+        pairs.push((hero, carry(&mut level, hero, "Torch")));
     }
-    (World::from_area(&area), pairs)
+    (World::from_level(&level), pairs)
 }
 
 /// One tick: every carrier that walks is asked to, and physics steps.
@@ -463,18 +463,18 @@ fn a_break_that_repeats_starts_2d_physics_again_once_a_second_at_most() {
 /// edit while playing), though building it joins everything afresh.
 #[test]
 fn a_rebuild_keeps_the_wait_after_a_break() {
-    let mut area = Area::new();
-    let walker = area.spawn(EntityData::new("Walker").with(&Transform::default()).with(
+    let mut level = Level::new();
+    let walker = level.spawn(EntityData::new("Walker").with(&Transform::default()).with(
         &Collider2D {
             character: true,
             ..Collider2D::default()
         },
     ));
-    let mut world = World::from_area(&area);
+    let mut world = World::from_level(&level);
     assert_eq!(tick(&mut world, walker, true), (true, true));
     world.fail_flat_next();
     walk(&mut world, walker, Vec3::new(0.01, 0.0, 0.0), 1);
-    world.rebuild(&area);
+    world.rebuild(&level);
     assert!(world.take_flat_broke().is_some(), "still to be told");
     // Joined again by the rebuild, but not stepped until the wait's over.
     assert!(world.flat().state().is_character(walker));

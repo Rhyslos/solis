@@ -28,7 +28,7 @@ fn rearranged() -> Shell {
     sizes.set(RibbonTab::Home, SIDE, Edge::Strip, 250.0);
     sizes.set(
         RibbonTab::Home,
-        PanelLayout::AreaLeftAssetsRight,
+        PanelLayout::LevelLeftAssetsRight,
         Edge::RightShare,
         0.4,
     );
@@ -43,7 +43,7 @@ fn rearranged() -> Shell {
 }
 
 /// The standard layout.
-const SIDE: PanelLayout = PanelLayout::AreaLeftAssetsBottom;
+const SIDE: PanelLayout = PanelLayout::LevelLeftAssetsBottom;
 
 #[test]
 fn a_frame_reads_back_as_it_was_saved() {
@@ -237,7 +237,7 @@ fn random_damage_to_a_saved_frame_never_gives_an_unusable_one() {
         "left",
         "strip",
         "shelf",
-        "area left assets bottom",
+        "level left assets bottom",
         "column Entity 0",
     ];
     let mut seed: u64 = 7;

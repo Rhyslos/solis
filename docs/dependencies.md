@@ -53,7 +53,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `egui` | The editor's whole interface | MIT OR Apache-2.0 | editor | foundation | Stay on the last good version, or maintain a fork (MIT); a different interface library would mean rewriting the editor's panels |
 | `egui_kittest` | Drives the editor in tests, as a user would; its `wgpu` feature also draws real frames of it for the picture tests (`crates/editor/src/picture_support.rs`), with the libraries the app already draws with. Its `snapshot` feature is left off: comparing pictures is about 80 lines of Solis's own, where the feature would bring three more libraries | MIT OR Apache-2.0 | editor (tests) | tests | Keep the last version for tests, or test the editor's state without driving its interface |
 | `gilrs` | Reads gamepads | Apache-2.0/MIT | app | walled | Read gamepads through Windows directly (XInput or GameInput) |
-| `glam` | Vectors, rotations and matrices: Solis's maths | MIT OR Apache-2.0 | app, area, asset_db, assets, editor, input, mesh, physics, reflect, render, script, world | foundation | Fork it (MIT or Apache-2.0); it's self-contained, so keeping a fork is cheap |
+| `glam` | Vectors, rotations and matrices: Solis's maths | MIT OR Apache-2.0 | app, asset_db, assets, editor, input, level, mesh, physics, reflect, render, script, world | foundation | Fork it (MIT or Apache-2.0); it's self-contained, so keeping a fork is cheap |
 | `gltf` | Reads glTF models | MIT OR Apache-2.0 | assets | walled | Fork it, or read glTF ourselves (the format is a public specification: JSON plus binary) |
 | `hecs` | The game's fast storage for entities | MIT OR Apache-2.0 | world | walled | Solis's own storage: `tools/storage-bench` already has one, measured against `hecs` for decision 0024 |
 | `hound` | Reads WAV sound files | Apache-2.0 | sound | walled | Read WAV ourselves (a simple, public format: a header and the samples) |
@@ -62,7 +62,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `kira` | Plays and mixes sound: tracks, effects, sound placed in 3D (decision 0056) | MIT OR Apache-2.0 | sound | walled | Fork it (MIT or Apache-2.0), or mix ourselves on top of `cpal` underneath; only the sound crate changes |
 | `lewton` | Decodes Ogg Vorbis sound (its headers and packets, handed to it by Solis; its own file reader isn't used) | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |
 | `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render | shared | A few lines of Solis's own logging |
-| `lust` | Lust, the project lead's language (Solis's game code, and reading the data files Solis makes, decision 0081) | MIT | area, script | shared | Ours: the project lead's own repository, pinned to one commit |
+| `lust` | Lust, the project lead's language (Solis's game code, and reading the data files Solis makes, decision 0081) | MIT | level, script | shared | Ours: the project lead's own repository, pinned to one commit |
 | `meshopt` | Makes levels of detail (simpler meshes for far away) | MIT OR Apache-2.0 | assets | walled | Write a simplifier (quadric error, a known method), or fork; meshoptimizer underneath is MIT |
 | `mint` | Hands places and turns to Kira (the shared maths types it takes) | MIT | sound | walled | Kira's own; would go with it |
 | `mlua` | Runs Lua and Luau game code, sandboxed | MIT | script | walled | Fork it (MIT), or bind to Luau ourselves (Luau is MIT); only the script crate changes |
@@ -71,7 +71,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `opener` | Opens web pages and folders | MIT OR Apache-2.0 | app | walled | Ask Windows directly (`ShellExecute`) |
 | `percent-encoding` | Decodes `%20`-style names in model files | MIT OR Apache-2.0 | assets | walled | Write it (a few lines) |
 | `pollster` | Waits for the graphics card in tests | Apache-2.0/MIT | app (tests), render (tests) | tests | Write it (about 20 lines) |
-| `proptest` | Tests with thousands of generated cases | MIT OR Apache-2.0 | animation (tests), area (tests), tiles (tests), ui (tests), editor (tests), physics (tests), script (tests), sound (tests), updater (tests) | tests | Keep the last version (tests only), or another property-testing library |
+| `proptest` | Tests with thousands of generated cases | MIT OR Apache-2.0 | animation (tests), level (tests), tiles (tests), ui (tests), editor (tests), physics (tests), script (tests), sound (tests), updater (tests) | tests | Keep the last version (tests only), or another property-testing library |
 | `rapier3d` | Physics, the same on every PC (decision 0036) | Apache-2.0 | physics | walled | Fork it (Apache-2.0) and maintain it; a physics engine of our own is a large job, and only the physics crate would change |
 | `rapier2d` | 2D physics, the same on every PC (decision 0071) | Apache-2.0 | physics | walled | As `rapier3d`: fork it and maintain it; only `physics::flat` would change |
 | `rayon` | The job system that uses every core (decision 0031) | MIT OR Apache-2.0 | app, editor, physics, render, world | shared | Fork it, or a job system of Solis's own (the uses are simple parallel loops) |

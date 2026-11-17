@@ -34,7 +34,7 @@ The view pill at the viewport's top left: the four views, **2D**, and how many v
 - **Turn the wheel** to zoom in or out, towards the pointer.
 - Flat views don't fly: switch back to Perspective for that.
 - Flat views have no [fog](concepts.md#light), so faraway parts are as clear as near ones.
-- A camera or spotlight added from a flat view (and **Move here**) goes just in front of where the view looks from, as if it were a camera above or beside the area looking in.
+- A camera or spotlight added from a flat view (and **Move here**) goes just in front of where the view looks from, as if it were a camera above or beside the level looking in.
 
 These are the flat-view controls Unreal Engine uses.
 

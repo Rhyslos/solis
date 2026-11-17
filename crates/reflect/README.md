@@ -9,7 +9,7 @@ How components describe themselves ([decision 0019](../../docs/decisions/0019-sc
 Give every part of Solis one way to see any component, whether it's built in, written in Lust or defined in Lua:
 
 - the inspector draws fields from a schema;
-- area files write values in a schema's field order;
+- level files write values in a schema's field order;
 - undo records values;
 - assembly overrides name a component and a field.
 

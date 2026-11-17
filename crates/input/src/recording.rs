@@ -5,16 +5,18 @@
 //! The file is text, a line per tick:
 //!
 //! ```text
-//! solis recording 3
+//! solis recording 4
 //! seed 12345
-//! area areas/farm.solarea
+//! level levels/farm.sollevel
 //! start 0f3a…
 //! 0 w 9c1d… g 77ab… Move=h,3f800000,0 Jump=hp
 //! s 5A329QT768NJB Resumed
 //! 1 w 1e2f…
 //! ```
 //!
-//! After the seed, the area the play started in (version 2). Each tick:
+//! After the seed, the level the play started in (version 2; until
+//! version 4, when areas were renamed levels, the line said `area` and
+//! its path ended `.solarea`). Each tick:
 //! its number, the world's checksum (`w`), game code's when it was taken
 //! (`g`), and each busy action: `h`, `p`, `r` for held, pressed and
 //! released, and an axis's two numbers as their exact bits (hex), so
@@ -52,14 +54,14 @@ pub struct Recording {
     pub start: u64,
     /// Each tick, from the first.
     pub ticks: Vec<Tick>,
-    /// The area it was recorded in: its file inside the project's assets,
+    /// The level it was recorded in: its file inside the project's assets,
     /// with `/` between folders (format 2 on; `None` when not known), so
     /// a project's check can play it back on its own (Phase 8, C4).
-    pub area: Option<String>,
+    pub level: Option<String>,
 }
 
-/// The longest area path a recording keeps.
-const MAX_AREA_PATH: usize = 1024;
+/// The longest level path a recording keeps.
+const MAX_LEVEL_PATH: usize = 1024;
 
 /// Why a recording couldn't be read.
 #[derive(Debug, Clone, PartialEq)]
@@ -86,7 +88,10 @@ impl std::fmt::Display for RecordingError {
 }
 
 /// The format version this build writes.
-pub(crate) const VERSION: u32 = 3;
+pub(crate) const VERSION: u32 = 4;
+/// The level line's word from version 4, and before it (versions 2 and 3).
+const LEVEL_WORD: &str = "level";
+const OLD_LEVEL_WORD: &str = "area";
 /// The first line, before the version.
 const HEADER: &str = "solis recording";
 
@@ -100,8 +105,31 @@ pub static FORMAT: reflect::upgrade::Format<Recording> = reflect::upgrade::Forma
         let line = text.lines().next()?.trim();
         line.strip_prefix(HEADER)?.trim().parse().ok()
     },
-    steps: &[the_area_isn_t_known, nothing_was_sent],
+    steps: &[the_level_isn_t_known, nothing_was_sent, areas_are_levels],
 };
+
+/// Version 3 to 4 (decision 0118): areas were renamed levels, and a
+/// project's `.solarea` files became `.sollevel` files when it opened, so
+/// the level a recording names is found under its new name. (The line's
+/// word, `area` before version 4, is read by the version it was written
+/// in.)
+fn areas_are_levels(recording: &mut Recording) -> Result<(), String> {
+    if let Some(path) = &mut recording.level
+        && let Some(stem) = path
+            .len()
+            .checked_sub(OLD_ENDING.len())
+            .filter(|at| path.is_char_boundary(*at))
+            .filter(|at| path[*at..].eq_ignore_ascii_case(OLD_ENDING))
+    {
+        path.truncate(stem);
+        path.push_str(NEW_ENDING);
+    }
+    Ok(())
+}
+
+/// A level's file ending, and an area's before it.
+const NEW_ENDING: &str = ".sollevel";
+const OLD_ENDING: &str = ".solarea";
 
 /// Version 2 to 3: screens' buttons sent nothing before version 3
 /// (decision 0088), so there's nothing to add.
@@ -109,9 +137,9 @@ fn nothing_was_sent(_: &mut Recording) -> Result<(), String> {
     Ok(())
 }
 
-/// Version 1 to 2: version 1 didn't say which area it was recorded in.
-fn the_area_isn_t_known(recording: &mut Recording) -> Result<(), String> {
-    recording.area = None;
+/// Version 1 to 2: version 1 didn't say which level it was recorded in.
+fn the_level_isn_t_known(recording: &mut Recording) -> Result<(), String> {
+    recording.level = None;
     Ok(())
 }
 
@@ -141,15 +169,15 @@ impl Tick {
 impl Recording {
     /// The file's text.
     pub fn write(&self) -> String {
-        // An area path on one line, as written (a line break would
+        // A level path on one line, as written (a line break would
         // break the file's lines).
-        let area = self
-            .area
+        let level = self
+            .level
             .as_deref()
             .unwrap_or_default()
             .replace(char::is_control, " ");
         let mut text = format!(
-            "{HEADER} {VERSION}\nseed {}\narea {area}\nstart {:016x}\n",
+            "{HEADER} {VERSION}\nseed {}\n{LEVEL_WORD} {level}\nstart {:016x}\n",
             self.seed, self.start
         );
         for (n, tick) in self.ticks.iter().enumerate() {
@@ -214,19 +242,24 @@ impl Recording {
             .trim()
             .parse()
             .map_err(|_| RecordingError::Damaged(2))?;
-        // Format 2 on: the area it was recorded in (its line may be just
-        // `area` when it isn't known).
-        let area = if version >= 2 {
+        // Format 2 on: the level it was recorded in (its line may be just
+        // `level` when it isn't known; `area` before format 4).
+        let level = if version >= 2 {
             let (n, line) = lines.next().ok_or(RecordingError::Damaged(3))?;
-            let path = match line.strip_prefix("area") {
+            let word = if version >= 4 {
+                LEVEL_WORD
+            } else {
+                OLD_LEVEL_WORD
+            };
+            let path = match line.strip_prefix(word) {
                 Some("") => "",
                 Some(rest) => rest
                     .strip_prefix(' ')
                     .ok_or(RecordingError::Damaged(n + 1))?,
                 None => return Err(RecordingError::Damaged(n + 1)),
             };
-            if path.len() > MAX_AREA_PATH
-                || (!path.trim().is_empty() && !Self::is_plain_area_path(path.trim()))
+            if path.len() > MAX_LEVEL_PATH
+                || (!path.trim().is_empty() && !Self::is_plain_level_path(path.trim()))
             {
                 return Err(RecordingError::Damaged(n + 1));
             }
@@ -325,7 +358,7 @@ impl Recording {
             seed,
             start,
             ticks,
-            area,
+            level,
         };
         FORMAT
             .upgrade(version, &mut recording)
@@ -337,7 +370,7 @@ impl Recording {
     /// joined by `/`, none of them empty, `.` or `..`, and no backslash,
     /// colon or control character (so it can't name anything outside the
     /// assets on any system).
-    pub fn is_plain_area_path(path: &str) -> bool {
+    pub fn is_plain_level_path(path: &str) -> bool {
         !path.is_empty()
             && !path.contains(['\\', ':'])
             && !path.contains(char::is_control)

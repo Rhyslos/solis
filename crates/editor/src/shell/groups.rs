@@ -6,7 +6,7 @@
 //! holds is `workspaces::groups`; which is in front is the tab's
 //! `Arrangement`, and the split is kept with the other sizes (`sizes.rs`).
 //!
-//! The area's tab carries a **+** (New area, Open area…) and a menu on a
+//! The level's tab carries a **+** (New level, Open level…) and a menu on a
 //! right-click (Save, Save as…, Close, Close others, Show in the
 //! Library), as mock-up round 1 drew them; a document that comes with a
 //! file has a × that closes the file.
@@ -27,8 +27,8 @@ use egui::{Align2, CornerRadius, Id, Popup, Rect, Response, Sense, Ui, WidgetInf
 pub(crate) struct DocAsks {
     /// Commands chosen from the tabs' menus.
     pub(crate) commands: Vec<ShellCommand>,
-    /// The area's file is to be shown in the Library.
-    pub(crate) show_area_in_library: bool,
+    /// The level's file is to be shown in the Library.
+    pub(crate) show_level_in_library: bool,
     /// An unfinished part's page asked for unfinished parts to be hidden.
     pub(crate) hide_unfinished: bool,
 }
@@ -185,8 +185,8 @@ fn tab_strip(
         }
         doc_menu(&response, *panel, documents, viewer, asks);
     }
-    let area_group = documents.contains(&Panel::Viewport) && tab != RibbonTab::Animate;
-    if area_group {
+    let level_group = documents.contains(&Panel::Viewport) && tab != RibbonTab::Animate;
+    if level_group {
         plus(ui, pos2(x, strip.top()), (tab, index), asks);
     }
     if RibbonTab::CONTEXT.contains(&tab) && index == 0 {
@@ -285,12 +285,12 @@ fn doc_tab(
     (response, close)
 }
 
-/// The **+** after the area's tab: New area and Open area….
+/// The **+** after the level's tab: New level and Open level….
 fn plus(ui: &mut Ui, at: egui::Pos2, (tab, index): (RibbonTab, usize), asks: &mut DocAsks) {
     let rect = Rect::from_min_size(at, vec2(size::DOC_TAB_H, size::DOC_TAB_H));
     let response = ui.interact(rect, Id::new(("new document", tab, index)), Sense::click());
     response
-        .widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, true, "New or open an area"));
+        .widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, true, "New or open a level"));
     let ink = if response.hovered() {
         tokens::text_emphasis()
     } else {
@@ -298,9 +298,9 @@ fn plus(ui: &mut Ui, at: egui::Pos2, (tab, index): (RibbonTab, usize), asks: &mu
     };
     let spot = Rect::from_center_size(rect.center(), vec2(size::ICON_SMALL, size::ICON_SMALL));
     icons::icon(ui.painter(), spot, Icon::Plus, ink);
-    let response = response.on_hover_text("A new area, or one of the project's areas");
+    let response = response.on_hover_text("A new level, or one of the project's levels");
     Popup::menu(&response).show(|ui| {
-        for command in [ShellCommand::NewArea, ShellCommand::OpenArea] {
+        for command in [ShellCommand::NewLevel, ShellCommand::OpenLevel] {
             if ui.button(command_words(command)).clicked() {
                 asks.commands.push(command);
                 ui.close();
@@ -312,15 +312,15 @@ fn plus(ui: &mut Ui, at: egui::Pos2, (tab, index): (RibbonTab, usize), asks: &mu
 /// The words a document tab's menu shows for `command`.
 fn command_words(command: ShellCommand) -> &'static str {
     match command {
-        ShellCommand::NewArea => "New area",
-        ShellCommand::OpenArea => "Open area\u{2026}",
-        ShellCommand::SaveArea => "Save",
-        ShellCommand::SaveAreaAs => "Save as\u{2026}",
+        ShellCommand::NewLevel => "New level",
+        ShellCommand::OpenLevel => "Open level\u{2026}",
+        ShellCommand::SaveLevel => "Save",
+        ShellCommand::SaveLevelAs => "Save as\u{2026}",
         _ => "",
     }
 }
 
-/// A right-click on a document tab: the area's has Save, Save as…, Close,
+/// A right-click on a document tab: the level's has Save, Save as…, Close,
 /// Close others and Show in the Library; a file's has Close and Close
 /// others.
 fn doc_menu(
@@ -341,7 +341,7 @@ fn doc_menu(
     }
     Popup::context_menu(response).show(|ui| {
         if panel == Panel::Viewport {
-            for command in [ShellCommand::SaveArea, ShellCommand::SaveAreaAs] {
+            for command in [ShellCommand::SaveLevel, ShellCommand::SaveLevelAs] {
                 let words = command_words(command);
                 let keys = command.keys();
                 let shown = if keys.is_empty() {
@@ -365,7 +365,7 @@ fn doc_menu(
             faint(
                 ui,
                 "Close",
-                "One area is open at a time: open or make another in its place",
+                "One level is open at a time: open or make another in its place",
             );
         }
         if others.is_empty() {
@@ -379,7 +379,7 @@ fn doc_menu(
         if panel == Panel::Viewport {
             ui.separator();
             if ui.button("Show in the Library").clicked() {
-                asks.show_area_in_library = true;
+                asks.show_level_in_library = true;
                 ui.close();
             }
         }

@@ -13,7 +13,7 @@
 //! The accent marks what's chosen and selected. Colours that mean
 //! something keep their own whatever the accent ([decision 0060](../../../docs/decisions/0060-amber-and-colours-that-mean-something.md)):
 //! Play is the one light button ([`GO`]), the console's levels have
-//! theirs ([`level`]), and things in the Area panel and the Library share
+//! theirs ([`level`]), and things in the Level panel and the Library share
 //! a colour per kind ([`kind`]).
 //!
 //! Text colours are checked for readability by `theme_tests.rs` (WCAG
@@ -52,7 +52,7 @@ pub fn menu_row() -> Color32 {
 pub fn field() -> Color32 {
     tokens::field()
 }
-/// Hairlines between areas and around panels.
+/// Hairlines between levels and around panels.
 pub fn line() -> Color32 {
     tokens::line()
 }
@@ -129,10 +129,10 @@ pub mod level {
 }
 
 /// A colour per kind of thing, shared by the Library (a tile's dot) and
-/// the Area panel (an entity's icon), so a model or a sound looks the
+/// the Level panel (an entity's icon), so a model or a sound looks the
 /// same in both: the design's seven where a kind maps onto one (the
 /// project lead's answer 21; round 2, `07-library-kinds-a.png`), and
-/// today's own colours for sound events, code files and areas
+/// today's own colours for sound events, code files and levels
 /// (`07-library-kinds-b.png`).
 pub mod kind {
     use crate::tokens;
@@ -142,8 +142,8 @@ pub mod kind {
     pub const MODEL: Color32 = tokens::KIND_MODEL;
     /// Assemblies, and a placed copy of one (the design's prefab).
     pub const ASSEMBLY: Color32 = tokens::KIND_ASSEMBLY;
-    /// Area files: Solis's own green.
-    pub const AREA: Color32 = Color32::from_rgb(0x58, 0xc2, 0x6a);
+    /// Level files: Solis's own green.
+    pub const LEVEL: Color32 = Color32::from_rgb(0x58, 0xc2, 0x6a);
     /// Pictures, and a picture's crops (the design's texture).
     pub const PICTURE: Color32 = tokens::KIND_PICTURE;
     /// Game code: Solis's own orange.
@@ -171,7 +171,7 @@ pub mod kind {
     pub const OTHER: Color32 = Color32::from_rgb(0x8c, 0x8c, 0x8c);
 }
 
-/// The viewport's backdrop, where an area has no sky of its own.
+/// The viewport's backdrop, where a level has no sky of its own.
 pub mod backdrop {
     use crate::tokens;
     use egui::Color32;

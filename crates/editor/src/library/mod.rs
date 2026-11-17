@@ -2,8 +2,8 @@
 //! ([decision 0021](../../../../docs/decisions/0021-asset-database-and-models.md)),
 //! with a folder tree that can be put away, the files of one folder as
 //! thumbnails or a list, and a search box. Drag a model or assembly onto
-//! the viewport or the Area panel to place it, or onto a folder to move
-//! it; double-click to open an area or a file in its own program (a file
+//! the viewport or the Level panel to place it, or onto a folder to move
+//! it; double-click to open a level or a file in its own program (a file
 //! that would be placed is only picked: the ribbon's **Place** places it,
 //! the project lead's answer 25); right-click for the rest. The Code tab
 //! shows the code files the same way. The ribbon has making files, the
@@ -158,7 +158,7 @@ impl Default for LibraryState {
 pub(crate) enum LibraryRequest {
     /// Place a model or assembly where the camera looks.
     Place(AssetId),
-    /// Open an area, or a file in its own program.
+    /// Open a level, or a file in its own program.
     Open(LibraryKind, String),
     /// Show a folder in the system's file browser.
     Show(String),
@@ -172,8 +172,8 @@ pub(crate) enum LibraryRequest {
     /// Make a new Lust code file in this folder, and open it in the
     /// computer's editor for Lust (E1).
     NewCodeFile(String),
-    /// Make a new, empty area in this folder, saved, and open it (E1).
-    NewArea(String),
+    /// Make a new, empty level in this folder, saved, and open it (E1).
+    NewLevel(String),
     /// Move a file or folder to the Recycle Bin.
     Delete(String),
     /// Import a model from outside the project.
@@ -225,7 +225,7 @@ pub(crate) struct Sounds<'a> {
     pub(crate) sheets: &'a crate::sprite_sheets::SpriteSheets,
     pub(crate) sheet_pictures: &'a HashMap<String, egui::TextureHandle>,
     /// For each code file (by path), the components written in it and how
-    /// many entities in the area use each (`Player · 1`), for the Code
+    /// many entities in the level use each (`Player · 1`), for the Code
     /// panel (decision 0085).
     pub(crate) code_uses: &'a BTreeMap<String, String>,
 }
@@ -371,9 +371,9 @@ fn new_items(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
             LibraryRequest::NewFolder,
         ),
         (
-            "Area",
-            "An empty area (a level), saved here and opened",
-            LibraryRequest::NewArea,
+            "Level",
+            "An empty level (a level), saved here and opened",
+            LibraryRequest::NewLevel,
         ),
         (
             "Tile map",
@@ -668,7 +668,7 @@ pub(super) enum MenuAction {
     /// Open it: in its tab in the editor, or in the computer's own
     /// program for it.
     Open,
-    /// Place it in the area, where the camera looks.
+    /// Place it in the level, where the camera looks.
     Place,
 }
 
@@ -965,7 +965,7 @@ fn hint(item: &LibraryItem) -> String {
         LibraryKind::Model | LibraryKind::Assembly => {
             "Drag it into the viewport or onto an entity, or pick it and press Place, to place it."
         }
-        LibraryKind::Area => "Double-click to open it.",
+        LibraryKind::Level => "Double-click to open it.",
         LibraryKind::Sound => "▶ to listen; click it to see it in Properties.",
         LibraryKind::SpriteSheet => {
             "Drag it into the viewport, or pick it and press Place, to place it as a sprite; click \
@@ -1254,10 +1254,10 @@ fn list(
                     );
                 }
                 let response = response.on_hover_text(hint(item));
-                let plus_area =
+                let plus_level =
                     egui::Rect::from_min_max(egui::pos2(rect.right() - 22.0, rect.top()), rect.max);
-                let place = item.kind.placeable() && place_button(ui, item, plus_area);
-                let listen = listen_button(ui, item, plus_area, &response, sounds);
+                let place = item.kind.placeable() && place_button(ui, item, plus_level);
+                let listen = listen_button(ui, item, plus_level, &response, sounds);
                 item_actions(
                     Picked {
                         item,
@@ -1391,7 +1391,7 @@ mod tests {
         for (kind, offered) in [
             (K::Model, &[Place][..]),
             (K::Assembly, &[Place]),
-            (K::Area, &[Open]),
+            (K::Level, &[Open]),
             (K::Texture, &[Open, Place]),
             (K::Code, &[Open]),
             (K::Sound, &[Open]),
@@ -1446,7 +1446,7 @@ mod tests {
         for kind in [
             LibraryKind::Model,
             LibraryKind::Assembly,
-            LibraryKind::Area,
+            LibraryKind::Level,
             LibraryKind::Texture,
             LibraryKind::Code,
             LibraryKind::Sound,

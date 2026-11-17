@@ -1,5 +1,5 @@
 //! The rows of the design's menus (the approved additions, round 2: the
-//! viewport's pills, the Area column's and a card's right-click menus): 24
+//! viewport's pills, the Level column's and a card's right-click menus): 24
 //! tall, lifted under the pointer, a check mark before the choice in force,
 //! small capitals over a group, a line between groups.
 //!

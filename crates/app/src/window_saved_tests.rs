@@ -85,10 +85,10 @@ fn starts_with_the_standard_frame_and_says_so_once(workbench: &Workbench) {
     assert_eq!(workbench.ribbon_tab(), editor::RibbonTab::Home);
     assert!(!workbench.ribbon_collapsed());
     // The standard panel layout (decision 0109): Home's lists beside the
-    // area, the Console in front on the shelf.
+    // level, the Console in front on the shelf.
     assert_eq!(
         workbench.interface_look().layout,
-        editor::interface_look::PanelLayout::AreaLeftAssetsBottom
+        editor::interface_look::PanelLayout::LevelLeftAssetsBottom
     );
     assert_eq!(workbench.shelf_tab(), Some(editor::ShelfTab::Console));
     assert!(!workbench.shelf_folded());
@@ -356,7 +356,7 @@ fn damaged_looks_and_accents_never_stop_the_editor_starting() {
             ribbon_labels: false,
             hide_unfinished: true,
             shelf_opens_on: editor::interface_look::ShelfOpensOn::Entity,
-            layout: editor::interface_look::PanelLayout::AreaAndAssetsLeft,
+            layout: editor::interface_look::PanelLayout::LevelAndAssetsLeft,
         };
         eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &look);
         storage.get_string(INTERFACE_LOOK_KEY).unwrap()

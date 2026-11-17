@@ -6,13 +6,13 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     let Ok(text) = std::str::from_utf8(data) else {
         return;
     };
-    let Ok(read) = area::pixels::read(text) else {
+    let Ok(read) = level::pixels::read(text) else {
         return;
     };
     let s = read.settings;
     assert_eq!(s, s.sanitized(), "what's read is within the limits");
     assert!(s.pixel_size().is_finite() && s.pixel_size() > 0.0);
-    let again = area::pixels::read(&area::pixels::write(&s)).expect("what's written reads");
+    let again = level::pixels::read(&level::pixels::write(&s)).expect("what's written reads");
     assert_eq!(again.settings, s);
     assert!(again.notes.is_empty());
 });

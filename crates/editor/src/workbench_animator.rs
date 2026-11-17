@@ -162,7 +162,7 @@ impl Workbench {
         let editor = self.open.animator_editor.as_ref()?;
         let playing = self.open.playing.as_ref()?;
         let id = self.open.document.selection.primary()?;
-        let animator = playing.world.get::<area::builtin::Animator>(id)?;
+        let animator = playing.world.get::<level::builtin::Animator>(id)?;
         let file = animator.animator?.asset;
         (self.viewport.sheets.paths.get(&file) == Some(&editor.path))
             .then(|| playing.world.animator_of(id))

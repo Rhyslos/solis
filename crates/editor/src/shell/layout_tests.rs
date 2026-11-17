@@ -17,9 +17,9 @@ use egui_kittest::kittest::Queryable;
 type Harness = egui_kittest::Harness<'static, State>;
 
 const SIDE: [PanelLayout; 3] = [
-    PanelLayout::AreaLeftAssetsBottom,
-    PanelLayout::AreaAndAssetsLeft,
-    PanelLayout::AreaLeftAssetsRight,
+    PanelLayout::LevelLeftAssetsBottom,
+    PanelLayout::LevelAndAssetsLeft,
+    PanelLayout::LevelLeftAssetsRight,
 ];
 
 fn window(width: f32, w: Workbench) -> Harness {
@@ -74,26 +74,26 @@ fn drag(h: &mut Harness, from: Pos2, by: egui::Vec2) {
 }
 
 #[test]
-fn each_side_layout_puts_the_lists_round_the_area_and_the_shelf_keeps_the_rest() {
+fn each_side_layout_puts_the_lists_round_the_level_and_the_shelf_keeps_the_rest() {
     for layout in SIDE {
         let h = window(1440.0, in_layout(layout));
-        let (area, properties, assets) = (
-            body(&h, Panel::Area),
+        let (level, properties, assets) = (
+            body(&h, Panel::Level),
             body(&h, Panel::Properties),
             body(&h, Panel::Assets),
         );
         let view = body(&h, Panel::Viewport);
-        // The Area list at the left of the area, Properties at its right.
-        assert!(area.right() < view.left(), "{layout:?}");
+        // The Level list at the left of the level, Properties at its right.
+        assert!(level.right() < view.left(), "{layout:?}");
         assert!(properties.left() > view.right(), "{layout:?}");
         match layout {
-            PanelLayout::AreaLeftAssetsBottom => {
+            PanelLayout::LevelLeftAssetsBottom => {
                 assert!(assets.top() > view.bottom());
-                assert!(assets.left() > area.right() && assets.right() < properties.left());
+                assert!(assets.left() > level.right() && assets.right() < properties.left());
             }
-            PanelLayout::AreaAndAssetsLeft => {
-                assert_eq!(assets.left(), area.left());
-                assert!(assets.top() > area.bottom());
+            PanelLayout::LevelAndAssetsLeft => {
+                assert_eq!(assets.left(), level.left());
+                assert!(assets.top() > level.bottom());
             }
             _ => {
                 assert_eq!(assets.right(), properties.right());
@@ -101,15 +101,15 @@ fn each_side_layout_puts_the_lists_round_the_area_and_the_shelf_keeps_the_rest()
             }
         }
         // Tall: the columns start where the groups do and reach down to
-        // the shelf, past the area.
-        assert_eq!(area.top(), view.top(), "{layout:?}");
+        // the shelf, past the level.
+        assert_eq!(level.top(), view.top(), "{layout:?}");
         // (Properties draws its own header, in its body.)
         assert_eq!(
             properties.top() + size::COLUMN_HEADER_H,
             view.top(),
             "{layout:?}"
         );
-        let lowest = [area, properties, assets].map(|r| r.bottom());
+        let lowest = [level, properties, assets].map(|r| r.bottom());
         assert!(lowest.iter().all(|b| *b > view.top()), "{layout:?}");
         assert!(lowest.iter().any(|b| *b >= view.bottom()), "{layout:?}");
         // The shelf has no Entity tab; its first after Place is in front.
@@ -124,31 +124,31 @@ fn each_side_layout_puts_the_lists_round_the_area_and_the_shelf_keeps_the_rest()
 fn every_side_border_drags_is_held_to_its_least_and_a_double_click_puts_it_back() {
     let cases = [
         (
-            PanelLayout::AreaLeftAssetsBottom,
+            PanelLayout::LevelLeftAssetsBottom,
             "Left column's edge",
             Edge::Left,
             vec2(120.0, 0.0),
         ),
         (
-            PanelLayout::AreaLeftAssetsBottom,
+            PanelLayout::LevelLeftAssetsBottom,
             "Right column's edge",
             Edge::Right,
             vec2(-120.0, 0.0),
         ),
         (
-            PanelLayout::AreaLeftAssetsBottom,
+            PanelLayout::LevelLeftAssetsBottom,
             "Assets strip's edge",
             Edge::Strip,
             vec2(0.0, -80.0),
         ),
         (
-            PanelLayout::AreaAndAssetsLeft,
-            "Between Area and Assets",
+            PanelLayout::LevelAndAssetsLeft,
+            "Between Level and Assets",
             Edge::LeftShare,
             vec2(0.0, 80.0),
         ),
         (
-            PanelLayout::AreaLeftAssetsRight,
+            PanelLayout::LevelLeftAssetsRight,
             "Between Properties and Assets",
             Edge::RightShare,
             vec2(0.0, -80.0),
@@ -171,7 +171,7 @@ fn every_side_border_drags_is_held_to_its_least_and_a_double_click_puts_it_back(
             "{name}"
         );
         assert!(body(&h, Panel::Viewport).height() + size::DOC_TAB_H >= size::CENTER_MIN_H - 1.0);
-        for panel in [Panel::Area, Panel::Properties] {
+        for panel in [Panel::Level, Panel::Properties] {
             assert!(
                 body(&h, panel).width() >= size::COLUMN_MIN_W - 1.0,
                 "{name}"
@@ -187,7 +187,7 @@ fn every_side_border_drags_is_held_to_its_least_and_a_double_click_puts_it_back(
 
 #[test]
 fn the_pointer_shows_a_resize_arrow_over_a_border() {
-    let mut h = window(1440.0, in_layout(PanelLayout::AreaLeftAssetsBottom));
+    let mut h = window(1440.0, in_layout(PanelLayout::LevelLeftAssetsBottom));
     let cursor = |h: &Harness| h.output().platform_output.cursor_icon;
     for (name, icon) in [
         ("Left column's edge", egui::CursorIcon::ResizeHorizontal),
@@ -198,7 +198,7 @@ fn the_pointer_shows_a_resize_arrow_over_a_border() {
         h.run();
         assert_eq!(cursor(&h), icon, "{name}");
     }
-    h.hover_at(body(&h, Panel::Area).center());
+    h.hover_at(body(&h, Panel::Level).center());
     h.run();
     assert_ne!(cursor(&h), egui::CursorIcon::ResizeHorizontal);
 }
@@ -206,27 +206,27 @@ fn the_pointer_shows_a_resize_arrow_over_a_border() {
 #[test]
 fn the_shelf_s_columns_drag_too() {
     let mut h = window(1440.0, in_layout(PanelLayout::Shelf));
-    let area = body(&h, Panel::Area).width();
-    let at = border(&h, "Between Area and Properties");
+    let level = body(&h, Panel::Level).width();
+    let at = border(&h, "Between Level and Properties");
     drag(&mut h, at, vec2(100.0, 0.0));
-    assert!((body(&h, Panel::Area).width() - (area + 100.0)).abs() <= 2.0);
+    assert!((body(&h, Panel::Level).width() - (level + 100.0)).abs() <= 2.0);
     let assets = body(&h, Panel::Assets).width();
     let at = border(&h, "Between Properties and Assets");
     drag(&mut h, at, vec2(-60.0, 0.0));
     assert!((body(&h, Panel::Assets).width() - (assets + 60.0)).abs() <= 2.0);
     let edge = Edge::Column(ShelfTab::Entity, 0);
     assert!((size_of(&h, edge) - (size::SCENE_COLUMN_W + 100.0)).abs() <= 2.0);
-    let at = border(&h, "Between Area and Properties");
+    let at = border(&h, "Between Level and Properties");
     double_click(&mut h, at);
-    assert_eq!(body(&h, Panel::Area).width(), size::SCENE_COLUMN_W);
+    assert_eq!(body(&h, Panel::Level).width(), size::SCENE_COLUMN_W);
 }
 
 #[test]
 fn sizes_are_kept_per_layout_and_across_a_restart() {
-    let mut h = window(1440.0, in_layout(PanelLayout::AreaLeftAssetsBottom));
+    let mut h = window(1440.0, in_layout(PanelLayout::LevelLeftAssetsBottom));
     let at = border(&h, "Left column's edge");
     drag(&mut h, at, vec2(100.0, 0.0));
-    let wide = body(&h, Panel::Area).width();
+    let wide = body(&h, Panel::Level).width();
     // Another layout has its own; coming back finds this one's.
     let choose = |h: &mut Harness, layout| {
         let ctx = h.ctx.clone();
@@ -239,24 +239,24 @@ fn sizes_are_kept_per_layout_and_across_a_restart() {
         h.run();
         h.run();
     };
-    choose(&mut h, PanelLayout::AreaLeftAssetsRight);
-    assert_eq!(body(&h, Panel::Area).width(), size::SCENE_COLUMN_W);
-    choose(&mut h, PanelLayout::AreaLeftAssetsBottom);
-    assert_eq!(body(&h, Panel::Area).width(), wide);
+    choose(&mut h, PanelLayout::LevelLeftAssetsRight);
+    assert_eq!(body(&h, Panel::Level).width(), size::SCENE_COLUMN_W);
+    choose(&mut h, PanelLayout::LevelLeftAssetsBottom);
+    assert_eq!(body(&h, Panel::Level).width(), wide);
     // A later run, through the saved text.
     let saved = ron::to_string(&h.state().0.shell_state()).unwrap();
     let back: ShellState = ron::from_str(&saved).unwrap();
-    let mut w = in_layout(PanelLayout::AreaLeftAssetsBottom);
+    let mut w = in_layout(PanelLayout::LevelLeftAssetsBottom);
     w.restore_shell(Some(&back), false);
     let h = window(1440.0, w);
-    assert_eq!(body(&h, Panel::Area).width(), wide);
+    assert_eq!(body(&h, Panel::Level).width(), wide);
 }
 
 #[test]
 fn a_layout_chosen_in_preferences_shows_at_once() {
     let mut h = window(1440.0, in_layout(PanelLayout::Shelf));
     assert_eq!(h.state().0.shelf_tab(), Some(ShelfTab::Entity));
-    let shelf_top = body(&h, Panel::Area).top();
+    let shelf_top = body(&h, Panel::Level).top();
     crate::test_support::file_item(&mut h, "Preferences");
     h.get_by_role_and_label(egui::accesskit::Role::Button, "Appearance")
         .click();
@@ -264,19 +264,19 @@ fn a_layout_chosen_in_preferences_shows_at_once() {
     h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Panel layout")
         .click();
     h.run();
-    h.get_by_label(PanelLayout::AreaAndAssetsLeft.name())
+    h.get_by_label(PanelLayout::LevelAndAssetsLeft.name())
         .click();
     h.run();
     assert_eq!(
         h.state().0.interface_look().layout,
-        PanelLayout::AreaAndAssetsLeft
+        PanelLayout::LevelAndAssetsLeft
     );
     h.state_mut().0.show_tab(RibbonTab::Home);
     h.run();
     h.run();
-    let area = body(&h, Panel::Area);
-    assert!(area.top() < shelf_top, "a tall column now");
-    assert_eq!(body(&h, Panel::Assets).left(), area.left());
+    let level = body(&h, Panel::Level);
+    assert!(level.top() < shelf_top, "a tall column now");
+    assert_eq!(body(&h, Panel::Assets).left(), level.left());
 }
 
 #[test]
@@ -294,7 +294,7 @@ fn placing_works_in_every_layout() {
         h.run();
         let w = &h.state().0;
         assert!(w.placing(), "{layout:?}");
-        for panel in [Panel::Placement, Panel::Assets, Panel::Area] {
+        for panel in [Panel::Placement, Panel::Assets, Panel::Level] {
             assert!(w.shell.drawn_at(panel).is_some(), "{layout:?} {panel:?}");
         }
         // The Assets list in its placing form, wherever it is.
@@ -308,24 +308,24 @@ fn placing_works_in_every_layout() {
 
 #[test]
 fn too_narrow_for_the_columns_the_lists_go_back_on_the_shelf_and_return() {
-    let layout = PanelLayout::AreaLeftAssetsBottom;
+    let layout = PanelLayout::LevelLeftAssetsBottom;
     let least = super::layouts::least_width(layout);
     // Just wide enough: columns, at their least.
     let h = window(least + 20.0, in_layout(layout));
-    assert!(body(&h, Panel::Area).right() < body(&h, Panel::Viewport).left());
+    assert!(body(&h, Panel::Level).right() < body(&h, Panel::Viewport).left());
     assert!(h.query_by_label("Entity").is_none());
-    // Narrower: on the shelf's Entity tab, under the area.
+    // Narrower: on the shelf's Entity tab, under the level.
     let mut h = window(least - 20.0, in_layout(layout));
     h.get_by_label("Entity").click();
     h.run();
     h.run();
-    assert!(body(&h, Panel::Area).top() > body(&h, Panel::Viewport).bottom());
+    assert!(body(&h, Panel::Level).top() > body(&h, Panel::Viewport).bottom());
     // Wider again: beside it.
     h.set_size(vec2(1440.0, 900.0));
     h.run();
     h.run();
     h.run();
-    assert!(body(&h, Panel::Area).right() < body(&h, Panel::Viewport).left());
+    assert!(body(&h, Panel::Level).right() < body(&h, Panel::Viewport).left());
     // Showing Properties from anywhere still finds it.
     h.state_mut().0.show_panel(Panel::Properties);
     h.run();

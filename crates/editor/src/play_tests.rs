@@ -6,9 +6,9 @@ use crate::console::LogLevel;
 use crate::properties::PropertyRequest;
 use crate::test_support::*;
 use crate::viewport::{GAME_IMAGE, VIEWPORT_IMAGE};
-use area::builtin::{Light, Transform};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
+use level::builtin::{Light, Transform};
 use reflect::{EntityId, Value};
 use std::path::{Path, PathBuf};
 
@@ -27,7 +27,7 @@ fn set_position(w: &mut Workbench, id: EntityId, at: Vec3, gesture: u64) {
 fn position(w: &Workbench, id: EntityId) -> Vec3 {
     w.open
         .document
-        .area()
+        .level()
         .get(id)
         .unwrap()
         .get::<Transform>()
@@ -36,13 +36,13 @@ fn position(w: &Workbench, id: EntityId) -> Vec3 {
 }
 
 #[test]
-fn stop_puts_the_area_its_history_and_the_selection_back_exactly() {
+fn stop_puts_the_level_its_history_and_the_selection_back_exactly() {
     // The phase gate, as a test: build, Play, change things, Stop.
     let (mut w, crate_id) = with_a_crate();
     let lamp = w.add_point_light();
     set_position(&mut w, crate_id, Vec3::new(1.0, 0.0, 0.0), 1);
     w.open.document.selection.select_only(crate_id);
-    let area = w.open.document.area().clone();
+    let level = w.open.document.level().clone();
     let steps = w.open.document.history().undo_len();
     let dirty = w.open.document.is_dirty();
     let selection = w.open.document.selection.clone();
@@ -56,12 +56,12 @@ fn stop_puts_the_area_its_history_and_the_selection_back_exactly() {
     w.delete_selection();
     w.undo();
     w.redo();
-    assert_ne!(*w.open.document.area(), area);
+    assert_ne!(*w.open.document.level(), level);
 
     // …and Stop puts it all back.
     w.stop();
     assert_eq!(w.play_state(), PlayState::Editing);
-    assert_eq!(*w.open.document.area(), area);
+    assert_eq!(*w.open.document.level(), level);
     assert_eq!(w.open.document.history().undo_len(), steps);
     assert_eq!(w.open.document.is_dirty(), dirty);
     assert_eq!(w.open.document.selection, selection);
@@ -124,10 +124,10 @@ fn saving_and_opening_wait_until_the_game_stops() {
     let (mut w, crate_id) = with_a_crate();
     w.play();
     for action in [
-        WorkbenchAction::SaveArea,
-        WorkbenchAction::SaveAreaAs,
-        WorkbenchAction::NewArea,
-        WorkbenchAction::OpenArea,
+        WorkbenchAction::SaveLevel,
+        WorkbenchAction::SaveLevelAs,
+        WorkbenchAction::NewLevel,
+        WorkbenchAction::OpenLevel,
         WorkbenchAction::OpenProject,
         WorkbenchAction::CreateAssembly(crate_id),
     ] {
@@ -147,9 +147,9 @@ fn saving_and_opening_wait_until_the_game_stops() {
     // After Stop, saving works again.
     w.stop();
     let mut actions = Vec::new();
-    w.request(WorkbenchAction::SaveArea, &mut actions);
+    w.request(WorkbenchAction::SaveLevel, &mut actions);
     w.hold_while_playing(&mut actions);
-    assert_eq!(actions, [WorkbenchAction::SaveArea]);
+    assert_eq!(actions, [WorkbenchAction::SaveLevel]);
 }
 
 #[test]
@@ -166,7 +166,7 @@ fn quitting_while_playing_stops_first() {
     assert_eq!(actions, []);
     assert!(w.play_changes().is_some());
     assert!(w.open.unsaved_prompt.is_none());
-    // Undo all: the area is as it was before Play, where the crate was
+    // Undo all: the level is as it was before Play, where the crate was
     // placed and not saved, so the question about saving comes next.
     w.undo_play_changes();
     assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
@@ -174,7 +174,7 @@ fn quitting_while_playing_stops_first() {
     // With nothing changed while playing and nothing unsaved, Quit stops
     // the game and closes.
     let (mut w, _) = with_a_crate();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let mut actions = Vec::new();
     w.request(WorkbenchAction::Quit, &mut actions);
@@ -189,7 +189,7 @@ fn quitting_while_playing_stops_first() {
     assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
     assert_ne!(w.play_state(), PlayState::Editing, "still playing");
     let (mut w, _) = with_a_crate();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     assert!(w.close_requested());
     assert_eq!(w.play_state(), PlayState::Editing);
@@ -198,18 +198,18 @@ fn quitting_while_playing_stops_first() {
 #[test]
 fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
     let (mut w, _) = with_a_crate();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
-    let mut theirs = area::builtin::starter_area();
-    let theirs_id = theirs.spawn(area::EntityData::new("Theirs"));
+    let mut theirs = level::builtin::starter_level();
+    let theirs_id = theirs.spawn(level::EntityData::new("Theirs"));
     w.offer_reload(theirs);
     assert!(
-        !w.open.document.area().contains(theirs_id),
+        !w.open.document.level().contains(theirs_id),
         "not while playing"
     );
     w.stop();
     assert!(
-        w.open.document.area().contains(theirs_id),
+        w.open.document.level().contains(theirs_id),
         "loaded after Stop (nothing was unsaved)"
     );
 }
@@ -217,12 +217,12 @@ fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
 #[test]
 fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     let (mut w, asset, _, lamp) = with_a_lamp_post();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
     let two = EntityId(reflect::Id::from_raw(2).unwrap());
-    assert!(area::assembly::set_in_file(
+    assert!(level::assembly::set_in_file(
         &mut file,
         &[two],
         "Light",
@@ -233,7 +233,7 @@ fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     let strength = |w: &Workbench| {
         w.open
             .document
-            .area()
+            .level()
             .get(lamp)
             .unwrap()
             .get::<Light>()
@@ -253,11 +253,11 @@ fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
 fn a_new_camera_looks_the_way_the_editor_does() {
     let (mut w, _) = with_a_crate();
     let id = w.add_camera();
-    let data = w.open.document.area().get(id).unwrap();
+    let data = w.open.document.level().get(id).unwrap();
     assert_eq!(data.name, "Camera 1");
-    let camera = data.get::<area::builtin::Camera>().unwrap();
+    let camera = data.get::<level::builtin::Camera>().unwrap();
     assert!((camera.fov - 50.0).abs() < 1e-3);
-    let (view, position) = crate::game_panel::camera_view(w.open.document.area().world_matrix(id));
+    let (view, position) = crate::game_panel::camera_view(w.open.document.level().world_matrix(id));
     assert!(position.distance(w.viewport.camera.position) < 1e-4);
     let editor = w.viewport.camera.view_matrix();
     for (a, b) in view.to_cols_array().iter().zip(editor.to_cols_array()) {
@@ -267,7 +267,7 @@ fn a_new_camera_looks_the_way_the_editor_does() {
     assert_eq!(
         w.open
             .document
-            .area()
+            .level()
             .get(w.open.document.selection.primary().unwrap())
             .unwrap()
             .name,
@@ -321,7 +321,7 @@ fn without_a_camera_the_game_shows_the_editors_view_with_a_note() {
         .click();
     h.run();
     h.run();
-    let _ = h.get_by_label("No camera in the area: showing the editor's view");
+    let _ = h.get_by_label("No camera in the level: showing the editor's view");
     let game = h
         .state()
         .1
@@ -362,7 +362,7 @@ fn the_buttons_at_the_top_play_pause_and_stop() {
     h.state_mut().1.actions.clear();
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::S);
     h.run();
-    assert!(!h.state().1.actions.contains(&WorkbenchAction::SaveArea));
+    assert!(!h.state().1.actions.contains(&WorkbenchAction::SaveLevel));
 }
 
 #[test]
@@ -392,7 +392,7 @@ fn a_camera_is_listed_with_its_icon_and_added_from_the_entity_menu() {
     h.run();
     let w = &h.state().0;
     let id = w.open.document.selection.primary().unwrap();
-    assert!(w.open.document.area().get(id).unwrap().has("Camera"));
+    assert!(w.open.document.level().get(id).unwrap().has("Camera"));
     assert!(h.query_all_by_label("Camera 1").next().is_some(), "listed");
 }
 
@@ -413,7 +413,7 @@ fn a_cancelled_save_calls_off_the_quit_so_a_later_close_asks_again() {
 #[test]
 fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
     let (mut w, _) = with_a_crate();
-    w.open.pending_reload = Some(area::builtin::starter_area());
+    w.open.pending_reload = Some(level::builtin::starter_level());
     w.play();
     let mut h = harness(w);
     h.run();
@@ -426,16 +426,16 @@ fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
     let _ = h.get_by_label("Load the file");
 }
 
-// The open area's file moved or deleted in the Library while playing
+// The open level's file moved or deleted in the Library while playing
 // (the review, BUG-05): only the document the game runs on followed, so
 // Stop put back the copy from before Play with the old path, and Ctrl+S
 // made the old file again beside the moved one (or, after a delete, the
-// area read as saved though its file was gone).
+// level read as saved though its file was gone).
 
-const AREA_FILE: &str = "/p/assets/areas/harbour.solarea";
+const LEVEL_FILE: &str = "/p/assets/levels/harbour.sollevel";
 
 /// What the Library did: what it moved, where to (`None`: deleted), and
-/// where the open area's file is afterwards (`None`: nowhere).
+/// where the open level's file is afterwards (`None`: nowhere).
 type FileCase = (
     &'static str,
     &'static str,
@@ -446,30 +446,30 @@ type FileCase = (
 const FILE_CASES: [FileCase; 5] = [
     (
         "renamed",
-        AREA_FILE,
-        Some("/p/assets/areas/port.solarea"),
-        Some("/p/assets/areas/port.solarea"),
+        LEVEL_FILE,
+        Some("/p/assets/levels/port.sollevel"),
+        Some("/p/assets/levels/port.sollevel"),
     ),
     (
         "moved into a folder",
-        AREA_FILE,
-        Some("/p/assets/areas/docks/harbour.solarea"),
-        Some("/p/assets/areas/docks/harbour.solarea"),
+        LEVEL_FILE,
+        Some("/p/assets/levels/docks/harbour.sollevel"),
+        Some("/p/assets/levels/docks/harbour.sollevel"),
     ),
     (
         "a parent folder renamed",
-        "/p/assets/areas",
+        "/p/assets/levels",
         Some("/p/assets/levels"),
-        Some("/p/assets/levels/harbour.solarea"),
+        Some("/p/assets/levels/harbour.sollevel"),
     ),
-    ("deleted", AREA_FILE, None, None),
-    ("its folder deleted", "/p/assets/areas", None, None),
+    ("deleted", LEVEL_FILE, None, None),
+    ("its folder deleted", "/p/assets/levels", None, None),
 ];
 
-/// A saved area with a crate, open from [`AREA_FILE`].
-fn saved_area() -> (Workbench, EntityId) {
+/// A saved level with a crate, open from [`LEVEL_FILE`].
+fn saved_level() -> (Workbench, EntityId) {
     let (mut w, crate_id) = with_a_crate();
-    w.mark_saved(AREA_FILE.into());
+    w.mark_saved(LEVEL_FILE.into());
     (w, crate_id)
 }
 
@@ -483,9 +483,9 @@ fn library_does(w: &mut Workbench, case: &FileCase) {
     );
 }
 
-/// The open area is where `case` left its file, and saving (Ctrl+S, as
+/// The open level is where `case` left its file, and saving (Ctrl+S, as
 /// the app does it) goes there: `unsaved` says whether there are changes
-/// to save. With no file left, the area counts as unsaved, so saving
+/// to save. With no file left, the level counts as unsaved, so saving
 /// asks where.
 fn saves_where_the_file_is(w: &mut Workbench, case: &FileCase, unsaved: bool, when: &str) {
     let (what, _, _, after) = *case;
@@ -503,9 +503,9 @@ fn saves_where_the_file_is(w: &mut Workbench, case: &FileCase, unsaved: bool, wh
 }
 
 #[test]
-fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_stop() {
+fn the_level_s_file_moved_or_deleted_while_playing_stays_so_after_stop() {
     for case in &FILE_CASES {
-        let (mut w, _) = saved_area();
+        let (mut w, _) = saved_level();
         w.play();
         library_does(&mut w, case);
         w.stop();
@@ -515,10 +515,10 @@ fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_stop() {
 }
 
 #[test]
-fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_keep_and_undo_all() {
+fn the_level_s_file_moved_or_deleted_while_playing_stays_so_after_keep_and_undo_all() {
     for case in &FILE_CASES {
         // An edit before the move and one after it, then Stop and Keep.
-        let (mut w, crate_id) = saved_area();
+        let (mut w, crate_id) = saved_level();
         w.play();
         set_position(&mut w, crate_id, Vec3::X, 1);
         library_does(&mut w, case);
@@ -526,10 +526,10 @@ fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_keep_and_undo_a
         w.stop();
         assert_eq!(w.play_changes().unwrap().len(), 2);
         w.keep_play_changes();
-        assert!(w.document().area().contains(lamp));
+        assert!(w.document().level().contains(lamp));
         saves_where_the_file_is(&mut w, case, true, "after Stop and Keep");
         // Undo all: nothing of the user's is left to save.
-        let (mut w, crate_id) = saved_area();
+        let (mut w, crate_id) = saved_level();
         w.play();
         library_does(&mut w, case);
         set_position(&mut w, crate_id, Vec3::X, 1);
@@ -540,23 +540,23 @@ fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_keep_and_undo_a
 }
 
 #[test]
-fn the_area_s_file_moved_or_deleted_while_keep_is_asked_stays_so_after_the_answer() {
+fn the_level_s_file_moved_or_deleted_while_keep_is_asked_stays_so_after_the_answer() {
     for case in &FILE_CASES {
-        let (mut w, _) = saved_area();
+        let (mut w, _) = saved_level();
         w.play();
         let lamp = w.add_point_light();
         w.stop();
         assert!(w.play_changes().is_some());
         library_does(&mut w, case);
         w.keep_play_changes();
-        assert!(w.document().area().contains(lamp));
+        assert!(w.document().level().contains(lamp));
         saves_where_the_file_is(&mut w, case, true, "moved while asked, kept");
     }
 }
 
 #[test]
 fn another_file_moved_while_playing_changes_nothing() {
-    let (mut w, _) = saved_area();
+    let (mut w, _) = saved_level();
     w.play();
     assert_eq!(
         w.file_moved(
@@ -565,10 +565,10 @@ fn another_file_moved_while_playing_changes_nothing() {
         ),
         None
     );
-    // A file whose name only starts the same isn't the area's folder.
+    // A file whose name only starts the same isn't the level's folder.
     assert_eq!(w.file_moved(Path::new("/p/assets/are"), None), None);
     w.stop();
-    assert_eq!(w.document().file(), Some(Path::new(AREA_FILE)));
+    assert_eq!(w.document().file(), Some(Path::new(LEVEL_FILE)));
     assert!(!w.document().is_dirty());
 }
 
@@ -578,8 +578,8 @@ mod spawns_that_cannot_be_made {
     use super::*;
     use crate::game_code::GameEdit;
     use crate::library::{LibraryItem, LibraryKind};
-    use area::text::{AreaFile, FileKind};
-    use area::{Area, EntityData, Origin};
+    use level::text::{FileKind, LevelFile};
+    use level::{EntityData, Level, Origin};
     use reflect::{AssetId, Id};
     use std::sync::Arc;
 
@@ -596,9 +596,9 @@ mod spawns_that_cannot_be_made {
 
     /// An assembly of one entity, and one more for each of `places`: a
     /// copy of that assembly, under the root.
-    fn assembly(places: &[AssetId]) -> AreaFile {
-        let mut area = Area::new();
-        area.insert(id(1), EntityData::new("Root"));
+    fn assembly(places: &[AssetId]) -> LevelFile {
+        let mut level = Level::new();
+        level.insert(id(1), EntityData::new("Root"));
         for (n, &placed) in places.iter().enumerate() {
             let instance = id(100 + n as u64);
             let mut copy = EntityData::new("Copy");
@@ -608,18 +608,18 @@ mod spawns_that_cannot_be_made {
                 instance,
                 path: Vec::new(),
             });
-            area.insert(instance, copy);
+            level.insert(instance, copy);
         }
-        AreaFile {
+        LevelFile {
             kind: FileKind::Assembly { root: id(1) },
-            area,
+            level,
             overrides: Default::default(),
         }
     }
 
     /// A workbench that knows `files` as assemblies, each in the Library
-    /// under its name, playing a new area.
-    fn playing(files: Vec<(AssetId, &str, AreaFile)>) -> Workbench {
+    /// under its name, playing a new level.
+    fn playing(files: Vec<(AssetId, &str, LevelFile)>) -> Workbench {
         let mut w = knowing(files);
         w.play();
         w
@@ -627,7 +627,7 @@ mod spawns_that_cannot_be_made {
 
     /// A workbench that knows `files` as assemblies, each in the Library
     /// under its name.
-    fn knowing(files: Vec<(AssetId, &str, AreaFile)>) -> Workbench {
+    fn knowing(files: Vec<(AssetId, &str, LevelFile)>) -> Workbench {
         let mut w = Workbench::new(info());
         let mut library = Vec::new();
         for (asset, name, file) in files {
@@ -667,13 +667,13 @@ mod spawns_that_cannot_be_made {
     /// Spawning "squad" every frame says `why` once, as a warning, and
     /// makes nothing.
     fn says_once(mut w: Workbench, why: &str) {
-        let before = w.open.document.area().len();
+        let before = w.open.document.level().len();
         spawn_every_frame(&mut w, "squad", 5000);
         let said = said_about(&w, "squad");
         assert_eq!(said.len(), 1, "{said:?}");
         assert!(said[0].contains(why), "{}", said[0]);
         assert!(said[0].ends_with("so nothing was made."), "{}", said[0]);
-        assert_eq!(w.open.document.area().len(), before);
+        assert_eq!(w.open.document.level().len(), before);
         // Plain words: no ID stands where a name is known.
         assert!(!said[0].contains(&asset(10).to_string()), "{}", said[0]);
     }
@@ -710,22 +710,22 @@ mod spawns_that_cannot_be_made {
     }
 
     #[test]
-    fn an_area_spawned_as_an_assembly_is_said_once() {
+    fn a_level_spawned_as_an_assembly_is_said_once() {
         let mut town = assembly(&[]);
-        town.kind = FileKind::Area;
+        town.kind = FileKind::Level;
         let w = playing(vec![(asset(10), "squad", town)]);
-        says_once(w, "its file is an area, not an assembly");
+        says_once(w, "its file is a level, not an assembly");
     }
 
     #[test]
-    fn a_part_that_is_an_area_is_said_once() {
+    fn a_part_that_is_an_level_is_said_once() {
         let mut town = assembly(&[]);
-        town.kind = FileKind::Area;
+        town.kind = FileKind::Level;
         let w = playing(vec![
             (asset(10), "squad", assembly(&[asset(11)])),
             (asset(11), "town", town),
         ]);
-        says_once(w, "\"town\", which is an area, not an assembly");
+        says_once(w, "\"town\", which is a level, not an assembly");
     }
 
     #[test]
@@ -739,8 +739,8 @@ mod spawns_that_cannot_be_made {
 
     #[test]
     fn assemblies_placed_too_deep_are_said_once() {
-        let deep = area::text::MAX_NESTING as u64 + 2;
-        let mut files: Vec<(AssetId, String, AreaFile)> = (0..deep)
+        let deep = level::text::MAX_NESTING as u64 + 2;
+        let mut files: Vec<(AssetId, String, LevelFile)> = (0..deep)
             .map(|level| {
                 let name = if level == 0 {
                     "squad".to_string()
@@ -783,13 +783,13 @@ mod spawns_that_cannot_be_made {
         let mut scout = assembly(&[]);
         let mut part = EntityData::new("Part");
         part.parent = Some(id(1));
-        scout.area.insert(id(2), part);
+        scout.level.insert(id(2), part);
         let mut squad = assembly(&[asset(11)]);
         let mut twin = EntityData::new("Twin");
         twin.parent = Some(id(1));
         squad
-            .area
-            .insert(area::assembly::derive(id(100), &[id(2)]), twin);
+            .level
+            .insert(level::assembly::derive(id(100), &[id(2)]), twin);
         let w = playing(vec![
             (asset(10), "squad", squad),
             (asset(11), "scout", scout),
@@ -800,21 +800,21 @@ mod spawns_that_cannot_be_made {
     #[test]
     fn a_copy_whose_id_is_taken_is_said_once_and_others_are_still_made() {
         let mut w = playing(vec![(asset(10), "squad", assembly(&[]))]);
-        let before = w.open.document.area().len();
+        let before = w.open.document.level().len();
         // The first is made; asking for the same entity again can't be.
         for _ in 0..FRAMES {
             let asked = GameEdit::Spawn(id(5000), "squad".into(), Vec3::ZERO);
             w.open.playing.as_mut().unwrap().pending.push(asked);
             w.run_game(1.0 / 60.0);
         }
-        assert!(w.open.document.area().contains(id(5000)));
-        assert_eq!(w.open.document.area().len(), before + 1);
+        assert!(w.open.document.level().contains(id(5000)));
+        assert_eq!(w.open.document.level().len(), before + 1);
         let said = said_about(&w, "squad");
         assert_eq!(said.len(), 1, "{said:?}");
-        assert!(said[0].contains("already in the area"), "{}", said[0]);
+        assert!(said[0].contains("already in the level"), "{}", said[0]);
         // Another entity of the same assembly is still made.
         spawn_every_frame(&mut w, "squad", 6000);
-        assert_eq!(w.open.document.area().len(), before + 1 + FRAMES as usize);
+        assert_eq!(w.open.document.level().len(), before + 1 + FRAMES as usize);
         assert_eq!(said_about(&w, "squad").len(), 1);
     }
 
@@ -825,7 +825,7 @@ mod spawns_that_cannot_be_made {
             (asset(12), "patrol", assembly(&[asset(12)])),
             (asset(13), "scout", assembly(&[])),
         ]);
-        let before = w.open.document.area().len();
+        let before = w.open.document.level().len();
         for frame in 0..FRAMES {
             let pending = &mut w.open.playing.as_mut().unwrap().pending;
             for (n, name) in ["squad", "patrol", "nobody", "scout"]
@@ -843,7 +843,7 @@ mod spawns_that_cannot_be_made {
         assert!(said_about(&w, "patrol")[0].contains("in a loop"));
         assert!(said_about(&w, "nobody")[0].contains("no assembly by that name"));
         assert!(said_about(&w, "scout").is_empty());
-        assert_eq!(w.open.document.area().len(), before + FRAMES as usize);
+        assert_eq!(w.open.document.level().len(), before + FRAMES as usize);
         // The next play is a new one: it says so again, once.
         w.stop();
         w.play();

@@ -290,7 +290,7 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
 }
 
 /// A new running Lua component of `class` on `me`: its starting values,
-/// then the area's `data` where it fits.
+/// then the level's `data` where it fits.
 pub(crate) fn make(
     lua: &Lua,
     class: &LuaClass,

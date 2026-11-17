@@ -1,6 +1,6 @@
 -- The benchmark (Help > Make the benchmark…): two fleets of ships flying
 -- loops over a field, firing lasers, to see what this computer can do.
--- Each area has one Fleets entity saying how many ships to make, or a
+-- Each level has one Fleets entity saying how many ships to make, or a
 -- Ceiling entity that keeps adding ships until 60 frames a second ends.
 
 fetch "solis/world":World;

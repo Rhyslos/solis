@@ -14,7 +14,7 @@
 //!   copy of an assembly as a whole; with Ctrl it adds to the selection.
 
 use crate::document::Selection;
-use area::Area;
+use level::Level;
 use reflect::EntityId;
 
 /// How a click or box changes the selection.
@@ -31,33 +31,34 @@ pub enum PickMode {
 
 /// The root of the outermost assembly copy `id` belongs to, or `id`
 /// itself when it isn't part of one.
-fn copy_root(area: &Area, id: EntityId) -> EntityId {
-    area.get(id)
+fn copy_root(level: &Level, id: EntityId) -> EntityId {
+    level
+        .get(id)
         .and_then(|e| e.origin.as_ref())
         .map_or(id, |o| o.instance)
 }
 
 /// Whether anything selected belongs to the copy whose root is `root`.
-fn inside_selected_copy(area: &Area, selection: &Selection, root: EntityId) -> bool {
-    selection.iter().any(|s| copy_root(area, s) == root)
+fn inside_selected_copy(level: &Level, selection: &Selection, root: EntityId) -> bool {
+    selection.iter().any(|s| copy_root(level, s) == root)
 }
 
 /// What a click on `hit` (or on nothing) selects.
 pub fn after_click(
-    area: &Area,
+    level: &Level,
     selection: &Selection,
     hit: Option<EntityId>,
     mode: PickMode,
 ) -> Selection {
     let mut out = selection.clone();
-    let Some(hit) = hit.filter(|&h| area.contains(h)) else {
+    let Some(hit) = hit.filter(|&h| level.contains(h)) else {
         if mode == PickMode::Replace {
             out.clear();
         }
         return out;
     };
-    let root = copy_root(area, hit);
-    let target = if root != hit && inside_selected_copy(area, selection, root) {
+    let root = copy_root(level, hit);
+    let target = if root != hit && inside_selected_copy(level, selection, root) {
         hit
     } else {
         root
@@ -76,15 +77,15 @@ pub fn after_click(
 
 /// What a box around `hits` selects.
 pub fn after_box(
-    area: &Area,
+    level: &Level,
     selection: &Selection,
     hits: &[EntityId],
     mode: PickMode,
 ) -> Selection {
     let mut found: Vec<EntityId> = hits
         .iter()
-        .filter(|&&h| area.contains(h))
-        .map(|&h| copy_root(area, h))
+        .filter(|&&h| level.contains(h))
+        .map(|&h| copy_root(level, h))
         .collect();
     found.sort_unstable();
     found.dedup();
@@ -104,14 +105,14 @@ pub fn after_box(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use area::{EntityData, Origin};
+    use level::{EntityData, Origin};
     use reflect::AssetId;
 
-    /// An area with a loose crate and one copy of an assembly (a root
+    /// A level with a loose crate and one copy of an assembly (a root
     /// and a lamp inside it).
-    fn area() -> (Area, EntityId, EntityId, EntityId) {
-        let mut area = Area::new();
-        let loose = area.spawn(EntityData::new("Crate"));
+    fn level() -> (Level, EntityId, EntityId, EntityId) {
+        let mut level = Level::new();
+        let loose = level.spawn(EntityData::new("Crate"));
         let root = EntityId::random();
         let assembly = AssetId::random();
         let mut root_data = EntityData::new("Lamp post");
@@ -120,7 +121,7 @@ mod tests {
             instance: root,
             path: Vec::new(),
         });
-        area.insert(root, root_data);
+        level.insert(root, root_data);
         let mut lamp = EntityData::new("Lamp");
         lamp.parent = Some(root);
         lamp.origin = Some(Origin {
@@ -128,34 +129,39 @@ mod tests {
             instance: root,
             path: vec![EntityId::random()],
         });
-        let lamp = area.spawn(lamp);
-        (area, loose, root, lamp)
+        let lamp = level.spawn(lamp);
+        (level, loose, root, lamp)
     }
 
     #[test]
     fn a_click_selects_what_is_under_the_mouse_and_ctrl_toggles() {
-        let (area, loose, root, _) = area();
-        let s = after_click(&area, &Selection::default(), Some(loose), PickMode::Replace);
+        let (level, loose, root, _) = level();
+        let s = after_click(
+            &level,
+            &Selection::default(),
+            Some(loose),
+            PickMode::Replace,
+        );
         assert_eq!(s.primary(), Some(loose));
-        let s = after_click(&area, &s, Some(root), PickMode::Toggle);
+        let s = after_click(&level, &s, Some(root), PickMode::Toggle);
         assert!(s.contains(loose) && s.contains(root));
-        let s = after_click(&area, &s, Some(loose), PickMode::Toggle);
+        let s = after_click(&level, &s, Some(loose), PickMode::Toggle);
         assert!(!s.contains(loose) && s.contains(root));
     }
 
     #[test]
     fn a_click_on_nothing_selects_nothing_unless_ctrl_is_held() {
-        let (area, loose, _, _) = area();
+        let (level, loose, _, _) = level();
         let mut s = Selection::default();
         s.select_only(loose);
-        assert_eq!(after_click(&area, &s, None, PickMode::Toggle), s);
+        assert_eq!(after_click(&level, &s, None, PickMode::Toggle), s);
         assert_eq!(
-            after_click(&area, &s, None, PickMode::Replace).primary(),
+            after_click(&level, &s, None, PickMode::Replace).primary(),
             None
         );
         let gone = EntityId::random();
         assert_eq!(
-            after_click(&area, &s, Some(gone), PickMode::Replace).primary(),
+            after_click(&level, &s, Some(gone), PickMode::Replace).primary(),
             None,
             "an entity that's gone counts as nothing"
         );
@@ -163,27 +169,27 @@ mod tests {
 
     #[test]
     fn a_copy_is_selected_whole_first_then_a_second_click_goes_inside() {
-        let (area, _, root, lamp) = area();
-        let first = after_click(&area, &Selection::default(), Some(lamp), PickMode::Replace);
+        let (level, _, root, lamp) = level();
+        let first = after_click(&level, &Selection::default(), Some(lamp), PickMode::Replace);
         assert_eq!(first.primary(), Some(root), "the whole copy");
-        let second = after_click(&area, &first, Some(lamp), PickMode::Replace);
+        let second = after_click(&level, &first, Some(lamp), PickMode::Replace);
         assert_eq!(second.primary(), Some(lamp), "then the lamp itself");
         assert!(!second.contains(root));
     }
 
     #[test]
     fn a_box_selects_copies_whole_and_ctrl_adds() {
-        let (area, loose, root, lamp) = area();
+        let (level, loose, root, lamp) = level();
         let s = after_box(
-            &area,
+            &level,
             &Selection::default(),
             &[lamp, root, lamp],
             PickMode::Replace,
         );
         assert_eq!(s.iter().collect::<Vec<_>>(), [root]);
-        let s = after_box(&area, &s, &[loose], PickMode::Add);
+        let s = after_box(&level, &s, &[loose], PickMode::Add);
         assert!(s.contains(root) && s.contains(loose));
-        let s = after_box(&area, &s, &[], PickMode::Replace);
+        let s = after_box(&level, &s, &[], PickMode::Replace);
         assert_eq!(s.iter().count(), 0, "an empty box selects nothing");
     }
 }

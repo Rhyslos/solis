@@ -2,7 +2,7 @@
 -- push and a moving platform. The character and its camera are Solis's
 -- ready-made components (solis/kit/); this file adds quick saves, the
 -- moving platform and footsteps. The music, the radio and the cave's
--- drip are AudioSources in the area; the cave's echo is a ReverbZone.
+-- drip are AudioSources in the level; the cave's echo is a ReverbZone.
 
 fetch "solis/input":Input;
 fetch "solis/project":[Action, Sound];

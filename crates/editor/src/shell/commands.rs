@@ -15,7 +15,7 @@ use crate::tile_paint::{PaintTool, Turn};
 use crate::viewport::Tool;
 use crate::workbench::{Workbench, WorkbenchAction};
 
-/// Why something that replaces or saves the area can't be done while the
+/// Why something that replaces or saves the level can't be done while the
 /// game runs.
 const STOP_FIRST: &str = "Stop the game first";
 
@@ -24,10 +24,10 @@ const STOP_FIRST: &str = "Stop the game first";
 pub(crate) enum ShellCommand {
     /// Closes the project and goes back to the launcher (decision 0118).
     CloseProject,
-    NewArea,
-    OpenArea,
-    SaveArea,
-    SaveAreaAs,
+    NewLevel,
+    OpenLevel,
+    SaveLevel,
+    SaveLevelAs,
     ImportModel,
     ExportPlaytest,
     ProjectSettings,
@@ -184,7 +184,7 @@ pub(crate) enum ShellCommand {
     OpenExportFolder,
     Tab(RibbonTab),
     OpenGuide,
-    AddSampleArea,
+    AddSampleLevel,
     CheckForUpdates,
     AutoUpdate,
     About,
@@ -198,7 +198,7 @@ pub(super) use ShellCommand as C;
 pub(crate) enum NewFile {
     CodeFile,
     Folder,
-    Area,
+    Level,
     TileMap,
     Tileset,
     Animator,
@@ -210,7 +210,7 @@ impl NewFile {
     pub(crate) const ALL: [Self; 7] = [
         Self::CodeFile,
         Self::Folder,
-        Self::Area,
+        Self::Level,
         Self::TileMap,
         Self::Tileset,
         Self::Animator,
@@ -223,7 +223,7 @@ impl NewFile {
         match self {
             Self::CodeFile => "Lust code file",
             Self::Folder => "Folder",
-            Self::Area => "Area",
+            Self::Level => "Level",
             Self::TileMap => "Tile map",
             Self::Tileset => "Tileset",
             Self::Animator => "Animator",
@@ -237,7 +237,7 @@ impl NewFile {
         match self {
             Self::CodeFile => R::NewCodeFile(folder),
             Self::Folder => R::NewFolder(folder),
-            Self::Area => R::NewArea(folder),
+            Self::Level => R::NewLevel(folder),
             Self::TileMap => R::NewTileMap(folder),
             Self::Tileset => R::NewTileset(folder),
             Self::Animator => R::NewAnimator(folder),
@@ -250,10 +250,10 @@ impl ShellCommand {
     /// Every command, in the order the search lists them.
     pub(crate) const ALL: [Self; 139] = [
         C::CloseProject,
-        C::NewArea,
-        C::OpenArea,
-        C::SaveArea,
-        C::SaveAreaAs,
+        C::NewLevel,
+        C::OpenLevel,
+        C::SaveLevel,
+        C::SaveLevelAs,
         C::ImportModel,
         C::ExportPlaytest,
         C::ProjectSettings,
@@ -310,7 +310,7 @@ impl ShellCommand {
         C::UseTool(Tool::Transform),
         C::NewInLibrary(NewFile::CodeFile),
         C::NewInLibrary(NewFile::Folder),
-        C::NewInLibrary(NewFile::Area),
+        C::NewInLibrary(NewFile::Level),
         C::NewInLibrary(NewFile::TileMap),
         C::NewInLibrary(NewFile::Tileset),
         C::NewInLibrary(NewFile::Animator),
@@ -383,7 +383,7 @@ impl ShellCommand {
         C::Tab(RibbonTab::Debug),
         C::Tab(RibbonTab::Build),
         C::OpenGuide,
-        C::AddSampleArea,
+        C::AddSampleLevel,
         C::CheckForUpdates,
         C::AutoUpdate,
         C::About,
@@ -399,7 +399,7 @@ impl ShellCommand {
         let history = w.open.document.history();
         let when = |ok: bool, why: &str| (!ok).then(|| why.to_owned());
         match self {
-            C::NewArea | C::OpenArea | C::SaveArea | C::SaveAreaAs | C::AddSampleArea => {
+            C::NewLevel | C::OpenLevel | C::SaveLevel | C::SaveLevelAs | C::AddSampleLevel => {
                 when(!playing, STOP_FIRST)
             }
             C::CloseProject => when(project, "No project is open"),
@@ -555,7 +555,7 @@ impl ShellCommand {
             w.request(action, actions);
             return;
         }
-        if let Some(command) = self.on_the_area() {
+        if let Some(command) = self.on_the_level() {
             w.run(command, ctx);
             return;
         }
@@ -692,14 +692,14 @@ impl ShellCommand {
         use WorkbenchAction as A;
         Some(match self {
             C::CloseProject => A::CloseProject,
-            C::NewArea => A::NewArea,
-            C::OpenArea => A::OpenArea,
-            C::SaveArea => A::SaveArea,
-            C::SaveAreaAs => A::SaveAreaAs,
+            C::NewLevel => A::NewLevel,
+            C::OpenLevel => A::OpenLevel,
+            C::SaveLevel => A::SaveLevel,
+            C::SaveLevelAs => A::SaveLevelAs,
             C::ImportModel => A::ImportModel,
             C::LoadSave => A::OpenSave,
             C::ReplayRecording => A::OpenRecording,
-            C::AddSampleArea => A::AddSampleArea,
+            C::AddSampleLevel => A::AddSampleLevel,
             C::CheckForUpdates => A::CheckForUpdates,
             C::OpenGuide => A::OpenGuide(None),
             C::Exit => A::Quit,
@@ -707,9 +707,9 @@ impl ShellCommand {
         })
     }
 
-    /// The command as the Area panel's own menus know it, for the ones
+    /// The command as the Level panel's own menus know it, for the ones
     /// they share.
-    fn on_the_area(self) -> Option<MenuCommand> {
+    fn on_the_level(self) -> Option<MenuCommand> {
         Some(match self {
             C::ExportPlaytest => MenuCommand::ExportPlaytest,
             C::Undo => MenuCommand::Undo,

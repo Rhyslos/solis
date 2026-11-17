@@ -374,7 +374,7 @@ fn a_save_that_can_t_be_written_is_said_and_the_next_one_writes_the_file() {
     }
 }
 
-/// A save still waiting when the queue is dropped (the area's Save window
+/// A save still waiting when the queue is dropped (the level's Save window
 /// was cancelled) is answered as not made, never left without a word.
 #[test]
 fn a_save_dropped_with_the_queue_is_said_as_not_saved() {
@@ -390,7 +390,7 @@ fn a_save_dropped_with_the_queue_is_said_as_not_saved() {
     assert!(app.queued.is_empty());
     assert_eq!(
         errors(&app),
-        ["Couldn't save hero.solanim: it waited behind the area's save, which didn't happen."]
+        ["Couldn't save hero.solanim: it waited behind the level's save, which didn't happen."]
     );
     let file = assets.join(kind.file);
     assert_eq!(on_disk(&file, first).as_ref(), Some(first), "not written");

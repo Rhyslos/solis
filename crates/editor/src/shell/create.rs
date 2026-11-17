@@ -4,8 +4,8 @@
 //! camera looks and selected, as one undo step.
 
 use crate::workbench::Workbench;
-use area::EntityData;
-use area::builtin::{ReverbZone, Sprite, Transform};
+use level::EntityData;
+use level::builtin::{ReverbZone, Sprite, Transform};
 use reflect::EntityId;
 
 impl Workbench {

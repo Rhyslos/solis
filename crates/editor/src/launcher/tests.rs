@@ -398,8 +398,8 @@ fn the_learn_page_offers_the_examples_and_the_guide() {
     h.get_by_label("Make the Playground").click();
     h.run();
     assert!(asked(&h, &WorkbenchAction::MakePlayground));
-    // The sample area needs an open project: it's in the editor's search.
-    assert!(h.query_by_label("Add the sample area").is_none());
+    // The sample level needs an open project: it's in the editor's search.
+    assert!(h.query_by_label("Add the sample level").is_none());
 }
 
 /// A picked card's border and the notice are the accent in use mixed

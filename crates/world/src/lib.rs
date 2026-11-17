@@ -1,7 +1,7 @@
 //! The game's fast storage while it runs
 //! ([decision 0024](../../../docs/decisions/0024-game-storage-is-hecs.md)).
 //!
-//! Layer 1 (engine). The area (`area::Area`) is the document the editor
+//! Layer 1 (engine). The level (`level::Level`) is the document the editor
 //! edits: easy to change, undo and save. A [`World`] is built from it when
 //! Play is pressed: the same entities in `hecs`, with the built-in
 //! components as Rust types and anything else kept as plain values, laid
@@ -9,7 +9,7 @@
 //! fixed ticks and works out where everything is in the world; game code,
 //! physics, projectiles and sprites move things on each tick.
 //!
-//! The world never changes the area: stopping throws it away.
+//! The world never changes the level: stopping throws it away.
 
 pub mod animators;
 mod building;
@@ -30,11 +30,11 @@ pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
 pub use tile_maps::MapFiles;
 
-use area::builtin::{
+use glam::Mat4;
+use level::builtin::{
     Animator, AudioSource, Camera, CharacterBody, Collider, Environment, Light, Listener, Model,
     ReverbZone, RigidBody, Sprite, Transform,
 };
-use glam::Mat4;
 use reflect::{ComponentData, EntityId};
 use std::collections::{BTreeMap, HashMap};
 
@@ -50,7 +50,7 @@ pub const MAX_TICKS_PER_STEP: u64 = 8;
 /// The fastest the game runs ([`World::set_speed`]): four times.
 pub const MAX_SPEED: f64 = 4.0;
 
-/// An entity's ID in the area, on its world entity.
+/// An entity's ID in the level, on its world entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Id(pub EntityId);
 
@@ -58,11 +58,11 @@ pub struct Id(pub EntityId);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Name(pub String);
 
-/// The entity it belongs to, by area ID.
+/// The entity it belongs to, by level ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Parent(pub EntityId);
 
-/// Where an entity is in the area's tree order (its place in `order`), so
+/// Where an entity is in the level's tree order (its place in `order`), so
 /// a query can give entities in that order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Place(usize);
@@ -116,7 +116,7 @@ pub struct World {
     by_id: reflect::IdMap<hecs::Entity>,
     /// Where each entity is in `order`.
     place: reflect::IdMap<usize>,
-    /// Every entity, parents before their children (the area's tree
+    /// Every entity, parents before their children (the level's tree
     /// order), with where its parent is in this list.
     order: Vec<(hecs::Entity, Option<usize>)>,
     clock: Clock,
@@ -135,7 +135,7 @@ pub struct World {
     /// names), worked out when first asked for after it changes.
     structure: std::sync::OnceLock<u64>,
     /// Entities the game moved ([`World::set_transform`]), with the
-    /// area's Transform for them when it first did: while the area still
+    /// level's Transform for them when it first did: while the level still
     /// has that one, the game's place is kept, even when the world is
     /// built again.
     game_moved: reflect::IdMap<Transform>,
@@ -189,7 +189,7 @@ pub struct World {
     flat: physics::flat::Flat,
     /// The project's 2D settings: `Collider2D`'s pixels and tile maps'
     /// cell size.
-    pixels: area::pixels::PixelSettings,
+    pixels: level::pixels::PixelSettings,
     /// Which terrains of each tileset are solid.
     solid_sets: std::sync::Arc<SolidSets>,
     /// What each map's walls were last built from.
@@ -260,7 +260,7 @@ impl World {
     /// moved it), or one kept as plain values. What screens read of
     /// Solis's own components (decision 0087).
     pub fn component_data(&self, id: EntityId, name: &str) -> Option<ComponentData> {
-        use area::builtin::{Collider2D, TileMap};
+        use level::builtin::{Collider2D, TileMap};
         use reflect::Component;
         fn typed<T: Component + hecs::Component + Clone>(
             world: &World,
@@ -276,14 +276,14 @@ impl World {
             Collider2D::NAME => typed::<Collider2D>(self, id),
             CharacterBody::NAME => typed::<CharacterBody>(self, id),
             Model::NAME => typed::<Model>(self, id),
-            area::builtin::Brush::NAME => typed::<area::builtin::Brush>(self, id),
+            level::builtin::Brush::NAME => typed::<level::builtin::Brush>(self, id),
             Environment::NAME => typed::<Environment>(self, id),
             Camera::NAME => typed::<Camera>(self, id),
             AudioSource::NAME => typed::<AudioSource>(self, id),
             ReverbZone::NAME => typed::<ReverbZone>(self, id),
             Listener::NAME => typed::<Listener>(self, id),
             Sprite::NAME => typed::<Sprite>(self, id),
-            area::builtin::Parallax::NAME => typed::<area::builtin::Parallax>(self, id),
+            level::builtin::Parallax::NAME => typed::<level::builtin::Parallax>(self, id),
             Animator::NAME => typed::<Animator>(self, id),
             TileMap::NAME => typed::<TileMap>(self, id),
             _ => self.values_named_for(id, name),
@@ -310,7 +310,7 @@ impl World {
         self.revision
     }
 
-    /// Every entity, with its name, in the area's tree order: entity
+    /// Every entity, with its name, in the level's tree order: entity
     /// number `i` here is number `i` in [`Self::globals`] (`None` only for
     /// an entity somehow without its ID).
     pub fn entities(&self) -> Vec<Option<(EntityId, String)>> {
@@ -325,7 +325,7 @@ impl World {
             .collect()
     }
 
-    /// The first entity named `name`, in the area's tree order.
+    /// The first entity named `name`, in the level's tree order.
     pub fn find(&self, name: &str) -> Option<EntityId> {
         let &at = self.names.get(name)?;
         let (entity, _) = self.order.get(at)?;
@@ -347,7 +347,7 @@ impl World {
         &self.ecs
     }
 
-    /// The world entity for an area entity.
+    /// The world entity for a level entity.
     pub fn entity(&self, id: EntityId) -> Option<hecs::Entity> {
         self.by_id.get(&id).copied()
     }
@@ -360,7 +360,7 @@ impl World {
 
     /// Every entity with a component called `name` kept as plain values
     /// (game code's, and built-ins with no Rust type in the world, such as
-    /// a Screen), with its values, in the area's tree order.
+    /// a Screen), with its values, in the level's tree order.
     pub fn values_named(&self, name: &str) -> Vec<(EntityId, ComponentData)> {
         let mut found = Vec::new();
         for &(entity, _) in &self.order {

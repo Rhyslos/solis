@@ -2,10 +2,10 @@
 //! small menu row under a title, a quiet note for a panel with nothing
 //! to show, and the hint shown while files are dragged over the window.
 
-use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
 use crate::key_owner::KeyOwner;
+use crate::level_panel::{LevelPanelState, LevelRequest, level_tree};
 use crate::library::{LibraryRequest, LibraryState, ProjectInfo, library};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, HashSet};
 
 /// Draws each panel, wherever the shell puts it.
 pub(crate) struct PanelViewer<'a> {
-    pub(crate) area_state: &'a mut AreaPanelState,
+    pub(crate) level_state: &'a mut LevelPanelState,
     /// The components whose values were copied, by name.
     pub(crate) copied: &'a [String],
     pub(crate) viewport: &'a mut Viewport,
@@ -39,12 +39,12 @@ pub(crate) struct PanelViewer<'a> {
     /// Whether the game has the mouse and keys.
     pub(crate) game_input: bool,
     /// The project's 2D settings, for a 2D camera's picture.
-    pub(crate) pixels: area::pixels::PixelSettings,
+    pub(crate) pixels: level::pixels::PixelSettings,
     /// Set when the Game panel's picture was clicked.
     pub(crate) game_out: &'a mut crate::game_panel::GamePanelOut,
     pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
-    pub(crate) area_requests: &'a mut Vec<AreaRequest>,
+    pub(crate) level_requests: &'a mut Vec<LevelRequest>,
     pub(crate) project: Option<&'a ProjectInfo>,
     pub(crate) library: &'a crate::library::LibraryFiles,
     pub(crate) folders: &'a [String],
@@ -152,7 +152,7 @@ pub(crate) struct FramesOut {
 }
 
 impl PanelViewer<'_> {
-    /// The words on `panel`'s document tab: the area's name on the
+    /// The words on `panel`'s document tab: the level's name on the
     /// viewport's, and a file's name after the panel's where it shows one
     /// ("Animator \u{b7} walk").
     pub(crate) fn tab_title(&self, panel: Panel) -> String {
@@ -211,7 +211,7 @@ impl PanelViewer<'_> {
             Panel::Canvas | Panel::Elements | Panel::Pictures => self.screen.is_some(),
             Panel::Viewport
             | Panel::Game
-            | Panel::Area
+            | Panel::Level
             | Panel::Properties
             | Panel::Library
             | Panel::Assets
@@ -248,7 +248,7 @@ impl PanelViewer<'_> {
             // These have no × (`closes_a_file`): nothing closes them.
             Panel::Viewport
             | Panel::Game
-            | Panel::Area
+            | Panel::Level
             | Panel::Properties
             | Panel::Library
             | Panel::Assets
@@ -275,10 +275,10 @@ impl PanelViewer<'_> {
     }
 
     /// The count a shelf column's header shows for `panel`, if it has
-    /// one: the area's entities over the Area column. The area keeps its
+    /// one: the level's entities over the Level column. The level keeps its
     /// count, so nothing is walked.
     pub(crate) fn column_count(&self, panel: Panel) -> Option<String> {
-        (panel == Panel::Area).then(|| self.document.area().len().to_string())
+        (panel == Panel::Level).then(|| self.document.level().len().to_string())
     }
 
     /// Quiet words after a shelf column's title, if it has them: the
@@ -295,13 +295,13 @@ impl PanelViewer<'_> {
         })
     }
 
-    /// The tools `panel` puts in its column's header: the Area column's
+    /// The tools `panel` puts in its column's header: the Level column's
     /// search, Fold everything and ⋯.
     pub(crate) fn column_tools(&mut self, ui: &mut Ui, panel: Panel) {
-        if panel == Panel::Area
-            && let Some(command) = crate::area_panel::header_tools(ui, self.area_state)
+        if panel == Panel::Level
+            && let Some(command) = crate::level_panel::header_tools(ui, self.level_state)
         {
-            self.area_requests.push(AreaRequest::Command(command));
+            self.level_requests.push(LevelRequest::Command(command));
         }
     }
 
@@ -327,10 +327,15 @@ impl PanelViewer<'_> {
             return;
         }
         match tab {
-            Panel::Area => {
-                let requests =
-                    area_tree(ui, self.document, self.models, self.accent, self.area_state);
-                self.area_requests.extend(requests);
+            Panel::Level => {
+                let requests = level_tree(
+                    ui,
+                    self.document,
+                    self.models,
+                    self.accent,
+                    self.level_state,
+                );
+                self.level_requests.extend(requests);
             }
             Panel::Properties => {
                 if shows_the_screen(self.in_front)
@@ -568,8 +573,8 @@ impl PanelViewer<'_> {
                     (self.problems, &self.document.name()),
                 ) {
                     Some(ProblemClick::Entity(entity)) => {
-                        self.area_state.reveal = Some(entity);
-                        self.area_requests.push(AreaRequest::Select(entity));
+                        self.level_state.reveal = Some(entity);
+                        self.level_requests.push(LevelRequest::Select(entity));
                     }
                     Some(ProblemClick::File(file)) => {
                         self.library_requests
@@ -798,7 +803,7 @@ pub(crate) fn empty_note(ui: &mut Ui, text: &str) {
         });
 }
 /// Whether Properties shows the open screen's settings rather than the
-/// area's: while its Canvas or Elements is in front (the UI tab). Its keys
+/// level's: while its Canvas or Elements is in front (the UI tab). Its keys
 /// are the screen's then (`key_owner.rs`).
 pub(crate) fn shows_the_screen(in_front: &HashSet<Panel>) -> bool {
     in_front.contains(&Panel::Canvas) || in_front.contains(&Panel::Elements)

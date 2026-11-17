@@ -137,7 +137,7 @@ pub const SHELF_GRIP: [f32; 2] = [36.0, 4.0];
 pub const SHELF_H: f32 = 300.0;
 /// The shelf's standard height on the Animate tab (spec 418).
 pub const SHELF_H_ANIMATE: f32 = 360.0;
-/// The shelf's standard height on Home in a layout with the Area,
+/// The shelf's standard height on Home in a layout with the Level,
 /// Properties and Assets lists beside the groups (decision 0109): it
 /// holds only the Console, Problems and the like there. Solis's own.
 pub const SHELF_H_SIDE: f32 = 160.0;
@@ -147,7 +147,7 @@ pub const SHELF_MIN_H: f32 = 80.0;
 /// The least height the center keeps when the grip is dragged up.
 /// Solis's own.
 pub const CENTER_MIN_H: f32 = 120.0;
-/// The Scene (Area) column's width (spec 205: 220 to 240).
+/// The Scene (Level) column's width (spec 205: 220 to 240).
 pub const SCENE_COLUMN_W: f32 = 240.0;
 /// A tileset's Terrains column on its shelf tab (round 3,
 /// `02-tileset-editor.png`: the list and the chosen terrain).
@@ -232,7 +232,7 @@ pub const ROW_PAD: f32 = 12.0;
 pub const LOG_LEVEL_W: f32 = 40.0;
 /// How far a tree's children are set in.
 pub const TREE_INDENT: f32 = 28.0;
-/// How much further in each level of the Area column's tree is (from the
+/// How much further in each level of the Level column's tree is (from the
 /// approved additions, round 2).
 pub const TREE_LEVEL: f32 = 18.0;
 /// The room before a tree row for its fold arrow.

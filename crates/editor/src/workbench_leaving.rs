@@ -1,4 +1,4 @@
-//! Leaving the open area: the one check before it's left
+//! Leaving the open level: the one check before it's left
 //! (`Workbench::request`), quitting and closing, and the questions about
 //! unsaved changes and files changed on disk.
 
@@ -6,8 +6,8 @@ use super::{Workbench, WorkbenchAction};
 use egui::Ui;
 
 impl Workbench {
-    /// Asks for `action`. This is the one check before the open area is
-    /// left ([`leaves_the_area`]: another area or project in its place, or
+    /// Asks for `action`. This is the one check before the open level is
+    /// left ([`leaves_the_level`]: another level or project in its place, or
     /// the editor closed): first Keep or Undo all, if edits made while
     /// playing wait for it, then the question about unsaved changes. The
     /// action waits for each answer, so nothing is lost without a word.
@@ -17,7 +17,7 @@ impl Workbench {
             actions.push(action);
             return;
         }
-        if leaves_the_area(&action) {
+        if leaves_the_level(&action) {
             // Only quitting gets here while playing. The game stops
             // first, which asks about the edits made meanwhile.
             if self.open.playing.is_some() {
@@ -46,7 +46,7 @@ impl Workbench {
     }
 
     /// Whether the window may close now. If edits made while playing wait
-    /// for Keep or Undo all, or the area has unsaved changes, asks first
+    /// for Keep or Undo all, or the level has unsaved changes, asks first
     /// (and the app should cancel this close).
     pub fn close_requested(&mut self) -> bool {
         // Edits made while playing are asked about at Stop, so the game
@@ -58,7 +58,7 @@ impl Workbench {
             changes.then = Some(WorkbenchAction::Quit);
             return false;
         }
-        // While playing, the area that matters is the one from before Play.
+        // While playing, the level that matters is the one from before Play.
         let dirty = match &self.open.playing {
             Some(playing) => playing.before.is_dirty(),
             None => self.open.document.is_dirty(),
@@ -105,7 +105,7 @@ impl Workbench {
             };
             if let Some(save) = answer {
                 self.open.unsaved_prompt = None;
-                // Saving or leaving waits for Stop, which puts the area
+                // Saving or leaving waits for Stop, which puts the level
                 // back as it was before Play.
                 if self.open.playing.is_some() {
                     self.stop();
@@ -113,11 +113,11 @@ impl Workbench {
                 if let Some(changes) = &mut self.open.play_changes {
                     // Edits made while this question was up (the game
                     // played on): Keep or Undo all comes first, and this
-                    // is asked again after, about the area as it is then.
+                    // is asked again after, about the level as it is then.
                     changes.then = Some(waiting);
                 } else {
                     if save {
-                        actions.push(WorkbenchAction::SaveArea);
+                        actions.push(WorkbenchAction::SaveLevel);
                     }
                     if waiting == WorkbenchAction::Quit {
                         self.may_close = true;
@@ -147,24 +147,24 @@ impl Workbench {
             )
             .map(|index| index == 1);
             if let Some(load) = answer
-                && let Some(area) = self.open.pending_reload.take()
+                && let Some(level) = self.open.pending_reload.take()
                 && load
             {
-                self.reload_area(area);
+                self.reload_level(level);
             }
         }
     }
 }
 
-/// Whether `action` leaves the open area: puts another area or project
+/// Whether `action` leaves the open level: puts another level or project
 /// in its place, or closes the editor. [`Workbench::request`] asks about
 /// what would be lost before any of these goes ahead.
-pub(crate) fn leaves_the_area(action: &WorkbenchAction) -> bool {
+pub(crate) fn leaves_the_level(action: &WorkbenchAction) -> bool {
     matches!(
         action,
-        WorkbenchAction::NewArea
-            | WorkbenchAction::OpenArea
-            | WorkbenchAction::OpenAreaFile(_)
+        WorkbenchAction::NewLevel
+            | WorkbenchAction::OpenLevel
+            | WorkbenchAction::OpenLevelFile(_)
             | WorkbenchAction::OpenProject
             | WorkbenchAction::CreateProject(_)
             | WorkbenchAction::CloseProject

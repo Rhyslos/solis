@@ -1,21 +1,21 @@
-//! An area file holding brushes: refused or read; every brush read is
+//! A level file holding brushes: refused or read; every brush read is
 //! within the limits, writes back to itself, and is cut into the
 //! triangles it's drawn and made solid with, never a panic.
 #![no_main]
-use area::builtin::{Brush, MAX_FACES, MAX_POINTS};
+use level::builtin::{Brush, MAX_FACES, MAX_POINTS};
 use reflect::Component;
 libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     fuzz_support::quiet_caught_panics();
     let Ok(text) = std::str::from_utf8(data) else {
         return;
     };
-    let Ok(registry) = area::builtin::registry() else {
+    let Ok(registry) = level::builtin::registry() else {
         return;
     };
-    let Ok(area) = area::text::read(text, &registry) else {
+    let Ok(level) = level::text::read(text, &registry) else {
         return;
     };
-    for (_, brush) in area.with::<Brush>() {
+    for (_, brush) in level.with::<Brush>() {
         assert!(brush.mesh.vertex_count() <= MAX_POINTS);
         assert!(brush.mesh.face_count() <= MAX_FACES);
         assert!(!brush.damaged || brush.mesh.face_count() == 0);

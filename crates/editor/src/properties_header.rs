@@ -78,7 +78,7 @@ pub(crate) fn header_strip(ui: &mut Ui) -> Ui {
 pub(crate) fn header(
     ui: &mut Ui,
     document: &Document,
-    (id, entity): (EntityId, &area::EntityData),
+    (id, entity): (EntityId, &level::EntityData),
     menu: &EntityMenu<'_>,
 ) -> Vec<PropertyRequest> {
     let mut requests = Vec::new();
@@ -159,13 +159,13 @@ fn name_width(ui: &Ui, name: &str) -> f32 {
 
 /// "Model · Props": what the entity is (its main component's name) and
 /// the entity it's under.
-fn kind_words(document: &Document, entity: &area::EntityData) -> String {
+fn kind_words(document: &Document, entity: &level::EntityData) -> String {
     let kind = entity
         .components
         .keys()
         .find(|n| n.as_str() != "Transform")
         .map_or("Entity", |n| n.as_str());
-    match entity.parent.and_then(|p| document.area().get(p)) {
+    match entity.parent.and_then(|p| document.level().get(p)) {
         Some(parent) => format!("{kind} \u{b7} {}", parent.name),
         None => kind.to_owned(),
     }
@@ -287,7 +287,7 @@ fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -
                     let mut any = false;
                     // In two groups: Solis's own, then the game's code (the
                     // ready-made kit's and yours), each by name.
-                    let builtin = area::builtin::registry().ok();
+                    let builtin = level::builtin::registry().ok();
                     let is_builtin =
                         |name: &str| builtin.as_ref().is_some_and(|r| r.get(name).is_some());
                     for (heading, own) in [("Built in", true), ("Game code", false)] {
@@ -299,7 +299,7 @@ fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -
                                 continue;
                             }
                             let everyone_has = selected.iter().all(|&e| {
-                                document.area().get(e).is_none_or(|d| d.has(&schema.name))
+                                document.level().get(e).is_none_or(|d| d.has(&schema.name))
                             });
                             if everyone_has {
                                 continue;

@@ -78,7 +78,7 @@ fn the_five_bands_have_the_design_s_heights_at_both_sizes() {
         // The window's margin: the tabs sit at the foot of the tab bar.
         let margin = h.get_by_label("File tab").rect().bottom() - size::TAB_BAR_H;
         let viewport = body(&h, Panel::Viewport);
-        let area = body(&h, Panel::Area);
+        let level = body(&h, Panel::Level);
         let library = body(&h, Panel::Assets);
         let properties = body(&h, Panel::Properties);
         let ribbon_foot = margin + size::TAB_BAR_H + size::RIBBON_H;
@@ -88,16 +88,16 @@ fn the_five_bands_have_the_design_s_heights_at_both_sizes() {
         // The shelf: its bar, then each column's header, then the bodies.
         let shelf = viewport.bottom();
         assert_eq!(
-            area.top(),
+            level.top(),
             shelf + size::SHELF_BAR_H + size::COLUMN_HEADER_H
         );
-        assert_eq!(area.bottom() - shelf - size::SHELF_BAR_H, size::SHELF_H);
+        assert_eq!(level.bottom() - shelf - size::SHELF_BAR_H, size::SHELF_H);
         // The status bar under it all.
-        assert_eq!(height - margin - area.bottom(), size::STATUS_BAR_H);
-        // The columns: Area and the Library at their widths, Properties
+        assert_eq!(height - margin - level.bottom(), size::STATUS_BAR_H);
+        // The columns: Level and the Library at their widths, Properties
         // between, 1 px apart.
-        assert_eq!(area.width(), size::SCENE_COLUMN_W);
-        assert_eq!(properties.left(), area.right() + 1.0);
+        assert_eq!(level.width(), size::SCENE_COLUMN_W);
+        assert_eq!(properties.left(), level.right() + 1.0);
         assert_eq!(library.left(), properties.right() + 1.0);
         assert_eq!(library.right(), width - margin);
         assert!((library.width() - size::ASSETS_COLUMN_W).abs() <= 1.0);
@@ -141,22 +141,22 @@ fn the_grip_resizes_the_shelf_within_limits() {
 #[test]
 fn ctrl_space_folds_the_shelf_and_works_while_typing() {
     let mut h = window(1440.0, 900.0, Workbench::new(info()));
-    let area = body(&h, Panel::Area);
+    let level = body(&h, Panel::Level);
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
     assert!(h.state().0.shelf_folded());
     assert!(h.state().0.shell.drawn_at(Panel::Console).is_none());
-    // The bar stays, on the status bar; the columns beside the area have
+    // The bar stays, on the status bar; the columns beside the level have
     // the room.
     let _ = h.get_by_label("Place");
-    assert!(body(&h, Panel::Area).height() > area.height());
+    assert!(body(&h, Panel::Level).height() > level.height());
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
     assert!(!h.state().0.shelf_folded());
     // While typing in a field, too, and nothing is typed.
-    h.get_by_label("Search the area by name").click();
+    h.get_by_label("Search the level by name").click();
     h.run();
-    h.get_by_label("Search the area").focus();
+    h.get_by_label("Search the level").focus();
     h.run();
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
@@ -207,30 +207,33 @@ fn columns_wrap_under_each_other_when_narrow() {
         900.0,
         Workbench::new(info()),
     );
-    let area = body(&h, Panel::Area);
+    let level = body(&h, Panel::Level);
     let properties = body(&h, Panel::Properties);
     let library = body(&h, Panel::Assets);
-    assert_eq!(area.left(), properties.left());
-    assert!(properties.top() > area.bottom(), "{area:?} {properties:?}");
+    assert_eq!(level.left(), properties.left());
+    assert!(
+        properties.top() > level.bottom(),
+        "{level:?} {properties:?}"
+    );
     assert!(library.top() > properties.bottom());
-    assert_eq!(library.width(), area.width());
+    assert_eq!(library.width(), level.width());
 }
 
 #[test]
-fn the_area_s_tab_has_its_plus_and_its_menu() {
+fn the_level_s_tab_has_its_plus_and_its_menu() {
     let mut w = Workbench::new(info());
     w.add_point_light();
     let mut h = window(1440.0, 900.0, w);
-    h.get_by_label("New or open an area").click();
+    h.get_by_label("New or open a level").click();
     h.run();
-    let _ = h.get_by_label("Open area\u{2026}");
-    h.get_by_label("New area").click();
+    let _ = h.get_by_label("Open level\u{2026}");
+    h.get_by_label("New level").click();
     h.run();
     h.run();
-    // A new area, asked about the unsaved light first.
+    // A new level, asked about the unsaved light first.
     assert!(h.state().0.open.unsaved_prompt.is_some());
     h.state_mut().0.open.unsaved_prompt = None;
-    let tab = doc_tab(&h, "Untitled area");
+    let tab = doc_tab(&h, "Untitled level");
     h.hover_at(tab.center());
     h.run();
     h.event(egui::Event::PointerButton {
@@ -267,9 +270,9 @@ fn the_game_tab_comes_to_the_front_on_play_and_goes_on_stop() {
         "in front"
     );
     let game = body(&h, Panel::Game);
-    // The area's tab beside it brings the viewport back.
-    let tab = doc_tab(&h, "Untitled area");
-    h.get_all_by_label("Untitled area")
+    // The level's tab beside it brings the viewport back.
+    let tab = doc_tab(&h, "Untitled level");
+    h.get_all_by_label("Untitled level")
         .find(|n| n.rect() == tab)
         .unwrap()
         .click();

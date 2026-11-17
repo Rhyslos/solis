@@ -149,7 +149,7 @@ pub(crate) fn fields(
     (assembly, yours): (Option<&ComponentData>, &BTreeMap<&str, Option<&Value>>),
     others: &[&ComponentData],
     (models, sheets): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets),
-    (area, users): (&area::Area, &crate::document::AssetUsers),
+    (level, users): (&level::Level, &crate::document::AssetUsers),
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
     for field in &schema.fields {
@@ -179,7 +179,7 @@ pub(crate) fn fields(
                 (changed, moved, scrub),
                 |ui| {
                     let set = field_and_marks(ui, marks, |ui| {
-                        field_widget(ui, field, value, (models, sheets, data), area, mixed)
+                        field_widget(ui, field, value, (models, sheets, data), level, mixed)
                     });
                     if let Value::Asset(Some(used)) = value {
                         shared_by(ui, users.get(&used.asset).copied().unwrap_or(0));

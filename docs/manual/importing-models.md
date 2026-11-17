@@ -5,7 +5,7 @@
 ## When to use it
 Whenever you want to see a model in Solis. Solis reads **glTF** files ([concepts](concepts.md#models)), the standard format for game models: Blender, Aventail and most 3D programs export it.
 
-An imported model becomes an [entity](entities.md) in the area, where its file puts it. With a [project](projects-and-the-library.md) open, the file is copied into the project and [saving the area](saving-areas.md) keeps the model in it. Without one, Solis works as a viewer: the model is shown but not kept.
+An imported model becomes an [entity](entities.md) in the level, where its file puts it. With a [project](projects-and-the-library.md) open, the file is copied into the project and [saving the level](saving-levels.md) keeps the model in it. Without one, Solis works as a viewer: the model is shown but not kept.
 
 ## How to use it
 
@@ -19,7 +19,7 @@ Then:
 - The model is read in the background, so the editor keeps running while it loads. The Console says **Importing…**, then **Imported** with the model's triangle count and size in metres.
 - The camera moves to show the whole model, and picks a [camera speed](navigating-the-viewport.md) that suits its size.
 - With a [project](projects-and-the-library.md) open, the file is first copied into the project's assets folder (with the `.bin` and images a `.gltf` reads), so the project keeps it; it then also appears in the **Library**.
-- The model appears in the **Area** panel as one [entity](entities.md), however many parts the file has (they keep their places inside it). **Unpack** in Properties splits it into one entity per part when you need them ([Assemblies](assemblies.md)). A mesh used many times in the file is stored once, with its triangle count. The **×** at the end of its row deletes it from the area. Select it to see its Transform and Model in Properties.
+- The model appears in the **Level** panel as one [entity](entities.md), however many parts the file has (they keep their places inside it). **Unpack** in Properties splits it into one entity per part when you need them ([Assemblies](assemblies.md)). A mesh used many times in the file is stored once, with its triangle count. The **×** at the end of its row deletes it from the level. Select it to see its Transform and Model in Properties.
 
 **Exporting from Blender:** File › Export › glTF 2.0, choose **glTF Binary (.glb)**, and keep **+Y Up** ticked (the standard). Solis turns glTF's "Y is up" into its own "Z is up" for you, so the model stands upright.
 
@@ -45,9 +45,9 @@ Then:
 - **Problem:** "the part … is placed or scaled past what numbers can hold", or "a corner of the part … lands further away than numbers can hold". **Why:** something in the file sits or reaches further away than a computer's numbers go (more than a billion billion billion billion metres), so there's nowhere to draw it. Only a broken file or a wildly wrong scale does this. **Fix:** in your modelling program, check the scale and place of the part the message names, and export again.
 - **Problem:** the model looks flat and grey-blue in the shadows. **Why:** where the sun doesn't reach, only the sky's soft light does. **Fix:** move the sun or add lamps; see [Lights and shadows](lights.md).
 - **Problem:** "it needs a glTF extension Solis doesn't read yet". **Why:** the file was saved with compression (Draco or meshopt, common from Sketchfab or gltfpack). **Fix:** export it again without compression; in Blender, untick **Compression** in the glTF export.
-- **Very large models** are split into pieces the graphics card can hold; you won't see the seams, but the Area panel's triangle count stays the same.
-- **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model as entities under it in the Area panel, and are deleted with it; a sun in the file sets the area's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
-- **Want to see how it should look?** **Add the sample area** (press **Space** and type it) brings in a model made for checking the [looks](looks.md). With a project open, it's added to the project's assets as `Sample area.glb`, like any import, so areas using it open again.
+- **Very large models** are split into pieces the graphics card can hold; you won't see the seams, but the Level panel's triangle count stays the same.
+- **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model as entities under it in the Level panel, and are deleted with it; a sun in the file sets the level's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
+- **Want to see how it should look?** **Add the sample level** (press **Space** and type it) brings in a model made for checking the [looks](looks.md). With a project open, it's added to the project's assets as `Sample level.glb`, like any import, so levels using it open again.
 
 ## Related
 - [Levels of detail](levels-of-detail.md)

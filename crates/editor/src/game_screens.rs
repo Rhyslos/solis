@@ -275,16 +275,16 @@ impl GameScreens {
 }
 
 /// The screens shown in `world`, in drawing order: each entity's Screen
-/// that's shown and names one, by its order, then the area's order.
+/// that's shown and names one, by its order, then the level's order.
 /// With each Screen component's look (decision 0089, M6).
 pub(crate) fn shown_with_looks(
     world: &world::World,
 ) -> Vec<(reflect::EntityId, String, ui::ScreenLook)> {
-    let mut shown: Vec<(i64, usize, reflect::EntityId, area::builtin::Screen)> = world
-        .values_named(area::builtin::Screen::NAME)
+    let mut shown: Vec<(i64, usize, reflect::EntityId, level::builtin::Screen)> = world
+        .values_named(level::builtin::Screen::NAME)
         .into_iter()
         .enumerate()
-        .map(|(i, (id, data))| (i, id, area::builtin::Screen::from_data(&data)))
+        .map(|(i, (id, data))| (i, id, level::builtin::Screen::from_data(&data)))
         .filter(|(_, _, s)| s.shown && !s.screen.is_empty())
         .map(|(i, id, s)| (s.order, i, id, s))
         .collect();

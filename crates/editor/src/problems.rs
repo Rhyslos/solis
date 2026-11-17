@@ -1,15 +1,15 @@
 //! The Problems panel: mistakes found in the game's code (with file, line
-//! and column; clicking one opens the file), and in the open area, such as
+//! and column; clicking one opens the file), and in the open level, such as
 //! a model whose file is gone or a component no one knows (each names its
 //! entity; clicking one selects it). Looked for again only when something they
-//! depend on changed, so a big area costs nothing frame to frame.
+//! depend on changed, so a big level costs nothing frame to frame.
 
 use crate::icons::{self, Icon};
 use crate::models::ModelInfo;
 use crate::tokens::{self, size, text};
-use area::Area;
-use area::builtin::Model;
 use egui::Ui;
+use level::Level;
+use level::builtin::Model;
 use reflect::{AssetId, EntityId, Registry};
 use std::collections::{BTreeMap, HashSet};
 
@@ -23,7 +23,7 @@ pub enum ProblemKind {
     UnknownComponent,
     /// Part of an assembly whose file isn't in the project.
     MissingAssembly,
-    /// An entity whose parent isn't in the area (perhaps after a merge).
+    /// An entity whose parent isn't in the level (perhaps after a merge).
     MissingParent,
     /// Entities that are each other's parents. Files with such a loop are
     /// put right as they're read, so this is one made some other way: each
@@ -76,10 +76,10 @@ pub(crate) struct Fingerprint {
 /// The problems last found, and what they were found from.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Problems {
-    /// Every problem: those in the area, then sprites between pixels.
+    /// Every problem: those in the level, then sprites between pixels.
     pub(crate) list: Vec<Problem>,
-    /// Those in the area, found again only when its shape changes.
-    area: Vec<Problem>,
+    /// Those in the level, found again only when its shape changes.
+    level: Vec<Problem>,
     from: Option<Fingerprint>,
     /// Sprites between pixels: looked for again whenever anything moves,
     /// which is cheap (only sprites are looked at).
@@ -89,7 +89,7 @@ pub(crate) struct Problems {
 
 /// What problems are found in.
 pub(crate) struct Sources<'a> {
-    pub(crate) area: &'a Area,
+    pub(crate) level: &'a Level,
     pub(crate) registry: &'a Registry,
     /// Models loaded, by asset.
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
@@ -120,7 +120,7 @@ impl Problems {
             return 0;
         }
         let before = self.list.len();
-        self.area = find(sources);
+        self.level = find(sources);
         self.from = Some(fingerprint);
         self.join();
         self.list.len().saturating_sub(before)
@@ -132,20 +132,20 @@ impl Problems {
         &mut self,
         revision: u64,
         pixels_per_unit: u32,
-        area: &Area,
-        sprites: &[crate::sprite_sheets::AreaSprite],
+        level: &Level,
+        sprites: &[crate::sprite_sheets::LevelSprite],
     ) {
         let key = (revision, pixels_per_unit);
         if self.between_from == Some(key) {
             return;
         }
-        self.between = between_pixels(area, sprites, pixels_per_unit);
+        self.between = between_pixels(level, sprites, pixels_per_unit);
         self.between_from = Some(key);
         self.join();
     }
 
     fn join(&mut self) {
-        self.list = self.area.iter().chain(&self.between).cloned().collect();
+        self.list = self.level.iter().chain(&self.between).cloned().collect();
     }
 }
 
@@ -153,8 +153,8 @@ impl Problems {
 /// metre) by accident. Turned sprites are left out: they can't sit on the
 /// pixel grid.
 pub(crate) fn between_pixels(
-    area: &Area,
-    sprites: &[crate::sprite_sheets::AreaSprite],
+    level: &Level,
+    sprites: &[crate::sprite_sheets::LevelSprite],
     pixels_per_unit: u32,
 ) -> Vec<Problem> {
     let ppu = pixels_per_unit.max(1) as f32;
@@ -170,7 +170,7 @@ pub(crate) fn between_pixels(
             !turned && (off(m.w_axis.x) || off(m.w_axis.y))
         })
         .map(|s| {
-            let name = area.get(s.entity).map_or("A sprite", |e| e.name.as_str());
+            let name = level.get(s.entity).map_or("A sprite", |e| e.name.as_str());
             let [x, y] = [s.transform.w_axis.x * ppu, s.transform.w_axis.y * ppu];
             Problem {
                 kind: ProblemKind::SpriteBetweenPixels,
@@ -191,7 +191,7 @@ impl Fingerprint {
     /// The same, with the brushes counted by `damaged` (a number standing
     /// for which brushes couldn't be read) instead of by every change to
     /// any brush: editing a brush's insides (Tools 1a, B3) changes no
-    /// problem, and the area isn't checked again for it.
+    /// problem, and the level isn't checked again for it.
     pub(crate) fn with_brushes(self, damaged: u64) -> Self {
         Self {
             brushes: damaged,
@@ -212,20 +212,20 @@ impl Fingerprint {
     }
 }
 
-/// Every problem in `sources.area`, entity by entity, in a steady order.
+/// Every problem in `sources.level`, entity by entity, in a steady order.
 pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
-    let area = sources.area;
+    let level = sources.level;
     let mut found = Vec::new();
     // Entities a walk down from the top never reaches are caught in a loop
     // of parents (the tree order lists them last).
     let mut reached = std::collections::HashSet::new();
-    let mut todo: Vec<EntityId> = area
+    let mut todo: Vec<EntityId> = level
         .iter()
-        .filter(|(_, e)| e.parent.is_none_or(|p| !area.contains(p)))
+        .filter(|(_, e)| e.parent.is_none_or(|p| !level.contains(p)))
         .map(|(id, _)| id)
         .collect();
     let mut children: BTreeMap<EntityId, Vec<EntityId>> = BTreeMap::new();
-    for (id, e) in area.iter() {
+    for (id, e) in level.iter() {
         if let Some(p) = e.parent {
             children.entry(p).or_default().push(id);
         }
@@ -237,28 +237,28 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
             todo.extend(kids);
         }
     }
-    for (id, entity) in area.iter() {
+    for (id, entity) in level.iter() {
         if !reached.contains(&id) {
             found.push(Problem {
                 kind: ProblemKind::ParentLoop,
                 entity: id,
                 text: format!(
                     "{} is inside itself: its parents lead back to it. Drag it onto empty \
-                     space in the Area panel to fix it",
+                     space in the Level panel to fix it",
                     entity.name
                 ),
             });
         }
     }
-    for (id, entity) in area.iter() {
+    for (id, entity) in level.iter() {
         let name = &entity.name;
         if let Some(parent) = entity.parent
-            && !area.contains(parent)
+            && !level.contains(parent)
         {
             found.push(Problem {
                 kind: ProblemKind::MissingParent,
                 entity: id,
-                text: format!("{name}'s parent ({parent}) isn't in the area"),
+                text: format!("{name}'s parent ({parent}) isn't in the level"),
             });
         }
         for component in entity.components.keys() {
@@ -295,7 +295,7 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                 Some(_) => {}
             }
         }
-        if let Some(sprite) = entity.get::<area::builtin::Sprite>() {
+        if let Some(sprite) = entity.get::<level::builtin::Sprite>() {
             match sprite.sheet.map(|r| r.asset) {
                 None => found.push(Problem {
                     kind: ProblemKind::MissingSpriteSheet,
@@ -313,7 +313,7 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                 Some(_) => {}
             }
         }
-        if let Some(animator) = entity.get::<area::builtin::Animator>() {
+        if let Some(animator) = entity.get::<level::builtin::Animator>() {
             match animator.animator.map(|r| r.asset) {
                 None => found.push(Problem {
                     kind: ProblemKind::MissingAnimator,
@@ -331,7 +331,7 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                 Some(_) => {}
             }
         }
-        if let Some(tile_map) = entity.get::<area::builtin::TileMap>() {
+        if let Some(tile_map) = entity.get::<level::builtin::TileMap>() {
             match tile_map.map.map(|r| r.asset) {
                 None => found.push(Problem {
                     kind: ProblemKind::MissingTileMap,
@@ -382,11 +382,11 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
 /// What's wrong with a brush the models found damaged or not whole: why
 /// it couldn't be read, or why it is open or inside out (worked out for
 /// this brush alone).
-fn brush_problem(id: EntityId, entity: &area::EntityData, name: &str) -> Option<Problem> {
-    use area::builtin::Brush;
+fn brush_problem(id: EntityId, entity: &level::EntityData, name: &str) -> Option<Problem> {
+    use level::builtin::Brush;
     use reflect::Component;
     let data = entity.components.get(Brush::NAME)?;
-    if let Some(why) = area::builtin::damage_of(data) {
+    if let Some(why) = level::builtin::damage_of(data) {
         return Some(Problem {
             kind: ProblemKind::DamagedBrush,
             entity: id,
@@ -418,17 +418,17 @@ pub(crate) enum ProblemClick {
 }
 
 /// The Problems panel: mistakes in the game's code first, then those in
-/// the area, one row each in the design's look (spec 228-230): the
+/// the level, one row each in the design's look (spec 228-230): the
 /// level's icon, what's wrong, and in grey where (the file and line, or
-/// the area's name). Clicking one asks to open its file or select its
+/// the level's name). Clicking one asks to open its file or select its
 /// entity.
 pub(crate) fn problems_panel(
     ui: &mut Ui,
     code: &[script::CodeProblem],
-    (problems, area): (&[Problem], &str),
+    (problems, level): (&[Problem], &str),
 ) -> Option<ProblemClick> {
     if problems.is_empty() && code.is_empty() {
-        crate::panels::empty_note(ui, "No problems found in the area or the game's code.");
+        crate::panels::empty_note(ui, "No problems found in the level or the game's code.");
         return None;
     }
     let mut clicked = None;
@@ -458,7 +458,7 @@ pub(crate) fn problems_panel(
                             let row = ProblemRow {
                                 icon: (Icon::Warning, tokens::WARNING),
                                 text: &problem.text,
-                                place: area,
+                                place: level,
                                 whole: &problem.text,
                                 hint: "Click to select its entity",
                             };
@@ -556,12 +556,12 @@ impl ProblemRow<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use area::EntityData;
-    use area::builtin::Transform;
+    use level::EntityData;
+    use level::builtin::Transform;
     use reflect::{ComponentData, Value};
 
     struct World {
-        area: Area,
+        level: Level,
         registry: Registry,
         models: BTreeMap<AssetId, ModelInfo>,
         known: HashSet<AssetId>,
@@ -573,8 +573,8 @@ mod tests {
     impl World {
         fn new() -> Self {
             Self {
-                area: Area::default(),
-                registry: area::builtin::registry().unwrap(),
+                level: Level::default(),
+                registry: level::builtin::registry().unwrap(),
                 models: BTreeMap::new(),
                 known: HashSet::new(),
                 assemblies: HashSet::new(),
@@ -585,7 +585,7 @@ mod tests {
 
         fn find(&self) -> Vec<Problem> {
             find(&Sources {
-                area: &self.area,
+                level: &self.level,
                 registry: &self.registry,
                 models: &self.models,
                 known: &self.known,
@@ -607,11 +607,11 @@ mod tests {
     }
 
     #[test]
-    fn a_sound_area_has_no_problems() {
+    fn a_sound_level_has_no_problems() {
         let mut w = World::new();
         let asset = AssetId::random();
         w.known.insert(asset);
-        w.area.insert(
+        w.level.insert(
             EntityId::random(),
             EntityData::new("Crate")
                 .with(&Transform::default())
@@ -620,12 +620,12 @@ mod tests {
         assert!(w.find().is_empty());
         assert!(
             World {
-                area: area::builtin::starter_area(),
+                level: level::builtin::starter_level(),
                 ..World::new()
             }
             .find()
             .is_empty(),
-            "nor does a new area"
+            "nor does a new level"
         );
     }
 
@@ -634,13 +634,13 @@ mod tests {
         let mut w = World::new();
         let (gone, loaded) = (AssetId::random(), AssetId::random());
         let a = EntityId::random();
-        w.area
+        w.level
             .insert(a, EntityData::new("Crate").with(&model(Some(gone))));
-        w.area.insert(
+        w.level.insert(
             EntityId::random(),
             EntityData::new("Barrel").with(&model(Some(loaded))),
         );
-        w.area.insert(
+        w.level.insert(
             EntityId::random(),
             EntityData::new("Empty").with(&model(None)),
         );
@@ -668,24 +668,24 @@ mod tests {
         data.set("speed", Value::Float(2.0));
         odd.components.insert("Wobble".into(), data);
         odd.parent = Some(EntityId::random());
-        w.area.insert(EntityId::random(), odd);
+        w.level.insert(EntityId::random(), odd);
         let root = EntityId::random();
         let assembly = AssetId::random();
         let mut copy = EntityData::new("Boat");
-        copy.origin = Some(area::Origin {
+        copy.origin = Some(level::Origin {
             assembly,
             instance: root,
             path: Vec::new(),
         });
-        w.area.insert(root, copy);
+        w.level.insert(root, copy);
         let mut inner = EntityData::new("Mast");
         inner.parent = Some(root);
-        inner.origin = Some(area::Origin {
+        inner.origin = Some(level::Origin {
             assembly,
             instance: root,
             path: vec![EntityId::random()],
         });
-        w.area.insert(EntityId::random(), inner);
+        w.level.insert(EntityId::random(), inner);
         let mut kinds = w.kinds();
         kinds.sort();
         assert_eq!(
@@ -706,12 +706,12 @@ mod tests {
         let document = crate::document::Document::default();
         let mut problems = Problems::default();
         let mut w = World::new();
-        w.area.insert(
+        w.level.insert(
             EntityId::random(),
             EntityData::new("Crate").with(&model(None)),
         );
         let sources = Sources {
-            area: &w.area,
+            level: &w.level,
             registry: &w.registry,
             models: &w.models,
             known: &w.known,
@@ -741,9 +741,9 @@ mod tests {
         ea.parent = Some(b);
         let mut eb = EntityData::new("B");
         eb.parent = Some(a);
-        w.area.insert(a, ea);
-        w.area.insert(b, eb);
-        w.area.spawn(EntityData::new("Fine"));
+        w.level.insert(a, ea);
+        w.level.insert(b, eb);
+        w.level.spawn(EntityData::new("Fine"));
         assert_eq!(
             w.kinds(),
             [ProblemKind::ParentLoop, ProblemKind::ParentLoop]
@@ -759,13 +759,13 @@ mod tests {
         let mut problems = Problems::default();
         let mut w = World::new();
         let gone = AssetId::random();
-        w.area.insert(
+        w.level.insert(
             EntityId::random(),
             EntityData::new("Crate").with(&model(Some(gone))),
         );
         fn sources(w: &World) -> Sources<'_> {
             Sources {
-                area: &w.area,
+                level: &w.level,
                 registry: &w.registry,
                 models: &w.models,
                 known: &w.known,
@@ -783,10 +783,10 @@ mod tests {
         assert!(problems.list.is_empty());
     }
 
-    fn sprite(sheet: Option<AssetId>) -> area::builtin::Sprite {
-        area::builtin::Sprite {
+    fn sprite(sheet: Option<AssetId>) -> level::builtin::Sprite {
+        level::builtin::Sprite {
             sheet: sheet.map(|asset| reflect::AssetRef { asset, part: None }),
-            ..area::builtin::Sprite::default()
+            ..level::builtin::Sprite::default()
         }
     }
 
@@ -795,14 +795,15 @@ mod tests {
         let mut w = World::new();
         let (here, gone) = (AssetId::random(), AssetId::random());
         w.known.insert(here);
-        let animator = |file: Option<AssetId>| area::builtin::Animator {
+        let animator = |file: Option<AssetId>| level::builtin::Animator {
             animator: file.map(|asset| reflect::AssetRef { asset, part: None }),
-            ..area::builtin::Animator::default()
+            ..level::builtin::Animator::default()
         };
-        w.area
+        w.level
             .spawn(EntityData::new("Farmer").with(&animator(Some(here))));
-        w.area.spawn(EntityData::new("Blank").with(&animator(None)));
-        w.area
+        w.level
+            .spawn(EntityData::new("Blank").with(&animator(None)));
+        w.level
             .spawn(EntityData::new("Ghost").with(&animator(Some(gone))));
         let found = w.find();
         assert_eq!(found.len(), 2);
@@ -820,12 +821,13 @@ mod tests {
         let mut w = World::new();
         let here = AssetId::random();
         w.known.insert(here);
-        let map = |file: Option<AssetId>| area::builtin::TileMap {
+        let map = |file: Option<AssetId>| level::builtin::TileMap {
             map: file.map(|asset| reflect::AssetRef { asset, part: None }),
         };
-        w.area.spawn(EntityData::new("Farm").with(&map(Some(here))));
-        w.area.spawn(EntityData::new("Blank").with(&map(None)));
-        w.area
+        w.level
+            .spawn(EntityData::new("Farm").with(&map(Some(here))));
+        w.level.spawn(EntityData::new("Blank").with(&map(None)));
+        w.level
             .spawn(EntityData::new("Ghost").with(&map(Some(AssetId::random()))));
         let found = w.find();
         assert_eq!(found.len(), 2);
@@ -842,10 +844,10 @@ mod tests {
         let mut w = World::new();
         let (here, gone) = (AssetId::random(), AssetId::random());
         w.known.insert(here);
-        w.area
+        w.level
             .spawn(EntityData::new("Hero").with(&sprite(Some(here))));
-        w.area.spawn(EntityData::new("Blank").with(&sprite(None)));
-        w.area
+        w.level.spawn(EntityData::new("Blank").with(&sprite(None)));
+        w.level
             .spawn(EntityData::new("Ghost").with(&sprite(Some(gone))));
         let found = w.find();
         assert_eq!(found.len(), 2);
@@ -868,13 +870,13 @@ mod tests {
 
     #[test]
     fn a_sprite_between_pixels_is_found_unless_turned_and_found_again_after_a_move() {
-        use crate::sprite_sheets::AreaSprite;
+        use crate::sprite_sheets::LevelSprite;
         use glam::{Mat4, Vec3};
-        let mut area = Area::default();
-        let on = area.spawn(EntityData::new("On"));
-        let off = area.spawn(EntityData::new("Off"));
-        let turned = area.spawn(EntityData::new("Turned"));
-        let at = |entity, x: f32, y: f32, turn: f32| AreaSprite {
+        let mut level = Level::default();
+        let on = level.spawn(EntityData::new("On"));
+        let off = level.spawn(EntityData::new("Off"));
+        let turned = level.spawn(EntityData::new("Turned"));
+        let at = |entity, x: f32, y: f32, turn: f32| LevelSprite {
             entity,
             sprite: sprite(None),
             transform: Mat4::from_translation(Vec3::new(x, y, 0.0)) * Mat4::from_rotation_z(turn),
@@ -887,7 +889,7 @@ mod tests {
             at(off, 1.01, 0.0, 0.0),
             at(turned, 1.01, 0.0, 0.4),
         ];
-        let found = between_pixels(&area, &sprites, 16);
+        let found = between_pixels(&level, &sprites, 16);
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].entity, off);
         assert_eq!(found[0].kind, ProblemKind::SpriteBetweenPixels);
@@ -904,15 +906,15 @@ mod tests {
         ));
         // Through Problems: found once per revision.
         let mut problems = Problems::default();
-        problems.refresh_between(1, 16, &area, &sprites);
+        problems.refresh_between(1, 16, &level, &sprites);
         assert_eq!(problems.list.len(), 1);
         sprites[1] = at(off, 1.0, 0.0, 0.0);
-        problems.refresh_between(1, 16, &area, &sprites);
+        problems.refresh_between(1, 16, &level, &sprites);
         assert_eq!(problems.list.len(), 1, "the same revision: not looked at");
-        problems.refresh_between(2, 16, &area, &sprites);
+        problems.refresh_between(2, 16, &level, &sprites);
         assert!(problems.list.is_empty(), "moved onto a pixel");
         // Bigger pixels: 1.0 m is still whole at 1 a metre; 2.5 isn't.
-        problems.refresh_between(2, 1, &area, &sprites);
+        problems.refresh_between(2, 1, &level, &sprites);
         assert_eq!(problems.list.len(), 1);
         assert_eq!(problems.list[0].entity, on);
     }

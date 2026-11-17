@@ -28,7 +28,7 @@ Layers behind are drawn behind everything, tile maps included: the slowest first
 
 **Smooth, even when slow.** Through a [2D camera](2d-pixel-perfect.md), each layer is drawn as a small picture of its own and slides smoothly by less than a pixel at a time, as the camera does, so a far layer crawling slowly never jumps a whole pixel at once. Up to 8 layers are drawn this way; each different set of scrolls, behind or in front, is one layer.
 
-In the editor, layers stay where you put them (the editor's camera isn't the game's), repeated across the view, behind or in front as in the game. Clicking one behind the world selects it only where nothing else is in the way; the Area panel always finds it.
+In the editor, layers stay where you put them (the editor's camera isn't the game's), repeated across the view, behind or in front as in the game. Clicking one behind the world selects it only where nothing else is in the way; the Level panel always finds it.
 
 ## Settings
 **Parallax**

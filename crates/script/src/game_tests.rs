@@ -812,15 +812,15 @@ fn fields_set_by_hand_reach_their_component_on_any_number_of_shards() {
         let mut world = TestWorld::with(&names);
         let mut game = unhurried(shards);
         game.load(&compiled(COUNTER), &mut world).unwrap();
-        let mut area = ComponentData::default();
-        area.set("count", Value::Int(0));
-        area.set("kept", Value::Int(0));
-        let all = || (1..=9u64).map(|n| (id(n), "Counter", &area));
+        let mut level = ComponentData::default();
+        level.set("count", Value::Int(0));
+        level.set("kept", Value::Int(0));
+        let all = || (1..=9u64).map(|n| (id(n), "Counter", &level));
         assert!(game.sync_many(all(), &mut world).is_empty());
         for _ in 0..3 {
             assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
         }
-        // The odd ones' count is set by hand to the 0 the area holds.
+        // The odd ones' count is set by hand to the 0 the level holds.
         let set: BTreeMap<(EntityId, String), BTreeSet<String>> = (1..=9u64)
             .filter(|n| n % 2 == 1)
             .map(|n| {

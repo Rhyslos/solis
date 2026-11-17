@@ -3,7 +3,7 @@
 //! its states (each playing a clip, or a clip per facing direction), and
 //! the transitions between them, each with conditions that must all hold.
 //!
-//! A settings file in the same Lust style as areas, with a block per
+//! A settings file in the same Lust style as levels, with a block per
 //! parameter, state and transition, each by a stable random ID, so two
 //! people's changes merge in Git
 //! ([decision 0066](../../../docs/decisions/0066-animator-state-machine.md)):
@@ -59,7 +59,7 @@
 //! version) is refused, with its line.
 
 use crate::frames_file::clean_name;
-use area::settings::{self, BlockOut, Field};
+use level::settings::{self, BlockOut, Field};
 use reflect::{AssetId, Id, Value};
 use std::fmt;
 
