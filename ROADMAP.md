@@ -311,6 +311,19 @@ Moved ahead of the rest of 2D on 13 November 2026 ([decision 0108](docs/decision
 
 **Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened. Tools 1a is complete; its gate is waiting for the project lead.
 
+## Shared 1f: The editor rethink
+
+The project lead's review of the remade interface (2026-11-17): nine points, answered and mocked up, then approved ([decision 0118](docs/decisions/0118-the-editor-rethink.md); plan: [docs/plans/editor-rethink.md](docs/plans/editor-rethink.md); mock-ups: [docs/design/ui-rethink/](docs/design/ui-rethink/README.md)). **Comes before Tools 1b**, which waits.
+
+- **R1 The launcher and new projects:** the launcher as its own window; opening a project opens the editor window; New project makes its folder; Kind 2D / 3D / Both; Close project goes back.
+- **R2 Level, everywhere:** "Area" becomes "Level" in the interface, the manual, file names and game code, with upgraders and the old names kept working for a while.
+- **R3 One frame on every tab:** left, centre, right and a bottom panel under the view; every edge drags; Library, Console and Problems in the bottom panel, collapsing to one thin line; layouts chosen from drawn miniatures; a tidier ribbon.
+- **R4 One Library browser:** the same everywhere; the project's own folders; right-click to create, double-click to rename, drag to move; the left side toggles between the Level panel and the folder tree; several folder trees side by side.
+- **R5 Prefabs:** an entity saved to be placed many times, with its own page; linked copies; changed settings shown and resettable.
+- **R6 2D projects, and the gate:** a 2D project hides every 3D-only part; speed; the guide's pictures taken again.
+
+**Gate:** start at the launcher; make a 2D project by its name; arrange the panels and pick a layout from its pictures; make folders, a level and a prefab by right-clicking, rename by double-clicking, move files between two folder trees; build a prefab on its page, place three copies and change them all through it; close back to the launcher.
+
 ## Tools 1b: World sculpting
 
 - **G0 The study** (rule 22): competing ways to store and draw a ground with caves, measured.

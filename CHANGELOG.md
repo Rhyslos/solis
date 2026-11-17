@@ -4,6 +4,10 @@ What changed in each version, for people using Solis. Newest first.
 
 ## Unreleased
 
+### Added
+
+- **The editor rethink is planned** ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)): the project lead's review of the remade interface, answered and mocked up (`docs/design/ui-rethink/`): the launcher as its own window, new projects that make their folder and are 2D, 3D or both, Area renamed Level, prefabs, one frame on every tab, and one Library browser. It's built next, as six milestones, before the ground.
+
 ### Breaking
 
 - **Create › More › Box brush is gone** (Tools 1a, B2): brushes are made with the brush list now. Press **B** over the 3D view (or **Home › Create › Shape**), **Space** to take Box, then drag it out on the ground. See [Brushes](docs/manual/brushes.md).
