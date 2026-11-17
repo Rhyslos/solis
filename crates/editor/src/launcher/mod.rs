@@ -307,6 +307,11 @@ impl Workbench {
         self.launcher.notice = Some(notice.into());
     }
 
+    /// What the launcher's Projects page says at its top, if anything.
+    pub fn launcher_notice(&self) -> Option<&str> {
+        self.launcher.notice.as_deref()
+    }
+
     /// The folder New project makes projects in, as last used (the app
     /// remembers it), or the first one: a folder in Documents named from
     /// the program's name.

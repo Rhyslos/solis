@@ -390,6 +390,24 @@ What each left for later is listed in one place at the top of the [plan](docs/pl
 
 **Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened. Built; waiting for the project lead.
 
+### Shared 1f · The editor rethink — 2 of 6
+
+`████░░░░░░░░░` 33%
+
+<details>
+<summary>Milestones</summary>
+
+- [x] R1 The launcher and new projects: the launcher as its own window, New project making its folder, a project's kind (2D, 3D or both), Close project back to the launcher (pull request 270)
+- [x] R2 Level, everywhere: "Area" is "Level" in the interface, the manual, file names (`.sollevel`) and the code; a project's areas are renamed levels when it opens, with backups
+- [ ] R3 One frame on every tab
+- [ ] R4 One Library browser
+- [ ] R5 Prefabs
+- [ ] R6 2D projects, and the gate
+
+</details>
+
+**Gate:** a new 2D project from the launcher, panels arranged by every edge, folders, a level and a prefab made in the Library, a prefab's three copies changing with it, and back to the launcher ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)).
+
 ### Tools 1b · World sculpting — 1 of 6
 
 `██░░░░░░░░░░░` 17%

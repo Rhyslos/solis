@@ -211,9 +211,12 @@ pub(super) fn first_create_in() -> PathBuf {
 
 impl App {
     /// A failure the person must see: in the Console, and on the
-    /// launcher while it shows (it has no Console).
+    /// launcher while it shows (it has no Console) or when no project is
+    /// open, so the launcher shows it next (a project named on the
+    /// command line that couldn't be opened, say because a newer Solis
+    /// made it, is said as the program starts on the launcher).
     pub(super) fn say_failed(&mut self, text: String) {
-        if self.workbench.launcher_shown() {
+        if self.workbench.launcher_shown() || self.projects.db().is_none() {
             self.workbench.projects_notice(text.clone());
         }
         self.workbench.log(LogLevel::Error, text);
