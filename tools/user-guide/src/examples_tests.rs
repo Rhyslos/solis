@@ -46,7 +46,7 @@ fn untagged_lust_is_noticed_and_other_code_is_not() {
     assert!(looks_like_lust("fetch \"solis/world\":World;\nend"));
     assert!(looks_like_lust("component Mover {\n}"));
     assert!(!looks_like_lust("solis --check-project \"C:\\\\Games\""));
-    assert!(!looks_like_lust("area version 3;\nentity 2B8 {\n}"));
+    assert!(!looks_like_lust("level version 3;\nentity 2B8 {\n}"));
 }
 
 #[test]

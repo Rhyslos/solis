@@ -361,7 +361,7 @@ fn scale_check_drawing_out_among_10000_brushes() {
         .fold(0.0, f64::max);
     println!(
         "Scale check: drawing a brush out among 10,000 brushes: the list opened {open_ms:.2} \
-         ms, stepped {step_ms:.2} ms at most (in an empty area {empty_open_ms:.2} and \
+         ms, stepped {step_ms:.2} ms at most (in an empty level {empty_open_ms:.2} and \
          {empty_step_ms:.2} ms; a frame with another key pressed {other_key_ms:.2} ms); what's under the pointer found {under_ms:.2} ms, the press's \
          frame {press_ms:.2} ms; a frame while drawing {average:.2} ms on average, \
          {slowest:.2} ms at most (target {FRAME_MS} ms) {}",

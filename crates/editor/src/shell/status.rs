@@ -116,7 +116,7 @@ impl Workbench {
                 .more("Home \u{203a} Save (Ctrl+S) keeps them.")
         } else if self.open.document.file().is_none() {
             Part::new("Not saved yet", tokens::text_label())
-                .more("This area has no file yet: Home \u{203a} Save (Ctrl+S) gives it one.")
+                .more("This level has no file yet: Home \u{203a} Save (Ctrl+S) gives it one.")
         } else {
             Part::new("Saved", tokens::text_label())
         };

@@ -186,7 +186,7 @@ impl Workbench {
             self.log(
                 LogLevel::Warning,
                 format!(
-                    "Game code spawned more than {} copies in one tick, or the area reached \
+                    "Game code spawned more than {} copies in one tick, or the level reached \
                      its most entities ({}), so {refused} weren't made (is something spawning \
                      every tick?).",
                     crate::models::grouped(MAX_SPAWNS_PER_TICK),
@@ -220,7 +220,7 @@ impl Workbench {
             Unmade::NoSuchAssembly => {
                 return "there's no assembly by that name in the project's assets".into();
             }
-            Unmade::IdTaken => return "the entity it was to be is already in the area".into(),
+            Unmade::IdTaken => return "the entity it was to be is already in the level".into(),
             Unmade::Broken(asset, why) => (*asset, why),
         };
         match why {
@@ -230,10 +230,10 @@ impl Workbench {
                 None => format!("it places an assembly ({id}) that isn't in the project"),
             },
             AssemblyError::NotAnAssembly(id) if *id == asset => {
-                "its file is an area, not an assembly".into()
+                "its file is a level, not an assembly".into()
             }
             AssemblyError::NotAnAssembly(id) => format!(
-                "it places {}, which is an area, not an assembly",
+                "it places {}, which is a level, not an assembly",
                 named(*id).unwrap_or_else(|| id.to_string())
             ),
             AssemblyError::Loop(chain) => {

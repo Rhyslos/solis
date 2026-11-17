@@ -290,7 +290,7 @@ fn plus(ui: &mut Ui, at: egui::Pos2, (tab, index): (RibbonTab, usize), asks: &mu
     let rect = Rect::from_min_size(at, vec2(size::DOC_TAB_H, size::DOC_TAB_H));
     let response = ui.interact(rect, Id::new(("new document", tab, index)), Sense::click());
     response
-        .widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, true, "New or open an area"));
+        .widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, true, "New or open a level"));
     let ink = if response.hovered() {
         tokens::text_emphasis()
     } else {
@@ -298,7 +298,7 @@ fn plus(ui: &mut Ui, at: egui::Pos2, (tab, index): (RibbonTab, usize), asks: &mu
     };
     let spot = Rect::from_center_size(rect.center(), vec2(size::ICON_SMALL, size::ICON_SMALL));
     icons::icon(ui.painter(), spot, Icon::Plus, ink);
-    let response = response.on_hover_text("A new area, or one of the project's areas");
+    let response = response.on_hover_text("A new level, or one of the project's levels");
     Popup::menu(&response).show(|ui| {
         for command in [ShellCommand::NewLevel, ShellCommand::OpenLevel] {
             if ui.button(command_words(command)).clicked() {
@@ -312,8 +312,8 @@ fn plus(ui: &mut Ui, at: egui::Pos2, (tab, index): (RibbonTab, usize), asks: &mu
 /// The words a document tab's menu shows for `command`.
 fn command_words(command: ShellCommand) -> &'static str {
     match command {
-        ShellCommand::NewLevel => "New area",
-        ShellCommand::OpenLevel => "Open area\u{2026}",
+        ShellCommand::NewLevel => "New level",
+        ShellCommand::OpenLevel => "Open level\u{2026}",
         ShellCommand::SaveLevel => "Save",
         ShellCommand::SaveLevelAs => "Save as\u{2026}",
         _ => "",
@@ -365,7 +365,7 @@ fn doc_menu(
             faint(
                 ui,
                 "Close",
-                "One area is open at a time: open or make another in its place",
+                "One level is open at a time: open or make another in its place",
             );
         }
         if others.is_empty() {

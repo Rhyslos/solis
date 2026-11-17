@@ -43,9 +43,9 @@ picture editor.png
   label 600 888 11
   shot 0 0 1440 900 1100
 
-picture area-list.png
+picture level-list.png
   page entities.md
-  shows The Area list: every entity in the area, with what each is
+  shows The Level list: every entity in the level, with what each is
   shot 0 100 241 560
 
 picture view-menu.png

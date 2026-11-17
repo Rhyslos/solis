@@ -229,7 +229,7 @@ fn a_level_blocked_out_edited_extruded_played_saved_and_reopened() {
     again
         .state_mut()
         .0
-        .open_level(read, std::path::PathBuf::from("level.solarea"));
+        .open_level(read, std::path::PathBuf::from("level.sollevel"));
     again.run();
     let reopened = again.state().0.document().level().clone();
     assert_eq!(reopened, level);

@@ -485,14 +485,14 @@ fn the_level_header_searches_folds_and_unhides() {
     h.get_by_label("Fold everything").click();
     h.run();
     assert!(h.state().0.open.level_panel.collapsed.contains(&room));
-    h.get_by_label("More of the Area column").click();
+    h.get_by_label("More of the Level column").click();
     h.run();
     h.get_by_label("Show everything hidden").click();
     h.run();
     assert!(h.state().0.open.level_panel.hidden.is_empty());
-    h.get_by_label("Search the area by name").click();
+    h.get_by_label("Search the level by name").click();
     h.run();
-    h.get_by_label("Search the area").type_text("point");
+    h.get_by_label("Search the level").type_text("point");
     h.run();
     h.run();
     assert_eq!(h.state().0.open.level_panel.search, "point");
@@ -508,7 +508,7 @@ fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
         .insert("Wobble".into(), reflect::ComponentData::default());
     level.insert(odd, data);
     let mut w = Workbench::new(info());
-    w.open_level(level, "odd.solarea".into());
+    w.open_level(level, "odd.sollevel".into());
     let mut h = harness(w);
     h.run();
     assert_eq!(h.state().0.problems().len(), 1);
@@ -522,7 +522,7 @@ fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
     h.state_mut().0.delete_selection();
     h.run();
     assert!(h.state().0.problems().is_empty());
-    let _ = h.get_by_label("No problems found in the area or the game's code.");
+    let _ = h.get_by_label("No problems found in the level or the game's code.");
 }
 
 #[test]
@@ -565,7 +565,7 @@ fn mistakes_in_the_game_code_are_listed_first_and_a_click_opens_the_file() {
     h.state_mut().0.set_code_problems(Vec::new(), &[]);
     h.run();
     assert!(h.state().0.code_problems().is_empty());
-    let _ = h.get_by_label("No problems found in the area or the game's code.");
+    let _ = h.get_by_label("No problems found in the level or the game's code.");
     // Another project starts with none of the last one's.
     h.state_mut().0.set_code_problems(vec![mistake], &[]);
     h.state_mut().0.set_project(None);
@@ -585,7 +585,7 @@ fn components_registered_by_game_code_survive_new_levels_and_projects() {
     w.register_component(schema).unwrap();
     w.new_level();
     assert!(w.open.document.registry.get("Wobble").is_some());
-    w.open_level(level::builtin::starter_level(), "a.solarea".into());
+    w.open_level(level::builtin::starter_level(), "a.sollevel".into());
     assert!(w.open.document.registry.get("Wobble").is_some());
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
@@ -616,7 +616,7 @@ fn the_open_level_follows_its_file_when_the_library_moves_or_deletes_it() {
     let mut w = Workbench::new(info());
     w.open_level(
         level::builtin::starter_level(),
-        "/p/assets/areas/harbour.solarea".into(),
+        "/p/assets/levels/harbour.sollevel".into(),
     );
     // Another file: nothing changes.
     assert_eq!(
@@ -627,9 +627,12 @@ fn the_open_level_follows_its_file_when_the_library_moves_or_deletes_it() {
         None
     );
     // Renamed.
-    let renamed = PathBuf::from("/p/assets/areas/port.solarea");
+    let renamed = PathBuf::from("/p/assets/levels/port.sollevel");
     assert_eq!(
-        w.file_moved(Path::new("/p/assets/areas/harbour.solarea"), Some(&renamed)),
+        w.file_moved(
+            Path::new("/p/assets/levels/harbour.sollevel"),
+            Some(&renamed)
+        ),
         Some(Some(renamed.clone()))
     );
     assert_eq!(w.open.document.file(), Some(renamed.as_path()));
@@ -637,14 +640,14 @@ fn the_open_level_follows_its_file_when_the_library_moves_or_deletes_it() {
     // Its folder moved.
     assert_eq!(
         w.file_moved(
-            Path::new("/p/assets/areas"),
+            Path::new("/p/assets/levels"),
             Some(Path::new("/p/assets/levels"))
         ),
-        Some(Some(PathBuf::from("/p/assets/levels/port.solarea")))
+        Some(Some(PathBuf::from("/p/assets/levels/port.sollevel")))
     );
     // Deleted: unsaved, and saving asks where.
     assert_eq!(
-        w.file_moved(Path::new("/p/assets/levels/port.solarea"), None),
+        w.file_moved(Path::new("/p/assets/levels/port.sollevel"), None),
         Some(None)
     );
     assert_eq!(w.open.document.file(), None);

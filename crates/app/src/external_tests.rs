@@ -9,7 +9,7 @@ use super::*;
 fn project(name: &str) -> (reflect::test_support::TempFolder, PathBuf) {
     let root = reflect::test_support::TempFolder::new(&format!("external-{name}")).unwrap();
     let assets = root.join("assets");
-    for folder in ["ai", "props", "notes", "areas"] {
+    for folder in ["ai", "props", "notes", "levels"] {
         std::fs::create_dir_all(assets.join(folder)).unwrap();
     }
     for file in [
@@ -21,8 +21,8 @@ fn project(name: &str) -> (reflect::test_support::TempFolder, PathBuf) {
         "props/ship.glb",
         "props/hero.aseprite",
         "notes/plan.md",
-        "areas/farm.tilemap.lst",
-        "areas/farm.solarea",
+        "levels/farm.tilemap.lst",
+        "levels/farm.sollevel",
         "run.bat",
     ] {
         std::fs::write(assets.join(file), b"a project's file").unwrap();
@@ -56,8 +56,8 @@ fn only_pictures_text_and_lust_are_opened_and_the_rest_shown_in_their_folder() {
         ("props/brick.png.exe", shown("props")),
         ("props/ship.glb", shown("props")),
         ("props/hero.aseprite", shown("props")),
-        ("areas/farm.tilemap.lst", shown("areas")),
-        ("areas/farm.solarea", shown("areas")),
+        ("levels/farm.tilemap.lst", shown("levels")),
+        ("levels/farm.sollevel", shown("levels")),
         ("run.bat", Handed::Shown(assets.clone())),
     ] {
         assert_eq!(asked(&assets, file).unwrap(), comes_to, "{file}");
@@ -183,6 +183,7 @@ fn no_name_makes_another_kind_of_file_open() {
         "gltf",
         "aseprite",
         "wav",
+        "sollevel",
         "solarea",
         "solassembly",
         "tilemap",

@@ -228,7 +228,7 @@ fn sample_recording() -> Recording {
         seed: 42,
         start: 0xdead_beef,
         ticks,
-        level: Some("areas/harbour.solarea".into()),
+        level: Some("levels/harbour.sollevel".into()),
     }
 }
 
@@ -236,7 +236,7 @@ fn sample_recording() -> Recording {
 fn recordings_round_trip_exactly() {
     let r = sample_recording();
     let text = r.write();
-    assert!(text.starts_with("solis recording 3\nseed 42\narea areas/harbour.solarea\n"));
+    assert!(text.starts_with("solis recording 4\nseed 42\nlevel levels/harbour.sollevel\n"));
     assert_eq!(Recording::read(&text).unwrap(), r);
     // Playing back the same: no difference; a changed checksum is found.
     assert_eq!(r.first_difference(&r.ticks), None);
@@ -253,7 +253,7 @@ fn damaged_recordings_are_refused_never_crashing() {
     let good = sample_recording().write();
     assert_eq!(Recording::read("hello"), Err(RecordingError::NotARecording));
     // A newer one is refused before it's read on, with why.
-    let newer = Recording::read("solis recording 4\nseed 1\nstart 0\n").unwrap_err();
+    let newer = Recording::read("solis recording 5\nseed 1\nstart 0\n").unwrap_err();
     assert!(newer.to_string().contains("newer version"), "{newer}");
     assert!(matches!(
         Recording::read("solis recording 0\nseed 1\nstart 0\n"),
@@ -714,10 +714,10 @@ mod edges;
 fn a_recording_names_its_level_and_older_ones_don_t() {
     let r = sample_recording();
     let text = r.write();
-    assert!(text.contains("\narea areas/harbour.solarea\n"), "{text}");
+    assert!(text.contains("\nlevel levels/harbour.sollevel\n"), "{text}");
     assert_eq!(
         Recording::read(&text).unwrap().level.as_deref(),
-        Some("areas/harbour.solarea")
+        Some("levels/harbour.sollevel")
     );
     // Not known: an empty line, read back as none.
     let none = Recording {
@@ -725,7 +725,7 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
         ..r.clone()
     };
     assert_eq!(Recording::read(&none.write()).unwrap().level, None);
-    let bare = none.write().replacen("\narea \n", "\narea\n", 1);
+    let bare = none.write().replacen("\nlevel \n", "\nlevel\n", 1);
     assert_eq!(Recording::read(&bare).unwrap().level, None);
     // A line break in a path can't break the file.
     let odd = Recording {
@@ -736,10 +736,10 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
         Recording::read(&odd.write()).unwrap().level.as_deref(),
         Some("a b")
     );
-    // Version 1 had no area line: it reads, with none.
+    // Version 1 had no level line: it reads, with none.
     let one: String = text
-        .replacen("solis recording 3", "solis recording 1", 1)
-        .replacen("area areas/harbour.solarea\n", "", 1)
+        .replacen("solis recording 4", "solis recording 1", 1)
+        .replacen("level levels/harbour.sollevel\n", "", 1)
         .lines()
         .filter(|l| !l.starts_with("s "))
         .map(|l| format!("{l}\n"))
@@ -753,28 +753,52 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
     let read = Recording::read(&one).unwrap();
     assert_eq!((read.level, read.ticks.len()), (None, r.ticks.len()));
     // Too long, or a control character: damaged.
-    let long = text.replacen("areas/harbour.solarea", &"x".repeat(2000), 1);
+    let long = text.replacen("levels/harbour.sollevel", &"x".repeat(2000), 1);
     assert!(matches!(
         Recording::read(&long),
         Err(RecordingError::Damaged(3))
     ));
     // A path that could leave the assets on some system: damaged.
     for odd in [
-        "a\\..\\..\\x.solarea",
-        "C:/x.solarea",
-        "a/../../x.solarea",
+        "a\\..\\..\\x.sollevel",
+        "C:/x.sollevel",
+        "a/../../x.sollevel",
         "./x",
         "a//b",
     ] {
-        let bad = text.replacen("areas/harbour.solarea", odd, 1);
+        let bad = text.replacen("levels/harbour.sollevel", odd, 1);
         assert!(
             matches!(Recording::read(&bad), Err(RecordingError::Damaged(3))),
             "{odd}"
         );
     }
-    assert!(Recording::is_plain_level_path("areas/farm 2/barn.solarea"));
-    let missing = text.replacen("area areas/harbour.solarea\n", "", 1);
+    assert!(Recording::is_plain_level_path(
+        "levels/farm 2/barn.sollevel"
+    ));
+    let missing = text.replacen("level levels/harbour.sollevel\n", "", 1);
     assert!(Recording::read(&missing).is_err());
+    // Versions 2 and 3 said `area`, and named the level by its ending as
+    // an area: read, it names the level by its ending now (decision 0118),
+    // whatever case the ending was in.
+    for (old, path) in [
+        ("areas/harbour.solarea", "areas/harbour.sollevel"),
+        ("a/B.SolArea", "a/B.sollevel"),
+        ("notes/readme.txt", "notes/readme.txt"),
+    ] {
+        let three = text
+            .replacen("solis recording 4", "solis recording 3", 1)
+            .replacen("level levels/harbour.sollevel", &format!("area {old}"), 1);
+        assert_eq!(
+            Recording::read(&three).unwrap().level.as_deref(),
+            Some(path)
+        );
+    }
+    // A version 4 line saying `area` is damage, and so is a version 3 one
+    // saying `level`.
+    let wrong = text.replacen("\nlevel ", "\narea ", 1);
+    assert_eq!(Recording::read(&wrong), Err(RecordingError::Damaged(3)));
+    let wrong = text.replacen("solis recording 4", "solis recording 3", 1);
+    assert_eq!(Recording::read(&wrong), Err(RecordingError::Damaged(3)));
 }
 
 #[test]
@@ -821,4 +845,16 @@ fn only_what_a_recording_reads_back_the_same_is_recordable() {
     };
     let back = Recording::read(&recording.write()).unwrap();
     assert_eq!(back.ticks[0].frame.sent, vec![kept]);
+}
+
+#[test]
+fn the_version_3_example_is_written_as_the_version_4_one() {
+    // Decision 0118: the level's line says `level`, and its file ends
+    // `.sollevel`; nothing else changes, and version 4 reads as itself.
+    let three = include_str!("../../../tests/fixtures/recording/v3/play.solrec");
+    let four = include_str!("../../../tests/fixtures/recording/v4/play.solrec");
+    let read = Recording::read(three).unwrap();
+    assert_eq!(read.level.as_deref(), Some("areas/turret.sollevel"));
+    assert_eq!(read.write(), four);
+    assert_eq!(Recording::read(four).unwrap(), read);
 }

@@ -377,7 +377,7 @@ pub const NATIVES: &[Native] = &[
         name: "find",
         owner: "World",
         lust: "method entity find(string name) native;",
-        about: "The first entity with this name, in the Area panel's order, or nothing.",
+        about: "The first entity with this name, in the Level panel's order, or nothing.",
     },
     Native {
         file: "world",
@@ -825,7 +825,7 @@ pub const NATIVES: &[Native] = &[
         name: "name",
         owner: "entity",
         lust: "method string entity:name() native;",
-        about: "The entity's name, as the Area panel shows it.",
+        about: "The entity's name, as the Level panel shows it.",
     },
     Native {
         file: "screens",

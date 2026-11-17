@@ -31,7 +31,7 @@ fn playground_with_a_check(name: &str) -> (reflect::test_support::TempFolder, Pa
         w.play_for(1.0 / 60.0);
     }
     let text = w.recording_text().expect("recording");
-    assert!(text.contains(&format!("\narea {}\n", crate::playground::LEVEL)));
+    assert!(text.contains(&format!("\nlevel {}\n", crate::playground::LEVEL)));
     let checks = root.join(RECORDINGS).join(CHECKS);
     std::fs::create_dir_all(&checks).unwrap();
     std::fs::write(checks.join("walk.solrec"), text).unwrap();
@@ -82,7 +82,7 @@ fn a_changed_level_or_a_damaged_file_fails() {
     let text = report.text();
     assert!(report.failed >= 3, "{text}");
     assert!(text.contains("FAIL  assets/broken.solsound"), "{text}");
-    assert!(text.contains("doesn't say which area"), "{text}");
+    assert!(text.contains("doesn't say which level"), "{text}");
     assert!(text.contains("walk.solrec"), "{text}");
     assert!(
         text.contains("isn't as it was when this was recorded"),
@@ -106,10 +106,10 @@ fn a_level_outside_the_assets_is_refused() {
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
     for bad in [
         "../project.solis",
-        "a//b.solarea",
+        "a//b.sollevel",
         "",
-        "a\\..\\..\\x.solarea",
-        "C:/x.solarea",
+        "a\\..\\..\\x.sollevel",
+        "C:/x.sollevel",
     ] {
         let refused = workbench_for(&root, &db, None, MADE_BY, bad, &mut Read::default())
             .err()
@@ -181,7 +181,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     level.spawn(hopper);
     let registry = level::builtin::registry().unwrap();
     std::fs::write(
-        assets.join("hop.solarea"),
+        assets.join("hop.sollevel"),
         level::text::write(&level, &registry, &|_| None),
     )
     .unwrap();
@@ -195,7 +195,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
         &db,
         program,
         MADE_BY,
-        "hop.solarea",
+        "hop.sollevel",
         &mut Read::default(),
     )
     .unwrap();

@@ -21,7 +21,7 @@ The Profiler on the Debug tab while the game plays: a bar for each frame along t
 | Part | What it is |
 |---|---|
 | Game code | Your Lust, Lua and Rust components: their `update`s, events, and taking in changes made while playing. |
-| World | The game's [world](concepts.md#playing): stepping its clock, working out where things are, taking in the area's changes. |
+| World | The game's [world](concepts.md#playing): stepping its clock, working out where things are, taking in the level's changes. |
 | Preparing to draw | Working out what each view shows: which models where, the lights. |
 | Drawing (CPU) | Handing that to the graphics card. |
 | Sound | The game's sounds: choosing which are heard, placing them, the buses. |
@@ -40,7 +40,7 @@ The CPU and the GPU work at the same time, each on its own frame, so the slower 
 ## Tips and common problems
 - **Problem:** Game code is the biggest part. **Why:** many components, or one doing a lot each tick. **Fix:** do less each tick (check things every few ticks, not every one), or move the busiest code to Rust.
 - **Problem:** the GPU's times say they aren't measured. **Why:** your graphics card or its driver doesn't offer timestamps. **Fix:** the CPU's numbers still work; update the graphics driver, which often adds them.
-- **Problem:** Preparing to draw goes up when I turn the camera towards the crowd. **Why:** only what's in view is drawn, so looking at more draws more. **Fix:** nothing to fix; it's the view that counts, not the size of the area.
+- **Problem:** Preparing to draw goes up when I turn the camera towards the crowd. **Why:** only what's in view is drawn, so looking at more draws more. **Fix:** nothing to fix; it's the view that counts, not the size of the level.
 - **Problem:** the numbers jump while nothing changes. **Why:** other programs share the computer. **Fix:** read Statistics' averages, not single bars.
 
 ## Related

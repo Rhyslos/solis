@@ -8,9 +8,9 @@ brush-extrude.png bef6309208adf91d
 brush-inset.png 0b5a2f613f3951cd
 brush-list.png 5bf4183c9a4d09f3
 editor.png c4d838296d51d5f3
-home-area-and-assets-left.png 415ab56390e468b6
-home-area-left-assets-bottom.png 5fe6a822086ecbd5
-home-area-left-assets-right.png a4967e3601991f89
+home-level-and-assets-left.png 415ab56390e468b6
+home-level-left-assets-bottom.png 5fe6a822086ecbd5
+home-level-left-assets-right.png a4967e3601991f89
 icon-sheet.png c694a64561268ad7
 kind-colours.png 80af21e68949c237
 placeholder-sheet.png b0ff0c1cbf32772a

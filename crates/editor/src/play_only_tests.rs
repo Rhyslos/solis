@@ -46,7 +46,7 @@ fn quitting_at(play_only: bool, tick: u32) -> Workbench {
         .insert("Quitter".into(), reflect::ComponentData::default());
     let mut level = level::Level::new();
     level.spawn(entity);
-    w.open_level(level, std::path::PathBuf::from("farm.solarea"));
+    w.open_level(level, std::path::PathBuf::from("farm.sollevel"));
     w
 }
 
@@ -176,7 +176,7 @@ fn a_game_with_no_code_is_ready_once_checked_and_plays() {
     w.set_play_only();
     let mut level = level::Level::new();
     level.spawn(level::EntityData::new("Rock"));
-    w.open_level(level, std::path::PathBuf::from("farm.solarea"));
+    w.open_level(level, std::path::PathBuf::from("farm.sollevel"));
     assert!(!w.code_ready(), "not checked yet");
     w.set_program(None);
     assert!(w.code_ready());

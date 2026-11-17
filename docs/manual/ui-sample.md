@@ -6,7 +6,7 @@
 Open it when you're about to give your own game a HUD or a menu: it's the shortest working example of each part, and every file is meant to be read and changed. The [turret sample](first-game.md) is the place to start for game code itself; this one is about [screens](screens.md).
 
 ## How to use it
-1. On the [launcher](launcher.md)'s **Learn**, click **Make it in a folder…** under **UI sample** and choose an empty folder (or start a **New project** from **UI sample**). The project opens on its area.
+1. On the [launcher](launcher.md)'s **Learn**, click **Make it in a folder…** under **UI sample** and choose an empty folder (or start a **New project** from **UI sample**). The project opens on its level.
 2. Press **Play**, then click the **Game panel** so the game has the keys.
    - **Space** (or a gamepad's **A**) fires the turret at the drone. The HUD in the bottom left counts the ammo and the hits, with a yellow bar that empties as you fire; the drone's health bar at the top follows its health.
    - **P** (or **Start**) pauses: the game stops and the pause menu shows. Move with the arrow keys or the stick, choose with **Space**, **Enter** or **A**, or click.
@@ -24,7 +24,7 @@ Open it when you're about to give your own game a HUD or a menu: it's the shorte
 | `ui/hud.lst` | The HUD, shown by the Turret's **Screen** component. It reads the turret's ammo and hits (`Ui:entity():turret()`); the bar is a `box` whose width is `300 * ammo / maxAmmo`, and while the turret reloads it stays empty, with `shadow` for a glow. The Screen component's **Glow** gives the whole HUD a soft light. |
 | `ui/droneHealth.lst` | The drone's health bar, shown by the Drone's Screen component, reading its Health. |
 | `ui/pauseMenu.lst` | The menu. It reads the settings (`Screens:textSize()`, `Window:fullscreen()`, `Window:resolution()`) to show them, and each button sends an event to the Game entity (`send BiggerText() to Ui:entity();`), since screens never change the game themselves. |
-| `ui.solarea` | The area: the camera, the turret, the drone and the Game entity with the Pauser. |
+| `ui.sollevel` | The level: the camera, the turret, the drone and the Game entity with the Pauser. |
 
 **Why the buttons send events instead of changing the settings themselves:** a screen only reads the game. That keeps every change in game code, where recordings and replays see it, so the sample plays back the same from a recording, menu and all.
 

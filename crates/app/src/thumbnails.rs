@@ -295,7 +295,7 @@ mod tests {
                     id: None,
                 },
                 asset_db::FileEntry {
-                    path: "c.solarea".into(),
+                    path: "c.sollevel".into(),
                     kind: FileKind::Level,
                     id: None,
                 },

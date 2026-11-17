@@ -244,7 +244,7 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                 entity: id,
                 text: format!(
                     "{} is inside itself: its parents lead back to it. Drag it onto empty \
-                     space in the Area panel to fix it",
+                     space in the Level panel to fix it",
                     entity.name
                 ),
             });
@@ -258,7 +258,7 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
             found.push(Problem {
                 kind: ProblemKind::MissingParent,
                 entity: id,
-                text: format!("{name}'s parent ({parent}) isn't in the area"),
+                text: format!("{name}'s parent ({parent}) isn't in the level"),
             });
         }
         for component in entity.components.keys() {
@@ -428,7 +428,7 @@ pub(crate) fn problems_panel(
     (problems, level): (&[Problem], &str),
 ) -> Option<ProblemClick> {
     if problems.is_empty() && code.is_empty() {
-        crate::panels::empty_note(ui, "No problems found in the area or the game's code.");
+        crate::panels::empty_note(ui, "No problems found in the level or the game's code.");
         return None;
     }
     let mut clicked = None;
@@ -625,7 +625,7 @@ mod tests {
             }
             .find()
             .is_empty(),
-            "nor does a new area"
+            "nor does a new level"
         );
     }
 

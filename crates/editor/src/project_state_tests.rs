@@ -149,7 +149,7 @@ fn undo_over_the_map_tab_never_reaches_into_another_project() {
     assert_eq!(
         w.open.document.level().len(),
         3,
-        "nor the area's own last step"
+        "nor the level's own last step"
     );
 }
 
@@ -317,7 +317,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert_eq!(unsaved_prompt, &None);
     assert!(pending_reload.is_none() && play_changes.is_none());
     assert!(moving.is_none() && copied.is_empty());
-    same(level_panel, &fresh.level_panel, "the Area panel");
+    same(level_panel, &fresh.level_panel, "the Level panel");
     assert_eq!(library_state, &fresh.library_state);
     assert!(sounds.is_empty() && sound_events.is_empty());
     assert!(preview.is_none() && sound_shown.is_none() && text_file.is_none());

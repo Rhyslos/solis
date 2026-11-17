@@ -225,11 +225,11 @@ fn home_in_each_side_layout_is_its_approved_picture() {
         harness.run();
         let level = harness.state().shell.drawn_at(crate::panel::Panel::Level);
         let picture = drawn(&mut harness);
-        let level = level.expect("the Area list is drawn");
+        let level = level.expect("the Level list is drawn");
         // Below the Level list's rows, and the line at its right edge.
         let below = [level.center().x, level.bottom() - 20.0];
         assert_eq!(
-            colour_at(&picture, "the Area list", below, 1.0),
+            colour_at(&picture, "the Level list", below, 1.0),
             tokens::panel()
         );
         let edge = [level.right() + 0.5, level.bottom() - 20.0];

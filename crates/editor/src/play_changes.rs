@@ -172,14 +172,14 @@ impl Workbench {
         let labels = changes.labels.clone();
         use crate::widgets::dialog::{Answer, dialog};
         let answers = [
-            Answer::left("Undo all").hint("The area as it was before Play"),
+            Answer::left("Undo all").hint("The level as it was before Play"),
             Answer::main("Keep").hint(
                 "Your changes, each still undoable with Ctrl + Z. What the game did isn't kept",
             ),
         ];
         let words = |ui: &mut egui::Ui| {
             ui.label(format!(
-                "You made {} to the area while the game ran:",
+                "You made {} to the level while the game ran:",
                 count(labels.len(), "change")
             ));
             for label in labels.iter().take(LISTED) {

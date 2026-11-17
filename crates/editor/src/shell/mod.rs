@@ -146,7 +146,7 @@ impl RibbonTab {
     pub fn help(self) -> &'static str {
         match self {
             Self::File => "Projects, settings, the manual and updates",
-            Self::Home => "Building areas: making entities, snapping, saving and playing",
+            Self::Home => "Building levels: making entities, snapping, saving and playing",
             Self::Library => "The project's files: bringing in, making, finding and placing them",
             Self::Shading => "Materials and shaders",
             Self::Animate => "Animating sprites: a clips file's clips and frames, and animators",

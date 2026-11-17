@@ -41,7 +41,7 @@ fn with_a_project() -> (Workbench, AssetId, AssetId) {
     w.set_library(vec![
         item("crate.glb", LibraryKind::Model, Some(crate_id)),
         item("props/rock.glb", LibraryKind::Model, Some(rock_id)),
-        item("docks.solarea", LibraryKind::Level, None),
+        item("docks.sollevel", LibraryKind::Level, None),
         item("props/bark.png", LibraryKind::Texture, None),
         item("turret.lst", LibraryKind::Code, None),
     ]);
@@ -106,7 +106,7 @@ fn placing_models_and_opening_levels() {
     let actions = &h.state().1.actions;
     assert!(actions.contains(&WorkbenchAction::PlaceAsset(crate_id)));
     assert!(actions.contains(&WorkbenchAction::OpenLevelFile(
-        "/projects/harbour/assets/docks.solarea".into()
+        "/projects/harbour/assets/docks.sollevel".into()
     )));
     // The click placed it where the camera looks, not at the old drop.
     assert!(h.state_mut().0.take_place_target(crate_id).is_none());

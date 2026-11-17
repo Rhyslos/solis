@@ -66,7 +66,7 @@ pub(crate) mod tests {
 
     /// Every file format a project holds, for the notes and the tests that
     /// open the example files of every version (`tests/fixtures/`).
-    pub(crate) fn formats() -> [&'static dyn Versioned; 13] {
+    pub(crate) fn formats() -> [&'static dyn Versioned; 14] {
         [
             &animation::atlas::FORMAT,
             &level::text::FORMAT,
@@ -81,6 +81,7 @@ pub(crate) mod tests {
             &input::RECORDING_FORMAT,
             &asset_db::PROJECT_FORMAT,
             &asset_db::SIDECAR_FORMAT,
+            &editor::export_dialog::PLAYTEST_FORMAT,
         ]
     }
 
@@ -101,6 +102,7 @@ pub(crate) mod tests {
         assert!(input::RECORDING_FORMAT.is_complete());
         assert!(asset_db::PROJECT_FORMAT.is_complete());
         assert!(asset_db::SIDECAR_FORMAT.is_complete());
+        assert!(editor::export_dialog::PLAYTEST_FORMAT.is_complete());
     }
 
     #[test]

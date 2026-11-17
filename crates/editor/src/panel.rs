@@ -139,7 +139,7 @@ impl Panel {
         match self {
             Self::Viewport => "Viewport",
             Self::Game => "Game",
-            Self::Level => "Area",
+            Self::Level => "Level",
             Self::Properties => "Properties",
             Self::Library => "Library",
             Self::Code => "Code",

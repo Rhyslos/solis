@@ -1,35 +1,35 @@
-# Saving areas
+# Saving levels
 
-> Save an area as a file, open it again, and share it through Git without merge trouble.
+> Save a level as a file, open it again, and share it through Git without merge trouble.
 
 ## When to use it
-Save whenever you've built something you want to keep. An [area](concepts.md#the-area) (a level, a menu, a room) is one file ending in `.solarea`, kept in your [project](projects-and-the-library.md) (Solis suggests its `assets/areas` folder).
+Save whenever you've built something you want to keep. A [level](concepts.md#the-level) (a level, a menu, a room) is one file ending in `.sollevel`, kept in your [project](projects-and-the-library.md) (Solis suggests its `assets/levels` folder).
 
-The file is plain text, written so that two people changing different things in the same area can merge their work in Git without conflicts. It's also safe to read and edit by hand.
+The file is plain text, written so that two people changing different things in the same level can merge their work in Git without conflicts. It's also safe to read and edit by hand.
 
 ## How to use it
 1. **Save:** press **Ctrl + S** (or **Home › Save**). The first time, choose a name and a folder.
 2. **Save as:** **Ctrl + Shift + S** saves a copy under a new name and carries on with that one.
-3. **Open:** **Ctrl + O** (or **Open area…** (press **Space** and type it, or Ctrl + O)). The models it uses are read from the project, from the cache, so it opens quickly.
-4. **New:** **Ctrl + N** starts a fresh area with a sun and an environment.
+3. **Open:** **Ctrl + O** (or **Open level…** (press **Space** and type it, or Ctrl + O)). The models it uses are read from the project, from the cache, so it opens quickly.
+4. **New:** **Ctrl + N** starts a fresh level with a sun and an environment.
 
-The tab bar at the top shows the project and the area's name, with an amber dot after it while it has changes that aren't saved (the window's title shows a **•** too). Solis asks before anything would lose them: a new or another area, closing the project (**File › Close project**, or closing the editor's window), or quitting. **Save**, **Don't save** or **Cancel**.
+The tab bar at the top shows the project and the level's name, with an amber dot after it while it has changes that aren't saved (the window's title shows a **•** too). Solis asks before anything would lose them: a new or another level, closing the project (**File › Close project**, or closing the editor's window), or quitting. **Save**, **Don't save** or **Cancel**.
 
 **Changed on disk:** if the file changes while it's open (a Git pull, or an edit in a text editor), Solis loads the new version as one step you can undo with Ctrl + Z. If you have unsaved changes too, it asks: **Keep mine** or **Load the file**.
 
 ## Shortcuts
 | Action | Shortcut |
 |---|---|
-| New area | `Ctrl + N` |
-| Open area | `Ctrl + O` |
-| Save area | `Ctrl + S` |
-| Save area as | `Ctrl + Shift + S` |
+| New level | `Ctrl + N` |
+| Open level | `Ctrl + O` |
+| Save level | `Ctrl + S` |
+| Save level as | `Ctrl + Shift + S` |
 
 ## What the file looks like
 
 ```
--- An area. Safe to edit by hand: one block per entity, one line per field.
-area version 3;
+-- A level. Safe to edit by hand: one block per entity, one line per field.
+level version 3;
 
 entity 2B8D4NE6TV0HC {
     name = "Sun";
@@ -51,11 +51,11 @@ entity 2B8D4NE6TV0HC {
 ## Tips and common problems
 - **Problem:** "line 12: …" when opening. **Why:** the file has a mistake, perhaps from a hand edit or a bad merge. **Fix:** the message says the line and what's wrong; fix it in a text editor. Solis never opens half a file.
 - **Problem:** "it was saved by a newer version". **Why:** someone saved it with a newer Solis, which may write things this one can't read. **Fix:** update Solis.
-- **Problem:** the Console says an area "was saved by an older version". **Why:** the file's first line says which version of the layout it's in, and this Solis writes a newer one (version 3; version 2 can say that a part of a copy was moved out to the top level, and version 3 holds [brushes](brushes.md)). Nothing is lost: it opens as it always did. **Fix:** nothing. When you save, the old file is first copied into the project's `.solis/backups` folder.
-- **Problem:** Git reports a conflict in an area file. **Why:** two people added entities in the same spot, or changed lines right next to each other in the same component (both rare). **Fix:** open the file in a text editor and keep both blocks, or the line you want; Solis's own merge tool, which isn't built yet, will do this for you.
-- **Problem:** "Not saved: … already exists". **Why:** the name typed in the Save window had no `.solarea`, and a file with that name and `.solarea` is already there; the window only asked about replacing the name as typed. **Fix:** choose **Save as** again and pick the existing file to replace it, or type another name.
+- **Problem:** the Console says a level "was saved by an older version". **Why:** the file's first line says which version of the layout it's in, and this Solis writes a newer one (version 3; version 2 can say that a part of a copy was moved out to the top level, and version 3 holds [brushes](brushes.md)). Nothing is lost: it opens as it always did. **Fix:** nothing. When you save, the old file is first copied into the project's `.solis/backups` folder.
+- **Problem:** Git reports a conflict in a level file. **Why:** two people added entities in the same spot, or changed lines right next to each other in the same component (both rare). **Fix:** open the file in a text editor and keep both blocks, or the line you want; Solis's own merge tool, which isn't built yet, will do this for you.
+- **Problem:** "Not saved: … already exists". **Why:** the name typed in the Save window had no `.sollevel`, and a file with that name and `.sollevel` is already there; the window only asked about replacing the name as typed. **Fix:** choose **Save as** again and pick the existing file to replace it, or type another name.
 - **Problem:** "Stop playing first" when saving. **Why:** the game is running, and saving now would save its changes, which Stop undoes. **Fix:** press Stop, then save. A Save window opened before Play finishes after Stop.
-- Renaming or moving the open area in the Library is safe: Solis saves to its new name from then on. If it's deleted, the next save asks where to put it.
+- Renaming or moving the open level in the Library is safe: Solis saves to its new name from then on. If it's deleted, the next save asks where to put it.
 - Saves are written to the disk in full before they replace the old file, so a crash or power cut leaves either the old file or the new one, never half of one.
 - Numbers are written as briefly as possible but always read back exactly, so saving without changes doesn't change the file.
 
@@ -63,4 +63,4 @@ entity 2B8D4NE6TV0HC {
 - [Projects and the Library](projects-and-the-library.md)
 - [Undo and redo](undo.md)
 - [Entities and components](entities.md)
-- Concepts: [area, entity, component](concepts.md#the-area)
+- Concepts: [level, entity, component](concepts.md#the-level)

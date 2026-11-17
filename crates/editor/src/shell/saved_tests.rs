@@ -237,7 +237,7 @@ fn random_damage_to_a_saved_frame_never_gives_an_unusable_one() {
         "left",
         "strip",
         "shelf",
-        "area left assets bottom",
+        "level left assets bottom",
         "column Entity 0",
     ];
     let mut seed: u64 = 7;

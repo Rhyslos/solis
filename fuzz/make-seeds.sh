@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes the fuzzers' starting files into fuzz/seeds/<target>/ from real
-# ones: a save, a recording, input actions and an area made by the editor's
+# ones: a save, a recording, input actions and a level made by the editor's
 # tests, the sample models and their cache entries and sidecars, and the
 # samples' game code. Run from the repository's top folder.
 set -euo pipefail
@@ -17,9 +17,9 @@ done
 # Lust, a 0x01 byte, then Lua (fuzz_targets/game_code.rs).
 { cat samples/turret/assets/main.lst; printf '\001'; cat samples/turret/assets/sparks.lua; } \
     > "$seeds/game_code/turret-with-lua.lst"
-cp samples/turret/assets/turret.solarea "$seeds/level_file/"
+cp samples/turret/assets/turret.sollevel "$seeds/level_file/"
 mkdir -p "$seeds/brush"
-cp tests/fixtures/area/v3/blockout.solarea "$seeds/brush/"
+cp tests/fixtures/area/v4/blockout.sollevel "$seeds/brush/"
 # Older versions of saves and input actions, so the upgraders are fuzzed.
 cp tests/fixtures/save/v1/harbour.solsave "$seeds/save_game/v1.solsave"
 cp tests/fixtures/save/v2/harbour.solsave "$seeds/save_game/v2.solsave"

@@ -9,14 +9,14 @@ fn fresh() -> Workbench {
 
 #[test]
 fn a_word_at_the_start_scores_most_then_inside_then_letters_in_order() {
-    assert_eq!(score("save", "Save area"), Some(3));
-    assert_eq!(score("area", "Save area"), Some(3));
-    assert_eq!(score("ave", "Save area"), Some(2));
-    assert_eq!(score("svar", "Save area"), Some(1));
-    assert_eq!(score("save area", "Save area as…"), Some(6));
-    assert_eq!(score("zebra", "Save area"), None);
+    assert_eq!(score("save", "Save level"), Some(3));
+    assert_eq!(score("level", "Save level"), Some(3));
+    assert_eq!(score("ave", "Save level"), Some(2));
+    assert_eq!(score("svlv", "Save level"), Some(1));
+    assert_eq!(score("save level", "Save level as…"), Some(6));
+    assert_eq!(score("zebra", "Save level"), None);
     assert_eq!(
-        score("save zebra", "Save area"),
+        score("save zebra", "Save level"),
         None,
         "every word must match"
     );
@@ -45,7 +45,7 @@ fn the_best_match_comes_first_and_actions_before_entities() {
     );
     // Nothing typed: the actions, in menu order.
     let all = results(&items, "");
-    assert_eq!(all[0].name, "New area", "no project is open to close");
+    assert_eq!(all[0].name, "New level", "no project is open to close");
     assert!(all.iter().all(|i| i.kind == SearchKind::Action));
     assert!(all.len() <= MAX_SHOWN);
 }

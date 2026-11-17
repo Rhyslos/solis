@@ -19,7 +19,7 @@ For a thing that's pushed around by physics (a ball, a crate) use a [RigidBody](
 
 It has sounds too ([Sound events](sound-events.md)): footsteps as the character walks (faster when it runs, made by the playground's `Footsteps` code), music, a radio on a crate whose chatter makes the music dip as you come near (the [Mixer](mixer.md)'s Voice ducking Music), and a cave with a drip, where every step echoes (a [reverb zone](reverb-zones.md)). The sounds are Solis's own, free to use for anything.
 
-**A character in your own area**
+**A character in your own level**
 1. Add an entity for the character (**Home › Empty**, which adds an empty one, or a model of a person) with its feet where it should stand.
 2. In **Properties**, choose **+ Component › CharacterBody**. A green capsule shows its shape when it's selected. Its feet are at the entity's origin.
 3. Make sure there's ground under it: an entity with a **Collider**, see [Physics](physics.md).

@@ -241,7 +241,7 @@ fn tools(ui: &mut Ui, tab: RibbonTab, front: Option<ShelfTab>, viewer: &mut Pane
         // What to do, where the design has its hint (spec 264).
         ui.label(
             egui::RichText::new(
-                "Drag into the area, or double-click to place where the camera looks",
+                "Drag into the level, or double-click to place where the camera looks",
             )
             .font(crate::tokens::text::ui())
             .color(crate::tokens::text_meta()),

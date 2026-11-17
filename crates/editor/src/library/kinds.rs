@@ -50,7 +50,7 @@ impl LibraryKind {
         match self {
             Self::Model => "Model",
             Self::Assembly => "Assembly",
-            Self::Level => "Area",
+            Self::Level => "Level",
             Self::Texture => "Picture",
             Self::Code => "Code",
             Self::Sound => "Sound",

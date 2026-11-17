@@ -201,7 +201,7 @@ impl Workbench {
                     edits.extend(self.sun_edits(&light, rotation));
                     self.log(
                         LogLevel::Info,
-                        "The file's sun now lights the area; change it under Sun.".to_string(),
+                        "The file's sun now lights the level; change it under Sun.".to_string(),
                     );
                 }
             }

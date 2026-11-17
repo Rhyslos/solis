@@ -343,7 +343,7 @@ impl Workbench {
             );
             ui.painter()
                 .circle_filled(middle, size::STATUS_DOT / 2.0, tokens::WARNING);
-            response.on_hover_text("The area has changes that aren't saved");
+            response.on_hover_text("The level has changes that aren't saved");
         }
     }
 

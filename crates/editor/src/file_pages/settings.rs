@@ -354,7 +354,7 @@ impl Setting {
             S::Density => "Compact fits more rows; Comfortable is easier to click.",
             S::ShelfOpensOn => "Which shelf tab comes to the front when you select something.",
             S::Layout => {
-                "Where the Area, Properties and Assets lists sit on Home: columns beside the \
+                "Where the Level, Properties and Assets lists sit on Home: columns beside the \
                  view, or on the shelf as designed. Changes at once."
             }
             S::ResetLayout => {
@@ -402,7 +402,7 @@ impl Setting {
                 "2D, 3D or both: what the game is made of. Kept in the project's file and shown \
                  on its card in the launcher."
             }
-            S::StartsIn => "The area the exported game opens in.",
+            S::StartsIn => "The level the exported game opens in.",
             S::EngineVersion => "The build of the editor that last opened this project.",
             S::Scripting => {
                 "Game code is written in Lust and opens in your code editor. A code editor \

@@ -155,7 +155,7 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             },
             animation::frames_file::MAX_BYTES as u64,
         ),
-        "solarea" | "solassembly" => (
+        "sollevel" | "solarea" | "solassembly" => (
             &level::text::FORMAT,
             |text| {
                 // Made once for every level the check reads.
@@ -468,7 +468,7 @@ fn play_back(
         .and_then(|b| String::from_utf8(b).map_err(|_| "it isn't text".to_string()))?;
     let recording = input::Recording::read(&text).map_err(|e| e.to_string())?;
     let level_path = recording.level.clone().ok_or(
-        "it doesn't say which area it was recorded in (it was made before recordings did): \
+        "it doesn't say which level it was recorded in (it was made before recordings did): \
          record it again",
     )?;
     let mut w = workbench_for(root, db, program, made_by, &level_path, read)?;
@@ -479,7 +479,7 @@ fn play_back(
         .is_some_and(|world| world.checksum() != recording.start)
     {
         return Err(format!(
-            "its area, {level_path}, isn't as it was when this was recorded (changed since, or \
+            "its level, {level_path}, isn't as it was when this was recorded (changed since, or \
              recorded with unsaved changes): record it again"
         ));
     }
@@ -567,7 +567,7 @@ pub(crate) fn workbench_for(
     let assets = db.project().assets();
     let level_file = assets.join(level_path);
     if !input::Recording::is_plain_level_path(level_path) || !level_file.starts_with(&assets) {
-        return Err(format!("its area, {level_path}, isn't in the assets"));
+        return Err(format!("its level, {level_path}, isn't in the assets"));
     }
     let mut w = editor::Workbench::new(editor::AppInfo {
         name: crate::branding::APP_NAME.to_string(),
@@ -613,7 +613,7 @@ pub(crate) fn workbench_for(
     let sheets = read.sheets.get_or_insert_with(|| read_sheets(db));
     w.set_sprite_sheets(sheets.clone());
     let file = crate::level_file::LevelFiles::read(&level_file, &w.document().registry)
-        .map_err(|why| format!("its area, {level_path}: {why}"))?;
+        .map_err(|why| format!("its level, {level_path}: {why}"))?;
     let level = w.expand_file(&file).map_err(|e| e.to_string())?;
     w.open_level(level, level_file);
     Ok(w)

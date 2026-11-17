@@ -25,7 +25,7 @@ fn info() -> AppInfo {
 #[test]
 fn the_title_names_program_version_and_level() {
     let w = Workbench::new(info());
-    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled area");
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled level");
 }
 
 #[test]
@@ -119,13 +119,16 @@ fn the_editor_draws_every_panel_without_a_gpu() {
         "Place",
         "Console",
         "Problems",
-        "Area",
+        "Level",
         "Properties",
         "Assets",
     ] {
         assert!(h.query_all_by_label(label).count() >= 1, "{label}");
     }
-    let _ = h.get_all_by_label("Untitled area").next().expect("its tab");
+    let _ = h
+        .get_all_by_label("Untitled level")
+        .next()
+        .expect("its tab");
     let _ = h.get_by_label("No 3D view: testing");
 }
 
@@ -174,7 +177,7 @@ fn play_says_what_it_does() {
     let last = h.state().log_lines().last().map(|l| l.text.clone());
     assert!(
         last.as_deref().is_some_and(
-            |l| l.starts_with("Playing. Stop puts the area back as it is now, and asks")
+            |l| l.starts_with("Playing. Stop puts the level back as it is now, and asks")
         ),
         "{last:?}"
     );
@@ -566,7 +569,7 @@ fn help_offers_the_sample_level() {
     let mut h = acting(Workbench::new(info()));
     h.run();
     let ctx = h.ctx.clone();
-    let asked = do_command(&mut h.state_mut().0, &ctx, "Add the sample area");
+    let asked = do_command(&mut h.state_mut().0, &ctx, "Add the sample level");
     assert!(asked.contains(&WorkbenchAction::AddSampleLevel));
 }
 
@@ -780,7 +783,7 @@ fn a_sun_from_a_file_sets_the_level_sun() {
     assert_eq!(
         found.len(),
         1,
-        "the area's sun is changed, not a second added"
+        "the level's sun is changed, not a second added"
     );
     let (id, light) = &found[0];
     assert_eq!((light.color, light.strength), ([1.0, 0.0, 0.0], 7.0));
@@ -1540,7 +1543,7 @@ fn the_library_lists_the_project_and_a_double_click_places() {
         root: "/projects/harbour".into(),
         assets: "/projects/harbour/assets".into(),
     }));
-    assert_eq!(w.title(), "Test Engine 9.9.9 · Harbour · Untitled area");
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Harbour · Untitled level");
     let id = AssetId(reflect::Id::from_raw(42).unwrap());
     w.set_library(vec![crate::library::LibraryItem {
         id: Some(id),
@@ -1593,7 +1596,7 @@ fn opening_another_project_starts_a_new_level_and_reloads_swap_models() {
         assets: std::path::PathBuf::from("/other").join("assets"),
     }));
     assert!(w.models().is_empty());
-    assert_eq!(w.document().level().len(), 2, "a fresh area");
+    assert_eq!(w.document().level().len(), 2, "a fresh level");
 }
 
 #[test]
@@ -1602,8 +1605,8 @@ fn the_tab_and_title_show_unsaved_changes_and_saving_clears_them() {
     assert!(!w.document().is_dirty());
     w.add_point_light();
     assert!(w.document().is_dirty());
-    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled area •");
-    w.mark_saved("/levels/harbour.solarea".into());
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled level •");
+    w.mark_saved("/levels/harbour.sollevel".into());
     assert_eq!(w.title(), "Test Engine 9.9.9 · harbour");
     let mut h = harness_with(w);
     h.run();
@@ -1675,7 +1678,7 @@ fn leaving_unsaved_changes_asks_first() {
 fn a_level_changed_on_disk_reloads_as_one_undoable_step() {
     let mut w = Workbench::new(info());
     let start = w.document().level().clone();
-    w.open_level(start.clone(), "/levels/harbour.solarea".into());
+    w.open_level(start.clone(), "/levels/harbour.sollevel".into());
     let mut changed = start.clone();
     changed.spawn(level::EntityData::new("From Git"));
     w.offer_reload(changed.clone());
@@ -1683,7 +1686,7 @@ fn a_level_changed_on_disk_reloads_as_one_undoable_step() {
     assert!(!w.document().is_dirty(), "it matches the file");
     assert_eq!(
         w.document().history().undo_label(),
-        Some("Reloaded harbour.solarea from disk")
+        Some("Reloaded harbour.sollevel from disk")
     );
     w.undo();
     assert_eq!(w.document().level(), &start);
@@ -1694,7 +1697,7 @@ fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
     let mut w = Workbench::new(info());
     w.open_level(
         level::builtin::starter_level(),
-        "/levels/harbour.solarea".into(),
+        "/levels/harbour.sollevel".into(),
     );
     let mine = w.add_point_light();
     let mut theirs = w.document().level().clone();
@@ -1778,7 +1781,7 @@ fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
         "3 more entities were inside themselves; each is now at the top level."
     );
     // The editor and the game place every one of them alike.
-    w.open_level(read, "/levels/damaged.solarea".into());
+    w.open_level(read, "/levels/damaged.sollevel".into());
     let game = world::World::from_level(w.document().level());
     for (id, _) in w.document().level().iter() {
         assert_eq!(Some(w.document().world_matrix(id)), game.global(id));
@@ -1809,7 +1812,7 @@ fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round(
     lost.parent = Some(EntityId::random());
     let lost = level.spawn(lost);
     let mut w = Workbench::new(info());
-    w.open_level(level, "/levels/ring.solarea".into());
+    w.open_level(level, "/levels/ring.sollevel".into());
     let game = world::World::from_level(w.document().level());
     for (id, data) in w.document().level().iter() {
         let editor = w.document().world_matrix(id);

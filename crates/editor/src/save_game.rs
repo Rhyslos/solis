@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 8
+//! solis save 9
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -52,9 +52,9 @@ use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 8";
+const HEADER: &str = "solis save 9";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 8;
+const SAVE_VERSION: u32 = 9;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -81,6 +81,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         reading::objects_kept,
         reading::speed_kept,
         reading::day_kept,
+        reading::levels_not_areas,
     ],
 };
 
@@ -263,7 +264,7 @@ impl Save {
         let mut section = |name: &str, text: &str| {
             body.push_str(&format!("{name} {}\n{text}\n", text.len()));
         };
-        section("area", &self.level);
+        section("level", &self.level);
         section("values", &self.values);
         section("bindings", &self.bindings);
         let projectiles: String = self

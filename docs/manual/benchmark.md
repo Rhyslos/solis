@@ -8,16 +8,16 @@
 - **When something feels slow:** if the benchmark is fine, the slowness is in your own game, and the [Profiler](profiler.md) shows where.
 
 ## How to use it
-1. On the [launcher](launcher.md)'s **Learn**, click **Make it in a folder…** under **Benchmark** and choose an empty folder (or start a **New project** from **Benchmark**). Solis makes a new project there and opens it on `target.solarea`.
+1. On the [launcher](launcher.md)'s **Learn**, click **Make it in a folder…** under **Benchmark** and choose an empty folder (or start a **New project** from **Benchmark**). Solis makes a new project there and opens it on `target.sollevel`.
 2. Press **Play**. The ships appear over the first few frames (500 a tick, so no frame stalls), then fly and fire.
 3. Open the **Profiler** (beside the Console) to see the frame's time, and where it goes.
-4. Press **Stop**, open another area from the Library, and play that.
+4. Press **Stop**, open another level from the Library, and play that.
 
-| Area | Ships | Lasers in flight | What it shows |
+| Level | Ships | Lasers in flight | What it shows |
 |---|---|---|---|
-| `target.solarea` | 2,000 | about 20,000 | Solis's target: should hold 60 frames a second. |
-| `stress.solarea` | 10,000 | about 100,000 | Far past it: should stay playable (30 frames a second or better) without stutter. |
-| `ceiling.solarea` | 1,000, then more | ten per ship | Adds 1,000 ships every few seconds while it holds 60 frames a second, then says in the Console where it ended: "This computer keeps 60 frames a second up to about 14,000 ships and 140,000 lasers." |
+| `target.sollevel` | 2,000 | about 20,000 | Solis's target: should hold 60 frames a second. |
+| `stress.sollevel` | 10,000 | about 100,000 | Far past it: should stay playable (30 frames a second or better) without stutter. |
+| `ceiling.sollevel` | 1,000, then more | ten per ship | Adds 1,000 ships every few seconds while it holds 60 frames a second, then says in the Console where it ended: "This computer keeps 60 frames a second up to about 14,000 ships and 140,000 lasers." |
 
 The ceiling run measures for two seconds after each step settles, so it takes a minute or two. Keep the window in front while it runs; the frame rate of a window in the background says little.
 
@@ -25,7 +25,7 @@ The ceiling run measures for two seconds after each step settles, so it takes a 
 Everything is ordinary Solis, so you can read and change it:
 - **`ships/fighter.glb`**: a ship model Solis made (about 2,000 triangles, with [levels of detail](levels-of-detail.md)), and **`ships/fighter.solassembly`**, an [assembly](assemblies.md) of it with the `Ship` component.
 - **`main.lst`**: the [game code](game-code.md). `Ship` flies its loop and fires a laser six times a second; `Fleets` makes the ships with `World:spawn`; `Ceiling` is the ceiling run, reading `frameTime()`.
-- The three areas: the sun and sky, a camera, and one entity whose component makes the fleets. Change **Ships** on it in Properties to try your own number.
+- The three levels: the sun and sky, a camera, and one entity whose component makes the fleets. Change **Ships** on it in Properties to try your own number.
 
 ## Tips and common problems
 - **Problem:** the frame rate is stuck at 60 even with few ships. **Why:** your screen shows 60 pictures a second, and Solis waits for it. **Fix:** nothing to fix: 60 is the goal. Ships past that are what the ceiling run finds.

@@ -410,7 +410,7 @@ fn a_damaged_brush_is_named_in_the_problems_list_with_why() {
     let mut entity = level::EntityData::new("Broken");
     entity.components.insert(Brush::NAME.into(), data);
     level.spawn(entity);
-    w.open_level(level, std::path::PathBuf::from("broken.solarea"));
+    w.open_level(level, std::path::PathBuf::from("broken.sollevel"));
     let mut h = harness(w);
     h.run();
     h.run();

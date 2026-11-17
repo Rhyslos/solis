@@ -223,7 +223,7 @@ impl NewFile {
         match self {
             Self::CodeFile => "Lust code file",
             Self::Folder => "Folder",
-            Self::Level => "Area",
+            Self::Level => "Level",
             Self::TileMap => "Tile map",
             Self::Tileset => "Tileset",
             Self::Animator => "Animator",

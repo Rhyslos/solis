@@ -148,7 +148,7 @@ fn a_field_set_by_hand_takes_the_level_s_value_and_the_rest_stays_the_game_s() {
         }
         world.set_by_hand(id, AudioSource::NAME, "playing");
         let (flip, clip, playing, speed, screen) = made(&world, id);
-        assert!(playing, "the area's, set by hand ({rebuild})");
+        assert!(playing, "the level's, set by hand ({rebuild})");
         assert_eq!(
             (flip, clip, speed, screen),
             (true, "wave".into(), 2.0, Some("Hud".into()))

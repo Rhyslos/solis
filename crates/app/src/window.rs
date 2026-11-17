@@ -955,14 +955,18 @@ impl App {
         }
     }
 
-    /// The folder Open and Save windows start in: the project's levels, or
-    /// its assets.
+    /// The folder Open and Save windows start in: the project's levels
+    /// folder (`levels`, or `areas` from before decision 0118), or its
+    /// assets.
     fn levels_folder(&self) -> Option<PathBuf> {
         // A new project's assets folder is made here, for the level about
         // to go in it (decision 0118).
         let assets = self.projects.db()?.project().assets_folder().ok()?;
-        let levels = assets.join("areas");
-        Some(if levels.is_dir() { levels } else { assets })
+        ["levels", "areas"]
+            .into_iter()
+            .map(|name| assets.join(name))
+            .find(|folder| folder.is_dir())
+            .or(Some(assets))
     }
 
     /// Saves a file the editor changed itself (a clips file, an animator,
@@ -1434,7 +1438,7 @@ impl App {
                 let sheets = self.sprites.sheets().clone();
                 self.workbench.file_not_saved(
                     &crate::project::slashed(&path),
-                    "it waited behind the area's save, which didn't happen",
+                    "it waited behind the level's save, which didn't happen",
                     sheets,
                 );
             }
@@ -1607,7 +1611,7 @@ impl App {
     /// project's assets, imported like any other, so a saved level that
     /// uses it finds it again; without one it's read straight from memory.
     fn add_sample(&mut self) {
-        const NAME: &str = "Sample area";
+        const NAME: &str = "Sample level";
         if let Some(cache) = self.projects.cache() {
             // Written beside the cache first, then copied in under a name
             // not yet taken, as a model from elsewhere would be.
@@ -1619,7 +1623,7 @@ impl App {
                 Ok(()) => self.import(&staged),
                 Err(why) => self.workbench.log(
                     LogLevel::Error,
-                    format!("Couldn't add the sample area to the project: {why}."),
+                    format!("Couldn't add the sample level to the project: {why}."),
                 ),
             }
             let _ = std::fs::remove_file(&staged);
@@ -1628,7 +1632,7 @@ impl App {
         let id = self.importer.start_sample(NAME);
         self.to_place.insert(id);
         self.workbench
-            .log(LogLevel::Info, "Adding the sample area…".to_string());
+            .log(LogLevel::Info, "Adding the sample level…".to_string());
     }
 
     /// Makes a new sound event in `folder` (inside the assets) and shows it

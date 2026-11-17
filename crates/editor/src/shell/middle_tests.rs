@@ -154,9 +154,9 @@ fn ctrl_space_folds_the_shelf_and_works_while_typing() {
     h.run();
     assert!(!h.state().0.shelf_folded());
     // While typing in a field, too, and nothing is typed.
-    h.get_by_label("Search the area by name").click();
+    h.get_by_label("Search the level by name").click();
     h.run();
-    h.get_by_label("Search the area").focus();
+    h.get_by_label("Search the level").focus();
     h.run();
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
@@ -224,16 +224,16 @@ fn the_level_s_tab_has_its_plus_and_its_menu() {
     let mut w = Workbench::new(info());
     w.add_point_light();
     let mut h = window(1440.0, 900.0, w);
-    h.get_by_label("New or open an area").click();
+    h.get_by_label("New or open a level").click();
     h.run();
-    let _ = h.get_by_label("Open area\u{2026}");
-    h.get_by_label("New area").click();
+    let _ = h.get_by_label("Open level\u{2026}");
+    h.get_by_label("New level").click();
     h.run();
     h.run();
     // A new level, asked about the unsaved light first.
     assert!(h.state().0.open.unsaved_prompt.is_some());
     h.state_mut().0.open.unsaved_prompt = None;
-    let tab = doc_tab(&h, "Untitled area");
+    let tab = doc_tab(&h, "Untitled level");
     h.hover_at(tab.center());
     h.run();
     h.event(egui::Event::PointerButton {
@@ -271,8 +271,8 @@ fn the_game_tab_comes_to_the_front_on_play_and_goes_on_stop() {
     );
     let game = body(&h, Panel::Game);
     // The level's tab beside it brings the viewport back.
-    let tab = doc_tab(&h, "Untitled area");
-    h.get_all_by_label("Untitled area")
+    let tab = doc_tab(&h, "Untitled level");
+    h.get_all_by_label("Untitled level")
         .find(|n| n.rect() == tab)
         .unwrap()
         .click();

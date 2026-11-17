@@ -72,7 +72,7 @@ fn objects_the_code_no_longer_has_are_said_and_left_out() {
 
 #[test]
 fn a_damaged_objects_section_starts_the_objects_afresh() {
-    let objects = super::objects_of("not an area", &[]);
+    let objects = super::objects_of("not a level", &[]);
     assert!(objects.is_err());
     assert!(super::objects_of("", &[]).unwrap().is_empty());
     let mut clock = reflect::ComponentData::default();

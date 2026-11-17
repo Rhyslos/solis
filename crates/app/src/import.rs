@@ -271,11 +271,11 @@ mod tests {
     #[test]
     fn the_sample_level_reads_in_the_background() {
         let mut importer = Importer::new(4096, 256 << 20);
-        let id = importer.start_sample("Sample area");
+        let id = importer.start_sample("Sample level");
         let done = wait(&mut importer);
         assert_eq!(done[0].id, id);
         let model = done[0].result.as_ref().unwrap();
-        assert_eq!(model.name, "Sample area");
+        assert_eq!(model.name, "Sample level");
         assert!(model.meshes.len() > 10);
     }
 

@@ -328,7 +328,7 @@ fn on_the_library_tab_f2_and_delete_are_the_picked_file_s_and_never_the_level_s(
                 PICTURE.into()
             ))
     );
-    assert_eq!(level_now(&h.state().0), before, "the area is as it was");
+    assert_eq!(level_now(&h.state().0), before, "the level is as it was");
 }
 
 /// The screen's text with the pointer over `panel` (the Canvas or
@@ -361,7 +361,7 @@ fn delete_over_the_canvas_or_elements_removes_the_piece_and_not_the_entity() {
         assert_eq!(
             level_now(&h.state().0),
             before,
-            "{panel:?}: the area is as it was"
+            "{panel:?}: the level is as it was"
         );
     }
 }
@@ -383,7 +383,7 @@ fn ctrl_d_over_the_canvas_or_elements_copies_the_piece_and_not_the_entity() {
         assert_eq!(
             level_now(&h.state().0),
             before,
-            "{panel:?}: the area is as it was"
+            "{panel:?}: the level is as it was"
         );
     }
 }
@@ -421,7 +421,7 @@ fn delete_over_the_atlas_crop_tab_removes_the_crop_and_not_the_entity() {
     h.key_press(egui::Key::Delete);
     h.run();
     assert_eq!(crops(&h), 1, "the picked crop went");
-    assert_eq!(level_now(&h.state().0), before, "the area is as it was");
+    assert_eq!(level_now(&h.state().0), before, "the level is as it was");
 }
 
 #[test]
@@ -528,7 +528,7 @@ fn ctrl_z_and_ctrl_y_over_a_tab_are_for_that_tab_s_own_changes() {
         assert_eq!(
             level_now(&h.state().0),
             before,
-            "{panel:?}: the area is as it was"
+            "{panel:?}: the level is as it was"
         );
     }
 }
@@ -712,7 +712,7 @@ fn over_properties_showing_the_screen_the_keys_are_the_screen_s() {
     let before = level_now(&h.state().0);
     h.key_press(egui::Key::Delete);
     h.run();
-    assert_eq!(level_now(&h.state().0), before, "the area is as it was");
+    assert_eq!(level_now(&h.state().0), before, "the level is as it was");
     assert!(!screen_text(&h).contains("Resume"), "the piece went");
     // On Home, Properties shows the level's again, and the keys are its.
     h.state_mut().0.show_tab(crate::shell::RibbonTab::Home);

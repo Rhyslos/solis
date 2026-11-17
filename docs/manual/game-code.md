@@ -3,7 +3,7 @@
 > Your game's own rules (how a turret aims, when a door opens) are written as code, as components you put on entities. Solis checks the code as you save, shows its fields in Properties, and runs it when you press Play.
 
 ## When to use it
-Whenever your game needs to *do* something: react to the player, count score, move things on its own. Areas and assemblies say what's in the world; [game code](concepts.md#game-code) says what happens in it.
+Whenever your game needs to *do* something: react to the player, count score, move things on its own. Levels and assemblies say what's in the world; [game code](concepts.md#game-code) says what happens in it.
 
 Solis games can be written in three languages:
 - **[Lust](concepts.md#game-code)**, made for Solis's kind of games and the one this manual teaches first;
@@ -70,7 +70,7 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 
 ## Components
 
-A [component](concepts.md#the-area) written in Lust works like Solis's own: put it on an entity, set its fields in Properties, and it does its job when the game runs. This one moves its entity along, a little every tick:
+A [component](concepts.md#the-level) written in Lust works like Solis's own: put it on an entity, set its fields in Properties, and it does its job when the game runs. This one moves its entity along, a little every tick:
 
 ```lust
 component Mover {
@@ -154,15 +154,15 @@ end
 **In Rust**, a component is a type that implements `script::RustComponent`: `update` and `handle` (for events) are the ones you write, `cx.me()` is the entity, and `cx.host()` reaches the engine with the same calls in snake case (`position`, `move_to`). `values` and `set` hand its fields to Properties and save games, and a `RustKind` tells Solis its name, its fields and how to make one. Those parts always have this shape, so the other Rust examples in this manual leave them out. Solis can't build a game's own Rust yet (that comes with the full export); until then the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
 
 1. Save the file. When the code has no mistakes, **Mover** appears in Properties' **+ Component** list.
-2. Select an entity and add **Mover**. Its `has` fields show in Properties with their starting values (`speed` as **Speed**), and are saved in the area like any other component's.
+2. Select an entity and add **Mover**. Its `has` fields show in Properties with their starting values (`speed` as **Speed**), and are saved in the level like any other component's.
 3. Press **Play**. Every [tick](concepts.md#game-code) (60 times a second), Solis runs each component's `update`, with `dt`, how long a tick is in seconds. `this` is the entity the component is on (older code says `me`, which still works: the Console shows a note saying to write `this`). The Game panel shows the entity moving.
 4. Change **Speed** in Properties while it plays: the running Mover takes the new speed at once, and keeps everything else it has (here, where it is). While the game plays, Properties shows a game code component's values as they are right now, not the ones it started with: a turret that has fired shows the ammo it has left. Why? So you can watch what your code is doing without writing anything to the Console. A value you set there is taken by the running component as you set it, even when it's the value it started with: type the turret's full ammo and it has full ammo again. (With several entities selected, it shows the values they started with.)
-5. Press **Stop**. Everything the game changed is back as it was before Play. The Speed you changed yourself is a change to the area, so Solis lists it and asks: **Keep** it, or **Undo all** (see [Play mode](play-mode.md)).
+5. Press **Stop**. Everything the game changed is back as it was before Play. The Speed you changed yourself is a change to the level, so Solis lists it and asks: **Keep** it, or **Undo all** (see [Play mode](play-mode.md)).
 
 What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `vec2`, `rotation`, `colour` and `entity` (another entity, or `nothing`).
 
 - **`vec2`** is two numbers, for 2D: a place on a tile map, a direction to walk (`vec2 speed = [2, -1];`). Properties shows its X and Y.
-- **`colour`** is red, green and blue from 0 to 1, and how solid it is (`colour tint = orange5;`, `colour shadow = [0, 0, 0, 0.5];`). Properties shows a colour picker; picking a colour keeps how see-through it was. **Why it matters:** a field of either kind is saved in the area and in save games, and a loaded game carries on with it exactly as it was.
+- **`colour`** is red, green and blue from 0 to 1, and how solid it is (`colour tint = orange5;`, `colour shadow = [0, 0, 0, 0.5];`). Properties shows a colour picker; picking a colour keeps how see-through it was. **Why it matters:** a field of either kind is saved in the level and in save games, and a loaded game carries on with it exactly as it was.
 - **In Lua** they're tables: `{ "speed", "vec2", { x = 2, y = -1 } }` and `{ "tint", "colour", { r = 1, g = 0.5, b = 0 } }` (`a`, how solid, is 1 when left out). **In Rust** they're `FieldKind::Vec2` and `FieldKind::Color` (a colour's fourth number is there only when it isn't solid).
 
 **Order:** each tick runs entities in the order of their IDs, and an entity's components in the order of their names, so a game runs the same way every time.
@@ -476,9 +476,9 @@ end
 ```
 
 - **Which assembly:** one of the project's, named from its file with folders as options inside options: `ships/fighter.solassembly` is `Assembly.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove an assembly, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Assembly.None` is there when the project has none, and makes nothing.
-- **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the area's tree, in the order they were spawned.
-- **Where it shows:** copies game code makes appear in the Area panel while playing, and are gone when you press **Stop**, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours ([Play mode](play-mode.md)), so a change you make to one of these copies goes with it.
-- At most 10,000 copies are made in one tick, and an area holds at most a million entities; past that, the Console says so and the rest aren't made.
+- **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.
+- **Where it shows:** copies game code makes appear in the Level panel while playing, and are gone when you press **Stop**, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours ([Play mode](play-mode.md)), so a change you make to one of these copies goes with it.
+- At most 10,000 copies are made in one tick, and a level holds at most a million entities; past that, the Console says so and the rest aren't made.
 - **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places an assembly (…) that isn't in the project, so nothing was made.* The reasons are those of [assemblies](assemblies.md) themselves: the assembly places another whose file is missing or can't be read, assemblies place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each assembly's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the assembly and press Play again.
 - `despawn()` is how a component takes its own entity away, and `target:despawn()` takes another. It ends at the end of the tick.
 
@@ -794,7 +794,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 |---|---|---|
 | `solis/world` | `World:say(string words)` | Writes words in the Console. |
 | `solis/world` | `float World:time()` | How long the game has been running, in seconds. |
-| `solis/world` | `entity World:find(string name)` | The first entity with this name, in the Area panel's order, or `nothing`. |
+| `solis/world` | `entity World:find(string name)` | The first entity with this name, in the Level panel's order, or `nothing`. |
 | `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
 | `solis/world` | `entity World:spawn(Assembly which, vec3 place)` | Makes a copy of one of the project's assemblies at a place (see Making and removing entities, below). |
 | `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |

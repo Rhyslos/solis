@@ -36,6 +36,17 @@ fn every_layout_has_its_names_and_reads_back_by_its_key() {
     }
     assert_eq!(PanelLayout::default(), PanelLayout::LevelLeftAssetsBottom);
     assert_eq!(PanelLayout::from_key("diagonal"), None);
+    // Saved before levels were renamed from areas (decision 0118).
+    for (old, layout) in [
+        (
+            "area left assets bottom",
+            PanelLayout::LevelLeftAssetsBottom,
+        ),
+        ("area and assets left", PanelLayout::LevelAndAssetsLeft),
+        ("area left assets right", PanelLayout::LevelLeftAssetsRight),
+    ] {
+        assert_eq!(PanelLayout::from_key(old), Some(layout), "{old}");
+    }
     assert!(!PanelLayout::Shelf.is_side());
 }
 
@@ -227,7 +238,7 @@ fn shelf_columns_take_their_widths_and_the_rest_takes_what_is_left() {
     assert_eq!(edges, [edge(0), edge(2)]);
     assert_eq!(borders[0].measure, Measure::FromLeft(rects[0].left()));
     assert_eq!(borders[1].measure, Measure::FromRight(rects[2].right()));
-    assert_eq!(borders[0].name(), "Between Area and Properties");
+    assert_eq!(borders[0].name(), "Between Level and Properties");
 }
 
 #[test]

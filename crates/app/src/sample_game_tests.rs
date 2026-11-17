@@ -4,7 +4,7 @@ use reflect::Value;
 /// Writes the sample's level (run once with SOLIS_WRITE_SAMPLE=1 to make
 /// `samples/turret/assets/turret.sollevel`; the file is committed).
 #[test]
-#[ignore = "makes the sample's area file"]
+#[ignore = "makes the sample's level file"]
 fn write_the_sample_level() {
     use glam::{Mat3, Quat, Vec3};
     use level::builtin::{Camera, Transform};

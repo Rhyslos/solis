@@ -238,7 +238,7 @@ pub(crate) fn properties(
         );
         empty_note(
             ui,
-            "Nothing selected. Pick something in the viewport or the Area column.",
+            "Nothing selected. Pick something in the viewport or the Level column.",
         );
         if let Some(hints) = hints {
             egui::Frame::new()

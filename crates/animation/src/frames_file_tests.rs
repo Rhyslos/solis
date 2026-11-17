@@ -108,7 +108,7 @@ fn lines_it_can_t_use_are_skipped_with_a_note() {
 fn files_it_can_t_read_are_refused_with_their_line() {
     assert!(read("").is_err());
     assert!(
-        read("area version 1;")
+        read("level version 1;")
             .unwrap_err()
             .message
             .contains("frames")

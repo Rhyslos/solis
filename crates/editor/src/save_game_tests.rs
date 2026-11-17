@@ -269,9 +269,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 8", "solis save 9", 1),
-        text.replacen("solis save 8", "solis save 2", 1),
-        text.replacen("solis save 8", "solis save 1", 1),
+        text.replacen("solis save 9", "solis save 10", 1),
+        text.replacen("solis save 9", "solis save 2", 1),
+        text.replacen("solis save 9", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -306,12 +306,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 8\r", "solis save 8 "] {
-        let why = Save::read(&text.replacen("solis save 8", header, 1)).unwrap_err();
+    for header in ["solis save 9\r", "solis save 9 "] {
+        let why = Save::read(&text.replacen("solis save 9", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 8", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 9", "solis save 10", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -728,7 +728,7 @@ fn write_fuzz_seeds() {
     );
     put(
         "level_file",
-        "busy.solarea",
+        "busy.sollevel",
         &level::text::write(w.open.document.level(), &w.open.document.registry, &|_| {
             None
         }),
@@ -838,6 +838,56 @@ fn every_version_of_a_save_loads_and_plays_on() {
         !save_fixtures()
             .join(format!("v{}", super::SAVE_VERSION + 1))
             .exists()
+    );
+}
+
+#[test]
+fn the_version_8_example_is_written_as_the_version_9_one() {
+    // Decision 0118: version 9 calls the level's section `level` (it was
+    // `area`); everything else, the level's own text too, is as it was.
+    let eight = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
+    let nine = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
+    let section = |text: &str, name: &str| {
+        text.lines().any(|l| {
+            l.strip_prefix(name)
+                .and_then(|n| n.strip_prefix(' '))
+                .is_some_and(|n| n.parse::<usize>().is_ok())
+        })
+    };
+    assert!(section(&eight, "area") && !section(&eight, "level"));
+    assert!(section(&nine, "level") && !section(&nine, "area"));
+    assert_eq!(super::save_read_back(&eight).unwrap(), nine);
+    assert_eq!(super::save_read_back(&nine).unwrap(), nine);
+    // A version 8 save with no area, or a level already, isn't one.
+    let sections = |text: &str| {
+        let mut read = Sections::default();
+        let body = text
+            .split_once("\nsum ")
+            .unwrap()
+            .1
+            .split_once('\n')
+            .unwrap()
+            .1;
+        let mut rest = body;
+        while let Some((head, after)) = rest.split_once('\n') {
+            let (name, len) = head.split_once(' ').unwrap();
+            let len: usize = len.parse().unwrap();
+            read.list.push((name.to_string(), after[..len].to_string()));
+            rest = &after[(len + 1).min(after.len())..];
+        }
+        read
+    };
+    let mut found = sections(&eight);
+    assert!(super::reading::levels_not_areas(&mut found).is_ok());
+    assert!(found.list.iter().any(|(n, _)| n == "level"));
+    assert!(
+        super::reading::levels_not_areas(&mut found).is_err(),
+        "a level already"
+    );
+    found.list.retain(|(n, _)| n != "level");
+    assert!(
+        super::reading::levels_not_areas(&mut found).is_err(),
+        "no area"
     );
 }
 
@@ -958,7 +1008,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 8\n"));
+    assert!(text.starts_with("solis save 9\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);
@@ -1119,7 +1169,7 @@ fn a_game_whose_map_couldn_t_be_loaded_again_isn_t_saved() {
 
 #[test]
 fn a_save_keeps_the_game_s_speed() {
-    let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.speed, 0.5);
     assert_eq!(save.write().unwrap(), text, "read back as written");
@@ -1167,7 +1217,7 @@ fn loading_a_game_keeps_the_player_s_settings() {
 
 #[test]
 fn a_save_keeps_the_time_of_day() {
-    let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.day_shift, 6.0);
     assert_eq!(save.write().unwrap(), text, "read back as written");

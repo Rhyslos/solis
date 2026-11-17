@@ -32,17 +32,17 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 |---|---|
 | `help` | Lists every command. `help set` says how one is used. |
 | `clear` | Empties the Console. |
-| `select Crate Lamp` | Selects every entity with those names (or [IDs](concepts.md#the-area)). `select all` selects everything, `select none` nothing. |
+| `select Crate Lamp` | Selects every entity with those names (or [IDs](concepts.md#the-level)). `select all` selects everything, `select none` nothing. |
 | `find har` | Lists the entities whose names contain "har", with their IDs. |
 | `frame` | Points the camera at the selection, like **F**. |
 | `new Harbour wall` | Adds an empty entity where the camera looks, named as you say, and selects it. |
 | `delete` | Deletes the selection and everything under it. |
 | `duplicate` | Duplicates the selection, like **Ctrl + D**. |
-| `get Transform` | Shows a [component's](concepts.md#the-area) settings on the selected entity. `get Light.color` shows one. While the game plays, it shows them as the game has them now. |
+| `get Transform` | Shows a [component's](concepts.md#the-level) settings on the selected entity. `get Light.color` shows one. While the game plays, it shows them as the game has them now. |
 | `values Hero` | Shows every component of the entity called Hero (or, with no name, the selected one) as it is now. While the game plays, that's as game code has changed it: the score, the hero's health, where things are. Properties shows the same for the selected entity. |
-| `set Transform.position 0 0 2` | Changes a setting on every selected entity that has that component, as one undo step. While the game plays, the running game takes the value as well, whatever it had made of it: `set Score.points 0` starts the score again, even though the area held 0 all along (it's `get` that shows the game's value). Stop then lists it with your other changes. |
+| `set Transform.position 0 0 2` | Changes a setting on every selected entity that has that component, as one undo step. While the game plays, the running game takes the value as well, whatever it had made of it: `set Score.points 0` starts the score again, even though the level held 0 all along (it's `get` that shows the game's value). Stop then lists it with your other changes. |
 | `undo`, `redo` | Like **Ctrl + Z** and **Ctrl + Y**. |
-| `save` | Saves the area, like **Ctrl + S**. |
+| `save` | Saves the level, like **Ctrl + S**. |
 | `look unlit` | Chooses the viewport's [look](looks.md): standard, stylized or unlit. |
 | `tool rotate` | Chooses a tool: select, move, rotate, scale or transform. |
 | `play`, `pause`, `step`, `stop` | Like the buttons at the top (`step` runs one tick while paused): see [Play mode](play-mode.md). |
@@ -75,7 +75,7 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 - **Problem:** `set` says "nothing selected has a Light". **Why:** `set` only changes entities that have that component; it never adds one. **Fix:** select the right entities, or add the component in [Properties](entities.md) first.
 - **Problem:** "No sound: couldn't open the sound card …". **Why:** Solis found no [sound card](concepts.md#sound) it could use (none plugged in, or another program holding it). **Fix:** nothing is broken, and everything else works. Plug in speakers or a headset: Solis tries again every 30 seconds and says "Sound is on." when it finds one.
 - The Console keeps the newest 2,000 messages. Messages from other libraries that repeat every frame are shown once.
-- Mistakes in the area itself (a missing model, say) are listed in the [Problems](problems.md) panel, beside the Console.
+- Mistakes in the level itself (a missing model, say) are listed in the [Problems](problems.md) panel, beside the Console.
 
 ## Related
 - [Problems](problems.md)

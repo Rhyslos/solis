@@ -86,9 +86,11 @@ impl Projects {
             }
             other => other?,
         };
-        // Older files Solis made move to Lust first (decision 0081), so
-        // the asset database finds them under their new names.
-        let moved = crate::to_lust::move_older_files(root, &project.assets());
+        // Older files Solis made move to their new names first (Lust,
+        // decision 0081; areas to levels, decision 0118), so the asset
+        // database finds them there; then the project file says so.
+        let mut moved = crate::older_files::move_older_files(root, &project.assets());
+        moved.extend(upgrade_project_file(root, &project));
         let (watcher, watching_root) = watch(root, &project.assets());
         let (db, _, mut notes) = AssetDb::open(project, limits);
         notes.splice(0..0, moved);
@@ -529,8 +531,8 @@ impl Projects {
     /// Makes a new text file inside the assets (E1): a Lust code file
     /// (`.lst`) or a level (`.sollevel`). Never replaces a file.
     pub fn save_new_text(&self, path: &Path, text: &str) -> Result<(), String> {
-        let (_, file) = self.place(path, "a code file or an area", |path| {
-            ends_in(path, &["lst", "solarea"])
+        let (_, file) = self.place(path, "a code file or a level", |path| {
+            ends_in(path, &["lst", asset_db::LEVEL_EXTENSION])
         })?;
         if file.exists() {
             return Err("a file is already there".to_owned());
@@ -650,6 +652,22 @@ struct Saved<'a> {
 /// A watcher on the project in `root`: on its assets folder and all in
 /// it, or, while it has none (a new project, decision 0118), on the
 /// project's own folder alone, to see one made (the `bool` says so).
+/// Brings the project file up to this build's format, keeping a copy of
+/// the older one in the backups (`Project::upgrade_file`): format 2 once
+/// its levels are `.sollevel` files (decision 0118), so a build from
+/// before refuses the project as newer instead of opening it without
+/// them. A note for the Console when it changed or couldn't be.
+fn upgrade_project_file(root: &Path, project: &Project) -> Option<String> {
+    let file = asset_db::PROJECT_FILE;
+    match project.upgrade_file() {
+        Ok(Some(copy)) => Some(crate::upgrades::kept_note(root, file, &copy)),
+        Ok(None) => None,
+        Err(why) => Some(format!(
+            "{file} couldn't be saved in the current format ({why}); it's read as it is."
+        )),
+    }
+}
+
 /// None if the system won't watch.
 fn watch(root: &Path, assets: &Path) -> (Option<Watcher>, bool) {
     if assets.is_dir() {
@@ -750,6 +768,10 @@ pub fn slashed(path: &Path) -> String {
 #[cfg(test)]
 #[path = "project_saving_tests.rs"]
 mod saving_tests;
+
+#[cfg(test)]
+#[path = "project_levels_tests.rs"]
+mod levels_tests;
 
 #[cfg(test)]
 mod tests {
@@ -948,7 +970,7 @@ mod tests {
             "end\n"
         );
         projects
-            .save_new_text(Path::new("level.solarea"), "area version 3;\n")
+            .save_new_text(Path::new("level.sollevel"), "level version 4;\n")
             .unwrap();
         // Never over a file, never outside the assets, only code and levels.
         for (path, why) in [

@@ -382,7 +382,7 @@ impl Runtime {
                 .retain(|_, r| matches!(r.instance, Instance::Rust(_)));
             swapped.notes.push(format!(
                 "The running components couldn't all take the new code ({}), so they started \
-                 again from the area's values.",
+                 again from the level's values.",
                 lua_problem("", &err).message
             ));
         }

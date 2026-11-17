@@ -417,7 +417,7 @@ icons! {
     Layers = "layers", Line,
         lines: ["M8 2.5l6 3-6 3-6-3z", "M2 8.25l6 3 6-3", "M2 11l6 3 6-3"];
     /// Hills under a sun: A level file; its document tab.
-    LevelFile = "area", Line,
+    LevelFile = "level", Line,
         lines: ["M1.5 13L6 6.5l3 4 2-2.5 3.5 5z", "M10 4.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0z"];
     /// Angle brackets round a slash: Game code; the Code filter.
     Code = "code", Line,
@@ -489,7 +489,7 @@ icons! {
             "M8 11.5V14M5.5 14h5",
         ];
     /// A trunk with two branches: The Level column.
-    Level = "area-tree", Line,
+    Level = "level-tree", Line,
         lines: ["M2.5 3h5", "M4 3v9.5h2.5", "M4 7.75h2.5", "M8.5 7.75h5", "M8.5 12.5h5"];
     /// Names with their values: The Properties column.
     Properties = "properties", Line,

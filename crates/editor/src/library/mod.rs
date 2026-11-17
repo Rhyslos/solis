@@ -371,8 +371,8 @@ fn new_items(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
             LibraryRequest::NewFolder,
         ),
         (
-            "Area",
-            "An empty area (a level), saved here and opened",
+            "Level",
+            "An empty level (a level), saved here and opened",
             LibraryRequest::NewLevel,
         ),
         (

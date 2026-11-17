@@ -127,7 +127,7 @@ impl Component for Environment {
         let d = Self::default();
         ComponentSchema {
             name: Self::NAME.into(),
-            help: "The sky, fog, exposure and tone mapping of the area.".into(),
+            help: "The sky, fog, exposure and tone mapping of the level.".into(),
             fields: vec![
                 field::choice(
                     "sky",

@@ -10,9 +10,9 @@ It's a **playtest** build, made in seconds, because the game's Lust and Lua code
 
 ## How to use it
 
-1. Open your project, and save the area your game starts in.
+1. Open your project, and save the level your game starts in.
 2. Click **Build** in the tab bar (or **Build** in the Home ribbon's Project group, or search for **Export for playtesting…**). The Build tab is **Export for playtesting** as a page, with the [Console](console.md) on the shelf under it. The same settings are also in **File › Project settings › Build**.
-3. Check the settings (see the table below). They start from your project's name and the open area, and next time from what you chose last. The name, area and window are remembered with the project. The folder is remembered by Solis on this computer, so a project you got from someone else never decides where its export goes.
+3. Check the settings (see the table below). They start from your project's name and the open level, and next time from what you chose last. The name, level and window are remembered with the project. The folder is remembered by Solis on this computer, so a project you got from someone else never decides where its export goes.
 4. Click **Export** at the end of the Export row (the big **Export** on the Build tab's ribbon does the same). The card beside the settings and the Console say where it went. Click **Open folder** on the card, or on the Build tab's ribbon, to see it.
 5. Zip that folder (in Windows Explorer, right-click it, then **Send to > Compressed (zipped) folder**) and send the zip.
 
@@ -23,8 +23,8 @@ Your friend unzips it (all of it, somewhere they can write, such as their Docume
 | File | What it is |
 |---|---|
 | `<Game>.exe` | The program, named after your game. It's the same program as the editor: finding `playtest.txt` beside itself, it plays instead. |
-| `playtest.txt` | The game's name, the area it starts in, and its first window. |
-| `game/` | Your project's files: code, areas, sprites, sounds, screens. The editor's own things stay out: its cache, saves, recordings, backups and Git's history. |
+| `playtest.txt` | The game's name, the level it starts in, and its first window. |
+| `game/` | Your project's files: code, levels, sprites, sounds, screens. The editor's own things stay out: its cache, saves, recordings, backups and Git's history. |
 
 **Where the player's things go:** everything that's the player's goes in their own folder, `Saved Games/<Game>` on Windows (next to other games' saves):
 
@@ -40,7 +40,7 @@ Your friend unzips it (all of it, somewhere they can write, such as their Docume
 | Setting | What it does |
 |---|---|
 | Game's name | The program's name (`Farm.exe`), the window's title, and the player's saves folder (`Saved Games/Farm`). Characters Windows can't use in file names are taken out. Keep it the same between builds, so saves carry over. |
-| Starts in | The area the game opens in. |
+| Starts in | The level the game opens in. |
 | Into the folder | Where the export goes. Solis suggests a new dated folder each time, beside your last export (in Documents the first time), so older builds stay. A folder that already has files in it isn't used, and nor is one inside your project. If the suggested folder has files in already (a second export the same day), the export goes in a numbered folder beside it, ending `(2)`, then `(3)`; the page and the Console say which. A folder you typed or chose with **…** is used exactly as given, or refused. Solis doesn't look inside any folder until you click **Export**. |
 | Window | **Windowed** or **Fullscreen**, and the window's size, when the game first starts. After that, the player's own choice (in your game's menu, or with Alt+Enter) is kept. |
 

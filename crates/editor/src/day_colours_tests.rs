@@ -116,7 +116,7 @@ fn with_a_day(hour: f64) -> crate::workbench::Workbench {
     for e in entities {
         level.spawn(e);
     }
-    w.open_level(level, std::path::PathBuf::from("day.solarea"));
+    w.open_level(level, std::path::PathBuf::from("day.sollevel"));
     w
 }
 

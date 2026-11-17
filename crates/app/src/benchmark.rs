@@ -18,9 +18,9 @@ pub const NAME: &str = "Benchmark";
 
 /// The levels, as (file in the assets, ships made; 0 for the ceiling run).
 pub const LEVELS: [(&str, u32); 3] = [
-    ("target.solarea", 2_000),
-    ("stress.solarea", 10_000),
-    ("ceiling.solarea", 0),
+    ("target.sollevel", 2_000),
+    ("stress.sollevel", 10_000),
+    ("ceiling.sollevel", 0),
 ];
 
 /// The level the benchmark opens on.
@@ -196,7 +196,7 @@ mod tests {
         let registry = level::builtin::registry().unwrap();
         for (path, bytes) in files() {
             let text = String::from_utf8_lossy(&bytes);
-            if path.ends_with(".solarea") || path.ends_with(".solassembly") {
+            if path.ends_with(".sollevel") || path.ends_with(".solassembly") {
                 let file = level::text::read_file(&text, &registry)
                     .unwrap_or_else(|e| panic!("{path}: {e}"));
                 assert!(!file.level.is_empty(), "{path}");
@@ -213,7 +213,7 @@ mod tests {
         let folder = reflect::test_support::TempFolder::new("benchmark").unwrap();
         make(&folder).unwrap();
         assert!(folder.join("assets/ships/fighter.glb").exists());
-        assert!(folder.join("assets/ceiling.solarea").exists());
+        assert!(folder.join("assets/ceiling.sollevel").exists());
         assert!(make(&folder).is_err());
     }
 }
@@ -278,7 +278,7 @@ mod play_tests {
 
     #[test]
     fn the_target_level_makes_its_fleets_and_they_fly_and_fire() {
-        let mut w = playing("target", "target.solarea", |d| {
+        let mut w = playing("target", "target.sollevel", |d| {
             d.set("ships", Value::Int(60));
         });
         w.play();
@@ -308,7 +308,7 @@ mod play_tests {
 
     #[test]
     fn the_ceiling_run_adds_ships_until_60_fps_ends_and_says_where() {
-        let mut w = playing("ceiling", "ceiling.solarea", |d| {
+        let mut w = playing("ceiling", "ceiling.sollevel", |d| {
             d.set("step", Value::Int(20));
         });
         w.play();
@@ -351,7 +351,7 @@ mod picture_tests {
         let Some(dir) = std::env::var_os("DUMP_DIR") else {
             return;
         };
-        let mut w = playing("picture", "target.solarea", |_| {});
+        let mut w = playing("picture", "target.sollevel", |_| {});
         w.play();
         for _ in 0..150 {
             w.play_for(1.0 / 60.0);

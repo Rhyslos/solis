@@ -15,7 +15,7 @@ use reflect::EntityId;
 /// edit of the user's made while playing: the lamp.
 fn playing_with_an_edit() -> (Workbench, EntityId) {
     let mut w = Workbench::new(info());
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let lamp = w.add_point_light();
     (w, lamp)
@@ -40,7 +40,7 @@ fn leaving() -> Vec<WorkbenchAction> {
     vec![
         WorkbenchAction::NewLevel,
         WorkbenchAction::OpenLevel,
-        WorkbenchAction::OpenLevelFile("/p/assets/other.solarea".into()),
+        WorkbenchAction::OpenLevelFile("/p/assets/other.sollevel".into()),
         WorkbenchAction::CloseProject,
         WorkbenchAction::OpenProject,
         WorkbenchAction::OpenRecent("/other".into()),
@@ -248,14 +248,14 @@ fn another_level_put_in_place_takes_the_question_with_the_old_one() {
     let (mut w, lamp) = asked();
     w.open_level(
         level::builtin::starter_level(),
-        "/p/assets/b.solarea".into(),
+        "/p/assets/b.sollevel".into(),
     );
     assert!(w.play_changes().is_none());
     w.keep_play_changes();
     assert!(!w.document().level().contains(lamp));
     assert_eq!(
         w.document().file(),
-        Some(std::path::Path::new("/p/assets/b.solarea"))
+        Some(std::path::Path::new("/p/assets/b.sollevel"))
     );
     let (mut w, lamp) = asked();
     w.new_level();

@@ -214,7 +214,7 @@ fn every_chain_into_every_loop_is_mended_with_one_move() {
 /// The finding's file: `count` entities, each its own parent, each
 /// with a Transform that scales.
 fn every_entity_its_own_parent(count: u64) -> String {
-    let mut text = String::from("area version 1;\n");
+    let mut text = String::from("level version 1;\n");
     for n in 1..=count {
         let id = id(n);
         text.push_str(&format!(
@@ -289,7 +289,7 @@ fn the_tree_and_the_walk_place_every_damaged_level_alike() {
 fn the_fuzzers_seed_of_loops_reads_and_is_mended() {
     // fuzz/seeds/level_file/parent-loops.sollevel: what the level fuzzer
     // starts from, so loops are tried every week. One of each kind.
-    let text = include_str!("../../../fuzz/seeds/level_file/parent-loops.solarea");
+    let text = include_str!("../../../fuzz/seeds/level_file/parent-loops.sollevel");
     let registry = crate::builtin::registry().unwrap();
     let file = crate::text::read_file(text, &registry).unwrap();
     assert_eq!(Tree::of(&file.level).reachable().len(), 2, "as written");

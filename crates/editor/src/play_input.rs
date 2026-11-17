@@ -266,8 +266,8 @@ impl Workbench {
         if level.is_some() && self.open.document.is_dirty() {
             self.log(
                 LogLevel::Warning,
-                "The area has unsaved changes: save it before recording, or this recording \
-                 won't play back the same in a project's check (which reads the saved area).",
+                "The level has unsaved changes: save it before recording, or this recording \
+                 won't play back the same in a project's check (which reads the saved level).",
             );
         }
         self.play();
@@ -349,7 +349,7 @@ impl Workbench {
         if !same_start {
             self.log(
                 LogLevel::Warning,
-                "The area isn't as it was when this was recorded, so it may not play back the \
+                "The level isn't as it was when this was recorded, so it may not play back the \
                  same.",
             );
         }

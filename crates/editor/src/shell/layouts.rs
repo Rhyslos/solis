@@ -61,9 +61,9 @@ impl PanelLayout {
     /// Its words in the list.
     pub fn name(self) -> &'static str {
         match self {
-            Self::LevelLeftAssetsBottom => "Area left, Assets bottom",
-            Self::LevelAndAssetsLeft => "Area and Assets on the left",
-            Self::LevelLeftAssetsRight => "Area left, Assets right",
+            Self::LevelLeftAssetsBottom => "Level left, Assets bottom",
+            Self::LevelAndAssetsLeft => "Level and Assets on the left",
+            Self::LevelLeftAssetsRight => "Level left, Assets right",
             Self::Shelf => "The shelf (as designed)",
         }
     }
@@ -71,16 +71,30 @@ impl PanelLayout {
     /// What it is, as saved among the sizes.
     pub fn key(self) -> &'static str {
         match self {
-            Self::LevelLeftAssetsBottom => "area left assets bottom",
-            Self::LevelAndAssetsLeft => "area and assets left",
-            Self::LevelLeftAssetsRight => "area left assets right",
+            Self::LevelLeftAssetsBottom => "level left assets bottom",
+            Self::LevelAndAssetsLeft => "level and assets left",
+            Self::LevelLeftAssetsRight => "level left assets right",
             Self::Shelf => "shelf",
         }
     }
 
-    /// The layout saved as `key`, if this build knows it.
+    /// What it was saved as before levels were renamed from areas
+    /// (decision 0118), still read.
+    fn old_key(self) -> Option<&'static str> {
+        match self {
+            Self::LevelLeftAssetsBottom => Some("area left assets bottom"),
+            Self::LevelAndAssetsLeft => Some("area and assets left"),
+            Self::LevelLeftAssetsRight => Some("area left assets right"),
+            Self::Shelf => None,
+        }
+    }
+
+    /// The layout saved as `key` (or its key from before decision 0118),
+    /// if this build knows it.
     pub fn from_key(key: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|layout| layout.key() == key)
+        Self::ALL
+            .into_iter()
+            .find(|layout| layout.key() == key || layout.old_key() == Some(key))
     }
 
     /// Whether the lists are columns of their own, off the shelf.
@@ -123,7 +137,7 @@ impl PanelLayout {
 
 /// The Level list as a column of its own.
 const LEVEL: Column = Column {
-    title: "Area",
+    title: "Level",
     panels: &[Panel::Level],
     width: Width::Rest,
     own_header: false,

@@ -71,7 +71,7 @@ fn a_command_that_cant_be_done_says_why_and_does_nothing() {
 fn a_hover_text_gives_the_name_the_shortcut_and_the_reason() {
     let w = fresh();
     let save = ShellCommand::SaveLevel.hover_text(&w);
-    assert!(save.starts_with("Save area (Ctrl+S)\n"), "{save}");
+    assert!(save.starts_with("Save level (Ctrl+S)\n"), "{save}");
     let undo = ShellCommand::Undo.hover_text(&w);
     assert_eq!(undo, "Undo (Ctrl+Z)\nNothing to undo");
 }

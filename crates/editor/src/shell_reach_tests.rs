@@ -43,23 +43,23 @@ const MOVED: [(&str, &str, Place); 37] = [
         Place::File("Close project"),
     ),
     (
-        "File > New area",
-        "New area",
-        Place::LevelTabPlus("New area"),
+        "File > New level",
+        "New level",
+        Place::LevelTabPlus("New level"),
     ),
     (
-        "File > Open area…",
-        "Open area…",
-        Place::LevelTabPlus("Open area…"),
+        "File > Open level…",
+        "Open level…",
+        Place::LevelTabPlus("Open level…"),
     ),
     (
-        "File > Save area",
-        "Save area",
+        "File > Save level",
+        "Save level",
         Place::Ribbon(RibbonTab::Home),
     ),
     (
-        "File > Save area as…",
-        "Save area as…",
+        "File > Save level as…",
+        "Save level as…",
         Place::LevelTabMenu("Save as…"),
     ),
     (
@@ -167,8 +167,8 @@ const MOVED: [(&str, &str, Place); 37] = [
     ("Window > Reset layout", "Reset layout", Place::Search),
     ("Help > Open the manual ↗", "Documentation ↗", Place::Search),
     (
-        "Help > Add the sample area",
-        "Add the sample area",
+        "Help > Add the sample level",
+        "Add the sample level",
         Place::Search,
     ),
     (
@@ -362,19 +362,19 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                 );
             }
             Place::LevelTabPlus(words) => {
-                h.get_by_label("New or open an area").click();
+                h.get_by_label("New or open a level").click();
                 h.run();
                 assert!(
                     h.query_by_label(words).is_some(),
-                    "{was}: the area's + has {words:?}"
+                    "{was}: the level's + has {words:?}"
                 );
             }
             Place::LevelTabMenu(words) => {
                 let tab = h
-                    .get_all_by_label("Untitled area")
+                    .get_all_by_label("Untitled level")
                     .map(|node| node.rect())
                     .find(|r| (r.height() - crate::tokens::size::DOC_TAB_H).abs() < 0.5)
-                    .expect("the area's tab");
+                    .expect("the level's tab");
                 h.hover_at(tab.center());
                 h.run();
                 for pressed in [true, false] {
@@ -388,7 +388,7 @@ fn every_old_menu_item_is_drawn_where_the_table_says() {
                 h.run();
                 assert!(
                     h.query_by_label_contains(words).is_some(),
-                    "{was}: the area's tab's menu has {words:?}"
+                    "{was}: the level's tab's menu has {words:?}"
                 );
             }
             Place::File(words) => {

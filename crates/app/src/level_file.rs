@@ -7,7 +7,10 @@ use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant, SystemTime};
 
 /// The extension of level files.
-pub const EXTENSION: &str = "solarea";
+pub const EXTENSION: &str = asset_db::LEVEL_EXTENSION;
+/// The extension levels had as areas: one that couldn't be moved when its
+/// project opened still opens (decision 0118).
+pub const OLD_EXTENSION: &str = asset_db::OLD_LEVEL_EXTENSION;
 /// How often the open level's file is looked at for changes.
 const CHECK_EVERY: Duration = Duration::from_secs(1);
 
@@ -147,14 +150,18 @@ impl LevelFiles {
         let (sender, receiver) = channel();
         let name = format!("{name}.{EXTENSION}");
         std::thread::spawn(move || {
-            let mut window = rfd::FileDialog::new().add_filter("Area", &[EXTENSION]);
+            let mut window = rfd::FileDialog::new();
             if let Some(folder) = folder {
                 window = window.set_directory(folder);
             }
             let choice = match purpose {
-                Purpose::Open => window.set_title("Open area").pick_file(),
+                Purpose::Open => window
+                    .add_filter("Level", &[EXTENSION, OLD_EXTENSION])
+                    .set_title("Open level")
+                    .pick_file(),
                 Purpose::Save => window
-                    .set_title("Save area")
+                    .add_filter("Level", &[EXTENSION])
+                    .set_title("Save level")
                     .set_file_name(name)
                     .save_file(),
             };
@@ -185,6 +192,9 @@ impl LevelFiles {
             Ok(choice) => {
                 self.dialog = None;
                 let choice = choice.and_then(|chosen| {
+                    if purpose == Purpose::Open && has_extension(&chosen, OLD_EXTENSION) {
+                        return Some(chosen);
+                    }
                     let path = with_extension(&chosen);
                     if purpose == Purpose::Save && path != chosen && path.exists() {
                         self.refused = Some(path);
@@ -203,12 +213,15 @@ impl LevelFiles {
     }
 }
 
+/// Whether `path` ends in `.extension`, in any case.
+fn has_extension(path: &Path, extension: &str) -> bool {
+    path.extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case(extension))
+}
+
 /// `path`, ending in `.sollevel` (a Save window may leave it off).
 pub fn with_extension(path: &Path) -> PathBuf {
-    if path
-        .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case(EXTENSION))
-    {
+    if has_extension(path, EXTENSION) {
         path.to_path_buf()
     } else {
         let mut name = path.as_os_str().to_owned();
@@ -223,7 +236,7 @@ mod tests {
     use super::*;
 
     fn folder(name: &str) -> reflect::test_support::TempFolder {
-        reflect::test_support::TempFolder::new(&format!("areas-{name}")).unwrap()
+        reflect::test_support::TempFolder::new(&format!("levels-{name}")).unwrap()
     }
 
     #[test]
@@ -233,7 +246,7 @@ mod tests {
         let level = level::builtin::starter_level();
         let text = level::text::write(&level, &registry, &|_| None);
         let mut files = LevelFiles::default();
-        let path = dir.join("areas/harbour.solarea");
+        let path = dir.join("levels/harbour.sollevel");
         files
             .save(None, &path, &text, |t| Ok(t.to_owned()))
             .unwrap();
@@ -257,7 +270,7 @@ mod tests {
     fn bad_files_are_explained() {
         let dir = folder("bad");
         let registry = level::builtin::registry().unwrap();
-        let path = dir.join("x.solarea");
+        let path = dir.join("x.sollevel");
         std::fs::write(&path, [0xff, 0xfe, 0x00]).unwrap();
         assert!(
             LevelFiles::read(&path, &registry)
@@ -270,7 +283,7 @@ mod tests {
                 .unwrap_err()
                 .contains("newer")
         );
-        assert!(LevelFiles::read(&dir.join("missing.solarea"), &registry).is_err());
+        assert!(LevelFiles::read(&dir.join("missing.sollevel"), &registry).is_err());
     }
 
     /// An Open or Save window that has already been answered with `choice`.
@@ -283,7 +296,7 @@ mod tests {
     #[test]
     fn a_save_name_that_would_replace_another_file_is_refused() {
         let dir = folder("refuse");
-        std::fs::write(dir.join("harbour.solarea"), "area;").unwrap();
+        std::fs::write(dir.join("harbour.sollevel"), "level;").unwrap();
         let mut files = LevelFiles::default();
         assert!(!files.is_asking());
         // Typed without the extension: the window never asked about
@@ -292,37 +305,47 @@ mod tests {
         assert!(files.is_asking());
         assert_eq!(files.chosen(), Some((Purpose::Save, None)));
         assert!(!files.is_asking());
-        assert_eq!(files.take_refused(), Some(dir.join("harbour.solarea")));
+        assert_eq!(files.take_refused(), Some(dir.join("harbour.sollevel")));
         assert_eq!(files.take_refused(), None);
         // Chosen with the extension (the window asked), or a new name: used.
-        answered(&mut files, Purpose::Save, Some(dir.join("harbour.solarea")));
+        answered(
+            &mut files,
+            Purpose::Save,
+            Some(dir.join("harbour.sollevel")),
+        );
         assert_eq!(
             files.chosen(),
-            Some((Purpose::Save, Some(dir.join("harbour.solarea"))))
+            Some((Purpose::Save, Some(dir.join("harbour.sollevel"))))
         );
         answered(&mut files, Purpose::Save, Some(dir.join("port")));
         assert_eq!(
             files.chosen(),
-            Some((Purpose::Save, Some(dir.join("port.solarea"))))
+            Some((Purpose::Save, Some(dir.join("port.sollevel"))))
         );
-        // Opening never refuses.
+        // Opening never refuses, and opens a level that kept its ending
+        // from when levels were areas (decision 0118) as it is.
         answered(&mut files, Purpose::Open, Some(dir.join("harbour")));
         assert!(matches!(files.chosen(), Some((Purpose::Open, Some(_)))));
+        answered(&mut files, Purpose::Open, Some(dir.join("old.solarea")));
+        assert_eq!(
+            files.chosen(),
+            Some((Purpose::Open, Some(dir.join("old.solarea"))))
+        );
     }
 
     #[test]
     fn saved_names_get_the_extension() {
         assert_eq!(
             with_extension(Path::new("a/harbour")),
-            Path::new("a/harbour.solarea")
+            Path::new("a/harbour.sollevel")
         );
         assert_eq!(
-            with_extension(Path::new("a/h.SOLAREA")),
-            Path::new("a/h.SOLAREA")
+            with_extension(Path::new("a/h.SOLLEVEL")),
+            Path::new("a/h.SOLLEVEL")
         );
         assert_eq!(
             with_extension(Path::new("a/h.txt")),
-            Path::new("a/h.txt.solarea")
+            Path::new("a/h.txt.sollevel")
         );
     }
 }

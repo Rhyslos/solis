@@ -182,9 +182,9 @@ fn sample_parts(sample: Sample) -> SampleParts {
             make: crate::benchmark::make,
             level: crate::benchmark::FIRST_LEVEL,
             what: "the benchmark",
-            ready: "The benchmark is ready. Press Play and open the Profiler: target.solarea is \
-                    2,000 ships and 20,000 lasers, stress.solarea 10,000 and 100,000, and \
-                    ceiling.solarea adds ships until 60 frames a second ends, then says where \
+            ready: "The benchmark is ready. Press Play and open the Profiler: target.sollevel is \
+                    2,000 ships and 20,000 lasers, stress.sollevel 10,000 and 100,000, and \
+                    ceiling.sollevel adds ships until 60 frames a second ends, then says where \
                     in the Console.",
         },
     }

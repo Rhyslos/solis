@@ -161,12 +161,12 @@ impl ShelfTab {
             // keeps how placed things land on the shelf.
             Self::Place if layout.is_side() => &[column!("Placement", [P::Placement], Rest)],
             Self::Place => &[
-                column!("Area", [P::Level], Fixed(size::SCENE_COLUMN_W)),
+                column!("Level", [P::Level], Fixed(size::SCENE_COLUMN_W)),
                 column!("Placement", [P::Placement], Fixed(size::PLACEMENT_COLUMN_W)),
                 column!("Assets", [P::Assets], Rest),
             ],
             Self::Entity => &[
-                column!("Area", [P::Level], Fixed(size::SCENE_COLUMN_W)),
+                column!("Level", [P::Level], Fixed(size::SCENE_COLUMN_W)),
                 column!("Properties", [P::Properties], Rest, own_header),
                 column!("Assets", [P::Assets], Fixed(size::ASSETS_COLUMN_W)),
             ],

@@ -24,7 +24,7 @@ use std::path::Path;
 pub const NAME: &str = "Playground";
 
 /// The level it opens on.
-pub const LEVEL: &str = "playground.solarea";
+pub const LEVEL: &str = "playground.sollevel";
 
 /// The game's code, from the very file the project shows.
 pub const MAIN: &str = include_str!("../../../samples/playground/assets/main.lst");

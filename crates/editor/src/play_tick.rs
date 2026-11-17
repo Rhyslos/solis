@@ -100,7 +100,7 @@ impl Workbench {
         if !changes.is_empty() && playing.recording.is_some() && !playing.told_recording_edited {
             playing.told_recording_edited = true;
             run.said.push(
-                "The area changed while recording: a recording keeps only the input, so its \
+                "The level changed while recording: a recording keeps only the input, so its \
                  replay will stop matching from here."
                     .to_string(),
             );

@@ -257,7 +257,7 @@ impl Workbench {
                 self.library_request(LibraryRequest::Open(LibraryKind::Code, path), actions);
             }
             LibraryRequest::NewLevel(folder) => {
-                let path = crate::workbench_tiles::free_path(&folder, "area", "solarea", |p| {
+                let path = crate::workbench_tiles::free_path(&folder, "level", "sollevel", |p| {
                     self.open.library.iter().any(|i| i.path == p)
                 });
                 let fresh = crate::document::Document::default();

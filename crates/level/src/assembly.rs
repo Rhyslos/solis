@@ -70,7 +70,7 @@ impl fmt::Display for AssemblyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Missing(id) => write!(f, "the assembly {id} isn't in the project"),
-            Self::NotAnAssembly(id) => write!(f, "{id} is an area, not an assembly"),
+            Self::NotAnAssembly(id) => write!(f, "{id} is a level, not an assembly"),
             Self::Loop(chain) => {
                 let names: Vec<String> = chain.iter().map(ToString::to_string).collect();
                 write!(

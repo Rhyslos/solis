@@ -324,7 +324,7 @@ impl Document {
     /// Its name: its file's, without the extension, or "Untitled level".
     pub fn name(&self) -> String {
         self.file.as_ref().and_then(|f| f.file_stem()).map_or_else(
-            || "Untitled area".to_string(),
+            || "Untitled level".to_string(),
             |n| n.to_string_lossy().into_owned(),
         )
     }
@@ -893,7 +893,7 @@ mod tests {
     #[test]
     fn changes_name_the_entities_touched_or_say_everything() {
         let mut d = Document::default();
-        assert!(d.take_changes().everything, "a new area is all new");
+        assert!(d.take_changes().everything, "a new level is all new");
         assert!(d.take_changes().is_empty(), "taken once");
         let sun = d.level().iter().next().unwrap().0;
         d.edit(

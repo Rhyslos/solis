@@ -126,7 +126,7 @@ impl Component for Camera {
         ComponentSchema {
             name: Self::NAME.into(),
             help: "What the game shows: it looks along the entity's -Z. Press Play to see \
-                   through the first camera in the area."
+                   through the first camera in the level."
                 .into(),
             fields: vec![
                 field::choice(

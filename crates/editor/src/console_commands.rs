@@ -93,7 +93,7 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "save",
         usage: "save",
-        help: "Saves the area (Ctrl+S).",
+        help: "Saves the level (Ctrl+S).",
     },
     CommandInfo {
         name: "look",
@@ -108,7 +108,7 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "play",
         usage: "play",
-        help: "Runs the area as a game (the Play button), or carries on after pause.",
+        help: "Runs the level as a game (the Play button), or carries on after pause.",
     },
     CommandInfo {
         name: "pause",
@@ -138,12 +138,12 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "stop",
         usage: "stop",
-        help: "Stops the game: the area goes back to how it was before Play.",
+        help: "Stops the game: the level goes back to how it was before Play.",
     },
     CommandInfo {
         name: "stats",
         usage: "stats",
-        help: "Counts what's in the area, and how fast the editor draws.",
+        help: "Counts what's in the level, and how fast the editor draws.",
     },
 ];
 
@@ -477,7 +477,7 @@ impl Workbench {
             .document
             .level()
             .get(id)
-            .ok_or("it isn't in the area")?;
+            .ok_or("it isn't in the level")?;
         let (name, components): (String, Vec<String>) = (
             entity.name.clone(),
             entity.components.keys().cloned().collect(),

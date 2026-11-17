@@ -242,7 +242,7 @@ fn footsteps_follow_ground_covered_and_never_while_still() {
         .components
         .insert("Footsteps".into(), ComponentData::default());
     let still = level.spawn(still);
-    w.open_level(level, assets.join("steps.solarea"));
+    w.open_level(level, assets.join("steps.sollevel"));
     w.play();
     for _ in 0..(60 * 3) {
         w.play_for(1.0 / 60.0);

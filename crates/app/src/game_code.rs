@@ -896,7 +896,7 @@ mod fast_changes {
         cart.components
             .insert("Mover".into(), reflect::ComponentData::default());
         level.spawn(cart);
-        w.open_level(level, "cart.solarea".into());
+        w.open_level(level, "cart.sollevel".into());
         w.play();
         let watcher = asset_db::Watcher::new(&assets).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(800));

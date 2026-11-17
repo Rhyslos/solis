@@ -98,7 +98,7 @@ pub enum EditError {
 impl fmt::Display for EditError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoEntity(id) => write!(f, "entity {id} isn't in the area"),
+            Self::NoEntity(id) => write!(f, "entity {id} isn't in the level"),
             Self::NoComponent(id, c) => write!(f, "entity {id} has no {c}"),
             Self::HasComponent(id, c) => write!(f, "entity {id} already has a {c}"),
             Self::IdInUse(id) => write!(f, "the ID {id} is already in use"),

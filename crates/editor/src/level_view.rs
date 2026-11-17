@@ -695,7 +695,7 @@ mod tests {
     /// A level file with one spotlight, its cone and soft edge as written.
     fn spot_file(cone: &str, soft_edge: &str) -> String {
         format!(
-            "area version 1;\n\nentity 0000000000001 {{\n    name = \"Torch\";\n    \
+            "level version 1;\n\nentity 0000000000001 {{\n    name = \"Torch\";\n    \
              Light.kind = \"Spot\";\n    Light.cone = {cone};\n    Light.soft_edge = \
              {soft_edge};\n}}\n"
         )

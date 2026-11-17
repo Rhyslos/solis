@@ -171,7 +171,7 @@ fn text_of(path: &Path) -> String {
 fn kind_of(file: &Path) -> Option<LibraryKind> {
     match file.extension()?.to_str()? {
         "glb" => Some(LibraryKind::Model),
-        "solarea" => Some(LibraryKind::Level),
+        "sollevel" | "solarea" => Some(LibraryKind::Level),
         "png" => Some(LibraryKind::Texture),
         "wav" => Some(LibraryKind::Sound),
         "lst" => Some(LibraryKind::Code),
@@ -238,9 +238,9 @@ pub(crate) fn sample_project() -> Workbench {
     listed(&assets, &assets, &mut folders, &mut files);
     workbench.set_folders(folders);
     workbench.set_library(files);
-    let file = assets.join("docks_night.solarea");
+    let file = assets.join("docks_night.sollevel");
     let level = level::text::read(&text_of(&file), &workbench.document().registry)
-        .unwrap_or_else(|e| panic!("the sample project's area doesn't read: {e:?}"));
+        .unwrap_or_else(|e| panic!("the sample project's level doesn't read: {e:?}"));
     workbench.open_level(level, file);
     let lamp = workbench
         .document()
@@ -248,7 +248,7 @@ pub(crate) fn sample_project() -> Workbench {
         .iter()
         .find(|(_, entity)| entity.name == "Dock_Lamp")
         .map(|(id, _)| id)
-        .expect("the sample area has its lamp");
+        .expect("the sample level has its lamp");
     workbench.open.document.selection.select_only(lamp);
     workbench
 }

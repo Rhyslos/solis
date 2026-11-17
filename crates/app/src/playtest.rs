@@ -142,11 +142,11 @@ pub fn export(
     folder: &Path,
 ) -> Result<Exported, String> {
     if !editor::export_dialog::usable_level(&playtest.level) {
-        return Err("choose an area for the game to start in".into());
+        return Err("choose a level for the game to start in".into());
     }
     let assets = root.join(asset_db::ASSETS_FOLDER);
     if !assets.join(&playtest.level).is_file() {
-        return Err(format!("the area {} isn't in the project", playtest.level));
+        return Err(format!("the level {} isn't in the project", playtest.level));
     }
     if folder.as_os_str().is_empty() || folder.is_relative() {
         return Err("choose a whole folder path, such as one in Documents".into());

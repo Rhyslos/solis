@@ -310,7 +310,7 @@ impl Workbench {
             Panel::Game,
         );
         let note = if cameras == 0 {
-            " There's no camera in the area, so the Game panel shows the editor's view \
+            " There's no camera in the level, so the Game panel shows the editor's view \
              (Home > Camera adds one)."
         } else {
             ""
@@ -318,7 +318,7 @@ impl Workbench {
         self.log(
             LogLevel::Info,
             format!(
-                "Playing. Stop puts the area back as it is now, and asks whether to keep the \
+                "Playing. Stop puts the level back as it is now, and asks whether to keep the \
                  changes you make meanwhile.{note}"
             ),
         );
@@ -501,7 +501,7 @@ impl Workbench {
             if asked {
                 format!("Stopped after {seconds:.1} s; keep the changes made while playing?")
             } else {
-                format!("Stopped after {seconds:.1} s; the area is back as it was.")
+                format!("Stopped after {seconds:.1} s; the level is back as it was.")
             },
         );
         self.update_copies(now);

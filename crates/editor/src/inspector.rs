@@ -169,7 +169,7 @@ pub(crate) fn shared_by(ui: &mut Ui, users: usize) {
             })
             .response
             .on_hover_text(format!(
-                "{users} entities in this area use this file: a change to the file changes \
+                "{users} entities in this level use this file: a change to the file changes \
                  them all"
             ));
     }

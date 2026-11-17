@@ -162,7 +162,7 @@ fn play_runs_the_game_s_components_and_stop_puts_everything_back() {
     assert_eq!(
         w.document().level().world_matrix(id).w_axis.x,
         0.0,
-        "the editor's area is untouched"
+        "the editor's level is untouched"
     );
     w.stop();
     assert!(w.world().is_none());
@@ -233,7 +233,7 @@ fn a_field_set_to_what_the_level_already_holds_still_reaches_the_running_compone
             .get("steps")
             .cloned()
     };
-    assert_eq!(in_level(&w), Some(Value::Int(0)), "the area's is 0 still");
+    assert_eq!(in_level(&w), Some(Value::Int(0)), "the level's is 0 still");
     w.apply_property(
         PropertyRequest::SetField {
             entity: id,
@@ -293,7 +293,7 @@ fn fields_set_on_several_entities_reach_the_game_when_everything_is_built_again(
     );
     w.run_game(1.0 / 60.0);
     let x = x_in_game(&w, first);
-    assert!((x - 0.1).abs() < 1e-4, "a tick on from the area's: {x}");
+    assert!((x - 0.1).abs() < 1e-4, "a tick on from the level's: {x}");
     w.apply_property(
         PropertyRequest::SetFieldMany {
             entities: vec![first, second],

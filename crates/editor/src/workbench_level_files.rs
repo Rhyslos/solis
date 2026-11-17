@@ -74,11 +74,11 @@ impl Workbench {
         match &moved {
             Some(path) => self.log(
                 LogLevel::Info,
-                format!("The open area is now {}.", path.display()),
+                format!("The open level is now {}.", path.display()),
             ),
             None => self.log(
                 LogLevel::Warning,
-                "The open area's file was deleted; saving asks where to put it.",
+                "The open level's file was deleted; saving asks where to put it.",
             ),
         }
         Some(moved)

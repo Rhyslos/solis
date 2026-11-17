@@ -20,13 +20,13 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Settings: the editor's own colour, layout and more](settings.md)
 - [Unfinished parts: the grey controls with a small square, what they are, and hiding them](unfinished-parts.md)
 - [Moving around the viewport: the fly camera, several views, flat views, the tool bar and the pills](navigating-the-viewport.md)
-- [Entities and components: what an area is made of](entities.md)
+- [Entities and components: what a level is made of](entities.md)
 - [Selecting and moving things: clicking, boxes, and the move, rotate and scale gizmos](selecting-and-moving.md)
 - [Undo and redo: take back any change](undo.md)
-- [Saving areas: files Git can merge](saving-areas.md)
+- [Saving levels: files Git can merge](saving-levels.md)
 - [Assemblies: build once, place everywhere](assemblies.md)
 - [Brushes: shapes made in the editor, for blocking out a level](brushes.md)
-- [Play mode: run the area as a game, and Stop puts everything back](play-mode.md)
+- [Play mode: run the level as a game, and Stop puts everything back](play-mode.md)
 
 ## Projects and files
 
@@ -84,7 +84,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 ## Finding problems
 
 - [The Console: messages, search and commands](console.md)
-- [Problems: mistakes found in the area and the game's code](problems.md)
+- [Problems: mistakes found in the level and the game's code](problems.md)
 - [The Profiler: where each frame's time goes](profiler.md)
 - [The benchmark: how much can this computer play?](benchmark.md)
 

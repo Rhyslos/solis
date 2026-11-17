@@ -1,5 +1,5 @@
--- An area. Safe to edit by hand: one block per entity, one line per field.
-area version 2;
+-- A level. Safe to edit by hand: one block per entity, one line per field.
+level version 4;
 
 entity 2EGJNFMTCSQ8G {
     name = "Camera";

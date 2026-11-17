@@ -362,10 +362,11 @@ fn thousands_of_damaged_brush_files_are_read_or_refused_never_a_crash() {
 }
 
 #[test]
-fn the_version_3_example_is_what_this_build_writes() {
-    // tests/fixtures/level/v3: a box floor, a ramp and stairs.
-    let blockout = include_str!("../../../../tests/fixtures/area/v3/blockout.solarea");
-    assert_eq!((text::FORMAT.version_of)(blockout), Some(3));
+fn the_blockout_example_is_what_this_build_writes() {
+    // tests/fixtures/area/v4 (v3's, as a level: decision 0118): a box
+    // floor, a ramp and stairs.
+    let blockout = include_str!("../../../../tests/fixtures/area/v4/blockout.sollevel");
+    assert_eq!((text::FORMAT.version_of)(blockout), Some(4));
     let level = text::read(blockout, &registry()).unwrap();
     let shapes: Vec<Shape> = level.with::<Brush>().map(|(_, b)| b.shape).collect();
     assert_eq!(shapes, [Shape::Box, Shape::Ramp, Shape::Stairs]);
@@ -445,7 +446,7 @@ fn scale_check_an_level_of_10000_box_brushes_read() {
     let ms = read_ms + made_ms;
     let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
     println!(
-        "Scale check: an area of 10,000 box brushes ({} KB) read {read_ms:.0} ms, their meshes \
+        "Scale check: a level of 10,000 box brushes ({} KB) read {read_ms:.0} ms, their meshes \
          made {made_ms:.0} ms (target {TARGET_MS} ms) {verdict}",
         text.len() / 1024
     );

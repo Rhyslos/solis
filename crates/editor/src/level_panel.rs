@@ -408,7 +408,7 @@ pub(crate) enum LevelRequest {
 
 /// Where the name being typed is kept between frames.
 fn rename_key() -> egui::Id {
-    egui::Id::new("area-panel-rename")
+    egui::Id::new("level-panel-rename")
 }
 
 /// Starts renaming `id` in the Level panel (F2), with `name` to edit.
@@ -510,7 +510,7 @@ pub(crate) fn level_tree(
             // level.
             let empty = ui.interact(
                 out.inner_rect,
-                ui.id().with("area-panel-empty"),
+                ui.id().with("level-panel-empty"),
                 egui::Sense::hover(),
             );
             if let Some(dragged) = empty.dnd_release_payload::<EntityId>() {
@@ -533,7 +533,7 @@ fn search_row(ui: &mut Ui, state: &mut LevelPanelState) {
             let width = ui.available_width();
             let field = widgets::field::text_field(
                 ui,
-                "Search the area",
+                "Search the level",
                 &mut state.search,
                 "Search by name",
                 width,
@@ -552,7 +552,7 @@ fn search_row(ui: &mut Ui, state: &mut LevelPanelState) {
 /// Fold everything and the search. Returns a menu command picked.
 pub(crate) fn header_tools(ui: &mut Ui, state: &mut LevelPanelState) -> Option<MenuCommand> {
     let mut picked = None;
-    let more = widgets::button::icon(ui, Icon::More, "More of the Area column")
+    let more = widgets::button::icon(ui, Icon::More, "More of the Level column")
         .on_hover_text("Fold or unfold everything; show or unlock everything");
     egui::Popup::menu(&more).show(|ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -596,7 +596,7 @@ pub(crate) fn header_tools(ui: &mut Ui, state: &mut LevelPanelState) -> Option<M
     {
         picked = Some(MenuCommand::CollapseAll);
     }
-    let search = widgets::button::icon(ui, Icon::Search, "Search the area by name")
+    let search = widgets::button::icon(ui, Icon::Search, "Search the level by name")
         .on_hover_text("Lists only the entities whose names have the words typed");
     if search.clicked() {
         state.searching = !state.searching;

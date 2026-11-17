@@ -164,7 +164,7 @@ pub(crate) fn day_colours(ui: &mut Ui, value: &Value, mixed: bool) -> Option<Val
             let mut h = preview.unwrap_or(12.0);
             if ui
                 .checkbox(&mut on, "Preview time")
-                .on_hover_text("Shows the area at this hour in the viewport. It isn't saved.")
+                .on_hover_text("Shows the level at this hour in the viewport. It isn't saved.")
                 .changed()
                 || (on
                     && ui

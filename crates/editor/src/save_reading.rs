@@ -71,7 +71,7 @@ impl Save {
                 .ok_or_else(damaged)?;
             Ok(list.remove(at).1)
         };
-        let level = section("area")?.to_string();
+        let level = section("level")?.to_string();
         let values = section("values")?.to_string();
         let bindings = section("bindings")?.to_string();
         let projectiles = read_projectiles(section("projectiles")?)?;
@@ -477,5 +477,21 @@ pub(super) fn day_kept(sections: &mut Sections) -> Result<(), String> {
         return Err("it already has a day".into());
     }
     sections.list.push(("day".into(), String::new()));
+    Ok(())
+}
+
+/// Version 8 to 9 (decision 0118): areas were renamed levels, so the
+/// section holding the level the game was in is called `level`. Its text
+/// is read as it was written (a level reads an area's header).
+pub(super) fn levels_not_areas(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "level") {
+        return Err("it already has a level".into());
+    }
+    let area = sections
+        .list
+        .iter_mut()
+        .find(|(n, _)| n == "area")
+        .ok_or("its area section is missing")?;
+    area.0 = "level".into();
     Ok(())
 }

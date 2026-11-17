@@ -133,12 +133,12 @@ fn game_without_code(dir: &Path, extra: impl Fn(&Path)) -> (egui::Context, App) 
     level.spawn(level::EntityData::new("Rock").with(&level::builtin::Transform::default()));
     let registry = level::builtin::registry().unwrap();
     std::fs::write(
-        assets.join("plain.solarea"),
+        assets.join("plain.sollevel"),
         level::text::write(&level, &registry, &|_| None),
     )
     .unwrap();
     let (ctx, mut app) = game(dir, fails);
-    app.playtest.as_mut().unwrap().found.playtest.level = "plain.solarea".into();
+    app.playtest.as_mut().unwrap().found.playtest.level = "plain.sollevel".into();
     (ctx, app)
 }
 

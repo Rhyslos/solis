@@ -14,8 +14,42 @@
 use crate::workbench::Workbench;
 use std::path::{Component, Path, PathBuf};
 
-/// The first line of a playtest file.
-const HEADER: &str = "playtest 1";
+/// The first line of a playtest file, before its version.
+const HEADER: &str = "playtest";
+/// The playtest file's version this build writes. Version 2 came with
+/// decision 0118: its level's line says `level`, where version 1's said
+/// `area` and named the level's file by its old ending, `.solarea`.
+const VERSION: u32 = 2;
+/// The level's line's word, and version 1's.
+const LEVEL_WORD: &str = "level";
+const OLD_LEVEL_WORD: &str = "area";
+
+/// Playtest files' version and upgraders (rule 23): the exported game's
+/// `playtest.txt`, and the project's own copy of how it was last
+/// exported. Every version keeps an example in `tests/fixtures/playtest/`.
+pub static PLAYTEST_FORMAT: reflect::upgrade::Format<Playtest> = reflect::upgrade::Format {
+    name: "playtest",
+    current: VERSION,
+    version_of: |text| {
+        let line = text.lines().next()?.trim();
+        line.strip_prefix(HEADER)?.strip_prefix(' ')?.parse().ok()
+    },
+    steps: &[levels_not_areas],
+};
+
+/// Version 1 to 2 (decision 0118): a project's `.solarea` files became
+/// `.sollevel` files when it opened, so the level a game starts in is
+/// found under its new name.
+fn levels_not_areas(playtest: &mut Playtest) -> Result<(), String> {
+    const OLD: &str = ".solarea";
+    let level = &mut playtest.level;
+    let cut = level.len().saturating_sub(OLD.len());
+    if level.is_char_boundary(cut) && level[cut..].eq_ignore_ascii_case(OLD) {
+        level.truncate(cut);
+        level.push_str(".sollevel");
+    }
+    Ok(())
+}
 /// The longest game name kept.
 pub const MAX_NAME: usize = 64;
 /// The biggest playtest file read.
@@ -88,7 +122,7 @@ fn device_name(name: &str) -> bool {
 pub fn usable_level(level: &str) -> bool {
     !level.is_empty()
         && level.len() < 1024
-        && level.ends_with(".solarea")
+        && level.ends_with(".sollevel")
         && !level.starts_with('/')
         && !level.contains('\\')
         && !level.contains(':')
@@ -121,7 +155,7 @@ impl Playtest {
     /// As written in a playtest file.
     pub fn text(&self) -> String {
         format!(
-            "{HEADER}\nname {}\narea {}\nwindow {} {} {}\n",
+            "{HEADER} {VERSION}\nname {}\n{LEVEL_WORD} {}\nwindow {} {} {}\n",
             game_name(&self.name),
             self.level,
             if self.fullscreen {
@@ -134,22 +168,26 @@ impl Playtest {
         )
     }
 
-    /// Reads a playtest file. Anything odd is put right (a name made
-    /// usable, a window size kept within what Solis opens); only a file
-    /// that isn't one, or names no usable level, is refused. Nothing in it
+    /// Reads a playtest file, an older one brought up to date. Anything
+    /// odd is put right (a name made usable, a window size kept within
+    /// what Solis opens); only a file that isn't one, one from a newer
+    /// Solis, or one that names no usable level, is refused. Nothing in it
     /// is a folder on this computer: a `folder` line, which a project's
     /// own copy held before, is passed over like any line not known.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let mut lines = text.lines();
-        if lines.next().map(str::trim) != Some(HEADER) {
-            return Err("it isn't a playtest file".into());
-        }
+        let version =
+            (PLAYTEST_FORMAT.version_of)(text).ok_or("it isn't a playtest file".to_string())?;
+        let level_word = if version >= 2 {
+            LEVEL_WORD
+        } else {
+            OLD_LEVEL_WORD
+        };
         let mut found = Playtest::default();
-        for line in lines {
+        for line in text.lines().skip(1) {
             let (key, value) = line.split_once(' ').unwrap_or((line, ""));
             match key {
                 "name" => found.name = game_name(value),
-                "area" => found.level = value.trim().to_owned(),
+                key if key == level_word => found.level = value.trim().to_owned(),
                 "window" => {
                     let mut words = value.split_whitespace();
                     found.fullscreen = words.next() == Some("fullscreen");
@@ -163,8 +201,11 @@ impl Playtest {
                 _ => {}
             }
         }
+        PLAYTEST_FORMAT
+            .upgrade(version, &mut found)
+            .map_err(|e| e.to_string())?;
         if !usable_level(&found.level) {
-            return Err("it doesn't name an area to start in".into());
+            return Err("it doesn't name a level to start in".into());
         }
         Ok(found)
     }

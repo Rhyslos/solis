@@ -314,7 +314,7 @@ fn a_terrain_removed_in_properties_comes_back_whole_with_ctrl_z() {
     assert_eq!(
         h.state().0.open.document.level().len(),
         level_before,
-        "the area's own steps are untouched"
+        "the level's own steps are untouched"
     );
 }
 

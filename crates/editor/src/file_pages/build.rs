@@ -46,12 +46,12 @@ impl Workbench {
                 let words: Vec<(usize, &str)> = levels
                     .iter()
                     .enumerate()
-                    .map(|(n, a)| (n, a.trim_end_matches(".solarea")))
+                    .map(|(n, a)| (n, a.trim_end_matches(".sollevel")))
                     .collect();
                 if words.is_empty() {
                     plain(
                         ui,
-                        "No area: save one first",
+                        "No level: save one first",
                         text::row(),
                         tokens::text_meta(),
                     );
@@ -100,7 +100,7 @@ impl Workbench {
                 let export = if form.busy {
                     export.on_disabled_hover_text("Exporting: wait for it to finish")
                 } else if !usable_level(&form.playtest.level) {
-                    export.on_disabled_hover_text("Choose the area the game starts in first")
+                    export.on_disabled_hover_text("Choose the level the game starts in first")
                 } else {
                     export.on_disabled_hover_text("Choose a folder to export to first")
                 };
@@ -146,14 +146,14 @@ impl Workbench {
                 ui,
                 &format!(
                     "A folder to zip and send. Your friend runs {name}.exe inside it: no {program} \
-                     needed. It packs the program, your code, areas, sprites, sounds and screens; \
+                     needed. It packs the program, your code, levels, sprites, sounds and screens; \
                      saves and settings go in the player's Saved Games/{name} folder."
                 ),
             );
             if unsaved {
                 plain(
                     ui,
-                    "The open area has changes that aren't saved: the export holds it as last saved.",
+                    "The open level has changes that aren't saved: the export holds it as last saved.",
                     text::row(),
                     tokens::WARNING,
                 );

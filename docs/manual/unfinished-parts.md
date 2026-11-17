@@ -34,7 +34,7 @@ They are on the [ribbon](concepts.md#the-window), the [shelf](concepts.md#the-wi
 
 ## Tips and common problems
 - **Problem:** I clicked a button and nothing happened. **Why:** if it's grey with a small hollow square, it's an unfinished part: it marks where a feature will be. **Fix:** rest the pointer on it to read what it will do and when. For what can be done today, the [manual's list of pages](SUMMARY.md) covers everything that works.
-- **Problem:** is a grey control broken, or switched off? **Why:** neither is the same as unfinished. A control that works but can't be used right now (**Add the sample area** on Learn with no project open, say) is faded and has **no** square mark; resting the pointer on it says what to do first. An unfinished part always has the mark. **Fix:** look for the square.
+- **Problem:** is a grey control broken, or switched off? **Why:** neither is the same as unfinished. A control that works but can't be used right now (**Add the sample level** on Learn with no project open, say) is faded and has **no** square mark; resting the pointer on it says what to do first. An unfinished part always has the mark. **Fix:** look for the square.
 - **Problem:** something I saw before is gone. **Why:** **Hide unfinished parts** may be on: it hides only what never worked. **Fix:** switch it off on **File › Preferences** to see the marked places again.
 - **Problem:** I can't find an unfinished part with the search. **Why:** the search (**Space**) lists only what can be done. **Fix:** nothing to do: when a part is built, it joins the search.
 

@@ -300,7 +300,7 @@ mod tests {
         let err = |text: &str| read_settings(text, "sound", 1).unwrap_err();
         assert_eq!(err("").message, "the file is empty");
         assert!(
-            err("area version 1;")
+            err("level version 1;")
                 .message
                 .contains("isn't a sound file")
         );

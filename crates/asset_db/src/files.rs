@@ -52,7 +52,11 @@ pub enum FileKind {
 pub const TEXT_EXTENSIONS: [&str; 6] = ["md", "txt", "json", "csv", "toml", "ron"];
 
 /// The extension of level files.
-pub const LEVEL_EXTENSION: &str = "solarea";
+pub const LEVEL_EXTENSION: &str = "sollevel";
+/// The extension levels had while they were called areas (decision 0118):
+/// a project's are moved to [`LEVEL_EXTENSION`] when it opens, and one
+/// that couldn't be is still listed and opened as a level.
+pub const OLD_LEVEL_EXTENSION: &str = "solarea";
 
 impl FileKind {
     /// The kind of the file at `path`, by its extension.
@@ -76,7 +80,7 @@ impl FileKind {
             .unwrap_or_default();
         match ext.as_str() {
             e if e == ASSEMBLY_EXTENSION => Self::Assembly,
-            e if e == LEVEL_EXTENSION => Self::Level,
+            e if e == LEVEL_EXTENSION || e == OLD_LEVEL_EXTENSION => Self::Level,
             "png" | "jpg" | "jpeg" => Self::Texture,
             "lst" | "lua" | "rs" => Self::Code,
             e if SOUND_EXTENSIONS.contains(&e) => Self::Sound,
@@ -414,7 +418,8 @@ mod tests {
         std::fs::write(assets.join("crate.glb"), sample()).unwrap();
         std::fs::write(assets.join("props/rock.glb"), sample()).unwrap();
         std::fs::write(assets.join("props/bark.png"), b"not really a png").unwrap();
-        std::fs::write(assets.join("main.solarea"), "area version 1;\n").unwrap();
+        std::fs::write(assets.join("main.sollevel"), "level version 4;\n").unwrap();
+        std::fs::write(assets.join("old.solarea"), "area version 1;\n").unwrap();
         std::fs::write(assets.join("turret.lst"), "object Turret {}\n").unwrap();
         std::fs::write(assets.join("notes.txt"), "hi").unwrap();
         let (db, _, _) = AssetDb::open(project, assets::Limits::default());
@@ -446,8 +451,9 @@ mod tests {
             kinds,
             [
                 ("crate.glb".into(), FileKind::Model, true),
-                ("main.solarea".into(), FileKind::Level, false),
+                ("main.sollevel".into(), FileKind::Level, false),
                 ("notes.txt".into(), FileKind::Text, false),
+                ("old.solarea".into(), FileKind::Level, false),
                 ("props/bark.png".into(), FileKind::Texture, true),
                 ("props/rock.glb".into(), FileKind::Model, true),
                 ("turret.lst".into(), FileKind::Code, false),

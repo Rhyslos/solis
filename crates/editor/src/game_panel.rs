@@ -254,8 +254,8 @@ pub(crate) fn game_panel(
         }
         crate::panels::empty_note(
             ui,
-            "Press Play (at the top) to run the area here. The game looks through the first \
-             camera in the area: Home > Camera adds one where you're looking from.",
+            "Press Play (at the top) to run the level here. The game looks through the first \
+             camera in the level: Home > Camera adds one where you're looking from.",
         );
         return GamePanelOut::default();
     };
@@ -441,7 +441,7 @@ pub(crate) fn game_panel(
         ));
     }
     if scene.camera.is_none() {
-        notes.push("No camera in the area: showing the editor's view".into());
+        notes.push("No camera in the level: showing the editor's view".into());
     }
     notes.push(if has_input {
         "The game has the mouse and keys · Esc gives them back".into()

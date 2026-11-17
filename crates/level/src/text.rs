@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! -- A level. Safe to edit by hand: one block per entity, one line per field.
-//! level version 3;
+//! level version 4;
 //!
 //! entity 2B8D4NE6TV0HC {
 //!     name = "Sun";
@@ -34,20 +34,30 @@ use std::fmt::{self, Write as _};
 /// The layout version this build writes and reads. Version 2 gave a part
 /// of a placed assembly a way to say it has no parent (`parent = "";`);
 /// version 3 brought brushes (Tools 1a, B1), whose meshes are long lists
-/// of numbers written over several lines ([`NUMBERS_PER_LINE`]).
-pub const VERSION: u32 = 3;
+/// of numbers written over several lines ([`NUMBERS_PER_LINE`]);
+/// version 4 is the rename of areas to levels (decision 0118): a level's
+/// header says `level`, where versions 1 to 3 said `area`.
+pub const VERSION: u32 = 4;
+
+/// The word a level's header starts with, and the one versions 1 to 3
+/// wrote (`area version 3;`), still read.
+pub const HEADER_WORD: &str = "level";
+/// The word older levels' headers start with.
+pub const OLD_HEADER_WORD: &str = "area";
 
 /// Levels' and assemblies' version and upgraders (Phase 8, C1): each step
 /// turns a file read at one version into the next, after its blocks are
 /// read (so a step can rename a field or a component, but the layout
 /// itself, header, IDs and blocks, is read as this build reads it).
 /// Every version ever released keeps an example file in
-/// `tests/fixtures/level/` that the app's tests open.
+/// `tests/fixtures/area/` that the app's tests open.
 pub static FORMAT: reflect::upgrade::Format<LevelFile> = reflect::upgrade::Format {
-    name: "area",
+    name: "level",
     current: VERSION,
-    version_of: |text| reflect::upgrade::header_version(text, &["area", "assembly"]),
-    steps: &[parts_at_the_top_level, brushes],
+    version_of: |text| {
+        reflect::upgrade::header_version(text, &[HEADER_WORD, OLD_HEADER_WORD, "assembly"])
+    },
+    steps: &[parts_at_the_top_level, brushes, areas_are_levels],
 };
 
 /// Version 1 to 2: nothing to change. Version 2 lets a placed assembly's
@@ -62,6 +72,15 @@ fn parts_at_the_top_level(_: &mut LevelFile) -> Result<(), String> {
 /// whose lists of numbers run over several lines; no version 2 file holds
 /// one, and every one reads as it always did.
 fn brushes(_: &mut LevelFile) -> Result<(), String> {
+    Ok(())
+}
+
+/// Version 3 to 4: nothing to change. Version 4 is the same layout under
+/// a new name: a level's header says `level` where an area's said `area`,
+/// and the header is read either way, so every version 3 file reads as it
+/// always did. (An assembly's header keeps its word; only its number
+/// moves with the format's.)
+fn areas_are_levels(_: &mut LevelFile) -> Result<(), String> {
     Ok(())
 }
 
@@ -213,9 +232,9 @@ pub fn write_file(
     match file.kind {
         FileKind::Level => {
             out.push_str(
-                "-- An area. Safe to edit by hand: one block per entity, one line per field.\n",
+                "-- A level. Safe to edit by hand: one block per entity, one line per field.\n",
             );
-            let _ = writeln!(out, "area version {VERSION};");
+            let _ = writeln!(out, "{HEADER_WORD} version {VERSION};");
         }
         FileKind::Assembly { root } => {
             out.push_str(
@@ -464,7 +483,7 @@ pub fn read(text: &str, registry: &Registry) -> Result<Level, ParseError> {
     if file.kind != FileKind::Level {
         return Err(ParseError {
             line: 1,
-            message: "this is an assembly, not an area".into(),
+            message: "this is an assembly, not a level".into(),
         });
     }
     if let Some((id, _)) = file.level.iter().find(|(_, e)| e.origin.is_some()) {
@@ -754,9 +773,9 @@ impl Parser<'_> {
             return self.fail("the file is empty");
         }
         let kind = self.word()?;
-        if kind != "area" && kind != "assembly" {
+        if kind != HEADER_WORD && kind != OLD_HEADER_WORD && kind != "assembly" {
             return self.fail(&format!(
-                "this isn't an area file (it starts with \"{kind}\", not \"area version\")"
+                "this isn't a level file (it starts with \"{kind}\", not \"level version\")"
             ));
         }
         self.keyword("version")?;
@@ -1204,9 +1223,9 @@ mod tests {
     #[test]
     fn a_version_1_file_reads_as_it_always_did_and_is_written_as_the_newest() {
         // Version 2 only added `parent = "";` for a part (BUG-13), and
-        // version 3 brushes. Every line a version 1 file can hold means
-        // what it meant.
-        assert_eq!(VERSION, 3);
+        // version 3 brushes; version 4 renamed areas levels. Every line a
+        // version 1 file can hold means what it meant.
+        assert_eq!(VERSION, 4);
         assert!(FORMAT.is_complete());
         let old = parts_moved(1).replace("parent = \"\";", "order = \"a9\";");
         let new = parts_moved(2).replace("parent = \"\";", "order = \"a9\";");
@@ -1226,25 +1245,27 @@ mod tests {
             assert_eq!((FORMAT.version_of)(fixture), Some(1));
             let read = read_file(fixture, &registry()).unwrap();
             let written = write_file(&read, &registry(), &no_paths);
-            // Written now it says version 3, and nothing else differs but
+            // Written now it says version 4, and nothing else differs but
             // the comments beside asset IDs (never read).
-            assert_eq!((FORMAT.version_of)(&written), Some(3));
+            assert_eq!((FORMAT.version_of)(&written), Some(4));
             assert_eq!(read_file(&written, &registry()).unwrap(), read);
         }
-        // A build that reads up to version 3 refuses what's newer by its
-        // first line, as a build before this one refuses version 3.
-        let newer = read_file(&parts_moved(4), &registry()).unwrap_err();
+        // A build that reads up to version 4 refuses what's newer by its
+        // first line, as a build before this one refuses version 4.
+        let newer = read_file(&parts_moved(5), &registry()).unwrap_err();
         assert_eq!(newer.line, 1);
         assert!(newer.message.contains("newer version"), "{newer}");
     }
 
     #[test]
     fn the_version_2_example_is_written_as_it_was_but_for_its_version() {
-        // tests/fixtures/level/v2: a yard with a crate placed in it, its
+        // tests/fixtures/area/v2: a yard with a crate placed in it, its
         // lid moved out to the top level (BUG-13).
         let yard = include_str!("../../../tests/fixtures/area/v2/yard.solarea");
         let file = read_file(yard, &registry()).unwrap();
-        let yard = yard.replace("area version 2;", "area version 3;");
+        let yard = yard
+            .replace("-- An area.", "-- A level.")
+            .replace("area version 2;", "level version 4;");
         let moved: Vec<_> = (file.overrides.values())
             .filter(|o| o.parent == ParentChange::TopLevel)
             .collect();
@@ -1253,8 +1274,30 @@ mod tests {
         assert_eq!(write_file(&file, &registry(), &paths), yard);
         let crate_ = include_str!("../../../tests/fixtures/area/v2/crate.solassembly");
         let file = read_file(crate_, &registry()).unwrap();
-        let crate_ = crate_.replace("assembly version 2", "assembly version 3");
+        let crate_ = crate_.replace("assembly version 2", "assembly version 4");
         assert_eq!(write_file(&file, &registry(), &no_paths), crate_);
+    }
+
+    #[test]
+    fn an_area_of_version_3_is_written_as_the_version_4_level_and_back() {
+        // Decision 0118: version 4 is version 3 under the new name. The
+        // version 3 example, read and written, is the version 4 one byte
+        // for byte, and that reads and writes as itself.
+        let area = include_str!("../../../tests/fixtures/area/v3/blockout.solarea");
+        let level = include_str!("../../../tests/fixtures/area/v4/blockout.sollevel");
+        assert_eq!((FORMAT.version_of)(area), Some(3));
+        assert_eq!((FORMAT.version_of)(level), Some(4));
+        let old = read_file(area, &registry()).unwrap();
+        let new = read_file(level, &registry()).unwrap();
+        assert_eq!(old, new);
+        assert_eq!(write_file(&old, &registry(), &no_paths), level);
+        assert_eq!(write_file(&new, &registry(), &no_paths), level);
+        let crate_ = include_str!("../../../tests/fixtures/area/v4/crate.solassembly");
+        let file = read_file(crate_, &registry()).unwrap();
+        assert_eq!(write_file(&file, &registry(), &no_paths), crate_);
+        // Either word in either version's header reads the same.
+        let renamed = level.replacen("level version 4;", "area version 4;", 1);
+        assert_eq!(read_file(&renamed, &registry()).unwrap(), new);
     }
 
     #[test]
@@ -1360,7 +1403,7 @@ mod tests {
         );
         let text = write(&level, &registry(), &|_| Some("props/sun.glb".into()));
         assert!(text.contains(
-            "area version 3;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
+            "level version 4;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
         ));
         assert!(text.contains("    Light.color = [1.0, 0.95, 0.88];\n"));
         assert!(text.contains("    Light.kind = \"Sun\";\n"));
@@ -1390,8 +1433,10 @@ mod tests {
     fn mistakes_are_reported_with_their_line() {
         let cases = [
             ("", 1, "empty"),
-            ("scene version 1;", 1, "isn't an area file"),
-            ("area version 4;", 1, "newer version"),
+            ("scene version 1;", 1, "isn't a level file"),
+            ("area version 5;", 1, "newer version"),
+            ("level version 5;", 1, "newer version"),
+            ("level version 0;", 1, "no layout version 0"),
             ("area version 0;", 1, "no layout version 0"),
             ("area version 1;\nentity X {}", 2, "isn't an ID"),
             (

@@ -143,7 +143,7 @@ fn every_side_border_drags_is_held_to_its_least_and_a_double_click_puts_it_back(
         ),
         (
             PanelLayout::LevelAndAssetsLeft,
-            "Between Area and Assets",
+            "Between Level and Assets",
             Edge::LeftShare,
             vec2(0.0, 80.0),
         ),
@@ -207,7 +207,7 @@ fn the_pointer_shows_a_resize_arrow_over_a_border() {
 fn the_shelf_s_columns_drag_too() {
     let mut h = window(1440.0, in_layout(PanelLayout::Shelf));
     let level = body(&h, Panel::Level).width();
-    let at = border(&h, "Between Area and Properties");
+    let at = border(&h, "Between Level and Properties");
     drag(&mut h, at, vec2(100.0, 0.0));
     assert!((body(&h, Panel::Level).width() - (level + 100.0)).abs() <= 2.0);
     let assets = body(&h, Panel::Assets).width();
@@ -216,7 +216,7 @@ fn the_shelf_s_columns_drag_too() {
     assert!((body(&h, Panel::Assets).width() - (assets + 60.0)).abs() <= 2.0);
     let edge = Edge::Column(ShelfTab::Entity, 0);
     assert!((size_of(&h, edge) - (size::SCENE_COLUMN_W + 100.0)).abs() <= 2.0);
-    let at = border(&h, "Between Area and Properties");
+    let at = border(&h, "Between Level and Properties");
     double_click(&mut h, at);
     assert_eq!(body(&h, Panel::Level).width(), size::SCENE_COLUMN_W);
 }

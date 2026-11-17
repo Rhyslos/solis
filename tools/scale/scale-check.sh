@@ -9,7 +9,7 @@
 # Usage:
 #   tools/scale/scale-check.sh
 #
-# Today it times the editor's frames (with big areas, several views, play
+# Today it times the editor's frames (with big levels, several views, play
 # mode and game code), the scale levels (decision 0030: target, stress and
 # the ceiling, the CPU's share), a Lust edit reaching a running game, and
 # one viewport frame at 1920x1080. From Phase 5 (Scale) it grows into the scale target in DESIGN.md §2

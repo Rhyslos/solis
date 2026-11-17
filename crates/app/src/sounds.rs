@@ -697,7 +697,7 @@ mod tests {
                 )
             })
             .collect();
-        w.open_level(level, PathBuf::from("hum.solarea"));
+        w.open_level(level, PathBuf::from("hum.sollevel"));
         (w, ids)
     }
 
@@ -819,7 +819,7 @@ mod tests {
         let mine = source(&mut level, "My steps", "mine", Some(player));
         let theirs = source(&mut level, "Their steps", "mine", None);
         let all = source(&mut level, "Birds", "all", None);
-        w.open_level(level, PathBuf::from("heard.solarea"));
+        w.open_level(level, PathBuf::from("heard.sollevel"));
         let mut device = SoundDevice::for_tests();
         let mut audio = crate::game_audio::GameAudio::default();
         let ctx = eframe::egui::Context::default();
@@ -896,7 +896,7 @@ mod tests {
             .components
             .insert(component.into(), reflect::ComponentData::default());
         level.spawn(speaker);
-        w.open_level(level, PathBuf::from("coded.solarea"));
+        w.open_level(level, PathBuf::from("coded.sollevel"));
         w
     }
 

@@ -93,9 +93,9 @@ fn savers() -> Vec<Saver> {
             save: |p, path, text| p.save_new_text(path, text),
         },
         Saver {
-            name: "save_new_text (an area)",
-            file: "x.solarea",
-            text: "area version 3;\n".into(),
+            name: "save_new_text (a level)",
+            file: "x.sollevel",
+            text: "level version 3;\n".into(),
             needs: Needs::NoFile,
             save: |p, path, text| p.save_new_text(path, text),
         },

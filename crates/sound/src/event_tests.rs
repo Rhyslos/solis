@@ -106,7 +106,7 @@ fn wrong_kinds_of_value_are_refused_with_their_line() {
     let e = err(&format!("takes = [{}];", many.join(", ")));
     assert!(e.message.contains("up to 32"), "{}", e.message);
     assert!(
-        read("area version 1;")
+        read("level version 1;")
             .unwrap_err()
             .message
             .contains("isn't a sound file")

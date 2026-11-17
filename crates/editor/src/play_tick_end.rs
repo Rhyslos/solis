@@ -327,7 +327,7 @@ fn replay_outcome(playing: &mut Playing, tick: &input::Tick) -> Option<String> {
              started a little before): the game came out differently from the \
              same input. Something in it \
              isn't deterministic (frameTime(), which is real time, is a usual \
-             one), or the area or code changed since recording.",
+             one), or the level or code changed since recording.",
             n as f64 * world::TICK
         ))
     } else if ended {

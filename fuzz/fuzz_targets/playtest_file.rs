@@ -22,7 +22,7 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     );
     assert!(
         usable_level(&playtest.level),
-        "the area is one inside the assets"
+        "the level is one inside the assets"
     );
     assert!(
         playtest

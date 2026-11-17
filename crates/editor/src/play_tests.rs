@@ -174,7 +174,7 @@ fn quitting_while_playing_stops_first() {
     // With nothing changed while playing and nothing unsaved, Quit stops
     // the game and closes.
     let (mut w, _) = with_a_crate();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let mut actions = Vec::new();
     w.request(WorkbenchAction::Quit, &mut actions);
@@ -189,7 +189,7 @@ fn quitting_while_playing_stops_first() {
     assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
     assert_ne!(w.play_state(), PlayState::Editing, "still playing");
     let (mut w, _) = with_a_crate();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     assert!(w.close_requested());
     assert_eq!(w.play_state(), PlayState::Editing);
@@ -198,7 +198,7 @@ fn quitting_while_playing_stops_first() {
 #[test]
 fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
     let (mut w, _) = with_a_crate();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let mut theirs = level::builtin::starter_level();
     let theirs_id = theirs.spawn(level::EntityData::new("Theirs"));
@@ -217,7 +217,7 @@ fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
 #[test]
 fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     let (mut w, asset, _, lamp) = with_a_lamp_post();
-    w.open.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
@@ -321,7 +321,7 @@ fn without_a_camera_the_game_shows_the_editors_view_with_a_note() {
         .click();
     h.run();
     h.run();
-    let _ = h.get_by_label("No camera in the area: showing the editor's view");
+    let _ = h.get_by_label("No camera in the level: showing the editor's view");
     let game = h
         .state()
         .1
@@ -432,7 +432,7 @@ fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
 // made the old file again beside the moved one (or, after a delete, the
 // level read as saved though its file was gone).
 
-const LEVEL_FILE: &str = "/p/assets/areas/harbour.solarea";
+const LEVEL_FILE: &str = "/p/assets/levels/harbour.sollevel";
 
 /// What the Library did: what it moved, where to (`None`: deleted), and
 /// where the open level's file is afterwards (`None`: nowhere).
@@ -447,23 +447,23 @@ const FILE_CASES: [FileCase; 5] = [
     (
         "renamed",
         LEVEL_FILE,
-        Some("/p/assets/areas/port.solarea"),
-        Some("/p/assets/areas/port.solarea"),
+        Some("/p/assets/levels/port.sollevel"),
+        Some("/p/assets/levels/port.sollevel"),
     ),
     (
         "moved into a folder",
         LEVEL_FILE,
-        Some("/p/assets/areas/docks/harbour.solarea"),
-        Some("/p/assets/areas/docks/harbour.solarea"),
+        Some("/p/assets/levels/docks/harbour.sollevel"),
+        Some("/p/assets/levels/docks/harbour.sollevel"),
     ),
     (
         "a parent folder renamed",
-        "/p/assets/areas",
+        "/p/assets/levels",
         Some("/p/assets/levels"),
-        Some("/p/assets/levels/harbour.solarea"),
+        Some("/p/assets/levels/harbour.sollevel"),
     ),
     ("deleted", LEVEL_FILE, None, None),
-    ("its folder deleted", "/p/assets/areas", None, None),
+    ("its folder deleted", "/p/assets/levels", None, None),
 ];
 
 /// A saved level with a crate, open from [`LEVEL_FILE`].
@@ -714,7 +714,7 @@ mod spawns_that_cannot_be_made {
         let mut town = assembly(&[]);
         town.kind = FileKind::Level;
         let w = playing(vec![(asset(10), "squad", town)]);
-        says_once(w, "its file is an area, not an assembly");
+        says_once(w, "its file is a level, not an assembly");
     }
 
     #[test]
@@ -725,7 +725,7 @@ mod spawns_that_cannot_be_made {
             (asset(10), "squad", assembly(&[asset(11)])),
             (asset(11), "town", town),
         ]);
-        says_once(w, "\"town\", which is an area, not an assembly");
+        says_once(w, "\"town\", which is a level, not an assembly");
     }
 
     #[test]
@@ -811,7 +811,7 @@ mod spawns_that_cannot_be_made {
         assert_eq!(w.open.document.level().len(), before + 1);
         let said = said_about(&w, "squad");
         assert_eq!(said.len(), 1, "{said:?}");
-        assert!(said[0].contains("already in the area"), "{}", said[0]);
+        assert!(said[0].contains("already in the level"), "{}", said[0]);
         // Another entity of the same assembly is still made.
         spawn_every_frame(&mut w, "squad", 6000);
         assert_eq!(w.open.document.level().len(), before + 1 + FRAMES as usize);
