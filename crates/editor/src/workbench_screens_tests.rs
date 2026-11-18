@@ -72,7 +72,8 @@ fn saved(w: &Workbench) -> Vec<String> {
 fn a_screen_s_file_opens_on_the_canvas_on_the_ui_tab() {
     let mut w = opened();
     assert_eq!(w.ribbon_tab(), RibbonTab::Ui);
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Screen));
+    // Its elements in the left slot, Properties in the right.
+    assert!(!w.shell.arrangement(RibbonTab::Ui).hidden.any());
     w.refresh_screen();
     let doc = w.open.screen_doc.as_ref().unwrap();
     assert_eq!(
@@ -329,8 +330,8 @@ fn with_clips_and_a_screen() -> Workbench {
 }
 
 /// BUG-26: the × on the Canvas's tab closes the screen, and leaves the
-/// clips file open with its undo steps. (Elements is a column of the
-/// shelf's Screen tab now, with no × of its own.)
+/// clips file open with its undo steps. (Elements is the UI tab's left
+/// slot now, with no × of its own.)
 #[test]
 fn the_x_on_the_canvas_closes_the_screen_and_not_the_clips_file() {
     for closed in [Panel::Canvas] {
@@ -364,11 +365,12 @@ fn the_x_on_the_canvas_closes_the_screen_and_not_the_clips_file() {
     }
 }
 
-/// The × on Clips or Frames closes the clips file and both its tabs, and
-/// leaves the screen open with its undo steps.
+/// The × on Frames or Clip closes the clips file and its tabs (and the
+/// Clips slot), and leaves the screen open with its undo steps. (Clips is
+/// the Animate tab's left slot now, with no × of its own.)
 #[test]
-fn the_x_on_clips_or_frames_closes_the_clips_file_and_not_the_screen() {
-    for closed in Panel::FRAMES_TABS {
+fn the_x_on_frames_or_clip_closes_the_clips_file_and_not_the_screen() {
+    for closed in [Panel::Frames, Panel::Clip] {
         let mut w = with_clips_and_a_screen();
         let doc = w.open.screen_doc.as_mut().unwrap();
         doc.picked = vec![vec![0, 0, 0]];
@@ -421,9 +423,15 @@ fn a_screen_opened_on_the_ui_tab_gets_elements_too() {
     w.set_program(Some(program(MENU)));
     w.show_tab(RibbonTab::Ui);
     w.show_panel(Panel::Console);
+    let slot = crate::shell::Slot::Left;
+    w.shell
+        .arrangement_mut(RibbonTab::Ui)
+        .hidden
+        .set(slot, true);
     assert!(w.open_screen("ui/pauseMenu.lst", None));
     assert_eq!(w.ribbon_tab(), RibbonTab::Ui);
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Screen));
+    // Its elements' slot, hidden, is shown again.
+    assert!(!w.shell.arrangement(RibbonTab::Ui).hidden.has(slot));
 }
 
 /// A screen that stops being one closes with its tabs, wherever they are.

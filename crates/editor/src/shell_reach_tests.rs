@@ -52,10 +52,12 @@ const MOVED: [(&str, &str, Place); 37] = [
         "Open level…",
         Place::LevelTabPlus("Open level…"),
     ),
+    // Home's ribbon gave Save up (decision 0118): `Ctrl + S`, the
+    // level's tab's menu, File › Save all and the status line keep it.
     (
         "File > Save level",
         "Save level",
-        Place::Ribbon(RibbonTab::Home),
+        Place::LevelTabMenu("Save    Ctrl+S"),
     ),
     (
         "File > Save level as…",
@@ -526,14 +528,14 @@ fn each_shortcut_in_the_table_does_what_its_command_does() {
             b.0.open.document.history().undo_len(),
             "{command:?}"
         );
-        assert_eq!(a.0.shelf_folded(), b.0.shelf_folded(), "{command:?}");
+        assert_eq!(a.0.bottom_folded(), b.0.bottom_folded(), "{command:?}");
     }
     assert_eq!(with_keys, 18, "every command with a shortcut was tried");
 }
 
-/// Nothing became unreachable when Home's lists left the shelf (decision
-/// 0109): in every panel layout, every panel can be brought into view,
-/// and placing (the Place shelf tab) can be started and left.
+/// Nothing became unreachable when the frame came (decision 0118): in
+/// every layout, every panel can be brought into view (shown again if
+/// hidden), and placing can be started and left from the Library.
 #[test]
 fn every_panel_can_be_reached_in_every_layout() {
     use crate::panel::Panel;
@@ -545,6 +547,7 @@ fn every_panel_can_be_reached_in_every_layout() {
             root: "/projects/farm".into(),
             assets: "/projects/farm/assets".into(),
         }));
+        w.choose_layout(&egui::Context::default(), layout);
         let mut h = harness(w);
         h.run();
         for panel in Panel::ALL {
@@ -555,13 +558,75 @@ fn every_panel_can_be_reached_in_every_layout() {
                 "{panel:?} in {layout:?}"
             );
         }
+        // Showing Placement above started placing: stopped, to start it
+        // from the switch.
+        h.state_mut().0.set_placing(false);
         h.state_mut().0.show_tab(RibbonTab::Home);
+        h.state_mut().0.show_panel(Panel::Assets);
         h.run();
         h.get_by_label("Place").click();
         h.run();
         assert!(h.state().0.placing(), "{layout:?}");
-        h.get_by_label("Console").click();
+        h.get_by_label("Place").click();
         h.run();
         assert!(!h.state().0.placing(), "{layout:?}");
     }
+}
+
+/// What Home's ribbon gave up when it was tidied (decision 0118, board
+/// 03) is still there: Save on the status line (and `Ctrl + S`, the
+/// level's tab and File › Save all, in the table above), Build on the
+/// Build tab, Sprite and Tile map in Create's More; and the old shelf's
+/// Place and Animation tabs went to the Library and the Animate tab.
+#[test]
+fn what_home_s_ribbon_and_the_shelf_gave_up_is_still_reachable() {
+    let mut h = harness(ready());
+    h.run();
+    // Not on Home's ribbon any more.
+    let band = h.get_by_label("Simulate").rect().y_range();
+    for gone in ["Save level", "Export for playtesting…"] {
+        assert!(
+            !h.query_all_by_label(gone)
+                .any(|node| band.contains(node.rect().center().y)),
+            "{gone} left Home's ribbon"
+        );
+    }
+    // Save: the status line.
+    h.get_by_label_contains("click to save").click();
+    h.run();
+    assert!(h.state().1.actions.contains(&WorkbenchAction::SaveLevel));
+    // Build: its own tab's ribbon.
+    h.state_mut().0.show_tab(RibbonTab::Build);
+    h.run();
+    h.run();
+    let band = h.get_by_label("Simulate").rect().y_range();
+    assert!(
+        h.query_all_by_label("Export for playtesting…")
+            .any(|node| band.contains(node.rect().center().y))
+    );
+    // Sprite and Tile map: Create's More.
+    h.state_mut().0.show_tab(RibbonTab::Home);
+    h.run();
+    h.get_by_label("More").click();
+    h.run();
+    for item in [
+        "Sprite",
+        "Tile map",
+        "Reverb zone",
+        "Assembly from selection",
+    ] {
+        assert!(h.query_by_label(item).is_some(), "More has {item}");
+    }
+    // The shelf's Animation tab is the Animate tab's now.
+    use crate::shell::workspaces::{OpenNow, bottom_tabs};
+    use crate::unbuilt::{Entry, UnbuiltId};
+    let animation = Entry::Unbuilt(UnbuiltId::HomeShelfAnimation);
+    assert!(bottom_tabs(RibbonTab::Animate, OpenNow::default()).contains(&animation));
+    // Placing: the Library's switch, and the search.
+    let ctx = h.ctx.clone();
+    do_command(&mut h.state_mut().0, &ctx, "Start placing");
+    h.run();
+    assert!(h.state().0.placing());
+    do_command(&mut h.state_mut().0, &ctx, "Stop placing");
+    assert!(!h.state().0.placing());
 }

@@ -1,17 +1,19 @@
-//! Where the layouts put things, as numbers: the side columns, the center
-//! and the strip at their standard sizes, how they give way when the
-//! window narrows, and the shelf's columns with widths of their own.
+//! Where the layouts put things, as numbers: the side columns running
+//! full height, the centre and the bottom panel under it, how they give
+//! way when the window narrows, and how they keep their proportions when
+//! it grows.
 
 use super::*;
+use crate::panel::Panel;
 use crate::shell::RibbonTab;
 use crate::shell::sizes::Sizes;
-use crate::shell::workspaces::ShelfTab;
+use crate::shell::workspaces::{LIBRARY, OpenNow, left_slot, right_slot};
 
-/// The middle above the shelf at 1440 × 900 in a side layout: under the
-/// tab bar and ribbon, over the shelf at its standard height.
-fn upper(width: f32) -> Rect {
+/// The middle at `width` × 900: under the tab bar and ribbon, over the
+/// status line.
+fn middle(width: f32) -> Rect {
     let top = size::TAB_BAR_H + size::RIBBON_H;
-    let bottom = 900.0 - size::STATUS_BAR_H - size::SHELF_BAR_H - size::SHELF_H_SIDE;
+    let bottom = 900.0 - size::STATUS_BAR_H;
     Rect::from_x_y_ranges(0.0..=width, top..=bottom)
 }
 
@@ -20,8 +22,38 @@ fn standard(layout: PanelLayout) -> impl Fn(Edge) -> f32 {
     move |edge| sizes.get(RibbonTab::Home, layout, edge)
 }
 
-fn rect_of(side: &Side, panel: Panel) -> Rect {
-    side.lists
+/// Home's parts in `layout`, nothing hidden, the bottom panel open.
+fn home(layout: PanelLayout) -> Parts {
+    let open = OpenNow {
+        layout,
+        ..OpenNow::default()
+    };
+    let level = (Slot::Left, left_slot(RibbonTab::Home, open).unwrap());
+    let properties = (Slot::Right, right_slot(RibbonTab::Home, open).unwrap());
+    let library = (Slot::Library, LIBRARY);
+    let (mut left, mut right) = (Vec::new(), Vec::new());
+    if layout.left_on_right() {
+        right.push(level);
+    } else {
+        left.push(level);
+    }
+    right.push(properties);
+    match layout.library_at() {
+        LibraryAt::UnderLeft => left.push(library),
+        LibraryAt::UnderRight => right.push(library),
+        LibraryAt::Bottom => {}
+    }
+    Parts {
+        left,
+        right,
+        bottom: Some(false),
+        bottom_under_left: layout.bottom_under_left(),
+    }
+}
+
+fn rect_of(frame: &Frame, panel: Panel) -> Rect {
+    frame
+        .columns
         .iter()
         .find(|placed| placed.column.panels.contains(&panel))
         .map(|placed| placed.rect)
@@ -29,249 +61,269 @@ fn rect_of(side: &Side, panel: Panel) -> Rect {
 }
 
 #[test]
-fn every_layout_has_its_names_and_reads_back_by_its_key() {
+fn every_layout_has_its_words_and_reads_back_by_its_key() {
     for layout in PanelLayout::ALL {
         assert_eq!(PanelLayout::from_key(layout.key()), Some(layout));
-        assert!(!layout.name().is_empty());
+        assert!(!layout.name().is_empty() && !layout.line().is_empty());
+        assert!(!layout.more().is_empty());
     }
-    assert_eq!(PanelLayout::default(), PanelLayout::LevelLeftAssetsBottom);
+    assert_eq!(PanelLayout::default(), PanelLayout::Standard);
     assert_eq!(PanelLayout::from_key("diagonal"), None);
-    // Saved before levels were renamed from areas (decision 0118).
+    // Saved before the frame: decision 0109's, by their old words.
     for (old, layout) in [
-        (
-            "area left assets bottom",
-            PanelLayout::LevelLeftAssetsBottom,
-        ),
-        ("area and assets left", PanelLayout::LevelAndAssetsLeft),
-        ("area left assets right", PanelLayout::LevelLeftAssetsRight),
+        ("area left assets bottom", PanelLayout::Standard),
+        ("level left assets bottom", PanelLayout::Standard),
+        ("shelf", PanelLayout::Standard),
+        ("area and assets left", PanelLayout::LibraryLeft),
+        ("level and assets left", PanelLayout::LibraryLeft),
+        ("area left assets right", PanelLayout::LibraryRight),
+        ("level left assets right", PanelLayout::LibraryRight),
     ] {
         assert_eq!(PanelLayout::from_key(old), Some(layout), "{old}");
     }
-    assert!(!PanelLayout::Shelf.is_side());
 }
 
+/// The layout as saved in the interface's look: each of decision 0109's
+/// reads as its nearest, and one a later build adds as the standard.
 #[test]
-fn a_layout_a_later_build_adds_reads_as_the_standard() {
-    let read: PanelLayout = ron::from_str("Diagonal").unwrap();
-    assert_eq!(read, PanelLayout::default());
+fn layouts_saved_before_read_as_their_nearest() {
+    for (old, layout) in [
+        ("LevelLeftAssetsBottom", PanelLayout::Standard),
+        ("AreaLeftAssetsBottom", PanelLayout::Standard),
+        ("Shelf", PanelLayout::Standard),
+        ("LevelAndAssetsLeft", PanelLayout::LibraryLeft),
+        ("AreaAndAssetsLeft", PanelLayout::LibraryLeft),
+        ("LevelLeftAssetsRight", PanelLayout::LibraryRight),
+        ("AreaLeftAssetsRight", PanelLayout::LibraryRight),
+        ("Diagonal", PanelLayout::Standard),
+    ] {
+        let read: PanelLayout = ron::from_str(old).unwrap();
+        assert_eq!(read, layout, "{old}");
+    }
     for layout in PanelLayout::ALL {
         let text = ron::to_string(&layout).unwrap();
         assert_eq!(ron::from_str::<PanelLayout>(&text).unwrap(), layout);
     }
-}
-
-#[test]
-fn a_layout_saved_while_levels_were_areas_reads_as_its_level_layout() {
-    for (old, layout) in [
-        ("AreaLeftAssetsBottom", PanelLayout::LevelLeftAssetsBottom),
-        ("AreaAndAssetsLeft", PanelLayout::LevelAndAssetsLeft),
-        ("AreaLeftAssetsRight", PanelLayout::LevelLeftAssetsRight),
-    ] {
-        assert_eq!(ron::from_str::<PanelLayout>(old).unwrap(), layout, "{old}");
-    }
-}
-
-#[test]
-fn each_side_layout_has_level_properties_and_assets_once() {
-    for layout in PanelLayout::ALL.into_iter().filter(|l| l.is_side()) {
-        let side = side(upper(1440.0), layout, standard(layout));
-        let panels: Vec<Panel> = side
-            .lists
-            .iter()
-            .flat_map(|p| p.column.panels.iter().copied())
-            .collect();
-        let want = [Panel::Level, Panel::Properties, Panel::Assets];
-        assert_eq!(panels.len(), 3, "{layout:?}");
-        for panel in want {
-            assert!(panels.contains(&panel), "{layout:?} {panel:?}");
-        }
-        for panel in want {
-            assert!(layout.has_beside(panel));
-        }
-    }
-    assert!(!PanelLayout::Shelf.has_beside(Panel::Level));
-}
-
-#[test]
-fn level_left_assets_bottom_at_its_standard_sizes() {
-    let up = upper(1440.0);
-    let side = side(
-        up,
-        PanelLayout::LevelLeftAssetsBottom,
-        standard(PanelLayout::LevelLeftAssetsBottom),
+    // The standard keeps its old name, so a build before the frame
+    // still reads it.
+    assert_eq!(
+        ron::to_string(&PanelLayout::Standard).unwrap(),
+        "LevelLeftAssetsBottom"
     );
-    let level = rect_of(&side, Panel::Level);
-    let properties = rect_of(&side, Panel::Properties);
-    let assets = rect_of(&side, Panel::Assets);
-    // Tall columns at the sides, from top to bottom.
-    assert_eq!(level.width(), size::SCENE_COLUMN_W);
-    assert_eq!(level.y_range(), up.y_range());
-    assert_eq!(properties.width(), size::PROPERTIES_COLUMN_W);
-    assert_eq!(properties.right(), up.right());
-    assert_eq!(properties.y_range(), up.y_range());
-    // The center between them, 1 px from each, and the strip under it.
-    assert_eq!(side.center.left(), level.right() + 1.0);
-    assert_eq!(side.center.right(), properties.left() - 1.0);
-    assert_eq!(assets.x_range(), side.center.x_range());
-    assert_eq!(assets.height(), size::ASSETS_STRIP_H);
-    assert_eq!(assets.top(), side.center.bottom() + 1.0);
-    assert_eq!(assets.bottom(), up.bottom());
-    let edges: Vec<Edge> = side.borders.iter().map(|b| b.edge).collect();
-    assert_eq!(edges, [Edge::Left, Edge::Right, Edge::Strip]);
 }
 
 #[test]
-fn stacked_lists_share_their_column() {
-    let up = upper(1440.0);
-    let left = side(
-        up,
-        PanelLayout::LevelAndAssetsLeft,
-        standard(PanelLayout::LevelAndAssetsLeft),
+fn the_standard_frame_is_board_03_s() {
+    let m = middle(1440.0);
+    let frame = place(
+        m,
+        &home(PanelLayout::Standard),
+        standard(PanelLayout::Standard),
     );
-    let (level, assets) = (rect_of(&left, Panel::Level), rect_of(&left, Panel::Assets));
-    assert_eq!(level.width(), size::ASSETS_COLUMN_W);
-    assert_eq!(assets.top(), level.bottom() + 1.0);
-    assert_eq!(assets.x_range(), level.x_range());
-    assert!((level.height() - up.height() * size::SIDE_SHARE).abs() <= 1.0);
-    assert_eq!(left.center.bottom(), up.bottom(), "no strip");
-    let right = side(
-        up,
-        PanelLayout::LevelLeftAssetsRight,
-        standard(PanelLayout::LevelLeftAssetsRight),
+    let level = rect_of(&frame, Panel::Level);
+    let properties = rect_of(&frame, Panel::Properties);
+    // Level and Properties run full height, down to the status line.
+    assert_eq!(level.y_range(), m.y_range());
+    assert_eq!(properties.y_range(), m.y_range());
+    assert!((level.width() - 250.0).abs() <= 1.0, "{}", level.width());
+    assert!(
+        (properties.width() - 320.0).abs() <= 1.0,
+        "{}",
+        properties.width()
     );
-    let (properties, assets) = (
+    // The bottom panel under the centre only.
+    let bottom = frame.bottom.unwrap();
+    assert_eq!(bottom.x_range(), frame.centre.x_range());
+    assert_eq!(bottom.bottom(), m.bottom());
+    assert_eq!(frame.centre.bottom(), bottom.top());
+    // Three accent edges, each with its grip.
+    let edges: Vec<Edge> = frame.borders.iter().map(|b| b.edge).collect();
+    assert_eq!(edges, [Edge::Left, Edge::Right, Edge::Bottom]);
+    assert!(frame.borders.iter().all(|b| b.grip));
+}
+
+#[test]
+fn each_layout_moves_the_slots_where_its_card_draws_them() {
+    let m = middle(1440.0);
+    let place_in = |layout| place(m, &home(layout), standard(layout));
+    // Wide view: Level over Properties on the right.
+    let wide = place_in(PanelLayout::WideView);
+    let (level, properties) = (
+        rect_of(&wide, Panel::Level),
+        rect_of(&wide, Panel::Properties),
+    );
+    assert_eq!(level.x_range(), properties.x_range());
+    assert!(level.bottom() < properties.top());
+    assert_eq!(wide.centre.left(), m.left());
+    // Library on the left: under Level; the view runs to the foot.
+    let left = place_in(PanelLayout::LibraryLeft);
+    let (level, library) = (rect_of(&left, Panel::Level), rect_of(&left, Panel::Assets));
+    assert_eq!(level.x_range(), library.x_range());
+    assert!(level.bottom() < library.top() && level.left() == m.left());
+    // Library on the right: under Properties.
+    let right = place_in(PanelLayout::LibraryRight);
+    let (properties, library) = (
         rect_of(&right, Panel::Properties),
         rect_of(&right, Panel::Assets),
     );
-    assert_eq!(assets.top(), properties.bottom() + 1.0);
-    assert_eq!(assets.right(), up.right());
-    assert!(right.borders.iter().any(|b| b.edge == Edge::RightShare));
+    assert_eq!(properties.x_range(), library.x_range());
+    assert_eq!(library.right(), m.right());
+    // Tall properties: wider, full height; the bottom panel under Level.
+    let tall = place_in(PanelLayout::TallProperties);
+    let standard_frame = place_in(PanelLayout::Standard);
+    let properties = rect_of(&tall, Panel::Properties);
+    assert!(properties.width() > rect_of(&standard_frame, Panel::Properties).width());
+    assert_eq!(properties.y_range(), m.y_range());
+    let bottom = tall.bottom.unwrap();
+    assert_eq!(bottom.left(), m.left());
+    assert!(rect_of(&tall, Panel::Level).bottom() < bottom.top());
 }
 
 #[test]
-fn a_dragged_size_is_used_and_held_to_the_room() {
-    let up = upper(1440.0);
-    let layout = PanelLayout::LevelLeftAssetsBottom;
-    let side = side(up, layout, |edge| match edge {
-        Edge::Left => 500.0,
-        Edge::Strip => 5_000.0,
+fn a_folded_bottom_panel_is_one_line_with_no_edge_to_drag() {
+    let m = middle(1440.0);
+    let mut parts = home(PanelLayout::Standard);
+    parts.bottom = Some(true);
+    let frame = place(m, &parts, standard(PanelLayout::Standard));
+    assert_eq!(frame.bottom.unwrap().height(), size::BOTTOM_BAR_H);
+    assert!(frame.borders.iter().all(|b| b.edge != Edge::Bottom));
+    parts.bottom = None;
+    let frame = place(m, &parts, standard(PanelLayout::Standard));
+    assert_eq!(frame.bottom, None);
+    assert_eq!(frame.centre.bottom(), m.bottom());
+}
+
+#[test]
+fn a_larger_window_keeps_the_panels_in_proportion() {
+    let layout = PanelLayout::Standard;
+    let small = place(middle(1100.0), &home(layout), standard(layout));
+    let large = place(middle(2200.0), &home(layout), standard(layout));
+    let share = |frame: &Frame, panel, width: f32| rect_of(frame, panel).width() / width;
+    for panel in [Panel::Level, Panel::Properties] {
+        let (a, b) = (share(&small, panel, 1100.0), share(&large, panel, 2200.0));
+        assert!((a - b).abs() < 0.01, "{panel:?}: {a} and {b}");
+    }
+    // Growing by a point never makes anything jump.
+    let mut before = place(middle(1000.0), &home(layout), standard(layout));
+    for width in 1001..1400 {
+        let now = place(middle(width as f32), &home(layout), standard(layout));
+        let grew = rect_of(&now, Panel::Level).width() - rect_of(&before, Panel::Level).width();
+        assert!((0.0..=1.0).contains(&grew), "at {width}: {grew}");
+        before = now;
+    }
+}
+
+#[test]
+fn narrower_the_centre_gives_way_then_the_right_then_the_left() {
+    let layout = PanelLayout::Standard;
+    let wide_sizes = |edge| match edge {
+        Edge::Left | Edge::Right => 0.4,
         other => standard(layout)(other),
-    });
-    assert_eq!(rect_of(&side, Panel::Level).width(), 500.0);
-    // The strip can't take the center below its least.
-    assert!(side.center.height() >= size::CENTER_MIN_H);
-    let strip = side.borders.iter().find(|b| b.edge == Edge::Strip).unwrap();
-    assert!(strip.range.end() + size::CENTER_MIN_H + 1.0 <= up.height() + 0.5);
-}
-
-#[test]
-fn when_narrow_the_center_gives_way_then_the_right_column_then_the_left() {
-    let layout = PanelLayout::LevelLeftAssetsBottom;
-    let at = |width: f32| side(upper(width), layout, standard(layout));
-    // Wide enough: both columns at their standard, the center smaller.
-    let roomy = at(1100.0);
-    assert_eq!(
-        rect_of(&roomy, Panel::Properties).width(),
-        size::PROPERTIES_COLUMN_W
-    );
-    assert_eq!(rect_of(&roomy, Panel::Level).width(), size::SCENE_COLUMN_W);
-    // The center at its least: the right column narrows first.
-    let width = size::SCENE_COLUMN_W + size::PROPERTIES_COLUMN_W - 100.0 + 2.0 + size::CENTER_MIN_W;
-    let squeezed = at(width);
-    assert_eq!(squeezed.center.width(), size::CENTER_MIN_W);
-    assert_eq!(
-        rect_of(&squeezed, Panel::Level).width(),
-        size::SCENE_COLUMN_W
-    );
-    assert_eq!(
-        rect_of(&squeezed, Panel::Properties).width(),
-        size::PROPERTIES_COLUMN_W - 100.0
-    );
-    // Then the left, once the right is at its least.
-    let least = at(least_width(layout));
-    assert_eq!(rect_of(&least, Panel::Level).width(), size::COLUMN_MIN_W);
-    assert_eq!(
-        rect_of(&least, Panel::Properties).width(),
-        size::COLUMN_MIN_W
-    );
-    assert_eq!(least.center.width(), size::CENTER_MIN_W);
-    assert_eq!(least_width(PanelLayout::Shelf), 0.0);
-}
-
-#[test]
-fn borders_measure_from_where_their_size_starts() {
-    let at = egui::pos2(300.0, 400.0);
-    assert_eq!(Measure::FromLeft(100.0).value(at), 200.0);
-    assert_eq!(Measure::FromRight(1000.0).value(at), 700.0);
-    assert_eq!(Measure::FromBottom(600.0).value(at), 200.0);
-    let share = Measure::ShareDown {
-        top: 200.0,
-        height: 400.0,
     };
-    assert_eq!(share.value(at), 0.5);
-    assert!(Measure::FromLeft(0.0).upright() && !share.upright());
-    // A border with no room can't divide by nothing.
-    let flat = Measure::ShareDown {
-        top: 0.0,
-        height: 0.0,
-    };
-    assert!(flat.value(at).is_finite());
-}
-
-fn entity_columns(layout: PanelLayout) -> &'static [Column] {
-    ShelfTab::Entity.columns(layout)
-}
-
-#[test]
-fn shelf_columns_take_their_widths_and_the_rest_takes_what_is_left() {
-    let content = Rect::from_x_y_ranges(0.0..=1440.0, 600.0..=900.0);
-    let columns = entity_columns(PanelLayout::Shelf);
-    let edge = |i: usize| Edge::Column(ShelfTab::Entity, i as u8);
-    let (rects, borders) = shelf_columns(content, columns, &[400.0, 0.0, 300.0], edge);
-    assert_eq!(rects[0].width(), 400.0);
-    assert_eq!(rects[1].left(), rects[0].right() + 1.0);
-    assert_eq!(rects[2].right(), content.right());
-    assert!((rects[2].width() - 300.0).abs() <= 1.0);
-    // A border between each pair, setting the column with a width of
-    // its own beside it.
-    let edges: Vec<Edge> = borders.iter().map(|b| b.edge).collect();
-    assert_eq!(edges, [edge(0), edge(2)]);
-    assert_eq!(borders[0].measure, Measure::FromLeft(rects[0].left()));
-    assert_eq!(borders[1].measure, Measure::FromRight(rects[2].right()));
-    assert_eq!(borders[0].name(), "Between Level and Properties");
+    // Columns asked wide keep the centre at its least.
+    let frame = place(middle(1440.0), &home(layout), wide_sizes);
+    assert!(frame.centre.width() >= size::CENTER_MIN_W - 1.0);
+    // At their least, the right column goes first, then the left.
+    let least = 2.0 * size::COLUMN_MIN_W + size::CENTER_MIN_W + 2.0;
+    let just = place(middle(least), &home(layout), standard(layout));
+    assert_eq!(just.columns.len(), 2);
+    let narrower = place(middle(least - 10.0), &home(layout), standard(layout));
+    assert!(narrower.columns.iter().all(|c| c.slot == Slot::Left));
+    let narrowest = place(middle(size::CENTER_MIN_W), &home(layout), standard(layout));
+    assert!(narrowest.columns.is_empty());
+    assert_eq!(narrowest.centre.width(), size::CENTER_MIN_W);
 }
 
 #[test]
-fn shelf_columns_give_way_from_the_right_then_wrap() {
-    let columns = entity_columns(PanelLayout::Shelf);
-    let edge = |i: usize| Edge::Column(ShelfTab::Entity, i as u8);
-    let widths = [size::SCENE_COLUMN_W, 0.0, size::ASSETS_COLUMN_W];
-    let room = |w: f32| Rect::from_x_y_ranges(0.0..=w, 600.0..=900.0);
-    // Properties at its least, then Assets narrows, Level kept.
-    let w = size::SCENE_COLUMN_W + size::COLUMN_MIN_W + size::ASSETS_COLUMN_W - 50.0 + 2.0;
-    let (rects, _) = shelf_columns(room(w), columns, &widths, edge);
-    assert_eq!(rects[0].width(), size::SCENE_COLUMN_W);
-    assert!((rects[1].width() - size::COLUMN_MIN_W).abs() <= 1.0);
-    assert!((rects[2].width() - (size::ASSETS_COLUMN_W - 50.0)).abs() <= 1.0);
-    // Too narrow for all three at their least: under each other.
-    let (rects, borders) = shelf_columns(
-        room(3.0 * size::COLUMN_MIN_W - 20.0),
-        columns,
-        &widths,
-        edge,
+fn an_edge_s_range_keeps_the_centre_and_every_column_at_their_least() {
+    let m = middle(1440.0);
+    let frame = place(
+        m,
+        &home(PanelLayout::Standard),
+        standard(PanelLayout::Standard),
     );
-    assert_eq!(rects[0].left(), rects[1].left());
-    assert!(rects[1].top() > rects[0].bottom());
+    for border in &frame.borders {
+        let (low, high) = (*border.range.start(), *border.range.end());
+        assert!(low <= high, "{:?}", border.edge);
+        if border.edge == Edge::Left || border.edge == Edge::Right {
+            assert!((low * m.width() - size::COLUMN_MIN_W).abs() < 0.5);
+            let others = size::COLUMN_MIN_W.max(320.0) + size::CENTER_MIN_W;
+            assert!(
+                high * m.width() <= m.width() - size::CENTER_MIN_W,
+                "{others}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_pointer_becomes_a_share_of_the_middle() {
+    let at = egui::pos2(360.0, 600.0);
+    assert_eq!(
+        Measure::FromLeft {
+            x: 0.0,
+            span: 1440.0
+        }
+        .value(at),
+        0.25
+    );
+    assert_eq!(
+        Measure::FromRight {
+            x: 1440.0,
+            span: 1440.0
+        }
+        .value(at),
+        0.75
+    );
+    assert_eq!(
+        Measure::FromBottom {
+            y: 800.0,
+            span: 400.0
+        }
+        .value(at),
+        0.5
+    );
+    assert_eq!(
+        Measure::ShareDown {
+            top: 400.0,
+            height: 400.0
+        }
+        .value(at),
+        0.5
+    );
+    // A middle of no size never divides by nothing.
     assert!(
-        borders.is_empty(),
-        "nothing to drag between columns under each other"
+        Measure::FromLeft { x: 0.0, span: 0.0 }
+            .value(at)
+            .is_finite()
     );
 }
 
 #[test]
-fn place_keeps_only_placement_in_a_side_layout() {
-    let placing = ShelfTab::Place.columns(PanelLayout::LevelLeftAssetsBottom);
-    assert_eq!(placing.len(), 1);
-    assert_eq!(placing[0].panels, [Panel::Placement]);
-    assert_eq!(ShelfTab::Place.columns(PanelLayout::Shelf).len(), 3);
+fn any_window_and_any_sizes_place_without_overlap() {
+    let mut n = 1u64;
+    for layout in PanelLayout::ALL {
+        for _ in 0..200 {
+            n = n.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            let width = 120.0 + (n >> 40) as f32 % 3000.0;
+            let height = 80.0 + (n >> 20) as f32 % 1600.0;
+            let share = ((n >> 8) % 1000) as f32 / 1000.0;
+            let m = Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(width, height));
+            let frame = place(m, &home(layout), |_| share);
+            let c = frame.centre;
+            assert!(
+                c.left() >= m.left() - 0.01
+                    && c.top() >= m.top() - 0.01
+                    && c.right() <= m.right() + 0.01
+                    && c.bottom() <= m.bottom() + 0.01,
+                "{layout:?}: {c:?} in {m:?}"
+            );
+            for placed in &frame.columns {
+                assert!(
+                    !placed.rect.intersects(frame.centre.shrink(0.5)),
+                    "{layout:?}"
+                );
+            }
+        }
+    }
 }

@@ -10,12 +10,12 @@
 ## How to use it
 
 ![The sound events](pictures/sound-events.png)
-The project's sound events on the Audio tab's shelf: each one's bus, volume, placement and takes, and the one picked at the right.
+The project's sound events on the Audio tab (on the shelf of an older build; they are its left slot now): each one's bus, volume, placement and takes, and the one picked at the right.
 
 1. **Make one:** in the **Library**, **New › Sound event** (right-click in the Library, or **+ New**). It's made in the folder shown, called "New sound event", and shown in Details (Properties). Rename it like any file (right-click › **Rename…**), say to `footstep`.
 2. **Add takes:** drag sound files from the Library onto the event's tile, or into the **Takes** list in Properties. Five to eight takes of a footstep is plenty. The tile shows how many it has (×5).
 3. **Listen:** press **Play** in Properties, or point at the event's tile and click its **▶**. Each press picks a different take, pitch and volume, never the same take twice in a row, and the line under Play says what it picked. Press it a few times to hear the variety.
-4. **Every event in one place:** the **Audio** tab's **Sound events** shelf tab lists every sound event in the project, with its bus, volume, where it's heard and how many takes; click one to change and play it beside the list, as in the Library's Details.
+4. **Every event in one place:** the **Audio** tab's **Sound events**, its left slot, lists every sound event in the project, with its bus, volume, where it's heard and how many takes; click one to change and play it beside the list, as in the Library's Details.
 5. **Change how it sounds:** edit the settings below in Properties. Each change is saved to the event's `.solsound` file as soon as you let go of the mouse. To take a take out, click the **×** at the end of its row (the sound file itself stays in the project).
 
 ## Settings

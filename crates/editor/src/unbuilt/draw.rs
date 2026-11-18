@@ -341,8 +341,8 @@ pub fn tab(ui: &mut Ui, id: UnbuiltId) -> Response {
     )
 }
 
-/// A shelf tab that isn't built.
-pub fn shelf_tab(ui: &mut Ui, id: UnbuiltId) -> Response {
+/// A tab of the bottom panel that isn't built.
+pub fn bottom_tab(ui: &mut Ui, id: UnbuiltId) -> Response {
     marked_strip(ui, id, size::shelf_tab_h(), size::ROW_PAD, text::tab())
 }
 

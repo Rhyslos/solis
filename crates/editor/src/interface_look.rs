@@ -1,5 +1,5 @@
 //! How the editor's interface looks, as the user chose it: the accent
-//! colour, the interface scale, the density, the layout of Home's lists,
+//! colour, the interface scale, the density, the frame's layout,
 //! and the switches the new frame reads as it is built
 //! ([decision 0100](../../../docs/decisions/0100-one-theme-five-accents.md)).
 //! Not to be confused with [`crate::Look`], how models are shaded in the
@@ -38,23 +38,27 @@ pub struct InterfaceLook {
     /// ([decision 0101](../../../docs/decisions/0101-unfinished-parts-as-placeholders.md)).
     /// Read by everything that draws an unfinished part (`unbuilt.rs`).
     pub hide_unfinished: bool,
-    /// Which shelf tab comes to the front when something is selected
-    /// (Preferences › Appearance). Builds before it had none: they read
-    /// the standard, which keeps the shelf as it is.
+    /// What selecting something does to the panels (Preferences ›
+    /// Appearance). Builds before it had none: they read the standard,
+    /// which leaves them as they are.
     pub shelf_opens_on: ShelfOpensOn,
-    /// Where Home's Level, Properties and Assets lists sit (Preferences ›
-    /// Appearance; decision 0109). Builds before it had them on the
-    /// shelf; they read the standard, the lists beside the groups.
+    /// Where the frame's slots sit (Preferences › Layout; decisions
+    /// 0109 and 0118). Builds before it had Home's lists on the shelf;
+    /// they read the standard.
     pub layout: PanelLayout,
+    /// Whether each tab keeps its own panel sizes (Preferences › Layout);
+    /// off, a size dragged on one tab is used on all of them.
+    pub sizes_per_tab: bool,
 }
 
-/// Which shelf tab comes to the front when something is selected.
+/// What selecting something does to the panels (once which shelf tab
+/// came to the front; its saved names are kept).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum ShelfOpensOn {
-    /// The tab in front stays in front (as the editor always did).
+    /// The panels stay as they are (as the editor always did).
     #[default]
     AsItIs,
-    /// The Entity tab, with Properties.
+    /// Properties is shown again if it was hidden.
     Entity,
 }
 
@@ -65,8 +69,8 @@ impl ShelfOpensOn {
     /// Its words in the list.
     pub fn name(self) -> &'static str {
         match self {
-            Self::AsItIs => "The tab in front",
-            Self::Entity => "Entity",
+            Self::AsItIs => "Leave the panels as they are",
+            Self::Entity => "Show Properties",
         }
     }
 }
@@ -81,6 +85,7 @@ impl Default for InterfaceLook {
             hide_unfinished: false,
             shelf_opens_on: ShelfOpensOn::AsItIs,
             layout: PanelLayout::default(),
+            sizes_per_tab: true,
         }
     }
 }

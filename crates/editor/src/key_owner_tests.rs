@@ -318,6 +318,7 @@ fn on_the_library_tab_f2_and_delete_are_the_picked_file_s_and_never_the_level_s(
     assert_eq!(renaming.map(|(path, _)| path), Some(PICTURE.to_string()));
     h.state_mut().0.open.library_state.renaming = None;
     h.run();
+    h.run();
     h.key_press(egui::Key::Delete);
     h.run();
     assert!(

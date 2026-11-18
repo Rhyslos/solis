@@ -32,16 +32,14 @@ fn the_title_names_program_version_and_level() {
 fn a_new_workbench_starts_on_home_as_the_design_draws_it() {
     let w = Workbench::new(info());
     assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Home);
-    // The standard layout (decision 0109): Home's lists beside the level,
-    // the Console in front on the shelf; in the design's own, Entity.
+    // The standard layout (decision 0118, board 03): Level and
+    // Properties beside the view, the Library in front under it.
     assert_eq!(
         w.interface_look().layout,
-        crate::shell::PanelLayout::LevelLeftAssetsBottom
+        crate::shell::PanelLayout::Standard
     );
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Console));
-    let shelf = crate::test_support::in_layout(crate::shell::PanelLayout::Shelf);
-    assert_eq!(shelf.shelf_tab(), Some(crate::shell::ShelfTab::Entity));
-    assert!(!w.shelf_folded());
+    assert_eq!(w.bottom_tab(), Some(crate::shell::BottomTab::Library));
+    assert!(!w.bottom_folded());
     assert_eq!(w.tool(), Tool::Select);
     assert_eq!(w.accent(), Accent::Blue);
 }
@@ -114,14 +112,15 @@ fn harness_with(workbench: Workbench) -> egui_kittest::Harness<'static, Workbenc
 fn the_editor_draws_every_panel_without_a_gpu() {
     let mut h = harness();
     h.run();
-    // The level's document tab, the shelf's tabs and Home's lists.
+    // The level's document tab, the bottom panel's tabs and Home's
+    // slots.
     for label in [
         "Place",
         "Console",
         "Problems",
         "Level",
         "Properties",
-        "Assets",
+        "Library",
     ] {
         assert!(h.query_all_by_label(label).count() >= 1, "{label}");
     }

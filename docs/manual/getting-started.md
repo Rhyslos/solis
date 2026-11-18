@@ -40,7 +40,7 @@ Solis starts on the [launcher](launcher.md), a small window listing your project
 New to making games? **Learn**, down the launcher's left side, makes one of the four examples as a project, ready to play and take apart.
 
 ## Settings
-Solis remembers your panel layout, accent colour, interface scale, camera and viewport controls in your user folder, so each start looks like the last.
+Solis remembers your layout and panel sizes, accent colour, interface scale, camera and viewport controls in your user folder, so each start looks like the last.
 
 ## Tips and common problems
 - **Problem:** Windows warns that the program is from an unknown publisher. **Why:** the program isn't signed with a paid certificate yet. **Fix:** choose **More info**, then **Run anyway**.

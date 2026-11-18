@@ -218,7 +218,7 @@ These work in the viewport while a tile map's entity is selected; the same tools
 | Rename | `F2` |
 | Point the camera at the selection | `F` |
 | Search for anything to do, any file, entity or panel (with nothing being typed) | `Space` |
-| Fold the shelf to its bar, or open it again | `Ctrl + Space` |
+| Fold the bottom panel to one line, or open it again | `Ctrl + Space` |
 
 All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md).
 
@@ -262,10 +262,10 @@ See [Projects and the Library](projects-and-the-library.md).
 
 | Action | Shortcut |
 |---|---|
-| Place a model, assembly, sprite sheet or tile map where the camera looks | Double-click it in the Assets list; in the Library tab a double-click only picks it (**Place** on the ribbon places it) |
+| Place a model, assembly, sprite sheet or tile map where the camera looks | Double-click it in Home's Library; in the Library tab a double-click only picks it (**Place** on the ribbon places it) |
 | Open any other file (a level, a picture in its program) | Double-click it |
 | Drop without snapping to the grid, this once | Hold `Ctrl` as you let go |
-| Rename or delete the file picked | `F2`, `Delete`, with the pointer over the Library or the Assets list |
+| Rename or delete the file picked | `F2`, `Delete`, with the pointer over the Library tab's browser or Home's Library |
 | Place a model, assembly, sprite, picture or tile map where you point | Drag it into the viewport |
 | Place one under an entity | Drag it onto the entity in the Level panel |
 | Move a file to another folder | Drag it onto the folder in the tree |
@@ -343,9 +343,9 @@ See [Input](input.md).
 | Bind the next key, mouse button or gamepad button pressed | **+ Add binding**, then press it (`Backspace` too is bound then) |
 | Give up binding | `Esc` |
 
-## Editor groups and the shelf
+## The frame: slots, groups and the bottom panel
 
-Panels stay where each tab's screen puts them (on Home, where the [panel layout](concepts.md#the-window) chosen in **File › Preferences** puts its three lists); these size the screen, and each tab remembers what you did, for each panel layout.
+Every tab has the same frame (left slot, centre, right slot, and the bottom panel under the centre), filled with its own panels; the [layout](concepts.md#the-window) chosen in **File › Preferences › Layout** moves the slots. These size it, and each tab remembers what you did, for each layout (or one set for every tab, with **Each tab keeps its own panel sizes** off). No keys were added for any of it: everything is a drag or a click.
 
 | Action | Mouse or key |
 |---|---|
@@ -353,16 +353,20 @@ Panels stay where each tab's screen puts them (on Home, where the [panel layout]
 | Close a file's document (an animator, a tileset, a picture's crops, a screen) | Its **×** |
 | New level, Open level… | The **+** after the level's tab |
 | Save, Save as…, Close others, Show in the Library | Right-click the level's tab |
-| Give one of two groups more room | Drag the line between them |
-| Make a column, the Assets strip or one of two stacked lists bigger or smaller | Drag the line at its edge (the pointer becomes a two-headed arrow over it) |
-| Put a border back to its standard size | Double-click it (the shelf's grip and top edge too) |
-| Give a document a group of its own, on one half of the middle | Drag its tab onto that half |
+| Save the level | `Ctrl + S`, or click **Saved** or **Not saved yet** in the status line |
+| Make a slot wider or narrower | Drag the line at its edge (it takes the accent colour, and the pointer becomes a two-headed arrow) |
+| Make the bottom panel taller or shorter | Drag its top edge |
+| Give one of two groups, or of two panels in a slot, more room | Drag the line between them |
+| Put an edge back to its standard size | Double-click it |
+| Hide a panel | **⋯** in its header, then **Hide** |
+| Show a hidden panel again | Its icon at the right of the bottom panel's bar, or `Space` and **Show hidden panels** |
+| Give a document a group of its own, on one half of the centre | Drag its tab onto that half |
 | Join two groups | Drag a tab onto the other group's tabs |
 | Put a dragged tab back | `Esc`, while dragging |
-| Bring a shelf tab to the front (opening a folded shelf) | Click it |
-| Make the shelf taller or shorter | Drag the grip at its bar's left, or the bar's top edge |
-| Fold the shelf to its bar, or open it again | `Ctrl + Space` (while typing too) |
-| Close a clips file | The **×** after the Frames or Clip shelf tab |
+| Bring a bottom tab to the front (opening a folded panel at its last height) | Click its name |
+| Fold the bottom panel to one line, or open it again | `Ctrl + Space` (while typing too), **▾**, or a click on the tab in front |
+| Close a clips file | The **×** after the Frames or Clip tab |
+| Choose a layout | Click its card in **File › Preferences › Layout**; **Undo** on the note puts the one before back |
 
 See the [Interface tour](interface-tour.md).
 

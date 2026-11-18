@@ -88,7 +88,7 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
     );
     // The Animate tab, with its Frames shelf tab in front.
     assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Animate);
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Frames));
+    assert_eq!(w.bottom_tab(), Some(crate::shell::BottomTab::Frames));
     let mut h = harness(w);
     h.run();
     h.run();

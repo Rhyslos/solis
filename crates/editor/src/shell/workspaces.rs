@@ -1,209 +1,145 @@
-//! What each ribbon tab shows in the middle of the window (decision
-//! 0099; spec 148-158): the documents its editor groups hold, and the
-//! tabs of its shelf with the columns each lays side by side.
+//! What each ribbon tab shows in the frame's four slots (decision 0118,
+//! board 09): its left slot (a list of what is in it), its centre (the
+//! documents its editor groups hold), its right slot (the picked thing's
+//! settings) and its bottom panel (small tabs of one panel, under the
+//! centre only).
 //!
-//! The arrangement is fixed per tab, as the design draws each screen: a
-//! panel is never dragged elsewhere. What changes is what's open (a
-//! running game, an animator, a tileset, a picture's crops, a clips file,
-//! a tile map selected), which adds documents and shelf tabs while it is
-//! open; and what each tab remembers (`Arrangement`): the shelf tab in
-//! front, whether the shelf is folded, and the document in front of each
-//! group. The sizes of its borders are kept apart (`sizes.rs`).
-//!
-//! On Home, the layout chosen in Preferences (decision 0109) takes the
-//! Level, Properties and Assets lists off the shelf into columns of their
-//! own (`layouts.rs`): the Entity shelf tab goes, and Place keeps only
-//! its Placement column.
+//! The table is fixed per tab, as the board draws each one: a panel is
+//! never dragged elsewhere. What changes is what's open (a running game,
+//! an animator, a tileset, a picture's crops, a clips file, a tile map
+//! selected), which adds documents, slots and bottom tabs while it is
+//! open; the layout chosen in Preferences (`layouts.rs`), which moves the
+//! slots; and what each tab remembers (`Arrangement`): the bottom tab in
+//! front, whether the bottom panel is folded, which slots are hidden, and
+//! the document in front of each group. The sizes of its edges are kept
+//! apart (`sizes.rs`).
 
 use super::RibbonTab;
 use super::layouts::PanelLayout;
 use crate::panel::Panel;
-use crate::tokens::size;
 use crate::unbuilt::{Entry, UnbuiltId};
 
-/// One tab of the shelf.
+/// One tab of the bottom panel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ShelfTab {
-    /// Placing: the level's entities, how placed things land, and the
-    /// files to drag in (spec 262-276). Its being in front is the
-    /// placing mode (the project lead's answer 20): the ribbon takes its
-    /// build form and the tool bar goes.
-    Place,
-    /// The level's entities, the selected one's Properties and the
-    /// Library's files (the design's Object tab, in Solis's words).
-    Entity,
-    /// The file picked in the Library, or the tileset open.
-    Details,
+pub enum BottomTab {
+    /// The Library's open folder as tiles (the assets browser), and while
+    /// placing, how placed things land beside it.
+    Library,
     /// The project's code files, with what uses each.
     Code,
-    /// A clips file's frames along a time ruler, while one is open.
+    /// A clips file's frames along a time ruler, while one is open: the
+    /// Animate tab's timeline.
     Frames,
     /// The chosen clip's playback, while a clips file is open.
     Clip,
-    /// The open animator's parameters.
-    Parameters,
-    /// What Properties shows on the Animate tab: the animator's state or
-    /// transition picked, or the selected entity.
-    Properties,
-    /// The open screen's pieces and the one picked.
-    Screen,
-    /// The project's sound events, and the one picked.
-    SoundEvents,
-    /// Messages from the editor, the build and the game.
+    /// The project's pictures for the canvas's Image tool.
+    Pictures,
+    /// Messages from the editor, the build and the game, with the
+    /// command line.
     Console,
     /// Mistakes found in the game's code and levels.
     Problems,
     /// The selected tile map's layers, terrains and values, while one is
     /// selected.
     Map,
-    /// The open tileset's terrains, the one chosen and its slot picked.
-    Terrains,
-    /// The open picture's crops and the one picked.
-    Crops,
 }
 
-/// How wide a shelf column is.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Width {
-    /// A fixed width, in points.
-    Fixed(f32),
-    /// What the fixed columns leave.
-    Rest,
-}
-
-/// One column of a shelf tab: a header and the panels stacked in it.
+/// A slot's or a bottom tab's contents: a header and the panels in it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Column {
-    /// The header's words (a tab with one column draws no header).
+    /// The header's words.
     pub title: &'static str,
     /// The panels in it, top to bottom; a second one takes the lower
     /// part.
     pub panels: &'static [Panel],
-    /// How wide it is.
-    pub width: Width,
-    /// Whether its panel draws its own header in the header's place
-    /// (Properties: the entity's name, + Component and ⋯, spec 199).
-    pub own_header: bool,
+    /// A part that isn't built yet, drawn as its page in place of panels
+    /// (and gone with the unfinished parts).
+    pub unbuilt: Option<Entry<()>>,
 }
 
-/// A column, as a constant (so a tab's columns are a constant table).
+/// A column, as a constant (so a tab's slots are a constant table).
 macro_rules! column {
-    ($title:expr, [$($panel:expr),*], $width:expr) => {
+    ($title:expr, [$($panel:expr),*]) => {
         Column {
             title: $title,
             panels: &[$($panel),*],
-            width: $width,
-            own_header: false,
-        }
-    };
-    ($title:expr, [$($panel:expr),*], $width:expr, own_header) => {
-        Column {
-            title: $title,
-            panels: &[$($panel),*],
-            width: $width,
-            own_header: true,
+            unbuilt: None,
         }
     };
 }
 
-impl ShelfTab {
-    /// Every shelf tab.
-    pub const ALL: [Self; 15] = [
-        Self::Place,
-        Self::Entity,
-        Self::Details,
+/// A slot whose part isn't built yet.
+const fn unbuilt_column(title: &'static str, part: Entry<()>) -> Column {
+    Column {
+        title,
+        panels: &[],
+        unbuilt: Some(part),
+    }
+}
+
+impl BottomTab {
+    /// Every bottom tab.
+    pub const ALL: [Self; 8] = [
+        Self::Library,
         Self::Code,
         Self::Frames,
         Self::Clip,
-        Self::Parameters,
-        Self::Properties,
-        Self::Screen,
-        Self::SoundEvents,
+        Self::Pictures,
         Self::Console,
         Self::Problems,
         Self::Map,
-        Self::Terrains,
-        Self::Crops,
     ];
 
-    /// The tab's name, on the shelf bar and when saved.
+    /// The tab's name, on the bottom panel and when saved.
     pub fn name(self) -> &'static str {
         match self {
-            Self::Place => "Place",
-            Self::Entity => "Entity",
-            Self::Details => "Details",
+            Self::Library => "Library",
             Self::Code => "Code",
             Self::Frames => "Frames",
             Self::Clip => "Clip",
-            Self::Parameters => "Parameters",
-            Self::Properties => "Properties",
-            Self::Screen => "Screen",
-            Self::SoundEvents => "Sound events",
+            Self::Pictures => "Pictures",
             Self::Console => "Console",
             Self::Problems => "Problems",
             Self::Map => "Map",
-            Self::Terrains => "Terrains",
-            Self::Crops => "Crops",
         }
     }
 
-    /// The tab called `name`, as saved.
+    /// The tab called `name`, as saved. The shelf's tabs from before the
+    /// frame (decision 0118) that held the assets (Place, Entity) read
+    /// as the Library; the rest moved into slots, and read as nothing.
     pub fn named(name: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|tab| tab.name() == name)
-    }
-
-    /// Its columns, left to right, in `layout`.
-    pub fn columns(self, layout: PanelLayout) -> &'static [Column] {
-        use Panel as P;
-        use Width::{Fixed, Rest};
-        match self {
-            // The Level and Assets lists are columns of their own: placing
-            // keeps how placed things land on the shelf.
-            Self::Place if layout.is_side() => &[column!("Placement", [P::Placement], Rest)],
-            Self::Place => &[
-                column!("Level", [P::Level], Fixed(size::SCENE_COLUMN_W)),
-                column!("Placement", [P::Placement], Fixed(size::PLACEMENT_COLUMN_W)),
-                column!("Assets", [P::Assets], Rest),
-            ],
-            Self::Entity => &[
-                column!("Level", [P::Level], Fixed(size::SCENE_COLUMN_W)),
-                column!("Properties", [P::Properties], Rest, own_header),
-                column!("Assets", [P::Assets], Fixed(size::ASSETS_COLUMN_W)),
-            ],
-            Self::Screen => &[
-                column!("Elements", [P::Elements], Fixed(size::SCENE_COLUMN_W)),
-                column!("Properties", [P::Properties], Rest),
-                column!(
-                    "Pictures",
-                    [P::Pictures],
-                    Fixed(size::ASSETS_COLUMN_W - 50.0)
-                ),
-            ],
-            Self::Details | Self::Properties => &[column!("Properties", [P::Properties], Rest)],
-            Self::Code => &[column!("Code", [P::Code], Rest)],
-            Self::Frames => &[
-                column!("Clips", [P::Clips], Fixed(size::SCENE_COLUMN_W + 60.0)),
-                column!("Frames", [P::Frames], Rest),
-            ],
-            Self::Clip => &[column!("Clip", [P::Clip], Rest)],
-            Self::Parameters => &[column!("Parameters", [P::Parameters], Rest)],
-            Self::SoundEvents => &[column!("Sound events", [P::SoundEvents], Rest)],
-            Self::Console => &[column!("Console", [P::Console], Rest)],
-            Self::Problems => &[column!("Problems", [P::Problems], Rest)],
-            Self::Map => &[column!("Map", [P::Map], Rest)],
-            Self::Terrains => &[
-                column!("Terrains", [P::Terrains], Fixed(size::TERRAINS_COLUMN_W)),
-                column!("Slot", [P::Properties], Rest),
-            ],
-            Self::Crops => &[column!("Crops", [P::Crops], Rest)],
+        match name {
+            "Place" | "Entity" => Some(Self::Library),
+            _ => Self::ALL.into_iter().find(|tab| tab.name() == name),
         }
     }
 
-    /// Every panel the tab shows in `layout`.
-    pub fn panels(self, layout: PanelLayout) -> impl Iterator<Item = Panel> {
-        self.columns(layout)
-            .iter()
-            .flat_map(|c| c.panels.iter().copied())
+    /// Its symbol, before its name.
+    pub fn icon(self) -> crate::icons::Icon {
+        match self {
+            Self::Library => crate::icons::Icon::FolderOpen,
+            other => other.panel().icon(),
+        }
+    }
+
+    /// The panel it shows.
+    pub fn panel(self) -> Panel {
+        match self {
+            Self::Library => Panel::Assets,
+            Self::Code => Panel::Code,
+            Self::Frames => Panel::Frames,
+            Self::Clip => Panel::Clip,
+            Self::Pictures => Panel::Pictures,
+            Self::Console => Panel::Console,
+            Self::Problems => Panel::Problems,
+            Self::Map => Panel::Map,
+        }
+    }
+
+    /// Every panel it shows: the Library's Placement too, while placing.
+    pub fn panels(self) -> impl Iterator<Item = Panel> {
+        let placement = (self == Self::Library).then_some(Panel::Placement);
+        std::iter::once(self.panel()).chain(placement)
     }
 
     /// Whether a close button sits on the tab: it shows a file of its own
@@ -214,7 +150,63 @@ impl ShelfTab {
     }
 }
 
-/// What is open now, which adds documents and shelf tabs.
+/// The Library as a column of its own, where a layout puts it beside the
+/// centre.
+pub const LIBRARY: Column = column!("Library", [Panel::Assets]);
+
+/// The Library's column while placing: how placed things land over the
+/// files.
+pub const LIBRARY_PLACING: Column = column!("Library", [Panel::Placement, Panel::Assets]);
+
+/// A slot of the frame beside the centre.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Slot {
+    /// The left one: a list of what is in what's worked on.
+    Left,
+    /// The right one: the picked thing's settings.
+    Right,
+    /// The Library, where a layout takes it out of the bottom panel into
+    /// a column.
+    Library,
+}
+
+/// What `tab` puts in its left slot with `open` open, if anything.
+pub fn left_slot(tab: RibbonTab, open: OpenNow) -> Option<Column> {
+    use Panel as P;
+    match tab {
+        RibbonTab::Home => Some(column!("Level", [P::Level])),
+        RibbonTab::Animate => match (open.clips, open.animator) {
+            (true, true) => Some(column!("Clips", [P::Clips, P::Parameters])),
+            (true, false) => Some(column!("Clips", [P::Clips])),
+            (false, true) => Some(column!("Parameters", [P::Parameters])),
+            (false, false) => None,
+        },
+        RibbonTab::Ui => Some(column!("Elements", [P::Elements])),
+        RibbonTab::Audio => Some(column!("Sound events", [P::SoundEvents])),
+        RibbonTab::Debug => Some(unbuilt_column(
+            "Running",
+            Entry::Unbuilt(UnbuiltId::DebugRunning),
+        )),
+        RibbonTab::Tileset if open.tileset => Some(column!("Terrains", [P::Terrains])),
+        RibbonTab::Picture if open.atlas => Some(column!("Crops", [P::Crops])),
+        _ => None,
+    }
+}
+
+/// What `tab` puts in its right slot with `open` open, if anything.
+pub fn right_slot(tab: RibbonTab, open: OpenNow) -> Option<Column> {
+    use Panel as P;
+    match tab {
+        RibbonTab::Home | RibbonTab::Ui => Some(column!("Properties", [P::Properties])),
+        RibbonTab::Library => Some(column!("Details", [P::Properties])),
+        RibbonTab::Animate if open.animator => Some(column!("Properties", [P::Properties])),
+        RibbonTab::Audio => Some(column!("Bus", [P::Bus])),
+        RibbonTab::Tileset if open.tileset => Some(column!("Slot", [P::Properties])),
+        _ => None,
+    }
+}
+
+/// What is open now, which adds documents, slots and bottom tabs.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct OpenNow {
     /// The game is running: Home shows a Game tab.
@@ -229,8 +221,7 @@ pub struct OpenNow {
     pub clips: bool,
     /// An entity with a tile map is selected.
     pub map: bool,
-    /// The layout Home is drawn in (decision 0109): the one chosen in
-    /// Preferences, or the shelf while the window is too narrow for it.
+    /// The layout chosen in Preferences: where the slots sit.
     pub layout: PanelLayout,
 }
 
@@ -239,7 +230,7 @@ pub struct OpenNow {
 /// none: a page stands there.
 pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
     use Panel as P;
-    let groups: Vec<Vec<Panel>> = match tab {
+    match tab {
         // Export for playtesting is Build's page (round 3).
         RibbonTab::Build => vec![vec![P::Export]],
         RibbonTab::Home => {
@@ -259,7 +250,7 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         }
         RibbonTab::Animate if open.clips => vec![vec![P::Viewport]],
         RibbonTab::Ui => vec![vec![P::Canvas]],
-        RibbonTab::Audio => vec![vec![P::Mixer], vec![P::Bus]],
+        RibbonTab::Audio => vec![vec![P::Mixer]],
         // The Profiler fills the middle (round 3); the Game beside it is
         // the one the Debug tab looks into.
         RibbonTab::Debug => vec![vec![P::Profiler, P::Game]],
@@ -270,64 +261,64 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         | RibbonTab::Tileset
         | RibbonTab::Picture
         | RibbonTab::Model => Vec::new(),
-    };
-    groups
+    }
 }
 
-/// The shelf's tabs on `tab`, unfinished ones among them, in the shelf
-/// bar's order.
-pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
-    use ShelfTab as S;
+/// The bottom panel's tabs on `tab`, unfinished ones among them, in
+/// their order. The Library is among them even where the layout takes it
+/// into a column (`Frame::bottom_tabs` leaves it out there).
+pub fn bottom_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<BottomTab>> {
+    use BottomTab as B;
+    use Entry::{Built, Unbuilt};
     let mut tabs = match tab {
         RibbonTab::Build => vec![
-            Entry::Built(S::Console),
-            Entry::Built(S::Problems),
-            Entry::Unbuilt(UnbuiltId::BuildLog),
+            Built(B::Console),
+            Built(B::Problems),
+            Unbuilt(UnbuiltId::BuildLog),
         ],
-        RibbonTab::Home => vec![
-            Entry::Built(S::Place),
-            Entry::Built(S::Entity),
-            Entry::Unbuilt(UnbuiltId::HomeShelfAnimation),
-            Entry::Built(S::Console),
-            Entry::Built(S::Problems),
-        ],
+        RibbonTab::Home => vec![Built(B::Library), Built(B::Console), Built(B::Problems)],
         RibbonTab::Library => vec![
-            Entry::Built(S::Details),
-            Entry::Built(S::Code),
-            Entry::Unbuilt(UnbuiltId::LibShelfImportQueue),
-            Entry::Unbuilt(UnbuiltId::LibSourceHistory),
+            Built(B::Code),
+            Built(B::Console),
+            Built(B::Problems),
+            Unbuilt(UnbuiltId::LibShelfImportQueue),
+            Unbuilt(UnbuiltId::LibSourceHistory),
         ],
-        RibbonTab::Animate => vec![
-            Entry::Unbuilt(UnbuiltId::AnimShelfSequencer),
-            Entry::Unbuilt(UnbuiltId::AnimShelfKey),
-            Entry::Built(S::Console),
-        ],
+        // The timeline under the preview: a clips file's frames, then
+        // the unfinished animation of what's selected (once Home's), the
+        // sequencer and the key.
+        RibbonTab::Animate => {
+            let mut tabs = Vec::new();
+            if open.clips {
+                tabs.extend([Built(B::Frames), Built(B::Clip)]);
+            }
+            tabs.extend([
+                Unbuilt(UnbuiltId::HomeShelfAnimation),
+                Unbuilt(UnbuiltId::AnimShelfSequencer),
+                Unbuilt(UnbuiltId::AnimShelfKey),
+                Built(B::Console),
+            ]);
+            tabs
+        }
         RibbonTab::Ui => vec![
-            Entry::Built(S::Screen),
-            Entry::Built(S::Console),
-            Entry::Built(S::Problems),
+            Built(B::Library),
+            Built(B::Pictures),
+            Built(B::Console),
+            Built(B::Problems),
         ],
         RibbonTab::Audio => vec![
-            Entry::Built(S::SoundEvents),
-            Entry::Unbuilt(UnbuiltId::AudioMixerSnapshot),
-            Entry::Built(S::Console),
+            Built(B::Library),
+            Unbuilt(UnbuiltId::AudioMixerSnapshot),
+            Built(B::Console),
         ],
         RibbonTab::Debug => vec![
-            Entry::Built(S::Console),
-            Entry::Built(S::Problems),
-            Entry::Unbuilt(UnbuiltId::DebugShelfHottest),
-            Entry::Unbuilt(UnbuiltId::DebugShelfMemory),
+            Built(B::Console),
+            Built(B::Problems),
+            Unbuilt(UnbuiltId::DebugShelfHottest),
+            Unbuilt(UnbuiltId::DebugShelfMemory),
         ],
-        RibbonTab::Tileset if open.tileset => vec![
-            Entry::Built(S::Terrains),
-            Entry::Built(S::Console),
-            Entry::Built(S::Problems),
-        ],
-        RibbonTab::Picture if open.atlas => vec![
-            Entry::Built(S::Crops),
-            Entry::Built(S::Console),
-            Entry::Built(S::Problems),
-        ],
+        RibbonTab::Tileset if open.tileset => vec![Built(B::Console), Built(B::Problems)],
+        RibbonTab::Picture if open.atlas => vec![Built(B::Console), Built(B::Problems)],
         RibbonTab::File
         | RibbonTab::Shading
         | RibbonTab::Vfx
@@ -336,30 +327,14 @@ pub fn shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<ShelfTab>> {
         | RibbonTab::Model => Vec::new(),
     };
     if tab == RibbonTab::Home && open.map {
-        tabs.push(Entry::Built(S::Map));
-    }
-    if tab == RibbonTab::Home && open.layout.is_side() {
-        // Its three lists are columns of their own.
-        tabs.retain(|entry| *entry != Entry::Built(S::Entity));
-    }
-    if tab == RibbonTab::Animate {
-        // A clips file's tabs, then an animator's, after the unfinished
-        // sequencer (round 3).
-        let mut file_tabs = Vec::new();
-        if open.clips {
-            file_tabs.extend([Entry::Built(S::Frames), Entry::Built(S::Clip)]);
-        }
-        if open.animator {
-            file_tabs.extend([Entry::Built(S::Parameters), Entry::Built(S::Properties)]);
-        }
-        tabs.splice(1..1, file_tabs);
+        tabs.push(Built(B::Map));
     }
     tabs
 }
 
-/// The shelf tabs on `tab` that work, unfinished ones left out.
-pub fn built_shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<ShelfTab> {
-    shelf_tabs(tab, open)
+/// The bottom tabs on `tab` that work, unfinished ones left out.
+pub fn built_bottom_tabs(tab: RibbonTab, open: OpenNow) -> Vec<BottomTab> {
+    bottom_tabs(tab, open)
         .into_iter()
         .filter_map(|entry| match entry {
             Entry::Built(tab) => Some(tab),
@@ -368,14 +343,62 @@ pub fn built_shelf_tabs(tab: RibbonTab, open: OpenNow) -> Vec<ShelfTab> {
         .collect()
 }
 
-/// What a tab remembers of its middle, between frames and between runs
-/// (spec 1131-1138), apart from its borders' sizes (`sizes.rs`).
+/// Which slots are hidden, from a title's ⋯ menu or by a layout.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Hidden {
+    /// The left slot.
+    pub left: bool,
+    /// The right slot.
+    pub right: bool,
+    /// The Library, where a layout puts it in a column.
+    pub library: bool,
+}
+
+impl Hidden {
+    /// Every slot hidden.
+    pub const ALL: Self = Self {
+        left: true,
+        right: true,
+        library: true,
+    };
+
+    /// Whether `slot` is hidden.
+    pub fn has(self, slot: Slot) -> bool {
+        match slot {
+            Slot::Left => self.left,
+            Slot::Right => self.right,
+            Slot::Library => self.library,
+        }
+    }
+
+    /// Hides `slot`, or shows it again.
+    pub fn set(&mut self, slot: Slot, hidden: bool) {
+        match slot {
+            Slot::Left => self.left = hidden,
+            Slot::Right => self.right = hidden,
+            Slot::Library => self.library = hidden,
+        }
+    }
+
+    /// Whether anything is hidden.
+    pub fn any(self) -> bool {
+        self.left || self.right || self.library
+    }
+}
+
+/// What a tab remembers of its frame, between frames and between runs
+/// (spec 1131-1138), apart from its edges' sizes (`sizes.rs`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Arrangement {
-    /// The shelf tab in front.
-    pub shelf_tab: ShelfTab,
-    /// Whether the shelf is folded to its bar.
-    pub shelf_folded: bool,
+    /// The bottom tab in front.
+    pub bottom_tab: BottomTab,
+    /// Whether the bottom panel is folded to its one line.
+    pub bottom_folded: bool,
+    /// Which slots are hidden.
+    pub hidden: Hidden,
+    /// Whether the Library is placing (Home only): its Place switch is
+    /// on, the ribbon takes its build form and the tool bar goes.
+    pub placing: bool,
     /// The document in front of each group, if one was chosen.
     pub front: [Option<Panel>; 2],
     /// A document dragged to one half of the center, standing alone in
@@ -391,23 +414,25 @@ pub struct Arrangement {
 pub const SPLIT_LIMIT: f32 = 0.15;
 
 impl Arrangement {
-    /// The design's standard for `tab`.
+    /// The standard for `tab`: its first bottom tab in front (the
+    /// timeline on Animate), open, except on the Library tab, whose
+    /// browser fills the tab (board 09); nothing hidden.
     pub fn standard(tab: RibbonTab) -> Self {
-        // Home opens on Entity, the level editor; Place is first on its
-        // shelf bar but is a mode chosen by bringing it to the front.
-        // In a side layout, where Home has no Entity tab, the first after
-        // Place stands in for it (`shelf_tab_of`).
         let everything = OpenNow {
             tileset: true,
             atlas: true,
-            layout: PanelLayout::Shelf,
+            clips: true,
             ..OpenNow::default()
         };
-        let shelf_tab =
-            first_not_placing(&built_shelf_tabs(tab, everything)).unwrap_or(ShelfTab::Console);
+        let bottom_tab = built_bottom_tabs(tab, everything)
+            .first()
+            .copied()
+            .unwrap_or(BottomTab::Console);
         Self {
-            shelf_tab,
-            shelf_folded: false,
+            bottom_tab,
+            bottom_folded: tab == RibbonTab::Library,
+            hidden: Hidden::default(),
+            placing: false,
             front: [None, None],
             alone: None,
             merged: false,
@@ -446,34 +471,25 @@ impl Arrangement {
             .or_else(|| documents.first().copied())
     }
 
-    /// The shelf tab in front, of those `tabs` there are now: the one
-    /// chosen if it's there, else the first that isn't Place (which is a
-    /// mode, chosen only by bringing it to the front), else Place.
-    pub fn shelf_tab_of(&self, tabs: &[ShelfTab]) -> Option<ShelfTab> {
+    /// The bottom tab in front, of those `tabs` there are now: the one
+    /// chosen if it's there, else the first.
+    pub fn bottom_tab_of(&self, tabs: &[BottomTab]) -> Option<BottomTab> {
         tabs.iter()
             .copied()
-            .find(|tab| *tab == self.shelf_tab)
-            .or_else(|| first_not_placing(tabs))
+            .find(|tab| *tab == self.bottom_tab)
             .or_else(|| tabs.first().copied())
     }
 }
 
-/// The first of `tabs` that isn't Place.
-fn first_not_placing(tabs: &[ShelfTab]) -> Option<ShelfTab> {
-    tabs.iter().copied().find(|tab| *tab != ShelfTab::Place)
-}
-
-/// Where `panel` lives on `tab`: in a group (its index), or on a shelf
-/// tab.
+/// Where `panel` lives on `tab`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Home {
     /// A document of the group with this index.
     Group(usize),
-    /// A column of this shelf tab.
-    Shelf(ShelfTab),
-    /// A column of its own beside the groups, or the strip under them
-    /// (decision 0109): always in view.
-    Beside,
+    /// A slot beside the centre (or the Library's column).
+    Slot(Slot),
+    /// A tab of the bottom panel.
+    Bottom(BottomTab),
 }
 
 /// Where `panel` is on `tab` with `open` open, if it's there.
@@ -484,16 +500,25 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
     {
         return Some(Home::Group(index));
     }
-    if tab == RibbonTab::Home && open.layout.has_beside(panel) {
-        return Some(Home::Beside);
+    for (slot, column) in [
+        (Slot::Left, left_slot(tab, open)),
+        (Slot::Right, right_slot(tab, open)),
+    ] {
+        if column.is_some_and(|c| c.panels.contains(&panel)) {
+            return Some(Home::Slot(slot));
+        }
     }
-    // The Level and Assets columns are on Place too, but their home is
-    // Entity: showing one doesn't start placing.
-    built_shelf_tabs(tab, open)
+    // Only Home's Library places.
+    if panel == Panel::Placement && tab != RibbonTab::Home {
+        return None;
+    }
+    let bottom = built_bottom_tabs(tab, open)
         .into_iter()
-        .filter(|shelf| *shelf != ShelfTab::Place || panel == Panel::Placement)
-        .find(|shelf| shelf.panels(open.layout).any(|p| p == panel))
-        .map(Home::Shelf)
+        .find(|bottom| bottom.panels().any(|p| p == panel))?;
+    if bottom == BottomTab::Library && open.layout.library_beside() {
+        return Some(Home::Slot(Slot::Library));
+    }
+    Some(Home::Bottom(bottom))
 }
 
 /// The ribbon tab that shows `panel` when the one in front doesn't: the

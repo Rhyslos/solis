@@ -271,14 +271,11 @@ fn export_asks_the_app_and_says_where_it_went() {
 }
 
 #[test]
-fn home_s_build_button_and_the_build_tab_open_export_for_playtesting() {
+fn the_build_tab_opens_export_for_playtesting() {
     let mut h = harness(farm());
     h.run();
-    // Home, Project, Build.
-    h.get_by_label("Export for playtesting…").click();
-    h.run();
-    assert!(h.state().0.open.export.is_some());
-    h.state_mut().0.open.export = None;
+    // Build left Home's ribbon (decision 0118, board 03).
+    assert!(h.query_by_label("Export for playtesting…").is_none());
     // The Build tab's own button.
     ribbon_tab(&mut h, crate::shell::RibbonTab::Build);
     h.get_by_label("Export for playtesting…").click();
@@ -296,9 +293,7 @@ fn build_s_ribbon_export_exports_the_form_as_typed() {
     w.open.export.as_mut().unwrap().playtest.name = "Harvest".into();
     let mut h = harness(w);
     h.run();
-    ribbon_tab(&mut h, crate::shell::RibbonTab::Home);
-    h.get_by_label("Export for playtesting…").click();
-    h.run();
+    ribbon_tab(&mut h, crate::shell::RibbonTab::Build);
     let form = h.state().0.open.export.as_ref().unwrap();
     assert_eq!(form.playtest.name, "Harvest", "kept, not filled in afresh");
     assert!(!form.busy);

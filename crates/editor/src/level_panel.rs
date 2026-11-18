@@ -548,48 +548,51 @@ fn search_row(ui: &mut Ui, state: &mut LevelPanelState) {
         });
 }
 
-/// The tools in the Level column's header, from the right: the ⋯ menu,
-/// Fold everything and the search. Returns a menu command picked.
+/// The Level panel's own items in its ⋯ menu: folding, showing what's
+/// hidden and unlocking. Returns the menu command picked.
+pub(crate) fn menu_items(ui: &mut Ui, state: &mut LevelPanelState) -> Option<MenuCommand> {
+    let mut picked = None;
+    if widgets::menu::item(ui, "Unfold everything", "").clicked() {
+        picked = Some(MenuCommand::ExpandAll);
+        ui.close();
+    }
+    if widgets::menu::item(ui, "Fold everything", "").clicked() {
+        picked = Some(MenuCommand::CollapseAll);
+        ui.close();
+    }
+    widgets::menu::line(ui);
+    let any_hidden = !state.hidden.is_empty();
+    let show = ui.add_enabled_ui(any_hidden, |ui| {
+        widgets::menu::item(ui, "Show everything hidden", "")
+    });
+    if show
+        .inner
+        .on_disabled_hover_text("Nothing is hidden")
+        .clicked()
+    {
+        state.hidden.clear();
+        ui.close();
+    }
+    let any_locked = !state.locked.is_empty();
+    let unlock = ui.add_enabled_ui(any_locked, |ui| {
+        widgets::menu::item(ui, "Unlock everything", "")
+    });
+    if unlock
+        .inner
+        .on_disabled_hover_text("Nothing is locked")
+        .clicked()
+    {
+        state.locked.clear();
+        ui.close();
+    }
+    picked
+}
+
+/// The tools in the Level panel's header, from the right (its ⋯ menu is
+/// the frame's, with `menu_items` in it): Fold everything and the
+/// search. Returns a command picked.
 pub(crate) fn header_tools(ui: &mut Ui, state: &mut LevelPanelState) -> Option<MenuCommand> {
     let mut picked = None;
-    let more = widgets::button::icon(ui, Icon::More, "More of the Level column")
-        .on_hover_text("Fold or unfold everything; show or unlock everything");
-    egui::Popup::menu(&more).show(|ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
-        if widgets::menu::item(ui, "Unfold everything", "").clicked() {
-            picked = Some(MenuCommand::ExpandAll);
-            ui.close();
-        }
-        if widgets::menu::item(ui, "Fold everything", "").clicked() {
-            picked = Some(MenuCommand::CollapseAll);
-            ui.close();
-        }
-        widgets::menu::line(ui);
-        let any_hidden = !state.hidden.is_empty();
-        let show = ui.add_enabled_ui(any_hidden, |ui| {
-            widgets::menu::item(ui, "Show everything hidden", "")
-        });
-        if show
-            .inner
-            .on_disabled_hover_text("Nothing is hidden")
-            .clicked()
-        {
-            state.hidden.clear();
-            ui.close();
-        }
-        let any_locked = !state.locked.is_empty();
-        let unlock = ui.add_enabled_ui(any_locked, |ui| {
-            widgets::menu::item(ui, "Unlock everything", "")
-        });
-        if unlock
-            .inner
-            .on_disabled_hover_text("Nothing is locked")
-            .clicked()
-        {
-            state.locked.clear();
-            ui.close();
-        }
-    });
     if widgets::button::icon(ui, Icon::FoldAll, "Fold everything")
         .on_hover_text("Folds every entity with others under it")
         .clicked()

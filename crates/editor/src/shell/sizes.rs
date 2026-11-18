@@ -1,41 +1,39 @@
-//! What each tab remembers of its borders (decision 0109): every edge a
-//! drag moves (the shelf's top, the line between the groups, the side
-//! columns' edges, the Assets strip's top, the line between two lists
-//! stacked in a column, the lines between the shelf's columns), one plain
-//! number each, kept per tab and per layout.
+//! What each tab remembers of its edges (decisions 0109 and 0118): every
+//! edge a drag moves (the side columns' edges, the bottom panel's top,
+//! the line between two parts stacked in a column, the line between two
+//! groups, the placing column's edge), one plain number each, kept per
+//! tab and per layout, or, with **Each tab keeps its own panel sizes**
+//! off, the frame's edges shared by every tab.
 //!
 //! Only what was dragged is kept; anything else is its standard, and a
-//! double-click on a border forgets it again. Looking one up is a map
+//! double-click on an edge forgets it again. Looking one up is a map
 //! lookup, so the frame works out its layout from a handful of numbers
 //! and never from what the panels hold.
 
 use super::RibbonTab;
 use super::layouts::PanelLayout;
-use super::workspaces::{ShelfTab, Width};
 use crate::tokens::size;
 use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 
-/// A border a drag moves, by what it sets.
+/// An edge a drag moves, by what it sets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Edge {
-    /// The shelf's content height under its bar, in points.
-    ShelfHeight,
-    /// The first editor group's share of the center, when there are two.
-    Split,
-    /// The left column's width, in points.
+    /// The left column's width, as a share of the middle's width.
     Left,
-    /// The right column's width, in points.
+    /// The right column's width, as a share of the middle's width.
     Right,
-    /// The Assets strip's height under the center, header and all.
-    Strip,
-    /// The upper list's share of the left column, when two are stacked.
+    /// The bottom panel's height under its bar, as a share of the
+    /// middle's height.
+    Bottom,
+    /// The upper part's share of the left column, when two are stacked.
     LeftShare,
-    /// The upper list's share of the right column, when two are stacked.
+    /// The upper part's share of the right column, when two are stacked.
     RightShare,
-    /// The width of a shelf tab's column (by its place, from the left),
-    /// one of those with a width of their own.
-    Column(ShelfTab, u8),
+    /// The first editor group's share of the centre, when there are two.
+    Split,
+    /// The placing column's width beside the Library, in points.
+    Placement,
 }
 
 /// The largest any size in points may be saved as: far more than any
@@ -43,114 +41,112 @@ pub enum Edge {
 pub const SIZE_MAX: f32 = 8_000.0;
 
 impl Edge {
-    /// What it is, as saved.
-    pub fn key(self) -> String {
+    /// Every edge.
+    pub const ALL: [Self; 7] = [
+        Self::Left,
+        Self::Right,
+        Self::Bottom,
+        Self::LeftShare,
+        Self::RightShare,
+        Self::Split,
+        Self::Placement,
+    ];
+
+    /// What it is, as saved. Not the keys of decision 0109, whose sizes
+    /// were points (`saved.rs` reads those).
+    pub fn key(self) -> &'static str {
         match self {
-            Self::ShelfHeight => "shelf".into(),
-            Self::Split => "split".into(),
-            Self::Left => "left".into(),
-            Self::Right => "right".into(),
-            Self::Strip => "strip".into(),
-            Self::LeftShare => "left share".into(),
-            Self::RightShare => "right share".into(),
-            Self::Column(tab, index) => format!("column {} {index}", tab.name()),
+            Self::Left => "left width",
+            Self::Right => "right width",
+            Self::Bottom => "bottom height",
+            Self::LeftShare => "left share",
+            Self::RightShare => "right share",
+            Self::Split => "split",
+            Self::Placement => "placement",
         }
     }
 
     /// The edge saved as `key`, if this build knows it.
     pub fn from_key(key: &str) -> Option<Self> {
-        let fixed = [
-            Self::ShelfHeight,
-            Self::Split,
-            Self::Left,
-            Self::Right,
-            Self::Strip,
-            Self::LeftShare,
-            Self::RightShare,
-        ];
-        if let Some(edge) = fixed.into_iter().find(|e| e.key() == key) {
-            return Some(edge);
-        }
-        let rest = key.strip_prefix("column ")?;
-        let (name, index) = rest.rsplit_once(' ')?;
-        let tab = ShelfTab::named(name)?;
-        let index: u8 = index.parse().ok()?;
-        let fixed_width = matches!(
-            tab.columns(PanelLayout::Shelf).get(usize::from(index)),
-            Some(column) if matches!(column.width, Width::Fixed(_))
-        );
-        fixed_width.then_some(Self::Column(tab, index))
+        Self::ALL.into_iter().find(|e| e.key() == key)
     }
 
-    /// Its standard value on `tab` in `layout`: the design's, or Solis's
-    /// own where the design has none.
+    /// Whether it is one of the frame's own edges, which every tab shares
+    /// while tabs don't keep their own sizes. The split and the placing
+    /// column belong to what a tab shows, so each keeps its own.
+    pub fn is_frame(self) -> bool {
+        !matches!(self, Self::Split | Self::Placement)
+    }
+
+    /// Its standard value on `tab` in `layout`: the board's, or Solis's
+    /// own where the board has none.
     pub fn standard(self, tab: RibbonTab, layout: PanelLayout) -> f32 {
+        use PanelLayout as L;
         match self {
-            Self::ShelfHeight => match tab {
-                RibbonTab::Animate => size::SHELF_H_ANIMATE,
-                RibbonTab::Home if layout.is_side() => size::SHELF_H_SIDE,
-                _ => size::SHELF_H,
-            },
+            Self::Left if layout == L::LibraryLeft => size::LEFT_SHARE_LIBRARY,
+            Self::Left => size::LEFT_SHARE,
+            Self::Right if layout == L::TallProperties => size::RIGHT_SHARE_TALL,
+            Self::Right if layout == L::WideView => size::RIGHT_SHARE_WIDE,
+            Self::Right => size::RIGHT_SHARE,
+            Self::Bottom if tab == RibbonTab::Animate => size::BOTTOM_SHARE_ANIMATE,
+            Self::Bottom => size::BOTTOM_SHARE,
+            Self::LeftShare | Self::RightShare => size::SIDE_SHARE,
             Self::Split => match tab {
                 RibbonTab::Library => size::SPLIT_LIBRARY,
-                RibbonTab::Audio => size::SPLIT_AUDIO,
                 _ => size::SPLIT,
             },
-            Self::Left if layout == PanelLayout::LevelAndAssetsLeft => size::ASSETS_COLUMN_W,
-            Self::Left => size::SCENE_COLUMN_W,
-            Self::Right => size::PROPERTIES_COLUMN_W,
-            Self::Strip => size::ASSETS_STRIP_H,
-            Self::LeftShare | Self::RightShare => size::SIDE_SHARE,
-            Self::Column(shelf, index) => match shelf.columns(layout).get(usize::from(index)) {
-                Some(column) => match column.width {
-                    Width::Fixed(w) => w,
-                    Width::Rest => size::COLUMN_MIN_W,
-                },
-                None => size::COLUMN_MIN_W,
-            },
+            Self::Placement => size::PLACEMENT_COLUMN_W,
         }
     }
 
-    /// The values it may take at all; a border is held tighter still by
+    /// The values it may take at all; an edge is held tighter still by
     /// the room there is when it's dragged.
     pub fn limits(self) -> RangeInclusive<f32> {
         match self {
-            Self::ShelfHeight => size::SHELF_MIN_H..=SIZE_MAX,
+            Self::Left | Self::Right => size::COLUMN_SHARE_LIMITS,
+            Self::Bottom => size::BOTTOM_SHARE_LIMITS,
             Self::Split | Self::LeftShare | Self::RightShare => {
                 super::workspaces::SPLIT_LIMIT..=1.0 - super::workspaces::SPLIT_LIMIT
             }
-            Self::Left | Self::Right | Self::Column(..) => size::COLUMN_MIN_W..=SIZE_MAX,
-            Self::Strip => size::PART_MIN_H..=SIZE_MAX,
+            Self::Placement => size::COLUMN_MIN_W..=SIZE_MAX,
+        }
+    }
+}
+
+/// Every edge that was dragged, by tab, layout and edge; and whether each
+/// tab keeps its own (Preferences › Layout).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sizes {
+    kept: BTreeMap<(RibbonTab, PanelLayout, Edge), f32>,
+    /// Whether each tab keeps its own frame edges; off, they are kept
+    /// once, under Home, for every tab.
+    pub per_tab: bool,
+}
+
+impl Default for Sizes {
+    fn default() -> Self {
+        Self {
+            kept: BTreeMap::new(),
+            per_tab: true,
+        }
+    }
+}
+
+impl Sizes {
+    /// The tab an edge of `tab` is kept under.
+    fn kept_under(&self, tab: RibbonTab, edge: Edge) -> RibbonTab {
+        if self.per_tab || !edge.is_frame() {
+            tab
+        } else {
+            RibbonTab::Home
         }
     }
 
-    /// Whether it is a share of the room rather than a size in points.
-    pub fn is_share(self) -> bool {
-        matches!(self, Self::Split | Self::LeftShare | Self::RightShare)
-    }
-}
-
-/// The layout a tab's sizes are kept under: Home's own middle changes
-/// with the layout, so it keeps a set for each; every other tab looks the
-/// same in all four, so it keeps one.
-pub fn kept_under(tab: RibbonTab, layout: PanelLayout) -> PanelLayout {
-    if tab == RibbonTab::Home {
-        layout
-    } else {
-        PanelLayout::Shelf
-    }
-}
-
-/// Every border that was dragged, by tab, layout and edge.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Sizes(BTreeMap<(RibbonTab, PanelLayout, Edge), f32>);
-
-impl Sizes {
     /// `edge`'s value on `tab` in `layout`: as dragged, or its standard.
     pub fn get(&self, tab: RibbonTab, layout: PanelLayout, edge: Edge) -> f32 {
-        let layout = kept_under(tab, layout);
-        self.0
-            .get(&(tab, layout, edge))
+        let under = self.kept_under(tab, edge);
+        self.kept
+            .get(&(under, layout, edge))
             .copied()
             .unwrap_or_else(|| edge.standard(tab, layout))
     }
@@ -162,22 +158,29 @@ impl Sizes {
         }
         let limits = edge.limits();
         let value = value.clamp(*limits.start(), *limits.end());
-        self.0.insert((tab, kept_under(tab, layout), edge), value);
+        let under = self.kept_under(tab, edge);
+        self.kept.insert((under, layout, edge), value);
     }
 
     /// Forgets what `edge` was dragged to: it is its standard again.
     pub fn forget(&mut self, tab: RibbonTab, layout: PanelLayout, edge: Edge) {
-        self.0.remove(&(tab, kept_under(tab, layout), edge));
+        let under = self.kept_under(tab, edge);
+        self.kept.remove(&(under, layout, edge));
     }
 
-    /// Forgets every border of `tab`, in every layout.
+    /// Forgets every edge of `tab`, in every layout.
     pub fn forget_tab(&mut self, tab: RibbonTab) {
-        self.0.retain(|(t, _, _), _| *t != tab);
+        self.kept.retain(|(t, _, _), _| *t != tab);
     }
 
-    /// Every border kept, with its value.
+    /// Forgets every edge of every tab in `layout` (Reset sizes).
+    pub fn forget_layout(&mut self, layout: PanelLayout) {
+        self.kept.retain(|(_, l, _), _| *l != layout);
+    }
+
+    /// Every edge kept, with its value.
     pub fn kept(&self) -> impl Iterator<Item = ((RibbonTab, PanelLayout, Edge), f32)> + '_ {
-        self.0.iter().map(|(key, value)| (*key, *value))
+        self.kept.iter().map(|(key, value)| (*key, *value))
     }
 
     /// Takes in a value read from saved settings, if it is one this build
@@ -192,7 +195,7 @@ impl Sizes {
     ) -> bool {
         let usable = value.is_finite() && edge.limits().contains(&value);
         if usable {
-            self.0.insert((tab, kept_under(tab, layout), edge), value);
+            self.kept.insert((tab, layout, edge), value);
         }
         usable
     }

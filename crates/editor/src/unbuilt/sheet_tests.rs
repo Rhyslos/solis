@@ -466,3 +466,32 @@ fn hidden_what_is_real_has_the_room_an_unbuilt_page_had() {
     assert_eq!(at(&picture, middle), tokens::viewport());
     standard_again();
 }
+
+#[test]
+fn a_page_in_a_narrow_side_slot_keeps_its_words_inside() {
+    // Debug's left slot at its least: the line that says when wraps
+    // under its mark instead of running out of the card.
+    let room = 220.0;
+    let mut themed = false;
+    let mut h = Harness::builder()
+        .with_size(vec2(room, 500.0))
+        .build_ui(move |ui| {
+            if !themed {
+                // The fonts are in force from the next frame.
+                theme::apply(ui.ctx(), InterfaceLook::default());
+                themed = true;
+                return;
+            }
+            crate::unbuilt::page(ui, UnbuiltId::DebugRunning, crate::icons::Icon::Profiler);
+        });
+    h.run();
+    h.run();
+    let line = get(UnbuiltId::DebugRunning).page_line();
+    let said = h.get_by_label(&line).rect();
+    assert!(
+        said.left() >= size::GAP && said.right() <= room - size::GAP,
+        "{said:?}"
+    );
+    let link = h.get_by_label("Hide unfinished parts").rect();
+    assert!(link.right() <= room, "{link:?}");
+}

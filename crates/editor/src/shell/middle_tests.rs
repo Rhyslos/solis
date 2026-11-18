@@ -1,12 +1,13 @@
-//! The frame's middle used as a person uses it: the bands' measured
-//! layout at two window sizes, the grip, Ctrl + Space, the divider, the
-//! document tabs and their menus, groups and columns at narrow widths,
-//! and what each tab remembers across a restart.
+//! The frame's middle used as a person uses it: the frame measured at two
+//! window sizes, the bottom panel's edge, Ctrl + Space, the divider, the
+//! document tabs and their menus, and what each tab remembers across a
+//! restart.
 
 use super::sizes::Edge;
-use super::workspaces::ShelfTab;
+use super::workspaces::BottomTab;
 use super::{PanelLayout, RibbonTab, ShellState};
 use crate::panel::Panel;
+use crate::test_support::double_click;
 use crate::test_support::{State, fonts_ready, in_layout, info};
 use crate::tokens::size;
 use crate::workbench::Workbench;
@@ -71,88 +72,86 @@ fn drag(h: &mut Harness, from: egui::Pos2, by: egui::Vec2) {
     h.run();
 }
 
+/// A tab with two groups: Debug, its Game dragged to the right half.
+fn two_groups() -> Workbench {
+    let mut w = Workbench::new(info());
+    w.show_tab(RibbonTab::Debug);
+    w.shell.arrangement_mut(RibbonTab::Debug).alone = Some((Panel::Game, true));
+    w
+}
+
 #[test]
-fn the_five_bands_have_the_design_s_heights_at_both_sizes() {
+fn the_frame_has_board_03_s_slots_at_both_sizes() {
     for (width, height) in [(1440.0, 900.0), (1100.0, 700.0)] {
-        let h = window(width, height, in_layout(PanelLayout::Shelf));
+        let h = window(width, height, in_layout(PanelLayout::Standard));
         // The window's margin: the tabs sit at the foot of the tab bar.
         let margin = h.get_by_label("File tab").rect().bottom() - size::TAB_BAR_H;
+        let ribbon_foot = margin + size::TAB_BAR_H + size::RIBBON_H;
+        let status_top = height - margin - size::STATUS_BAR_H;
         let viewport = body(&h, Panel::Viewport);
         let level = body(&h, Panel::Level);
-        let library = body(&h, Panel::Assets);
         let properties = body(&h, Panel::Properties);
-        let ribbon_foot = margin + size::TAB_BAR_H + size::RIBBON_H;
+        let library = body(&h, Panel::Assets);
         assert_eq!(viewport.top(), ribbon_foot + size::DOC_TAB_H, "{width}");
-        assert_eq!(viewport.left(), margin);
-        assert_eq!(viewport.right(), width - margin);
-        // The shelf: its bar, then each column's header, then the bodies.
-        let shelf = viewport.bottom();
-        assert_eq!(
-            level.top(),
-            shelf + size::SHELF_BAR_H + size::COLUMN_HEADER_H
-        );
-        assert_eq!(level.bottom() - shelf - size::SHELF_BAR_H, size::SHELF_H);
-        // The status bar under it all.
-        assert_eq!(height - margin - level.bottom(), size::STATUS_BAR_H);
-        // The columns: Level and the Library at their widths, Properties
-        // between, 1 px apart.
-        assert_eq!(level.width(), size::SCENE_COLUMN_W);
-        assert_eq!(properties.left(), level.right() + 1.0);
-        assert_eq!(library.left(), properties.right() + 1.0);
-        assert_eq!(library.right(), width - margin);
-        assert!((library.width() - size::ASSETS_COLUMN_W).abs() <= 1.0);
+        // Level and Properties: headers, then full height to the status
+        // line, at the window's edges.
+        for column in [level, properties] {
+            assert_eq!(column.top(), ribbon_foot + size::COLUMN_HEADER_H, "{width}");
+            assert_eq!(column.bottom(), status_top, "{width}");
+        }
+        assert_eq!(level.left(), margin);
+        assert_eq!(properties.right(), width - margin);
+        assert_eq!(viewport.left(), level.right() + 1.0);
+        assert_eq!(properties.left(), viewport.right() + 1.0);
+        // The Library under the view only, under the bottom panel's bar.
+        assert_eq!(library.x_range(), viewport.x_range());
+        assert_eq!(library.top(), viewport.bottom() + size::BOTTOM_BAR_H);
+        assert_eq!(library.bottom(), status_top);
     }
 }
 
 #[test]
-fn the_grip_resizes_the_shelf_within_limits() {
-    let mut h = window(1440.0, 900.0, in_layout(PanelLayout::Shelf));
-    let grip = h.get_by_label("Shelf grip").rect().center();
+fn the_bottom_panel_s_edge_drags_within_limits() {
+    let mut h = window(1440.0, 900.0, in_layout(PanelLayout::Standard));
+    let edge = h.get_by_label("Bottom panel's edge").rect().center();
     let before = body(&h, Panel::Viewport).bottom();
-    drag(&mut h, grip, vec2(0.0, -100.0));
-    let height = size_of(&h, RibbonTab::Home, Edge::ShelfHeight);
-    assert!((height - (size::SHELF_H + 100.0)).abs() <= 1.0);
+    let share = size_of(&h, RibbonTab::Home, Edge::Bottom);
+    drag(&mut h, edge, vec2(0.0, -100.0));
+    assert!(size_of(&h, RibbonTab::Home, Edge::Bottom) > share);
     assert!((body(&h, Panel::Viewport).bottom() - (before - 100.0)).abs() <= 1.0);
-    // Far up: the center keeps its least height.
-    let grip = h.get_by_label("Shelf grip").rect().center();
-    drag(&mut h, grip, vec2(0.0, -2000.0));
+    // Far up: the centre keeps its least height.
+    let edge = h.get_by_label("Bottom panel's edge").rect().center();
+    drag(&mut h, edge, vec2(0.0, -2000.0));
     assert!(body(&h, Panel::Viewport).height() + size::DOC_TAB_H >= size::CENTER_MIN_H - 1.0);
-    // Far down: the shelf keeps its least.
-    let grip = h.get_by_label("Shelf grip").rect().center();
-    drag(&mut h, grip, vec2(0.0, 2000.0));
+    // Far down: the panel keeps its least.
+    let edge = h.get_by_label("Bottom panel's edge").rect().center();
+    drag(&mut h, edge, vec2(0.0, 2000.0));
+    assert!((body(&h, Panel::Assets).height() - size::PART_MIN_H).abs() <= 1.0);
+    // Another tab's is its own.
     assert_eq!(
-        size_of(&h, RibbonTab::Home, Edge::ShelfHeight),
-        size::SHELF_MIN_H
+        size_of(&h, RibbonTab::Debug, Edge::Bottom),
+        Edge::Bottom.standard(RibbonTab::Debug, PanelLayout::Standard)
     );
-    // Another tab's shelf is its own.
-    assert_eq!(
-        size_of(&h, RibbonTab::Debug, Edge::ShelfHeight),
-        size::SHELF_H
-    );
-    // A double-click on the grip puts the standard height back.
-    let grip = h.get_by_label("Shelf grip").rect().center();
-    crate::test_support::double_click(&mut h, grip);
-    assert_eq!(
-        size_of(&h, RibbonTab::Home, Edge::ShelfHeight),
-        size::SHELF_H
-    );
+    // A double-click puts the standard back.
+    let edge = h.get_by_label("Bottom panel's edge").rect().center();
+    double_click(&mut h, edge);
+    assert_eq!(size_of(&h, RibbonTab::Home, Edge::Bottom), share);
 }
 
 #[test]
-fn ctrl_space_folds_the_shelf_and_works_while_typing() {
+fn ctrl_space_folds_the_bottom_panel_and_works_while_typing() {
     let mut h = window(1440.0, 900.0, Workbench::new(info()));
-    let level = body(&h, Panel::Level);
+    let view = body(&h, Panel::Viewport);
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
-    assert!(h.state().0.shelf_folded());
-    assert!(h.state().0.shell.drawn_at(Panel::Console).is_none());
-    // The bar stays, on the status bar; the columns beside the level have
-    // the room.
-    let _ = h.get_by_label("Place");
-    assert!(body(&h, Panel::Level).height() > level.height());
+    assert!(h.state().0.bottom_folded());
+    assert!(h.state().0.shell.drawn_at(Panel::Assets).is_none());
+    // Its one line stays, naming its tabs; the view has the room.
+    let _ = h.get_by_label("Click a name to open it");
+    assert!(body(&h, Panel::Viewport).height() > view.height());
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
-    assert!(!h.state().0.shelf_folded());
+    assert!(!h.state().0.bottom_folded());
     // While typing in a field, too, and nothing is typed.
     h.get_by_label("Search the level by name").click();
     h.run();
@@ -160,63 +159,40 @@ fn ctrl_space_folds_the_shelf_and_works_while_typing() {
     h.run();
     h.key_press_modifiers(Modifiers::COMMAND, Key::Space);
     h.run();
-    assert!(h.state().0.shelf_folded());
+    assert!(h.state().0.bottom_folded());
     assert!(h.state().0.open.library_state.search.is_empty());
-    // A click on a shelf tab opens it again.
+    // A click on a name opens it again, that tab in front.
     h.get_by_label("Console").click();
     h.run();
     h.run();
-    assert!(!h.state().0.shelf_folded());
-    assert_eq!(h.state().0.shelf_tab(), Some(ShelfTab::Console));
+    assert!(!h.state().0.bottom_folded());
+    assert_eq!(h.state().0.bottom_tab(), Some(BottomTab::Console));
 }
 
 #[test]
 fn two_groups_side_by_side_share_the_room_and_stack_when_narrow() {
-    let mut w = Workbench::new(info());
-    w.show_tab(RibbonTab::Audio);
-    let mut h = window(1440.0, 900.0, w);
-    let mixer = body(&h, Panel::Mixer);
-    let bus = body(&h, Panel::Bus);
-    assert_eq!(bus.left(), mixer.right() + 1.0, "a 1 px divider");
-    assert_eq!(mixer.top(), bus.top());
+    let mut h = window(1440.0, 900.0, two_groups());
+    let profiler = body(&h, Panel::Profiler);
+    let game = body(&h, Panel::Game);
+    assert_eq!(game.left(), profiler.right() + 1.0, "a 1 px divider");
+    assert_eq!(profiler.top(), game.top());
     // The divider's drag moves the split, within its limits.
     let divider = h.get_by_label("Group divider").rect().center();
-    drag(&mut h, divider, vec2(-300.0, 0.0));
-    let split = size_of(&h, RibbonTab::Audio, Edge::Split);
+    drag(&mut h, divider, vec2(-200.0, 0.0));
+    let split = size_of(&h, RibbonTab::Debug, Edge::Split);
     assert!(split < 0.4, "{split}");
     let divider = h.get_by_label("Group divider").rect().center();
     drag(&mut h, divider, vec2(-2000.0, 0.0));
-    let split = size_of(&h, RibbonTab::Audio, Edge::Split);
+    let split = size_of(&h, RibbonTab::Debug, Edge::Split);
     assert_eq!(split, super::workspaces::SPLIT_LIMIT);
     // Too narrow for two side by side: they stack.
-    let mut w = Workbench::new(info());
-    w.show_tab(RibbonTab::Audio);
-    let h = window(2.0 * size::GROUP_MIN_W - 40.0, 900.0, w);
-    let mixer = body(&h, Panel::Mixer);
-    let bus = body(&h, Panel::Bus);
-    assert_eq!(bus.top(), mixer.bottom() + 1.0 + size::DOC_TAB_H);
-    assert_eq!(bus.left(), mixer.left());
-}
-
-#[test]
-fn columns_wrap_under_each_other_when_narrow() {
-    // Too narrow for the side layout, and for the three columns at their
-    // least side by side: they go on the shelf, under each other.
-    let h = window(
-        3.0 * size::COLUMN_MIN_W - 20.0,
-        900.0,
-        Workbench::new(info()),
-    );
-    let level = body(&h, Panel::Level);
-    let properties = body(&h, Panel::Properties);
-    let library = body(&h, Panel::Assets);
-    assert_eq!(level.left(), properties.left());
-    assert!(
-        properties.top() > level.bottom(),
-        "{level:?} {properties:?}"
-    );
-    assert!(library.top() > properties.bottom());
-    assert_eq!(library.width(), level.width());
+    // Debug's one slot (Running) at the left, at its least.
+    let narrow = 2.0 * size::GROUP_MIN_W - 40.0 + size::COLUMN_MIN_W + 1.0;
+    let h = window(narrow, 900.0, two_groups());
+    let profiler = body(&h, Panel::Profiler);
+    let game = body(&h, Panel::Game);
+    assert_eq!(game.top(), profiler.bottom() + 1.0 + size::DOC_TAB_H);
+    assert_eq!(game.left(), profiler.left());
 }
 
 #[test]
@@ -285,16 +261,16 @@ fn the_game_tab_comes_to_the_front_on_play_and_goes_on_stop() {
 }
 
 #[test]
-fn each_tab_remembers_its_shelf_its_height_and_its_split_across_a_restart() {
-    let mut h = window(1440.0, 900.0, in_layout(PanelLayout::Shelf));
-    h.get_by_label("Console").click();
-    h.run();
-    let grip = h.get_by_label("Shelf grip").rect().center();
-    drag(&mut h, grip, vec2(0.0, -60.0));
-    crate::test_support::ribbon_tab(&mut h, RibbonTab::Audio);
-    h.run();
+fn each_tab_remembers_its_bottom_panel_its_sizes_and_its_split_across_a_restart() {
+    let mut h = window(1440.0, 900.0, two_groups());
     let divider = h.get_by_label("Group divider").rect().center();
     drag(&mut h, divider, vec2(200.0, 0.0));
+    crate::test_support::ribbon_tab(&mut h, RibbonTab::Home);
+    h.run();
+    h.get_by_label("Console").click();
+    h.run();
+    let edge = h.get_by_label("Bottom panel's edge").rect().center();
+    drag(&mut h, edge, vec2(0.0, -60.0));
     h.state_mut().0.set_ribbon_collapsed(true);
     let saved = ron::to_string(&h.state().0.shell_state()).unwrap();
     // A later run.
@@ -302,17 +278,17 @@ fn each_tab_remembers_its_shelf_its_height_and_its_split_across_a_restart() {
     let mut w = Workbench::new(info());
     w.restore_shell(Some(&back), false);
     let before = &h.state().0.shell;
-    for tab in [RibbonTab::Home, RibbonTab::Audio] {
+    for tab in [RibbonTab::Home, RibbonTab::Debug] {
         let (a, b) = (before.arrangement(tab), w.shell.arrangement(tab));
-        assert_eq!(a.shelf_tab, b.shelf_tab, "{tab:?}");
+        assert_eq!(a.bottom_tab, b.bottom_tab, "{tab:?}");
     }
     assert_eq!(before.sizes, w.shell.sizes);
     assert!(w.shell.sizes.kept().count() >= 2);
-    assert_eq!(w.ribbon_tab(), RibbonTab::Audio);
+    assert_eq!(w.ribbon_tab(), RibbonTab::Home);
     assert!(w.ribbon_collapsed());
     assert_eq!(
-        w.shell.arrangement(RibbonTab::Home).shelf_tab,
-        ShelfTab::Console
+        w.shell.arrangement(RibbonTab::Home).bottom_tab,
+        BottomTab::Console
     );
 }
 

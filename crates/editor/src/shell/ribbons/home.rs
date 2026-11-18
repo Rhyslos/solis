@@ -1,15 +1,17 @@
-//! Home's ribbon (the approved additions, round 1,
-//! `04-home-ribbon-stopped.png`): Edit, Create, Snapping, Lighting,
-//! Project. The Play group follows on every tab. While the Place shelf
-//! tab is in front, the build form (spec 240-249; round 2,
-//! `06-placing-a.png`): Edit, Place, Snapping with Snap to surface,
-//! Paint, Transform (the tool bar's tools, as there is no tool bar then).
+//! Home's ribbon, tidied as board 03 of decision 0118 draws it: Edit,
+//! Create, the grid snaps and Lighting, each labelled under it but the
+//! snaps; the Play group follows on every tab. Save and Build left it:
+//! Save is `Ctrl + S`, the File page, the level's tab and the status
+//! line; Build is the Build tab. While the Library is placing, the build
+//! form (spec 240-249; round 2, `06-placing-a.png`): Edit, Place,
+//! Snapping with Snap to surface, Paint, Transform (the tool bar's tools,
+//! as there is no tool bar then).
 
 use super::group;
 use crate::icons::Icon;
 use crate::shell::ShellCommand as C;
 use crate::shell::ribbon::{
-    Control, Group, Shape, Steps, big, big_keyed, big_list, item, row, row_list, switch,
+    Control, Group, Shape, Steps, big, big_keyed, big_list, big_list_only, item, row, switch,
     switch_with_steps, unbuilt_at,
 };
 use crate::unbuilt::{Entry, RowKind, UnbuiltId};
@@ -39,13 +41,6 @@ pub(super) fn groups(w: &Workbench) -> Vec<Group> {
                     Shape::Row(RowKind::Plain),
                     Entry::Unbuilt(UnbuiltId::HomeLightingLightmapView),
                 ),
-            ]
-        ),
-        group!(
-            Some("Project"),
-            [
-                big(Icon::Save, "Save", C::SaveLevel),
-                big(Icon::Build, "Build", C::ExportPlaytest),
             ]
         ),
     ]
@@ -92,25 +87,20 @@ fn build_form(w: &Workbench) -> Vec<Group> {
     ]
 }
 
-/// Edit: Undo and Redo.
+/// Edit: Undo and Redo, as two small rows (board 03).
 fn edit() -> Group {
-    group!(
-        Some("Edit"),
-        [
-            big(Icon::Undo, "Undo", C::Undo),
-            big(Icon::Redo, "Redo", C::Redo),
-        ]
-    )
+    group!(Some("Edit"), [row("Undo", C::Undo), row("Redo", C::Redo)])
 }
 
-/// The things to make, under `label` (Create, or Place while placing).
-/// Shape opens the brush list, and is lit while it is open or a brush is
-/// being drawn out (Tools 1a, B2).
+/// The things to make, under `label` (Create, or Place while placing):
+/// Entity, Model, Light, Camera and Shape, and the rest under More (board
+/// 03). Shape opens the brush list, and is lit while it is open or a
+/// brush is being drawn out (Tools 1a, B2).
 fn create(w: &Workbench, label: &'static str) -> Group {
     group!(
         Some(label),
         [
-            big(Icon::Empty, "Empty", C::AddEntity),
+            big(Icon::Empty, "Entity", C::AddEntity),
             big_list(
                 Icon::Model,
                 "Model",
@@ -121,7 +111,6 @@ fn create(w: &Workbench, label: &'static str) -> Group {
                     item("Shape brush…", C::ChooseShapeBrush),
                 ],
             ),
-            big(Icon::Sprite, "Sprite", C::AddSprite),
             big_list(
                 Icon::Light,
                 "Light",
@@ -138,16 +127,15 @@ fn create(w: &Workbench, label: &'static str) -> Group {
                 C::ChooseShapeBrush,
                 w.viewport.brushing.is_active(),
             ),
-            unbuilt_at(
-                Shape::Big(Icon::Volume),
-                Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),
-            ),
-            row("Tile map", C::NewTileMap),
-            row_list(
+            big_list_only(
+                Icon::More,
                 "More",
                 vec![
+                    item("Sprite", C::AddSprite),
+                    item("Tile map", C::NewTileMap),
                     item("Reverb zone", C::AddReverbZone),
                     item("Assembly from selection", C::CreateAssembly),
+                    Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),
                 ],
             ),
         ]

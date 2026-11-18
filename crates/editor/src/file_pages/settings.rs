@@ -15,9 +15,12 @@ pub(crate) enum Tab {
     /// Preferences › General: updates, hints, unfinished parts.
     #[default]
     General,
-    /// Preferences › Appearance: the accent, scale, density, the layout
-    /// and its sizes.
+    /// Preferences › Appearance: the accent, scale, density, and what
+    /// selecting does to the panels.
     Appearance,
+    /// Preferences › Layout: the layouts as drawn miniatures, and the
+    /// panels' sizes (decision 0118, board 06).
+    Layout,
     /// Preferences › Viewport: what it shows, snapping, the camera, looks.
     Viewport,
     /// Preferences › Shortcuts: every key, to read.
@@ -39,6 +42,7 @@ impl Tab {
         vec![
             Entry::Built(Self::General),
             Entry::Built(Self::Appearance),
+            Entry::Built(Self::Layout),
             Entry::Built(Self::Viewport),
             Entry::Unbuilt(UnbuiltId::PrefsTabInput),
             Entry::Built(Self::Shortcuts),
@@ -66,6 +70,7 @@ impl Tab {
         match self {
             Self::General | Self::Project => "General",
             Self::Appearance => "Appearance",
+            Self::Layout => "Layout",
             Self::Viewport => "Viewport",
             Self::Shortcuts => "Shortcuts",
             Self::TwoD => "2D",
@@ -95,13 +100,20 @@ impl Tab {
                     vec![Built(S::Accent), Built(S::Scale), Built(S::Density)],
                 ),
                 (
-                    "Layout",
+                    "Panels",
                     vec![
                         Built(S::ShelfOpensOn),
-                        Built(S::Layout),
                         Built(S::ResetLayout),
                         Unbuilt(UnbuiltId::PrefsCodeSplit),
                     ],
+                ),
+            ],
+            // The layouts' cards are laid out by themselves, over these.
+            Self::Layout => vec![
+                ("Layout", vec![Built(S::Layout)]),
+                (
+                    "Panel sizes",
+                    vec![Built(S::SizesPerTab), Built(S::ResetSizes)],
                 ),
             ],
             Self::Viewport => vec![
@@ -192,6 +204,8 @@ pub(crate) enum Setting {
     ShelfOpensOn,
     Layout,
     ResetLayout,
+    SizesPerTab,
+    ResetSizes,
     Stats,
     Pills,
     Tools,
@@ -222,7 +236,7 @@ pub(crate) enum Setting {
 
 impl Setting {
     /// Every setting, in the pages' order.
-    pub(crate) const ALL: [Self; 35] = [
+    pub(crate) const ALL: [Self; 37] = [
         Self::AutoUpdate,
         Self::Hints,
         Self::GuideBrowser,
@@ -233,6 +247,8 @@ impl Setting {
         Self::ShelfOpensOn,
         Self::Layout,
         Self::ResetLayout,
+        Self::SizesPerTab,
+        Self::ResetSizes,
         Self::Stats,
         Self::Pills,
         Self::Tools,
@@ -266,9 +282,8 @@ impl Setting {
         use Setting as S;
         match self {
             S::AutoUpdate | S::Hints | S::GuideBrowser | S::HideUnfinished => Tab::General,
-            S::Accent | S::Scale | S::Density | S::ShelfOpensOn | S::Layout | S::ResetLayout => {
-                Tab::Appearance
-            }
+            S::Accent | S::Scale | S::Density | S::ShelfOpensOn | S::ResetLayout => Tab::Appearance,
+            S::Layout | S::SizesPerTab | S::ResetSizes => Tab::Layout,
             S::Stats
             | S::Pills
             | S::Tools
@@ -299,9 +314,11 @@ impl Setting {
             S::Accent => "Accent colour",
             S::Scale => "Interface scale",
             S::Density => "Density",
-            S::ShelfOpensOn => "Shelf opens on",
-            S::Layout => "Panel layout",
-            S::ResetLayout => "Sizes",
+            S::ShelfOpensOn => "When something is selected",
+            S::Layout => "Layout",
+            S::ResetLayout => "This tab's panels",
+            S::SizesPerTab => "Each tab keeps its own panel sizes",
+            S::ResetSizes => "Panel sizes",
             S::Stats => "Frame time and frame rate",
             S::Pills => "Axis locks, axes and camera speed",
             S::Tools => "Tools",
@@ -352,14 +369,17 @@ impl Setting {
             S::Accent => "Used for selection, the tool in use and focus.",
             S::Scale => "Scales text and controls. Useful on very sharp screens.",
             S::Density => "Compact fits more rows; Comfortable is easier to click.",
-            S::ShelfOpensOn => "Which shelf tab comes to the front when you select something.",
+            S::ShelfOpensOn => "Whether selecting something shows Properties again if it's hidden.",
             S::Layout => {
-                "Where the Level, Properties and Assets lists sit on Home: columns beside the \
-                 view, or on the shelf as designed. Changes at once."
+                "How the panels sit round the view, on every tab. Point at one to preview it; \
+                 click to use it at once. A layout changes where panels sit, never what they do."
             }
             S::ResetLayout => {
-                "Puts this tab's shelf, groups and every border you dragged back as they started."
+                "Puts the tab you came from back as it started: its bottom panel, hidden panels \
+                 and every edge you dragged."
             }
+            S::SizesPerTab => "Off, a size you drag on one tab is used on all of them.",
+            S::ResetSizes => "Put every dragged edge back where this layout starts.",
             S::Stats => {
                 "The pill at the top right. Hover it for the count of entities and triangles."
             }

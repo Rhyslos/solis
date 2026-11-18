@@ -9,7 +9,7 @@ use crate::tokens::{self, size, text};
 use crate::widgets::{self, width_of, words};
 use egui::{
     Align, Align2, CornerRadius, Layout, Rect, Response, RichText, Sense, Stroke, StrokeKind, Ui,
-    UiBuilder, WidgetInfo, pos2, vec2,
+    UiBuilder, Vec2, WidgetInfo, pos2, vec2,
 };
 
 /// What a whole unbuilt page reports.
@@ -31,7 +31,8 @@ pub fn page(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> PageAnswer {
     let whole = ui.available_rect_before_wrap();
     ui.allocate_rect(whole, Sense::hover());
     ui.painter().rect_filled(whole, 0.0, tokens::shelf_bar());
-    let width = size::UNBUILT_CARD_W.min(whole.width());
+    // A gap either side in a narrow room, so the card's border shows.
+    let width = size::UNBUILT_CARD_W.min((whole.width() - 2.0 * size::GAP).max(0.0));
     let [pad_top, pad_side, pad_foot] = size::UNBUILT_CARD_PAD;
     let inside_w = (width - 2.0 * pad_side).max(0.0);
     // Laid out once to learn its height, then placed in the middle.
@@ -59,7 +60,8 @@ pub fn page(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> PageAnswer {
             .layout(Layout::top_down(Align::Center)),
     );
     inside.spacing_mut().item_spacing.y = size::CARD_INNER_GAP;
-    let hide = page_card(&mut inside, part, icon);
+    // The line that says when may run into the side padding, not past it.
+    let hide = page_card(&mut inside, part, icon, width - 2.0 * size::GAP);
     let needed = inside.min_rect().height() + pad_top + pad_foot;
     if (needed - known).abs() > 0.5 {
         ui.ctx()
@@ -76,8 +78,9 @@ pub fn page(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> PageAnswer {
 /// A page card's height before it has been laid out once.
 const PAGE_CARD_H: f32 = 190.0;
 
-/// What is on a page's card. Returns whether its link was clicked.
-fn page_card(ui: &mut Ui, part: &Unbuilt, icon: Icon) -> bool {
+/// What is on a page's card, the line that says when kept to `room`
+/// wide. Returns whether its link was clicked.
+fn page_card(ui: &mut Ui, part: &Unbuilt, icon: Icon, room: f32) -> bool {
     let (spot, _) = ui.allocate_exact_size(
         vec2(size::UNBUILT_PAGE_ICON, size::UNBUILT_PAGE_ICON),
         Sense::hover(),
@@ -112,17 +115,29 @@ fn page_card(ui: &mut Ui, part: &Unbuilt, icon: Icon) -> bool {
         size::UNBUILT_MARK + gap + width_of(ui, &line, font.clone()),
         height,
     );
+    if wanted.x > room {
+        // A narrow room (a side slot): the mark over the words, wrapped.
+        let (spot, _) = ui.allocate_exact_size(Vec2::splat(size::UNBUILT_MARK), Sense::hover());
+        mark(ui, spot.min);
+        ui.add(
+            egui::Label::new(RichText::new(&line).font(font).color(ink()))
+                .selectable(false)
+                .wrap(),
+        );
+        ui.add_space(10.0);
+        return widgets::button::link_at(ui, "Hide unfinished parts", text::row()).clicked();
+    }
     let (when, said) = ui.allocate_exact_size(wanted, Sense::hover());
     said.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Label, true, &line));
     mark(
         ui,
         pos2(when.left(), when.center().y - size::UNBUILT_MARK / 2.0),
     );
-    let room = Rect::from_min_max(
+    let words_at = Rect::from_min_max(
         pos2(when.left() + size::UNBUILT_MARK + gap, when.top()),
         when.right_bottom(),
     );
-    words(ui, room, Align2::LEFT_CENTER, &line, font, ink());
+    words(ui, words_at, Align2::LEFT_CENTER, &line, font, ink());
     ui.add_space(10.0);
     widgets::button::link_at(ui, "Hide unfinished parts", text::row()).clicked()
 }

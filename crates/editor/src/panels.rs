@@ -36,6 +36,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) game_screens: &'a [std::sync::Arc<ui::Screen>],
     /// Whether the game is running.
     pub(crate) playing: bool,
+    /// Whether Home's Library is placing (its Place switch is on).
+    pub(crate) placing: bool,
     /// Whether the game has the mouse and keys.
     pub(crate) game_input: bool,
     /// The project's 2D settings, for a 2D camera's picture.
@@ -274,41 +276,69 @@ impl PanelViewer<'_> {
         self.problems.len() + self.code_problems.len()
     }
 
-    /// The count a shelf column's header shows for `panel`, if it has
-    /// one: the level's entities over the Level column. The level keeps its
-    /// count, so nothing is walked.
+    /// The count a slot's header shows for `panel`, if it has one: the
+    /// level's entities over the Level panel. The level keeps its count,
+    /// so nothing is walked.
     pub(crate) fn column_count(&self, panel: Panel) -> Option<String> {
         (panel == Panel::Level).then(|| self.document.level().len().to_string())
     }
 
-    /// Quiet words after a shelf column's title, if it has them: the
-    /// Assets column's folder.
+    /// Quiet words after a slot's title, if it has them: the Library's
+    /// folder, the bus the Bus panel shows, and whether the Sound events'
+    /// meters move.
     pub(crate) fn column_note(&self, panel: Panel) -> Option<String> {
-        let project = self.project?;
-        (panel == Panel::Assets).then(|| {
-            let folder = &self.library_state.folder;
-            match folder.rsplit_once('/') {
-                Some((_, last)) => last.to_owned(),
-                None if folder.is_empty() => project.name.clone(),
-                None => folder.clone(),
+        match panel {
+            Panel::Assets => {
+                let project = self.project?;
+                let folder = &self.library_state.folder;
+                Some(match folder.rsplit_once('/') {
+                    Some((_, last)) => last.to_owned(),
+                    None if folder.is_empty() => project.name.clone(),
+                    None => folder.clone(),
+                })
             }
-        })
-    }
-
-    /// The tools `panel` puts in its column's header: the Level column's
-    /// search, Fold everything and ⋯.
-    pub(crate) fn column_tools(&mut self, ui: &mut Ui, panel: Panel) {
-        if panel == Panel::Level
-            && let Some(command) = crate::level_panel::header_tools(ui, self.level_state)
-        {
-            self.level_requests.push(LevelRequest::Command(command));
+            Panel::Bus => Some(crate::mixer_view::with_bus_shown(self.mixer).1.name.clone()),
+            Panel::SoundEvents => {
+                // Who is ducking whom while the game plays (round 3).
+                let ducking = self.mixer.ducking_now();
+                Some(match (self.playing, ducking.is_empty()) {
+                    (false, _) => "Meters move while the game plays".to_owned(),
+                    (true, true) => "Playing".to_owned(),
+                    (true, false) => format!("Playing \u{b7} {}", ducking.join(", ")),
+                })
+            }
+            _ => None,
         }
     }
 
-    /// The Bus group's switch, at the right of its strip.
-    pub(crate) fn bus_switch(&mut self, ui: &mut Ui, strip: egui::Rect) {
-        self.mixer_requests
-            .extend(crate::bus_view::switch(ui, strip, self.mixer));
+    /// The tools `panel` puts in its slot's header, laid out from the
+    /// right: the Level panel's search and Fold everything; the Bus
+    /// panel's Ducking or Effects.
+    pub(crate) fn column_tools(&mut self, ui: &mut Ui, panel: Panel) {
+        match panel {
+            Panel::Level => {
+                if let Some(command) = crate::level_panel::header_tools(ui, self.level_state) {
+                    self.level_requests.push(LevelRequest::Command(command));
+                }
+            }
+            Panel::Bus => self
+                .mixer_requests
+                .extend(crate::bus_view::switch(ui, self.mixer)),
+            _ => {}
+        }
+    }
+
+    /// The items `panel` puts in its slot's ⋯ menu, over Hide: the Level
+    /// panel's folding, showing and unlocking. Returns whether it put
+    /// any.
+    pub(crate) fn column_menu(&mut self, ui: &mut Ui, panel: Panel) -> bool {
+        if panel != Panel::Level {
+            return false;
+        }
+        if let Some(command) = crate::level_panel::menu_items(ui, self.level_state) {
+            self.level_requests.push(LevelRequest::Command(command));
+        }
+        true
     }
 
     /// Draws `panel`'s contents filling `ui`.
@@ -496,8 +526,9 @@ impl PanelViewer<'_> {
                 self.library_requests.extend(requests);
             }
             Panel::Assets => {
-                // On the Place tab, beside Placement: the placing form.
-                let placing = self.shown.contains(&Panel::Placement);
+                // While placing, beside how placed things land: the
+                // placing form.
+                let placing = self.placing;
                 let requests = crate::assets_column::assets(
                     ui,
                     (self.project.is_some(), placing),

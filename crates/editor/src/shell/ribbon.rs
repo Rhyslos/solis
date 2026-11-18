@@ -122,6 +122,16 @@ pub(crate) fn big_list(
     (Shape::Big(icon), vec![Entry::Built(control)])
 }
 
+/// A large button that only opens its list (Home › Create › More).
+pub(crate) fn big_list_only(icon: Icon, label: &'static str, items: Vec<ListItem>) -> Slot {
+    let control = Control::List {
+        label: label.into(),
+        command: None,
+        items,
+    };
+    (Shape::Big(icon), vec![Entry::Built(control)])
+}
+
 /// A small row that does `command`.
 pub(crate) fn row(label: &'static str, command: ShellCommand) -> Slot {
     let control = Control::Do {

@@ -10,7 +10,7 @@ A game feels slow, or you want to know how much more it can take: more units, mo
 ![The Profiler](pictures/profiler.png)
 The Profiler on the Debug tab while the game plays: a bar for each frame along the top, the frame picked as a timeline, and Statistics at the right.
 
-1. Click **Debug** in the tab bar: the Profiler fills the middle (the **Game** is a tab beside it), with the [Console](console.md) and Problems on the shelf.
+1. Click **Debug** in the tab bar: the Profiler is in the centre (the **Game** is a tab beside it), with the [Console](console.md) and Problems in the bottom panel under it. Its left slot, Running, isn't built yet.
 2. Press **Play**, or move around the viewport: the Profiler measures every frame the editor draws. When nothing moves, Solis doesn't draw (the viewport says *Idle*), so nothing new is measured.
 3. **The frame-time graph** along the top shows the last 240 frames, a bar each, newest on the right. The dashed lines are 60 and 30 frames a second: a bar above a line is a frame too slow for it, and bars over 60 frames a second's budget are lighter. **Click a bar** to pick that frame: it turns the accent colour, and the line at the top right says its number and time.
 4. **The timeline** under it shows the frame picked (or the newest): the CPU's parts laid end to end along a ruler of milliseconds, and under them the GPU's. A part long enough has its name on it. The lanes for threads aren't built yet.

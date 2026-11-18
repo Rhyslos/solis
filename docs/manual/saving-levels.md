@@ -8,7 +8,7 @@ Save whenever you've built something you want to keep. A [level](concepts.md#the
 The file is plain text, written so that two people changing different things in the same level can merge their work in Git without conflicts. It's also safe to read and edit by hand.
 
 ## How to use it
-1. **Save:** press **Ctrl + S** (or **Home › Save**). The first time, choose a name and a folder.
+1. **Save:** press **Ctrl + S** (or click **Not saved yet** or **Saved** in the status line, **File › Save all**, or **Save** on the level's tab's right-click). The first time, choose a name and a folder.
 2. **Save as:** **Ctrl + Shift + S** saves a copy under a new name and carries on with that one.
 3. **Open:** **Ctrl + O** (or **Open level…** (press **Space** and type it, or Ctrl + O)). The models it uses are read from the project, from the cache, so it opens quickly.
 4. **New:** **Ctrl + N** starts a fresh level with a sun and an environment.

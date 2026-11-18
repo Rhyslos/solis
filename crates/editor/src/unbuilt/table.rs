@@ -147,6 +147,7 @@ unbuilt! {
     DebugStatsMemory: "debug.stats.memory" => ("Memory used", NotPlanned, "Shows how much memory the game is using"),
     DebugShelfHottest: "debug.shelf.hottest" => ("Hottest functions", NotPlanned, "Lists the functions of game code that take the most time"),
     DebugShelfMemory: "debug.shelf.memory" => ("Memory snapshot", NotPlanned, "Lists everything in the game's memory at one moment"),
+    DebugRunning: "debug.running" => ("Running", Shared6, "Lists what the running game holds: its levels, entities and game code, each with its share of the frame"),
     DebugStatus: "debug.status" => ("Recording", Shared6, "Says in the status bar that frames are being recorded, and how many"),
 
     // File: projects.

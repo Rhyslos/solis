@@ -66,6 +66,16 @@ impl Selection {
         self.entities.contains(&id)
     }
 
+    /// How many entities are selected.
+    pub fn len(&self) -> usize {
+        self.entities.len()
+    }
+
+    /// Whether nothing is selected.
+    pub fn is_empty(&self) -> bool {
+        self.entities.is_empty()
+    }
+
     /// Every selected entity, by ID.
     pub fn iter(&self) -> impl Iterator<Item = EntityId> + '_ {
         self.entities.iter().copied()

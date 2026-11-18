@@ -55,9 +55,9 @@ impl Workbench {
         );
     }
 
-    /// Puts the middle of the tab in front back as the design draws it:
-    /// its shelf tab, the shelf's fold, and every border's size in every
-    /// layout (the shelf's height, the split, the columns).
+    /// Puts the frame of the tab in front back as it starts: its bottom
+    /// tab and fold, its hidden panels, and every edge's size in every
+    /// layout.
     pub fn reset_layout(&mut self) {
         // From File › Preferences: the tab File was opened from.
         let tab = match self.shell.tab {
@@ -139,16 +139,40 @@ impl Workbench {
                     );
                 }
             }
+            // Found by the search: the layouts' cards are the Layout tab's.
             Setting::Layout => {
                 let mut layout = look.layout;
                 let choices = PanelLayout::ALL.map(|l| (l, l.name()));
                 if field::dropdown(ui, name, &mut layout, &choices, size::SETTING_FIELD_W) {
-                    self.choose_interface_look(&ctx, theme::InterfaceLook { layout, ..look });
+                    self.choose_layout(&ctx, layout);
                 }
             }
             Setting::ResetLayout => {
                 if Button::plain("Reset layout").show(ui).clicked() {
                     self.reset_layout();
+                }
+            }
+            Setting::SizesPerTab => {
+                let mut on = look.sizes_per_tab;
+                if toggle::toggle(ui, &mut on, name).changed() {
+                    self.choose_interface_look(
+                        &ctx,
+                        theme::InterfaceLook {
+                            sizes_per_tab: on,
+                            ..look
+                        },
+                    );
+                }
+            }
+            Setting::ResetSizes => {
+                if Button::plain("Reset sizes")
+                    .show(ui)
+                    .on_hover_text(
+                        "Every edge you dragged, on every tab, back where this layout starts",
+                    )
+                    .clicked()
+                {
+                    self.reset_sizes();
                 }
             }
             Setting::Stats => drop(toggle::toggle(ui, &mut self.viewport.overlays.stats, name)),
@@ -268,7 +292,6 @@ impl Workbench {
                     scale: standard.scale,
                     density: standard.density,
                     shelf_opens_on: standard.shelf_opens_on,
-                    layout: standard.layout,
                     ..look
                 },
             ),

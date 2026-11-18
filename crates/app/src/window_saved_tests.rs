@@ -15,15 +15,22 @@ use eframe::egui;
 use std::collections::HashMap;
 use std::path::Path;
 
-/// The settings in one of the files, as eframe would hand them over.
+/// The settings in one of the files written before the design's look,
+/// as eframe would hand them over.
 fn settings(name: &str) -> Memory {
+    settings_in("before-g-layout", name)
+}
+
+/// The settings in one of the files in `folder`, as eframe would hand
+/// them over.
+fn settings_in(folder: &str, name: &str) -> Memory {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("..")
         .join("tests")
         .join("fixtures")
         .join("editor-settings")
-        .join("before-g-layout")
+        .join(folder)
         .join(name);
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     // eframe's file is a map of keys to values in its own text form, and
@@ -78,6 +85,39 @@ fn a_first_run_s_settings_start_the_new_look_with_everything_else_kept() {
     starts_with_the_standard_frame_and_says_so_once(&workbench);
 }
 
+/// Settings the rethink's R2 wrote, before the frame (decision 0118):
+/// decision 0109's "Level and Assets on the left" and the shelf's sizes
+/// in points start the editor in their nearest, Library on the left, with
+/// the bottom panel where the shelf was and nothing else lost.
+#[test]
+fn settings_from_before_the_frame_start_in_its_nearest_layout() {
+    let storage = settings_in("before-frame", "side-layouts.ron");
+    let (saved, workbench) = started(&storage);
+    let look = workbench.interface_look();
+    assert_eq!(
+        look.layout,
+        editor::interface_look::PanelLayout::LibraryLeft
+    );
+    assert_eq!(look.accent, Accent::Teal);
+    assert_eq!(look.density, Density::Compact);
+    assert!(look.sizes_per_tab, "not saved then: the standard");
+    // The tab left in front, its shelf's tab and fold its bottom panel's.
+    assert_eq!(workbench.ribbon_tab(), editor::RibbonTab::Debug);
+    assert_eq!(workbench.bottom_tab(), Some(editor::BottomTab::Problems));
+    assert!(workbench.bottom_folded());
+    // Kept as it was.
+    assert!(!saved.auto_update);
+    assert_eq!(saved.known.saved().len(), 1);
+    assert_eq!(workbench.console_history().len(), 2);
+    // Nothing said about an arrangement not carried over: there was none.
+    assert!(
+        !workbench
+            .log_lines()
+            .iter()
+            .any(|l| l.text.contains("wasn't carried over"))
+    );
+}
+
 /// Started from settings with a docked panels' arrangement from before
 /// the frame: every tab is as the design draws it, and the Console says
 /// once that the arrangement wasn't carried over.
@@ -88,10 +128,10 @@ fn starts_with_the_standard_frame_and_says_so_once(workbench: &Workbench) {
     // level, the Console in front on the shelf.
     assert_eq!(
         workbench.interface_look().layout,
-        editor::interface_look::PanelLayout::LevelLeftAssetsBottom
+        editor::interface_look::PanelLayout::Standard
     );
-    assert_eq!(workbench.shelf_tab(), Some(editor::ShelfTab::Console));
-    assert!(!workbench.shelf_folded());
+    assert_eq!(workbench.bottom_tab(), Some(editor::BottomTab::Library));
+    assert!(!workbench.bottom_folded());
     let said = workbench
         .log_lines()
         .iter()
@@ -356,7 +396,8 @@ fn damaged_looks_and_accents_never_stop_the_editor_starting() {
             ribbon_labels: false,
             hide_unfinished: true,
             shelf_opens_on: editor::interface_look::ShelfOpensOn::Entity,
-            layout: editor::interface_look::PanelLayout::LevelAndAssetsLeft,
+            layout: editor::interface_look::PanelLayout::LibraryLeft,
+            sizes_per_tab: false,
         };
         eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &look);
         storage.get_string(INTERFACE_LOOK_KEY).unwrap()

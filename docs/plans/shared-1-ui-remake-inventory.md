@@ -414,6 +414,7 @@ The tab is real because sprite clips and animators live there (a.4). Everything 
 | `debug.console.hint` | The completions shown at the right of the command line (spec 518) | PARTLY | Tab completes today; showing the choices is new, built in M14 | |
 | `debug.shelf.hottest` | Shelf tab **Hottest functions** (spec 504) | PLACEHOLDER | Placeholder shelf tab | not on the roadmap |
 | `debug.shelf.memory` | Shelf tab **Memory snapshot** | PLACEHOLDER | Placeholder shelf tab | not on the roadmap |
+| `debug.running` | The left slot **Running** (the editor rethink's board 09, decision 0118): what the running game holds | PLACEHOLDER | Placeholder page in the slot | Shared 6 |
 | `debug.status` | "Recording · 300 frames" (spec 529) | PLACEHOLDER | Not drawn; the slot shows "Last 240 frames" | Shared 6 |
 
 ### b.7 Screen 7: File, Recent projects (spec 531-616)

@@ -127,53 +127,56 @@ pub const TOOL_BAR_KEYED_BUTTON: f32 = 26.0;
 /// Solis's own.
 pub const TOOL_BAR_ICON_ROOM: f32 = 6.0;
 
-/// The shelf bar's height.
-pub const SHELF_BAR_H: f32 = 34.0;
-/// The shelf's drag grip: its size.
-pub const SHELF_GRIP: [f32; 2] = [36.0, 4.0];
-/// The shelf's standard height under its bar. Solis's own: the design
-/// gives a range (290 to 360), and this one leaves the center 442 tall
-/// in a 1440 × 900 window, inside the design's 400 to 470.
-pub const SHELF_H: f32 = 300.0;
-/// The shelf's standard height on the Animate tab (spec 418).
-pub const SHELF_H_ANIMATE: f32 = 360.0;
-/// The shelf's standard height on Home in a layout with the Level,
-/// Properties and Assets lists beside the groups (decision 0109): it
-/// holds only the Console, Problems and the like there. Solis's own.
-pub const SHELF_H_SIDE: f32 = 160.0;
-/// The shelf's least height under its bar, when the grip is dragged.
-/// Solis's own.
-pub const SHELF_MIN_H: f32 = 80.0;
-/// The least height the center keeps when the grip is dragged up.
-/// Solis's own.
+/// The bottom panel's bar: its tabs and tools while open, and the whole
+/// of it while folded to one line (board 05: one 30 px line).
+pub const BOTTOM_BAR_H: f32 = 30.0;
+/// The grip at the middle of the frame's three accent edges (board 03):
+/// its length along the edge and its thickness.
+pub const EDGE_GRIP: [f32; 2] = [28.0, 4.0];
+/// The least height the centre keeps when the bottom panel's edge is
+/// dragged up. Solis's own.
 pub const CENTER_MIN_H: f32 = 120.0;
-/// The Scene (Level) column's width (spec 205: 220 to 240).
-pub const SCENE_COLUMN_W: f32 = 240.0;
-/// A tileset's Terrains column on its shelf tab (round 3,
-/// `02-tileset-editor.png`: the list and the chosen terrain).
-pub const TERRAINS_COLUMN_W: f32 = 630.0;
-/// The Assets (Library) column's width (spec 207: 280 to 320).
-pub const ASSETS_COLUMN_W: f32 = 300.0;
-/// Properties as a column of its own beside the groups (decision 0109):
-/// its cards one under another, each with room for three numbers in a
-/// row; dragged wider, two go side by side. Solis's own.
-pub const PROPERTIES_COLUMN_W: f32 = 340.0;
-/// The Assets strip under the groups (decision 0109), header and all:
-/// two rows of tiles. Solis's own.
-pub const ASSETS_STRIP_H: f32 = 190.0;
-/// The least height of the Assets strip, or of one of two lists stacked
-/// in a column, when a border is dragged. Solis's own.
+/// The left column's standard width, as a share of the middle (board 03:
+/// 250 of 1440).
+pub const LEFT_SHARE: f32 = 0.174;
+/// The left column's standard width with the Library under the left slot
+/// (board 06, Library on the left). Solis's own.
+pub const LEFT_SHARE_LIBRARY: f32 = 0.2;
+/// The right column's standard width, as a share of the middle (board
+/// 03: 320 of 1440).
+pub const RIGHT_SHARE: f32 = 0.222;
+/// The right column's standard width in Tall properties ("wider", board
+/// 06). Solis's own.
+pub const RIGHT_SHARE_TALL: f32 = 0.28;
+/// The right column's standard width in Wide view, holding both slots.
+/// Solis's own.
+pub const RIGHT_SHARE_WIDE: f32 = 0.24;
+/// The limits of a column's share of the middle, before the room there
+/// is holds it tighter.
+pub const COLUMN_SHARE_LIMITS: std::ops::RangeInclusive<f32> = 0.05..=0.8;
+/// The bottom panel's standard height under its bar, as a share of the
+/// middle (board 03: about 210 of 776).
+pub const BOTTOM_SHARE: f32 = 0.27;
+/// The bottom panel's standard height on the Animate tab, where it holds
+/// the timeline ("dragged taller", board 09). Solis's own.
+pub const BOTTOM_SHARE_ANIMATE: f32 = 0.4;
+/// The limits of the bottom panel's share of the middle, before the room
+/// there is holds it tighter.
+pub const BOTTOM_SHARE_LIMITS: std::ops::RangeInclusive<f32> = 0.05..=0.9;
+/// The least height of the bottom panel under its bar, or of one of two
+/// parts stacked in a column, when an edge is dragged. Solis's own.
 pub const PART_MIN_H: f32 = 80.0;
 /// The least width the editor groups keep between the side columns:
 /// narrower, the columns give way. Solis's own.
 pub const CENTER_MIN_W: f32 = 240.0;
-/// The upper list's standard share of a column holding two (decision
+/// The upper part's standard share of a column holding two (decision
 /// 0109). Solis's own.
 pub const SIDE_SHARE: f32 = 0.5;
 /// The least width of a tile in the Assets list: as many go across as
 /// fit, four in its standard column. Solis's own.
 pub const ASSETS_TILE_MIN_W: f32 = 64.0;
-/// The Placement column on the Place shelf tab (spec 270: 250 to 280).
+/// The placing column beside the Library while placing (spec 270: 250
+/// to 280).
 pub const PLACEMENT_COLUMN_W: f32 = 260.0;
 /// How far right of the pointer the placing label starts. Solis's own.
 pub const PLACE_LABEL_OFFSET: f32 = 18.0;
@@ -207,24 +210,20 @@ pub const PLACE_HINT_W: f32 = 600.0;
 pub const PLACE_SEARCH_W: f32 = 180.0;
 /// The least width of a tile on the Place shelf tab (spec 272).
 pub const PLACE_TILE_MIN_W: f32 = 92.0;
-/// The least width of a shelf column: narrower than this, columns wrap
-/// under each other (spec 1143). Solis's own, from the cards' 180.
+/// The least width of a side column. Solis's own, from the cards' 180.
 pub const COLUMN_MIN_W: f32 = 180.0;
 /// The standard split between two editor groups: the first one's share.
 pub const SPLIT: f32 = 0.5;
 /// The Library's split when a tileset or a picture's crops open beside
 /// it.
 pub const SPLIT_LIBRARY: f32 = 0.4;
-/// The mixer's share of the Audio tab's center, beside the Bus group
-/// (spec 760: about 60%).
-pub const SPLIT_AUDIO: f32 = 0.6;
 /// The least width of an editor group side by side: narrower than this,
 /// the groups stack (spec 1145). Solis's own.
 pub const GROUP_MIN_W: f32 = 360.0;
 /// How far either side of a border (the 1 px line between groups or
 /// columns, the shelf's top edge) a drag takes hold. Solis's own.
 pub const DIVIDER_REACH: f32 = 3.0;
-/// A shelf column header's height.
+/// A slot's header's height (board 03).
 pub const COLUMN_HEADER_H: f32 = 30.0;
 /// A row's, header's or shelf tab's padding at each side.
 pub const ROW_PAD: f32 = 12.0;

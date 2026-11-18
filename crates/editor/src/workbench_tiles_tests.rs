@@ -109,7 +109,7 @@ fn placing_a_map_selects_it_and_opens_the_map_tab_beside_properties() {
     h.run();
     h.run();
     let w = &h.state().0;
-    assert_eq!(w.shelf_tab(), Some(crate::shell::ShelfTab::Map));
+    assert_eq!(w.bottom_tab(), Some(crate::shell::BottomTab::Map));
     for label in [
         "Add a layer",
         "Add a value",

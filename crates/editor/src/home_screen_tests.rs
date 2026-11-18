@@ -93,10 +93,9 @@ fn the_model_card_shows_its_rows_to_come_unless_they_are_hidden() {
     assert!(h.query_by_label("Shadows").is_none());
 }
 
-/// Home as the design's first screen draws it: the Assets column on the
-/// shelf.
+/// Home with the Library in front under the view (board 03).
 fn with_files() -> Workbench {
-    let mut w = crate::test_support::in_layout(crate::shell::PanelLayout::Shelf);
+    let mut w = crate::test_support::in_layout(crate::shell::PanelLayout::Standard);
     w.set_project(Some(ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
@@ -129,12 +128,14 @@ fn the_assets_column_shows_the_open_folder_and_imports() {
         assert!(column.contains(tile.center()), "{name} in {column:?}");
     }
     assert!(h.query_by_label("deep").is_none(), "another folder's");
-    let _ = h.get_by_label("Assets");
-    // Four across, square.
+    // The bottom panel's Library tab, in front.
+    let _ = h.get_by_label("Library");
+    // As many across as fit, each at least its least width.
     let crate_tile = h.get_by_label("crate").rect();
-    let gap = size::TILE_GAP;
-    let width = ((column.width() - 4.0 * gap - 3.0 * gap) / 4.0).floor();
-    assert_eq!(crate_tile.width(), width);
+    assert!(
+        crate_tile.width() >= size::ASSETS_TILE_MIN_W,
+        "{crate_tile:?}"
+    );
     h.get_by_label("Import a model").click();
     h.run();
     assert!(h.state().1.actions.contains(&WorkbenchAction::ImportModel));

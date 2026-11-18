@@ -6,7 +6,7 @@
 use super::{PanelLayout, RibbonTab};
 use crate::interface_look::InterfaceLook;
 use crate::picture_support::{
-    DESIGN_SCALE, Picture, design, drawn, editor_window, matches_approved, sample_project,
+    Picture, design, drawn, editor_window, matches_approved, sample_project,
 };
 use crate::tokens::{self, size};
 
@@ -33,20 +33,12 @@ const TABS: [(RibbonTab, &str, Option<&str>); 7] = [
     (RibbonTab::Build, "build", None),
 ];
 
-/// The design's look, with Home's lists on the shelf as its screens have
-/// them (the other tabs look the same in every layout).
-fn shelf_look() -> InterfaceLook {
-    InterfaceLook {
-        layout: PanelLayout::Shelf,
-        ..InterfaceLook::default()
-    }
-}
-
-/// The sample project with `tab` in front, drawn at `size`.
+/// The sample project with `tab` in front, drawn at `size` in the
+/// standard layout.
 fn tab_picture(tab: RibbonTab, size: [f32; 2]) -> Option<Picture> {
     let mut workbench = sample_project();
     workbench.show_tab(tab);
-    let mut harness = editor_window(workbench, shelf_look(), size)?;
+    let mut harness = editor_window(workbench, InterfaceLook::default(), size)?;
     harness.run();
     harness.run();
     Some(drawn(&mut harness))
@@ -62,57 +54,47 @@ fn colour_at(picture: &Picture, what: &str, point: [f32; 2], scale: f32) -> egui
     picture.at(point, scale)
 }
 
-/// Where the bands end, top to bottom, in a window `height` tall with the
-/// standard shelf: the ribbon's foot, the shelf bar's top and foot, and
-/// the status bar's top.
-fn bands(height: f32) -> [f32; 4] {
-    let ribbon = size::TAB_BAR_H + size::RIBBON_H;
+/// Where the bottom panel's bar starts and ends, and the status line's
+/// top, in the sample project's Home `height` tall, as drawn.
+fn foot(harness_bar: f32, height: f32) -> [f32; 3] {
     let status = height - size::STATUS_BAR_H;
-    let shelf = status - size::SHELF_H - size::SHELF_BAR_H;
-    [ribbon, shelf, shelf + size::SHELF_BAR_H, status]
+    [harness_bar, harness_bar + size::BOTTOM_BAR_H, status]
 }
 
 #[test]
-fn the_shelf_and_the_status_bar_are_the_design_s_colours() {
-    let Some(home) = tab_picture(RibbonTab::Home, SIZES[0]) else {
+fn the_bottom_panel_and_the_status_line_are_the_design_s_colours() {
+    let mut workbench = sample_project();
+    workbench.show_panel(crate::panel::Panel::Problems);
+    let Some(mut harness) = editor_window(workbench, InterfaceLook::default(), SIZES[0]) else {
         return;
     };
-    let [_, shelf, columns, status] = bands(SIZES[0][1]);
-    // The same surfaces in the design's first screen (its bands sit where
-    // its own shelf is, at its own height).
-    let design = design("01-home-level-editor.png");
+    harness.run();
+    harness.run();
+    let view = harness
+        .state()
+        .shell
+        .drawn_at(crate::panel::Panel::Viewport);
+    let level = harness.state().shell.drawn_at(crate::panel::Panel::Level);
+    let home = drawn(&mut harness);
+    let (view, level) = (view.expect("the view"), level.expect("Level"));
+    let [bar, under, status] = foot(view.bottom(), SIZES[0][1]);
     for (what, point, token) in [
+        // Right of the tabs, left of the tools.
         (
-            "the shelf bar",
-            [600.0, 500.0 + size::SHELF_BAR_H / 2.0],
+            "the bottom panel's bar",
+            [view.center().x, bar + size::BOTTOM_BAR_H / 2.0],
             tokens::shelf_bar(),
         ),
-        ("a column", [200.0, 680.0], tokens::panel()),
-        ("the status bar", [700.0, 889.0], tokens::code()),
-    ] {
-        assert_eq!(
-            colour_at(&design, what, point, DESIGN_SCALE),
-            token,
-            "the design's {what}"
-        );
-    }
-    for (what, point, token) in [
-        // Between the last shelf tab and the tools at the right.
+        // Under Level's rows.
         (
-            "the shelf bar",
-            [800.0, shelf + size::SHELF_BAR_H / 2.0],
-            tokens::shelf_bar(),
-        ),
-        // A column's header, right of its title.
-        (
-            "a column's header",
-            [100.0, columns + size::COLUMN_HEADER_H / 2.0],
+            "the Level panel",
+            [level.center().x, level.bottom() - 20.0],
             tokens::panel(),
         ),
-        // Between the version and the context, and left of the counts.
+        // Between the left's words and the right's.
         (
-            "the status bar",
-            [700.0, status + size::STATUS_BAR_H / 2.0],
+            "the status line",
+            [view.center().x, status + size::STATUS_BAR_H / 2.0],
             tokens::code(),
         ),
     ] {
@@ -122,16 +104,12 @@ fn the_shelf_and_the_status_bar_are_the_design_s_colours() {
             "{what} at {point:?}"
         );
     }
-    // The lines: the shelf bar's top and foot, and the status bar's top.
-    assert_eq!(home.pixel(800, shelf as u32), tokens::line());
-    assert_eq!(home.pixel(800, columns as u32 - 1), tokens::line());
-    assert_eq!(home.pixel(800, status as u32), tokens::line());
-    // The tab strip's ground right of the level's tab and its +.
-    let strip = bands(SIZES[0][1])[0] + size::DOC_TAB_H / 2.0;
-    assert_eq!(
-        colour_at(&home, "the tab strip", [800.0, strip], 1.0),
-        tokens::app()
-    );
+    // The lines: the bar's top and foot, and the status line's top (left
+    // of the edge's grip at the middle).
+    let x = (view.left() + 40.0) as u32;
+    assert_eq!(home.pixel(x, bar as u32), tokens::line());
+    assert_eq!(home.pixel(x, under as u32 - 1), tokens::line());
+    assert_eq!(home.pixel(x, status as u32), tokens::line());
 }
 
 #[test]
@@ -175,65 +153,71 @@ fn each_tab_at_two_sizes_beside_the_design() {
     }
 }
 
+/// Board 05: the bottom panel folded to one line and open, each against
+/// its approved picture; folded, the view runs down to the line and the
+/// status line stays where it was.
 #[test]
-fn the_grip_and_a_fold_change_only_the_shelf() {
-    let Some(open) = tab_picture(RibbonTab::Home, SIZES[0]) else {
+fn the_bottom_panel_folded_and_open_are_their_approved_pictures() {
+    let picture = |folded: bool| {
+        let mut workbench = sample_project();
+        workbench.show_panel(crate::panel::Panel::Problems);
+        workbench.log(
+            crate::console::LogLevel::Warning,
+            "No sound: couldn't open the sound card. Everything else works.",
+        );
+        workbench.console.fix_time("16:02:42");
+        workbench.fold_bottom(folded);
+        let mut harness = editor_window(workbench, InterfaceLook::default(), SIZES[0])?;
+        harness.run();
+        harness.run();
+        let view = harness
+            .state()
+            .shell
+            .drawn_at(crate::panel::Panel::Viewport)?;
+        Some((view, drawn(&mut harness)))
+    };
+    let (Some((open_view, open)), Some((folded_view, folded))) = (picture(false), picture(true))
+    else {
         return;
     };
-    let mut workbench = sample_project();
-    workbench.fold_shelf(true);
-    let Some(mut harness) = editor_window(workbench, shelf_look(), SIZES[0]) else {
-        return;
-    };
-    harness.run();
-    harness.run();
-    let folded = drawn(&mut harness);
-    // Folded, the bar sits on the status bar, and the center is taller.
-    let [_, _, _, status] = bands(SIZES[0][1]);
-    let bar = status - size::SHELF_BAR_H / 2.0;
+    let status = SIZES[0][1] - size::STATUS_BAR_H;
+    assert_eq!(folded_view.bottom(), status - size::BOTTOM_BAR_H);
+    assert!(folded_view.height() > open_view.height());
+    let line = [folded_view.center().x, status + size::STATUS_BAR_H / 2.0];
     assert_eq!(
-        colour_at(&folded, "the folded bar", [800.0, bar], 1.0),
-        tokens::shelf_bar()
+        folded.at(line, 1.0),
+        open.at(line, 1.0),
+        "the status line stays"
     );
-    assert_ne!(open.at([800.0, bar], 1.0), tokens::shelf_bar());
-    // The status bar is where it was.
-    assert_eq!(
-        folded.at([700.0, status + size::STATUS_BAR_H / 2.0], 1.0),
-        open.at([700.0, status + size::STATUS_BAR_H / 2.0], 1.0)
-    );
+    matches_approved("bottom-panel-open", &open);
+    matches_approved("bottom-panel-folded", &folded);
 }
 
-/// Home in each panel layout with Home's lists beside the level (decision
-/// 0109), against its approved picture; in the shelf layout it is
-/// `editor.png` (`picture_tests.rs`). The lists are panels on the panel's
-/// grey, with a line between each and the level.
+/// Home in each layout (board 06) against its approved picture; the
+/// standard one is `editor.png` (`picture_tests.rs`). Just the view is
+/// drawn as chosen in Preferences, every panel hidden.
 #[test]
-fn home_in_each_side_layout_is_its_approved_picture() {
-    for layout in PanelLayout::ALL.into_iter().filter(|l| l.is_side()) {
+fn home_in_each_layout_is_its_approved_picture() {
+    for layout in PanelLayout::ALL
+        .into_iter()
+        .filter(|l| *l != PanelLayout::Standard)
+    {
+        // Problems in front in the bottom panel: the Console's lines
+        // carry the time of day they were written.
+        let mut workbench = sample_project();
+        workbench.show_panel(crate::panel::Panel::Problems);
+        workbench.choose_layout(&egui::Context::default(), layout);
+        workbench.close_layout_note();
         let look = InterfaceLook {
             layout,
             ..InterfaceLook::default()
         };
-        // Problems in front on the shelf: the Console's lines carry the
-        // time of day they were written.
-        let mut workbench = sample_project();
-        workbench.show_panel(crate::panel::Panel::Problems);
         let Some(mut harness) = editor_window(workbench, look, SIZES[0]) else {
             return;
         };
         harness.run();
         harness.run();
-        let level = harness.state().shell.drawn_at(crate::panel::Panel::Level);
         let picture = drawn(&mut harness);
-        let level = level.expect("the Level list is drawn");
-        // Below the Level list's rows, and the line at its right edge.
-        let below = [level.center().x, level.bottom() - 20.0];
-        assert_eq!(
-            colour_at(&picture, "the Level list", below, 1.0),
-            tokens::panel()
-        );
-        let edge = [level.right() + 0.5, level.bottom() - 20.0];
-        assert_eq!(picture.at(edge, 1.0), tokens::line(), "{layout:?}");
         let name = format!("home-{}", layout.key().replace(' ', "-"));
         matches_approved(&name, &picture);
     }

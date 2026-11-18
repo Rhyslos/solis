@@ -190,7 +190,7 @@ fn reset_layout_puts_the_tab_s_middle_back() {
         use crate::shell::{PanelLayout, sizes::Edge};
         let w = &mut h.state_mut().0;
         w.show_panel(Panel::Console);
-        w.fold_shelf(true);
+        w.fold_bottom(true);
         // A border in two layouts: both are put back.
         let shelf = PanelLayout::Shelf;
         w.shell.sizes.set(tab, shelf, Edge::ShelfHeight, 410.0);
@@ -432,7 +432,7 @@ fn the_viewport_tab_changes_what_the_viewport_shows() {
 #[test]
 fn shelf_opens_on_entity_brings_it_to_the_front_when_something_is_selected() {
     use crate::interface_look::ShelfOpensOn;
-    use crate::shell::{RibbonTab, workspaces::ShelfTab};
+    use crate::shell::{RibbonTab, workspaces::BottomTab};
     let (w, crate_id) = with_a_crate();
     let mut h = harness(w.with_interface_look(theme::InterfaceLook {
         shelf_opens_on: ShelfOpensOn::Entity,
@@ -444,7 +444,7 @@ fn shelf_opens_on_entity_brings_it_to_the_front_when_something_is_selected() {
     h.run();
     h.state_mut().0.open.document.selection.select(crate_id);
     h.run();
-    assert_eq!(h.state().0.shell.arrangement(RibbonTab::Home).shelf_tab, ShelfTab::Entity);
+    assert_eq!(h.state().0.shell.arrangement(RibbonTab::Home).bottom_tab, BottomTab::Entity);
     // As it is (the standard): the Console stays.
     let mut look = h.state().0.interface_look();
     look.shelf_opens_on = ShelfOpensOn::AsItIs;
@@ -454,5 +454,5 @@ fn shelf_opens_on_entity_brings_it_to_the_front_when_something_is_selected() {
     h.run();
     h.state_mut().0.open.document.selection.select(crate_id);
     h.run();
-    assert_eq!(h.state().0.shell.arrangement(RibbonTab::Home).shelf_tab, ShelfTab::Console);
+    assert_eq!(h.state().0.shell.arrangement(RibbonTab::Home).bottom_tab, BottomTab::Console);
 }
