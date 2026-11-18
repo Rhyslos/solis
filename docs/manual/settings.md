@@ -52,7 +52,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 | Setting | What it does |
 |---|---|
 | General › Project name | Its name in the window's title and on the [launcher](launcher.md). Type a new one and click elsewhere; the folder keeps its own name. |
-| General › Kind | **2D**, **3D** or **Both**: what the game is made of ([project kind](concepts.md#projects)). Chosen when the project was made; a click here changes it, and it's kept in the project's `project.solis` at once. Projects made before it was asked are **Both**. For now the kind is kept and shown on the project's card; a later update makes a 2D project hide every tab, tool and setting only 3D games use. |
+| General › Kind | **2D**, **3D** or **Both**: what the game is made of ([project kind](concepts.md#projects)). Chosen when the project was made; a click here changes it at once, with no restart, and it's kept in the project's `project.solis`. The line under it says what the kind hides. **2D** hides what only 3D games use: the Shading tab, lighting and baking, models (Create › Model, Import model), shape brushes, the 3D view's cameras (Perspective, Top, Front, Right) and its looks, and their settings. **3D** hides what only 2D games use: tile maps and the tile painter, the 2D view, pixel snapping and Project settings › 2D. **Both** shows everything, and projects made before the kind was asked are Both. Nothing in the project is deleted when the kind changes, and the change isn't an undo step (no project setting is): choose the old kind again to see everything as it was. See [What each kind hides](#what-each-kind-hides). |
 | General › Game starts in | The level the exported game opens in (the same setting as on Build). |
 | General › Engine version | The build of Solis that last opened the project, with **Check now**. |
 | General › Scripting | Game code is written in Lust and opens in your code editor. |
@@ -65,8 +65,22 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 
 A number you drag is saved once, when you let go.
 
+## What each kind hides
+A 2D game has no use for models or a perspective camera, and a 3D game none for a tile painter, so a project shows only the parts of the editor its kind uses ([project kind](concepts.md#projects)). It's one list inside Solis, so a part is hidden the same way everywhere: its tab, its ribbon button, its Create item, its component in **Add component**, its setting and its line in the search all go together, and its keys do nothing.
+
+| Kind | Hides | Keeps |
+|---|---|---|
+| **2D** | The Shading tab; Home's Lighting group (Bake, Quality, Light map view); Create › Model and Shape, and Import model (lamps stay: a light shines on sprites too); the brush list (`B` paints tiles instead); the Perspective, Top, Front and Right views and the Look pill; the Model, Brush, Collider, Rigid body and Character body components; Preferences › Viewport's grid step, camera speed and looks. | Sprites, tile maps and their painter, the 2D view and its camera, lights and the Environment (lamps and day and night), zones, prefabs, animation, screens, sound, the Debug and Build tabs: everything shared. |
+| **3D** | Tile maps (Create › Tile map, New tile map, the Map tab and the painter); the 2D view; Pixel perfect and Snap to tiles; the Tile map, 2D collider and Parallax components; Preferences' **In the 2D view, moves land on**; Project settings › 2D. | Models, lights, shape brushes, the 3D views, and everything shared, sprites among them. |
+| **Both** | Nothing. | Everything, as before projects had a kind. |
+
+Something of the hidden kind that's already in a level stays there: the Level panel lists it with a quiet **3D only** (or **2D only**) after its name, and Properties shows its component with the note *3D only: switch the project to Both to edit it*, its values readable but greyed. Switch the kind to **Both** to change it.
+
+The first few times a project opens as 2D or 3D, or is switched to one, Home's ribbon says what it hides ("No Shading tab and no Lighting group: they are 3D only"), while hints are on. Its **×** puts it away for good.
+
 ## Tips and common problems
 - **Problem:** everything in the editor is tiny. **Why:** on a very sharp screen each pixel is small. **Fix:** raise **Appearance › Interface scale**.
+- **Problem:** a tab, a button or a setting the manual mentions isn't there. **Why:** the project's kind hides it (a 2D project has no Shading tab, a 3D project no tile painter). **Fix:** set **Project settings › General › Kind** to **Both**, or the kind it belongs to.
 - **Problem:** a setting is faint, has a small square after its name, and its switch won't move. **Why:** it's an [unfinished part](unfinished-parts.md). **Fix:** rest the pointer on it to read what it will do; switch on **General › Hide unfinished parts** if you'd rather not see it.
 - **Problem:** Project settings says **Open a project first**. **Why:** its settings belong to a project, and none is open. **Fix:** open or make one in the [launcher](launcher.md) (**File › Close project** goes back to it).
 - **Problem:** the Console says `pixels.solpix` had a mistake. **Why:** the file was edited by hand and can't be read. **Fix:** the standard 2D settings are used meanwhile; change anything on the 2D tab and the file is written again, with the damaged one kept beside it as `pixels.solpix.bak`.

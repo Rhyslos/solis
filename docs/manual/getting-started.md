@@ -30,7 +30,7 @@ Solis starts on the [launcher](launcher.md), a small window listing your project
 
 1. Click **New project** at the top right of the launcher.
 2. Type a **Name**, such as *Farm Days*. Solis makes a folder of that name for the project; the line under the name shows where (in a **Solis projects** folder in your Documents, the first time).
-3. Choose its **Kind**: **2D**, **3D** or **Both**. It's kept with the project and can be changed later ([Project kind](concepts.md#projects)).
+3. Choose its **Kind**: **2D**, **3D** or **Both**. A 2D game (sprites and tile maps, seen from the side or above) is the easiest start: choose **2D** and the editor shows only what 2D games use, with no Shading tab, baked lighting or models in the way. **3D** hides the tile painter and the 2D view instead, and **Both** shows everything. It's kept with the project and can be changed later; nothing is deleted when it is ([Project kind](concepts.md#projects), [What each kind hides](settings.md#what-each-kind-hides)).
 4. **Start from** **Empty**, or from one of the examples to take apart (they're 3D games, so they're greyed while 2D is chosen).
 5. Click **Create**. The launcher becomes the editor, with your project open. **File › Close project** brings the launcher back.
 
