@@ -61,10 +61,10 @@ impl Words {
         // The same text in memory is the same word; a word's own copy in
         // `list` keeps it from being reused for another while numbered.
         let at = Arc::as_ptr(word).cast::<u8>() as usize;
-        if let Some(&(_, n)) = self.recent.iter().find(|(p, _)| *p == at) {
-            if *self.list[n as usize] == **word {
-                return n;
-            }
+        if let Some(&(_, n)) = self.recent.iter().find(|(p, _)| *p == at)
+            && *self.list[n as usize] == **word
+        {
+            return n;
         }
         if let Some(&n) = self.numbers.get(word) {
             self.recent[self.turn] = (at, n);
