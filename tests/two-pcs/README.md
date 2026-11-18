@@ -14,6 +14,7 @@ Everything in it is game state, so a difference anywhere shows:
 
 - **3D:** a character with the ready-made controller, three crates and a moving platform (physics), a hive spawning drones at random places that are pushed about and despawn, a turret firing projectiles and sending hits to a lantern, a box zone the character walks through and a round zone that fires once.
 - **2D:** a walker (the ready-made top-down controller) with a sprite and an animator, in a tile map whose walls game code raises and lowers at random, a solid post, and a freeform zone.
+- **Timers:** the hive's Lust pulses every 0.75 s (through the `Director`'s speed changes, so its rhythm follows game time) and rings a bell as the day's clock passes 8:03; each drone starts a one-second timer as it starts, and pushes itself up when it finishes, unless it was despawned first, which ends its timer.
 - **Game code** in all three languages: Lust (`main.lst`: the game-wide `Director` object slowing the game to half speed and back up, a tween with no done block, sines, powers and arctangents), Lua (`wobble.lua`: the lantern's sway) and Rust (`armour.rs`, Solis's own Armour, as in the turret sample). Every random roll is `World`'s, kept to the game's seed.
 
 It is kept clear of the two gaps decision 0106 records: no tween has a done block (their order across cores isn't fixed yet), and nothing rolls Lust's own `Random` (which ignores the seed). Shared 3 closes them.
