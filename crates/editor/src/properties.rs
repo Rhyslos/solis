@@ -128,6 +128,15 @@ pub(crate) enum PropertyRequest {
     OpenCode(String),
     /// Turn hints off (the Hints card's "Turn hints off").
     HintsOff,
+    /// Draw a trigger zone's freeform outline in the view (its card's
+    /// Shape › Freeform; stage 1, triggers).
+    ZoneDraw(EntityId),
+    /// Edit a freeform trigger zone's points in the view (its card's
+    /// Edit points).
+    ZoneEditPoints(EntityId),
+    /// Make a code file for a trigger zone, add its component to the
+    /// zone, and open it (New code for this zone…).
+    NewZoneCode(EntityId),
     /// Stretch a brush about its middle to a size, in metres (the Brush
     /// card's Size; Tools 1a, B3).
     BrushSize {
@@ -171,6 +180,10 @@ pub(crate) struct Help<'a> {
     /// (its counts and size, what's picked while it is edited; Tools 1a,
     /// B3), for the entity Properties shows.
     pub brush: Option<&'a crate::brushing::card::BrushFacts>,
+    /// What the Trigger zone card shows that a zone's values don't say
+    /// (which shapes the project offers, who is inside while playing;
+    /// stage 1), for the entity Properties shows.
+    pub zone: Option<&'a crate::zones::card::ZoneFacts>,
 }
 
 /// While the game plays: game code's values as they are now (for the
@@ -202,6 +215,7 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
         "AudioSource" => "sound-events.md",
         "Listener" => "listeners.md",
         "ReverbZone" => "reverb-zones.md",
+        "TriggerZone" => "trigger-zones.md",
         "Sprite" => "sprites.md",
         "Parallax" => "parallax.md",
         "Animator" => "animators.md",
@@ -320,6 +334,16 @@ pub(crate) fn properties(
                             card.draw(ui, row[i], background, &mut requests);
                         });
                     }
+                    if !many
+                        && let Some(facts) = help.zone
+                        && entity.has(<level::builtin::TriggerZone as reflect::Component>::NAME)
+                    {
+                        cards::card_row(ui, "zone hears", (1, 1), |ui, _, _| {
+                            if crate::zones::card::hears(ui, !facts.flat) {
+                                requests.push(PropertyRequest::NewZoneCode(id));
+                            }
+                        });
+                    }
                     if let Some(hints) = hints
                         && cards::hints_card(ui, hints)
                     {
@@ -424,6 +448,27 @@ impl Card<'_> {
         let editable = crate::kinds::shown(kind);
         if let Some(note) = kind.note().filter(|_| !editable) {
             cards::kind_note(ui, &note);
+        }
+        if component == <level::builtin::TriggerZone as reflect::Component>::NAME
+            && !many
+            && let Some(facts) = self.help.zone
+        {
+            ui.add_enabled_ui(editable, |ui| {
+                for ask in crate::zones::card::rows(ui, data, facts) {
+                    use crate::zones::card::ZoneAsk;
+                    requests.push(match ask {
+                        ZoneAsk::Set(field, value) => PropertyRequest::SetField {
+                            entity: id,
+                            component: component.to_owned(),
+                            field: field.to_owned(),
+                            value,
+                        },
+                        ZoneAsk::Draw => PropertyRequest::ZoneDraw(id),
+                        ZoneAsk::EditPoints => PropertyRequest::ZoneEditPoints(id),
+                    });
+                }
+            });
+            return;
         }
         if component == <level::builtin::Brush as reflect::Component>::NAME
             && !many

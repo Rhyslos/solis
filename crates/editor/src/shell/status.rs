@@ -178,7 +178,7 @@ impl Workbench {
                 .pointer
                 .filter(|_| two_d)
                 .map(|[x, y]| format!("Tile {x}, {y}")),
-            brushing: self.brush_status(),
+            brushing: self.brush_status().or_else(|| self.zone_status()),
         }
     }
 

@@ -177,6 +177,8 @@ pub struct Viewport {
     /// The brush list B opens, and a brush being drawn out (Tools 1a,
     /// B2).
     pub(crate) brushing: crate::brushing::Brushing,
+    /// Trigger zones' handles and freeform points (stage 1, triggers).
+    pub(crate) zones: crate::zones::ZoneTool,
 }
 
 /// One view's own camera, look and state, while another view is in use.
@@ -241,6 +243,7 @@ impl Default for Viewport {
             tile_ms: 0,
             placing: false,
             brushing: crate::brushing::Brushing::default(),
+            zones: crate::zones::ZoneTool::default(),
             preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
@@ -313,6 +316,7 @@ impl Viewport {
             tile_overlay,
             preview_hour,
             brushing,
+            zones,
         } = self;
         *level = LevelView::default();
         *entities = 0;
@@ -325,6 +329,7 @@ impl Viewport {
         *tile_overlay = crate::tile_view::TileOverlay::default();
         *preview_hour = None;
         *brushing = crate::brushing::Brushing::default();
+        *zones = crate::zones::ZoneTool::default();
     }
 
     /// Whether the right mouse button is held on the viewport, so W A S D,
@@ -539,6 +544,8 @@ mod pixel_pills;
 pub(crate) mod tool_bar;
 #[path = "viewport_view.rs"]
 mod view;
+#[path = "viewport_zones.rs"]
+mod zones_view;
 
 pub use frame::{
     BOLT_WIDTH, DrawReport, GAME_IMAGE, GpuSplit, MAX_IMAGES, NoRenderer, PixelLayer, PixelView,

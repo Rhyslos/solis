@@ -280,8 +280,8 @@ impl Workbench {
 /// The world as `save` has it, built from its `level`: each entity where
 /// the game had it (noted as the game's move, as in the saved game),
 /// physics built from each body's place and motion as saving built the
-/// running game's, the clock, seed, speed and day, projectiles, animators
-/// and tile maps. Takes those last three out of `save`.
+/// running game's, the clock, seed, speed and day, projectiles, animators,
+/// tile maps and who is inside each trigger zone. Takes those last three out of `save`.
 fn world_of_save(level: &Level, save: &mut Save) -> world::World {
     let mut world = world::World::from_level_without_physics(level);
     for (id, t) in &save.places {
@@ -298,5 +298,8 @@ fn world_of_save(level: &Level, save: &mut Save) -> world::World {
         .restore(std::mem::take(&mut save.projectiles));
     world.restore_animator_values(std::mem::take(&mut save.animators));
     world.restore_tile_maps(std::mem::take(&mut save.tile_maps));
+    // Who was inside each trigger zone: the next pass says nothing for
+    // them again.
+    world.set_zone_states(&save.zones.0, &save.zones.1);
     world
 }

@@ -139,6 +139,8 @@ mod workbench_tile_tools;
 mod workbench_tiles;
 mod workbench_tileset;
 mod workbench_tools;
+mod workbench_zones;
+pub mod zones;
 
 pub use brushes::{BrushModel, ViewBrush};
 pub use camera::{Camera, FlyInput, ViewKind};
@@ -218,3 +220,5 @@ mod source_rules_tests;
 mod tools_1a_gate_tests;
 #[cfg(test)]
 mod two_d_screen_tests;
+#[cfg(test)]
+mod zones_play_tests;

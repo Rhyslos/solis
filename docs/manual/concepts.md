@@ -162,6 +162,7 @@
 - **Random number:** a number game code gets by chance, such as a die roll (`World:randomInt(1, 6)`). Solis makes them from a **seed**: the same seed gives the same numbers in the same order, so a play can be repeated exactly. Each Play has a new seed unless you choose one (`seed` in the [Console](console.md)).
 - **Tween:** a value gliding to a new one over a set time (a door swinging open over half a second), written in Lust as `tween open to 1 over 0.5;`. Solis moves every tween a step each tick, before the components' `update`s. The way it speeds up and slows down is its **ease** (`[ease OutCubic]`). See [Game code](game-code.md#tweens).
 - **Event:** a message one component sends to an entity, such as "you were hit, for 2.5". Each of that entity's components that cares reacts to it. Events let components work together without knowing about each other, even when they're written in different languages.
+- **Trigger zone:** an invisible box, circle (a sphere in 3D) or drawn shape in a level that tells game code when a character or a moving body walks in (`Entered`) or out (`Exited`): a door, a shop counter, a pit. It's the usual way to make something happen because of where the player is. See [Trigger zones](trigger-zones.md).
 
 ## Simulation
 

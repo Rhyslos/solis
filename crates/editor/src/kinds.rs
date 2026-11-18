@@ -216,6 +216,7 @@ pub(crate) fn command(command: ShellCommand) -> PartKind {
         | C::AddSpotlight
         | C::AddCamera
         | C::AddReverbZone
+        | C::AddTriggerZone
         | C::MakePrefab
         | C::SnapAngles
         | C::SnapScale
@@ -338,7 +339,8 @@ pub(crate) fn component(name: &str) -> PartKind {
         // light 2D games too, decision 0092), "Transform", "Camera" (a 2D camera in the 2D
         // view), "Sprite",
         // "Animator", "AudioSource", "Listener", "ReverbZone", "Screen",
-        // and game code's.
+        // "TriggerZone" (built once for 2D and 3D, decision 0097), and
+        // game code's.
         _ => PartKind::Shared,
     }
 }
@@ -346,7 +348,7 @@ pub(crate) fn component(name: &str) -> PartKind {
 /// The built-in components the table names, so a test can check every
 /// built-in has a row ([`component`] reads unknown names as shared).
 #[cfg(test)]
-pub(crate) const COMPONENTS: [&str; 18] = [
+pub(crate) const COMPONENTS: [&str; 19] = [
     "Animator",
     "AudioSource",
     "Brush",
@@ -365,6 +367,7 @@ pub(crate) const COMPONENTS: [&str; 18] = [
     "Sprite",
     "TileMap",
     "Transform",
+    "TriggerZone",
 ];
 
 /// A setting of Preferences or Project settings.

@@ -145,8 +145,9 @@ fn within(a: Vec2, b: Vec2, p: Vec2) -> bool {
     p.x >= a.x.min(b.x) && p.x <= a.x.max(b.x) && p.y >= a.y.min(b.y) && p.y <= a.y.max(b.y)
 }
 
-/// Whether the segments a–b and c–d cross or touch.
-fn segments_meet(a: Vec2, b: Vec2, c: Vec2, d: Vec2) -> bool {
+/// Whether the segments a–b and c–d cross or touch (for an editor checking
+/// one new edge against an outline being drawn).
+pub fn segments_meet(a: Vec2, b: Vec2, c: Vec2, d: Vec2) -> bool {
     let (d1, d2) = (side(c, d, a), side(c, d, b));
     let (d3, d4) = (side(a, b, c), side(a, b, d));
     if ((d1 > 0.0 && d2 < 0.0) || (d1 < 0.0 && d2 > 0.0))

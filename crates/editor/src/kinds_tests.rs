@@ -52,6 +52,7 @@ fn every_built_in_component_has_its_row() {
         "Sprite",
         "Camera",
         "ReverbZone",
+        "TriggerZone",
         "Light",
         "Environment",
         "Turret",
@@ -81,7 +82,6 @@ fn the_board_s_parts_are_of_the_kind_it_says() {
     ] {
         assert_eq!(unbuilt(lighting), PartKind::ThreeD, "{lighting:?}");
     }
-    assert_eq!(unbuilt(U::HomeCreateTrigger), PartKind::Shared, "zones");
     for three in [
         ShellCommand::ImportModel,
         ShellCommand::ChooseShapeBrush,
@@ -102,6 +102,7 @@ fn the_board_s_parts_are_of_the_kind_it_says() {
         ShellCommand::AddPointLight,
         ShellCommand::AddCamera,
         ShellCommand::AddReverbZone,
+        ShellCommand::AddTriggerZone,
         ShellCommand::AddEntity,
     ] {
         assert_eq!(command(shared), PartKind::Shared, "{shared:?}");

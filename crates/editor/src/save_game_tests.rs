@@ -269,9 +269,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 9", "solis save 10", 1),
-        text.replacen("solis save 9", "solis save 2", 1),
-        text.replacen("solis save 9", "solis save 1", 1),
+        text.replacen("solis save 10", "solis save 11", 1),
+        text.replacen("solis save 10", "solis save 2", 1),
+        text.replacen("solis save 10", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -306,12 +306,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 9\r", "solis save 9 "] {
-        let why = Save::read(&text.replacen("solis save 9", header, 1)).unwrap_err();
+    for header in ["solis save 10\r", "solis save 10 "] {
+        let why = Save::read(&text.replacen("solis save 10", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 9", "solis save 10", 1))
+        Save::read(&text.replacen("solis save 10", "solis save 11", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -778,6 +778,12 @@ fn a_sound_turned_off_stays_off_after_a_load() {
     assert!(w.audio_sources().is_empty(), "the save keeps it off");
 }
 
+/// Version 9's example as version 10 writes it: the same, with an empty
+/// zones section (the reads-back test of version 10's example checks it).
+fn nine_as_ten(nine: &str) -> String {
+    super::save_read_back(nine).unwrap()
+}
+
 /// The example saves of every version (Phase 8, C2).
 fn save_fixtures() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/save")
@@ -856,8 +862,7 @@ fn the_version_8_example_is_written_as_the_version_9_one() {
     };
     assert!(section(&eight, "area") && !section(&eight, "level"));
     assert!(section(&nine, "level") && !section(&nine, "area"));
-    assert_eq!(super::save_read_back(&eight).unwrap(), nine);
-    assert_eq!(super::save_read_back(&nine).unwrap(), nine);
+    assert_eq!(super::save_read_back(&eight).unwrap(), nine_as_ten(&nine));
     // A version 8 save with no area, or a level already, isn't one.
     let sections = |text: &str| {
         let mut read = Sections::default();
@@ -1008,7 +1013,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 9\n"));
+    assert!(text.starts_with("solis save 10\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);
@@ -1169,7 +1174,7 @@ fn a_game_whose_map_couldn_t_be_loaded_again_isn_t_saved() {
 
 #[test]
 fn a_save_keeps_the_game_s_speed() {
-    let text = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v10/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.speed, 0.5);
     assert_eq!(save.write().unwrap(), text, "read back as written");
@@ -1217,7 +1222,7 @@ fn loading_a_game_keeps_the_player_s_settings() {
 
 #[test]
 fn a_save_keeps_the_time_of_day() {
-    let text = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v10/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.day_shift, 6.0);
     assert_eq!(save.write().unwrap(), text, "read back as written");
@@ -1347,5 +1352,40 @@ fn only_a_line_with_the_right_number_of_words_is_read() {
             };
             assert_eq!(read, right, "{section}: {count} words");
         }
+    }
+}
+
+#[test]
+fn the_version_9_example_is_written_as_the_version_10_one() {
+    // Stage 1, triggers: version 10 adds the zones section, empty for a
+    // game from before trigger zones; everything else is as it was.
+    let nine = std::fs::read_to_string(save_fixtures().join("v9/harbour.solsave")).unwrap();
+    let ten = std::fs::read_to_string(save_fixtures().join("v10/harbour.solsave")).unwrap();
+    assert!(ten.contains("\nzones 0\n"));
+    assert_eq!(super::save_read_back(&nine).unwrap(), ten);
+    assert_eq!(super::save_read_back(&ten).unwrap(), ten);
+    let mut has_zones = Sections::default();
+    has_zones.list.push(("zones".into(), String::new()));
+    assert!(super::zones::zones_kept(&mut has_zones).is_err());
+}
+
+#[test]
+fn zones_round_trip_and_damaged_ones_are_refused() {
+    let a = EntityId(reflect::Id::from_raw(7).unwrap());
+    let b = EntityId(reflect::Id::from_raw(9).unwrap());
+    let inside = vec![(a, b), (b, a)];
+    let spent = vec![a];
+    let text = super::zones::zones_text(&inside, &spent);
+    assert_eq!(super::zones::read_zones(&text), Ok((inside, spent)));
+    assert_eq!(super::zones::read_zones(""), Ok((Vec::new(), Vec::new())));
+    for damaged in [
+        "in 7\n",
+        "in 7 9 11\n",
+        "once\n",
+        "once 7 9\n",
+        "out 7 9\n",
+        "in seven nine\n",
+    ] {
+        assert!(super::zones::read_zones(damaged).is_err(), "{damaged:?}");
     }
 }

@@ -111,6 +111,10 @@ pub const WARNING: Color32 = tokens::WARNING;
 pub const ERROR: Color32 = tokens::ERROR_TEXT;
 /// A selected entity's collider (Phase 6): what physics bumps into.
 pub const COLLIDER: Color32 = Color32::from_rgb(0x6e, 0xd8, 0x8a);
+/// A trigger zone, outlined in the view (stage 1, triggers): the design's
+/// teal (its teal accent, specification line 70), as the approved mock-up
+/// `docs/design/triggers/` draws it.
+pub const TRIGGER_ZONE: Color32 = tokens::Accent::Teal.colour();
 /// Play, whatever the accent: the one light button. [`on_accent`] reads
 /// on it.
 pub const GO: Color32 = tokens::PLAY_FILL;

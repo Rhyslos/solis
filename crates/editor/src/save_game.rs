@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 9
+//! solis save 10
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -35,6 +35,9 @@
 //! 3fe0000000000000 (the game's speed's exact bits; empty when 1)
 //! day 16
 //! 4018000000000000 (the hours game code moved the day on by; empty when 0)
+//! zones 44
+//! in ZONE WHO (who is inside each trigger zone)
+//! once ZONE (a zone that fires once and has)
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -52,9 +55,9 @@ use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 9";
+const HEADER: &str = "solis save 10";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 9;
+const SAVE_VERSION: u32 = 10;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -82,6 +85,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         reading::speed_kept,
         reading::day_kept,
         reading::levels_not_areas,
+        zones::zones_kept,
     ],
 };
 
@@ -97,7 +101,7 @@ pub fn save_reads(text: &str) -> Result<(), String> {
     Save::read(text).map(drop)
 }
 
-/// The most sections a save has (it writes eleven).
+/// The most sections a save has (it writes twelve).
 const MAX_SECTIONS: usize = 16;
 
 /// A save's sections as written (`name length`, then that much text),
@@ -231,6 +235,9 @@ pub(crate) struct Save {
     /// The hours game code moved the day on by (`World:setTimeOfDay`; 0
     /// as usual).
     pub(crate) day_shift: f64,
+    /// Who is inside each trigger zone (zone, who), and the zones that
+    /// fire once and have (stage 1, triggers).
+    pub(crate) zones: zones::ZoneStates,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -348,6 +355,7 @@ impl Save {
             format!("{:x}", self.day_shift.to_bits())
         };
         section("day", &day);
+        section("zones", &zones::zones_text(&self.zones.0, &self.zones.1));
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -468,6 +476,7 @@ impl Workbench {
                 .unwrap_or_default(),
             speed: playing.world.speed(),
             day_shift: playing.world.day_shift(),
+            zones: playing.world.zone_states(),
             notes: Vec::new(),
         })
     }
@@ -506,6 +515,9 @@ mod reading;
 
 #[path = "save_loading.rs"]
 mod loading;
+
+#[path = "save_zones.rs"]
+mod zones;
 
 #[cfg(test)]
 #[path = "save_game_tests.rs"]

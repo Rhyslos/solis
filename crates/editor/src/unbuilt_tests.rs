@@ -363,7 +363,7 @@ fn hiding_takes_the_unbuilt_entries_out_and_then_what_is_left_empty() {
         vec![
             (
                 "Create",
-                vec![Built("Model"), Unbuilt(UnbuiltId::HomeCreateTrigger)],
+                vec![Built("Model"), Unbuilt(UnbuiltId::PlacePaintBrush)],
             ),
             ("Lighting", vec![Unbuilt(UnbuiltId::HomeLightingBake)]),
             ("Project", vec![Built("Save")]),
@@ -475,7 +475,7 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 19] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 136] = [
+const DRAWN_SO_FAR: [UnbuiltId; 135] = [
     // The Library's right-click menu on empty space (R4).
     UnbuiltId::LibPaste,
     // The frame.
@@ -535,7 +535,6 @@ const DRAWN_SO_FAR: [UnbuiltId; 136] = [
     UnbuiltId::DebugShelfMemory,
     UnbuiltId::DebugRunning,
     // Home's ribbon.
-    UnbuiltId::HomeCreateTrigger,
     UnbuiltId::HomeLightingBake,
     UnbuiltId::HomeLightingQuality,
     UnbuiltId::HomeLightingLightmapView,

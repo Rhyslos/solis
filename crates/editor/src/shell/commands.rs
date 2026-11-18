@@ -47,6 +47,9 @@ pub(crate) enum ShellCommand {
     AddSpotlight,
     AddCamera,
     AddReverbZone,
+    /// Makes a trigger zone where the camera looks (stage 1, triggers):
+    /// Home › Create › Trigger zone.
+    AddTriggerZone,
     /// Opens the brush list (Tools 1a, B2): Home › Create › Shape, and B
     /// over the 3D or 2D view.
     ChooseShapeBrush,
@@ -259,7 +262,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 143] = [
+    pub(crate) const ALL: [Self; 144] = [
         C::CloseProject,
         C::NewLevel,
         C::OpenLevel,
@@ -283,6 +286,7 @@ impl ShellCommand {
         C::AddSpotlight,
         C::AddCamera,
         C::AddReverbZone,
+        C::AddTriggerZone,
         C::ChooseShapeBrush,
         C::EditBrushInsides,
         C::BrushMode(crate::brushing::edit::Mode::Points),
@@ -598,6 +602,9 @@ impl ShellCommand {
             }
             C::AddReverbZone => {
                 w.add_reverb_zone();
+            }
+            C::AddTriggerZone => {
+                w.add_trigger_zone();
             }
             C::ChooseShapeBrush => {
                 // Brought into view first: the shape is drawn out there.

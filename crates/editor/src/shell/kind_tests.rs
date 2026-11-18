@@ -119,10 +119,16 @@ fn a_2d_project_s_home_is_board_08_s() {
     );
     let (commands, unbuilt) = parts(&groups[1..2]);
     use ShellCommand as C;
-    for made in [C::AddEntity, C::AddSprite, C::NewTileMap, C::AddCamera] {
+    for made in [
+        C::AddEntity,
+        C::AddSprite,
+        C::NewTileMap,
+        C::AddCamera,
+        C::AddTriggerZone,
+    ] {
         assert!(commands.contains(&made), "Create has {made:?}");
     }
-    assert_eq!(unbuilt, [UnbuiltId::HomeCreateTrigger], "the board's Zone");
+    assert!(unbuilt.is_empty(), "the board's Zone is built: {unbuilt:?}");
     let (snaps, _) = parts(&groups[3..]);
     assert_eq!(snaps, [C::SnapToTiles, C::PixelPerfect]);
     // A 3D project's Home has no Tile map, and keeps Lighting.
