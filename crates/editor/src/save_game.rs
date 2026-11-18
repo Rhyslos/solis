@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 11
+//! solis save 12
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -40,7 +40,10 @@
 //! once ZONE (a zone that fires once and has)
 //! timers 112
 //! at NOW HOUR NEXT (game code's timers' clock; empty when none waits)
-//! once ENTITY COMPONENT NAME START DUE (each timer waiting)
+//! once ENTITY COMPONENT NAME START DUE in OPTION (each timer waiting,
+//!     with the option of its component's own state it ends with, if any)
+//! states 52
+//! ENTITY COMPONENT EVENT FROM TO (a state change waiting to be heard)
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -58,9 +61,9 @@ use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 11";
+const HEADER: &str = "solis save 12";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 11;
+const SAVE_VERSION: u32 = 12;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -90,6 +93,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         reading::levels_not_areas,
         zones::zones_kept,
         timers_kept,
+        states_kept,
     ],
 };
 
@@ -105,7 +109,7 @@ pub fn save_reads(text: &str) -> Result<(), String> {
     Save::read(text).map(drop)
 }
 
-/// The most sections a save has (it writes sixteen).
+/// The most sections a save has (it writes seventeen).
 const MAX_SECTIONS: usize = 20;
 
 /// A save's sections as written (`name length`, then that much text),
@@ -242,8 +246,12 @@ pub(crate) struct Save {
     /// Who is inside each trigger zone (zone, who), and the zones that
     /// fire once and have (stage 1, triggers).
     pub(crate) zones: zones::ZoneStates,
-    /// Game code's timers waiting (stage 1, timers; version 11).
+    /// Game code's timers waiting (stage 1, timers; version 11), each
+    /// with the option it ends with (version 12).
     pub(crate) timers: script::Timers,
+    /// The changes of components' own states waiting to be heard next
+    /// tick, as the game writes them (stage 1, states; version 12).
+    pub(crate) states: String,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -363,6 +371,7 @@ impl Save {
         section("day", &day);
         section("zones", &zones::zones_text(&self.zones.0, &self.zones.1));
         section("timers", &self.timers.write());
+        section("states", &self.states);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -495,6 +504,11 @@ impl Workbench {
                 .as_ref()
                 .map(|game| game.timers().clone())
                 .unwrap_or_default(),
+            states: playing
+                .game
+                .as_ref()
+                .map(script::Game::states_waiting)
+                .unwrap_or_default(),
             notes: Vec::new(),
         })
     }
@@ -543,6 +557,16 @@ fn timers_kept(sections: &mut Sections) -> Result<(), String> {
         return Err("it already has timers".into());
     }
     sections.list.push(("timers".into(), String::new()));
+    Ok(())
+}
+
+/// Version 11 to 12: version 11's timers belonged to no state (stage 1,
+/// states), and no change of state waited to be heard.
+fn states_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "states") {
+        return Err("it already has states".into());
+    }
+    sections.list.push(("states".into(), String::new()));
     Ok(())
 }
 

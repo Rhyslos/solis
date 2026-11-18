@@ -104,6 +104,13 @@ impl Game {
         Ok(())
     }
 
+    /// Whether `text` holds state changes waiting, as a save keeps them,
+    /// or why not: a save is checked whole before anything of it is
+    /// kept.
+    pub fn check_states_waiting(text: &str) -> Result<(), String> {
+        read_waiting(text).map(drop)
+    }
+
     /// A checksum of the state changes waiting to be heard, or none while
     /// none waits (so a game from before states keeps its checksums).
     pub(super) fn states_checksum(&self) -> Option<u64> {

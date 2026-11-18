@@ -16,10 +16,24 @@ pub const MAX_PER_TICK: usize = 256;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Request {
     /// Play the sound event named here, from there; and the entity whose
-    /// code asked (who caused it), if any.
-    Play(String, script::SoundAt, Option<EntityId>),
+    /// code asked (who caused it), if any; and the option of its
+    /// component's own state it belongs to, if it was started in one
+    /// (stage 1, states): played on a loop, it stops when the component
+    /// leaves that option.
+    Play(
+        String,
+        script::SoundAt,
+        Option<EntityId>,
+        Option<script::Started>,
+    ),
     /// Stop the sounds on this entity.
     StopOn(EntityId),
+    /// A component's own state changed: its looping sounds of the options
+    /// it left stop.
+    StateLeft(script::StateChange),
+    /// `keepStarted()`: the component's looping sounds carry on past its
+    /// state.
+    Keep(EntityId, std::sync::Arc<str>),
     /// Set this bus to this share of its fader (0 to 1) for the rest of
     /// the play.
     BusVolume(String, f32),
@@ -68,8 +82,8 @@ pub enum SoundMode {
 /// Adds one batch of a tick's `requests` to `out`, numbered in order
 /// after any of the same tick already there (components' starts and the
 /// tick's updates share a tick), keeping at most [`MAX_PER_TICK`] plays a
-/// tick. Stops and volumes are always kept: a flood of plays never drops
-/// an options slider or a stop. Returns how many plays were left out.
+/// tick. Stops, volumes and states left or kept are always kept: a flood
+/// of plays never drops an options slider or a stop. Returns how many plays were left out.
 pub(crate) fn gather(
     out: &mut Vec<GameSound>,
     requests: Vec<Request>,
@@ -245,7 +259,7 @@ mod tests {
     fn a_tick_s_requests_are_numbered_in_order_and_capped() {
         let mut out = Vec::new();
         let many: Vec<Request> = (0..300)
-            .map(|i| Request::Play(format!("s{i}"), script::SoundAt::Nowhere, None))
+            .map(|i| Request::Play(format!("s{i}"), script::SoundAt::Nowhere, None, None))
             .collect();
         assert_eq!(gather(&mut out, many, 7, 42), 300 - MAX_PER_TICK);
         assert_eq!(out.len(), MAX_PER_TICK);
@@ -253,7 +267,7 @@ mod tests {
         assert_eq!((out[3].tick, out[3].seed), (7, 42));
         assert_eq!(
             out[3].request,
-            Request::Play("s3".into(), script::SoundAt::Nowhere, None)
+            Request::Play("s3".into(), script::SoundAt::Nowhere, None, None)
         );
         assert_eq!(gather(&mut out, Vec::new(), 8, 42), 0);
     }
@@ -263,7 +277,7 @@ mod tests {
         // Regression (Phase 7 review): starts and the tick's updates come
         // as two batches of one tick; their numbers go on, and the cap
         // counts plays only.
-        let play = |i: usize| Request::Play(format!("s{i}"), script::SoundAt::Nowhere, None);
+        let play = |i: usize| Request::Play(format!("s{i}"), script::SoundAt::Nowhere, None, None);
         let id = EntityId(reflect::Id::from_raw(3).unwrap());
         let mut out = Vec::new();
         gather(&mut out, vec![play(0), Request::StopOn(id)], 5, 1);

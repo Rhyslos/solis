@@ -605,6 +605,7 @@ fn cues_of(
                         event.clone(),
                         script::SoundAt::On(id),
                         Some(id),
+                        None,
                     ));
                 }
                 (id, "CueReached", script::project_names::option_of(&cue))

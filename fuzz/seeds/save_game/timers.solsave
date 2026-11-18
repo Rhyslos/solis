@@ -1,9 +1,9 @@
-solis save 11
+solis save 12
 project Harbour
 tick 40
 time 3fe5555555555559
 seed 11
-sum 6ebe0d5ffecc009d
+sum bbcf6d087499471f
 level 2139
 -- An area. Safe to edit by hand: one block per entity, one line per field.
 area version 1;
@@ -199,7 +199,10 @@ day 16
 4018000000000000
 zones 0
 
-timers 73
+timers 84
 at 2621440 4020000000000000 1
-once 0000000000003 Busy Wander 0 655360000
+once 0000000000003 Busy Wander 0 655360000 in Stunned
+
+states 44
+0000000000003 Busy MoodChanged Calm Stunned
 
