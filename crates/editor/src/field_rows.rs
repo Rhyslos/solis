@@ -118,7 +118,8 @@ fn scrubbed(name: &Response, field: &FieldInfo, value: &Value) -> Option<Value> 
 struct Marks<'a> {
     /// The prefab's value, when this copy's differs from it.
     changed: Option<&'a Value>,
-    moved: bool,
+    /// The standard value, when this one isn't it.
+    moved: Option<&'a Value>,
     played: Option<&'a Value>,
 }
 
@@ -151,8 +152,10 @@ pub(crate) fn fields(
     (level, users): (&level::Level, &crate::document::AssetUsers),
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
+    let standard = crate::standard::of(&schema.name, data);
     for field in &schema.fields {
         let value = data.get(&field.name).unwrap_or(&field.default);
+        let standard = crate::standard::value(standard.as_ref(), field);
         let mixed = Mixed::of(field, value, others);
         let prefab_value = prefab.map(|a| a.get(&field.name).unwrap_or(&field.default));
         let changed = prefab_value.filter(|was| *was != value);
@@ -163,10 +166,10 @@ pub(crate) fn fields(
         // Not its standard value: a dot, and a way back (decision 0085).
         // A prefab's copy shows how it differs from the prefab
         // instead, and a change while playing its value from before.
-        let moved = changed.is_none() && !mixed.whole && moved_from_default(field, value);
+        let moved = changed.is_none() && !mixed.whole && moved_from_default(field, value, standard);
         let marks = Marks {
             changed,
-            moved: moved && played.is_none(),
+            moved: moved.then_some(standard).filter(|_| played.is_none()),
             played,
         };
         let scrub = scrubs(field) && !mixed.whole;
@@ -218,7 +221,7 @@ pub(crate) fn fields(
 /// The field itself, filling the card less room for what follows it, with
 /// the accent border kept round it while it differs from before Play.
 fn field_and_marks<R>(ui: &mut Ui, marks: Marks<'_>, draw: impl FnOnce(&mut Ui) -> R) -> R {
-    let after = if marks.moved || marks.changed.is_some() || marks.played.is_some() {
+    let after = if marks.moved.is_some() || marks.changed.is_some() || marks.played.is_some() {
         size::FIELD_AFTER_W
     } else {
         0.0
@@ -273,14 +276,14 @@ fn after_field(ui: &mut Ui, field: &FieldInfo, marks: Marks<'_>) -> After {
         }
         return after;
     }
-    if marks.moved {
+    if let Some(standard) = marks.moved {
         if small(
             ui,
-            format!("↺ {}", short(&field.default)),
+            format!("↺ {}", short(standard)),
             "Back to its standard value",
             format!("Reset {}", field.label),
         ) {
-            after.reset = Some(field.default.clone());
+            after.reset = Some(standard.clone());
         }
         return after;
     }

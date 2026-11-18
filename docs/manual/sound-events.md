@@ -34,7 +34,7 @@ The project's sound events in the Audio tab's left slot, dragged wider: each one
 
 ## Sounds that keep playing
 
-An engine's hum, a campfire, a radio: add an **AudioSource** to the entity (Properties › **+ Component** › AudioSource), and type the sound event's name in **Sound event**, its file in assets without `.solsound` (`sfx/engine`). It plays over and over while the game runs, following the entity, from Play (or when game code makes the entity) until the entity goes. **Playing** switches it off and on, and game code does the same with `setSoundPlaying` ([Game code: Sounds](game-code.md#sounds)). **Volume** makes it louder or quieter on top of the event's own.
+An engine's hum, a campfire, a radio: add an **AudioSource** to the entity (Properties › **+ Component** › AudioSource), and type the sound event's name in **Sound event**, its place in the Library without `.solsound` (`sfx/engine`). It plays over and over while the game runs, following the entity, from Play (or when game code makes the entity) until the entity goes. **Playing** switches it off and on, and game code does the same with `setSoundPlaying` ([Game code: Sounds](game-code.md#sounds)). **Volume** makes it louder or quieter on top of the event's own.
 
 Thousands of them are fine: only the most important are heard at once (the [Mixer](mixer.md)'s **Heard at once**), and the rest rest. A resting one isn't mixed at all, but it keeps its place in the sound: walk up to a campfire that was resting and it carries on where it would have been, not from the start. A save game keeps whether each was on or off.
 

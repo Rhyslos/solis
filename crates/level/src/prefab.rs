@@ -96,6 +96,9 @@ pub type Lookup<'a> = &'a dyn Fn(AssetId) -> Option<Arc<LevelFile>>;
 pub struct Expander<'a> {
     lookup: Lookup<'a>,
     expanded: HashMap<AssetId, (Arc<Level>, EntityId)>,
+    /// Each expanded prefab's parts in tree order, with the path to each:
+    /// the same for every copy, so worked out once, not once a copy.
+    walks: HashMap<AssetId, Arc<Walk>>,
     sizes: HashMap<AssetId, usize>,
     /// The most entities one expansion may make ([`MAX_ENTITIES`]; less in
     /// tests).
@@ -117,6 +120,24 @@ pub const MAX_HELD: usize = 2 * MAX_ENTITIES;
 impl fmt::Debug for Expander<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Expander({} prefabs)", self.expanded.len())
+    }
+}
+
+/// An expanded prefab's parts in tree order, and the way to each from
+/// its root.
+pub(crate) struct Walk {
+    pub(crate) order: Vec<EntityId>,
+    pub(crate) paths: HashMap<EntityId, Vec<EntityId>>,
+}
+
+impl Walk {
+    pub(crate) fn of(contents: &Level, root: EntityId) -> Self {
+        let order = contents.depth_first();
+        let paths = order
+            .iter()
+            .map(|&id| (id, path_in(contents, root, id)))
+            .collect();
+        Self { order, paths }
     }
 }
 
@@ -171,6 +192,7 @@ impl<'a> Expander<'a> {
         Self {
             lookup,
             expanded: HashMap::new(),
+            walks: HashMap::new(),
             sizes: HashMap::new(),
             most_made: MAX_ENTITIES,
             held: 0,
@@ -340,24 +362,25 @@ impl<'a> Expander<'a> {
         chain: &mut Vec<AssetId>,
     ) -> Result<Vec<(EntityId, EntityData)>, PrefabError> {
         let (contents, inner_root) = self.prefab_in(prefab, chain)?;
-        let order = contents.depth_first();
-        let paths: HashMap<EntityId, Vec<EntityId>> = order
-            .iter()
-            .map(|&id| (id, path_in(&contents, inner_root, id)))
-            .collect();
-        let ids: HashMap<EntityId, EntityId> = paths
+        let walk = self
+            .walks
+            .entry(prefab)
+            .or_insert_with(|| Arc::new(Walk::of(&contents, inner_root)))
+            .clone();
+        let ids: HashMap<EntityId, EntityId> = walk
+            .paths
             .iter()
             .map(|(&id, path)| (id, derive(root, path)))
             .collect();
-        let mut out = Vec::with_capacity(order.len());
+        let mut out = Vec::with_capacity(walk.order.len());
         let mut skipped: HashSet<EntityId> = HashSet::new();
-        let mut found: HashSet<Vec<EntityId>> = HashSet::new();
-        for id in order {
+        let mut found: HashSet<&[EntityId]> = HashSet::new();
+        for &id in &walk.order {
             let Some(original) = contents.get(id) else {
                 continue;
             };
-            let path = &paths[&id];
-            found.insert(path.clone());
+            let path = &walk.paths[&id];
+            found.insert(path.as_slice());
             let changes = overrides.get(path);
             // A removed part takes everything still under it. A part this
             // copy moved (to another parent, or out to the top level) is
@@ -401,7 +424,7 @@ impl<'a> Expander<'a> {
         // The prefab's own parts fit the limit, being an expansion;
         // these are as many as the file says, so the limit is kept here.
         for (path, changes) in overrides {
-            if found.contains(path) || !outlives_its_part(path, changes) {
+            if found.contains(path.as_slice()) || !outlives_its_part(path, changes) {
                 continue;
             }
             if out.len() >= self.most_made {

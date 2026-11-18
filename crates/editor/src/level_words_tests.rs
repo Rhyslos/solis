@@ -7,6 +7,12 @@
 //! region of the screen; Lust's own word for a game screen), or name what
 //! older files say, and each such place is listed in [`ALLOWED`] or
 //! [`ALLOWED_ASSEMBLY`] with why.
+//!
+//! The same check keeps out a forced assets folder (R1, R4): a project's
+//! files are in its own folder, in folders of the user's own, so nothing
+//! says "the assets folder" or "in the assets" as if Solis made one. A
+//! project from before keeps its `assets` folder, and the manual says so
+//! where it explains that, without these words.
 
 use std::path::{Path, PathBuf};
 
@@ -191,6 +197,10 @@ const ALLOWED_ASSEMBLY: &[(&str, &str, &str)] = &[
     ),
 ];
 
+/// Where "assets folder" or "the assets" is still right, as [`ALLOWED`]
+/// has it for "area": nowhere yet.
+const ALLOWED_ASSETS: &[(&str, &str, &str)] = &[];
+
 /// The crates whose code holds what the program says.
 const CRATES: &[&str] = &[
     "app",
@@ -299,6 +309,18 @@ const ASSEMBLY: Word = Word {
     stem: "assembl",
     ends: &["ies", "y"],
     allowed: ALLOWED_ASSEMBLY,
+};
+
+const ASSETS_FOLDER: Word = Word {
+    stem: "assets folder",
+    ends: &["s", ""],
+    allowed: ALLOWED_ASSETS,
+};
+
+const THE_ASSETS: Word = Word {
+    stem: "the assets",
+    ends: &[""],
+    allowed: ALLOWED_ASSETS,
 };
 
 /// Where in `text` (already in lower case) the word "area" or "areas"
@@ -465,4 +487,76 @@ fn the_check_finds_assembly_alone() {
     assert!(
         unexplained_word("x.rs", "holding an assembly with a view", false, ASSEMBLY).is_empty()
     );
+}
+
+/// Every use of `words` that no allowed phrase covers, in the program's
+/// strings, the manual and the guide's captions.
+fn unexplained_everywhere(words: &[Word]) -> Vec<String> {
+    let mut said = Vec::new();
+    for name in CRATES {
+        for (path, text) in files_in(&top().join("crates").join(name).join("src"), "rs") {
+            let file = path.file_name().unwrap().to_string_lossy().into_owned();
+            if file.ends_with("_tests.rs") || file == "tests.rs" {
+                continue;
+            }
+            for string in strings_of(&text) {
+                for word in words {
+                    said.extend(unexplained_word(&file, &string, true, *word));
+                }
+            }
+        }
+    }
+    let mut pages = files_in(&top().join("docs/manual"), "md");
+    let captions = top().join("tools/guide-pictures/pictures.list");
+    pages.push((
+        captions.clone(),
+        std::fs::read_to_string(&captions).unwrap(),
+    ));
+    for (path, text) in pages {
+        let file = path.file_name().unwrap().to_string_lossy().into_owned();
+        for line in text.lines() {
+            for word in words {
+                said.extend(unexplained_word(&file, line, false, *word));
+            }
+        }
+    }
+    said
+}
+
+#[test]
+fn nothing_tells_people_about_a_forced_assets_folder() {
+    let said = unexplained_everywhere(&[ASSETS_FOLDER, THE_ASSETS]);
+    assert!(
+        said.is_empty(),
+        "say \"the project's folder\" (or where in the Library):\n{}",
+        said.join("\n")
+    );
+}
+
+#[test]
+fn the_check_finds_an_assets_folder() {
+    // The Learn line that was missed (Shared 1f's loose ends), and the
+    // Console's words for a folder that can't be watched.
+    assert_eq!(
+        unexplained_word(
+            "learn.rs",
+            "Put art in its assets folder: it shows in the Library.",
+            true,
+            ASSETS_FOLDER
+        )
+        .len(),
+        1
+    );
+    assert_eq!(
+        unexplained_word(
+            "check.rs",
+            "its level isn't in the assets",
+            true,
+            THE_ASSETS
+        )
+        .len(),
+        1
+    );
+    assert!(word_at("the assets_db crate, other assets folderish", ASSETS_FOLDER).is_empty());
+    assert!(word_at("an `assets` folder from before", ASSETS_FOLDER).is_empty());
 }

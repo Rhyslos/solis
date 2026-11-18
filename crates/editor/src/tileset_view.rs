@@ -315,7 +315,7 @@ pub(crate) fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         note: t
             .pictures
             .is_empty()
-            .then_some("No pictures yet: put a PNG or an Aseprite file in the project's assets."),
+            .then_some("No pictures yet: put a PNG or an Aseprite file in the project."),
         width: ui.available_width() - 8.0,
     };
     let mut chosen = t.editor.file.picture;

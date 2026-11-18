@@ -18,6 +18,7 @@ use crate::panel::Panel;
 use crate::shell::RibbonTab;
 use crate::workbench::WorkbenchAction;
 use level::prefab::Expander;
+use level::prefab_follow::ValueChanges;
 use level::text::{FileKind, LevelFile};
 use reflect::{AssetId, EntityId};
 use std::sync::Arc;
@@ -257,6 +258,74 @@ impl Workbench {
         }
         let name = self.asset_name(id);
         self.log(LogLevel::Info, format!("Saved the prefab {name}."));
+    }
+
+    /// Makes every copy of prefab `id` in the open level follow `file`,
+    /// its new contents, by the values that changed alone
+    /// (`level::prefab_follow`), and makes `file` the prefab's: true when
+    /// that was all it took. False, with nothing done, when more than
+    /// values changed, or the prefab is placed inside another prefab (its
+    /// copies there are that prefab's parts): then [`Self::set_prefab`]
+    /// rebuilds the copies the whole way. Each copy keeps its own changes,
+    /// as one undo step; while the game plays, as the game's change.
+    pub(crate) fn follow_values(&mut self, id: AssetId, file: &Arc<LevelFile>) -> bool {
+        let nested = self.open.prefabs.iter().any(|(other, f)| {
+            *other != id
+                && f.level
+                    .iter()
+                    .any(|(_, e)| e.origin.as_ref().is_some_and(|o| o.prefab == id))
+        });
+        if nested {
+            return false;
+        }
+        let old = {
+            let lookup = |asset| self.open.prefabs.get(&asset).cloned();
+            Expander::new(&lookup).prefab(id)
+        };
+        let (new, mended) = {
+            let lookup = |asset| {
+                if asset == id {
+                    Some(file.clone())
+                } else {
+                    self.open.prefabs.get(&asset).cloned()
+                }
+            };
+            let mut expander = Expander::new(&lookup);
+            (expander.prefab(id), expander.mended().to_vec())
+        };
+        let (Ok(old), Ok(new)) = (old, new) else {
+            return false;
+        };
+        let Some(changes) = ValueChanges::between((&old.0, old.1), (&new.0, new.1)) else {
+            return false;
+        };
+        self.open.prefabs.insert(id, file.clone());
+        self.sources += 1;
+        self.log_mended(&mended);
+        let edits = changes.follow(self.open.document.level(), id);
+        if edits.is_empty() {
+            return true;
+        }
+        let name = self.asset_name(id);
+        let updated = if self.open.playing.is_some() {
+            // Not one of the user's edits, so not a step for Keep to make
+            // again; the game takes it in as a change.
+            self.open.document.edit_by_game(edits);
+            self.open.document.touch();
+            Ok(())
+        } else {
+            self.open
+                .document
+                .rebuild_by(edits, &format!("Update copies of {name}"))
+        };
+        match updated {
+            Ok(()) => self.log(LogLevel::Info, format!("Updated the copies of {name}.")),
+            Err(why) => self.log(
+                LogLevel::Error,
+                format!("Couldn't update copies of {name}: {why}."),
+            ),
+        }
+        true
     }
 
     /// Swaps the level and the prefab's document, for a moment.

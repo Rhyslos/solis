@@ -581,7 +581,7 @@ pub(crate) fn workbench_for(
     let assets = db.project().files();
     let level_file = assets.join(level_path);
     if !input::Recording::is_plain_level_path(level_path) || !level_file.starts_with(&assets) {
-        return Err(format!("its level, {level_path}, isn't in the assets"));
+        return Err(format!("its level, {level_path}, isn't in the project"));
     }
     let mut w = editor::Workbench::new(editor::AppInfo {
         name: crate::branding::APP_NAME.to_string(),

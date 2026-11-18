@@ -178,8 +178,8 @@ impl Workbench {
         self.command(&label, edits, None, None);
     }
 
-    /// Puts every field of the component back to its starting value, on
-    /// each of `entities`.
+    /// Puts every field of the component back to its standard value
+    /// (`standard`), on each of `entities`.
     pub(crate) fn reset_component(&mut self, entities: &[EntityId], component: &str) {
         let Some(schema) = self.open.document.registry.get(component) else {
             return;
@@ -190,13 +190,16 @@ impl Workbench {
             let Some(have) = level.get(entity).and_then(|d| d.components.get(component)) else {
                 continue;
             };
+            // A sun goes back to a sun's values, not a lamp's.
+            let standard = crate::standard::of(component, have);
             for field in &schema.fields {
-                if have.get(&field.name) != Some(&field.default) {
+                let value = crate::standard::value(standard.as_ref(), field);
+                if have.get(&field.name) != Some(value) {
                     edits.push(Edit::SetField {
                         entity,
                         component: component.to_string(),
                         field: field.name.clone(),
-                        value: Some(field.default.clone()),
+                        value: Some(value.clone()),
                     });
                 }
             }

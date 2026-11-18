@@ -210,4 +210,6 @@ impl Workbench {
 #[cfg(test)]
 mod kind_tests;
 #[cfg(test)]
+mod settings_tests;
+#[cfg(test)]
 mod tests;

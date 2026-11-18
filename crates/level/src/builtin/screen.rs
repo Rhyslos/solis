@@ -117,7 +117,7 @@ impl Component for Screen {
                     Value::Text(String::new()),
                 )
                 .hint(Hint {
-                    help: "Which screen: a file in assets/ui, by its name (ui/hud.lst is Hud).",
+                    help: "Which screen: a file in the Library's ui folder, by its name (ui/hud.lst is Hud).",
                     offers: Offer::Screens,
                     ..Hint::default()
                 }),

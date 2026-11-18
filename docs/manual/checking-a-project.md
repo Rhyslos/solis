@@ -17,7 +17,7 @@ The samples Solis makes (the turret sample, the benchmark and the playground) ar
 
 3. **Read the report.** It's printed, and kept in the project as `.solis/check-report.txt` (on Windows, Solis has no window to print to, so open that file). Each line says `ok`, `note` (fine, but worth knowing: an older file that was upgraded as it's read) or `FAIL`. The last line says whether the project checks out.
 
-The check opens the project the way the editor does (with its input actions, 2D settings and Mixer), so it also writes the engine's description files (`assets/solis/`) and any missing [sidecars](concepts.md#projects), as opening it in the editor would. It never changes your levels, code or other files.
+The check opens the project the way the editor does (with its input actions, 2D settings and Mixer), so it also writes the engine's description files (the `solis` folder) and any missing [sidecars](concepts.md#projects), as opening it in the editor would. It never changes your levels, code or other files.
 
 ## What it checks
 | Step | What fails |

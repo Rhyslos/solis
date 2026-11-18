@@ -177,6 +177,17 @@ How it feels by hand, and the dialog typed into for real, are the project lead's
 6. Build a prefab on its own page, place three copies, change the prefab, and see all three change.
 7. Close the project: you're back in the launcher.
 
+### Loose ends
+
+> **Built** (branch `rethink/loose-ends`), what R4 to R6's builders left:
+
+- **Saving a prefab with 1,000 copies: 14.1 ms, now 2 ms** (release, the scale case). Measured first: collapsing every copy took 5.6 ms, expanding them again 4.8, comparing the levels 1.8 and the undo step 1.0. Walking each prefab once instead of once a copy, and not sorting levels when nothing comes or goes, gained nothing in release (14.7 ms). What did: when a save changes only values, the copies follow by those fields alone (`level::prefab_follow`), each keeping the ones it changes itself, as one undo step: 1.9 to 2.1 ms, the next frame 0.7. It gives what the whole way gives (200 seeded cases); anything more (a part added, renamed or moved, a component added, a value naming an entity, a prefab inside another) still takes the whole way, which stays about 14 ms for 1,000 copies. A worker and spreading over frames weren't needed.
+- **The playground's Sun** wasn't a prefab copy: its marks were decision 0085's (a blue dot and **↺**, "not its standard value"), which since R5 look like a copy's (an orange dot and **↶**). A light's standard was a lamp's, so every level's Sun showed Kind, Colour, Strength and Shadows changed, and a new level's Environment its Light sprites. The standard is now the light's kind's and a new level's Environment (`editor/src/standard.rs`), numbers compared as files keep them; the card's Reset follows. Every sample's Sun and Environment come from the starter level, so all are fixed.
+- **`file_pages/settings_tests.rs`** is compiled again: its 19 tests pass, five changed for R3 (Layout's own tab, the Panels section, edges as shares, "When something is selected" showing Properties again instead of the shelf's Entity tab).
+- **No forced assets folder** in Learn, messages or the manual; the words check keeps "assets folder" and "the assets" out.
+- **The 2D view's pills** take the board's short words (**200% ▾**, **16 px**, **Tiles ▾**), then wrap upward, in a narrow view (`viewport_pixel_pills.rs`, picture `pixel-pills-narrow.png`).
+- **Board 08's "Tiles ▾"** is the snap pill, in its short words when the view is narrow; **"Grid ▾"** isn't added: the grid has no settings behind it (it can't be hidden or recoloured; its size is the project's tile size, shown in the Grid pill and the ribbon and changed in Project settings).
+
 ## Still to settle (asked when its milestone starts)
 
 Nothing for R5: board 07, approved, answers both of its questions (R5's "As built" above): a copy may change any setting, and a copy's own change wins when the prefab changes the same setting.

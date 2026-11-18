@@ -533,6 +533,8 @@ mod layout;
 mod navigate;
 #[path = "viewport_pills.rs"]
 mod pills;
+#[path = "viewport_pixel_pills.rs"]
+mod pixel_pills;
 #[path = "viewport_tool_bar.rs"]
 pub(crate) mod tool_bar;
 #[path = "viewport_view.rs"]

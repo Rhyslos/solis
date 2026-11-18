@@ -6,21 +6,30 @@ use super::*;
 use crate::inspector::{moved_from_default, short};
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT as _, Queryable};
 use reflect::{FieldInfo, FieldKind};
 
 #[test]
 fn only_values_worth_a_dot_get_one() {
     let float = FieldInfo::new("speed", "Speed", FieldKind::Float, Value::Float(3.0));
-    assert!(!moved_from_default(&float, &Value::Float(3.0)));
-    assert!(moved_from_default(&float, &Value::Float(3.5)));
+    assert!(!moved_from_default(
+        &float,
+        &Value::Float(3.0),
+        &float.default
+    ));
+    assert!(moved_from_default(
+        &float,
+        &Value::Float(3.5),
+        &float.default
+    ));
     let on = FieldInfo::new("on", "On", FieldKind::Bool, Value::Bool(true));
-    assert!(moved_from_default(&on, &Value::Bool(false)));
+    assert!(moved_from_default(&on, &Value::Bool(false), &on.default));
     // A place or a picked file starts empty and is meant to be set.
     let place = FieldInfo::new("p", "Position", FieldKind::Vec3, Value::List(vec![]));
     assert!(!moved_from_default(
         &place,
-        &Value::List(vec![Value::Float(1.0); 3])
+        &Value::List(vec![Value::Float(1.0); 3]),
+        &place.default
     ));
     let file = FieldInfo::new("a", "Sheet", FieldKind::Asset, Value::Asset(None));
     assert!(!moved_from_default(
@@ -28,7 +37,8 @@ fn only_values_worth_a_dot_get_one() {
         &Value::Asset(Some(reflect::AssetRef {
             asset: AssetId::random(),
             part: None
-        }))
+        })),
+        &file.default
     ));
 }
 
@@ -63,6 +73,80 @@ fn every_engine_component_has_a_manual_page_that_exists() {
         None,
         "your own code has its file instead"
     );
+}
+
+#[test]
+fn a_new_level_s_sun_and_environment_show_nothing_changed() {
+    // Shared 1f's loose ends: the playground's Sun showed a dot and ↺ on
+    // Kind, Colour, Strength and Shadows (a lamp's values), and looked
+    // like a prefab's copy with changes of its own. A sun starts as a
+    // sun, read back from its file as every sample's is.
+    let registry = level::builtin::registry().unwrap();
+    let text = level::text::write(&level::builtin::starter_level(), &registry, &|_| None);
+    let level = level::text::read(&text, &registry).unwrap();
+    let mut w = Workbench::new(info());
+    w.open_level(level, "/p/sample.sollevel".into());
+    crate::test_support::roomy_shelf(&mut w);
+    let named = |w: &Workbench, name: &str| {
+        w.document()
+            .level()
+            .iter()
+            .find(|(_, e)| e.name == name)
+            .map(|(id, _)| id)
+            .unwrap()
+    };
+    let sun = named(&w, "Sun");
+    let environment = named(&w, "Environment");
+    let mut h = harness(w);
+    for (name, id) in [("Sun", sun), ("Environment", environment)] {
+        h.state_mut().0.select(id);
+        h.run();
+        h.run();
+        let marked: Vec<String> = h
+            .query_all_by_label_contains("Reset ")
+            .chain(h.query_all_by_label_contains("Revert "))
+            .filter_map(|n| n.accesskit_node().label())
+            .filter(|label| label != "Reset layout")
+            .collect();
+        assert!(marked.is_empty(), "{name}: {marked:?}");
+    }
+    // A sun turned up shows its own standard to go back to.
+    h.state_mut().0.select(sun);
+    h.state_mut().0.apply_property(
+        PropertyRequest::SetField {
+            entity: sun,
+            component: "Light".into(),
+            field: "strength".into(),
+            value: Value::Float(9.0),
+        },
+        7,
+    );
+    h.run();
+    h.run();
+    h.get_by_label("Reset Strength").click();
+    h.run();
+    assert_eq!(strength(&h.state().0, sun), Some(Value::Float(3.0)));
+}
+
+#[test]
+fn reset_puts_a_sun_back_to_a_sun() {
+    let mut w = Workbench::new(info());
+    let mut level = level::Level::new();
+    let sun = level.spawn(level::EntityData::new("Sun").with(&level::builtin::Light {
+        strength: 9.0,
+        shadows: false,
+        ..level::builtin::Light::sun()
+    }));
+    w.open_level(level, "/p/sun.sollevel".into());
+    w.reset_component(&[sun], "Light");
+    let light = w
+        .document()
+        .level()
+        .get(sun)
+        .unwrap()
+        .get::<level::builtin::Light>()
+        .unwrap();
+    assert_eq!(light, level::builtin::Light::sun());
 }
 
 /// A workbench with a point light selected.

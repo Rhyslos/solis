@@ -3,7 +3,7 @@
 > Save a level as a file, open it again, and share it through Git without merge trouble.
 
 ## When to use it
-Save whenever you've built something you want to keep. A [level](concepts.md#the-level) (a level, a menu, a room) is one file ending in `.sollevel`, kept in your [project](projects-and-the-library.md) (Solis suggests its `assets/levels` folder).
+Save whenever you've built something you want to keep. A [level](concepts.md#the-level) (a level, a menu, a room) is one file ending in `.sollevel`, kept in your [project](projects-and-the-library.md) (Solis suggests its `levels` folder if it has one, or else the project's own folder).
 
 The file is plain text, written so that two people changing different things in the same level can merge their work in Git without conflicts. It's also safe to read and edit by hand.
 

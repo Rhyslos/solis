@@ -372,6 +372,19 @@ impl Document {
         Ok(())
     }
 
+    /// Makes `edits` (copies following a prefab's new values) one undo
+    /// step called `label`, keeping the selection. If nothing was unsaved,
+    /// nothing is now: the level's file would be the same.
+    pub fn rebuild_by(&mut self, edits: Vec<Edit>, label: &str) -> Result<(), EditError> {
+        let clean = !self.is_dirty();
+        let selection = self.selection.clone();
+        self.edit(label, edits, None, Some(selection))?;
+        if clean {
+            self.saved = self.history.state();
+        }
+        Ok(())
+    }
+
     /// Replaces the whole level with `level` (copies rebuilt from a changed
     /// prefab), as one undo step called `label`. If nothing was unsaved,
     /// nothing is now: the level's file would be the same.

@@ -172,6 +172,57 @@ fn choosing_2d_shows_the_tile_grid_and_the_2d_corner() {
     assert_eq!(h.state().0.viewport.snapping.pixel_snap, PixelSnap::Tiles);
 }
 
+#[test]
+fn in_a_narrow_view_the_2d_pills_shorten_and_wrap_inside_it() {
+    // Shared 1f's loose ends: at the app's least window, two views side
+    // by side and the Library at the right, the four pills ran off the
+    // 2D view's left edge.
+    let (mut w, _) = with_a_crate();
+    w.viewport.layout = crate::viewport::ViewLayout::SideBySide;
+    w.viewport.camera = w.viewport.camera.as_kind(ViewKind::TwoD);
+    w.viewport.camera.zoom = 2.0;
+    let w = w.with_interface_look(crate::interface_look::InterfaceLook {
+        layout: crate::shell::PanelLayout::LibraryRight,
+        ..Default::default()
+    });
+    let mut h = harness(w);
+    h.set_size(egui::vec2(960.0, 600.0));
+    for _ in 0..4 {
+        h.run();
+    }
+    let view = h.state().0.viewport.rect;
+    assert!(view.width() < 300.0, "a narrow view: {view:?}");
+    // The board's short words, none of them past the view's edges or
+    // over another.
+    assert!(h.query_by_label("Zoom 200% ▾").is_none());
+    let pills: Vec<egui::Rect> = ["200% ▾", "16 px", "Pixels ▾", "Lock X", "Lock Y"]
+        .iter()
+        .map(|label| h.get_by_label(label).rect())
+        .collect();
+    for (n, pill) in pills.iter().enumerate() {
+        assert!(
+            view.expand(0.5).contains_rect(*pill),
+            "{n}: {pill:?} in {view:?}"
+        );
+        for other in &pills[n + 1..] {
+            assert!(!pill.shrink(0.5).intersects(*other) || pill.contains_rect(*other));
+        }
+    }
+    // On two rows: the zoom's row is the lowest.
+    assert!(
+        pills[3].bottom() < pills[0].top() + 0.5,
+        "the locks above the zoom"
+    );
+    // Wide again: one row of full words.
+    h.set_size(egui::vec2(1440.0, 900.0));
+    for _ in 0..3 {
+        h.run();
+    }
+    for label in ["Zoom 200% ▾", "Grid 16 px", "Snap: Whole pixels ▾"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+}
+
 /// One entity at `at`, to move.
 fn targets(at: Vec3, axes: [Vec3; 3]) -> Targets {
     Targets {

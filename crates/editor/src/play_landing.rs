@@ -218,7 +218,7 @@ impl Workbench {
         };
         let (asset, why) = match why {
             Unmade::NoSuchPrefab => {
-                return "there's no prefab by that name in the project's assets".into();
+                return "there's no prefab by that name in the project".into();
             }
             Unmade::IdTaken => return "the entity it was to be is already in the level".into(),
             Unmade::Broken(asset, why) => (*asset, why),

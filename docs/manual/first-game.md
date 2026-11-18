@@ -231,7 +231,7 @@ The events are declared once, in Lust (`event Hit(entity by, float damage);`). L
 
 ## Tips and common problems
 - **Problem:** I changed `armour.rs` and nothing changed. **Why:** Solis can't build a game's own Rust yet (that comes with the full export, which isn't built yet). Until then, the Armour built into Solis runs, and the Console says your changes don't. **Fix:** try changes in the Lust and Lua instead.
-- **Problem:** "Couldn't make the sample game". **Why:** the folder is already a project, or already has a file where the sample's would go (such as `assets/main.lst`); Solis never replaces your files. **Fix:** choose an empty folder.
+- **Problem:** "Couldn't make the sample game". **Why:** the folder is already a project, or already has a file where the sample's would go (such as `main.lst`); Solis never replaces your files. **Fix:** choose an empty folder.
 
 ## Related
 - [Game code](game-code.md): components, events and changing code while it runs, in detail

@@ -223,7 +223,7 @@ fn fill(
 
 fn too_big() -> String {
     format!(
-        "the project holds more than {} GB; take what the game doesn't use out of the assets",
+        "the project holds more than {} GB; take what the game doesn't use out of the project",
         MAX_EXPORT_BYTES >> 30
     )
 }

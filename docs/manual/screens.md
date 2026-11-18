@@ -14,7 +14,7 @@ This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws th
 
 ## How to use it
 
-1. **Make the file.** In the Library, make a folder called `ui` inside your assets, and a Lust file in it named after the screen: `ui/hud.lst` is the screen **Hud**. Its name starts with a letter and holds only letters and numbers.
+1. **Make the file.** In the Library, make a folder called `ui` at its top, and a Lust file in it named after the screen: `ui/hud.lst` is the screen **Hud**. Its name starts with a letter and holds only letters and numbers.
 2. **Write the screen.** The file holds an `assembly` with the screen's name and a `view`, and passes it. The view uses Lust's own pieces (the same ones as Lust's windows):
 
    ```lust
@@ -397,7 +397,7 @@ end
 
 **Drawing it instead of writing it.** Double-click a screen's file in the Library to open it on the [UI editor's canvas](ui-editor.md): pick pieces, drag them, size them and change their look, and Solis writes the Lust for you, changing only what it must.
 
-**Pictures.** `image` shows a picture from your assets, named by its place inside them: `image "sprites/coin.png";`. To show one part of a sprite sheet, cut it out with [Atlas Crop](atlas-crop.md) and add `#` and the crop's name: `image "sprites/tools.png#Axe";`. A crop is better than a picture of its own for icons: the artist keeps drawing on one sheet, and every crop follows.
+**Pictures.** `image` shows a picture from your project, named by its place in the Library: `image "sprites/coin.png";`. To show one part of a sprite sheet, cut it out with [Atlas Crop](atlas-crop.md) and add `#` and the crop's name: `image "sprites/tools.png#Axe";`. A crop is better than a picture of its own for icons: the artist keeps drawing on one sheet, and every crop follows.
 
 ```lust
 assembly Hotbar {
@@ -445,7 +445,7 @@ The **Screen** component:
 
 | Setting | What it does |
 |---|---|
-| Screen | Which screen: a file in `assets/ui`, by its name (`ui/hud.lst` is **Hud**). |
+| Screen | Which screen: a file in the Library's `ui` folder, by its name (`ui/hud.lst` is **Hud**). |
 | Shown | Whether it's on screen. Game code shows and hides screens with `showScreen` and `hideScreen`. |
 | Order | Which screen is on top when several are shown: higher is on top. |
 | Glow | A soft light round everything on the screen, in each piece's own colour, this many pixels out (on its design size). 0 for none. |
@@ -465,7 +465,7 @@ The **Screen** component:
 - **Problem:** clicking a button does nothing in the game. **Why:** the event goes to the entity the screen is shown for (`Ui:entity()`), and only its components' `on` blocks hear it. **Fix:** put the component that handles it on the entity with the Screen, and check the event's name and values match its `on` line.
 - **Problem:** `Screen.PauseMenu` is "not an option". **Why:** a screen's name comes from its file, first letter made a capital: `ui/pauseMenu.lst` is `PauseMenu`. Names in all capitals (`HUD`) can't be Lust names. **Fix:** rename the file, or use the name the Problems panel suggests.
 - **Problem:** the Console says a screen "sent events the game couldn't take". **Why:** at most 64 events wait for each tick, and an event from a screen carries plain values (no assets, texts of at most 4,096 letters). **Fix:** send fewer, smaller events.
-- **Problem:** Problems says "there's no picture sprites/x.png in the project". **Why:** `image` names a picture by its place inside your assets, with `/` between folders and its ending (`.png`). **Fix:** check the path in the Library: right-click the picture to see where it is.
+- **Problem:** Problems says "there's no picture sprites/x.png in the project". **Why:** `image` names a picture by its place in the Library, with `/` between folders and its ending (`.png`). **Fix:** check the path in the Library: right-click the picture to see where it is.
 - **Problem:** Problems says a picture "has no crop called Axe". **Why:** the part after `#` is the name of a crop made in Atlas Crop, and capitals don't matter but spelling does. **Fix:** open the picture's Atlas Crop tab and name a crop that, or use one of the names Problems lists.
 - **Problem:** a picture "can't be shown on a screen: there's no room left". **Why:** all the screens' pictures share one sheet of 2048 × 2048 pixels on the graphics card. **Fix:** use smaller pictures, or crops of one sprite sheet instead of whole big pictures.
 - **Problem:** the Console says "a screen can't change the player's settings". **Why:** screens only read the game, settings included. **Fix:** have the button send an event, and call `Screens:setTextSize` in the entity's code.
