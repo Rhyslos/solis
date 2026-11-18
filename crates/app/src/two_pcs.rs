@@ -152,6 +152,9 @@ The state of tests/two-pcs/game.solrec at the end of every tick, made on Linux
 (crates/app/src/two_pcs.rs). Don't edit it: a deliberate change to the game's
 rules writes it again with SOLIS_UPDATE_TWO_PCS=1 cargo test -p app two_pcs.";
 
+/// The game's state part by part (`world::StateParts`).
+type State = std::collections::BTreeMap<String, String>;
+
 /// The first tick at which a played-back game differed from its list.
 #[derive(Debug)]
 pub(crate) struct Mismatch {
@@ -180,6 +183,9 @@ pub(crate) fn compare(
         let started = Instant::now();
         let mut matched = 0;
         let mut found = None;
+        // The state a tick ago, which matched the list: shown beside a
+        // part the list keeps only as a checksum.
+        let mut before: State = State::new();
         let shown_at = std::env::var("SOLIS_TWO_PCS_STATE_AT")
             .ok()
             .and_then(|t| t.parse::<usize>().ok());
@@ -190,9 +196,10 @@ pub(crate) fn compare(
             let sums = w.game_checksums().unwrap();
             if list.checksums(tick) == Some(sums) {
                 matched += 1;
+                before = w.game_state().unwrap_or_default();
                 return true;
             }
-            found = Some(mismatch(w, list, tick, threads, sums));
+            found = Some(mismatch(w, list, (tick, &before), threads, sums));
             false
         });
         match found {
@@ -222,7 +229,7 @@ fn write_state(w: &mut Workbench, tick: usize, threads: usize) {
 fn mismatch(
     w: &mut Workbench,
     list: &StateList,
-    tick: usize,
+    (tick, before): (usize, &State),
     threads: usize,
     (world, code): (u64, u64),
 ) -> Mismatch {
@@ -251,7 +258,11 @@ fn mismatch(
          the check on the PC that made the list with SOLIS_TWO_PCS_STATE_AT=<tick> to see \
          it there.)\n",
     );
-    for (title, state) in [("Here", &actual), ("Expected", &expected)] {
+    for (title, state) in [
+        ("Here", &actual),
+        ("Expected", &expected),
+        ("A tick ago, when both agreed", before),
+    ] {
         text.push_str(&format!("\n\n{title}, whole:\n"));
         for (part, value) in state {
             text.push_str(&format!("{part}\t{value}\n"));
@@ -259,7 +270,32 @@ fn mismatch(
     }
     let _ = std::fs::create_dir_all(dump_folder());
     let written = std::fs::write(&dump, &text).is_ok();
-    let named: Vec<&str> = parts.iter().take(12).map(|d| d.part.as_str()).collect();
+    // The first few side by side, so a failure on CI reads without the
+    // file.
+    let shown: Vec<String> = parts
+        .iter()
+        .take(SHOWN_PARTS)
+        .map(|d| {
+            let expected = d.expected.as_deref().unwrap_or("(not there)");
+            // The list keeps a long value as a checksum: what it held a
+            // tick ago, when both PCs agreed, shows where it was going.
+            let ago = match (expected.starts_with('#'), before.get(&d.part)) {
+                (true, Some(was)) => format!("\n    a tick ago, the same on both: {was}"),
+                _ => String::new(),
+            };
+            format!(
+                "  {}\n    expected: {expected}{}\n    found:    {}{ago}",
+                d.part,
+                if expected.starts_with('#') {
+                    " (the list keeps it as a checksum)"
+                } else {
+                    ""
+                },
+                d.actual.as_deref().unwrap_or("(not there)")
+            )
+        })
+        .collect();
+    let more = parts.len().saturating_sub(SHOWN_PARTS);
     let message = format!(
         "The recorded game (tests/two-pcs/{RECORDING}) came out differently at tick {tick} \
          ({:.2} s in) on {threads} core(s) from the list made on Linux ({STATES}).\n\
@@ -276,7 +312,16 @@ fn mismatch(
              checksum covers isn't in the dump yet (world::state_parts)."
                 .to_string()
         } else {
-            format!("Parts that differ: {}.", named.join("; "))
+            format!(
+                "Parts that differ ({}):\n{}{}",
+                parts.len(),
+                shown.join("\n"),
+                if more > 0 {
+                    format!("\n  … and {more} more, in the file below.")
+                } else {
+                    String::new()
+                }
+            )
         },
         dump.display(),
         if written {
@@ -292,6 +337,10 @@ fn mismatch(
         message,
     }
 }
+
+/// How many differing parts a failure's message shows, expected and found
+/// side by side (the file has them all).
+const SHOWN_PARTS: usize = 5;
 
 /// Where a failure's states are written: `target/two-pcs/` in the
 /// workspace, which CI uploads when the check fails.

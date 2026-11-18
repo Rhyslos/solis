@@ -20,7 +20,7 @@ It is kept clear of the two gaps decision 0106 records: no tween has a done bloc
 
 ## When it fails
 
-The test names the tick and the parts that differ, and writes both states to `target/two-pcs/` (CI keeps that folder as the `two-pcs-states` artifact). A part the list keeps as a checksum shows only this PC's value; to see what it holds on Linux, run the check there with `SOLIS_TWO_PCS_STATE_AT=<tick> cargo test -p app two_pcs`, which writes that tick's whole state beside it.
+The test names the tick and the parts that differ, with what each should hold and what it holds here side by side (for a part the list keeps as a checksum, what it held a tick earlier, when both PCs still agreed), and writes both states to `target/two-pcs/` (CI keeps that folder as the `two-pcs-states` artifact). A part the list keeps as a checksum shows only this PC's value; to see what it holds on Linux, run the check there with `SOLIS_TWO_PCS_STATE_AT=<tick> cargo test -p app two_pcs`, which writes that tick's whole state beside it.
 
 ## Changing it
 

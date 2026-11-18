@@ -66,12 +66,17 @@ fn two_pcs_a_rule_broken_at_a_tick_fails_there_naming_what_changed() {
     let list = kept_list();
     let hive: reflect::EntityId = "2PC00000000E7".parse().unwrap();
     let broken = 50;
+    // Called before every frame: the hive is moved once, before tick 50.
+    let mut nudged = false;
     let m = compare(&list, broken + 10, 1, |w, tick| {
-        if tick == broken {
+        if tick == broken && !nudged {
             assert!(w.nudge(hive, glam::Vec3::new(0.0, 0.0, 0.001)));
+            nudged = true;
         }
     })
     .unwrap_err();
+    // What a failure says (shown with --nocapture).
+    eprintln!("{}", m.message);
     assert_eq!(m.tick, broken, "{}", m.message);
     let named: Vec<&str> = m.parts.iter().map(|d| d.part.as_str()).collect();
     let hive_place = format!("{hive} \"Hive\" Transform (in the world)");
