@@ -43,4 +43,4 @@ The other shapes considered:
 - The lead's shape, a local `state Timer` in each component, needs Lust: a native taking the calling component's own state of a name, and an event carrying it. It is asked of Lust with the blocks (the plan's As built note). When Lust has it, games move their timer names into their components and nothing else changes: every call and handler reads the same.
 - Only a start call names a timer: code that picks a timer through a variable must still start each by name somewhere. The manual says so.
 - A Lua or Rust timer's name isn't a Lust option; `TimerFinished` reaches a Lua component with its name as text whatever Lust's `Timer` holds.
-- 100,000 waiting timers with 10,000 finishing and starting again each tick cost the store about 1.3 ms a tick in a release build (target 2 ms), plus about 0.9 ms making their events (`script` scale check).
+- 100,000 waiting timers with 10,000 finishing and starting again each tick cost the store 1.2 to 1.6 ms a tick in a release build (target 2 ms), plus about 0.9 ms making their events (`script` scale check).
