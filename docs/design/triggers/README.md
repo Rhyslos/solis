@@ -2,7 +2,8 @@
 
 The approved mock-up of trigger zones (the game stages, stage 1's first milestone; [the plan](../../plans/game-stages.md#the-next-milestone-triggers)). The project lead approved it on 2026-11-18, adding:
 - a **New code for this zone…** button;
-- doors, teleporters and fades as a **Door in the kit**, built on triggers later in stage 1, never as options on the zone.
+- doors, teleporters and fades as a **Door in the kit**, built on triggers later in stage 1, never as options on the zone;
+- a third shape in 2D, **Freeform**, drawn point by point (described in the plan; not drawn here).
 
 | File | Shows |
 | --- | --- |

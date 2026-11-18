@@ -119,6 +119,10 @@ Planned in detail when 2D is done. The outline stays as ROADMAP.md has it:
   - Inside now, filled while playing.
 - A card says what game code hears, with a **New code for this zone…** button that makes a code file with empty `Entered` and `Exited` handlers, attached to the zone.
 - A zone can be made into a prefab like any entity.
+- **Freeform, in 2D only** (the project lead, 2026-11-18): Shape in 2D is Box, Circle or Freeform; 3D keeps Box and Sphere.
+  - **Drawing (the lead's choice):** choosing Freeform starts drawing in the view. Each click places a point, and clicking the first point or pressing `Enter` closes the shape. `Esc` cancels and keeps the previous shape.
+  - **Editing:** `Tab` edits the points, as shape brushes do. Drag a point to move it, `Ctrl` + click on an edge adds a point, `Delete` removes the picked point (never below 3), and `Tab` or `Esc` finishes.
+  - Shapes may bend inward; they're split into simple pieces for the overlap test. Outlines that cross themselves are refused with a reason. There's a limit of 256 points.
 
 **Tests and scale:**
 - in, staying, out;
