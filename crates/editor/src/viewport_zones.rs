@@ -49,7 +49,8 @@ impl Viewport {
             if down {
                 if let Some(mouse) = mouse {
                     let ray = frame.seen.ray_through(mouse, frame.size);
-                    if let Some((zone, place)) = drag.follow(&ray) {
+                    let step = self.size_step(frame.two_d);
+                    if let Some((zone, place)) = drag.follow(&ray, step) {
                         self.zones.events.push(ZoneEvent::Sized {
                             entity: drag.entity,
                             zone,
@@ -80,6 +81,21 @@ impl Viewport {
             self.zones.drag = drag;
         }
         true
+    }
+
+    /// What a zone's size snaps to: in a 2D view whole pixels or tiles, as
+    /// moves do; in 3D the grid's step while it snaps.
+    fn size_step(&self, flat: bool) -> Option<f32> {
+        use crate::transforming::PixelSnap;
+        if flat {
+            match self.snapping.pixel_snap {
+                PixelSnap::Off => None,
+                PixelSnap::Pixels => Some(self.pixels.pixel_size()),
+                PixelSnap::Tiles => Some(self.pixels.tile_size()[0]),
+            }
+        } else {
+            self.snapping.grid.then_some(self.snapping.grid_step)
+        }
     }
 
     /// The zone picked alone, as this view shows it.

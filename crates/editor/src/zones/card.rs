@@ -36,7 +36,7 @@ pub(crate) enum ZoneAsk {
     EditPoints,
 }
 
-/// The width of a number field for one of a size's numbers.
+/// The widest a number field for one of a size's numbers is.
 const NUMBER_W: f32 = 84.0;
 
 /// Draws the card's rows for the zone in `data`.
@@ -135,20 +135,15 @@ fn size_row(ui: &mut Ui, zone: &TriggerZone, flat: bool, asks: &mut Vec<ZoneAsk>
             } else {
                 &[(0, Axis::X), (1, Axis::Y), (2, Axis::Z)]
             };
+            // The fields share the row, as Transform's three do.
+            let gap = ui.spacing().item_spacing.x;
+            let count = axes.len() as f32;
+            let width = ((ui.available_width() - gap * (count - 1.0)) / count).min(NUMBER_W);
             ui.horizontal(|ui| {
                 for &(i, axis) in axes {
                     let mut value = f64::from(size[i]);
                     let name = format!("Size {}", ["X", "Y", "Z"][i]);
-                    if widgets::field::number_field(
-                        ui,
-                        &name,
-                        &mut value,
-                        Some(axis),
-                        0.05,
-                        NUMBER_W,
-                    )
-                    .changed()
-                    {
+                    if metres(ui, &name, &mut value, (Some(axis), width)).changed() {
                         size[i] = value as f32;
                         asks.push(ZoneAsk::Set("size", Value::vec3(size)));
                     }
@@ -157,9 +152,7 @@ fn size_row(ui: &mut Ui, zone: &TriggerZone, flat: bool, asks: &mut Vec<ZoneAsk>
         }
         ZoneForm::Round => {
             let mut radius = f64::from(zone.radius);
-            if widgets::field::number_field(ui, "Radius", &mut radius, None, 0.05, NUMBER_W)
-                .changed()
-            {
+            if metres(ui, "Radius", &mut radius, (None, NUMBER_W)).changed() {
                 asks.push(ZoneAsk::Set("radius", Value::Float(radius)));
             }
         }
@@ -179,6 +172,27 @@ fn size_row(ui: &mut Ui, zone: &TriggerZone, flat: bool, asks: &mut Vec<ZoneAsk>
             });
         }
     });
+}
+
+/// A number of metres in a field, with its axis letter (W, H; X, Y, Z)
+/// and " m" after it, as the mock-up draws a size.
+fn metres(
+    ui: &mut Ui,
+    name: &str,
+    value: &mut f64,
+    (axis, width): (Option<Axis>, f32),
+) -> egui::Response {
+    widgets::field::framed(ui, width, axis, |ui| {
+        let response = ui.add(
+            egui::DragValue::new(value)
+                .speed(0.05)
+                .fixed_decimals(2)
+                .suffix(" m")
+                .range(f64::from(TriggerZone::MIN_SIZE_M)..=f64::from(TriggerZone::MAX_SIZE_M)),
+        );
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::DragValue, true, name));
+        response
+    })
 }
 
 /// Inside now: who is inside while playing, as chips.

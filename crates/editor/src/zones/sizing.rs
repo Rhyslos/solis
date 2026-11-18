@@ -135,8 +135,13 @@ impl SizeDrag {
 
     /// The zone sized for the pointer along `ray`, and where its middle
     /// is in the world then; none when the pointer can't be followed (a
-    /// ray along the ground, a zone squashed flat by its scale).
-    pub(crate) fn follow(&self, ray: &Ray) -> Option<(TriggerZone, Vec3)> {
+    /// ray along the ground, a zone squashed flat by its scale). With a
+    /// `step` (snapping on), sizes are whole steps.
+    pub(crate) fn follow(&self, ray: &Ray, step: Option<f32>) -> Option<(TriggerZone, Vec3)> {
+        let snapped = |v: f32| match step.filter(|s| *s > 0.0 && s.is_finite()) {
+            Some(step) => ((v / step).round() * step).max(step),
+            None => v,
+        };
         let inverse = self.world.inverse();
         if !inverse.is_finite() {
             return None;
@@ -156,7 +161,7 @@ impl SizeDrag {
                         continue;
                     }
                     let far = -way[axis] * half[axis];
-                    let size = (way[axis] * (local[axis] - far))
+                    let size = snapped(way[axis] * (local[axis] - far))
                         .clamp(TriggerZone::MIN_SIZE_M, TriggerZone::MAX_SIZE_M);
                     zone.size[axis] = size;
                     middle[axis] = far + way[axis] * size * 0.5;
@@ -168,7 +173,8 @@ impl SizeDrag {
                 } else {
                     local.dot(way).abs()
                 };
-                zone.radius = reach.clamp(TriggerZone::MIN_SIZE_M, TriggerZone::MAX_SIZE_M);
+                zone.radius =
+                    snapped(reach).clamp(TriggerZone::MIN_SIZE_M, TriggerZone::MAX_SIZE_M);
             }
             ZoneForm::Freeform => return None,
         }

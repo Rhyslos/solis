@@ -94,11 +94,10 @@ fn outline_on_screen(
     }
     lines_3d(&zone.zone)
         .into_iter()
-        .filter_map(|(a, b)| {
-            Some(vec![
-                project(world.transform_point3(a))?,
-                project(world.transform_point3(b))?,
-            ])
+        .filter_map(|line| {
+            line.iter()
+                .map(|p| project(world.transform_point3(*p)))
+                .collect::<Option<Vec<Pos2>>>()
         })
         .collect()
 }

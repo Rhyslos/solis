@@ -125,15 +125,17 @@ pub(crate) fn footprint(zone: &TriggerZone) -> Vec<Vec2> {
     }
 }
 
-/// The lines that draw a zone in a 3D view, as pairs of points in its
-/// own space: a box's twelve edges or a sphere's three rings. A freeform
-/// zone is its outline on the ground.
-pub(crate) fn lines_3d(zone: &TriggerZone) -> Vec<(Vec3, Vec3)> {
-    let ring = |points: &[Vec2], lift: fn(Vec2) -> Vec3| -> Vec<(Vec3, Vec3)> {
-        let n = points.len();
-        (0..n)
-            .map(|i| (lift(points[i]), lift(points[(i + 1) % n])))
-            .collect()
+/// The lines that draw a zone in a 3D view, each as points in its own
+/// space joined in order: a box's twelve edges, or a sphere's three rings
+/// (closed: the first point again at the end, so a dashed ring's dashes
+/// run on round it). A freeform zone is its outline on the ground.
+pub(crate) fn lines_3d(zone: &TriggerZone) -> Vec<Vec<Vec3>> {
+    let ring = |points: &[Vec2], lift: fn(Vec2) -> Vec3| -> Vec<Vec3> {
+        let mut ring: Vec<Vec3> = points.iter().map(|p| lift(*p)).collect();
+        if let Some(&first) = ring.first() {
+            ring.push(first);
+        }
+        ring
     };
     match zone.form {
         ZoneForm::Box => {
@@ -147,17 +149,18 @@ pub(crate) fn lines_3d(zone: &TriggerZone) -> Vec<(Vec3, Vec3)> {
             };
             BOX_EDGES
                 .iter()
-                .map(|&(a, b)| (corner(a), corner(b)))
+                .map(|&(a, b)| vec![corner(a), corner(b)])
                 .collect()
         }
         ZoneForm::Round => {
             let circle = footprint(zone);
-            let mut lines = ring(&circle, |p| Vec3::new(p.x, p.y, 0.0));
-            lines.extend(ring(&circle, |p| Vec3::new(p.x, 0.0, p.y)));
-            lines.extend(ring(&circle, |p| Vec3::new(0.0, p.x, p.y)));
-            lines
+            vec![
+                ring(&circle, |p| Vec3::new(p.x, p.y, 0.0)),
+                ring(&circle, |p| Vec3::new(p.x, 0.0, p.y)),
+                ring(&circle, |p| Vec3::new(0.0, p.x, p.y)),
+            ]
         }
-        ZoneForm::Freeform => ring(&footprint(zone), |p| p.extend(0.0)),
+        ZoneForm::Freeform => vec![ring(&footprint(zone), |p| p.extend(0.0))],
     }
 }
 
@@ -186,21 +189,25 @@ pub(crate) fn zone_at(
         .iter()
         .filter(|z| !locked.contains(&z.entity))
         .filter_map(|zone| {
-            let lines: Vec<(Vec3, Vec3)> = if flat {
-                let ring = footprint(&zone.zone);
-                let n = ring.len();
-                (0..n)
-                    .map(|i| (ring[i].extend(0.0), ring[(i + 1) % n].extend(0.0)))
-                    .collect()
+            let lines: Vec<Vec<Vec3>> = if flat {
+                let mut ring: Vec<Vec3> = footprint(&zone.zone)
+                    .iter()
+                    .map(|p| p.extend(0.0))
+                    .collect();
+                if let Some(&first) = ring.first() {
+                    ring.push(first);
+                }
+                vec![ring]
             } else {
                 lines_3d(&zone.zone)
             };
             let world = zone.transform;
             let nearest = lines
                 .iter()
-                .filter_map(|(a, b)| {
-                    let a = camera.project(world.transform_point3(*a), size)?;
-                    let b = camera.project(world.transform_point3(*b), size)?;
+                .flat_map(|line| line.windows(2))
+                .filter_map(|pair| {
+                    let a = camera.project(world.transform_point3(pair[0]), size)?;
+                    let b = camera.project(world.transform_point3(pair[1]), size)?;
                     Some(near(a, b))
                 })
                 .fold(f32::MAX, f32::min);

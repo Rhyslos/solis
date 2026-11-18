@@ -221,4 +221,6 @@ mod tools_1a_gate_tests;
 #[cfg(test)]
 mod two_d_screen_tests;
 #[cfg(test)]
+mod zone_picture_tests;
+#[cfg(test)]
 mod zones_play_tests;
