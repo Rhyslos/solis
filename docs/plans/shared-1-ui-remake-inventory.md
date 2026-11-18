@@ -338,7 +338,7 @@ Counts are at the end of this part.
 | `lib.shelf.import-queue` | Shelf tab **Import queue · N** and the progress bar (spec 314, 322) | PLACEHOLDER | Placeholder shelf tab. (Imports already run on workers, `app/src/import.rs`, with no list.) | not on the roadmap (small) |
 | `lib.count` | "48 items · 1 selected" (spec 314) | EXISTS | (shell) | |
 | `lib.multi-select` | Ctrl / Shift click selects several (spec 327) | EXISTS | `LibraryState::selected` and `also` (R4, decision 0118) | |
-| `lib.new.prefab` | The Library's right-click **New prefab** (board 04 of the rethink) | PLACEHOLDER | Placeholder menu row, until prefabs (R5) | Shared 1f |
+| `lib.new.prefab` | The Library's right-click **New prefab** (board 04 of the rethink) | EXISTS | `LibraryRequest::NewPrefab` (R5, decision 0118) | |
 | `lib.paste` | The Library's right-click **Paste** (board 04 of the rethink) | PLACEHOLDER | Placeholder menu row: no files are copied yet | not on the roadmap |
 | `lib.rename` | F2 renames in place (spec 327) | EXISTS | Rename… (`library.rs:1484`), made in-place; F2 already means Rename | |
 | `lib.delete-warns` | Delete warns when something uses the file (spec 327) | PARTLY | Delete moves to the Recycle Bin with its ID file. The warning needs `lib.used-by.all-kinds`. | not on the roadmap |

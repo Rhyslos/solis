@@ -196,6 +196,9 @@ impl Workbench {
         if self.open.atlas_editor.is_some() && out.atlas_closed {
             self.close_atlas();
         }
+        if out.prefab_page_closed {
+            self.close_prefab_page();
+        }
         self.open.tilesets.in_properties = out.properties_tileset;
         if out.tileset_changed {
             self.save_open_tileset();

@@ -20,7 +20,7 @@ use crate::document::Document;
 use crate::library::ProjectInfo;
 use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
-use crate::properties::AssemblyPart;
+use crate::properties::PrefabPart;
 use crate::workbench::{GameKey, PartKey, ViewKey, Workbench, WorkbenchAction};
 use reflect::{AssetId, EntityId};
 use std::collections::{BTreeMap, HashMap};
@@ -55,8 +55,21 @@ pub(crate) struct ProjectState {
     pub(crate) last_export_folder: Option<std::path::PathBuf>,
     /// The project's assets, for the Library.
     pub(crate) library: crate::library::LibraryFiles,
-    /// The project's assemblies the level uses, as read from their files.
-    pub(crate) assemblies: BTreeMap<AssetId, std::sync::Arc<level::text::LevelFile>>,
+    /// The project's prefabs the level uses, as read from their files.
+    pub(crate) prefabs: BTreeMap<AssetId, std::sync::Arc<level::text::LevelFile>>,
+    /// A prefab open on its own page, beside the level's tab.
+    pub(crate) prefab_page: Option<crate::prefab_page::PrefabPage>,
+    /// Make prefab…, while its dialog is open.
+    pub(crate) make_prefab: Option<crate::make_prefab::MakePrefabForm>,
+    /// How many copies of each prefab the project's levels place, and in
+    /// how many levels, as the app last counted them (Details).
+    pub(crate) placed: HashMap<AssetId, crate::prefab_details::Placed>,
+    /// The Level panel's marks on placed copies, and what they were worked
+    /// out for.
+    pub(crate) marks_kept: Option<(
+        crate::prefab_marks::MarksKey,
+        std::sync::Arc<crate::prefab_marks::PrefabMarks>,
+    )>,
     /// Actions asked for outside `Workbench::show`'s own flow (menus,
     /// Properties), handed to the app with the next frame's. One the app
     /// hasn't taken when another project opens is let go: it names a file
@@ -204,10 +217,10 @@ pub(crate) struct ProjectState {
     pub(crate) told_code_notes: Vec<String>,
     /// Kinds of component written in Rust, run in play mode.
     pub(crate) rust_components: Vec<script::RustKind>,
-    /// The last `Workbench::assembly_part`, with the selection, revision and
+    /// The last `Workbench::prefab_part`, with the selection, revision and
     /// sources it was worked out for: kept, since it expands the whole
-    /// assembly.
-    pub(crate) assembly_part_kept: std::cell::RefCell<Option<(PartKey, Option<AssemblyPart>)>>,
+    /// prefab.
+    pub(crate) prefab_part_kept: std::cell::RefCell<Option<(PartKey, Option<PrefabPart>)>>,
     /// Whether game code asked to close the game (`Window:quit()`).
     pub(crate) quit_asked: bool,
     /// Whether the last project's Preview time (the Environment's, kept

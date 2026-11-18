@@ -56,7 +56,7 @@ pub struct ProjectInfo {
 /// One file in the Library.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct LibraryItem {
-    /// Its asset ID (models and assemblies).
+    /// Its asset ID (models and prefabs).
     pub id: Option<AssetId>,
     /// What kind of file.
     pub kind: LibraryKind,
@@ -170,6 +170,9 @@ pub(crate) struct LibraryState {
     pub(crate) search: String,
     /// The file or folder picked last, by path: the one Details shows.
     pub(crate) selected: Option<String>,
+    /// Prefabs made while the project has been open, by path: their
+    /// tiles carry a "New" badge (board 07).
+    pub(crate) new_prefabs: BTreeSet<String>,
     /// The others picked with it (`Ctrl` or `Shift` and a click).
     pub(crate) also: BTreeSet<String>,
     /// The file or folder being renamed, and the name typed so far.
@@ -198,6 +201,7 @@ impl Default for LibraryState {
             list: false,
             search: String::new(),
             selected: None,
+            new_prefabs: BTreeSet::new(),
             also: BTreeSet::new(),
             renaming: None,
             rename_focused: false,
@@ -320,7 +324,7 @@ impl LibraryState {
 /// with `/` between folders.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum LibraryRequest {
-    /// Place a model or assembly where the camera looks.
+    /// Place a model or prefab where the camera looks.
     Place(AssetId),
     /// Open a level, or a file in its own program.
     Open(LibraryKind, String),
@@ -337,6 +341,9 @@ pub(crate) enum LibraryRequest {
     ShowLibraryTab,
     /// Make a new Lust code file in this folder (E1).
     NewCodeFile(String),
+    /// Make a new, empty prefab in this folder and open its page (board
+    /// 07).
+    NewPrefab(String),
     /// Make a new, empty level in this folder, saved (E1).
     NewLevel(String),
     /// Move a file or folder to the Recycle Bin.

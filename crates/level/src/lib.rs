@@ -6,7 +6,6 @@
 //!
 //! Layer 0 (core). See this crate's README for its purpose and limits.
 
-pub mod assembly;
 pub mod builtin;
 mod document;
 mod edit;
@@ -15,6 +14,8 @@ mod lust_check;
 pub mod lust_data;
 pub mod lust_guard;
 pub mod pixels;
+pub mod prefab;
+pub mod prefab_file;
 pub mod settings;
 pub mod text;
 mod tree;

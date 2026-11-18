@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! -- A level. Safe to edit by hand: one block per entity, one line per field.
-//! level version 4;
+//! level version 5;
 //!
 //! entity 2B8D4NE6TV0HC {
 //!     name = "Sun";
@@ -14,9 +14,9 @@
 //! }
 //! ```
 //!
-//! A placed assembly is its root's block with an `assembly = "ID";` line,
+//! A placed prefab is its root's block with a `prefab = "ID";` line (`assembly` before version 5),
 //! and a block named `root/part` for each part this copy changes,
-//! holding only what differs from the assembly: a new `name` or `order`,
+//! holding only what differs from the prefab: a new `name` or `order`,
 //! `removed = true;`, fields set, and `parent`, which names the entity the
 //! part was moved under, or is `""` for a part moved out from under every
 //! parent ([`ParentChange`]; version 2).
@@ -32,12 +32,14 @@ use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 
 /// The layout version this build writes and reads. Version 2 gave a part
-/// of a placed assembly a way to say it has no parent (`parent = "";`);
+/// of a placed prefab a way to say it has no parent (`parent = "";`);
 /// version 3 brought brushes (Tools 1a, B1), whose meshes are long lists
 /// of numbers written over several lines ([`NUMBERS_PER_LINE`]);
 /// version 4 is the rename of areas to levels (decision 0118): a level's
-/// header says `level`, where versions 1 to 3 said `area`.
-pub const VERSION: u32 = 4;
+/// header says `level`, where versions 1 to 3 said `area`; version 5 is
+/// the rename of assemblies to prefabs (decision 0118): a placed copy says
+/// `prefab = "ID";`, where versions 1 to 4 said `assembly = "ID";`.
+pub const VERSION: u32 = 5;
 
 /// The word a level's header starts with, and the one versions 1 to 3
 /// wrote (`area version 3;`), still read.
@@ -45,7 +47,14 @@ pub const HEADER_WORD: &str = "level";
 /// The word older levels' headers start with.
 pub const OLD_HEADER_WORD: &str = "area";
 
-/// Levels' and assemblies' version and upgraders (Phase 8, C1): each step
+/// The word a prefab's contents start with when they're read as a level's
+/// blocks (`prefab version 5 root ID;`), and a placed copy's key.
+pub const PREFAB_WORD: &str = "prefab";
+/// The word an assembly's file (`.solassembly`) and a placed copy's key
+/// had before version 5, still read.
+pub const OLD_PREFAB_WORD: &str = "assembly";
+
+/// Levels' and prefabs' version and upgraders (Phase 8, C1): each step
 /// turns a file read at one version into the next, after its blocks are
 /// read (so a step can rename a field or a component, but the layout
 /// itself, header, IDs and blocks, is read as this build reads it).
@@ -55,12 +64,20 @@ pub static FORMAT: reflect::upgrade::Format<LevelFile> = reflect::upgrade::Forma
     name: "level",
     current: VERSION,
     version_of: |text| {
-        reflect::upgrade::header_version(text, &[HEADER_WORD, OLD_HEADER_WORD, "assembly"])
+        reflect::upgrade::header_version(
+            text,
+            &[HEADER_WORD, OLD_HEADER_WORD, PREFAB_WORD, OLD_PREFAB_WORD],
+        )
     },
-    steps: &[parts_at_the_top_level, brushes, areas_are_levels],
+    steps: &[
+        parts_at_the_top_level,
+        brushes,
+        areas_are_levels,
+        assemblies_are_prefabs,
+    ],
 };
 
-/// Version 1 to 2: nothing to change. Version 2 lets a placed assembly's
+/// Version 1 to 2: nothing to change. Version 2 lets a placed prefab's
 /// part say it was moved out to the top level (`parent = "";` in its
 /// block), which version 1 had no way to write, so no version 1 file
 /// holds one and every one reads as it always did.
@@ -78,9 +95,17 @@ fn brushes(_: &mut LevelFile) -> Result<(), String> {
 /// Version 3 to 4: nothing to change. Version 4 is the same layout under
 /// a new name: a level's header says `level` where an area's said `area`,
 /// and the header is read either way, so every version 3 file reads as it
-/// always did. (An assembly's header keeps its word; only its number
-/// moves with the format's.)
+/// always did. (An assembly's header kept its word; only its number
+/// moved with the format's.)
 fn areas_are_levels(_: &mut LevelFile) -> Result<(), String> {
+    Ok(())
+}
+
+/// Version 4 to 5: nothing to change. Version 5 is the same layout with
+/// assemblies called prefabs: a placed copy says `prefab = "ID";` where it
+/// said `assembly = "ID";`, and both are read, so every version 4 file
+/// reads as it always did.
+fn assemblies_are_prefabs(_: &mut LevelFile) -> Result<(), String> {
     Ok(())
 }
 
@@ -124,26 +149,26 @@ impl std::error::Error for ParseError {}
 
 // ---------------------------------------------------------------- write ---
 
-/// What a file holds: a level, or an assembly with its root.
+/// What a file holds: a level, or a prefab with its root.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileKind {
     /// A level (`.sollevel`).
     Level,
-    /// An assembly (`.solassembly`), whose entities all sit under `root`.
-    Assembly {
-        /// The assembly's top entity.
+    /// A prefab (`.solassembly`), whose entities all sit under `root`.
+    Prefab {
+        /// The prefab's top entity.
         root: EntityId,
     },
 }
 
-/// What a placed assembly's change does to a part's parent. "Left where
+/// What a placed prefab's change does to a part's parent. "Left where
 /// it is" and "moved out from under every parent" are different things,
 /// so they aren't both the absence of an ID: the second was once written
 /// as the first, and the part came back under its old parent (the review
 /// of Phase 9, BUG-13).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ParentChange {
-    /// The parent the assembly gives it: nothing is written.
+    /// The parent the prefab gives it: nothing is written.
     #[default]
     Unchanged,
     /// No parent: moved out to the level's top level (`parent = "";`).
@@ -159,8 +184,8 @@ impl ParentChange {
     }
 }
 
-/// The changes a placed assembly makes to one of its entities
-/// (decision 0020): only what differs from the assembly.
+/// The changes a placed prefab makes to one of its entities
+/// (decision 0020): only what differs from the prefab.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Override {
     /// A new name.
@@ -184,13 +209,13 @@ impl Override {
     }
 }
 
-/// A file as written: its entities, with placed assemblies as their root
+/// A file as written: its entities, with placed prefabs as their root
 /// entity plus overrides, never copies.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LevelFile {
-    /// Level or assembly.
+    /// Level or prefab.
     pub kind: FileKind,
-    /// The plain entities, and each placed assembly's root (with its
+    /// The plain entities, and each placed prefab's root (with its
     /// [`Origin`] and no components: its changes are in `overrides`).
     pub level: Level,
     /// Overrides, by placed root and the way to the entity inside (empty
@@ -209,7 +234,7 @@ impl LevelFile {
     }
 }
 
-/// A plain `level` (no placed assemblies) as text: see [`write_file`].
+/// A plain `level` (no placed prefabs) as text: see [`write_file`].
 pub fn write(
     level: &Level,
     registry: &Registry,
@@ -236,11 +261,11 @@ pub fn write_file(
             );
             let _ = writeln!(out, "{HEADER_WORD} version {VERSION};");
         }
-        FileKind::Assembly { root } => {
+        FileKind::Prefab { root } => {
             out.push_str(
-                "-- An assembly. Safe to edit by hand: one block per entity, one line per field.\n",
+                "-- A prefab. Safe to edit by hand: one block per entity, one line per field.\n",
             );
-            let _ = writeln!(out, "assembly version {VERSION} root {root};");
+            let _ = writeln!(out, "{PREFAB_WORD} version {VERSION} root {root};");
         }
     }
     let mut blocks: Vec<(String, String)> = Vec::new();
@@ -253,8 +278,8 @@ pub fn write_file(
         let _ = writeln!(body, "    order = {};", quoted(&entity.order));
         match &entity.origin {
             Some(origin) if origin.path.is_empty() => {
-                let mut line = format!("    assembly = \"{}\";", origin.assembly);
-                if let Some(path) = asset_path(origin.assembly) {
+                let mut line = format!("    prefab = \"{}\";", origin.prefab);
+                if let Some(path) = asset_path(origin.prefab) {
                     let _ = write!(line, "  -- {}", path.replace('\n', " "));
                 }
                 body.push_str(&line);
@@ -314,6 +339,49 @@ fn write_remove(out: &mut String, remove: &[String]) {
     out.push_str(";\n");
 }
 
+/// A component's fields in the order they're written: those `registry`
+/// declares in their declared order, then the rest, sorted.
+fn field_order<'a>(component: &str, data: &'a ComponentData, registry: &Registry) -> Vec<&'a str> {
+    let declared: Vec<&str> = registry
+        .get(component)
+        .map(|s| s.fields.iter().map(|f| f.name.as_str()).collect())
+        .unwrap_or_default();
+    let mut names: Vec<&'a str> = declared
+        .iter()
+        .filter_map(|f| data.fields.get_key_value(*f).map(|(k, _)| k.as_str()))
+        .collect();
+    names.extend(
+        data.fields
+            .keys()
+            .map(String::as_str)
+            .filter(|f| !declared.contains(f)),
+    );
+    names
+}
+
+/// `components` as settings, each a field's line without its indent and
+/// `;` (`Light.strength = 3.0`, or `Light = {}` for a component with no
+/// fields), on one line, in the order a level file writes them: what a
+/// prefab file keeps for an entity ([`crate::prefab_file`]).
+pub(crate) fn settings_of(
+    components: &BTreeMap<String, ComponentData>,
+    registry: &Registry,
+) -> Vec<String> {
+    let mut out = Vec::new();
+    for (component, data) in components {
+        let names = field_order(component, data, registry);
+        if names.is_empty() {
+            out.push(format!("{component} = {{}}"));
+        }
+        for field in names {
+            let mut line = format!("{component}.{field} = ");
+            write_value(&mut line, &data.fields[field]);
+            out.push(line);
+        }
+    }
+    out
+}
+
 fn write_components(
     out: &mut String,
     components: &BTreeMap<String, ComponentData>,
@@ -321,21 +389,7 @@ fn write_components(
     asset_path: &dyn Fn(AssetId) -> Option<String>,
 ) {
     for (component, data) in components {
-        let declared: Vec<&str> = registry
-            .get(component)
-            .map(|s| s.fields.iter().map(|f| f.name.as_str()).collect())
-            .unwrap_or_default();
-        let mut names: Vec<&str> = declared
-            .iter()
-            .copied()
-            .filter(|f| data.fields.contains_key(*f))
-            .collect();
-        names.extend(
-            data.fields
-                .keys()
-                .map(String::as_str)
-                .filter(|f| !declared.contains(f)),
-        );
+        let names = field_order(component, data, registry);
         if names.is_empty() {
             // A component with no fields still has to be kept.
             let _ = writeln!(out, "    {component} = {{}};");
@@ -358,7 +412,7 @@ fn write_components(
     }
 }
 
-fn quoted(text: &str) -> String {
+pub(crate) fn quoted(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
     for c in text.chars() {
@@ -473,23 +527,23 @@ pub(crate) fn write_value(out: &mut String, value: &Value) {
 
 // ----------------------------------------------------------------- read ---
 
-/// Reads a plain level (one with no placed assemblies) from `text`: see
-/// [`read_file`]. Placed assemblies need their contents to be read; use
-/// [`crate::assembly`]. Parents that lead round in a loop are put right
-/// ([`Level::mend_loops`]), as expanding a file's assemblies does, so no
+/// Reads a plain level (one with no placed prefabs) from `text`: see
+/// [`read_file`]. Placed prefabs need their contents to be read; use
+/// [`crate::prefab`]. Parents that lead round in a loop are put right
+/// ([`Level::mend_loops`]), as expanding a file's prefabs does, so no
 /// level read has one.
 pub fn read(text: &str, registry: &Registry) -> Result<Level, ParseError> {
     let file = read_file(text, registry)?;
     if file.kind != FileKind::Level {
         return Err(ParseError {
             line: 1,
-            message: "this is an assembly, not a level".into(),
+            message: "this is a prefab, not a level".into(),
         });
     }
     if let Some((id, _)) = file.level.iter().find(|(_, e)| e.origin.is_some()) {
         return Err(ParseError {
             line: 0,
-            message: format!("{id} is a placed assembly, which needs its assembly to be read"),
+            message: format!("{id} is a placed prefab, which needs its prefab to be read"),
         });
     }
     let mut level = file.level;
@@ -497,11 +551,11 @@ pub fn read(text: &str, registry: &Registry) -> Result<Level, ParseError> {
     Ok(level)
 }
 
-/// Reads a level or assembly file from `text`. Values are turned into the
+/// Reads a level or prefab file from `text`. Values are turned into the
 /// kinds `registry` declares (asset and entity references, decimals written
 /// as whole numbers); components it doesn't know are kept exactly as read.
 /// A file from a newer version is refused, never half-read. Parents are
-/// kept as written: one may be a part of a placed assembly, known only
+/// kept as written: one may be a part of a placed prefab, known only
 /// once the file is expanded, which is where loops of them are put right.
 pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseError> {
     if text.len() > MAX_BYTES {
@@ -548,7 +602,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseErro
             .collect::<Result<Vec<EntityId>, _>>()?;
         if path.len() > MAX_NESTING + 1 {
             return p.fail(&format!(
-                "more than {MAX_NESTING} assemblies inside each other"
+                "more than {MAX_NESTING} prefabs inside each other"
             ));
         }
         let block = p.block(registry)?;
@@ -577,7 +631,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseErro
         let (root, inside) = (path[0], path[1..].to_vec());
         if inside.is_empty() {
             if block.removed {
-                return fail("removed = true; is only for parts of a placed assembly");
+                return fail("removed = true; is only for parts of a placed prefab");
             }
             let mut entity = EntityData::new(&block.name.unwrap_or_default());
             // An entity's own block: no parent line, or one saying none,
@@ -589,10 +643,10 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseErro
             if let Some(order) = block.order {
                 entity.order = order;
             }
-            match block.assembly {
-                Some(assembly) => {
+            match block.prefab {
+                Some(prefab) => {
                     entity.origin = Some(Origin {
-                        assembly,
+                        prefab,
                         instance: root,
                         path: Vec::new(),
                     });
@@ -607,15 +661,15 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseErro
                 }
                 None => {
                     if !block.remove.is_empty() {
-                        return fail("remove = […]; is only for a placed assembly");
+                        return fail("remove = […]; is only for a placed prefab");
                     }
                     entity.components = block.components;
                 }
             }
             file.level.insert(root, entity);
         } else {
-            if block.assembly.is_some() {
-                return fail("an assembly can't be placed inside another's override");
+            if block.prefab.is_some() {
+                return fail("a prefab can't be placed inside another's override");
             }
             file.overrides.insert(
                 (root, inside),
@@ -630,7 +684,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseErro
             );
         }
     }
-    // Every override belongs to a placed assembly in this file.
+    // Every override belongs to a placed prefab in this file.
     for (root, path) in file.overrides.keys() {
         let placed = file.level.get(*root).is_some_and(|e| e.origin.is_some());
         if !placed {
@@ -643,16 +697,16 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseErro
             let line = lines.get(&ids).map_or(0, |(l, _)| *l);
             return Err(ParseError {
                 line,
-                message: format!("{key} changes a part of {root}, which isn't a placed assembly"),
+                message: format!("{key} changes a part of {root}, which isn't a placed prefab"),
             });
         }
     }
-    if let FileKind::Assembly { root } = file.kind
+    if let FileKind::Prefab { root } = file.kind
         && !file.level.contains(root)
     {
         return Err(ParseError {
             line: 1,
-            message: format!("the assembly's root {root} isn't in the file"),
+            message: format!("the prefab's root {root} isn't in the file"),
         });
     }
     // An older file is brought up to date (it's refused if an upgrader
@@ -664,7 +718,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<LevelFile, ParseErro
     Ok(file)
 }
 
-/// How deep assemblies may be placed inside each other.
+/// How deep prefabs may be placed inside each other.
 pub const MAX_NESTING: usize = 16;
 
 /// One block as read: every key it may hold, checked later.
@@ -674,7 +728,7 @@ struct Block {
     /// `Unchanged` when the block has no parent line.
     parent: ParentChange,
     order: Option<String>,
-    assembly: Option<AssetId>,
+    prefab: Option<AssetId>,
     removed: bool,
     remove: Vec<String>,
     components: BTreeMap<String, ComponentData>,
@@ -766,14 +820,14 @@ impl Parser<'_> {
         }
     }
 
-    /// `level version N;` or `assembly version N root ID;`, refusing newer
+    /// `level version N;` or `prefab version N root ID;`, refusing newer
     /// versions.
     fn header(&mut self) -> Result<(FileKind, u32), ParseError> {
         if !self.skip_space() {
             return self.fail("the file is empty");
         }
         let kind = self.word()?;
-        if kind != HEADER_WORD && kind != OLD_HEADER_WORD && kind != "assembly" {
+        if ![HEADER_WORD, OLD_HEADER_WORD, PREFAB_WORD, OLD_PREFAB_WORD].contains(&kind.as_str()) {
             return self.fail(&format!(
                 "this isn't a level file (it starts with \"{kind}\", not \"level version\")"
             ));
@@ -792,11 +846,11 @@ impl Parser<'_> {
         if version == 0 {
             return self.fail("there is no layout version 0");
         }
-        let kind = if kind == "assembly" {
+        let kind = if kind == PREFAB_WORD || kind == OLD_PREFAB_WORD {
             self.keyword("root")?;
             let root = self.word()?;
             let root: EntityId = root.parse().or_else(|e| self.fail(&format!("{e}")))?;
-            FileKind::Assembly { root }
+            FileKind::Prefab { root }
         } else {
             FileKind::Level
         };
@@ -876,7 +930,7 @@ impl Parser<'_> {
             }
             ("order", _) => return wrong("text"),
             // `parent = "";` is no parent at all: how a part of a placed
-            // assembly says it was moved out to the top level.
+            // prefab says it was moved out to the top level.
             ("parent", Value::Text(t)) if t.is_empty() => {
                 twice(entity.parent != ParentChange::Unchanged)?;
                 entity.parent = ParentChange::TopLevel;
@@ -889,14 +943,14 @@ impl Parser<'_> {
                 Err(e) => return wrong(&format!("an entity's ID ({e})")),
             },
             ("parent", _) => return wrong("an entity's ID in quotes"),
-            ("assembly", Value::Text(t)) => match t.parse() {
+            (PREFAB_WORD | OLD_PREFAB_WORD, Value::Text(t)) => match t.parse() {
                 Ok(id) => {
-                    twice(entity.assembly.is_some())?;
-                    entity.assembly = Some(id);
+                    twice(entity.prefab.is_some())?;
+                    entity.prefab = Some(id);
                 }
-                Err(e) => return wrong(&format!("an assembly's ID ({e})")),
+                Err(e) => return wrong(&format!("a prefab's ID ({e})")),
             },
-            ("assembly", _) => return wrong("an assembly's ID in quotes"),
+            (PREFAB_WORD | OLD_PREFAB_WORD, _) => return wrong("a prefab's ID in quotes"),
             ("removed", Value::Bool(b)) => entity.removed = b,
             ("removed", _) => return wrong("true or false"),
             ("remove", Value::List(items)) => {
@@ -1171,7 +1225,7 @@ mod tests {
     fn parts_moved(version: u32) -> String {
         format!(
             "area version {version};\n\
-             entity 0000000000001 {{ name = \"Post\"; assembly = \"0000000000009\"; }}\n\
+             entity 0000000000001 {{ name = \"Post\"; prefab = \"0000000000009\"; }}\n\
              entity 0000000000001/0000000000002 {{ name = \"Left\"; }}\n\
              entity 0000000000001/0000000000003 {{ parent = \"0000000000007\"; order = \"a3\"; }}\n\
              entity 0000000000001/0000000000004 {{ parent = \"\"; }}\n\
@@ -1223,9 +1277,10 @@ mod tests {
     #[test]
     fn a_version_1_file_reads_as_it_always_did_and_is_written_as_the_newest() {
         // Version 2 only added `parent = "";` for a part (BUG-13), and
-        // version 3 brushes; version 4 renamed areas levels. Every line a
-        // version 1 file can hold means what it meant.
-        assert_eq!(VERSION, 4);
+        // version 3 brushes; version 4 renamed areas levels, and version
+        // 5 assemblies prefabs. Every line a version 1 file can hold means
+        // what it meant.
+        assert_eq!(VERSION, 5);
         assert!(FORMAT.is_complete());
         let old = parts_moved(1).replace("parent = \"\";", "order = \"a9\";");
         let new = parts_moved(2).replace("parent = \"\";", "order = \"a9\";");
@@ -1245,14 +1300,14 @@ mod tests {
             assert_eq!((FORMAT.version_of)(fixture), Some(1));
             let read = read_file(fixture, &registry()).unwrap();
             let written = write_file(&read, &registry(), &no_paths);
-            // Written now it says version 4, and nothing else differs but
+            // Written now it says version 5, and nothing else differs but
             // the comments beside asset IDs (never read).
-            assert_eq!((FORMAT.version_of)(&written), Some(4));
+            assert_eq!((FORMAT.version_of)(&written), Some(5));
             assert_eq!(read_file(&written, &registry()).unwrap(), read);
         }
-        // A build that reads up to version 4 refuses what's newer by its
-        // first line, as a build before this one refuses version 4.
-        let newer = read_file(&parts_moved(5), &registry()).unwrap_err();
+        // A build that reads up to version 5 refuses what's newer by its
+        // first line, as a build before this one refuses version 5.
+        let newer = read_file(&parts_moved(6), &registry()).unwrap_err();
         assert_eq!(newer.line, 1);
         assert!(newer.message.contains("newer version"), "{newer}");
     }
@@ -1265,28 +1320,38 @@ mod tests {
         let file = read_file(yard, &registry()).unwrap();
         let yard = yard
             .replace("-- An area.", "-- A level.")
-            .replace("area version 2;", "level version 4;");
+            .replace("area version 2;", "level version 5;")
+            .replace("assembly = ", "prefab = ")
+            .replace("-- assemblies/", "-- prefabs/");
         let moved: Vec<_> = (file.overrides.values())
             .filter(|o| o.parent == ParentChange::TopLevel)
             .collect();
         assert_eq!(moved.len(), 1);
-        let paths = |_| Some("assemblies/crate.solassembly".to_string());
+        let paths = |_| Some("prefabs/crate.solassembly".to_string());
         assert_eq!(write_file(&file, &registry(), &paths), yard);
         let crate_ = include_str!("../../../tests/fixtures/area/v2/crate.solassembly");
         let file = read_file(crate_, &registry()).unwrap();
-        let crate_ = crate_.replace("assembly version 2", "assembly version 4");
+        let crate_ = crate_
+            .replace("-- An assembly.", "-- A prefab.")
+            .replace("assembly version 2", "prefab version 5");
         assert_eq!(write_file(&file, &registry(), &no_paths), crate_);
     }
 
     #[test]
-    fn an_area_of_version_3_is_written_as_the_version_4_level_and_back() {
-        // Decision 0118: version 4 is version 3 under the new name. The
-        // version 3 example, read and written, is the version 4 one byte
-        // for byte, and that reads and writes as itself.
+    fn an_area_of_version_3_is_written_as_the_version_5_level_and_back() {
+        // Decision 0118: versions 4 and 5 are version 3 under the new
+        // names. The version 3 example, read and written, is the version 5
+        // one byte for byte, and that reads and writes as itself.
         let area = include_str!("../../../tests/fixtures/area/v3/blockout.solarea");
-        let level = include_str!("../../../tests/fixtures/area/v4/blockout.sollevel");
+        let level = include_str!("../../../tests/fixtures/area/v5/blockout.sollevel");
+        let v4 = include_str!("../../../tests/fixtures/area/v4/blockout.sollevel");
         assert_eq!((FORMAT.version_of)(area), Some(3));
-        assert_eq!((FORMAT.version_of)(level), Some(4));
+        assert_eq!((FORMAT.version_of)(v4), Some(4));
+        assert_eq!((FORMAT.version_of)(level), Some(5));
+        assert_eq!(
+            read_file(v4, &registry()).unwrap(),
+            read_file(area, &registry()).unwrap()
+        );
         let old = read_file(area, &registry()).unwrap();
         let new = read_file(level, &registry()).unwrap();
         assert_eq!(old, new);
@@ -1294,9 +1359,12 @@ mod tests {
         assert_eq!(write_file(&new, &registry(), &no_paths), level);
         let crate_ = include_str!("../../../tests/fixtures/area/v4/crate.solassembly");
         let file = read_file(crate_, &registry()).unwrap();
-        assert_eq!(write_file(&file, &registry(), &no_paths), crate_);
+        let written = crate_
+            .replace("-- An assembly.", "-- A prefab.")
+            .replace("assembly version 4", "prefab version 5");
+        assert_eq!(write_file(&file, &registry(), &no_paths), written);
         // Either word in either version's header reads the same.
-        let renamed = level.replacen("level version 4;", "area version 4;", 1);
+        let renamed = level.replacen("level version 5;", "area version 5;", 1);
         assert_eq!(read_file(&renamed, &registry()).unwrap(), new);
     }
 
@@ -1352,7 +1420,7 @@ mod tests {
         level.get_mut(crate_).unwrap().parent = Some(shelf);
         let text = write(&level, &registry(), &no_paths);
         // The file is read as written (a parent may be a part of a placed
-        // assembly, not there yet)…
+        // prefab, not there yet)…
         assert_eq!(read_file(&text, &registry()).unwrap().level, level);
         // …and a level made from it has no loop: the lower ID of the two
         // is at the top, the other and the lid still under theirs.
@@ -1403,7 +1471,7 @@ mod tests {
         );
         let text = write(&level, &registry(), &|_| Some("props/sun.glb".into()));
         assert!(text.contains(
-            "level version 4;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
+            "level version 5;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
         ));
         assert!(text.contains("    Light.color = [1.0, 0.95, 0.88];\n"));
         assert!(text.contains("    Light.kind = \"Sun\";\n"));
@@ -1434,8 +1502,8 @@ mod tests {
         let cases = [
             ("", 1, "empty"),
             ("scene version 1;", 1, "isn't a level file"),
-            ("area version 5;", 1, "newer version"),
-            ("level version 5;", 1, "newer version"),
+            ("area version 6;", 1, "newer version"),
+            ("level version 6;", 1, "newer version"),
             ("level version 0;", 1, "no layout version 0"),
             ("area version 0;", 1, "no layout version 0"),
             ("area version 1;\nentity X {}", 2, "isn't an ID"),
@@ -1477,7 +1545,7 @@ mod tests {
             (
                 "area version 1;\nentity 0000000000001/0000000000002 {}",
                 2,
-                "isn't a placed assembly",
+                "isn't a placed prefab",
             ),
             (
                 "area version 1;\nentity 0000000000001 { removed = true; }",
@@ -1485,7 +1553,7 @@ mod tests {
                 "only for parts",
             ),
             (
-                "assembly version 1 root 0000000000009;\nentity 0000000000001 {}",
+                "prefab version 1 root 0000000000009;\nentity 0000000000001 {}",
                 1,
                 "root",
             ),

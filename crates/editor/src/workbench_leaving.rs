@@ -12,6 +12,28 @@ impl Workbench {
     /// playing wait for it, then the question about unsaved changes. The
     /// action waits for each answer, so nothing is lost without a word.
     pub(crate) fn request(&mut self, action: WorkbenchAction, actions: &mut Vec<WorkbenchAction>) {
+        // On a prefab's page, Save saves the prefab; anything that leaves
+        // the level brings the level's tab to the front first.
+        if self.page_in_front() {
+            if matches!(
+                action,
+                WorkbenchAction::SaveLevel | WorkbenchAction::SaveLevelAs
+            ) {
+                self.save_prefab_page();
+                return;
+            }
+            if leaves_the_level(&action) {
+                self.level_to_front();
+            }
+        }
+        if leaves_the_project(&action) && self.prefab_page_dirty() {
+            // Its changes are asked about first: Save, Don't save or
+            // Cancel, then this is asked for again.
+            if let Some(page) = &mut self.open.prefab_page {
+                page.asking_to_close = true;
+            }
+            return;
+        }
         if self.open.playing.is_some() && crate::play::waits_for_stop(&action) {
             // Refused, with a word in the Console, at the end of the frame.
             actions.push(action);
@@ -56,6 +78,12 @@ impl Workbench {
         }
         if let Some(changes) = &mut self.open.play_changes {
             changes.then = Some(WorkbenchAction::Quit);
+            return false;
+        }
+        if self.prefab_page_dirty() && !self.may_close {
+            if let Some(page) = &mut self.open.prefab_page {
+                page.asking_to_close = true;
+            }
             return false;
         }
         // While playing, the level that matters is the one from before Play.
@@ -159,6 +187,22 @@ impl Workbench {
 /// Whether `action` leaves the open level: puts another level or project
 /// in its place, or closes the editor. [`Workbench::request`] asks about
 /// what would be lost before any of these goes ahead.
+/// Whether `action` closes the project (and with it a prefab's page).
+fn leaves_the_project(action: &WorkbenchAction) -> bool {
+    matches!(
+        action,
+        WorkbenchAction::OpenProject
+            | WorkbenchAction::CreateProject(_)
+            | WorkbenchAction::CloseProject
+            | WorkbenchAction::OpenRecent(_)
+            | WorkbenchAction::MakeSampleGame
+            | WorkbenchAction::MakeUiSample
+            | WorkbenchAction::MakeBenchmark
+            | WorkbenchAction::MakePlayground
+            | WorkbenchAction::Quit
+    )
+}
+
 pub(crate) fn leaves_the_level(action: &WorkbenchAction) -> bool {
     matches!(
         action,

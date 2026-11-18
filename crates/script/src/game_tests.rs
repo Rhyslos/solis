@@ -137,7 +137,7 @@ pub(super) fn compiled(main: &str) -> Arc<Compiled> {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_assemblies(&["drone"]).and_sounds(&[
+        &crate::project_names::Names::with_prefabs(&["drone"]).and_sounds(&[
             "boom",
             "engine",
             "music/theme",
@@ -406,13 +406,13 @@ fn shots_fired_land_in_order_on_any_number_of_shards() {
 
 #[test]
 fn spawns_make_the_same_entities_on_any_number_of_shards() {
-    const HIVES: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+    const HIVES: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
         component Hive {\n\
             has {\n\
                 entity last = nothing;\n\
             }\n\
             method update(float dt) {\n\
-                last = World:spawn(Assembly.Drone, [1, 2, 3]);\n\
+                last = World:spawn(Prefab.Drone, [1, 2, 3]);\n\
                 last:despawn();\n\
             }\n\
         }\n\
@@ -507,7 +507,7 @@ fn a_runaway_loop_can_t_keep_unbounded_changes() {
 fn spawns_in_different_rounds_of_events_make_different_entities() {
     // Each round's only event (number 0 in its round) reaches the same
     // component, which spawns and sends the next.
-    const ECHO: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+    const ECHO: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
         event Ping(int left);\n\
         component Echo {\n\
             has {\n\
@@ -520,7 +520,7 @@ fn spawns_in_different_rounds_of_events_make_different_entities() {
                 }\n\
             }\n\
             on Ping(int left) {\n\
-                entity made = World:spawn(Assembly.Drone, [0, 0, 0]);\n\
+                entity made = World:spawn(Prefab.Drone, [0, 0, 0]);\n\
                 is left > 0? then {\n\
                     send Ping(left - 1) to me;\n\
                 }\n\

@@ -1,9 +1,12 @@
-//! Levels were called areas until decision 0118. What a user reads says
-//! "level" for the thing that's built, saved and played: every message,
-//! label and hint in the program's own code, the user manual (which is
-//! the guide, built) and the guide's picture captions. "Area" stays only
-//! where it means something else, or names what older files say, and
-//! each such place is listed in [`ALLOWED`] with why.
+//! Levels were called areas, and prefabs assemblies, until decision 0118.
+//! What a user reads says "level" for the thing that's built, saved and
+//! played, and "prefab" for the thing made once and placed many times:
+//! every message, label and hint in the program's own code, the user
+//! manual (which is the guide, built) and the guide's picture captions.
+//! "Area" and "assembly" stay only where they mean something else (a
+//! region of the screen; Lust's own word for a game screen), or name what
+//! older files say, and each such place is listed in [`ALLOWED`] or
+//! [`ALLOWED_ASSEMBLY`] with why.
 
 use std::path::{Path, PathBuf};
 
@@ -99,6 +102,95 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ),
 ];
 
+/// Where "assembly" is still right, as [`ALLOWED`] has it for "area".
+const ALLOWED_ASSEMBLY: &[(&str, &str, &str)] = &[
+    (
+        "*",
+        "assembly with a view",
+        "Lust's own word for a game screen (`assembly Hud { view { … } }`)",
+    ),
+    (
+        "screens.rs",
+        "its assembly's name",
+        "a game screen is the Lust assembly named after its file",
+    ),
+    (
+        "screens.rs",
+        "passes the assembly named after it",
+        "the same, said when a screen's file doesn't",
+    ),
+    (
+        "screens.rs",
+        "=assembly",
+        "Lust's keyword, which the screens' reader looks for",
+    ),
+    (
+        "source.rs",
+        "=assembly",
+        "Lust's keyword, which the canvas's reader looks for",
+    ),
+    (
+        "lust_guard.rs",
+        "=assembly",
+        "Lust's keyword, which a data file may not hold",
+    ),
+    (
+        "text.rs",
+        "=assembly",
+        "the word an assembly's file and a copy's key had before levels' version 5, still read",
+    ),
+    (
+        "older_files.rs",
+        "~assemblies are called",
+        "the Console's note that a project's assemblies were renamed prefabs",
+    ),
+    (
+        "older_files.rs",
+        "read as an assembly for now",
+        "the note for an older file that couldn't be renamed",
+    ),
+    (
+        "old_names.rs",
+        "assemblies are called prefabs",
+        "the mistake game code's old `Assembly` gets",
+    ),
+    (
+        "old_names.rs",
+        "=assembly",
+        "game code's old name for the state, looked for to say the new one",
+    ),
+    (
+        "prefabs.md",
+        "prefab, copy, assembly](",
+        "the link to the concepts, which say what the old name was",
+    ),
+    (
+        "concepts.md",
+        "~**assembly:** the old name for a prefab",
+        "the pointer for anyone who knew the old name",
+    ),
+    (
+        "backups-and-upgrades.md",
+        "~**assemblies renamed prefabs:**",
+        "explains the rename a project from before it goes through",
+    ),
+    (
+        "prefabs.md",
+        "~**assemblies:** solis called prefabs",
+        "the same, on the prefabs' page",
+    ),
+    (
+        "game-code.md",
+        "~(assemblies are called prefabs",
+        "the row of calls that changed, for code written before",
+    ),
+    (
+        "screens.md",
+        "~assembly",
+        "Lust's own word for a game screen",
+    ),
+];
+
 /// The crates whose code holds what the program says.
 const CRATES: &[&str] = &[
     "app",
@@ -188,16 +280,44 @@ fn strings_of(code: &str) -> Vec<String> {
     found
 }
 
+/// A word looked for: its stem and the ends it takes ("area" and "s";
+/// "assembl", "y" and "ies"), and where it's allowed.
+#[derive(Clone, Copy)]
+struct Word {
+    stem: &'static str,
+    ends: &'static [&'static str],
+    allowed: &'static [(&'static str, &'static str, &'static str)],
+}
+
+const AREA: Word = Word {
+    stem: "area",
+    ends: &["s", ""],
+    allowed: ALLOWED,
+};
+
+const ASSEMBLY: Word = Word {
+    stem: "assembl",
+    ends: &["ies", "y"],
+    allowed: ALLOWED_ASSEMBLY,
+};
+
 /// Where in `text` (already in lower case) the word "area" or "areas"
 /// stands alone.
 fn words_at(text: &str) -> Vec<usize> {
+    word_at(text, AREA)
+}
+
+/// Where in `text` (already in lower case) `word` stands alone.
+fn word_at(text: &str, word: Word) -> Vec<usize> {
     let letter = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '_');
     let mut found = Vec::new();
-    for (at, _) in text.match_indices("area") {
+    for (at, _) in text.match_indices(word.stem) {
         let before = text[..at].chars().next_back();
-        let rest = &text[at + 4..];
-        let after = rest.strip_prefix('s').unwrap_or(rest).chars().next();
-        if !letter(before) && !letter(after) {
+        let rest = &text[at + word.stem.len()..];
+        let Some(rest) = word.ends.iter().find_map(|end| rest.strip_prefix(end)) else {
+            continue;
+        };
+        if !letter(before) && !letter(rest.chars().next()) {
             found.push(at);
         }
     }
@@ -208,9 +328,14 @@ fn words_at(text: &str) -> Vec<usize> {
 /// allowed phrase covers, each with the text around it. `whole` is the
 /// whole text of a string in code, for the `=` phrases.
 fn unexplained(file: &str, text: &str, whole: bool) -> Vec<String> {
+    unexplained_word(file, text, whole, AREA)
+}
+
+/// [`unexplained`], for `word`.
+fn unexplained_word(file: &str, text: &str, whole: bool, word: Word) -> Vec<String> {
     let lower = text.to_lowercase();
     let mut covered: Vec<(usize, usize)> = Vec::new();
-    for (in_file, phrase, _) in ALLOWED {
+    for (in_file, phrase, _) in word.allowed {
         if *in_file != "*" && *in_file != file {
             continue;
         }
@@ -230,7 +355,7 @@ fn unexplained(file: &str, text: &str, whole: bool) -> Vec<String> {
             covered.push((at, at + phrase.len()));
         }
     }
-    words_at(&lower)
+    word_at(&lower, word)
         .into_iter()
         .filter(|at| !covered.iter().any(|(a, b)| a <= at && *at < *b))
         .map(|at| {
@@ -297,5 +422,47 @@ fn the_check_finds_what_it_looks_for() {
     assert_eq!(
         strings_of("let a = \"one\"; // \"not this\"\nlet b = 'x'; let c = \"two \\\n    lines\";"),
         ["one", "two lines"]
+    );
+}
+
+#[test]
+fn the_program_and_the_manual_say_prefab_for_what_was_an_assembly() {
+    let mut said = Vec::new();
+    for name in CRATES {
+        for (path, text) in files_in(&top().join("crates").join(name).join("src"), "rs") {
+            let file = path.file_name().unwrap().to_string_lossy().into_owned();
+            if file.ends_with("_tests.rs") || file == "tests.rs" {
+                continue;
+            }
+            for string in strings_of(&text) {
+                said.extend(unexplained_word(&file, &string, true, ASSEMBLY));
+            }
+        }
+    }
+    let mut pages = files_in(&top().join("docs/manual"), "md");
+    let captions = top().join("tools/guide-pictures/pictures.list");
+    pages.push((
+        captions.clone(),
+        std::fs::read_to_string(&captions).unwrap(),
+    ));
+    for (path, text) in pages {
+        let file = path.file_name().unwrap().to_string_lossy().into_owned();
+        for line in text.lines() {
+            said.extend(unexplained_word(&file, line, false, ASSEMBLY));
+        }
+    }
+    assert!(said.is_empty(), "say \"prefab\":\n{}", said.join("\n"));
+}
+
+#[test]
+fn the_check_finds_assembly_alone() {
+    assert_eq!(word_at("an assembly, two assemblies", ASSEMBLY), [3, 17]);
+    assert!(word_at("solassembly assemble webassembly", ASSEMBLY).is_empty());
+    assert_eq!(
+        unexplained_word("x.rs", "Assembly from selection", false, ASSEMBLY).len(),
+        1
+    );
+    assert!(
+        unexplained_word("x.rs", "holding an assembly with a view", false, ASSEMBLY).is_empty()
     );
 }

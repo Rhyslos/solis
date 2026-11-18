@@ -425,6 +425,9 @@ fn compile_here(
         let mut missing = check_entry(code);
         missing.extend(long_prefix_chains(&code.files));
         missing.extend(shared_names(&code.files));
+        // The project's names from before decision 0118: said as what
+        // they are now, before Lust only says they aren't there.
+        missing.extend(crate::old_names::old_names(&code.files));
         if missing.is_empty() {
             // Without the editor's files for things the game never
             // fetches, which would want engine objects it never reaches.

@@ -69,6 +69,19 @@ pub fn dialog(
     words: impl FnOnce(&mut Ui),
     answers: &[Answer<'_>],
 ) -> Option<usize> {
+    dialog_with_note(ctx, id, title, words, "", answers)
+}
+
+/// [`dialog`] with a quiet `note` at the left of the answers' row (Make
+/// prefab…'s "4 entities become one.", board 07); none when empty.
+pub fn dialog_with_note(
+    ctx: &egui::Context,
+    id: &str,
+    title: &str,
+    words: impl FnOnce(&mut Ui),
+    note: &str,
+    answers: &[Answer<'_>],
+) -> Option<usize> {
     let frame = Frame::new()
         .fill(tokens::panel())
         .stroke(Stroke::new(1.0, tokens::pill_border()))
@@ -90,6 +103,9 @@ pub fn dialog(
             words(ui);
             ui.add_space(size::CARD_INNER_GAP);
             ui.horizontal(|ui| {
+                if !note.is_empty() {
+                    ui.label(RichText::new(note).color(tokens::text_meta()));
+                }
                 for (index, answer) in answers.iter().enumerate().filter(|(_, a)| a.left) {
                     if button(ui, answer) {
                         chosen = Some(index);

@@ -13,8 +13,8 @@ pub enum LibraryKind {
     /// A model.
     #[default]
     Model,
-    /// An assembly.
-    Assembly,
+    /// A prefab.
+    Prefab,
     /// A level.
     Level,
     /// A picture.
@@ -49,7 +49,7 @@ impl LibraryKind {
     pub(crate) fn name(self) -> &'static str {
         match self {
             Self::Model => "Model",
-            Self::Assembly => "Assembly",
+            Self::Prefab => "Prefab",
             Self::Level => "Level",
             Self::Texture => "Picture",
             Self::Code => "Code",
@@ -72,7 +72,7 @@ impl LibraryKind {
         use theme::kind as k;
         match self {
             Self::Model => k::MODEL,
-            Self::Assembly => k::ASSEMBLY,
+            Self::Prefab => k::PREFAB,
             Self::Level => k::LEVEL,
             Self::Texture | Self::SpriteSheet | Self::Atlas => k::PICTURE,
             Self::SpriteClips | Self::Animator => k::CLIPS,
@@ -89,7 +89,7 @@ impl LibraryKind {
     #[cfg(test)]
     pub(crate) const ALL: [Self; 15] = [
         Self::Model,
-        Self::Assembly,
+        Self::Prefab,
         Self::Level,
         Self::Texture,
         Self::SpriteSheet,
@@ -109,7 +109,7 @@ impl LibraryKind {
     pub(super) fn icon(self) -> Icon {
         match self {
             Self::Model => Icon::Model,
-            Self::Assembly => Icon::Assembly,
+            Self::Prefab => Icon::Prefab,
             Self::Level => Icon::LevelFile,
             Self::Texture => Icon::Picture,
             Self::Code => Icon::CodeFile,
@@ -131,7 +131,7 @@ impl LibraryKind {
         matches!(
             self,
             Self::Model
-                | Self::Assembly
+                | Self::Prefab
                 | Self::SpriteSheet
                 | Self::SpriteClips
                 | Self::TileMap
@@ -141,11 +141,11 @@ impl LibraryKind {
 
     /// Whether a double-click opens it (in the editor) rather than placing
     /// it: a sprite's clips file opens its Clips and Frames tabs, an
-    /// animator its Animator tab.
+    /// animator its Animator tab, a prefab its own page (board 07).
     pub fn opens_on_double_click(self) -> bool {
         matches!(
             self,
-            Self::SpriteClips | Self::Animator | Self::Tileset | Self::Atlas
+            Self::SpriteClips | Self::Animator | Self::Tileset | Self::Atlas | Self::Prefab
         )
     }
 
@@ -194,7 +194,7 @@ pub(crate) enum Filter {
     /// Every file.
     #[default]
     All,
-    /// Models and assemblies.
+    /// Models and prefabs.
     Models,
     /// Sprite sheets, their clips, animators and pictures.
     Sprites,
@@ -234,7 +234,7 @@ impl Filter {
         use LibraryKind as K;
         match self {
             Self::All => true,
-            Self::Models => matches!(kind, K::Model | K::Assembly),
+            Self::Models => matches!(kind, K::Model | K::Prefab),
             Self::Sprites => matches!(
                 kind,
                 K::SpriteSheet | K::SpriteClips | K::Animator | K::Texture

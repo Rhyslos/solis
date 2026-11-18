@@ -48,13 +48,23 @@ impl Workbench {
         if self.launcher.shown {
             return self.show_launcher(ui);
         }
+        // A prefab's page in front: its document is the one shown and
+        // worked on, until the frame ends.
+        self.page_in();
         let (mut actions, page) = self.begin_frame(ui);
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
         let mut shown = HashSet::new();
         let mut asks = PanelAsks::default();
         let picked_before = self.open.library_state.selected.clone();
         self.drop_stale_sound();
-        let part = self.assembly_part();
+        let part = self.prefab_part();
+        let page_names = self.page_names();
+        let prefab_details = self.prefab_details();
+        self.open.level_panel.marks = if self.in_front.contains(&Panel::Level) {
+            self.prefab_marks()
+        } else {
+            std::sync::Arc::default()
+        };
         let (code_problems, copied, game) = self.prepare_frame();
         let running = self.running_values();
         // Only worked out while a screen is open: what it can be tied to
@@ -212,6 +222,8 @@ impl Workbench {
             pixels: self.open.pixels,
             game_out: &mut asks.game,
             document: &self.open.document,
+            page: page_names,
+            prefab_details: prefab_details.as_ref(),
             models: &self.open.models,
             level_requests: &mut asks.level,
             project: self.open.project.as_ref(),
@@ -303,6 +315,7 @@ impl Workbench {
         };
         let drawn = renderer.inner.take_report();
         self.profiler.end(drawn, components, entities);
+        self.page_out();
         actions
     }
 
@@ -572,6 +585,8 @@ impl Workbench {
             drop_hint(ui, self.accent);
         }
         self.play_changes_window(ui);
+        self.make_prefab_dialog(ui.ctx(), actions);
+        self.prefab_page_question(ui.ctx());
         // What waited for Keep or Undo all (a quit, say) goes on now.
         actions.append(&mut self.open.outbox);
         self.prompts(ui, actions);

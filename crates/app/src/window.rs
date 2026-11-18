@@ -126,7 +126,7 @@ struct App {
     rust_note: Option<String>,
     /// What's in the assets folder, as the Library last showed it.
     listing: asset_db::Listing,
-    /// Assemblies that couldn't be read ahead for the Library's listing:
+    /// Prefabs that couldn't be read ahead for the Library's listing:
     /// not tried again until the listing changes.
     unreadable: HashSet<AssetId>,
     /// The open level's file: saving, opening, and changes on disk.
@@ -145,6 +145,8 @@ struct App {
     updates: crate::updates::Updates,
     /// Copying a project or looking for projects, for Recent projects.
     tidying: crate::known_projects::Tidying,
+    /// Counts of prefabs' copies, on a worker, for Details.
+    prefab_counts: prefabs::Counting,
     /// Whether the splash screen still shows, until the editor opens.
     splashing: bool,
     /// File › Exit (or closing the launcher) asked to quit: the window's
@@ -185,6 +187,9 @@ mod saved;
 
 #[path = "window_launcher.rs"]
 mod launcher_window;
+
+#[path = "window_prefabs.rs"]
+mod prefabs;
 
 impl App {
     fn new(
@@ -253,6 +258,7 @@ impl App {
             updates: crate::updates::Updates::new(pending, skipped, copy.clone()),
             text_files: crate::text_files::TextFiles::default(),
             tidying: Default::default(),
+            prefab_counts: Default::default(),
             splashing: playtest.is_none(),
             quitting: false,
             editor_place: saved.editor_place,
@@ -683,12 +689,14 @@ impl App {
         for change in &changes {
             let Some(db) = self.projects.db() else { return };
             match change {
-                Change::Changed(id) if self.workbench.assemblies().contains_key(id) => {
+                Change::Changed(id) if self.workbench.prefabs().contains_key(id) => {
                     let id = *id;
-                    if let Err(why) = self.load_assembly(id, true) {
+                    if let Err(why) = self.load_prefab(id, true) {
                         self.workbench.log(
                             LogLevel::Warning,
-                            format!("Couldn't read the changed assembly: {why}; copies stay as they were."),
+                            format!(
+                                "Couldn't read the changed prefab: {why}; copies stay as they were."
+                            ),
                         );
                     }
                     self.load_level_models();
@@ -755,7 +763,7 @@ impl App {
                 self.workbench.log(LogLevel::Warning, note.clone());
             }
             self.rust_note = note;
-            // An assembly added or renamed changes the project's names.
+            // A prefab added or renamed changes the project's names.
             self.game_code.check(assets);
         }
     }
@@ -809,7 +817,7 @@ impl App {
         let Some(db) = self.projects.db() else { return };
         let wanted: Vec<AssetId> = models_wanted(
             self.workbench.document().level(),
-            self.workbench.assemblies().values().map(|file| &file.level),
+            self.workbench.prefabs().values().map(|file| &file.level),
         )
         .into_iter()
         .filter(|id| !self.workbench.has_model(*id))
@@ -834,16 +842,16 @@ impl App {
         })
     }
 
-    /// Reads assembly `id` (and the assemblies it places) from the project
-    /// and hands them to the editor. Assemblies already known are read
+    /// Reads prefab `id` (and the prefabs it places) from the project
+    /// and hands them to the editor. Prefabs already known are read
     /// again only when `fresh`.
-    fn load_assembly(&mut self, id: AssetId, fresh: bool) -> Result<(), String> {
+    fn load_prefab(&mut self, id: AssetId, fresh: bool) -> Result<(), String> {
         let mut todo = vec![id];
         let mut seen = HashSet::new();
         let mut read = Vec::new();
         while let Some(next) = todo.pop() {
             if !seen.insert(next)
-                || (next != id || !fresh) && self.workbench.assemblies().contains_key(&next)
+                || (next != id || !fresh) && self.workbench.prefabs().contains_key(&next)
             {
                 continue;
             }
@@ -851,38 +859,36 @@ impl App {
                 .projects
                 .db()
                 .and_then(|db| db.file(next))
-                .ok_or_else(|| format!("the assembly {next} isn't in the project"))?;
-            let file = LevelFiles::read(&path, &self.workbench.document().registry)
+                .ok_or_else(|| format!("the prefab {next} isn't in the project"))?;
+            let (file, _) = crate::prefab_files::read(&path, &self.workbench.document().registry)
                 .map_err(|why| format!("{}: {why}", file_name(&path)))?;
             todo.extend(
                 file.level
                     .iter()
-                    .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.assembly)),
+                    .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.prefab)),
             );
             read.push((next, file));
         }
         // Every file is read before any is used, and the ones placed
-        // inside others go first: an assembly that now places a new one
+        // inside others go first: a prefab that now places a new one
         // (a Git pull) finds it already known when its copies are rebuilt.
         for (next, file) in read.into_iter().rev() {
-            self.workbench.set_assembly(next, std::sync::Arc::new(file));
+            self.workbench.set_prefab(next, std::sync::Arc::new(file));
         }
         Ok(())
     }
 
-    /// Reads every assembly a level file places.
-    fn load_assemblies_of(&mut self, file: &level::text::LevelFile) {
+    /// Reads every prefab a level file places.
+    fn load_prefabs_of(&mut self, file: &level::text::LevelFile) {
         let wanted: HashSet<AssetId> = file
             .level
             .iter()
-            .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.assembly))
+            .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.prefab))
             .collect();
         for id in wanted {
-            if let Err(why) = self.load_assembly(id, false) {
-                self.workbench.log(
-                    LogLevel::Warning,
-                    format!("Couldn't read an assembly: {why}."),
-                );
+            if let Err(why) = self.load_prefab(id, false) {
+                self.workbench
+                    .log(LogLevel::Warning, format!("Couldn't read a prefab: {why}."));
             }
         }
     }
@@ -935,7 +941,7 @@ impl App {
         let read = LevelFiles::read_noting(path, &self.workbench.document().registry).and_then(
             |(file, note)| {
                 older = note;
-                self.load_assemblies_of(&file);
+                self.load_prefabs_of(&file);
                 self.workbench.expand_file(&file).map_err(|e| e.to_string())
             },
         );
@@ -1118,14 +1124,19 @@ impl App {
                         ),
                     }
                 }
-                WorkbenchAction::CreateAssembly(root) => self.create_assembly(root),
-                WorkbenchAction::ApplyToAssembly {
-                    assembly,
+                WorkbenchAction::MakePrefab(plan) => self.make_prefab(plan),
+                WorkbenchAction::ChoosePrefabFolder(start) => self.choose_prefab_folder(&start),
+                WorkbenchAction::NewPrefab(folder) => self.new_prefab(&folder),
+                WorkbenchAction::OpenPrefab(id) => self.open_prefab(id),
+                WorkbenchAction::SavePrefab { asset, file } => self.save_prefab(asset, file),
+                WorkbenchAction::CountPlaced(id) => self.count_placed(id),
+                WorkbenchAction::ApplyToPrefab {
+                    prefab,
                     path,
                     component,
                     field,
                     value,
-                } => self.apply_to_assembly(assembly, &path, &component, &field, value),
+                } => self.apply_to_prefab(prefab, &path, &component, &field, value),
                 WorkbenchAction::AddSampleLevel => self.add_sample(),
                 WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
                 WorkbenchAction::MakeUiSample => self.importer.ask_folder(FolderFor::UiSample),
@@ -1490,22 +1501,22 @@ impl App {
     fn show_library(&mut self) {
         let thumbnails = &self.thumbnails;
         let (items, folders) = Projects::library(&self.listing, |p| thumbnails.get(p));
-        // Every assembly in the project is known to the editor, so game
+        // Every prefab in the project is known to the editor, so game
         // code can make copies of any (`spawn`). A broken one shows in
         // Problems when it's used.
-        let assemblies: Vec<AssetId> = items
+        let prefabs: Vec<AssetId> = items
             .iter()
-            .filter(|item| item.kind == editor::LibraryKind::Assembly)
+            .filter(|item| item.kind == editor::LibraryKind::Prefab)
             .filter_map(|item| item.id)
-            .filter(|id| !self.workbench.assemblies().contains_key(id))
+            .filter(|id| !self.workbench.prefabs().contains_key(id))
             .filter(|id| !self.unreadable.contains(id))
             .collect();
         self.workbench.set_library(items);
         self.workbench.set_folders(folders);
-        let read_some = !assemblies.is_empty();
-        for id in assemblies {
-            if let Err(why) = self.load_assembly(id, false) {
-                log::debug!("couldn't read an assembly ahead: {why}");
+        let read_some = !prefabs.is_empty();
+        for id in prefabs {
+            if let Err(why) = self.load_prefab(id, false) {
+                log::debug!("couldn't read a prefab ahead: {why}");
                 self.unreadable.insert(id);
             }
         }
@@ -1515,104 +1526,41 @@ impl App {
         }
     }
 
-    /// Saves `root` and everything under it as a new assembly in the
-    /// project's `assemblies` folder, and turns it into a copy of it.
-    fn create_assembly(&mut self, root: EntityId) {
-        let Some(db) = self.projects.db() else {
-            self.workbench.log(
-                LogLevel::Warning,
-                "Assemblies live in a project: make or open one first (File > New project).",
-            );
-            return;
-        };
-        let Some(file) = self.workbench.assembly_file(root) else {
-            return;
-        };
-        let name = self
-            .workbench
-            .document()
-            .level()
-            .get(root)
-            .map_or_else(|| "Assembly".to_string(), |e| e.name.clone());
-        // A name that works on every system (not a device's, say), from
-        // the entity's name, which a level file can set to anything.
-        let safe = asset_db::file_name_from(&name, "Assembly");
-        let folder = db.project().files().join("assemblies");
-        let mut path = folder.join(format!("{safe}.{}", asset_db::ASSEMBLY_EXTENSION));
-        let mut n = 2;
-        while std::fs::symlink_metadata(&path).is_ok() {
-            path = folder.join(format!("{safe} {n}.{}", asset_db::ASSEMBLY_EXTENSION));
-            n += 1;
-        }
-        let text = self.file_text(&file);
-        let written = asset_db::own_folder(&db.project().files(), "assemblies")
-            .and_then(|_| asset_db::write_atomically(&path, text.as_bytes()))
-            .and_then(|()| self.projects.adopt(&path));
-        let id = match written {
-            Ok(id) => id,
-            Err(why) => {
-                self.workbench.log(
-                    LogLevel::Error,
-                    format!("Couldn't save the assembly: {why}."),
-                );
-                return;
-            }
-        };
-        let (changes, notes) = self.projects.rescan();
-        self.workbench.set_assembly(id, std::sync::Arc::new(file));
-        self.follow_changes(changes, notes);
-        self.refresh_library();
-        self.workbench.make_copy(root, id);
-        self.workbench.log(
-            LogLevel::Info,
-            format!("Saved the assembly {}.", file_name(&path)),
-        );
-    }
-
-    /// Sets a field in an assembly's file (Apply to assembly), saves it,
+    /// Sets a field in a prefab's file (Apply to prefab), saves it,
     /// and updates every copy.
-    fn apply_to_assembly(
+    fn apply_to_prefab(
         &mut self,
-        assembly: AssetId,
+        prefab: AssetId,
         path: &[EntityId],
         component: &str,
         field: &str,
         value: reflect::Value,
     ) {
         let (Some(file), Some(on_disk)) = (
-            self.workbench.assemblies().get(&assembly).cloned(),
-            self.projects.db().and_then(|db| db.file(assembly)),
+            self.workbench.prefabs().get(&prefab).cloned(),
+            self.projects.db().and_then(|db| db.file(prefab)),
         ) else {
             return;
         };
         let mut file = (*file).clone();
-        if !level::assembly::set_in_file(&mut file, path, component, field, value) {
+        if !level::prefab::set_in_file(&mut file, path, component, field, value) {
             return;
         }
-        let text = self.file_text(&file);
         let root = self.projects.root().map(Path::to_path_buf);
-        let registry = &self.workbench.document().registry;
-        let read_back = |text: &str| {
-            let file = level::text::read_file(text, registry).map_err(|e| e.to_string())?;
-            Ok(self.file_text(&file))
-        };
-        // An older assembly is copied to the backups first (Phase 8, C1).
-        let saved = match &root {
-            Some(root) => {
-                crate::upgrades::save(root, &on_disk, &text, &level::text::FORMAT, read_back)
-            }
-            None => asset_db::write_atomically(&on_disk, text.as_bytes())
-                .map(|()| None)
-                .map_err(|e| e.to_string()),
-        };
+        // An older prefab is copied to the backups first (Phase 8, C1).
+        let saved = crate::prefab_files::save(
+            root.as_deref(),
+            &on_disk,
+            &file,
+            &self.workbench.document().registry,
+        );
         match saved {
             Ok(copy) => {
                 if let (Some(copy), Some(root)) = (copy, &root) {
                     let note = crate::upgrades::kept_note(root, &file_name(&on_disk), &copy);
                     self.workbench.log(LogLevel::Info, note);
                 }
-                self.workbench
-                    .set_assembly(assembly, std::sync::Arc::new(file));
+                self.workbench.set_prefab(prefab, std::sync::Arc::new(file));
             }
             Err(why) => self.workbench.log(
                 LogLevel::Error,
@@ -1691,13 +1639,13 @@ impl App {
 
     /// Places a project asset where the camera looks: a model is read
     /// (from the cache, so quickly) and placed when it arrives; an
-    /// assembly is placed at once.
+    /// prefab is placed at once.
     fn place(&mut self, id: AssetId) {
         let kind = self.projects.db().and_then(|db| db.get(id)).map(|r| r.kind);
-        if kind == Some(asset_db::AssetKind::Assembly) {
-            match self.load_assembly(id, false) {
+        if kind == Some(asset_db::AssetKind::Prefab) {
+            match self.load_prefab(id, false) {
                 Ok(()) => {
-                    self.workbench.place_assembly(id);
+                    self.workbench.place_prefab(id);
                     self.load_level_models();
                 }
                 Err(why) => {
@@ -1764,16 +1712,16 @@ fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
 }
 
 /// The models the open project needs loaded: those the level uses, and
-/// every model any of the project's assemblies uses, since game code can
-/// make copies of any assembly while playing (`spawn`). Without the
+/// every model any of the project's prefabs uses, since game code can
+/// make copies of any prefab while playing (`spawn`). Without the
 /// second, copies made only by game code had no model to draw (the
 /// benchmark's stress level showed only its lasers).
 fn models_wanted<'a>(
     level: &'a level::Level,
-    assemblies: impl Iterator<Item = &'a level::Level>,
+    prefabs: impl Iterator<Item = &'a level::Level>,
 ) -> HashSet<AssetId> {
     std::iter::once(level)
-        .chain(assemblies)
+        .chain(prefabs)
         .flat_map(|a| {
             a.with::<level::builtin::Model>()
                 .filter_map(|(_, m)| m.asset.map(|r| r.asset))
@@ -1883,12 +1831,14 @@ impl eframe::App for App {
                 FolderFor::ScanFolder => self.scan_for_projects(folder),
                 FolderFor::ExportFolder => self.workbench.set_export_folder(folder),
                 FolderFor::CreateIn => self.workbench.set_create_in(folder),
+                FolderFor::PrefabFolder(_) => self.prefab_folder_chosen(&folder),
                 FolderFor::OpenProject => self.open_folder(folder),
             }
         }
         if let Some(done) = self.tidying.done() {
             self.tidied(done);
         }
+        self.take_counts();
         self.guide.take_in(&ctx, &mut self.workbench);
         self.follow_folder_looks();
         let (changes, notes) = self.projects.poll();
@@ -1942,7 +1892,7 @@ impl eframe::App for App {
         if let Some(path) = self.level_files.changed_on_disk() {
             let read =
                 LevelFiles::read(&path, &self.workbench.document().registry).and_then(|file| {
-                    self.load_assemblies_of(&file);
+                    self.load_prefabs_of(&file);
                     self.workbench.expand_file(&file).map_err(|e| e.to_string())
                 });
             match read {
@@ -2210,17 +2160,17 @@ mod tests {
                 part: None,
             }),
         };
-        let (in_level, in_assembly, nowhere) =
+        let (in_level, in_prefab, nowhere) =
             (AssetId::random(), AssetId::random(), AssetId::random());
         let mut level = level::Level::new();
         level.spawn(level::EntityData::new("Rock").with(&model(in_level)));
         level.spawn(level::EntityData::new("Empty"));
         let mut fighter = level::Level::new();
-        fighter.spawn(level::EntityData::new("Fighter").with(&model(in_assembly)));
+        fighter.spawn(level::EntityData::new("Fighter").with(&model(in_prefab)));
         let wanted = super::models_wanted(&level, [&fighter].into_iter());
         assert!(wanted.contains(&in_level));
         assert!(
-            wanted.contains(&in_assembly),
+            wanted.contains(&in_prefab),
             "spawned by game code: needed too"
         );
         assert!(!wanted.contains(&nowhere));

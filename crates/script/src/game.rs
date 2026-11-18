@@ -36,7 +36,7 @@ pub enum Change {
     Turn(EntityId, Quat),
     /// `fire`: fire a projectile.
     Fire(crate::host::Shot),
-    /// `spawn`: make a copy of the assembly named here, as this entity,
+    /// `spawn`: make a copy of the prefab named here, as this entity,
     /// at this place.
     Spawn(EntityId, String, Vec3),
     /// `despawn`: take this entity (and those under it) out of the game.
@@ -207,7 +207,7 @@ struct Kept {
     said: Vec<(Order, String)>,
     /// Changes and lines left out past [`MAX_KEPT`].
     dropped: u64,
-    /// Bytes of assembly names kept for spawns.
+    /// Bytes of prefab names kept for spawns.
     spawn_bytes: usize,
     /// Sounds asked for.
     sounds: usize,
@@ -230,7 +230,7 @@ pub const MAX_SOUND_NAME: usize = 256;
 /// The longest clip name `animate` takes.
 pub const MAX_CLIP_NAME: usize = 64;
 
-/// The most bytes of assembly names one shard keeps for spawns in one
+/// The most bytes of prefab names one shard keeps for spawns in one
 /// phase.
 pub const MAX_SPAWN_BYTES: usize = 4 << 20;
 
@@ -351,18 +351,18 @@ impl Host for ViewHost {
         self.kept.changes.push((order, Change::Fire(shot)));
     }
 
-    fn spawn(&mut self, assembly: &str, place: Vec3) -> Option<EntityId> {
-        if !place.is_finite() || assembly.is_empty() || assembly.len() > 1024 {
+    fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId> {
+        if !place.is_finite() || prefab.is_empty() || prefab.len() > 1024 {
             return None;
         }
-        if self.kept.spawn_bytes + assembly.len() > MAX_SPAWN_BYTES {
+        if self.kept.spawn_bytes + prefab.len() > MAX_SPAWN_BYTES {
             self.kept.dropped += 1;
             return None;
         }
         if !self.kept.room() {
             return None;
         }
-        self.kept.spawn_bytes += assembly.len();
+        self.kept.spawn_bytes += prefab.len();
         let order = self.order();
         // Made from which tick it is and where in the tick's order it was
         // asked for, so the same game makes the same entities on any
@@ -370,7 +370,7 @@ impl Host for ViewHost {
         let id = spawned_id(&order, self.phase, self.view.tick)?;
         self.kept
             .changes
-            .push((order, Change::Spawn(id, assembly.to_string(), place)));
+            .push((order, Change::Spawn(id, prefab.to_string(), place)));
         Some(id)
     }
 

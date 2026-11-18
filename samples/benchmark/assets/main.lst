@@ -4,7 +4,7 @@
 -- Ceiling entity that keeps adding ships until 60 frames a second ends.
 
 fetch "solis/world":World;
-fetch "solis/project":Assembly;
+fetch "solis/project":Prefab;
 
 -- One ship: flies round its own loop, facing the way it goes, and fires a
 -- laser ahead six times a second (each flies for 1 2/3 seconds, so every
@@ -90,7 +90,7 @@ component Fleets {
     method update(float dt) {
         int batch = 0;
         loop (made < ships && batch < 500) {
-            entity ship = World:spawn(Assembly.Ships.Fighter, startOf(made));
+            entity ship = World:spawn(Prefab.Ships.Fighter, startOf(made));
             made = made + 1;
             batch = batch + 1;
         }
@@ -122,7 +122,7 @@ component Ceiling {
         }
         int batch = 0;
         loop (made < ships && batch < 500) {
-            entity ship = World:spawn(Assembly.Ships.Fighter, startOf(made));
+            entity ship = World:spawn(Prefab.Ships.Fighter, startOf(made));
             made = made + 1;
             batch = batch + 1;
         }

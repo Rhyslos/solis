@@ -21,7 +21,7 @@ fn compiled(main: &str) -> Result<script::Compiled, Vec<script::CodeProblem>> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"]),
+        &script::project_names::Names::with_prefabs(&["drones/drone", "nowhere"]),
     );
     files.push((
         "main.lst".into(),
@@ -986,7 +986,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"]),
+        &script::project_names::Names::with_prefabs(&["drones/drone", "nowhere"]),
     );
     files.push((
         "main.lst".into(),
@@ -1121,7 +1121,7 @@ fn past_the_projectile_limit_the_console_says_so_once() {
     );
 }
 
-/// A workbench knowing a "Drone" assembly (`drones/drone.solasm` in the
+/// A workbench knowing a "Drone" prefab (`drones/drone.solasm` in the
 /// Library) whose root carries a Lust `Drone` component, playing `main`.
 fn with_drones(main: &str) -> Workbench {
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
@@ -1132,17 +1132,17 @@ fn with_drones(main: &str) -> Workbench {
         .insert("Drone".into(), reflect::ComponentData::default());
     level.insert(id(1), drone);
     let file = level::text::LevelFile {
-        kind: level::text::FileKind::Assembly { root: id(1) },
+        kind: level::text::FileKind::Prefab { root: id(1) },
         level,
         overrides: Default::default(),
     };
     let asset = reflect::AssetId(reflect::Id::from_raw(901).unwrap());
     let mut w = Workbench::new(info());
     w.set_program(Some(program(main)));
-    w.set_assembly(asset, Arc::new(file));
+    w.set_prefab(asset, Arc::new(file));
     w.set_library(vec![crate::library::LibraryItem {
         id: Some(asset),
-        kind: crate::library::LibraryKind::Assembly,
+        kind: crate::library::LibraryKind::Prefab,
         name: "drone".into(),
         path: "drones/drone.solasm".into(),
         thumbnail: None,
@@ -1152,17 +1152,17 @@ fn with_drones(main: &str) -> Workbench {
 
 /// A hive that spawns three drones on its first tick; each drone climbs
 /// and takes itself out after ten ticks.
-const HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+const HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
     component Hive {\n\
         has {\n\
             int made = 0;\n\
         }\n\
         method update(float dt) {\n\
             is made == 0? then {\n\
-                entity a = World:spawn(Assembly.Drones.Drone, [0, 0, 1]);\n\
-                entity b = World:spawn(Assembly.Drones.Drone, [2, 0, 1]);\n\
-                entity c = World:spawn(Assembly.Drones.Drone, [4, 0, 1]);\n\
-                entity d = World:spawn(Assembly.Nowhere, [6, 0, 1]);\n\
+                entity a = World:spawn(Prefab.Drones.Drone, [0, 0, 1]);\n\
+                entity b = World:spawn(Prefab.Drones.Drone, [2, 0, 1]);\n\
+                entity c = World:spawn(Prefab.Drones.Drone, [4, 0, 1]);\n\
+                entity d = World:spawn(Prefab.Nowhere, [6, 0, 1]);\n\
                 made = 3;\n\
             }\n\
         }\n\
@@ -1182,7 +1182,7 @@ const HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assemb
     pass Hive, Drone;\nend\n";
 
 #[test]
-fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
+fn game_code_spawns_copies_of_prefabs_and_takes_them_out() {
     let mut w = with_drones(HIVE);
     let mut hive = EntityData::new("Hive");
     hive.components
@@ -1203,7 +1203,7 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     w.play();
     w.run_game(1.0 / 60.0);
     // Three made; the fourth is named in the project file but isn't an
-    // assembly any more (deleted since), and the Console says so.
+    // prefab any more (deleted since), and the Console says so.
     let drones: Vec<EntityId> = w
         .open
         .document
@@ -1292,7 +1292,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
 /// A hive that stops the game's time at the end of its third tick
 /// (`setGameSpeed(0)`, how a game pauses itself), and every tick rolls a
 /// number and spawns a drone.
-const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
     component Hive {\n\
         has {\n\
             int ticks = 0;\n\
@@ -1305,7 +1305,7 @@ const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\
                 World:setGameSpeed(0);\n\
             }\n\
             rolled = World:random();\n\
-            made = World:spawn(Assembly.Drones.Drone, [0, 0, 1]);\n\
+            made = World:spawn(Prefab.Drones.Drone, [0, 0, 1]);\n\
         }\n\
     }\n\
     component Drone {\n\
@@ -1416,7 +1416,7 @@ fn random_numbers_and_spawns_carry_on_while_the_game_s_speed_is_0_and_after_a_lo
 #[test]
 fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
     let mut w = with_drones(
-        "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+        "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
          component Hive {\n\
              has {\n\
                  int made = 0;\n\
@@ -1424,7 +1424,7 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
              method update(float dt) {\n\
                  is made == 0? then {\n\
                      loop 1430 {\n\
-                         entity e = World:spawn(Assembly.Drones.Drone, [0, 0, 1]);\n\
+                         entity e = World:spawn(Prefab.Drones.Drone, [0, 0, 1]);\n\
                      }\n\
                      made = 1;\n\
                  }\n\
@@ -1532,7 +1532,7 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
 
 /// A hive that spawns a drone and, in the same tick, sends it where to
 /// go; the drone moves there when the event arrives.
-const LAUNCHER: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+const LAUNCHER: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
     event Launch(float height);\n\
     component Hive {\n\
         has {\n\
@@ -1540,7 +1540,7 @@ const LAUNCHER: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":As
         }\n\
         method update(float dt) {\n\
             is made == 0? then {\n\
-                entity a = World:spawn(Assembly.Drones.Drone, [0, 0, 0]);\n\
+                entity a = World:spawn(Prefab.Drones.Drone, [0, 0, 0]);\n\
                 send Launch(7) to a;\n\
                 made = 1;\n\
             }\n\

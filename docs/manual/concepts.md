@@ -52,8 +52,11 @@
 - **Entity:** one thing in a level: a model, a light, the sky. On its own it's only a name; its components make it something.
 - **Component:** one part of what an entity is, with settings. A **Transform** says where it is; a **Light** makes it shine; a **Model** draws an imported model. Mixing components makes different things, the way one Lego brick goes into many builds.
 - **Transform:** an entity's position, rotation and scale.
-- **Assembly:** a group of entities saved once and placed many times; each placed **copy** follows the assembly but can have its own changes. Other engines call it a *prefab*. See [Assemblies](assemblies.md).
-- **Unpack:** turning a copy of an assembly, or an imported model, into separate ordinary entities.
+- **Prefab:** an entity, with its parts and settings, saved once to be placed many times: a chicken, a lamp post, a market stall. It's a file of its own (`chicken.prefab.lst`) and opens on its own page. See [Prefabs](prefabs.md).
+- **Copy:** a placed prefab: an entity linked to its prefab, which follows it unless the copy changes a setting; a copy keeps only what it changed. A link mark shows it in the Level panel, and an orange dot when it changes some settings.
+- **Assembly:** the old name for a prefab. Solis called prefabs assemblies until late 2026, and their files ended `.solassembly`; a project from then is renamed as it opens (see [Backups and upgrades](backups-and-upgrades.md)).
+- **Unlink:** turning a copy of a prefab into ordinary entities that no longer follow it.
+- **Unpack:** splitting an imported model into one ordinary entity per part of its file.
 - **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children. A child's position is measured from its parent, so moving the parent carries it along.
 - **Brush:** a shape made in the editor itself (a box, a ramp, stairs), kept in the level and solid in the game, for blocking out a level before (or instead of) making models. See [Brushes](brushes.md).
 - **Brush list:** the list of shapes a brush can start as (Box, Ramp, Cylinder, Stairs, Arch, Sphere, Wedge), opened with `B` over the view or Home's **Shape** button. See [Brushes](brushes.md).
@@ -74,7 +77,7 @@
 - **Launcher:** the small window Solis starts in, listing your projects as cards, where you open, make, pin and tidy them, with Learn and Updates beside them. Opening a project turns it into the editor; **File › Close project** brings it back. See [The launcher](launcher.md).
 - **Project kind:** whether a project is **2D** (sprites and tile maps), **3D** (models, lights and cameras) or **both**. It's chosen when the project is made, kept in its `project.solis`, shown on its card in the launcher, and changed in **Project settings › General › Kind**. Projects made before it was asked are both. For now it's kept and shown; a later update makes a 2D project hide the parts only 3D games use. See [The launcher](launcher.md#new-project).
 - **Build:** one numbered version of Solis, made from the code at one moment (build 57, then 58). Installed copies update from one build to the next; each project remembers the build that last opened it.
-- **Asset:** a file the game uses: a model, a picture, a sound, an assembly, code.
+- **Asset:** a file the game uses: a model, a picture, a sound, a prefab, code.
 - **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.
 - **Library:** the browser of the project's own folders and files, with thumbnails, the same under Home's view and on the Library tab; drag from it to place things, right-click to make, rename or delete them. See [Projects and the Library](projects-and-the-library.md).
 - **Breadcrumb:** the line over the Library's files naming the folder you're in and the ones holding it (*Farm Days › farm*); click a part to go there.
@@ -153,7 +156,7 @@
 - **Mistake (in code):** something the checker finds before the code runs, such as a misspelt name or text where a number should be. Solis lists each one with its file, line and column (how far along the line).
 - **Projectile:** something small and fast a game fires in its thousands (a laser, a bullet), which isn't an entity: Solis moves it every tick until its time is up, and draws all of them in one go. Game code fires one with `fire`. See [Game code](game-code.md#projectiles).
 - **Game-wide object:** one thing for the whole game rather than an entity (a clock, the money, the weather), written as a Lust `object`. Solis runs its `update` once a tick before any component, and keeps it in save games; components read it but only its own `update` changes it. See [Game code](game-code.md#game-wide-objects).
-- **Spawn:** game code making an entity while the game runs (a copy of an [assembly](assemblies.md)); **despawn** takes one away. See [Game code](game-code.md#making-and-removing-entities).
+- **Spawn:** game code making an entity while the game runs (a copy of a [prefab](prefabs.md)); **despawn** takes one away. See [Game code](game-code.md#making-and-removing-entities).
 - **Benchmark:** a ready-made test of how much a computer can play at once. Solis's is two fleets of ships firing lasers: see [The benchmark](benchmark.md).
 - **Tick:** one step of the running game. Solis runs 60 a second, whatever the frame rate, and game code's `update` runs once each tick, so the game behaves the same on a fast or slow computer. During a tick, game code sees the world as it was when the tick started (plus its own changes), so it can run on every core at once and still come out the same.
 - **Random number:** a number game code gets by chance, such as a die roll (`World:randomInt(1, 6)`). Solis makes them from a **seed**: the same seed gives the same numbers in the same order, so a play can be repeated exactly. Each Play has a new seed unless you choose one (`seed` in the [Console](console.md)).

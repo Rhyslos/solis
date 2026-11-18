@@ -33,9 +33,9 @@ pub(crate) struct PlayChanges {
     /// The level as it was before Play with the user's changes made, and
     /// its history with a step for each.
     pub(crate) document: Box<Document>,
-    /// The assemblies as they were at Play: what that level's copies were
+    /// The prefabs as they were at Play: what that level's copies were
     /// built from, so Keep can rebuild the ones whose files changed since.
-    assemblies: BTreeMap<AssetId, Arc<LevelFile>>,
+    prefabs: BTreeMap<AssetId, Arc<LevelFile>>,
     /// What was done, oldest first.
     pub(crate) labels: Vec<String>,
     /// The level as its file holds it now, if the file changed on disk
@@ -49,15 +49,15 @@ pub(crate) struct PlayChanges {
 
 impl Workbench {
     /// Notes what the user changed while playing, at Stop: `before` is
-    /// the document as it was when Play was pressed (and `assemblies` the
-    /// assemblies then), and the open one is as the user and the game
+    /// the document as it was when Play was pressed (and `prefabs` the
+    /// prefabs then), and the open one is as the user and the game
     /// left it. Returns whether there was anything of the user's (then
     /// the question is asked). A change to something only the game had
     /// (an entity it spawned) can't be kept, and the Console says which.
     pub(crate) fn note_play_changes(
         &mut self,
         before: &Document,
-        assemblies: &BTreeMap<AssetId, Arc<LevelFile>>,
+        prefabs: &BTreeMap<AssetId, Arc<LevelFile>>,
     ) -> bool {
         let start = before.history().state();
         if self.open.document.history().state() == start {
@@ -99,7 +99,7 @@ impl Workbench {
         }
         self.open.play_changes = Some(PlayChanges {
             document: Box::new(kept),
-            assemblies: assemblies.clone(),
+            prefabs: prefabs.clone(),
             labels,
             reload: None,
             then: None,
@@ -116,10 +116,10 @@ impl Workbench {
     /// every one still undoable. Nothing the game did comes with them.
     pub fn keep_play_changes(&mut self) {
         if let Some(changes) = self.open.play_changes.take() {
-            // Its copies of assemblies are as they were at Play; the open
+            // Its copies of prefabs are as they were at Play; the open
             // level's were rebuilt at Stop (or since) if their files
             // changed, and these are now.
-            let now = std::mem::replace(&mut self.open.assemblies, changes.assemblies);
+            let now = std::mem::replace(&mut self.open.prefabs, changes.prefabs);
             self.replace_document(*changes.document);
             self.open.document.touch();
             self.update_copies(now);

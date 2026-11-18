@@ -88,6 +88,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "prefab_file"
+path = "fuzz_targets/prefab_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "model"
 path = "fuzz_targets/model.rs"
 test = false

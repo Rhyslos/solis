@@ -10,7 +10,7 @@ world: object World: method say(string words) native;
 world: object World: method float time() native;
 world: object World: method entity find(string name) native;
 world: object World: method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;
-world: object World: method entity spawn(Assembly which, vec3 place) native;
+world: object World: method entity spawn(Prefab which, vec3 place) native;
 world: method entity:despawn() native;
 world: object World: method float frameTime() native;
 world: object World: method vec3 viewSize() native;
@@ -197,7 +197,7 @@ Host: fn rotation(&self, which: EntityId) -> Option<Quat>
 Host: fn turn_to(&mut self, which: EntityId, facing: Quat)
 Host: fn name(&self, which: EntityId) -> Option<String>
 Host: fn fire(&mut self, shot: Shot)
-Host: fn spawn(&mut self, assembly: &str, place: Vec3) -> Option<EntityId>
+Host: fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId>
 Host: fn despawn(&mut self, which: EntityId)
 Host: fn frame_time(&self) -> f64
 Host: fn random(&mut self) -> f64

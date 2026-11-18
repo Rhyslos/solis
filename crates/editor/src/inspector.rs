@@ -29,9 +29,9 @@ pub(crate) enum FieldChange {
         /// entities selected, only that one changes on each.
         part: Option<(usize, f64)>,
     },
-    /// Put it back to its assembly's value.
+    /// Put it back to its prefab's value.
     Revert(String),
-    /// Made its value the assembly's, for every copy.
+    /// Made its value the prefab's, for every copy.
     Apply(String),
 }
 

@@ -26,7 +26,7 @@ A mistake in the code, in **Problems**: what's wrong, and in grey where (the fil
 | *X's sprite sheet isn't in the project* / *X's Sprite has no sprite sheet chosen* | The [sprite](sprites.md)'s Aseprite file was deleted or never committed, or no sheet was chosen. | Put the file back, or choose a sheet in Properties. |
 | *X rests between pixels* | In a 2D game, a sprite was placed at a spot that isn't a whole pixel (snapping off, or a typed place). The game draws it on the nearest pixel, so it may seem to jump a pixel as it moves. | Move it with snapping to pixels on, or type a whole number of pixels. |
 | *X has a … component that isn't known* | The level was saved by a newer Solis, or names a component from game code that isn't built yet. The component is kept exactly as it was, so saving loses nothing. | Usually nothing: it comes back to life when the code that defines it is there. Remove it if it's left over. |
-| *X is a copy of an assembly that isn't in the project* | The [assembly](assemblies.md)'s file was deleted or not committed. | Put the file back, or [unpack](concepts.md#the-level) the copy to keep it as ordinary entities. |
+| *X is a copy of a prefab that isn't in the project* | The [prefab](prefabs.md)'s file was deleted or not committed. | Put the file back, or [unpack](concepts.md#the-level) the copy to keep it as ordinary entities. |
 | *X's parent isn't in the level* | Usually a Git merge that kept a child but not its parent. | Drag it onto another entity in the Level panel, or onto empty space to make it stand alone. |
 | *X is inside itself* | Entities are under each other in a loop, so none of them is anywhere in the tree. Level files with such a loop are put right as they open (see the tips below), so this is rare. Until it's fixed, each stands alone, in the editor and the game alike. | Drag it onto another entity in the Level panel, or onto empty space to make it stand alone. |
 
@@ -40,4 +40,4 @@ A mistake in the code, in **Problems**: what's wrong, and in grey where (the fil
 - [The Console](console.md)
 - [Projects and the Library](projects-and-the-library.md)
 - [Saving levels](saving-levels.md)
-- Concepts: [entity, component, assembly](concepts.md#the-level)
+- Concepts: [entity, component, prefab](concepts.md#the-level)

@@ -84,10 +84,32 @@ pub enum WorkbenchAction {
     SaveLevel,
     /// Ask where to save the level (Ctrl+Shift+S).
     SaveLevelAs,
-    /// Save this entity and everything under it as an assembly in the
-    /// project, then turn it into a copy of it with
-    /// [`Workbench::make_copy`](crate::Workbench::make_copy).
-    CreateAssembly(EntityId),
+    /// Make a prefab (Make prefab…): write its file, then swap the picked
+    /// entities for a copy of it if asked
+    /// ([`Workbench::swap_for_copy`](crate::Workbench::swap_for_copy)).
+    MakePrefab(crate::make_prefab::MakePrefabPlan),
+    /// Ask for the folder Make prefab… saves in (Browse…), starting in
+    /// this one (inside the project), and answer with
+    /// [`Workbench::set_prefab_folder`](crate::Workbench::set_prefab_folder).
+    ChoosePrefabFolder(String),
+    /// Make a new, empty prefab in this folder (inside the project), then
+    /// open its page ([`Workbench::open_prefab_page`](crate::Workbench::open_prefab_page)).
+    NewPrefab(std::path::PathBuf),
+    /// Read this prefab (and those it places) from the project, then open
+    /// its page.
+    OpenPrefab(AssetId),
+    /// Save the prefab's page: this prefab's new contents, then hand them
+    /// back with [`Workbench::prefab_saved`](crate::Workbench::prefab_saved).
+    SavePrefab {
+        /// The prefab.
+        asset: AssetId,
+        /// Its contents.
+        file: level::text::LevelFile,
+    },
+    /// Count the copies of this prefab in the project's levels, on a
+    /// worker, and answer with
+    /// [`Workbench::set_placed`](crate::Workbench::set_placed).
+    CountPlaced(AssetId),
     /// Open this level file (a double-click in the Library); the app reads
     /// it and calls [`Workbench::open_level`](crate::Workbench::open_level).
     OpenLevelFile(std::path::PathBuf),
@@ -176,12 +198,12 @@ pub enum WorkbenchAction {
     /// Save the project's 2D settings to its `pixels.solpix` (Settings >
     /// 2D).
     SavePixels(level::pixels::PixelSettings),
-    /// Change one field of an entity inside an assembly's file (Apply to
-    /// assembly); the app saves it and hands it back with
-    /// [`Workbench::set_assembly`](crate::Workbench::set_assembly), which updates every copy.
-    ApplyToAssembly {
-        /// The assembly.
-        assembly: AssetId,
+    /// Change one field of an entity inside a prefab's file (Apply to
+    /// prefab); the app saves it and hands it back with
+    /// [`Workbench::set_prefab`](crate::Workbench::set_prefab), which updates every copy.
+    ApplyToPrefab {
+        /// The prefab.
+        prefab: AssetId,
         /// The entity inside it.
         path: Vec<EntityId>,
         /// The component's name.

@@ -21,8 +21,8 @@ pub enum ProblemKind {
     /// A component no one has registered (perhaps from a newer version,
     /// or game code not built yet): kept as it is, but not used.
     UnknownComponent,
-    /// Part of an assembly whose file isn't in the project.
-    MissingAssembly,
+    /// Part of a prefab whose file isn't in the project.
+    MissingPrefab,
     /// An entity whose parent isn't in the level (perhaps after a merge).
     MissingParent,
     /// Entities that are each other's parents. Files with such a loop are
@@ -95,8 +95,8 @@ pub(crate) struct Sources<'a> {
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     /// Every asset in the project (from the Library).
     pub(crate) known: &'a HashSet<AssetId>,
-    /// Assemblies read, by asset.
-    pub(crate) assemblies: &'a HashSet<AssetId>,
+    /// Prefabs read, by asset.
+    pub(crate) prefabs: &'a HashSet<AssetId>,
     /// What each tile map file's tileset still needs drawn, by the map
     /// file's asset (Phase 9, D5).
     pub(crate) tile_gaps: &'a std::collections::HashMap<AssetId, String>,
@@ -360,18 +360,18 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
         if sources.damaged_brushes.contains(&id) {
             found.extend(brush_problem(id, entity, name));
         }
-        // Only the copy's root names its assembly.
+        // Only the copy's root names its prefab.
         if let Some(origin) = &entity.origin
             && origin.path.is_empty()
-            && !sources.assemblies.contains(&origin.assembly)
-            && !sources.known.contains(&origin.assembly)
+            && !sources.prefabs.contains(&origin.prefab)
+            && !sources.known.contains(&origin.prefab)
         {
             found.push(Problem {
-                kind: ProblemKind::MissingAssembly,
+                kind: ProblemKind::MissingPrefab,
                 entity: id,
                 text: format!(
-                    "{name} is a copy of an assembly ({}) that isn't in the project",
-                    origin.assembly
+                    "{name} is a copy of a prefab ({}) that isn't in the project",
+                    origin.prefab
                 ),
             });
         }
@@ -565,7 +565,7 @@ mod tests {
         registry: Registry,
         models: BTreeMap<AssetId, ModelInfo>,
         known: HashSet<AssetId>,
-        assemblies: HashSet<AssetId>,
+        prefabs: HashSet<AssetId>,
         tile_gaps: std::collections::HashMap<AssetId, String>,
         damaged_brushes: HashSet<EntityId>,
     }
@@ -577,7 +577,7 @@ mod tests {
                 registry: level::builtin::registry().unwrap(),
                 models: BTreeMap::new(),
                 known: HashSet::new(),
-                assemblies: HashSet::new(),
+                prefabs: HashSet::new(),
                 tile_gaps: std::collections::HashMap::new(),
                 damaged_brushes: HashSet::new(),
             }
@@ -589,7 +589,7 @@ mod tests {
                 registry: &self.registry,
                 models: &self.models,
                 known: &self.known,
-                assemblies: &self.assemblies,
+                prefabs: &self.prefabs,
                 tile_gaps: &self.tile_gaps,
                 damaged_brushes: &self.damaged_brushes,
             })
@@ -661,7 +661,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_components_missing_parents_and_assemblies_are_found() {
+    fn unknown_components_missing_parents_and_prefabs_are_found() {
         let mut w = World::new();
         let mut odd = EntityData::new("Odd");
         let mut data = ComponentData::default();
@@ -670,10 +670,10 @@ mod tests {
         odd.parent = Some(EntityId::random());
         w.level.insert(EntityId::random(), odd);
         let root = EntityId::random();
-        let assembly = AssetId::random();
+        let prefab = AssetId::random();
         let mut copy = EntityData::new("Boat");
         copy.origin = Some(level::Origin {
-            assembly,
+            prefab,
             instance: root,
             path: Vec::new(),
         });
@@ -681,7 +681,7 @@ mod tests {
         let mut inner = EntityData::new("Mast");
         inner.parent = Some(root);
         inner.origin = Some(level::Origin {
-            assembly,
+            prefab,
             instance: root,
             path: vec![EntityId::random()],
         });
@@ -692,12 +692,12 @@ mod tests {
             kinds,
             [
                 ProblemKind::UnknownComponent,
-                ProblemKind::MissingAssembly,
+                ProblemKind::MissingPrefab,
                 ProblemKind::MissingParent
             ],
             "the copy is named once, at its root"
         );
-        w.assemblies.insert(assembly);
+        w.prefabs.insert(prefab);
         assert_eq!(w.kinds().len(), 2);
     }
 
@@ -715,7 +715,7 @@ mod tests {
             registry: &w.registry,
             models: &w.models,
             known: &w.known,
-            assemblies: &w.assemblies,
+            prefabs: &w.prefabs,
             tile_gaps: &w.tile_gaps,
             damaged_brushes: &w.damaged_brushes,
         };
@@ -753,7 +753,7 @@ mod tests {
 
     #[test]
     fn problems_are_looked_for_again_when_what_they_are_checked_against_changes() {
-        // Found by review: counting models, assemblies and Library files
+        // Found by review: counting models, prefabs and Library files
         // missed one replaced by another (a Git branch switch).
         let document = crate::document::Document::default();
         let mut problems = Problems::default();
@@ -769,7 +769,7 @@ mod tests {
                 registry: &w.registry,
                 models: &w.models,
                 known: &w.known,
-                assemblies: &w.assemblies,
+                prefabs: &w.prefabs,
                 tile_gaps: &w.tile_gaps,
                 damaged_brushes: &w.damaged_brushes,
             }

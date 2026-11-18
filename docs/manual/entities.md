@@ -50,9 +50,10 @@ The Level list on Home: every entity in the level, by name, with what it is besi
 - Click its name at the top of Properties and type, press **F2**, or **double-click** it in the Level column (or choose **Rename** in its right-click menu) to rename it (Enter to keep, Esc to cancel).
 - Change **Position** under Transform, or choose **Move here** in the **⋯** beside its name to bring it to where the camera looks.
 - **Ctrl + D** duplicates the selection, with everything under each one, and selects the copies.
-- **Unpack** (in the **⋯** beside a model's name, or beside a placed [assembly](assemblies.md)'s note) splits it into separate entities.
+- **Unpack** (in the **⋯** beside a model's name) splits it into separate entities; **Unlink** (beside **Prefab: …** at the top of a placed [prefab](prefabs.md)'s Properties) makes a copy plain entities.
 - **Delete** (the key, the **⋯** beside its name in Properties, or **Delete** in a row's right-click menu in the Level column) removes the selection and everything under it.
-- **Right-click a row** in the Level column for its menu, close to hand: Rename, Duplicate, Delete; Add entity, point light, spotlight or camera; Create assembly from selection; Select all and Select nothing. The row right-clicked is selected first, so the menu acts on it. These are the same things the Home tab's ribbon and the search do.
+- **Marks at a row's right:** a link marks a placed copy of a [prefab](prefabs.md), and an orange dot one that changes some settings (on a part, that this part does). A plain entity, not from a prefab, has no mark. Pointing at a row shows its hide and lock switches in their place.
+- **Right-click a row** in the Level column for its menu, close to hand: Rename, Duplicate, Delete; Add entity, point light, spotlight or camera; Make prefab…; Select all and Select nothing. The row right-clicked is selected first, so the menu acts on it. These are the same things the Home tab's ribbon and the search do.
 - **F** points the camera at the selection.
 
 **Parents and children** ([concepts](concepts.md#the-level)): drag an entity in the Level panel onto another to put it under that one; it then moves, turns and is deleted with its parent. Drag it onto the empty space below the list to make it stand alone again. It stays exactly where it is in the world either way: only its numbers change, because a child's Position is measured from its parent. Lights brought in with a model start under it. Dragging one of several selected entities moves them all.

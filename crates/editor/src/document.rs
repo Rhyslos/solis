@@ -331,12 +331,14 @@ impl Document {
         self.file.as_deref()
     }
 
-    /// Its name: its file's, without the extension, or "Untitled level".
+    /// Its name: its file's, without the end that says its kind
+    /// (`chicken` for a prefab's `chicken.prefab.lst`), or "Untitled
+    /// level".
     pub fn name(&self) -> String {
-        self.file.as_ref().and_then(|f| f.file_stem()).map_or_else(
-            || "Untitled level".to_string(),
-            |n| n.to_string_lossy().into_owned(),
-        )
+        self.file
+            .as_deref()
+            .and_then(reflect::data_files::stem)
+            .unwrap_or_else(|| "Untitled level".to_string())
     }
 
     /// Whether it changed since it was opened or last saved.
@@ -371,7 +373,7 @@ impl Document {
     }
 
     /// Replaces the whole level with `level` (copies rebuilt from a changed
-    /// assembly), as one undo step called `label`. If nothing was unsaved,
+    /// prefab), as one undo step called `label`. If nothing was unsaved,
     /// nothing is now: the level's file would be the same.
     pub fn rebuild(&mut self, level: Level, label: &str) -> Result<(), EditError> {
         let clean = !self.is_dirty();
@@ -383,13 +385,22 @@ impl Document {
     }
 
     fn replace_all(&mut self, level: Level, label: &str) -> Result<(), EditError> {
-        let edits = self.replace_edits(&level);
         let selection = self.selection.clone();
+        // Only what differs, as one step; if those edits can't be applied
+        // in their order (parents swapped round), everything is replaced.
+        let fewest = crate::document_diff::edits_between(&self.level, &level);
+        if self
+            .edit(label, fewest, None, Some(selection.clone()))
+            .is_ok()
+        {
+            return Ok(());
+        }
+        let edits = self.replace_edits(&level);
         self.edit(label, edits, None, Some(selection))
     }
 
     /// Replaces the whole level with `level` for the running game (a save
-    /// game loaded, or copies rebuilt from an assembly that changed on
+    /// game loaded, or copies rebuilt from a prefab that changed on
     /// disk meanwhile), not as an undo step: Stop puts the level back, and
     /// Keep takes only the undo steps made while playing
     /// (`Document::follow`). Returns how many edits couldn't be made.
@@ -629,7 +640,7 @@ impl Document {
     }
 
     /// Changes the level by `edits` made by the running game (copies of
-    /// assemblies it spawned, entities it took out), each on its own and
+    /// prefabs it spawned, entities it took out), each on its own and
     /// not as an undo step: Stop puts the level back, and that they aren't
     /// steps is how Keep tells them from the user's own edits
     /// (`Document::follow`). They aren't [`Self::take_changes`]' changes:

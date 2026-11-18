@@ -363,10 +363,10 @@ fn thousands_of_damaged_brush_files_are_read_or_refused_never_a_crash() {
 
 #[test]
 fn the_blockout_example_is_what_this_build_writes() {
-    // tests/fixtures/area/v4 (v3's, as a level: decision 0118): a box
+    // tests/fixtures/area/v5 (v3's, as a level: decision 0118): a box
     // floor, a ramp and stairs.
-    let blockout = include_str!("../../../../tests/fixtures/area/v4/blockout.sollevel");
-    assert_eq!((text::FORMAT.version_of)(blockout), Some(4));
+    let blockout = include_str!("../../../../tests/fixtures/area/v5/blockout.sollevel");
+    assert_eq!((text::FORMAT.version_of)(blockout), Some(5));
     let level = text::read(blockout, &registry()).unwrap();
     let shapes: Vec<Shape> = level.with::<Brush>().map(|(_, b)| b.shape).collect();
     assert_eq!(shapes, [Shape::Box, Shape::Ramp, Shape::Stairs]);

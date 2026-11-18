@@ -475,9 +475,8 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 19] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 137] = [
+const DRAWN_SO_FAR: [UnbuiltId; 136] = [
     // The Library's right-click menu on empty space (R4).
-    UnbuiltId::LibNewPrefab,
     UnbuiltId::LibPaste,
     // The frame.
     UnbuiltId::ShellTabShading,

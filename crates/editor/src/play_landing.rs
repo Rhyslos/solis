@@ -1,5 +1,5 @@
 //! Landing what game code spawned and despawned (decision 0035): copies
-//! of assemblies made and joined to the level and the world, despawned
+//! of prefabs made and joined to the level and the world, despawned
 //! entities taken out, the running game's components started and stopped
 //! with them, and why a spawn made nothing said once a play.
 
@@ -9,17 +9,17 @@ use crate::document::Document;
 use crate::document::FieldsSet;
 use crate::game_code::{PlayWorld, sync_entities};
 use crate::workbench::Workbench;
-use level::assembly::AssemblyError;
+use level::prefab::PrefabError;
 use level::{Edit, EntityData};
 use reflect::{AssetId, EntityId};
 use std::collections::BTreeMap;
 
 /// Why a spawn made nothing.
 enum Unmade {
-    /// No assembly in the project has the name.
-    NoSuchAssembly,
-    /// This assembly can't be copied.
-    Broken(AssetId, AssemblyError),
+    /// No prefab in the project has the name.
+    NoSuchPrefab,
+    /// This prefab can't be copied.
+    Broken(AssetId, PrefabError),
     /// The entity it was to be is in the level already.
     IdTaken,
 }
@@ -48,11 +48,11 @@ struct Landing {
 impl Workbench {
     /// Lands what game code spawned and despawned since it was last
     /// landed (`Playing::pending`), in the order it was asked for: copies
-    /// of assemblies join the level at the end of its tree and the world
+    /// of prefabs join the level at the end of its tree and the world
     /// at once, despawned entities leave both, and the running game's
     /// components start and stop with them. Changes to the level that
     /// aren't undo steps (Stop puts the level back; decision 0035). A spawn
-    /// that can't be made (no assembly by that name, or one that can't be
+    /// that can't be made (no prefab by that name, or one that can't be
     /// copied) says why in the Console, once a play for each name, never
     /// once a frame (the review, BUG-51). The failures of starting the
     /// new components come back.
@@ -75,12 +75,12 @@ impl Workbench {
             removed: Vec::new(),
             removed_roots: Vec::new(),
         };
-        // One expander for the tick: each assembly is expanded once, and
+        // One expander for the tick: each prefab is expanded once, and
         // its size known before a copy is made, so thousands of spawns of
         // one too big to fit cost nothing.
-        let assemblies = &self.open.assemblies;
-        let lookup = |a| assemblies.get(&a).cloned();
-        let mut expander = level::assembly::Expander::new(&lookup);
+        let prefabs = &self.open.prefabs;
+        let lookup = |a| prefabs.get(&a).cloned();
+        let mut expander = level::prefab::Expander::new(&lookup);
         for edit in edits {
             match edit {
                 GameEdit::Spawn(id, name, place) => {
@@ -90,7 +90,7 @@ impl Workbench {
                     }
                     let found = named
                         .entry(name.clone())
-                        .or_insert_with(|| self.assembly_named(&name))
+                        .or_insert_with(|| self.prefab_named(&name))
                         .clone();
                     land_spawn(
                         &mut landing,
@@ -217,70 +217,68 @@ impl Workbench {
             listed.map(|item| format!("\"{}\"", item.name))
         };
         let (asset, why) = match why {
-            Unmade::NoSuchAssembly => {
-                return "there's no assembly by that name in the project's assets".into();
+            Unmade::NoSuchPrefab => {
+                return "there's no prefab by that name in the project's assets".into();
             }
             Unmade::IdTaken => return "the entity it was to be is already in the level".into(),
             Unmade::Broken(asset, why) => (*asset, why),
         };
         match why {
-            AssemblyError::Missing(id) => match named(*id) {
+            PrefabError::Missing(id) => match named(*id) {
                 Some(name) if *id == asset => format!("{name}'s file can't be read"),
                 Some(name) => format!("it places {name}, whose file can't be read"),
-                None => format!("it places an assembly ({id}) that isn't in the project"),
+                None => format!("it places a prefab ({id}) that isn't in the project"),
             },
-            AssemblyError::NotAnAssembly(id) if *id == asset => {
-                "its file is a level, not an assembly".into()
+            PrefabError::NotAnPrefab(id) if *id == asset => {
+                "its file is a level, not a prefab".into()
             }
-            AssemblyError::NotAnAssembly(id) => format!(
-                "it places {}, which is a level, not an assembly",
+            PrefabError::NotAnPrefab(id) => format!(
+                "it places {}, which is a level, not a prefab",
                 named(*id).unwrap_or_else(|| id.to_string())
             ),
-            AssemblyError::Loop(chain) => {
+            PrefabError::Loop(chain) => {
                 let chain: Vec<String> = chain
                     .iter()
                     .map(|&id| named(id).unwrap_or_else(|| id.to_string()))
                     .collect();
                 format!(
-                    "its assemblies place each other in a loop ({})",
+                    "its prefabs place each other in a loop ({})",
                     chain.join(" → ")
                 )
             }
-            AssemblyError::TooDeep => format!(
-                "its assemblies are placed more than {} deep, one inside another",
+            PrefabError::TooDeep => format!(
+                "its prefabs are placed more than {} deep, one inside another",
                 level::text::MAX_NESTING
             ),
-            AssemblyError::TooBig => format!(
+            PrefabError::TooBig => format!(
                 "a copy would be more than {} entities",
                 crate::models::grouped(level::text::MAX_ENTITIES)
             ),
-            AssemblyError::Clash(id) => {
+            PrefabError::Clash(id) => {
                 format!("two of its entities would share an ID ({id})")
             }
         }
     }
 
-    /// The assembly game code names `name`: by its file in the assets
-    /// (`ships/fighter.solasm`), that without the extension, or just its
+    /// The prefab game code names `name`: by its file in the assets
+    /// (`ships/fighter.prefab.lst`), that without its ending, or just its
     /// name (`fighter`, when only one has it); its asset and name.
-    fn assembly_named(&self, name: &str) -> Option<(AssetId, String)> {
-        let assemblies = || {
+    fn prefab_named(&self, name: &str) -> Option<(AssetId, String)> {
+        let prefabs = || {
             self.open
                 .library
                 .iter()
-                .filter(|i| i.kind == crate::library::LibraryKind::Assembly)
+                .filter(|i| i.kind == crate::library::LibraryKind::Prefab)
                 .filter_map(|i| i.id.map(|id| (id, i)))
-                .filter(|(id, _)| self.open.assemblies.contains_key(id))
+                .filter(|(id, _)| self.open.prefabs.contains_key(id))
         };
         let wanted = name.trim_start_matches('/');
-        let by_path = assemblies().find(|(_, i)| {
+        let by_path = prefabs().find(|(_, i)| {
             i.path.eq_ignore_ascii_case(wanted)
-                || i.path
-                    .rsplit_once('.')
-                    .is_some_and(|(stem, _)| stem.eq_ignore_ascii_case(wanted))
+                || reflect::data_files::path_stem(&i.path).eq_ignore_ascii_case(wanted)
         });
         let found = by_path.or_else(|| {
-            let mut named = assemblies().filter(|(_, i)| i.name.eq_ignore_ascii_case(wanted));
+            let mut named = prefabs().filter(|(_, i)| i.name.eq_ignore_ascii_case(wanted));
             let first = named.next();
             first.filter(|_| named.next().is_none())
         });
@@ -288,21 +286,21 @@ impl Workbench {
     }
 }
 
-/// Makes one copy of the assembly game code named `name` (`found`: its
-/// asset and name, none when there's no such assembly) as entity `id`,
-/// standing at `place`, turned and sized as the assembly made it, after
+/// Makes one copy of the prefab game code named `name` (`found`: its
+/// asset and name, none when there's no such prefab) as entity `id`,
+/// standing at `place`, turned and sized as the prefab made it, after
 /// everything else: in the level, then the world. A copy that can't be
 /// made notes why; one that doesn't fit is refused.
 fn land_spawn(
     landing: &mut Landing,
-    expander: &mut level::assembly::Expander<'_>,
+    expander: &mut level::prefab::Expander<'_>,
     document: &mut Document,
     playing: Option<&mut Playing>,
     (id, name, place): (EntityId, String, glam::Vec3),
     found: Option<(AssetId, String)>,
 ) {
     let Some((asset, shown)) = found else {
-        landing.unmade.entry(name).or_insert(Unmade::NoSuchAssembly);
+        landing.unmade.entry(name).or_insert(Unmade::NoSuchPrefab);
         return;
     };
     let size = match expander.size_of(asset) {
@@ -331,7 +329,7 @@ fn land_spawn(
         }
     };
     // The copy stands where it was spawned, turned and sized
-    // as the assembly made it, after everything else.
+    // as the prefab made it, after everything else.
     if let Some((_, root)) = entities.iter_mut().find(|(e, _)| *e == id) {
         let made = root.get::<level::builtin::Transform>().unwrap_or_default();
         root.set(&level::builtin::Transform {

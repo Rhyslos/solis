@@ -20,6 +20,7 @@ pub mod map_code;
 mod native_values;
 mod natives;
 mod objects;
+pub mod old_names;
 pub mod project_names;
 mod reach;
 pub mod runtime;

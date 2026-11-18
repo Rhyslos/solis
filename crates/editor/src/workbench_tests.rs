@@ -1869,17 +1869,17 @@ fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
         parts.insert(id(n), part);
     }
     let file = level::text::LevelFile {
-        kind: level::text::FileKind::Assembly { root: id(1) },
+        kind: level::text::FileKind::Prefab { root: id(1) },
         level: parts,
         overrides: Default::default(),
     };
     let asset = AssetId(reflect::Id::from_raw(901).unwrap());
     let mut w = Workbench::new(info());
-    w.set_assembly(asset, std::sync::Arc::new(file));
-    w.place_assembly(asset);
+    w.set_prefab(asset, std::sync::Arc::new(file));
+    w.place_prefab(asset);
     let root = w.selection().unwrap();
-    let arm = level::assembly::derive(root, &[id(2)]);
-    let lamp = level::assembly::derive(root, &[id(3)]);
+    let arm = level::prefab::derive(root, &[id(2)]);
+    let lamp = level::prefab::derive(root, &[id(3)]);
     w.reparent(&[lamp], None);
     w.delete(arm);
     assert!(w.document().level().contains(lamp));
@@ -1911,7 +1911,7 @@ fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
 }
 
 #[test]
-fn placing_an_assembly_makes_a_copy_that_saves_as_one_line() {
+fn placing_a_prefab_makes_a_copy_that_saves_as_one_line() {
     let (mut w, _, root, lamp) = with_a_lamp_post();
     let level = w.document().level();
     assert_eq!(level.get(lamp).unwrap().parent, Some(root));
@@ -1948,12 +1948,12 @@ fn changed_fields_show_in_bold_and_revert_or_apply() {
         3,
     );
     w.select(lamp);
-    let part = w.assembly_part().unwrap();
+    let part = w.prefab_part().unwrap();
     assert!(!part.root);
     assert_eq!(
         part.expected.unwrap().get::<Light>().unwrap().strength,
         1000.0,
-        "the assembly's value"
+        "the prefab's value"
     );
     let mut h = acting(w);
     h.run();
@@ -1962,8 +1962,8 @@ fn changed_fields_show_in_bold_and_revert_or_apply() {
     h.run();
     assert!(h.state().1.iter().any(|a| matches!(
         a,
-        WorkbenchAction::ApplyToAssembly { assembly, component, .. }
-            if *assembly == asset && component == "Light"
+        WorkbenchAction::ApplyToPrefab { prefab, component, .. }
+            if *prefab == asset && component == "Light"
     )));
     h.get_by_label("Revert Strength").click();
     h.run();
@@ -1980,7 +1980,7 @@ fn changed_fields_show_in_bold_and_revert_or_apply() {
 }
 
 #[test]
-fn an_assembly_that_now_places_an_unknown_one_keeps_its_old_version() {
+fn a_prefab_that_now_places_an_unknown_one_keeps_its_old_version() {
     // A Git pull: the lamp post now holds a copy of a sign, whose file
     // isn't read yet.
     let (mut w, asset, root, lamp) = with_a_lamp_post();
@@ -1993,16 +1993,16 @@ fn an_assembly_that_now_places_an_unknown_one_keeps_its_old_version() {
     let mut copy = level::EntityData::new("Sign");
     copy.parent = Some(one);
     copy.origin = Some(level::Origin {
-        assembly: sign,
+        prefab: sign,
         instance: holder,
         path: Vec::new(),
     });
     file.level.insert(holder, copy);
     let file = std::sync::Arc::new(file);
-    w.set_assembly(asset, file.clone());
+    w.set_prefab(asset, file.clone());
     assert_eq!(*w.document().level(), before, "nothing changed");
     assert!(
-        !std::sync::Arc::ptr_eq(&w.assemblies()[&asset], &file),
+        !std::sync::Arc::ptr_eq(&w.prefabs()[&asset], &file),
         "the version the copies were made from stays in use"
     );
     assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Error);
@@ -2013,18 +2013,18 @@ fn an_assembly_that_now_places_an_unknown_one_keeps_its_old_version() {
         EntityId(reflect::Id::from_raw(5).unwrap()),
         level::EntityData::new("Sign board").with(&Transform::default()),
     );
-    w.set_assembly(
+    w.set_prefab(
         sign,
         std::sync::Arc::new(level::text::LevelFile {
-            kind: level::text::FileKind::Assembly {
+            kind: level::text::FileKind::Prefab {
                 root: EntityId(reflect::Id::from_raw(5).unwrap()),
             },
             level: sign_level,
             overrides: Default::default(),
         }),
     );
-    w.set_assembly(asset, file.clone());
-    assert!(std::sync::Arc::ptr_eq(&w.assemblies()[&asset], &file));
+    w.set_prefab(asset, file.clone());
+    assert!(std::sync::Arc::ptr_eq(&w.prefabs()[&asset], &file));
     assert!(
         w.document().level().len() > before.len(),
         "the sign arrived in the copy"
@@ -2033,7 +2033,7 @@ fn an_assembly_that_now_places_an_unknown_one_keeps_its_old_version() {
 }
 
 #[test]
-fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
+fn a_changed_prefab_updates_its_copies_and_keeps_their_changes() {
     let (mut w, asset, root, lamp) = with_a_lamp_post();
     w.apply_property(
         PropertyRequest::SetField {
@@ -2044,18 +2044,18 @@ fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
         },
         3,
     );
-    // The assembly's lamp turns orange (another person, a Git pull).
+    // The prefab's lamp turns orange (another person, a Git pull).
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
     let two = EntityId(reflect::Id::from_raw(2).unwrap());
-    assert!(level::assembly::set_in_file(
+    assert!(level::prefab::set_in_file(
         &mut file,
         &[two],
         "Light",
         "color",
         reflect::Value::floats(&[1.0, 0.5, 0.0])
     ));
-    w.set_assembly(asset, std::sync::Arc::new(file));
+    w.set_prefab(asset, std::sync::Arc::new(file));
     let light = w
         .document()
         .level()
@@ -2063,11 +2063,7 @@ fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
         .unwrap()
         .get::<Light>()
         .unwrap();
-    assert_eq!(
-        light.color,
-        [1.0, 0.5, 0.0],
-        "the assembly's change arrives"
-    );
+    assert_eq!(light.color, [1.0, 0.5, 0.0], "the prefab's change arrives");
     assert_eq!(light.strength, 42.0, "the copy's own change stays");
     assert!(w.document().level().contains(root));
 }
@@ -2101,21 +2097,21 @@ fn a_duplicated_copy_is_still_a_copy() {
         .iter()
         .filter(|(_, e)| e.origin.is_some())
         .count();
-    assert_eq!(placed, 2, "two copies of the assembly");
+    assert_eq!(placed, 2, "two copies of the prefab");
     assert_eq!(file.level.len(), 4, "with the starter sun and environment");
 }
 
 #[test]
-fn a_selection_becomes_an_assembly_and_a_copy_of_it() {
+fn a_selection_becomes_a_prefab_and_a_copy_of_it() {
     let mut w = Workbench::new(info());
     let post = w.add_entity();
     let lamp = w.add_point_light();
     w.reparent(&[lamp], Some(post));
-    let file = w.assembly_file(post).unwrap();
-    assert_eq!(file.kind, level::text::FileKind::Assembly { root: post });
+    let file = w.prefab_file(post).unwrap();
+    assert_eq!(file.kind, level::text::FileKind::Prefab { root: post });
     assert_eq!(file.level.len(), 2);
     let asset = AssetId::random();
-    w.set_assembly(asset, std::sync::Arc::new(file));
+    w.set_prefab(asset, std::sync::Arc::new(file));
     w.make_copy(post, asset);
     let level = w.document().level();
     assert!(
@@ -2131,7 +2127,7 @@ fn a_selection_becomes_an_assembly_and_a_copy_of_it() {
     );
     assert!(
         saved.overrides.is_empty(),
-        "a fresh copy matches its assembly exactly"
+        "a fresh copy matches its prefab exactly"
     );
 }
 

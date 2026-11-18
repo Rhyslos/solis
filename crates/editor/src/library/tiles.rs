@@ -242,6 +242,9 @@ fn tile<'a>(
             if item.kind == LibraryKind::SoundEvent {
                 event_badge(ui, item, picture, &response, files.sounds);
             }
+            if item.kind == LibraryKind::Prefab {
+                prefab_marks(ui, picture, state.new_prefabs.contains(&item.path));
+            }
         }
     }
     if picked {
@@ -287,6 +290,45 @@ fn tile<'a>(
     }
 }
 
+/// A prefab tile's blue mark in the picture's corner, and "New" at its
+/// top left just after it's made (board 07, panel 2).
+fn prefab_marks(ui: &Ui, picture: Rect, new: bool) {
+    let painter = ui.painter().with_clip_rect(picture);
+    let side = (picture.width() * 0.22).clamp(size::ICON_SMALL, 2.0 * size::ICON_SMALL);
+    let mark = Rect::from_min_size(
+        picture.right_bottom() - vec2(side + size::ROW_GAP, side + size::ROW_GAP),
+        vec2(side, side),
+    );
+    painter.rect_filled(
+        mark,
+        CornerRadius::same(size::radius::CONTROL),
+        tokens::panel(),
+    );
+    icons::icon(
+        &painter,
+        mark.shrink(2.0),
+        Icon::Prefab,
+        theme::kind::PREFAB,
+    );
+    if new {
+        let galley = painter.layout_no_wrap("New".into(), text::tile_kind(), tokens::ON_ACCENT);
+        let badge = Rect::from_min_size(
+            picture.left_top() + vec2(size::ROW_GAP, size::ROW_GAP),
+            galley.size() + vec2(2.0 * size::ROW_GAP, 2.0),
+        );
+        painter.rect_filled(
+            badge,
+            CornerRadius::same(size::radius::CONTROL),
+            theme::kind::PREFAB,
+        );
+        painter.galley(
+            badge.min + vec2(size::ROW_GAP, 1.0),
+            galley,
+            tokens::ON_ACCENT,
+        );
+    }
+}
+
 /// The kind's dot and word under a tile's name: "Folder" for a folder.
 fn kind_line(ui: &Ui, line: Rect, entry: Entry<'_>) {
     let (colour, word) = match entry {
@@ -326,7 +368,7 @@ fn hint(entry: Entry<'_>) -> String {
         Entry::File(item) => item,
     };
     let what = match item.kind {
-        LibraryKind::Model | LibraryKind::Assembly => {
+        LibraryKind::Model | LibraryKind::Prefab => {
             "Drag it into the viewport or onto an entity, or pick it and press Place, to place it."
         }
         LibraryKind::Level => "Double-click its picture to open it.",

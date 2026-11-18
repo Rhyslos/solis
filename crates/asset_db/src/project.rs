@@ -28,8 +28,9 @@ pub const OWN_FOLDERS: &[&str] = &["builds", "saves", "recordings"];
 pub const CACHE_FOLDER: &str = ".solis";
 /// The project file's format version this build writes and reads.
 /// Version 2 is a project whose levels are `.sollevel` files (decision
-/// 0118: areas renamed levels).
-pub const FORMAT: u32 = 2;
+/// 0118: areas renamed levels); version 3 one whose prefabs are
+/// `.prefab.lst` files (assemblies renamed prefabs).
+pub const FORMAT: u32 = 3;
 
 /// The project file's version and upgraders (Phase 8, C1): each step
 /// turns the file's table at one version into the next, before it's
@@ -39,7 +40,7 @@ pub static PROJECT_FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgr
     name: "project",
     current: FORMAT,
     version_of: format_key_version,
-    steps: &[levels_not_areas],
+    steps: &[levels_not_areas, prefabs_not_assemblies],
 };
 
 /// Version 1 to 2 (decision 0118): nothing in the file itself changes.
@@ -48,6 +49,15 @@ pub static PROJECT_FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgr
 /// see: such a build refuses the project as one from a newer Solis,
 /// rather than opening it with no levels.
 fn levels_not_areas(_: &mut toml::Table) -> Result<(), String> {
+    Ok(())
+}
+
+/// Version 2 to 3 (decision 0118): nothing in the file itself changes.
+/// A project at version 3 keeps its prefabs as `.prefab.lst` files, moved
+/// from an assembly's `.solassembly` when it was opened, which a build
+/// from before can't read: such a build refuses the project as one from a
+/// newer Solis, rather than opening it with every copy missing its prefab.
+fn prefabs_not_assemblies(_: &mut toml::Table) -> Result<(), String> {
     Ok(())
 }
 
@@ -843,9 +853,10 @@ mod tests {
     }
 
     #[test]
-    fn a_project_of_format_1_is_brought_to_format_2_keeping_what_it_says() {
-        // Decision 0118: format 2 is a project whose levels are .sollevel.
-        assert_eq!(FORMAT, 2);
+    fn a_project_of_format_1_is_brought_to_format_3_keeping_what_it_says() {
+        // Decision 0118: format 2 is a project whose levels are .sollevel,
+        // and format 3 one whose prefabs are .prefab.lst.
+        assert_eq!(FORMAT, 3);
         assert!(PROJECT_FORMAT.is_complete());
         let root = test_folder("format-2");
         let old = "name = \"Harbour\"\nformat = 1\nsaved_by = 211\nkind = \"2d\"\nlater = 1\n";
@@ -853,7 +864,7 @@ mod tests {
         let project = Project::open(&root).unwrap();
         assert_eq!(project.name(), "Harbour");
         let new = project.upgraded_file().unwrap().expect("format 1 is older");
-        assert_eq!(format_key_version(&new), Some(2));
+        assert_eq!(format_key_version(&new), Some(3));
         let mut kept: toml::Table = toml::from_str(&new).unwrap();
         let mut was: toml::Table = toml::from_str(old).unwrap();
         kept.remove("format");
@@ -870,6 +881,20 @@ mod tests {
         // A new project is made at format 2.
         let made = Project::create(&root.join("new"), "New").unwrap();
         assert!(made.upgraded_file().unwrap().is_none());
+    }
+
+    #[test]
+    fn a_build_from_before_prefabs_refuses_a_format_3_project_as_newer() {
+        // The reader of the build before R5: format 2 at most.
+        let before = reflect::upgrade::Format::<toml::Table> {
+            name: "project",
+            current: 2,
+            version_of: format_key_version,
+            steps: &[],
+        };
+        let mut table: toml::Table = toml::from_str("name = \"Farm\"\nformat = 3\n").unwrap();
+        let refused = before.upgrade(3, &mut table).unwrap_err().to_string();
+        assert!(refused.contains("saved by a newer version"), "{refused}");
     }
 
     #[test]
@@ -892,8 +917,8 @@ mod tests {
             "it was made by a newer version (format 2); update to open it"
         );
         assert!(matches!(
-            Project::read_summary("name = \"X\"\nformat = 3\n"),
-            Err(ProjectError::TooNew(3))
+            Project::read_summary("name = \"X\"\nformat = 4\n"),
+            Err(ProjectError::TooNew(4))
         ));
     }
 

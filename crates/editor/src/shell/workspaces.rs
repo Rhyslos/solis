@@ -228,6 +228,8 @@ pub struct OpenNow {
     pub layout: PanelLayout,
     /// Home's left slot shows the project's folders, not the Level panel.
     pub folders: bool,
+    /// A prefab's page is open: a tab beside the level's on Home.
+    pub prefab_page: bool,
 }
 
 /// The documents of a tab's editor groups: one or two groups, each a
@@ -240,6 +242,9 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         RibbonTab::Build => vec![vec![P::Export]],
         RibbonTab::Home => {
             let mut level = vec![P::Viewport];
+            if open.prefab_page {
+                level.push(P::PrefabPage);
+            }
             if open.playing {
                 level.push(P::Game);
             }

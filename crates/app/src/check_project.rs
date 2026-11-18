@@ -99,6 +99,16 @@ pub fn check(root: &Path, made_by: &str) -> Report {
 /// says why it couldn't be).
 type Reader = fn(&str) -> Result<(), String>;
 
+/// Solis's own components, made once for every level and prefab the
+/// check reads.
+fn solis_registry() -> Result<&'static reflect::Registry, String> {
+    static REGISTRY: std::sync::OnceLock<Option<reflect::Registry>> = std::sync::OnceLock::new();
+    REGISTRY
+        .get_or_init(|| level::builtin::registry().ok())
+        .as_ref()
+        .ok_or_else(|| "Solis's own components couldn't be registered".to_string())
+}
+
 /// The reader for `path`, by its name, and the most of it read (the
 /// editor's own limit for that kind of file).
 fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
@@ -155,16 +165,20 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             },
             animation::frames_file::MAX_BYTES as u64,
         ),
-        "sollevel" | "solarea" | "solassembly" => (
+        "prefab" | "solassembly" => (
+            &level::prefab_file::FORMAT,
+            |text| {
+                let registry = solis_registry()?;
+                level::prefab_file::read(text, registry)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            level::prefab_file::MAX_BYTES as u64,
+        ),
+        "sollevel" | "solarea" => (
             &level::text::FORMAT,
             |text| {
-                // Made once for every level the check reads.
-                static REGISTRY: std::sync::OnceLock<Option<reflect::Registry>> =
-                    std::sync::OnceLock::new();
-                let registry = REGISTRY
-                    .get_or_init(|| level::builtin::registry().ok())
-                    .as_ref()
-                    .ok_or("Solis's own components couldn't be registered")?;
+                let registry = solis_registry()?;
                 level::text::read_file(text, registry)
                     .map(drop)
                     .map_err(|e| e.to_string())
@@ -540,19 +554,19 @@ impl Saves {
     }
 }
 
-/// The project's assemblies, read once for a whole check.
-pub(crate) type Assemblies = Vec<(reflect::AssetId, std::sync::Arc<level::text::LevelFile>)>;
+/// The project's prefabs, read once for a whole check.
+pub(crate) type Prefabs = Vec<(reflect::AssetId, std::sync::Arc<level::text::LevelFile>)>;
 
-/// What a check reads once for all its recordings: the assemblies, and
+/// What a check reads once for all its recordings: the prefabs, and
 /// the sprite sheets with the tile maps and their pictures.
 #[derive(Default)]
 pub(crate) struct Read {
-    assemblies: Option<Assemblies>,
+    prefabs: Option<Prefabs>,
     sheets: Option<editor::sprite_sheets::SpriteSheets>,
 }
 
 /// A workbench with the project at `root` open as the editor would have
-/// it, headless: its code, input actions, assemblies, Library and sprite
+/// it, headless: its code, input actions, prefabs, Library and sprite
 /// sheets (with tilesets, tile maps and pictures, so a 2D game has its
 /// walls), and the level at `level_path` (inside the assets, `/` between
 /// folders).
@@ -589,12 +603,12 @@ pub(crate) fn workbench_for(
     w.set_pixels(crate::play_files::load_pixels(root).0);
     w.set_mixer(crate::play_files::load_mixer(root).0);
     let (items, folders) = crate::project::Projects::library(&db.listing(), |_| None);
-    // Every assembly, so game code can spawn any of them: read once for
+    // Every prefab, so game code can spawn any of them: read once for
     // all of a check's recordings (the Phase 8 review).
-    let assemblies = read.assemblies.get_or_insert_with(|| {
+    let prefabs = read.prefabs.get_or_insert_with(|| {
         items
             .iter()
-            .filter(|item| item.kind == editor::LibraryKind::Assembly)
+            .filter(|item| item.kind == editor::LibraryKind::Prefab)
             .filter_map(|item| Some((item.id?, db.file(item.id?)?)))
             // One the editor can't read is left out, as the editor does
             // (the Files step reports it); only a game that uses it fails.
@@ -605,8 +619,8 @@ pub(crate) fn workbench_for(
             })
             .collect()
     });
-    for (id, file) in assemblies.iter() {
-        w.set_assembly(*id, std::sync::Arc::clone(file));
+    for (id, file) in prefabs.iter() {
+        w.set_prefab(*id, std::sync::Arc::clone(file));
     }
     w.set_library(items);
     w.set_folders(folders);

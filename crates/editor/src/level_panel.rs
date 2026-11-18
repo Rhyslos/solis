@@ -40,6 +40,9 @@ pub(crate) struct LevelPanelState {
     /// What's hidden and locked in effect as last worked out, and what it
     /// was worked out from.
     effect_kept: Option<KeptEffect>,
+    /// The marks on placed copies (a link, a dot), worked out by the
+    /// workbench before the panel is drawn.
+    pub(crate) marks: std::sync::Arc<crate::prefab_marks::PrefabMarks>,
 }
 
 /// Every entity hidden and every entity locked, counting those under a
@@ -156,6 +159,8 @@ struct Toggles {
     hidden: bool,
     locked: bool,
     shown: Shown,
+    /// A placed copy's link, and a dot for its own changes (board 07).
+    marks: (bool, bool),
 }
 
 /// Which switch was clicked.
@@ -275,8 +280,43 @@ fn level_row(
             toggled = Some(which);
         }
     }
+    copy_marks(ui, row, pointed, t);
     (response, toggled)
 }
+
+/// A placed copy's link at the row's right, and the orange dot before it
+/// when it (or this part of it) changes some settings, where the hide and
+/// lock switches aren't showing.
+fn copy_marks(ui: &Ui, row: Rect, pointed: bool, t: Toggles) {
+    let (linked, changed) = t.marks;
+    let switches_out = pointed || t.hidden || t.locked || t.shown.hidden || t.shown.locked;
+    if switches_out || !(linked || changed) {
+        return;
+    }
+    let spot = |n: f32| {
+        let right = row.right() - n * (size::ROW_SWITCH + size::GAP);
+        Rect::from_min_max(
+            egui::pos2(right - size::ROW_SWITCH, row.top()),
+            egui::pos2(right, row.bottom()),
+        )
+    };
+    let mut at = 0.0;
+    if linked {
+        let square = Rect::from_center_size(
+            spot(0.0).center(),
+            egui::vec2(size::ROW_ICON, size::ROW_ICON),
+        );
+        icons::icon(ui.painter(), square, Icon::Link, theme::kind::PREFAB);
+        at = 1.0;
+    }
+    if changed {
+        ui.painter()
+            .circle_filled(spot(at).center(), CHANGED_DOT, tokens::WARNING);
+    }
+}
+
+/// The radius of a copy's changed-settings dot.
+const CHANGED_DOT: f32 = 2.5;
 
 /// A small switch for hiding or locking, in `spot`: bright while on,
 /// faint while on only because of a parent, quiet otherwise. Returns
@@ -309,7 +349,10 @@ fn switch(
 /// An entity's icon and note, from its components. The icon's colour is
 /// its kind's, as in the Library (decision 0060): a lamp shows its own
 /// light's colour.
-fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, Color32, String) {
+pub(crate) fn looks(
+    entity: &EntityData,
+    models: &BTreeMap<AssetId, ModelInfo>,
+) -> (Icon, Color32, String) {
     if let Some(light) = entity.get::<Light>() {
         let [r, g, b] = light.color.map(|c| (c * 255.0).round() as u8);
         let color = if light.kind == LightKind::Sun {
@@ -361,9 +404,9 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
     if entity.has("Environment") {
         return (Icon::LevelFile, theme::kind::ENVIRONMENT, "sky, fog".into());
     }
-    // The root of a placed assembly.
+    // The root of a placed prefab.
     if entity.origin.as_ref().is_some_and(|o| o.path.is_empty()) {
-        return (Icon::Assembly, theme::kind::ASSEMBLY, String::new());
+        return (Icon::Prefab, theme::kind::PREFAB, String::new());
     }
     (Icon::Empty, theme::kind::OTHER, String::new())
 }
@@ -396,7 +439,7 @@ pub(crate) enum LevelRequest {
     },
     /// Something picked from the panel's menus.
     Command(MenuCommand),
-    /// Place a model or assembly dragged from the Library under this
+    /// Place a model or prefab dragged from the Library under this
     /// entity.
     PlaceUnder {
         /// The asset.
@@ -629,7 +672,7 @@ fn row_menu(ui: &mut Ui) -> Option<MenuCommand> {
             ("Add spotlight", "", M::AddSpotlight),
             ("Add camera", "", M::AddCamera),
         ],
-        &[("Create assembly from selection", "", M::CreateAssembly)],
+        &[("Make prefab\u{2026}", "", M::MakePrefab)],
         &[
             ("Select all", "Ctrl+A", M::SelectAll),
             ("Select nothing", "Esc", M::SelectNone),
@@ -801,6 +844,7 @@ fn entity_row(
         hidden: state.hidden.contains(&id),
         locked: state.locked.contains(&id),
         shown,
+        marks: state.marks.of(id),
     };
     let selected = document.selection.contains(id);
     let (response, toggled) = level_row(
@@ -926,16 +970,16 @@ mod tests {
     }
 
     #[test]
-    fn a_placed_assembly_s_root_is_coloured_as_an_assembly() {
+    fn a_placed_prefab_s_root_is_coloured_as_a_prefab() {
         let instance = EntityId::random();
         let mut root = EntityData::new("Fighter");
         root.origin = Some(Origin {
-            assembly: AssetId::random(),
+            prefab: AssetId::random(),
             instance,
             path: Vec::new(),
         });
-        assert_eq!(color_of(&root), theme::kind::ASSEMBLY);
-        // A plain entity inside it is not the assembly itself.
+        assert_eq!(color_of(&root), theme::kind::PREFAB);
+        // A plain entity inside it is not the prefab itself.
         let mut part = root.clone();
         part.origin.as_mut().unwrap().path = vec![EntityId::random()];
         assert_eq!(color_of(&part), theme::kind::OTHER);

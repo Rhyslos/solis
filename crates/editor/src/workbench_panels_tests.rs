@@ -459,7 +459,7 @@ fn a_right_click_on_a_row_selects_it_and_opens_its_menu_of_commands() {
         "Add point light",
         "Add spotlight",
         "Add camera",
-        "Create assembly from selection",
+        "Make prefab\u{2026}",
         "Select all",
         "Select nothing",
     ] {
@@ -596,7 +596,7 @@ fn components_registered_by_game_code_survive_new_levels_and_projects() {
 }
 
 #[test]
-fn another_project_starts_without_the_last_ones_assemblies_and_questions() {
+fn another_project_starts_without_the_last_ones_prefabs_and_questions() {
     let (mut w, asset, _, _) = with_a_lamp_post();
     w.open.pending_reload = Some(level::builtin::starter_level());
     w.open.place_targets.insert(asset, (glam::Vec3::ONE, None));
@@ -605,7 +605,7 @@ fn another_project_starts_without_the_last_ones_assemblies_and_questions() {
         root: "/copy".into(),
         assets: "/copy/assets".into(),
     }));
-    assert!(w.assemblies().is_empty());
+    assert!(w.prefabs().is_empty());
     assert!(w.open.place_targets.is_empty());
     assert!(w.open.pending_reload.is_none());
 }

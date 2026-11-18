@@ -4,7 +4,7 @@
 //! always goes with it, so its ID survives (decision 0021).
 
 use crate::db::{
-    ANIMATOR_EXTENSION, ASSEMBLY_EXTENSION, AssetDb, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS,
+    ANIMATOR_EXTENSION, AssetDb, OLD_PREFAB_EXTENSION, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS,
     SPRITE_CLIPS_EXTENSION, TILE_MAP_EXTENSION, TILESET_EXTENSION,
 };
 use crate::sidecar;
@@ -17,8 +17,8 @@ use std::path::{Component, Path, PathBuf};
 pub enum FileKind {
     /// A glTF model.
     Model,
-    /// An assembly.
-    Assembly,
+    /// A prefab.
+    Prefab,
     /// A level (`.sollevel`).
     Level,
     /// A picture (PNG, JPEG).
@@ -72,6 +72,7 @@ impl FileKind {
             Some("tileset") => return Self::Tileset,
             Some("tilemap") => return Self::TileMap,
             Some("atlas") => return Self::Atlas,
+            Some("prefab") => return Self::Prefab,
             _ => {}
         }
         let ext = path
@@ -79,7 +80,7 @@ impl FileKind {
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_default();
         match ext.as_str() {
-            e if e == ASSEMBLY_EXTENSION => Self::Assembly,
+            e if e == OLD_PREFAB_EXTENSION => Self::Prefab,
             e if e == LEVEL_EXTENSION || e == OLD_LEVEL_EXTENSION => Self::Level,
             "png" | "jpg" | "jpeg" => Self::Texture,
             "lst" | "lua" | "rs" => Self::Code,
@@ -102,7 +103,7 @@ pub struct FileEntry {
     pub path: PathBuf,
     /// What kind it is.
     pub kind: FileKind,
-    /// Its asset ID, for models and assemblies.
+    /// Its asset ID, for models and prefabs.
     pub id: Option<AssetId>,
 }
 
@@ -434,11 +435,11 @@ mod name_tests {
         ] {
             assert!(!valid_file_name(bad), "{bad:?}");
         }
-        assert_eq!(file_name_from("Ship: Mk II", "Assembly"), "Ship_ Mk II");
-        assert_eq!(file_name_from("COM¹", "Assembly"), "COM¹_");
-        assert_eq!(file_name_from("CON", "Assembly"), "CON_");
-        assert_eq!(file_name_from("   ", "Assembly"), "Assembly");
-        assert_eq!(file_name_from("a\u{202E}b", "Assembly"), "a_b");
+        assert_eq!(file_name_from("Ship: Mk II", "Prefab"), "Ship_ Mk II");
+        assert_eq!(file_name_from("COM¹", "Prefab"), "COM¹_");
+        assert_eq!(file_name_from("CON", "Prefab"), "CON_");
+        assert_eq!(file_name_from("   ", "Prefab"), "Prefab");
+        assert_eq!(file_name_from("a\u{202E}b", "Prefab"), "a_b");
         assert_eq!(file_name_from(&"y".repeat(500), "A").chars().count(), 64);
     }
 }
@@ -631,7 +632,7 @@ mod tests {
             crate::AssetKind::of(Path::new("farmer.aseprite")),
             Some(crate::AssetKind::SpriteSheet)
         );
-        assert_eq!(FileKind::of(Path::new("a.solassembly")), FileKind::Assembly);
+        assert_eq!(FileKind::of(Path::new("a.solassembly")), FileKind::Prefab);
         assert_eq!(
             FileKind::of(Path::new("sprites/farmer.solframes")),
             FileKind::SpriteClips

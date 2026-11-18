@@ -108,13 +108,13 @@ fn lend_spawning<'s>(
         native(
             scope,
             "World_spawn",
-            move |_, (_world, assembly, place): (LuaValue, mlua::LuaString, LuaValue)| {
-                // Assembly.Ships.Fighter comes as "Ships.Fighter": its file
+            move |_, (_world, prefab, place): (LuaValue, mlua::LuaString, LuaValue)| {
+                // Prefab.Ships.Fighter comes as "Ships.Fighter": its file
                 // is ships/fighter (the Library ignores capitals).
-                let assembly = crate::project_names::path_of(&assembly.to_str()?);
-                Ok(assembly
+                let prefab = crate::project_names::path_of(&prefab.to_str()?);
+                Ok(prefab
                     .zip(vec3_of(&place))
-                    .and_then(|(assembly, place)| h.borrow_mut().spawn(&assembly, place))
+                    .and_then(|(prefab, place)| h.borrow_mut().spawn(&prefab, place))
                     .map(|id| id.to_string()))
             },
         )?,

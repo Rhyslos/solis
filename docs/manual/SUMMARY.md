@@ -24,7 +24,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Selecting and moving things: clicking, boxes, and the move, rotate and scale gizmos](selecting-and-moving.md)
 - [Undo and redo: take back any change](undo.md)
 - [Saving levels: files Git can merge](saving-levels.md)
-- [Assemblies: build once, place everywhere](assemblies.md)
+- [Prefabs: build once, place everywhere](prefabs.md)
 - [Brushes: shapes made in the editor, for blocking out a level](brushes.md)
 - [Play mode: run the level as a game, and Stop puts everything back](play-mode.md)
 

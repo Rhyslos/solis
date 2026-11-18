@@ -52,7 +52,7 @@ pub(crate) enum PropertyRequest {
         /// The component's name.
         component: String,
     },
-    /// Put a field back to its assembly's value.
+    /// Put a field back to its prefab's value.
     RevertField {
         /// The entity.
         entity: EntityId,
@@ -61,7 +61,7 @@ pub(crate) enum PropertyRequest {
         /// The field's name.
         field: String,
     },
-    /// Make a field's value the assembly's, for every copy.
+    /// Make a field's value the prefab's, for every copy.
     ApplyField {
         /// The entity.
         entity: EntityId,
@@ -70,8 +70,10 @@ pub(crate) enum PropertyRequest {
         /// The field's name.
         field: String,
     },
-    /// Turn a placed assembly into plain entities.
+    /// Turn a placed prefab into plain entities (Unlink).
     Unpack(EntityId),
+    /// Open this prefab on its own page.
+    OpenPrefab(reflect::AssetId),
     /// Delete an entity and everything below it.
     Delete(EntityId),
     /// Move an entity to where the camera is looking.
@@ -143,13 +145,15 @@ pub(crate) enum PropertyRequest {
     },
 }
 
-/// What the selected entity's assembly says about it.
+/// What the selected entity's prefab says about it.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct AssemblyPart {
-    /// The assembly's name.
+pub(crate) struct PrefabPart {
+    /// The prefab.
+    pub asset: reflect::AssetId,
+    /// The prefab's name.
     pub name: String,
-    /// The entity as the assembly has it, or `None` if its part is gone
-    /// from the assembly.
+    /// The entity as the prefab has it, or `None` if its part is gone
+    /// from the prefab.
     pub expected: Option<level::EntityData>,
     /// Whether it's the placed copy's root.
     pub root: bool,
@@ -209,13 +213,13 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
 }
 
 /// The Properties panel. `part` is set when the selected entity comes from
-/// a placed assembly; `copied` names the components whose values were
+/// a placed prefab; `copied` names the components whose values were
 /// copied (for Paste). With several entities selected, it shows the
 /// components they all have, and a change applies to all of them.
 pub(crate) fn properties(
     ui: &mut Ui,
     document: &Document,
-    part: Option<&AssemblyPart>,
+    part: Option<&PrefabPart>,
     (models, sheets): (
         &BTreeMap<AssetId, ModelInfo>,
         &crate::sprite_sheets::SpriteSheets,
@@ -281,7 +285,7 @@ pub(crate) fn properties(
                     ui.spacing_mut().item_spacing.y = size::CARD_GAP;
                     if !many {
                         if let Some(part) = part {
-                            head::assembly_note(ui, id, part, &mut requests);
+                            head::prefab_note(ui, id, part, &mut requests);
                         }
                         if let Some(playing) = playing {
                             head::playing_note(ui, playing.yours.len());
@@ -331,7 +335,7 @@ struct Card<'a> {
     document: &'a Document,
     /// The selected entities; the first is the one Properties shows.
     selected: &'a [EntityId],
-    part: Option<&'a AssemblyPart>,
+    part: Option<&'a PrefabPart>,
     assets: (
         &'a BTreeMap<AssetId, ModelInfo>,
         &'a crate::sprite_sheets::SpriteSheets,
@@ -404,7 +408,7 @@ impl Card<'_> {
         {
             requests.push(PropertyRequest::OpenCode(file.clone()));
         }
-        let assembly = self
+        let prefab = self
             .part
             .filter(|_| !many)
             .and_then(|p| p.expected.as_ref())
@@ -425,7 +429,7 @@ impl Card<'_> {
             ui,
             schema,
             data,
-            (assembly, &yours),
+            (prefab, &yours),
             &others,
             self.assets,
             (level, &self.document.asset_users()),

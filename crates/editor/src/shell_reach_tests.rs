@@ -134,9 +134,9 @@ const MOVED: [(&str, &str, Place); 37] = [
         Place::RibbonList(RibbonTab::Home, "Light: more kinds", "Spotlight"),
     ),
     (
-        "Entity > Create assembly from selection",
-        "Create assembly from selection",
-        Place::RibbonList(RibbonTab::Home, "More", "Assembly from selection"),
+        "Entity > Create prefab from selection",
+        "Make prefab\u{2026}",
+        Place::RibbonList(RibbonTab::Home, "More", "Make prefab\u{2026}"),
     ),
     (
         "Entity > Add camera",
@@ -316,6 +316,8 @@ fn snapshot(w: &Workbench) -> impl std::fmt::Debug + use<> {
             w.open.outbox.len(),
             // Leaving the level asks about unsaved changes first.
             w.open.unsaved_prompt.is_some(),
+            // Make prefab… opens its dialog.
+            w.open.make_prefab.is_some(),
         ),
     )
 }
@@ -609,12 +611,7 @@ fn what_home_s_ribbon_and_the_shelf_gave_up_is_still_reachable() {
     h.run();
     h.get_by_label("More").click();
     h.run();
-    for item in [
-        "Sprite",
-        "Tile map",
-        "Reverb zone",
-        "Assembly from selection",
-    ] {
+    for item in ["Sprite", "Tile map", "Reverb zone", "Make prefab\u{2026}"] {
         assert!(h.query_by_label(item).is_some(), "More has {item}");
     }
     // The shelf's Animation tab is the Animate tab's now.

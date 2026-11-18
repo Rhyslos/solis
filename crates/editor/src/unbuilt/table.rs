@@ -12,8 +12,8 @@
 //! table against the inventory, so neither can drift from the other.
 
 use super::Phase::{
-    NotPlanned, Shared1f, Shared4, Shared6, Shared7, Shared8, Shared10, Shared11, Shared13,
-    ThreeD1, ThreeD5, TwoD2,
+    NotPlanned, Shared4, Shared6, Shared7, Shared8, Shared10, Shared11, Shared13, ThreeD1, ThreeD5,
+    TwoD2,
 };
 use super::Unbuilt;
 
@@ -97,9 +97,8 @@ unbuilt! {
     LibSourceHistory: "lib.source.history" => ("History", Shared11, "Lists the earlier versions of the selected file"),
     LibUseShowInLevel: "lib.use.show-in-level" => ("Show in level", NotPlanned, "Finds where the selected file is used in the open level"),
     LibPreviewModes: "lib.preview.modes" => ("Preview modes", NotPlanned, "Turns the preview around and shows it lit, as wires or by its picture layout"),
-    LibUsedByAllKinds: "lib.used-by.all-kinds" => ("Used by", NotPlanned, "Lists every level and assembly that uses the selected file"),
+    LibUsedByAllKinds: "lib.used-by.all-kinds" => ("Used by", NotPlanned, "Lists every level and prefab that uses the selected file"),
     LibShelfImportQueue: "lib.shelf.import-queue" => ("Import queue", NotPlanned, "Lists the files being brought in, with how far each has got"),
-    LibNewPrefab: "lib.new.prefab" => ("New prefab", Shared1f, "Makes a prefab here: an entity with its parts and settings, saved to be placed many times"),
     LibPaste: "lib.paste" => ("Paste", NotPlanned, "Puts files you copied into this folder"),
     LibDragToHome: "lib.drag-to-home" => ("Drag to Home", NotPlanned, "Carries a file to the Home tab by dragging it onto the tab"),
 

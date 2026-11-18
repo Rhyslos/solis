@@ -234,7 +234,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         last_export,
         last_export_folder,
         library,
-        assemblies,
+        prefabs,
         outbox,
         kind,
         unsaved_prompt,
@@ -287,7 +287,11 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         left_out,
         told_code_notes,
         rust_components,
-        assembly_part_kept,
+        prefab_part_kept,
+        prefab_page,
+        make_prefab,
+        placed,
+        marks_kept,
         quit_asked,
         preview_forgotten,
         code_uses,
@@ -305,7 +309,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     );
     assert_eq!(known(document), known(&fresh.document), "the components");
     assert!(models.is_empty() && library.is_empty() && folders.is_empty());
-    assert!(assemblies.is_empty() && cue_sounds.is_empty());
+    assert!(prefabs.is_empty() && cue_sounds.is_empty());
     assert!(export.is_none() && last_export.is_none());
     assert_eq!(last_export_folder, &None);
     assert_eq!(outbox, &Vec::new(), "nothing still to be carried out");
@@ -356,7 +360,12 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     same(screen_pictures, &fresh.screen_pictures, "screens' pictures");
     assert!(screen_doc.is_none() && screen_game.is_none());
     assert!(screen_from.is_none());
-    assert!(assembly_part_kept.borrow().is_none());
+    assert!(prefab_part_kept.borrow().is_none());
+    assert!(
+        prefab_page.is_none() && make_prefab.is_none(),
+        "no prefab open"
+    );
+    assert!(placed.is_empty() && marks_kept.is_none());
     assert_eq!(preview_forgotten, &fresh.preview_forgotten);
     assert!(code_uses.is_none(), "which code each entity uses");
 }

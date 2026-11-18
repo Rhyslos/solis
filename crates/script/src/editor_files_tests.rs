@@ -21,7 +21,7 @@ const FOLDER: &str = "solis";
 /// `solis/project.lst`.
 fn every_name() -> Names {
     Names {
-        assemblies: vec!["ships/fighter".into()],
+        prefabs: vec!["ships/fighter".into()],
         sounds: vec!["sfx/footstep".into()],
         clips: vec!["sprites/farmer/walk".into()],
         cues: vec!["footstep".into()],

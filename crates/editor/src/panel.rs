@@ -18,7 +18,7 @@ pub enum Panel {
     Level,
     /// The selected entity's components.
     Properties,
-    /// Assets: models, textures, sounds, assemblies.
+    /// Assets: models, textures, sounds, prefabs.
     Library,
     /// Game code in Lust, Rust or Lua (Phase 4).
     Code,
@@ -85,6 +85,10 @@ pub enum Panel {
     /// Export for playtesting as a page: the Build tab's middle (round
     /// 3, `10-build-tab`). The workbench draws it where the shell puts it.
     Export,
+    /// A prefab's own page (decision 0118, board 07): a tab beside the
+    /// level's on Home, the view of the prefab built on its own, while
+    /// one is open.
+    PrefabPage,
 }
 
 impl Panel {
@@ -110,7 +114,7 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`].
-    pub const OPEN_WITH_A_FILE: [Self; 14] = [
+    pub const OPEN_WITH_A_FILE: [Self; 15] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
@@ -125,6 +129,7 @@ impl Panel {
         Self::Parameters,
         Self::Preview,
         Self::Pictures,
+        Self::PrefabPage,
     ];
 
     /// The tabs a clips file opens (and closes) together.
@@ -171,6 +176,7 @@ impl Panel {
             Self::Bus => "Bus",
             Self::SoundEvents => "Sound events",
             Self::Export => "Export for playtesting",
+            Self::PrefabPage => "Prefab",
         }
     }
 
@@ -207,6 +213,7 @@ impl Panel {
             Self::Bus => Icon::Sliders,
             Self::SoundEvents => Icon::SoundEvent,
             Self::Export => Icon::Build,
+            Self::PrefabPage => Icon::Prefab,
         }
     }
 }

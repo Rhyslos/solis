@@ -4,18 +4,18 @@
 use reflect::{AssetId, Component, ComponentData, EntityId};
 use std::collections::BTreeMap;
 
-/// Where an entity comes from when it's part of an assembly placed in the
-/// level (decision 0020): the assembly, the placed copy's root, and the
-/// way to it inside the assembly (empty for the root itself; one ID per
-/// assembly nested on the way).
+/// Where an entity comes from when it's part of a prefab placed in the
+/// level (decision 0020): the prefab, the placed copy's root, and the
+/// way to it inside the prefab (empty for the root itself; one ID per
+/// prefab nested on the way).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Origin {
-    /// The assembly.
-    pub assembly: AssetId,
+    /// The prefab.
+    pub prefab: AssetId,
     /// The placed copy's root entity in the level.
     pub instance: EntityId,
-    /// The entity inside the assembly: empty for the root, else the IDs
-    /// leading to it through nested assemblies.
+    /// The entity inside the prefab: empty for the root, else the IDs
+    /// leading to it through nested prefabs.
     pub path: Vec<EntityId>,
 }
 
@@ -31,7 +31,7 @@ pub struct EntityData {
     pub order: String,
     /// Its components, by component name.
     pub components: BTreeMap<String, ComponentData>,
-    /// The assembly it comes from, if it's part of a placed one.
+    /// The prefab it comes from, if it's part of a placed one.
     pub origin: Option<Origin>,
 }
 

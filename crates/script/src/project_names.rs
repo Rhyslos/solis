@@ -1,11 +1,11 @@
 //! The project's own names as Lust states ([decision 0065](../../../docs/decisions/0065-engine-api-guidelines.md)):
 //! `solis/project.lst`, written by the editor whenever the project's files
-//! change, so game code names an assembly as `Assembly.Ships.Fighter`, not
+//! change, so game code names a prefab as `Prefab.Ships.Fighter`, not
 //! as text. A typo is then a mistake before the game runs, and a renamed
 //! file points at every line still using the old name.
 //!
 //! Folders become options inside options: `ships/fighter.solassembly` is
-//! `Assembly.Ships.Fighter`. Each part's first letter is made a capital
+//! `Prefab.Ships.Fighter`. Each part's first letter is made a capital
 //! (Lust's options start with one); the rest is kept as it is. Natives get
 //! the full name back (`"Ships.Fighter"`) and find the file from it,
 //! ignoring capitals as the Library does.
@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 pub const STANDARD_BUSES: &[&str] = &["Master", "Music", "Effects", "Voice", "Ambience", "UI"];
 
 /// The option a project has when it has none of its own (Lust's states
-/// need one): `Assembly.None`, which makes nothing.
+/// need one): `Prefab.None`, which makes nothing.
 pub const NO_OPTION: &str = "None";
 
 /// One level of a state: options, each with the options inside it (none
@@ -32,9 +32,9 @@ struct Level {
 /// The project's names, as Solis finds them, for [`project_file`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Names {
-    /// Its assemblies: their paths in the assets, with `/` between
+    /// Its prefabs: their paths in the assets, with `/` between
     /// folders and without `.solassembly` (`ships/fighter`).
-    pub assemblies: Vec<String>,
+    pub prefabs: Vec<String>,
     /// Its input actions' names (`Jump`), as Edit > Input actions… has
     /// them.
     pub actions: Vec<String>,
@@ -58,11 +58,11 @@ pub struct Names {
 }
 
 impl Names {
-    /// A project's names before it has any of its own: no assemblies, and
+    /// A project's names before it has any of its own: no prefabs, and
     /// the ready-made input actions.
     pub fn standard() -> Self {
         Self {
-            assemblies: Vec::new(),
+            prefabs: Vec::new(),
             actions: input::Bindings::default()
                 .actions
                 .into_iter()
@@ -79,11 +79,11 @@ impl Names {
 }
 
 impl Names {
-    /// [`Names::standard`] with these assemblies (paths without the
+    /// [`Names::standard`] with these prefabs (paths without the
     /// extension), for tests and samples.
-    pub fn with_assemblies(paths: &[&str]) -> Self {
+    pub fn with_prefabs(paths: &[&str]) -> Self {
         let mut names = Self::standard();
-        names.assemblies = paths.iter().map(|p| (*p).to_string()).collect();
+        names.prefabs = paths.iter().map(|p| (*p).to_string()).collect();
         names
     }
 
@@ -138,7 +138,7 @@ pub const KIT_ACTIONS: [&str; 8] = [
 /// for the first line.
 pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let mut notes = Vec::new();
-    let assembly = state_text("Assembly", &names.assemblies, "assembly", &mut notes);
+    let prefab = state_text("Prefab", &names.prefabs, "prefab", &mut notes);
     let mut actions = names.actions.clone();
     for kit in KIT_ACTIONS {
         if !actions.iter().any(|a| a.eq_ignore_ascii_case(kit)) {
@@ -155,9 +155,9 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
-         -- The project's assemblies, folders as options inside options: World:spawn(Assembly.Ships.Fighter, place)\n\
+         -- The project's prefabs, folders as options inside options: World:spawn(Prefab.Ships.Fighter, place)\n\
          -- for ships/fighter.\n\
-         {assembly}\n\n\
+         {prefab}\n\n\
          -- The project's input actions (Edit > Input actions…): Input:pressed(Action.Jump).\n\
          {action}\n\n\
          -- The project's sound events, folders as options inside options: Audio:play(Sound.Sfx.Footstep)\n\
@@ -181,7 +181,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     (text, notes)
 }
 
-/// One state's line: `state Assembly = [Crate, Ships [Fighter]];`.
+/// One state's line: `state Prefab = [Crate, Ships [Fighter]];`.
 fn state_text(state: &str, paths: &[String], what: &str, notes: &mut Vec<String>) -> String {
     let mut top = Level::default();
     let mut paths: Vec<&String> = paths.iter().collect();
@@ -361,9 +361,9 @@ pub fn path_of(option: &str) -> Option<String> {
 mod tests {
     use super::*;
 
-    fn assemblies(list: &[&str]) -> Names {
+    fn prefabs(list: &[&str]) -> Names {
         Names {
-            assemblies: list.iter().map(|p| (*p).to_string()).collect(),
+            prefabs: list.iter().map(|p| (*p).to_string()).collect(),
             ..Names::default()
         }
     }
@@ -408,7 +408,7 @@ mod tests {
             "{text}"
         );
         assert!(
-            text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
+            text.ends_with("pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
         );
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
@@ -444,15 +444,15 @@ mod tests {
     fn folders_become_options_inside_options() {
         let (text, notes) = project_file(
             "Test 1.0",
-            &assemblies(&["ships/fighter", "ships/freighter", "crate", "crops/wheat"]),
+            &prefabs(&["ships/fighter", "ships/freighter", "crate", "crops/wheat"]),
         );
         assert!(notes.is_empty(), "{notes:?}");
         assert!(
-            text.contains("state Assembly = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
+            text.contains("state Prefab = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
             "{text}"
         );
         assert!(
-            text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
+            text.ends_with("pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
         );
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
@@ -460,17 +460,17 @@ mod tests {
     }
 
     #[test]
-    fn a_project_with_no_assemblies_has_none() {
+    fn a_project_with_no_prefabs_has_none() {
         let (text, notes) = project_file("Test 1.0", &Names::default());
         assert!(notes.is_empty());
-        assert!(text.contains("state Assembly = [None];"));
+        assert!(text.contains("state Prefab = [None];"));
     }
 
     #[test]
     fn names_that_cant_be_options_are_left_out_with_a_note() {
         let (text, notes) = project_file(
             "Test 1.0",
-            &assemblies(&[
+            &prefabs(&[
                 "2fast",
                 "big-ship",
                 "UFO",
@@ -485,7 +485,7 @@ mod tests {
             ]),
         );
         assert!(
-            text.contains("state Assembly = [Dock [Crane], Fighter, Ok, Ships [A, B], Ufo];"),
+            text.contains("state Prefab = [Dock [Crane], Fighter, Ok, Ships [A, B], Ufo];"),
             "{text}"
         );
         assert_eq!(notes.len(), 5, "{notes:?}");
@@ -519,12 +519,12 @@ mod tests {
 
     #[test]
     fn the_file_checks_in_lust() {
-        let (text, _) = project_file("Test 1.0", &assemblies(&["ships/fighter", "crate"]));
+        let (text, _) = project_file("Test 1.0", &prefabs(&["ships/fighter", "crate"]));
         let files = vec![
             ("solis/project.lst".to_string(), text),
             (
                 "main.lst".to_string(),
-                "fetch \"solis/project\":Assembly;\nAssembly a = Assembly.Ships.Fighter;\nend\n"
+                "fetch \"solis/project\":Prefab;\nPrefab a = Prefab.Ships.Fighter;\nend\n"
                     .to_string(),
             ),
         ];
@@ -539,10 +539,10 @@ mod tests {
         fn any_paths_give_a_file_lust_takes(
             paths in proptest::collection::vec("[a-zA-Z0-9_ -]{1,6}(/[a-zA-Z0-9_ -]{1,6}){0,2}", 0..12)
         ) {
-            let (text, _notes) = project_file("Test 1.0", &Names { assemblies: paths.clone(), sounds: paths, ..Names::default() });
+            let (text, _notes) = project_file("Test 1.0", &Names { prefabs: paths.clone(), sounds: paths, ..Names::default() });
             let files = vec![
                 ("solis/project.lst".to_string(), text.clone()),
-                ("main.lst".to_string(), "fetch \"solis/project\":Assembly;\nend\n".to_string()),
+                ("main.lst".to_string(), "fetch \"solis/project\":Prefab;\nend\n".to_string()),
             ];
             proptest::prop_assert!(lust::check("main.lst", &files).is_ok(), "{}", text);
         }
