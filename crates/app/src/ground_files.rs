@@ -79,7 +79,10 @@ impl GroundFiles {
 }
 
 /// The ground whose settings file is `path` inside `assets`.
-pub(crate) fn read(assets: &Path, path: &str) -> Result<(ground::Settings, ground::Ground), String> {
+pub(crate) fn read(
+    assets: &Path,
+    path: &str,
+) -> Result<(ground::Settings, ground::Ground), String> {
     let file = assets.join(path);
     let text = read_limited(&file, ground::settings::MAX_BYTES)?;
     let text = String::from_utf8(text).map_err(|_| "its settings aren't text".to_string())?;
@@ -160,7 +163,12 @@ mod tests {
         .ground(settings.extent());
         let regions: Vec<(String, Vec<u8>)> = [[0, 0], [1, 0]]
             .into_iter()
-            .map(|r| (ground::region::file_name(r), ground::region::write(&made, r)))
+            .map(|r| {
+                (
+                    ground::region::file_name(r),
+                    ground::region::write(&made, r),
+                )
+            })
             .collect();
         let path = "maps/hills.ground.lst";
         write(&folder, path, &ground::settings::write(&settings), &regions).unwrap();
@@ -179,10 +187,15 @@ mod tests {
     /// ground crate's are the same rule.
     #[test]
     fn the_parts_folder_is_named_the_same_way_everywhere() {
-        assert_eq!(asset_db::GROUND_PARTS_ENDING, ground::settings::FOLDER_ENDING);
+        assert_eq!(
+            asset_db::GROUND_PARTS_ENDING,
+            ground::settings::FOLDER_ENDING
+        );
         assert_eq!(
             asset_db::ground_parts_of(Path::new("maps/farm.ground.lst")),
-            Some(PathBuf::from(ground::settings::folder_for("maps/farm.ground.lst")))
+            Some(PathBuf::from(ground::settings::folder_for(
+                "maps/farm.ground.lst"
+            )))
         );
     }
 }

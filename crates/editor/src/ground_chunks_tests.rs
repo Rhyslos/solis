@@ -39,7 +39,10 @@ fn the_frame_only_copies_and_hands_out() {
     assert_eq!(chunks.left(), 12, "the surface's layer and one either side");
     assert!(chunks.frame(Vec3::ZERO));
     assert_eq!(jobs.lock().unwrap().len(), 12);
-    assert!(chunks.take_fresh().fresh.is_empty(), "nothing made on the frame");
+    assert!(
+        chunks.take_fresh().fresh.is_empty(),
+        "nothing made on the frame"
+    );
     assert_eq!(run(&jobs), 12);
     assert!(chunks.frame(Vec3::ZERO) || chunks.left() == 0);
     let meshes = chunks.take_fresh();

@@ -141,7 +141,8 @@ impl GroundChunks {
                 .collect();
             for key in &self.needed {
                 self.next_generation += 1;
-                self.generations.insert(key.to_array(), self.next_generation);
+                self.generations
+                    .insert(key.to_array(), self.next_generation);
                 self.shapes.insert(key.to_array(), None);
             }
             self.waiting = self.needed.clone();
@@ -156,7 +157,8 @@ impl GroundChunks {
     /// still on its way is thrown away when it arrives.
     pub(crate) fn remake(&mut self, key: IVec3) {
         self.next_generation += 1;
-        self.generations.insert(key.to_array(), self.next_generation);
+        self.generations
+            .insert(key.to_array(), self.next_generation);
         if !self.waiting.contains(&key) {
             self.waiting.push(key);
         }
@@ -179,8 +181,11 @@ impl GroundChunks {
             let middle = |k: &IVec3| {
                 (ground::store::origin(*k).as_vec3() + Vec3::splat(16.0)).distance_squared(camera)
             };
-            self.waiting
-                .sort_by(|a, b| middle(b).total_cmp(&middle(a)).then(b.to_array().cmp(&a.to_array())));
+            self.waiting.sort_by(|a, b| {
+                middle(b)
+                    .total_cmp(&middle(a))
+                    .then(b.to_array().cmp(&a.to_array()))
+            });
             let ground = Arc::clone(&loaded.ground);
             for _ in 0..free {
                 let Some(key) = self.waiting.pop() else {
@@ -264,7 +269,9 @@ impl GroundChunks {
 
     /// For a new play: the chunks that need a collider, and those made so
     /// far.
-    pub(crate) fn for_new_play(&mut self) -> (Vec<IVec3>, Vec<(IVec3, Option<physics::PreparedShape>)>) {
+    pub(crate) fn for_new_play(
+        &mut self,
+    ) -> (Vec<IVec3>, Vec<(IVec3, Option<physics::PreparedShape>)>) {
         self.for_play.clear();
         let ready = self
             .shapes

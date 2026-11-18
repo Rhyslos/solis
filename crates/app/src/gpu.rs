@@ -624,7 +624,12 @@ fn placements<'a>(
             })
         })
         .chain(brushes.placements(&view.brushes))
-        .chain(view.ground_shown.then(|| ground.placements()).into_iter().flatten())
+        .chain(
+            view.ground_shown
+                .then(|| ground.placements())
+                .into_iter()
+                .flatten(),
+        )
         .collect()
 }
 

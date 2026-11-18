@@ -139,7 +139,11 @@ fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
                 NewFile::Animator,
             ),
             (
-                (Icon::Ground, "New ground\u{2026}", LibraryRequest::NewGround),
+                (
+                    Icon::Ground,
+                    "New ground\u{2026}",
+                    LibraryRequest::NewGround,
+                ),
                 NewFile::Ground,
             ),
         ];

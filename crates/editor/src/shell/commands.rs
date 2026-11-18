@@ -446,7 +446,9 @@ impl ShellCommand {
                 "Tile maps are kept in a project: open or make one first",
             ),
             C::NewGround => match w.level_ground() {
-                _ if !project => Some("A ground is kept in a project: open or make one first".into()),
+                _ if !project => {
+                    Some("A ground is kept in a project: open or make one first".into())
+                }
                 Some(_) => Some(level::builtin::ONE_PER_LEVEL.into()),
                 None => None,
             },

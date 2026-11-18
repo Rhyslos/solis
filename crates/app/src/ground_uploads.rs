@@ -48,7 +48,8 @@ impl GroundUploads {
                 continue;
             }
             let model = chunk_model(&mesh, materials.len());
-            let gpu = renderer.upload_ground_chunk((device, queue), &mut self.pool, materials, &model);
+            let gpu =
+                renderer.upload_ground_chunk((device, queue), &mut self.pool, materials, &model);
             let at = Mat4::from_translation(mesh.origin.as_vec3());
             self.chunks.insert(mesh.key.to_array(), (gpu, at));
         }

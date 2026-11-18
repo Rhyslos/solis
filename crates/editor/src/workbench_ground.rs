@@ -194,13 +194,21 @@ impl Workbench {
             let [across, along] = made_settings.regions();
             let regions = (0..along)
                 .flat_map(|y| (0..across).map(move |x| [x, y]))
-                .map(|r| (ground::region::file_name(r), ground::region::write(&made, r)))
+                .map(|r| {
+                    (
+                        ground::region::file_name(r),
+                        ground::region::write(&made, r),
+                    )
+                })
                 .collect();
             let _ = send.send((made_settings, made, regions));
         });
         self.log(
             LogLevel::Info,
-            format!("Making {path} ({} × {} m)…", settings.size[0], settings.size[1]),
+            format!(
+                "Making {path} ({} × {} m)…",
+                settings.size[0], settings.size[1]
+            ),
         );
         self.open.new_ground.making = Some(Making {
             path,
