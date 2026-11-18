@@ -36,6 +36,7 @@ sound = { path = "../crates/sound" }
 animation = { path = "../crates/animation" }
 ui = { path = "../crates/ui" }
 tiles = { path = "../crates/tiles" }
+ground = { path = "../crates/ground" }
 
 # Its own workspace, so the engine's never builds it. Its Cargo.lock isn't
 # kept in the repository: tools/ci/fuzz-lock.sh writes it from the main
@@ -238,6 +239,20 @@ bench = false
 [[bin]]
 name = "brush"
 path = "fuzz_targets/brush.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ground_settings"
+path = "fuzz_targets/ground_settings.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ground_region"
+path = "fuzz_targets/ground_region.rs"
 test = false
 doc = false
 bench = false

@@ -19,6 +19,7 @@ reflect.workspace = true
 physics.workspace = true
 input.workspace = true
 tiles.workspace = true
+ground.workspace = true
 animation.workspace = true
 level.workspace = true
 glam.workspace = true

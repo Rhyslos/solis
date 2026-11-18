@@ -1,0 +1,13 @@
+-- A ground (Ground Kind). Written by Solis; safe to edit by hand.
+-- Its voxels are in the folder beside it, a binary file per 256 m region.
+fetch "solis/data/ground":[GroundLook, Ground, Kind];
+
+lock int version = 1;
+lock Ground ground = new Ground { look = GroundLook.Smooth, size = [256, 256], height = 32, recipe = "" };
+lock Kind array kinds = [
+    new Kind { name = "Grass", colour = [92, 138, 64] },
+    new Kind { name = "Rock", colour = [128, 124, 118] },
+    new Kind { name = "Dirt", colour = [120, 92, 64] },
+    new Kind { name = "Sand", colour = [206, 188, 140] },
+];
+end

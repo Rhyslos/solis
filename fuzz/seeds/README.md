@@ -17,6 +17,8 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | `mixer/` | Bus files (`.solmix`): the standard buses, nested ones with ducking, and one whose buses are inside each other in a loop. |
 | `model/` | The sample models (`.glb`), a cube whose 64 extra buffers all claim the file's binary part (refused), and a triangle with a corner placed past what numbers can hold (refused; the file the fuzzer found, issue #157, made small). |
 | `pixels/` | 2D settings files (`.solpix`): the standard ones, ones that fill the window, and ones with values the reader must put right or skip. |
+| `ground_settings/` | A ground's settings: the fixture of version 1. |
+| `ground_region/` | A ground's region file: the fixture of version 1, its first byte (0) saying one chunk high. |
 | `playtest_file/` | Playtest files: a usual one, one the reader puts right (Windows line endings, a name with characters a file can't have, a window too big and too small, and the `folder` line older copies held), and one it refuses (a level outside the assets). |
 | `project_file/` | A small project file. |
 | `recording/` | Recordings of play (`.solrec`): a long one, and short ones of formats 1 and 2, so the upgrader is fuzzed too. |

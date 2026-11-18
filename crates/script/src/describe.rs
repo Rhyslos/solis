@@ -1091,6 +1091,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
     (animation::atlas::KIND, animation::atlas::CLASSES),
     (tiles::tileset::KIND, tiles::tileset::CLASSES),
     (level::prefab_file::KIND, level::prefab_file::CLASSES),
+    (ground::settings::KIND, ground::settings::CLASSES),
 ];
 
 /// The project's own names as states, written by the editor into

@@ -80,6 +80,11 @@ cp tests/fixtures/tileset/v2/farm.soltileset "$seeds/tileset/farm-art.soltileset
 cp tests/fixtures/tileset/v4/farm.tileset.lst "$seeds/tileset/farm.tileset.lst"
 # And the tiles crate's hostile ones, which the reader refuses.
 cp crates/tiles/tests/data/*.tileset.lst "$seeds/tileset/"
+mkdir -p "$seeds/ground_settings"
+cp tests/fixtures/ground/v1/farm.ground.lst "$seeds/ground_settings/"
+mkdir -p "$seeds/ground_region"
+# The region target's first byte is the ground's height in chunks, less one.
+{ printf '\000'; cat tests/fixtures/ground/v1/farm.ground/0_0.region; } > "$seeds/ground_region/0_0.region"
 mkdir -p "$seeds/tile_map"
 cp tests/fixtures/tilemap/v1/farm.soltilemap "$seeds/tile_map/"
 cp tests/fixtures/tilemap/v2/farm.soltilemap "$seeds/tile_map/farm-exact.soltilemap"

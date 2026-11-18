@@ -28,6 +28,8 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `tileset.rs` | A tileset (`.tileset.lst`, or an older `.soltileset`): refused or read, within the limits, each terrain's name and code used once, and written back to itself. |
 | `tile_art.rs` | A tileset's picture (the first byte chooses PNG or JPEG, or Aseprite): refused or read whole within the limits, every frame its size, then its grid found and its tiles weighed. |
 | `tile_map.rs` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`): refused or read, within the limits, written back to itself (or refused by the writer, when it would be more than is read back), then changed cell by cell (inside and past its edges), resized and summed. |
+| `ground_settings.rs` | A ground's settings file (`.ground.lst`): refused or read, its size and height ones a ground can have, one to 256 named kinds, and written back to itself. |
+| `ground_region.rs` | A ground's region file (`.region`; the first byte says how many chunks high): refused or read into every chunk of the region, and written back to a file that reads the same. |
 | `playtest_file.rs` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`): refused or read, every part put right (a usable name and level, a window Solis opens), and written back to itself. |
 | `update_answer.rs` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte): a release read only ever points at the repository's own downloads. |
 

@@ -20,6 +20,7 @@ Example files of every version of every file format Solis has ever released (Pha
 | `input-actions/` | Input actions (`input.solinput`) | v1 (no version line; the arrow keys written `ArrowUp`), v2 |
 | `recording/` | Recordings of a play (`.solrec`) | v1, v2 (names the area it was recorded in), v3 (what screens' buttons sent), v4 (the line says `level` and its file ends `.sollevel`, decision 0118) |
 | `atlas/` | A picture's crops (`.atlas.lst`, Atlas Crop) | v1 |
+| `ground/` | A ground's settings (`.ground.lst`, Lust) and, in the folder beside it (`farm.ground/`), its binary region file (`0_0.region`, its own version 1), which `crates/ground/tests/fixtures.rs` opens with the settings | v1 (a 256 × 256 m ground 32 m high, flat at 10.5 m) |
 | `project/` | The project file (`project.solis`); `v1/kind-2d.solis` is one with the optional `kind` key (decision 0118), which needed no new version | v1, v2 (a project whose levels are `.sollevel` files, decision 0118: nothing in the file changes, but a build from before refuses it as newer), v3 (a project whose prefabs are `.prefab.lst` files, likewise) |
 | `playtest/` | How a game is exported (`playtest.txt` beside an exported game, and `.solis/last export.txt`) | v1 (its level line said `area`, ending `.solarea`), v2 (`level`, `.sollevel`; decision 0118) |
 | `sidecar/` | Sidecars beside assets (`.solmeta`) | v1 |

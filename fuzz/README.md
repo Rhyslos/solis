@@ -29,6 +29,8 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `tile_art` | A tileset's picture (PNG, JPEG or Aseprite, the first byte choosing); a picture read is within the limits, every frame its size, and its grid and kind are found without panicking |
 | `tile_map` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`); a map read is within the limits, writes back to itself (or isn't written, when its file would be more than is read back), is autotiled, painted (a fill, a stamp flipped and turned, exact tiles) and changed cell by cell, resized and summed without panicking |
 | `sound_file` | A WAV or Ogg Vorbis sound file (`sound::read_bytes`); a sound read is within the limits, as long as its overview, and every sample a number between -1 and 1 |
+| `ground_settings` | A ground's settings file (`.ground.lst`); settings read have a size and height a ground can have and one to 256 named kinds, and write back to themselves |
+| `ground_region` | A ground's region file (`.region`, the first byte the ground's height in chunks); what's read fills every chunk of the region and writes back to a file that reads the same |
 | `playtest_file` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`); a file read has a usable name and level and a window Solis opens, and writes back to itself |
 
 The targets are in [`fuzz_targets/`](fuzz_targets/README.md), what they share in [`src/`](src/README.md), and the files they start from in [`seeds/`](seeds/README.md).
