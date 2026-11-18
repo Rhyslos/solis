@@ -1,5 +1,5 @@
 //! The game's timers' names, found where its Lust starts them
-//! ([decision 0124](../../../docs/decisions/0124-named-timers-now-blocks-later.md)).
+//! ([decision 0125](../../../docs/decisions/0125-named-timers-now-blocks-later.md)).
 //!
 //! A timer's name is a project state, `Timer`, in `solis/project.lst`, as
 //! the engine's calls and `TimerFinished` need one state for the whole

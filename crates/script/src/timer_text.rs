@@ -15,9 +15,9 @@
 //! starts. A save is a file a player can be handed, so every line is
 //! checked before anything is kept.
 
-use super::{Key, Kind, MAX_TIMERS, Slot, Timers, UNITS_PER_TICK, valid_name, within_day};
+use super::store::Kind;
+use super::{MAX_TIMERS, Timers, UNITS_PER_TICK, valid_name, within_day};
 use reflect::EntityId;
-use std::sync::Arc;
 
 /// The longest component name read (Lust's and Lua's names are far
 /// shorter).
@@ -27,30 +27,40 @@ const MAX_COMPONENT: usize = 200;
 /// clock that has run a long time.
 const MAX_UNITS: u64 = 1 << 62;
 
+/// A timer's line as read: whose and which, and how it waits.
+struct Line<'a> {
+    entity: EntityId,
+    component: &'a str,
+    name: &'a str,
+    start: u64,
+    kind: Kind,
+    due: u64,
+}
+
 impl Timers {
     /// The timers as a save keeps them; empty while none waits.
     pub fn write(&self) -> String {
-        if self.slots.is_empty() {
+        if self.is_empty() {
             return String::new();
         }
         let hour = self
             .hour
             .map_or_else(|| "-".to_string(), |h| format!("{:x}", h.to_bits()));
         let mut text = format!("at {} {hour} {}\n", self.now, self.next_start);
-        for (due, entity, component, start, name) in &self.queue {
-            let key: Key = (*entity, Arc::clone(component), Arc::clone(name));
-            match self.slots.get(&key).map(|s| s.kind) {
-                Some(Kind::Every(every)) => text.push_str(&format!(
-                    "every {entity} {component} {name} {start} {due} {every}\n"
-                )),
-                _ => text.push_str(&format!("once {entity} {component} {name} {start} {due}\n")),
-            }
-        }
-        for ((entity, component, start), (name, hour)) in &self.hourly {
-            text.push_str(&format!(
-                "hour {entity} {component} {name} {start} {:x}\n",
-                hour.to_bits()
-            ));
+        for (entity, component, name, entry) in self.entries() {
+            let (start, due) = (entry.start, entry.due);
+            text.push_str(&match entry.kind {
+                Kind::Once => format!("once {entity} {component} {name} {start} {due}\n"),
+                Kind::Every(every) => {
+                    format!("every {entity} {component} {name} {start} {due} {every}\n")
+                }
+                Kind::AtHour(at) => {
+                    format!(
+                        "hour {entity} {component} {name} {start} {:x}\n",
+                        at.to_bits()
+                    )
+                }
+            });
         }
         text
     }
@@ -68,34 +78,43 @@ impl Timers {
         if words.next() != Some("at") {
             return Err(damaged());
         }
-        timers.now = number(words.next())?;
-        timers.hour = match words.next() {
+        let now = number(words.next())?;
+        let hour = match words.next() {
             Some("-") => None,
             word => Some(hour_of(word)?),
         };
-        timers.next_start = number(words.next())?;
-        if words.next().is_some() || timers.now > MAX_UNITS {
+        let next_start = number(words.next())?;
+        if words.next().is_some() || now > MAX_UNITS {
             return Err(damaged());
         }
         for line in lines {
-            if timers.slots.len() >= MAX_TIMERS {
+            if timers.len() >= MAX_TIMERS {
                 return Err(damaged());
             }
-            let (key, slot) = timer_of(line, &timers)?;
-            if timers.slots.contains_key(&key) {
+            let Line {
+                entity,
+                component,
+                name,
+                start,
+                kind,
+                due,
+            } = timer_of(line, next_start)?;
+            if !timers.restore((entity, component, name), start, kind, due) {
                 return Err(damaged());
             }
-            timers.place(key, slot);
         }
-        if timers.slots.is_empty() {
+        if timers.is_empty() {
             return Err(damaged());
         }
+        timers.now = now;
+        timers.hour = hour;
+        timers.next_start = next_start;
         Ok(timers)
     }
 }
 
-/// One timer's line read, checked against the clock and the order.
-fn timer_of(line: &str, timers: &Timers) -> Result<(Key, Slot), String> {
+/// One timer's line read, checked against the order of starts.
+fn timer_of(line: &str, next_start: u64) -> Result<Line<'_>, String> {
     let damaged = || "its timers are damaged".to_string();
     let mut words = line.split(' ').take(8);
     let what = words.next();
@@ -114,15 +133,15 @@ fn timer_of(line: &str, timers: &Timers) -> Result<(Key, Slot), String> {
         .ok_or_else(damaged)?;
     let name = words.next().filter(|n| valid_name(n)).ok_or_else(damaged)?;
     let start = number(words.next())?;
-    if start >= timers.next_start {
+    if start >= next_start {
         return Err(damaged());
     }
-    let kind_and_due = match what {
+    let (kind, due) = match what {
         Some("once") => (Kind::Once, number(words.next())?),
         Some("every") => {
             let due = number(words.next())?;
             let every = number(words.next())?;
-            if every == 0 || every % UNITS_PER_TICK != 0 {
+            if every == 0 || every % UNITS_PER_TICK != 0 || every > MAX_UNITS {
                 return Err(damaged());
             }
             (Kind::Every(every), due)
@@ -130,14 +149,17 @@ fn timer_of(line: &str, timers: &Timers) -> Result<(Key, Slot), String> {
         Some("hour") => (Kind::AtHour(hour_of(words.next())?), 0),
         _ => return Err(damaged()),
     };
-    let (kind, due) = kind_and_due;
     if words.next().is_some() || due > MAX_UNITS {
         return Err(damaged());
     }
-    Ok((
-        (entity, Arc::from(component), Arc::from(name)),
-        Slot { start, kind, due },
-    ))
+    Ok(Line {
+        entity,
+        component,
+        name,
+        start,
+        kind,
+        due,
+    })
 }
 
 /// A whole number from a save's word.

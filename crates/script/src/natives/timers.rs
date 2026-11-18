@@ -1,4 +1,4 @@
-//! A component's timers (stage 1, timers; decision 0124): `startTimer`,
+//! A component's timers (stage 1, timers; decision 0125): `startTimer`,
 //! `startTimerEvery`, `startTimerAtHour`, `stopTimer`, `timerRunning` and
 //! `timeLeft`, on the component's own entity. A timer comes as its name
 //! (`DoorOpens` for `Timer.DoorOpens`); Lua and Rust name it by that text.

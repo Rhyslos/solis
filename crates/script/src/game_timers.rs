@@ -1,4 +1,4 @@
-//! A [`Game`]'s timers (stage 1, timers; decision 0124): kept by the game
+//! A [`Game`]'s timers (stage 1, timers; decision 0125): kept by the game
 //! itself, on the caller's thread, beside its shards. As each tick begins
 //! game time moves on and what's due becomes `TimerFinished` events for
 //! the first round, each for the one component that started its timer.

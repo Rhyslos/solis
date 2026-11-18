@@ -389,3 +389,119 @@ fn names_have_the_shape_of_a_state_s_option() {
         assert!(!valid_name(bad), "{bad}");
     }
 }
+
+#[test]
+fn restarting_every_tick_and_ending_many_keeps_the_store_small_and_right() {
+    // A component that starts its timer every tick (a common slip) never
+    // sees it finish, and the store doesn't grow with each start.
+    let mut timers = Timers::default();
+    for _ in 0..20_000 {
+        start(&mut timers, 1, "Door", "Late", Timing::After(10.0));
+        assert!(timers.advance(1.0, 8.0).is_empty());
+    }
+    assert_eq!(timers.len(), 1);
+    // The last start came a tick before.
+    assert_eq!(
+        fired_on(&mut timers, 600, 1.0),
+        vec![(599, "Late".to_string())]
+    );
+    // Many started and most ended: the rest still finish, in order.
+    for n in 1..=10_000 {
+        start(&mut timers, n, "Door", "A", Timing::After(1.0));
+    }
+    assert_eq!(
+        timers.retain(|entity, _| entity.0.raw() % 1_000 == 0),
+        9_990
+    );
+    let fired = fired_on(&mut timers, 60, 1.0);
+    assert_eq!(fired.len(), 10);
+    assert!(fired.iter().all(|(tick, _)| *tick == 60));
+    // Started again after: each from its own new time.
+    for n in [3, 7] {
+        start(&mut timers, n, "Door", "A", Timing::After(0.5));
+    }
+    assert_eq!(fired_on(&mut timers, 30, 1.0).len(), 2);
+    assert!(timers.is_empty());
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_100000_timers_with_10000_finishing_a_tick() {
+    // Stage 1's scale case for timers: 100,000 waiting, 10,000 of them
+    // finishing every tick (each fired and started again, as a handler
+    // restarting it would), the rest far off. The store's own share of a
+    // 60th of a second, apart from the handlers' code and from making the
+    // events (said apart: the engine's events are made the same way).
+    const TARGET_MS: f64 = 2.0;
+    let mut timers = Timers::default();
+    let components: [Arc<str>; 4] = [
+        "Door".into(),
+        "Gate".into(),
+        "Hive".into(),
+        "Spawner".into(),
+    ];
+    let names: [Arc<str>; 2] = ["Soon".into(), "Later".into()];
+    let change = |n: u64, soon: bool, plan: Plan| TimerChange {
+        entity: id(n / 4 + 1),
+        component: Arc::clone(&components[(n % 4) as usize]),
+        name: Arc::clone(&names[usize::from(!soon)]),
+        plan: Some(plan),
+    };
+    for n in 0..100_000 {
+        let soon = n % 10 == 0;
+        let plan = if soon {
+            Plan::After(1)
+        } else {
+            Plan::After(600_000)
+        };
+        assert!(timers.apply(&change(n, soon, plan)));
+    }
+    assert_eq!(timers.len(), 100_000);
+    let ticks = 60;
+    let (mut store, mut making) = (std::time::Duration::ZERO, std::time::Duration::ZERO);
+    let mut finished = 0usize;
+    // A few ticks first, so the buckets have their room, as in a game
+    // that has run a while.
+    for tick in 0..ticks + 5 {
+        let began = std::time::Instant::now();
+        let fired = timers.advance(1.0, 8.0);
+        let advanced = began.elapsed();
+        let events: Vec<crate::Event> = fired
+            .into_iter()
+            .map(|f| crate::Event {
+                to: f.entity,
+                name: "TimerFinished".to_string(),
+                values: vec![reflect::Value::Text(f.name.to_string())],
+                only: Some(f.component),
+            })
+            .collect();
+        let made = began.elapsed() - advanced;
+        // Each started again for the next tick, landing in order.
+        let landing = std::time::Instant::now();
+        for event in &events {
+            let restart = TimerChange {
+                entity: event.to,
+                component: Arc::clone(event.only.as_ref().unwrap()),
+                name: Arc::clone(&names[0]),
+                plan: Some(Plan::After(1)),
+            };
+            timers.apply(&restart);
+        }
+        if tick >= 5 {
+            store += advanced + landing.elapsed();
+            making += made;
+            finished += events.len();
+        }
+    }
+    assert_eq!(finished, 10_000 * ticks);
+    assert_eq!(timers.len(), 100_000);
+    let per_tick = |d: std::time::Duration| d.as_secs_f64() * 1000.0 / f64::from(ticks as u32);
+    let (ms, events_ms) = (per_tick(store), per_tick(making));
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: 100,000 timers waiting, 10,000 finishing a tick and started again: the \
+         store's own share {ms:.3} ms a tick (target {TARGET_MS} ms) {verdict}; making their \
+         TimerFinished events {events_ms:.3} ms more"
+    );
+    assert!(ms <= TARGET_MS, "the timers take {ms:.3} ms a tick");
+}
