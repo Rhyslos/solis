@@ -422,7 +422,9 @@ mod tests {
             "{text}"
         );
         assert!(
-            text.ends_with("pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n")
+            text.ends_with(
+                "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n"
+            )
         );
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
@@ -487,7 +489,9 @@ mod tests {
             "{text}"
         );
         assert!(
-            text.ends_with("pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n")
+            text.ends_with(
+                "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n"
+            )
         );
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));

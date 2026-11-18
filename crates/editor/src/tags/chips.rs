@@ -33,40 +33,47 @@ pub(crate) struct TagRow<'a> {
 /// Draws the row; what was asked for.
 pub(crate) fn chips(ui: &mut Ui, row: &TagRow<'_>) -> Vec<TagAsk> {
     let mut asks = Vec::new();
-    crate::field_rows::row_marked(ui, (row.label, row.help), (row.changed, false, false), |ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = egui::vec2(size::ROW_GAP, size::ROW_GAP);
-            for &id in row.shown {
-                let Some(name) = row.tags.name_of(id) else {
-                    continue;
-                };
-                if widgets::chip::tag_chip(ui, name, ui.is_enabled())
-                    .on_hover_text(format!("Takes {name} off"))
-                    .clicked()
-                {
-                    asks.push(TagAsk::Remove(id));
+    crate::field_rows::row_marked(
+        ui,
+        (row.label, row.help),
+        (row.changed, false, false),
+        |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing = egui::vec2(size::ROW_GAP, size::ROW_GAP);
+                for &id in row.shown {
+                    let Some(name) = row.tags.name_of(id) else {
+                        continue;
+                    };
+                    if widgets::chip::tag_chip(ui, name, ui.is_enabled())
+                        .on_hover_text(format!("Takes {name} off"))
+                        .clicked()
+                    {
+                        asks.push(TagAsk::Remove(id));
+                    }
                 }
-            }
-            if let Some(ask) = add_menu(ui, row) {
-                asks.push(ask);
-            }
-            if row.changed
-                && ui
-                    .add(
-                        egui::Button::new(
-                            RichText::new("\u{21b6}")
-                                .font(text::mono_small())
-                                .color(tokens::text_meta()),
+                if let Some(ask) = add_menu(ui, row) {
+                    asks.push(ask);
+                }
+                if row.changed
+                    && ui
+                        .add(
+                            egui::Button::new(
+                                RichText::new("\u{21b6}")
+                                    .font(text::mono_small())
+                                    .color(tokens::text_meta()),
+                            )
+                            .frame(false),
                         )
-                        .frame(false),
-                    )
-                    .on_hover_text("Back to the prefab's tags: this copy follows the prefab here again")
-                    .clicked()
-            {
-                asks.push(TagAsk::Revert);
-            }
-        });
-    });
+                        .on_hover_text(
+                            "Back to the prefab's tags: this copy follows the prefab here again",
+                        )
+                        .clicked()
+                {
+                    asks.push(TagAsk::Revert);
+                }
+            });
+        },
+    );
     asks
 }
 
@@ -109,7 +116,11 @@ fn add_menu(ui: &mut Ui, row: &TagRow<'_>) -> Option<TagAsk> {
                 .collect();
             for (id, name) in &offered {
                 if ui
-                    .add(egui::Button::new(*name).frame(false).min_size(egui::vec2(LIST_W, 0.0)))
+                    .add(
+                        egui::Button::new(*name)
+                            .frame(false)
+                            .min_size(egui::vec2(LIST_W, 0.0)),
+                    )
                     .clicked()
                 {
                     picked = Some(TagAsk::Add(*id));
@@ -150,7 +161,11 @@ fn add_menu(ui: &mut Ui, row: &TagRow<'_>) -> Option<TagAsk> {
                 }
             }
             if let Some(why) = &problem {
-                ui.label(RichText::new(why).color(tokens::WARNING).size(text::SMALL_SIZE));
+                ui.label(
+                    RichText::new(why)
+                        .color(tokens::WARNING)
+                        .size(text::SMALL_SIZE),
+                );
             } else if new.hovered() && name.is_empty() {
                 ui.label(
                     RichText::new("Type its name in the box above.")

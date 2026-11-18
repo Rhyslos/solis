@@ -47,10 +47,15 @@ fn tags_are_counted_in_each_level_copies_of_prefabs_among_them() {
     .unwrap();
     std::fs::write(root.join("empty.sollevel"), "level version 5;\n").unwrap();
     std::fs::write(root.join("broken.sollevel"), "nonsense").unwrap();
-    let levels: Vec<PathBuf> = ["cave.sollevel", "empty.sollevel", "broken.sollevel", "gone.sollevel"]
-        .into_iter()
-        .map(PathBuf::from)
-        .collect();
+    let levels: Vec<PathBuf> = [
+        "cave.sollevel",
+        "empty.sollevel",
+        "broken.sollevel",
+        "gone.sollevel",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect();
     let counted = count_in(&root, &levels, &prefabs);
     assert_eq!(counted.levels[&enemy], [("cave.sollevel".to_string(), 3)]);
     assert_eq!(counted.levels[&flying], [("cave.sollevel".to_string(), 1)]);
@@ -60,7 +65,10 @@ fn tags_are_counted_in_each_level_copies_of_prefabs_among_them() {
 #[test]
 fn the_tags_file_is_saved_read_back_and_a_damaged_one_kept() {
     let root = reflect::test_support::TempFolder::new("tags-file").unwrap();
-    assert_eq!(crate::play_files::load_tags(&root), (TagList::default(), Vec::new()));
+    assert_eq!(
+        crate::play_files::load_tags(&root),
+        (TagList::default(), Vec::new())
+    );
     assert_eq!(stamp(&root), None);
     let mut tags = TagList::default();
     tags.add("Enemy").unwrap();
@@ -76,6 +84,9 @@ fn the_tags_file_is_saved_read_back_and_a_damaged_one_kept() {
     assert!(read.is_empty());
     assert_eq!(notes.len(), 1, "{notes:?}");
     let kept = crate::play_files::save_tags(&root, &tags).unwrap();
-    assert!(matches!(kept, Some(crate::play_files::Kept::Damaged(_))), "{kept:?}");
+    assert!(
+        matches!(kept, Some(crate::play_files::Kept::Damaged(_))),
+        "{kept:?}"
+    );
     assert_eq!(crate::play_files::load_tags(&root).0, tags);
 }

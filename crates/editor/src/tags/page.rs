@@ -161,12 +161,9 @@ impl Workbench {
                 }
                 note_words(middle, &(used.words(), tokens::text_meta()));
             }
-            let more = widgets::button::icon(
-                more_ui,
-                crate::icons::Icon::More,
-                &format!("{name}'s menu"),
-            )
-            .on_hover_text("Rename, delete");
+            let more =
+                widgets::button::icon(more_ui, crate::icons::Icon::More, &format!("{name}'s menu"))
+                    .on_hover_text("Rename, delete");
             egui::Popup::menu(&more).show(|ui| {
                 if widgets::menu::item(ui, "Rename", "").clicked() {
                     asked = Some(RowAsk::Rename(id));
@@ -310,7 +307,8 @@ impl Workbench {
 fn row(ui: &mut Ui, fill: impl FnOnce(&mut Ui, &mut Ui, &mut Ui)) {
     let across = ui.available_rect_before_wrap().x_range();
     let (rect, _) = ui.allocate_exact_size(egui::vec2(across.span(), ROW_H), egui::Sense::hover());
-    let name_rect = egui::Rect::from_min_max(rect.min, egui::pos2(rect.left() + NAME_W, rect.bottom()));
+    let name_rect =
+        egui::Rect::from_min_max(rect.min, egui::pos2(rect.left() + NAME_W, rect.bottom()));
     let more_rect = egui::Rect::from_min_max(
         egui::pos2(rect.right() - size::ICON_BUTTON - size::GAP, rect.top()),
         rect.max,
@@ -326,7 +324,12 @@ fn row(ui: &mut Ui, fill: impl FnOnce(&mut Ui, &mut Ui, &mut Ui)) {
     let mut middle_ui = child(ui, middle_rect, Layout::left_to_right(Align::Center));
     let mut more_ui = child(ui, more_rect, Layout::right_to_left(Align::Center));
     fill(&mut name_ui, &mut middle_ui, &mut more_ui);
-    tokens::hline(ui.painter(), across, rect.bottom() - size::LINE, tokens::line());
+    tokens::hline(
+        ui.painter(),
+        across,
+        rect.bottom() - size::LINE,
+        tokens::line(),
+    );
 }
 
 /// The middle's words, in their colour.

@@ -100,7 +100,12 @@ pub(crate) fn tag_view(
 pub(crate) fn carried(tags: &TagList, entity: &level::EntityData) -> Vec<TagId> {
     entity
         .get::<Tags>()
-        .map(|t| t.ids.into_iter().filter(|id| tags.get(*id).is_some()).collect())
+        .map(|t| {
+            t.ids
+                .into_iter()
+                .filter(|id| tags.get(*id).is_some())
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -357,7 +362,12 @@ impl Workbench {
         else {
             return;
         };
-        let mut only = Tags::of(zone.only.iter().copied().filter(|id| self.open.tags.get(*id).is_some()));
+        let mut only = Tags::of(
+            zone.only
+                .iter()
+                .copied()
+                .filter(|id| self.open.tags.get(*id).is_some()),
+        );
         let label = match ask {
             TagAsk::Add(id) => {
                 only.add(id);

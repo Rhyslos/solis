@@ -74,8 +74,9 @@ fn lend_tags<'s>(
             "World_within",
             move |lua, (_world, tag, place, radius): (LuaValue, mlua::LuaString, LuaValue, f64)| {
                 let tag = tag.to_str()?;
-                let found = vec3_of(&place)
-                    .map_or_else(Vec::new, |place| h.borrow().within(&tag, place, radius as f32));
+                let found = vec3_of(&place).map_or_else(Vec::new, |place| {
+                    h.borrow().within(&tag, place, radius as f32)
+                });
                 lua.create_sequence_from(found.into_iter().map(|id| id.to_string()))
             },
         )?,

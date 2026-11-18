@@ -336,7 +336,9 @@ pub(crate) fn properties(
                         .components
                         .keys()
                         // Tags are the chips under the name, never a card.
-                        .filter(|n| n.as_str() != <level::builtin::Tags as reflect::Component>::NAME)
+                        .filter(|n| {
+                            n.as_str() != <level::builtin::Tags as reflect::Component>::NAME
+                        })
                         .filter(|n| {
                             !many
                                 || (document.registry.get(n).is_some()

@@ -78,7 +78,10 @@ fn nearest_is_the_nearest_or_nothing() {
     let (empty, _) = enemies(&[], false);
     assert_eq!(empty.nearest("Enemy", Vec3::ZERO), None);
     assert_eq!(view.nearest("Nobody", Vec3::ZERO), None);
-    assert_eq!(view.nearest("Enemy", Vec3::new(f32::INFINITY, 0.0, 0.0)), None);
+    assert_eq!(
+        view.nearest("Enemy", Vec3::new(f32::INFINITY, 0.0, 0.0)),
+        None
+    );
 }
 
 #[test]
@@ -102,7 +105,11 @@ fn has_tag_knows_only_the_project_s_tags() {
     assert!(!view.has(id(1), "Gone"));
     assert!(!view.has(id(2), "Enemy"));
     assert_eq!(view.tag("Enemy"), Some(enemy));
-    assert_eq!(view.tag("enemy"), None, "names are exact, as game code's are");
+    assert_eq!(
+        view.tag("enemy"),
+        None,
+        "names are exact, as game code's are"
+    );
 }
 
 #[test]
@@ -168,13 +175,22 @@ proptest::proptest! {
 fn answers_are_the_same_whatever_order_the_members_come_in() {
     let enemy = TagId::random();
     let places: Vec<(EntityId, Vec3, Vec<TagId>)> = (1..200)
-        .map(|n| (id(n), Vec3::new((n % 13) as f32, (n % 7) as f32, 0.0), vec![enemy]))
+        .map(|n| {
+            (
+                id(n),
+                Vec3::new((n % 13) as f32, (n % 7) as f32, 0.0),
+                vec![enemy],
+            )
+        })
         .collect();
     let mut shuffled = places.clone();
     shuffled.reverse();
     let tags = [(enemy, "Enemy".to_string())];
     let a = TagView::new(&tags, &places, false);
     let b = TagView::new(&tags, &shuffled, false);
-    assert_eq!(a.within("Enemy", Vec3::ZERO, 5.0), b.within("Enemy", Vec3::ZERO, 5.0));
+    assert_eq!(
+        a.within("Enemy", Vec3::ZERO, 5.0),
+        b.within("Enemy", Vec3::ZERO, 5.0)
+    );
     assert_eq!(a.nearest("Enemy", Vec3::ONE), b.nearest("Enemy", Vec3::ONE));
 }

@@ -103,8 +103,8 @@ pub mod sprite_parallax;
 pub mod sprite_sheets;
 mod standard;
 mod state_dump;
-pub mod tags;
 pub mod state_list;
+pub mod tags;
 #[cfg(test)]
 mod test_support;
 pub mod text_view;
@@ -165,11 +165,11 @@ pub use panel::Panel;
 pub use play::PlayState;
 pub use prefab_details::Placed;
 pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back, save_reads};
-pub use tags::TagUse;
 pub use shell::{BottomTab, RibbonTab, ShellState};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use state_list::{PartDifference, StateList, StateListError};
+pub use tags::TagUse;
 pub use transforming::Snapping;
 pub use updates::{ReleaseNotes, UpdateNotice};
 pub use viewport::{

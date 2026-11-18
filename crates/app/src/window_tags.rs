@@ -162,7 +162,11 @@ pub(super) fn count_in(
         }
         let inside = path.to_string_lossy().replace('\\', "/");
         for (id, n) in here {
-            counted.levels.entry(id).or_default().push((inside.clone(), n));
+            counted
+                .levels
+                .entry(id)
+                .or_default()
+                .push((inside.clone(), n));
         }
     }
     counted

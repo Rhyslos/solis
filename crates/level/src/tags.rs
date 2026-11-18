@@ -242,7 +242,9 @@ pub fn name_problem(name: &str) -> Option<String> {
         ));
     }
     if name == NO_TAG {
-        return Some("None is what game code has when a project has no tags: choose another.".into());
+        return Some(
+            "None is what game code has when a project has no tags: choose another.".into(),
+        );
     }
     None
 }
@@ -259,7 +261,11 @@ fn suggestion(name: &str) -> String {
         if let Some(first) = chars.next() {
             out.push(first.to_ascii_uppercase());
             let rest: String = chars.collect();
-            if word.chars().filter(char::is_ascii_alphabetic).all(|c| c.is_ascii_uppercase()) {
+            if word
+                .chars()
+                .filter(char::is_ascii_alphabetic)
+                .all(|c| c.is_ascii_uppercase())
+            {
                 out.push_str(&rest.to_ascii_lowercase());
             } else {
                 out.push_str(&rest);
@@ -326,7 +332,8 @@ pub fn read(text: &str) -> Result<Read, DataError> {
             continue;
         };
         if let Err(why) = read.tags.add_with_id(id, name) {
-            read.notes.push(format!("The tag \"{shown}\" is left out: {why}"));
+            read.notes
+                .push(format!("The tag \"{shown}\" is left out: {why}"));
         }
     }
     Ok(read)

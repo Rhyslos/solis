@@ -7,6 +7,7 @@
 use super::tests::{TestWorld, id, unhurried};
 use super::*;
 use crate::code::Code;
+use reflect::TagId;
 
 /// The project's names: two prefabs, and the tags Enemy, Flying and
 /// Ghost.
@@ -68,7 +69,11 @@ const HUNT: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Tag;\n
 
 /// The tags of a world of a hunter at 0 and bats at 1, 2 and 3 m: the
 /// first two bats are enemies, the second flies.
-fn tags_of(world: &TestWorld, carried: &[(u64, &[TagId])], tags: &[(TagId, String)]) -> crate::TagView {
+fn tags_of(
+    world: &TestWorld,
+    carried: &[(u64, &[TagId])],
+    tags: &[(TagId, String)],
+) -> crate::TagView {
     let _ = world;
     let tagged: Vec<(EntityId, Vec3, Vec<TagId>)> = carried
         .iter()
@@ -79,14 +84,19 @@ fn tags_of(world: &TestWorld, carried: &[(u64, &[TagId])], tags: &[(TagId, Strin
 
 /// What the hunt says over two ticks, and the tags landed, on `shards`.
 fn hunt(shards: usize) -> (Vec<String>, Vec<Change>) {
-    let (enemy, flying, ghost) = (TagId::random(), TagId::random(), TagId::random());
+    let tag = |n| TagId(reflect::Id::from_raw(n).unwrap());
+    let (enemy, flying, ghost) = (tag(101), tag(102), tag(103));
     let tags = vec![
         (enemy, "Enemy".to_string()),
         (flying, "Flying".to_string()),
         (ghost, "Ghost".to_string()),
     ];
     let mut world = TestWorld::with(&["Hunter", "Bat1", "Bat2", "Bat3"]);
-    world.tags = Arc::new(tags_of(&world, &[(2, &[enemy]), (3, &[enemy, flying]), (4, &[])], &tags));
+    world.tags = Arc::new(tags_of(
+        &world,
+        &[(2, &[enemy]), (3, &[enemy, flying]), (4, &[])],
+        &tags,
+    ));
     let mut game = unhurried(shards);
     let code = compile(HUNT).unwrap();
     game.load(&code, &mut world).unwrap();
@@ -102,7 +112,11 @@ fn hunt(shards: usize) -> (Vec<String>, Vec<Change>) {
     assert!(first.failures.is_empty(), "{:?}", first.failures);
     // The next tick's view: the changes landed (the hunter's tag, Bat2's
     // taken away), as the editor makes it at the tick's start.
-    world.tags = Arc::new(tags_of(&world, &[(1, &[enemy]), (2, &[enemy]), (3, &[flying])], &tags));
+    world.tags = Arc::new(tags_of(
+        &world,
+        &[(1, &[enemy]), (2, &[enemy]), (3, &[flying])],
+        &tags,
+    ));
     let second = game.tick(1.0 / 60.0, &mut world);
     assert!(second.failures.is_empty(), "{:?}", second.failures);
     (world.said, world.tag_changes)
@@ -141,7 +155,9 @@ fn tag_questions_reach_lust_the_same_on_any_number_of_shards() {
 #[test]
 fn a_misspelt_tag_fails_the_check_before_anything_runs() {
     let misspelt = HUNT.replace("Tag.Ghost", "Tag.Gohst");
-    let problems = compile(&misspelt).err().expect("a misspelt tag is a mistake");
+    let problems = compile(&misspelt)
+        .err()
+        .expect("a misspelt tag is a mistake");
     let first = problems[0].to_string();
     assert!(first.contains("Gohst"), "{first}");
     // A tag the project hasn't any more (renamed in Project settings) is

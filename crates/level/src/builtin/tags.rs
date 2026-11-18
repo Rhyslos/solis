@@ -132,10 +132,7 @@ mod tests {
         let text = format!("{a} nonsense {a}  ☃ 0000000000000");
         assert_eq!(Tags::read(&text).ids, [a]);
         let many: Vec<String> = (0..100).map(|_| TagId::random().to_string()).collect();
-        assert_eq!(
-            Tags::read(&many.join(" ")).ids.len(),
-            MAX_TAGS_PER_ENTITY
-        );
+        assert_eq!(Tags::read(&many.join(" ")).ids.len(), MAX_TAGS_PER_ENTITY);
         let mut data = ComponentData::default();
         data.set("tags", Value::Int(3));
         assert_eq!(Tags::from_data(&data), Tags::default());

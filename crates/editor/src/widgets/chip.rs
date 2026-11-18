@@ -125,7 +125,14 @@ pub fn tag_chip(ui: &mut Ui, label: &str, removable: bool) -> Response {
             pos2(rect.left() + pad, rect.top()),
             pos2(rect.right() - pad - cross - gap, rect.bottom()),
         );
-        words(ui, room, Align2::LEFT_CENTER, label, font, tokens::text_primary());
+        words(
+            ui,
+            room,
+            Align2::LEFT_CENTER,
+            label,
+            font,
+            tokens::text_primary(),
+        );
         if removable {
             let ink = if response.hovered() {
                 tokens::text_emphasis()

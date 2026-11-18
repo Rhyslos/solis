@@ -198,6 +198,7 @@ mod tests {
                 "RigidBody",
                 "Screen",
                 "Sprite",
+                "Tags",
                 "TileMap",
                 "Transform",
                 "TriggerZone"

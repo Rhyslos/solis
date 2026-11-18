@@ -838,7 +838,11 @@ struct Shown {
 #[allow(clippy::too_many_arguments)]
 fn entity_row(
     ui: &mut Ui,
-    (document, models, tags): (&Document, &BTreeMap<AssetId, ModelInfo>, &level::tags::TagList),
+    (document, models, tags): (
+        &Document,
+        &BTreeMap<AssetId, ModelInfo>,
+        &level::tags::TagList,
+    ),
     accent: Accent,
     (id, entity): (EntityId, &EntityData),
     shown: Shown,
@@ -1080,7 +1084,13 @@ mod rows_tests {
         let rows = state.rows(&d, (&level::tags::TagList::default(), 0));
         assert!(rows.iter().any(|&(id, depth)| id == lamp && depth == 1));
         for _ in 0..3 {
-            assert!(Arc::ptr_eq(&rows, &state.rows(&d, (&level::tags::TagList::default(), 0))), "kept");
+            assert!(
+                Arc::ptr_eq(
+                    &rows,
+                    &state.rows(&d, (&level::tags::TagList::default(), 0))
+                ),
+                "kept"
+            );
         }
         // Renaming changes the level, not its tree: still kept.
         d.edit(
@@ -1093,12 +1103,18 @@ mod rows_tests {
             None,
         )
         .unwrap();
-        assert!(Arc::ptr_eq(&rows, &state.rows(&d, (&level::tags::TagList::default(), 0))));
+        assert!(Arc::ptr_eq(
+            &rows,
+            &state.rows(&d, (&level::tags::TagList::default(), 0))
+        ));
         // Folding the room: listed again, without the lamp.
         state.collapsed.insert(room);
         let folded = state.rows(&d, (&level::tags::TagList::default(), 0));
         assert!(!folded.iter().any(|&(id, _)| id == lamp));
-        assert!(Arc::ptr_eq(&folded, &state.rows(&d, (&level::tags::TagList::default(), 0))));
+        assert!(Arc::ptr_eq(
+            &folded,
+            &state.rows(&d, (&level::tags::TagList::default(), 0))
+        ));
         // Searching: what's found, and again when a name changes.
         state.search = "lig".into();
         let found = state.rows(&d, (&level::tags::TagList::default(), 0));
@@ -1106,7 +1122,10 @@ mod rows_tests {
             found.iter().map(|&(id, _)| id).collect::<Vec<_>>(),
             [room, lamp]
         );
-        assert!(Arc::ptr_eq(&found, &state.rows(&d, (&level::tags::TagList::default(), 0))));
+        assert!(Arc::ptr_eq(
+            &found,
+            &state.rows(&d, (&level::tags::TagList::default(), 0))
+        ));
         d.edit(
             "Rename",
             vec![Edit::Rename {
@@ -1117,7 +1136,12 @@ mod rows_tests {
             None,
         )
         .unwrap();
-        assert!(state.rows(&d, (&level::tags::TagList::default(), 0)).is_empty(), "nothing called that now");
+        assert!(
+            state
+                .rows(&d, (&level::tags::TagList::default(), 0))
+                .is_empty(),
+            "nothing called that now"
+        );
         // A new entity: listed again.
         state.search.clear();
         let before = state.rows(&d, (&level::tags::TagList::default(), 0));
@@ -1130,6 +1154,9 @@ mod rows_tests {
             None,
         )
         .unwrap();
-        assert_eq!(state.rows(&d, (&level::tags::TagList::default(), 0)).len(), before.len() + 1);
+        assert_eq!(
+            state.rows(&d, (&level::tags::TagList::default(), 0)).len(),
+            before.len() + 1
+        );
     }
 }

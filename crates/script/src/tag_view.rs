@@ -90,7 +90,11 @@ impl TagView {
         };
         let known: std::collections::HashSet<TagId> = tags.iter().map(|(id, _)| *id).collect();
         for (entity, place, carried) in tagged {
-            let carried: Vec<TagId> = carried.iter().copied().filter(|t| known.contains(t)).collect();
+            let carried: Vec<TagId> = carried
+                .iter()
+                .copied()
+                .filter(|t| known.contains(t))
+                .collect();
             if carried.is_empty() {
                 continue;
             }
@@ -141,7 +145,11 @@ impl TagView {
                 found.push((d, members.ids[i]));
             }
         };
-        match members.grid.as_ref().and_then(|g| g.cells_near(place, radius, members.ids.len())) {
+        match members
+            .grid
+            .as_ref()
+            .and_then(|g| g.cells_near(place, radius, members.ids.len()))
+        {
             Some((grid, x, y)) => {
                 for row in y.0..=y.1 {
                     for col in x.0..=x.1 {
@@ -208,8 +216,12 @@ impl Members {
         if self.ids.is_sorted() {
             return;
         }
-        let mut both: Vec<(EntityId, Vec3)> =
-            self.ids.iter().copied().zip(self.places.iter().copied()).collect();
+        let mut both: Vec<(EntityId, Vec3)> = self
+            .ids
+            .iter()
+            .copied()
+            .zip(self.places.iter().copied())
+            .collect();
         both.sort_unstable_by_key(|(id, _)| *id);
         (self.ids, self.places) = both.into_iter().unzip();
     }
@@ -272,7 +284,11 @@ impl Grid {
     /// question overflows.
     fn cell_of(&self, ground: Vec2) -> (i64, i64) {
         const FAR: f64 = (1u64 << 40) as f64;
-        let at = |v: f32, o: f32| (f64::from(v - o) / f64::from(self.cell)).floor().clamp(-FAR, FAR) as i64;
+        let at = |v: f32, o: f32| {
+            (f64::from(v - o) / f64::from(self.cell))
+                .floor()
+                .clamp(-FAR, FAR) as i64
+        };
         (at(ground.x, self.origin.x), at(ground.y, self.origin.y))
     }
 

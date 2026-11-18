@@ -17,7 +17,11 @@ fn at(x: f32, y: f32) -> Transform {
 fn tags_come_from_the_level_and_change_while_playing() {
     let (enemy, flying) = (TagId::random(), TagId::random());
     let mut level = Level::new();
-    let bat = level.spawn(EntityData::new("Bat").with(&at(1.0, 2.0)).with(&Tags::of([enemy])));
+    let bat = level.spawn(
+        EntityData::new("Bat")
+            .with(&at(1.0, 2.0))
+            .with(&Tags::of([enemy])),
+    );
     let rock = level.spawn(EntityData::new("Rock").with(&at(3.0, 0.0)));
     let mut world = World::from_level(&level);
     assert_eq!(world.tags_of(bat).ids, [enemy]);
@@ -55,7 +59,11 @@ fn tags_are_in_the_checksum_and_the_state_parts_only_once_carried() {
     let (_, text) = parts.iter().find(|(k, _)| k.ends_with(" Tags")).unwrap();
     assert_eq!(text, &enemy.to_string());
     world.set_tag(bat, enemy, false);
-    assert_eq!(world.checksum(), before, "an entity carrying none adds nothing");
+    assert_eq!(
+        world.checksum(),
+        before,
+        "an entity carrying none adds nothing"
+    );
 }
 
 #[test]
@@ -75,7 +83,10 @@ fn tags_game_code_set_outlive_an_edit_while_playing() {
     level.get_mut(bat).unwrap().name = "Big bat".into();
     world.rebuild(&level);
     assert_eq!(world.tags_of(bat).ids, [enemy], "the game's tag is kept");
-    assert!(world.tags_of(tagged).ids.is_empty(), "and the one it took away");
+    assert!(
+        world.tags_of(tagged).ids.is_empty(),
+        "and the one it took away"
+    );
     // An edit of the level's own tags wins.
     level
         .get_mut(tagged)
@@ -96,10 +107,14 @@ fn a_zone_limited_to_tags_notices_only_those_carrying_one() {
             ..Collider2D::default()
         })
     };
-    let door = level.spawn(EntityData::new("Door").with(&at(5.0, 0.0)).with(&TriggerZone {
-        only: vec![player, ghost],
-        ..TriggerZone::default()
-    }));
+    let door = level.spawn(
+        EntityData::new("Door")
+            .with(&at(5.0, 0.0))
+            .with(&TriggerZone {
+                only: vec![player, ghost],
+                ..TriggerZone::default()
+            }),
+    );
     let hero = level.spawn(walker("Hero", 0.2).with(&Tags::of([player])));
     let cat = level.spawn(walker("Cat", -0.2));
     let mut world = World::from_level(&level);
