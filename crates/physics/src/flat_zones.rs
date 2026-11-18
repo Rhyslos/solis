@@ -1,8 +1,10 @@
 //! What overlaps a trigger zone in 2D (stage 1, triggers): each zone, a
 //! box, a circle or a freeform outline's convex pieces, placed and turned
-//! on the ground, asks the query pipeline which characters meet it. Only
-//! characters count: the rest of 2D physics (houses, bins, walls) never
-//! moves, so it never walks in or out.
+//! on the ground, asks which characters meet it. Only characters count:
+//! the rest of 2D physics (houses, bins, walls) never moves, so it never
+//! walks in or out. As in 3D (`zones.rs`), the question goes to a tree of
+//! boxes made for it from where the characters are now, so it's never a
+//! step behind, then each candidate is tested exactly.
 //!
 //! A zone's shape is made once ([`FlatZone`]), when the zone or its
 //! entity's scale changes, never each tick: a freeform outline is cut into
@@ -12,6 +14,9 @@
 
 use super::{Flat, FlatState};
 use glam::Vec2;
+use rapier2d::parry::bounding_volume::{Aabb, BoundingVolume};
+use rapier2d::parry::partitioning::{Bvh, BvhBuildStrategy};
+use rapier2d::parry::query::intersection_test;
 use rapier2d::prelude as rp;
 use rayon::prelude::*;
 use reflect::EntityId;
@@ -105,60 +110,62 @@ impl FlatState {
     /// For each zone, in the order given, the characters whose colliders
     /// overlap it, by entity, sorted and each once.
     fn overlapping(&self, zones: &[FlatZoneQuery<'_>]) -> Vec<Vec<EntityId>> {
+        let movers: Vec<(EntityId, &rp::Collider)> = self
+            .by_entity
+            .iter()
+            .filter(|(_, e)| e.character)
+            .filter_map(|(id, e)| Some((*id, self.colliders.get(e.collider)?)))
+            .collect();
+        if movers.is_empty() {
+            return vec![Vec::new(); zones.len()];
+        }
+        let boxes: Vec<Aabb> = movers.iter().map(|(_, c)| c.compute_aabb()).collect();
+        let tree = Bvh::from_leaves(BvhBuildStrategy::Binned, &boxes);
         zones
             .par_iter()
-            .map(|zone| self.overlapping_one(zone))
+            .map(|zone| overlapping_one(&movers, &tree, zone))
             .collect()
     }
+}
 
-    fn overlapping_one(&self, zone: &FlatZoneQuery<'_>) -> Vec<EntityId> {
-        if !zone.place.is_finite() || !zone.angle.is_finite() || self.by_entity.is_empty() {
-            return Vec::new();
-        }
-        let character = |handle: rp::ColliderHandle, c: &rp::Collider| {
-            reflect::Id::from_raw(c.user_data as u64)
-                .map(EntityId)
-                .and_then(|id| self.by_entity.get(&id))
-                .is_some_and(|e| e.character && e.collider == handle)
-        };
-        let filter = rp::QueryFilter::default()
-            .exclude_sensors()
-            .predicate(&character);
-        let queries = self.broad_phase.as_query_pipeline(
-            self.narrow_phase.query_dispatcher(),
-            &self.bodies,
-            &self.colliders,
-            filter,
-        );
-        let pose = rp::Pose::new(zone.place, zone.angle);
-        let mut ids: Vec<EntityId> = Vec::new();
-        for piece in &zone.shape.pieces {
-            // Rapier's maths failing on something out of range is nothing
-            // found, never a crash.
-            let found = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                queries
-                    .intersect_shape(pose, &**piece)
-                    .filter_map(|(_, c)| reflect::Id::from_raw(c.user_data as u64))
-                    .map(EntityId)
-                    .collect::<Vec<_>>()
-            }))
-            .unwrap_or_default();
-            ids.extend(found);
-        }
-        ids.retain(|id| *id != zone.zone);
-        ids.sort_unstable();
-        ids.dedup();
-        ids
+/// The characters overlapping one zone, sorted.
+fn overlapping_one(
+    movers: &[(EntityId, &rp::Collider)],
+    tree: &Bvh,
+    zone: &FlatZoneQuery<'_>,
+) -> Vec<EntityId> {
+    if !zone.place.is_finite() || !zone.angle.is_finite() {
+        return Vec::new();
     }
+    let at = rp::Pose::new(zone.place, zone.angle);
+    let mut ids: Vec<EntityId> = Vec::new();
+    for piece in &zone.shape.pieces {
+        // Rapier's maths failing on something out of range is nothing
+        // found, never a crash.
+        let found = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let reach = piece.compute_aabb(&at).loosened(1.0e-4);
+            tree.intersect_aabb(&reach)
+                .filter_map(|leaf| movers.get(leaf as usize))
+                .filter(|(id, _)| *id != zone.zone)
+                .filter(|(_, c)| {
+                    intersection_test(&at, &**piece, c.position(), c.shape())
+                        .is_ok_and(|hit| hit.intersecting)
+                })
+                .map(|(id, _)| *id)
+                .collect::<Vec<_>>()
+        }))
+        .unwrap_or_default();
+        ids.extend(found);
+    }
+    ids.sort_unstable();
+    ids.dedup();
+    ids
 }
 
 impl Flat {
     /// For each zone, in the order given, the characters whose colliders
-    /// overlap it, sorted. Rapier first catches up with anything added or
-    /// moved since its lists of what's near what were made, so a character
-    /// put somewhere (or just joined) is found where it is.
-    pub fn overlapping(&mut self, zones: &[FlatZoneQuery<'_>]) -> Vec<Vec<EntityId>> {
-        self.catch_up(None);
+    /// overlap it where they are now, sorted.
+    pub fn overlapping(&self, zones: &[FlatZoneQuery<'_>]) -> Vec<Vec<EntityId>> {
         self.state.overlapping(zones)
     }
 }

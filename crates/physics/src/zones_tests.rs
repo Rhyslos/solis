@@ -129,7 +129,7 @@ fn flat_zone(n: u64, place: Vec2, shape: &FlatZone) -> FlatZoneQuery<'_> {
 
 #[test]
 fn a_2d_zone_finds_characters_only() {
-    let mut flat = flat_world();
+    let flat = flat_world();
     let wide = FlatZone::rectangle(Vec2::new(10.0, 2.0));
     let found = flat.overlapping(&[flat_zone(9, Vec2::new(4.0, 0.0), &wide)]);
     assert_eq!(found, [vec![id(2), id(3)]]);
@@ -137,7 +137,7 @@ fn a_2d_zone_finds_characters_only() {
 
 #[test]
 fn a_2d_circle_and_a_turned_box_are_exact() {
-    let mut flat = flat_world();
+    let flat = flat_world();
     let small = FlatZone::circle(0.5);
     let thin = FlatZone::rectangle(Vec2::new(0.1, 1.2));
     let turned = FlatZoneQuery {
@@ -203,7 +203,7 @@ fn unusable_pieces_are_left_out() {
         vec![Vec2::splat(f32::NAN), Vec2::X, Vec2::Y],
     ]);
     assert_eq!(odd.piece_count(), 0);
-    let mut flat = flat_world();
+    let flat = flat_world();
     let found = flat.overlapping(&[flat_zone(9, Vec2::new(2.0, 0.0), &odd)]);
     assert_eq!(found, [Vec::<EntityId>::new()]);
 }
@@ -229,15 +229,32 @@ fn many_zones_give_the_same_answers_on_one_core_or_four() {
             )
         })
         .collect();
-    let on = |threads: usize, flat: &mut Flat| {
+    let on = |threads: usize, flat: &Flat| {
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .build()
             .unwrap()
             .install(|| flat.overlapping(&zones))
     };
-    let one = on(1, &mut flat);
-    let four = on(4, &mut flat);
+    let one = on(1, &flat);
+    let four = on(4, &flat);
     assert_eq!(one, four);
     assert!(one.iter().map(Vec::len).sum::<usize>() > 100);
+}
+
+#[test]
+fn a_body_just_added_is_found_before_any_step() {
+    // As after physics is built again (an edit while playing, a save, a
+    // load): nothing has stepped since, yet the zone sees it.
+    let mut physics = Physics::new();
+    physics.add_character(
+        id(5),
+        (Vec3::new(1.0, 1.0, 0.0), Quat::IDENTITY),
+        CharacterSpec::default(),
+    );
+    let found =
+        physics
+            .state()
+            .overlapping(&[zone(9, Vec3::new(1.0, 1.0, 1.0), ZoneShape::Ball(0.5))]);
+    assert_eq!(found, [vec![id(5)]]);
 }
