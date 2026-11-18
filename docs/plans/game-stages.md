@@ -24,7 +24,9 @@ Walking a world, rooms and doors, talking to people, picking things up, an inven
 - **Data tables:** items, prices, descriptions in one file, edited as a table. (Shared 4)
 - **Text layout, then text effects:** dialogue that types itself out, coloured and wavy words, icons in text. (Shared 5)
 - **Tooltips, and drag and drop,** for an inventory and a shop. (Shared 5)
+- **Fades:** to black and back, or another colour, as a general tool. (Shared 3, brought from stage 2's shake and flash.)
 - **Rooms on a world map, and moving between them,** with a fade. (2D 1 and Shared 6)
+- **A Door in the kit,** built on triggers, fades and rooms (the project lead, 2026-11-18): **Send to** a place in this level or an entry point in another room or level, **Two-way** (two doors linked, each sending to the other), and a **Transition** (none, or a fade, with its time). Written in Lust and open to read and change, like the kit's top-down walker. The trigger zone itself stays lean.
 - **Sorting tall things:** walking behind and in front of trees and houses properly. (2D 1)
 - **Pathfinding:** characters walk round walls to where they're going. (2D 1)
 - **Save slots:** several saves with a picture and the time played. (Shared 4)
@@ -38,7 +40,7 @@ Running and jumping, platforms that move, enemies that hurt, a camera that feels
 - **Tweens made solid:** saved, and the same on any number of cores. (Shared 3)
 - **Paths drawn in the editor,** for platforms and enemies to follow. (Shared 4)
 - **Components that draw in the editor,** such as an enemy's reach while you place it. (Shared 4)
-- **Screen shake, flash, fade, rumble, hit-stop, squash.** (Shared 3)
+- **Screen shake, flash, rumble, hit-stop, squash.** (Shared 3; fades came in stage 1)
 - **The sample:** a small platformer in Learn.
 
 ## Stage 3: a puzzle or turn-based game
@@ -100,16 +102,23 @@ Planned in detail when 2D is done. The outline stays as ROADMAP.md has it:
 - **Once or every time.**
 - **What's inside is game state:** saved, and in the checksum, so loading a save doesn't fire "entered" again.
 
-**Game code** (rule 25; the names are asked first):
+**Game code** (rule 25; answered by the project lead, 2026-11-18):
 - The zone hears `Entered(entity who)` and `Exited(entity who)`.
 - The one who walked in hears `EnteredZone(entity zone)` and `LeftZone(entity zone)`.
-- All of this works in Lust, Rust and Lua.
-- A teleport through a zone, in and out in one tick, fires nothing (recommended).
+- All of this works in Lust, Rust and Lua, and a zone carries its own code like any entity (+ Component).
+- Something that goes in and out within one tick, such as a teleport straight through, fires nothing.
 
-**Editor:**
-- the zone is drawn in the view as an outline, and sized with the gizmo;
-- **Trigger zone**, already on Home's ribbon as an unfinished part, becomes real;
-- a mock-up comes first for the zone's look and its card in Properties.
+**Editor** ([approved mock-up](../design/triggers/README.md)):
+- **Trigger zone** on Home's ribbon (an unfinished part until now) makes one in the view, where you're looking.
+- The zone is a teal outline: solid with handles when picked, dashed when not, with its name and size beside it. In 2D it's a box or a circle; in 3D a box or a sphere.
+- Its card in Properties has:
+  - Shape and Size;
+  - Notices (characters and bodies);
+  - Fires (every time, or once);
+  - Only tags, greyed until tags exist;
+  - Inside now, filled while playing.
+- A card says what game code hears, with a **New code for this zone…** button that makes a code file with empty `Entered` and `Exited` handlers, attached to the zone.
+- A zone can be made into a prefab like any entity.
 
 **Tests and scale:**
 - in, staying, out;
@@ -119,4 +128,4 @@ Planned in detail when 2D is done. The outline stays as ROADMAP.md has it:
 - 1 and 4 cores the same;
 - 2,000 characters and 500 triggers within the scale target.
 
-**Asked when it starts:** the event names, the teleport rule, and the mock-up.
+**Not in this milestone:** doors, teleporting and fades. They're the Door in the kit, later in stage 1.
