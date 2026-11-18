@@ -18,6 +18,7 @@ done
 { cat samples/turret/assets/main.lst; printf '\001'; cat samples/turret/assets/sparks.lua; } \
     > "$seeds/game_code/turret-with-lua.lst"
 cp samples/turret/assets/turret.sollevel "$seeds/level_file/"
+cp tests/fixtures/area/v5/zones.sollevel "$seeds/level_file/"
 # Prefabs: the example of version 1, and an assembly's older file of
 # each layout, so the move from the older layout is fuzzed too.
 mkdir -p "$seeds/prefab_file"

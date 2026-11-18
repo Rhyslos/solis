@@ -19,6 +19,7 @@ mod screen;
 mod sprite;
 mod tile_map;
 mod transform;
+mod trigger_zone;
 
 pub use animator::Animator;
 pub use audio_source::AudioSource;
@@ -40,6 +41,7 @@ pub use screen::Screen;
 pub use sprite::Sprite;
 pub use tile_map::TileMap;
 pub use transform::Transform;
+pub use trigger_zone::{Fires, NOTICES, TriggerZone, ZoneForm};
 
 use crate::document::{EntityData, Level};
 use reflect::{Registry, RegistryError};
@@ -65,6 +67,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Screen>()?;
     registry.register_type::<Parallax>()?;
     registry.register_type::<Brush>()?;
+    registry.register_type::<TriggerZone>()?;
     Ok(registry)
 }
 
@@ -193,7 +196,8 @@ mod tests {
                 "Screen",
                 "Sprite",
                 "TileMap",
-                "Transform"
+                "Transform",
+                "TriggerZone"
             ]
         );
     }

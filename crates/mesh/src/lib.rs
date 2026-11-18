@@ -14,6 +14,7 @@ pub mod flat;
 pub mod intact;
 pub mod material;
 pub mod merge;
+pub mod outline;
 pub mod parallel;
 pub mod polygon;
 pub mod primitives;
