@@ -1,0 +1,174 @@
+-- A level. Safe to edit by hand: one block per entity, one line per field.
+level version 5;
+
+entity 2PC00000000E1 {
+    name = "Floor";
+    order = "a0";
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [30.0, 30.0, 1.0];
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+}
+
+entity 2PC00000000E2 {
+    name = "Player";
+    order = "a1";
+    Transform.position = [0.0, -4.0, 0.9];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    CharacterBody.height = 1.8;
+    CharacterBody.radius = 0.4;
+    CharacterController = {};
+    Visitor = {};
+}
+
+entity 2PC00000000E3 {
+    name = "Crate 1";
+    order = "a2";
+    Transform.position = [3.0, 0.0, 0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 5.0;
+}
+
+entity 2PC00000000E4 {
+    name = "Crate 2";
+    order = "a3";
+    Transform.position = [3.0, 0.0, 1.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 5.0;
+}
+
+entity 2PC00000000E5 {
+    name = "Crate 3";
+    order = "a4";
+    Transform.position = [4.2, 0.3, 0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 5.0;
+}
+
+entity 2PC00000000E6 {
+    name = "Platform";
+    order = "a5";
+    Transform.position = [-6.0, 0.0, 0.15];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [3.0, 3.0, 0.3];
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    RigidBody.kind = "Kinematic";
+    Platform.from = [-6.0, 0.0, 0.15];
+    Platform.to = [-6.0, 6.0, 0.15];
+}
+
+entity 2PC00000000E7 {
+    name = "Hive";
+    order = "a6";
+    Transform.position = [5.0, 5.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Hive = {};
+}
+
+entity 2PC00000000E8 {
+    name = "Turret";
+    order = "a7";
+    Transform.position = [-3.0, -3.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Turret.target = "2PC00000000E9";
+}
+
+entity 2PC00000000E9 {
+    name = "Lantern";
+    order = "a8";
+    Transform.position = [-4.0, 4.0, 1.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Health = {};
+    Armour = {};
+    Wobble = {};
+}
+
+entity 2PC00000000EA {
+    name = "Gate zone";
+    order = "a9";
+    Transform.position = [0.0, -1.0, 1.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    TriggerZone.shape = "Box";
+    TriggerZone.size = [4.0, 2.0, 3.0];
+    Gate = {};
+}
+
+entity 2PC00000000EB {
+    name = "Crate zone";
+    order = "a10";
+    Transform.position = [3.5, 0.0, 1.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    TriggerZone.shape = "Round";
+    TriggerZone.radius = 2.0;
+    TriggerZone.fires = "Once";
+    Gate = {};
+}
+
+entity 2PC00000000EC {
+    name = "Yard";
+    order = "a11";
+    Transform.position = [100.0, 12.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    TileMap.map = "2PC0000000002";
+    Gardener = {};
+}
+
+entity 2PC00000000ED {
+    name = "Walker";
+    order = "a12";
+    Transform.position = [106.0, 6.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Collider2D.radius = 5.0;
+    Collider2D.character = true;
+    Sprite.sheet = "2PC0000000003";
+    Sprite.clip = "walk";
+    Sprite.playing = true;
+    Animator.animator = "2PC0000000004";
+    TopDownController.speed = 3.0;
+    Strider = {};
+    Visitor = {};
+}
+
+entity 2PC00000000EE {
+    name = "Post";
+    order = "a13";
+    Transform.position = [103.0, 9.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Collider2D.shape = "Box";
+    Collider2D.width = 16.0;
+    Collider2D.height = 16.0;
+}
+
+entity 2PC00000000EF {
+    name = "Garden zone";
+    order = "a14";
+    Transform.position = [104.0, 4.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    TriggerZone.shape = "Freeform";
+    TriggerZone.points = [0.0, 0.0, 4.0, 0.0, 4.0, 2.0, 2.0, 2.0, 2.0, 4.0, 0.0, 4.0];
+    Gate = {};
+}

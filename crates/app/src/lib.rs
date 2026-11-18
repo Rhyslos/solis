@@ -36,6 +36,8 @@ pub mod sprites;
 pub mod startup;
 pub mod text_files;
 pub mod thumbnails;
+#[cfg(test)]
+mod two_pcs;
 pub mod ui_sample;
 pub mod updates;
 mod upgrades;

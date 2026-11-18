@@ -335,7 +335,7 @@ fn check_files(root: &Path, report: &mut Report) {
 
 /// Checks the game's code, as the editor would on opening. The program,
 /// when it has code and that code has no mistakes.
-fn check_code(
+pub(crate) fn check_code(
     project: &asset_db::Project,
     made_by: &str,
     report: &mut Report,

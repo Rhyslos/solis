@@ -1,0 +1,23 @@
+-- A prefab. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
+fetch "solis/data/prefab":[Part];
+
+lock int version = 1;
+lock string root = "2PC00000000D1";
+lock Part array parts = [
+    new Part {
+        id = "2PC00000000D1",
+        name = "Drone",
+        order = "a0",
+        settings = [
+            "Transform.position = [0.0, 0.0, 0.0]",
+            "Transform.rotation = [0.0, 0.0, 0.0, 1.0]",
+            "Transform.scale = [0.4, 0.4, 0.4]",
+            "Collider.shape = \"Box\"",
+            "Collider.size = [1.0, 1.0, 1.0]",
+            "RigidBody.kind = \"Dynamic\"",
+            "RigidBody.mass = 2.0",
+            "Drone = {}"
+        ]
+    },
+];
+end
