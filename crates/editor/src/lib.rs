@@ -53,6 +53,7 @@ pub mod icons;
 mod inspector;
 pub mod interface_look;
 mod key_owner;
+mod kinds;
 pub mod launcher;
 mod level_panel;
 pub mod level_view;
@@ -178,6 +179,8 @@ mod game_set_tests;
 mod home_screen_tests;
 #[cfg(test)]
 mod invariant_tests;
+#[cfg(test)]
+mod kind_picture_tests;
 #[cfg(test)]
 mod kit_tests;
 #[cfg(test)]

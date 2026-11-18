@@ -36,6 +36,16 @@ impl ShellCommand {
                 "Stop snapping scale",
                 w.viewport.snapping.scale,
             ),
+            C::SnapToTiles => on_off(
+                "Snap to tiles",
+                "Stop snapping to tiles",
+                w.viewport.snapping.pixel_snap == crate::transforming::PixelSnap::Tiles,
+            ),
+            C::PixelPerfect => on_off(
+                "Snap to whole pixels",
+                "Stop snapping to whole pixels",
+                w.viewport.snapping.pixel_snap == crate::transforming::PixelSnap::Pixels,
+            ),
             C::ViewportTools => switch(w.viewport.overlays.tools, "the viewport's tools"),
             C::ViewportSnapping => switch(
                 w.viewport.overlays.snapping,
@@ -201,6 +211,8 @@ impl ShellCommand {
             | C::SnapToGrid
             | C::SnapAngles
             | C::SnapScale
+            | C::SnapToTiles
+            | C::PixelPerfect
             | C::ViewportTools
             | C::ViewportSnapping
             | C::ViewportStats
@@ -421,6 +433,14 @@ impl ShellCommand {
             C::SnapToGrid => "Moves land on the grid. A click on its step chooses another",
             C::SnapAngles => "Turns go in steps. A click on the step chooses another",
             C::SnapScale => "Scaling goes in steps of 10%",
+            C::SnapToTiles => {
+                "In the 2D view, moves land on whole tiles of the project's tile size (Ctrl while \
+                 dragging flips it)"
+            }
+            C::PixelPerfect => {
+                "In the 2D view, moves land on the game's whole pixels, so nothing rests between \
+                 pixels (Ctrl while dragging flips it)"
+            }
             C::Step => "Runs the paused game for one tick",
             C::LoadSave => {
                 "Plays from a save game in the project's saves folder, exactly as it was saved"

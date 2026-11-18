@@ -20,7 +20,13 @@ impl Workbench {
     /// while the list is open, B moves down it, Space takes the shape
     /// highlighted (before the search's Space) and Esc closes it.
     pub(crate) fn brush_keys(&mut self, ui: &egui::Ui) {
-        if !self.keys.takes_shortcuts() || self.viewport.is_flying() {
+        // Shape brushes are 3D only (the kind table): B is the tile
+        // painter's alone in a 2D project.
+        let brushes = crate::kinds::command(crate::shell::ShellCommand::ChooseShapeBrush);
+        if !self.keys.takes_shortcuts()
+            || self.viewport.is_flying()
+            || !self.open.kind.shows(brushes)
+        {
             return;
         }
         if let Some(list) = &mut self.viewport.brushing.list {

@@ -83,8 +83,12 @@ pub struct Status {
     pub saved: Part,
     /// Playing or paused; none while editing.
     pub playing: Option<Part>,
-    /// The level's name, 2D or 3D, and a 2D game's size.
+    /// A 2D or 3D project's name and kind ("Farm Days · 2D"); otherwise
+    /// the level's name, 2D or 3D, and a 2D game's size.
     pub level: String,
+    /// In the 2D view, the tile map's cell under the pointer ("Tile 13,
+    /// 9"), while a map is selected.
+    pub tile: Option<String>,
     /// What is selected: "Crate 1 selected", "3 selected"; none while
     /// nothing is.
     pub selected: Option<String>,
@@ -131,15 +135,22 @@ impl Workbench {
             }
             PlayState::Paused => Some(Part::new("Paused", tokens::WARNING).marked(Mark::Paused)),
         };
-        let level = if self.viewport.camera.kind == crate::camera::ViewKind::TwoD {
-            let [w, h] = self.open.pixels.base;
-            format!(
-                "{} \u{b7} 2D \u{b7} {w} \u{d7} {h}",
-                self.open.document.name()
-            )
-        } else {
-            format!("{} \u{b7} 3D", self.open.document.name())
-        };
+        let two_d = self.viewport.camera.kind == crate::camera::ViewKind::TwoD;
+        let kind = self.open.kind;
+        let level =
+            if let Some(project) = self.open.project.as_ref().filter(|_| kind.note().is_some()) {
+                // A 2D or 3D project says so (board 08): "Farm Days · 2D".
+                // Both says the level, as before the kind was asked.
+                format!("{} \u{b7} {}", project.name, kind.badge())
+            } else if two_d {
+                let [w, h] = self.open.pixels.base;
+                format!(
+                    "{} \u{b7} 2D \u{b7} {w} \u{d7} {h}",
+                    self.open.document.name()
+                )
+            } else {
+                format!("{} \u{b7} 3D", self.open.document.name())
+            };
         let selection = &self.open.document.selection;
         let selected = match selection.len() {
             0 => None,
@@ -159,8 +170,14 @@ impl Workbench {
             selected,
             snap: snap_words(
                 &self.viewport.snapping,
-                self.viewport.camera.kind == crate::camera::ViewKind::TwoD,
+                two_d.then_some(self.open.pixels.tile),
             ),
+            tile: self
+                .viewport
+                .tile_overlay
+                .pointer
+                .filter(|_| two_d)
+                .map(|[x, y]| format!("Tile {x}, {y}")),
             brushing: self.brush_status(),
         }
     }
@@ -203,6 +220,9 @@ impl Workbench {
                 words(ui, &version, text::mono(), tokens::text_label());
                 part(ui, &Part::new(status.level.clone(), tokens::text_label()));
                 words(ui, &status.snap, text::ribbon_small(), tokens::text_label());
+                if let Some(tile) = &status.tile {
+                    words(ui, tile, text::ribbon_small(), tokens::text_label());
+                }
             });
         });
     }
@@ -270,11 +290,19 @@ pub(crate) fn told(ctx: &egui::Context) -> Option<String> {
     Some(words)
 }
 
-/// "Snap 0.25 · World", "Snap off · Object", or in the 2D view "Snap
-/// whole pixels".
-pub(crate) fn snap_words(snapping: &crate::transforming::Snapping, two_d: bool) -> String {
-    if two_d {
-        return format!("Snap {}", snapping.pixel_snap.name());
+/// "Snap 0.25 · World", "Snap off · Object", or in the 2D view (`tile`
+/// is the project's tile size there) "Snap whole pixels" or, on tiles,
+/// "Snap 16 px" (board 08).
+pub(crate) fn snap_words(
+    snapping: &crate::transforming::Snapping,
+    tile: Option<[u32; 2]>,
+) -> String {
+    if let Some([x, y]) = tile {
+        return match snapping.pixel_snap {
+            crate::transforming::PixelSnap::Tiles if x == y => format!("Snap {x} px"),
+            crate::transforming::PixelSnap::Tiles => format!("Snap {x} \u{d7} {y} px"),
+            other => format!("Snap {}", other.name()),
+        };
     }
     let step = if snapping.grid {
         snapping.grid_step.to_string()

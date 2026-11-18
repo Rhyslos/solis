@@ -418,10 +418,8 @@ impl Setting {
             S::ProjectName => {
                 "Shown in the window's title and on the launcher. The folder keeps its own name."
             }
-            S::ProjectKind => {
-                "2D, 3D or both: what the game is made of. Kept in the project's file and shown \
-                 on its card in the launcher."
-            }
+            // What the kind chosen hides follows it on the page.
+            S::ProjectKind => "Asked when the project is made.",
             S::StartsIn => "The level the exported game opens in.",
             S::EngineVersion => "The build of the editor that last opened this project.",
             S::Scripting => {
@@ -463,10 +461,16 @@ impl Setting {
 }
 
 /// The settings the search finds on one page (Preferences or Project
-/// settings), in the page's order.
-pub(crate) fn found(project: bool, words: &str) -> Vec<Setting> {
+/// settings), in the page's order, leaving out those of the kind the
+/// project hides.
+pub(crate) fn found(
+    project: bool,
+    words: &str,
+    kind: crate::launcher::ProjectKind,
+) -> Vec<Setting> {
     Setting::ALL
         .into_iter()
         .filter(|s| s.tab().is_project() == project && s.matches(words))
+        .filter(|s| kind.shows(crate::kinds::setting(*s)))
         .collect()
 }

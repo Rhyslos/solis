@@ -48,6 +48,12 @@ impl PixelSnap {
             Self::Tiles => "tiles",
         }
     }
+
+    /// A 2D project's ribbon's switch for `mode` (Snap to tiles, Pixel
+    /// perfect): `mode` while it isn't in force, and off when it is.
+    pub fn switch(&mut self, mode: Self) {
+        *self = if *self == mode { Self::Off } else { mode };
+    }
 }
 
 /// Snapping and axis settings, shown in the viewport's bottom-right

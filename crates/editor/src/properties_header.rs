@@ -293,8 +293,10 @@ fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -
                     for (heading, own) in [("Built in", true), ("Game code", false)] {
                         let mut headed = false;
                         for schema in document.registry.iter() {
+                            // Only components the project's kind keeps.
                             if is_builtin(&schema.name) != own
                                 || !schema.name.to_lowercase().contains(&wanted)
+                                || !crate::kinds::shown(crate::kinds::component(&schema.name))
                             {
                                 continue;
                             }

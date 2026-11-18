@@ -32,12 +32,15 @@ fn the_status_bar_says_what_moves_snap_to() {
         grid_step: 0.25,
         ..Snapping::default()
     };
-    assert_eq!(snap_words(&snapping, false), "Snap 0.25 \u{b7} World");
+    assert_eq!(snap_words(&snapping, None), "Snap 0.25 \u{b7} World");
     snapping.grid = false;
     snapping.object_axes = true;
-    assert_eq!(snap_words(&snapping, false), "Snap off \u{b7} Object");
+    assert_eq!(snap_words(&snapping, None), "Snap off \u{b7} Object");
     snapping.pixel_snap = PixelSnap::Tiles;
-    assert_eq!(snap_words(&snapping, true), "Snap tiles");
+    assert_eq!(snap_words(&snapping, Some([16, 16])), "Snap 16 px");
+    assert_eq!(snap_words(&snapping, Some([16, 8])), "Snap 16 \u{d7} 8 px");
+    snapping.pixel_snap = PixelSnap::Pixels;
+    assert_eq!(snap_words(&snapping, Some([16, 16])), "Snap whole pixels");
 }
 
 #[test]

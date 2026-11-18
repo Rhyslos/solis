@@ -10,7 +10,7 @@
 ## How to use it
 
 ![The sound events](pictures/sound-events.png)
-The project's sound events on the Audio tab (on the shelf of an older build; they are its left slot now): each one's bus, volume, placement and takes, and the one picked at the right.
+The project's sound events in the Audio tab's left slot, dragged wider: each one's bus, volume, placement and takes, and the one picked at the right.
 
 1. **Make one:** in the **Library**, **New › Sound event** (right-click in the Library, or **+ New**). It's made in the folder shown, called "New sound event", and shown in Details (Properties). Rename it like any file (right-click › **Rename…**), say to `footstep`.
 2. **Add takes:** drag sound files from the Library onto the event's tile, or into the **Takes** list in Properties. Five to eight takes of a footstep is plenty. The tile shows how many it has (×5).

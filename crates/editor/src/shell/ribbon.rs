@@ -11,6 +11,8 @@
 use super::ShellCommand;
 use super::controls::{self, Look};
 use crate::icons::Icon;
+use crate::kinds;
+use crate::launcher::ProjectKind;
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, Entry, RowKind};
 use crate::widgets::width_of;
@@ -217,6 +219,8 @@ pub(crate) enum Picked {
     Command(ShellCommand),
     /// A snapping step.
     Step(Steps, f32),
+    /// The kind's note's × (`kind_note.rs`).
+    DismissNote,
 }
 
 /// A small row that opens a list.
@@ -242,18 +246,67 @@ pub(crate) fn unbuilt_at(shape: Shape, part: Entry<Control>) -> Slot {
     (shape, vec![part])
 }
 
-/// `groups` as they are to be drawn: with unfinished parts hidden, each
-/// unbuilt place taken out, and then each group left with nothing.
-pub(crate) fn filtered(groups: Vec<Group>) -> Vec<Group> {
+/// `groups` as they are to be drawn in a project of `kind`: each place
+/// whose control is the other kind's taken out (a list keeps the items
+/// of its kind), then with unfinished parts hidden each unbuilt place,
+/// and then each group left with nothing.
+pub(crate) fn filtered(groups: Vec<Group>, kind: ProjectKind) -> Vec<Group> {
     let hide = unbuilt::hidden();
     groups
         .into_iter()
-        .map(|group| Group {
-            label: group.label,
-            slots: unbuilt::filter_groups(group.slots),
+        .filter_map(|group| {
+            let had = !group.slots.is_empty();
+            let slots: Vec<Slot> = group
+                .slots
+                .into_iter()
+                .filter_map(|slot| of_kind(slot, kind))
+                .collect();
+            let slots = unbuilt::filter_groups(slots);
+            let emptied = slots.is_empty() && (hide || had);
+            (!emptied).then_some(Group {
+                label: group.label,
+                slots,
+            })
         })
-        .filter(|group| !(hide && group.slots.is_empty()))
         .collect()
+}
+
+/// A place as a project of `kind` shows it: none when its control or
+/// unfinished part is the other kind's (the kind table, `kinds.rs`).
+fn of_kind((shape, entries): Slot, kind: ProjectKind) -> Option<Slot> {
+    let shows = |command: &ShellCommand| kind.shows(kinds::command(*command));
+    let entries: Vec<Entry<Control>> = entries
+        .into_iter()
+        .filter_map(|entry| match entry {
+            Entry::Unbuilt(id) => kind.shows(kinds::unbuilt(id)).then_some(entry),
+            Entry::Built(Control::Do { command, .. } | Control::Switch { command, .. })
+                if !shows(&command) =>
+            {
+                None
+            }
+            Entry::Built(Control::List {
+                label,
+                command,
+                items,
+            }) => {
+                let items: Vec<ListItem> = items
+                    .into_iter()
+                    .filter(|item| match item {
+                        Entry::Built((_, command)) => shows(command),
+                        Entry::Unbuilt(id) => kind.shows(kinds::unbuilt(*id)),
+                    })
+                    .collect();
+                let command = command.filter(shows);
+                (command.is_some() || !items.is_empty()).then_some(Entry::Built(Control::List {
+                    label,
+                    command,
+                    items,
+                }))
+            }
+            built => Some(built),
+        })
+        .collect();
+    (!entries.is_empty()).then_some((shape, entries))
 }
 
 /// A column of a group: one large button, or small rows stacked.
@@ -399,6 +452,15 @@ pub(crate) fn ribbon(ui: &mut Ui, w: &Workbench, groups: &[Group], play: &Group)
                 #[cfg(test)]
                 drawn.push((group.label, rect));
                 left = rect.right();
+            }
+            if let Some(note) = w.kind_note() {
+                let room = Rect::from_min_max(
+                    pos2(left + size::GAP, whole.top()),
+                    pos2(whole.right() - play_w - size::GAP, whole.bottom()),
+                );
+                if super::kind_note::draw(ui, room, note) {
+                    picked = Some(Picked::DismissNote);
+                }
             }
             if play_w > 0.0 {
                 // Pushed to the right edge by whatever room is left.
@@ -598,7 +660,8 @@ impl Workbench {
         if self.shell.tab == super::RibbonTab::File {
             return;
         }
-        let groups = filtered(super::ribbons::of(self.shell.tab, self));
+        let kind = self.open.kind;
+        let groups = filtered(super::ribbons::of(self.shell.tab, self), kind);
         // LIBRARY TOOLS ribbons have no Play group, as the design's
         // Mesh ribbon (round 3).
         let empty = Group {
@@ -608,7 +671,7 @@ impl Workbench {
         let play = if super::RibbonTab::CONTEXT.contains(&self.shell.tab) {
             empty
         } else {
-            filtered(vec![super::play_group::group(self)])
+            filtered(vec![super::play_group::group(self)], kind)
                 .pop()
                 .unwrap_or(empty)
         };
@@ -652,6 +715,7 @@ impl Workbench {
                 self.shell.dropped = false;
                 steps.set(&mut self.viewport.snapping, step);
             }
+            Some(Picked::DismissNote) => self.dismiss_kind_note(),
             None => {}
         }
     }

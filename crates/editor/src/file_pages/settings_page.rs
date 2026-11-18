@@ -7,6 +7,8 @@
 
 use super::settings::{Setting, Tab, found};
 use super::{Page, page_head, plain, section, with_side};
+use crate::kinds;
+use crate::launcher::ProjectKind;
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, Entry};
 use crate::widgets::{self, field, rows, sub_tab::sub_tab};
@@ -86,6 +88,13 @@ impl Workbench {
         } else {
             self.file_pages.prefs_tab
         };
+        // A sub-tab of the kind the project hides isn't there: its page's
+        // first is shown.
+        let tab = match (self.open.kind.shows(kinds::settings_tab(tab)), project) {
+            (true, _) => tab,
+            (false, true) => Tab::Project,
+            (false, false) => Tab::General,
+        };
         // The input page and the shortcuts are tables with tools of their
         // own, and the layouts cards; the rest scroll as rows.
         if words.is_empty() && tab == Tab::Input {
@@ -96,7 +105,7 @@ impl Workbench {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 if !words.is_empty() {
-                    let shown = found(project, &words);
+                    let shown = found(project, &words, self.open.kind);
                     if shown.is_empty() {
                         plain(
                             ui,
@@ -147,7 +156,12 @@ impl Workbench {
         let mut chosen = None;
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = size::SUB_TAB_GAP;
-            for entry in unbuilt::filter(tabs) {
+            let kind = self.open.kind;
+            let of_kind = tabs.into_iter().filter(|entry| match entry {
+                Entry::Built(tab) => kind.shows(kinds::settings_tab(*tab)),
+                Entry::Unbuilt(_) => true,
+            });
+            for entry in unbuilt::filter(of_kind.collect()) {
                 match entry {
                     Entry::Built(tab) => {
                         if sub_tab(ui, tab.name(), !searching && tab == front).clicked() {
@@ -167,7 +181,7 @@ impl Workbench {
 
     /// A sub-tab's sections.
     fn sections(&mut self, ui: &mut Ui, tab: Tab, asked: &mut Vec<WorkbenchAction>) {
-        for (n, (caps, entries)) in unbuilt::filter_groups(tab.sections())
+        for (n, (caps, entries)) in unbuilt::filter_groups(of_kind(tab.sections(), self.open.kind))
             .into_iter()
             .enumerate()
         {
@@ -212,6 +226,7 @@ impl Workbench {
                 .iter()
                 .any(|(s, _, _)| *s == setting);
         let mut reset = false;
+        let hides = self.open.kind.hides();
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             rows::setting_row_with(
@@ -239,6 +254,10 @@ impl Workbench {
                         }
                     });
                     super::sentence(ui, setting.hint());
+                    if setting == Setting::ProjectKind {
+                        // What the kind chosen hides (board 08).
+                        super::sentence(ui, hides);
+                    }
                 },
                 |ui| {
                     if setting.tab().is_project() {
@@ -253,6 +272,29 @@ impl Workbench {
             self.reset_setting(setting, asked);
         }
     }
+}
+
+/// A sub-tab's sections as a project of `kind` shows them: its settings
+/// of the other kind left out (the kind table), and a section left with
+/// nothing gone.
+fn of_kind(
+    sections: Vec<(&'static str, Vec<Entry<Setting>>)>,
+    kind: ProjectKind,
+) -> Vec<(&'static str, Vec<Entry<Setting>>)> {
+    sections
+        .into_iter()
+        .map(|(caps, entries)| {
+            let kept = entries
+                .into_iter()
+                .filter(|entry| match entry {
+                    Entry::Built(setting) => kind.shows(kinds::setting(*setting)),
+                    Entry::Unbuilt(_) => true,
+                })
+                .collect();
+            (caps, kept)
+        })
+        .filter(|(_, entries): &(_, Vec<_>)| !entries.is_empty())
+        .collect()
 }
 
 /// "2 changed from defaults": the accent-tinted pill in the heading.

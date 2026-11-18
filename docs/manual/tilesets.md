@@ -22,7 +22,7 @@ How many tiles you need depends on the terrain's **[kind](concepts.md#2d)**:
 ## How to use it
 
 ![A tileset open](pictures/tileset.png)
-A new tileset on its own tab: its terrains (grass, tilled and water; on the shelf of an older build, in the left slot now), the picture its tiles come from, and a patch to try them on.
+A new tileset on its own tab: its terrains (grass, tilled and water) in the left slot, the picture its tiles come from, and a patch to try them on.
 
 1. **Draw your tiles** in one picture: a PNG, or an Aseprite file (handy for animated tiles), with every tile the same size in a grid. Not sure what to draw? Open the tileset, choose a terrain's kind, and press **Save … template** (or the ribbon's **Save its template…**): Solis saves a picture beside the tileset with every slot laid out at your tile size, ready to draw over.
 2. **Open the tileset:** double-click it in the Library. A **Library tools · Tileset** tab joins the tab bar after Library and comes to the front: a [contextual tab](concepts.md#the-window), there only while the tileset is open. Its document is the tileset itself (the picture on the left, the chosen terrain's slots on the right, **Try it** under them), its **Terrains** slot at the left lists the terrains, the slot picked is at the right, and its ribbon has **Terrain** (Add, Remove), **Kind** and **Picture** (the tile size and the **Zoom**). **‹ Back to Library**, at the right of the document's tab, goes back and leaves the tileset open.

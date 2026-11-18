@@ -49,7 +49,19 @@ pub struct InterfaceLook {
     /// Whether each tab keeps its own panel sizes (Preferences › Layout);
     /// off, a size dragged on one tab is used on all of them.
     pub sizes_per_tab: bool,
+    /// How many times a project has opened as, or been switched to, 2D or
+    /// 3D (decision 0118, R6):
+    /// Home's note on what the kind hides shows the first
+    /// [`KIND_NOTE_TIMES`], while hints are on, and never again once its ×
+    /// is clicked ([`KIND_NOTE_GONE`]). Builds before it read none.
+    pub kind_note_seen: u8,
 }
+
+/// How many openings of a 2D or 3D project show Home's note.
+pub const KIND_NOTE_TIMES: u8 = 3;
+
+/// What the note's × leaves in [`InterfaceLook::kind_note_seen`].
+pub const KIND_NOTE_GONE: u8 = u8::MAX;
 
 /// What selecting something does to the panels (once which shelf tab
 /// came to the front; its saved names are kept).
@@ -86,6 +98,7 @@ impl Default for InterfaceLook {
             shelf_opens_on: ShelfOpensOn::AsItIs,
             layout: PanelLayout::default(),
             sizes_per_tab: true,
+            kind_note_seen: 0,
         }
     }
 }

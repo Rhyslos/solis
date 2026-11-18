@@ -9,9 +9,10 @@
 
 use super::group;
 use crate::icons::Icon;
+use crate::launcher::ProjectKind;
 use crate::shell::ShellCommand as C;
 use crate::shell::ribbon::{
-    Control, Group, Shape, Steps, big, big_keyed, big_list, big_list_only, item, row, switch,
+    Control, Group, Shape, Steps, big, big_keyed, big_list, big_list_only, fact, item, row, switch,
     switch_with_steps, unbuilt_at,
 };
 use crate::unbuilt::{Entry, RowKind, UnbuiltId};
@@ -21,6 +22,11 @@ use crate::workbench::Workbench;
 pub(super) fn groups(w: &Workbench) -> Vec<Group> {
     if w.placing() {
         return build_form(w);
+    }
+    // A 2D project's Home is laid out as board 08 draws it; what it
+    // hides is the kind table's (`kinds.rs`), as on every ribbon.
+    if w.open.kind == ProjectKind::TwoD {
+        return vec![edit(), create_2d(), paint_tiles(), snapping_2d(w)];
     }
     vec![
         edit(),
@@ -140,6 +146,71 @@ fn create(w: &Workbench, label: &'static str) -> Group {
             ),
         ]
     )
+}
+
+/// Create in a 2D project (board 08): Entity, Sprite, Tile map, Camera,
+/// the unfinished trigger zone (the board's Zone), and More with the
+/// rest, a lamp (a point light, which lights sprites) first. Models and
+/// shapes are 3D only.
+fn create_2d() -> Group {
+    group!(
+        Some("Create"),
+        [
+            big(Icon::Empty, "Entity", C::AddEntity),
+            big(Icon::Sprite, "Sprite", C::AddSprite),
+            big(Icon::TileMap, "Tile map", C::NewTileMap),
+            big(Icon::Camera, "Camera", C::AddCamera),
+            unbuilt_at(
+                Shape::Big(Icon::ReverbZone),
+                Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),
+            ),
+            big_list_only(
+                Icon::More,
+                "More",
+                vec![
+                    item("Point light", C::AddPointLight),
+                    item("Reverb zone", C::AddReverbZone),
+                    item("Make prefab\u{2026}", C::MakePrefab),
+                ],
+            ),
+        ]
+    )
+}
+
+/// The tile painter's tools on a 2D project's Home (board 08's Paint
+/// tiles): Brush (its right button empties cells, the board's Erase),
+/// Fill and the Eyedropper (the board's Pick). They work on the tile map
+/// selected; Rectangle and Line are on its own ribbon and the tool bar.
+fn paint_tiles() -> Group {
+    use crate::tile_paint::PaintTool;
+    let tool = |tool: PaintTool| big(tool.icon(), tool.name(), C::PaintWith(tool));
+    group!(
+        Some("Paint tiles"),
+        [
+            tool(PaintTool::Brush),
+            tool(PaintTool::Fill),
+            tool(PaintTool::Eyedropper),
+        ]
+    )
+}
+
+/// A 2D project's snapping (board 08): the tile grid's size, and what
+/// moves in the 2D view land on, whole tiles or whole pixels.
+fn snapping_2d(w: &Workbench) -> Group {
+    let [x, y] = w.open.pixels.tile;
+    let grid = if x == y {
+        format!("Grid \u{b7} {x} px")
+    } else {
+        format!("Grid \u{b7} {x} \u{d7} {y} px")
+    };
+    Group {
+        label: None,
+        slots: vec![
+            fact(grid),
+            switch("Snap to tiles", C::SnapToTiles),
+            switch("Pixel perfect", C::PixelPerfect),
+        ],
+    }
 }
 
 /// Snapping's three rows, and while placing Snap to surface beside them.

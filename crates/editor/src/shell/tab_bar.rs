@@ -6,6 +6,8 @@
 use super::RibbonTab;
 use crate::icons::{self, Icon};
 use crate::interface_look;
+use crate::kinds;
+use crate::launcher::ProjectKind;
 use crate::panel::Panel;
 use crate::tokens::{self, size, text};
 use crate::unbuilt::{self, Entry, UnbuiltId};
@@ -24,10 +26,10 @@ const SEARCH_KEY: &str = "Space";
 /// The tabs in the tab bar's order, each as a list of one thing: a tab
 /// that works, or the unfinished part a whole tab is. Passed through the
 /// filter, so a hidden tab leaves no gap.
-fn tabs() -> Vec<(RibbonTab, Vec<Entry<()>>)> {
+fn tabs(kind: ProjectKind) -> Vec<(RibbonTab, Vec<Entry<()>>)> {
     use RibbonTab as T;
     let built = |tab| (tab, vec![Entry::Built(())]);
-    unbuilt::filter_groups(vec![
+    let all = vec![
         built(T::File),
         built(T::Home),
         built(T::Library),
@@ -38,7 +40,12 @@ fn tabs() -> Vec<(RibbonTab, Vec<Entry<()>>)> {
         built(T::Audio),
         built(T::Debug),
         built(T::Build),
-    ])
+    ];
+    let of_kind = all
+        .into_iter()
+        .filter(|(tab, _)| kind.shows(kinds::tab(*tab)))
+        .collect();
+    unbuilt::filter_groups(of_kind)
 }
 
 /// A tab that is there only while a file of its kind is open: the words
@@ -124,6 +131,10 @@ impl Workbench {
         ]
         .into_iter()
         .filter_map(|(there, tab)| there.then_some(tab))
+        .filter(|tab| {
+            let part = tab.opens.map_or(kinds::panel(tab.panel), kinds::tab);
+            open.kind.shows(part)
+        })
         .collect()
     }
 
@@ -206,7 +217,7 @@ impl Workbench {
         // Until a project is open, Recent projects is where to be: the
         // other tabs are dimmed (they still carry on without one).
         let dim = self.open.project.is_none() && self.shell.tab == RibbonTab::File;
-        for (tab, entries) in tabs() {
+        for (tab, entries) in tabs(self.open.kind) {
             // A tab whose tools tab is in front isn't drawn in front itself.
             let front = self.shell.tab == tab
                 && !context

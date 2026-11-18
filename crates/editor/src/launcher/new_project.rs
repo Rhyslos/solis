@@ -12,6 +12,7 @@ use super::names::{self, FolderState};
 use super::{ProjectKind, pictures};
 use crate::file_pages::{plain, sentence};
 use crate::icons::{self, Icon};
+use crate::kinds::PartKind;
 use crate::tokens::{self, launcher as l, size, text};
 use crate::widgets::{self, button::Button, field};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -57,22 +58,21 @@ impl Starter {
     }
 
     /// The kind of project it was made for, marked in its tile's corner
-    /// (none for the empty project, which suits every kind). All of
-    /// Learn's examples are 3D.
+    /// (none for the empty project, which suits every kind), as the kind
+    /// table has it (`kinds::starter`): all of Learn's examples are 3D.
     pub fn made_for(self) -> Option<ProjectKind> {
-        match self {
-            Self::Empty => None,
-            _ => Some(ProjectKind::ThreeD),
+        match crate::kinds::starter(self) {
+            PartKind::Shared => None,
+            PartKind::TwoD => Some(ProjectKind::TwoD),
+            PartKind::ThreeD => Some(ProjectKind::ThreeD),
         }
     }
 
-    /// Whether it suits a project of `kind`: a 3D example suits 3D and
-    /// both, never 2D.
+    /// Whether it suits a project of `kind`: what the kind table says a
+    /// project of that kind shows (a 3D example suits 3D and both, never
+    /// 2D), so New project greys exactly what the editor would hide.
     pub fn suits(self, kind: ProjectKind) -> bool {
-        match self.made_for() {
-            None => true,
-            Some(made) => kind == made || kind == ProjectKind::Both,
-        }
+        kind.shows(crate::kinds::starter(self))
     }
 
     fn icon(self) -> Icon {

@@ -14,6 +14,7 @@ fn changed() -> InterfaceLook {
         shelf_opens_on: ShelfOpensOn::Entity,
         layout: PanelLayout::LibraryRight,
         sizes_per_tab: false,
+        kind_note_seen: 2,
     }
 }
 

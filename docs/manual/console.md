@@ -9,7 +9,7 @@
 ## How to use it
 
 ![The Console](pictures/console.png)
-The Console on the shelf of an older build: its messages, the counts of each kind (click one to show only those), its search, and the command line at the bottom. It is a tab of the [bottom panel](concepts.md#the-window) now, with its filter in the panel's bar (the picture is taken again when the editor rethink is finished).
+The Console, a tab of the [bottom panel](concepts.md#the-window): its messages, the counts of each kind and its search in the panel's bar (click a count to show only those), and the command line at the bottom.
 
 **Reading messages**
 1. Each message shows its time, how serious it is as a word in its colour (**INFO**, **WARN** in amber, **ERROR** in red, with the row faintly tinted), and the text. A long message is cut short: **click it** to read it in full in a strip below the list (with **Copy**, to paste it somewhere), and click it again or **Close** to put the strip away.

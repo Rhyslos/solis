@@ -36,6 +36,7 @@ mod create;
 pub(crate) mod documentation;
 pub(crate) mod file_page;
 mod groups;
+mod kind_note;
 mod layout_choice;
 pub mod layouts;
 mod play_group;
@@ -281,6 +282,10 @@ impl Workbench {
         if !tab.is_built() && self.interface_look().hide_unfinished {
             return;
         }
+        // A tab of the kind the project hides isn't there (R6).
+        if !self.open.kind.shows(crate::kinds::tab(tab)) {
+            return;
+        }
         if tab == RibbonTab::File {
             self.show_file_page(self.file_pages.page);
             return;
@@ -516,7 +521,8 @@ impl Workbench {
     /// A tab hidden with the unfinished parts can't stay in front: Home
     /// takes its place. Called at the start of each frame.
     pub(crate) fn settle_tab(&mut self) {
-        if !self.shell.tab.is_built() && self.interface_look().hide_unfinished {
+        let of_kind = self.open.kind.shows(crate::kinds::tab(self.shell.tab));
+        if !of_kind || (!self.shell.tab.is_built() && self.interface_look().hide_unfinished) {
             self.show_tab(RibbonTab::Home);
         }
         // A contextual tab goes with its file: its parent takes its place.
@@ -749,6 +755,8 @@ fn frame_parts(shell: &Shell, open: OpenNow) -> (layouts::Parts, bottom::BottomN
     (parts, now)
 }
 
+#[cfg(test)]
+mod kind_tests;
 #[cfg(test)]
 pub(crate) mod layout_scale_tests;
 #[cfg(test)]
