@@ -6,6 +6,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Timers** (stage 1, timers; [decision 0125](docs/decisions/0125-named-timers-now-blocks-later.md), [the manual](docs/manual/timers.md)): game code starts a named wait and hears when it's done. Inside a component, `startTimer(Timer.DoorOpens, 2.0)` finishes once, `startTimerEvery(Timer.Wave, 5.0)` again and again, and `startTimerAtHour(Timer.Dawn, 6.0)` each day as the Environment's clock passes six; `stopTimer`, `timerRunning` and `timeLeft` stop and ask. The component that started it hears `on TimerFinished(Timer which)`, in the tick's first round of events, in a fixed order on any number of cores. In Lust, Lua and Rust.
+- **Timers count game time, exactly**: seconds become whole ticks as a timer starts, so it follows the game's speed, stands still while the game is paused, and never drifts; a repeating one keeps its rhythm. Sleeping past a timer's hour (`setTimeOfDay`) finishes it once.
+- **A timer's name comes from the code that starts it**: Solis lists every name the game's Lust starts as the state `Timer` in `solis/project.lst`, so a misspelt name anywhere else is a mistake before the game runs. There's no list to keep.
+- **Timers are kept in save games**, end with their entity or component, and keep running through new code while their component and name still exist (the Console says which stopped otherwise).
+- **Steps in order** ("walk there, wait a second, say hello, wait two, walk home"), written with one timer and a field for the step, in the manual's Timers page.
+
 - **Tags and questions about the world** (stage 1, tags; [the plan](docs/plans/game-stages.md#the-next-milestone-tags-and-questions-about-the-world), the approved mock-up `docs/design/tags/`): labels such as Enemy or Collectible that entities carry, so game code can find every one of a kind. See [Tags](docs/manual/tags.md).
 - **Project settings › Tags**: the project's own list, each tag with what uses it ("Used by 14 entities and 2 prefabs"); **+ New tag**; a double-click on a name renames it **everywhere** (levels and prefabs keep tags by an ID, so they follow, and game code's name changes with it); ⋯ › **Delete** asks first when anything uses the tag, saying what. A name is checked as it's typed, with a reason and a suggestion when it can't be one. Kept in the project's `tags.lst` (a Lust data file, version 1), read when the project opens and again when it changes on disk.
 - **An entity's tags** under its name in Properties, as chips with ×, and **+ Tag ▾**: the project's tags with a box to search them, and **New tag…**, which makes one and gives it. Each change is one undo step; with several entities picked, the tags they share are shown and a change applies to each. The Level panel shows tags faintly after a name, and its search finds entities by tag.
@@ -55,6 +61,8 @@ What changed in each version, for people using Solis. Newest first.
 - **The editor rethink is planned** ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)): the project lead's review of the remade interface, answered and mocked up (`docs/design/ui-rethink/`): the launcher as its own window, new projects that make their folder and are 2D, 3D or both, Area renamed Level, prefabs, one frame on every tab, and one Library browser. It's built next, as six milestones, before the ground.
 
 ### Breaking
+
+- **Save games are version 11** (stage 1, timers): they keep game code's timers waiting. Older saves still load, with no timers waiting; a Solis from before can't load a save made now. **What to do:** nothing for older saves; update every copy of Solis that loads your game's saves.
 
 - **A state is set with `=` in game code now, not `is`** (Lust alpha 74; [decision 0123](docs/decisions/0123-lust-alpha-74-states-set-with-equals.md)). `mood is Mood.Busy;` and `state is Mood.Calm;` are mistakes, and the game's code isn't checked or run until they're changed. **What to do:** change each `is` that sets a state to `=` (`mood = Mood.Busy;`); Problems lists every such line with the `=` way written out. Questions that start with `is` stay as they are. Lua and Rust components are unaffected.
 
