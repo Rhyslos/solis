@@ -220,7 +220,15 @@ fn a_click_on_a_zone_s_outline_picks_it_and_one_inside_does_not() {
     let edge = camera.project(Vec3::new(1.0, 0.0, 0.0), size).unwrap();
     let middle = camera.project(Vec3::ZERO, size).unwrap();
     let locked = Default::default();
-    let at = |p| crate::zones::zone_at(&[zone.clone()], &locked, (&camera, size), p, 10.0);
+    let at = |p| {
+        crate::zones::zone_at(
+            std::slice::from_ref(&zone),
+            &locked,
+            (&camera, size),
+            p,
+            10.0,
+        )
+    };
     assert_eq!(at(edge), Some(zone.entity));
     assert_eq!(at(middle), None, "inside is left for what's in the zone");
 }

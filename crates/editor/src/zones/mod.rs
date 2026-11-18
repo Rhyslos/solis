@@ -4,7 +4,7 @@
 //! and size beside it; the handles' drags that size it; and a freeform
 //! zone's points, drawn and edited in a 2D view.
 //!
-//! The view never changes the level: it reports [`ZoneEvent`]s, which the
+//! The view never changes the level: it reports `ZoneEvent`s, which the
 //! workbench turns into undoable edits, one step a drag.
 
 pub(crate) mod card;

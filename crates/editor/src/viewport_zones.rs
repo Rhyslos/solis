@@ -2,7 +2,7 @@
 //! button is the zone tools' while a freeform zone's points are drawn or
 //! edited, or while a picked zone's handle is pointed at or dragged;
 //! otherwise it's the usual tools'. What they did goes to the workbench as
-//! [`ZoneEvent`]s.
+//! `ZoneEvent`s.
 
 use super::Viewport;
 use super::view::ViewFrame;

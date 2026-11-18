@@ -190,7 +190,7 @@ impl SizeDrag {
             return ray.hit_ground(start.z).or_else(|| {
                 // A 2D view looks straight down: where the ray is level
                 // with the zone.
-                (ray.direction.z.abs() < 1e-6).then(|| ray.origin)
+                (ray.direction.z.abs() < 1e-6).then_some(ray.origin)
             });
         }
         let along = self
