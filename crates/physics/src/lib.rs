@@ -14,7 +14,7 @@ pub mod flat;
 mod guard;
 mod solid_mesh;
 
-pub use solid_mesh::{MAX_TRIANGLES, SolidMesh};
+pub use solid_mesh::{MAX_TRIANGLES, PreparedShape, SolidMesh, prepare};
 
 use glam::{Quat, Vec3};
 use rapier3d::prelude as rp;
@@ -95,6 +95,9 @@ pub enum Shape {
     /// floor or a wall is. With no usable triangles it collides with
     /// nothing.
     Mesh(Arc<SolidMesh>),
+    /// A surface of triangles already made on a worker ([`prepare`]), at
+    /// its size: always still; the entity's scale doesn't change it.
+    Prepared(PreparedShape),
 }
 
 /// A collider's settings (the `Collider` component's).
@@ -459,6 +462,8 @@ pub struct Physics {
     /// Characters moved since [`Self::moved`] last said, in the order
     /// moved.
     characters_moved: Vec<EntityId>,
+    /// Boxes characters are held out of ([`Self::hold_out`]).
+    held: Vec<(Vec3, Vec3)>,
 }
 
 impl std::fmt::Debug for Physics {
@@ -478,6 +483,7 @@ impl Clone for Physics {
             refused: self.refused,
             guard: self.guard,
             characters_moved: self.characters_moved.clone(),
+            held: self.held.clone(),
         }
     }
 }
@@ -611,6 +617,7 @@ impl Physics {
                     rp::ColliderBuilder::capsule_z(half, radius)
                 }
                 Shape::Mesh(mesh) => solid_mesh::collider(mesh, scale, MAX_PLACE)?,
+                Shape::Prepared(prepared) => prepared.builder(),
             };
             // Held to where places are held: a centre and a scale that
             // are each a number can multiply past the biggest one.
@@ -686,6 +693,42 @@ impl Physics {
         made
     }
 
+    /// Holds characters out of `boxes` (each its lowest and highest
+    /// corner): a character whose move would end inside one stays where it
+    /// is instead, at the box's edge. The ground holds characters out of
+    /// chunks whose collider is still being built on a worker, so none
+    /// walks onto ground that isn't solid yet and drops through (the
+    /// open-worlds study's rule); the boxes go as colliders arrive. Not
+    /// part of the state: it's how loading is going, not the game.
+    pub fn hold_out(&mut self, boxes: Vec<(Vec3, Vec3)>) {
+        self.held = boxes;
+    }
+
+    /// Whether `place` is inside a box characters are held out of.
+    fn is_held(&self, place: Vec3) -> bool {
+        self.held
+            .iter()
+            .any(|(lo, hi)| place.cmpge(*lo).all() && place.cmple(*hi).all())
+    }
+
+    /// `wanted`, or no move at all if it would take the character `id`
+    /// into a box it's held out of.
+    fn unless_held(&self, id: EntityId, wanted: Vec3) -> Vec3 {
+        if self.held.is_empty() {
+            return wanted;
+        }
+        let at = self
+            .state
+            .by_entity
+            .get(&id)
+            .and_then(|e| self.state.bodies.get(e.body))
+            .map(|b| b.next_position().translation);
+        match at {
+            Some(at) if self.is_held(at + wanted) => Vec3::ZERO,
+            _ => wanted,
+        }
+    }
+
     /// Moves the character `id` by `wanted` metres (one tick of walking
     /// and falling), as far as it can: it climbs steps and slopes, slides
     /// along walls, pushes dynamic bodies in its way, keeps to the ground
@@ -705,6 +748,16 @@ impl Physics {
     /// Returns, for each, whether it's a character.
     pub fn move_characters(&mut self, moves: &[(EntityId, Vec3)], dt: f32) -> Vec<bool> {
         use rayon::prelude::*;
+        let held: Vec<(EntityId, Vec3)>;
+        let moves = if self.held.is_empty() {
+            moves
+        } else {
+            held = moves
+                .iter()
+                .map(|&(id, wanted)| (id, self.unless_held(id, wanted)))
+                .collect();
+            &held
+        };
         let is_character: Vec<bool> = moves
             .iter()
             .map(|(id, _)| {

@@ -234,3 +234,81 @@ fn a_mesh_body_is_always_still() {
         Vec3::new(0.0, 0.0, 5.0)
     );
 }
+
+/// A shape made on another thread is added as it is, and holds a
+/// character up as the same mesh made on the game's thread does.
+#[test]
+fn a_shape_prepared_on_a_worker_is_solid() {
+    let prepared = std::thread::spawn(|| prepare(&block(10.0, 1.0)))
+        .join()
+        .unwrap()
+        .unwrap();
+    let mut physics = Physics::new();
+    assert!(physics.add(
+        id(1),
+        (Vec3::new(0.0, 0.0, -1.0), Quat::IDENTITY),
+        Vec3::ONE,
+        None,
+        Some(ColliderSpec {
+            shape: Shape::Prepared(prepared.clone()),
+            ..ColliderSpec::default()
+        }),
+    ));
+    assert!(physics.add_character(
+        id(9),
+        (Vec3::new(0.0, 0.0, 2.0), Quat::IDENTITY),
+        CharacterSpec::default()
+    ));
+    walk(&mut physics, Vec3::ZERO, 90);
+    assert!(
+        feet(&physics).z.abs() < 0.05,
+        "landed at {}",
+        feet(&physics)
+    );
+    assert_eq!(prepared, prepared.clone());
+    assert!(prepare(&SolidMesh::default()).is_none());
+}
+
+/// A character walking towards a box it's held out of (a chunk whose
+/// collider is still being built) stops at its edge, and goes on once
+/// the hold is lifted; one standing inside is held where it is, never
+/// dropped.
+#[test]
+fn a_character_is_held_at_the_edge_of_ground_not_ready() {
+    let mut physics = Physics::new();
+    assert!(add_mesh(
+        &mut physics,
+        1,
+        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::ONE,
+        block(10.0, 1.0)
+    ));
+    assert!(physics.add_character(
+        id(9),
+        (Vec3::new(-4.0, 0.0, 0.0), Quat::IDENTITY),
+        CharacterSpec::default()
+    ));
+    walk(&mut physics, Vec3::ZERO, 30);
+    let edge = 2.0;
+    physics.hold_out(vec![(
+        Vec3::new(edge, -100.0, -100.0),
+        Vec3::new(100.0, 100.0, 100.0),
+    )]);
+    walk(&mut physics, Vec3::new(4.0, 0.0, 0.0), 180);
+    let held = feet(&physics);
+    assert!(held.x < edge && held.x > edge - 0.2, "held at {held}");
+    assert!(held.z.abs() < 0.05);
+    physics.hold_out(Vec::new());
+    walk(&mut physics, Vec3::new(4.0, 0.0, 0.0), 60);
+    assert!(feet(&physics).x > edge + 1.0);
+    // Inside a held box, with nothing under it: held, not dropped.
+    let mut empty = Physics::new();
+    assert!(empty.add_character(
+        id(9),
+        (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
+        CharacterSpec::default()
+    ));
+    empty.hold_out(vec![(Vec3::splat(-50.0), Vec3::splat(50.0))]);
+    walk(&mut empty, Vec3::new(1.0, 0.0, 0.0), 60);
+    assert_eq!(feet(&empty), Vec3::new(0.0, 0.0, 5.0));
+}

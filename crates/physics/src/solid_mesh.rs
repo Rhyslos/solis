@@ -60,6 +60,41 @@ pub(crate) fn collider(mesh: &SolidMesh, scale: Vec3, limit: f32) -> Option<rp::
         .ok()
 }
 
+/// A surface of triangles already made into what physics collides with:
+/// the slow part of making a collider (the ground study measured 1.2 of
+/// 1.24 ms of a chunk's collider here), so it's done on a worker
+/// ([`prepare`]) and only added on the game's thread
+/// ([`crate::Shape::Prepared`]). Cheap to copy: it's shared.
+#[derive(Clone)]
+pub struct PreparedShape(rp::SharedShape);
+
+impl std::fmt::Debug for PreparedShape {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PreparedShape")
+    }
+}
+
+impl PartialEq for PreparedShape {
+    /// The same shape, not an equal one: two are equal only when shared.
+    fn eq(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.0.0, &other.0.0)
+    }
+}
+
+impl PreparedShape {
+    pub(crate) fn builder(&self) -> rp::ColliderBuilder {
+        rp::ColliderBuilder::new(self.0.clone())
+    }
+}
+
+/// `mesh` made into a shape ready to add, as it is (no scale), or `None`
+/// when there's nothing usable (as [`collider`] says). Safe to run on any
+/// thread.
+pub fn prepare(mesh: &SolidMesh) -> Option<PreparedShape> {
+    let builder = collider(mesh, Vec3::ONE, f32::MAX)?;
+    Some(PreparedShape(builder.shape))
+}
+
 #[cfg(test)]
 #[path = "solid_mesh_tests.rs"]
 mod tests;
