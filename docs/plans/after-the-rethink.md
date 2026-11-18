@@ -67,8 +67,8 @@ R1 to R6 → Tools 1b → **Open worlds** → finish "Usable first" → Shared 2
 | --- | --- | --- | --- | --- |
 | 1 | **Shared 1f, the editor rethink** (R3 to R6) | 4 | large | In progress. |
 | 2 | **Tools 1b, world sculpting** (G1 to G5): ★ moved into the 3D track before Open worlds by decision 0121 | 5 | large | As planned. Its files are shaped for Open worlds now, so they never need a second format. |
-| 3 | ★ **Finish "Usable first"** (L2 to L6) and the farming game's gate | 5 | medium | Small file moves the lead's own game is waiting on. L2 and L3 are short and can go between any two milestones. |
-| 4 | **Shared 2, game code: finding and making things** | 5, plus ★ a determinism check | medium | The farming game asks for "nearest crop" and "cells that are tilled". The determinism check comes before Shared 3 puts more maths into game state. |
+| 3 | ★ **Finish "Usable first"** (L2 to L6) and its gate | 5 | medium | Small file moves, so everything Solis makes is Lust. L2 and L3 are short and can go between any two milestones. |
+| 4 | **Shared 2, game code: finding and making things** | 5, plus ★ a determinism check | medium | Any 2D game wants "the nearest of a kind" and "the cells that hold a value". The determinism check comes before Shared 3 puts more maths into game state. |
 | 5 | **2D 1, the world and tiles** | 3 | large | Typed fields move to Shared 4 (★). |
 | 6 | ★ **Shared 3, time and feel** | 5 | medium to large | Moved before 2D 2, so moving platforms, hit-stop, squash and shake are built once, properly. |
 | 7 | **2D 2, movement, light and polish** | 5 | large | 2D complete. The sky over 2D uses day-and-night colours now, and the physical sky later. |
@@ -191,7 +191,7 @@ Every file the editor writes becomes Lust data (decision 0081, `lust-data.md`).
 | **L5** | `<file>.meta.lst` sidecars | Read on the asset database's worker, never the frame. "A project of 5,000 assets opens without a late frame" as a scale case. | small to medium |
 | **L6** | `.save.lst`, `.recording.lst` | A Lust header with packed sections for the bulk (projectiles, input frames), since saves and recordings are never merged in Git and must be fast. Needs the lead's yes (question U1). | medium |
 
-**The gate:** the farming game in Solis, in Lust.
+**The gate:** a small 2D game of the lead's choosing, made in Solis in Lust while learning (the farming game is shelved; the project lead, 2026-11-18).
 
 **Asked when it starts:** U1 (packed sections in saves and recordings).
 
@@ -240,7 +240,7 @@ Plain A* misses the budget, and jump-point search can't handle a cost per cell. 
 | **M2 Controllers and platforms** | A platformer that feels precise; a grid-step mover; one-way platforms, slopes, moving platforms | Solis's mover extended with sub-pixel remainders and the **carry-then-push** rule (riders carried, others pushed or squished). One-way edges merged along rows, so they never fail where tiles meet. Slope shapes per terrain. The kit's `PlatformerController2D`: jump set by height and time, coyote time, buffering, corner correction, wall jump. `GridStepController2D`. | large |
 | **M3 Soft shadows, normal and glow layers** | Lamps cast soft shadows from walls and sprites; sprites can have normal and glow layers | A distance field of the casters by jump flood, at the game's resolution, then a soft trace toward each lamp, all in fragment passes. Each caster has a height. Normal and glow layers come from named Aseprite layers. A bevel is optional; flat stays the default. | medium to large |
 | **M4 2D bounced light, the sky over 2D** | Light round corners and off coloured walls | **Radiance cascades** marched through M3's field, within 1.5 ms at 480 × 270. The sky over 2D comes from today's day-and-night colours and a sun direction, with the physical sky's colour later (3D 2). | large |
-| **M5 Polish, the 2D sample, the gate** | Palette swaps and cycling, clean pixel-art rotation, the farm-plus-platformer sample, the manual's 2D section | A palette row per copy; an edge-aware rotation shader, with baked rotations as an import option | medium |
+| **M5 Polish, the 2D sample, the gate** | Palette swaps and cycling, clean pixel-art rotation, a small sample (top-down and platformer rooms), made with Solis's tools, the manual's 2D section | A palette row per copy; an edge-aware rotation shader, with baked rotations as an import option | medium |
 
 **Asked when it starts:** questions 23 to 27. Recommended: the mover extended; trigger event names; a teleport fires nothing; the sky from colour stops; 2D lamp culling built here.
 

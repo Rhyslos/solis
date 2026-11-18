@@ -286,6 +286,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **"Usable first"'s gate is a small 2D game** the project lead makes in Solis while learning, not their farming game, which is shelved for now. CLAUDE.md now says plainly that the lead's games are made with Solis's tools and never built into the engine.
 - **Tools 1b, the sculpted ground, moves into the 3D track** ([decision 0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md)), after 3D 1 and before Open worlds. Its first milestone waits, mostly built, on its own branch.
 - **The order after the editor rethink is settled** ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)): Open worlds move into the 3D track after 3D 1, with a new foliage milestone after them; time and feel (Shared 3) comes before 2D 2; 2D 1's typed fields go to Shared 4; the renderer is restructured at the start of materials and shaders; Shared 2 ends with a check that a game replays the same on two PCs; 3D 1 gains feet on slopes. ROADMAP.md follows it.
 - **A plan for everything after the editor rethink** (`docs/plans/after-the-rethink.md`, a draft with questions for the project lead): research on the rest of 2D, the shared tools and the rest of 3D, one report per phase in `docs/reports/after-the-rethink/`, checked against the code and turned into milestones, with a recommended order and the groundwork every phase shares.
