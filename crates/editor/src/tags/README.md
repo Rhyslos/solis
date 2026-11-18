@@ -1,6 +1,6 @@
 # editor/src/tags
 
-Tags in the editor (stage 1, tags; [the plan](../../../../docs/plans/game-stages.md#the-next-milestone-tags-and-questions-about-the-world); the approved mock-up [`docs/design/tags/`](../../../../docs/design/tags/README.md)). The project's tags are kept by the workbench (`ProjectState::tags`, from the app's reading of `tags.lst`) and saved by the app when they change (`WorkbenchAction::SaveTags`). An entity keeps its tags by their IDs, so a rename changes only the list.
+Tags in the editor (stage 1, tags; [the plan](../../../../docs/plans/game-stages.md#tags-and-questions-about-the-world); the approved mock-up [`docs/design/tags/`](../../../../docs/design/tags/README.md)). The project's tags are kept by the workbench (`ProjectState::tags`, from the app's reading of `tags.lst`) and saved by the app when they change (`WorkbenchAction::SaveTags`). An entity keeps its tags by their IDs, so a rename changes only the list.
 
 | File | What it holds |
 | --- | --- |
