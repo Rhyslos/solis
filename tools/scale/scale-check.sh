@@ -28,6 +28,7 @@ run() {
 run -p editor scale_check
 run -p app scale_check
 run -p world scale_check
+run -p script scale_check
 run -p tiles scale_check
 run -p ui scale_check
 run -p physics scale_check

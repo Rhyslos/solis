@@ -194,3 +194,54 @@ fn answers_are_the_same_whatever_order_the_members_come_in() {
     );
     assert_eq!(a.nearest("Enemy", Vec3::ONE), b.nearest("Enemy", Vec3::ONE));
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_2000_units_asking_nearest_and_within_each_tick() {
+    // Stage 1's scale case: 2,000 tagged units in a 200 m square, half of
+    // them enemies, moving every tick; the view made once a tick, and
+    // each unit asking for the nearest enemy and every enemy within 3 m.
+    // Its share of a 60th of a second.
+    const TARGET_MS: f64 = 2.0;
+    let (enemy, unit) = (TagId::random(), TagId::random());
+    let tags = [(enemy, "Enemy".to_string()), (unit, "Unit".to_string())];
+    let start: Vec<Vec3> = (0..2_000)
+        .map(|i| {
+            let t = i as f32 * 0.618_034;
+            Vec3::new((t * 97.0) % 200.0, (t * 61.0) % 200.0, 0.0)
+        })
+        .collect();
+    let ticks = 120;
+    let mut spent = std::time::Duration::ZERO;
+    let mut found = 0usize;
+    for tick in 0..ticks {
+        let wobble = Vec3::new((tick as f32 * 0.1).sin(), (tick as f32 * 0.1).cos(), 0.0);
+        let tagged: Vec<(EntityId, Vec3, Vec<TagId>)> = start
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let carried = if i % 2 == 0 {
+                    vec![enemy, unit]
+                } else {
+                    vec![unit]
+                };
+                (id(i as u64 + 1), *p + wobble * (i % 5) as f32, carried)
+            })
+            .collect();
+        let began = std::time::Instant::now();
+        let view = TagView::new(&tags, &tagged, false);
+        for (_, place, _) in &tagged {
+            found += usize::from(view.nearest("Enemy", *place).is_some());
+            found += view.within("Enemy", *place, 3.0).len();
+        }
+        spent += began.elapsed();
+    }
+    let ms = spent.as_secs_f64() * 1000.0 / f64::from(ticks);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: 2,000 tagged units each asking nearest and within 3 m, the view made \
+         once a tick {ms:.3} ms a tick ({found} answers; target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(found > 0);
+    assert!(ms <= TARGET_MS, "tags' questions take {ms:.3} ms a tick");
+}

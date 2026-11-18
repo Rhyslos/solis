@@ -108,6 +108,12 @@ fn names() -> Names {
         "sprites/tools/Hoe".into(),
         "sprites/tools/Can".into(),
     ];
+    names.tags = vec![
+        "Enemy".into(),
+        "Collectible".into(),
+        "Flying".into(),
+        "Player".into(),
+    ];
     names
 }
 

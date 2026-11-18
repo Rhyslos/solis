@@ -257,3 +257,78 @@ fn the_same_game_on_one_core_or_four_comes_out_the_same() {
     };
     assert_eq!(run(1), run(4));
 }
+
+/// Each unit asks for the nearest enemy and those within 3 m, every tick.
+const ASKER: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Tag;\n\n\
+    component Asker {\n\
+        has {\n\
+            int seen = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            entity closest = World:nearest(Tag.Enemy, position());\n\
+            entity array near = World:within(Tag.Enemy, position(), 3);\n\
+            is closest != nothing? then {\n\
+                seen = seen + #near;\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Asker;\nend\n";
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_2000_lust_units_asking_by_tag_each_tick() {
+    // Stage 1's scale case, end to end: 2,000 units in a 200 m square,
+    // half of them enemies, each with a Lust component asking for the
+    // nearest enemy and every enemy within 3 m, every tick. A frame of
+    // play mode runs one tick of all of them.
+    const TARGET_MS: f64 = 16.0;
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &script::project_names::Names::standard().and_tags(&["Enemy"]),
+    );
+    files.push(("main.lst".into(), ASKER.to_string()));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let program = Arc::new(script::compile(&code).unwrap().unwrap());
+    let mut w = Workbench::new(info());
+    let mut tags = level::tags::TagList::default();
+    tags.add_with_id(enemy(), "Enemy").unwrap();
+    w.set_tags(tags);
+    w.set_program(Some(program));
+    let spawns: Vec<level::Edit> = (0..2_000)
+        .map(|i| {
+            let t = i as f32 * 0.618_034;
+            let mut data = EntityData::new(&format!("Unit {i}")).with(&Transform {
+                position: Vec3::new((t * 97.0) % 200.0, (t * 61.0) % 200.0, 0.0),
+                ..Transform::default()
+            });
+            if i % 2 == 0 {
+                data.set(&Tags::of([enemy()]));
+            }
+            data.components
+                .insert("Asker".into(), ComponentData::default());
+            level::Edit::Spawn {
+                entities: vec![(EntityId::random(), data)],
+            }
+        })
+        .collect();
+    w.open.document.edit("Fill", spawns, None, None).unwrap();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    let frames = 60;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        w.run_game(1.0 / 60.0);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: a play-mode tick of 2,000 Lust units each asking for the nearest enemy and \
+         those within 3 m {ms:.2} ms (target {TARGET_MS} ms, one frame) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "a tick takes {ms:.2} ms");
+}

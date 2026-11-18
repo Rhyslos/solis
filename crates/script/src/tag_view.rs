@@ -36,6 +36,11 @@ const CELLS_PER_MEMBER: usize = 4;
 /// The smallest a cell may be, in metres.
 const MIN_CELL: f32 = 0.25;
 
+/// How much more than a distance a question looks, for the rounding of
+/// numbers (a share of the distance or of a cell): so the grid never
+/// leaves out a member a look through every member would find.
+const SLACK: f32 = 1e-4;
+
 /// The tags of a tick: who carries which, and where each tag's members
 /// are.
 #[derive(Debug, Default, PartialEq)]
@@ -185,10 +190,10 @@ impl TagView {
                     grid.ring(cx, cy, k, &mut |col, row| {
                         grid.each_in(col, row, &mut |i| look(i, &mut best));
                     });
-                    // Nothing in the next ring is nearer than this (a ring
-                    // spare for rounding).
-                    let clear = (k - 1).max(0) as f32 * grid.cell;
-                    if k >= 1 && best.is_some_and(|b| b.0 <= clear * clear) {
+                    // Nothing in the next ring is nearer than this, but
+                    // for a hair's rounding.
+                    let clear = (k as f32 * grid.cell * (1.0 - SLACK)).max(0.0);
+                    if best.is_some_and(|b| b.0 < clear * clear) {
                         break;
                     }
                 }
@@ -309,7 +314,7 @@ impl Grid {
     }
 
     /// The columns and rows (each from, to) a question of `radius` about
-    /// `place` looks in, a cell more each way for rounding; none when
+    /// `place` looks in, a hair more each way for rounding; none when
     /// looking through all `members` is quicker.
     fn cells_near(
         &self,
@@ -318,10 +323,11 @@ impl Grid {
         members: usize,
     ) -> Option<(&Self, (i64, i64), (i64, i64))> {
         let ground = place.truncate();
-        let (x0, y0) = self.cell_of(ground - Vec2::splat(radius));
-        let (x1, y1) = self.cell_of(ground + Vec2::splat(radius));
-        let (x0, y0) = ((x0 - 1).max(0), (y0 - 1).max(0));
-        let (x1, y1) = ((x1 + 1).min(self.cols - 1), (y1 + 1).min(self.rows - 1));
+        let reach = radius * (1.0 + SLACK) + self.cell * SLACK;
+        let (x0, y0) = self.cell_of(ground - Vec2::splat(reach));
+        let (x1, y1) = self.cell_of(ground + Vec2::splat(reach));
+        let (x0, y0) = (x0.max(0), y0.max(0));
+        let (x1, y1) = (x1.min(self.cols - 1), y1.min(self.rows - 1));
         if x0 > x1 || y0 > y1 {
             // Wholly off the grid: nothing's there.
             return Some((self, (0, -1), (0, -1)));

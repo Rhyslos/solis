@@ -166,6 +166,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "tags_file"
+path = "fuzz_targets/tags_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "aseprite"
 path = "fuzz_targets/aseprite.rs"
 test = false

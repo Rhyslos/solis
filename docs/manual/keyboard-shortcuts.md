@@ -310,6 +310,7 @@ See [Projects and the Library](projects-and-the-library.md).
 | Action | Shortcut |
 |---|---|
 | Add the first component found (after typing part of its name in **+ Component**) | `Enter` |
+| Give the first tag found, or make the tag typed (in **+ Tag**'s box) | `Enter` |
 
 ## Audio: the mixer
 
@@ -363,6 +364,15 @@ See [Input](input.md).
 | Clear the picked binding | `Backspace` (its × does the same) |
 | Bind the next key, mouse button or gamepad button pressed | **+ Add binding**, then press it (`Backspace` too is bound then) |
 | Give up binding | `Esc` |
+
+## Project settings › Tags
+
+See [Tags](tags.md).
+
+| Action | Shortcut |
+|---|---|
+| Rename a tag everywhere | Double-click its name (`Enter` keeps the new name, `Esc` leaves it) |
+| Keep a new tag's name (after **+ New tag**) | `Enter` (`Esc` gives it up) |
 
 ## The frame: slots, groups and the bottom panel
 
