@@ -66,7 +66,7 @@ R1 to R6 → Tools 1b → **Open worlds** → finish "Usable first" → Shared 2
 | # | Phase | Milestones | Size | Why here |
 | --- | --- | --- | --- | --- |
 | 1 | **Shared 1f, the editor rethink** (R3 to R6) | 4 | large | In progress. |
-| 2 | **Tools 1b, world sculpting** (G1 to G5) | 5 | large | As planned. Its files are shaped for Open worlds now, so they never need a second format. |
+| 2 | **Tools 1b, world sculpting** (G1 to G5): ★ moved into the 3D track before Open worlds by decision 0121 | 5 | large | As planned. Its files are shaped for Open worlds now, so they never need a second format. |
 | 3 | ★ **Finish "Usable first"** (L2 to L6) and the farming game's gate | 5 | medium | Small file moves the lead's own game is waiting on. L2 and L3 are short and can go between any two milestones. |
 | 4 | **Shared 2, game code: finding and making things** | 5, plus ★ a determinism check | medium | The farming game asks for "nearest crop" and "cells that are tilled". The determinism check comes before Shared 3 puts more maths into game state. |
 | 5 | **2D 1, the world and tiles** | 3 | large | Typed fields move to Shared 4 (★). |
@@ -149,6 +149,8 @@ Each phase lists its milestones with the way chosen to build them. The full comp
 As [its plan](editor-rethink.md) says. One change from this research: **R5's prefab file is born as `<name>.prefab.lst`**, with the Lust shape and classes in `solis/data/` (decision 0081), so L4 has only levels to move. R5 starts by asking its two open questions (which settings a copy may change, and what happens when the prefab changes the same one).
 
 ### Tools 1b, world sculpting ([report 13](../reports/after-the-rethink/13-tools-1b.md))
+
+**Moved** into the 3D track, after 3D 1 and before Open worlds ([decision 0121](../decisions/0121-tools-1b-joins-the-3d-track.md)). G1 waits, mostly built, on the branch `tools-1b/g1-ground`.
 
 The study (G0) built and measured every approach, and decision 0116 settled the storage, the looks, the files, the size and what games may change. The work is turning the prototypes in `tools/ground-study` into Solis's crates.
 
