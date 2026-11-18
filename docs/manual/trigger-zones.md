@@ -12,14 +12,14 @@ Trigger zones work the same in 2D and 3D levels: the same component, the same se
 > **Good to know:** a zone only tells. What happens (a door opening, a fade, a teleport) is your game code's. Ready-made doors come later in stage 1, as a **Door** in the kit, built on trigger zones.
 
 ## How to use it
-1. On **Home**'s ribbon, in **Create**, click **Trigger zone**. A new zone appears in the view, in the middle of where you're looking, and is picked.
-2. **Size it:** drag the small squares on its teal outline (its handles). Each drag is one step to undo. Or type its **Size** in Properties' **Trigger zone** card.
+1. On **Home**'s ribbon, in **Create**, click **Trigger zone** (in a 3D project it's in **Create › More**). A new zone appears in the view, in the middle of where you're looking, and is picked.
+2. **Size it:** drag the small squares on its teal outline (its handles). Dragging a side moves that side and keeps the far one where it is; a circle's handle sets its radius. Sizes snap as moves do (whole pixels or tiles in 2D, the grid in 3D), and each drag is one step to undo. Or type its **Size** in Properties' **TriggerZone** card.
 3. Pick its **Shape**: **Box**, or **Circle** (2D) or **Sphere** (3D). In 2D there's **Freeform** too (below).
 4. Pick when it **Fires**: **Every time** something walks in or out, or **Once**, the first time something walks in and never again.
 5. Give it game code: in the **What game code hears** card, click **New code for this zone…**. Solis makes a code file named after the zone, with empty `Entered` and `Exited` ready to fill in, adds its component to the zone, and opens the file.
 6. Press **Play** and walk a character in. While playing, the card's **Inside now** names who is inside.
 
-In the view, a zone is a **teal outline**: solid with handles when it's picked, dashed when it isn't, with its name and size beside it. It turns and grows with its entity, like any shape: move it with the move gizmo (`W`), turn it with `R`.
+In the view, a zone is a **teal outline**: solid with handles when it's picked, dashed when it isn't, with its name and size beside it. Click its outline to pick it (a click inside it is left for whatever is in the zone); the Level panel lists it with a dashed square and **Trigger zone**. It turns and grows with its entity, like any shape: move it with the move gizmo (`W`), turn it with `R`.
 
 ### A freeform shape (2D)
 A room that isn't a rectangle, a winding path, a pond's bank: pick **Freeform** in **Shape**, and drawing starts in the view.

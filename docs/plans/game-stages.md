@@ -133,3 +133,13 @@ Planned in detail when 2D is done. The outline stays as ROADMAP.md has it:
 - 2,000 characters and 500 triggers within the scale target.
 
 **Not in this milestone:** doors, teleporting and fades. They're the Door in the kit, later in stage 1.
+
+**As built** (branch `stage1/triggers`):
+- **The component:** `TriggerZone` (`level::builtin`), a box, a round shape (shown as a circle in 2D and a sphere in 3D) or a freeform outline in 2D (saved as `Box`, `Round`, `Freeform`), Notices (characters and bodies, the only choice until tags) and Fires (every time, once). A new component needed no new level version; `tests/fixtures/area/v5/zones.sollevel` is its example, and the level fuzz target reads zones.
+- **The overlap pass** (`world::triggers`) runs as each tick begins, on where physics' last step left everything, not straight after the step: its events and the inside set a save keeps can then never be apart. It asks a tree of boxes made from where the moving things are now (parry's BVH), not Rapier's own query pipeline, which a physics step alone brings up to date: right after an edit while playing, a save or a load it would know nothing, and every zone would see everyone leave and come back.
+- **What's noticed:** "characters and bodies" means things that move: characters and dynamic or kinematic bodies in 3D, characters in 2D (2D has no other moving bodies). Fixed bodies, walls and brushes never count. A zone never counts itself.
+- **Once** sends the first tick's `Entered` (and `EnteredZone`), then nothing more, not even that visitor's `Exited`; the zone still knows who's inside. **Despawned while inside:** the zone hears `Exited`. **A zone despawned:** nothing is said.
+- **Game code:** the four events in `solis/zones.lst`, and `inside()` on a zone (`method entity array entity:inside() native;`), as the tick started.
+- **Saves** are version 10, with a `zones` section; version 9's upgrader adds an empty one.
+- **The editor:** Trigger zone on Home's Create (in More in 3D, where the unfinished part was); the outline, label and handles over every view (a click on the outline picks a zone; sizes snap as moves do); the TriggerZone card and What game code hears; New code for this zone (a file named after the zone at the top of the project, a `main.lst` made if there's none, and otherwise the line to add said in the Console); freeform drawing and editing with the keys asked about. The card's title is the component's name, `TriggerZone`, as every card's is; the header and the Level panel say "Trigger zone".
+- **Scale:** the overlap pass for 2,000 characters among 500 zones (a third of them freeform) takes about 1.2 ms a tick in a release build (target 2 ms).

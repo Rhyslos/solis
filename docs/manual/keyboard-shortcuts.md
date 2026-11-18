@@ -103,6 +103,23 @@ See [Selecting and moving things](selecting-and-moving.md).
 
 With a tile map picked, `B` is the tile map's Brush instead, and `Tab` its art or meaning (below). Over the UI canvas, `1`, `2` and `3` stay its tools. See [Brushes](brushes.md).
 
+## Trigger zones (pointer over the view)
+
+| Action | Shortcut |
+|---|---|
+| Size the picked zone | Drag one of its handles (snapped as moves are; one undo step a drag) |
+| Pick a zone | Click its outline |
+| Freeform (2D): place a point, while drawing (Shape › **Freeform**) | Click |
+| Close the shape, while drawing | Click the first point, or `Enter` |
+| Give the drawing up, keeping the shape the zone had | `Esc` |
+| Start or stop editing a freeform zone's points (or **Edit points** on its card) | `Tab` |
+| Move a point, while editing | Drag it |
+| Add a point on an edge, while editing | `Ctrl + click` |
+| Take the picked point away (never below 3), while editing | `Delete`, `Backspace` |
+| Finish editing | `Tab`, `Esc` |
+
+While a zone's points are drawn or edited these keys are the zone's: `Delete` never deletes the zone, and `Esc` never picks nothing. See [Trigger zones](trigger-zones.md).
+
 ## The Frames tab (a clips file open)
 
 The keys work while the pointer is over the Frames tab (undo and redo over the Clip tab too); see [Animating sprites](sprite-animation.md).
