@@ -1,0 +1,99 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#141517;--p:#1c1d20;--p2:#24262a;--line:#33363b;--t:#e6e6e3;--m:#8d9096;--a:#e0a640;--ok:#7cc48a;--bad:#e2725b}
+*{box-sizing:border-box}body{margin:0;background:#0d0e10;font:13px/1.4 Inter,system-ui,sans-serif;color:var(--t)}
+.s{width:1200px;margin:0 0 24px;background:var(--bg);border:1px solid var(--line)}
+.h{padding:10px 16px;background:#0d0e10;font-size:17px;font-weight:600;color:var(--a)}.h small{color:var(--m);font-weight:400;font-size:13px;margin-left:10px}
+.row{display:flex;gap:0}.pan{background:var(--p);border-right:1px solid var(--line);padding:12px}
+.tt{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--m);margin-bottom:8px}
+.card{background:var(--p2);border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:10px}
+.f{display:flex;align-items:center;gap:8px;margin:7px 0}.f label{width:120px;color:var(--m)}
+.in{flex:1;background:#101113;border:1px solid var(--line);border-radius:4px;padding:5px 8px}
+.sl{flex:1;height:4px;background:var(--line);border-radius:2px;position:relative}.sl i{position:absolute;left:0;top:0;height:4px;width:40%;background:var(--a);border-radius:2px}.sl b{position:absolute;left:40%;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--t);margin-left:-7px}
+.tip{font-size:11px;color:var(--m);margin:-3px 0 6px 128px}
+.chip{display:inline-block;padding:2px 8px;border-radius:10px;background:#2d2f34;margin:2px;font-size:12px}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--line);padding:6px 8px;text-align:left}th{background:var(--p2);color:var(--m);font-weight:500}
+.sel{outline:2px solid var(--a)}.miss{color:var(--bad)}.okc{color:var(--ok)}
+.node{position:absolute;width:230px;background:var(--p2);border:1px solid var(--line);border-radius:6px;font-size:12px}
+.node .nt{padding:6px 9px;border-bottom:1px solid var(--line);font-weight:600}.node .r{padding:5px 9px;position:relative}
+.pi,.po{position:absolute;top:8px;width:9px;height:9px;border-radius:50%;background:var(--a)}.pi{left:-5px}.po{right:-5px}
+.btn{display:inline-block;padding:4px 10px;border:1px solid var(--line);border-radius:4px;background:var(--p2);margin-right:6px}
+.btn.a{background:var(--a);color:#111;border-color:var(--a)}
+.note{background:#2a2410;border-left:3px solid var(--a);padding:8px 12px;color:#e8d9b5;font-size:12px}
+</style></head><body>
+
+<div class="s" id="m1"><div class="h">1 · Field hints and more kinds of settings <small>Properties, a component's settings</small></div>
+<div class="row"><div class="pan" style="width:420px">
+<div class="tt">Properties › Guard (Lust component)</div>
+<div class="card"><b>Guard</b>
+<div class="f"><label>Speed</label><div class="sl"><i></i><b></b></div><span class="in" style="flex:0 0 56px">4.0</span></div><div class="tip">Walking speed in metres a second · 0 to 10</div>
+<div class="f"><label>Sight range</label><span class="in">8 m</span></div>
+<div class="f"><label>Alert sound</label><span class="in">🔊 guard_alert ▾</span><span class="btn">▶</span></div>
+<div class="f"><label>Portrait</label><span class="in">🖼 guard_face ▾</span></div>
+<div class="f"><label>Drops</label><span class="in">📦 Coin prefab ▾</span></div>
+<div class="f"><label>Patrol points</label><span class="in">3 items ▸ &nbsp;<span class="chip">+ Add</span></span></div>
+<div class="f"><label>Mood</label><span class="in">Calm ▾</span></div>
+<div class="f"><label>Colour</label><span class="in"><span style="display:inline-block;width:14px;height:14px;background:#5aa0e0;vertical-align:-3px"></span> #5AA0E0</span></div>
+</div></div>
+<div class="pan" style="flex:1;border:0"><div class="tt">Written in the code</div>
+<pre class="card" style="font:12px/1.6 ui-monospace,monospace;margin:0">float speed = 4.0 [range 0 10, tip "Walking speed in metres a second"];
+float sightRange = 8.0 [unit "m"];
+Sound alertSound;
+Sprite portrait;
+Prefab drops;
+Place array patrolPoints [max 16];</pre>
+<p class="note" style="margin-top:12px">Hints sit in the code next to each setting. Until Lust supports them, the editor keeps them in a small side file. The pickers (sound, sprite, prefab) open the Library filtered to that kind; ▶ plays the sound.</p></div></div></div>
+
+<div class="s" id="m2"><div class="h">2 · Data tables <small>a new editor tab: Items.table.lst</small></div>
+<div style="padding:12px"><div style="margin-bottom:8px"><span class="btn a">+ Row</span><span class="btn">+ Column ▾</span><span class="in" style="display:inline-block;width:240px">🔍 Search</span></div>
+<table><tr><th>ID</th><th>Name <small>text · translated</small></th><th>Price <small>whole number</small></th><th>Icon <small>sprite</small></th><th>Rarity <small>Rarity</small></th><th>Description <small>text · translated</small></th></tr>
+<tr><td>Apple</td><td>Apple</td><td>5</td><td>🍎 apple</td><td>Common</td><td>A crisp red apple.</td></tr>
+<tr class="sel"><td>IronSword</td><td>Iron sword</td><td>120</td><td>🗡 sword_iron</td><td>Rare</td><td>Heavy, but it holds an edge.</td></tr>
+<tr><td>Potion</td><td>Potion</td><td>50</td><td>🧪 potion</td><td>Common</td><td>Heals 20.</td></tr></table>
+<p class="note" style="margin-top:12px">Game code reads it with checked names: <code>Items.IronSword.price</code>. A misspelt row or column fails before the game runs.</p></div></div>
+
+<div class="s" id="m3"><div class="h">3 · Translations and subtitles <small>Project settings › Languages, and the Translations tab</small></div>
+<div class="row"><div class="pan" style="width:300px"><div class="tt">Languages</div>
+<div class="card">English <span class="chip">main</span></div><div class="card">Norsk <span style="float:right" class="okc">96%</span></div><div class="card">Deutsch <span style="float:right" class="miss">41%</span></div><span class="btn">+ Language</span><span class="btn">Export spreadsheet</span></div>
+<div class="pan" style="flex:1;border:0"><div class="tt">Translations · Norsk · <span class="miss">12 missing</span></div>
+<table><tr><th>Key</th><th>English</th><th>Norsk</th></tr>
+<tr><td>Gardener.firstMeeting</td><td>Oh! A new face in the village.</td><td>Å! Et nytt fjes i landsbyen.</td></tr>
+<tr><td>Items.IronSword.name</td><td>Iron sword</td><td>Jernsverd</td></tr>
+<tr><td>Menu.Continue</td><td>Continue</td><td class="miss">missing</td></tr></table>
+<div class="tt" style="margin-top:14px">Subtitles and captions (Player settings)</div><div class="card">Subtitles: On · Captions for sounds: On · Size: Medium · Background: 60%</div></div></div></div>
+
+<div class="s" id="m4"><div class="h">4 · The dialogue box <small>in the game, a game UI screen you can restyle or replace</small></div>
+<div style="height:380px;background:linear-gradient(#3b5d4a,#24392d);position:relative">
+<div style="position:absolute;left:40px;right:40px;bottom:40px;background:rgba(15,16,18,.92);border:2px solid #c9b48a;border-radius:8px;padding:14px;display:flex;gap:14px">
+<div style="width:96px;height:96px;background:#6b5a46;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;color:#ddd">portrait</div>
+<div style="flex:1"><div style="color:#e0c070;font-weight:600;margin-bottom:4px">Mira</div>
+<div style="font-size:16px">Oh! A new face in the village. Have you seen my <span style="color:#e09a6a">red roses</span>? They <i style="display:inline-block;transform:translateY(-2px)">wiggle</i> when it rains…</div>
+<div style="margin-top:10px"><div style="padding:5px 10px;background:#2c3a33;border-radius:4px;margin-bottom:4px">▸ Tell me about the roses.</div>
+<div style="padding:5px 10px;margin-bottom:4px">I have to go.</div><div style="padding:5px 10px;color:#888">Give her the letter (Locked)</div></div></div></div>
+<div style="position:absolute;left:40px;right:40px;bottom:8px;text-align:center;color:#fff;font-size:12px;opacity:.8">[subtitle line shows here when the box is hidden, e.g. during a cutscene]</div></div></div>
+
+<div class="s" id="m5"><div class="h">5 · The conversation editor <small>a tab on the shared graph editor: Gardener.dialogue.lst</small></div>
+<div style="padding:8px 12px;border-bottom:1px solid var(--line)"><span class="btn">+ Node ▾</span><span class="btn">Set as start</span><span class="btn">Arrange</span><span class="btn">▶ Play from here</span></div>
+<div class="row"><div style="flex:1;height:440px;position:relative;background:radial-gradient(#2a2c30 1px,transparent 1px) 0 0/20px 20px">
+<svg width="100%" height="100%" style="position:absolute"><path d="M260 80 C300 80,300 70,330 70" stroke="#e0a640" fill="none" stroke-width="2"/><path d="M560 118 C600 118,600 60,640 60" stroke="#e0a640" fill="none" stroke-width="2"/><path d="M560 146 C600 146,600 230,640 230" stroke="#e0a640" fill="none" stroke-width="2"/></svg>
+<div class="node" style="left:30px;top:50px"><div class="nt">Line · start <span class="chip">Start</span></div><div class="r"><span class="pi"></span>Mira: Oh! A new face in the village…<span class="po"></span></div><div class="r" style="color:var(--m)">🔊 mira_001 · 3.2 s · 2 moments</div></div>
+<div class="node" style="left:330px;top:40px"><div class="nt">Choice · roses</div><div class="r"><span class="pi"></span>Player chooses:</div><div class="r">1. Tell me about the roses.<span class="po"></span></div><div class="r">2. I have to go.<span class="po"></span></div><div class="r" style="color:var(--m)">3. Give her the letter [if hasLetter, locked]<span class="po"></span></div></div>
+<div class="node" style="left:640px;top:40px"><div class="nt">Line · roses_1</div><div class="r"><span class="pi"></span>Mira: They're from my grandmother…<span class="po"></span></div></div>
+<div class="node" style="left:640px;top:210px"><div class="nt">End</div><div class="r"><span class="pi"></span>End of conversation</div></div>
+</div><div class="pan" style="width:300px;border-left:1px solid var(--line);border-right:0"><div class="tt">Properties · Line start</div>
+<div class="f"><label style="width:70px">Speaker</label><span class="in">Mira ▾</span></div><div class="f"><label style="width:70px">Text</label><span class="in">Oh! A new face…</span></div>
+<div class="f"><label style="width:70px">Voice</label><span class="in">🔊 mira_001 ▾</span></div><div class="f"><label style="width:70px">Moves on</label><span class="in">When the player presses</span></div>
+<div class="f"><label style="width:70px">Effects</label><span class="in">metMira() + Add</span></div>
+<div class="tt" style="margin-top:12px">Moments in this line</div>
+<div style="height:46px;background:#101113;border:1px solid var(--line);border-radius:4px;position:relative"><div style="position:absolute;left:8px;right:8px;top:20px;height:4px;background:#2d2f34"></div><span class="chip" style="position:absolute;left:30%;top:2px">😄 laugh</span><span class="chip" style="position:absolute;left:70%;top:22px">🚪 door</span></div>
+<div class="tt" style="margin-top:12px">Problems</div><div style="color:var(--m)">No problems found.</div></div></div></div>
+
+<div class="s" id="m6"><div class="h">6 · One place for all dialogue <small>the Dialogue overview tab</small></div>
+<div class="row"><div class="pan" style="width:260px"><div class="tt">Conversations</div><div class="card sel">Gardener <span style="float:right;color:var(--m)">14 lines</span></div><div class="card">Blacksmith <span style="float:right;color:var(--m)">22 lines</span></div><div class="card">Intro cutscene <span style="float:right;color:var(--m)">8 lines</span></div>
+<div class="tt" style="margin-top:12px">Speakers</div><span class="chip">Mira</span><span class="chip">Bram</span><span class="chip">Narrator</span></div>
+<div class="pan" style="flex:1;border:0"><div style="margin-bottom:8px"><span class="in" style="display:inline-block;width:260px">🔍 Search every line</span> <span class="btn">Missing only</span><span class="btn">Export for translators</span><span class="btn">Export script for voice actors</span><span class="btn">Import</span></div>
+<table><tr><th>Line</th><th>Speaker</th><th>Text</th><th>Voice EN</th><th>Norsk</th><th>Voice NO</th></tr>
+<tr><td>start</td><td>Mira</td><td>Oh! A new face in the village.</td><td class="okc">✓ 3.2 s</td><td class="okc">✓</td><td class="miss">missing</td></tr>
+<tr><td>roses_1</td><td>Mira</td><td>They're from my grandmother…</td><td class="miss">missing</td><td class="okc">✓</td><td class="miss">missing</td></tr>
+<tr><td>bye</td><td>Mira</td><td>Come back soon!</td><td class="okc">✓ 1.1 s</td><td class="miss">missing</td><td class="miss">missing</td></tr></table>
+<p class="note" style="margin-top:12px">Double-click a line to open it in its conversation. The talk-to component (a trigger zone + ordered entries, as in your prototype) sits on characters in Properties.</p></div></div></div>
+</body></html>
