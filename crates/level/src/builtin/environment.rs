@@ -92,6 +92,12 @@ impl Environment {
     /// The most light steps.
     pub const MAX_STEPS: i64 = 8;
 
+    /// How many seconds of game time a day lasts (for how long a timer at
+    /// an hour has left).
+    pub fn day_seconds(&self) -> f64 {
+        f64::from(self.day_minutes.clamp(0.1, 100_000.0)) * 60.0
+    }
+
     /// The game's hour at `seconds` of game time, moved on by `shift`
     /// hours (game code's `setTimeOfDay`): 0 up to 24.
     pub fn hour_at(&self, seconds: f64, shift: f64) -> f64 {

@@ -72,6 +72,12 @@ physics: object Physics: method RayHit castRay(vec3 from, vec3 direction, float 
 physics: method entity:walk(vec3 wanted) native;
 physics: method bool entity:grounded() native;
 zones: method entity array entity:inside() native;
+timers: method entity:startTimer(Timer which, float seconds) native;
+timers: method entity:startTimerEvery(Timer which, float seconds) native;
+timers: method entity:startTimerAtHour(Timer which, float hour) native;
+timers: method entity:stopTimer(Timer which) native;
+timers: method bool entity:timerRunning(Timer which) native;
+timers: method float entity:timeLeft(Timer which) native;
 entity: method vec3 entity:position() native;
 entity: method entity:moveTo(vec3 place) native;
 entity: method rotation entity:rotation() native;
@@ -101,6 +107,7 @@ zones: event Entered(entity who);
 zones: event Exited(entity who);
 zones: event EnteredZone(entity zone);
 zones: event LeftZone(entity zone);
+timers: event TimerFinished(Timer which);
 
 ## Lua (solis.<name>)
 
@@ -184,8 +191,14 @@ solis.entity.setFlip
 solis.entity.setSoundPlaying
 solis.entity.setVelocity
 solis.entity.showScreen
+solis.entity.startTimer
+solis.entity.startTimerAtHour
+solis.entity.startTimerEvery
 solis.entity.stopAnimation
 solis.entity.stopSounds
+solis.entity.stopTimer
+solis.entity.timeLeft
+solis.entity.timerRunning
 solis.entity.turnTo
 solis.entity.velocity
 solis.entity.walk
@@ -229,6 +242,9 @@ Host: fn add_tag(&mut self, which: EntityId, tag: &str)
 Host: fn remove_tag(&mut self, which: EntityId, tag: &str)
 Host: fn within(&self, tag: &str, place: Vec3, radius: f32) -> Vec<EntityId>
 Host: fn nearest(&self, tag: &str, place: Vec3) -> Option<EntityId>
+Host: fn start_timer(&mut self, which: EntityId, name: &str, timing: crate::timers::Timing) -> Result<(), String>
+Host: fn stop_timer(&mut self, which: EntityId, name: &str) -> Result<(), String>
+Host: fn timer_left(&self, which: EntityId, name: &str) -> Result<Option<f64>, String>
 Host: fn save_game(&mut self, slot: &str, load: bool)
 Host: fn action(&self, name: &str) -> input::ActionState
 Host: fn binding(&self, action: &str) -> Option<String>

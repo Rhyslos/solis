@@ -41,6 +41,12 @@ impl Workbench {
         for (object, data) in game.object_values() {
             parts.insert(format!("object {object}"), data_text(&data));
         }
+        // Game code's timers, once one waits (stage 1, timers): a game
+        // with none has the parts it had before.
+        let timers = game.timers().write();
+        if !timers.is_empty() {
+            parts.insert("timers".to_string(), timers);
+        }
         Some(parts)
     }
 }

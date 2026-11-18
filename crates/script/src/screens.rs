@@ -555,6 +555,7 @@ impl Screens {
         let mut runtime = Runtime::new()?;
         runtime.open_views(Rc::clone(&opened));
         let compiled = crate::Compiled {
+            timers: Vec::new(),
             lust: Some(code.chunk.clone()),
             lua: Vec::new(),
             schemas: Vec::new(),

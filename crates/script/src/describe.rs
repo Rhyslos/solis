@@ -131,6 +131,12 @@ pub const ENGINE_EVENTS: &[EngineEvent] = &[
         lust: "event LeftZone(entity zone);",
         about: "Sent to whatever walked out of a trigger zone: which zone.",
     },
+    EngineEvent {
+        file: "timers",
+        name: "TimerFinished",
+        lust: "event TimerFinished(Timer which);",
+        about: "Sent to the component that started a timer when it finishes, in the tick's first round of events: which timer. Several in one tick come in the order they were due, then by entity, component and the order they started.",
+    },
 ];
 
 /// Natives renamed on purpose, with their old names kept working for a
@@ -845,6 +851,48 @@ pub const NATIVES: &[Native] = &[
         about: "Who is inside this trigger zone now (as the tick started), in the order of their IDs: empty for an entity that isn't a zone.",
     },
     Native {
+        file: "timers",
+        name: "startTimer",
+        owner: "entity",
+        lust: "method entity:startTimer(Timer which, float seconds) native;",
+        about: "Starts one of this component's timers (Timer.DoorOpens): TimerFinished comes this many seconds of game time later (whole ticks; 0 is the next tick). Starting one that's running starts it again from the new time. Called bare, inside a component.",
+    },
+    Native {
+        file: "timers",
+        name: "startTimerEvery",
+        owner: "entity",
+        lust: "method entity:startTimerEvery(Timer which, float seconds) native;",
+        about: "Starts a timer that finishes every this many seconds of game time (at least a tick), keeping its rhythm, until it's stopped.",
+    },
+    Native {
+        file: "timers",
+        name: "startTimerAtHour",
+        owner: "entity",
+        lust: "method entity:startTimerAtHour(Timer which, float hour) native;",
+        about: "Starts a timer that finishes each day as the Environment's day clock passes this hour (6.5 is half past six), until it's stopped. A clock set past the hour (setTimeOfDay) finishes it once.",
+    },
+    Native {
+        file: "timers",
+        name: "stopTimer",
+        owner: "entity",
+        lust: "method entity:stopTimer(Timer which) native;",
+        about: "Stops one of this component's timers at the end of the tick, so it doesn't finish. One that isn't running changes nothing.",
+    },
+    Native {
+        file: "timers",
+        name: "timerRunning",
+        owner: "entity",
+        lust: "method bool entity:timerRunning(Timer which) native;",
+        about: "Whether one of this component's timers was running as the tick started: one started or stopped this tick counts from the next.",
+    },
+    Native {
+        file: "timers",
+        name: "timeLeft",
+        owner: "entity",
+        lust: "method float entity:timeLeft(Timer which) native;",
+        about: "The seconds of game time left before one of this component's timers finishes, as the tick started; 0 when it isn't running.",
+    },
+    Native {
         file: "entity",
         name: "position",
         owner: "entity",
@@ -1164,7 +1212,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
-    "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag",
+    "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer",
 ];
 
 /// What the first line of each file describing the engine says after who made it.
@@ -1208,7 +1256,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 19);
+        assert_eq!(files.len(), 20);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
@@ -1392,7 +1440,8 @@ mod tests {
                     "tiles",
                     "screens",
                     "window",
-                    "zones"
+                    "zones",
+                    "timers"
                 ]
                 .contains(&native.file)
             );

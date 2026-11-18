@@ -33,6 +33,8 @@ pub mod tag_view;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 mod ticking;
+pub mod timer_names;
+pub mod timers;
 
 pub use code::{
     Bytecode, Code, CodeProblem, Compiled, NotStarted, check, check_unfinished, compile, gather,
@@ -49,6 +51,7 @@ pub use rust_component::{Context, RustComponent, RustKind};
 pub use screens::{NoReader, ScreenCode, ScreenReader, Screens};
 pub use tag_view::TagView;
 pub use ticking::Order;
+pub use timers::{Timers, Timing};
 
 /// The Lust compiler's version.
 pub const LUST_VERSION: &str = lust::VERSION;

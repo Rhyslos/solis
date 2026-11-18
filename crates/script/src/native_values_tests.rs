@@ -28,6 +28,7 @@ fn id(n: u64) -> EntityId {
 /// The game's code with these Lua files and no Lust.
 fn lua_code(files: &[(&str, &str)]) -> Compiled {
     Compiled {
+        timers: Vec::new(),
         lust: None,
         lua: files
             .iter()

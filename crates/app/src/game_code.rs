@@ -187,6 +187,15 @@ fn asset_paths(assets: &Path, endings: &[&str]) -> Vec<String> {
     found
 }
 
+/// `code` with the engine's file at `path` holding `text`, as it's
+/// written now (the code was read before it was).
+fn code_takes(code: &mut script::Code, path: &str, text: &str) {
+    match code.files.binary_search_by(|(p, _)| p.as_str().cmp(path)) {
+        Ok(at) => code.files[at].1 = text.to_string(),
+        Err(at) => code.files.insert(at, (path.to_string(), text.to_string())),
+    }
+}
+
 /// The project's own folder, for its files' folder `files`: itself when
 /// the project file is in it, otherwise the one holding it (an older
 /// project's `assets`).
@@ -237,6 +246,19 @@ impl GameCode {
         if !assets.is_dir() {
             return Vec::new();
         }
+        let mut code = script::gather(assets);
+        Self::describe_from(assets, made_by, animation, &mut code)
+    }
+
+    /// [`GameCode::describe_with`] for the game's `code`, already read:
+    /// its timers' names are the ones its Lust starts (stage 1, timers),
+    /// and the code is given the project file as it's written now.
+    fn describe_from(
+        assets: &Path,
+        made_by: &str,
+        animation: &Animation,
+        code: &mut script::Code,
+    ) -> Vec<String> {
         let Animation {
             clips,
             cues,
@@ -290,6 +312,8 @@ impl GameCode {
             tags: root.map_or_else(Vec::new, |root| {
                 crate::play_files::load_tags(root).0.names()
             }),
+            // The game's timers, each named where its Lust starts it.
+            timers: script::timer_names::names_started(code),
         };
         let (mut files, mut notes) =
             script::describe::descriptions_for(made_by, crate::branding::CODE_FOLDER, &names);
@@ -338,6 +362,10 @@ impl GameCode {
         }
         forget_animator_files(assets, &files, script::animator_code::FOLDER);
         forget_animator_files(assets, &files, script::map_code::FOLDER);
+        let project = format!("{}/project.lst", crate::branding::CODE_FOLDER);
+        if let Some((_, text)) = files.iter().find(|(path, _)| *path == project) {
+            code_takes(code, &project, text);
+        }
         for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {
@@ -395,8 +423,12 @@ impl GameCode {
                 // A crash is answered too, so it's said and the next
                 // change is checked (the review, BUG-33).
                 let answer = std::panic::catch_unwind(|| {
-                    let described = Self::describe_with(&assets, &made_by, &animation);
-                    let code = script::gather(&assets);
+                    let mut code = script::gather(&assets);
+                    let described = if assets.is_dir() {
+                        Self::describe_from(&assets, &made_by, &animation, &mut code)
+                    } else {
+                        Vec::new()
+                    };
                     let found = hash(&code);
                     // Most changes in the assets aren't code (a model, the
                     // level saved): then there's nothing to compile.

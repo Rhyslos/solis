@@ -41,6 +41,10 @@ pub struct Event {
     pub name: String,
     /// What it carries, in the declared order.
     pub values: Vec<Value>,
+    /// The one component on the entity it's for, by name (a timer's
+    /// `TimerFinished` goes only to the component that started it); none:
+    /// every component on the entity, in name order.
+    pub only: Option<std::sync::Arc<str>>,
 }
 
 /// Events waiting to be delivered, within [`MAX_WAITING`] and
@@ -179,6 +183,7 @@ pub(crate) fn sender(
                     to,
                     name,
                     values: read,
+                    only: None,
                 })
                 .map_err(mlua::Error::runtime)
         },

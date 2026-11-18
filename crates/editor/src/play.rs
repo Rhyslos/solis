@@ -627,6 +627,7 @@ fn cues_of(
                 to: id,
                 name: name.to_owned(),
                 values: vec![reflect::Value::Text(value)],
+                only: None,
             });
         }
     }

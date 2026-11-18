@@ -138,7 +138,7 @@ fn wrong_value(key: &str, at: Option<usize>, why: mlua::Error) -> mlua::Error {
 /// How Lua writes a call to `native`, with its values' names:
 /// `solis.World:say(words)`, `solis.entity.moveTo(target, place)`,
 /// `solis.facingAlong(direction)`.
-fn written(native: &Native) -> String {
+pub(crate) fn written(native: &Native) -> String {
     let mut values: Vec<&str> = values_of(native.lust).map(|(_, name)| name).collect();
     match native.owner {
         "" => format!("solis.{}({})", native.name, values.join(", ")),

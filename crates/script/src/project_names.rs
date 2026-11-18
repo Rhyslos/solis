@@ -58,6 +58,9 @@ pub struct Names {
     /// Its tags' names (`Enemy`), as Project settings › Tags has them
     /// (stage 1, tags).
     pub tags: Vec<String>,
+    /// Its timers' names (`DoorOpens`), as its Lust starts them (stage 1,
+    /// timers; [`crate::timer_names::names_started`]).
+    pub timers: Vec<String>,
 }
 
 impl Names {
@@ -78,6 +81,7 @@ impl Names {
             screens: Vec::new(),
             pictures: Vec::new(),
             tags: Vec::new(),
+            timers: Vec::new(),
         }
     }
 }
@@ -128,6 +132,13 @@ impl Names {
         self
     }
 
+    /// These names with these timers.
+    #[must_use]
+    pub fn and_timers(mut self, timers: &[&str]) -> Self {
+        self.timers.extend(timers.iter().map(|a| (*a).to_string()));
+        self
+    }
+
     /// These names with more input actions.
     #[must_use]
     pub fn and_actions(mut self, actions: &[&str]) -> Self {
@@ -164,6 +175,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
     let picture = state_text("Picture", &names.pictures, "cropped picture", &mut notes);
     let tag = names_text("Tag", &names.tags, "tag", true, &mut notes);
+    let timer = names_text("Timer", &names.timers, "timer", true, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -188,6 +200,8 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {picture}\n\n\
          -- The project's tags (Project settings > Tags): is hasTag(Tag.Enemy)?, World:nearest(Tag.Enemy, place).\n\
          {tag}\n\n\
+         -- The game's timers, each named where code starts it: startTimer(Timer.DoorOpens, 2.0).\n\
+         {timer}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -421,11 +435,9 @@ mod tests {
             text.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{text}"
         );
-        assert!(
-            text.ends_with(
-                "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n"
-            )
-        );
+        assert!(text.ends_with(
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer;\nend\n"
+        ));
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
@@ -488,11 +500,9 @@ mod tests {
             text.contains("state Prefab = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
             "{text}"
         );
-        assert!(
-            text.ends_with(
-                "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n"
-            )
-        );
+        assert!(text.ends_with(
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer;\nend\n"
+        ));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));

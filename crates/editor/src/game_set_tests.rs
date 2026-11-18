@@ -121,6 +121,14 @@ const ON_AN_ENTITY: &[(&str, Asks)] = &[
 /// entity (the whole game's, the sound mixer's, the player's settings,
 /// input) or is the level's own (an entity made or taken out).
 const NOT_ON_AN_ENTITY: &[&str] = &[
+    // Timers are game code's own (`script::Game` keeps them), so an edit
+    // that makes an entity again never touches them.
+    "entity_startTimer",
+    "entity_startTimerEvery",
+    "entity_startTimerAtHour",
+    "entity_stopTimer",
+    "entity_timerRunning",
+    "entity_timeLeft",
     "entity_inside",
     "entity_hasTag",
     "World_within",

@@ -91,6 +91,9 @@ impl Workbench {
             pending.extend(std::mem::take(&mut host.edits));
             // And the game-wide objects theirs (decision 0080).
             self.give_saved_objects(game, &save.objects, name);
+            // And the timers waiting (stage 1, timers): each fires on the
+            // tick it would have in the saved game.
+            game.set_timers(std::mem::take(&mut save.timers));
         }
         let loaded = Loaded {
             world,

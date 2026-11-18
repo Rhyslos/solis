@@ -16,6 +16,7 @@ fn chunk(main: &str) -> Compiled {
         &files,
     ) {
         Ok(chunk) => Compiled {
+            timers: Vec::new(),
             lust: Some(chunk),
             lua: Vec::new(),
             schemas: Vec::new(),

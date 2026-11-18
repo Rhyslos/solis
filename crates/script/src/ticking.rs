@@ -377,6 +377,9 @@ impl Ticking<'_> {
                 if *entity != event.to {
                     break;
                 }
+                if event.only.as_ref().is_some_and(|only| **only != **name) {
+                    continue;
+                }
                 claimed = true;
                 if component.stopped {
                     continue;
@@ -496,7 +499,10 @@ impl Ticking<'_> {
                 let Some(on) = on else {
                     return Ok(());
                 };
-                let mut args = arguments(lua, declared.map(Vec::as_slice), &event.values)
+                // A timer's event names it as Lua does, by its text: Lua's
+                // timers aren't options of Lust's Timer state.
+                let kinds = declared.filter(|_| event.only.is_none());
+                let mut args = arguments(lua, kinds.map(Vec::as_slice), &event.values)
                     .ok_or_else(|| wrong(declared.map_or(0, Vec::len)))?;
                 args.push_front(LuaValue::Table(table));
                 self.luau
