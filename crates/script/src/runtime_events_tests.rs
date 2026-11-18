@@ -49,6 +49,7 @@ fn loaded(main: &str) -> Runtime {
         &files,
     ) {
         Ok(chunk) => crate::code::Compiled {
+            timers: Vec::new(),
             lust: Some(chunk),
             lua: Vec::new(),
             schemas: Vec::new(),
@@ -212,6 +213,7 @@ fn a_failing_rust_component_stops_alone_and_wrong_values_leave_the_handler_runni
             to: target,
             name: "Hit".into(),
             values: vec![Value::Text("oops".into())],
+            only: None,
         })
         .unwrap();
     let failures = runtime.tick(0.1, &mut log).failures;

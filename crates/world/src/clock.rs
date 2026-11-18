@@ -72,6 +72,12 @@ impl World {
         env.hour_at(self.clock.time, self.day_shift)
     }
 
+    /// How many seconds of game time the level's day lasts (decision
+    /// 0092): the default day's with no Environment.
+    pub fn day_length(&self) -> f64 {
+        self.environment().unwrap_or_default().day_seconds()
+    }
+
     /// Sets the game's hour (game code's `World:setTimeOfDay`): the day
     /// carries on from there. Not a number changes nothing.
     pub fn set_time_of_day(&mut self, hour: f64) {

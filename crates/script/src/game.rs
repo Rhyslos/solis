@@ -101,6 +101,10 @@ pub enum Change {
     /// `addTag` (true) or `removeTag` (false): give the entity this tag,
     /// or take it away (stage 1, tags).
     Tag(EntityId, reflect::TagId, bool),
+    /// `startTimer` and its variants, or `stopTimer`: a component's timer
+    /// started or stopped (stage 1, timers). The game keeps its timers
+    /// itself, so these never reach the world.
+    Timer(crate::timers::TimerChange),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -189,6 +193,12 @@ pub struct WorldView {
     /// tag's members are (`hasTag`, `World:within`, `World:nearest`),
     /// made once a tick and shared by every core.
     pub tags: Arc<crate::TagView>,
+    /// How many seconds of game time a day lasts (the Environment's day
+    /// and night), for how long a timer at an hour has left.
+    pub day_length: f64,
+    /// The timers as the tick started (`timerRunning`, `timeLeft`): the
+    /// [`Game`] puts its own here, whatever the world gives.
+    pub timers: Arc<crate::Timers>,
 }
 
 impl WorldView {
@@ -303,6 +313,48 @@ impl ViewHost {
             let order = self.order();
             self.kept.changes.push((order, Change::Tag(which, tag, on)));
         }
+    }
+
+    /// The running component a timer call on `which` belongs to, or why
+    /// none does: a timer is a component's, on its own entity.
+    fn timer_owner(&self, which: EntityId) -> Result<Arc<str>, String> {
+        if self.at.entity == 0 || self.at.component.is_empty() {
+            return Err(
+                "a timer belongs to a component: start one in a component's code, not in \
+                        a game-wide object's or a tween's"
+                    .to_string(),
+            );
+        }
+        if which.0.raw() != self.at.entity {
+            return Err(
+                "a timer belongs to the component that starts it, so call it bare inside \
+                        the component (startTimer(Timer.DoorOpens, 2.0)), not on another entity"
+                    .to_string(),
+            );
+        }
+        Ok(Arc::clone(&self.at.component))
+    }
+
+    /// Keeps a timer started or stopped, landing at the end of the phase
+    /// in its place in the order.
+    fn timer_change(
+        &mut self,
+        which: EntityId,
+        name: &str,
+        plan: Option<crate::timers::Plan>,
+    ) -> Result<(), String> {
+        let component = self.timer_owner(which)?;
+        if self.kept.room() {
+            let order = self.order();
+            let change = crate::timers::TimerChange {
+                entity: which,
+                component,
+                name: name.into(),
+                plan,
+            };
+            self.kept.changes.push((order, Change::Timer(change)));
+        }
+        Ok(())
     }
 
     fn order(&mut self) -> Order {
@@ -494,6 +546,32 @@ impl Host for ViewHost {
 
     fn inside(&self, zone: EntityId) -> Vec<EntityId> {
         self.view.zones.get(&zone).cloned().unwrap_or_default()
+    }
+
+    fn start_timer(
+        &mut self,
+        which: EntityId,
+        name: &str,
+        timing: crate::timers::Timing,
+    ) -> Result<(), String> {
+        let plan = timing.plan()?;
+        self.timer_change(which, name, Some(plan))
+    }
+
+    fn stop_timer(&mut self, which: EntityId, name: &str) -> Result<(), String> {
+        self.timer_change(which, name, None)
+    }
+
+    fn timer_left(&self, which: EntityId, name: &str) -> Result<Option<f64>, String> {
+        let component = self.timer_owner(which)?;
+        let timers = &self.view.timers;
+        Ok(timers.running(which, &component, name).then(|| {
+            timers.left(
+                (which, &component, name),
+                self.view.time_of_day,
+                self.view.day_length,
+            )
+        }))
     }
 
     fn action(&self, name: &str) -> input::ActionState {
@@ -1025,6 +1103,13 @@ pub struct Game {
     /// Events sent to entities spawned in the tick they were sent in,
     /// whose components didn't exist yet: delivered first next tick.
     held: Vec<Event>,
+    /// The timers waiting (stage 1, timers), shared with each phase's
+    /// view; changed only between ticks.
+    timers: Arc<crate::Timers>,
+    /// Timers started and stopped this tick, in order, made as it ends.
+    timer_changes: Vec<crate::timers::TimerChange>,
+    /// Whether too many timers at once was said, since the code changed.
+    told_timers: bool,
 }
 
 impl std::fmt::Debug for Game {
@@ -1077,6 +1162,9 @@ impl Game {
             spawned: BTreeSet::new(),
             unclaimed: Vec::new(),
             held: Vec::new(),
+            timers: Arc::default(),
+            timer_changes: Vec::new(),
+            told_timers: false,
         })
     }
 
@@ -1165,8 +1253,13 @@ impl Game {
             self.unload();
             return Err(failure);
         }
+        // A new game: no timers from an earlier one.
+        self.timers = Arc::default();
+        self.timer_changes.clear();
         if let Some(kept) = first {
-            land(kept, world);
+            let timers = land(kept, world);
+            self.keep_timer_changes(timers);
+            let _ = self.make_timer_changes();
         }
         self.took(code);
         Ok(())
@@ -1226,11 +1319,14 @@ impl Game {
             return Err(failure);
         }
         if let Some(kept) = first {
-            land(kept, world);
+            let timers = land(kept, world);
+            self.keep_timer_changes(timers);
         }
         self.took(code);
         // The same notes however many shards there are.
         let mut merged = merged.unwrap_or_default();
+        merged.notes.extend(self.make_timer_changes());
+        merged.notes.extend(self.end_timers_gone_from(code));
         merged.notes.sort();
         Ok(merged)
     }
@@ -1242,6 +1338,7 @@ impl Game {
         self.code = code.schemas.iter().map(|s| s.name.clone()).collect();
         self.told = false;
         self.told_too_much = false;
+        self.told_timers = false;
         self.objects = !self.object_values().is_empty();
     }
 
@@ -1253,6 +1350,8 @@ impl Game {
         self.code.clear();
         self.schemas.clear();
         self.objects = false;
+        self.timers = Arc::default();
+        self.timer_changes.clear();
     }
 
     /// The code's components (Lust and Lua), as the editor shows them.
@@ -1304,9 +1403,14 @@ impl Game {
                 _ => sum,
             });
         // The objects once: every shard has the first's.
-        match self.first(Job::ObjectChecksum) {
+        let sum = match self.first(Job::ObjectChecksum) {
             Some(Done::Checksum(c)) if self.objects => components.wrapping_add(c),
             _ => components,
+        };
+        // The timers once one waits: a game with none sums as before.
+        match self.timers.checksum() {
+            Some(c) => sum.wrapping_add(c),
+            None => sum,
         }
     }
 
@@ -1393,7 +1497,9 @@ impl Game {
                 _ => failures.push(gone()),
             }
         }
-        land(kept, world);
+        let timers = land(kept, world);
+        self.keep_timer_changes(timers);
+        failures.extend(self.make_timer_changes().map(too_many_timers));
         failures.sort_by_key(|f| {
             f.entity
                 .and_then(|e| asked.get(&(e, f.component.clone())).copied())
@@ -1404,6 +1510,7 @@ impl Game {
 
     /// Stops every running component not in `wanted`.
     pub fn retain_only(&mut self, wanted: BTreeSet<(EntityId, String)>) {
+        self.end_timers_unless(|entity, name| wanted.contains(&(entity, name.to_string())));
         let wanted = Arc::new(wanted);
         self.count = None;
         let _ = self.all(|_| Job::RetainOnly(Arc::clone(&wanted)));
@@ -1414,6 +1521,16 @@ impl Game {
     pub fn retain_on(&mut self, entities: impl IntoIterator<Item = (EntityId, Vec<String>)>) {
         let mut shares: Vec<Vec<(EntityId, Vec<String>)>> =
             (0..self.shards.len()).map(|_| Vec::new()).collect();
+        let entities: Vec<(EntityId, Vec<String>)> = entities.into_iter().collect();
+        let listed: std::collections::HashMap<EntityId, &Vec<String>> = entities
+            .iter()
+            .map(|(entity, keep)| (*entity, keep))
+            .collect();
+        self.end_timers_unless(|entity, name| {
+            listed
+                .get(&entity)
+                .is_none_or(|keep| keep.iter().any(|n| n == name))
+        });
         for (entity, keep) in entities {
             shares[self.shard_of(entity)].push((entity, keep));
         }
@@ -1446,6 +1563,10 @@ impl Game {
             .collect();
         self.spawned.clear();
         self.unclaimed.clear();
+        // Game time moves on, and the timers due finish in the first
+        // round, after the engine's other events (stage 1, timers).
+        let start = world.view();
+        engine.extend(self.timers_due(&start));
         // The game-wide objects first, on the first shard, and then every
         // shard has their values, so every component reads the same
         // (decision 0080). What they send is delivered after the
@@ -1453,7 +1574,8 @@ impl Game {
         let mut object_failures = Vec::new();
         let objects = self.objects;
         if objects {
-            let view = world.view();
+            let mut view = start;
+            view.timers = Arc::clone(&self.timers);
             let answer = self.first(Job::Objects(dt, view));
             match self.gather(vec![answer], world) {
                 Ok(phase) => {
@@ -1478,14 +1600,14 @@ impl Game {
         let world = std::cell::RefCell::new(world);
         let (failures, broke) = in_rounds(
             || {
-                let view = world.borrow_mut().view();
+                let view = this.borrow().view_of(&mut **world.borrow_mut());
                 this.borrow_mut().phase(
                     |i| Job::Updates(dt, view.clone(), objects && i == 0),
                     &mut **world.borrow_mut(),
                 )
             },
             |events| {
-                let view = world.borrow_mut().view();
+                let view = this.borrow().view_of(&mut **world.borrow_mut());
                 let mut game = this.borrow_mut();
                 let mut shares = game.split(events);
                 rounds += 1;
@@ -1506,6 +1628,8 @@ impl Game {
             self.told = true;
         }
         object_failures.extend(failures);
+        // What the tick started and stopped, now no phase reads the timers.
+        object_failures.extend(self.make_timer_changes().map(too_many_timers));
         // Events for entities spawned this tick wait for the next one,
         // where their components will be (one tick only: an entity that
         // still has none doesn't take events).
@@ -1655,7 +1779,8 @@ impl Game {
         unclaimed.sort_by_key(|(number, _)| *number);
         self.unclaimed
             .extend(unclaimed.into_iter().map(|(_, event)| event));
-        land(kept, world);
+        let timers = land(kept, world);
+        self.keep_timer_changes(timers);
         match broke {
             Some(why) => Err(why),
             None => Ok(phase),
@@ -1664,17 +1789,34 @@ impl Game {
 }
 
 /// Puts what game code changed and said into `world`, in the tick's order.
-fn land(mut kept: Kept, world: &mut dyn GameWorld) {
+/// The timers' changes, in order, are given back for the game to keep:
+/// the world never sees them.
+fn land(mut kept: Kept, world: &mut dyn GameWorld) -> Vec<crate::timers::TimerChange> {
     kept.changes.sort_by(|a, b| a.0.cmp(&b.0));
     kept.said.sort_by(|a, b| a.0.cmp(&b.0));
-    let changes: Vec<Change> = kept.changes.into_iter().map(|(_, c)| c).collect();
+    let mut changes: Vec<Change> = kept.changes.into_iter().map(|(_, c)| c).collect();
+    let timers = timers::timer_changes(&mut changes);
     if !changes.is_empty() {
         world.apply(&changes);
     }
     for (_, words) in kept.said {
         world.say(&words);
     }
+    timers
 }
+
+/// The failure that says starts were left out past the most timers.
+fn too_many_timers(message: String) -> Failure {
+    Failure {
+        entity: None,
+        component: String::new(),
+        at: crate::ticking::plain(message),
+        stopped: false,
+    }
+}
+
+#[path = "game_timers.rs"]
+mod timers;
 
 #[cfg(test)]
 #[path = "game_tests.rs"]
@@ -1703,3 +1845,7 @@ mod maths_tests;
 #[cfg(test)]
 #[path = "game_tags_tests.rs"]
 mod tags_tests;
+
+#[cfg(test)]
+#[path = "game_timers_tests.rs"]
+mod timers_tests;

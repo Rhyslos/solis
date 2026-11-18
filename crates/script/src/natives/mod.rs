@@ -15,6 +15,7 @@ mod input;
 mod maps;
 mod settings;
 mod sound;
+mod timers;
 mod world;
 
 /// The scope the natives live in: they stop working when it ends.
@@ -35,5 +36,6 @@ pub(crate) fn lend<'s>(
     animators::lend(scope, natives, h)?;
     maps::lend(scope, natives, h)?;
     settings::lend(scope, natives, h)?;
+    timers::lend(scope, natives, h)?;
     input::lend(scope, natives, h)
 }

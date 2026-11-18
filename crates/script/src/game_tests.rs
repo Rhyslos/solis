@@ -25,6 +25,10 @@ pub(super) struct TestWorld {
     pub(super) tags: Arc<crate::TagView>,
     /// Tags given and taken away, as they landed.
     pub(super) tag_changes: Vec<Change>,
+    /// The game's speed (none: 1) and the day's hour (none: 8), as the
+    /// tick starts.
+    pub(super) speed: Option<f64>,
+    pub(super) hour: Option<f64>,
 }
 
 impl TestWorld {
@@ -84,15 +88,17 @@ impl GameWorld for TestWorld {
             bindings: Arc::default(),
             animator_states: Arc::default(),
             screens: Arc::default(),
-            game_speed: 1.0,
+            game_speed: self.speed.unwrap_or(1.0),
             settings: Default::default(),
-            time_of_day: 8.0,
+            time_of_day: self.hour.unwrap_or(8.0),
             maps: Arc::default(),
             map_places: Arc::default(),
             map_bounds: Arc::default(),
             view_size: Vec3::ZERO,
             zones: Arc::new(self.zones.clone()),
             tags: Arc::clone(&self.tags),
+            day_length: 24.0 * 60.0,
+            timers: Arc::default(),
         }
     }
 
@@ -1020,6 +1026,7 @@ fn zone_game(shards: usize) -> Vec<String> {
         to: id(to),
         name: name.into(),
         values: vec![Value::Entity(Some(id(about)))],
+        only: None,
     };
     let events = vec![
         event(1, "Entered", 2),

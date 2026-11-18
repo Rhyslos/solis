@@ -1,6 +1,6 @@
 # docs/design/tags
 
-The approved mock-up of tags and questions about the world (the game stages, stage 1's third milestone; [the plan](../../plans/game-stages.md#the-next-milestone-tags-and-questions-about-the-world)). The project lead approved it on 2026-11-18, answering also that:
+The approved mock-up of tags and questions about the world (the game stages, stage 1's third milestone; [the plan](../../plans/game-stages.md#tags-and-questions-about-the-world)). The project lead approved it on 2026-11-18, answering also that:
 - tags set on a prefab are on every copy, and a copy may add or take one away, shown with the usual changed dot and ↶ (a copy's own change wins);
 - in a 2D project, distance is measured across the ground, whatever the layers.
 

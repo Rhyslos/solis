@@ -556,6 +556,9 @@ impl GameWorld for PlayWorld<'_> {
             },
             zones: self.world.inside_zones(),
             tags: Arc::clone(&self.cache.tags),
+            day_length: self.world.day_length(),
+            // The game puts its own timers in (stage 1, timers).
+            timers: Arc::default(),
         }
     }
 
@@ -633,6 +636,8 @@ impl GameWorld for PlayWorld<'_> {
                     }
                 }
                 Change::Tag(which, tag, on) => drop(self.world.set_tag(which, tag, on)),
+                // The game keeps its own timers; none reach the world.
+                Change::Timer(_) => {}
                 Change::BusVolume(ref bus, share) => self
                     .sounds
                     .push(crate::game_sound::Request::BusVolume(bus.clone(), share)),

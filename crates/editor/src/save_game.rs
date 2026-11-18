@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 10
+//! solis save 11
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -38,6 +38,9 @@
 //! zones 44
 //! in ZONE WHO (who is inside each trigger zone)
 //! once ZONE (a zone that fires once and has)
+//! timers 112
+//! at NOW HOUR NEXT (game code's timers' clock; empty when none waits)
+//! once ENTITY COMPONENT NAME START DUE (each timer waiting)
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -55,9 +58,9 @@ use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 10";
+const HEADER: &str = "solis save 11";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 10;
+const SAVE_VERSION: u32 = 11;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -86,6 +89,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         reading::day_kept,
         reading::levels_not_areas,
         zones::zones_kept,
+        timers_kept,
     ],
 };
 
@@ -101,8 +105,8 @@ pub fn save_reads(text: &str) -> Result<(), String> {
     Save::read(text).map(drop)
 }
 
-/// The most sections a save has (it writes twelve).
-const MAX_SECTIONS: usize = 16;
+/// The most sections a save has (it writes sixteen).
+const MAX_SECTIONS: usize = 20;
 
 /// A save's sections as written (`name length`, then that much text),
 /// before they're read, with notes on what upgrading changed.
@@ -238,6 +242,8 @@ pub(crate) struct Save {
     /// Who is inside each trigger zone (zone, who), and the zones that
     /// fire once and have (stage 1, triggers).
     pub(crate) zones: zones::ZoneStates,
+    /// Game code's timers waiting (stage 1, timers; version 11).
+    pub(crate) timers: script::Timers,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -356,6 +362,7 @@ impl Save {
         };
         section("day", &day);
         section("zones", &zones::zones_text(&self.zones.0, &self.zones.1));
+        section("timers", &self.timers.write());
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -483,6 +490,11 @@ impl Workbench {
             speed: playing.world.speed(),
             day_shift: playing.world.day_shift(),
             zones: playing.world.zone_states(),
+            timers: playing
+                .game
+                .as_ref()
+                .map(|game| game.timers().clone())
+                .unwrap_or_default(),
             notes: Vec::new(),
         })
     }
@@ -524,6 +536,15 @@ mod loading;
 
 #[path = "save_zones.rs"]
 mod zones;
+
+/// Version 10 to 11: version 10 had no timers (stage 1), so none waits.
+fn timers_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "timers") {
+        return Err("it already has timers".into());
+    }
+    sections.list.push(("timers".into(), String::new()));
+    Ok(())
+}
 
 #[cfg(test)]
 #[path = "save_game_tests.rs"]

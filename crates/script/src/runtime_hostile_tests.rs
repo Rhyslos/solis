@@ -28,6 +28,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
         }
     });
     Compiled {
+        timers: Vec::new(),
         lust,
         lua: lua
             .iter()

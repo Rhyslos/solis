@@ -3,7 +3,10 @@
 -- another PC shows. 3D: a character, crates, a moving platform, drones
 -- spawned at random, a turret firing, a zone. 2D: a walker with an
 -- animator, a yard whose walls come and go, a freeform zone. Lua (wobble.lua)
--- and Rust (armour.rs, Solis's own Armour) do their share.
+-- and Rust (armour.rs, Solis's own Armour) do their share. Timers: the hive
+-- pulses every 0.75 s and rings a bell as the day passes 8:03, and each
+-- drone blinks a second after it starts, if it's still there (most are
+-- despawned first, which ends their timers).
 --
 -- Kept clear of the two known gaps (decision 0106): no tween has a done
 -- block, and nothing rolls Lust's own Random; every roll is World's,
@@ -11,7 +14,8 @@
 
 fetch "solis/world":World;
 fetch "solis/input":Input;
-fetch "solis/project":[Action, Prefab];
+fetch "solis/project":[Action, Prefab, Timer];
+fetch "solis/timers":TimerFinished;
 fetch "solis/tiles":Maps;
 fetch "solis/animation":Animators;
 fetch "solis/zones":[Entered, Exited, EnteredZone, LeftZone];
@@ -69,9 +73,17 @@ component Hive {
     has {
         float cooldown = 0;
         int made = 0;
+        bool started = false;
+        int pulses = 0;
+        int bells = 0;
     }
 
     method update(float dt) {
+        is not started? then {
+            startTimerEvery(Timer.Pulse, 0.75);
+            startTimerAtHour(Timer.Bell, 8.05);
+            started = true;
+        }
         cooldown = cooldown - dt;
         bool now = Input:pressed(Action.Interact);
         is cooldown <= 0? then {
@@ -84,6 +96,15 @@ component Hive {
             made = made + 1;
         }
     }
+
+    on TimerFinished(Timer which) {
+        is which == Timer.Pulse? then {
+            pulses = pulses + 1;
+        }
+        is which == Timer.Bell? then {
+            bells = bells + 1;
+        }
+    }
 }
 
 -- A drone lives a random while, pushed about, then goes.
@@ -92,12 +113,14 @@ component Drone {
         int age = 0;
         int life = 0;
         float heading = 0;
+        bool blinked = false;
     }
 
     method update(float dt) {
         is life == 0? then {
             life = World:randomInt(40, 160);
             heading = World:randomRange(0, 2 * Maths.pi);
+            startTimer(Timer.Blink, 1.0);
         }
         age = age + 1;
         is age % 30 == 0? then {
@@ -107,6 +130,11 @@ component Drone {
         is age >= life? then {
             despawn();
         }
+    }
+
+    on TimerFinished(Timer which) {
+        blinked = true;
+        push([0, 0, 1.5]);
     }
 }
 

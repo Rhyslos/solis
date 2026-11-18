@@ -20,6 +20,9 @@ pub enum SoundAt {
     On(EntityId),
 }
 
+/// Why a host with no running game keeps no timers.
+const NO_TIMERS: &str = "timers run only while the game plays";
+
 /// What game code can ask of the engine: the bodies of the native methods
 /// described in `solis/*.lst` ([`crate::describe::NATIVES`]). Entities
 /// that aren't in the game read as nothing, and changing them does
@@ -134,6 +137,33 @@ pub trait Host {
     fn nearest(&self, tag: &str, place: Vec3) -> Option<EntityId> {
         let _ = (tag, place);
         None
+    }
+    /// Starts the running component's timer called `name` (`DoorOpens`)
+    /// at the end of the tick (stage 1, timers; `startTimer` and its
+    /// variants). `which` must be the component's own entity: a timer
+    /// belongs to the component that starts it. The error says, in plain
+    /// words, why it can't be started.
+    fn start_timer(
+        &mut self,
+        which: EntityId,
+        name: &str,
+        timing: crate::timers::Timing,
+    ) -> Result<(), String> {
+        let _ = (which, name, timing);
+        Err(NO_TIMERS.to_string())
+    }
+    /// Stops the running component's timer called `name` at the end of
+    /// the tick (`stopTimer`); one not running changes nothing.
+    fn stop_timer(&mut self, which: EntityId, name: &str) -> Result<(), String> {
+        let _ = (which, name);
+        Err(NO_TIMERS.to_string())
+    }
+    /// The seconds of game time left on the running component's timer
+    /// called `name` as the tick started (`timeLeft`), or none when it
+    /// isn't running (`timerRunning` is whether there is a time).
+    fn timer_left(&self, which: EntityId, name: &str) -> Result<Option<f64>, String> {
+        let _ = (which, name);
+        Err(NO_TIMERS.to_string())
     }
     /// Saves the game in `slot` (or, with `load`, loads the game saved
     /// there), at the end of the tick (decision 0038).

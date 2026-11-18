@@ -1,604 +1,604 @@
 solis recording 4
-seed 842225874
+seed 378811984
 level yard.sollevel
-start 931068e0cceda423
-0 w 2021ddbcb91b065c MenuMove=hp,0,3f800000 Move=hp,0,3f800000 Pan=hp,0,3f800000
-1 w 04e3448a7bf2f8dd MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-2 w 9b16f42416577f81 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-3 w fee949214138ac7e MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-4 w 143ef79a907103e1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-5 w 393cdfab2deff126 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-6 w ed79c1e8236e59af MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-7 w dd02ea0d246abd7a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-8 w c55b9302ec086366 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-9 w 6f99fac7644b4a90 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-10 w 360025c529a83c2f MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-11 w 56d8c5b5db036fd4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-12 w a7473601992e6965 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-13 w ba14bd466c7cfc22 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-14 w 71e7dec94ad18d38 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-15 w 2a5bc2494d4793d4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-16 w 1ee3bb848bc9ee3d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-17 w 8dbd4a03ad51b913 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-18 w 266a404450976a21 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-19 w 6a40eed8dfb5d863 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-20 w a246428bbe00cd91 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-21 w 48c44b3a1aa27425 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-22 w 84d0e47d6f18ee53 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-23 w ac45ef36fa14d16d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-24 w 55557b3ecb86247a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-25 w a6f6d61304fcf506 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-26 w 7fe3903548970143 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-27 w 33a4bd039ee3fe68 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-28 w b30b86d6d8c04241 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-29 w fbb134e4d05b5429 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-30 w e04b693c0ed6c603 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-31 w 90e533dda9db885d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-32 w 77d86719e527d2a3 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-33 w 0b6c8e224187f360 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-34 w 034e9623b79739b3 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-35 w 29d014d709a0eabf MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-36 w 5e9d29fbe1c1745e MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-37 w 9154127abb2dad2d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-38 w eb74b61d742fbb75 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-39 w df4c35c46b5a37ab MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-40 w 5e1abf99954e1b30 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-41 w 3a05ddc3d4a24682 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-42 w a443992d18975b9f MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-43 w 25bafa7ecbf67901 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-44 w e2aee45e3a9c743a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-45 w 98b0e4354e4c3818 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-46 w 5e98698da2f128dd MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-47 w 397a4ef2ea4a8677 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-48 w e3ea46a93a74a349 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-49 w 655109d36299828b MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-50 w a5c177f61d97cb8c MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-51 w ae2d25122c72cde1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-52 w 28facb753cfdcd20 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-53 w 571ca43f08953846 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-54 w 628b7b215d6130a4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-55 w 8fc63db080e205e2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-56 w 57c50daf9839d9ea MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-57 w 202fa68f9a520893 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-58 w d36aa86fcc36b14c MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-59 w fe9e60933c12f903 g 57253bea097b17a3 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-60 w 42fc3dab2fc88581 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-61 w 78127043b42b5301 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-62 w 32a1106fefb806d4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-63 w 1e43d016290076f5 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-64 w 0bd9fcca9a1a6f69 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-65 w de976e72982be2dc MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-66 w 26aa22d3e0808da0 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-67 w c44f1de3bc9e4a34 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-68 w fbbc8fab7adcb4ed MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-69 w fc4da651702c909e MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-70 w ea8a19ac247382f2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-71 w 5b77f6a03d0def7f MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-72 w de5c04046e810229 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-73 w d1d7ee6ce476d6b6 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-74 w adc4056d2fb3acf0 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-75 w 7f14f809c9435dfc MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-76 w b75bb917d88c1c3f MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-77 w c9752cbc0c20eec1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-78 w c1b7bea4dd64553d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-79 w 2e4fc6eb38a6b246 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-80 w 9306b8b2c88da1eb MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-81 w ce20ce7b8d625ef1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-82 w d4b2efdf96600a45 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-83 w 7774b5ddee7787a7 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-84 w 32d6f6f3c08cadcd MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-85 w ccb1cc613fa2af76 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-86 w 68940bfa15c67d2e MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-87 w fa6f473201497bb6 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-88 w d6996e2b1e3a77e5 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-89 w 51db1bc0a557c9b2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-90 w 4cce505e09f83b59 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-91 w d2a68b98fee490b4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-92 w ed614d31d2b747ad MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-93 w b8bdb7946d54fffa MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-94 w bc420a7b52610be5 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-95 w a913dc6821c22ddc MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-96 w 8b167f26b56f99d0 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-97 w 86e8b3292cb46e24 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-98 w 47bcdb66d041a7e1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-99 w e1d67a44effe57f7 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-100 w 1273fbbb6471ea1e Jump=hp MenuChoose=hp MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-101 w d055147b84956adb Jump=h MenuChoose=h MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-102 w 2988e19520b0eb51 Jump=h MenuChoose=h MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-103 w 43e42f545b191f28 Jump=h MenuChoose=h MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-104 w 2a42bc2f9a12fb6a Jump=r MenuChoose=r MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-105 w df5a501f86409a21 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-106 w b5b8ba88d6ab9a68 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-107 w e4647be14811d847 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-108 w 33f18fe0dfb612e2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-109 w cb353040d3e34c11 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-110 w 8aefa9b2575cd5ae MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-111 w 11087ea599d37294 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-112 w f3afeec7561fabb8 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-113 w 0d3012554769ec50 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-114 w cbd8a915c87a9669 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-115 w 128c6fc1167506c1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-116 w 5610d19af61173db MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-117 w be8b7e3037512f21 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-118 w 55211f13120ac408 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-119 w aaefe5d3f8e4a5ae g 0fe8ce9ec2151e89 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
-120 w f9274946a0bee2eb MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-121 w 5115c411576ecb91 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-122 w 3f52e9f32822f675 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-123 w e7f7d8c2a55c844b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-124 w 8e65f29fefb42260 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-125 w 0e6e2211cb78c7da MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-126 w ab4ec4c49852d279 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-127 w 9eb5b3c0a3560bb3 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-128 w a7a296d00ceb34e0 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-129 w 951abb3ecfb41273 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-130 w 56d924acadb451d0 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-131 w 0a616062faa9d2f3 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-132 w e4c0ec7c2d05f500 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-133 w f6cfb4bc8389e203 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-134 w 3dc67bbcfcbe957a MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-135 w 669c0c7b7bff152f MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-136 w 5893d85f3e26dc0b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-137 w 52635b74be6b7e5a MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-138 w 773af2a79700b7fa MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-139 w 9c93321d68fb8a62 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-140 w c7811396eb63aa41 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-141 w c9933e511783b64f MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-142 w 3aaf23dd5d035d1b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-143 w 3a87a562cd5d06c4 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-144 w 03451c4c1f857d27 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-145 w e2e3868cfdf999a7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-146 w 09d317c85ee712aa MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-147 w 62bf5ff7305078ad MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-148 w 0e6c1d3963cd125d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-149 w 26192e4a3c4a591f MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-150 w 8d87d9f66e355446 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-151 w 821849b88ab67fb4 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-152 w 2afdc85c5594f8bc MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-153 w 4b3ef03fbb690428 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-154 w 0d095301c05f893f MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-155 w d2e3227f0f6654cf MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-156 w e7facabecfd18ba2 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-157 w 5a19e50124d64f1a MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-158 w 75d0c0675ab1d1e8 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-159 w 7e034d6ef7810dca MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-160 w b4dc33fa276c76df MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-161 w 02f6b3bc29298137 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-162 w 0f5a578b89350a35 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-163 w aff2fc39c6024f06 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-164 w 6ab4929d04d019c3 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-165 w bb1c3dced596291b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-166 w c342e958431db423 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-167 w 411c8a514277a348 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-168 w 42da0030990f7b5e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-169 w 24f97cf4896b17b2 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-170 w c35ece4b37cba60d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-171 w 4f68a3587659cfa2 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-172 w d219e0a92f71a2ef MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-173 w a85066f97d60adc7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-174 w 2a30620f18451516 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-175 w 8267f2c0658ffc1f MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-176 w d85c67fdb1a6cc6c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-177 w fdc4709891cc7f21 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-178 w 8c0b7ad49e138ad8 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-179 w ee2f28acb2f6c736 g c2b6af9bf231d0e4 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-180 w bdd42656b9845d2f MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-181 w fb7c1d8897ffe857 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-182 w fcb2394e3d3f17d4 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-183 w 5d75ca8e0bb466c4 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-184 w 30b06b23f305da12 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-185 w 6b5c5a1ebdbb86be MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-186 w 6c16c16190a00928 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-187 w 8f829907f6af36b9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-188 w ad4979deca64e53a MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-189 w e701ba8480b9690d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-190 w 6e64fba4158c0f71 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-191 w 270bdfa29a0f2842 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-192 w a90139883d69b717 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-193 w aa0bce4f3494ec14 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-194 w 67d4f2d74556eebe MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-195 w 355968992fac997b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-196 w 29421209354e24af MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-197 w cfe73d1e6d00cf25 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-198 w 3d01b117c5cce148 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-199 w 053961e0f7e16679 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-200 w 4d3bc91f36d2f437 Interact=hp MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-201 w b2e86fb7f75b877a Interact=h MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-202 w d2dc2ba5a5a5d870 Interact=h MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-203 w ac0acec4f7bf2e8b Interact=r MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-204 w ad6aa427969cd8fb MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-205 w 84d7e2b3df237b3a MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-206 w 73b33c5cb1d0f0d7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-207 w f7400344ff84c52c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-208 w 32b3af79f6463b3c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-209 w 6d0160b09051bdd2 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-210 w ed25b922f93368a8 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-211 w 49a9e9371df13bcc MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-212 w d5175a021581d4d7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-213 w 3ed3c0f8c7e9ea42 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-214 w 3821d32de81906a2 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-215 w 7d52154311a7a9a5 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-216 w c2ba46adf17d4605 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-217 w 9732e756ddc265b6 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-218 w b25c5f6b434bf552 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-219 w 2a56385eb006aa32 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-220 w 714dde269c2c686e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-221 w afa52ebc1e7f0347 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-222 w 1022aac0f86110e7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-223 w 4a4cbfb85890482b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-224 w 771adaf5f3447ad8 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-225 w 14cc6ce4132d642e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-226 w ad249855ad8213d7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-227 w 69fa6f14288c390e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-228 w 3df8d6f6fc7c8901 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-229 w c63da612c5836261 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-230 w 74958361a7f10a01 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-231 w c65fb164d840cb7b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-232 w 9788045020ddcb96 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-233 w 5aa2108989a2da96 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-234 w b00ca26d91bcd52e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-235 w 38b09e4690311cbc MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-236 w 70a28a35b534ead0 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-237 w 8b770d0d68e86134 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-238 w a1cb3c2c149d9ae9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-239 w b1c94d0392ff911b g 4b22181055ce1b46 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
-240 w 2bf8c7221e96471a MenuMove=r Move=r Pan=r
-241 w cb1c3967bd1c4c49
-242 w f04d5a2a6a2ab5db
-243 w 94eafc54f61a3c91
-244 w 23483a488ae17cc9
-245 w ad9c99ef41495c50
-246 w be3c4d56ca34ec6c
-247 w bfa783e629707174
-248 w 50a3af433d4b5ecc
-249 w 64a214c7c7d4ea73
-250 w 2e1fdb696ffb8015
-251 w 54376c24782dc39b
-252 w 7829ce7885b9294f
-253 w b5a203ba18534424
-254 w ed8e4a9ee96db3cb
-255 w aef59e23b79aff2d
-256 w cb549f6f6b33b17a
-257 w a8ecdf5b0f863208
-258 w c8d686cd1c3d5b1a
-259 w a44a546c89053a43
-260 w 155548ec0e26af68
-261 w fa9cdd686b89328a
-262 w c677dcee683fd15d
-263 w 587ee227bd57abfd
-264 w 65af952ce03c3f28
-265 w f4e43d65da7de143
-266 w ed225163cdcb38ae
-267 w c684fdd3b247d359
-268 w 8614746e92acece0
-269 w e2b521f5868ce05f
-270 w b6a03a14cb722247
-271 w df1b5b2da8d361c5
-272 w 0a8e426f895fc560
-273 w ad0a37d8736ae2ca
-274 w 2686c7a1bbe42a25
-275 w 3535458be156e00e
-276 w 7cfbc011bc382c67
-277 w 6f6aea0a0e3b494b
-278 w a43c51f89aead3d9
-279 w 37c8f660b6acf17e
-280 w f0040130c8eba786
-281 w 432f2338cebcfe03
-282 w fa6a8fe3049428af
-283 w 44a3ce55e1ba9e51
-284 w 766fa8f2a5a9f964
-285 w 5b77e9e053c67e10
-286 w 4a7ac6cb78244e04
-287 w 9b91076e5057e2a1
-288 w c9150089d9a6047f
-289 w ec6740eddfe6e28b
-290 w eb19ccfa94f059fa
-291 w 58382c3a6a0cab64
-292 w 5cebfc3ab804e70d
-293 w 3d29e59178512c17
-294 w 76562a7ca726d760
-295 w 2705bf64377abcb2
-296 w 711051732867d3b1
-297 w 613f7c399d59b43f
-298 w c0d55ac78b8189a9
-299 w 167eccf6986cc2ea g 579074149627d574
-300 w ee68eb8d48720e61 MenuMove=hp,bf32e102,bf32e102 Move=hp,bf32e102,bf32e102 Pan=hp,bf32e102,bf32e102
-301 w 20106d8252054bd1 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-302 w 13554c484b836eb3 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-303 w eb6d7c0ff5910c4a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-304 w 68f0fc772177d504 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-305 w 5ff4a5e63ef0828e MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-306 w 853dd294df013338 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-307 w f30aaecaabdea913 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-308 w 9da57fa80f55aad1 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-309 w 295374938eb75082 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-310 w afdffbce57e7c9dd MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-311 w e234f3e3527b4454 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-312 w 0e38709e18f4392d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-313 w a3b3c59519934e3a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-314 w c013fcd15f76579c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-315 w d50f02ee7dddfc4a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-316 w 7d98f6d9969ea095 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-317 w fc569048c1f41800 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-318 w 6fd5dbaa84e26366 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-319 w 08c0b3ac1d288b92 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-320 w 496c1012cf05998d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-321 w 0b81f7895f424784 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-322 w cfee524d637c8168 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-323 w 9f128e415817e65a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-324 w 6ac3d45fa95b57e5 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-325 w c429e726644faa6d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-326 w cbfa72f0186e7387 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-327 w 682d759f1f851c69 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-328 w 9dc88d79930cabdd MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-329 w e2f073132b91346c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-330 w c2abeab743fad872 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-331 w cab195449b4255a5 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-332 w e249148c31d3a854 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-333 w 4a270310af5599d7 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-334 w ec559934c2b6c31b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-335 w 611d8a88a55da609 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-336 w 4e35ef7e53f46705 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-337 w d6e33686c2990c53 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-338 w 9ffc5d136294e951 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-339 w a990457544205101 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-340 w 70a2f340a69e8d11 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-341 w 0be7c9e41cfe385a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-342 w d194ae5777fcb1e8 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-343 w c490577a6a281b1f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-344 w 641812044f249895 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-345 w 7618110e83bdfc6b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-346 w ebe6fe04be9a0363 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-347 w 61d07aea520a3f02 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-348 w 587d5fe352ded87b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-349 w d5b0c4df37bcf073 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-350 w bbfb5545f001f1e4 Jump=hp MenuChoose=hp MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-351 w d844cf1e000e3d1c Jump=h MenuChoose=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-352 w b95ee474c664ffe7 Jump=h MenuChoose=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-353 w 53597663f3285a00 Jump=h MenuChoose=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-354 w 1ca3540a8fe4cd04 Jump=r MenuChoose=r MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-355 w 25911d64d1e25e2f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-356 w 8dae1ee66e81af7e MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-357 w f088d100b832fa16 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-358 w e5e41470d39a57e2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-359 w 180de602786dc7e0 g 1c2bca47ccf3f657 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-360 w 958ef9cb97772168 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-361 w 87fd9c1e3d0c0e40 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-362 w fa861b19fe710d1c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-363 w 9344c8f469cf83e2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-364 w 2d8caa98219b1161 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-365 w 2416407506e01355 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-366 w f4e6b52545cbaa0b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-367 w 49517675ad628eea MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-368 w 78746b268ab860bf MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-369 w ac266e26f4785a30 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-370 w 37169eb10cf8a778 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-371 w b4db573498e70fdc MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-372 w 66c39b49b517845c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-373 w 4bb9886eb9d20e33 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-374 w 669c53e9ffb7c10c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-375 w 0306fa0bff30c484 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-376 w 2f81d79253312c18 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-377 w 2d9056fd92bb3435 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-378 w ba62fb0295b40ce9 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-379 w 4465a88290b4cb29 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-380 w de88400ebfb2b148 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-381 w 6837cb51c77b592b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-382 w 05b897615c8fa06d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-383 w 302bb22a516e8e61 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-384 w cde64e69a1213e09 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-385 w 620f0e8545105154 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-386 w a24bb0ee4919851b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-387 w 68f09ddbd4397c5a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-388 w 0fd8ad59730ddd44 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-389 w 0906601f5a01bb10 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-390 w 5e0ac5d0e2ff6f32 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-391 w 3e5a32df49b23bba MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-392 w 0932d9a09828e576 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-393 w 32c82890e28f6ca1 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-394 w ff025c7c7723a694 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-395 w 2a22008fb2e50be0 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-396 w af21ce08062357f2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-397 w 2e3f71fea6f0dd6d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-398 w c54dc4215d051271 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-399 w f8b54c94236e8b24 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-400 w d0477e12699a8010 Interact=hp MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-401 w 7df5e4827585a413 Interact=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-402 w fa64b6bb00e2ea2a Interact=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-403 w a2a78a29b7a6255c Interact=r MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-404 w 6516d33f020fd683 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-405 w b67f13aa40d87316 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-406 w 7d9da7aaafb48e98 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-407 w e344ece8233d1e0d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-408 w 4283fd186f8dcb21 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-409 w e7c3505c987e173e MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-410 w 24fc8d74ef420581 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-411 w 3f49dbf596c5b210 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-412 w a2d3019858c4c71c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-413 w 85c38fba96730c0f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-414 w d47936e22cf4c0cc MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-415 w ff17ed585bd39aa1 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-416 w 6603e022838968eb MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-417 w 8eac615e790b757f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-418 w f1a56df4bf9533af MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-419 w 9f899ff78080b447 g d5987b21a445aa29 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
-420 w 5a13a345d0e3f9d1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-421 w 18aa76ea043912d1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-422 w 95c248f8d6c34a49 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-423 w 0d94858afb17e39f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-424 w cb376ab156b2e762 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-425 w 341152a209e2f1a3 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-426 w fa8f935f48c80594 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-427 w e064ae4bb51c7222 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-428 w 6e97569ae8df14ae MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-429 w 239017cb2ebdc3a0 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-430 w 8b632806836667e9 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-431 w 8792d4911350a730 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-432 w 2d1b8345c40abb69 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-433 w f1e8212219ff873d MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-434 w 52439ea4ce85b527 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-435 w 69f55d02ab0b4a1a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-436 w dfeb171008ce1164 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-437 w 43a7c8bcbcdf914a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-438 w 405cd6f456c35066 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-439 w 1756dd3577eed9d6 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-440 w 650958e9faf8ac0b MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-441 w b905a5d2fc31849d MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-442 w 20ebdd30f3905ff4 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-443 w 5111487de59b9be4 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-444 w fc95091b4a7aa36c MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-445 w ec44c5fc07f2ccda MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-446 w de5568ebeda5a63f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-447 w a5b1fc3931b9b86f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-448 w 67b1409c4474a2e1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-449 w a75964090726a101 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-450 w 75c3333fea9a26d4 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-451 w 1d477b240f49f728 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-452 w 72685619ac28e012 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-453 w b675331f69ef9dbb MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-454 w 29e11c93c24f1ed1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-455 w 72b0154c038eb81e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-456 w bca69edd8615b54e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-457 w 9009560034970b49 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-458 w 0310e7ab67072afd MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-459 w 15c5f7c8760029fd MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-460 w edadbd69ef8718b7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-461 w 16831f62090776da MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-462 w 8aa0c939abf3afde MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-463 w ee9862efbfb61f07 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-464 w 043736dcda5fa0ae MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-465 w 1e783c26cbbbbfbd MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-466 w 21a93dae0b8a837b MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-467 w 123dd4a48d4e8a66 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-468 w a68f1db56ab86dd9 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-469 w 3165dc74558dd68e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-470 w 97a76b0af4095e2b MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-471 w 5b9cb76b11a77a58 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-472 w 6abe38bf1333dea5 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-473 w 928f887e43ede616 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-474 w 46bb81c832df0367 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-475 w 58e27743a5efd64b MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-476 w 2e3b322f1fcf35c7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-477 w 00f893956328f929 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-478 w 594edabdde55b95e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-479 w 859d66b6f124278c g 7f516e0a0deb4aba MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-480 w 9f08031875ca5029 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-481 w f60ff2a617729794 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-482 w 920314ac76209b6d MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-483 w 95e3710c3c5d8d9a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-484 w 405e29b816eeea0b MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-485 w 7e8b2e764a49b2b2 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-486 w 3c028cc35f994497 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-487 w 785e95425dbda235 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-488 w d7ff218e85f07d9e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-489 w 56fb1e9137ca2034 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-490 w 3d12c458b08dba65 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-491 w 8983d68b318e5092 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-492 w a85f398dcc8e9042 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-493 w f01b388a5d8b8d53 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-494 w 793cc4670a07578e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-495 w 7f550ea5ef5d7c42 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-496 w 11f9735dce64d1e5 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-497 w 5506a2efe7eb0fbb MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-498 w 25c3bf4d420aa829 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-499 w 08a698b3a6065bd2 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-500 w f36319c85de0d602 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-501 w 07c54b9423ea0dd1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-502 w 634cfb96402a1a53 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-503 w 55b90e4d9c5785f7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-504 w 6ed0796c9de6fe42 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-505 w 5aec62f1ac248060 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-506 w 3701bb89e316c6ff MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-507 w ee7eddb90a695475 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-508 w 7f185883016386bd MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-509 w 0b1347186d458ba4 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-510 w 040c3ef17b5df24d MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-511 w 260194bb2f6c077b MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-512 w 8e4748ece2ec27ee MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-513 w 497951acbf0aa6b2 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-514 w 7a89eb3a068fef44 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-515 w 1593afb2058b2b49 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-516 w 7d64e9661b1ba2f3 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-517 w 023928d4c71c8ac3 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-518 w 2ddbcbc01c0f88cd MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-519 w e0d627ad0383b071 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
-520 w 3514e0e80d3fcbce MenuMove=r Move=r Pan=r
-521 w 84296c4e553eb83c
-522 w 5b08700a93c202cc
-523 w a61d3b13ea968f8c
-524 w f0ab8c196c28986b
-525 w 18d7a6773540b533
-526 w d7fe68ce57ba6522
-527 w 5fc4d017c593b9db
-528 w 707867ae43c9c9e5
-529 w fcccdcc6216f76dd
-530 w 5cfe9e3866a32fb4
-531 w 5d9c064508b8ef77
-532 w 6bc573ef25383708
-533 w f16b9889cba4d976
-534 w 9e50f816f15c478a
-535 w a5a3257c3612da6c
-536 w d5f0a3f071222d66
-537 w 0e231951e1d8c077
-538 w 79244305ea0d749f
-539 w 7982726ffb31761c g d93ab5d2cca92ae6
-540 w 16c4b17870c5296e
-541 w 0b8e39584ca223b2
-542 w 7b9804746495859b
-543 w 7567095f6a1b5971
-544 w d5a8710492e72f34
-545 w 67dd0972da54bb24
-546 w a0e9da5f55a1633b
-547 w 30677b934e96bf99
-548 w a51a2ce4bc040ec2
-549 w b2b360ee7f651379
-550 w cf997303b3cba41e
-551 w 2e7dadb187a798f6
-552 w 7ab6ecb17d386b12
-553 w 906745404ed4b0c5
-554 w 09aa0ad2ddad4eb7
-555 w 131ae4c9d3c321e5
-556 w 57f90aa98f4c6ba5
-557 w 40478e6e0b2da11e
-558 w b2fbb1b5bacbc086
-559 w 73a9e6b70ac74344
-560 w 8b23661dfcc274f3
-561 w 416a5f767493c6b9
-562 w e8ffbae06b5a5871
-563 w 0e044de80b290d4d
-564 w 4d457d4bcef6f88e
-565 w c979828280e13e6a
-566 w b023694d8c294c19
-567 w 63de14547045ef6d
-568 w 63f7bfd7d04171a8
-569 w 67890e507d0151e6
-570 w d8df5f72a9194657
-571 w e176c91b9f8679a0
-572 w 7fccd9cb0a87abe0
-573 w b2dcc450cd230f9b
-574 w 451fbd449d9390db
-575 w 7e2203c703974649
-576 w 5cd4ea91a3260b24
-577 w 478957b407ddaeaf
-578 w 8d3808e1b1a93470
-579 w 1129c2a246bdd56f
-580 w 38389881284af74f
-581 w a12625899b671899
-582 w af4f669003e4dbe5
-583 w fb48dabdef9f43f9
-584 w e549da7ef8d827e6
-585 w 8bcfd8893f8ae228
-586 w 44e5e6568f09f1cd
-587 w 7b853446ada8e939
-588 w 79809cd91a91517b
-589 w ed4d13361cb739c7
-590 w f8314d48b287820b
-591 w 400474d747da87bc
-592 w 8ca451226936cf76
-593 w 21bfd73cd1ec69ab
-594 w ed1bd9daa504ea5f
-595 w 2db042dae6483929
-596 w c1d406d6f0649376
-597 w 195c6c68a86d7c6b
-598 w 3a13e86ded87cdfd
-599 w bb67913070fbc22e g a3b63d65e5dd73e1
+start 79168e2909f32ebd
+0 w 3953e320d61a8a34 MenuMove=hp,0,3f800000 Move=hp,0,3f800000 Pan=hp,0,3f800000
+1 w 8ebbd8a7b80a7e43 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+2 w e1745c2261aab69a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+3 w 81db2626715c5adc MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+4 w 03a13a89621ca2e5 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+5 w cc9268275d5c499c MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+6 w 3d9970f24c9b6b07 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+7 w 33a00125fbe62dc0 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+8 w 4e7c71694bb2102c MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+9 w f5ad8f5e27e14af8 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+10 w 577fb7a73d19feb6 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+11 w b5b178fd206fa4a0 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+12 w 3d636d5a98c1792f MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+13 w ad56480031770de9 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+14 w 6b5767c9ddf8f22a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+15 w 874820904ad10a4d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+16 w 9f655ef3dcb445b8 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+17 w 8560bd9fa56d09c6 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+18 w 49090bfe7a9240da MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+19 w e7fa2439119450a7 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+20 w 3c21cff4adf1877b MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+21 w 94d0ffea5b3dedfa MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+22 w d116be200d02a2ad MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+23 w 6f59b85223c90d53 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+24 w b44fe37f77c259ed MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+25 w 000dbe27332abb5b MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+26 w 95b29e7d66611eb1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+27 w 14539239d0995868 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+28 w 02047270ec81f066 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+29 w 6437885d89b2d0c1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+30 w 9589fccefa7b0d4d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+31 w 3adb00fca0b1e1a2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+32 w 0f8ed28917100817 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+33 w 98dae0db0a81d421 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+34 w 05e695f514773ce0 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+35 w 47b7680b0379f6b5 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+36 w 53374cdd0bb77bd7 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+37 w a2f01855734e4269 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+38 w 317b864e2e0e7063 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+39 w 263ff5c99249c4c5 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+40 w 14e3d4f5094298c1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+41 w 1598cdb22bb1a18f MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+42 w e23981ad34163555 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+43 w 42eba534d6af0115 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+44 w cacea32f22e73374 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+45 w 9c97ce3168069026 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+46 w d41e9f72cab2633d MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+47 w 4446fbba9191b1b3 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+48 w 4242af5f391345b8 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+49 w 947fc27d3e6013bb MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+50 w bd53ba775f27d52b MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+51 w 2d953bfe413e9d5c MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+52 w 9721dd3be2feccf7 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+53 w c496fd397110c345 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+54 w 6ad89a3218a536db MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+55 w ec8060d025e6c544 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+56 w d3dae419d3e372e2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+57 w 4db8a3f2e230df71 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+58 w 3cd3b989c30354b6 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+59 w 66874c765ae927a7 g 36e589524d464bb8 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+60 w 9f667642240791ad MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+61 w e543e01346452670 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+62 w 525925947ad08567 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+63 w 578b5e6570289be7 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+64 w b3fecb6135e9ce74 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+65 w 80c53e5a9ef66564 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+66 w 7318e7d868e0f3e6 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+67 w df54fdd61df3377b MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+68 w 3033c44a73b8c3d2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+69 w 1d47d18bc07bcc50 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+70 w 20dc542813a00fe0 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+71 w 6711c69c27dbf255 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+72 w c8ceadc985829972 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+73 w 91bf44440bd9f60a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+74 w 601b640b781e3654 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+75 w 2e4e61baffc3842a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+76 w e30459aa0e01b0b4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+77 w 926408c3f7ccd079 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+78 w 80096b3319255398 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+79 w 9c12b662132bc18c MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+80 w 879a4eb57606d2ae MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+81 w 0bbfdd658c7e4bb2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+82 w 1470a39e62dfdfd3 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+83 w 0ed1900e197dec79 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+84 w 7872b6189903f3af MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+85 w 026d1ff38df5526b MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+86 w 859052580230e785 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+87 w c51982eac025d2a7 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+88 w 7131293c83fe0ff4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+89 w bced96111ab2c458 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+90 w 9c178e91d6614728 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+91 w ac5bc873ecbc6702 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+92 w 99d5b521b93362e8 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+93 w 61a1efd003083540 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+94 w a549ed9d88461bbc MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+95 w b480e26d67d98023 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+96 w 5b0ede9f8e8651b2 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+97 w d8b0e28dae5ddda9 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+98 w c177318632ac0795 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+99 w 34495e1b68ebc47a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+100 w adaca3b47647c37a Jump=hp MenuChoose=hp MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+101 w 0888923c4744a932 Jump=h MenuChoose=h MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+102 w 092f0d6236bbc642 Jump=h MenuChoose=h MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+103 w b459390944adbec8 Jump=h MenuChoose=h MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+104 w da237923c82866dc Jump=r MenuChoose=r MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+105 w 412ca1b5e17ed5e1 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+106 w b359187320f4a244 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+107 w ca8119131a5c7a79 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+108 w 2acad0e6ee47fd81 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+109 w 530749de906fac6b MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+110 w 6219bb1f36b7643a MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+111 w b5beed60d8902bb6 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+112 w a08b11b5f3f99b0c MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+113 w d840adba2a0ef7b8 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+114 w f59e398622c18353 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+115 w 97499590ad166960 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+116 w 6338aaf95f7e27ea MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+117 w e3ec88d5acbe73f4 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+118 w 822996d738c2af61 MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+119 w fa9bda51598e82ad g 864102e6cb59abdb MenuMove=h,0,3f800000 Move=h,0,3f800000 Pan=h,0,3f800000
+120 w 27f37281a7ce658b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+121 w 022fc3787c2bfed9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+122 w 8f3509920cb3d1d4 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+123 w 260016aefb46f27d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+124 w 4070ce5c40906ef7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+125 w 8622b6fd2d99e913 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+126 w af51440505a12e3e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+127 w fb69e8d8dc686248 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+128 w 4f68a9974aff3267 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+129 w e6ee8e2b83f4cdb2 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+130 w c56bf7ce14c17272 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+131 w 20c907dbbc612a9b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+132 w e944834b638c96ea MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+133 w d8d4d0420ba03a47 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+134 w a8e1869cec6efeee MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+135 w 993ecd36371df822 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+136 w ceae002a1ebdd4cf MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+137 w 9a8e1b046b425e27 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+138 w ac78d841bff381b9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+139 w d23c88300fb36a66 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+140 w 9181dab122518c5d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+141 w b773635c590bcfa0 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+142 w 75936010a98c9589 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+143 w 2d2339d5d046bfde MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+144 w 27cc0ce243d467f4 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+145 w 7eb0351719260861 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+146 w 185cee68a908d73c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+147 w bd2c6784b9b2f7a6 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+148 w 2f5a44b7244c8de1 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+149 w d0dd078fb12a2f86 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+150 w e69fecacc80fec6c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+151 w 0be4a335bc85639c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+152 w 9293d802b13c65e9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+153 w cae8e95af50018bb MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+154 w 25b0511bd782cf52 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+155 w 77a37085823e48bd MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+156 w b6e8453a3fb3eede MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+157 w fcc1f0462278a589 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+158 w 47ff4bdcca5cdf1a MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+159 w dc98bb4000dbe4fa MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+160 w e30559a272a94bd8 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+161 w 8836034c46052f71 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+162 w 6da2e185defcbd35 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+163 w 5d6318c930e93b91 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+164 w 093759a6daa56893 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+165 w 1669e015ca830a60 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+166 w 39fd4d7009aeac69 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+167 w f26578f290e7cf36 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+168 w 73b966ba921b3843 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+169 w eb65568f2db55507 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+170 w 1d6043ee899ca4d9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+171 w a203236d1e256ff7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+172 w 8033014c0b4ae1b8 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+173 w 5269b705b3dbf9ea MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+174 w 4b0c86bc5a1db53d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+175 w 17d3e30b713912c6 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+176 w 83b38c0b2ac3d5dd MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+177 w b6c1cdddf63d4dfc MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+178 w bbdff2fdd0034f23 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+179 w f97ce9cdf545d484 g 02f1340056f938e5 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+180 w 8c0a2f8ac6cec158 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+181 w 03aedff3f2036711 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+182 w a6da16965627b3e7 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+183 w 93872ffea12b98a0 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+184 w 98f15cf3df77541d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+185 w 00b9f0d3a5f42d96 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+186 w 63469a74ca9782cc MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+187 w 13dbacd5d5955355 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+188 w 96761776e9fd14a1 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+189 w ce037f6d1bf45a4a MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+190 w 96dcfeac02dc18b0 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+191 w c9e07281aa2c2342 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+192 w 9a60461d507aac2d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+193 w ca813c24c2b9c09e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+194 w 3363e07493b9daab MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+195 w dfec5d8245271206 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+196 w 8266b358c27f4b50 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+197 w fb9e74de413d61f6 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+198 w 3ae2028031c81f36 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+199 w 397e95c75cd41f83 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+200 w af73163bdaf2a7c0 Interact=hp MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+201 w d9c1bc2bb31de9a9 Interact=h MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+202 w f3abf83783b55d8e Interact=h MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+203 w 9287289fac6a4583 Interact=r MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+204 w 89864e184b625a2d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+205 w 882636fe0815c5e9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+206 w bc0a5c2b94915f4b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+207 w 8c9af578e9db4c81 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+208 w 3ec6c8a2ad052741 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+209 w d5a2382a48e10b61 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+210 w 712c05ee223f211e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+211 w 436b5f3757910e11 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+212 w 3dd630809b24793e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+213 w 7e44175a67a7d9e5 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+214 w bbd6e465e46b5464 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+215 w 7b523a1c9fdb6712 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+216 w 2cd6fd41b1515085 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+217 w ad173128e0a1a32b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+218 w 57a33dab3acfc3e9 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+219 w fd16e0c2c09cc4a1 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+220 w 1b3b1e66f092557e MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+221 w 27730115be09641c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+222 w 7e270f4aa2bedc9b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+223 w 4d2881424f3bc5f0 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+224 w 383a02f05158f77b MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+225 w 11ef4214fdf8da4c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+226 w 6d22b14bbfd10e10 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+227 w 0d43d96f942f72d1 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+228 w 1569f9486246e001 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+229 w b975b700e85c6ab5 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+230 w d10dc1676bc68787 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+231 w 14b2c8f719709770 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+232 w be268473a28e44bc MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+233 w c8a24b19b42ebe65 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+234 w 40908a1a2ff8639c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+235 w 1a2ce6e5e05a741c MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+236 w 8040f01caf1602c2 MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+237 w 199e51693102894d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+238 w e99690ad86e4b65d MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+239 w b208062d28b7442b g f8f9d1ebd45595cd MenuMove=h,3f75341a,3e931f43 Move=h,3f75341a,3e931f43 Pan=h,3f75341a,3e931f43
+240 w bd35ff6f2ed7e0fd MenuMove=r Move=r Pan=r
+241 w f77ff5217c0fb877
+242 w 50c6cab6ed1139fd
+243 w 80c0e33be0b7a9b9
+244 w 83a3a0535091ca45
+245 w 4a8649bc5fd21e97
+246 w d2cca15eff9f8d98
+247 w 3ae5c21a636a1e56
+248 w 3ffc37d0e7625f21
+249 w 8b21abb081af799d
+250 w 4e868ecbff9515b6
+251 w ea6bea1ff3fb693d
+252 w 3304c7993c042152
+253 w e1708f2439330bef
+254 w 9e00072f69b407ea
+255 w b3270503c1349600
+256 w 95a35d1d48fff9d4
+257 w 80b06d4fc23d4ca4
+258 w a6582add3fb70833
+259 w a3fb0f4cc85c87bc
+260 w cab3421b5e745d3b
+261 w 98dfe551f7b21004
+262 w 4a54a98f90297753
+263 w 4c35ee73e9f0752a
+264 w b54815ea7ed0feb9
+265 w 345c87e70a07a609
+266 w c1a9b10e32e3760d
+267 w 6cb900f22d022edf
+268 w d03fd718860b2042
+269 w 3a61f1dc1e247f7f
+270 w 5cd1b217514c1975
+271 w c6b2e7f6775c4fb2
+272 w 67e89129cd3b8d68
+273 w 9184ac0c7b22dedc
+274 w 72a8391d90e1bd02
+275 w 7d96c0d78b7f5025
+276 w 1841dee9418e5f83
+277 w 46ce9bbc42a3a1f8
+278 w deab79902ca96eb8
+279 w fdd30de9c33d65d0
+280 w aea3ed06ad2a1fec
+281 w 06cc9f691928d2b3
+282 w eacd9addaede3c54
+283 w 8d2c216d87006364
+284 w 76dab5fd645a9e1e
+285 w fe86976658df9fc7
+286 w 2e6a8c39e375966f
+287 w 7add3812eb9eb61d
+288 w 97d0dd09869774e3
+289 w 07322349b6b4a27b
+290 w 49dd1131ea3f764a
+291 w c27f832487f0a6a8
+292 w ed0867eec0bd10c4
+293 w c8e4112add1eb5bd
+294 w 2ad6e31448982688
+295 w f6e7150a911c13b5
+296 w fa9d4d75025c833c
+297 w 8629e758642ebd53
+298 w 72bd0b15adba6db7
+299 w 3a299bf20fd99656 g 5d082fc8edcfc737
+300 w ce0965192d529220 MenuMove=hp,bf32e102,bf32e102 Move=hp,bf32e102,bf32e102 Pan=hp,bf32e102,bf32e102
+301 w 0f8cb883ac92187c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+302 w 54e82079b9f95e00 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+303 w f6d03985926f4d67 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+304 w 9a4348e5275da776 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+305 w da69cc0813b17eb9 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+306 w fa2f952ecaab19c1 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+307 w 20835781b54a1c06 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+308 w 769983020fb86623 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+309 w 25436a5ff998a05c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+310 w df6216700f21465a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+311 w cabcc7b2ec842871 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+312 w 6bc6a43d279cc22a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+313 w 2459f2006104585b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+314 w 1e8265c808d76e56 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+315 w 5e8c7db817cb9a77 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+316 w 2431083c69adfbe2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+317 w 06322c02755f1b2a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+318 w 8dcb9e405ee028b3 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+319 w 0d53b1c1bee8ad42 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+320 w 1a9b7c829a58272e MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+321 w 2c996a121e2815fe MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+322 w b746fb443d768eed MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+323 w b3980d690bd1c2e5 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+324 w 8b38ce62dbdf65a4 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+325 w 5fcac1b111e52b2f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+326 w 3c0539b4e93b95a6 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+327 w 8156242615bd2c25 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+328 w 43258c05400b0da2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+329 w 2dfd98732b48acaf MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+330 w 61ae514910d31e71 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+331 w 5cf6a1223e399776 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+332 w cab2a52a8d5f6459 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+333 w b45fd1eb1b0e85f4 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+334 w d71aa82c0ed4ee53 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+335 w 7a56a5f517571740 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+336 w ed63f0b6225972d0 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+337 w fac2bbe67b448c87 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+338 w 44075476364960fd MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+339 w 9524e9ac4a35a7f4 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+340 w a4c5169e9a5d46e5 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+341 w 69114c894c3f4c6c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+342 w 5a277354c406ec4f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+343 w 2a922b5b920c6f06 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+344 w db3b78a4c67788ac MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+345 w a87e057036dbd63b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+346 w 37d1c7ab127b16d6 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+347 w 80ec39b1bde01891 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+348 w 92fed0de7b9bd2c2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+349 w b5627bff489a2fa1 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+350 w 3b14871010bff82e Jump=hp MenuChoose=hp MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+351 w 0fbddd088bad024f Jump=h MenuChoose=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+352 w 9f7b27c0abaaba18 Jump=h MenuChoose=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+353 w 25543fa32a51c783 Jump=h MenuChoose=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+354 w 9abb7f81b1786269 Jump=r MenuChoose=r MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+355 w 580cdba404bfeb1b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+356 w 318f9cf3da1e8411 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+357 w e93758870bae350b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+358 w 5582fc3c17860c31 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+359 w 85d3407683c12531 g 72eaf04368a15c7f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+360 w f7a3d2735163f834 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+361 w d1be912edc01d7dd MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+362 w 44a91e7f096e77df MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+363 w 4afb17f20b3f2daf MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+364 w e287c78c56764f89 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+365 w badf37fa11728a5b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+366 w cf65691e14cd6e8c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+367 w 23bc613477637f35 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+368 w fd5e5fea9e9c14a5 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+369 w 2a343fddc7008fd6 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+370 w 453c822a0f965a48 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+371 w 7aa03fbb06c5cfa4 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+372 w 43ef9adc7f35fa9d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+373 w 02e94e2d90488683 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+374 w a1f427157fdaaf08 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+375 w 9a0bb80885851f91 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+376 w 7ceeda66295c25ae MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+377 w 7f9bc0460804cdad MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+378 w 8167ab743eb3c623 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+379 w a3568530d3483426 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+380 w 1e1e30ca949f7b64 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+381 w c301504fbb3fe4f2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+382 w 6b74498b63db35ce MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+383 w 4b85a4585b2964a8 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+384 w 99ca2f2b91882434 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+385 w b1504c1e003981c2 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+386 w a3d4e7b27516037b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+387 w 0440827d51cf195e MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+388 w 9e3df25c21020e06 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+389 w 2d6333738fc3562d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+390 w 443b855f7147d777 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+391 w 1ca33d1ad4f68543 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+392 w 7083d63828b547da MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+393 w 56af2b9163a648c5 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+394 w 3aeea2e9d5a8accd MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+395 w 90523b184c38430d MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+396 w 4efa1980e9371fe0 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+397 w 1c85bfe7564766db MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+398 w 6d10375fbe0a230f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+399 w fcd2feed9d1cc3de MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+400 w 499e64bd6c0861a0 Interact=hp MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+401 w ff6af69b383d1f8e Interact=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+402 w c87e1dbbe7ae1903 Interact=h MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+403 w 55a3aff7667b98b2 Interact=r MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+404 w 48882a17d4ccb60c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+405 w 148916f0209e9de4 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+406 w ab8b335db1ef4c5b MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+407 w bfa10aed4d9c9c45 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+408 w c512addcc65e441a MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+409 w e2457911123681fb MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+410 w f388cfa1381e4847 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+411 w c5a6bd40863c88ba MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+412 w 48f6a6c9fd7f1802 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+413 w 86ad4554602c2a52 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+414 w bbd356b38bbc97df MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+415 w f4739f8436b24cb9 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+416 w da599f0dc87c333c MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+417 w 1c117abc560de04e MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+418 w 40e22d7288c6662f MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+419 w 8fe98053f3c2fc00 g 55953ff9805c3460 MenuMove=h,bf32e102,bf32e102 Move=h,bf32e102,bf32e102 Pan=h,bf32e102,bf32e102
+420 w 7cc75b167aee5008 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+421 w ffcb21efaf60e2e7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+422 w 68c49c7b5c0c4f56 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+423 w 069a1bc0d529c90e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+424 w 97a7b8b4a9c1ad53 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+425 w dc9e5db380b3f1e7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+426 w 334da4661bc45bde MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+427 w 91358e4ef6b4afc6 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+428 w cdccbd42e650c4a1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+429 w 36fc1830323075e2 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+430 w 505cd18dbec7ebbc MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+431 w 425c213da9acbf18 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+432 w 8a7e20a26785a9a4 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+433 w b481b8674854a8c1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+434 w 51fa43358acdff31 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+435 w c8e20d6b1bbb0ac2 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+436 w 0e05ca99d9430281 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+437 w 06d9c7956ac51e9f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+438 w 5f19b05e3aaa1d45 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+439 w 3a5b68a73818e619 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+440 w 951e611527b01a48 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+441 w 83464f0708a6b3b9 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+442 w bdb0bece6dd4c702 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+443 w a8206c50eb7410ce MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+444 w 01aeaf8d04027c12 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+445 w 305041b40414a857 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+446 w f2e9660430a35e73 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+447 w 28a9ddf06de2c42a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+448 w b8086f45e9a8e919 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+449 w 9768372798f3da32 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+450 w 97126f9aded12782 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+451 w e7a0d621112f945a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+452 w 00fb2c21e99155b8 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+453 w 46913159450c0532 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+454 w 7afd681e122051c1 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+455 w 965583782cc8f085 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+456 w ffda5183a880aceb MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+457 w 856d6d77aec55e58 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+458 w 639c96b9d674b5ea MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+459 w a38b60650d19b0df MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+460 w 2799149b45466af0 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+461 w ecdc81cbd7bced6a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+462 w 57e12c4b2004ee86 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+463 w 1c5c848949ce4b8f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+464 w 409756bf3a2d7127 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+465 w 183ccd02060a4d4c MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+466 w 43d44c3b265e09e3 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+467 w 264ca075e23790fe MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+468 w 0b0fa18c90000dff MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+469 w e675936937328d33 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+470 w e5450bd663036337 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+471 w 8bcb202b2b30a639 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+472 w 958ea634b057fcc7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+473 w 4f5bd9c8dc33c618 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+474 w a4a73f69d8dab3ee MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+475 w 0fe0c64a3064b0a9 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+476 w 860bceb8b1ecf72c MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+477 w 55939c2edfffb7c6 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+478 w c55b23acbd97193a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+479 w 7ad7992be03e1795 g 6eb38faffc1cd738 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+480 w 7ef85ea53edf8224 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+481 w 4288d2af5b99bdd7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+482 w 5cef33a008a5668d MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+483 w 7f3e1be33f057707 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+484 w bf6a358c35cfd7dd MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+485 w 68dcb0ad86fc24c8 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+486 w 430687891824052a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+487 w 6878ba641d2b7c24 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+488 w 642179f35971db49 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+489 w 83ae2191b440d621 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+490 w 48ba426be7122747 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+491 w b7d9aec0ad516f91 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+492 w 56f1ae7475637fad MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+493 w 1b4d6716ce4572d8 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+494 w 4ebfec47cf35d754 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+495 w 57f6cbf3029602e5 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+496 w 7c0956aa0a1b5a3f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+497 w 38356d19f307ab1f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+498 w e97ba8cf23fee05f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+499 w 0611aceb483070ca MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+500 w 3e3b10e82228ddc7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+501 w 017d628a2753c5d3 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+502 w f42371ad6d56aae6 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+503 w a254f31859abeae2 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+504 w a5ef72c33ac53ca2 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+505 w 9caabd7c8ffb3d1a MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+506 w d4078f802982e3ef MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+507 w 979b6a30d093fe48 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+508 w 952a174c6237aecf MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+509 w d56164b81bbe6cc9 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+510 w c5e2e817f28f958b MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+511 w c1406330b78c30cc MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+512 w ffe3212678a8c4b7 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+513 w 0c8d38e53219b390 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+514 w 7b6d231d5d8c3c02 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+515 w e4624da350e38898 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+516 w bd39ba42c4f10a2f MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+517 w e37de8c7ebe7b70e MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+518 w 57a47c789605c186 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+519 w d413cd44bc7fb831 MenuMove=h,3e48d2ac,bf7b0756 Move=h,3e48d2ac,bf7b0756 Pan=h,3e48d2ac,bf7b0756
+520 w 2b6908a1e911b0ee MenuMove=r Move=r Pan=r
+521 w 0e37ec752a2e66c3
+522 w 12028002db49f864
+523 w 6e0ae4c28d2dff77
+524 w b5075d196935fc0d
+525 w ecd3ef28fcb2899f
+526 w 369d58e7f05c77b6
+527 w 5c3d4f2e4e4b54e5
+528 w 97cfedce4e4690a8
+529 w 9443f48c2bcc8f56
+530 w ca0380963be80c63
+531 w 04b22be70bbc0ee5
+532 w 35e1bcaa9f769e13
+533 w e7995ef7485d85ad
+534 w c3cd2cf180fce1c0
+535 w b47281c6a85bb6a1
+536 w 002d3c7dd9d52300
+537 w 8bc9b5a9e59276b9
+538 w adfc21bd0ff39b4e
+539 w 01135f1f90097e20 g de3145907469a499
+540 w ec736418cff3d1a0
+541 w d8eabf8636ccd380
+542 w 0b429df4b9f101b8
+543 w 9c7402b94b745779
+544 w 4f404547a5ffdfa8
+545 w 3a84121716c7f2a5
+546 w c18535e0a39b1b43
+547 w 0cb496932c6e6010
+548 w 7459c4a6d6f572e1
+549 w b9e520a3c181e772
+550 w 8ca481c1605e023a
+551 w bc61e965f561e910
+552 w afd27fe7a98f62fd
+553 w 3919a56dbcfcf413
+554 w 3371b3bc6ede5b27
+555 w aeb7d469a1719fbd
+556 w c05d20ffdd2c86d6
+557 w 2dc5d2820d006c16
+558 w 99d7700a2b1fbfdf
+559 w 87bc6968c0613097
+560 w a0c8470306a13ab6
+561 w a6d5baaa8687e3a9
+562 w 9cc6b105c90b9c99
+563 w 08da9cfa85d87bd9
+564 w dc18c1906ca6d8d7
+565 w 2fb46382a563993d
+566 w 06aecb5a6b9d2fc6
+567 w fb9fc2c5b738c56c
+568 w 939076a26db301f2
+569 w 9bfd6a205bffabc5
+570 w c560c8811aa61e1c
+571 w ad17f3344089faa6
+572 w bde7da79931075cf
+573 w 5ed752c8edd573d0
+574 w c4194af6f0bb8b8c
+575 w 7f498ba8d6c1d1e9
+576 w 1b1ec5be9694d015
+577 w 15dfb43fb39400db
+578 w 52e7b098c306ac15
+579 w 5cf398c94c7ccf5c
+580 w 147602cb4ad3198f
+581 w c530dbed0462536c
+582 w 3a4d84ed18b0cf43
+583 w 1255b0563be4302f
+584 w 91fdce08ce148f17
+585 w ccfdebb27e637120
+586 w 7b7b0cb52adc1e5a
+587 w b965d9b60cf616ae
+588 w 939e92065045acbf
+589 w d972097a9ad55f52
+590 w 63c2c23aee8d553f
+591 w a008a77ec668b6e7
+592 w 6309e2e085d19caa
+593 w 58e46b791cff78f8
+594 w 7a4461705ead84cf
+595 w 7da13534384094c4
+596 w 1468ed63bb7ea67d
+597 w c98f94d37b3a3de0
+598 w 676b9176aff4e1d2
+599 w a752d866254a14c0 g db10065d1f10d185

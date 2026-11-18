@@ -77,6 +77,9 @@ pub struct Compiled {
     /// The game's screens, compiled into a program of their own
     /// (decision 0087), if it has any.
     pub screens: Option<crate::screens::ScreenCode>,
+    /// The timers its Lust starts, by name (stage 1, timers): after new
+    /// code, a Lust component's timer whose name is gone ends.
+    pub timers: Vec<String>,
 }
 
 /// Luau's own compiled form of the game's code (see
@@ -473,6 +476,7 @@ fn compile_here(
             .collect(),
     };
     let mut compiled = Compiled {
+        timers: crate::timer_names::names_started(code),
         lust,
         lua: code.lua.clone(),
         schemas: Vec::new(),

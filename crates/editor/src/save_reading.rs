@@ -83,6 +83,7 @@ impl Save {
         let speed = read_speed(section("speed")?)?;
         let day_shift = read_day_shift(section("day")?)?;
         let zones = super::zones::read_zones(section("zones")?)?;
+        let timers = script::Timers::read(section("timers")?)?;
         Ok(Self {
             project,
             ticks,
@@ -100,6 +101,7 @@ impl Save {
             speed,
             day_shift,
             zones,
+            timers,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {
