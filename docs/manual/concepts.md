@@ -152,6 +152,7 @@
 
 - **Game code:** the part of a game written as code: its rules, and what things do on their own. See [Game code](game-code.md).
 - **Lust:** a programming language made for games like Solis's, which reads like plain English. Solis checks it and runs it. Lust can also become Rust, which runs fastest, for the finished game.
+- **State (in code):** a list of options a value can be one of, such as `state Mood = [Calm, Busy];`. It's set with `=` (`mood = Mood.Busy;`), like any value, and asked about with `is` (`is mood == Mood.Busy? then { … }`): in Lust, `is` only ever asks. The project's own names reach code as states too: `Action.Jump`, `Tag.Enemy`.
 - **Native method:** a method Lust knows the name and values of, but whose work is done by the engine, such as `moveTo` or `World:say`. The engine's are listed in the `solis` folder Solis writes into each project.
 - **Mistake (in code):** something the checker finds before the code runs, such as a misspelt name or text where a number should be. Solis lists each one with its file, line and column (how far along the line).
 - **Projectile:** something small and fast a game fires in its thousands (a laser, a bullet), which isn't an entity: Solis moves it every tick until its time is up, and draws all of them in one go. Game code fires one with `fire`. See [Game code](game-code.md#projectiles).

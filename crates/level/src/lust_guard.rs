@@ -1,5 +1,5 @@
-//! Guards for text on its way to the Lust compiler. Lust (2.0.0-alpha.67,
-//! rev ee12407, as at rev 930afae) never finishes checking a file that
+//! Guards for text on its way to the Lust compiler. Lust (2.0.0-alpha.74,
+//! rev 9fcd48c, as at rev 930afae) never finishes checking a file that
 //! declares two things with one name, and a long run of `!` takes it
 //! time that grows with the square of the run's length. So game code (`script::code`) and data files
 //! ([`crate::lust_data`]) are looked over here first, and what would set

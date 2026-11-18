@@ -56,6 +56,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **A state is set with `=` in game code now, not `is`** (Lust alpha 74; [decision 0123](docs/decisions/0123-lust-alpha-74-states-set-with-equals.md)). `mood is Mood.Busy;` and `state is Mood.Calm;` are mistakes, and the game's code isn't checked or run until they're changed. **What to do:** change each `is` that sets a state to `=` (`mood = Mood.Busy;`); Problems lists every such line with the `=` way written out. Questions that start with `is` stay as they are. Lua and Rust components are unaffected.
+
 - **Save games are version 10** (stage 1, triggers): they keep who is inside each trigger zone and which zones that fire once have fired. Older saves still load (nothing was inside a zone then); a build from before can't load a save made now.
 
 - **Assemblies are called prefabs now, everywhere** (Shared 1f, R5; [decision 0118](docs/decisions/0118-the-editor-rethink.md)): the interface, the manual, the files and game code. A prefab is a Lust data file, `name.prefab.lst` (format 1). Opening a project from before renames each `.solassembly` a `.prefab.lst` beside it, keeping its ID (so every copy and spawn still finds it) and the older file in `.solis/backups/`. Levels are format 5 (a copy says `prefab = "ID";`) and the project file format 3, so a Solis from before won't open the project after: update every copy of Solis that works on it.
@@ -304,6 +306,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Lust is now alpha 74** (was alpha 67; [decision 0123](docs/decisions/0123-lust-alpha-74-states-set-with-equals.md)). A state is set with `=`, like any other value (`mood = Mood.Busy;`, and `state = Mood.Calm;` in a `has`), and `is` only asks questions (`is mood == Mood.Busy? then`). Code that still sets a state with `is` gets Lust's own mistake in Problems, showing the `=` way (see Breaking). Lust's new `toast`, `App:quit()` and `App:notify()` are for Lust's own windows: in a Solis game they do nothing. The guide colours `state = Mood.Calm;` as Ledger does.
 - **The game stages name tools, not game systems:** text effects, drag and drop, tooltips and tables are general tools any game uses; dialogue, inventories and shops appear only as examples, and the samples write them in Lust as a game maker would.
 - **The build order is now the game stages** ([decision 0122](docs/decisions/0122-the-game-stages.md), `docs/plans/game-stages.md`): the 2D work comes in four stages by the kind of game it lets you make (a top-down adventure, a platformer, a puzzle or turn-based game, an action game or shooter), each ending with a sample game in Learn made with Solis's tools. Only the next milestone is planned in detail; the first is triggers. Turning the remaining files into Lust moves to later.
 - **"Usable first"'s gate is a small 2D game** the project lead makes in Solis while learning, not their farming game, which is shelved for now. CLAUDE.md now says plainly that the lead's games are made with Solis's tools and never built into the engine.

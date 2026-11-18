@@ -118,8 +118,9 @@ enum Naming {
     Style,
     /// After `state`: the state and its name.
     State,
-    /// After `state is`: the state it is, plain like its options.
-    StateIs,
+    /// After `state =`, a thing's own state being set (`state = Mood.Calm;`):
+    /// the option it's set to, plain like the state's options.
+    StateSet,
 }
 
 /// The token before, as far as the next one cares.
@@ -156,6 +157,12 @@ struct Reading {
     styles: Vec<usize>,
     /// The next name in a style list is a style's word.
     style_word: bool,
+}
+
+/// Whether what follows a name is `=` setting it (not `==` or `=>`).
+fn sets(after: &str) -> bool {
+    let after = after.trim_start_matches([' ', '\t']);
+    after.starts_with('=') && !after.starts_with("==") && !after.starts_with("=>")
 }
 
 /// Lust in Ledger's quiet colours.
@@ -203,7 +210,7 @@ impl Reading {
         let n = word(rest);
         if n > 0 {
             let w = &rest[..n];
-            let tk = self.name(w, ahead(&rest[n..]), member, state_member);
+            let tk = self.name(w, &rest[n..], member, state_member);
             self.last = Last::Name(capital(w));
             return (tk, n);
         }
@@ -214,13 +221,8 @@ impl Reading {
         self.styles.last() == Some(&self.depth)
     }
 
-    fn name(
-        &mut self,
-        w: &str,
-        ahead: Option<char>,
-        member: bool,
-        state_member: bool,
-    ) -> Option<Tk> {
+    fn name(&mut self, w: &str, after: &str, member: bool, state_member: bool) -> Option<Tk> {
+        let ahead = ahead(after);
         let is = |list: &[&str]| list.contains(&w);
         // [width fill, hover:[background red7]]: each style's first word.
         if self.in_styles() {
@@ -258,20 +260,22 @@ impl Reading {
             }
         }
         if w == "state" {
-            self.naming = Naming::State;
+            // `state Mood = [ … ]` declares a state; `state = Mood.Calm;`
+            // sets a thing's own. `is` only asks questions (`is state == …?`).
+            self.naming = if sets(after) {
+                Naming::StateSet
+            } else {
+                Naming::State
+            };
             return Some(Tk::S);
         }
         if self.options.is_some_and(|depth| self.depth >= depth) {
             return None;
         }
         match self.naming {
-            Naming::State if w == "is" => {
-                self.naming = Naming::StateIs;
-                return Some(Tk::F);
-            }
             Naming::State if is(FLOW) => self.naming = Naming::Nothing,
             Naming::State => return Some(Tk::S),
-            Naming::StateIs => return None,
+            Naming::StateSet => return None,
             _ => {}
         }
         if member {
