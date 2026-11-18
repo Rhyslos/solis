@@ -43,6 +43,10 @@ pub enum AssetKind {
     Tileset,
     /// A tile map (`.tilemap.lst`; Phase 9, D4).
     TileMap,
+    /// A ground (`.ground.lst`; Tools 1b, decision 0116): its settings
+    /// file, whose voxels are the region files in the folder beside it
+    /// ([`GROUND_PARTS_ENDING`]), which are parts of this one asset.
+    Ground,
     /// A picture (PNG or JPEG; Phase 9, D5): a tileset's art, given an ID
     /// so a tileset keeps it when it's moved or renamed.
     Picture,
@@ -79,12 +83,36 @@ pub const TILESET_EXTENSION: &str = "soltileset";
 /// Lust now (`farm.tilemap.lst`).
 pub const TILE_MAP_EXTENSION: &str = "soltilemap";
 
+/// The end of the folder beside a ground's settings file that holds its
+/// region files (`farm.ground/` beside `farm.ground.lst`; the `ground`
+/// crate's `settings::FOLDER_ENDING`, which a test in the app keeps
+/// equal). Such a folder is part of the ground: never listed, never
+/// walked for assets, and moved, copied and deleted with its settings
+/// file.
+pub const GROUND_PARTS_ENDING: &str = ".ground";
+
+/// Whether `name` (a folder's) is a ground's parts.
+pub fn is_ground_parts(name: &str) -> bool {
+    name.to_ascii_lowercase().ends_with(GROUND_PARTS_ENDING)
+}
+
+/// The folder of parts of the ground whose settings file is at `path`, if
+/// it's one (`maps/farm.ground.lst` gives `maps/farm.ground`).
+pub fn ground_parts_of(path: &Path) -> Option<PathBuf> {
+    let name = path.file_name()?.to_str()?;
+    let lower = name.to_ascii_lowercase();
+    let stem = lower.strip_suffix(".ground.lst")?;
+    let folder = format!("{}{GROUND_PARTS_ENDING}", &name[..stem.len()]);
+    Some(path.with_file_name(folder))
+}
+
 /// The kind of a Lust data file Solis makes (decision 0081), by the word
 /// before its `.lst`.
 fn data_kind(path: &Path) -> Option<AssetKind> {
     match reflect::data_files::kind_of(path)? {
         "tileset" => Some(AssetKind::Tileset),
         "tilemap" => Some(AssetKind::TileMap),
+        "ground" => Some(AssetKind::Ground),
         "prefab" => Some(AssetKind::Prefab),
         _ => None,
     }
@@ -727,6 +755,7 @@ fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
                 continue;
             }
             match entry.file_type() {
+                Ok(t) if t.is_dir() && is_ground_parts(&name) => {}
                 Ok(t) if t.is_dir() => todo.push(path),
                 Ok(_) if name.ends_with(&format!(".{}", sidecar::EXTENSION)) => sidecars.push(path),
                 Ok(_) if AssetKind::of(&path).is_some() => files.push(path),

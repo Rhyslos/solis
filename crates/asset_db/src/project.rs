@@ -136,6 +136,9 @@ pub const GITATTRIBUTES: &str = "\
 *.ogg filter=lfs diff=lfs merge=lfs -text
 *.mp3 filter=lfs diff=lfs merge=lfs -text
 *.flac filter=lfs diff=lfs merge=lfs -text
+# A ground's voxels: one binary file per 256 m region (decision 0116),
+# locked while someone sculpts it, since two people's changes can't merge.
+*.region filter=lfs diff=lfs merge=lfs -text lockable
 ";
 
 /// What a project makes: 2D, 3D or both (decision 0118). Asked when the
@@ -797,6 +800,10 @@ mod tests {
         assert!(attributes.contains("*.solinput text eol=lf"));
         assert!(attributes.contains("*.solanim text eol=lf"), "animators");
         assert!(attributes.contains("*.soltilemap text eol=lf"), "tile maps");
+        assert!(
+            attributes.contains("*.region filter=lfs diff=lfs merge=lfs -text lockable"),
+            "a ground's region files"
+        );
         assert!(attributes.contains("*.glb filter=lfs"));
         let opened = Project::open(&root).unwrap();
         assert_eq!(opened, made);

@@ -9,6 +9,7 @@ mod camera;
 mod collider_2d;
 mod day;
 mod environment;
+mod ground;
 mod light;
 mod listener;
 mod model;
@@ -30,6 +31,7 @@ pub use camera::{Camera, CameraView};
 pub use collider_2d::{Collider2D, Shape2D};
 pub use day::{DayColours, MAX_STOPS};
 pub use environment::{Environment, Sky, ToneMapping};
+pub use ground::{Ground, ONE_PER_LEVEL};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use listener::Listener;
 pub use model::Model;
@@ -65,6 +67,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Screen>()?;
     registry.register_type::<Parallax>()?;
     registry.register_type::<Brush>()?;
+    registry.register_type::<Ground>()?;
     Ok(registry)
 }
 
@@ -184,6 +187,7 @@ mod tests {
                 "Collider",
                 "Collider2D",
                 "Environment",
+                "Ground",
                 "Light",
                 "Listener",
                 "Model",
@@ -224,6 +228,11 @@ mod tests {
         round_trip(&Camera::default());
         round_trip(&Animator::default());
         round_trip(&TileMap::default());
+        round_trip(&Ground::default());
+        round_trip(&Ground {
+            ground: None,
+            solid: false,
+        });
         round_trip(&Animator {
             animator: None,
             state: "Walk".into(),

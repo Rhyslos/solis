@@ -39,6 +39,9 @@ pub enum FileKind {
     Tileset,
     /// A tile map (`.tilemap.lst`).
     TileMap,
+    /// A ground's settings (`.ground.lst`); its region files are in the
+    /// folder beside it, which is never listed.
+    Ground,
     /// A picture's crops (`.atlas.lst`, Atlas Crop).
     Atlas,
     /// Plain text: notes and data ([`TEXT_EXTENSIONS`]), shown in
@@ -71,6 +74,7 @@ impl FileKind {
         match reflect::data_files::kind_of(path) {
             Some("tileset") => return Self::Tileset,
             Some("tilemap") => return Self::TileMap,
+            Some("ground") => return Self::Ground,
             Some("atlas") => return Self::Atlas,
             Some("prefab") => return Self::Prefab,
             _ => {}
@@ -234,6 +238,8 @@ impl AssetDb {
                 }
                 let relative = path.strip_prefix(&root).unwrap_or(&path).to_path_buf();
                 match entry.file_type() {
+                    // A ground's region files are parts of its one asset.
+                    Ok(t) if t.is_dir() && crate::is_ground_parts(&name) => {}
                     Ok(t) if t.is_dir() => {
                         listing.folders.push(relative);
                         todo.push(path);
@@ -312,8 +318,28 @@ impl AssetDb {
             std::fs::create_dir_all(parent)
                 .map_err(|e| FileError(format!("couldn't make the folder: {e}")))?;
         }
+        let parts = crate::ground_parts_of(&source).filter(|p| p.is_dir());
+        let new_parts = crate::ground_parts_of(&target);
+        if let (Some(_), Some(to)) = (&parts, &new_parts)
+            && to.exists()
+            && !only_capitals
+        {
+            return Err(FileError(format!(
+                "there's already a folder {} there",
+                to.file_name()
+                    .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
+            )));
+        }
         std::fs::rename(&source, &target)
             .map_err(|e| FileError(format!("couldn't move it: {e}")))?;
+        if let (Some(from), Some(to)) = (parts, new_parts) {
+            // A ground moves with its voxels; if they can't follow, the
+            // settings file goes back, so the two are never apart.
+            if let Err(e) = std::fs::rename(&from, &to) {
+                let _ = std::fs::rename(&target, &source);
+                return Err(FileError(format!("couldn't move its voxels' folder: {e}")));
+            }
+        }
         let old_sidecar = sidecar::path_for(&source);
         if source.extension().is_some() && old_sidecar.exists() {
             // If this fails, the database pairs the left-behind sidecar
@@ -380,8 +406,22 @@ impl AssetDb {
             if std::fs::symlink_metadata(root.join(&target)).is_ok() {
                 continue;
             }
+            let parts = crate::ground_parts_of(&full).filter(|p| p.is_dir());
+            let new_parts = crate::ground_parts_of(&root.join(&target));
+            if let (Some(_), Some(to)) = (&parts, &new_parts)
+                && std::fs::symlink_metadata(to).is_ok()
+            {
+                continue;
+            }
             crate::db::copy_new(&full, &root.join(&target))
                 .map_err(|e| FileError(format!("couldn't copy it: {e}")))?;
+            if let (Some(from), Some(to)) = (parts, new_parts) {
+                copy_parts(&from, &to).map_err(|e| {
+                    let _ = std::fs::remove_file(root.join(&target));
+                    let _ = std::fs::remove_dir_all(&to);
+                    FileError(format!("couldn't copy its voxels: {e}"))
+                })?;
+            }
             return Ok(target);
         }
         Err(FileError("there are too many copies of it here".into()))
@@ -402,9 +442,24 @@ impl AssetDb {
         if full.is_file() && side.exists() {
             items.push(side);
         }
+        if let Some(parts) = crate::ground_parts_of(&full).filter(|p| p.is_dir()) {
+            items.push(parts);
+        }
         trash::delete_all(&items)
             .map_err(|e| FileError(format!("couldn't move it to the Recycle Bin: {e}")))
     }
+}
+
+/// Copies a ground's parts folder (its region files, one level deep) to
+/// `to`, a new folder.
+fn copy_parts(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir(to)?;
+    for entry in std::fs::read_dir(from)?.flatten() {
+        if entry.file_type().is_ok_and(|t| t.is_file()) {
+            crate::db::copy_new(&entry.path(), &to.join(entry.file_name()))?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -503,6 +558,61 @@ mod tests {
             db.id_at(&assets.join("props/rock.glb")),
             Some(id),
             "the original keeps its ID"
+        );
+    }
+
+    /// A ground is one asset (decision 0116): its settings file is listed
+    /// and has an ID; the folder of region files beside it is never
+    /// listed or walked, and it moves, copies and goes with the file.
+    #[test]
+    fn a_ground_and_its_region_folder_are_one_asset() {
+        let (mut db, assets, _folder) = project("files-ground");
+        std::fs::write(assets.join("farm.ground.lst"), "lock int version = 1;\n").unwrap();
+        std::fs::create_dir(assets.join("farm.ground")).unwrap();
+        std::fs::write(assets.join("farm.ground/0_0.region"), b"GRGN").unwrap();
+        db.rescan();
+        let listing = db.listing();
+        assert!(!listing.folders.iter().any(|f| f.ends_with("farm.ground")));
+        let grounds: Vec<&FileEntry> = listing
+            .files
+            .iter()
+            .filter(|f| f.path.to_string_lossy().contains("farm.ground"))
+            .collect();
+        assert_eq!(grounds.len(), 1, "{grounds:?}");
+        assert_eq!(grounds[0].kind, FileKind::Ground);
+        assert_eq!(
+            crate::AssetKind::of(Path::new("farm.ground.lst")),
+            Some(crate::AssetKind::Ground)
+        );
+        assert_eq!(
+            crate::AssetKind::of(Path::new("farm.ground/0_0.region")),
+            None
+        );
+        let id = db.id_at(&assets.join("farm.ground.lst"));
+        assert!(id.is_some());
+        assert!(
+            db.records()
+                .values()
+                .all(|r| !r.path.starts_with("farm.ground")
+                    || r.path == Path::new("farm.ground.lst"))
+        );
+        db.move_path(
+            Path::new("farm.ground.lst"),
+            Path::new("props/hills.ground.lst"),
+        )
+        .unwrap();
+        assert!(assets.join("props/hills.ground/0_0.region").is_file());
+        assert!(!assets.join("farm.ground").exists());
+        let copy = db.duplicate(Path::new("props/hills.ground.lst")).unwrap();
+        assert_eq!(copy, PathBuf::from("props/hills copy.ground.lst"));
+        assert!(assets.join("props/hills copy.ground/0_0.region").is_file());
+        assert_eq!(
+            crate::ground_parts_of(Path::new("a/Farm.Ground.lst")),
+            Some(PathBuf::from("a/Farm.ground"))
+        );
+        assert_eq!(
+            crate::ground_parts_of(Path::new("a/farm.tilemap.lst")),
+            None
         );
     }
 
