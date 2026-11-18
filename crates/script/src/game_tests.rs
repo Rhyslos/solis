@@ -19,6 +19,8 @@ pub(super) struct TestWorld {
     shots: Vec<crate::Shot>,
     seed: u64,
     sounds: Vec<Change>,
+    /// Who is inside each trigger zone, as the world's pass found.
+    pub(super) zones: std::collections::BTreeMap<EntityId, Vec<EntityId>>,
 }
 
 impl TestWorld {
@@ -85,6 +87,7 @@ impl GameWorld for TestWorld {
             map_places: Arc::default(),
             map_bounds: Arc::default(),
             view_size: Vec3::ZERO,
+            zones: Arc::new(self.zones.clone()),
         }
     }
 
@@ -967,4 +970,75 @@ fn set_sound_playing_lands_for_entities_only() {
     game.sync_many([(id(1), "Switch", &ComponentData::default())], &mut world);
     assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
     assert_eq!(world.sounds, [Change::SoundPlaying(id(1), false)]);
+}
+
+/// A zone that names who walks in and counts who is inside; a visitor
+/// that names the zone it walked into.
+const ZONES: &str = "fetch \"solis/world\":World;\n\
+    fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\n\
+    component Door {\n\
+        on Entered(entity who) {\n\
+            World:say(who:name() + \" in, \" + (#inside()).text() + \" inside\");\n\
+        }\n\
+        on Exited(entity who) {\n\
+            World:say(who:name() + \" out\");\n\
+        }\n\
+    }\n\
+    component Visitor {\n\
+        on EnteredZone(entity zone) {\n\
+            World:say(name() + \" entered \" + zone:name());\n\
+        }\n\
+        on LeftZone(entity zone) {\n\
+            World:say(name() + \" left \" + zone:name());\n\
+        }\n\
+    }\n\
+    pass Door, Visitor;\nend\n";
+
+/// What the zone game says over one tick of crossings, on `shards`.
+fn zone_game(shards: usize) -> Vec<String> {
+    let mut world = TestWorld::with(&["Door", "Ann", "Bo"]);
+    world.zones.insert(id(1), vec![id(2), id(3)]);
+    let mut game = unhurried(shards);
+    let code = compiled(ZONES);
+    game.load(&code, &mut world).unwrap();
+    let empty = ComponentData::default();
+    let components = vec![
+        (id(1), "Door", &empty),
+        (id(2), "Visitor", &empty),
+        (id(3), "Visitor", &empty),
+    ];
+    assert!(game.sync_many(components, &mut world).is_empty());
+    let event = |to: u64, name: &str, about: u64| Event {
+        to: id(to),
+        name: name.into(),
+        values: vec![Value::Entity(Some(id(about)))],
+    };
+    let events = vec![
+        event(1, "Entered", 2),
+        event(2, "EnteredZone", 1),
+        event(1, "Entered", 3),
+        event(3, "EnteredZone", 1),
+        event(1, "Exited", 3),
+        event(3, "LeftZone", 1),
+    ];
+    let ticked = game.tick_with_events(1.0 / 60.0, &mut world, events);
+    assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+    world.said
+}
+
+#[test]
+fn zones_events_and_inside_reach_lust_the_same_on_any_number_of_shards() {
+    let one = zone_game(1);
+    assert_eq!(
+        one,
+        [
+            "Ann in, 2 inside",
+            "Ann entered Door",
+            "Bo in, 2 inside",
+            "Bo entered Door",
+            "Bo out",
+            "Bo left Door",
+        ]
+    );
+    assert_eq!(one, zone_game(4));
 }

@@ -19,6 +19,23 @@ pub(super) fn lend<'s>(
     lend_motion(scope, natives, h)?;
     lend_screens(scope, natives, h)?;
     lend_clips(scope, natives, h)?;
+    lend_zone(scope, natives, h)?;
+    Ok(())
+}
+
+/// A trigger zone's: who is inside it now (stage 1, triggers).
+fn lend_zone<'s>(
+    scope: &'s Scope<'s, '_>,
+    natives: &Table,
+    h: &'s Lent<'_, '_>,
+) -> mlua::Result<()> {
+    natives.raw_set(
+        "entity_inside",
+        scope.create_function(move |lua, which: LuaValue| {
+            let inside = entity_of(&which).map_or_else(Vec::new, |e| h.borrow().inside(e));
+            lua.create_sequence_from(inside.into_iter().map(|id| id.to_string()))
+        })?,
+    )?;
     Ok(())
 }
 

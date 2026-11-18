@@ -107,6 +107,30 @@ pub const ENGINE_EVENTS: &[EngineEvent] = &[
         lust: "event ClipFinished(Clip clip);",
         about: "Sent to an entity when its Sprite's clip has played all its times (a clip that plays over and over never finishes).",
     },
+    EngineEvent {
+        file: "zones",
+        name: "Entered",
+        lust: "event Entered(entity who);",
+        about: "Sent to a trigger zone when something walks in: who it was. Several in one tick come in the order of their IDs.",
+    },
+    EngineEvent {
+        file: "zones",
+        name: "Exited",
+        lust: "event Exited(entity who);",
+        about: "Sent to a trigger zone when something walks out, or is taken out of the game while inside: who it was.",
+    },
+    EngineEvent {
+        file: "zones",
+        name: "EnteredZone",
+        lust: "event EnteredZone(entity zone);",
+        about: "Sent to whatever walked into a trigger zone: which zone.",
+    },
+    EngineEvent {
+        file: "zones",
+        name: "LeftZone",
+        lust: "event LeftZone(entity zone);",
+        about: "Sent to whatever walked out of a trigger zone: which zone.",
+    },
 ];
 
 /// Natives renamed on purpose, with their old names kept working for a
@@ -779,6 +803,13 @@ pub const NATIVES: &[Native] = &[
         about: "Whether a character stood on something after its last move (a 2D character: whether a floor under it stopped it going down): for jumping only from the ground, and for falling.",
     },
     Native {
+        file: "zones",
+        name: "inside",
+        owner: "entity",
+        lust: "method entity array entity:inside() native;",
+        about: "Who is inside this trigger zone now (as the tick started), in the order of their IDs: empty for an entity that isn't a zone.",
+    },
+    Native {
         file: "entity",
         name: "position",
         owner: "entity",
@@ -1141,7 +1172,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 17);
+        assert_eq!(files.len(), 18);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
@@ -1155,6 +1186,7 @@ mod tests {
              fetch \"solis/physics\":[Physics, RayHit];\n\
              fetch \"solis/sound\":Audio;\n\
              fetch \"solis/animation\":[CueReached, ClipFinished];\n\
+             fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\
              -- A game's own class may share a name with a data file's class.\n\
              class Layer {\n\
                  has {\n\
@@ -1176,6 +1208,30 @@ mod tests {
                          animateFromStart(clip);\n\
                      }\n\
                      stopAnimation();\n\
+                 }\n\
+             }\n\
+             component Door {\n\
+                 has {\n\
+                     int visits = 0;\n\
+                 }\n\
+                 on Entered(entity who) {\n\
+                     entity array here = inside();\n\
+                     visits = visits + #here;\n\
+                     World:say(who:name());\n\
+                 }\n\
+                 on Exited(entity who) {\n\
+                     World:say(who:name());\n\
+                 }\n\
+             }\n\
+             component Visitor {\n\
+                 has {\n\
+                     int zones = 0;\n\
+                 }\n\
+                 on EnteredZone(entity zone) {\n\
+                     zones = zones + #zone:inside();\n\
+                 }\n\
+                 on LeftZone(entity zone) {\n\
+                     zones = zones - 1;\n\
                  }\n\
              }\n\
              component Mover {\n\
@@ -1299,7 +1355,8 @@ mod tests {
                     "animation",
                     "tiles",
                     "screens",
-                    "window"
+                    "window",
+                    "zones"
                 ]
                 .contains(&native.file)
             );
