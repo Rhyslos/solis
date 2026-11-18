@@ -157,6 +157,7 @@ impl ShellCommand {
             C::AddSpotlight => "Add spotlight",
             C::AddCamera => "Add camera",
             C::AddReverbZone => "Add reverb zone",
+            C::AddTriggerZone => "Add trigger zone",
             C::ChooseShapeBrush => "Choose a shape brush",
             C::EditBrushInsides => "Edit the brush's insides",
             C::BrushExtrude => "Extrude",
@@ -389,6 +390,9 @@ impl ShellCommand {
                 "A camera where you're looking from: the game looks through the first one in the level"
             }
             C::AddReverbZone => "A place where sounds echo, at the point the camera looks at",
+            C::AddTriggerZone => {
+                "A zone that tells game code when something walks in or out, where you're looking"
+            }
             C::ChooseShapeBrush => {
                 "Opens the list of shape brushes beside the pointer: B moves down it and Space \
                  takes one, to draw out on the ground. B over the 3D or 2D view opens it too"

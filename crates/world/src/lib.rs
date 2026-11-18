@@ -23,12 +23,14 @@ pub mod projectiles;
 mod screens_and_sounds;
 pub mod sprites;
 pub mod tile_maps;
+pub mod triggers;
 
 pub use animators::Animators;
 pub use flat_physics::{FlatBroke, RESTART_WAIT, SolidSets};
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
 pub use tile_maps::MapFiles;
+pub use triggers::{Crossing, InsideZones};
 
 use glam::Mat4;
 use level::builtin::{
@@ -196,6 +198,9 @@ pub struct World {
     walls_built: HashMap<EntityId, flat_physics::WallsBuilt>,
     /// How 2D physics is kept going after Rapier fails in it.
     flat_recovery: flat_physics::FlatRecovery,
+    /// Trigger zones' game state: who is inside each, and which fired
+    /// once (stage 1, triggers).
+    triggers: triggers::Triggers,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -286,6 +291,7 @@ impl World {
             level::builtin::Parallax::NAME => typed::<level::builtin::Parallax>(self, id),
             Animator::NAME => typed::<Animator>(self, id),
             TileMap::NAME => typed::<TileMap>(self, id),
+            level::builtin::TriggerZone::NAME => typed::<level::builtin::TriggerZone>(self, id),
             _ => self.values_named_for(id, name),
         }
     }

@@ -151,6 +151,12 @@ impl Workbench {
             .contains(&Panel::Properties)
             .then(|| self.brush_facts())
             .flatten();
+        // What the Trigger zone card shows (stage 1), while Properties
+        // does.
+        let zone_facts = self
+            .in_front
+            .contains(&Panel::Properties)
+            .then(|| self.zone_facts());
         let atlas_problem = self.atlas_picture().1;
         let frames = self.open.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
@@ -262,6 +268,7 @@ impl Workbench {
             help: crate::properties::Help {
                 places: self.open.program.as_ref().map(|p| &p.places),
                 brush: brush_facts.as_ref(),
+                zone: zone_facts.as_ref(),
             },
             accent: self.accent,
             in_front: &self.in_front,
@@ -357,6 +364,9 @@ impl Workbench {
         // First: the brush list's B, Space and Esc come before the tile
         // painter's B, the search's Space and Esc's other jobs.
         self.brush_keys(ui);
+        // Enter, Esc, Tab and Delete while a freeform zone's points are
+        // drawn or edited, and Tab with one picked (stage 1, triggers).
+        self.zone_keys(ui);
         // Tab, 1, 2 and 3 while a brush's insides are edited, before the
         // tile painter's Tab and Delete's other jobs.
         self.brush_edit_keys(ui);
@@ -437,6 +447,7 @@ impl Workbench {
         self.set_tile_overlay();
         self.sync_brush_edit();
         self.prepare_tools();
+        self.prepare_zones();
         self.find_problems();
         self.refresh_screen_pictures();
         self.refresh_screen();
@@ -554,6 +565,7 @@ impl Workbench {
         self.paint_frame();
         self.game_panel_done(ui.ctx(), asks.game);
         self.tool_events();
+        self.zone_events();
         for request in asks.properties {
             self.apply_property(request, self.gesture);
         }

@@ -70,6 +70,9 @@ impl Workbench {
                     .brushes
                     .get(id)
                     .filter(|_| entity.has(Brush::NAME));
+                // A trigger zone draws its own outline (`zones::draw`):
+                // no point's ring in the middle of it.
+                let zone = entity.has(level::builtin::TriggerZone::NAME);
                 let mut marks = vec![match (whole_model, brush) {
                     (Some(info), _) => Outline::Box {
                         world,
@@ -85,6 +88,9 @@ impl Workbench {
                         None => Outline::Point(world.w_axis.truncate()),
                     },
                 }];
+                if zone && matches!(marks[..], [Outline::Point(_)]) {
+                    marks.clear();
+                }
                 if let Some(shape) = entity
                     .get::<level::builtin::CharacterBody>()
                     .map(|c| c.collider())

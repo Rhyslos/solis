@@ -15,7 +15,7 @@ The order of work from 18 November 2026 ([decision 0122](../decisions/0122-the-g
 
 Walking a world, rooms and doors, talking to people, picking things up, an inventory, saving. Solis is closest to this already: top-down walking, tile maps, day and night, game UI.
 
-- **Triggers:** walking into or out of a zone (a door, a counter, a pit) tells game code. *Next* ([below](#the-next-milestone-triggers)). (2D 2)
+- **Triggers:** walking into or out of a zone (a door, a counter, a pit) tells game code. *Built* ([below](#the-next-milestone-triggers), with its As built note). (2D 2)
 - **The same game on two PCs:** a recorded game replayed on two machines, checksums compared tick by tick, before timers put more maths into game state (decision 0120). (Shared 2)
 - **Tags and questions about the world:** "all of a kind within 3 m", "the nearest". (Shared 2)
 - **Timers and steps in order:** "open in 2 seconds", "walk there, wait, say this". (Shared 3)
@@ -24,7 +24,9 @@ Walking a world, rooms and doors, talking to people, picking things up, an inven
 - **Data tables:** items, prices, descriptions in one file, edited as a table. (Shared 4)
 - **Text layout, then text effects:** dialogue that types itself out, coloured and wavy words, icons in text. (Shared 5)
 - **Tooltips, and drag and drop,** for an inventory and a shop. (Shared 5)
+- **Fades:** to black and back, or another colour, as a general tool. (Shared 3, brought from stage 2's shake and flash.)
 - **Rooms on a world map, and moving between them,** with a fade. (2D 1 and Shared 6)
+- **A Door in the kit,** built on triggers, fades and rooms (the project lead, 2026-11-18): **Send to** a place in this level or an entry point in another room or level, **Two-way** (two doors linked, each sending to the other), and a **Transition** (none, or a fade, with its time). Written in Lust and open to read and change, like the kit's top-down walker. The trigger zone itself stays lean.
 - **Sorting tall things:** walking behind and in front of trees and houses properly. (2D 1)
 - **Pathfinding:** characters walk round walls to where they're going. (2D 1)
 - **Save slots:** several saves with a picture and the time played. (Shared 4)
@@ -38,7 +40,7 @@ Running and jumping, platforms that move, enemies that hurt, a camera that feels
 - **Tweens made solid:** saved, and the same on any number of cores. (Shared 3)
 - **Paths drawn in the editor,** for platforms and enemies to follow. (Shared 4)
 - **Components that draw in the editor,** such as an enemy's reach while you place it. (Shared 4)
-- **Screen shake, flash, fade, rumble, hit-stop, squash.** (Shared 3)
+- **Screen shake, flash, rumble, hit-stop, squash.** (Shared 3; fades came in stage 1)
 - **The sample:** a small platformer in Learn.
 
 ## Stage 3: a puzzle or turn-based game
@@ -100,16 +102,27 @@ Planned in detail when 2D is done. The outline stays as ROADMAP.md has it:
 - **Once or every time.**
 - **What's inside is game state:** saved, and in the checksum, so loading a save doesn't fire "entered" again.
 
-**Game code** (rule 25; the names are asked first):
+**Game code** (rule 25; answered by the project lead, 2026-11-18):
 - The zone hears `Entered(entity who)` and `Exited(entity who)`.
 - The one who walked in hears `EnteredZone(entity zone)` and `LeftZone(entity zone)`.
-- All of this works in Lust, Rust and Lua.
-- A teleport through a zone, in and out in one tick, fires nothing (recommended).
+- All of this works in Lust, Rust and Lua, and a zone carries its own code like any entity (+ Component).
+- Something that goes in and out within one tick, such as a teleport straight through, fires nothing.
 
-**Editor:**
-- the zone is drawn in the view as an outline, and sized with the gizmo;
-- **Trigger zone**, already on Home's ribbon as an unfinished part, becomes real;
-- a mock-up comes first for the zone's look and its card in Properties.
+**Editor** ([approved mock-up](../design/triggers/README.md)):
+- **Trigger zone** on Home's ribbon (an unfinished part until now) makes one in the view, where you're looking.
+- The zone is a teal outline: solid with handles when picked, dashed when not, with its name and size beside it. In 2D it's a box or a circle; in 3D a box or a sphere.
+- Its card in Properties has:
+  - Shape and Size;
+  - Notices (characters and bodies);
+  - Fires (every time, or once);
+  - Only tags, greyed until tags exist;
+  - Inside now, filled while playing.
+- A card says what game code hears, with a **New code for this zone…** button that makes a code file with empty `Entered` and `Exited` handlers, attached to the zone.
+- A zone can be made into a prefab like any entity.
+- **Freeform, in 2D only** (the project lead, 2026-11-18): Shape in 2D is Box, Circle or Freeform; 3D keeps Box and Sphere.
+  - **Drawing (the lead's choice):** choosing Freeform starts drawing in the view. Each click places a point, and clicking the first point or pressing `Enter` closes the shape. `Esc` cancels and keeps the previous shape.
+  - **Editing:** `Tab` edits the points, as shape brushes do. Drag a point to move it, `Ctrl` + click on an edge adds a point, `Delete` removes the picked point (never below 3), and `Tab` or `Esc` finishes.
+  - Shapes may bend inward; they're split into simple pieces for the overlap test. Outlines that cross themselves are refused with a reason. There's a limit of 256 points.
 
 **Tests and scale:**
 - in, staying, out;
@@ -119,4 +132,14 @@ Planned in detail when 2D is done. The outline stays as ROADMAP.md has it:
 - 1 and 4 cores the same;
 - 2,000 characters and 500 triggers within the scale target.
 
-**Asked when it starts:** the event names, the teleport rule, and the mock-up.
+**Not in this milestone:** doors, teleporting and fades. They're the Door in the kit, later in stage 1.
+
+**As built** (branch `stage1/triggers`):
+- **The component:** `TriggerZone` (`level::builtin`), a box, a round shape (shown as a circle in 2D and a sphere in 3D) or a freeform outline in 2D (saved as `Box`, `Round`, `Freeform`), Notices (characters and bodies, the only choice until tags) and Fires (every time, once). A new component needed no new level version; `tests/fixtures/area/v5/zones.sollevel` is its example, and the level fuzz target reads zones.
+- **The overlap pass** (`world::triggers`) runs as each tick begins, on where physics' last step left everything, not straight after the step: its events and the inside set a save keeps can then never be apart. It asks a tree of boxes made from where the moving things are now (parry's BVH), not Rapier's own query pipeline, which a physics step alone brings up to date: right after an edit while playing, a save or a load it would know nothing, and every zone would see everyone leave and come back.
+- **What's noticed:** "characters and bodies" means things that move: characters and dynamic or kinematic bodies in 3D, characters in 2D (2D has no other moving bodies). Fixed bodies, walls and brushes never count. A zone never counts itself.
+- **Once** sends the first tick's `Entered` (and `EnteredZone`), then nothing more, not even that visitor's `Exited`; the zone still knows who's inside. **Despawned while inside:** the zone hears `Exited`. **A zone despawned:** nothing is said.
+- **Game code:** the four events in `solis/zones.lst`, and `inside()` on a zone (`method entity array entity:inside() native;`), as the tick started.
+- **Saves** are version 10, with a `zones` section; version 9's upgrader adds an empty one.
+- **The editor:** Trigger zone on Home's Create (in More in 3D, where the unfinished part was); the outline, label and handles over every view (a click on the outline picks a zone; sizes snap as moves do); the TriggerZone card and What game code hears; New code for this zone (a file named after the zone at the top of the project, a `main.lst` made if there's none, and otherwise the line to add said in the Console); freeform drawing and editing with the keys asked about. The card's title is the component's name, `TriggerZone`, as every card's is; the header and the Level panel say "Trigger zone".
+- **Scale:** the overlap pass for 2,000 characters among 500 zones (a third of them freeform) takes about 1.2 ms a tick in a release build (target 2 ms).

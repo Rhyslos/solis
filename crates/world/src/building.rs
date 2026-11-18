@@ -87,6 +87,7 @@ impl World {
             solid_sets: std::sync::Arc::default(),
             walls_built: HashMap::new(),
             flat_recovery: flat_physics::FlatRecovery::default(),
+            triggers: crate::triggers::Triggers::default(),
         };
         world.index();
         world.place_everything();
@@ -148,8 +149,11 @@ impl World {
         let states = self.physics.state().body_states();
         let asked = std::mem::take(&mut self.physics_asked);
         let flat_recovery = self.flat_recovery;
+        // Who is inside each zone is game state: it carries on.
+        let triggers = std::mem::take(&mut self.triggers);
         *self = Self::from_level_without_physics(level);
         self.flat_recovery = flat_recovery;
+        self.triggers = triggers;
         self.clock = clock;
         self.projectiles = projectiles;
         self.seed = seed;
@@ -463,6 +467,9 @@ fn components_of(id: EntityId, data: &level::EntityData) -> hecs::EntityBuilder 
             }
             level::builtin::TileMap::NAME => {
                 builder.add(level::builtin::TileMap::from_data(component));
+            }
+            level::builtin::TriggerZone::NAME => {
+                builder.add(level::builtin::TriggerZone::from_data(component));
             }
             _ => {
                 if name == level::builtin::Screen::NAME {

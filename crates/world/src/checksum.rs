@@ -99,6 +99,8 @@ impl World {
             sum.entity(id);
             sum.u64(map);
         }
+        // Who is inside each trigger zone, and which fired once.
+        self.sum_zones(&mut sum);
         sum.u64(self.physics.state().checksum());
         sum.u64(self.flat.state().checksum());
         let flying = self.projectiles.flying();

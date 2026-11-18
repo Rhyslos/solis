@@ -12,24 +12,24 @@ use egui::{Color32, Rect, Sense, Ui, vec2};
 use glam::Vec3;
 
 /// What one view's frame works from, worked out as it begins.
-struct ViewFrame {
+pub(super) struct ViewFrame {
     /// The view's space.
-    rect: Rect,
+    pub(super) rect: Rect,
     /// Its size in physical pixels.
-    size_px: [u32; 2],
+    pub(super) size_px: [u32; 2],
     /// Its size in points.
-    size: glam::Vec2,
+    pub(super) size: glam::Vec2,
     /// Pixels per point.
-    ppp: f32,
+    pub(super) ppp: f32,
     /// What its camera sees at that size.
-    seen: Camera,
+    pub(super) seen: Camera,
     /// Whether it's a 2D view.
-    two_d: bool,
+    pub(super) two_d: bool,
     /// Snapping as it applies here: a 2D view moves things across the
     /// ground only.
-    snapping: Snapping,
+    pub(super) snapping: Snapping,
     /// The pointer, from the view's top left.
-    mouse: Option<glam::Vec2>,
+    pub(super) mouse: Option<glam::Vec2>,
 }
 
 impl Viewport {
@@ -87,7 +87,11 @@ impl Viewport {
         } else if drawing && !self.is_flying() {
             self.draw_out(ui, &response, &frame);
         } else if !self.is_flying() && self.brushing.draw.is_none() {
-            self.use_tools(ui, &response, &frame);
+            // Trigger zones' handles and freeform points (stage 1) come
+            // before the usual tools.
+            if !(in_use && self.zone_pointer(ui, &response, &frame)) {
+                self.use_tools(ui, &response, &frame);
+            }
         }
         if let Some(dropped) = response.dnd_release_payload::<crate::library::LibraryDrag>()
             && let (Some(asset), Some(at)) = (dropped.0.id, frame.mouse)
@@ -240,7 +244,7 @@ impl Viewport {
     /// menu open over the view: egui gives the viewport the hover even
     /// under a corner button (it's the only thing there that can be
     /// dragged), so a press there is left out by hand.
-    fn on_corner(&self, ui: &Ui) -> bool {
+    pub(super) fn on_corner(&self, ui: &Ui) -> bool {
         ui.input(|i| i.pointer.latest_pos()).is_some_and(|p| {
             self.covered.iter().any(|r| r.contains(p))
                 // A menu open over the view (its own layer) takes
@@ -413,6 +417,7 @@ impl Viewport {
             mouse.filter(|_| response.hovered()),
             accent,
         );
+        crate::zones::draw::show(ui, rect, seen, &self.level.zones, &self.zones, frame.two_d);
         viewport_tools::draw(ui, rect, &self.tools, seen, frame.snapping.locked, accent);
         // In 2D, where the pointer is, in the game's pixels, and the map's
         // cell under it (decision 0085), beside the pointer.

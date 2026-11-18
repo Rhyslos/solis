@@ -1,0 +1,38 @@
+-- A level. Safe to edit by hand: one block per entity, one line per field.
+level version 5;
+
+entity 2QG6GHR2Y56CC {
+    name = "Door zone";
+    order = "a0";
+    Transform.position = [4.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    TriggerZone.shape = "Box";
+    TriggerZone.size = [2.0, 1.0, 2.0];
+    TriggerZone.radius = 1.0;
+    TriggerZone.points = [];
+    TriggerZone.notices = "Characters and bodies";
+    TriggerZone.fires = "Every time";
+}
+
+entity 7RERBXM91KT2R {
+    name = "Pit";
+    order = "a0";
+    TriggerZone.shape = "Round";
+    TriggerZone.size = [2.0, 2.0, 2.0];
+    TriggerZone.radius = 1.5;
+    TriggerZone.points = [];
+    TriggerZone.notices = "Characters and bodies";
+    TriggerZone.fires = "Once";
+}
+
+entity C1VMHDPVQHXTA {
+    name = "Yard";
+    order = "a0";
+    TriggerZone.shape = "Freeform";
+    TriggerZone.size = [2.0, 2.0, 2.0];
+    TriggerZone.radius = 1.0;
+    TriggerZone.points = [0.0, 0.0, 4.0, 0.0, 4.0, 2.0, 2.0, 2.0, 2.0, 4.0, 0.0, 4.0];
+    TriggerZone.notices = "Characters and bodies";
+    TriggerZone.fires = "Every time";
+}

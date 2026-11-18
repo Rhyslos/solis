@@ -66,6 +66,7 @@ physics: method entity:setVelocity(vec3 velocity) native;
 physics: object Physics: method RayHit castRay(vec3 from, vec3 direction, float reach) native;
 physics: method entity:walk(vec3 wanted) native;
 physics: method bool entity:grounded() native;
+zones: method entity array entity:inside() native;
 entity: method vec3 entity:position() native;
 entity: method entity:moveTo(vec3 place) native;
 entity: method rotation entity:rotation() native;
@@ -91,6 +92,10 @@ window: object Window: method quit() native;
 
 animation: event CueReached(Cue cue);
 animation: event ClipFinished(Clip clip);
+zones: event Entered(entity who);
+zones: event Exited(entity who);
+zones: event EnteredZone(entity zone);
+zones: event LeftZone(entity zone);
 
 ## Lua (solis.<name>)
 
@@ -156,6 +161,7 @@ solis.entity.despawn
 solis.entity.face
 solis.entity.grounded
 solis.entity.hideScreen
+solis.entity.inside
 solis.entity.mapBounds
 solis.entity.moveTo
 solis.entity.name
@@ -207,6 +213,7 @@ Host: fn velocity(&self, which: EntityId) -> Option<Vec3>
 Host: fn set_velocity(&mut self, which: EntityId, velocity: Vec3)
 Host: fn walk(&mut self, which: EntityId, wanted: Vec3)
 Host: fn grounded(&self, which: EntityId) -> bool
+Host: fn inside(&self, zone: EntityId) -> Vec<EntityId>
 Host: fn save_game(&mut self, slot: &str, load: bool)
 Host: fn action(&self, name: &str) -> input::ActionState
 Host: fn binding(&self, action: &str) -> Option<String>

@@ -140,8 +140,8 @@ fn create(w: &Workbench, label: &'static str) -> Group {
                     item("Sprite", C::AddSprite),
                     item("Tile map", C::NewTileMap),
                     item("Reverb zone", C::AddReverbZone),
+                    item("Trigger zone", C::AddTriggerZone),
                     item("Make prefab\u{2026}", C::MakePrefab),
-                    Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),
                 ],
             ),
         ]
@@ -149,9 +149,9 @@ fn create(w: &Workbench, label: &'static str) -> Group {
 }
 
 /// Create in a 2D project (board 08): Entity, Sprite, Tile map, Camera,
-/// the unfinished trigger zone (the board's Zone), and More with the
-/// rest, a lamp (a point light, which lights sprites) first. Models and
-/// shapes are 3D only.
+/// Trigger zone (the board's Zone; stage 1), and More with the rest, a
+/// lamp (a point light, which lights sprites) first. Models and shapes
+/// are 3D only.
 fn create_2d() -> Group {
     group!(
         Some("Create"),
@@ -160,10 +160,7 @@ fn create_2d() -> Group {
             big(Icon::Sprite, "Sprite", C::AddSprite),
             big(Icon::TileMap, "Tile map", C::NewTileMap),
             big(Icon::Camera, "Camera", C::AddCamera),
-            unbuilt_at(
-                Shape::Big(Icon::ReverbZone),
-                Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),
-            ),
+            big(Icon::Volume, "Trigger zone", C::AddTriggerZone),
             big_list_only(
                 Icon::More,
                 "More",

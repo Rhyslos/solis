@@ -13,7 +13,6 @@
 
 use super::Phase::{
     NotPlanned, Shared4, Shared6, Shared7, Shared8, Shared10, Shared11, Shared13, ThreeD1, ThreeD5,
-    TwoD2,
 };
 use super::Unbuilt;
 
@@ -47,7 +46,6 @@ unbuilt! {
     ShellStatusBranch: "shell.status.branch" => ("Branch and changes", Shared11, "Shows the Git branch you are on and how many files you changed"),
 
     // Home: the level editor.
-    HomeCreateTrigger: "home.create.trigger" => ("Trigger zone", TwoD2, "Adds a zone that tells game code when something enters or leaves it"),
     BrushRibbonMaterial: "brush.ribbon.material" => ("Material", Shared7, "Gives the picked faces a material: concrete, planks, grass"),
     BrushCardMaterial: "brush.card.material" => ("Material", Shared7, "Gives the brush's faces a material: concrete, planks, grass"),
     HomeLightingBake: "home.lighting.bake" => ("Bake", ThreeD5, "Works out bounced light for the level"),

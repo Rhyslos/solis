@@ -115,6 +115,7 @@ const ON_AN_ENTITY: &[(&str, Asks)] = &[
 /// entity (the whole game's, the sound mixer's, the player's settings,
 /// input) or is the level's own (an entity made or taken out).
 const NOT_ON_AN_ENTITY: &[&str] = &[
+    "entity_inside",
     "World_say",
     "World_time",
     "World_find",

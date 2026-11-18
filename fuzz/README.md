@@ -7,7 +7,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `save_game` | A save game, loaded into an editor and played on a few ticks |
 | `recording` | A recording of play; read back after writing |
 | `input_actions` | `input.solinput`; read back the same after writing |
-| `level_file` | A level file, its prefabs expanded (it may place itself) |
+| `level_file` | A level file, its prefabs expanded (it may place itself); every trigger zone read is within its limits, and a usable freeform outline is cut into convex pieces |
 | `prefab_file` | A prefab file (`.prefab.lst`, or an assembly's older `.solassembly`), its copies expanded (it may place itself), written and read back as the same prefab |
 | `brush` | A level file holding brushes (Tools 1a, B1); every brush read is within the limits, writes back to itself and is cut into triangles without panicking |
 | `aseprite` | An Aseprite file, read within the limits and packed into a sprite sheet whose frames draw back the same |

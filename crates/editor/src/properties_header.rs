@@ -160,11 +160,16 @@ fn name_width(ui: &Ui, name: &str) -> f32 {
 /// "Model · Props": what the entity is (its main component's name) and
 /// the entity it's under.
 fn kind_words(document: &Document, entity: &level::EntityData) -> String {
-    let kind = entity
-        .components
-        .keys()
-        .find(|n| n.as_str() != "Transform")
-        .map_or("Entity", |n| n.as_str());
+    // A trigger zone says so, whatever code it carries (the mock-up's
+    // "Door zone  Trigger zone").
+    let zone = entity.has("TriggerZone").then_some("Trigger zone");
+    let kind = zone.unwrap_or_else(|| {
+        entity
+            .components
+            .keys()
+            .find(|n| n.as_str() != "Transform")
+            .map_or("Entity", |n| n.as_str())
+    });
     match entity.parent.and_then(|p| document.level().get(p)) {
         Some(parent) => format!("{kind} \u{b7} {}", parent.name),
         None => kind.to_owned(),

@@ -179,6 +179,9 @@ pub struct WorldView {
     pub time_of_day: f64,
     /// The player's settings as the tick started (`Screens:textSize`).
     pub settings: crate::settings::PlayerSettings,
+    /// Who is inside each trigger zone as the tick started, by zone, each
+    /// list in the order of their IDs (`inside()`).
+    pub zones: Arc<std::collections::BTreeMap<EntityId, Vec<EntityId>>>,
 }
 
 impl WorldView {
@@ -447,6 +450,10 @@ impl Host for ViewHost {
 
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
         self.view.physics.cast_ray(from, direction, reach)
+    }
+
+    fn inside(&self, zone: EntityId) -> Vec<EntityId> {
+        self.view.zones.get(&zone).cloned().unwrap_or_default()
     }
 
     fn action(&self, name: &str) -> input::ActionState {

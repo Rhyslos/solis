@@ -87,6 +87,8 @@ pub struct LevelView {
     /// The tile maps (Phase 9, D4): each one's file (in the editor) or its
     /// map as the game has it, and where it is.
     pub tile_maps: Vec<LevelTileMap>,
+    /// The trigger zones (stage 1, triggers), to outline.
+    pub zones: Vec<crate::zones::ViewZone>,
 }
 
 /// A tile map a level or the running game draws.
@@ -237,6 +239,17 @@ impl LevelView {
                 game: None,
             });
         }
+        for (id, zone) in level.with::<level::builtin::TriggerZone>() {
+            if hidden.contains(&id) {
+                continue;
+            }
+            view.zones.push(crate::zones::ViewZone {
+                entity: id,
+                name: level.get(id).map(|e| e.name.clone()).unwrap_or_default(),
+                zone,
+                transform: at(id),
+            });
+        }
         let first = tree.first_of(level.with::<Camera>().map(|(id, _)| id));
         for (id, camera) in level.with::<Camera>() {
             if !hidden.contains(&id) {
@@ -311,6 +324,20 @@ impl LevelView {
                     file: component.map.map(|m| m.asset),
                     game: Some(std::sync::Arc::new(world.tile_map(entity)?)),
                 })
+            })
+            .collect();
+        // Trigger zones show while playing too, where the game has them.
+        view.zones = world
+            .placed_between::<level::builtin::TriggerZone>(t)
+            .into_iter()
+            .map(|(entity, zone, transform)| crate::zones::ViewZone {
+                entity,
+                name: world
+                    .get::<world::Name>(entity)
+                    .map(|n| n.0)
+                    .unwrap_or_default(),
+                zone,
+                transform,
             })
             .collect();
         view

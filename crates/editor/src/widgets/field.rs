@@ -24,6 +24,10 @@ pub enum Axis {
     Y,
     /// Up and down: blue.
     Z,
+    /// A width along X, in 2D (a trigger zone's): red, as X.
+    W,
+    /// A height along Y, in 2D: green, as Y.
+    H,
 }
 
 impl Axis {
@@ -35,13 +39,15 @@ impl Axis {
             Self::X => "X",
             Self::Y => "Y",
             Self::Z => "Z",
+            Self::W => "W",
+            Self::H => "H",
         }
     }
 
     fn colour(self) -> Color32 {
         match self {
-            Self::X => tokens::AXIS_X_TEXT,
-            Self::Y => tokens::AXIS_Y_TEXT,
+            Self::X | Self::W => tokens::AXIS_X_TEXT,
+            Self::Y | Self::H => tokens::AXIS_Y_TEXT,
             Self::Z => tokens::AXIS_Z_TEXT,
         }
     }

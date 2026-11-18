@@ -249,7 +249,7 @@ fn an_older_save_in_a_slot_is_kept_before_it_s_replaced() {
     let slot = crate::play_files::save_path(&root, "quick").unwrap();
     std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
     std::fs::write(&slot, &old).unwrap();
-    let current = std::fs::read_to_string(fixtures().join("save/v9/harbour.solsave")).unwrap();
+    let current = std::fs::read_to_string(fixtures().join("save/v10/harbour.solsave")).unwrap();
     let (path, copy) = crate::play_files::save_game(&root, "quick", &current).unwrap();
     let copy = copy.expect("kept");
     assert_eq!(std::fs::read(&copy).unwrap(), old);
@@ -264,8 +264,8 @@ fn a_newer_save_in_a_slot_is_kept_before_it_s_replaced() {
     // Regression (the Phase 8 review): a save from a newer Solis (tried,
     // then gone back from) was overwritten with no copy.
     let root = project("newer-save");
-    let current = std::fs::read_to_string(fixtures().join("save/v9/harbour.solsave")).unwrap();
-    let newer = current.replacen("solis save 9", "solis save 10", 1);
+    let current = std::fs::read_to_string(fixtures().join("save/v10/harbour.solsave")).unwrap();
+    let newer = current.replacen("solis save 10", "solis save 11", 1);
     let slot = crate::play_files::save_path(&root, "quick").unwrap();
     std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
     std::fs::write(&slot, &newer).unwrap();

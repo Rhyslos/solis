@@ -231,7 +231,7 @@ Counts are at the end of this part.
 | `home.create.mesh` | Create › **Mesh** (spec 174) | EXISTS | Places a model from the project or runs Import model… (`WorkbenchAction::PlaceAsset`, `ImportModel`). Ready-made shapes are shape brushes (Tools 1a): the long-press list's "Shape brush…" opens the brush list, as Create › Shape does. Word: "Model" (D4). | |
 | `home.create.light` | Create › **Light** | EXISTS | `MenuCommand` Add point light, Add spotlight (`menu_items.rs`) | |
 | `home.create.camera` | Create › **Camera** | EXISTS | `MenuCommand` Add camera | |
-| `home.create.volume` | Create › **Volume** | PARTLY | Adds an entity with a ReverbZone, the one volume Solis has. Unbuilt piece: `home.create.trigger` (a trigger zone) in the long-press list. | 2D 2: triggers |
+| `home.create.volume` | Create › **Volume** | EXISTS | Adds an entity with a ReverbZone; the trigger zone (`home.create.trigger`) was built in stage 1's triggers milestone: Home › Create › Trigger zone (More in a 3D project). | 2D 2: triggers |
 | `brush.shape.extrude` | HOME TOOLS · Brush › Shape › **Extrude** (Tools 1, mock-up 3) | EXISTS | `brushing::shaping`, `brushing::pull`: E, then the mouse and a click; Shift + drag on the move gizmo | Tools 1a, B4 (built) |
 | `brush.shape.inset` | HOME TOOLS · Brush › Shape › **Inset** | EXISTS | `brushing::pull`: the mouse sets the border's width, a click keeps it | Tools 1a, B4 (built) |
 | `brush.shape.split` | HOME TOOLS · Brush › Shape › **Split** | EXISTS | `brushing::shaping`, `mesh::split`: by the mode | Tools 1a, B4 (built) |

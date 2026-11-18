@@ -516,6 +516,13 @@ impl Workbench {
             PropertyRequest::BrushSize { entity, size } => {
                 self.resize_brush(entity, size, gesture);
             }
+            PropertyRequest::ZoneDraw(entity) => self.start_zone_drawing(entity),
+            PropertyRequest::ZoneEditPoints(entity) => {
+                self.viewport.zones.points = None;
+                self.toggle_zone_points();
+                let _ = entity;
+            }
+            PropertyRequest::NewZoneCode(entity) => self.new_code_for_zone(entity),
         }
     }
 

@@ -76,6 +76,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 
 ## Making a game
 
+- [Trigger zones: a door, a counter or a pit that tells game code when something walks in or out](trigger-zones.md)
 - [Characters and cameras: a character that walks and jumps, third-person, first-person and RTS cameras, and the playground](characters-and-cameras.md)
 - [Save games: save everything, and load it back exactly](save-games.md)
 - [Exporting for playtesting: a folder with your game, to send to a friend](playtest-export.md)

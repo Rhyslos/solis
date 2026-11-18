@@ -82,6 +82,7 @@ impl Save {
         let objects = section("objects")?.to_string();
         let speed = read_speed(section("speed")?)?;
         let day_shift = read_day_shift(section("day")?)?;
+        let zones = super::zones::read_zones(section("zones")?)?;
         Ok(Self {
             project,
             ticks,
@@ -98,6 +99,7 @@ impl Save {
             objects,
             speed,
             day_shift,
+            zones,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {

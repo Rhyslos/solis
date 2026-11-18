@@ -549,6 +549,7 @@ impl GameWorld for PlayWorld<'_> {
                     0.0,
                 )
             },
+            zones: self.world.inside_zones(),
         }
     }
 

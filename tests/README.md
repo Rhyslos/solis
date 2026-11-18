@@ -8,7 +8,7 @@ Example files of every version of every file format Solis has ever released (Pha
 
 | Folder | Format | Versions |
 | --- | --- | --- |
-| `area/` | Levels (`.sollevel`; areas, `.solarea`, until v4; the folder keeps the old name, since released examples never move) and an assembly's older file (`.solassembly`, what prefabs were until format 1 of `prefab/`) | v1, v2 (a placed prefab's part moved out to the top level, `parent = "";`), v3 (brushes: a box, a ramp and stairs, their points and faces a few numbers to a line), v4 (areas renamed levels, decision 0118: the header says `level`; `blockout.sollevel` is v3's `blockout.solarea` as this build writes it), v5 (assemblies renamed prefabs: a copy says `prefab = "ID";`; `yard.sollevel` places one) |
+| `area/` | Levels (`.sollevel`; areas, `.solarea`, until v4; the folder keeps the old name, since released examples never move) and an assembly's older file (`.solassembly`, what prefabs were until format 1 of `prefab/`) | v1, v2 (a placed prefab's part moved out to the top level, `parent = "";`), v3 (brushes: a box, a ramp and stairs, their points and faces a few numbers to a line), v4 (areas renamed levels, decision 0118: the header says `level`; `blockout.sollevel` is v3's `blockout.solarea` as this build writes it), v5 (assemblies renamed prefabs: a copy says `prefab = "ID";`; `yard.sollevel` places one; `zones.sollevel`, trigger zones (stage 1): a box, a circle that fires once and a freeform L, a new component that needed no new version) |
 | `prefab/` | Prefabs (`.prefab.lst`, Lust, decision 0081) | v1 (`crate.prefab.lst` is `area/v4/crate.solassembly` as this build moves it) |
 | `sound-event/` | Sound events (`.solsound`) | v1 |
 | `mixer/` | The project's buses (`mixer.solmix`) | v1 |

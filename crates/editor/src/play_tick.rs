@@ -1,8 +1,8 @@
 //! One frame of the running game (`Workbench::run_game`): the editor's
 //! changes taken in, then each tick due, in its fixed order (decision
-//! 0033): land what earlier starts spawned, move the world on, the
-//! tick's input, game code, physics, recording or replay, then saves
-//! and loads. What the frame has to say is said at its end. The order
+//! 0033): land what earlier starts spawned, move the world on (and the
+//! trigger zones' overlap pass), the tick's input, game code, physics,
+//! recording or replay, then saves and loads. What the frame has to say is said at its end. The order
 //! is what keeps a replay matching the live game, so each step's place
 //! in `run_tick` matters.
 
@@ -16,6 +16,9 @@ use std::time::{Duration, Instant};
 
 #[path = "play_tick_end.rs"]
 mod end;
+
+#[path = "play_zones.rs"]
+mod zones;
 
 /// What one frame of the running game gathers as it goes, said at its
 /// end.
@@ -240,8 +243,9 @@ impl Workbench {
 
     /// The world moves on before game code's turn: projectiles, the
     /// project's clips, maps, 2D settings and animators taken in, then
-    /// animators and sprites stepped. The sounds and events the sprites'
-    /// cues make, or none when play has stopped.
+    /// animators and sprites stepped, then the trigger zones' overlap
+    /// pass. The sounds and events the sprites' cues make and the events
+    /// the zones' crossings make, or none when play has stopped.
     fn move_world_on(&mut self) -> Option<(Vec<crate::game_sound::Request>, Vec<script::Event>)> {
         let playing = self.open.playing.as_mut()?;
         // Where everything is as the tick starts: what drawing between
@@ -275,12 +279,16 @@ impl Workbench {
             .set_animators(Arc::clone(&self.viewport.sheets.animator_set));
         playing.world.step_animators();
         let cues = playing.world.step_sprites(playing.world.tick_time());
-        Some(cues_of(
+        let (sounds, mut events) = cues_of(
             &playing.world,
             cues,
             &self.open.cue_sounds,
             &self.viewport.sheets.paths,
-        ))
+        );
+        // Trigger zones (stage 1): who walked in or out since the last
+        // tick, on where physics' last step left everything.
+        events.extend(zones::zone_events(&mut playing.world));
+        Some((sounds, events))
     }
 
     /// The tick's input: played back, or sampled from the devices once,

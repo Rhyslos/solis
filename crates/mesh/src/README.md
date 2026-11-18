@@ -19,6 +19,7 @@ Polygon meshes, how they connect, the operations on them and the brushes' shapes
 | `intact.rs` | Whether a brush stays whole after points move: no face folded or flattened, no passing through. Tests in `intact_tests.rs`. | `check_moved`, `Broken` |
 | `whole.rs` | Whether a brush is whole after faces are added, removed or rewired: closed, facing out, room inside, four faces or more. Tests in `whole_tests.rs`. | `check_whole`, `room_inside` |
 | `repair.rs` | Mending a mesh read from a file: faces turned the right way, a hole with one flat border filled. Tests in `repair_tests.rs`. | `repair`, `why_not_whole` |
+| `outline.rs` | Flat outlines (a 2D trigger zone's freeform shape): whether one crosses itself, whether a point is inside, and its convex pieces. Tests in `outline_tests.rs`. | `check`, `contains`, `convex_pieces`, `OutlineError`, `MAX_OUTLINE_POINTS` |
 | `triangulate.rs` | Cutting any face into triangles, the same way every time. Tests in `triangulate_tests.rs`. | `face_triangles`, `triangulate` |
 | `flat.rs` | A mesh as triangles: drawn flat (each face's own facing and slot), or over shared points for physics. | `FlatTriangles`, `flat_triangles`, `solid_triangles` |
 | `shading.rs` | Smooth or sharp shading by hard edges or by angle. | `shaded_triangles`, `corner_shading`, `Hardness` |

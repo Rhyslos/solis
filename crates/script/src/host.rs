@@ -99,6 +99,13 @@ pub trait Host {
         let _ = which;
         false
     }
+    /// Who is inside the trigger zone `zone` as the tick started, in the
+    /// order of their IDs (`inside()` in Lust); none for an entity that
+    /// isn't a zone.
+    fn inside(&self, zone: EntityId) -> Vec<EntityId> {
+        let _ = zone;
+        Vec::new()
+    }
     /// Saves the game in `slot` (or, with `load`, loads the game saved
     /// there), at the end of the tick (decision 0038).
     fn save_game(&mut self, slot: &str, load: bool) {

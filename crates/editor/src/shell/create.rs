@@ -5,7 +5,7 @@
 
 use crate::workbench::Workbench;
 use level::EntityData;
-use level::builtin::{ReverbZone, Sprite, Transform};
+use level::builtin::{ReverbZone, Sprite, Transform, TriggerZone};
 use reflect::EntityId;
 
 impl Workbench {
@@ -20,6 +20,20 @@ impl Workbench {
                     ..Transform::default()
                 })
                 .with(&Sprite::default()),
+        )
+    }
+
+    /// Adds a trigger zone (stage 1, triggers), a standard box, where the
+    /// camera looks: in the middle of a 2D view, or on the ground in 3D.
+    pub fn add_trigger_zone(&mut self) -> EntityId {
+        let position = self.viewport.camera.focus();
+        self.spawn_selected(
+            EntityData::new("Trigger zone")
+                .with(&Transform {
+                    position,
+                    ..Transform::default()
+                })
+                .with(&TriggerZone::default()),
         )
     }
 

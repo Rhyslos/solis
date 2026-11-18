@@ -16,6 +16,8 @@ Hold the running game's entities in a form a game can run over quickly. The leve
 
 Tools 1a, B1: brushes. A `Brush` is kept as its Rust type (its mesh shared), so `placed_between::<Brush>` lists the brushes to draw; a Solid one with no Collider of its own joins physics as a still surface of its own triangles (`physics::Shape::Mesh`), with a fixed body (or a kinematic one, if its RigidBody says so; a dynamic one is fixed: brushes don't fall). Tests in `brush_tests.rs`.
 
+Stage 1, triggers: a `TriggerZone` is kept as its Rust type. `overlap_zones` is Solis's own overlap pass, run by the editor once a tick as it begins, on where physics' last step left everything: each zone (in entity order) asks 3D physics (a box or a sphere, grown and turned with its entity) and 2D physics (a box, a circle, or a freeform outline's convex pieces, made once when the zone or its scale changes) who overlaps it; the answers, sorted by zone and entity, are compared with last tick's, and each difference is a `Crossing`. Who is inside and which zones that fire once have fired are game state: carried through `rebuild`, in the checksum (only once anything is, so older recordings' sums stand), and kept by saves (`zone_states`, `set_zone_states`). Something in and out within a tick crosses nothing; something despawned inside leaves; a zone taken out says nothing. Tests in `triggers_tests.rs`.
+
 ## Must never
 
 - Change the level: Stop throws the world away and the level is put back.

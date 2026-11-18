@@ -732,6 +732,10 @@ impl Flat {
     }
 }
 
+#[path = "flat_zones.rs"]
+mod zones;
+pub use zones::{FlatZone, FlatZoneQuery};
+
 #[cfg(test)]
 #[path = "flat_tests.rs"]
 mod tests;
