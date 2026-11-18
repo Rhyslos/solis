@@ -76,7 +76,7 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
     assert!(make(&root).is_err(), "not over an existing project");
     let project = Project::open(&root).unwrap();
     assert_eq!(project.name(), NAME);
-    let assets = project.assets();
+    let assets = project.files();
     crate::game_code::GameCode::describe(&assets, "Test 1.0");
     let code = script::gather(&assets);
     let compiled = match script::compile(&code) {
@@ -193,7 +193,7 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
 fn the_sample_never_replaces_a_file_of_the_person_s() {
     let temp = reflect::test_support::TempFolder::new("sample-mine").unwrap();
     let root = temp.join("My game");
-    let assets = root.join(asset_db::ASSETS_FOLDER);
+    let assets = root.clone();
     std::fs::create_dir_all(&assets).unwrap();
     std::fs::write(assets.join("main.lst"), "-- mine\nend\n").unwrap();
     let why = make(&root).unwrap_err().to_string();

@@ -384,7 +384,7 @@ fn the_editor_s_surfaces_are_the_design_s() {
         ),
         (
             "the bottom panel's bar",
-            [900.0, 652.0],
+            [640.0, 652.0],
             tokens::shelf_bar(),
         ),
         ("the Level slot", [100.0, 600.0], tokens::panel()),

@@ -305,11 +305,21 @@ impl Workbench {
         self.sources += 1;
     }
 
-    /// The project's folders inside its assets, `/` between names, for
-    /// the Library's tree.
+    /// The project's folders, `/` between names, for the Library's
+    /// trees. A folder shown that has gone (moved, deleted) gives way to
+    /// the project's own.
     pub fn set_folders(&mut self, folders: Vec<String>) {
-        if !folders.contains(&self.open.library_state.folder) {
-            self.open.library_state.folder.clear();
+        let there = |f: &str| f.is_empty() || folders.iter().any(|g| g == f);
+        let state = &mut self.open.library_state;
+        if !there(&state.folder) {
+            state.folder.clear();
+        }
+        state.back.retain(|f| there(f));
+        for tree in &mut state.trees.list {
+            if !there(&tree.top) {
+                tree.top.clear();
+            }
+            tree.open.retain(|f| there(f));
         }
         self.open.folders = folders;
     }

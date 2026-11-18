@@ -1,12 +1,12 @@
 //! The open project, as the window holds it: its asset database, the
-//! watcher on its assets folder, and the list of projects Solis knows
+//! watcher on its folder, and the list of projects Solis knows
 //! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md),
 //! [decision 0086](../../../docs/decisions/0086-the-launcher.md)).
 //!
 //! It also saves the files the editors make and change. Every saver is
-//! told where by a path inside the assets, and finds the file through one
+//! told where by a path in the project, and finds the file through one
 //! function (`Projects::place`), which takes only a plain path there, of
-//! the saver's own kind: a path can't make one write outside the assets
+//! the saver's own kind: a path can't make one write outside the project
 //! folder, or over another kind of file. The Library's file changes (a
 //! move, a delete, a new folder or sound event) keep to the same rule
 //! (`plain_inside`). Only [`Projects::open`] and [`Projects::bring_in`]
@@ -30,18 +30,14 @@ pub struct Projects {
     known: crate::known_projects::KnownProjects,
     /// This copy's build number, recorded in each project it opens.
     build: Option<u64>,
-    /// Whether the assets folder changed since last asked (any file, not
-    /// only assets: the Library lists them all).
+    /// Whether the project's files changed since last asked (any file,
+    /// not only assets: the Library lists them all).
     changed: bool,
-    /// A look at the assets folder running on a worker (it can take
+    /// A look at the project's files running on a worker (it can take
     /// seconds in a big project: CONTRIBUTING rule 10).
     scanning: Option<Receiver<Scanned>>,
     /// Whether the folder changed again while that look ran.
     again: bool,
-    /// Whether `watcher` watches only the project's own folder, because
-    /// it has no assets folder yet (decision 0118): when one is made
-    /// there, the watcher moves into it.
-    watching_root: bool,
 }
 
 /// What opening a project found.
@@ -89,9 +85,11 @@ impl Projects {
         // Older files Solis made move to their new names first (Lust,
         // decision 0081; areas to levels, decision 0118), so the asset
         // database finds them there; then the project file says so.
-        let mut moved = crate::older_files::move_older_files(root, &project.assets());
+        let mut moved = crate::older_files::move_older_files(root, &project.files());
         moved.extend(upgrade_project_file(root, &project));
-        let (watcher, watching_root) = watch(root, &project.assets());
+        // The folder its files are in (decision 0118: its own), Solis's
+        // own folders passed over. None if the system won't watch.
+        let watcher = Watcher::new_project(&project.files()).ok();
         let (db, _, mut notes) = AssetDb::open(project, limits);
         notes.splice(0..0, moved);
         // The cache keeps within its size, on a worker: a model whose entry
@@ -111,7 +109,7 @@ impl Projects {
         let info = ProjectInfo {
             name: db.project().name().to_string(),
             root: root.to_path_buf(),
-            assets: db.project().assets(),
+            assets: db.project().files(),
         };
         if let Some(build) = self.build
             && let Err(why) = db.project().record_build(build)
@@ -126,7 +124,6 @@ impl Projects {
         let watching = watcher.is_some();
         self.db = Some(db);
         self.watcher = watcher;
-        self.watching_root = watching_root;
         // A look at the last project's folder is no longer wanted.
         self.scanning = None;
         self.again = false;
@@ -142,7 +139,6 @@ impl Projects {
     pub fn close(&mut self) {
         self.db = None;
         self.watcher = None;
-        self.watching_root = false;
         self.scanning = None;
         self.again = false;
         self.changed = false;
@@ -188,7 +184,7 @@ impl Projects {
         self.db.as_ref().map(|db| db.project().root())
     }
 
-    /// What changed in the assets folder, found by the last look at it
+    /// What changed in the project, found by the last look at it
     /// that has finished, with notes in plain words. Never waits: the
     /// folder is looked at on a worker when the watcher reports a change,
     /// and what it found is handed back by a later call.
@@ -210,9 +206,6 @@ impl Projects {
             }
         }
         let heard = self.watcher.as_ref().is_some_and(Watcher::changed);
-        if heard && self.watching_root {
-            self.follow_new_assets_folder();
-        }
         self.again |= heard;
         // A new file left waiting for its sidecar is looked at again once
         // it has settled, even if nothing else happens.
@@ -228,23 +221,7 @@ impl Projects {
         found
     }
 
-    /// Something changed in the project's own folder while it had no
-    /// assets folder: if one is there now (made by Solis or anyone else),
-    /// the watcher moves into it.
-    fn follow_new_assets_folder(&mut self) {
-        let Some(db) = &self.db else {
-            return;
-        };
-        let assets = db.project().assets();
-        if assets.is_dir()
-            && let Ok(watcher) = Watcher::new(&assets)
-        {
-            self.watcher = Some(watcher);
-            self.watching_root = false;
-        }
-    }
-
-    /// Starts a look at the assets folder on a worker.
+    /// Starts a look at the project's files on a worker.
     fn start_scan(&mut self) {
         let Some(db) = self.db.as_mut() else {
             return;
@@ -262,7 +239,7 @@ impl Projects {
         }
     }
 
-    /// Whether the assets folder is being looked at, or a new file is
+    /// Whether the project's folder is being looked at, or a new file is
     /// waiting for its sidecar, to be looked at again shortly.
     pub fn waiting(&self) -> bool {
         self.scanning.is_some()
@@ -272,7 +249,7 @@ impl Projects {
                 .is_some_and(|db| db.look_again_at().is_some())
     }
 
-    /// Whether anything in the assets folder changed since last asked.
+    /// Whether anything in the project changed since last asked.
     pub fn take_changed(&mut self) -> bool {
         std::mem::take(&mut self.changed)
     }
@@ -286,7 +263,7 @@ impl Projects {
             .adopt(path)
     }
 
-    /// Looks at the whole assets folder again, now (after Solis changed
+    /// Looks at the whole project again, now (after Solis changed
     /// it), unless a look on a worker is walking it: then nothing now,
     /// never waiting for that look (the second review pass's N-13), and
     /// another look follows it on the worker, whose findings come from
@@ -302,7 +279,7 @@ impl Projects {
         })
     }
 
-    /// Every file and folder in the assets folder (nothing without a
+    /// Every file and folder in the project (nothing without a
     /// project).
     pub fn listing(&self) -> Listing {
         self.db.as_ref().map(AssetDb::listing).unwrap_or_default()
@@ -337,7 +314,7 @@ impl Projects {
         (items, folders)
     }
 
-    /// Renames or moves a file or folder inside the assets, with its
+    /// Renames or moves a file or folder in the project, with its
     /// sidecar. `from` is a plain path there (`plain_inside`), and `to`
     /// a name in a folder there (`named_inside`).
     pub fn move_path(&self, from: &Path, to: &Path) -> Result<(), String> {
@@ -351,31 +328,30 @@ impl Projects {
         db.move_path(from, to).map_err(|e| e.to_string())
     }
 
-    /// Makes a new folder inside `parent` (inside the assets; empty for
-    /// the assets folder itself).
+    /// Makes a new folder inside `parent` (in the project; empty for
+    /// its own folder).
     pub fn new_folder(&self, parent: &Path) -> Result<PathBuf, String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
         if !assets_or_inside(parent) {
             return Err(outside(parent));
         }
-        db.project().assets_folder().map_err(|e| e.to_string())?;
         db.new_folder(parent).map_err(|e| e.to_string())
     }
 
-    /// Makes a new sound event in `folder` (inside the assets; empty for
-    /// the assets folder itself) holding `text`, named "New sound event"
+    /// Makes a new sound event in `folder` (in the project; empty for
+    /// its own folder) holding `text`, named "New sound event"
     /// (with a number if that's taken), and gives it its ID at once.
-    /// Returns where it is, inside the assets.
+    /// Returns where it is, in the project.
     pub fn new_sound_event(&mut self, folder: &Path, text: &str) -> Result<PathBuf, String> {
         let db = self.db.as_mut().ok_or("no project is open")?;
-        let assets = db.project().assets();
-        if folder.as_os_str().is_empty() {
-            db.project().assets_folder().map_err(|e| e.to_string())?;
-        }
+        let assets = db.project().files();
         let dir = assets.join(folder);
         // The path is checked before the disk is asked about it.
         if !assets_or_inside(folder) || !dir.is_dir() {
-            return Err(format!("{} isn't a folder in the assets", folder.display()));
+            return Err(format!(
+                "{} isn't a folder in the project",
+                folder.display()
+            ));
         }
         let ext = asset_db::SOUND_EVENT_EXTENSION;
         let name = (1..1000)
@@ -396,10 +372,10 @@ impl Projects {
         Ok(folder.join(name))
     }
 
-    /// Where the file at `path` (inside the assets) is on disk, for saving
+    /// Where the file at `path` (in the project) is on disk, for saving
     /// `what` ("a clips file"). Every saver finds its file here, so none can
-    /// write outside the assets folder or over a file of another kind:
-    /// `path` must be a plain path inside the assets ([`plain_inside`])
+    /// write outside the project's folder or over a file of another kind:
+    /// `path` must be a plain path in the project ([`plain_inside`])
     /// whose name `is_kind` takes for that kind.
     fn place(
         &self,
@@ -409,14 +385,12 @@ impl Projects {
     ) -> Result<(&AssetDb, PathBuf), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
         if !plain_inside(path) || !is_kind(path) {
-            return Err(format!("it isn't {what} in the assets"));
+            return Err(format!("it isn't {what} in the project"));
         }
-        // A new project gets its assets folder with its first file.
-        let assets = db.project().assets_folder().map_err(|e| e.to_string())?;
-        Ok((db, assets.join(path)))
+        Ok((db, db.project().files().join(path)))
     }
 
-    /// Saves `text` as the file of `kind` at `path` (inside the assets). A
+    /// Saves `text` as the file of `kind` at `path` (in the project). A
     /// file there in an older format is copied to the backups first
     /// (Phase 8, C1); gives back where it was kept, if it was.
     fn save_versioned(
@@ -444,7 +418,7 @@ impl Projects {
         )
     }
 
-    /// Saves a sound event's file (`.solsound`, inside the assets). Only
+    /// Saves a sound event's file (`.solsound`, in the project). Only
     /// one that's there already: events are made by [`Self::new_sound_event`].
     /// Gives back where an older one was kept, if it was.
     pub fn save_sound_event(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
@@ -481,7 +455,7 @@ impl Projects {
         }
     }
 
-    /// Saves a sprite's clips file (`.solframes`, inside the assets),
+    /// Saves a sprite's clips file (`.solframes`, in the project),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_frames(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
@@ -499,7 +473,7 @@ impl Projects {
         self.save_versioned(path, text, &kind)
     }
 
-    /// Saves an animator file (`.solanim`, inside the assets, Phase 9, D3b),
+    /// Saves an animator file (`.solanim`, in the project, Phase 9, D3b),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_animator(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
@@ -518,7 +492,7 @@ impl Projects {
     }
 
     /// Saves a new picture (a PNG, Phase 9, D5: a tileset template) at
-    /// `path` inside the assets. Never replaces a file already there.
+    /// `path` in the project. Never replaces a file already there.
     pub fn save_picture(&self, path: &Path, bytes: &[u8]) -> Result<(), String> {
         let (_, file) = self.place(path, "a picture", |path| ends_in(path, &["png"]))?;
         if file.exists() {
@@ -528,7 +502,7 @@ impl Projects {
         asset_db::write_atomically(&file, bytes).map_err(|e| e.to_string())
     }
 
-    /// Makes a new text file inside the assets (E1): a Lust code file
+    /// Makes a new text file in the project (E1): a Lust code file
     /// (`.lst`) or a level (`.sollevel`). Never replaces a file.
     pub fn save_new_text(&self, path: &Path, text: &str) -> Result<(), String> {
         let (_, file) = self.place(path, "a code file or a level", |path| {
@@ -541,7 +515,7 @@ impl Projects {
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
-    /// Saves an atlas file (`.atlas.lst`, inside the assets, a picture's
+    /// Saves an atlas file (`.atlas.lst`, in the project, a picture's
     /// crops; decision 0089), making it if it isn't there. Version 1 is
     /// the only one, so there's no older one to keep.
     pub fn save_atlas(&self, path: &Path, text: &str) -> Result<(), String> {
@@ -552,7 +526,7 @@ impl Projects {
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
-    /// Saves a screen's Lust file (inside the assets) after a change on
+    /// Saves a screen's Lust file (in the project) after a change on
     /// the UI editor's canvas (decision 0089). Only a `.lst` file that's
     /// there already: the canvas changes screens, it never makes files.
     pub fn save_screen(&self, path: &Path, text: &str) -> Result<(), String> {
@@ -566,7 +540,7 @@ impl Projects {
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
-    /// Saves a tileset (`.tileset.lst`, inside the assets, Phase 9, D4),
+    /// Saves a tileset (`.tileset.lst`, in the project, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_tileset(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
@@ -584,7 +558,7 @@ impl Projects {
         self.save_versioned(path, text, &kind)
     }
 
-    /// Saves a tile map file (`.tilemap.lst`, inside the assets, Phase 9, D4),
+    /// Saves a tile map file (`.tilemap.lst`, in the project, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_tile_map(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
@@ -602,7 +576,25 @@ impl Projects {
         self.save_versioned(path, text, &kind)
     }
 
-    /// Moves a file or folder (inside the assets) to the Recycle Bin.
+    /// Copies the file at `path` (in the project) beside it, as "hay
+    /// copy.png" (or "hay copy 2.png" …), and gives the copy an ID of its
+    /// own at once. Returns where the copy is, in the project.
+    pub fn duplicate(&mut self, path: &Path) -> Result<PathBuf, String> {
+        let db = self.db.as_mut().ok_or("no project is open")?;
+        if !plain_inside(path) {
+            return Err(outside(path));
+        }
+        let copy = db.duplicate(path).map_err(|e| e.to_string())?;
+        let full = db.project().files().join(&copy);
+        // An asset gets its ID now; any other file needs none.
+        if asset_db::AssetKind::of(&full).is_some() {
+            db.adopt(&full).map_err(|e| e.to_string())?;
+        }
+        self.rescan();
+        Ok(copy)
+    }
+
+    /// Moves a file or folder (in the project) to the Recycle Bin.
     pub fn delete(&self, path: &Path) -> Result<(), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
         if !plain_inside(path) {
@@ -618,8 +610,12 @@ impl Projects {
             .db
             .as_mut()
             .ok_or_else(|| std::io::Error::other("no project is open"))?;
-        // Already inside the assets folder: use it where it is.
-        let target = if source.starts_with(db.project().assets()) {
+        // Already in the project: used where it is.
+        let target = if source.starts_with(db.project().files())
+            && source
+                .strip_prefix(db.project().files())
+                .is_ok_and(|inside| !asset_db::is_own(inside))
+        {
             source.to_path_buf()
         } else {
             db.copy_in(source)?
@@ -649,9 +645,6 @@ struct Saved<'a> {
     read_back: fn(&str) -> Result<String, String>,
 }
 
-/// A watcher on the project in `root`: on its assets folder and all in
-/// it, or, while it has none (a new project, decision 0118), on the
-/// project's own folder alone, to see one made (the `bool` says so).
 /// Brings the project file up to this build's format, keeping a copy of
 /// the older one in the backups (`Project::upgrade_file`): format 2 once
 /// its levels are `.sollevel` files (decision 0118), so a build from
@@ -668,34 +661,24 @@ fn upgrade_project_file(root: &Path, project: &Project) -> Option<String> {
     }
 }
 
-/// None if the system won't watch.
-fn watch(root: &Path, assets: &Path) -> (Option<Watcher>, bool) {
-    if assets.is_dir() {
-        (Watcher::new(assets).ok(), false)
-    } else {
-        let watcher = Watcher::new_flat(root).ok();
-        let flat = watcher.is_some();
-        (watcher, flat)
-    }
-}
-
-/// Whether `path` is a plain path inside the assets: names only, with no
-/// `..`, root or drive, so joined to the assets folder it stays inside it
-/// on every system (`editor::plain_relative`). The one rule for a path a
-/// file is saved at or handed to another program by; a path that isn't
-/// text isn't one.
+/// Whether `path` is a plain path inside the project: names only, with no
+/// `..`, root or drive, so joined to the project's folder it stays inside
+/// it on every system (`editor::plain_relative`), and not in Solis's own
+/// folders or the project file (`asset_db::is_own`). The one rule for a
+/// path a file is saved at or handed to another program by; a path that
+/// isn't text isn't one.
 pub(crate) fn plain_inside(path: &Path) -> bool {
-    path.to_str().is_some_and(editor::plain_relative)
+    path.to_str().is_some_and(editor::plain_relative) && !asset_db::is_own(path)
 }
 
-/// Whether `path` is the assets folder itself (an empty path) or a plain
+/// Whether `path` is the project's own folder (an empty path) or a plain
 /// path inside it ([`plain_inside`]): the rule where a folder is named.
 pub(crate) fn assets_or_inside(path: &Path) -> bool {
     path.as_os_str().is_empty() || plain_inside(path)
 }
 
-/// Whether `to` is somewhere inside the assets to move a file or folder
-/// to: a name, in the assets folder itself or in a plain path inside it
+/// Whether `to` is somewhere in the project to move a file or folder
+/// to: a name, in the project's own folder or in a plain path inside it
 /// ([`plain_inside`]). Whether the name can be a file's is `asset_db`'s
 /// to say: its rule for a new name is stricter than this one (no `:` or
 /// slash of either kind either), and explains itself to whoever typed
@@ -708,16 +691,15 @@ fn named_inside(to: &Path) -> bool {
         Some((folder, name)) => (Some(folder), name),
         None => (None, to),
     };
-    folder.is_none_or(editor::plain_relative) && !matches!(name, "" | "." | "..")
+    folder.is_none_or(editor::plain_relative)
+        && !matches!(name, "" | "." | "..")
+        && !asset_db::is_own(Path::new(to))
 }
 
 /// The mistake a path that fails the rule is, in `asset_db`'s words for
 /// the same.
 fn outside(path: &Path) -> String {
-    format!(
-        "{} isn't inside the project's assets folder",
-        path.display()
-    )
+    format!("{} isn't inside the project's folder", path.display())
 }
 
 /// Whether `path`'s name ends in one of `extensions`, in capitals or not.
@@ -756,7 +738,7 @@ pub fn library_kind(kind: FileKind) -> LibraryKind {
     }
 }
 
-/// A path inside the assets with `/` between folders, as the Library shows
+/// A path in the project with `/` between folders, as the Library shows
 /// it on every system.
 pub fn slashed(path: &Path) -> String {
     path.components()
@@ -808,12 +790,12 @@ mod tests {
     #[test]
     fn a_change_in_the_assets_is_looked_at_on_a_worker() {
         let root = folder("scan-worker");
-        std::fs::create_dir_all(root.join("assets")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
         let mut projects = Projects::default();
         projects
             .open(&root, true, assets::Limits::default())
             .unwrap();
-        let file = root.join("assets/crate.glb");
+        let file = root.join("crate.glb");
         std::fs::write(&file, assets::sample::sample_glb()).unwrap();
         projects.adopt(&file).unwrap();
         let (changes, _, looked_on_a_worker) = poll_until_found(&mut projects);
@@ -829,40 +811,68 @@ mod tests {
         );
     }
 
-    /// A new project has no assets folder (decision 0118): the project's
-    /// own folder is watched until one is made, outside Solis here, and
-    /// the watcher then moves into it and sees what's put there.
+    /// The project's own folder holds its files (decision 0118, R4): no
+    /// assets folder is made, what's put beside the project file is seen,
+    /// and Solis's own folders are passed over. A project from before
+    /// that keeps its files in an assets folder is left as it was.
     #[test]
-    fn an_assets_folder_made_later_is_watched() {
-        let root = folder("assets-later");
+    fn a_project_s_own_folder_holds_its_files() {
+        let root = folder("own-folder");
         std::fs::create_dir_all(&root).unwrap();
         let mut projects = Projects::default();
         let opened = projects
             .open(&root, true, assets::Limits::default())
             .unwrap();
         assert!(opened.watching, "the project's own folder is watched");
-        assert!(!root.join("assets").exists(), "none is made by opening");
-        assert!(projects.watching_root);
-        std::fs::create_dir_all(root.join("assets")).unwrap();
-        let file = root.join("assets/crate.glb");
+        assert_eq!(
+            opened.info.assets,
+            root.to_path_buf(),
+            "the Library shows the project's folder"
+        );
+        std::fs::create_dir_all(root.join("farm")).unwrap();
+        let file = root.join("farm/crate.glb");
         std::fs::write(&file, assets::sample::sample_glb()).unwrap();
         let (changes, _, _) = poll_until_found(&mut projects);
-        assert!(!projects.watching_root, "it moved into the assets folder");
         assert!(
             matches!(changes.as_slice(), [Change::Added(_)]),
             "{changes:?}"
         );
-        // A file Solis saves makes the folder too.
-        projects.close();
-        let fresh = folder("assets-by-saving");
-        std::fs::create_dir_all(&fresh).unwrap();
-        projects
-            .open(&fresh, true, assets::Limits::default())
-            .unwrap();
+        let listing = projects.listing();
+        assert_eq!(listing.folders, [PathBuf::from("farm")], "not the cache");
+        assert!(
+            listing
+                .files
+                .iter()
+                .all(|f| f.path != Path::new("project.solis"))
+        );
+        // A file Solis saves goes where it's asked, with no folder made
+        // for it; nothing is saved into Solis's own folders.
         projects
             .save_new_text(Path::new("main.lst"), "end\n")
             .unwrap();
-        assert!(fresh.join("assets/main.lst").is_file());
+        assert!(root.join("main.lst").is_file());
+        assert!(!root.join("assets").exists());
+        assert!(
+            projects
+                .save_new_text(Path::new("builds/x.lst"), "end\n")
+                .is_err()
+        );
+        assert!(
+            projects
+                .save_new_text(Path::new("project.solis"), "x")
+                .is_err()
+        );
+        projects.close();
+        // An older project: its files stay in its assets folder.
+        let older = folder("own-folder-older");
+        asset_db::Project::create(&older, "Older").unwrap();
+        std::fs::create_dir_all(older.join("assets/props")).unwrap();
+        std::fs::write(older.join("assets/main.lst"), "end\n").unwrap();
+        let opened = projects
+            .open(&older, false, assets::Limits::default())
+            .unwrap();
+        assert_eq!(opened.info.assets, older.join("assets"));
+        assert_eq!(projects.listing().folders, [PathBuf::from("props")]);
         projects.close();
         assert!(
             projects.db().is_none() && projects.root().is_none(),
@@ -870,19 +880,19 @@ mod tests {
         );
     }
 
-    /// The review, BUG-32: a new 256 MB sound settled in the assets. Its
+    /// The review, BUG-32: a new 256 MB sound settled in the project. Its
     /// first look hashes it whole; that was the frame's wait before.
     #[test]
     #[ignore = "scale check: run by tools/scale/scale-check.sh"]
     fn scale_check_a_big_new_file_in_the_assets() {
         const TARGET_MS: f64 = 1.0;
         let root = folder("scale-scan");
-        std::fs::create_dir_all(root.join("assets")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
         let mut projects = Projects::default();
         projects
             .open(&root, true, assets::Limits::default())
             .unwrap();
-        let file = root.join("assets/music.wav");
+        let file = root.join("music.wav");
         let big = std::fs::File::create(&file).unwrap();
         big.set_len(256 << 20).unwrap(); // sparse: nothing is written
         let long_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(60);
@@ -891,7 +901,7 @@ mod tests {
         let (changes, ms, _) = poll_until_found(&mut projects);
         assert_eq!(changes.len(), 1, "{changes:?}");
         // The same look made here and now, as the frame used to.
-        std::fs::remove_file(root.join("assets/music.wav.solmeta")).unwrap();
+        std::fs::remove_file(root.join("music.wav.solmeta")).unwrap();
         let start = std::time::Instant::now();
         projects.rescan();
         let look_ms = start.elapsed().as_secs_f64() * 1000.0;
@@ -943,12 +953,12 @@ mod tests {
             .open(&root, true, assets::Limits::default())
             .unwrap();
         let (id, path) = projects.bring_in(&source.join("crate.glb")).unwrap();
-        assert!(path.starts_with(root.join("assets")));
+        assert_eq!(path, root.join("crate.glb"), "beside the project file");
         let (library, _) = Projects::library(&projects.listing(), |_| None);
         assert_eq!(library.len(), 1);
         assert_eq!(library[0].id, Some(id));
         assert_eq!(library[0].name, "crate");
-        // A file already in the assets folder isn't copied again.
+        // A file already in the project isn't copied again.
         let (again, same) = projects.bring_in(&path).unwrap();
         assert_eq!((again, same), (id, path));
         assert_eq!(Projects::library(&projects.listing(), |_| None).0.len(), 1);
@@ -966,13 +976,13 @@ mod tests {
             .save_new_text(Path::new("main.lst"), "end\n")
             .unwrap();
         assert_eq!(
-            std::fs::read_to_string(root.join("assets/main.lst")).unwrap(),
+            std::fs::read_to_string(root.join("main.lst")).unwrap(),
             "end\n"
         );
         projects
             .save_new_text(Path::new("level.sollevel"), "level version 4;\n")
             .unwrap();
-        // Never over a file, never outside the assets, only code and levels.
+        // Never over a file, never outside the project, only code and levels.
         for (path, why) in [
             ("main.lst", "already"),
             ("../escape.lst", "isn't"),
@@ -983,7 +993,7 @@ mod tests {
             assert!(err.contains(why), "{path}: {err}");
         }
         assert_eq!(
-            std::fs::read_to_string(root.join("assets/main.lst")).unwrap(),
+            std::fs::read_to_string(root.join("main.lst")).unwrap(),
             "end\n"
         );
     }
@@ -1034,9 +1044,9 @@ mod tests {
         projects
             .save_sound_event(&first, "sound version 1;\nloop = true;\n")
             .unwrap();
-        let text = std::fs::read_to_string(root.join("assets").join(&first)).unwrap();
+        let text = std::fs::read_to_string(root.join(&first)).unwrap();
         assert!(text.contains("loop = true"));
-        std::fs::write(root.join("assets/notes.txt"), "mine").unwrap();
+        std::fs::write(root.join("notes.txt"), "mine").unwrap();
         assert!(
             projects
                 .save_sound_event(Path::new("notes.txt"), "x")
@@ -1048,7 +1058,7 @@ mod tests {
                 .is_err()
         );
         assert_eq!(
-            std::fs::read_to_string(root.join("assets/notes.txt")).unwrap(),
+            std::fs::read_to_string(root.join("notes.txt")).unwrap(),
             "mine"
         );
     }

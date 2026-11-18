@@ -398,6 +398,28 @@ pub fn menu_item(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> Response {
     finish(ui, response, part)
 }
 
+/// A row of a right-click menu that isn't built (the Library's New
+/// prefab and Paste, board 04): its icon fainter, its name with the mark,
+/// as tall as the menu's real rows.
+pub fn context_item(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> Response {
+    let part = begin(ui, id);
+    let width = ui
+        .available_width()
+        .max(widgets::menu::width_for(ui, &[part.name]));
+    let (rect, response) = ui.allocate_exact_size(vec2(width, size::MENU_ROW_H), Sense::click());
+    if ui.is_rect_visible(rect) {
+        let room = rect.shrink2(vec2(size::FIELD_PAD, 0.0));
+        let spot = Rect::from_center_size(
+            pos2(room.left() + size::MENU_CHECK_ICON / 2.0, room.center().y),
+            vec2(size::MENU_CHECK_ICON, size::MENU_CHECK_ICON),
+        );
+        icons::icon(ui.painter(), spot, icon, icon_ink());
+        let left = room.left() + size::MENU_CHECK_W;
+        marked_words(ui, rect, left, part.name, text::menu_item(), ink());
+    }
+    finish(ui, response, part)
+}
+
 /// A setting that isn't built: its name with the mark, the sentence
 /// about it, and a switch that is off and fainter than a real one.
 pub fn setting_row(ui: &mut Ui, id: UnbuiltId) -> Response {

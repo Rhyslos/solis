@@ -109,14 +109,19 @@ fn header(
         Sense::hover(),
     );
     named.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, column.title));
-    let title = painter.text(
-        pos2(head.left() + size::ROW_PAD, head.center().y),
-        Align2::LEFT_CENTER,
-        column.title,
-        text::header(),
-        tokens::text_emphasis(),
-    );
     let first = column.panels.first().copied();
+    let at = pos2(head.left() + size::ROW_PAD, head.center().y);
+    let title = if home && part.slot == Slot::Left {
+        left_toggle(ui, at, viewer)
+    } else {
+        painter.text(
+            at,
+            Align2::LEFT_CENTER,
+            column.title,
+            text::header(),
+            tokens::text_emphasis(),
+        )
+    };
     let mut words_end = title.right();
     if let Some(note) = first.and_then(|p| viewer.column_note(p)) {
         let drawn = painter.text(
@@ -166,6 +171,58 @@ fn header(
         viewer.column_tools(&mut tools_ui, panel);
     }
     (place.with_min_y(head.bottom()), hide, placing)
+}
+
+/// Home's left slot's title (decision 0118): "Level" and "Folders", the
+/// one shown bright; a click on the other switches the slot to it.
+/// Returns where the words are.
+fn left_toggle(ui: &mut Ui, at: egui::Pos2, viewer: &mut PanelViewer<'_>) -> Rect {
+    use crate::library::LeftShows;
+    let mut x = at.x;
+    let mut all = Rect::NOTHING;
+    for (shows, words) in [(LeftShows::Level, "Level"), (LeftShows::Folders, "Folders")] {
+        let on = viewer.library_state.left == shows;
+        let width = widgets::width_of(ui, words, text::header());
+        let rect = Rect::from_min_size(
+            pos2(x, at.y - size::LIBRARY_ROW_H / 2.0),
+            vec2(width, size::LIBRARY_ROW_H),
+        );
+        let response = ui.interact(rect, Id::new(("left shows", words)), Sense::click());
+        response.widget_info(|| WidgetInfo::selected(WidgetType::Button, true, on, words));
+        let ink = if on {
+            tokens::text_emphasis()
+        } else if response.hovered() {
+            tokens::text_primary()
+        } else {
+            tokens::text_meta()
+        };
+        ui.painter().text(
+            pos2(x, at.y),
+            Align2::LEFT_CENTER,
+            words,
+            text::header(),
+            ink,
+        );
+        if on {
+            let under = Rect::from_min_size(
+                pos2(x, rect.bottom() - size::TAB_UNDERLINE),
+                vec2(width, size::TAB_UNDERLINE),
+            );
+            ui.painter()
+                .rect_filled(under, 0.0, crate::interface_look::accent_fill());
+        }
+        let hint = if on {
+            "Shown in the left slot"
+        } else {
+            "Show this in the left slot instead"
+        };
+        if response.on_hover_text(hint).clicked() {
+            viewer.library_state.left = shows;
+        }
+        all = all.union(rect);
+        x = rect.right() + size::GAP + size::ROW_GAP;
+    }
+    all
 }
 
 /// The ⋯ menu at a header's right: its panel's own items, then Hide.

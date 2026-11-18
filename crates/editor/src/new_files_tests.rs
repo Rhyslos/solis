@@ -88,7 +88,7 @@ fn new_code_files_compile_as_they_are() {
 }
 
 #[test]
-fn a_new_level_is_saved_where_it_was_asked_for_and_opened() {
+fn a_new_level_is_saved_where_it_was_asked_for_and_starts_being_named() {
     let mut w = Workbench::new(info());
     w.set_project(Some(farm()));
     w.set_library(vec![item("levels/level.sollevel", LibraryKind::Level)]);
@@ -99,9 +99,17 @@ fn a_new_level_is_saved_where_it_was_asked_for_and_opened() {
     assert!(files[0].1.contains("level version"));
     let read = level::text::read(&files[0].1, &w.open.document.registry).expect("reads");
     assert!(!read.is_empty(), "an environment, as a new level has");
-    assert!(actions.iter().any(
-        |a| matches!(a, WorkbenchAction::OpenLevelFile(p) if p.ends_with("levels/level 2.sollevel"))
-    ));
+    // Named before it's opened (R4, board 04): its picture opens it.
+    assert!(
+        !actions
+            .iter()
+            .any(|a| matches!(a, WorkbenchAction::OpenLevelFile(_)))
+    );
+    assert_eq!(
+        w.open.library_state.rename_new.as_deref(),
+        Some("levels/level 2.sollevel")
+    );
+    assert_eq!(w.open.library_state.folder, "levels", "its folder is shown");
 }
 
 #[test]

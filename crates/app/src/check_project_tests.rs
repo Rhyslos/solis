@@ -57,7 +57,7 @@ fn an_unchanged_project_checks_out() {
 fn a_changed_level_or_a_damaged_file_fails() {
     let (_temp, root) = playground_with_a_check("changed");
     // A crate moved in the level: the recording no longer plays the same.
-    let level = root.join("assets").join(crate::playground::LEVEL);
+    let level = root.join(crate::playground::LEVEL);
     let text = std::fs::read_to_string(&level).unwrap();
     let moved = text.replacen("name = \"Crate", "name = \"Crate moved", 1);
     let moved = {
@@ -69,7 +69,7 @@ fn a_changed_level_or_a_damaged_file_fails() {
     std::fs::write(&level, moved).unwrap();
     // A damaged sound event, and a recording that names no level.
     std::fs::write(
-        root.join("assets/broken.solsound"),
+        root.join("broken.solsound"),
         "sound version 1;\nvolume = \"loud\";",
     )
     .unwrap();
@@ -81,7 +81,7 @@ fn a_changed_level_or_a_damaged_file_fails() {
     let report = check(&root, MADE_BY);
     let text = report.text();
     assert!(report.failed >= 3, "{text}");
-    assert!(text.contains("FAIL  assets/broken.solsound"), "{text}");
+    assert!(text.contains("FAIL  broken.solsound"), "{text}");
     assert!(text.contains("doesn't say which level"), "{text}");
     assert!(text.contains("walk.solrec"), "{text}");
     assert!(
@@ -216,7 +216,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
 #[test]
 fn a_file_made_just_before_a_check_gets_its_sidecar_in_that_check() {
     let (_temp, root) = playground_with_a_check("new-file");
-    let map = root.join("assets/farm.tilemap.lst");
+    let map = root.join("farm.tilemap.lst");
     std::fs::write(
         &map,
         tiles::map_file::write(&tiles::TileMap::new([4, 4], None, None)).unwrap(),
@@ -235,7 +235,7 @@ fn a_file_made_just_before_a_check_gets_its_sidecar_in_that_check() {
 #[test]
 fn a_recording_plays_back_with_the_project_s_tile_maps_and_tilesets() {
     let (_temp, root) = playground_with_a_check("tile-maps");
-    let assets = root.join("assets");
+    let assets = root.clone();
     std::fs::write(
         assets.join("farm.tileset.lst"),
         tiles::tileset::write(&tiles::Tileset::default()),
@@ -302,7 +302,7 @@ fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
         ("farmer.solframes", "nor clips"),
         ("old.soltilemap", "nor an old map"),
     ] {
-        std::fs::write(root.join("assets").join(name), text).unwrap();
+        std::fs::write(root.join(name), text).unwrap();
     }
     let report = check(&root, MADE_BY);
     let text = report.text();
@@ -315,7 +315,7 @@ fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
         "old.soltilemap",
     ] {
         assert!(
-            text.contains(&format!("FAIL  assets/{name}")),
+            text.contains(&format!("FAIL  {name}")),
             "{name}: {text}"
         );
     }
@@ -330,7 +330,7 @@ fn turret_with_a_map_and_an_animator(name: &str) -> (reflect::test_support::Temp
     let temp = reflect::test_support::TempFolder::new(&format!("check-{name}")).unwrap();
     let root = temp.join("Turret");
     crate::sample_game::make(&root).unwrap();
-    let assets = root.join("assets");
+    let assets = root.clone();
     std::fs::create_dir_all(assets.join("maps")).unwrap();
     let map = tiles::TileMap::new(tiles::map_file::STANDARD_SIZE, None, None);
     std::fs::write(
@@ -377,7 +377,7 @@ fn the_turret_sample_with_a_tile_map_and_an_animator_made_in_it_checks_out() {
     assert_eq!(report.failed, 0, "{}", report.text());
     assert!(report.text().contains("the game's code checks"));
     for made in MADE_FOR_THEM {
-        assert!(root.join("assets").join(made).is_file(), "{made} written");
+        assert!(root.join(made).is_file(), "{made} written");
     }
 }
 
@@ -388,7 +388,7 @@ fn a_project_saved_before_the_fix_checks_out() {
     // for a map since taken away, and main.lst with the manual's old
     // workaround, fetching the engine's objects itself.
     let (_temp, root) = turret_with_a_map_and_an_animator("turret-old");
-    let assets = root.join("assets");
+    let assets = root.clone();
     let first = check(&root, MADE_BY);
     assert_eq!(first.failed, 0, "{}", first.text());
     let gone = assets.join("solis/maps/maps/barn.lst");

@@ -115,7 +115,7 @@ fn nothing_outside_the_assets_folder_is_handed_over() {
         .unwrap_err();
         assert_eq!(
             why.to_string(),
-            "it isn't in the project's assets folder",
+            "it isn't one of the project's files",
             "{}",
             path.display()
         );
@@ -218,7 +218,7 @@ fn no_name_makes_another_kind_of_file_open() {
     }
     assert!(tried > 3_000);
     // A file with no ending, or only an ending, never opens.
-    for name in ["lst", "png", ".lst", "file"] {
+    for name in ["lst", "png", "file"] {
         std::fs::write(assets.join(name), b"x").unwrap();
         assert_eq!(
             asked(&assets, name).unwrap(),
@@ -226,6 +226,9 @@ fn no_name_makes_another_kind_of_file_open() {
             "{name}"
         );
     }
+    // A hidden one is Solis's own (or Git's), never handed over (R4).
+    std::fs::write(assets.join(".lst"), b"x").unwrap();
+    assert!(asked(&assets, ".lst").is_err());
 }
 
 #[test]

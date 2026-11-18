@@ -126,12 +126,15 @@ fn scratch(name: &str) -> (reflect::test_support::TempFolder, Projects) {
     let base = reflect::test_support::TempFolder::new(&format!("app-saving-{name}")).unwrap();
     let root = base.join("project");
     std::fs::create_dir_all(base.join("outside")).unwrap();
-    std::fs::create_dir_all(&root).unwrap();
+    // A project that keeps its files in an assets folder (one from before
+    // decision 0118's R4), so files beside the project file are outside
+    // them.
+    asset_db::Project::create(&root, "Saving").unwrap();
+    std::fs::create_dir_all(root.join("assets/a")).unwrap();
     let mut projects = Projects::default();
     projects
-        .open(&root, true, assets::Limits::default())
+        .open(&root, false, assets::Limits::default())
         .unwrap();
-    std::fs::create_dir_all(root.join("assets/a")).unwrap();
     for saver in savers() {
         for folder in [base.to_path_buf(), root.clone(), base.join("outside")] {
             std::fs::write(folder.join(saver.file), format!("{}\n", saver.text)).unwrap();
@@ -233,7 +236,7 @@ fn every_saver_refuses_a_path_that_strays_or_isn_t_its_kind_and_writes_nothing()
                 panic!("{} took {path:?}", saver.name);
             };
             assert!(
-                why.starts_with("it isn't") && why.ends_with("in the assets"),
+                why.starts_with("it isn't") && why.ends_with("in the project"),
                 "{} said of {path:?}: {why}",
                 saver.name
             );
@@ -375,7 +378,7 @@ fn a_new_sound_event_is_made_only_in_a_folder_inside_the_assets() {
         let Err(why) = said else {
             panic!("a sound event was made in {folder:?}");
         };
-        assert!(why.ends_with("isn't a folder in the assets"), "{why}");
+        assert!(why.ends_with("isn't a folder in the project"), "{why}");
     }
     let written = changed(&before, &files(&base));
     assert!(written.is_empty(), "a refused folder got {written:?}");
@@ -399,7 +402,7 @@ fn moving_deleting_and_new_folders_keep_to_plain_paths_inside_the_assets() {
     let assets = base.join("project/assets");
     std::fs::write(assets.join("a/keep.png"), "a picture").unwrap();
     let before = files(&base);
-    let outside = "isn't inside the project's assets folder";
+    let outside = "isn't inside the project's folder";
     for stray in leaving("x.png", &base.join("outside")) {
         let stray = Path::new(&stray);
         let moved_from = projects.move_path(stray, Path::new("a/taken.png"));

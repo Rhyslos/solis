@@ -39,8 +39,8 @@ fn an_export_holds_the_program_renamed_the_game_and_what_to_play() {
     let exe = folder.join(program_name("Turret test"));
     assert_eq!(std::fs::read(&exe).unwrap(), b"the program");
     assert!(folder.join("game/project.solis").is_file());
-    assert!(folder.join("game/assets/main.lst").is_file());
-    assert!(folder.join("game/assets/ui/hud.lst").is_file());
+    assert!(folder.join("game/main.lst").is_file());
+    assert!(folder.join("game/ui/hud.lst").is_file());
     for left in ["saves", "recordings", ".solis", "builds"] {
         assert!(!folder.join("game").join(left).exists(), "{left} left out");
     }
@@ -96,10 +96,10 @@ fn links_in_the_project_are_left_out() {
     let (root, program) = project(&dir);
     let secret = dir.join("secret.txt");
     std::fs::write(&secret, "not the game's").unwrap();
-    std::os::unix::fs::symlink(&secret, root.join("assets/secret.txt")).unwrap();
+    std::os::unix::fs::symlink(&secret, root.join("secret.txt")).unwrap();
     let folder = dir.join("out");
     export(&root, &program, &farm(), &folder).unwrap();
-    assert!(!folder.join("game/assets/secret.txt").exists());
+    assert!(!folder.join("game/secret.txt").exists());
 }
 
 #[test]

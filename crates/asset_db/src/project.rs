@@ -1,6 +1,8 @@
 //! The project folder ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md)):
-//! `project.solis` naming it, `assets/` holding everything the user owns,
-//! and `.solis/`, a cache that can be deleted at any time.
+//! `project.solis` naming it, the project's own files and folders beside
+//! it (decision 0118: no folder made for them; a project from before
+//! keeps its `assets/`), and `.solis/`, a cache that can be deleted at any
+//! time.
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -8,8 +10,20 @@ use std::path::{Path, PathBuf};
 
 /// The file that marks a folder as a project.
 pub const PROJECT_FILE: &str = "project.solis";
-/// The folder of the user's assets, watched for changes.
+/// The folder projects made before the editor rethink kept their files
+/// in. Such a project keeps it (decision 0118: it's left alone); a new
+/// one has none ([`Project::files`]).
 pub const ASSETS_FOLDER: &str = "assets";
+/// The endings of the settings files Solis keeps beside the project file
+/// (input actions, the mixer, the 2D settings): Solis's own, never shown
+/// with the project's files.
+pub const SETTINGS_EXTENSIONS: &[&str] = &["solinput", "solmix", "solpix"];
+/// The folders beside a project's files that hold Solis's own things, not
+/// the project's: builds, and the game's saves and recordings. They, and
+/// every hidden one (`.solis`, with the cache and the backups, and
+/// `.git`), are left out of the Library, the asset database and the
+/// watcher.
+pub const OWN_FOLDERS: &[&str] = &["builds", "saves", "recordings"];
 /// The rebuildable cache, never committed.
 pub const CACHE_FOLDER: &str = ".solis";
 /// The project file's format version this build writes and reads.
@@ -203,6 +217,8 @@ pub struct Summary {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Project {
     root: PathBuf,
+    /// The folder its files are in ([`Project::files`]).
+    files: PathBuf,
     name: String,
     kind: ProjectKind,
 }
@@ -280,15 +296,15 @@ impl Project {
         write_atomically(&root.join(PROJECT_FILE), text.as_bytes())?;
         Ok(Self {
             root: root.to_path_buf(),
+            files: root.to_path_buf(),
             name: name.to_string(),
             kind,
         })
     }
 
     /// Opens the project in `root`, making its cache folder if it's
-    /// missing (a fresh clone has no cache). A missing assets folder is
-    /// left missing (decision 0118): it's made when something is first
-    /// put in it ([`Project::assets_folder`]).
+    /// missing (a fresh clone has no cache). Nothing else is made
+    /// (decision 0118).
     pub fn open(root: &Path) -> Result<Self, ProjectError> {
         let path = root.join(PROJECT_FILE);
         if !path.is_file() {
@@ -300,6 +316,7 @@ impl Project {
         own_folder(root, CACHE_FOLDER)?;
         Ok(Self {
             root: root.to_path_buf(),
+            files: files_folder_of(root),
             name: summary.name,
             kind: summary.kind,
         })
@@ -444,23 +461,61 @@ impl Project {
         &self.root
     }
 
-    /// The folder of its assets. It may not be there yet: a new project
-    /// gets it when something is first put in it
-    /// ([`Project::assets_folder`]).
-    pub fn assets(&self) -> PathBuf {
-        self.root.join(ASSETS_FOLDER)
-    }
-
-    /// The folder of its assets, made now if it isn't there (never
-    /// through a link), for something about to be put in it.
-    pub fn assets_folder(&self) -> std::io::Result<PathBuf> {
-        own_folder(&self.root, ASSETS_FOLDER)
+    /// The folder its files are in, which the Library shows and every
+    /// path "in the project" is inside: its own folder (decision 0118),
+    /// with Solis's own things left out ([`is_own`]), or, for a project
+    /// from before that keeps its files in `assets/`, that folder, left as
+    /// it was ([`files_folder_of`]). Decided when it's opened.
+    pub fn files(&self) -> PathBuf {
+        self.files.clone()
     }
 
     /// The import cache's folder.
     pub fn cache(&self) -> PathBuf {
         self.root.join(CACHE_FOLDER).join("cache")
     }
+}
+
+/// The folder the files of the project in `root` are in: `assets/` for a
+/// project from before decision 0118, whose top holds its `assets` folder
+/// and nothing else of its own (only Solis's: [`is_own`]); otherwise the
+/// project's own folder. Its game code names every file by its path in
+/// that folder, so an older project's stays where it was.
+pub fn files_folder_of(root: &Path) -> PathBuf {
+    let older = root.join(ASSETS_FOLDER);
+    if !older.is_dir() {
+        return root.to_path_buf();
+    }
+    let others = std::fs::read_dir(root).map_or(true, |entries| {
+        entries.flatten().any(|e| {
+            let name = std::path::PathBuf::from(e.file_name());
+            name != Path::new(ASSETS_FOLDER) && !is_own(&name)
+        })
+    });
+    if others { root.to_path_buf() } else { older }
+}
+
+/// Whether `relative` (a path inside a project's folder) is Solis's own
+/// rather than the project's: the project file and settings beside it
+/// ([`SETTINGS_EXTENSIONS`]), or anything in a hidden folder or one of
+/// [`OWN_FOLDERS`] at the top.
+pub fn is_own(relative: &Path) -> bool {
+    let mut parts = relative.components();
+    let Some(first) = parts.next() else {
+        return false;
+    };
+    let first = first.as_os_str().to_string_lossy();
+    let alone = parts.next().is_none();
+    let setting = Path::new(&*first).extension().is_some_and(|e| {
+        SETTINGS_EXTENSIONS
+            .iter()
+            .any(|s| e.eq_ignore_ascii_case(s))
+    });
+    first.starts_with('.')
+        || OWN_FOLDERS
+            .iter()
+            .any(|own| first.eq_ignore_ascii_case(own))
+        || (alone && (first.eq_ignore_ascii_case(PROJECT_FILE) || setting))
 }
 
 /// Writes `bytes` to `path` through a temporary file beside it, so a crash,
@@ -737,9 +792,11 @@ mod tests {
         assert_eq!(opened, made);
         assert_eq!(opened.name(), "Harbour");
         assert!(!root.join("assets").exists(), "opening makes none either");
-        let assets = opened.assets_folder().unwrap();
-        assert!(assets.is_dir() && assets == opened.assets());
-        assert_eq!(opened.assets_folder().unwrap(), assets, "again");
+        assert_eq!(
+            opened.files(),
+            root.to_path_buf(),
+            "its files are its own folder"
+        );
         assert!(matches!(
             Project::create(&root, "Again"),
             Err(ProjectError::AlreadyAProject(_))
@@ -942,6 +999,68 @@ mod tests {
             if let Err(err) = Project::read_summary(&text) {
                 assert!(!err.to_string().is_empty(), "{text:?}");
             }
+        }
+    }
+
+    #[test]
+    fn a_project_s_files_are_beside_it_unless_an_older_one_kept_them_in_assets() {
+        let root = test_folder("files-folder");
+        Project::create(&root, "Farm").unwrap();
+        assert_eq!(files_folder_of(&root), root.to_path_buf(), "a new project");
+        // An older project: its assets folder and Solis's own things.
+        std::fs::create_dir_all(root.join("assets/props")).unwrap();
+        std::fs::create_dir_all(root.join("saves")).unwrap();
+        std::fs::write(root.join("input.solinput"), "x").unwrap();
+        std::fs::write(root.join(".gitignore"), "x").unwrap();
+        assert_eq!(
+            files_folder_of(&root),
+            root.join(ASSETS_FOLDER),
+            "an older project"
+        );
+        assert_eq!(
+            Project::open(&root).unwrap().files(),
+            root.join(ASSETS_FOLDER)
+        );
+        // A project with files of its own beside an assets folder keeps it
+        // as an ordinary folder.
+        std::fs::write(root.join("main.lst"), "end\n").unwrap();
+        assert_eq!(files_folder_of(&root), root.to_path_buf());
+        std::fs::remove_file(root.join("main.lst")).unwrap();
+        std::fs::create_dir_all(root.join("levels")).unwrap();
+        assert_eq!(
+            files_folder_of(&root),
+            root.to_path_buf(),
+            "a folder of its own"
+        );
+        assert_eq!(files_folder_of(&root.join("nowhere")), root.join("nowhere"));
+    }
+
+    #[test]
+    fn solis_s_own_folders_and_the_project_file_are_not_the_project_s() {
+        for own in [
+            ".solis/cache/x.solbin",
+            ".git",
+            "builds/2026-11-18/game.exe",
+            "Saves",
+            "recordings/r.solrec",
+            "project.solis",
+            "input.solinput",
+            "mixer.solmix",
+            "pixels.SOLPIX",
+        ] {
+            assert!(is_own(Path::new(own)), "{own}");
+        }
+        for mine in [
+            "assets",
+            "assets/project.solis",
+            "assets/input.solinput",
+            "levels/builds",
+            "backups",
+            "main.lst",
+            "solis/project.lst",
+            "",
+        ] {
+            assert!(!is_own(Path::new(mine)), "{mine}");
         }
     }
 }

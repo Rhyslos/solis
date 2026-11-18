@@ -41,7 +41,7 @@ pub const FILES: &[(&str, &str)] = &[
 /// the sample's would go (nothing of the person's is ever replaced).
 pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
     for (path, _) in FILES {
-        let file = root.join(asset_db::ASSETS_FOLDER).join(path);
+        let file = root.join(path);
         if file.exists() {
             return Err(asset_db::ProjectError::Io(std::io::Error::new(
                 std::io::ErrorKind::AlreadyExists,
@@ -55,7 +55,7 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
     }
     let project = Project::create(root, NAME)?;
     for (path, text) in FILES {
-        let file = project.assets().join(path);
+        let file = project.files().join(path);
         if let Some(folder) = file.parent() {
             std::fs::create_dir_all(folder)?;
         }

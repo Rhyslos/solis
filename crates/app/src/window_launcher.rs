@@ -239,7 +239,7 @@ impl App {
 
     fn open_sample(&mut self, parts: &SampleParts, folder: &Path) {
         self.open_project(folder, false);
-        let level = folder.join(asset_db::ASSETS_FOLDER).join(parts.level);
+        let level = asset_db::files_folder_of(folder).join(parts.level);
         self.open_level(&level);
         self.workbench.log(LogLevel::Info, parts.ready);
     }

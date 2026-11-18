@@ -81,7 +81,7 @@ fn the_playground_is_made_as_a_project_and_plays() {
     assert!(make(&root).is_err(), "not over an existing project");
     let project = Project::open(&root).unwrap();
     assert_eq!(project.name(), NAME);
-    let assets = project.assets();
+    let assets = project.files();
     let compiled = compiled(&assets);
     let mut w = editor::Workbench::new(editor::AppInfo {
         name: "Test".into(),
@@ -179,7 +179,7 @@ fn entity_fields_survive_the_level_opening_before_the_code_is_checked() {
     let temp = reflect::test_support::TempFolder::new("playground-order").unwrap();
     let root = temp.join("Playground");
     make(&root).unwrap();
-    let assets = Project::open(&root).unwrap().assets();
+    let assets = Project::open(&root).unwrap().files();
     let compiled = compiled(&assets);
     let mut w = editor::Workbench::new(editor::AppInfo {
         name: "Test".into(),
@@ -218,7 +218,7 @@ fn footsteps_follow_ground_covered_and_never_while_still() {
     let temp = reflect::test_support::TempFolder::new("playground-steps").unwrap();
     let root = temp.join("Playground");
     make(&root).unwrap();
-    let assets = Project::open(&root).unwrap().assets();
+    let assets = Project::open(&root).unwrap().files();
     let mut w = editor::Workbench::new(editor::AppInfo {
         name: "Test".into(),
         version: "1.0".into(),

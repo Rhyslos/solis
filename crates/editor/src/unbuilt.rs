@@ -30,9 +30,9 @@ pub(crate) mod sheet;
 mod table;
 
 pub use draw::{
-    RowKind, bottom_tab, card, chip, column, corner, field_row, icon_button, link, menu_item,
-    ribbon_big, ribbon_big_width, ribbon_row, ribbon_row_width, setting_row, status_item, sub_tab,
-    tab, template, tool,
+    RowKind, bottom_tab, card, chip, column, context_item, corner, field_row, icon_button, link,
+    menu_item, ribbon_big, ribbon_big_width, ribbon_row, ribbon_row_width, setting_row,
+    status_item, sub_tab, tab, template, tool,
 };
 pub use page::{PageAnswer, page};
 pub use table::{ALL, UnbuiltId};
@@ -85,13 +85,15 @@ pub enum Phase {
     ThreeD5,
     /// Shape brushes.
     Tools1a,
+    /// The editor rethink: prefabs (R5).
+    Shared1f,
     /// No phase of the roadmap builds it yet.
     NotPlanned,
 }
 
 impl Phase {
     /// Every phase.
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 22] = [
         Self::Shared2,
         Self::Shared3,
         Self::Shared4,
@@ -112,6 +114,7 @@ impl Phase {
         Self::ThreeD4,
         Self::ThreeD5,
         Self::Tools1a,
+        Self::Shared1f,
         Self::NotPlanned,
     ];
 
@@ -141,6 +144,7 @@ impl Phase {
             Self::ThreeD4 => "3D 4: Lamps, fog and reflections",
             Self::ThreeD5 => "3D 5: Bounced light",
             Self::Tools1a => "Tools 1a: Shape brushes",
+            Self::Shared1f => "Shared 1f: The editor rethink",
             Self::NotPlanned => return None,
         })
     }

@@ -180,9 +180,15 @@ pub(crate) fn moved_lua_uses(code: &Code) -> Vec<CodeProblem> {
     found
 }
 
+/// The folders at the top of a project's files that hold Solis's own
+/// things, never game code: builds (copies of the project), the game's
+/// saves and recordings. The same as `asset_db::OWN_FOLDERS` (a test in
+/// the app holds them equal).
+pub const LEFT_OUT: &[&str] = &["builds", "saves", "recordings"];
+
 /// Reads every `.lst` and `.lua` file under `assets`, skipping hidden
-/// folders and links to folders (which could loop), within the limits
-/// above (shared by both).
+/// folders, [`LEFT_OUT`] at the top, and links to folders (which could
+/// loop), within the limits above (shared by both).
 pub fn gather(assets: &Path) -> Code {
     let mut code = Code::default();
     let mut total = 0u64;
@@ -201,7 +207,11 @@ pub fn gather(assets: &Path) -> Code {
                 continue;
             };
             let path = entry.path();
-            if kind.is_dir() {
+            let own = folder == assets
+                && LEFT_OUT
+                    .iter()
+                    .any(|o| name.to_string_lossy().eq_ignore_ascii_case(o));
+            if kind.is_dir() && !own {
                 folders.push(path);
             } else if kind.is_file()
                 && path

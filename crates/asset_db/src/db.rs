@@ -1,4 +1,5 @@
-//! The asset database: every asset in the project's `assets/` folder, by
+//! The asset database: every asset in the project (decision 0118: its own
+//! folder, Solis's own folders left out), by
 //! its ID from the sidecar beside it
 //! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md)).
 //! The folder is the truth: the database is worked out from it on opening
@@ -143,7 +144,7 @@ impl Stamp {
 pub struct AssetRecord {
     /// Its ID, from its sidecar.
     pub id: AssetId,
-    /// Where it is, inside `assets/`.
+    /// Where it is, inside the project.
     pub path: PathBuf,
     /// What kind it is.
     pub kind: AssetKind,
@@ -279,12 +280,12 @@ impl AssetDb {
     pub fn file(&self, id: AssetId) -> Option<PathBuf> {
         self.records
             .get(&id)
-            .map(|r| self.project.assets().join(&r.path))
+            .map(|r| self.project.files().join(&r.path))
     }
 
     /// The asset whose file is at `path` (anywhere on disk), if any.
     pub fn id_at(&self, path: &Path) -> Option<AssetId> {
-        let relative = path.strip_prefix(self.project.assets()).ok()?;
+        let relative = path.strip_prefix(self.project.files()).ok()?;
         self.records
             .values()
             .find(|r| r.path == relative)
@@ -400,8 +401,7 @@ impl AssetDb {
     /// project's assets, under a name not yet taken, and returns where it
     /// went. The next rescan adds it.
     pub fn copy_in(&self, source: &Path) -> std::io::Result<PathBuf> {
-        // A new project's assets folder is made by the first file in it.
-        let assets = self.project.assets_folder()?;
+        let assets = self.project.files();
         let name = source
             .file_name()
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "no file name"))?;
@@ -472,7 +472,7 @@ impl Scan {
 
     /// [`Scan::run`]'s work, with the folder already held.
     fn look(self) -> Scanned {
-        let root = self.project.assets();
+        let root = self.project.files();
         let mut notes = Vec::new();
         let mut waiting: Option<Instant> = None;
         let (files, sidecars) = walk(&root);
@@ -607,7 +607,7 @@ impl Scan {
     }
 
     fn record(&self, id: AssetId, path: PathBuf, kind: AssetKind) -> AssetRecord {
-        let file = self.project.assets().join(&path);
+        let file = self.project.files().join(&path);
         let own = Stamp::of(&file);
         let mut stamps = vec![(path.clone(), own)];
         if file
@@ -690,9 +690,10 @@ fn relative(root: &Path, path: &Path) -> PathBuf {
         .map_or_else(|_| path.to_path_buf(), Path::to_path_buf)
 }
 
-/// Every file under `root` that's an asset or a sidecar, sorted, skipping
-/// hidden folders and temporary files. A folder that loops back (a link)
-/// is walked once.
+/// Every file under `root` (a project's folder) that's an asset or a
+/// sidecar, sorted, skipping hidden folders, Solis's own
+/// ([`crate::is_own`]) and temporary files. A folder that loops back (a
+/// link) is walked once.
 fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut files = Vec::new();
     let mut sidecars = Vec::new();
@@ -712,7 +713,10 @@ fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
             let path = entry.path();
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if name.starts_with('.') || name.ends_with(".tmp") {
+            if name.starts_with('.')
+                || name.ends_with(".tmp")
+                || (folder == root && crate::is_own(Path::new(&*name)))
+            {
                 continue;
             }
             match entry.file_type() {
@@ -730,7 +734,7 @@ fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
 
 /// Copies the file `from` to a new file `to`: never into a file or link
 /// already there.
-fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
+pub(crate) fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
     let mut source = reflect::ordinary_file::open(from).map_err(|why| match why {
         Refused::NotAFile => {
             std::io::Error::other(format!("{} isn't an ordinary file", from.display()))
@@ -755,12 +759,12 @@ mod tests {
     use crate::test_folder;
     use reflect::test_support::TempFolder;
 
-    /// A new project, its assets folder, and the folder holding it (the
+    /// A new project, the folder its files are in, and the folder holding it (the
     /// project goes when that's dropped).
     fn project(name: &str) -> (Project, PathBuf, TempFolder) {
         let root = test_folder(name);
         let project = Project::create(&root, "Test").unwrap();
-        let assets = project.assets_folder().unwrap();
+        let assets = project.files();
         (project, assets, root)
     }
 

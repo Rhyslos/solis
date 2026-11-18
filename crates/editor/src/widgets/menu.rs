@@ -17,6 +17,27 @@ pub fn item(ui: &mut Ui, label: &str, after: &str) -> Response {
     row(ui, label, after, None, egui::WidgetType::Button)
 }
 
+/// A row that does something, with its `icon` before `label` and quiet
+/// `after` words at its right (a key) if any: the Library's right-click
+/// menus (board 04).
+pub fn icon_item(ui: &mut Ui, icon: Icon, label: &str, after: &str) -> Response {
+    let response = row(ui, label, after, None, egui::WidgetType::Button);
+    if ui.is_rect_visible(response.rect) {
+        let room = response.rect.shrink2(vec2(size::FIELD_PAD, 0.0));
+        let spot = Rect::from_center_size(
+            pos2(room.left() + size::MENU_CHECK_ICON / 2.0, room.center().y),
+            vec2(size::MENU_CHECK_ICON, size::MENU_CHECK_ICON),
+        );
+        let ink = if ui.is_enabled() {
+            tokens::text_body()
+        } else {
+            tokens::text_meta()
+        };
+        icons::icon(ui.painter(), spot, icon, ink);
+    }
+    response
+}
+
 /// A row that is one of several choices: a check mark before it while it
 /// is the one in force.
 pub fn choice(ui: &mut Ui, label: &str, chosen: bool) -> Response {

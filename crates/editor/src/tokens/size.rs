@@ -314,6 +314,26 @@ pub const TILE_OUTLINE: f32 = 2.0;
 pub const KIND_DOT: f32 = 7.0;
 /// The least width of a tile in the Library.
 pub const TILE_MIN_W: f32 = 108.0;
+/// The Library's own folder tree, at first (board 04): the browser keeps
+/// at least the files' room beside it.
+pub const LIBRARY_TREE_W: f32 = 200.0;
+/// The least width of a tile in the Library browser on its tab (board 04).
+pub const LIBRARY_TILE_W: f32 = 88.0;
+/// The least width of a tile in the Library under the view (board 03),
+/// where the room is short.
+pub const LIBRARY_TILE_W_UNDER: f32 = 62.0;
+/// A row of the Library's trees and its list.
+pub const LIBRARY_ROW_H: f32 = 24.0;
+/// The Library's row of back, up and the breadcrumb, over the files.
+pub const LIBRARY_NAV_H: f32 = 28.0;
+/// The Library's search box.
+pub const LIBRARY_SEARCH_W: f32 = 200.0;
+/// The Library's kind filter.
+pub const LIBRARY_KINDS_W: f32 = 104.0;
+/// The box a name is typed in to rename a file.
+pub const NAME_BOX_H: f32 = 18.0;
+/// The least share of the room a folder tree beside another keeps.
+pub const TREE_SHARE_LIMIT: f32 = 0.15;
 /// The line under an Assets tile for its name (spec 216).
 pub const ASSET_NAME_H: f32 = 14.0;
 /// The width of the names in a list of names and values.

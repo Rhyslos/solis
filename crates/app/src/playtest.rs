@@ -144,7 +144,7 @@ pub fn export(
     if !editor::export_dialog::usable_level(&playtest.level) {
         return Err("choose a level for the game to start in".into());
     }
-    let assets = root.join(asset_db::ASSETS_FOLDER);
+    let assets = asset_db::files_folder_of(root);
     if !assets.join(&playtest.level).is_file() {
         return Err(format!("the level {} isn't in the project", playtest.level));
     }

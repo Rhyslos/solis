@@ -79,7 +79,7 @@ fn settle(want: External<'_>) -> io::Result<Handed> {
             // Checked before the path is looked at: even asking whether a
             // network share exists sends it the user's sign-in.
             let inside = inside(path, assets)
-                .ok_or_else(|| io::Error::other("it isn't in the project's assets folder"))?;
+                .ok_or_else(|| io::Error::other("it isn't one of the project's files"))?;
             let meta = std::fs::metadata(path)?;
             if meta.is_dir() {
                 Ok(Handed::Shown(path.to_path_buf()))

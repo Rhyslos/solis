@@ -337,7 +337,9 @@ Counts are at the end of this part.
 | `lib.shelf.used-by` | Shelf tab **Used by · N** and the Used by column (spec 314, 322) | PARTLY | Code files' uses (`workspace.rs` `code_uses`) and "shared by" (`properties.rs`). Unbuilt piece: `lib.used-by.all-kinds` (which areas and assemblies use a model, picture or sound). | not on the roadmap |
 | `lib.shelf.import-queue` | Shelf tab **Import queue · N** and the progress bar (spec 314, 322) | PLACEHOLDER | Placeholder shelf tab. (Imports already run on workers, `app/src/import.rs`, with no list.) | not on the roadmap (small) |
 | `lib.count` | "48 items · 1 selected" (spec 314) | EXISTS | (shell) | |
-| `lib.multi-select` | Ctrl / Shift click selects several (spec 327) | PLACEHOLDER | Not drawn (a behaviour): one file is selected at a time (`LibraryState::selected`) | not on the roadmap |
+| `lib.multi-select` | Ctrl / Shift click selects several (spec 327) | EXISTS | `LibraryState::selected` and `also` (R4, decision 0118) | |
+| `lib.new.prefab` | The Library's right-click **New prefab** (board 04 of the rethink) | PLACEHOLDER | Placeholder menu row, until prefabs (R5) | Shared 1f |
+| `lib.paste` | The Library's right-click **Paste** (board 04 of the rethink) | PLACEHOLDER | Placeholder menu row: no files are copied yet | not on the roadmap |
 | `lib.rename` | F2 renames in place (spec 327) | EXISTS | Rename… (`library.rs:1484`), made in-place; F2 already means Rename | |
 | `lib.delete-warns` | Delete warns when something uses the file (spec 327) | PARTLY | Delete moves to the Recycle Bin with its ID file. The warning needs `lib.used-by.all-kinds`. | not on the roadmap |
 | `lib.open` | Double-click opens in its editor (spec 328, 1095) | EXISTS | `workbench_library.rs`: animator, tileset, clips, screen, area, picture's crops; code and text open in their program | |

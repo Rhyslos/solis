@@ -113,17 +113,18 @@ fn with_files() -> Workbench {
         item("creak", "creak.wav", LibraryKind::Sound),
         item("deep", "props/deep.glb", LibraryKind::Model),
     ]);
+    w.set_folders(vec!["props".into()]);
     w
 }
 
 #[test]
-fn the_assets_column_shows_the_open_folder_and_imports() {
+fn the_library_under_the_view_shows_the_open_folder_and_imports() {
     let mut h = harness(with_files());
     h.run();
     h.run();
     assert!(in_view(&h.state().0, Panel::Assets));
     let column = h.state().0.shell.drawn_at(Panel::Assets).unwrap();
-    for name in ["crate", "creak", "Import a model"] {
+    for name in ["crate", "creak", "Folder props"] {
         let tile = h.get_by_label(name).rect();
         assert!(column.contains(tile.center()), "{name} in {column:?}");
     }
@@ -133,10 +134,23 @@ fn the_assets_column_shows_the_open_folder_and_imports() {
     // As many across as fit, each at least its least width.
     let crate_tile = h.get_by_label("crate").rect();
     assert!(
-        crate_tile.width() >= size::ASSETS_TILE_MIN_W,
+        crate_tile.width() >= size::LIBRARY_TILE_W_UNDER,
         "{crate_tile:?}"
     );
-    h.get_by_label("Import a model").click();
+    // Import: the right-click menu on empty space (R4).
+    let at = egui::pos2(column.right() - 30.0, column.bottom() - 20.0);
+    h.hover_at(at);
+    h.run();
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Secondary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+        h.run();
+    }
+    h.get_by_label("Import…").click();
     h.run();
     assert!(h.state().1.actions.contains(&WorkbenchAction::ImportModel));
     // A click picks it.
@@ -259,7 +273,7 @@ fn f2_and_delete_over_the_assets_act_on_the_picked_file() {
     h.run();
     assert_eq!(
         h.state().0.open.library_state.renaming,
-        Some(("crate.glb".to_string(), "crate.glb".to_string()))
+        Some(("crate.glb".to_string(), "crate".to_string()))
     );
     h.state_mut().0.open.library_state.renaming = None;
     h.run();

@@ -746,7 +746,7 @@ impl App {
         self.refresh_library();
         // A code file may have changed: checked again on a worker, and
         // reported only if the code is different.
-        if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+        if let Some(assets) = self.projects.db().map(|db| db.project().files()) {
             // armour.rs changed: say that its changes don't run.
             let (_, note) = crate::sample_game::rust_components(&assets);
             if note != self.rust_note
@@ -797,7 +797,7 @@ impl App {
         // file is written again with them, and the code checked.
         let names = crate::game_code::Animation::of(self.workbench.sprite_sheets());
         if self.game_code.set_animation(names)
-            && let Some(assets) = self.projects.db().map(|db| db.project().assets())
+            && let Some(assets) = self.projects.db().map(|db| db.project().files())
         {
             self.game_code.check(assets);
         }
@@ -959,9 +959,7 @@ impl App {
     /// folder (`levels`, or `areas` from before decision 0118), or its
     /// assets.
     fn levels_folder(&self) -> Option<PathBuf> {
-        // A new project's assets folder is made here, for the level about
-        // to go in it (decision 0118).
-        let assets = self.projects.db()?.project().assets_folder().ok()?;
+        let assets = self.projects.db()?.project().files();
         ["levels", "areas"]
             .into_iter()
             .map(|name| assets.join(name))
@@ -1170,7 +1168,7 @@ impl App {
                         let saved = crate::play_files::save_bindings(&root, &text);
                         // The actions are names game code uses: written again
                         // into solis/project.lst, and the code checked with them.
-                        if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+                        if let Some(assets) = self.projects.db().map(|db| db.project().files()) {
                             self.game_code.check(assets);
                         }
                         match saved {
@@ -1200,7 +1198,7 @@ impl App {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {
                         let saved = crate::play_files::save_mixer(&root, &mixer);
                         // The buses are names game code uses (Bus.Music).
-                        if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+                        if let Some(assets) = self.projects.db().map(|db| db.project().files()) {
                             self.game_code.check(assets);
                         }
                         match saved {
@@ -1333,7 +1331,7 @@ impl App {
                     }
                 }
                 WorkbenchAction::OpenExternally(path) => {
-                    let assets = self.projects.db().map(|db| db.project().assets());
+                    let assets = self.projects.db().map(|db| db.project().files());
                     let want = External::InProject {
                         path: &path,
                         assets: assets.as_deref(),
@@ -1382,9 +1380,27 @@ impl App {
                     self.rescan_now();
                 }
                 WorkbenchAction::NewFolder(parent) => {
-                    if let Err(why) = self.projects.new_folder(&parent) {
-                        self.workbench
-                            .log(LogLevel::Error, format!("Couldn't make a folder: {why}."));
+                    match self.projects.new_folder(&parent) {
+                        Ok(made) => {
+                            let made = crate::project::slashed(&made);
+                            self.workbench.show_new_in_library(&made);
+                        }
+                        Err(why) => self
+                            .workbench
+                            .log(LogLevel::Error, format!("Couldn't make a folder: {why}.")),
+                    }
+                    self.rescan_now();
+                }
+                WorkbenchAction::DuplicateFile(path) => {
+                    match self.projects.duplicate(&path) {
+                        Ok(copy) => {
+                            let copy = crate::project::slashed(&copy);
+                            self.workbench.show_new_in_library(&copy);
+                        }
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't duplicate {}: {why}.", path.display()),
+                        ),
                     }
                     self.rescan_now();
                 }
@@ -1417,7 +1433,7 @@ impl App {
     /// watch on its file follow, so the next save goes to the new place
     /// instead of making the old file again.
     fn follow_level_file(&mut self, from: &Path, to: Option<&Path>) {
-        let Some(assets) = self.projects.db().map(|db| db.project().assets()) else {
+        let Some(assets) = self.projects.db().map(|db| db.project().files()) else {
             return;
         };
         let to = to.map(|to| assets.join(to));
@@ -1461,11 +1477,11 @@ impl App {
         self.unreadable.clear();
         if let Some(db) = self.projects.db() {
             self.thumbnails
-                .want(&self.listing, &db.project().assets(), self.gpu.as_ref());
-            self.sounds.want(&self.listing, &db.project().assets());
+                .want(&self.listing, &db.project().files(), self.gpu.as_ref());
+            self.sounds.want(&self.listing, &db.project().files());
             self.workbench.set_sounds(self.sounds.states());
             self.workbench.set_sound_events(self.sounds.events());
-            self.sprites.want(&self.listing, &db.project().assets());
+            self.sprites.want(&self.listing, &db.project().files());
         }
         self.show_library();
     }
@@ -1521,7 +1537,7 @@ impl App {
         // A name that works on every system (not a device's, say), from
         // the entity's name, which a level file can set to anything.
         let safe = asset_db::file_name_from(&name, "Assembly");
-        let folder = db.project().assets().join("assemblies");
+        let folder = db.project().files().join("assemblies");
         let mut path = folder.join(format!("{safe}.{}", asset_db::ASSEMBLY_EXTENSION));
         let mut n = 2;
         while std::fs::symlink_metadata(&path).is_ok() {
@@ -1529,7 +1545,7 @@ impl App {
             n += 1;
         }
         let text = self.file_text(&file);
-        let written = asset_db::own_folder(&db.project().assets(), "assemblies")
+        let written = asset_db::own_folder(&db.project().files(), "assemblies")
             .and_then(|_| asset_db::write_atomically(&path, text.as_bytes()))
             .and_then(|()| self.projects.adopt(&path));
         let id = match written {
@@ -1643,7 +1659,7 @@ impl App {
             Ok(path) => {
                 self.rescan_now();
                 let shown = crate::project::slashed(&path);
-                self.workbench.show_in_library(&shown);
+                self.workbench.show_new_in_library(&shown);
                 self.workbench.log(
                     LogLevel::Info,
                     format!(
@@ -1662,7 +1678,7 @@ impl App {
     /// Listens to the sound file or sound event at `path` (inside the
     /// assets), or says in the Console why it can't.
     fn play_sound(&mut self, path: &std::path::Path) {
-        let Some(assets) = self.projects.db().map(|db| db.project().assets()) else {
+        let Some(assets) = self.projects.db().map(|db| db.project().files()) else {
             return;
         };
         if let Err(why) = self.sounds.play(path, &assets, self.sound.device()) {
@@ -1969,12 +1985,12 @@ impl eframe::App for App {
         // The pictures the game's screens show are read like the others
         // (decision 0089).
         if let Some(wanted) = self.workbench.take_wanted_pictures()
-            && let Some(assets) = self.projects.db().map(|db| db.project().assets())
+            && let Some(assets) = self.projects.db().map(|db| db.project().files())
         {
             self.sprites.want_pictures(wanted, &assets);
         }
         self.follow_sprites();
-        let assets = self.projects.db().map(|db| db.project().assets());
+        let assets = self.projects.db().map(|db| db.project().files());
         self.text_files
             .follow(&mut self.workbench, assets.as_deref());
         if let Some(note) = self.sounds.failure(self.sound.device()) {

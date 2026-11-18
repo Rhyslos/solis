@@ -10,6 +10,7 @@ const EVERYTHING: OpenNow = OpenNow {
     clips: true,
     map: true,
     layout: PanelLayout::Standard,
+    folders: false,
 };
 
 /// Every panel `tab` shows anywhere with `open` open.

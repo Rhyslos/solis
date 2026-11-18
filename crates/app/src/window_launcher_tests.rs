@@ -236,9 +236,8 @@ fn a_sample_starter_is_made_under_the_name_and_kind_chosen() {
     assert_eq!(summary.name, "My turret");
     assert_eq!(summary.kind, asset_db::ProjectKind::Both);
     assert!(
-        root.join("assets")
-            .join(crate::sample_game::LEVEL)
-            .is_file()
+        root.join(crate::sample_game::LEVEL).is_file(),
+        "the sample's files are beside the project file"
     );
     assert_eq!(app.workbench.project().unwrap().name, "My turret");
 }

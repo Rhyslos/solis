@@ -101,9 +101,7 @@ impl App {
         if !run.opened {
             run.opened = true;
             let root = run.found.root.clone();
-            let level = root
-                .join(asset_db::ASSETS_FOLDER)
-                .join(&run.found.playtest.level);
+            let level = asset_db::files_folder_of(&root).join(&run.found.playtest.level);
             self.open_project(&root, false);
             if self.projects.root().is_some() {
                 self.open_level(&level);
@@ -140,7 +138,7 @@ impl App {
             self.workbench.set_sound_events(self.sounds.events());
         }
         if let Some(wanted) = self.workbench.take_wanted_pictures()
-            && let Some(assets) = self.projects.db().map(|db| db.project().assets())
+            && let Some(assets) = self.projects.db().map(|db| db.project().files())
         {
             self.sprites.want_pictures(wanted, &assets);
         }
