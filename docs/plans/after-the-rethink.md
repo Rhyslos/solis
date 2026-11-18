@@ -1,6 +1,6 @@
 # The plan after the rethink: the rest of 2D, the shared tools, then 3D
 
-**The order is settled** ([decision 0120](../decisions/0120-the-order-after-the-rethink.md), the project lead, 2026-11-18): every recommended order below was accepted, and for the recipe, baking a whole world into files is a setting beside the recommended rules. ROADMAP.md follows it. Each phase's own questions are still asked when it starts.
+**The order is now the [game stages](game-stages.md)** ([decision 0122](../decisions/0122-the-game-stages.md), 2026-11-18), which reorder the 2D and shared phases below by the kind of game they let you make. This plan still says how each feature is built. (Decision 0120 settled the order questions below first.)
 
 The project lead asked on 17 November 2026 for extensive research on everything left after the editor rethink (Shared 1f): what has to be built, the best way to build each part, and how to build it in Solis's own code, followed by a detailed plan. A research agent read the repository at `origin/main` (e763513) and published papers and talks, and wrote one report per phase. They're in [`docs/reports/after-the-rethink/`](../reports/after-the-rethink/README.md), with every source. This plan is the main session's reading of that research: checked against the code, corrected where it was wrong, and turned into milestones.
 

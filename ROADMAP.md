@@ -229,20 +229,15 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 
 The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/0097-three-tracks.md)): 2D is finished first, so whole 2D games can be made; 3D comes after; and what isn't purely 2D or 3D is built **once, for both**, so no system is made twice. Big phases are split into smaller ones. "Was" says where each came from. The ideas list and the editor's UI remade joined as milestones the same day ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
 
-**The order:**
+**The order, from 18 November 2026:** [the game stages](docs/plans/game-stages.md) ([decision 0122](docs/decisions/0122-the-game-stages.md)). The 2D and shared work is built in four stages, by the kind of game it lets you make:
+1. a top-down adventure;
+2. a platformer;
+3. a puzzle or turn-based game;
+4. an action game or shooter.
 
-1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)), then **Shared 1f**, the editor rethink ([decision 0118](docs/decisions/0118-the-editor-rethink.md), *built*). Tools 1b, the sculpted ground, moved into the 3D track on 18 November 2026 ([decision 0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md)).
-2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
-3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes), ending with a check that a game replays the same on two PCs.
-4. **2D 1, then Shared 3, then 2D 2:** 2D complete. Shared 3 (time and feel) comes between them, so 2D 2's polish (hit-stop, squash, shake) is built on it ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
-5. **Shared 4 to 6:** the rest of the tools from the ideas list: data and the editor, screens and sound, worlds and testing.
-6. **Shared 7 to 10:** materials and shaders, effects, weather and the finished picture, cutscenes and behaviour, for sprites and models alike.
-7. **A pause to rethink,** and the project lead's big testing pass: 2D and effects are complete.
-8. **Shared 11:** scripting, the full export, Git and mods, so finished games can ship.
-9. **3D 1, then Tools 1b, Open worlds and foliage, then 3D 2 to 5:** 3D animation and navigation (with feet on slopes), the sculpted ground, then the ground at 10 × 10 km and beyond with grass, trees and rocks scattered on it, then light, sky and atmosphere in four steps. Open worlds moved here from after Tools 1b, so the far ground arrives where haze and far shadows make it look right ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)); Tools 1b joined them, so the ground, big worlds and foliage come as one stretch of 3D world work ([decision 0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md)).
-10. **Shared 12 and 13:** netcode, and Solis 0.1.
+Each stage pulls in the general features that kind needs and ends with a sample game of its kind, made with Solis's tools. Then come finishing and sharing games, then the rethink, then 3D: 3D 1, Tools 1b, Open worlds, foliage, 3D 2 to 5, netcode and 0.1 ([decisions 0120](docs/decisions/0120-the-order-after-the-rethink.md) and [0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md)). Only the next milestone is planned in detail. **The phase sections below are the catalogue of features;** the stages decide when each is built. The remaining files-as-Lust work ("Usable first", one project file) is on the stages' "later" list.
 
-Steps 8 to 10 are written down so nothing is lost, but they aren't planned in detail or reordered until the rethink ([decision 0059](docs/decisions/0059-2d-first.md)): 2D and effects will turn up things nobody can foresee yet.
+Built before the stages: Shared 1a to 1f (the editor remade, then rethought), the 27 problems, and Tools 1a (shape brushes).
 
 **The plan for everything after the rethink,** milestone by milestone, with the research behind it: [docs/plans/after-the-rethink.md](docs/plans/after-the-rethink.md). **Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md). **Ideas:** every idea in [docs/plans/ideas.md](docs/plans/ideas.md) is now a milestone below, except two left out on purpose ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
 
