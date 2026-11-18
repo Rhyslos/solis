@@ -29,8 +29,8 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | Shared 1d. The rest, finished | Audio and Debug; the screens not built yet as placeholders; the manual rewritten, the old code out, the review |
 | Shared 2. Game code: finding and making things | Tile map questions, tags and world questions, spawning with values, game tests |
 | 2D 1. The world and tiles | Levels and the world map, advanced tiling, pathfinding |
-| 2D 2. Movement, light and polish | Platformer and grid-step controllers, triggers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
 | Shared 3. Time and feel | Timers, tween, steps in order, states, shake and fade, noise and weighted random |
+| 2D 2. Movement, light and polish | Platformer and grid-step controllers, triggers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
 | Shared 4. Data and the editor | Data tables, save slots, field hints, more kinds of settings, drawing in the editor, paths |
 | Shared 5. Screens, words and sound | Text effects, button pictures, tooltips and drag and drop, translations and subtitles, music that follows the game |
 | Shared 6. Worlds and testing | Rooms, pools, debug drawing and a cheat box, bug reports with recordings |
@@ -41,6 +41,8 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | *The rethink* | The project lead's big testing pass |
 | Shared 11. Scripting, full export, Git and mods | The scripting window; finished games for Windows; teams through Git; mods |
 | 3D 1. 3D animation and navigation | Animated characters from glTF; navmeshes |
+| Open worlds | The ground at 10 × 10 km and beyond, from a recipe, streamed, far ground coarser |
+| Foliage and scattering | Grass, trees and rocks scattered on the ground by rules |
 | 3D 2 to 5. Light, sky and atmosphere | A physical sky, night and clouds; shadows, lamps, fog, reflections; bounced light |
 | Shared 12. Netcode | Two PCs playing together over the internet |
 | Shared 13. Solis 0.1 | The flagship space battle, docs, release |
@@ -229,20 +231,20 @@ The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/009
 
 **The order:**
 
-1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)), then **Open worlds** (the ground at 20 × 20 km and beyond; proposed, [decision 0116](docs/decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)).
+1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)), then **Shared 1f**, the editor rethink ([decision 0118](docs/decisions/0118-the-editor-rethink.md), *built*), then **Tools 1b**.
 2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
-3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes).
-4. **2D 1 and 2D 2:** 2D complete.
-5. **Shared 3 to 6:** the tools from the ideas list: time and feel, data and the editor, screens and sound, worlds and testing.
+3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes), ending with a check that a game replays the same on two PCs.
+4. **2D 1, then Shared 3, then 2D 2:** 2D complete. Shared 3 (time and feel) comes between them, so 2D 2's polish (hit-stop, squash, shake) is built on it ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
+5. **Shared 4 to 6:** the rest of the tools from the ideas list: data and the editor, screens and sound, worlds and testing.
 6. **Shared 7 to 10:** materials and shaders, effects, weather and the finished picture, cutscenes and behaviour, for sprites and models alike.
 7. **A pause to rethink,** and the project lead's big testing pass: 2D and effects are complete.
 8. **Shared 11:** scripting, the full export, Git and mods, so finished games can ship.
-9. **3D 1 to 5:** 3D animation and navigation, then light, sky and atmosphere in four steps.
+9. **3D 1, then Open worlds and foliage, then 3D 2 to 5:** 3D animation and navigation (with feet on slopes), the ground at 10 × 10 km and beyond with grass, trees and rocks scattered on it, then light, sky and atmosphere in four steps. Open worlds moved here from after Tools 1b, so the far ground arrives where haze and far shadows make it look right ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
 10. **Shared 12 and 13:** netcode, and Solis 0.1.
 
 Steps 8 to 10 are written down so nothing is lost, but they aren't planned in detail or reordered until the rethink ([decision 0059](docs/decisions/0059-2d-first.md)): 2D and effects will turn up things nobody can foresee yet.
 
-**Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md). **Ideas:** every idea in [docs/plans/ideas.md](docs/plans/ideas.md) is now a milestone below, except two left out on purpose ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
+**The plan for everything after the rethink,** milestone by milestone, with the research behind it: [docs/plans/after-the-rethink.md](docs/plans/after-the-rethink.md). **Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md). **Ideas:** every idea in [docs/plans/ideas.md](docs/plans/ideas.md) is now a milestone below, except two left out on purpose ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
 
 ---
 
@@ -335,20 +337,6 @@ The project lead's review of the remade interface (2026-11-17): nine points, ans
 
 **Gate:** a level of brushes on a sculpted, painted ground with a cave, in each look, played, saved and reopened, at the scale check's targets.
 
-## Open worlds (proposed)
-
-After Tools 1b, the ground grows from 1 × 1 km to big worlds ([decision 0116](docs/decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)): only what's near the camera and units kept in memory, far ground drawn coarser, physics only where it's needed. Planned by [the open-worlds study](docs/reports/open-worlds-study.md). The project lead answered its questions in [decision 0117](docs/decisions/0117-open-worlds-ten-km-a-recipe-and-far-caves.md): **10 × 10 km by default** (further by setting, 20 km and 41 km tested), voxels to 4 km with voxels to the horizon as an option made as well, **the starting ground a recipe** with only sculpted regions stored, 1 GB of memory, 512 m high or more. The milestones below are the study's proposal; **the phase's first builder revises them from decision 0117** (W1 streams from the recipe and sculpted regions; W2 draws voxels to 4 km and the horizon option; W4 makes the recipe's tools).
-
-- **W1 Regions and streaming** (proposed): region files hold levels 0 to 3 with a table of their chunks; chunks read on workers by priority with a ring read ahead, under a memory budget; sculpted chunks written back before they're let go; grounds past 2 km.
-- **W2 Far ground coarser** (proposed): nested rings of fixed-size chunks; levels 1 to 3 joined by a transition band (Smooth, Sharp) or walls between sizes (Blocky); past 2 km, the far field, a height map made from the voxels, to the horizon.
-- **W3 Physics and units across the world** (proposed): colliders only near physics characters, their shapes built on workers; characters held at the edge of ground not yet solid; 2,000 units following the ground anywhere in the world.
-- **W4 The world map and a starting ground** (proposed): a map of the regions to go to a place; a starting ground made from noise or a height map picture, written as region files on workers.
-- **W5 Speed, game code, the manual** (proposed): drawing near the camera precise however far from the middle; game code's calls for big grounds; the scale cases; the manual.
-
-**Gate (proposed):** a 20 × 20 km ground made from noise, sculpted and painted in places kilometres apart, flown across without holes or stalls in each look, walked on and crossed by 2,000 units, saved and reopened.
-
----
-
 ## Shared 2: Game code: finding and making things
 
 The fixes the playtest games asked for (steps 2 to 5), and idea 34.
@@ -358,6 +346,7 @@ The fixes the playtest games asked for (steps 2 to 5), and idea 34.
 - **Spawning with values:** a spawned entity's fields set as it's made.
 - **Game tests:** small automatic checks ("a crop grows in three days"), run the way Solis tests itself. (Idea 29.)
 - **A note for code files nothing fetches,** in Problems, with a quick fix. (Idea 34.)
+- **The same on two PCs:** a recorded game replayed on two machines, its checksums compared tick by tick, so maths that rounds differently somewhere is caught before more of it goes into game state ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
 
 **Gate:** a game finds the nearest enemy by tag, spawns a bullet already moving, and has a test that passes.
 
@@ -365,11 +354,24 @@ The fixes the playtest games asked for (steps 2 to 5), and idea 34.
 
 Was Phase 10, part one.
 
-- **Levels and the world:** entities with typed fields, rooms on a world map, sort points for tall things.
+- **Levels and the world:** rooms on a world map, sort points for tall things. (Entities with typed fields moved to Shared 4's field hints and new kinds of settings, [decision 0120](docs/decisions/0120-the-order-after-the-rethink.md).)
 - **Advanced tiling:** rules for decoration and variety, scatter brushes, patterns and stamps.
 - **Pathfinding** on tile maps: A* and flow fields, updated as the map changes.
 
 **Gate:** a level of rooms on a world map, decorated with the new tiling tools, with a character that finds its way around walls as the map changes.
+
+## Shared 3: Time and feel
+
+Ideas 1 to 7 and 16: tools almost every game reaches for. Before 2D 2, so its polish is built on them ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
+
+- **Timers:** "do this in 2 seconds", "every day"; they pause with the game and are kept in saves.
+- **Tween:** a value changes smoothly over time, with a choice of easing.
+- **Steps in order:** "walk there, wait a second, say this", written top to bottom, for little cutscenes.
+- **States that know when they start and stop,** and stop what was started in them.
+- **Screen shake, flash and fade,** and controller rumble.
+- **Smooth randomness and weighted random:** noise that drifts gently, rare drops, and shuffled decks so nothing repeats too soon.
+
+**Gate:** a hit shakes the screen and flashes the sprite, a menu slides in, a door opens two seconds after a switch, and a chest drops a rare item now and then.
 
 ## 2D 2: Movement, light and polish
 
@@ -382,19 +384,6 @@ Was Phase 10, part two, and 2D's light from Phase 13.
 
 **Gate (2D complete):** the 2D sample and the project lead's extended game slice; every speed budget met; the old tools' known problems, each a passing test.
 
-## Shared 3: Time and feel
-
-Ideas 1 to 7 and 16: tools almost every game reaches for.
-
-- **Timers:** "do this in 2 seconds", "every day"; they pause with the game and are kept in saves.
-- **Tween:** a value changes smoothly over time, with a choice of easing.
-- **Steps in order:** "walk there, wait a second, say this", written top to bottom, for little cutscenes.
-- **States that know when they start and stop,** and stop what was started in them.
-- **Screen shake, flash and fade,** and controller rumble.
-- **Smooth randomness and weighted random:** noise that drifts gently, rare drops, and shuffled decks so nothing repeats too soon.
-
-**Gate:** a hit shakes the screen and flashes the sprite, a menu slides in, a door opens two seconds after a switch, and a chest drops a rare item now and then.
-
 ## Shared 4: Data and the editor
 
 Ideas 15, 18 to 21 and 12.
@@ -402,7 +391,7 @@ Ideas 15, 18 to 21 and 12.
 - **Data tables:** lists such as "every crop: days to grow, price, season", kept as a file and edited as a table.
 - **Save slots:** several saves with a picture, the date and time played, autosave; the player's own settings kept apart.
 - **Field hints:** a component's fields get sliders, limits and a sentence saying what they do.
-- **More kinds of settings:** a field can be a colour, a sound, a sprite, an assembly or a list.
+- **More kinds of settings:** a field can be a colour, a sound, a sprite, a prefab or a list; this takes in 2D 1's entities with typed fields.
 - **Components that draw in the editor,** such as a guard's view cone while you place it.
 - **Paths drawn in the editor,** for a guard to walk, a platform to follow or a camera to glide along.
 
@@ -435,7 +424,8 @@ Ideas 10, 11, 28 and 30.
 
 Was Phase 14. For sprites and models alike: how a surface takes light, glows, dissolves, gets wet or sways in the wind ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan is [docs/plans/materials.md](docs/plans/materials.md).
 
-- **Materials as assets** (`.solmat`), each with its own look (standard, stylized, light ramp, unlit), edited in Properties with a live preview.
+- **The renderer's restructure first:** shader modules, a small frame graph of passes, and a depth-and-normals pass with many lamps per pixel ("forward+"), keeping the crisp outlines, so materials, effects, weather and 3D's light build on it ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
+- **Materials as assets** (`<name>.material.lst`, decision 0081), each with its own look (standard, stylized, light ramp, unlit), edited in Properties with a live preview.
 - **A material per brush face** (moved here from Tools 1a, B5, by the project lead on 2026-11-14, since Solis had no material assets): HOME TOOLS · Brush's Material ▾ and the Brush card's Material row, a material dragged from the Assets onto a face, pictures laid on from the world without stretching. Each face's material slot is saved already.
 - **Inputs that drive any material value:** the light around the surface, time, distance, height, the weather's wetness, noise, and values set by game code.
 - **A node graph for materials and shaders,** saved as readable text, sharing its graph editor with the animator and the effects.
@@ -501,9 +491,28 @@ Was Phase 16 ([decision 0059](docs/decisions/0059-2d-first.md)). The working pla
 - **Crowds:** baked clips and animation levels of detail.
 - **Blending and blend spaces** for skeletons, on the state machine 2D brought.
 - **Cues on 3D clips:** footsteps on the right frames, in the playground.
+- **Feet on slopes:** two-bone foot IK, so characters' feet sit on the sculpted ground ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
 - **Navigation in 3D:** navmeshes built from the world, and characters walking around each other. (Was idea 13's 3D half.)
 
 **Gate:** a character walks and runs with smooth blending, its footsteps play on the right frames, and it finds its way across a 3D level.
+
+## Open worlds
+
+After 3D 1 and before or alongside 3D 2 and 3D 3, whose haze over distance and far shadows make far ground look right ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md); it came straight after Tools 1b before). The ground grows from 1 × 1 km to big worlds ([decision 0116](docs/decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)), planned by [the open-worlds study](docs/reports/open-worlds-study.md), with the project lead's answers in [decision 0117](docs/decisions/0117-open-worlds-ten-km-a-recipe-and-far-caves.md): **10 × 10 km by default** (further by setting, 20 km and 41 km tested), voxels to 4 km with voxels to the horizon as an option made as well, **the starting ground a recipe** with only sculpted regions stored, 1 GB of memory, 512 m high or more. The milestones were revised from decision 0117 in [the plan after the rethink](docs/plans/after-the-rethink.md#open-worlds-report-14-revised-from-decision-0117). **The recipe** is local (erosion-like noise and a height-map picture, no simulated erosion), its versions are kept forever so an update never reshapes a world, and ground the game reads is made exactly on the processor; **baking a whole world into files** is a setting for worlds that must never depend on the recipe (decision 0120).
+
+- **W1 Recipes, regions and streaming:** a versioned recipe made per chunk on workers, with a quick surface-height query; only sculpted chunks stored; chunks streamed by priority from memory, a disk cache, region files and the recipe, under the 1 GB budget; 512 m high in stacked chunks.
+- **W2 Far ground coarser, to 4 km, and the horizon option:** rings of fixed-size chunks joined by transition bands (Smooth, Sharp) or walls (Blocky), a height-map far field beyond; voxels to the horizon as an option made as well, with its own scale cases and an honest message when a PC can't keep up.
+- **W3 Physics and units across the world:** colliders only near physics characters; 2,000 units anywhere, reading the surface or the voxels where caves are.
+- **W4 The world map and the recipe's tools:** a map to go anywhere; the recipe with a live preview, presets, a seed, height-map import, and baking.
+- **W5 Precision, game code, the scale cases, the manual:** always drawn relative to the camera; the game's origin moved only for worlds past 20 km.
+
+**Gate:** a 10 × 10 km ground made from a recipe, at the full targets (20 km working), sculpted and painted in places kilometres apart, flown across without holes or stalls in each look, walked on and crossed by 2,000 units, saved and reopened.
+
+## Foliage and scattering
+
+After Open worlds ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md); DESIGN.md §8): grass, trees and rocks scattered on the ground by rules (height, slope, ground kind, noise), drawn in batches with detail by distance, kept to the scale target across big worlds.
+
+**Gate:** a 10 × 10 km world covered in grass, trees and rocks by rules, flown across at the frame target.
 
 ## 3D 2: Real light and the sky
 

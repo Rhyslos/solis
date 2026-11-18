@@ -1,6 +1,6 @@
 # The plan after the rethink: the rest of 2D, the shared tools, then 3D
 
-**Draft:** it has questions for the project lead. The order below is a recommendation. ROADMAP.md stays as it is until the lead answers the order questions, and then changes in the same pull request as a decision.
+**The order is settled** ([decision 0120](../decisions/0120-the-order-after-the-rethink.md), the project lead, 2026-11-18): every recommended order below was accepted, and for the recipe, baking a whole world into files is a setting beside the recommended rules. ROADMAP.md follows it. Each phase's own questions are still asked when it starts.
 
 The project lead asked on 17 November 2026 for extensive research on everything left after the editor rethink (Shared 1f): what has to be built, the best way to build each part, and how to build it in Solis's own code, followed by a detailed plan. A research agent read the repository at `origin/main` (e763513) and published papers and talks, and wrote one report per phase. They're in [`docs/reports/after-the-rethink/`](../reports/after-the-rethink/README.md), with every source. This plan is the main session's reading of that research: checked against the code, corrected where it was wrong, and turned into milestones.
 
@@ -61,7 +61,7 @@ R1 to R6 → Tools 1b → **Open worlds** → finish "Usable first" → Shared 2
 
 ### The recommended order
 
-★ marks a change from ROADMAP.md. Each needs the lead's yes (questions O1 to O8).
+★ marks a change from ROADMAP.md as it was. The lead accepted each one (questions O1 to O8, decision 0120).
 
 | # | Phase | Milestones | Size | Why here |
 | --- | --- | --- | --- | --- |
@@ -81,7 +81,7 @@ R1 to R6 → Tools 1b → **Open worlds** → finish "Usable first" → Shared 2
 | 14 | **3D 2 to 3D 5**, light, sky and atmosphere | 4 + 4 + 5 + 4 | large each | |
 | 15 | **Shared 12 netcode, Shared 13 Solis 0.1** | | | As planned. |
 
-**If the lead keeps Open worlds where it is** (question O1), the only change is that rows 13 and 3 swap places: Open worlds comes straight after Tools 1b, and its far ground looks plain until 3D 2 and 3D 3. The rest of this plan holds either way. The research's question 73 (a 10 km gate at full targets, with 20 km working) applies in both orders.
+The lead chose Open worlds in the 3D track (question O1). The research's question 73 (a 10 km gate at full targets, with 20 km working) applies in both orders.
 
 ## Groundwork that runs through everything
 
@@ -386,18 +386,18 @@ Not planned in detail until the rethink (decision 0059). What earlier phases mus
 
 ## Questions, and when each is asked
 
-### Asked now (the order)
+### Asked first (the order), answered 2026-11-18
 
-| # | Question | Recommended | Alternatives |
-| --- | --- | --- | --- |
-| O1 | Where do Open worlds go? | After 3D 1, alongside 3D 2 and 3D 3, where haze and far shadows make big worlds look right | Straight after Tools 1b, as today |
-| O2 | Shared 3 (time and feel) before 2D 2? | Yes | Small versions of hit-stop, squash and shake in 2D 2 |
-| O3 | Typed fields from 2D 1 into Shared 4? | Yes | Pull field hints into 2D 1 |
-| O4 | Restructure the renderer at the start of Shared 7? | Yes | At the start of 3D 2; or deferred shading (loses MSAA) |
-| O5 | A cross-PC determinism check at the end of Shared 2? | Yes | Later, before netcode |
-| O6 | A milestone for foliage and scattering? | Yes, after Open worlds | When asked for |
-| O7 | A small foot-IK milestone in 3D 1? | Yes | DESIGN.md's "later" |
-| O8 | The recipe's rules: local, versions kept forever, exact where the game reads it? | Yes | Bake every world fully into files |
+| # | Question | Recommended | Alternatives | Answer |
+| --- | --- | --- | --- | --- |
+| O1 | Where do Open worlds go? | After 3D 1, alongside 3D 2 and 3D 3, where haze and far shadows make big worlds look right | Straight after Tools 1b, as today | Later, in the 3D track |
+| O2 | Shared 3 (time and feel) before 2D 2? | Yes | Small versions of hit-stop, squash and shake in 2D 2 | Yes |
+| O3 | Typed fields from 2D 1 into Shared 4? | Yes | Pull field hints into 2D 1 | Yes |
+| O4 | Restructure the renderer at the start of Shared 7? | Yes | At the start of 3D 2; or deferred shading (loses MSAA) | At the start of Shared 7 |
+| O5 | A cross-PC determinism check at the end of Shared 2? | Yes | Later, before netcode | Yes |
+| O6 | A milestone for foliage and scattering? | Yes, after Open worlds | When asked for | Yes, after Open worlds |
+| O7 | A small foot-IK milestone in 3D 1? | Yes | DESIGN.md's "later" | Yes |
+| O8 | The recipe's rules: local, versions kept forever, exact where the game reads it? | Yes | Bake every world fully into files | Yes by default, and baking a whole world as a setting |
 
 ### Asked when each phase starts
 
