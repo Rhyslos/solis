@@ -116,6 +116,74 @@ fn the_program_s_components_join_the_registry_and_replace_the_last_ones() {
     assert!(w.open.document.registry.get("Light").is_some());
 }
 
+/// A component whose mood turns busy on its first update; `set` sets the
+/// state (`is` before Lust alpha 74, `=` now).
+fn moody(set: &str) -> String {
+    format!(
+        "state Mood = [Calm, Busy];\n\
+         component Moody {{\n\
+         \x20   has {{\n\
+         \x20       Mood mood = Mood.Calm;\n\
+         \x20   }}\n\
+         \x20   method update(float dt) {{\n\
+         \x20       mood {set} Mood.Busy;\n\
+         \x20   }}\n\
+         }}\n\
+         pass Moody;\nend\n"
+    )
+}
+
+#[test]
+fn a_state_set_with_is_is_in_problems_showing_the_new_way_and_with_equals_runs() {
+    let mut w = Workbench::new(info());
+    let old = compiled(&moody("is")).expect_err("the old way is a mistake (decision 0123)");
+    w.set_code_problems(old, &[]);
+    let found = w.all_code_problems();
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(
+        found[0].message, "a state is set with =, so write mood = Mood.Busy;",
+        "Lust's own words, showing the = way"
+    );
+    // compiled puts two empty lines above the code.
+    assert_eq!((found[0].file.as_str(), found[0].line), ("main.lst", 2 + 7));
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("so write mood = Mood.Busy;")),
+        "the Console says it too"
+    );
+    // The same code with =: no problem, and it runs.
+    w.set_code_problems(Vec::new(), &[]);
+    w.set_program(Some(program(&moody("="))));
+    assert!(w.all_code_problems().is_empty());
+    let id = EntityId::random();
+    w.open
+        .document
+        .edit(
+            "Add",
+            vec![level::Edit::Spawn {
+                entities: vec![(id, EntityData::new("Lamp"))],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.apply_property(
+        PropertyRequest::AddComponent {
+            entity: id,
+            component: "Moody".into(),
+        },
+        1,
+    );
+    w.play();
+    w.run_game(1.0 / 60.0);
+    let game = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
+    assert_eq!(
+        game.values(id, "Moody").unwrap().get("mood"),
+        Some(&Value::Text("Busy".into()))
+    );
+}
+
 #[test]
 fn a_component_named_like_a_built_in_one_or_a_failing_start_is_a_problem() {
     let mut w = Workbench::new(info());

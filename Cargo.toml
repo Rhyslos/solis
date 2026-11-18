@@ -113,7 +113,7 @@ libm = "0.2.16"
 # commit of Lust's main branch until its tag exists (then `tag =
 # "v2.0.0-alpha.33"`); without default features it needs only Rust's own
 # library. Lust and Lua run in Luau.
-lust = { git = "https://github.com/Rhyslos/Lust", rev = "ee12407605c51c3ab89a68a98f129d91fda013b0", default-features = false }
+lust = { git = "https://github.com/Rhyslos/Lust", rev = "9fcd48c8654978f88264a07f0c8eb5325d82c2ca", default-features = false }
 # Its Luau source is held at 0.740 in Cargo.lock (luau0-src
 # 0.22.0+luau740): with 0.744, mlua 0.12.2 can't start a Luau at all
 # ("Error configuring Luau"). Update the two together. deny.toml's [bans]
