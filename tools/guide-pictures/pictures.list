@@ -52,7 +52,7 @@ picture view-menu.png
   page navigating-the-viewport.md
   shows The view's pill open: Perspective, Top, Front, Right, 2D and how many views
   click 290 150
-  shot 241 130 660 310
+  shot 250 130 660 310
   key Escape
 
 picture brush-list.png
@@ -61,19 +61,19 @@ picture brush-list.png
   move 700 380
   key b
   wait 1
-  shot 241 130 858 530
+  shot 250 130 868 530
 
 picture brush-drawing.png
   page brushes.md
   shows Drawing a box out: the footprint dragged, the height being chosen
   key space
   wait 1
-  drag 640 330 760 360
-  move 760 330
-  move 760 300
-  move 760 280
+  drag 650 410 750 425
+  move 750 400
+  move 750 385
+  move 750 370
   wait 1
-  shot 241 130 858 361
+  shot 250 130 868 380
 
 picture brush-editing.png
   page brushes.md
@@ -89,16 +89,16 @@ picture brush-editing.png
 picture brush-extrude.png
   page brushes.md
   shows Extruding the box's top with E: the new part following the mouse, its distance beside it and at the top
-  click 694 277
+  click 703 292
   wait 1
-  move 694 278
+  move 703 293
   key e
   wait 1
-  move 694 262
-  move 694 246
-  move 694 232
+  move 703 275
+  move 703 255
+  move 703 235
   wait 1
-  shot 241 130 858 361
+  shot 250 130 868 380
   key Escape
   key Tab
 
@@ -132,7 +132,7 @@ picture gizmo.png
   move 690 320
   key w
   move 900 450
-  shot 241 130 858 361
+  shot 250 130 868 380
 
 picture play.png
   page play-mode.md
@@ -143,8 +143,10 @@ picture play.png
 
 picture console.png
   page console.md
-  shows The Console on the shelf, with its counts, search and command line
-  shot 0 682 1440 218 1100
+  shows The Console in the bottom panel, with its counts, search and command line
+  click 403 652
+  wait 1
+  shot 0 636 1440 240 1100
 
 picture profiler.png
   page profiler.md
@@ -165,25 +167,29 @@ picture mixer.png
   page mixer.md
   shows The Audio tab: a strip for each bus, with Master last, and the bus picked beside them
   click 482 18
-  shot 0 100 1440 445 1100
+  wait 1
+  shot 250 100 1190 445 1100
 
 picture sound-events.png
   page sound-events.md
-  shows The project's sound events on the Audio tab's shelf, one picked with its takes
-  shot 0 575 1440 300 1100
+  shows The project's sound events in the Audio tab's left slot, widened, one picked with its takes
+  drag 251 400 700 400
+  wait 1
+  move 1300 800
+  shot 0 100 900 500 900
 
 picture preferences.png
   page settings.md
   shows File > Preferences > General
   click 64 17
-  click 86 323
+  click 86 209
   move 1300 700
   shot 220 40 1220 580 1000
 
 picture input-actions.png
   page input.md
   shows File > Project settings > Input: each action and the keys that set it off
-  click 97 285
+  click 97 171
   click 457 151
   move 1300 700
   shot 220 40 1220 830 1000
@@ -198,11 +204,12 @@ session game
 picture problems.png
   page problems.md
   shows Problems with a mistake in the code: what's wrong, and where
-  write assets/broken.lst component Broken {\n    has {\n        float speed = "fast";\n    }\n}\n\npass Broken;\nend\n
-  write assets/main.lst fetch "broken":[Broken];\nend\n
+  write broken.lst component Broken {\n    has {\n        float speed = "fast";\n    }\n}\n\npass Broken;\nend\n
+  prepend main.lst fetch "broken":[Broken];\n
   wait 4
-  click 335 700
-  shot 0 682 1440 110 1100
+  click 530 652
+  wait 1
+  shot 0 636 1440 110 1100
 
 picture turret-playing.png
   page first-game.md
@@ -210,14 +217,15 @@ picture turret-playing.png
   session game
   click 1350 60
   wait 12
-  click 250 700
-  shot 0 682 1440 218 1100
+  click 403 652
+  wait 1
+  shot 0 636 1440 240 1100
   click 1246 60
 
 picture tileset.png
   page tilesets.md
   shows A new tileset on its own tab: its terrains, and how it draws them
-  prepend assets/main.lst fetch "solis/tiles":Maps;\n
+  prepend main.lst fetch "solis/tiles":Maps;\n
   key space
   type Tileset
   key Return
@@ -233,19 +241,21 @@ picture tile-painter.png
   type New tile map
   key Return
   wait 3
-  double 422 563
+  key space
+  type Place the picked file
+  key Return
   wait 3
   click 290 150
-  click 376 284
+  click 344 284
   wait 2
-  move 690 320
+  move 690 400
   key f
   wait 2
-  click 382 780
+  click 593 735
   click 91 60
-  drag 450 250 650 420
-  click 431 780
-  drag 760 200 900 330
+  drag 720 420 900 560
+  click 650 735
+  drag 950 400 1080 500
   click 34 60
   move 1000 600
   shot 0 0 1440 900 1100
@@ -256,10 +266,11 @@ picture ui-canvas.png
   page ui-editor.md
   shows The UI tab with the sample's HUD open on the canvas
   click 176 18
-  click 40 262
-  wait 1
-  double 328 250
+  click 63 195
+  wait 2
+  double 358 238
   wait 4
+  move 1300 800
   shot 0 0 1440 900 1100
 
 picture learn.png
@@ -278,3 +289,19 @@ picture launcher.png
   click 236 190
   move 1300 800
   shot 170 100 1100 700 1000
+
+session game
+
+picture home-2d.png
+  page interface-tour.md
+  shows A 2D project's Home: no Shading tab, Create, Paint tiles and the tile snaps, and the note on what's hidden
+  key space
+  type Project settings
+  key Return
+  wait 2
+  click 922 324
+  wait 2
+  key Escape
+  wait 2
+  move 1300 800
+  shot 0 0 1440 128 1100

@@ -47,6 +47,9 @@ The editor with the playground open: **1** the tabs, **2** the search, **3** the
 
 **In a 2D or a 3D project** the editor shows only what that kind of game uses ([project kind](concepts.md#projects)). A 2D project has no **Shading** tab and no **Lighting** group, and Home's ribbon is laid out for 2D: **Create** has **Entity**, **Sprite**, **Tile map**, **Camera**, **Trigger zone** (not built yet) and **More** (a point light, a reverb zone, Make prefab…); **Paint tiles** has the tile painter's **Brush**, **Fill** and **Eyedropper**, which paint the tile map picked; and the snaps are **Grid · 16 px** (the project's tile size), **Snap to tiles** and **Pixel perfect** (moves land on whole tiles, or on the game's whole pixels). The view is the 2D one, its pill saying its zoom (**2D · 200%**). A 3D project hides the tile painter, tile maps and the 2D view instead. The first few times a project opens as, or is switched to, 2D or 3D, a note on Home's ribbon says what's hidden; its **×** puts it away. Why hide anything? Each kind of game uses only part of the editor, and the rest is in the way. Nothing is deleted: set **Project settings › General › Kind** to **Both** to see everything ([What each kind hides](settings.md#what-each-kind-hides)).
 
+![A 2D project's Home](pictures/home-2d.png)
+A 2D project's Home: no Shading tab, the ribbon's **Create**, **Paint tiles** and tile snaps, and the note saying what's hidden.
+
 Each tab remembers its own bottom tab, whether its bottom panel is folded, which panels you hid, the split between its groups and every edge you dragged.
 
 **File** is different: it is a page in place of the ribbon and the editor, with a column of items down its left side. **Back to editor** (or **Esc**) returns to the tab you came from. It holds what belongs to the open project and the editor; your projects, Learn and Updates are the [launcher](launcher.md)'s, which **Close project** goes back to.
