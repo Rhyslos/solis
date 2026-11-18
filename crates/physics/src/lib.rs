@@ -13,8 +13,10 @@
 pub mod flat;
 mod guard;
 mod solid_mesh;
+mod zones;
 
 pub use solid_mesh::{MAX_TRIANGLES, SolidMesh};
+pub use zones::{ZoneQuery, ZoneShape};
 
 use glam::{Quat, Vec3};
 use rapier3d::prelude as rp;
