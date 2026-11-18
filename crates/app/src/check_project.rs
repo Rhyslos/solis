@@ -138,6 +138,15 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             },
             tiles::tileset::MAX_BYTES as u64,
         ),
+        "ground" => (
+            &ground::settings::FORMAT,
+            |text| {
+                ground::settings::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            ground::settings::MAX_BYTES as u64,
+        ),
         "atlas" => (
             &animation::atlas::FORMAT,
             |text| {

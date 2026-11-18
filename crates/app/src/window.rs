@@ -96,6 +96,8 @@ struct App {
     workbench: Workbench,
     /// Draws the viewport on the window's GPU, if it has one.
     gpu: Option<GpuViewport>,
+    /// The ground's files, read and written on threads (Tools 1b, G1).
+    ground_files: crate::ground_files::GroundFiles,
     /// Explains the empty viewport when there is no GPU.
     no_gpu: NoRenderer,
     /// Reads model files in the background.
@@ -231,6 +233,7 @@ impl App {
             workbench,
             gpu,
             no_gpu,
+            ground_files: Default::default(),
             importer,
             sound: crate::sound::Sound::open(),
             sounds: crate::sounds::Sounds::default(),
@@ -1097,6 +1100,24 @@ impl App {
                 WorkbenchAction::SaveFile { path, file, text } => {
                     self.save_file(&path, file, &text);
                 }
+                WorkbenchAction::LoadGround { asset, path } => {
+                    if let Some(folder) = self.projects.files_folder() {
+                        self.ground_files.load(folder, asset, path);
+                    }
+                }
+                WorkbenchAction::SaveGround {
+                    path,
+                    text,
+                    regions,
+                } => match self.projects.files_folder() {
+                    Some(folder) if editor::plain_relative(&path) => {
+                        self.ground_files.save(folder, path, text, regions);
+                    }
+                    _ => self.workbench.log(
+                        LogLevel::Error,
+                        format!("Couldn't save the ground {path}: it isn't in the project."),
+                    ),
+                },
                 WorkbenchAction::SaveScreen { path, text } => {
                     if let Err(why) = self.projects.save_screen(&path, &text) {
                         self.workbench.log(
@@ -1973,8 +1994,11 @@ impl eframe::App for App {
             }
         }
         self.workbench.set_files_hovering(hovering);
+        self.ground_files.poll(&mut self.workbench);
+        let ground_meshes = self.workbench.take_ground_meshes();
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
             Some(gpu) => {
+                gpu.update_ground(ground_meshes);
                 gpu.begin_frame();
                 gpu
             }

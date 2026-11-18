@@ -87,6 +87,17 @@ impl Workbench {
     /// Gives every one of `entities` that lacks it the component, with its
     /// starting values.
     pub(crate) fn add_component_many(&mut self, entities: &[EntityId], component: &str) {
+        // One ground per level (decision 0111): never on several at once,
+        // nor beside the one the level has.
+        if component == level::builtin::Ground::NAME
+            && (entities.len() > 1 || self.level_ground().is_some())
+        {
+            self.log(
+                crate::console::LogLevel::Warning,
+                level::builtin::ONE_PER_LEVEL,
+            );
+            return;
+        }
         let Some(schema) = self.open.document.registry.get(component) else {
             return;
         };

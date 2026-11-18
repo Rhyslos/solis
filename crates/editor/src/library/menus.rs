@@ -125,7 +125,7 @@ fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
     ui.menu_button("More", |ui| {
         fit(ui, &["New tile map"]);
         use crate::shell::commands::NewFile;
-        let more: [(MoreRow, NewFile); 3] = [
+        let more: [(MoreRow, NewFile); 4] = [
             (
                 (Icon::TileMap, "New tile map", LibraryRequest::NewTileMap),
                 NewFile::TileMap,
@@ -137,6 +137,10 @@ fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
             (
                 (Icon::Animator, "New animator", LibraryRequest::NewAnimator),
                 NewFile::Animator,
+            ),
+            (
+                (Icon::Ground, "New ground\u{2026}", LibraryRequest::NewGround),
+                NewFile::Ground,
             ),
         ];
         // Only what the project's kind keeps (the kind table).

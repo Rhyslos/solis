@@ -164,6 +164,7 @@ impl ShellCommand {
             C::BrushSplit => "Split",
             C::BrushDelete => "Delete the picked parts",
             C::NewTileMap => "New tile map",
+            C::NewGround => "New ground\u{2026}",
             C::MakePrefab => "Make prefab\u{2026}",
             C::Play => "Play",
             C::Pause => "Pause",
@@ -395,6 +396,10 @@ impl ShellCommand {
             }
             C::NewTileMap => {
                 "A new tile map file in the Library's folder, to place in the level and paint"
+            }
+            C::NewGround => {
+                "The level's ground: hills made of one-metre voxels, its size, height and shape \
+                 chosen first. A level has one"
             }
             C::EditBrushInsides => {
                 "Edits the picked brush's points, edges and faces: pick them, then move, turn or \

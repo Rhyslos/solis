@@ -31,6 +31,10 @@ pub struct ViewportView {
     pub models: Vec<ViewModel>,
     /// The brushes to draw, with their pick numbers (Tools 1a, B1).
     pub brushes: Vec<crate::brushes::ViewBrush>,
+    /// Whether the level's ground is drawn (Tools 1b, G1): its chunks,
+    /// which the app keeps uploaded ([`crate::Workbench::take_ground_meshes`]).
+    /// Never in the 2D view.
+    pub ground_shown: bool,
     /// How models are shaded.
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.
@@ -284,6 +288,7 @@ impl Viewport {
             ground: rgb(theme::backdrop::ground()),
             models: self.level.models.clone(),
             brushes: self.level.brushes.clone(),
+            ground_shown: self.level.ground.is_some() && self.camera.kind != ViewKind::TwoD,
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
             dim_all_but: self.brushing.edit.as_ref().and_then(|edit| {

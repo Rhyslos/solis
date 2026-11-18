@@ -35,6 +35,9 @@ pub enum LibraryKind {
     Tileset,
     /// A tile map (`.tilemap.lst`, Phase 9, D4).
     TileMap,
+    /// A ground's settings (`.ground.lst`, Tools 1b): its voxels are in
+    /// the folder beside it, which the Library never lists.
+    Ground,
     /// A picture's crops (`.atlas.lst`, Atlas Crop).
     Atlas,
     /// Plain text: notes (`.md`, `.txt`) and data (`.json`, `.csv`,
@@ -60,6 +63,7 @@ impl LibraryKind {
             Self::Animator => "Animator",
             Self::Tileset => "Tileset",
             Self::TileMap => "Tile map",
+            Self::Ground => "Ground",
             Self::Atlas => "Atlas crops",
             Self::Text => "Text",
             Self::Other => "File",
@@ -73,7 +77,7 @@ impl LibraryKind {
         match self {
             Self::Model => k::MODEL,
             Self::Prefab => k::PREFAB,
-            Self::Level => k::LEVEL,
+            Self::Level | Self::Ground => k::LEVEL,
             Self::Texture | Self::SpriteSheet | Self::Atlas => k::PICTURE,
             Self::SpriteClips | Self::Animator => k::CLIPS,
             Self::Tileset | Self::TileMap => k::TILES,
@@ -87,10 +91,11 @@ impl LibraryKind {
 
     /// Every kind, in the order the colour sheet shows them.
     #[cfg(test)]
-    pub(crate) const ALL: [Self; 15] = [
+    pub(crate) const ALL: [Self; 16] = [
         Self::Model,
         Self::Prefab,
         Self::Level,
+        Self::Ground,
         Self::Texture,
         Self::SpriteSheet,
         Self::Atlas,
@@ -120,6 +125,7 @@ impl LibraryKind {
             Self::Animator => Icon::Animator,
             Self::Tileset => Icon::Tileset,
             Self::TileMap => Icon::TileMap,
+            Self::Ground => Icon::Ground,
             Self::Atlas => Icon::Crops,
             Self::Text | Self::Other => Icon::TextFile,
         }

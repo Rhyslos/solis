@@ -46,6 +46,8 @@ pub struct GpuViewport {
     models: HashMap<AssetId, GpuModel>,
     /// Brushes' models, uploaded (Tools 1a, B1).
     brushes: crate::brush_uploads::BrushUploads,
+    /// The ground's chunks (Tools 1b, G1).
+    ground: crate::ground_uploads::GroundUploads,
     /// Sprite sheets' atlases, uploaded (Phase 9, D2).
     sheets: HashMap<AssetId, render::GpuSheet>,
     /// Each tile map layer's picture uploaded (into `sheets`), by its key
@@ -79,6 +81,7 @@ impl GpuViewport {
             pixel_images: Vec::new(),
             models: HashMap::new(),
             brushes: Default::default(),
+            ground: Default::default(),
             sheets: HashMap::new(),
             tile_keys: HashMap::new(),
             thumbnail_target: None,
@@ -98,6 +101,20 @@ impl GpuViewport {
     pub fn begin_frame(&mut self) {
         self.fonts.begin_frame();
         self.brushes.begin_frame();
+    }
+
+    /// Uploads the ground's chunks the editor made since last asked.
+    pub(crate) fn update_ground(&mut self, meshes: editor::GroundMeshes) {
+        self.ground.update(
+            &self.renderer,
+            (&self.state.device, &self.state.queue),
+            meshes,
+        );
+    }
+
+    /// How many of the ground's chunks are on the GPU.
+    pub(crate) fn ground_chunks(&self) -> usize {
+        self.ground.len()
     }
 
     /// Draws `model` from a three-quarter view into a small image of its
@@ -375,7 +392,7 @@ impl GpuViewport {
         let images = self.pixel_images[view.image]
             .as_mut()
             .ok_or("the 2D images could not be made")?;
-        let placed = placements(&self.models, &self.brushes, view);
+        let placed = placements(&self.models, &self.brushes, &self.ground, view);
         let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
         let picks = sprite_runs(&self.sheets, &view.sprites);
         let runs: Vec<render::SpriteRun> = picks.iter().map(|p| p.run).collect();
@@ -593,6 +610,7 @@ fn to_render_sun(sun: Option<&ViewLight>) -> render::Sun {
 fn placements<'a>(
     models: &'a HashMap<AssetId, GpuModel>,
     brushes: &'a crate::brush_uploads::BrushUploads,
+    ground: &'a crate::ground_uploads::GroundUploads,
     view: &'a ViewportView,
 ) -> Vec<render::Placement<'a>> {
     view.models
@@ -606,6 +624,7 @@ fn placements<'a>(
             })
         })
         .chain(brushes.placements(&view.brushes))
+        .chain(view.ground_shown.then(|| ground.placements()).into_iter().flatten())
         .collect()
 }
 
@@ -691,7 +710,7 @@ impl ViewportRenderer for GpuViewport {
         let image = self.images[view.image]
             .as_mut()
             .ok_or("the viewport image could not be made")?;
-        let placed = placements(&self.models, &self.brushes, view);
+        let placed = placements(&self.models, &self.brushes, &self.ground, view);
         // The same layout (checked by a test), so no copy.
         let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
         let picks = sprite_runs(&self.sheets, &view.sprites);

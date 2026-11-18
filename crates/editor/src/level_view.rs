@@ -87,6 +87,9 @@ pub struct LevelView {
     /// The tile maps (Phase 9, D4): each one's file (in the editor) or its
     /// map as the game has it, and where it is.
     pub tile_maps: Vec<LevelTileMap>,
+    /// The ground's settings file, when the level has a ground that isn't
+    /// hidden (Tools 1b, G1): its chunks are drawn with the view.
+    pub ground: Option<AssetId>,
 }
 
 /// A tile map a level or the running game draws.
@@ -182,6 +185,15 @@ impl LevelView {
         };
         view.hour = f64::from(view.environment.day_start);
         view.locked = locked.clone();
+        view.ground = tree
+            .first_of(
+                level
+                    .with::<level::builtin::Ground>()
+                    .filter(|(id, g)| !hidden.contains(id) && g.ground.is_some())
+                    .map(|(id, _)| id),
+            )
+            .and_then(|id| level.get(id)?.get::<level::builtin::Ground>()?.ground)
+            .map(|r| r.asset);
         for (id, model) in level.with::<Model>() {
             if hidden.contains(&id) {
                 continue;
@@ -273,6 +285,7 @@ impl LevelView {
         let mut view = Self {
             environment: world.environment().unwrap_or_default(),
             hour: world.time_of_day(),
+            ground: world.ground_asset(),
             ..Self::default()
         };
         // Models in jobs (decision 0031), kept in tree order. None of the

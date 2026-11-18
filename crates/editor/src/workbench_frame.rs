@@ -370,6 +370,7 @@ impl Workbench {
         self.bottom_keys(ui);
         self.search_key(ui);
         let seconds = ui.input(|i| i.stable_dt);
+        self.ground_frame();
         self.run_game(seconds);
         self.status_bar(ui, &mut actions);
         // The tab bar and the ribbon; a File page or an unfinished
@@ -589,6 +590,7 @@ impl Workbench {
         }
         self.play_changes_window(ui);
         self.make_prefab_dialog(ui.ctx(), actions);
+        self.new_ground_dialog(ui.ctx());
         self.prefab_page_question(ui.ctx());
         // What waited for Keep or Undo all (a quit, say) goes on now.
         actions.append(&mut self.open.outbox);

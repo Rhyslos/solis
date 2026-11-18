@@ -465,6 +465,7 @@ impl Workbench {
             || self.open.frames_editor.as_ref().is_some_and(|f| f.playing)
             || self.open.moving.is_some()
             || self.viewport.needs_frames()
+            || self.ground_busy()
             || ctx.input(|i| i.pointer.any_down() || !i.keys_down.is_empty())
     }
 

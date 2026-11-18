@@ -71,6 +71,14 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 Err(format!("notes: {:?}", read.notes))
             }
         }),
+        ("ground", &ground::settings::FORMAT, |text| {
+            let read = ground::settings::read(text).map_err(|e| e.to_string())?;
+            if read.notes.is_empty() {
+                Ok(())
+            } else {
+                Err(format!("notes: {:?}", read.notes))
+            }
+        }),
         ("atlas", &animation::atlas::FORMAT, |text| {
             let read = animation::atlas::read(text).map_err(|e| e.to_string())?;
             if read.notes.is_empty() {

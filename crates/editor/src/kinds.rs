@@ -175,7 +175,9 @@ pub(crate) fn command(command: ShellCommand) -> PartKind {
         | C::BrushDelete
         // The 3D view's grid, in metres: the 2D view snaps to pixels or
         // tiles instead (Snap to tiles, Pixel perfect).
-        | C::SnapToGrid => PartKind::ThreeD,
+        | C::SnapToGrid
+        | C::NewGround
+        | C::NewInLibrary(NewFile::Ground) => PartKind::ThreeD,
         C::NewTileMap
         | C::NewInLibrary(NewFile::TileMap | NewFile::Tileset)
         | C::PaintWith(_)
@@ -331,7 +333,9 @@ pub(crate) fn unbuilt(id: UnbuiltId) -> PartKind {
 pub(crate) fn component(name: &str) -> PartKind {
     match name {
         // Models, shape brushes and 3D physics.
-        "Model" | "Brush" | "Collider" | "RigidBody" | "CharacterBody" => PartKind::ThreeD,
+        "Model" | "Brush" | "Collider" | "RigidBody" | "CharacterBody" | "Ground" => {
+            PartKind::ThreeD
+        }
         // Tile maps, 2D physics and parallax layers.
         "TileMap" | "Collider2D" | "Parallax" => PartKind::TwoD,
         // "Light" and "Environment" (lamps on sprites and day and night
@@ -346,7 +350,7 @@ pub(crate) fn component(name: &str) -> PartKind {
 /// The built-in components the table names, so a test can check every
 /// built-in has a row ([`component`] reads unknown names as shared).
 #[cfg(test)]
-pub(crate) const COMPONENTS: [&str; 18] = [
+pub(crate) const COMPONENTS: [&str; 19] = [
     "Animator",
     "AudioSource",
     "Brush",
@@ -355,6 +359,7 @@ pub(crate) const COMPONENTS: [&str; 18] = [
     "Collider",
     "Collider2D",
     "Environment",
+    "Ground",
     "Light",
     "Listener",
     "Model",

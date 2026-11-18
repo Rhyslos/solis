@@ -9,6 +9,8 @@ pub mod benchmark;
 pub mod branding;
 mod browsers;
 mod brush_uploads;
+mod ground_files;
+mod ground_uploads;
 pub mod check_project;
 pub mod cli;
 mod external;

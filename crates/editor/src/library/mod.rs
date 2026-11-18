@@ -364,6 +364,8 @@ pub(crate) enum LibraryRequest {
     NewTileset(String),
     /// Make a new tile map in this folder (Phase 9, D4).
     NewTileMap(String),
+    /// New ground… in this folder (Tools 1b, G1): its dialog first.
+    NewGround(String),
     /// Change a tileset's terrains, asked for in its Properties (path, the
     /// change).
     EditTileset(String, crate::tile_properties::TerrainEdit),

@@ -428,6 +428,10 @@ impl Workbench {
                 );
             }
             PropertyRequest::AddComponent { entity, component } => {
+                if component == level::builtin::Ground::NAME && self.level_ground().is_some() {
+                    self.log(LogLevel::Warning, level::builtin::ONE_PER_LEVEL);
+                    return;
+                }
                 let Some(schema) = self.open.document.registry.get(&component) else {
                     return;
                 };

@@ -380,6 +380,11 @@ impl Projects {
     /// write outside the project's folder or over a file of another kind:
     /// `path` must be a plain path in the project ([`plain_inside`])
     /// whose name `is_kind` takes for that kind.
+    /// The open project's own folder, where its assets are.
+    pub fn files_folder(&self) -> Option<PathBuf> {
+        self.db.as_ref().map(|db| db.project().files())
+    }
+
     fn place(
         &self,
         path: &Path,
@@ -735,6 +740,7 @@ pub fn library_kind(kind: FileKind) -> LibraryKind {
         FileKind::Animator => LibraryKind::Animator,
         FileKind::Tileset => LibraryKind::Tileset,
         FileKind::TileMap => LibraryKind::TileMap,
+        FileKind::Ground => LibraryKind::Ground,
         FileKind::Atlas => LibraryKind::Atlas,
         FileKind::Text => LibraryKind::Text,
         FileKind::Other => LibraryKind::Other,

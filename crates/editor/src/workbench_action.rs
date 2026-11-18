@@ -8,6 +8,27 @@ use reflect::{AssetId, EntityId};
 pub enum WorkbenchAction {
     /// Close the window.
     Quit,
+    /// Read the ground whose settings file is the asset `asset` at `path`
+    /// (inside the assets) and its region files, on a worker, and answer
+    /// with [`Workbench::ground_loaded`](crate::Workbench::ground_loaded)
+    /// (Tools 1b, G1).
+    LoadGround {
+        /// The settings file's asset.
+        asset: AssetId,
+        /// Where it is inside the assets.
+        path: String,
+    },
+    /// Save a new ground: its settings file at `path` (inside the assets)
+    /// as `text`, and its region files (each a name and its bytes) in the
+    /// folder beside it, each written beside the old one and swapped in.
+    SaveGround {
+        /// Where the settings file goes.
+        path: String,
+        /// The settings file.
+        text: String,
+        /// Each region file's name and bytes.
+        regions: Vec<(String, Vec<u8>)>,
+    },
     /// Export the game for playtesting (decision 0093).
     ExportPlaytest(crate::export_dialog::ExportRequest),
     /// Choose the folder Build > Export exports into.

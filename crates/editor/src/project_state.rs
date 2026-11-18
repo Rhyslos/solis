@@ -44,6 +44,10 @@ pub(crate) struct ProjectState {
     pub(crate) project: Option<ProjectInfo>,
     /// The open level and what's selected in it.
     pub(crate) document: Document,
+    /// The level's ground, its chunks on their way (Tools 1b, G1).
+    pub(crate) ground: crate::ground_chunks::GroundChunks,
+    /// The New ground dialog, and a ground being made.
+    pub(crate) new_ground: crate::workbench_ground::NewGround,
     /// What the editor knows about the imported models, by asset.
     pub(crate) models: BTreeMap<AssetId, ModelInfo>,
     /// Build > Export, while it's open (decision 0093).

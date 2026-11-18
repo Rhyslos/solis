@@ -22,6 +22,7 @@ path = "src/main.rs"
 rayon.workspace = true
 assets.workspace = true
 asset_db.workspace = true
+ground.workspace = true
 editor.workspace = true
 animation.workspace = true
 tiles.workspace = true

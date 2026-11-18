@@ -139,6 +139,7 @@ fn create(w: &Workbench, label: &'static str) -> Group {
                 vec![
                     item("Sprite", C::AddSprite),
                     item("Tile map", C::NewTileMap),
+                    item("Ground\u{2026}", C::NewGround),
                     item("Reverb zone", C::AddReverbZone),
                     item("Make prefab\u{2026}", C::MakePrefab),
                     Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),

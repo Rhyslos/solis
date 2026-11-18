@@ -427,6 +427,10 @@ icons! {
     /// Hills under a sun: A level file; its document tab.
     LevelFile = "level", Line,
         lines: ["M1.5 13L6 6.5l3 4 2-2.5 3.5 5z", "M10 4.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0z"];
+    /// Two hills on a line: the ground (Tools 1b), in the Library and
+    /// New ground.
+    Ground = "ground", Line,
+        lines: ["M1.5 12.5L5.5 6l3 4 2-2.5 4 5", "M1 12.5h14"];
     /// Angle brackets round a slash: Game code; the Code filter.
     Code = "code", Line,
         lines: ["M5.5 4.5L2 8l3.5 3.5", "M10.5 4.5L14 8l-3.5 3.5", "M9 3L7 13"];

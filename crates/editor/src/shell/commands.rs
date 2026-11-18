@@ -69,6 +69,9 @@ pub(crate) enum ShellCommand {
     /// Backspace while editing.
     BrushDelete,
     NewTileMap,
+    /// New ground… (Tools 1b, G1): its dialog, then the ground made in
+    /// the Library's folder and placed in the level.
+    NewGround,
     MakePrefab,
     SnapToGrid,
     SnapAngles,
@@ -214,11 +217,12 @@ pub(crate) enum NewFile {
     Tileset,
     Animator,
     SoundEvent,
+    Ground,
 }
 
 impl NewFile {
     /// Every one, in the Create list's order.
-    pub(crate) const ALL: [Self; 7] = [
+    pub(crate) const ALL: [Self; 8] = [
         Self::CodeFile,
         Self::Folder,
         Self::Level,
@@ -226,6 +230,7 @@ impl NewFile {
         Self::Tileset,
         Self::Animator,
         Self::SoundEvent,
+        Self::Ground,
     ];
 
     /// Its word in the Create list (the Library's right-click New has
@@ -239,6 +244,7 @@ impl NewFile {
             Self::Tileset => "Tileset",
             Self::Animator => "Animator",
             Self::SoundEvent => "Sound event",
+            Self::Ground => "Ground",
         }
     }
 
@@ -253,13 +259,14 @@ impl NewFile {
             Self::Tileset => R::NewTileset(folder),
             Self::Animator => R::NewAnimator(folder),
             Self::SoundEvent => R::NewSoundEvent(folder),
+            Self::Ground => R::NewGround(folder),
         }
     }
 }
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 143] = [
+    pub(crate) const ALL: [Self; 145] = [
         C::CloseProject,
         C::NewLevel,
         C::OpenLevel,
@@ -294,6 +301,7 @@ impl ShellCommand {
         C::BrushSplit,
         C::BrushDelete,
         C::NewTileMap,
+        C::NewGround,
         C::MakePrefab,
         C::SnapToGrid,
         C::SnapAngles,
@@ -330,6 +338,7 @@ impl ShellCommand {
         C::NewInLibrary(NewFile::Tileset),
         C::NewInLibrary(NewFile::Animator),
         C::NewInLibrary(NewFile::SoundEvent),
+        C::NewInLibrary(NewFile::Ground),
         C::LibraryList,
         C::LibraryFolders,
         C::LibraryFilter(Filter::All),
@@ -436,6 +445,11 @@ impl ShellCommand {
                 project,
                 "Tile maps are kept in a project: open or make one first",
             ),
+            C::NewGround => match w.level_ground() {
+                _ if !project => Some("A ground is kept in a project: open or make one first".into()),
+                Some(_) => Some(level::builtin::ONE_PER_LEVEL.into()),
+                None => None,
+            },
             C::Undo => when(history.undo_label().is_some(), "Nothing to undo"),
             C::Redo => when(history.redo_label().is_some(), "Nothing to redo"),
             C::Duplicate | C::Delete | C::Rename | C::SelectNone | C::MakePrefab => {
@@ -608,6 +622,10 @@ impl ShellCommand {
             C::NewTileMap => {
                 let folder = w.open.library_state.folder.clone();
                 w.new_tile_map(&folder);
+            }
+            C::NewGround => {
+                let folder = w.open.library_state.folder.clone();
+                w.ask_new_ground(&folder);
             }
             C::EditBrushInsides => w.toggle_brush_editing(),
             C::BrushMode(mode) => w.brush_mode(mode),

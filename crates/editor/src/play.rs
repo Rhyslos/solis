@@ -262,6 +262,7 @@ impl Workbench {
         self.open.game_sounds.clear();
         self.open.quit_asked = false;
         let mut world = world::World::from_level(self.open.document.level());
+        self.ground_for_play(&mut world);
         // A new seed each Play, unless one was chosen (`seed` in the
         // Console), so random numbers differ between plays but a play can
         // be repeated.

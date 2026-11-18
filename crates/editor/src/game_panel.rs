@@ -355,6 +355,7 @@ pub(crate) fn game_panel(
         ground: theme::backdrop::rgb(theme::backdrop::ground()),
         models: scene.view.models.clone(),
         brushes: scene.view.brushes.clone(),
+        ground_shown: scene.view.ground.is_some() && pixel.is_none(),
         // The game's own look, whatever the viewport uses.
         look: Look::default(),
         outline_px: 0.0,
