@@ -53,6 +53,6 @@ Each question was asked with a recommended answer and alternatives:
 
 - The launcher code moves out of the editor's File pages into a window of its own. The app opens one window or the other.
 - The area format is renamed, with a version raise, an upgrader and fixtures. Game-code calls are renamed, with no aliases: an old name is a mistake that names the new one. The manual and the guide change throughout.
-- Prefabs add an asset format (version, fuzz target), linking, and changed settings on copies.
+- Prefabs add an asset format (version, fuzz target), linking, and changed settings on copies. Settled by the approved board 07 (R5): **a copy may change any setting** (any component field, its name, parent and order, components added or taken off, parts removed), and **a copy's own change wins** when the prefab later changes the same setting; every other setting follows the prefab. "Assembly" became "Prefab" everywhere, as "area" became "level", with older projects upgraded on opening and game code's old `Assembly` a mistake naming `Prefab` at once.
 - The G layout's screens stay the lead's own design. Where the rethink differs, the mock-ups in `docs/design/ui-rethink/` and this decision win.
 - Tools 1b and the Open worlds phase move after the rethink in ROADMAP.md.

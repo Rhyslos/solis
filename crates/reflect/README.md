@@ -11,7 +11,7 @@ Give every part of Solis one way to see any component, whether it's built in, wr
 - the inspector draws fields from a schema;
 - level files write values in a schema's field order;
 - undo records values;
-- assembly overrides name a component and a field.
+- prefab overrides name a component and a field.
 
 Nothing here knows Rust types beyond the [`Component`] trait for typed access, so components defined while the program runs work the same way as built-in ones.
 
