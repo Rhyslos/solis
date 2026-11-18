@@ -87,6 +87,7 @@ impl World {
             solid_sets: std::sync::Arc::default(),
             walls_built: HashMap::new(),
             flat_recovery: flat_physics::FlatRecovery::default(),
+            ground: None,
         };
         world.index();
         world.place_everything();
@@ -148,8 +149,10 @@ impl World {
         let states = self.physics.state().body_states();
         let asked = std::mem::take(&mut self.physics_asked);
         let flat_recovery = self.flat_recovery;
+        let ground = self.ground.take();
         *self = Self::from_level_without_physics(level);
         self.flat_recovery = flat_recovery;
+        self.ground = ground;
         self.clock = clock;
         self.projectiles = projectiles;
         self.seed = seed;

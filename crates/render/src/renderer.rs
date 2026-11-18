@@ -165,7 +165,7 @@ pub struct ViewportRenderer {
     bolt_pipeline: wgpu::RenderPipeline,
     /// [`Self::bolt_pipeline`] for a layer's picture (decision 0094).
     bolt_pipeline_layered: wgpu::RenderPipeline,
-    models: ModelPipelines,
+    pub(crate) models: ModelPipelines,
     axes: wgpu::Buffer,
     axis_count: u32,
     pick: crate::pick::PickPipeline,

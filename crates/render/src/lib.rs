@@ -10,6 +10,7 @@
 mod environment;
 mod frame;
 mod gpu_model;
+mod ground;
 mod instances;
 mod lighting;
 mod pick;
@@ -27,6 +28,7 @@ pub use frame::{
     GRID_STRENGTHS, GridPlane, Look, Shading, grid_reach, srgb_to_linear,
 };
 pub use gpu_model::GpuModel;
+pub use ground::{BufferPool, GroundMaterials};
 pub use instances::{LOD_PIXELS, Placement};
 pub use lighting::{
     Light, LightKind, MAX_LIGHTS, SHADOW_FORMAT, SHADOW_MAP_SIZE, SHADOW_REACH, Sun, light_markers,

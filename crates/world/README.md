@@ -16,6 +16,8 @@ Hold the running game's entities in a form a game can run over quickly. The leve
 
 Tools 1a, B1: brushes. A `Brush` is kept as its Rust type (its mesh shared), so `placed_between::<Brush>` lists the brushes to draw; a Solid one with no Collider of its own joins physics as a still surface of its own triangles (`physics::Shape::Mesh`), with a fixed body (or a kinematic one, if its RigidBody says so; a dynamic one is fixed: brushes don't fall). Tests in `brush_tests.rs`.
 
+**The ground** (Tools 1b, G1, `ground_play.rs`): the game's copy of the level's ground is the editor's `Arc` (nothing is copied, and Stop leaves the editor's as it was); each chunk with triangles becomes a still collider of its own in physics when its shape, built on a worker, is handed over (`add_ground_shapes`); until then characters are held out of that chunk (`physics::Physics::hold_out`). Physics built again (a rebuild, a save) adds the ground's colliders again.
+
 ## Must never
 
 - Change the level: Stop throws the world away and the level is put back.

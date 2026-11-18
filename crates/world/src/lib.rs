@@ -17,6 +17,8 @@ mod checksum;
 mod clock;
 pub mod flat_physics;
 mod game_set;
+mod ground_play;
+pub use ground_play::prepare_ground_chunk;
 mod physics_3d;
 mod placing;
 pub mod projectiles;
@@ -196,6 +198,8 @@ pub struct World {
     walls_built: HashMap<EntityId, flat_physics::WallsBuilt>,
     /// How 2D physics is kept going after Rapier fails in it.
     flat_recovery: flat_physics::FlatRecovery,
+    /// The level's ground as the game has it (Tools 1b, G1).
+    ground: Option<ground_play::GroundPlay>,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -384,5 +388,6 @@ impl World {
 
 #[cfg(test)]
 mod brush_tests;
+
 #[cfg(test)]
 mod tests;

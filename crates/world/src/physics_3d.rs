@@ -270,6 +270,7 @@ impl World {
         for id in ids {
             self.physics_join(id);
         }
+        self.join_ground();
         self.physics_moved.clear();
         self.touched = true;
     }

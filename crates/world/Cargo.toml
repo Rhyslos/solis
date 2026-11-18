@@ -24,6 +24,7 @@ reflect.workspace = true
 glam.workspace = true
 hecs.workspace = true
 physics.workspace = true
+ground.workspace = true
 
 [lints]
 workspace = true

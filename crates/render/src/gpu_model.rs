@@ -56,17 +56,17 @@ pub(crate) enum Pass {
     Blended,
 }
 
-#[derive(Debug)]
-struct GpuMaterial {
+#[derive(Debug, Clone)]
+pub(crate) struct GpuMaterial {
     bind_group: wgpu::BindGroup,
     pass: Pass,
     /// Whether the stylized look draws an outline around it: solid,
     /// single-sided surfaces without cut-out parts.
-    outlined: bool,
+    pub(crate) outlined: bool,
 }
 
 #[derive(Debug)]
-struct GpuMesh {
+pub(crate) struct GpuMesh {
     vertices: wgpu::Buffer,
     /// The same corners with smoothed normals, for outlines (only for
     /// outlined materials).
@@ -76,6 +76,31 @@ struct GpuMesh {
     material: usize,
     /// Its simpler levels, each simpler than the one before.
     lods: Vec<GpuLod>,
+}
+
+impl GpuMesh {
+    /// A mesh in buffers a pool handed out (the ground's chunks): no
+    /// simpler levels, no outline.
+    pub(crate) fn pooled(
+        vertices: wgpu::Buffer,
+        indices: wgpu::Buffer,
+        index_count: u32,
+        material: usize,
+    ) -> Self {
+        Self {
+            vertices,
+            outline_vertices: None,
+            indices,
+            index_count,
+            material,
+            lods: Vec::new(),
+        }
+    }
+
+    /// Its corners' and triangles' buffers, to hand back to a pool.
+    pub(crate) fn into_buffers(self) -> (wgpu::Buffer, wgpu::Buffer) {
+        (self.vertices, self.indices)
+    }
 }
 
 /// A mesh's simpler level on the GPU: its own triangles, over the mesh's
@@ -139,6 +164,11 @@ pub struct GpuModel {
 }
 
 impl GpuModel {
+    /// Its meshes, to give their buffers back to a pool.
+    pub(crate) fn into_meshes(self) -> Vec<Option<GpuMesh>> {
+        self.meshes
+    }
+
     /// How many triangles it draws.
     pub fn triangles(&self) -> usize {
         self.triangles
@@ -414,6 +444,18 @@ impl ModelPipelines {
         queue: &wgpu::Queue,
         model: &Model,
     ) -> GpuModel {
+        let materials = self.upload_materials(device, queue, model);
+        let meshes = self.upload_meshes(device, model, &materials);
+        assemble(model, meshes, materials)
+    }
+
+    /// The GPU's copy of `model`'s materials, the plain default last.
+    pub(crate) fn upload_materials(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        model: &Model,
+    ) -> Vec<GpuMaterial> {
         let max_side = device.limits().max_texture_dimension_2d;
         let textures: Vec<Option<(wgpu::TextureView, wgpu::Sampler)>> = model
             .textures
@@ -437,7 +479,7 @@ impl ModelPipelines {
         let mut materials: Vec<&Material> = model.materials.iter().collect();
         let default = Material::default();
         materials.push(&default);
-        let materials: Vec<GpuMaterial> = materials
+        materials
             .into_iter()
             .map(|material| {
                 let pick = |index: Option<usize>, fallback| {
@@ -490,9 +532,18 @@ impl ModelPipelines {
                     outlined: pass == Pass::Solid && material.alpha == AlphaMode::Opaque,
                 }
             })
-            .collect();
-        let default_material = materials.len() - 1;
-        let meshes = model
+            .collect()
+    }
+
+    /// The GPU's copy of `model`'s meshes, each with its own buffers.
+    fn upload_meshes(
+        &self,
+        device: &wgpu::Device,
+        model: &Model,
+        materials: &[GpuMaterial],
+    ) -> Vec<Option<GpuMesh>> {
+        let default_material = materials.len().saturating_sub(1);
+        model
             .meshes
             .iter()
             .map(|mesh| {
@@ -574,7 +625,17 @@ impl ModelPipelines {
                         .collect(),
                 })
             })
-            .collect();
+            .collect()
+    }
+}
+
+/// A model on the GPU from its meshes and materials, uploaded.
+pub(crate) fn assemble(
+    model: &Model,
+    meshes: Vec<Option<GpuMesh>>,
+    materials: Vec<GpuMaterial>,
+) -> GpuModel {
+    {
         let spheres: Vec<(glam::Vec3, f32)> = model
             .meshes
             .iter()
