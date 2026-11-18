@@ -718,6 +718,10 @@ impl Workbench {
             self.sources += 1;
             return;
         }
+        // Most saves change only values: the copies follow those alone.
+        if self.follow_values(id, &file) {
+            return;
+        }
         let name = self.asset_name(id);
         // The copies' changes, worked out against the old contents…
         let collapsed = {
@@ -821,7 +825,7 @@ impl Workbench {
     /// Says in the Console which entities were taken out of a loop of
     /// parents: the first few each, then how many more, so a file full of
     /// them doesn't fill it.
-    fn log_mended(&mut self, mended: &[level::Mended]) {
+    pub(crate) fn log_mended(&mut self, mended: &[level::Mended]) {
         const EACH: usize = 5;
         for one in mended.iter().take(EACH) {
             self.log(LogLevel::Warning, format!("{one}."));

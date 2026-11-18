@@ -19,7 +19,15 @@ pub(crate) fn edits_between(old: &Level, new: &Level) -> Vec<Edit> {
         .map(|(id, _)| id)
         .filter(|id| !new.contains(*id))
         .collect();
-    for id in old.depth_first() {
+    // Walking a level in tree order sorts it, so it's walked only when
+    // something goes or comes (a prefab's copies following it change only
+    // values).
+    let old_order = if gone.is_empty() {
+        Vec::new()
+    } else {
+        old.depth_first()
+    };
+    for id in old_order {
         let parent_goes = old
             .get(id)
             .and_then(|e| e.parent)
@@ -35,7 +43,12 @@ pub(crate) fn edits_between(old: &Level, new: &Level) -> Vec<Edit> {
         .filter(|id| !old.contains(*id))
         .collect();
     let mut placed = HashSet::new();
-    for id in new.depth_first() {
+    let new_order = if fresh.is_empty() {
+        Vec::new()
+    } else {
+        new.depth_first()
+    };
+    for id in new_order {
         if !fresh.contains(&id) || placed.contains(&id) {
             continue;
         }

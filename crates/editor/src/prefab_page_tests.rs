@@ -142,6 +142,48 @@ fn saving_the_page_updates_every_copy_keeping_each_copy_s_own_change() {
 }
 
 #[test]
+fn a_saved_value_is_one_undo_step_and_a_saved_level_stays_saved() {
+    // Shared 1f's loose ends: copies follow a prefab's new values alone
+    // (`level::prefab_follow`), as rebuilding them did.
+    let (mut w, asset, roots) = three_copies();
+    w.open.document.mark_saved("/p/street.sollevel".into());
+    let steps = w.document().history().undo_len();
+    let (_, mut file) = lamp_post_file();
+    let lamp = EntityId(reflect::Id::from_raw(2).unwrap());
+    Arc::make_mut(&mut file)
+        .level
+        .get_mut(lamp)
+        .unwrap()
+        .set(&Light {
+            strength: 7.0,
+            ..Light::point()
+        });
+    w.set_prefab(asset, file);
+    assert_eq!(strengths(&w, &roots), [7.0; 3]);
+    assert_eq!(w.document().history().undo_len(), steps + 1, "one step");
+    assert!(!w.document().is_dirty(), "the level's file is the same");
+    w.undo();
+    assert_eq!(strengths(&w, &roots), [Light::point().strength; 3]);
+}
+
+#[test]
+fn a_part_added_to_the_prefab_comes_to_every_copy() {
+    // More than values: the copies are rebuilt the whole way.
+    let (mut w, asset, roots) = three_copies();
+    let (_, mut file) = lamp_post_file();
+    let mut sign = level::EntityData::new("Sign");
+    sign.parent = Some(EntityId(reflect::Id::from_raw(1).unwrap()));
+    Arc::make_mut(&mut file)
+        .level
+        .insert(EntityId(reflect::Id::from_raw(3).unwrap()), sign);
+    w.set_prefab(asset, file);
+    for root in roots {
+        let sign = level::prefab::derive(root, &[EntityId(reflect::Id::from_raw(3).unwrap())]);
+        assert_eq!(w.document().level().get(sign).unwrap().name, "Sign");
+    }
+}
+
+#[test]
 fn a_page_with_unsaved_changes_asks_before_it_closes() {
     let (mut w, asset, _) = three_copies();
     w.open_prefab_page(asset);

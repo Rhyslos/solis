@@ -193,8 +193,12 @@ fn reset_layout_puts_the_tab_s_middle_back() {
         w.show_panel(Panel::Console);
         w.fold_bottom(true);
         // An edge in two layouts: both are put back.
-        w.shell.sizes.set(tab, PanelLayout::Standard, Edge::Bottom, 0.6);
-        w.shell.sizes.set(tab, PanelLayout::LibraryLeft, Edge::Left, 0.4);
+        w.shell
+            .sizes
+            .set(tab, PanelLayout::Standard, Edge::Bottom, 0.6);
+        w.shell
+            .sizes
+            .set(tab, PanelLayout::LibraryLeft, Edge::Left, 0.4);
         // Showing the Console went to Home: back to Preferences.
         w.show_settings(Tab::Appearance);
     }
@@ -514,7 +518,12 @@ fn selecting_shows_properties_again_when_the_setting_asks() {
         assert!(h.state().0.shell.drawn_at(Panel::Properties).is_none());
     };
     hide_properties(&mut h);
-    h.state_mut().0.open.document.selection.select_only(crate_id);
+    h.state_mut()
+        .0
+        .open
+        .document
+        .selection
+        .select_only(crate_id);
     h.run();
     h.run();
     assert!(h.state().0.shell.drawn_at(Panel::Properties).is_some());
@@ -523,7 +532,12 @@ fn selecting_shows_properties_again_when_the_setting_asks() {
     look.shelf_opens_on = ShelfOpensOn::AsItIs;
     h.state_mut().0.interface = look;
     hide_properties(&mut h);
-    h.state_mut().0.open.document.selection.select_only(crate_id);
+    h.state_mut()
+        .0
+        .open
+        .document
+        .selection
+        .select_only(crate_id);
     h.run();
     h.run();
     assert!(h.state().0.shell.drawn_at(Panel::Properties).is_none());

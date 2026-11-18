@@ -16,6 +16,7 @@ pub mod lust_guard;
 pub mod pixels;
 pub mod prefab;
 pub mod prefab_file;
+pub mod prefab_follow;
 pub mod settings;
 pub mod text;
 mod tree;
