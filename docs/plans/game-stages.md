@@ -15,7 +15,7 @@ The order of work from 18 November 2026 ([decision 0122](../decisions/0122-the-g
 
 Walking a world, rooms and doors, talking to people, picking things up, an inventory, saving. Solis is closest to this already: top-down walking, tile maps, day and night, game UI.
 
-- **Triggers:** walking into or out of a zone (a door, a counter, a pit) tells game code. *Next* ([below](#the-next-milestone-triggers)). (2D 2)
+- **Triggers:** walking into or out of a zone (a door, a counter, a pit) tells game code. *Built* ([below](#the-next-milestone-triggers), with its As built note). (2D 2)
 - **The same game on two PCs:** a recorded game replayed on two machines, checksums compared tick by tick, before timers put more maths into game state (decision 0120). (Shared 2)
 - **Tags and questions about the world:** "all of a kind within 3 m", "the nearest". (Shared 2)
 - **Timers and steps in order:** "open in 2 seconds", "walk there, wait, say this". (Shared 3)
