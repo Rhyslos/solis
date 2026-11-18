@@ -18,13 +18,16 @@ pub(super) struct TestWorld {
     tick: u64,
     shots: Vec<crate::Shot>,
     seed: u64,
-    sounds: Vec<Change>,
+    pub(super) sounds: Vec<Change>,
     /// Who is inside each trigger zone, as the world's pass found.
     pub(super) zones: std::collections::BTreeMap<EntityId, Vec<EntityId>>,
     /// The tags as the tick starts.
     pub(super) tags: Arc<crate::TagView>,
     /// Tags given and taken away, as they landed.
     pub(super) tag_changes: Vec<Change>,
+    /// States changed, what's kept past them, spawns and despawns, as
+    /// they landed (stage 1, states).
+    pub(super) state_changes: Vec<Change>,
     /// The game's speed (none: 1) and the day's hour (none: 8), as the
     /// tick starts.
     pub(super) speed: Option<f64>,
@@ -114,6 +117,13 @@ impl GameWorld for TestWorld {
             }
             if let Change::Tag(..) = change {
                 self.tag_changes.push(change.clone());
+            }
+            if let Change::State(_)
+            | Change::KeepStarted(..)
+            | Change::Spawn(..)
+            | Change::Despawn(_) = change
+            {
+                self.state_changes.push(change.clone());
             }
             if let Change::Fire(shot) = change {
                 self.shots.push(*shot);
@@ -761,23 +771,35 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
         Change::Sound(
             "sfx/step".into(),
             crate::SoundAt::Place(Vec3::ZERO),
-            Some(id(1))
+            Some(id(1)),
+            None
         )
     );
     assert_eq!(
         one[1],
-        Change::Sound("engine".into(), crate::SoundAt::On(id(1)), Some(id(1)))
+        Change::Sound(
+            "engine".into(),
+            crate::SoundAt::On(id(1)),
+            Some(id(1)),
+            None
+        )
     );
     assert_eq!(
         one[2],
-        Change::Sound("music/theme".into(), crate::SoundAt::Nowhere, Some(id(1)))
+        Change::Sound(
+            "music/theme".into(),
+            crate::SoundAt::Nowhere,
+            Some(id(1)),
+            None
+        )
     );
     assert_eq!(
         one[3],
         Change::Sound(
             "sfx/step".into(),
             crate::SoundAt::Place(Vec3::X),
-            Some(id(2))
+            Some(id(2)),
+            None
         )
     );
     assert_eq!(one[9], Change::StopSounds(id(1)));
@@ -1027,6 +1049,7 @@ fn zone_game(shards: usize) -> Vec<String> {
         name: name.into(),
         values: vec![Value::Entity(Some(id(about)))],
         only: None,
+        during: None,
     };
     let events = vec![
         event(1, "Entered", 2),

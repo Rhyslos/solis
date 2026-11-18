@@ -54,7 +54,7 @@ pub fn names_started(code: &Code) -> Vec<String> {
 
 /// The words and marks of Lust `text`, with its comments and text left
 /// out: names (letters, digits and `_`) whole, every other mark alone.
-fn words_of(text: &str) -> Vec<String> {
+pub(crate) fn words_of(text: &str) -> Vec<String> {
     let mut words = Vec::new();
     let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {

@@ -62,8 +62,16 @@ pub enum Change {
     Load(String),
     /// `Audio:play`, `Audio:playAt` or `entity:playSound`: play the sound
     /// event named here, from there; and
-    /// the entity whose code asked (who caused it, for "Heard by").
-    Sound(String, crate::host::SoundAt, Option<EntityId>),
+    /// the entity whose code asked (who caused it, for "Heard by"); and
+    /// what it belongs to, when a component started it in an option of
+    /// its own state (a looping one stops when it leaves; stage 1,
+    /// states).
+    Sound(
+        String,
+        crate::host::SoundAt,
+        Option<EntityId>,
+        Option<crate::states::Started>,
+    ),
     /// `entity:stopSounds`: stop the sounds on this entity.
     StopSounds(EntityId),
     /// `setSoundPlaying`: turn this entity's `AudioSource` on or off.
@@ -105,6 +113,14 @@ pub enum Change {
     /// started or stopped (stage 1, timers). The game keeps its timers
     /// itself, so these never reach the world.
     Timer(crate::timers::TimerChange),
+    /// A component's own state changed (stage 1, states): its timers,
+    /// tweens and looping sounds of the options it left end, and it hears
+    /// the change as the tick ends. The world stops the sounds.
+    State(crate::states::StateChange),
+    /// `keepStarted()`: what the component (on this entity, by this name)
+    /// started in its state carries on past it; the world keeps its
+    /// looping sounds going.
+    KeepStarted(EntityId, Arc<str>),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -285,6 +301,9 @@ struct ViewHost {
     own_turns: reflect::IdMap<Quat>,
     /// … set their velocities.
     own_velocities: reflect::IdMap<Vec3>,
+    /// The option of the running component's own state that the next
+    /// timer or sound it starts belongs to (stage 1, states).
+    started_in: Option<Arc<str>>,
     kept: Kept,
 }
 
@@ -298,6 +317,7 @@ impl ViewHost {
             own_moves: reflect::IdMap::default(),
             own_turns: reflect::IdMap::default(),
             own_velocities: reflect::IdMap::default(),
+            started_in: None,
             kept: Kept::default(),
         }
     }
@@ -335,6 +355,18 @@ impl ViewHost {
         Ok(Arc::clone(&self.at.component))
     }
 
+    /// What the running component's sound belongs to, if it was started
+    /// in an option of its own state.
+    fn sound_started_in(&mut self) -> Option<crate::states::Started> {
+        let option = self.started_in.take()?;
+        let entity = EntityId(reflect::Id::from_raw(self.at.entity)?);
+        Some(crate::states::Started {
+            entity,
+            component: Arc::clone(&self.at.component),
+            option,
+        })
+    }
+
     /// Keeps a timer started or stopped, landing at the end of the phase
     /// in its place in the order.
     fn timer_change(
@@ -344,6 +376,7 @@ impl ViewHost {
         plan: Option<crate::timers::Plan>,
     ) -> Result<(), String> {
         let component = self.timer_owner(which)?;
+        let during = self.started_in.take().filter(|_| plan.is_some());
         if self.kept.room() {
             let order = self.order();
             let change = crate::timers::TimerChange {
@@ -351,6 +384,7 @@ impl ViewHost {
                 component,
                 name: name.into(),
                 plan,
+                during,
             };
             self.kept.changes.push((order, Change::Timer(change)));
         }
@@ -562,6 +596,56 @@ impl Host for ViewHost {
         self.timer_change(which, name, None)
     }
 
+    fn keep_started(&mut self, which: EntityId) -> Result<(), String> {
+        if self.at.entity == 0 || self.at.component.is_empty() {
+            return Err(
+                "what's started in a state belongs to a component, so call it in a component's \
+                 code, not in a game-wide object's or a tween's"
+                    .to_string(),
+            );
+        }
+        if which.0.raw() != self.at.entity {
+            return Err(
+                "it keeps what this component started, so call it bare inside the component \
+                 (keepStarted()), not on another entity"
+                    .to_string(),
+            );
+        }
+        if self.kept.room() {
+            let order = self.order();
+            let component = Arc::clone(&self.at.component);
+            self.kept
+                .changes
+                .push((order, Change::KeepStarted(which, component)));
+        }
+        Ok(())
+    }
+
+    fn set_started_in(&mut self, option: Option<Arc<str>>) {
+        self.started_in = option;
+    }
+
+    fn state_changed(&mut self, which: EntityId, component: &str, from: &str, to: &str) {
+        if !self.kept.room() {
+            return;
+        }
+        let order = self.order();
+        // Its own name, shared, when it's the component running (it nearly
+        // always is: only a tween's done block changes one otherwise).
+        let component = if *self.at.component == *component {
+            Arc::clone(&self.at.component)
+        } else {
+            Arc::from(component)
+        };
+        let change = crate::states::StateChange {
+            entity: which,
+            component,
+            from: from.into(),
+            to: to.into(),
+        };
+        self.kept.changes.push((order, Change::State(change)));
+    }
+
     fn timer_left(&self, which: EntityId, name: &str) -> Result<Option<f64>, String> {
         let component = self.timer_owner(which)?;
         let timers = &self.view.timers;
@@ -599,13 +683,14 @@ impl Host for ViewHost {
     fn play_sound(&mut self, event: &str, at: crate::host::SoundAt) {
         let named =
             !event.is_empty() && event.len() <= MAX_SOUND_NAME && !event.contains(char::is_control);
+        let started = self.sound_started_in();
         if named && self.kept.sounds < MAX_SOUNDS && self.kept.room() {
             self.kept.sounds += 1;
             let order = self.order();
             let caller = reflect::Id::from_raw(order.entity).map(EntityId);
             self.kept
                 .changes
-                .push((order, Change::Sound(event.to_string(), at, caller)));
+                .push((order, Change::Sound(event.to_string(), at, caller, started)));
         }
     }
 
@@ -811,6 +896,7 @@ impl Host for ViewHost {
     fn at(&mut self, order: &Order) {
         self.at = order.clone();
         self.next = 0;
+        self.started_in = None;
         // Most components change nothing: clearing an empty map that once
         // grew would still wipe all its room.
         if !self.own_moves.is_empty() {
@@ -1106,8 +1192,20 @@ pub struct Game {
     /// The timers waiting (stage 1, timers), shared with each phase's
     /// view; changed only between ticks.
     timers: Arc<crate::Timers>,
-    /// Timers started and stopped this tick, in order, made as it ends.
-    timer_changes: Vec<crate::timers::TimerChange>,
+    /// Timers started and stopped this tick, and states left and kept,
+    /// in order, made as it ends.
+    timer_changes: Vec<crate::timers::TimerOp>,
+    /// The changes of components' own states since the last tick ended,
+    /// as they landed, for the components that hear them (stage 1,
+    /// states).
+    heard: Vec<crate::states::StateChange>,
+    /// The event each component with a state of its own hears when it
+    /// changes, by component (the code's).
+    state_events: Arc<BTreeMap<String, String>>,
+    /// The state changes heard as the last tick ended, as the events the
+    /// next tick's first round delivers (game state: saved, in the
+    /// checksum).
+    states_waiting: Vec<Event>,
     /// Whether too many timers at once was said, since the code changed.
     told_timers: bool,
 }
@@ -1164,6 +1262,9 @@ impl Game {
             held: Vec::new(),
             timers: Arc::default(),
             timer_changes: Vec::new(),
+            heard: Vec::new(),
+            state_events: Arc::default(),
+            states_waiting: Vec::new(),
             told_timers: false,
         })
     }
@@ -1253,12 +1354,15 @@ impl Game {
             self.unload();
             return Err(failure);
         }
-        // A new game: no timers from an earlier one.
+        // A new game: no timers or heard states from an earlier one.
         self.timers = Arc::default();
         self.timer_changes.clear();
+        self.heard.clear();
+        self.states_waiting.clear();
+        self.state_events = Arc::new(code.state_events.clone());
         if let Some(kept) = first {
-            let timers = land(kept, world);
-            self.keep_timer_changes(timers);
+            let landed = land(kept, world);
+            self.keep_landed(landed);
             let _ = self.make_timer_changes();
         }
         self.took(code);
@@ -1319,8 +1423,8 @@ impl Game {
             return Err(failure);
         }
         if let Some(kept) = first {
-            let timers = land(kept, world);
-            self.keep_timer_changes(timers);
+            let landed = land(kept, world);
+            self.keep_landed(landed);
         }
         self.took(code);
         // The same notes however many shards there are.
@@ -1339,6 +1443,7 @@ impl Game {
         self.told = false;
         self.told_too_much = false;
         self.told_timers = false;
+        self.state_events = Arc::new(code.state_events.clone());
         self.objects = !self.object_values().is_empty();
     }
 
@@ -1352,6 +1457,8 @@ impl Game {
         self.objects = false;
         self.timers = Arc::default();
         self.timer_changes.clear();
+        self.heard.clear();
+        self.states_waiting.clear();
     }
 
     /// The code's components (Lust and Lua), as the editor shows them.
@@ -1407,8 +1514,13 @@ impl Game {
             Some(Done::Checksum(c)) if self.objects => components.wrapping_add(c),
             _ => components,
         };
-        // The timers once one waits: a game with none sums as before.
-        match self.timers.checksum() {
+        // The timers once one waits, and the state changes waiting to be
+        // heard once one does: a game with none sums as before.
+        let sum = match self.timers.checksum() {
+            Some(c) => sum.wrapping_add(c),
+            None => sum,
+        };
+        match self.states_checksum() {
             Some(c) => sum.wrapping_add(c),
             None => sum,
         }
@@ -1497,8 +1609,8 @@ impl Game {
                 _ => failures.push(gone()),
             }
         }
-        let timers = land(kept, world);
-        self.keep_timer_changes(timers);
+        let landed = land(kept, world);
+        self.keep_landed(landed);
         failures.extend(self.make_timer_changes().map(too_many_timers));
         failures.sort_by_key(|f| {
             f.entity
@@ -1567,6 +1679,9 @@ impl Game {
         // round, after the engine's other events (stage 1, timers).
         let start = world.view();
         engine.extend(self.timers_due(&start));
+        // Then the states that changed last tick, each to its component
+        // (stage 1, states).
+        engine.append(&mut self.states_waiting);
         // The game-wide objects first, on the first shard, and then every
         // shard has their values, so every component reads the same
         // (decision 0080). What they send is delivered after the
@@ -1630,6 +1745,8 @@ impl Game {
         object_failures.extend(failures);
         // What the tick started and stopped, now no phase reads the timers.
         object_failures.extend(self.make_timer_changes().map(too_many_timers));
+        // The states that changed, heard next tick.
+        self.notice_states();
         // Events for entities spawned this tick wait for the next one,
         // where their components will be (one tick only: an entity that
         // still has none doesn't take events).
@@ -1779,8 +1896,8 @@ impl Game {
         unclaimed.sort_by_key(|(number, _)| *number);
         self.unclaimed
             .extend(unclaimed.into_iter().map(|(_, event)| event));
-        let timers = land(kept, world);
-        self.keep_timer_changes(timers);
+        let landed = land(kept, world);
+        self.keep_landed(landed);
         match broke {
             Some(why) => Err(why),
             None => Ok(phase),
@@ -1789,20 +1906,20 @@ impl Game {
 }
 
 /// Puts what game code changed and said into `world`, in the tick's order.
-/// The timers' changes, in order, are given back for the game to keep:
-/// the world never sees them.
-fn land(mut kept: Kept, world: &mut dyn GameWorld) -> Vec<crate::timers::TimerChange> {
+/// What the game does to its timers, in order, is given back for it to
+/// keep (the world never sees timers), with the states that changed.
+fn land(mut kept: Kept, world: &mut dyn GameWorld) -> timers::Landed {
     kept.changes.sort_by(|a, b| a.0.cmp(&b.0));
     kept.said.sort_by(|a, b| a.0.cmp(&b.0));
     let mut changes: Vec<Change> = kept.changes.into_iter().map(|(_, c)| c).collect();
-    let timers = timers::timer_changes(&mut changes);
+    let landed = timers::timer_ops(&mut changes);
     if !changes.is_empty() {
         world.apply(&changes);
     }
     for (_, words) in kept.said {
         world.say(&words);
     }
-    timers
+    landed
 }
 
 /// The failure that says starts were left out past the most timers.
@@ -1817,6 +1934,9 @@ fn too_many_timers(message: String) -> Failure {
 
 #[path = "game_timers.rs"]
 mod timers;
+
+#[path = "game_state_changes.rs"]
+mod state_changes;
 
 #[cfg(test)]
 #[path = "game_tests.rs"]
@@ -1849,3 +1969,7 @@ mod tags_tests;
 #[cfg(test)]
 #[path = "game_timers_tests.rs"]
 mod timers_tests;
+
+#[cfg(test)]
+#[path = "game_own_states_tests.rs"]
+mod own_states_tests;

@@ -78,6 +78,7 @@ timers: method entity:startTimerAtHour(Timer which, float hour) native;
 timers: method entity:stopTimer(Timer which) native;
 timers: method bool entity:timerRunning(Timer which) native;
 timers: method float entity:timeLeft(Timer which) native;
+states: method entity:keepStarted() native;
 entity: method vec3 entity:position() native;
 entity: method entity:moveTo(vec3 place) native;
 entity: method rotation entity:rotation() native;
@@ -178,6 +179,7 @@ solis.entity.grounded
 solis.entity.hasTag
 solis.entity.hideScreen
 solis.entity.inside
+solis.entity.keepStarted
 solis.entity.mapBounds
 solis.entity.moveTo
 solis.entity.name
@@ -245,6 +247,9 @@ Host: fn nearest(&self, tag: &str, place: Vec3) -> Option<EntityId>
 Host: fn start_timer(&mut self, which: EntityId, name: &str, timing: crate::timers::Timing) -> Result<(), String>
 Host: fn stop_timer(&mut self, which: EntityId, name: &str) -> Result<(), String>
 Host: fn timer_left(&self, which: EntityId, name: &str) -> Result<Option<f64>, String>
+Host: fn keep_started(&mut self, which: EntityId) -> Result<(), String>
+Host: fn set_started_in(&mut self, option: Option<std::sync::Arc<str>>)
+Host: fn state_changed(&mut self, which: EntityId, component: &str, from: &str, to: &str)
 Host: fn save_game(&mut self, slot: &str, load: bool)
 Host: fn action(&self, name: &str) -> input::ActionState
 Host: fn binding(&self, action: &str) -> Option<String>

@@ -339,11 +339,13 @@ fn lend_physics<'s>(
         native(
             scope,
             "Audio_play",
-            move |_, (_audio, event): (LuaValue, mlua::LuaString)| {
+            move |lua, (_audio, event): (LuaValue, mlua::LuaString)| {
                 // Sound.Sfx.Footstep comes as "Sfx.Footstep": the event
                 // in sfx/footstep.solsound (found ignoring capitals).
                 if let Some(event) = crate::project_names::path_of(&event.to_str()?) {
-                    h.borrow_mut().play_sound(&event, SoundAt::Nowhere);
+                    let mut host = h.borrow_mut();
+                    host.set_started_in(crate::states::started_in(lua));
+                    host.play_sound(&event, SoundAt::Nowhere);
                 }
                 Ok(())
             },

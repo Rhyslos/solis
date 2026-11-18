@@ -628,6 +628,7 @@ fn cues_of(
                 name: name.to_owned(),
                 values: vec![reflect::Value::Text(value)],
                 only: None,
+                during: None,
             });
         }
     }

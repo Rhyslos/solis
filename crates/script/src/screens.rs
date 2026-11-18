@@ -556,6 +556,7 @@ impl Screens {
         runtime.open_views(Rc::clone(&opened));
         let compiled = crate::Compiled {
             timers: Vec::new(),
+            state_events: Default::default(),
             lust: Some(code.chunk.clone()),
             lua: Vec::new(),
             schemas: Vec::new(),

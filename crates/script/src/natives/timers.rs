@@ -35,10 +35,11 @@ pub(super) fn lend<'s>(
             native(
                 scope,
                 key,
-                move |_, (which, name, time): (LuaValue, mlua::LuaString, f64)| {
+                move |lua, (which, name, time): (LuaValue, mlua::LuaString, f64)| {
                     let (entity, name) = owner(key, &which, &name)?;
-                    h.borrow_mut()
-                        .start_timer(entity, &name, timing(time))
+                    let mut host = h.borrow_mut();
+                    host.set_started_in(crate::states::started_in(lua));
+                    host.start_timer(entity, &name, timing(time))
                         .map_err(|why| mistake(call, &why))
                 },
             )?,

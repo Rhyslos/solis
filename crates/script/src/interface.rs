@@ -235,6 +235,9 @@ mod tests {
             })
             .unwrap();
         names.retain(|name| !RENAMED.iter().any(|r| r.old == name));
+        // Lust's runtime's own way to say a state changed, never game
+        // code's to call.
+        names.retain(|name| name != crate::states::CHANGED);
         names.sort();
         names
     }

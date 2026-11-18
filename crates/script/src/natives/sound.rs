@@ -28,12 +28,14 @@ fn lend_audio<'s>(
         native(
             scope,
             "Audio_playAt",
-            move |_, (_audio, event, place): (LuaValue, mlua::LuaString, LuaValue)| {
+            move |lua, (_audio, event, place): (LuaValue, mlua::LuaString, LuaValue)| {
                 let event = crate::project_names::path_of(&event.to_str()?);
                 if let (Some(event), Some(place)) =
                     (event, vec3_of(&place).filter(|p| p.is_finite()))
                 {
-                    h.borrow_mut().play_sound(&event, SoundAt::Place(place));
+                    let mut host = h.borrow_mut();
+                    host.set_started_in(crate::states::started_in(lua));
+                    host.play_sound(&event, SoundAt::Place(place));
                 }
                 Ok(())
             },
@@ -68,10 +70,12 @@ fn lend_on_entities<'s>(
         native(
             scope,
             "entity_playSound",
-            move |_, (which, event): (LuaValue, mlua::LuaString)| {
+            move |lua, (which, event): (LuaValue, mlua::LuaString)| {
                 let event = crate::project_names::path_of(&event.to_str()?);
                 if let (Some(e), Some(event)) = (entity_of(&which), event) {
-                    h.borrow_mut().play_sound(&event, SoundAt::On(e));
+                    let mut host = h.borrow_mut();
+                    host.set_started_in(crate::states::started_in(lua));
+                    host.play_sound(&event, SoundAt::On(e));
                 }
                 Ok(())
             },

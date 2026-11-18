@@ -14,6 +14,7 @@ fn start(timers: &mut Timers, entity: u64, component: &str, name: &str, timing: 
         component: component.into(),
         name: name.into(),
         plan: Some(timing.plan().unwrap()),
+        during: None,
     };
     assert!(timers.apply(&change));
 }
@@ -24,6 +25,7 @@ fn stop(timers: &mut Timers, entity: u64, component: &str, name: &str) {
         component: component.into(),
         name: name.into(),
         plan: None,
+        during: None,
     });
 }
 
@@ -446,6 +448,7 @@ fn scale_check_100000_timers_with_10000_finishing_a_tick() {
         component: Arc::clone(&components[(n % 4) as usize]),
         name: Arc::clone(&names[usize::from(!soon)]),
         plan: Some(plan),
+        during: None,
     };
     for n in 0..100_000 {
         let soon = n % 10 == 0;
@@ -473,6 +476,7 @@ fn scale_check_100000_timers_with_10000_finishing_a_tick() {
                 name: "TimerFinished".to_string(),
                 values: vec![reflect::Value::Text(f.name.to_string())],
                 only: Some(f.component),
+                during: f.during,
             })
             .collect();
         let made = began.elapsed() - advanced;
@@ -484,6 +488,7 @@ fn scale_check_100000_timers_with_10000_finishing_a_tick() {
                 component: Arc::clone(event.only.as_ref().unwrap()),
                 name: Arc::clone(&names[0]),
                 plan: Some(Plan::After(1)),
+                during: None,
             };
             timers.apply(&restart);
         }
@@ -504,4 +509,91 @@ fn scale_check_100000_timers_with_10000_finishing_a_tick() {
          TimerFinished events {events_ms:.3} ms more"
     );
     assert!(ms <= TARGET_MS, "the timers take {ms:.3} ms a tick");
+}
+
+/// Starts a timer that belongs to `during`, an option of its component's
+/// own state (stage 1, states).
+fn start_in(timers: &mut Timers, name: &str, timing: Timing, during: &str) {
+    assert!(timers.apply(&TimerChange {
+        entity: id(1),
+        component: "Hero".into(),
+        name: name.into(),
+        plan: Some(timing.plan().unwrap()),
+        during: Some(during.into()),
+    }));
+}
+
+#[test]
+fn a_state_left_ends_its_options_timers_and_keeps_the_rest() {
+    let mut timers = Timers::default();
+    start_in(&mut timers, "Outer", Timing::After(1.0), "Combat");
+    start_in(&mut timers, "Inner", Timing::Every(1.0), "Combat.Melee");
+    start_in(&mut timers, "Dawn", Timing::AtHour(6.0), "Combat.Melee");
+    start(&mut timers, 1, "Hero", "Free", Timing::After(1.0));
+    start(&mut timers, 2, "Hero", "Other", Timing::After(1.0));
+    // Out to Combat: Melee's go on, inside it.
+    timers.state_left(id(1), "Hero", "Combat");
+    assert_eq!(timers.len(), 5);
+    // Ranged: Melee's end; Combat's, no option's and another entity's
+    // don't.
+    timers.state_left(id(1), "Hero", "Combat.Ranged");
+    assert!(timers.running(id(1), "Hero", "Outer"));
+    assert!(!timers.running(id(1), "Hero", "Inner"));
+    assert!(!timers.running(id(1), "Hero", "Dawn"));
+    assert!(timers.running(id(1), "Hero", "Free"));
+    assert!(timers.running(id(2), "Hero", "Other"));
+    // An ended repeating timer never fires, and a state nobody started
+    // anything in changes nothing.
+    timers.state_left(id(3), "Nobody", "Calm");
+    let fired = fired_on(&mut timers, 70, 1.0);
+    assert_eq!(
+        fired.iter().map(|(_, n)| n.as_str()).collect::<Vec<_>>(),
+        ["Outer", "Free", "Other"]
+    );
+}
+
+#[test]
+fn kept_timers_carry_on_past_any_state() {
+    let mut timers = Timers::default();
+    start_in(&mut timers, "Kept", Timing::After(1.0), "Stunned");
+    timers.keep(id(1), "Hero");
+    start_in(&mut timers, "Lost", Timing::After(1.0), "Stunned");
+    timers.state_left(id(1), "Hero", "Calm");
+    assert!(timers.running(id(1), "Hero", "Kept"));
+    assert!(!timers.running(id(1), "Hero", "Lost"));
+    // Started again in a state, a kept timer belongs to it once more.
+    start_in(&mut timers, "Kept", Timing::After(1.0), "Calm");
+    timers.state_left(id(1), "Hero", "Stunned");
+    assert!(timers.is_empty());
+}
+
+#[test]
+fn what_a_timer_belongs_to_is_saved_and_summed_only_when_it_belongs() {
+    let mut plain = Timers::default();
+    start(&mut plain, 1, "Hero", "Recover", Timing::After(1.0));
+    let mut owned = Timers::default();
+    start_in(&mut owned, "Recover", Timing::After(1.0), "Combat.Melee");
+    // A timer of no option writes and sums as before states.
+    assert!(!plain.write().contains(" in "));
+    assert_ne!(plain.checksum(), owned.checksum());
+    let text = owned.write();
+    assert!(text.ends_with(" in Combat.Melee\n"), "{text}");
+    let read = Timers::read(&text).unwrap();
+    assert_eq!(read, owned);
+    assert_eq!(read.checksum(), owned.checksum());
+    // Read back, it still ends with its state.
+    let mut read = read;
+    read.state_left(id(1), "Hero", "Calm");
+    assert!(read.is_empty());
+    // A damaged option is refused whole.
+    for bad in [
+        " in ",
+        " in Combat..Melee",
+        " in 9Lives",
+        " in Combat extra",
+        " on Combat",
+    ] {
+        let damaged = text.replace(" in Combat.Melee", bad);
+        assert!(Timers::read(&damaged).is_err(), "{damaged}");
+    }
 }

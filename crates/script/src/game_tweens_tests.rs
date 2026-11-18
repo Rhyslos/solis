@@ -301,6 +301,7 @@ fn the_manual_s_door_glides_open_as_it_says() {
         name: "Opened".into(),
         values: Vec::new(),
         only: None,
+        during: None,
     };
     let ticked = game.tick_with_events(1.0 / 60.0, &mut world, vec![opened]);
     assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);

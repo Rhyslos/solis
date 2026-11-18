@@ -174,7 +174,10 @@ impl Ticking<'_> {
                 self.luau
                     .clock
                     .limited(|| update.call::<()>((&*table, dt)))
-                    .map_err(|err| self.located(&err))
+                    .map_err(|err| {
+                        crate::states::Running::clear(&self.luau.lua);
+                        self.located(&err)
+                    })
             }
             Instance::Lua(table) => {
                 let table = table.clone();
@@ -463,6 +466,13 @@ impl Ticking<'_> {
                 let Some(kinds) = declared else {
                     return Ok(());
                 };
+                // A timer's event, from an option its state has left since
+                // (stage 1, states).
+                if let Some(during) = &event.during
+                    && !still_there(table, during)
+                {
+                    return Ok(());
+                }
                 let Some(handle) = self
                     .lust
                     .and_then(|p| p.methods.get(name))
@@ -485,7 +495,10 @@ impl Ticking<'_> {
                             .call::<bool>((&*table, event_name, values))
                             .map(|_| ())
                     })
-                    .map_err(|err| self.located(&err))
+                    .map_err(|err| {
+                        crate::states::Running::clear(&self.luau.lua);
+                        self.located(&err)
+                    })
             }
             Instance::Lua(table) => {
                 let lua = &self.luau.lua;
@@ -521,6 +534,17 @@ impl Ticking<'_> {
                 ran
             }
         }
+    }
+}
+
+/// Whether the Lust component `table`'s own state is still in `during`
+/// (or inside it, or around it): Lust's own rule for what a state ends.
+fn still_there(table: &Table, during: &str) -> bool {
+    match table.raw_get::<LuaValue>("state") {
+        Ok(LuaValue::String(now)) => now
+            .to_str()
+            .is_ok_and(|now| crate::states::still_in(&now, during)),
+        _ => true,
     }
 }
 

@@ -80,6 +80,10 @@ pub struct Compiled {
     /// The timers its Lust starts, by name (stage 1, timers): after new
     /// code, a Lust component's timer whose name is gone ends.
     pub timers: Vec<String>,
+    /// The event each Lust component with a state of its own hears when
+    /// it changes, by component (stage 1, states): its state's name and
+    /// `Changed`, when the game declares it.
+    pub state_events: std::collections::BTreeMap<String, String>,
 }
 
 /// Luau's own compiled form of the game's code (see
@@ -443,7 +447,17 @@ fn compile_here(
                 folders: crate::describe::engine_folders(),
             };
             match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &files)) {
-                Ok(Ok(chunk)) => lust = Some(crate::exact_maths::exact_lust(chunk)),
+                Ok(Ok(chunk)) => {
+                    match crate::states::own_states(crate::exact_maths::exact_lust(chunk)) {
+                        Ok(chunk) => lust = Some(chunk),
+                        Err(why) => problems.push(CodeProblem {
+                            file: String::new(),
+                            line: 0,
+                            column: 0,
+                            message: why,
+                        }),
+                    }
+                }
                 Ok(Err(found)) => problems.extend(found.into_iter().map(CodeProblem::from)),
                 Err(_) => problems.push(compiler_stopped()),
             }
@@ -483,6 +497,7 @@ fn compile_here(
         places: std::collections::BTreeMap::new(),
         bytecode,
         screens: None,
+        state_events: std::collections::BTreeMap::new(),
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.
@@ -501,14 +516,29 @@ fn compile_here(
         }
     };
     compiled.schemas = runtime.schemas();
-    for schema in &compiled.schemas {
-        let place = match runtime.lua_file(&schema.name) {
-            Some(path) => Some((path.to_string(), 0)),
-            None => lust_place(&code.files, &schema.name),
-        };
-        if let Some(place) = place {
-            compiled.places.insert(schema.name.clone(), place);
+    let places_now = |schemas: &[reflect::ComponentSchema]| {
+        let mut places = std::collections::BTreeMap::new();
+        for schema in schemas {
+            let place = match runtime.lua_file(&schema.name) {
+                Some(path) => Some((path.to_string(), 0)),
+                None => lust_place(&code.files, &schema.name),
+            };
+            if let Some(place) = place {
+                places.insert(schema.name.clone(), place);
+            }
         }
+        places
+    };
+    compiled.places = places_now(&compiled.schemas);
+    // The event each component with a state of its own hears (stage 1,
+    // states), checked now: one declared wrongly is a mistake.
+    if let Some(events) = runtime.lust_events() {
+        compiled.state_events = crate::state_names::state_events(
+            &crate::state_names::state_types(code),
+            &compiled.schemas,
+            events,
+            &compiled.places,
+        )?;
     }
     // The screens, once the game's code is sound and its components known
     // (decision 0087): each Lust component readable from them.

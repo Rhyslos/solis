@@ -15,6 +15,7 @@ mod input;
 mod maps;
 mod settings;
 mod sound;
+mod states;
 mod timers;
 mod world;
 
@@ -37,5 +38,6 @@ pub(crate) fn lend<'s>(
     maps::lend(scope, natives, h)?;
     settings::lend(scope, natives, h)?;
     timers::lend(scope, natives, h)?;
+    states::lend(scope, natives, h)?;
     input::lend(scope, natives, h)
 }

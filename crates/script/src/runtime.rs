@@ -430,6 +430,11 @@ impl Runtime {
         all
     }
 
+    /// The events the Lust declares, and what each carries.
+    pub(crate) fn lust_events(&self) -> Option<&crate::events::EventKinds> {
+        self.lust.as_ref().map(|p| &*p.events)
+    }
+
     /// Whether there's a component called `name` to run: a Rust one, or
     /// the Lust's or a Lua one not left out.
     pub fn has_component(&self, name: &str) -> bool {
