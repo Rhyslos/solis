@@ -74,14 +74,46 @@ fn a_list_is_written_and_read_back_the_same() {
 
 #[test]
 fn differences_name_each_part_that_differs() {
-    let expected = parts(&[("a", "1"), ("b", "2"), ("c", "3")]);
-    let actual = parts(&[("a", "1"), ("b", "2.0000001"), ("d", "4")]);
-    let found = state_differences(&expected, &actual);
+    let mut list = StateList::default();
+    let long = "1.5 ".repeat(20);
+    list.push(
+        1,
+        1,
+        parts(&[("a", "1"), ("b", "2"), ("c", "3"), ("long", &long)]),
+    );
+    let actual = parts(&[("a", "1"), ("b", "2.0000001"), ("d", "4"), ("long", &long)]);
+    let found = list.differences(0, &actual).unwrap();
     let named: Vec<&str> = found.iter().map(|d| d.part.as_str()).collect();
     assert_eq!(named, ["b", "c", "d"]);
     assert_eq!(found[1].actual, None);
     assert_eq!(found[2].expected, None);
-    assert!(state_differences(&expected, &expected).is_empty());
+    assert_eq!(found[2].actual.as_deref(), Some("4"));
+    assert_eq!(list.differences(1, &actual), None, "past the end");
+    // A long value is kept as its checksum, and still compared exactly.
+    let kept = list.state_at(0).unwrap()["long"].clone();
+    assert!(kept.starts_with('#') && kept.len() == 9, "{kept}");
+    let mut changed = actual.clone();
+    changed.insert("long".into(), long.replacen("1.5", "1.6", 1));
+    let found = list.differences(0, &changed).unwrap();
+    let long_one = found.iter().find(|d| d.part == "long").unwrap();
+    assert_eq!(long_one.expected.as_deref(), Some(kept.as_str()));
+    assert!(
+        long_one.actual.as_deref().unwrap().starts_with("1.6"),
+        "shown in full"
+    );
+}
+
+#[test]
+fn a_part_gone_and_back_keeps_its_number() {
+    let mut list = StateList::default();
+    list.push(0, 0, parts(&[("drone", "here"), ("seed", "1")]));
+    list.push(0, 0, parts(&[("seed", "1")]));
+    list.push(0, 0, parts(&[("drone", "back"), ("seed", "1")]));
+    let text = list.write("");
+    assert!(text.contains("+ 0 drone\there\n"), "{text}");
+    assert!(text.contains("- 0\n"), "{text}");
+    assert!(text.contains("= 0\tback\n"), "{text}");
+    assert_eq!(StateList::read(&text).unwrap(), list);
 }
 
 #[test]
@@ -97,9 +129,13 @@ fn damaged_lists_are_refused_never_crashing() {
     );
     let tick = "tick 0 w 0000000000000001 g 0000000000000002";
     for (bad, line) in [
-        ("solis states 1\n+ a\tb\n".to_string(), 2),
-        (format!("solis states 1\n{tick}\n+ a b\n"), 3),
-        (format!("solis states 1\n{tick}\n+ \tb\n"), 3),
+        ("solis states 1\n+ 0 a\tb\n".to_string(), 2),
+        (format!("solis states 1\n{tick}\n+ 0 a b\n"), 3),
+        (format!("solis states 1\n{tick}\n+ 0 \tb\n"), 3),
+        (format!("solis states 1\n{tick}\n+ 1 a\tb\n"), 3),
+        (format!("solis states 1\n{tick}\n= 0\tb\n"), 3),
+        (format!("solis states 1\n{tick}\n- 0\n"), 3),
+        (format!("solis states 1\n{tick}\n+ 0 a\tb\n= x\tc\n"), 4),
         (format!("solis states 1\n{tick}\n* a\n"), 3),
         (
             "solis states 1\ntick 1 w 0000000000000001 g 0000000000000002\n".into(),

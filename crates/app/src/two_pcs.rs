@@ -14,7 +14,7 @@
 //! Test code only: the check is `two_pcs_tests.rs`.
 
 use crate::check_project::{Read, Report, check_code, workbench_for};
-use editor::{PartDifference, StateList, Workbench, state_differences};
+use editor::{PartDifference, StateList, Workbench};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -37,7 +37,9 @@ const MADE_BY: &str = "Two PCs 1.0";
 pub(crate) const TICKS: usize = 600;
 /// A frame shorter than a tick even at the game's fastest (1.5 times, in
 /// the recorded game), so each tick is seen by itself.
-const FRAME: f32 = (world::TICK * 0.6) as f32;
+pub(crate) const FRAME: f32 = (TICK * 0.6) as f32;
+/// How long a tick is, in seconds (the world's `TICK`).
+const TICK: f64 = 1.0 / 60.0;
 
 /// The game, opened from a copy of its project (Solis writes its own
 /// files into a project it opens), playing unhurried.
@@ -98,7 +100,7 @@ pub(crate) fn replay(
     let recording = input::Recording::read(&text).unwrap();
     let ticks = ticks.min(recording.ticks.len());
     game.w.replay(&text, RECORDING);
-    let start = game.w.world().map(world::World::checksum);
+    let start = game.w.world().map(|world| world.checksum());
     assert_eq!(
         start,
         Some(recording.start),
@@ -178,7 +180,13 @@ pub(crate) fn compare(
         let started = Instant::now();
         let mut matched = 0;
         let mut found = None;
+        let shown_at = std::env::var("SOLIS_TWO_PCS_STATE_AT")
+            .ok()
+            .and_then(|t| t.parse::<usize>().ok());
         replay(&mut game, ticks.min(list.len()), &mut nudge, |w, tick| {
+            if shown_at == Some(tick) {
+                write_state(w, tick, threads);
+            }
             let sums = w.game_checksums().unwrap();
             if list.checksums(tick) == Some(sums) {
                 matched += 1;
@@ -194,6 +202,22 @@ pub(crate) fn compare(
     })
 }
 
+/// Writes the game's state at `tick` in full to `target/two-pcs/` (with
+/// `SOLIS_TWO_PCS_STATE_AT=<tick>`: what a part the list keeps as a
+/// checksum holds on this PC, to compare with another's).
+fn write_state(w: &mut Workbench, tick: usize, threads: usize) {
+    let state = w.game_state().unwrap_or_default();
+    let text: String = state
+        .iter()
+        .map(|(part, value)| format!("{part}\t{value}\n"))
+        .collect();
+    let path = dump_folder().join(format!("state-at-tick-{tick}-on-{threads}-cores.txt"));
+    let _ = std::fs::create_dir_all(dump_folder());
+    if std::fs::write(&path, text).is_ok() {
+        eprintln!("Wrote the state at tick {tick} to {}.", path.display());
+    }
+}
+
 /// What's said, and written to a file, when tick `tick` differs.
 fn mismatch(
     w: &mut Workbench,
@@ -204,7 +228,7 @@ fn mismatch(
 ) -> Mismatch {
     let actual = w.game_state().unwrap_or_default();
     let expected = list.state_at(tick).unwrap_or_default();
-    let parts = state_differences(&expected, &actual);
+    let parts = list.differences(tick, &actual).unwrap_or_default();
     let (want_world, want_code) = list.checksums(tick).unwrap_or_default();
     let dump = dump_folder().join(format!("tick-{tick}-on-{threads}-cores.txt"));
     let mut text = format!(
@@ -222,6 +246,11 @@ fn mismatch(
             d.actual.as_deref().unwrap_or("(not there)")
         ));
     }
+    text.push_str(
+        "\n(A value the list keeps as # and a checksum is longer than it keeps in full: run \
+         the check on the PC that made the list with SOLIS_TWO_PCS_STATE_AT=<tick> to see \
+         it there.)\n",
+    );
     for (title, state) in [("Here", &actual), ("Expected", &expected)] {
         text.push_str(&format!("\n\n{title}, whole:\n"));
         for (part, value) in state {
@@ -241,7 +270,7 @@ fn mismatch(
          two_pcs` on Linux and commit the new list. If not, something works out differently on \
          this PC or with this many cores: find the maths behind the first part named and make it \
          exact (see ARCHITECTURE.md, Checks).",
-        tick as f64 * world::TICK,
+        tick as f64 * TICK,
         if parts.is_empty() {
             "The checksums differ, but every part the dump shows is the same: something the \
              checksum covers isn't in the dump yet (world::state_parts)."

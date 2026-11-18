@@ -15,6 +15,8 @@ fetch "solis/project":[Action, Prefab];
 fetch "solis/tiles":Maps;
 fetch "solis/animation":Animators;
 fetch "solis/zones":[Entered, Exited, EnteredZone, LeftZone];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/topdown":[TopDownController];
 
 event Hit(entity by, float damage);
 event Dented(int platesLeft);
@@ -65,15 +67,15 @@ component Platform {
 -- chance every so often.
 component Hive {
     has {
-        float wait = 0;
+        float cooldown = 0;
         int made = 0;
     }
 
     method update(float dt) {
-        wait = wait - dt;
+        cooldown = cooldown - dt;
         bool now = Input:pressed(Action.Interact);
-        is wait <= 0? then {
-            wait = World:randomRange(0.3, 0.9);
+        is cooldown <= 0? then {
+            cooldown = World:randomRange(0.3, 0.9);
             now = now || World:random() < 0.6;
         }
         is now && made < 40? then {

@@ -10,16 +10,27 @@
 //! solis states 1
 //! -- comments
 //! tick 0 w 9c1d… g 77ab…
-//! + 5A329QT768NJB "Crate" Transform (in the world)<tab>1 0 0 2 | …
+//! + 0 5A329QT768NJB "Crate" Transform (in the world)<tab>1 0 0 2 | …
+//! + 1 game seed<tab>12345
 //! tick 1 w 1e2f… g 77ab…
-//! - 5A329QT768NJB "Drone" 3D physics body
+//! = 0<tab>#3f0c9a7e
+//! - 1
 //! ```
 //!
 //! Tick 0 lists every part; each tick after it lists the parts that
-//! changed (`+`, its name, a tab and what it holds now) and those gone
-//! (`-` and its name). Ticks are numbered from 0, one after another.
+//! changed and those gone. A part is numbered the first time it comes
+//! (`+`, its number, its name, a tab and what it holds); after that it's
+//! named by its number: `=` with what it holds now, `-` when it's gone.
+//! Ticks are numbered from 0, one after another.
+//!
+//! What a part holds is kept as written when it's short, and as a
+//! checksum of it (`#` and 8 hex digits) when it's longer than
+//! [`KEPT_LENGTH`]: a body's place and motion change every tick, and the
+//! list stays small. A part that differs is still named; what it holds
+//! on the PC that made the list is shown in full when the check runs
+//! there.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use world::StateParts;
 
 /// The first line, before the version.
@@ -30,6 +41,9 @@ const VERSION: u32 = 1;
 pub const MAX_STATE_LIST_BYTES: usize = 16 << 20;
 /// The most ticks read: an hour at 60 a second, as recordings.
 const MAX_TICKS: usize = 60 * 60 * 60;
+/// The longest a part's value is kept as written; longer, it's kept as
+/// its checksum.
+pub const KEPT_LENGTH: usize = 32;
 
 /// One tick: its checksums, and what changed in its state.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -88,11 +102,7 @@ impl std::error::Error for StateListError {}
 impl StateList {
     /// Adds the next tick: its checksums and its state.
     pub fn push(&mut self, world: u64, game: u64, state: StateParts) {
-        // Kept as the file keeps them, so a list read back is the same.
-        let state: StateParts = state
-            .into_iter()
-            .map(|(part, now)| (one_line(&part), one_line(&now)))
-            .collect();
+        let state = kept(&state);
         let mut changes: Vec<(String, Option<String>)> = state
             .iter()
             .filter(|(part, now)| self.last.get(*part) != Some(*now))
@@ -128,7 +138,32 @@ impl StateList {
         self.ticks.get(tick).map(|t| (t.world, t.game))
     }
 
-    /// The state at the end of tick `tick`, whole.
+    /// The parts in which `actual` (a state as the game has it, in full)
+    /// differs from the state at the end of tick `tick`, compared as the
+    /// list keeps them; `None` past the list's end.
+    pub fn differences(&self, tick: usize, actual: &StateParts) -> Option<Vec<PartDifference>> {
+        let expected = self.state_at(tick)?;
+        let kept_actual = kept(actual);
+        let mut names: BTreeMap<&String, ()> = BTreeMap::new();
+        names.extend(expected.keys().map(|k| (k, ())));
+        names.extend(kept_actual.keys().map(|k| (k, ())));
+        Some(
+            names
+                .into_keys()
+                .filter(|name| expected.get(*name) != kept_actual.get(*name))
+                .map(|name| PartDifference {
+                    part: name.clone(),
+                    expected: expected.get(name).cloned(),
+                    actual: actual
+                        .iter()
+                        .find(|(k, _)| one_line(k) == **name)
+                        .map(|(_, v)| v.clone()),
+                })
+                .collect(),
+        )
+    }
+
+    /// The state at the end of tick `tick`, whole, as the list keeps it.
     pub fn state_at(&self, tick: usize) -> Option<StateParts> {
         let upto = self.ticks.get(..=tick)?;
         let mut state = StateParts::new();
@@ -151,17 +186,25 @@ impl StateList {
             text.push_str(line);
             text.push('\n');
         }
+        let mut numbers: HashMap<&str, usize> = HashMap::new();
         for (n, tick) in self.ticks.iter().enumerate() {
             text.push_str(&format!(
                 "tick {n} w {:016x} g {:016x}\n",
                 tick.world, tick.game
             ));
             for (part, now) in &tick.changes {
-                let part = one_line(part);
-                match now {
-                    Some(value) => text.push_str(&format!("+ {part}\t{}\n", one_line(value))),
-                    None => text.push_str(&format!("- {part}\n")),
-                }
+                let line = match (numbers.get(part.as_str()), now) {
+                    (Some(n), Some(value)) => format!("= {n}\t{value}\n"),
+                    (Some(n), None) => format!("- {n}\n"),
+                    (None, Some(value)) => {
+                        let n = numbers.len();
+                        numbers.insert(part, n);
+                        format!("+ {n} {part}\t{value}\n")
+                    }
+                    // Gone before it ever came: nothing to say.
+                    (None, None) => continue,
+                };
+                text.push_str(&line);
             }
         }
         text
@@ -181,6 +224,7 @@ impl StateList {
             return Err(StateListError::NotAStateList);
         }
         let mut list = Self::default();
+        let mut names: Vec<String> = Vec::new();
         for (at, line) in lines {
             let damaged = || StateListError::Damaged(at + 1);
             if line.is_empty() || line.starts_with("--") {
@@ -195,17 +239,7 @@ impl StateList {
                 continue;
             }
             let tick = list.ticks.last_mut().ok_or_else(damaged)?;
-            let change = if let Some(rest) = line.strip_prefix("+ ") {
-                let (part, value) = rest.split_once('\t').ok_or_else(damaged)?;
-                (part.to_string(), Some(value.to_string()))
-            } else if let Some(part) = line.strip_prefix("- ") {
-                (part.to_string(), None)
-            } else {
-                return Err(damaged());
-            };
-            if change.0.is_empty() || change.0.contains('\t') {
-                return Err(damaged());
-            }
+            let change = read_change(line, &mut names).ok_or_else(damaged)?;
             tick.changes.push(change);
         }
         if let Some(last) = list.ticks.len().checked_sub(1) {
@@ -234,25 +268,51 @@ fn read_tick(rest: &str, expected: usize) -> Option<Tick> {
     })
 }
 
+/// A part's line (`+`, `=` or `-`), with `names` the parts numbered so
+/// far (a new one joins them).
+fn read_change(line: &str, names: &mut Vec<String>) -> Option<(String, Option<String>)> {
+    let number = |word: &str| word.parse::<usize>().ok();
+    if let Some(rest) = line.strip_prefix("+ ") {
+        let (head, value) = rest.split_once('\t')?;
+        let (n, part) = head.split_once(' ')?;
+        if number(n)? != names.len() || part.is_empty() {
+            return None;
+        }
+        names.push(part.to_string());
+        Some((part.to_string(), Some(value.to_string())))
+    } else if let Some(rest) = line.strip_prefix("= ") {
+        let (n, value) = rest.split_once('\t')?;
+        Some((names.get(number(n)?)?.clone(), Some(value.to_string())))
+    } else {
+        let n = line.strip_prefix("- ")?;
+        Some((names.get(number(n)?)?.clone(), None))
+    }
+}
+
+/// `state` as a list keeps it: each name and value on one line, and a
+/// value longer than [`KEPT_LENGTH`] as its checksum.
+pub fn kept(state: &StateParts) -> StateParts {
+    state
+        .iter()
+        .map(|(part, now)| {
+            let now = one_line(now);
+            let now = if now.len() > KEPT_LENGTH {
+                let mut sum = reflect::Checksum::new();
+                sum.bytes(now.as_bytes());
+                // Eight digits are plenty to tell one value from another
+                // (the tick's two checksums hold the game to every bit).
+                format!("#{:08x}", sum.finish() as u32)
+            } else {
+                now
+            };
+            (one_line(part), now)
+        })
+        .collect()
+}
+
 /// Text kept to one line with no tab, so it can't break the file's lines.
 fn one_line(text: &str) -> String {
     text.replace(['\n', '\r', '\t'], " ")
-}
-
-/// The parts whose two states differ, by name.
-pub fn state_differences(expected: &StateParts, actual: &StateParts) -> Vec<PartDifference> {
-    let mut names: BTreeMap<&String, ()> = BTreeMap::new();
-    names.extend(expected.keys().map(|k| (k, ())));
-    names.extend(actual.keys().map(|k| (k, ())));
-    names
-        .into_keys()
-        .filter(|name| expected.get(*name) != actual.get(*name))
-        .map(|name| PartDifference {
-            part: name.clone(),
-            expected: expected.get(name).cloned(),
-            actual: actual.get(name).cloned(),
-        })
-        .collect()
 }
 
 #[cfg(test)]

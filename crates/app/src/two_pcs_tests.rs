@@ -145,9 +145,19 @@ fn record_the_game() {
         while ticks_run(&game.w) < TICKS {
             let tick = ticks_run(&game.w);
             game.w.set_gamepad(Some(pad_at(tick)));
-            game.w.play_for((world::TICK * 0.6) as f32);
+            game.w.play_for(FRAME);
         }
         keep_sidecars(&game.root);
+        // The game must play cleanly: a mistake in its code would leave a
+        // part of it out of the check.
+        let mistakes: Vec<&str> = game
+            .w
+            .log_lines()
+            .iter()
+            .filter(|l| l.level != editor::LogLevel::Info)
+            .map(|l| l.text.as_str())
+            .collect();
+        assert!(mistakes.is_empty(), "{mistakes:#?}");
         game.w.recording_text().unwrap()
     });
     std::fs::write(folder().join(RECORDING), text).unwrap();

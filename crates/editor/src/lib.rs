@@ -167,7 +167,7 @@ pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back, save_reads};
 pub use shell::{BottomTab, RibbonTab, ShellState};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
-pub use state_list::{PartDifference, StateList, StateListError, state_differences};
+pub use state_list::{PartDifference, StateList, StateListError};
 pub use transforming::Snapping;
 pub use updates::{ReleaseNotes, UpdateNotice};
 pub use viewport::{
