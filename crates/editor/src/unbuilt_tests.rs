@@ -399,7 +399,7 @@ fn the_setting_in_use_is_what_filter_reads() {
 /// no control of their own to draw: the plan's inventory says "not
 /// drawn" of each. They are in the table so they are counted and
 /// planned, and the walk below doesn't expect to meet them.
-const NOTHING_TO_DRAW: [(UnbuiltId, &str); 20] = [
+const NOTHING_TO_DRAW: [(UnbuiltId, &str); 19] = [
     (
         UnbuiltId::RecentCardThumbnail,
         "a launcher card shows its kind's picture until projects keep their last view",
@@ -444,7 +444,6 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 20] = [
         UnbuiltId::PlaceClickToPlace,
         "a way of placing: click a tile, then the level",
     ),
-    (UnbuiltId::LibMultiSelect, "a way of selecting"),
     (UnbuiltId::LibDragToHome, "a way of dragging"),
     (
         UnbuiltId::DebugStatus,
@@ -476,7 +475,10 @@ const NOTHING_TO_DRAW: [(UnbuiltId, &str); 20] = [
 /// that builds a screen adds that screen's parts here, until this is the
 /// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
 /// replaces the list with that sum.
-const DRAWN_SO_FAR: [UnbuiltId; 135] = [
+const DRAWN_SO_FAR: [UnbuiltId; 137] = [
+    // The Library's right-click menu on empty space (R4).
+    UnbuiltId::LibNewPrefab,
+    UnbuiltId::LibPaste,
     // The frame.
     UnbuiltId::ShellTabShading,
     UnbuiltId::ShellTabVfx,
@@ -684,6 +686,31 @@ fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
             h.run();
         }
     }
+    // The Library's right-click menu on empty space.
+    h.state_mut().0.show_tab(crate::shell::RibbonTab::Library);
+    h.run();
+    h.run();
+    let body = h
+        .state()
+        .0
+        .shell
+        .drawn_at(crate::panel::Panel::Library)
+        .expect("the browser");
+    let at = egui::pos2(body.center().x, body.bottom() - 40.0);
+    h.hover_at(at);
+    h.run();
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Secondary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+        h.run();
+    }
+    look_around(&mut h);
+    h.key_press(egui::Key::Escape);
+    h.run();
     // The model viewer, from a model's right-click in the Library.
     let mut asked = Vec::new();
     h.state_mut().0.library_request(

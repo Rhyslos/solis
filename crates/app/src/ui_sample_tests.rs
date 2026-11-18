@@ -21,8 +21,8 @@ fn made(
     let project = Project::open(&root).unwrap();
     assert_eq!(project.name(), NAME);
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
-    crate::game_code::GameCode::describe(&root.join(asset_db::ASSETS_FOLDER), MADE_BY);
-    let code = script::gather(&root.join(asset_db::ASSETS_FOLDER));
+    crate::game_code::GameCode::describe(&root, MADE_BY);
+    let code = script::gather(&root);
     let compiled = match script::compile(&code) {
         Ok(Some(compiled)) => compiled,
         Ok(None) => panic!("no code"),
@@ -165,7 +165,7 @@ fn the_ui_sample_plays_the_same_from_a_recording_menus_included() {
 fn the_ui_sample_never_replaces_a_file_of_the_person_s() {
     let temp = reflect::test_support::TempFolder::new("ui-sample-mine").unwrap();
     let root = temp.join("My game");
-    let assets = root.join(asset_db::ASSETS_FOLDER);
+    let assets = root.clone();
     std::fs::create_dir_all(assets.join("ui")).unwrap();
     std::fs::write(assets.join("ui/hud.lst"), "-- mine\nend\n").unwrap();
     let why = make(&root).unwrap_err().to_string();

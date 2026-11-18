@@ -59,19 +59,28 @@ impl Workbench {
             .and_then(|item| item.id)
     }
 
-    /// F2 and Delete over the Library or the Assets column act on the
-    /// file picked there, not on the selected entity (the project lead's
-    /// answer 25): F2 renames it, Delete moves it to the Recycle Bin, as
-    /// its right-click menu does. Returns whether the keys were the
-    /// files' this frame (the pointer is over one of the two).
+    /// F2 and Delete over the Library (the browser on its tab or under
+    /// the view, or Home's folder trees) act on the files picked there,
+    /// not on the selected entity (the project lead's answer 25): F2
+    /// renames the one picked last, in place, and Delete moves everything
+    /// picked to the Recycle Bin, as the right-click menu does. Returns
+    /// whether the keys were the files' this frame (the pointer is over
+    /// the Library).
     pub(crate) fn file_keys_over_the_library(
         &mut self,
         ui: &egui::Ui,
         actions: &mut Vec<WorkbenchAction>,
     ) -> bool {
         use crate::panel::Panel;
-        if !matches!(self.pointer_over, Some(Panel::Library | Panel::Assets)) {
+        if !matches!(
+            self.pointer_over,
+            Some(Panel::Library | Panel::Assets | Panel::Folders)
+        ) {
             return false;
+        }
+        // Typing a name: the keys are the box's.
+        if ui.ctx().egui_wants_keyboard_input() {
+            return true;
         }
         let (delete, rename) = ui.input(|i| {
             let plain = |key| i.key_pressed(key) && i.modifiers.is_none();
@@ -82,11 +91,18 @@ impl Workbench {
             return true;
         };
         if rename {
-            let name = path.rsplit_once('/').map_or(path.as_str(), |(_, n)| n);
-            state.renaming = Some((path.clone(), name.to_owned()));
+            let name = self.open.library.at(&path).map_or_else(
+                || crate::library::last_part(&path).to_owned(),
+                |i| i.name.clone(),
+            );
+            self.open.library_state.start_renaming(&path, &name);
         } else if delete {
+            for path in state.picked() {
+                actions.push(WorkbenchAction::DeleteFile(path.into()));
+            }
+            let state = &mut self.open.library_state;
             state.selected = None;
-            actions.push(WorkbenchAction::DeleteFile(path.into()));
+            state.also.clear();
         }
         true
     }
@@ -153,7 +169,7 @@ impl Workbench {
             self.log(
                 LogLevel::Warning,
                 format!(
-                    "Didn't open {}: it isn't a file in the project's assets folder.",
+                    "Didn't open {}: it isn't a file in the project.",
                     path.chars().take(200).collect::<String>()
                 ),
             );
@@ -253,8 +269,14 @@ impl Workbench {
                     path: path.clone().into(),
                     text,
                 });
-                self.show_in_library(&path);
-                self.library_request(LibraryRequest::Open(LibraryKind::Code, path), actions);
+                // Game code starts in main.lst, so it keeps its name and
+                // opens; any other starts being named (board 04).
+                if path == MAIN {
+                    self.show_in_library(&path);
+                    self.library_request(LibraryRequest::Open(LibraryKind::Code, path), actions);
+                } else {
+                    self.show_new_in_library(&path);
+                }
             }
             LibraryRequest::NewLevel(folder) => {
                 let path = crate::workbench_tiles::free_path(&folder, "level", "sollevel", |p| {
@@ -267,8 +289,8 @@ impl Workbench {
                     path: path.clone().into(),
                     text,
                 });
-                self.show_in_library(&path);
-                self.library_request(LibraryRequest::Open(LibraryKind::Level, path), actions);
+                // It starts being named (board 04); its picture opens it.
+                self.show_new_in_library(&path);
             }
             LibraryRequest::Open(LibraryKind::Level, path) => {
                 self.request(WorkbenchAction::OpenLevelFile(full(&path)), actions);
@@ -322,6 +344,12 @@ impl Workbench {
                 from: from.into(),
                 to: to.into(),
             }),
+            LibraryRequest::Duplicate(path) => {
+                if plain_relative(&path) {
+                    actions.push(WorkbenchAction::DuplicateFile(path.into()));
+                }
+            }
+            LibraryRequest::Say(words) => self.log(LogLevel::Warning, words),
             LibraryRequest::NewFolder(parent) => {
                 actions.push(WorkbenchAction::NewFolder(parent.into()));
             }
@@ -414,13 +442,22 @@ impl Workbench {
         self.open.sound_shown = Some((path.to_owned(), self.open.document.selection.clone()));
     }
 
-    /// Picks the file at `path` (inside the assets) in the Library and
+    /// Picks something just made at `path` (inside the project) in the
+    /// Library, opens its folder there, and starts renaming it as soon as
+    /// it's listed (board 04): a new folder, level, code file or sound
+    /// event.
+    pub fn show_new_in_library(&mut self, path: &str) {
+        self.pick_in_library(path);
+        self.open.library_state.rename_new = Some(path.to_owned());
+    }
+
+    /// Picks the file at `path` (inside the project) in the Library and
     /// opens its folder there, with the Library's own search cleared so
     /// the file is in view.
     pub(crate) fn pick_in_library(&mut self, path: &str) {
-        self.open.library_state.folder = path.rsplit_once('/').map_or("", |(f, _)| f).to_owned();
-        self.open.library_state.search.clear();
-        self.open.library_state.selected = Some(path.to_owned());
+        let state = &mut self.open.library_state;
+        state.open_folder(crate::library::parent_of(path));
+        state.pick(path);
     }
 
     /// Whether `asset` is a picture (PNG, JPEG), which a sprite can show.

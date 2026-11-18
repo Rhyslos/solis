@@ -326,7 +326,7 @@ fn check_code(
     made_by: &str,
     report: &mut Report,
 ) -> Option<std::sync::Arc<script::Compiled>> {
-    let assets = &project.assets();
+    let assets = &project.files();
     // The sprites' clips and cues are names game code uses: read the
     // sheets first, as the editor does.
     let animation = sprite_clip_names(project);
@@ -391,7 +391,7 @@ fn settle_new_files(project: &asset_db::Project, report: &mut Report) {
 /// most a minute).
 pub(crate) fn read_sheets(db: &asset_db::AssetDb) -> editor::sprite_sheets::SpriteSheets {
     let mut sprites = crate::sprites::Sprites::default();
-    sprites.want(&db.listing(), &db.project().assets());
+    sprites.want(&db.listing(), &db.project().files());
     let start = std::time::Instant::now();
     loop {
         sprites.poll();
@@ -564,7 +564,7 @@ pub(crate) fn workbench_for(
     level_path: &str,
     read: &mut Read,
 ) -> Result<editor::Workbench, String> {
-    let assets = db.project().assets();
+    let assets = db.project().files();
     let level_file = assets.join(level_path);
     if !input::Recording::is_plain_level_path(level_path) || !level_file.starts_with(&assets) {
         return Err(format!("its level, {level_path}, isn't in the assets"));

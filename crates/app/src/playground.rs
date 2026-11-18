@@ -459,7 +459,7 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
     let files = files();
     let taken = files
         .iter()
-        .map(|(path, _)| root.join(asset_db::ASSETS_FOLDER).join(path))
+        .map(|(path, _)| root.join(path))
         .chain([root.join(input::FILE)])
         .find(|file| file.exists());
     if let Some(file) = taken {
@@ -474,7 +474,7 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
     }
     let project = Project::create(root, NAME)?;
     for (path, bytes) in &files {
-        let file = project.assets().join(path);
+        let file = project.files().join(path);
         if let Some(folder) = file.parent() {
             std::fs::create_dir_all(folder)?;
         }

@@ -1,31 +1,23 @@
-//! The Assets list of Home (spec 200, 215-216): a column of the Entity
-//! shelf tab, or in a side layout a column or strip of its own (decision
-//! 0109). The files of the Library's open folder as square tiles, as many
-//! across as fit (four in the shelf's column), and an Import tile last. A tile is dragged into the viewport to place it,
-//! onto an entity in the Level column to place it under that, or onto a
-//! card's field to assign it; a double-click places it where the camera
-//! looks (or opens what isn't placed); a right-click has the Library's
-//! menu for it.
-//!
-//! The folder is the Library's own, so the Library tab and this column
-//! show the same place.
-//!
-//! While the Place shelf tab is in front it takes its placing form (spec 270-276; round
-//! 2, `06-placing-a.png`): chips, a search and **Open Library** over the
-//! placeable files as tiles of at least 92 px, the one being dragged
-//! dimmed with a "dragging" badge.
+//! The Library's placing form (spec 270-276; round 2, `06-placing-a.png`):
+//! while Home's Library is placing (its **Place** switch), chips, a search
+//! and **Open Library** over the placeable files as tiles of at least
+//! 92 px, the one being dragged dimmed with a "dragging" badge. A tile is
+//! dragged into the viewport to place it, onto an entity in the Level
+//! panel to place it under that, or onto a card's field to assign it; a
+//! double-click places it where the camera looks; a right-click has the
+//! Library's menu for it. Otherwise the same browser as the Library tab's
+//! stands there (decision 0118).
 
 use crate::library::{LibraryFiles, LibraryItem, LibraryRequest, LibraryState, Sounds};
 use crate::tokens::{self, size, text};
 use crate::widgets::{self, dashed};
-use egui::{Align2, CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
+use egui::{CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 
-/// The Assets column: the open folder's files, then Import (or, while
-/// `placing`, the placeable ones under its chips and search). Returns
-/// what was asked for.
+/// The placing form: the placeable files under its chips and search.
+/// Returns what was asked for.
 pub(crate) fn assets(
     ui: &mut Ui,
-    (has_project, placing): (bool, bool),
+    has_project: bool,
     items: &LibraryFiles,
     state: &mut LibraryState,
     sounds: Sounds<'_>,
@@ -35,16 +27,11 @@ pub(crate) fn assets(
         crate::panels::empty_note(ui, "No project is open: its files show here.");
         return requests;
     }
-    if placing {
-        place_bar(ui, state, &mut requests);
-    }
+    place_bar(ui, state, &mut requests);
     let wanted = state.search.trim().to_lowercase();
     let shown: Vec<&LibraryItem> = items
         .with_lowered()
         .filter(|(item, lowered)| {
-            if !placing {
-                return item.folder() == state.folder;
-            }
             let here = if wanted.is_empty() {
                 item.folder() == state.folder
             } else {
@@ -55,20 +42,13 @@ pub(crate) fn assets(
         .map(|(item, _)| item)
         .collect();
     let room = ui.available_rect_before_wrap().shrink(size::TILE_GAP * 2.0);
-    // As many as fit: four in the Entity tab's column, more in a wide
-    // strip (decision 0109).
-    let least = if placing {
-        size::PLACE_TILE_MIN_W
-    } else {
-        size::ASSETS_TILE_MIN_W
-    };
+    let least = size::PLACE_TILE_MIN_W;
     let across = ((room.width() + size::TILE_GAP) / (least + size::TILE_GAP))
         .floor()
         .max(1.0) as usize;
     let width = ((room.width() - (across - 1) as f32 * size::TILE_GAP) / across as f32).floor();
     let height = tile_height(width);
-    // Placing has no Import tile: it is for what's there.
-    let tiles = shown.len() + usize::from(!placing);
+    let tiles = shown.len();
     let rows = tiles.div_ceil(across);
     let mut inner = ui.new_child(egui::UiBuilder::new().max_rect(room));
     // Only the rows in view are drawn, so a folder of thousands of files
@@ -80,19 +60,10 @@ pub(crate) fn assets(
             for row in range {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = size::TILE_GAP;
-                    for at in row * across..((row + 1) * across).min(tiles) {
-                        match shown.get(at) {
-                            Some(item) => {
-                                let chosen = state.selected.as_deref() == Some(item.path.as_str());
-                                let response = tile(ui, width, item, chosen, sounds);
-                                crate::library::act_on(item, response, state, &mut requests);
-                            }
-                            None => {
-                                if import_tile(ui, width).clicked() {
-                                    requests.push(LibraryRequest::Import);
-                                }
-                            }
-                        }
+                    for item in shown.iter().skip(row * across).take(across) {
+                        let chosen = state.is_picked(&item.path);
+                        let response = tile(ui, width, item, chosen, sounds);
+                        crate::library::act_on(item, response, state, &mut requests);
                     }
                 });
                 ui.add_space(size::TILE_GAP);
@@ -227,34 +198,4 @@ fn dragging(ui: &Ui, square: Rect) {
         words,
         crate::tokens::ON_ACCENT,
     );
-}
-
-/// The last tile: a dashed square with a + over the word Import.
-fn import_tile(ui: &mut Ui, width: f32) -> Response {
-    let (rect, response) = ui.allocate_exact_size(vec2(width, tile_height(width)), Sense::click());
-    response.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Import a model")
-    });
-    if ui.is_rect_visible(rect) {
-        let square = Rect::from_min_size(rect.min, vec2(width, width));
-        let ink = if response.hovered() {
-            tokens::text_primary()
-        } else {
-            tokens::text_meta()
-        };
-        dashed::rounded(ui, square, size::radius::TAB, tokens::stronger_line());
-        let plus =
-            Rect::from_center_size(square.center(), vec2(size::ICON_SMALL, size::ICON_SMALL));
-        crate::icons::icon(ui.painter(), plus, crate::icons::Icon::Plus, ink);
-        let name = Rect::from_min_max(pos2(rect.left(), square.bottom() + size::GAP), rect.max);
-        widgets::words(
-            ui,
-            name,
-            Align2::LEFT_CENTER,
-            "Import",
-            text::tile_name(),
-            tokens::text_meta(),
-        );
-    }
-    response.on_hover_text("Brings a model file into the project (.gltf or .glb)")
 }

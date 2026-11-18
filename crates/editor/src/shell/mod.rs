@@ -299,6 +299,7 @@ impl Workbench {
             clips: open.frames_editor.is_some(),
             map: open.map_edits.path.is_some(),
             layout: self.interface.layout,
+            folders: self.open.library_state.left == crate::library::LeftShows::Folders,
         }
     }
 
@@ -343,6 +344,14 @@ impl Workbench {
             }
             Home::Slot(slot) => {
                 arrangement.hidden.set(slot, false);
+                // Showing the Level panel or the folders switches Home's
+                // left slot to it.
+                let left = &mut self.open.library_state.left;
+                match panel {
+                    Panel::Level => *left = crate::library::LeftShows::Level,
+                    Panel::Folders => *left = crate::library::LeftShows::Folders,
+                    _ => {}
+                }
                 if panel == Panel::Placement {
                     arrangement.placing = true;
                 }
@@ -735,7 +744,6 @@ fn frame_parts(shell: &Shell, open: OpenNow) -> (layouts::Parts, bottom::BottomN
         tabs,
         hidden,
         layout,
-        library_tab: tab == RibbonTab::Library,
     };
     (parts, now)
 }

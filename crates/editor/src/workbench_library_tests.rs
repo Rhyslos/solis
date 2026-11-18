@@ -63,10 +63,10 @@ fn the_library_shows_one_folder_and_the_tree_opens_others() {
     assert!(!shown(&h, "rock"), "inside a folder");
     // Code shows too (decision 0085), and the Code chip shows only it.
     assert!(shown(&h, "turret"));
-    h.get_by_label("Code files").click();
+    h.state_mut().0.open.library_state.filter = crate::library::Filter::Code;
     h.run();
     assert!(shown(&h, "turret") && !shown(&h, "crate"));
-    h.get_by_label("All files").click();
+    h.state_mut().0.open.library_state.filter = crate::library::Filter::All;
     h.run();
     h.get_by_label("Folder props").click();
     h.run();
@@ -615,14 +615,18 @@ fn place_is_greyed_for_a_file_with_no_id_yet() {
 }
 
 #[test]
-fn chips_narrow_the_library() {
-    let mut h = crate::test_support::harness(Workbench::new(crate::test_support::info()));
+fn the_kind_filter_narrows_the_library() {
+    let (w, _, _) = with_a_project();
+    let mut h = crate::test_support::harness(w);
     h.state_mut().0.show_tab(crate::shell::RibbonTab::Library);
     h.run();
-    for chip in ["All", "Models", "Sprites", "Maps", "Sounds", "Code"] {
-        let _ = h.get_by_label(&format!("{chip} files"));
+    h.run();
+    h.get_by_label("Kind of file").click();
+    h.run();
+    for kind in ["All kinds", "Models", "Sprites", "Maps", "Sounds"] {
+        assert!(h.query_by_label(kind).is_some(), "{kind}");
     }
-    h.get_by_label("Sprites files").click();
+    h.get_by_label("Sprites").click();
     h.run();
     assert_eq!(
         h.state().0.open.library_state.filter,

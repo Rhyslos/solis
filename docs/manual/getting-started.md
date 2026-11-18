@@ -37,6 +37,17 @@ Solis starts on the [launcher](launcher.md), a small window listing your project
 ![The launcher's Learn](pictures/learn.png)
 **Learn**, in the launcher: the four examples, each with **Make it in a folder…**, the first steps, and this guide.
 
+## Folders, levels and code
+
+Your project starts empty, and its files go where you put them: Solis makes no folders of its own for them. The **Library**, under the view on Home (and on its own **Library** tab), shows the project's folder.
+
+1. **Right-click** empty space in the Library. The menu says where new things go: *New in "Farm Days"*.
+2. Choose **New folder**. It appears with its name picked out: type *levels* and press **Enter**. (**Esc** keeps the name it had.)
+3. Double-click the new folder's picture to go into it, then right-click and choose **New level**. Name it *meadow* and press **Enter**. Double-click its picture to open it.
+4. Go back up with **˄** (or click the project's name in the line over the files), right-click and choose **New code file**: the first is `main.lst`, where your game's code starts, and it opens in your editor for Lust ([Game code](game-code.md)).
+
+Renamed something wrong? Double-click its **name** (or pick it and press **F2**). Drag files onto a folder to move them; everything that uses them keeps finding them. See [Projects and the Library](projects-and-the-library.md).
+
 New to making games? **Learn**, down the launcher's left side, makes one of the four examples as a project, ready to play and take apart.
 
 ## Settings

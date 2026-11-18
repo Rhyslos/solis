@@ -174,6 +174,9 @@ pub enum Slot {
 pub fn left_slot(tab: RibbonTab, open: OpenNow) -> Option<Column> {
     use Panel as P;
     match tab {
+        // The Level panel, or the project's folders (decision 0118: the
+        // toggle in the slot's title switches them).
+        RibbonTab::Home if open.folders => Some(column!("Folders", [P::Folders])),
         RibbonTab::Home => Some(column!("Level", [P::Level])),
         RibbonTab::Animate => match (open.clips, open.animator) {
             (true, true) => Some(column!("Clips", [P::Clips, P::Parameters])),
@@ -223,6 +226,8 @@ pub struct OpenNow {
     pub map: bool,
     /// The layout chosen in Preferences: where the slots sit.
     pub layout: PanelLayout,
+    /// Home's left slot shows the project's folders, not the Level panel.
+    pub folders: bool,
 }
 
 /// The documents of a tab's editor groups: one or two groups, each a
@@ -499,6 +504,10 @@ pub fn home_of(tab: RibbonTab, open: OpenNow, panel: Panel) -> Option<Home> {
         .position(|docs| docs.contains(&panel))
     {
         return Some(Home::Group(index));
+    }
+    // Home's left slot holds either of its two: showing one switches.
+    if tab == RibbonTab::Home && matches!(panel, Panel::Level | Panel::Folders) {
+        return Some(Home::Slot(Slot::Left));
     }
     for (slot, column) in [
         (Slot::Left, left_slot(tab, open)),

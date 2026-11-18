@@ -118,16 +118,20 @@ pub enum WorkbenchAction {
         /// What it holds.
         text: String,
     },
-    /// Move a file or folder (inside the assets) to the Recycle Bin.
+    /// Move a file or folder (inside the project) to the Recycle Bin.
     DeleteFile(std::path::PathBuf),
+    /// Copy a file (inside the project) beside it, under a free name ("hay
+    /// copy.png"), as a new file with an ID of its own; the copy is picked
+    /// and starts being renamed.
+    DuplicateFile(std::path::PathBuf),
     /// Listen to this sound file (inside the project's assets) in the
     /// Library or Properties; the app plays it and reports how far it has
     /// got with [`Workbench::set_preview`](crate::Workbench::set_preview).
     PlaySound(std::path::PathBuf),
     /// Stop listening to the sound playing.
     StopSound,
-    /// Make a new sound event in this folder (inside the project's
-    /// assets), and show it with [`Workbench::show_in_library`](crate::Workbench::show_in_library).
+    /// Make a new sound event in this folder (inside the project), and
+    /// show it with [`Workbench::show_new_in_library`](crate::Workbench::show_new_in_library).
     NewSoundEvent(std::path::PathBuf),
     /// Save a sound event's settings to its `.solsound` file (inside the
     /// project's assets).

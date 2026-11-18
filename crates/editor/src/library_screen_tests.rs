@@ -132,7 +132,7 @@ fn the_bottom_line_counts_the_folder_s_files() {
     let mut h = harness(w);
     h.run();
     h.run();
-    assert!(h.query_by_label("1 items \u{b7} 0 selected").is_some());
+    assert!(h.query_by_label("1 item \u{b7} 0 selected").is_some());
 }
 
 #[test]

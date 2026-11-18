@@ -12,8 +12,8 @@
 //! table against the inventory, so neither can drift from the other.
 
 use super::Phase::{
-    NotPlanned, Shared4, Shared6, Shared7, Shared8, Shared10, Shared11, Shared13, ThreeD1, ThreeD5,
-    TwoD2,
+    NotPlanned, Shared1f, Shared4, Shared6, Shared7, Shared8, Shared10, Shared11, Shared13,
+    ThreeD1, ThreeD5, TwoD2,
 };
 use super::Unbuilt;
 
@@ -99,7 +99,8 @@ unbuilt! {
     LibPreviewModes: "lib.preview.modes" => ("Preview modes", NotPlanned, "Turns the preview around and shows it lit, as wires or by its picture layout"),
     LibUsedByAllKinds: "lib.used-by.all-kinds" => ("Used by", NotPlanned, "Lists every level and assembly that uses the selected file"),
     LibShelfImportQueue: "lib.shelf.import-queue" => ("Import queue", NotPlanned, "Lists the files being brought in, with how far each has got"),
-    LibMultiSelect: "lib.multi-select" => ("Select several files", NotPlanned, "Selects several files at once with Ctrl or Shift"),
+    LibNewPrefab: "lib.new.prefab" => ("New prefab", Shared1f, "Makes a prefab here: an entity with its parts and settings, saved to be placed many times"),
+    LibPaste: "lib.paste" => ("Paste", NotPlanned, "Puts files you copied into this folder"),
     LibDragToHome: "lib.drag-to-home" => ("Drag to Home", NotPlanned, "Carries a file to the Home tab by dragging it onto the tab"),
 
     // Shading: a whole screen.

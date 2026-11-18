@@ -134,7 +134,7 @@ fn level(ships: u32) -> Level {
 pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
     let files = files();
     for (path, _) in &files {
-        let file = root.join(asset_db::ASSETS_FOLDER).join(path);
+        let file = root.join(path);
         if file.exists() {
             return Err(asset_db::ProjectError::Io(std::io::Error::new(
                 std::io::ErrorKind::AlreadyExists,
@@ -148,7 +148,7 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
     }
     let project = Project::create(root, NAME)?;
     for (path, bytes) in &files {
-        let file = project.assets().join(path);
+        let file = project.files().join(path);
         if let Some(folder) = file.parent() {
             std::fs::create_dir_all(folder)?;
         }
@@ -212,8 +212,8 @@ mod tests {
     fn making_it_twice_in_one_folder_is_refused() {
         let folder = reflect::test_support::TempFolder::new("benchmark").unwrap();
         make(&folder).unwrap();
-        assert!(folder.join("assets/ships/fighter.glb").exists());
-        assert!(folder.join("assets/ceiling.sollevel").exists());
+        assert!(folder.join("ships/fighter.glb").exists());
+        assert!(folder.join("ceiling.sollevel").exists());
         assert!(make(&folder).is_err());
     }
 }
@@ -232,7 +232,7 @@ mod play_tests {
     ) -> editor::Workbench {
         let root = reflect::test_support::TempFolder::new(&format!("bench-{name}")).unwrap();
         make(&root).unwrap();
-        let assets = root.join(asset_db::ASSETS_FOLDER);
+        let assets = root.to_path_buf();
         crate::game_code::GameCode::describe(&assets, "Test 1.0");
         let compiled = match script::compile(&script::gather(&assets)) {
             Ok(Some(c)) => c,

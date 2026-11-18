@@ -48,11 +48,14 @@ pub enum Panel {
     /// A picture's crops (decision 0089): beside the viewport while its
     /// atlas file is open.
     AtlasCrop,
-    /// The Library's open folder as tiles, on Home's Entity shelf tab
-    /// (spec 200).
+    /// The Library's browser under the view (decision 0118): the same as
+    /// the Library tab's, or the placing form while placing.
     Assets,
     /// How placed things land (spec 270): on Home's Place shelf tab.
     Placement,
+    /// The project's folders as trees, side by side: Home's left slot,
+    /// switched with the Level panel (decision 0118).
+    Folders,
     /// The UI editor's canvas (decision 0089): a screen drawn to pick and
     /// change, in the UI workspace while a screen is open.
     Canvas,
@@ -86,7 +89,7 @@ pub enum Panel {
 
 impl Panel {
     /// Every panel that is always somewhere (the rest come with a file).
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 16] = [
         Self::Viewport,
         Self::Game,
         Self::Level,
@@ -99,6 +102,7 @@ impl Panel {
         Self::Mixer,
         Self::Assets,
         Self::Placement,
+        Self::Folders,
         Self::Bus,
         Self::SoundEvents,
         Self::Export,
@@ -157,6 +161,7 @@ impl Panel {
             Self::Elements => "Elements",
             Self::Assets => "Assets",
             Self::Placement => "Placement",
+            Self::Folders => "Folders",
             Self::Terrains => "Terrains",
             Self::Crops => "Crops",
             Self::Clip => "Clip",
@@ -192,6 +197,7 @@ impl Panel {
             Self::Elements => Icon::Level,
             Self::Assets => Icon::Library,
             Self::Placement => Icon::Move,
+            Self::Folders => Icon::FolderOpen,
             Self::Terrains => Icon::Tileset,
             Self::Crops => Icon::Crops,
             Self::Clip => Icon::Clips,

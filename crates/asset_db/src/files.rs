@@ -1,4 +1,4 @@
-//! Every file and folder in the project's `assets/` folder, as the
+//! Every file and folder in the project (its own folder, decision 0118), as the
 //! Library lists them, and changing them from inside Solis: renaming,
 //! moving, new folders and deleting to the Recycle Bin. A file's sidecar
 //! always goes with it, so its ID survives (decision 0021).
@@ -98,7 +98,7 @@ impl FileKind {
 /// One file in the Library.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileEntry {
-    /// Where it is, inside `assets/`.
+    /// Where it is, inside the project.
     pub path: PathBuf,
     /// What kind it is.
     pub kind: FileKind,
@@ -106,10 +106,10 @@ pub struct FileEntry {
     pub id: Option<AssetId>,
 }
 
-/// Everything in `assets/`.
+/// Everything in the project.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Listing {
-    /// Every folder, inside `assets/`, sorted (empty ones too).
+    /// Every folder, inside the project, sorted (empty ones too).
     pub folders: Vec<PathBuf>,
     /// Every file, sorted by path.
     pub files: Vec<FileEntry>,
@@ -181,25 +181,28 @@ pub fn file_name_from(name: &str, fallback: &str) -> String {
     safe
 }
 
-/// `path` only if it's a plain path inside a folder: no `..`, no root,
-/// nothing empty.
+/// `path` only if it's a plain path inside a folder (no `..`, no root,
+/// nothing empty) that isn't Solis's own ([`crate::is_own`]: the project
+/// file, the cache, builds, saves).
 fn inside(path: &Path) -> Result<&Path, FileError> {
     let plain = path.components().all(|c| matches!(c, Component::Normal(_)));
-    if plain && path.components().next().is_some() {
+    if plain && path.components().next().is_some() && !crate::is_own(path) {
         Ok(path)
     } else {
         Err(FileError(format!(
-            "{} isn't inside the project's assets folder",
+            "{} isn't inside the project's folder",
             path.display()
         )))
     }
 }
 
 impl AssetDb {
-    /// Every file and folder in `assets/`, skipping hidden ones, sidecars
-    /// and temporary files.
+    /// Every file and folder in the project (decision 0118: its own
+    /// folder), skipping hidden ones, Solis's own (the project file,
+    /// builds, saves, recordings: [`crate::is_own`]), sidecars and
+    /// temporary files.
     pub fn listing(&self) -> Listing {
-        let root = self.project().assets();
+        let root = self.project().files();
         let ids: std::collections::HashMap<&Path, AssetId> = self
             .records()
             .values()
@@ -224,6 +227,7 @@ impl AssetDb {
                 if name.starts_with('.')
                     || name.ends_with(".tmp")
                     || name.ends_with(&format!(".{}", sidecar::EXTENSION))
+                    || (folder == root && crate::is_own(Path::new(&name)))
                 {
                     continue;
                 }
@@ -251,7 +255,7 @@ impl AssetDb {
     /// `assets/`), with its sidecar, so its ID stays. Never replaces
     /// anything. The watcher then reports the move.
     pub fn move_path(&self, from: &Path, to: &Path) -> Result<(), FileError> {
-        let root = self.project().assets();
+        let root = self.project().files();
         let (from_rel, to_rel) = (inside(from)?, inside(to)?);
         // The new name must work on every system (a moved file keeps its
         // name, which was already allowed).
@@ -319,10 +323,10 @@ impl AssetDb {
     }
 
     /// Makes a new folder called "New folder" (or "New folder 2"…) in
-    /// `parent` (inside `assets/`; empty for `assets/` itself), and returns
-    /// it inside `assets/`.
+    /// `parent` (inside the project; empty for its own folder), and returns
+    /// it inside the project.
     pub fn new_folder(&self, parent: &Path) -> Result<PathBuf, FileError> {
-        let root = self.project().assets();
+        let root = self.project().files();
         let base = if parent.as_os_str().is_empty() {
             root.clone()
         } else {
@@ -344,10 +348,48 @@ impl AssetDb {
         Err(FileError("there are too many new folders here".into()))
     }
 
-    /// Moves the file or folder at `path` (inside `assets/`) to the
+    /// Copies the file at `path` (inside the project) beside it as a new
+    /// file, "hay copy.png" (or "hay copy 2.png" …), never over anything,
+    /// and returns where the copy is. Its sidecar isn't copied: the copy
+    /// is a file of its own, with its own ID once it's adopted or settles.
+    pub fn duplicate(&self, path: &Path) -> Result<PathBuf, FileError> {
+        let root = self.project().files();
+        let relative = inside(path)?;
+        let full = root.join(relative);
+        if full.is_dir() {
+            return Err(FileError("a folder can't be duplicated yet".into()));
+        }
+        let name = relative
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .ok_or_else(|| FileError("it has no name".into()))?;
+        // "farm.tilemap.lst" is "farm copy.tilemap.lst": its kind stays.
+        let (stem, ending) = match name.find('.') {
+            Some(at) if at > 0 => name.split_at(at),
+            _ => (name.as_str(), ""),
+        };
+        let folder = relative.parent().unwrap_or(Path::new(""));
+        for n in 1..1000 {
+            let copy = if n == 1 {
+                format!("{stem} copy{ending}")
+            } else {
+                format!("{stem} copy {n}{ending}")
+            };
+            let target = folder.join(&copy);
+            if std::fs::symlink_metadata(root.join(&target)).is_ok() {
+                continue;
+            }
+            crate::db::copy_new(&full, &root.join(&target))
+                .map_err(|e| FileError(format!("couldn't copy it: {e}")))?;
+            return Ok(target);
+        }
+        Err(FileError("there are too many copies of it here".into()))
+    }
+
+    /// Moves the file or folder at `path` (inside the project) to the
     /// Recycle Bin, with its sidecar, so it can be brought back.
     pub fn delete_to_trash(&self, path: &Path) -> Result<(), FileError> {
-        let full = self.project().assets().join(inside(path)?);
+        let full = self.project().files().join(inside(path)?);
         if !full.exists() {
             return Err(FileError(format!(
                 "{} isn't there any more",
@@ -413,7 +455,7 @@ mod tests {
     fn project(name: &str) -> (AssetDb, PathBuf, TempFolder) {
         let root = test_folder(name);
         let project = Project::create(&root, "Test").unwrap();
-        let assets = project.assets();
+        let assets = project.files();
         std::fs::create_dir_all(assets.join("props/old")).unwrap();
         std::fs::write(assets.join("crate.glb"), sample()).unwrap();
         std::fs::write(assets.join("props/rock.glb"), sample()).unwrap();
@@ -428,6 +470,39 @@ mod tests {
 
     fn sample() -> Vec<u8> {
         assets::sample::sample_glb()
+    }
+
+    #[test]
+    fn a_duplicate_is_a_new_file_beside_it_with_its_kind_and_no_sidecar() {
+        let (mut db, assets, _folder) = project("files-duplicate");
+        let id = db.id_at(&assets.join("props/rock.glb")).unwrap();
+        let copy = db.duplicate(Path::new("props/rock.glb")).unwrap();
+        assert_eq!(copy, PathBuf::from("props/rock copy.glb"));
+        assert_eq!(
+            std::fs::read(assets.join(&copy)).unwrap(),
+            std::fs::read(assets.join("props/rock.glb")).unwrap()
+        );
+        assert!(!assets.join("props/rock copy.glb.solmeta").exists());
+        let again = db.duplicate(Path::new("props/rock.glb")).unwrap();
+        assert_eq!(again, PathBuf::from("props/rock copy 2.glb"));
+        std::fs::write(assets.join("farm.tilemap.lst"), "x").unwrap();
+        assert_eq!(
+            db.duplicate(Path::new("farm.tilemap.lst")).unwrap(),
+            PathBuf::from("farm copy.tilemap.lst"),
+            "its kind stays"
+        );
+        assert!(db.duplicate(Path::new("props")).is_err(), "a folder");
+        assert!(db.duplicate(Path::new("../x.glb")).is_err());
+        assert!(
+            db.duplicate(Path::new("project.solis")).is_err(),
+            "Solis's own"
+        );
+        db.rescan();
+        assert_eq!(
+            db.id_at(&assets.join("props/rock.glb")),
+            Some(id),
+            "the original keeps its ID"
+        );
     }
 
     #[test]

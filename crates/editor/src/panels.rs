@@ -6,7 +6,7 @@ use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
 use crate::key_owner::KeyOwner;
 use crate::level_panel::{LevelPanelState, LevelRequest, level_tree};
-use crate::library::{LibraryRequest, LibraryState, ProjectInfo, library};
+use crate::library::{LibraryRequest, LibraryState, Place as LibraryPlace, ProjectInfo, library};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{AssemblyPart, PropertyRequest, properties};
@@ -217,6 +217,7 @@ impl PanelViewer<'_> {
             | Panel::Properties
             | Panel::Library
             | Panel::Assets
+            | Panel::Folders
             | Panel::Placement
             | Panel::Code
             | Panel::Console
@@ -254,6 +255,7 @@ impl PanelViewer<'_> {
             | Panel::Properties
             | Panel::Library
             | Panel::Assets
+            | Panel::Folders
             | Panel::Placement
             | Panel::Code
             | Panel::Console
@@ -313,7 +315,8 @@ impl PanelViewer<'_> {
 
     /// The tools `panel` puts in its slot's header, laid out from the
     /// right: the Level panel's search and Fold everything; the Bus
-    /// panel's Ducking or Effects.
+    /// panel's Ducking or Effects; the Library's search, kind filter and
+    /// view.
     pub(crate) fn column_tools(&mut self, ui: &mut Ui, panel: Panel) {
         match panel {
             Panel::Level => {
@@ -324,6 +327,11 @@ impl PanelViewer<'_> {
             Panel::Bus => self
                 .mixer_requests
                 .extend(crate::bus_view::switch(ui, self.mixer)),
+            // The Library as a column beside the view: its browser's tools.
+            Panel::Assets if !self.placing && self.project.is_some() => {
+                let name = self.project.map(|p| p.name.clone()).unwrap_or_default();
+                crate::library::tools(ui, self.library_state, &name);
+            }
             _ => {}
         }
     }
@@ -332,6 +340,20 @@ impl PanelViewer<'_> {
     /// panel's folding, showing and unlocking. Returns whether it put
     /// any.
     pub(crate) fn column_menu(&mut self, ui: &mut Ui, panel: Panel) -> bool {
+        if panel == Panel::Folders {
+            let trees = &mut self.library_state.trees;
+            let room = trees.list.len() < crate::library::MOST_TREES;
+            let another = ui
+                .add_enabled_ui(room, |ui| {
+                    crate::widgets::menu::item(ui, "Open another tree", "")
+                })
+                .inner;
+            if another.clicked() {
+                trees.open_another(trees.list.len() - 1);
+                ui.close();
+            }
+            return true;
+        }
         if panel != Panel::Level {
             return false;
         }
@@ -519,25 +541,49 @@ impl PanelViewer<'_> {
                     self.project,
                     (self.library, self.folders),
                     self.library_state,
-                    self.accent,
-                    code,
+                    (self.accent, LibraryPlace::Tab, code),
                     self.sounds,
                 );
                 self.library_requests.extend(requests);
             }
-            Panel::Assets => {
-                // While placing, beside how placed things land: the
-                // placing form.
-                let placing = self.placing;
+            // The same browser under the view (decision 0118), or, while
+            // placing, beside how placed things land, the placing form.
+            Panel::Assets if self.placing => {
                 let requests = crate::assets_column::assets(
                     ui,
-                    (self.project.is_some(), placing),
+                    self.project.is_some(),
                     self.library,
                     self.library_state,
                     self.sounds,
                 );
                 self.library_requests.extend(requests);
             }
+            Panel::Assets => {
+                let requests = library(
+                    ui,
+                    self.project,
+                    (self.library, self.folders),
+                    self.library_state,
+                    (self.accent, LibraryPlace::Under, false),
+                    self.sounds,
+                );
+                self.library_requests.extend(requests);
+            }
+            Panel::Folders => match self.project {
+                Some(project) => {
+                    let files = crate::library::Files {
+                        project,
+                        items: self.library,
+                        folders: self.folders,
+                        accent: self.accent,
+                        sounds: self.sounds,
+                    };
+                    let mut asked = Vec::new();
+                    crate::library::folder_trees(ui, files, self.library_state, &mut asked);
+                    self.library_requests.extend(asked);
+                }
+                None => empty_note(ui, "No project is open: its folders show here."),
+            },
             Panel::Placement => {
                 crate::placement::placement(ui, &mut self.viewport.snapping);
             }

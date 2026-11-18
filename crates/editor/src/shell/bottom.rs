@@ -33,9 +33,6 @@ pub(crate) struct BottomNow {
     pub(crate) hidden: Vec<(Slot, Column)>,
     /// The layout in use, for the placing column's edge.
     pub(crate) layout: PanelLayout,
-    /// Whether this is the Library tab's, which counts the folder's
-    /// files even while folded.
-    pub(crate) library_tab: bool,
 }
 
 impl BottomNow {
@@ -168,9 +165,6 @@ fn folded_line(
     row.with_layout(Layout::right_to_left(Align::Center), |ui| {
         ui.spacing_mut().item_spacing.x = size::GAP;
         show_buttons(ui, now, &mut asks);
-        if now.library_tab {
-            library_count(ui, viewer);
-        }
         quiet(
             ui,
             "Click a name to open it",
@@ -481,6 +475,14 @@ fn tools(
     if front == Some(BottomTab::Library) && tab == RibbonTab::Home {
         place = place_switch(ui, viewer.placing);
     }
+    // The browser's tools, as on the Library tab (board 03).
+    if front == Some(BottomTab::Library)
+        && !viewer.placing
+        && let Some(project) = viewer.project
+    {
+        let name = project.name.clone();
+        crate::library::tools(ui, viewer.library_state, &name);
+    }
     if tab == RibbonTab::Animate {
         let parts = vec![
             Entry::Unbuilt(UnbuiltId::HomeShelfFrameCounter),
@@ -501,31 +503,7 @@ fn tools(
     if front == Some(BottomTab::Console) {
         crate::console::console_tools(ui, viewer.console);
     }
-    if tab == RibbonTab::Library {
-        library_count(ui, viewer);
-    }
     place
-}
-
-/// "48 items · 1 selected" (spec 315), the Library tab's folder shown,
-/// on its bar open or folded.
-fn library_count(ui: &mut Ui, viewer: &PanelViewer<'_>) {
-    if viewer.project.is_none() {
-        return;
-    }
-    let state = &viewer.library_state;
-    let items = viewer
-        .library
-        .iter()
-        .filter(|item| item.folder() == state.folder)
-        .count();
-    let picked = usize::from(state.selected.is_some());
-    quiet(
-        ui,
-        &format!("{items} items \u{b7} {picked} selected"),
-        text::ui(),
-        tokens::text_meta(),
-    );
 }
 
 /// The Library's Place switch on Home: lit while placing (the ribbon in

@@ -2,7 +2,7 @@
 //! groups of kinds its chips show. Split from the Library's `mod.rs` so
 //! neither is long (review finding DEBT-08).
 
-use super::MenuAction;
+use super::menus::MenuAction;
 use crate::icons::Icon;
 use crate::theme;
 use egui::Color32;

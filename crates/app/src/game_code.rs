@@ -160,7 +160,7 @@ fn asset_paths(assets: &Path, ext: &str) -> Vec<String> {
                 continue;
             };
             let path = entry.path();
-            if name.starts_with('.') {
+            if name.starts_with('.') || (folder == assets && asset_db::is_own(Path::new(&name))) {
                 continue;
             }
             if kind.is_dir() {
@@ -182,6 +182,19 @@ fn asset_paths(assets: &Path, ext: &str) -> Vec<String> {
     }
     found.sort();
     found
+}
+
+/// The project's own folder, for its files' folder `files`: itself when
+/// the project file is in it, otherwise the one holding it (an older
+/// project's `assets`).
+fn project_root_of(files: &Path) -> PathBuf {
+    if files.join(asset_db::PROJECT_FILE).is_file() {
+        files.to_path_buf()
+    } else {
+        files
+            .parent()
+            .map_or_else(|| files.to_path_buf(), Path::to_path_buf)
+    }
 }
 
 /// The most of each kind of file named in `solis/project.lst`: past it,
@@ -228,7 +241,11 @@ impl GameCode {
             maps,
             pictures,
         } = animation;
-        let root = assets.parent();
+        // The settings beside the project file (input actions, buses): the
+        // files' own folder for a project made now, the one holding an
+        // older project's assets folder.
+        let root = Some(project_root_of(assets));
+        let root = root.as_deref();
         let names = script::project_names::Names {
             assemblies: asset_paths(assets, asset_db::ASSEMBLY_EXTENSION),
             sounds: asset_paths(assets, sound::event::EXTENSION),
@@ -249,8 +266,7 @@ impl GameCode {
                 .iter()
                 .filter_map(|p| script::screens::screen_name(&format!("{p}.lst")))
                 .collect(),
-            actions: assets
-                .parent()
+            actions: root
                 .map_or_else(input::Bindings::default, |root| {
                     crate::play_files::load_bindings(root).0
                 })
@@ -546,6 +562,16 @@ mod tests {
         finished(code);
         assert!(!code.waiting());
         code.take_notes()
+    }
+
+    #[test]
+    fn game_code_leaves_out_the_folders_the_asset_database_does() {
+        assert_eq!(script::code::LEFT_OUT, asset_db::OWN_FOLDERS);
+        let (_temp, assets) = folder("project-root");
+        let root = assets.parent().unwrap().to_path_buf();
+        assert_eq!(project_root_of(&assets), root, "an older project's assets");
+        std::fs::write(root.join(asset_db::PROJECT_FILE), "name = \"x\"\n").unwrap();
+        assert_eq!(project_root_of(&root), root, "a project's own folder");
     }
 
     #[test]

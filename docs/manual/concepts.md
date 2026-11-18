@@ -70,13 +70,15 @@
 ## Projects
 
 - **Lust data file:** a Lust file that only holds values, read by Solis without running anything. Everything Solis makes (tile maps, tilesets, and the rest as they move over) is one, named for what it holds: `farm.tilemap.lst`. See [Backups and upgrades](backups-and-upgrades.md).
-- **Project:** a folder holding one game: its assets, settings and levels. See [Projects and the Library](projects-and-the-library.md).
+- **Project:** a folder holding one game: its files (assets, levels, code) in folders of your own, and its settings. See [Projects and the Library](projects-and-the-library.md).
 - **Launcher:** the small window Solis starts in, listing your projects as cards, where you open, make, pin and tidy them, with Learn and Updates beside them. Opening a project turns it into the editor; **File › Close project** brings it back. See [The launcher](launcher.md).
 - **Project kind:** whether a project is **2D** (sprites and tile maps), **3D** (models, lights and cameras) or **both**. It's chosen when the project is made, kept in its `project.solis`, shown on its card in the launcher, and changed in **Project settings › General › Kind**. Projects made before it was asked are both. For now it's kept and shown; a later update makes a 2D project hide the parts only 3D games use. See [The launcher](launcher.md#new-project).
 - **Build:** one numbered version of Solis, made from the code at one moment (build 57, then 58). Installed copies update from one build to the next; each project remembers the build that last opened it.
 - **Asset:** a file the game uses: a model, a picture, a sound, an assembly, code.
 - **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.
-- **Library:** the panel showing the project's files, folder by folder, with thumbnails; drag from it to place things.
+- **Library:** the browser of the project's own folders and files, with thumbnails, the same under Home's view and on the Library tab; drag from it to place things, right-click to make, rename or delete them. See [Projects and the Library](projects-and-the-library.md).
+- **Breadcrumb:** the line over the Library's files naming the folder you're in and the ones holding it (*Farm Days › farm*); click a part to go there.
+- **Folder tree:** the project's folders as a list that folds and unfolds, each under the one holding it. Home's left slot can show the project as folder trees, several side by side, instead of the Level panel.
 - **Thumbnail:** a small picture of a file, so you can see what a model or picture is without opening it.
 - **Recycle Bin:** where deleted files wait until you empty it; deleting in the Library sends files there, so nothing is lost by accident.
 - **Cache:** files Solis makes to work faster (models it has already read). Safe to delete: they're made again.
