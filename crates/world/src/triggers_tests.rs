@@ -335,3 +335,87 @@ fn many_walkers_among_many_zones_are_the_same_on_one_core_or_four() {
     assert!(one.0.len() > 50, "{} crossings", one.0.len());
     assert_eq!(one, four);
 }
+
+/// A level of `zones` zones in a grid (boxes, circles and freeform Ls in
+/// turn) and `walkers` 2D characters spread among them.
+fn crowded(zones: usize, walkers: usize) -> (World, Vec<EntityId>) {
+    let mut level = Level::new();
+    let ell: Vec<Vec2> = [
+        (-1.5, -1.5),
+        (1.5, -1.5),
+        (1.5, 0.0),
+        (0.0, 0.0),
+        (0.0, 1.5),
+        (-1.5, 1.5),
+    ]
+    .into_iter()
+    .map(|(x, y)| Vec2::new(x, y))
+    .collect();
+    let across = (zones as f32).sqrt().ceil() as usize;
+    for n in 0..zones {
+        let zone = match n % 3 {
+            0 => TriggerZone::default(),
+            1 => TriggerZone {
+                form: ZoneForm::Round,
+                radius: 1.5,
+                ..TriggerZone::default()
+            },
+            _ => TriggerZone {
+                form: ZoneForm::Freeform,
+                points: ell.clone(),
+                ..TriggerZone::default()
+            },
+        };
+        let at = Vec2::new((n % across) as f32, (n / across) as f32) * 5.0;
+        level.spawn(
+            EntityData::new(&format!("Zone {n}"))
+                .with(&at_place(at))
+                .with(&zone),
+        );
+    }
+    let side = across as f32 * 5.0;
+    let ids = (0..walkers)
+        .map(|n| {
+            let x = (n as f32 * 7.31) % side;
+            let y = (n as f32 * 3.17) % side;
+            level.spawn(walker(&format!("W{n}"), x, y))
+        })
+        .collect();
+    (World::from_level(&level), ids)
+}
+
+fn at_place(p: Vec2) -> Transform {
+    at(p.x, p.y)
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_2000_characters_among_500_zones() {
+    // Stage 1's scale case: 2,000 characters walking among 500 zones (a
+    // third of them freeform), the overlap pass once a tick. Its share of
+    // a 60th of a second.
+    const TARGET_MS: f64 = 2.0;
+    let (mut world, walkers) = crowded(500, 2_000);
+    let ticks = 120;
+    let mut pass = std::time::Duration::ZERO;
+    let mut crossings = 0;
+    for t in 0..ticks {
+        let way = if t % 60 < 30 { 1.0 } else { -1.0 };
+        for (i, &who) in walkers.iter().enumerate() {
+            let turn = if i % 2 == 0 { way } else { -way };
+            world.move_character(who, Vec3::new(0.08 * turn, 0.05 * way, 0.0));
+        }
+        world.step_physics();
+        let started = std::time::Instant::now();
+        crossings += world.overlap_zones().len();
+        pass += started.elapsed();
+    }
+    let ms = pass.as_secs_f64() * 1000.0 / f64::from(ticks);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: the overlap pass, 2,000 characters among 500 zones {ms:.3} ms a tick \
+         ({crossings} crossings; target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(crossings > 0, "they walk in and out");
+    assert!(ms <= TARGET_MS, "the overlap pass takes {ms:.3} ms a tick");
+}
