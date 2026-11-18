@@ -192,7 +192,7 @@ fn many_random_changes_follow_as_the_whole_way_does() {
     for case in 0..200 {
         let pick = |n: u64| Light {
             strength: strengths[n as usize % 4],
-            shadows: n % 2 == 0,
+            shadows: n.is_multiple_of(2),
             ..Light::point()
         };
         let (was, now) = (pick(next(8)), pick(next(8)));
