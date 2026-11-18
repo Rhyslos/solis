@@ -128,3 +128,22 @@ fn scale_check_the_library_with_10000_files_searched_and_2000_folders() {
     );
     assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_editor_frame_in_a_2d_project_with_10000_entities_and_10000_files() {
+    // R6: a 2D project's lists are filtered as they're built (the kind
+    // table, `kinds.rs`), and each Level panel row in view asks its
+    // entity's kind: neither may cost a frame anything to speak of.
+    let both = frame_ms(full(10_000, crate::shell::PanelLayout::default()));
+    let mut w = full(10_000, crate::shell::PanelLayout::default());
+    w.apply_project_kind(crate::launcher::ProjectKind::TwoD);
+    let ms = frame_ms(w);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: editor frame on Home in a 2D project, 10,000 entities and 10,000 files \
+         listed {ms:.2} ms (Both {both:.2} ms; target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}

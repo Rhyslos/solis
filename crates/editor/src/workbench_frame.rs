@@ -330,6 +330,9 @@ impl Workbench {
         // follow the density read it there, and so does everything that
         // draws an unfinished part or leaves it out.
         crate::interface_look::use_look(self.interface_look());
+        // So is the project's kind: lists drawn without the workbench at
+        // hand (menus, Add component, a component's card) read it there.
+        crate::kinds::use_kind(self.open.kind);
         self.shell.sizes.per_tab = self.interface.sizes_per_tab;
         self.settle_tab();
         self.profiler.add(

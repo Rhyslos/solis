@@ -418,22 +418,36 @@ impl Card<'_> {
             .filter_map(|&e| level.get(e))
             .filter_map(|d| d.components.get(component))
             .collect();
+        // A component of the kind the project hides is shown, never lost,
+        // but not edited (R6): a quiet note says how to edit it.
+        let kind = crate::kinds::component(component);
+        let editable = crate::kinds::shown(kind);
+        if let Some(note) = kind.note().filter(|_| !editable) {
+            cards::kind_note(ui, &note);
+        }
         if component == <level::builtin::Brush as reflect::Component>::NAME
             && !many
             && let Some(facts) = self.help.brush
         {
-            self.brush_card(ui, (schema, data), facts, requests);
+            ui.add_enabled_ui(editable, |ui| {
+                self.brush_card(ui, (schema, data), facts, requests);
+            });
             return;
         }
-        for change in inspector::fields(
-            ui,
-            schema,
-            data,
-            (prefab, &yours),
-            &others,
-            self.assets,
-            (level, &self.document.asset_users()),
-        ) {
+        let changes = ui
+            .add_enabled_ui(editable, |ui| {
+                inspector::fields(
+                    ui,
+                    schema,
+                    data,
+                    (prefab, &yours),
+                    &others,
+                    self.assets,
+                    (level, &self.document.asset_users()),
+                )
+            })
+            .inner;
+        for change in changes.into_iter().filter(|_| editable) {
             let component = component.to_owned();
             requests.push(match change {
                 FieldChange::Set { field, value, part } if many => PropertyRequest::SetFieldMany {

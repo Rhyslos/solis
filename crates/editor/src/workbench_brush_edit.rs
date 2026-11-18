@@ -36,7 +36,10 @@ impl Workbench {
             return;
         }
         let editing = self.viewport.brushing.edit.is_some();
-        if !editing && self.why_not_edit_brush().is_some() {
+        let refused = crate::shell::ShellCommand::EditBrushInsides
+            .why_not(self)
+            .is_some();
+        if !editing && refused {
             return;
         }
         if self.is_pulling() {

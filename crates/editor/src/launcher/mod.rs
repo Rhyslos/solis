@@ -37,8 +37,9 @@ use egui::Ui;
 use std::path::PathBuf;
 
 /// What a project makes: 2D, 3D or both (decision 0118). The project file
-/// keeps it (`asset_db::ProjectKind`); R6 hides a 2D project's 3D-only
-/// parts. Projects from before it was asked are both.
+/// keeps it (`asset_db::ProjectKind`); a 2D project hides the editor's
+/// 3D-only parts and a 3D project its 2D-only ones (the kind table,
+/// `kinds.rs`). Projects from before it was asked are both.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum ProjectKind {
     /// Sprites and tile maps.
@@ -341,7 +342,22 @@ impl Workbench {
     /// The open project's kind, as its project file says (the app reads
     /// it as the project opens).
     pub fn set_project_kind(&mut self, kind: ProjectKind) {
+        self.apply_project_kind(kind);
+    }
+
+    /// Makes `kind` the open project's at once (as it opens, or from
+    /// Project settings › Kind): every part of the other kind goes or
+    /// comes back on the next frame, and a view showing a hidden view
+    /// kind turns into one the kind keeps. Each time a project opens as,
+    /// or is switched to, 2D or 3D counts towards the first few times
+    /// Home's note says what it hides.
+    pub(crate) fn apply_project_kind(&mut self, kind: ProjectKind) {
+        if kind.note().is_some() {
+            let seen = &mut self.interface.kind_note_seen;
+            *seen = seen.saturating_add(1);
+        }
         self.open.kind = kind;
+        self.viewport.fit_kind(kind);
     }
 
     /// The open project's kind.

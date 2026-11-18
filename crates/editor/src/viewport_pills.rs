@@ -27,10 +27,13 @@ impl Viewport {
         let mut row = corner(ui, rect, "view pills", Layout::left_to_right(Align::Min));
         row.spacing_mut().item_spacing.x = size::PILL_GAP;
         self.view_pill(&mut row, several);
-        let look = &mut self.look;
-        let shown = format!("{} ▾", look.kind.name());
-        let response = pill(&mut row, &shown);
-        drop_down(&response, |ui| look_menu(ui, look));
+        // How models are shaded: 3D only (the kind table).
+        if crate::kinds::shown(crate::kinds::setting(crate::file_pages::Setting::Look)) {
+            let look = &mut self.look;
+            let shown = format!("{} ▾", look.kind.name());
+            let response = pill(&mut row, &shown);
+            drop_down(&response, |ui| look_menu(ui, look));
+        }
         let response = pill(&mut row, "Show ▾");
         let overlays = &mut self.overlays;
         drop_down(&response, |ui| {
@@ -51,15 +54,25 @@ impl Viewport {
     /// The view's pill: which view this is, and how many views there are.
     fn view_pill(&mut self, ui: &mut Ui, several: bool) {
         let kind = self.camera.kind;
-        let response = pill(ui, &format!("{} ▾", kind.name()));
+        // The 2D view says its zoom too (board 08): "2D · 200% ▾".
+        let words = if kind == ViewKind::TwoD {
+            format!("{} \u{b7} {:.0}% ▾", kind.name(), self.camera.zoom * 100.0)
+        } else {
+            format!("{} ▾", kind.name())
+        };
+        let response = pill(ui, &words);
         let mut chosen = None;
         let mut layout = None;
         let alone = self.maximized == Some(self.active);
         let mut toggle_alone = false;
         let current = self.layout;
         drop_down(&response, |ui| {
-            for each in ViewKind::ALL {
-                if each == ViewKind::TwoD {
+            // Only the views the project's kind keeps (the kind table).
+            let views = ViewKind::ALL
+                .into_iter()
+                .filter(|each| crate::kinds::shown(crate::kinds::view(*each)));
+            for each in views {
+                if each == ViewKind::TwoD && kind_has_3d() {
                     menu::line(ui);
                 }
                 let label = match each {
@@ -206,6 +219,12 @@ impl Viewport {
         locks_pill(&mut row, snapping, 2);
         row.min_rect()
     }
+}
+
+/// Whether the project's kind keeps the 3D views: the 2D view is set
+/// apart under a line only when they're there.
+fn kind_has_3d() -> bool {
+    crate::kinds::shown(crate::kinds::view(ViewKind::Perspective))
 }
 
 /// A child of `ui` filling the view's `rect` less the pills' margin, laid

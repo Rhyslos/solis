@@ -18,4 +18,4 @@ The File tab's own pages (the design's Screens 8, 12 and 13, and the approved ad
 | `layout_page.rs` | Preferences › Layout (decision 0118, board 06): the layouts as cards three to a row, the Preview box showing the one pointed at, the note with Undo after one is chosen, and the panels' sizes. |
 | `layout_miniature.rs` | A layout drawn small, on its card and large in the Preview box with each part named. |
 
-Tests: `tests.rs` (the File column, About, a project's build, renaming), `settings_tests.rs` (Preferences), `input_page_tests.rs` (when Input saves); the 2D tab's are in `two_d_tests.rs`, the export's in `export_dialog_tests.rs`.
+Tests: `tests.rs` (the File column, About, a project's build, renaming), `settings_tests.rs` (Preferences), `input_page_tests.rs` (when Input saves), `kind_tests.rs` (a 2D or 3D project's settings leave out the other kind's, on their sub-tabs and in the search; R6); the 2D tab's are in `two_d_tests.rs`, the export's in `export_dialog_tests.rs`.

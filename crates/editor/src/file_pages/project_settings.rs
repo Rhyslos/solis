@@ -205,14 +205,16 @@ impl Workbench {
         }
     }
 
-    /// The project's kind: 2D, 3D or Both, saved in its project file at
-    /// once.
+    /// The project's kind: 2D, 3D or Both, saved in its project file and
+    /// applied at once (no restart). Like every project setting it isn't
+    /// an undo step: choosing the old kind again puts everything back, as
+    /// nothing was deleted.
     fn project_kind_control(&mut self, ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {
         use crate::launcher::ProjectKind;
         let mut kind = self.open.kind;
         let choices = ProjectKind::ALL.map(|k| (k, k.name()));
         if segmented(ui, "Kind", &mut kind, &choices) && kind != self.open.kind {
-            self.open.kind = kind;
+            self.apply_project_kind(kind);
             asked.push(WorkbenchAction::SetProjectKind(kind));
         }
     }

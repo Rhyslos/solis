@@ -260,6 +260,21 @@ const FRAME_TIME_SMOOTHING: f32 = 0.05;
 const IDLE_GAP: f32 = 0.25;
 
 impl Viewport {
+    /// Turns each view showing a view kind a project of `kind` hides into
+    /// the kind's own (the 2D view, or the perspective one), keeping
+    /// every other view as it is.
+    pub(crate) fn fit_kind(&mut self, kind: crate::launcher::ProjectKind) {
+        let fits = |camera: &Camera| kind.shows(crate::kinds::view(camera.kind));
+        if !fits(&self.camera) {
+            self.camera = self.camera.as_kind(kind.first_view());
+        }
+        for pane in &mut self.panes {
+            if !fits(&pane.camera) {
+                pane.camera = pane.camera.as_kind(kind.first_view());
+            }
+        }
+    }
+
     /// Forgets everything of the project that was open, keeping what is
     /// the user's own. Every field is named, so a new one can't be added
     /// without deciding which it is.

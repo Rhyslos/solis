@@ -683,7 +683,11 @@ fn row_menu(ui: &mut Ui) -> Option<MenuCommand> {
         if n > 0 {
             widgets::menu::line(ui);
         }
-        for &(words, key, command) in *group {
+        // Only what the project's kind keeps (the kind table).
+        let of_kind = group
+            .iter()
+            .filter(|(_, _, command)| crate::kinds::shown(crate::kinds::menu(*command)));
+        for &(words, key, command) in of_kind {
             if widgets::menu::item(ui, words, key).clicked() {
                 picked = Some(command);
                 ui.close();
@@ -839,7 +843,14 @@ fn entity_row(
         }
         return;
     }
-    let (icon, color, note) = looks(entity, models);
+    let (icon, color, mut note) = looks(entity, models);
+    // Something of the kind the project hides is still listed (R6), its
+    // quiet words saying so: "3D only".
+    let kind = crate::kinds::entity(entity);
+    let off_kind = kind.note().filter(|_| !crate::kinds::shown(kind));
+    if let Some(only) = kind.only().filter(|_| off_kind.is_some()) {
+        only.clone_into(&mut note);
+    }
     let toggles = Toggles {
         hidden: state.hidden.contains(&id),
         locked: state.locked.contains(&id),
@@ -855,6 +866,10 @@ fn entity_row(
         accent,
         toggles,
     );
+    let response = match off_kind {
+        Some(why) => response.on_hover_text(why),
+        None => response,
+    };
     if response.secondary_clicked() && !selected {
         // The menu acts on the selection: the row pointed at becomes it.
         requests.push(LevelRequest::Select(id));

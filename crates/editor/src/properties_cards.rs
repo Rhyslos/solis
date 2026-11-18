@@ -294,6 +294,20 @@ fn with_keycaps(hint: &str, ink: egui::Color32) -> egui::text::LayoutJob {
     job
 }
 
+/// The quiet line on a component of the kind the project hides: "3D
+/// only: switch the project to Both to edit it" (decision 0118, R6).
+pub(crate) fn kind_note(ui: &mut Ui, note: &str) {
+    ui.label(
+        egui::RichText::new(note)
+            .font(text::row())
+            .color(tokens::text_meta()),
+    )
+    .on_hover_text(
+        "Nothing in the project is deleted when its kind changes: File › Project settings › Kind \
+         shows this again.",
+    );
+}
+
 /// The Model card's rows the design has and Solis doesn't yet: a model
 /// has one setting today, the model itself (found while mocking up,
 /// round 2).

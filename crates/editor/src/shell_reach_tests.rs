@@ -627,3 +627,58 @@ fn what_home_s_ribbon_and_the_shelf_gave_up_is_still_reachable() {
     do_command(&mut h.state_mut().0, &ctx, "Stop placing");
     assert!(!h.state().0.placing());
 }
+
+/// Nothing of a project's own kind became unreachable when the other
+/// kind's parts were hidden (decision 0118, R6): in a 2D and in a 3D
+/// project, every old menu item of a kind it shows is a command that can
+/// be done and that the search lists, and every panel of a kind it shows
+/// is reached in every layout. The items it hides are refused, saying
+/// why.
+#[test]
+fn everything_of_each_kind_is_reachable() {
+    use crate::kinds;
+    use crate::launcher::ProjectKind;
+    use crate::panel::Panel;
+    use crate::shell::PanelLayout;
+    for kind in [ProjectKind::TwoD, ProjectKind::ThreeD] {
+        for (was, name, _) in MOVED {
+            let mut w = at_the_moment_for(name);
+            w.apply_project_kind(kind);
+            let command = ShellCommand::named(name, &w)
+                .unwrap_or_else(|| panic!("{was} has no command called {name:?}"));
+            let part = kinds::command(command);
+            if !kind.shows(part) {
+                assert_eq!(command.why_not(&w), part.use_note(), "{was} in {kind:?}");
+                continue;
+            }
+            assert_eq!(command.why_not(&w), None, "{was} in {kind:?}");
+            assert!(
+                w.search_items().iter().any(|item| item.name == name),
+                "{was} in {kind:?}: the search lists {name:?}"
+            );
+        }
+        for layout in PanelLayout::ALL {
+            let mut w = crate::test_support::in_layout(layout);
+            w.set_project(Some(crate::library::ProjectInfo {
+                name: "Farm".into(),
+                root: "/projects/farm".into(),
+                assets: "/projects/farm/assets".into(),
+            }));
+            w.apply_project_kind(kind);
+            w.choose_layout(&egui::Context::default(), layout);
+            let mut h = harness(w);
+            h.run();
+            let panels = Panel::ALL
+                .into_iter()
+                .filter(|panel| kind.shows(kinds::panel(*panel)));
+            for panel in panels {
+                h.state_mut().0.show_panel(panel);
+                h.run();
+                assert!(
+                    h.state().0.panels_shown().contains(&panel),
+                    "{panel:?} in {layout:?}, {kind:?}"
+                );
+            }
+        }
+    }
+}

@@ -9,6 +9,7 @@
 use crate::console::LogLevel;
 use crate::file_history::FileHistory;
 use crate::own_files::OwnFile;
+use crate::panel::Panel;
 use crate::sprite_sheets::MapFileState;
 use crate::workbench::Workbench;
 use glam::Vec3;
@@ -312,7 +313,10 @@ impl Workbench {
     /// tab is there while it does (each frame, before the panels are
     /// drawn).
     pub(crate) fn follow_map_selection(&mut self) {
-        let selected = self.selected_map_path().map(|(_, p)| p);
+        // The Map tab and the painter are 2D only (the kind table): in a
+        // 3D project a tile map is listed and shown, not painted.
+        let paints = self.open.kind.shows(crate::kinds::panel(Panel::Map));
+        let selected = self.selected_map_path().map(|(_, p)| p).filter(|_| paints);
         if selected != self.open.map_edits.path {
             self.open.map_edits.hovered = None;
         }

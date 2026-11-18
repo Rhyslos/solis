@@ -24,6 +24,7 @@ Draw the editor with egui, keep its state between frames (the frame's arrangemen
 - `widgets/`: the kit, the design's own controls (fields, switch, segmented control, chips, buttons, cards, rows and more), which the screens take up one milestone at a time.
 - `unbuilt.rs` and `unbuilt/`: the one way an unfinished part is drawn, the table of them, and the filter that takes them out when **Hide unfinished parts** is on (decision 0101).
 - `launcher/`: the launcher (decision 0118), drawn in place of the editor while it shows: the projects as cards with their kind (2D, 3D or both), New project, Learn and Updates.
+- `kinds.rs`: the kind table (decision 0118, R6): which tabs, commands, menu items, components, settings, views and panels are 2D's, 3D's or shared, so a 2D project hides the 3D-only parts and a 3D project the 2D-only ones, every list filtered as it's built.
 - `file_pages/`: the File tab's pages: About, and Preferences and Project settings with their sub-tabs (the project's 2D settings, `level::pixels::PixelSettings`, saved with `WorkbenchAction::SavePixels`, decision 0062; Input; Build, Export for playtesting).
 
 Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workbench_tests.rs`. `proptest-regressions/` holds the random cases the invariant tests (`invariant_tests.rs`) once failed on, which proptest runs again first; it is written by proptest, so it has no README. `src/README.md` lists every file in `src/`.

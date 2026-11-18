@@ -35,7 +35,7 @@ pub(crate) use input_page::Slot;
 pub(crate) use page_parts::{button_row, page_head, plain, section, sentence, with_side};
 #[cfg(test)]
 pub(crate) use project_settings::fits;
-pub(crate) use settings::Tab;
+pub(crate) use settings::{Setting, Tab};
 
 use crate::tokens::{self, size};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -207,5 +207,7 @@ impl Workbench {
     }
 }
 
+#[cfg(test)]
+mod kind_tests;
 #[cfg(test)]
 mod tests;

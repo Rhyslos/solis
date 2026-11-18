@@ -12,6 +12,7 @@ use crate::library::Filter;
 use crate::menu_items::MenuCommand;
 use crate::play::PlayState;
 use crate::tile_paint::{PaintTool, Turn};
+use crate::transforming::PixelSnap;
 use crate::viewport::Tool;
 use crate::workbench::{Workbench, WorkbenchAction};
 
@@ -72,6 +73,12 @@ pub(crate) enum ShellCommand {
     SnapToGrid,
     SnapAngles,
     SnapScale,
+    /// In the 2D view, moves land on whole tiles (or, off, anywhere):
+    /// Home's ribbon in a 2D project (board 08).
+    SnapToTiles,
+    /// In the 2D view, moves land on the game's whole pixels (or, off,
+    /// anywhere).
+    PixelPerfect,
     ViewportTools,
     ViewportSnapping,
     ViewportStats,
@@ -252,7 +259,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 141] = [
+    pub(crate) const ALL: [Self; 143] = [
         C::CloseProject,
         C::NewLevel,
         C::OpenLevel,
@@ -291,6 +298,8 @@ impl ShellCommand {
         C::SnapToGrid,
         C::SnapAngles,
         C::SnapScale,
+        C::SnapToTiles,
+        C::PixelPerfect,
         C::ViewportTools,
         C::ViewportSnapping,
         C::ViewportStats,
@@ -398,6 +407,12 @@ impl ShellCommand {
 
     /// Why the command can't be done now, or `None` when it can.
     pub(crate) fn why_not(self, w: &Workbench) -> Option<String> {
+        // A part of the kind the project hides isn't offered anywhere
+        // (decision 0118, R6): not on a ribbon, not in the search.
+        let kind = crate::kinds::command(self);
+        if !w.open.kind.shows(kind) {
+            return kind.use_note();
+        }
         let state = w.play_state();
         let playing = state != PlayState::Editing;
         let selected = w.open.document.selection.primary().is_some();
@@ -534,6 +549,8 @@ impl ShellCommand {
             C::SnapAngles => w.viewport.snapping.angle,
             C::BrushSolid => w.edited_brush_solid()?,
             C::SnapScale => w.viewport.snapping.scale,
+            C::SnapToTiles => w.viewport.snapping.pixel_snap == PixelSnap::Tiles,
+            C::PixelPerfect => w.viewport.snapping.pixel_snap == PixelSnap::Pixels,
             C::ViewportTools => w.viewport.overlays.tools,
             C::ViewportSnapping => w.viewport.overlays.snapping,
             C::ViewportStats => w.viewport.overlays.stats,
@@ -599,6 +616,8 @@ impl ShellCommand {
             C::SnapToGrid => w.viewport.snapping.grid ^= true,
             C::SnapAngles => w.viewport.snapping.angle ^= true,
             C::SnapScale => w.viewport.snapping.scale ^= true,
+            C::SnapToTiles => w.viewport.snapping.pixel_snap.switch(PixelSnap::Tiles),
+            C::PixelPerfect => w.viewport.snapping.pixel_snap.switch(PixelSnap::Pixels),
             C::ViewportTools => w.viewport.overlays.tools ^= true,
             C::ViewportSnapping => w.viewport.overlays.snapping ^= true,
             C::ViewportStats => w.viewport.overlays.stats ^= true,

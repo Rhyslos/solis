@@ -398,6 +398,7 @@ fn damaged_looks_and_accents_never_stop_the_editor_starting() {
             shelf_opens_on: editor::interface_look::ShelfOpensOn::Entity,
             layout: editor::interface_look::PanelLayout::LibraryLeft,
             sizes_per_tab: false,
+            kind_note_seen: 2,
         };
         eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &look);
         storage.get_string(INTERFACE_LOOK_KEY).unwrap()

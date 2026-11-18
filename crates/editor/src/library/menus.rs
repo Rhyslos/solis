@@ -124,13 +124,27 @@ fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
     );
     ui.menu_button("More", |ui| {
         fit(ui, &["New tile map"]);
-        let more: [MoreRow; 3] = [
-            (Icon::TileMap, "New tile map", LibraryRequest::NewTileMap),
-            (Icon::Tileset, "New tileset", LibraryRequest::NewTileset),
-            (Icon::Animator, "New animator", LibraryRequest::NewAnimator),
+        use crate::shell::commands::NewFile;
+        let more: [(MoreRow, NewFile); 3] = [
+            (
+                (Icon::TileMap, "New tile map", LibraryRequest::NewTileMap),
+                NewFile::TileMap,
+            ),
+            (
+                (Icon::Tileset, "New tileset", LibraryRequest::NewTileset),
+                NewFile::Tileset,
+            ),
+            (
+                (Icon::Animator, "New animator", LibraryRequest::NewAnimator),
+                NewFile::Animator,
+            ),
         ];
-        for (icon, label, request) in more {
-            ask(ui, (icon, label), request(at.clone()), requests);
+        // Only what the project's kind keeps (the kind table).
+        for ((icon, label, request), new) in more {
+            let command = crate::shell::ShellCommand::NewInLibrary(new);
+            if crate::kinds::shown(crate::kinds::command(command)) {
+                ask(ui, (icon, label), request(at.clone()), requests);
+            }
         }
     });
 }
@@ -218,7 +232,8 @@ fn kind_rows(ui: &mut Ui, item: &LibraryItem, requests: &mut Vec<LibraryRequest>
         let crop = LibraryRequest::AtlasCrop(item.path.clone());
         ask(ui, (Icon::Crops, "Atlas Crop…"), crop, requests);
     }
-    if item.kind == LibraryKind::Model && !unbuilt::hidden() {
+    let viewer = crate::kinds::tab(crate::shell::RibbonTab::Model);
+    if item.kind == LibraryKind::Model && !unbuilt::hidden() && crate::kinds::shown(viewer) {
         let view = LibraryRequest::ViewModel(item.path.clone());
         ask(
             ui,
