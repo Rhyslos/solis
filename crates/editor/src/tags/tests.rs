@@ -9,8 +9,8 @@ use super::*;
 use crate::file_pages::Tab;
 use crate::properties::PropertyRequest;
 use crate::test_support::*;
-use level::EntityData;
 use egui_kittest::kittest::Queryable;
+use level::EntityData;
 use level::builtin::{Transform, TriggerZone};
 
 /// A workbench in a project with the tags Enemy and Flying, and a bat and
@@ -62,7 +62,10 @@ fn tags_are_made_with_names_checked_and_saved() {
     let (mut w, ..) = with_tags();
     let door = w.make_tag("Door").unwrap();
     assert_eq!(w.tags().name_of(door), Some("Door"));
-    assert_eq!(saves(&w).last().unwrap().names(), ["Enemy", "Flying", "Door"]);
+    assert_eq!(
+        saves(&w).last().unwrap().names(),
+        ["Enemy", "Flying", "Door"]
+    );
     for (bad, reason) in [
         ("door", "capital"),
         ("Big door", "no spaces"),
@@ -98,7 +101,11 @@ fn a_rename_reaches_every_level_prefab_and_game_code() {
     assert_eq!((used.entities, used.prefabs.len()), (1, 1));
     // Game code's name follows: Tag.Monster checks, Tag.Enemy doesn't.
     let names = script::project_names::Names::standard().and_tags(
-        &w.tags().names().iter().map(String::as_str).collect::<Vec<_>>(),
+        &w.tags()
+            .names()
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
     );
     let (text, _) = script::project_names::project_file("Test 1.0", &names);
     assert!(text.contains("state Tag = [Monster, Flying];"), "{text}");
@@ -130,7 +137,13 @@ fn adding_and_taking_off_a_tag_is_one_undo_step_each() {
     w.undo();
     assert!(tags_of(&w, bat).is_empty());
     assert!(
-        w.open.document.level().get(bat).unwrap().get::<Tags>().is_none(),
+        w.open
+            .document
+            .level()
+            .get(bat)
+            .unwrap()
+            .get::<Tags>()
+            .is_none(),
         "the first tag gave it its Tags; undone, it has none"
     );
     // New tag… makes one in the project and gives it, in one go.
@@ -148,7 +161,10 @@ fn several_picked_entities_show_and_change_the_tags_they_share() {
     assert_eq!(tags_of(&w, bat), [enemy]);
     assert_eq!(tags_of(&w, crow), [enemy]);
     w.undo();
-    assert!(tags_of(&w, bat).is_empty() && tags_of(&w, crow).is_empty(), "one step");
+    assert!(
+        tags_of(&w, bat).is_empty() && tags_of(&w, crow).is_empty(),
+        "one step"
+    );
     w.change_tags(&[bat, crow], TagAsk::Add(enemy));
     w.change_tags(&[bat], TagAsk::Add(flying));
     // Shown: only Enemy, which both carry.
@@ -158,7 +174,10 @@ fn several_picked_entities_show_and_change_the_tags_they_share() {
     h.run();
     h.run();
     assert!(h.query_by_label("Remove tag Enemy").is_some());
-    assert!(h.query_by_label("Remove tag Flying").is_none(), "only the bat flies");
+    assert!(
+        h.query_by_label("Remove tag Flying").is_none(),
+        "only the bat flies"
+    );
     h.get_by_label("Remove tag Enemy").click();
     h.run();
     let w = &h.state().0;
@@ -183,7 +202,10 @@ fn the_add_list_offers_the_project_s_tags_and_makes_a_new_one() {
     h.run();
     h.get_by_label("Search tags").type_text("Collectible");
     h.run();
-    assert!(h.query_by_label_contains("New tag \u{201c}Collectible").is_some());
+    assert!(
+        h.query_by_label_contains("New tag \u{201c}Collectible")
+            .is_some()
+    );
     h.key_press(egui::Key::Enter);
     h.run();
     let w = &h.state().0;
@@ -207,7 +229,11 @@ fn a_prefab_s_tags_are_on_every_copy_and_a_copy_s_own_change_wins() {
     let first = w.selection().unwrap();
     w.place_prefab(asset);
     let second = w.selection().unwrap();
-    assert_eq!(tags_of(&w, first), [enemy], "the prefab's tag is the copy's");
+    assert_eq!(
+        tags_of(&w, first),
+        [enemy],
+        "the prefab's tag is the copy's"
+    );
     assert!(!w.tags_changed_from_prefab(
         w.open.document.level().get(first).unwrap(),
         w.part_of(first).as_ref()
@@ -216,7 +242,10 @@ fn a_prefab_s_tags_are_on_every_copy_and_a_copy_s_own_change_wins() {
     w.change_tags(&[first], TagAsk::Add(flying));
     assert_eq!(tags_of(&w, first), [enemy, flying]);
     let changed = |w: &Workbench, id| {
-        w.tags_changed_from_prefab(w.open.document.level().get(id).unwrap(), w.part_of(id).as_ref())
+        w.tags_changed_from_prefab(
+            w.open.document.level().get(id).unwrap(),
+            w.part_of(id).as_ref(),
+        )
     };
     assert!(changed(&w, first));
     assert!(!changed(&w, second));
@@ -224,7 +253,10 @@ fn a_prefab_s_tags_are_on_every_copy_and_a_copy_s_own_change_wins() {
     // keeps its own.
     tagged.level.get_mut(root).unwrap().set(&Tags::default());
     w.set_prefab(asset, Arc::new(tagged));
-    assert!(tags_of(&w, second).is_empty(), "the copy follows its prefab");
+    assert!(
+        tags_of(&w, second).is_empty(),
+        "the copy follows its prefab"
+    );
     assert_eq!(tags_of(&w, first), [enemy, flying], "its own change wins");
     // ↶ puts the prefab's back.
     w.change_tags(&[first], TagAsk::Revert);
@@ -251,20 +283,24 @@ fn the_level_panel_shows_tags_and_its_search_finds_them() {
     let note = |w: &Workbench, id| {
         crate::level_panel::tags_note(&w.open.tags, w.open.document.level().get(id).unwrap())
     };
-    assert_eq!(note(&w, bat).as_deref(), Some("Enemy \u{b7} Flying"), "after its name");
+    assert_eq!(
+        note(&w, bat).as_deref(),
+        Some("Enemy \u{b7} Flying"),
+        "after its name"
+    );
     assert_eq!(note(&w, crow).as_deref(), Some("Flying"));
     let state = &mut w;
     state.open.level_panel.search = "enem".into();
-    let rows = state
-        .open
-        .level_panel
-        .rows(&state.open.document, (&state.open.tags, state.open.tags_revision));
+    let rows = state.open.level_panel.rows(
+        &state.open.document,
+        (&state.open.tags, state.open.tags_revision),
+    );
     assert_eq!(rows.iter().map(|(id, _)| *id).collect::<Vec<_>>(), [bat]);
     state.open.level_panel.search = "fly".into();
-    let rows = state
-        .open
-        .level_panel
-        .rows(&state.open.document, (&state.open.tags, state.open.tags_revision));
+    let rows = state.open.level_panel.rows(
+        &state.open.document,
+        (&state.open.tags, state.open.tags_revision),
+    );
     let mut found: Vec<EntityId> = rows.iter().map(|(id, _)| *id).collect();
     found.sort();
     let mut both = vec![bat, crow];
@@ -273,10 +309,10 @@ fn the_level_panel_shows_tags_and_its_search_finds_them() {
     // A renamed tag is found by its new name at once.
     state.rename_tag(enemy, "Monster").unwrap();
     state.open.level_panel.search = "monst".into();
-    let rows = state
-        .open
-        .level_panel
-        .rows(&state.open.document, (&state.open.tags, state.open.tags_revision));
+    let rows = state.open.level_panel.rows(
+        &state.open.document,
+        (&state.open.tags, state.open.tags_revision),
+    );
     assert_eq!(rows.len(), 1);
 }
 
@@ -336,7 +372,10 @@ fn the_page_makes_and_renames_tags_by_name() {
     h.run();
     h.get_by_label("Tag name").type_text("big door");
     h.run();
-    assert!(h.query_by_label_contains("Try BigDoor").is_some(), "a refused name says why");
+    assert!(
+        h.query_by_label_contains("Try BigDoor").is_some(),
+        "a refused name says why"
+    );
     h.key_press(egui::Key::Enter);
     h.run();
     assert_eq!(h.state().0.tags().len(), 2, "not kept");

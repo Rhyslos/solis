@@ -30,6 +30,10 @@ fn id(n: u64) -> EntityId {
     EntityId(reflect::Id::from_raw(n).unwrap())
 }
 
+fn tag(n: u64) -> reflect::TagId {
+    reflect::TagId(reflect::Id::from_raw(n).unwrap())
+}
+
 /// The sign: a Sprite playing "wave", a sound that plays, an Animator, a
 /// tile map, a body, a Screen showing the Hud, and a Light for the edits
 /// to change.
@@ -109,6 +113,8 @@ const ON_AN_ENTITY: &[(&str, Asks)] = &[
     ("entity_hideScreen", || {
         Change::ShowScreen(id(SIGN), "Hud".into(), false)
     }),
+    ("entity_addTag", || Change::Tag(id(SIGN), tag(2), true)),
+    ("entity_removeTag", || Change::Tag(id(SIGN), tag(1), false)),
 ];
 
 /// Every other call: it asks something, or what it sets isn't on an
@@ -116,6 +122,9 @@ const ON_AN_ENTITY: &[(&str, Asks)] = &[
 /// input) or is the level's own (an entity made or taken out).
 const NOT_ON_AN_ENTITY: &[&str] = &[
     "entity_inside",
+    "entity_hasTag",
+    "World_within",
+    "World_nearest",
     "World_say",
     "World_time",
     "World_find",
@@ -263,7 +272,8 @@ fn stage(files: (AssetId, AssetId)) -> Workbench {
         })
         .with(&RigidBody::default())
         .with(&Collider::default())
-        .with(&Screen::showing("Hud"));
+        .with(&Screen::showing("Hud"))
+        .with(&level::builtin::Tags::of([tag(1)]));
     let walker = EntityData::new("Walker")
         .with(&Transform {
             position: Vec3::new(20.0, 0.0, 0.0),

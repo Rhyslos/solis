@@ -222,11 +222,11 @@ mod shell_reach_tests;
 #[cfg(test)]
 mod source_rules_tests;
 #[cfg(test)]
-mod tools_1a_gate_tests;
-#[cfg(test)]
 mod tag_picture_tests;
 #[cfg(test)]
 mod tags_play_tests;
+#[cfg(test)]
+mod tools_1a_gate_tests;
 #[cfg(test)]
 mod two_d_screen_tests;
 #[cfg(test)]

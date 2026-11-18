@@ -45,7 +45,7 @@ fn the_search_box_lists_matches_with_their_parents() {
     assert!(!listed(&h, "Crate"), "not the rest");
     h.state_mut().0.open.level_panel.search = "nothing like it".into();
     h.run();
-    let _ = h.get_by_label("Nothing has that name.");
+    let _ = h.get_by_label("Nothing has that name or tag.");
 }
 
 #[test]

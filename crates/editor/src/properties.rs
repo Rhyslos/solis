@@ -237,6 +237,7 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
         "Listener" => "listeners.md",
         "ReverbZone" => "reverb-zones.md",
         "TriggerZone" => "trigger-zones.md",
+        "Tags" => "tags.md",
         "Sprite" => "sprites.md",
         "Parallax" => "parallax.md",
         "Animator" => "animators.md",

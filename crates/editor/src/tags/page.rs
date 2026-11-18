@@ -183,9 +183,12 @@ impl Workbench {
         row(ui, |name_ui, middle, more_ui| {
             let note = self.name_field(name_ui, page);
             note_words(middle, &note);
-            more_ui.add_enabled_ui(false, |ui| {
-                widgets::button::icon(ui, crate::icons::Icon::More, "New tag's menu")
-            });
+            more_ui
+                .add_enabled_ui(false, |ui| {
+                    widgets::button::icon(ui, crate::icons::Icon::More, "New tag's menu")
+                })
+                .response
+                .on_disabled_hover_text("Keep the new tag's name first (Enter)");
         });
     }
 
