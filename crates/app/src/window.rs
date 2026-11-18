@@ -510,7 +510,7 @@ impl App {
                 if !opened.watching {
                     self.workbench.log(
                         LogLevel::Warning,
-                        "The assets folder can't be watched here: changes made outside Solis \
+                        "The project's folder can't be watched here: changes made outside Solis \
                          show when the project is opened again.",
                     );
                 }
@@ -2216,7 +2216,7 @@ mod tests {
         let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(runs);
         let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
         println!(
-            "Scale check: a change in the assets folder of 10,000 files, the frame's part {ms:.1} ms \
+            "Scale check: a change in the project's folder of 10,000 files, the frame's part {ms:.1} ms \
              (target {TARGET_MS} ms; it was {before_ms:.1} ms) {verdict}"
         );
         super::own_files_tests::close(app);

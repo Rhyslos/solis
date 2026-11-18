@@ -107,11 +107,11 @@ pub(crate) fn rotation_of(degrees: [f64; 3]) -> Value {
     Value::quat(Quat::from_euler(EULER, z, x, y))
 }
 
-/// Whether a field's value isn't its standard one, for the kinds where
-/// that's worth a dot: a number, a switch, words, a choice or a colour. A
-/// place, a turn or a picked file starts empty and is meant to be set, so
-/// it isn't marked.
-pub(crate) fn moved_from_default(field: &FieldInfo, value: &Value) -> bool {
+/// Whether a field's value isn't its `standard` one (`standard::value`),
+/// for the kinds where that's worth a dot: a number, a switch, words, a
+/// choice or a colour. A place, a turn or a picked file starts empty and
+/// is meant to be set, so it isn't marked.
+pub(crate) fn moved_from_default(field: &FieldInfo, value: &Value, standard: &Value) -> bool {
     matches!(
         field.kind,
         FieldKind::Bool
@@ -120,7 +120,7 @@ pub(crate) fn moved_from_default(field: &FieldInfo, value: &Value) -> bool {
             | FieldKind::Text
             | FieldKind::Choice(_)
             | FieldKind::Color
-    ) && value != &field.default
+    ) && !crate::standard::same(value, standard)
 }
 
 /// A value in a few characters, for a reset button: `3`, `0.5`, `on`,

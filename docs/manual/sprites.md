@@ -5,7 +5,7 @@
 ## When to use it
 For the characters, crops, trees, furniture and anything else in a 2D game that's a picture rather than a tile of the ground. A [sprite](concepts.md#2d) is one frame of a [sprite sheet](concepts.md#2d), lying flat on the ground at its entity, standing on its [pivot](concepts.md#2d).
 
-Solis reads Aseprite's own `.aseprite` files: there's nothing to export. Its [tags](concepts.md#2d) (runs of frames such as *walk* or *swing*) and [slices](concepts.md#2d) (named rectangles such as *feet*) come with it, so the picture and how it's used stay in one file. Keep the files in the project's assets folder, as you'd keep models and sounds.
+Solis reads Aseprite's own `.aseprite` files: there's nothing to export. Its [tags](concepts.md#2d) (runs of frames such as *walk* or *swing*) and [slices](concepts.md#2d) (named rectangles such as *feet*) come with it, so the picture and how it's used stay in one file. Keep the files in the project's folder, as you'd keep models and sounds.
 
 **Plain pictures work too.** A `.png` or `.jpg` in the project can be a sprite as it is: drag it from the Library into the viewport, or pick it in a Sprite's **Sheet** (it's listed as *name (picture)*). It's a sheet of one frame, the whole picture, standing on its bottom middle. That's handy for a background, a hill or a sign drawn in any paint program; for frames, tags and a *feet* slice, use Aseprite. A picture is read only once a sprite uses it (so the textures of 3D models aren't read twice), and up to 4096 × 4096 pixels. Saving it again in your paint program updates it in Solis.
 
@@ -14,7 +14,7 @@ Sprites are drawn with the colours you painted, never tone mapped. Whether light
 For the ground itself, use [tile maps](tile-maps.md). To make sprites move, see [Animating sprites](sprite-animation.md): a sprite plays its sheet's tags as clips.
 
 ## How to use it
-1. **Save your Aseprite file into the project's assets**, for example `assets/sprites/farmer.aseprite`. It appears in the **Library** with its first frame and how many frames it has. Saving it again in Aseprite updates it in Solis straight away.
+1. **Save your Aseprite file into the project's folder**, for example in a `sprites` folder of your own: `sprites/farmer.aseprite`. It appears in the **Library** with its first frame and how many frames it has. Saving it again in Aseprite updates it in Solis straight away.
 2. **Look it over:** click it in the Library. **Properties** shows the frame big, a strip of every frame (click one to see it), and what Solis read from the file: its size, layers, tags (with their direction and repeats), slices and palette. Anything it couldn't use is listed in yellow.
 3. **Give it a pivot:** in Aseprite, draw a slice called **feet** (or **pivot**) round where the character stands, and set the slice's pivot point on the ground between its feet. Without one, a sprite stands on the bottom middle of its frame.
 4. **Place it:** drag it from the Library into the viewport, double-click it, or right-click it and choose **Place**. It lands under the pointer (or in the middle of the view) on a whole pixel, standing on its *feet* or *pivot* slice, as drawn. The new entity is named after the file and has a **Sprite** component.

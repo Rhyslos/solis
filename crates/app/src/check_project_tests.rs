@@ -114,7 +114,7 @@ fn a_level_outside_the_assets_is_refused() {
         let refused = workbench_for(&root, &db, None, MADE_BY, bad, &mut Read::default())
             .err()
             .unwrap();
-        assert!(refused.contains("isn't in the assets"), "{bad}: {refused}");
+        assert!(refused.contains("isn't in the project"), "{bad}: {refused}");
     }
 }
 

@@ -15,14 +15,14 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 **Right now:** Lust and Lua components work: they appear in Properties, run in play mode, talk to each other through events, and take new code while the game runs. Rust components can join them, but for now only in a Solis built from source.
 
 ## How to use it
-1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`. Everything in it is written by Solis for your code to read, and written again whenever the project opens, so changes you make there don't last:
+1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in it (the Library leaves it out, so it's seen only in Explorer). Everything in it is written by Solis for your code to read, and written again whenever the project opens, so changes you make there don't last:
    - a Lust file for each part of the engine (`world.lst`, `entity.lst`, `input.lst` and so on). They describe what your code can ask of the engine, such as `World:say` (write in the Console) or `moveTo` (put an entity somewhere). [What the engine offers](#what-the-engine-offers) lists every call and the file it's in.
    - `project.lst`, which holds your project's own names, such as its prefabs, written again whenever you add or rename one.
    - folders: `kit` holds the [ready-made components](concepts.md#simulation), `animators` and `maps` hold a file for each animator and tile map you make, and `data` says what the Lust files Solis makes (tile maps, tilesets and the like) hold.
 
    Why files? Lust checks every call you write against them before the game runs, so a misspelt call is a mistake you see at once, not a surprise while playing.
-2. Right-click in the Library and choose **New › Lust code file**. The first one is `main.lst`, at the top of the `assets` folder: your game's code starts there. Lust reads `main.lst` first, and every other code file is fetched from it, or from a file it fetches. The file opens in your code editor for Lust (Ledger), with a component to start from. You can also make the file by hand in any text editor.
-3. Write a component. An entity's own abilities, such as `position()` and `moveTo(place)`, need no `get`: they're on every entity. The engine's other parts are objects you `fetch`, such as `fetch "solis/world":World;` for `World:say(…)`. The switch above the code shows the same component in Rust and in Lua (a Lua file is any `.lua` file in `assets`, made in any text editor):
+2. Right-click in the Library and choose **New code file**. The first one is `main.lst`, at the top of the project's folder (the Library's top): your game's code starts there. Lust reads `main.lst` first, and every other code file is fetched from it, or from a file it fetches. The file opens in your code editor for Lust (Ledger), with a component to start from. You can also make the file by hand in any text editor.
+3. Write a component. An entity's own abilities, such as `position()` and `moveTo(place)`, need no `get`: they're on every entity. The engine's other parts are objects you `fetch`, such as `fetch "solis/world":World;` for `World:say(…)`. The switch above the code shows the same component in Rust and in Lua (a Lua file is any `.lua` file in the project, made in any text editor):
 
    ```lust
    component Spinner {
@@ -137,7 +137,7 @@ pub fn mover() -> RustKind {
 ```
 
 ```lua
--- mover.lua: any .lua file in assets.
+-- mover.lua: any .lua file in the project.
 local Mover = component("Mover", {
     { "speed", "float", 2 },
 })
@@ -336,7 +336,7 @@ A Lua component's fields can't be called `me` (the entity it's on), `update`, or
 
 **In Rust**, `handle` takes each event by name, with what it carries in `event.values`, in the order the Lust declares, and returns whether it reacted; `cx.send(to, "Hit", values)` sends one. Like Lua's, a Rust send is checked against what the Lust declares: one that doesn't fit isn't sent (`send` returns `false`), and the Console says why, naming the component.
 
-Other code files can sit in any folder in `assets`. Fetch them by their path from `assets`, such as `fetch "weapons/gun":Gun;` for `assets/weapons/gun.lst`. The Library's **Code** tab lists them all.
+Other code files can sit in any folder of the project. Fetch them by their path from the Library's top, such as `fetch "weapons/gun":Gun;` for `weapons/gun.lst`. The Library's **Code** tab lists them all.
 
 ## Projectiles
 
@@ -706,7 +706,7 @@ end
 
 ## Sounds
 
-Game code plays [sound events](sound-events.md) by the project's names for them: Solis writes each event into `solis/project.lst` as `state Sound`, folders as options inside options, so `assets/sfx/footstep.solsound` is `Sound.Sfx.Footstep`. A misspelt or deleted event is a mistake before the game runs. Fetch `Audio` from `solis/sound` and `Sound` from `solis/project`:
+Game code plays [sound events](sound-events.md) by the project's names for them: Solis writes each event into `solis/project.lst` as `state Sound`, folders as options inside options, so `sfx/footstep.solsound` is `Sound.Sfx.Footstep`. A misspelt or deleted event is a mistake before the game runs. Fetch `Audio` from `solis/sound` and `Sound` from `solis/project`:
 
 ```lust
 fetch "solis/sound":Audio;
@@ -740,7 +740,7 @@ impl RustComponent for Walker {
     fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
         self.steps += 1;
         if self.steps % 30 == 0 {
-            // The sound event by its file in assets, without .solsound.
+            // The sound event by its place in the Library, without .solsound.
             let me = cx.me();
             let here = cx.host().position(me).unwrap_or_default();
             cx.host().play_sound("sfx/footstep", SoundAt::Place(here));
@@ -890,9 +890,9 @@ Game code runs inside a **sandbox**: it can reach the game through the engine's 
 - **Problem:** Problems says "there's already something called Health". **Why:** two components, classes, objects, nodes or schemas have the same name (often a copied one not yet renamed), perhaps in two files; the message says where the other is. **Fix:** rename one.
 - **Problem:** Problems says checking the code took more than 30 seconds and was given up on. **Why:** something in the code is more than the checker can handle; it shouldn't happen. A check can't be stopped once it has started, so that one keeps running in the background (and keeps one processor core busy) until it ends by itself, which it may never do. **Fix:** undo your last change, then restart Solis so the code can be checked again, and please report it with the code that caused it.
 - **Problem:** Problems says "the code wasn't checked: the check that started … never finished, and is still running". **Why:** an earlier check was given up on (the problem above) and is still running. Solis doesn't start another beside it, or every save would leave one more running and slow the computer down further. The message says what that check was checking: the same code as now, or the code before the files it names changed (the trouble is in that older code). **Fix:** restart Solis to check the code straight away. If you'd rather wait, the code is checked by itself as soon as the old check ends.
-- **Problem:** Problems says the game's code starts at `main.lst` and there isn't one. **Why:** there are `.lst` files of your own, but none is called `main.lst` in the `assets` folder itself. (The files Solis writes into its own folder don't count: a game written only in Lua needs no `main.lst`.) **Fix:** make `assets/main.lst`, and fetch your other files from it.
+- **Problem:** Problems says the game's code starts at `main.lst` and there isn't one. **Why:** there are `.lst` files of your own, but none is called `main.lst` at the top of the project's folder (the Library's top). (The files Solis writes into its own folder don't count: a game written only in Lua needs no `main.lst`.) **Fix:** make `main.lst` there, and fetch your other files from it.
 - **Problem:** changes I made to `solis/world.lst` (or `solis/kit/…`) disappeared. **Why:** Solis writes the `solis` files again when the project opens, so they always match the engine. **Fix:** put your own code in your own files, outside `solis/`: anything in that folder counts as the engine's, never as your game's code. To change a ready-made component, copy its file outside `solis/` and rename the component.
-- **Problem:** my component isn't in **+ Component**. **Why:** the code has a mistake (see Problems), or its Lust file isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). Lua files are all read, wherever they are in `assets`. **Fix:** fix the mistake, or fetch the file.
+- **Problem:** my component isn't in **+ Component**. **Why:** the code has a mistake (see Problems), or its Lust file isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). Lua files are all read, wherever they are in the project. **Fix:** fix the mistake, or fetch the file.
 - **Problem:** "solis.entity.moveTo isn't something the engine offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
 - **Problem:** the Console says a call "wants text for words, and was given nothing (nil)" in Lua. **Why:** one of the values given to the call isn't the kind it takes. Nothing (`nil`) usually means a value is missing, a variable's name is misspelt (a name Lua doesn't know is `nil`), or the call is written with a dot where it needs a colon: `solis.World.say("hello")` for `solis.World:say("hello")`. **Fix:** the message names the call, the value and the line; check that value there.
 - **Problem:** the Console says "this calls something of Solis's that was kept from earlier" in Lua. **Why:** a call was put in a variable, as `local say = solis.World.say` at the top of a file does. Solis lends its calls to game code only while that code runs, so the one kept stops working as soon as the file has loaded. **Fix:** write the call out where it's used (`solis.World:say("hello")`), or keep the object and call through it: `local World = solis.World`, then `World:say("hello")`.

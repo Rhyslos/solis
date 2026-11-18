@@ -101,6 +101,7 @@ pub mod sound_view;
 pub mod splash;
 pub mod sprite_parallax;
 pub mod sprite_sheets;
+mod standard;
 #[cfg(test)]
 mod test_support;
 pub mod text_view;

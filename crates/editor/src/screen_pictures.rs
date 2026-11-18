@@ -69,14 +69,14 @@ fn pixels_of(
     let (file, crop) = ui::pictures::split(name);
     if !is_picture(file) {
         return Err(format!(
-            "{file} isn't a picture: image names a PNG, JPEG or Aseprite file inside the assets, \
+            "{file} isn't a picture: image names a PNG, JPEG or Aseprite file in the project, \
              like image \"sprites/tools.png\""
         ));
     }
     if !in_project(file) {
         return Err(format!(
             "there's no picture {file} in the project: image names a picture by its place \
-             inside the assets, like image \"sprites/tools.png\""
+             in the Library, like image \"sprites/tools.png\""
         ));
     }
     let art = match sheets.tile_art.get(file) {

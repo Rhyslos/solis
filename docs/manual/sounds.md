@@ -9,7 +9,7 @@
 Sounds are played through [sound events](sound-events.md): an event holds one or more sound files (takes) and how to vary them. Game code plays them in the game ([Game code: Sounds](game-code.md#sounds)), an **AudioSource** on an entity plays one from a place in the level ([Sounds that keep playing](sound-events.md#sounds-that-keep-playing)), and the [Mixer](mixer.md) balances them all.
 
 ## How to use it
-1. **Add a sound:** copy a `.wav` or `.ogg` file into the project's assets folder, or a folder inside it, from Explorer. It appears in the **Library** within a moment, with a teal stripe and a picture of its waveform: how loud it is from start to end.
+1. **Add a sound:** copy a `.wav` or `.ogg` file into the project's folder, or a folder inside it, from Explorer. It appears in the **Library** within a moment, with a teal stripe and a picture of its waveform: how loud it is from start to end.
 2. **Listen to it:** point at its tile and click the **▶** in its corner. Click **■** to stop. Only you hear it: what you hear in the Library is never affected by the game's own volumes.
 3. **See what it holds:** click its tile. **Properties** shows a larger waveform with a line where it's playing, **Play** and **Stop**, and its details (below). Pick something in the level again and Properties shows that instead.
 

@@ -80,14 +80,19 @@ pub fn starter_level() -> Level {
             })
             .with(&Light::sun()),
     );
-    // New levels light their sprites (decision 0092): with no lamps and
-    // day and night off, they look exactly as drawn. Older levels, without
-    // the field, keep sprites unlit.
-    level.spawn(EntityData::new("Environment").with(&Environment {
+    level.spawn(EntityData::new("Environment").with(&starter_environment()));
+    level
+}
+
+/// The Environment a new level has. New levels light their sprites
+/// (decision 0092): with no lamps and day and night off, they look exactly
+/// as drawn. Older levels, without the field, keep sprites unlit, so the
+/// field's own standard stays off.
+pub fn starter_environment() -> Environment {
+    Environment {
         light_sprites: true,
         ..Environment::default()
-    }));
-    level
+    }
 }
 
 /// Field-building shorthand for the built-in schemas.

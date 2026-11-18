@@ -65,7 +65,7 @@ pub struct Playtest {
     /// The game's name: the program's, its window's title and its saves
     /// folder's.
     pub name: String,
-    /// The level it starts in, inside the assets, with `/` between folders.
+    /// The level it starts in, in the project's files, with `/` between folders.
     pub level: String,
     /// Whether it starts filling the screen.
     pub fullscreen: bool,
@@ -117,7 +117,7 @@ fn device_name(name: &str) -> bool {
         && matches!(rest[0], '1'..='9' | '¹' | '²' | '³')
 }
 
-/// Whether `level` is a level's path inside the assets: relative, with `/`
+/// Whether `level` is a level's path in the project's files: relative, with `/`
 /// between folders, never going up, ending `.sollevel`.
 pub fn usable_level(level: &str) -> bool {
     !level.is_empty()
@@ -388,7 +388,7 @@ impl Workbench {
         });
     }
 
-    /// The project's levels, inside the assets.
+    /// The project's levels, by their paths in its files.
     pub(crate) fn levels(&self) -> Vec<String> {
         let mut levels: Vec<String> = self
             .open

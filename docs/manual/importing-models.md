@@ -18,7 +18,7 @@ An imported model becomes an [entity](entities.md) in the level, where its file 
 Then:
 - The model is read in the background, so the editor keeps running while it loads. The Console says **Importing…**, then **Imported** with the model's triangle count and size in metres.
 - The camera moves to show the whole model, and picks a [camera speed](navigating-the-viewport.md) that suits its size.
-- With a [project](projects-and-the-library.md) open, the file is first copied into the project's assets folder (with the `.bin` and images a `.gltf` reads), so the project keeps it; it then also appears in the **Library**.
+- With a [project](projects-and-the-library.md) open, the file is first copied into the project's folder (with the `.bin` and images a `.gltf` reads), so the project keeps it; it then also appears in the **Library**.
 - The model appears in the **Level** panel as one [entity](entities.md), however many parts the file has (they keep their places inside it). **Unpack** in Properties splits it into one entity per part when you need them ([Prefabs](prefabs.md)). A mesh used many times in the file is stored once, with its triangle count. The **×** at the end of its row deletes it from the level. Select it to see its Transform and Model in Properties.
 
 **Exporting from Blender:** File › Export › glTF 2.0, choose **glTF Binary (.glb)**, and keep **+Y Up** ticked (the standard). Solis turns glTF's "Y is up" into its own "Z is up" for you, so the model stands upright.
@@ -47,7 +47,7 @@ Then:
 - **Problem:** "it needs a glTF extension Solis doesn't read yet". **Why:** the file was saved with compression (Draco or meshopt, common from Sketchfab or gltfpack). **Fix:** export it again without compression; in Blender, untick **Compression** in the glTF export.
 - **Very large models** are split into pieces the graphics card can hold; you won't see the seams, but the Level panel's triangle count stays the same.
 - **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model as entities under it in the Level panel, and are deleted with it; a sun in the file sets the level's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
-- **Want to see how it should look?** **Add the sample level** (press **Space** and type it) brings in a model made for checking the [looks](looks.md). With a project open, it's added to the project's assets as `Sample level.glb`, like any import, so levels using it open again.
+- **Want to see how it should look?** **Add the sample level** (press **Space** and type it) brings in a model made for checking the [looks](looks.md). With a project open, it's added to the project as `Sample level.glb`, like any import, so levels using it open again.
 
 ## Related
 - [Levels of detail](levels-of-detail.md)

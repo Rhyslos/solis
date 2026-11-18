@@ -50,7 +50,7 @@ Type a name, and Solis makes the project's folder for you.
 4. **Start from**: **Empty** (only what a project needs to open), or one of Solis's examples (**Playground**, **Turret sample**, **UI sample**, **Benchmark**), made as your project, under your name. Each example is marked with the kind it was made for: they are all **3D**, so they're greyed while **2D** is chosen.
 5. **Create** makes the folder, writes the project and opens it in the editor. **Cancel** (or `Esc`) closes the dialog and makes nothing.
 
-> **Good to know:** a new project gets only what it needs to open: its `project.solis`, Solis's `.solis` folder, and Git's `.gitignore` and `.gitattributes`. Its **assets** folder is made when you put the first file in it (an import, a new folder or file in the Library, a saved level).
+> **Good to know:** a new project gets only what it needs to open: its `project.solis`, Solis's `.solis` folder, and Git's `.gitignore` and `.gitattributes`. Your files go in the project's folder, in folders you make yourself; Solis makes no folder for them.
 
 A name is refused, with the reason, when it's empty, longer than 100 letters, holds a character Windows doesn't allow in a folder's name (`< > : " / \ | ? *`) or a line break, starts with a dot (a hidden folder) or ends with one, or is a name Windows keeps for itself (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`). A folder too deep for Windows (its whole path near 260 characters) is refused too.
 

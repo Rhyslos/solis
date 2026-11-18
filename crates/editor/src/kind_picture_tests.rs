@@ -93,3 +93,28 @@ fn both_draws_home_as_before() {
     h.run();
     matches_approved("editor", &drawn(&mut h));
 }
+
+#[test]
+fn the_2d_view_s_pills_in_a_narrow_view() {
+    // Shared 1f's loose ends: the app's least window with the Library at
+    // the right, so the 2D view is narrower than its pills' full words.
+    // They take the board's short words and wrap onto a second row,
+    // inside the view, with the tool bar above them.
+    let w = farm_2d();
+    let look = InterfaceLook {
+        layout: crate::shell::PanelLayout::LibraryRight,
+        ..first_time()
+    };
+    let Some(mut h) = editor_window(w, look, [960.0, 600.0]) else {
+        return;
+    };
+    for _ in 0..4 {
+        h.run();
+    }
+    let view = h.state().viewport.rect;
+    let picture = drawn(&mut h).cropped(
+        [view.left() as u32, view.top() as u32],
+        [view.width() as u32, view.height() as u32],
+    );
+    matches_approved("pixel-pills-narrow", &picture);
+}

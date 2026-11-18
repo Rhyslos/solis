@@ -15,8 +15,8 @@ use egui::{Rect, Sense, Ui, vec2};
 /// drawn brighter; `[Space]` is a key.
 const FIRST_HOUR: [&str; 5] = [
     "Make a project: a folder for your game's files.",
-    "Put art in its assets folder: it shows in the Library.",
-    "In the Library, *Create* makes maps, tilesets and code files.",
+    "Put art in its folder, in folders of your own: it shows in the Library.",
+    "In the Library, right-click to make maps, tilesets and code files.",
     "Press *Play* to try it.",
     "Stuck? Tap [Space] and type what you want to do.",
 ];

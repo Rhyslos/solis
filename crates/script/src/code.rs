@@ -557,7 +557,7 @@ fn check_entry(code: &Code) -> Vec<CodeProblem> {
         line: 0,
         column: 0,
         message: format!(
-            "the game's code starts at {ENTRY} in the assets folder, and there isn't one. \
+            "the game's code starts at {ENTRY} at the top of the Library, and there isn't one. \
              Make it, and fetch the other files from it."
         ),
     }]

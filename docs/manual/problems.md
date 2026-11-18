@@ -20,7 +20,7 @@ A mistake in the code, in **Problems**: what's wrong, and in grey where (the fil
 | Problem | Why it happens | What to do |
 |---|---|---|
 | *main.lst, line 6:15: …* | A mistake in the [game's code](game-code.md): a misspelt name, text where a number should be, a missing `}`. The line and column (how far along the line) say where. | Click it to open the file, fix it and save. |
-| *The game's code starts at main.lst …* | There are Lust files but no `main.lst` in `assets`. | Make `assets/main.lst` and fetch the other files from it. |
+| *The game's code starts at main.lst …* | There are Lust files but no `main.lst` at the Library's top (the project's folder). | Make `main.lst` there and fetch the other files from it. |
 | *X's model isn't in the project* | The model's file was deleted, or never committed to Git (with its `.solmeta` file). | Put the file back (or commit it), or choose another model in Properties, or delete the entity. |
 | *X's Model has no model chosen* | A Model component was added but never given a model. | Choose one in Properties, or remove the component. |
 | *X's sprite sheet isn't in the project* / *X's Sprite has no sprite sheet chosen* | The [sprite](sprites.md)'s Aseprite file was deleted or never committed, or no sheet was chosen. | Put the file back, or choose a sheet in Properties. |
@@ -33,7 +33,7 @@ A mistake in the code, in **Problems**: what's wrong, and in grey where (the fil
 ## Tips and common problems
 - **Problem:** opening a level, the [Console](console.md) says *X was inside itself: its parents led back to it. It's now at the top level.* **Why:** the file put entities inside each other in a loop, which no tree can be. It's usually a Git merge that combined two moves: one put A under B while the other put B under A. Solis moves one entity of the loop to the top level and leaves the rest under it; with many loops it names the first five and counts the rest. **Fix:** drag it to where it belongs in the Level panel and save. The file itself isn't changed until you save.
 - **Problem:** models show as missing for a moment after opening a project. **Why:** Solis is still listing the project's files. **Fix:** nothing; they disappear as soon as the Library is ready.
-- **Problem:** a code mistake stays after I fixed it. **Why:** Solis checks again when a file in `assets` is saved. **Fix:** make sure you saved the file inside the project's `assets` folder.
+- **Problem:** a code mistake stays after I fixed it. **Why:** Solis checks again when a code file in the project is saved. **Fix:** make sure you saved the file inside the project's folder, not a copy elsewhere.
 
 ## Related
 - [Game code](game-code.md)

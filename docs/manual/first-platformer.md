@@ -19,7 +19,7 @@ Each step says *why* as well as *what*, so you can change things and make the ga
 A [project](concepts.md#projects) is a folder holding everything your game is made of. A [level](concepts.md#the-level) is one level (or menu, or room) in it.
 
 1. On the [launcher](launcher.md), click **New project**, name it `Platformer`, choose **2D** and **Empty**, and click **Create**. Solis makes the project's folder and opens it.
-2. Save the empty level: **Ctrl + S**, name it `level`. Solis suggests the `assets/levels` folder; that's fine.
+2. Save the empty level: **Ctrl + S**, name it `level`. Solis suggests the project's folder (or its `levels` folder, if you've made one); that's fine.
 3. Look in pixels: click the **Perspective ▾** pill at the top left of the viewport and choose **2D**. The view now looks straight at the world as the game will. **Hold the right or middle mouse button and drag** to slide it; **turn the wheel** to zoom.
 
 **Why 2D?** A platformer is seen from the side. In Solis, a 2D game lies flat and is seen from straight above, so across the screen is *x* and up the screen is *y*. The project's 2D settings (**File › Project settings**) say 16 pixels make one metre, so one 16-pixel tile is one metre. Every number in this guide is in metres, so think of a metre as a tile.
@@ -42,7 +42,7 @@ A [tile map](tile-maps.md) is a grid of cells, each painted with a [terrain](con
 ### 3. Make the hero and a coin
 Any paint program will do (Aseprite, Paint, Krita, Photoshop).
 
-1. Draw a **16 × 16** picture for the hero: a simple figure, or just a coloured block with eyes. Make the space around it see-through. Save it as `hero.png` in the project's `assets` folder.
+1. Draw a **16 × 16** picture for the hero: a simple figure, or just a coloured block with eyes. Make the space around it see-through. Save it as `hero.png` in the project's folder.
 2. Draw an **8 × 8** yellow circle and save it as `coin.png` beside it.
 
 Both appear in the Library. A picture becomes a [sprite](sprites.md) when you place it: an entity that shows the picture, standing on the picture's bottom middle.
@@ -60,7 +60,7 @@ If you press **Play** now, nothing happens yet: the hero has a body, but nothing
 ### 5. Write the hero's code
 Game code in Solis is written in [Lust](game-code.md). A **component** you write in Lust works like Solis's own: you add it to an entity, set its fields in Properties, and its `update` runs every [tick](concepts.md#game-code) while the game plays (60 times a second).
 
-1. Right-click in the Library and choose **New › Lust code file**. The first one is always `main.lst`, at the top of `assets`: your game's code starts there. It opens in your code editor (Ledger).
+1. Right-click in the Library and choose **New code file**. The first one is always `main.lst`, at the top of the project's folder: your game's code starts there. It opens in your code editor (Ledger).
 2. Make a second one the same way. It's called `component.lst`; right-click it, choose **Rename…** and call it `hero.lst`.
 3. Replace everything in `hero.lst` with this, and save:
 
@@ -205,7 +205,7 @@ end
 
 ```lua
 -- main.lst is where Lust code starts; Lua files need none, since Solis
--- reads every .lua file in assets. The ready-made FollowCamera2D is
+-- reads every .lua file in the project. The ready-made FollowCamera2D is
 -- Lust, so a game in Lua keeps a main.lst of two lines, to bring the
 -- camera in:
 --
@@ -337,7 +337,7 @@ end
 
 ```lua
 -- Nothing to add in Lua: Solis reads coin.lua by itself, as it reads
--- every .lua file in assets.
+-- every .lua file in the project.
 ```
 
 3. Drag `coin.png` into the viewport, somewhere the hero can reach (on a platform, say). **+ Component › Coin**, and set its **player** to the hero.

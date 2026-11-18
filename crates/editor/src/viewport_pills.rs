@@ -6,7 +6,7 @@
 //! - top right, on the view in use: the frame time and frame rate;
 //! - bottom right, on the view in use: the axis locks, World or Object and
 //!   the camera's speed; in the 2D view the X and Y locks, what moves snap
-//!   to, the tile grid and the zoom.
+//!   to, the tile grid and the zoom (`viewport_pixel_pills.rs`).
 //!
 //! Snapping's on and off and its steps are the ribbon's (Home › Snapping).
 
@@ -16,7 +16,7 @@ use crate::icons::{self, Icon};
 use crate::interface_look;
 use crate::look::{Look, LookKind};
 use crate::tokens::{self, size, text};
-use crate::transforming::{PixelSnap, Snapping};
+use crate::transforming::Snapping;
 use crate::widgets::{self, menu, pill::pill};
 use egui::{Align, Align2, CornerRadius, Layout, Rect, Response, Sense, Ui, UiBuilder, vec2};
 
@@ -170,55 +170,6 @@ impl Viewport {
         locks_pill(&mut row, snapping, 3);
         row.min_rect()
     }
-
-    /// The 2D view's bottom-right pills: the X and Y locks, what moves snap
-    /// to, the tile grid and the zoom.
-    pub(super) fn pixel_pills(&mut self, ui: &mut Ui, rect: Rect) -> Rect {
-        let mut row = corner(ui, rect, "pixel pills", Layout::right_to_left(Align::Max));
-        row.spacing_mut().item_spacing.x = size::PILL_GAP;
-        let percent = |z: f32| format!("{:.0}%", z * 100.0);
-        let zoom = &mut self.camera.zoom;
-        let response = pill(&mut row, &format!("Zoom {} ▾", percent(*zoom))).on_hover_text(
-            "Screen pixels to each of the game's: whole steps keep pixels sharp. The wheel \
-             steps through them",
-        );
-        drop_down(&response, |ui| {
-            for &step in crate::camera::ZOOM_STEPS.iter().rev() {
-                if menu::choice(ui, &percent(step), *zoom == step).clicked() {
-                    *zoom = step;
-                    ui.close();
-                }
-            }
-        });
-        let [w, h] = self.pixels.tile;
-        let grid = if w == h {
-            format!("Grid {w} px")
-        } else {
-            format!("Grid {w} × {h} px")
-        };
-        mono_pill(&mut row, &grid)
-            .on_hover_text("The tile size: File › Project settings changes it");
-        let snapping = &mut self.snapping;
-        let response = pill(
-            &mut row,
-            &format!("Snap: {} ▾", sentence_case(snapping.pixel_snap.name())),
-        )
-        .on_hover_text(
-            "What moves land on: whole pixels (so nothing rests between pixels), whole tiles, \
-             or anywhere. Hold Ctrl while dragging to flip it",
-        );
-        drop_down(&response, |ui| {
-            for mode in PixelSnap::ALL {
-                let words = sentence_case(mode.name());
-                if menu::choice(ui, &words, snapping.pixel_snap == mode).clicked() {
-                    snapping.pixel_snap = mode;
-                    ui.close();
-                }
-            }
-        });
-        locks_pill(&mut row, snapping, 2);
-        row.min_rect()
-    }
 }
 
 /// Whether the project's kind keeps the 3D views: the 2D view is set
@@ -241,7 +192,7 @@ fn corner(ui: &mut Ui, rect: Rect, salt: &str, layout: Layout) -> Ui {
 
 /// A pill's list, under it, staying open until a choice is made or a
 /// click lands elsewhere.
-fn drop_down(response: &Response, contents: impl FnOnce(&mut Ui)) {
+pub(super) fn drop_down(response: &Response, contents: impl FnOnce(&mut Ui)) {
     egui::Popup::menu(response)
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
         .show(|ui| {
@@ -252,7 +203,7 @@ fn drop_down(response: &Response, contents: impl FnOnce(&mut Ui)) {
 }
 
 /// A pill in the mono font: numbers that change ("6.9 ms · 144 fps").
-fn mono_pill(ui: &mut Ui, words: &str) -> Response {
+pub(super) fn mono_pill(ui: &mut Ui, words: &str) -> Response {
     let font = text::mono_small();
     let width = widgets::width_of(ui, words, font.clone()) + 2.0 * size::PILL_PAD;
     let (rect, response) = ui.allocate_exact_size(vec2(width, size::PILL_H), Sense::hover());
@@ -303,15 +254,21 @@ fn camera_pill(ui: &mut Ui, speed: u8) {
     }
 }
 
-/// "Lock" and the first `axes` of X, Y and Z, each a small button lit
-/// while its axis is locked.
-fn locks_pill(ui: &mut Ui, snapping: &mut Snapping, axes: usize) {
-    let font = text::ribbon_small();
-    let word = widgets::width_of(ui, "Lock", font.clone());
-    let width = 2.0 * size::PILL_PAD
+/// The width of the locks' pill with `axes` axes.
+pub(super) fn locks_width(ui: &Ui, axes: usize) -> f32 {
+    let word = widgets::width_of(ui, "Lock", text::ribbon_small());
+    2.0 * size::PILL_PAD
         + word
         + size::PILL_ICON_GAP
-        + axes as f32 * (size::LOCK_BUTTON + size::LOCK_GAP);
+        + axes as f32 * (size::LOCK_BUTTON + size::LOCK_GAP)
+}
+
+/// "Lock" and the first `axes` of X, Y and Z, each a small button lit
+/// while its axis is locked.
+pub(super) fn locks_pill(ui: &mut Ui, snapping: &mut Snapping, axes: usize) {
+    let font = text::ribbon_small();
+    let word = widgets::width_of(ui, "Lock", font.clone());
+    let width = locks_width(ui, axes);
     let (rect, _) = ui.allocate_exact_size(vec2(width, size::PILL_H), Sense::hover());
     pill_box(ui, rect);
     let room = rect.shrink2(vec2(size::PILL_PAD, 0.0));
@@ -366,7 +323,7 @@ fn pill_box(ui: &Ui, rect: Rect) {
 }
 
 /// "whole pixels" as "Whole pixels".
-fn sentence_case(words: &str) -> String {
+pub(super) fn sentence_case(words: &str) -> String {
     let mut chars = words.chars();
     chars.next().map_or_else(String::new, |first| {
         first.to_uppercase().chain(chars).collect()
