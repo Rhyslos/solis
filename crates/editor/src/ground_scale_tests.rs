@@ -66,12 +66,11 @@ fn open_ground(side: u32) {
         arrived += h.state_mut().0.take_ground_meshes().fresh.len();
     }
     let all_ms = opened.elapsed().as_secs_f64() * 1000.0;
+    let verdict = if slowest <= FRAME_MS { "ok" } else { "SLOW" };
     println!(
-        "Ground {0} × {0} m: made in {made_ms:.0} ms (a worker, before opening); {chunks} \
+        "Ground {side} × {side} m: made in {made_ms:.0} ms (a worker, before opening); {chunks} \
          chunks meshed and made solid in {all_ms:.0} ms over {frames} frames; slowest frame \
-         {slowest:.1} ms (target {FRAME_MS} ms) {}",
-        side,
-        if slowest <= FRAME_MS { "ok" } else { "SLOW" }
+         {slowest:.1} ms (target {FRAME_MS} ms) {verdict}"
     );
     assert_eq!(arrived, chunks);
 }

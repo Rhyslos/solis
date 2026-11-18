@@ -208,6 +208,7 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
         "TileMap" => "tile-maps.md",
         "Screen" => "screens.md",
         "Brush" => "brushes.md",
+        "Ground" => "ground.md",
         _ => return None,
     })
 }

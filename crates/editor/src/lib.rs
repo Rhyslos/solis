@@ -211,6 +211,8 @@ mod placing_tests;
 #[cfg(test)]
 mod prefab_picture_tests;
 #[cfg(test)]
+mod ground_picture_tests;
+#[cfg(test)]
 mod prefab_scale_tests;
 #[cfg(test)]
 mod scale_levels_tests;

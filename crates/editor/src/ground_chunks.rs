@@ -134,6 +134,9 @@ impl GroundChunks {
         self.for_play.clear();
         self.waiting.clear();
         self.needed.clear();
+        // Chunks of the last ground still on the workers are thrown away
+        // when they arrive: no generation of theirs is kept.
+        self.generations.clear();
         if let Some(l) = &loaded {
             let ground = &l.ground;
             self.needed = ground::store::keys(ground.extent())
@@ -155,6 +158,10 @@ impl GroundChunks {
 
     /// Makes the chunk at `key` again (a newer generation): a mesh of it
     /// still on its way is thrown away when it arrives.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "sculpting (G2) makes chunks again as strokes change them")
+    )]
     pub(crate) fn remake(&mut self, key: IVec3) {
         self.next_generation += 1;
         self.generations

@@ -365,6 +365,13 @@ impl Sprites {
         self.animators_tried
             .retain(|p, _| animators_present.contains(p));
         self.dirty |= before != self.sheets.animators.len();
+        // Grounds (Tools 1b): only their names, for the Ground
+        // component's picker; their voxels are read when a level uses one.
+        for file in listing.files.iter().filter(|f| f.kind == FileKind::Ground) {
+            if let Some(id) = file.id {
+                paths.insert(id, crate::project::slashed(&file.path));
+            }
+        }
         let mut tiles_present = HashSet::new();
         for file in listing.files.iter().filter(|f| {
             matches!(

@@ -13,6 +13,7 @@ mod culling;
 mod environment;
 mod frames;
 mod gathering;
+mod ground;
 mod instances;
 mod lights;
 mod lods;

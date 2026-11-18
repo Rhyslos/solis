@@ -245,7 +245,7 @@ impl Filter {
                 kind,
                 K::SpriteSheet | K::SpriteClips | K::Animator | K::Texture
             ),
-            Self::Maps => matches!(kind, K::Level | K::TileMap | K::Tileset),
+            Self::Maps => matches!(kind, K::Level | K::TileMap | K::Tileset | K::Ground),
             Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
             Self::Code => matches!(kind, K::Code | K::Text),
         }

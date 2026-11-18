@@ -10,6 +10,7 @@ Renders real frames on a GPU and checks their pixels: one test program (`cargo t
 | `looks.rs` | Models in each look: an imported model with its texture, outlines, glow, the normal texture, metal and plastic; `dump_renders_to_look_at` writes pictures to look at by eye. |
 | `lights.rs` | The sun's shadows on models and the grid, and lamps: points, spots, ranges, many at once. |
 | `environment.rs` | Tone mapping and exposure, the editor's backdrop and the daylight sky, fog, and two viewports keeping their own frames. |
+| `ground.rs` | The ground (Tools 1b, G1): a flat and a gently rolling ground of nine chunks, uploaded with one set of materials and buffers from the pool (the second upload all reused), drawn green below the horizon with no backdrop showing through a seam. |
 | `instances.rs` | Copies of a model: mirrored, placed twice, one part alone. |
 | `frames.rs` | Picking, the axes close up, what a frame says it drew and timed, and the same frame on one core or many. |
 | `gathering.rs` | The CPU's side of drawing many copies (scale checks). |

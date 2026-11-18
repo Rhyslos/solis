@@ -407,6 +407,19 @@ impl SpriteSheets {
         self.map_set.get(&id)
     }
 
+    /// The project's grounds' settings files (Tools 1b), by name with
+    /// their IDs, sorted by name.
+    pub fn listed_grounds(&self) -> Vec<(String, AssetId)> {
+        let mut list: Vec<(String, AssetId)> = self
+            .paths
+            .iter()
+            .filter(|(_, path)| ground::settings::is_settings_file(path))
+            .map(|(id, path)| (name_of(path), *id))
+            .collect();
+        list.sort();
+        list
+    }
+
     /// Every tileset (or, with `maps`, every tile map file) read, by name
     /// with its ID, sorted by name.
     pub fn listed_tiles(&self, maps: bool) -> Vec<(String, AssetId)> {

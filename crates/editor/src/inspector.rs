@@ -222,6 +222,17 @@ pub(crate) fn field_widget(
                 ),
             ));
         }
+        (FieldKind::Asset, Offer::Assets("ground")) => {
+            return whole(asset_picker(
+                ui,
+                (&field.label, value, mixed.whole),
+                &sheets.listed_grounds(),
+                (
+                    "ground",
+                    "No grounds yet: Home › Create › More › Ground… makes one.",
+                ),
+            ));
+        }
         (FieldKind::Asset, Offer::Assets("tile map")) => {
             return whole(asset_picker(
                 ui,

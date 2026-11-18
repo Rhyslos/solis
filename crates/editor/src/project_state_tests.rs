@@ -229,6 +229,8 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     let ProjectState {
         project,
         document,
+        ground,
+        new_ground,
         models,
         export,
         last_export,
@@ -353,6 +355,11 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(told_code_notes.is_empty() && rust_components.is_empty());
     assert_eq!(editor_view, &None);
     assert_eq!(brushes.iter().count(), 0, "no brushes of the last project");
+    assert!(ground.loaded().is_none() && ground.left() == 0, "no ground of the last project");
+    assert!(
+        new_ground.form.is_none() && new_ground.making.is_none(),
+        "no ground being made for the last project"
+    );
     assert_eq!(bindings, &fresh.bindings);
     assert!(input_page.is_none());
     assert_eq!(fixed_seed, &None);

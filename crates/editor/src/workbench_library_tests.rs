@@ -515,6 +515,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
         K::Animator,
         K::Tileset,
         K::TileMap,
+        K::Ground,
         K::Atlas,
         K::Text,
         K::Other,
@@ -533,6 +534,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
             | K::SoundEvent
             | K::Animator
             | K::Tileset
+            | K::Ground
             | K::Atlas
             | K::Text
             | K::Other => (1, 0),
