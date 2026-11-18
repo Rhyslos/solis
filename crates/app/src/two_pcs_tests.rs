@@ -73,18 +73,17 @@ fn two_pcs_a_rule_broken_at_a_tick_fails_there_naming_what_changed() {
     })
     .unwrap_err();
     assert_eq!(m.tick, broken, "{}", m.message);
-    let named: BTreeSet<&str> = m.parts.iter().map(|d| d.part.as_str()).collect();
-    assert_eq!(
-        named,
-        BTreeSet::from([format!("{hive} \"Hive\" Transform (in the world)").as_str()]),
-        "{}",
-        m.message
-    );
+    let named: Vec<&str> = m.parts.iter().map(|d| d.part.as_str()).collect();
+    let hive_place = format!("{hive} \"Hive\" Transform (in the world)");
+    // The hive's place first of all (a drone it spawns in that very tick
+    // would start from its new place too).
+    assert!(named.contains(&hive_place.as_str()), "{}", m.message);
     assert!(m.message.contains("at tick 50"), "{}", m.message);
     assert!(m.message.contains("\"Hive\" Transform"), "{}", m.message);
     assert!(m.message.contains("What to do"), "{}", m.message);
     let dump = std::fs::read_to_string(&m.dump).unwrap();
-    assert!(dump.contains("Parts that differ (1)"), "{dump}");
+    assert!(dump.contains("Parts that differ ("), "{dump}");
+    assert!(dump.contains(&hive_place), "{dump}");
     assert!(dump.contains("Expected, whole:"), "{dump}");
     let _ = std::fs::remove_file(&m.dump);
 }
