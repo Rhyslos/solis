@@ -113,6 +113,16 @@ impl ViewportRenderer {
         colours: &[[u8; 3]],
     ) -> GroundMaterials {
         let model = Model {
+            name: String::new(),
+            meshes: Vec::new(),
+            nodes: Vec::new(),
+            textures: Vec::new(),
+            lamps: Vec::new(),
+            bounds: assets::Bounds {
+                min: glam::Vec3::ZERO,
+                max: glam::Vec3::ZERO,
+            },
+            warnings: Vec::new(),
             materials: colours
                 .iter()
                 .map(|c| Material {
@@ -127,7 +137,6 @@ impl ViewportRenderer {
                     ..Material::default()
                 })
                 .collect(),
-            ..Model::default()
         };
         let mut materials = self.models.upload_materials(device, queue, &model);
         // The plain default the uploader adds last isn't a kind.

@@ -28,6 +28,8 @@ pub(crate) struct GroundPlay {
     ground: Arc<ground::Ground>,
     /// The Ground entity.
     entity: EntityId,
+    /// Its settings file.
+    asset: reflect::AssetId,
     /// Whether it's solid.
     solid: bool,
     /// Each chunk that has triangles: its collider, once it has arrived.
@@ -36,13 +38,14 @@ pub(crate) struct GroundPlay {
 
 impl World {
     /// Gives the game its ground: `ground` (the editor's, shared), on the
-    /// Ground entity `entity`, solid or not. `needed` are the chunks that
+    /// Ground entity `entity`, from the settings file `asset`, solid or
+    /// not. `needed` are the chunks that
     /// may have triangles; `ready` the colliders made so far. Characters
     /// are held out of the needed chunks whose collider isn't here yet.
     pub fn set_ground(
         &mut self,
         ground: Arc<ground::Ground>,
-        (entity, solid): (EntityId, bool),
+        (entity, asset, solid): (EntityId, reflect::AssetId, bool),
         needed: &[IVec3],
         ready: Vec<(IVec3, Option<physics::PreparedShape>)>,
     ) {
@@ -50,6 +53,7 @@ impl World {
         self.ground = Some(GroundPlay {
             ground,
             entity,
+            asset,
             solid,
             shapes,
         });
@@ -59,6 +63,11 @@ impl World {
     /// The game's copy of the ground, if the level has one.
     pub fn ground(&self) -> Option<&Arc<ground::Ground>> {
         self.ground.as_ref().map(|g| &g.ground)
+    }
+
+    /// The game's ground's settings file, if the level has a ground.
+    pub fn ground_asset(&self) -> Option<reflect::AssetId> {
+        self.ground.as_ref().map(|g| g.asset)
     }
 
     /// Colliders made on a worker for chunks of the ground (`None` for a

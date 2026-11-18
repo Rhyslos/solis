@@ -289,3 +289,7 @@ thread_local! {
 #[cfg(test)]
 #[path = "ground_chunks_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ground_scale_tests.rs"]
+mod scale_tests;
