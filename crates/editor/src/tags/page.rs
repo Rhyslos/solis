@@ -85,12 +85,7 @@ impl Workbench {
     /// row while it's typed, and + New tag.
     fn tag_rows(&mut self, ui: &mut Ui, page: &mut TagsPage) {
         widgets::rows::section_caps(ui, "Tags");
-        sentence(
-            ui,
-            "Labels you give entities, such as Enemy or Collectible, so game code can find them: \
-             \u{201c}all enemies within 3 m\u{201d}, \u{201c}the nearest collectible\u{201d}. Game \
-             code names them as Tag.Enemy, so a misspelt tag is caught before the game runs.",
-        );
+        about_tags(ui);
         ui.add_space(size::GAP);
         let tags: Vec<(TagId, String)> = self
             .open
@@ -342,6 +337,32 @@ fn note_words(ui: &mut Ui, (words, ink): &(String, egui::Color32)) {
             .truncate()
             .selectable(false),
     );
+}
+
+/// The section's sentence, game code's name for a tag in code's letters.
+fn about_tags(ui: &mut Ui) {
+    let mut job = egui::text::LayoutJob::default();
+    let words = |font: egui::FontId| egui::TextFormat {
+        font_id: font,
+        color: tokens::text_meta(),
+        line_height: Some(text::SETTING_HINT_LINE_H),
+        ..egui::TextFormat::default()
+    };
+    job.append(
+        "Labels you give entities, such as Enemy or Collectible, so game code can find them: \
+         \u{201c}all enemies within 3 m\u{201d}, \u{201c}the nearest collectible\u{201d}. Game code \
+         names them as ",
+        0.0,
+        words(text::setting_hint()),
+    );
+    job.append("Tag.Enemy", 0.0, words(text::mono_small()));
+    job.append(
+        ", so a misspelt tag is caught before the game runs.",
+        0.0,
+        words(text::setting_hint()),
+    );
+    job.wrap.max_width = ui.available_width();
+    ui.add(egui::Label::new(job).selectable(false).wrap());
 }
 
 /// The card beside the tags: how game code asks for them.
