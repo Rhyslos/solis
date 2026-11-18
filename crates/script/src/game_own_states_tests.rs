@@ -593,3 +593,77 @@ fn waiting_changes_a_save_holds_are_checked_line_by_line() {
         let _ = game.set_states_waiting(&String::from_utf8_lossy(&bytes));
     }
 }
+
+/// 10,000 copies of a component changing its own state every tick, each
+/// time starting a timer and a tween in it (`own`), or the same with a
+/// plain field for its mood, so nothing ends and nothing is heard.
+fn changing(own: bool) -> String {
+    let (has, set) = if own {
+        ("state = Mood.Calm;", "state")
+    } else {
+        ("Mood mood = Mood.Calm;", "mood")
+    };
+    format!(
+        "fetch \"solis/project\":Timer;\n\
+         state Mood = [Calm, Busy];\n\
+         event MoodChanged(Mood from, Mood to);\n\
+         component Changer {{\n\
+             has {{\n\
+                 {has}\n\
+                 float glow = 0;\n\
+             }}\n\
+             method update(float dt) {{\n\
+                 is {set} == Mood.Calm? then {{\n\
+                     {set} = Mood.Busy;\n\
+                 }} or {{\n\
+                     {set} = Mood.Calm;\n\
+                 }}\n\
+                 startTimer(Timer.Recover, 1.0);\n\
+                 tween glow to 1 over 1.0;\n\
+             }}\n\
+         }}\n\
+         pass Changer;\nend\n"
+    )
+}
+
+/// The milliseconds a tick of [`changing`] takes, on average, on one core.
+fn tick_ms(own: bool, ticks: u32) -> f64 {
+    let names: Vec<String> = (0..10_000).map(|n| format!("C{n}")).collect();
+    let names: Vec<&str> = names.iter().map(String::as_str).collect();
+    let mut world = TestWorld::with(&names);
+    let mut game = unhurried(1);
+    game.load(&compile(&changing(own)).unwrap(), &mut world)
+        .unwrap();
+    let empty = ComponentData::default();
+    let components = (1..=10_000).map(|n| (id(n), "Changer", &empty));
+    assert!(game.sync_many(components, &mut world).is_empty());
+    // A few ticks first, so everything has its room.
+    run(&mut game, &mut world, 5);
+    let began = std::time::Instant::now();
+    run(&mut game, &mut world, ticks);
+    let ms = began.elapsed().as_secs_f64() * 1000.0 / f64::from(ticks);
+    assert_eq!(game.timers().len(), 10_000);
+    ms
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_10000_components_changing_state_every_tick() {
+    // Stage 1's scale case for states: 10,000 components each changing
+    // its own state every tick, each time with a timer and a tween started
+    // in it, which the next change ends (and is heard). Its cost apart
+    // from game code: the same game with a plain field for the mood, so
+    // nothing ends and nothing is heard, taken from it. Each measured a
+    // few times, the quickest kept, as a busy machine only adds.
+    const TARGET_MS: f64 = 2.0;
+    let quickest = |own: bool| (0..3).map(|_| tick_ms(own, 30)).fold(f64::MAX, f64::min);
+    let (plain, own) = (quickest(false), quickest(true));
+    let ms = (own - plain).max(0.0);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: 10,000 components changing state every tick, each with a timer and a \
+         tween in it: ending them and hearing the changes {ms:.3} ms a tick (target \
+         {TARGET_MS} ms) {verdict}; the whole tick {own:.3} ms, {plain:.3} ms with a plain field"
+    );
+    assert!(ms <= TARGET_MS, "states take {ms:.3} ms a tick");
+}

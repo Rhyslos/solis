@@ -329,6 +329,7 @@ Timers that finish in the same tick are heard in the tick's **first round of eve
 ### Timers, saves and new code
 - **Saves:** a [save game](save-games.md) keeps every timer waiting; loaded, each finishes on the tick it would have.
 - **When an entity goes:** despawning an entity, or taking the component off it, ends its timers quietly: they never finish.
+- **When its state changes:** a timer a Lust component starts while in a state of its own (`state = Mood.Stunned;`) belongs to that state, and ends quietly when the component leaves it: its `TimerFinished` never comes. `keepStarted()` lets it run on. See [States that start and stop](states.md).
 - **New code while playing:** a timer keeps running while its component is still in the code and its Lust still starts a timer of that name. Rename the timer, or take the component out, and the timers that no longer fit stop, with one note in the [Console](console.md) saying which.
 
 ### Steps in order
@@ -522,11 +523,13 @@ Timers have no shortcuts.
 - **Problem:** Problems says `Timer.DoorOpnes` isn't a Timer. **Why:** no `startTimer` in the game's Lust names it: a typo, or the timer was renamed. **Fix:** use the name the start call gives, or start the timer under that name.
 - **Problem:** Problems says a timer's name isn't a `Timer`, though it's set in a variable first (`Timer next = Timer.Later;`). **Why:** only a start call names a timer. **Fix:** start it by name somewhere (`startTimer(Timer.Later, …)`), even if other code chooses which to start.
 - **Problem:** a timer stopped when the code changed while playing. **Why:** its name, or its component, is gone from the new code; the Console says which. **Fix:** start it again, under its new name.
+- **Problem:** a timer stopped, and its `TimerFinished` never came, though nothing stopped it. **Why:** it was started while its component was in a state of its own, and the state changed. **Fix:** start it after setting the new state, or call `keepStarted()` after starting it ([States that start and stop](states.md)).
 - **Problem:** `timerRunning` says no just after `startTimer`. **Why:** starts land at the end of the tick, so every core sees the same timers during it. **Fix:** nothing to fix: from the next tick it says yes.
 - **Problem:** `startTimer` stops with "a timer belongs to the component that starts it". **Why:** it was called on another entity, or in a game-wide object or a tween. **Fix:** send that entity an event, and let its own component start its timer.
 
 ## Related
 - [Game code](game-code.md): components, events, the tick, tweens and game-wide objects.
+- [States that start and stop](states.md): timers that end with their state.
 - [Save games](save-games.md): what a save keeps.
 - [Sky, fog and exposure](sky-fog-and-exposure.md): the day and night clock.
 - [Concepts](concepts.md): timer, tick, event, state.

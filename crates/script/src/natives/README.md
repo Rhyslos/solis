@@ -14,6 +14,7 @@ The native methods game code calls (`solis.World:say`, `entity.moveTo`), each ma
 | `maps.rs` | `Maps`: a tile map reached by its path, its cells at places, its size, terrains and values; an entity's map bounds. |
 | `settings.rs` | The player's settings (decision 0091): `Screens`' text and UI sizes and `Window`'s fullscreen, size and quit. A screen's own code gets a read-only set of these instead (`runtime.rs`, `run_screen`). |
 | `input.rs` | `Input`: actions held, pressed and released, axes, and bindings. |
+| `states.rs` | A component's own state (stage 1, decision 0126): `keepStarted`, on the component's own entity, and the hidden native Lust's runtime calls when an object's own state changes (only a component's, one with an entity, reaches the host). |
 | `timers.rs` | A component's timers (stage 1, decision 0125): `startTimer`, `startTimerEvery`, `startTimerAtHour`, `stopTimer`, `timerRunning` and `timeLeft`, on the component's own entity; a timer named by its option's text, and a mistake (nothing to call it on, a name a timer can't have) said by the call's Lua name. |
 
 **Read next:** the folder's [README](../README.md).

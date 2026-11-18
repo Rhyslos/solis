@@ -76,6 +76,10 @@ pub struct Voice {
     /// everywhere (a placed sound's entity comes with its placement): so
     /// `entity:stopSounds` and an AudioSource's loop find it.
     pub on: Option<u64>,
+    /// What it belongs to, as a number the caller chooses: a loop game
+    /// code started in a state, stopped with
+    /// [`crate::SoundDevice::stop_game_loops_of`] when the state ends.
+    pub owner: Option<u64>,
 }
 
 impl Voice {
@@ -116,6 +120,10 @@ struct Playing {
     source: bool,
     /// The entity it's on, by its ID's number.
     on: Option<u64>,
+    /// Whether it plays over and over.
+    looping: bool,
+    /// What it belongs to ([`Voice::owner`]).
+    owner: Option<u64>,
     /// Its own track, when it's placed (Kira places a track, not a sound).
     track: Option<kira::track::SpatialTrackHandle>,
     /// The sound itself.
@@ -424,6 +432,8 @@ impl crate::SoundDevice {
             event: voice.event,
             source: voice.source,
             on,
+            looping: voice.looping,
+            owner: voice.owner,
             track,
             sound,
         });
@@ -487,6 +497,22 @@ impl crate::SoundDevice {
             .playing
             .iter_mut()
             .filter(|p| p.on == Some(entity) && !p.source)
+        {
+            playing.sound.stop_over(STOP_ON_FADE);
+        }
+    }
+
+    /// Stops the loops game code played that belong to `owner` (a state's,
+    /// which ended), with a short fade. Sounds that play once finish as
+    /// they would.
+    pub fn stop_game_loops_of(&mut self, owner: u64) {
+        let Some(game) = self.game.as_mut() else {
+            return;
+        };
+        for playing in game
+            .playing
+            .iter_mut()
+            .filter(|p| p.owner == Some(owner) && p.looping && !p.source)
         {
             playing.sound.stop_over(STOP_ON_FADE);
         }
