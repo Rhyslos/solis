@@ -3,7 +3,7 @@
 The order of work from 18 November 2026 ([decision 0122](../decisions/0122-the-game-stages.md)). The project lead wants to make every kind of 2D game in Solis, learning as they go, with 3D later because 2D features are easier to build first. So the 2D work is ordered by **the kind of game it lets you make**, one stage at a time.
 
 **What doesn't change:**
-- **Tools, never game systems** (CLAUDE.md, "The project lead's games are made with Solis, never built into it"). A dialogue system, an inventory, quests, shops or crafting are games made with Solis's tools, such as text effects, drag and drop, tables and tags; they're never built into the engine. A line below may name a game use, but only as an example of what its tool is for.
+- **Tools, never game systems** (CLAUDE.md, "The project lead's games are made with Solis, never built into it"). An inventory, quests, shops or crafting are games made with Solis's tools, such as text effects, drag and drop, tables and tags; they're never built into the engine. A line below may name a game use, but only as an example of what its tool is for. **The one exception is dialogue** ([decision 0124](../decisions/0124-a-dialogue-system-in-the-engine.md)): a full dialogue system is built into Solis, in stage 1.
 - **Every feature is a general tool any game can use** (CLAUDE.md, "The project lead's games are made with Solis, never built into it"). A stage only decides *when* a feature is built. The features are the ones ROADMAP.md's phase sections already describe; each line below names the section it comes from.
 - **How each is built** (technique, code, tests) is in [the plan after the rethink](after-the-rethink.md) and its research.
 - One milestone per pull request, UI mocked up first, keys asked about first (rule 17), the scale target kept.
@@ -27,6 +27,8 @@ Walking a world, rooms and doors, talking to people, picking things up, an inven
 - **Field hints and more kinds of settings:** sliders, limits, help, and fields that pick a sound, a sprite, a prefab or a list. (Shared 4, with 2D 1's typed fields)
 - **Data tables:** any game's data (rows and typed columns) in one file, edited as a table and read by game code with its spelling checked. For example, items with prices and descriptions. (Shared 4)
 - **Text layout, then text effects:** text that wraps, types itself out letter by letter, and has coloured, wavy or shaking words and icons inside it, for any text a game shows: menus, signs, item descriptions, and dialogue boxes. (Shared 5)
+- **Translations and subtitles:** the game's text in several languages, with a check for missing lines, and captions for sounds and speech. Brought from the finishing stage for dialogue ([decision 0124](../decisions/0124-a-dialogue-system-in-the-engine.md)). (Shared 5)
+- **Dialogue, a full system in the engine** (the project lead, 2026-11-18; [decision 0124](../decisions/0124-a-dialogue-system-in-the-engine.md), [the outline](dialogue/README.md)): conversations as graphs of lines, choices and branches, with conditions and effects that call game code; a dialogue box on text effects; a conversation editor on the shared graph editor; starting from the world with triggers, timers and states; voice lines and sounds at moments in a line, with subtitles in step; and one place for all of a game's dialogue. Several milestones, each mocked up first. If one needs something that comes later, it moves behind it.
 - **Tooltips, and drag and drop in game screens:** any piece of a screen can show a tip and be dragged onto another, and game code hears what was dropped where. For example, inventories, shops, equipment slots or a hotbar. (Shared 5)
 - **Fades:** to black and back, or another colour, as a general tool. (Shared 3, brought from stage 2's shake and flash.)
 - **Rooms on a world map, and moving between them,** with a fade. (2D 1 and Shared 6)
@@ -34,7 +36,7 @@ Walking a world, rooms and doors, talking to people, picking things up, an inven
 - **Sorting tall things:** walking behind and in front of trees and houses properly. (2D 1)
 - **Pathfinding:** characters walk round walls to where they're going. (2D 1)
 - **Save slots:** several saves with a picture and the time played. (Shared 4)
-- **The sample:** a small top-down adventure in Learn, with a little dialogue and an inventory written in Lust, as a game maker would write them, not built into Solis.
+- **The sample:** a small top-down adventure in Learn, with conversations made in Solis's dialogue system, and an inventory written in Lust as a game maker would write it, not built into Solis.
 
 ## Stage 2: a platformer
 
@@ -73,7 +75,7 @@ Many enemies and projectiles, hits that feel good, effects and light.
 
 - **Polish for 2D:** palette swaps and cycling, clean pixel-art rotation. (2D 2)
 - **The finished picture and weather:** bloom, grading, weather and moods. (Shared 9)
-- **Button pictures for each controller, translations and subtitles.** (Shared 5)
+- **Button pictures for each controller.** (Shared 5; translations and subtitles moved to stage 1, decision 0124)
 - **Seeing inside the game:** debug drawing and the cheat box; bug reports from playtesters. (Shared 6)
 - **Cutscenes and behaviour.** (Shared 10)
 - **The rethink:** the project lead's big testing pass.

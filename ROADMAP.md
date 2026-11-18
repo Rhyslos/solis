@@ -38,6 +38,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | Shared 8. Effects | Solstice: particles, trails, flipbooks; a pixel mode for pixel art |
 | Shared 9. Weather and the finished picture | Weather and moods, bloom and grading, in 2D and 3D |
 | Shared 10. Cutscenes and behaviour | A cutscene timeline, behaviour drawn as diagrams |
+| Dialogue (decision 0124) | Conversations, the dialogue box, the conversation editor, talking from the world, voice and subtitles in step, one place for all dialogue; built in stage 1 |
 | *The rethink* | The project lead's big testing pass |
 | Shared 11. Scripting, full export, Git and mods | The scripting window; finished games for Windows; teams through Git; mods |
 | 3D 1. 3D animation and navigation | Animated characters from glTF; navmeshes |
@@ -388,10 +389,23 @@ Ideas 23 to 27 and 17.
 - **Text effects:** text that types itself out, wavy or shaking words, small icons inside text.
 - **Button pictures that match the player's controller,** switching between keyboard and gamepad.
 - **Tooltips, and drag and drop** for inventories and shops.
-- **Translations and subtitles:** the game's text in several languages, with a check for missing lines, and captions for sounds and speech.
+- **Translations and subtitles:** the game's text in several languages, with a check for missing lines, and captions for sounds and speech. Built in stage 1, just before dialogue ([decision 0124](docs/decisions/0124-a-dialogue-system-in-the-engine.md)).
 - **Music that follows the game:** layers fade in when danger is near, and changes land on the beat.
 
 **Gate:** a shop where items are dragged into a bag, with tooltips, in two languages; dialogue types itself out; the music swells when an enemy is near.
+
+## Dialogue
+
+The project lead, 2026-11-18 ([decision 0124](docs/decisions/0124-a-dialogue-system-in-the-engine.md)): a full dialogue system in the engine, built in stage 1 right after text effects, with translations and subtitles just before it. It starts from the project lead's prototype ([its specification](docs/plans/dialogue/prototype-spec.md)) and goes further ([the outline](docs/plans/dialogue/README.md)).
+
+- **Conversations and their runtime:** lines, choices, branches and ends, with speakers; conditions and effects that call game code; saved mid-conversation.
+- **The dialogue box:** typewriter text, choices, locked choices said in words, restyled or replaced by the game maker.
+- **The conversation editor:** on the shared graph editor, with Problems and undo.
+- **Talking from the world:** started from trigger zones, moved on by timers, followed by states.
+- **Voice and moments:** voice lines per language, sounds and cues at moments inside a line, subtitles in step with the voice.
+- **One place for all of a game's dialogue:** every conversation, line, voice and translation, what's missing, and spreadsheets for translators and voice actors.
+
+**Gate:** in the stage 1 sample, walking up to a character starts a voiced conversation with choices, its subtitles in step, in two languages.
 
 ## Shared 6: Worlds and testing
 
