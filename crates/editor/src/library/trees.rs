@@ -14,7 +14,7 @@ use super::{
 use crate::icons::Icon;
 use crate::tokens::{self, size, text};
 use egui::{Align, Id, Layout, Rect, Sense, Ui, UiBuilder, vec2};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 /// What Home's left slot shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -130,13 +130,18 @@ pub(crate) fn folder_trees(
         state.trees.even_out();
     }
     let rooms = state.trees.rooms(rect);
+    // Each folder's files, found once for every tree.
+    let mut by_folder: ByFolder<'_> = HashMap::new();
+    for item in files.items.iter().filter(|i| !is_engine(&i.path)) {
+        by_folder.entry(item.folder()).or_default().push(item);
+    }
     for (at, room) in rooms.iter().enumerate() {
         let mut tree_ui = ui.new_child(UiBuilder::new().max_rect(*room).id_salt(("tree", at)));
         tree_ui.set_clip_rect(room.intersect(ui.clip_rect()));
-        one_tree(&mut tree_ui, at, files, state, requests);
+        one_tree(&mut tree_ui, (at, &by_folder), files, state, requests);
     }
-    for edge in 0..state.trees.edges.len() {
-        let x = rooms[edge].right();
+    for (edge, room) in rooms.iter().enumerate().take(state.trees.edges.len()) {
+        let x = room.right();
         let line = Rect::from_x_y_ranges(x..=x + size::LINE, rect.y_range());
         let reach = line.expand2(vec2(size::DIVIDER_REACH, 0.0));
         let response = ui.interact(reach, Id::new(("tree edge", edge)), Sense::drag());
@@ -168,7 +173,7 @@ pub(crate) fn folder_trees(
 /// One tree: its header (up, its folder's name, ⋯), then its rows.
 fn one_tree(
     ui: &mut Ui,
-    at: usize,
+    (at, by_folder): (usize, &ByFolder<'_>),
     files: Files<'_>,
     state: &mut LibraryState,
     requests: &mut Vec<LibraryRequest>,
@@ -183,7 +188,7 @@ fn one_tree(
     let space = rows_ui.interact(body, rows_ui.id().with("space"), Sense::click());
     browser::take_moves(&space, &top, requests);
     space.context_menu(|ui| menus::space_menu(ui, &top, &files.project.name, requests));
-    let rows = tree_rows(files, &state.trees.list[at]);
+    let rows = tree_rows(files, by_folder, &state.trees.list[at]);
     let order: Vec<&str> = rows.iter().map(|(e, _)| e.path()).collect();
     rows_ui.spacing_mut().item_spacing.y = 0.0;
     egui::ScrollArea::vertical()
@@ -278,14 +283,21 @@ fn tree_menu(ui: &mut Ui, at: usize, state: &mut LibraryState) {
 
 /// The rows of `tree`: what's in its folder, folders first, each
 /// unfolded folder followed by what's in it, with how deep each is.
-fn tree_rows<'a>(files: Files<'a>, tree: &OneTree) -> Vec<(Entry<'a>, usize)> {
+fn tree_rows<'a>(
+    files: Files<'a>,
+    by_folder: &ByFolder<'a>,
+    tree: &OneTree,
+) -> Vec<(Entry<'a>, usize)> {
     let mut rows = Vec::new();
-    add_rows(files, tree, &tree.top, 0, &mut rows);
+    add_rows((files, by_folder), tree, &tree.top, 0, &mut rows);
     rows
 }
 
+/// Each folder's files (the engine's left out), by the folder's path.
+type ByFolder<'a> = HashMap<&'a str, Vec<&'a super::LibraryItem>>;
+
 fn add_rows<'a>(
-    files: Files<'a>,
+    (files, by_folder): (Files<'a>, &ByFolder<'a>),
     tree: &OneTree,
     folder: &str,
     depth: usize,
@@ -294,16 +306,12 @@ fn add_rows<'a>(
     for inside in folders_in(files.folders, folder) {
         rows.push((Entry::Folder(inside), depth));
         if tree.open.contains(inside) {
-            add_rows(files, tree, inside, depth + 1, rows);
+            add_rows((files, by_folder), tree, inside, depth + 1, rows);
         }
     }
-    rows.extend(
-        files
-            .items
-            .iter()
-            .filter(|i| i.folder() == folder && !is_engine(&i.path))
-            .map(|i| (Entry::File(i), depth)),
-    );
+    if let Some(inside) = by_folder.get(folder) {
+        rows.extend(inside.iter().map(|i| (Entry::File(i), depth)));
+    }
 }
 
 /// One row of a tree. A folder's click folds or unfolds it and a

@@ -281,10 +281,10 @@ impl LibraryState {
     pub(crate) fn pick_also(&mut self, path: &str) {
         if self.selected.as_deref() == Some(path) {
             self.selected = self.also.pop_first();
-        } else if !self.also.remove(path) {
-            if let Some(was) = self.selected.replace(path.to_owned()) {
-                self.also.insert(was);
-            }
+        } else if !self.also.remove(path)
+            && let Some(was) = self.selected.replace(path.to_owned())
+        {
+            self.also.insert(was);
         }
     }
 

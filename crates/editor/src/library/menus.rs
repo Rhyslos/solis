@@ -85,6 +85,9 @@ pub(crate) fn space_menu(
     ask(ui, (Icon::Reveal, "Show in Explorer"), show, requests);
 }
 
+/// A row of the New menu's More: its icon, words and request.
+type MoreRow = (Icon, &'static str, fn(String) -> LibraryRequest);
+
 /// What can be made in `folder`: a folder, a level, a prefab (from R5), a
 /// code file and a sound event, as board 04 has them, then the 2D files
 /// under More.
@@ -121,7 +124,7 @@ fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
     );
     ui.menu_button("More", |ui| {
         fit(ui, &["New tile map"]);
-        let more: [(Icon, &str, fn(String) -> LibraryRequest); 3] = [
+        let more: [MoreRow; 3] = [
             (Icon::TileMap, "New tile map", LibraryRequest::NewTileMap),
             (Icon::Tileset, "New tileset", LibraryRequest::NewTileset),
             (Icon::Animator, "New animator", LibraryRequest::NewAnimator),

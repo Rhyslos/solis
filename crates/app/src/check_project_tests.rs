@@ -314,10 +314,7 @@ fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
         "farmer.solframes",
         "old.soltilemap",
     ] {
-        assert!(
-            text.contains(&format!("FAIL  {name}")),
-            "{name}: {text}"
-        );
+        assert!(text.contains(&format!("FAIL  {name}")), "{name}: {text}");
     }
     // Game code in Lust isn't a data file.
     assert!(!text.contains("FAIL  assets/main.lst"), "{text}");
