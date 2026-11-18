@@ -7610,6 +7610,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <ul>
 <li>game code reads the world as the tick started and its changes land in a fixed order, so the number of cores never changes the result (<a href="#game-code--components">what game code sees</a>);</li>
 <li>physics is built to give the same answer on every PC (<a href="#physics">Physics</a>);</li>
+<li>game code's maths (<code>Maths:sin</code>, <code>Maths:exp</code>, <code>Maths:power</code> and the rest in Lust; <code>math.sin</code>, <code>math.exp</code>, <code>math.pow</code> and the rest in Lua) is worked out by Solis's own maths, the same to the last bit everywhere, never by the computer's system library, which rounds the last digit differently on Windows and on Linux;</li>
 <li>every tick, the game's <a href="#concepts--simulation">checksum</a> sums up its whole state, so a replay that stops matching says at which tick;</li>
 <li>Solis checks itself: every change to Solis plays a recorded game, with physics, 2D and 3D, spawns, tile maps, animators, zones, speed changes and game code in all three languages, on Linux and on Windows, on one core and on four, and compares every tick. A sum that works out differently on another PC is caught before it reaches your game.</li>
 </ul>
@@ -7617,6 +7618,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <ul>
 <li><strong>Roll random numbers with the game's own:</strong> <code>World:random()</code>, <code>World:randomRange</code> and <code>World:randomInt</code>; in Rust <code>cx.host().random()</code>, and in Lua <code>math.random</code> follows it too (<a href="#game-code--random-numbers">Random numbers</a>). They follow the game's seed, so a save or a replay rolls the same numbers. Lust's own <code>Random</code> (<code>Random[1, 6]</code>, <code>Random:chance</code>) doesn't follow it yet, so avoid it in anything the game keeps.</li>
 <li><strong>Never keep real time in game state:</strong> <code>World:frameTime()</code> is how long the frame took on this PC, which differs every time. Use the <code>dt</code> your <code>update</code> is given.</li>
+<li><strong>In Lua, raise to a power with <code>math.pow(a, b)</code></strong>, not <code>a ^ b</code>: the <code>^</code> sign is worked out by the computer's own library, which can round differently on another PC (a whole power of two, such as <code>2 ^ 3</code>, is exact anywhere). In Lust, <code>Maths:power</code> is always exact.</li>
 <li><strong>A tween's done block</strong> (<code>tween … { … }</code>) can run in a different order, against another tween's ending in the same tick, with another number of cores. Until Solis puts them in a fixed order, keep what a done block does to the component's own fields, or glide the value yourself in <code>update</code>.</li>
 </ul>
 </section>

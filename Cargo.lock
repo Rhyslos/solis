@@ -4143,6 +4143,7 @@ dependencies = [
  "glam 0.33.12",
  "input",
  "level",
+ "libm",
  "lust",
  "mlua",
  "physics",

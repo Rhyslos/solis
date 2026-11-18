@@ -8,6 +8,7 @@ pub mod code;
 mod convert;
 pub mod describe;
 pub mod events;
+mod exact_maths;
 pub mod game;
 pub mod host;
 pub mod interface;

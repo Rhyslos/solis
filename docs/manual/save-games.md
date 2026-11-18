@@ -93,6 +93,7 @@ Solis keeps its own side of the promise:
 
 - game code reads the world as the tick started and its changes land in a fixed order, so the number of cores never changes the result ([what game code sees](game-code.md#components));
 - physics is built to give the same answer on every PC ([Physics](physics.md));
+- game code's maths (`Maths:sin`, `Maths:exp`, `Maths:power` and the rest in Lust; `math.sin`, `math.exp`, `math.pow` and the rest in Lua) is worked out by Solis's own maths, the same to the last bit everywhere, never by the computer's system library, which rounds the last digit differently on Windows and on Linux;
 - every tick, the game's [checksum](concepts.md#simulation) sums up its whole state, so a replay that stops matching says at which tick;
 - Solis checks itself: every change to Solis plays a recorded game, with physics, 2D and 3D, spawns, tile maps, animators, zones, speed changes and game code in all three languages, on Linux and on Windows, on one core and on four, and compares every tick. A sum that works out differently on another PC is caught before it reaches your game.
 
@@ -100,6 +101,7 @@ Your side, in game code:
 
 - **Roll random numbers with the game's own:** `World:random()`, `World:randomRange` and `World:randomInt`; in Rust `cx.host().random()`, and in Lua `math.random` follows it too ([Random numbers](game-code.md#random-numbers)). They follow the game's seed, so a save or a replay rolls the same numbers. Lust's own `Random` (`Random[1, 6]`, `Random:chance`) doesn't follow it yet, so avoid it in anything the game keeps.
 - **Never keep real time in game state:** `World:frameTime()` is how long the frame took on this PC, which differs every time. Use the `dt` your `update` is given.
+- **In Lua, raise to a power with `math.pow(a, b)`**, not `a ^ b`: the `^` sign is worked out by the computer's own library, which can round differently on another PC (a whole power of two, such as `2 ^ 3`, is exact anywhere). In Lust, `Maths:power` is always exact.
 - **A tween's done block** (`tween … { … }`) can run in a different order, against another tween's ending in the same tick, with another number of cores. Until Solis puts them in a fixed order, keep what a done block does to the component's own fields, or glide the value yourself in `update`.
 
 ## Settings

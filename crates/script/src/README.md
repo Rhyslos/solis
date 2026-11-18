@@ -30,6 +30,7 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 | File | What it does | Main items |
 | --- | --- | --- |
 | `luau.rs` | The Luau game code runs in, made safe: time limits per call, per tick and per load, a memory cap, no access to files, and no way to another file's globals or Solis's own (`sandboxed_lua` takes out `require`, `loadstring`, `getfenv` and `setfenv`; Solis's own Lua is all made in `Luau::new`, before any game code). | `TIME_LIMIT`, `TICK_LIMIT`, `Clock` |
+| `exact_maths.rs` | Game code's maths the same to the last bit on every PC (stage 1, the two-PC check): every Luau's `math` library gets `libm`'s sines, cosines, tangents and their inverses, `atan2`, `exp`, `log` (with a base), `log10`, `pow` and hyperbolic functions in place of the C library's, before anything runs, and Lust's runtime raises to powers with that `math.pow` where it used `^`. Tests in `exact_maths_tests.rs` (each function's bits pinned for a set of numbers, and the cost of a call measured, ignored) and `game_maths_tests.rs` (Lust's `Maths` in a running game). | |
 | `interrupt.rs` | The watchman inside Luau that stops code running past its time limit, set cheaply (decision 0034). | |
 | `runtime.rs` | One Luau holding the game's running components, one per entity and component name; swapping in new code while the game runs. | `Runtime`, `Failure`, `Ticked`, `Swapped` |
 | `syncing.rs` | Making running components from the level's values, and passing on what changed or was set by hand. | |

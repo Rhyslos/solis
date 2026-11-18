@@ -370,7 +370,8 @@ pub(crate) struct Luau {
 const TAKEN_OUT: [&str; 4] = ["require", "loadstring", "getfenv", "setfenv"];
 
 /// A Luau with only the libraries game code may use: Luau's safe ones,
-/// without [`TAKEN_OUT`]. Luau and mlua 0.12 between them give every
+/// without [`TAKEN_OUT`], and with `math`'s sines, logs and powers
+/// worked out the same on every PC (`exact_maths`). Luau and mlua 0.12 between them give every
 /// Luau all of those, so they're taken out here.
 pub(crate) fn sandboxed_lua() -> mlua::Result<Lua> {
     let lua = Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::default())?;
@@ -379,6 +380,8 @@ pub(crate) fn sandboxed_lua() -> mlua::Result<Lua> {
         globals.raw_remove(name)?;
     }
     drop(globals);
+    // Its maths the same to the last bit on every PC, not the C library's.
+    crate::exact_maths::install(&lua)?;
     Ok(lua)
 }
 
