@@ -297,7 +297,13 @@ impl Projects {
             .iter()
             .map(|f| LibraryItem {
                 id: f.id,
-                kind: library_kind(f.kind),
+                // The project's own tags.lst, at the top of its files, is
+                // the project's tags, never game code (stage 1).
+                kind: if f.path == Path::new(level::tags::FILE_NAME) {
+                    LibraryKind::Tags
+                } else {
+                    library_kind(f.kind)
+                },
                 // Files Solis doesn't know keep their whole name, so
                 // "brick.png.exe" never passes for "brick.png".
                 // A data file's name is its stem: `chicken`, not

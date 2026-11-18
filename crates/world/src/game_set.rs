@@ -19,13 +19,16 @@
 //! | How fast an animator plays | `Animator`: speed | `Animators:setPlaybackSpeed` |
 //! | The screen an entity shows | `Screen`: screen, shown | `showScreen`, `hideScreen` |
 //! | An animator's state and parameters | its run, beside its components | `Animators:setNumber`, `setSwitch`, `fire`, `setDirection`, `jumpTo` |
+//! | The tags an entity carries | `Tags`: tags | `addTag`, `removeTag` |
 //! | A tile map's cells and values | its map, beside its components | `Maps:setTerrain`, `setNumber`, `setSwitch`, `setChoice` |
 //!
 //! All but the last two are fields the level holds too ([`Part`]). For
 //! each the rule is the same: the game's is kept while the level still
 //! gives what it gave when the world took the entity in ([`Start`]). An
 //! edit that changes the level's wins, and so does one that sets the field
-//! by hand to what the level held all along ([`World::set_by_hand`]). The
+//! by hand to what the level held all along ([`World::set_by_hand`]). An
+//! entity given its first tag by game code is given a `Tags`, as
+//! `showScreen` gives a Screen. The
 //! last two are kept as long as the entity keeps the component they
 //! belong to.
 //!
@@ -45,7 +48,7 @@ use crate::animators::Running;
 use crate::sprites::Playback;
 use crate::tile_maps::MapState;
 use crate::{Id, Values, World};
-use level::builtin::{Animator, AudioSource, Screen, Sprite, TileMap};
+use level::builtin::{Animator, AudioSource, Screen, Sprite, Tags, TileMap};
 use reflect::{Component, ComponentData, EntityId};
 
 /// One thing game code sets on an entity's own component: some of the
@@ -66,11 +69,13 @@ pub(crate) enum Part {
     AnimatorSpeed,
     /// Which screen a Screen shows, and whether it's shown.
     Screen,
+    /// The tags an entity carries (stage 1, tags).
+    Tags,
 }
 
 impl Part {
     /// Every part.
-    pub(crate) const ALL: [Self; 7] = [
+    pub(crate) const ALL: [Self; 8] = [
         Self::Playback,
         Self::SpriteSpeed,
         Self::Flip,
@@ -78,6 +83,7 @@ impl Part {
         Self::AnimatorState,
         Self::AnimatorSpeed,
         Self::Screen,
+        Self::Tags,
     ];
 
     /// The component it's on and its fields there, as the level names
@@ -91,6 +97,7 @@ impl Part {
             Self::AnimatorState => (Animator::NAME, &["state"]),
             Self::AnimatorSpeed => (Animator::NAME, &["speed"]),
             Self::Screen => (Screen::NAME, &["screen", "shown"]),
+            Self::Tags => (Tags::NAME, &["tags"]),
         }
     }
 
@@ -114,6 +121,7 @@ pub(crate) struct GameSet {
     animator_state: Option<String>,
     animator_speed: Option<f32>,
     screen: Option<(String, bool)>,
+    tags: Option<Tags>,
 }
 
 impl GameSet {
@@ -140,6 +148,11 @@ impl GameSet {
         self.animator_speed = Some(animator.speed);
     }
 
+    /// Takes in an entity's tags.
+    pub(crate) fn read_tags(&mut self, tags: &Tags) {
+        self.tags = Some(tags.clone());
+    }
+
     /// Takes in a Screen's part, from its values.
     pub(crate) fn read_screen(&mut self, data: &ComponentData) {
         let screen = Screen::from_data(data);
@@ -163,6 +176,9 @@ impl GameSet {
         {
             set.read_screen(data);
         }
+        if let Ok(tags) = ecs.get::<&Tags>(entity) {
+            set.read_tags(&tags);
+        }
         set
     }
 
@@ -176,6 +192,7 @@ impl GameSet {
             Part::AnimatorState => self.animator_state == other.animator_state,
             Part::AnimatorSpeed => self.animator_speed == other.animator_speed,
             Part::Screen => self.screen == other.screen,
+            Part::Tags => self.tags == other.tags,
         }
     }
 
@@ -232,6 +249,12 @@ impl GameSet {
                     put_screen(ecs, entity, screen, *shown);
                 }
             }
+            // An entity the game gave its first tag is given a Tags, and
+            // one the level gave none, taken back to the level's, none.
+            Part::Tags => match &self.tags {
+                Some(tags) => drop(ecs.insert_one(entity, tags.clone())),
+                None => drop(ecs.remove_one::<Tags>(entity)),
+            },
         }
     }
 }
@@ -314,14 +337,15 @@ impl World {
             Option<&'a Running>,
             Option<&'a MapState>,
             Option<&'a Values>,
+            Option<&'a Tags>,
         );
         let entities: Vec<hecs::Entity> = self
             .ecs
             .query::<Has<'_>>()
             .iter()
-            .filter(|(_, start, run, map, values)| {
+            .filter(|(_, start, run, map, values, tags)| {
                 let screen = values.is_some_and(|v| v.0.contains_key(Screen::NAME));
-                start.is_some() || run.is_some() || map.is_some() || screen
+                start.is_some() || run.is_some() || map.is_some() || screen || tags.is_some()
             })
             .map(|(entity, ..)| entity)
             .collect();

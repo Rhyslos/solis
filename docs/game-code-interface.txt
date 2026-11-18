@@ -9,9 +9,14 @@
 world: object World: method say(string words) native;
 world: object World: method float time() native;
 world: object World: method entity find(string name) native;
+world: object World: method entity array within(Tag tag, vec3 place, float radius) native;
+world: object World: method entity nearest(Tag tag, vec3 place) native;
 world: object World: method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;
 world: object World: method entity spawn(Prefab which, vec3 place) native;
 world: method entity:despawn() native;
+world: method bool entity:hasTag(Tag tag) native;
+world: method entity:addTag(Tag tag) native;
+world: method entity:removeTag(Tag tag) native;
 world: object World: method float frameTime() native;
 world: object World: method vec3 viewSize() native;
 world: object World: method float random() native;
@@ -144,6 +149,7 @@ solis.World:find
 solis.World:fire
 solis.World:frameTime
 solis.World:gameSpeed
+solis.World:nearest
 solis.World:random
 solis.World:randomInt
 solis.World:randomRange
@@ -155,11 +161,14 @@ solis.World:spawn
 solis.World:time
 solis.World:timeOfDay
 solis.World:viewSize
+solis.World:within
+solis.entity.addTag
 solis.entity.animate
 solis.entity.animateFromStart
 solis.entity.despawn
 solis.entity.face
 solis.entity.grounded
+solis.entity.hasTag
 solis.entity.hideScreen
 solis.entity.inside
 solis.entity.mapBounds
@@ -168,6 +177,7 @@ solis.entity.name
 solis.entity.playSound
 solis.entity.position
 solis.entity.push
+solis.entity.removeTag
 solis.entity.rotation
 solis.entity.screenShown
 solis.entity.setFlip
@@ -214,6 +224,11 @@ Host: fn set_velocity(&mut self, which: EntityId, velocity: Vec3)
 Host: fn walk(&mut self, which: EntityId, wanted: Vec3)
 Host: fn grounded(&self, which: EntityId) -> bool
 Host: fn inside(&self, zone: EntityId) -> Vec<EntityId>
+Host: fn has_tag(&self, which: EntityId, tag: &str) -> bool
+Host: fn add_tag(&mut self, which: EntityId, tag: &str)
+Host: fn remove_tag(&mut self, which: EntityId, tag: &str)
+Host: fn within(&self, tag: &str, place: Vec3, radius: f32) -> Vec<EntityId>
+Host: fn nearest(&self, tag: &str, place: Vec3) -> Option<EntityId>
 Host: fn save_game(&mut self, slot: &str, load: bool)
 Host: fn action(&self, name: &str) -> input::ActionState
 Host: fn binding(&self, action: &str) -> Option<String>

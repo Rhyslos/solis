@@ -16,7 +16,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 **File › Preferences › General**: each setting with what it does, and the search at the top, which looks through every sub-tab.
 
 1. Click the **File** tab, then **Preferences** or **Project settings** in its column. Or press **Space** and type *Preferences*. Preferences are on the [launcher](launcher.md) too, at the foot of its column.
-2. Pick a sub-tab under the heading: Preferences has **General**, **Appearance**, **Layout**, **Viewport** and **Shortcuts**; Project settings has **General**, **2D**, **Input** and **Build**. The faint sub-tabs with a small square (Source control, Physics, Platforms and others) are [unfinished parts](unfinished-parts.md).
+2. Pick a sub-tab under the heading: Preferences has **General**, **Appearance**, **Layout**, **Viewport** and **Shortcuts**; Project settings has **General**, **2D**, **Input**, **Tags** and **Build**. The faint sub-tabs with a small square (Source control, Physics, Platforms and others) are [unfinished parts](unfinished-parts.md).
 3. Each setting is a row, with its name and a line about it on the left and its control on the right: a switch, a row of choices side by side, a drop-down list, colour swatches, a number or a button. They work from the keyboard too: **Tab** moves from one to the next (a thin ring in the accent colour shows where you are), **Space** or **Enter** presses or flips it, and the **arrow keys** move along the swatches and the choices, or step through a drop-down list without opening it.
 4. Can't find something? Type in the search at the top right: it looks through every sub-tab of the page, at the settings' names and their lines, and shows the matches together.
 5. On Preferences, **Reset to defaults** (in the column at the right) puts the sub-tab's settings back as they were at first. On Project settings, a setting changed from its standard has a dot before its name and **Reset** after it; the heading counts them ("2 changed from defaults"), and a card at the right lists each, from what to what.
@@ -61,6 +61,7 @@ Neither is an undo step. Every change applies at once: there is no Save or Apply
 | 2D › Tile size | The 2D view's grid, and new tile maps', in pixels: 16 × 16 to start. |
 | 2D › Scaling to the screen | **Whole steps** (crisp, with bars if the screen doesn't divide evenly) or **Fill the screen**. The card beside it says how the base resolution fits 1920 × 1080, 2560 × 1440 and 3840 × 2160 screens. |
 | Input | The game's controls: see [Input](input.md). |
+| Tags | The project's tags (Enemy, Collectible…), each with what uses it: **+ New tag**, double-click a name to rename it everywhere, ⋯ › **Delete**. Kept in the project's `tags.lst`. See [Tags](tags.md). |
 | Build | Export for playtesting: see [Export for playtesting](playtest-export.md). |
 
 A number you drag is saved once, when you let go.

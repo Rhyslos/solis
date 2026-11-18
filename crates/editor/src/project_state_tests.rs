@@ -251,6 +251,10 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         text_file,
         mixer,
         pixels,
+        tags,
+        tags_revision,
+        tag_use,
+        tag_use_asked,
         code_checked,
         play_changes,
         cue_sounds,
@@ -327,6 +331,10 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(preview.is_none() && sound_shown.is_none() && text_file.is_none());
     same(mixer, &fresh.mixer, "the Mixer");
     assert_eq!(pixels, &fresh.pixels);
+    assert_eq!(tags, &fresh.tags);
+    assert_eq!(tags_revision, &fresh.tags_revision);
+    assert_eq!(tag_use, &fresh.tag_use);
+    assert_eq!(tag_use_asked, &fresh.tag_use_asked);
     assert_eq!(code_checked, &None);
     same(unanswered, &fresh.unanswered, "saves waiting for an answer");
     assert!(frames_editor.is_none() && animator_editor.is_none());
@@ -401,6 +409,10 @@ fn work_on_the_farm(w: &mut Workbench, ids: Ids) {
         pixels_per_unit: 48,
         ..level::pixels::PixelSettings::default()
     });
+    let mut tags = level::tags::TagList::default();
+    tags.add("Enemy").unwrap();
+    w.set_tags(tags);
+    w.set_tag_use(crate::tags::TagUse::default());
     let mut mixer = sound::Mixer::default();
     mixer.buses[0].volume_db = -6.0;
     w.set_mixer(mixer);

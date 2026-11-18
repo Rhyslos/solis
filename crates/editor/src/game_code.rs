@@ -351,6 +351,9 @@ pub(crate) struct ViewCache {
     /// Whether game code asked to close the game (`Window:quit()`,
     /// decision 0093).
     pub(crate) quit: bool,
+    /// The tags as this tick started (stage 1, tags): made once a tick,
+    /// as it begins, and read by every phase and core.
+    pub(crate) tags: Arc<script::TagView>,
 }
 
 impl ViewCache {
@@ -552,6 +555,7 @@ impl GameWorld for PlayWorld<'_> {
                 )
             },
             zones: self.world.inside_zones(),
+            tags: Arc::clone(&self.cache.tags),
         }
     }
 
@@ -628,6 +632,7 @@ impl GameWorld for PlayWorld<'_> {
                         let _ = self.world.set_cell_value(id, value, cell, to);
                     }
                 }
+                Change::Tag(which, tag, on) => drop(self.world.set_tag(which, tag, on)),
                 Change::BusVolume(ref bus, share) => self
                     .sounds
                     .push(crate::game_sound::Request::BusVolume(bus.clone(), share)),

@@ -22,7 +22,9 @@ mod value;
 
 pub use checksum::Checksum;
 pub use component::{Component, ComponentData, Fields};
-pub use id::{AssetId, EntityId, ID_TEXT_LEN, Id, IdError, IdHasher, IdHashing, IdMap, IdSet};
+pub use id::{
+    AssetId, EntityId, ID_TEXT_LEN, Id, IdError, IdHasher, IdHashing, IdMap, IdSet, TagId,
+};
 pub use registry::{Registry, RegistryError};
 pub use schema::{ComponentSchema, FieldInfo, FieldKind, Hint, Offer};
 pub use value::{AssetRef, Value};

@@ -12,6 +12,7 @@ The File tab's own pages (the design's Screens 8, 12 and 13, and the approved ad
 | `preferences.rs` | Preferences' controls (General, Appearance, Layout's rows, Viewport), Reset to defaults, the card of an unfinished part and the small picture of the editor; choosing the look. |
 | `project_settings.rs` | Project settings' controls (General, with the project's kind, 2D), what has changed from the standard, and the 2D settings themselves (`set_pixels`, `change_pixels`, `fits`). |
 | `build.rs` | Project settings › Build: Export for playtesting's rows and the card about the last export (`export_dialog.rs` holds what it asks and the playtest file); and the Build tab's page (`Workbench::build_page`), the same rows in the File pages' pattern with the unfinished targets beside them. |
+| (Tags) | Project settings › Tags is `../tags/page.rs`'s (stage 1), drawn by `settings_page.rs` in Tags' place. |
 | `input_page.rs` | Project settings › Input: its state (`InputPage`), the tools over the table and Add action, binding by the next key pressed, Backspace clearing a picked binding, and the clashes to mark. |
 | `input_table.rs`, `input_card.rs` | Input's table of actions, and the picked action's card with Device settings and the ready-made actions' links. |
 | `shortcuts.rs` | Preferences › Shortcuts: today's keys as a table to read, filtered and searched. |

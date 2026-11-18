@@ -116,6 +116,16 @@ pub(crate) struct ProjectState {
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
     pub(crate) pixels: level::pixels::PixelSettings,
+    /// The project's tags (Project settings › Tags, `tags.lst`; stage 1),
+    /// and a count that goes up whenever they change.
+    pub(crate) tags: level::tags::TagList,
+    pub(crate) tags_revision: u64,
+    /// Where the project's saved levels use each tag, as the app last
+    /// counted them; none until counted.
+    pub(crate) tag_use: Option<crate::tags::TagUse>,
+    /// Whether the count has been asked for since the Tags page was last
+    /// shown.
+    pub(crate) tag_use_asked: bool,
     /// When the game's code was last checked (the local time, for the
     /// status bar); none before the first check.
     pub(crate) code_checked: Option<String>,

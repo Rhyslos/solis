@@ -137,6 +137,13 @@ pub(crate) enum PropertyRequest {
     /// Make a code file for a trigger zone, add its component to the
     /// zone, and open it (New code for this zone…).
     NewZoneCode(EntityId),
+    /// Change a trigger zone's Only tags (stage 1, tags).
+    ZoneOnly {
+        /// The zone.
+        entity: EntityId,
+        /// What to do.
+        ask: crate::tags::TagAsk,
+    },
     /// Stretch a brush about its middle to a size, in metres (the Brush
     /// card's Size; Tools 1a, B3).
     BrushSize {
@@ -144,6 +151,14 @@ pub(crate) enum PropertyRequest {
         entity: EntityId,
         /// Its new size.
         size: glam::Vec3,
+    },
+    /// Change the tags of entities (the chips under the name; stage 1),
+    /// as one undo step.
+    Tags {
+        /// The entities.
+        entities: Vec<EntityId>,
+        /// What to do.
+        ask: crate::tags::TagAsk,
     },
     /// Put a component's fields back to their starting values.
     ResetComponent {
@@ -184,6 +199,12 @@ pub(crate) struct Help<'a> {
     /// (which shapes the project offers, who is inside while playing;
     /// stage 1), for the entity Properties shows.
     pub zone: Option<&'a crate::zones::card::ZoneFacts>,
+    /// The project's tags (stage 1), for the chips under the name; none
+    /// where tags aren't shown.
+    pub tags: Option<&'a level::tags::TagList>,
+    /// Whether the entity shown is a prefab's copy whose tags differ from
+    /// its prefab's.
+    pub tags_changed: bool,
 }
 
 /// While the game plays: game code's values as they are now (for the
@@ -216,6 +237,7 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
         "Listener" => "listeners.md",
         "ReverbZone" => "reverb-zones.md",
         "TriggerZone" => "trigger-zones.md",
+        "Tags" => "tags.md",
         "Sprite" => "sprites.md",
         "Parallax" => "parallax.md",
         "Animator" => "animators.md",
@@ -297,6 +319,10 @@ pub(crate) fn properties(
                 .inner_margin(egui::Margin::same(size::CARD_GAP as i8))
                 .show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = size::CARD_GAP;
+                    if let Some(tags) = help.tags {
+                        let changed = help.tags_changed && !many;
+                        tags_row(ui, document, (tags, changed), &selected, &mut requests);
+                    }
                     if !many {
                         if let Some(part) = part {
                             head::prefab_note(ui, id, part, &mut requests);
@@ -310,6 +336,10 @@ pub(crate) fn properties(
                     let mut names: Vec<&String> = entity
                         .components
                         .keys()
+                        // Tags are the chips under the name, never a card.
+                        .filter(|n| {
+                            n.as_str() != <level::builtin::Tags as reflect::Component>::NAME
+                        })
                         .filter(|n| {
                             !many
                                 || (document.registry.get(n).is_some()
@@ -352,6 +382,48 @@ pub(crate) fn properties(
                 });
         });
     requests
+}
+
+/// The tags under the name (stage 1): those every selected entity
+/// carries, as chips, with + Tag; a change applies to each.
+fn tags_row(
+    ui: &mut Ui,
+    document: &Document,
+    (tags, changed): (&level::tags::TagList, bool),
+    selected: &[EntityId],
+    requests: &mut Vec<PropertyRequest>,
+) {
+    let level = document.level();
+    let mut shared: Vec<reflect::TagId> = level
+        .get(selected[0])
+        .map(|e| crate::tags::carried(tags, e))
+        .unwrap_or_default();
+    for &other in &selected[1..] {
+        let theirs = level
+            .get(other)
+            .map(|e| crate::tags::carried(tags, e))
+            .unwrap_or_default();
+        shared.retain(|t| theirs.contains(t));
+    }
+    let help = if selected.len() > 1 {
+        "The tags every selected entity carries. A change applies to each."
+    } else {
+        "Labels game code finds it by (Project settings \u{203a} Tags): hasTag, World:within, \
+         World:nearest."
+    };
+    let row = crate::tags::chips::TagRow {
+        label: "Tags",
+        help,
+        tags,
+        shown: &shared,
+        changed,
+    };
+    for ask in crate::tags::chips::chips(ui, &row) {
+        requests.push(PropertyRequest::Tags {
+            entities: selected.to_vec(),
+            ask,
+        });
+    }
 }
 
 /// What drawing a component's card needs.
@@ -465,6 +537,7 @@ impl Card<'_> {
                         },
                         ZoneAsk::Draw => PropertyRequest::ZoneDraw(id),
                         ZoneAsk::EditPoints => PropertyRequest::ZoneEditPoints(id),
+                        ZoneAsk::Only(ask) => PropertyRequest::ZoneOnly { entity: id, ask },
                     });
                 }
             });
@@ -479,6 +552,18 @@ impl Card<'_> {
             });
             return;
         }
+        // Several zones: Only tags is IDs as saved, so it's shown as the
+        // tags' names (when every zone has the same), never as the IDs.
+        let zone_only = component == <level::builtin::TriggerZone as reflect::Component>::NAME;
+        let without_only;
+        let schema = if zone_only {
+            let mut fewer = reflect::ComponentSchema::clone(schema);
+            fewer.fields.retain(|f| f.name != ONLY_TAGS);
+            without_only = fewer;
+            &without_only
+        } else {
+            schema
+        };
         let changes = ui
             .add_enabled_ui(editable, |ui| {
                 inspector::fields(
@@ -520,11 +605,58 @@ impl Card<'_> {
                 },
             });
         }
+        if zone_only {
+            self.shared_only_tags(ui, data, &others);
+        }
         if component == "Model" {
             cards::model_rows_to_come(ui);
         }
     }
+
+    /// Several zones' Only tags, as names, when every zone has the same;
+    /// nothing when they differ (each zone's own card changes them).
+    fn shared_only_tags(
+        &self,
+        ui: &mut Ui,
+        data: &reflect::ComponentData,
+        others: &[&reflect::ComponentData],
+    ) {
+        let (Some(tags), Some(Value::Text(mine))) = (self.help.tags, data.get(ONLY_TAGS)) else {
+            return;
+        };
+        let same = others
+            .iter()
+            .all(|o| o.get(ONLY_TAGS) == Some(&Value::Text(mine.clone())));
+        if !same {
+            return;
+        }
+        let names: Vec<&str> = level::builtin::Tags::read(mine)
+            .ids
+            .into_iter()
+            .filter_map(|id| tags.name_of(id))
+            .collect();
+        let words = if names.is_empty() {
+            "None: everything it notices".to_owned()
+        } else {
+            names.join(" \u{b7} ")
+        };
+        inspector::row(
+            ui,
+            "Only tags",
+            "The tags every picked zone notices. Pick one zone to change them.",
+            |ui| {
+                ui.label(
+                    egui::RichText::new(words)
+                        .font(crate::tokens::text::row())
+                        .color(crate::tokens::text_primary()),
+                );
+            },
+        );
+    }
 }
+
+/// A trigger zone's Only tags field, as the level keeps it.
+const ONLY_TAGS: &str = "only_tags";
 
 impl Card<'_> {
     /// The Brush card's rows (`brushing::card`), and what changing them

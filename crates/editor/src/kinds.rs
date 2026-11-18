@@ -339,8 +339,8 @@ pub(crate) fn component(name: &str) -> PartKind {
         // light 2D games too, decision 0092), "Transform", "Camera" (a 2D camera in the 2D
         // view), "Sprite",
         // "Animator", "AudioSource", "Listener", "ReverbZone", "Screen",
-        // "TriggerZone" (built once for 2D and 3D, decision 0097), and
-        // game code's.
+        // "TriggerZone" (built once for 2D and 3D, decision 0097), "Tags"
+        // (stage 1), and game code's.
         _ => PartKind::Shared,
     }
 }
@@ -348,7 +348,7 @@ pub(crate) fn component(name: &str) -> PartKind {
 /// The built-in components the table names, so a test can check every
 /// built-in has a row ([`component`] reads unknown names as shared).
 #[cfg(test)]
-pub(crate) const COMPONENTS: [&str; 19] = [
+pub(crate) const COMPONENTS: [&str; 20] = [
     "Animator",
     "AudioSource",
     "Brush",
@@ -365,6 +365,7 @@ pub(crate) const COMPONENTS: [&str; 19] = [
     "RigidBody",
     "Screen",
     "Sprite",
+    "Tags",
     "TileMap",
     "Transform",
     "TriggerZone",
@@ -421,6 +422,7 @@ pub(crate) fn settings_tab(tab: Tab) -> PartKind {
         | Tab::Shortcuts
         | Tab::Project
         | Tab::Input
+        | Tab::Tags
         | Tab::Build => PartKind::Shared,
     }
 }

@@ -6,6 +6,7 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | --- | --- |
 | `animator/` | An animator file (`.solanim`), as the fixture of version 1. |
 | `level_file/` | Level files (`.sollevel`): the turret sample's, the trigger zones' example (`zones.sollevel`: a box, a circle and a freeform L), and two of version 1 (so the upgrader is fuzzed too), one of them one whose entities are inside each other in loops (one its own parent, two and three in a ring, a chain hanging under a ring) or under a parent that isn't in the file. |
+| `tags_file/` | The project's tags: the example of version 1 (`tags.lst`). |
 | `prefab_file/` | Prefab files: the example of version 1 (`.prefab.lst`), and an assembly's older file of layouts 1 and 4 (`.solassembly`). |
 | `aseprite/` | Two small Aseprite files written by the `assets` crate's tests: the walker, and one in indexed colour (a palette). |
 | `atlas/` | Atlas files (`.atlas.lst`): the fixture of version 1, and a hostile one from `crates/animation/tests/data` that the reader refuses (a control character in its picture's name, which was read but not written back: the file the fuzzer's first run found, made small). |

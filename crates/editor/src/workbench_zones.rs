@@ -413,6 +413,10 @@ impl Workbench {
                     .collect(),
             )
         });
-        crate::zones::card::ZoneFacts { flat, inside }
+        crate::zones::card::ZoneFacts {
+            flat,
+            inside,
+            tags: self.open.tags.clone(),
+        }
     }
 }

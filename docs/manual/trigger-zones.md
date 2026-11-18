@@ -38,7 +38,7 @@ A freeform shape may bend inward (an L, a horseshoe), but its outline may never 
 | Size | A box's width and height (and depth in 3D), in metres; a circle's or sphere's radius. For a freeform shape, its number of points and **Edit points**. |
 | Notices | What the zone watches for: **Characters and bodies**, meaning characters (a CharacterBody, or a Collider2D ticked Character) and bodies that move (a RigidBody that's dynamic or kinematic). Walls, floors and other things that never move are never "inside". |
 | Fires | **Every time**: `Entered` whenever something walks in, `Exited` whenever it walks out. **Once**: only the first `Entered` (and the walker's `EnteredZone`), then nothing ever again, even after loading a save. |
-| Only tags | Greyed for now: it comes with tags, to notice only some kinds of thing ("only the player"). |
+| Only tags | Limits the zone to some kinds of thing: pick one or more of the project's [tags](tags.md) with **+ Tag**, and only what carries at least one of them counts ("only the player", "only enemies"). A chip's × takes a tag off; none chosen, the zone notices everything it can. What carries the tag is looked at as each tick starts, so something given the tag while inside is "entered" from the next tick, and something losing it "exits". |
 | Inside now | While playing, who is inside the zone. While editing it says "Shown while playing". |
 
 ## What game code hears

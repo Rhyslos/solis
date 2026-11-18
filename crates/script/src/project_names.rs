@@ -55,6 +55,9 @@ pub struct Names {
     /// assets without its extension, then the crop's name
     /// (`sprites/tools/Axe`).
     pub pictures: Vec<String>,
+    /// Its tags' names (`Enemy`), as Project settings › Tags has them
+    /// (stage 1, tags).
+    pub tags: Vec<String>,
 }
 
 impl Names {
@@ -74,6 +77,7 @@ impl Names {
             cues: Vec::new(),
             screens: Vec::new(),
             pictures: Vec::new(),
+            tags: Vec::new(),
         }
     }
 }
@@ -117,6 +121,13 @@ impl Names {
         self
     }
 
+    /// These names with these tags.
+    #[must_use]
+    pub fn and_tags(mut self, tags: &[&str]) -> Self {
+        self.tags.extend(tags.iter().map(|a| (*a).to_string()));
+        self
+    }
+
     /// These names with more input actions.
     #[must_use]
     pub fn and_actions(mut self, actions: &[&str]) -> Self {
@@ -152,6 +163,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
     let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
     let picture = state_text("Picture", &names.pictures, "cropped picture", &mut notes);
+    let tag = names_text("Tag", &names.tags, "tag", true, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -174,6 +186,8 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          -- The pictures cut out with Atlas Crop, by their pictures: Picture.Sprites.Tools.Axe for\n\
          -- sprites/tools.png's Axe.\n\
          {picture}\n\n\
+         -- The project's tags (Project settings > Tags): is hasTag(Tag.Enemy)?, World:nearest(Tag.Enemy, place).\n\
+         {tag}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -408,12 +422,35 @@ mod tests {
             "{text}"
         );
         assert!(
-            text.ends_with("pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
+            text.ends_with(
+                "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n"
+            )
         );
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));
+    }
+
+    #[test]
+    fn the_project_s_tags_are_a_state_of_their_own_names() {
+        let names = Names::standard().and_tags(&["Enemy", "Flying", "big bat", "UFO"]);
+        let (text, notes) = project_file("Test 1.0", &names);
+        assert!(text.contains("state Tag = [Enemy, Flying];"), "{text}");
+        assert_eq!(notes.len(), 2, "{notes:?}");
+        let (text, _) = project_file("Test 1.0", &Names::standard());
+        assert!(text.contains("state Tag = [None];"), "{text}");
+        // A tag is checked before the game runs.
+        let (text, _) = project_file("Test 1.0", &names);
+        let check = |main: &str| {
+            let files = vec![
+                ("solis/project.lst".to_string(), text.clone()),
+                ("main.lst".to_string(), main.to_string()),
+            ];
+            lust::check("main.lst", &files)
+        };
+        assert!(check("fetch \"solis/project\":Tag;\nTag a = Tag.Enemy;\nend\n").is_ok());
+        assert!(check("fetch \"solis/project\":Tag;\nTag a = Tag.Enmy;\nend\n").is_err());
     }
 
     #[test]
@@ -452,7 +489,9 @@ mod tests {
             "{text}"
         );
         assert!(
-            text.ends_with("pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
+            text.ends_with(
+                "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag;\nend\n"
+            )
         );
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));

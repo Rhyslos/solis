@@ -7,7 +7,7 @@ How components describe themselves (decision 0019): stable IDs, plain values, co
 | File | What it does | Main items |
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers. | |
-| `id.rs` | Stable IDs: random 64-bit numbers written as 13 characters, so two people on two branches never make the same one (decision 0020); also fast maps and sets keyed by them. | `Id`, `IdMap`, `IdSet`, `IdError` |
+| `id.rs` | Stable IDs: random 64-bit numbers written as 13 characters, so two people on two branches never make the same one (decision 0020); also fast maps and sets keyed by them. | `Id`, `EntityId`, `AssetId`, `TagId` (a project's tag, stage 1), `IdMap`, `IdSet`, `IdError` |
 | `value.rs` | Plain values: what a component's fields hold. | `Value`, `AssetRef` |
 | `schema.rs` | A component's name and fields, with their kinds, starting values and hints for the inspector. | `ComponentSchema`, `FieldInfo`, `FieldKind`, `Hint` |
 | `component.rs` | A component's values, and typed access to them for components written in Rust. | `ComponentData`, `Component`, `Fields` |

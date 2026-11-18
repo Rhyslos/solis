@@ -17,6 +17,7 @@ mod physics;
 mod reverb_zone;
 mod screen;
 mod sprite;
+mod tags;
 mod tile_map;
 mod transform;
 mod trigger_zone;
@@ -39,6 +40,7 @@ pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use reverb_zone::{ReverbZone, ZoneShape};
 pub use screen::Screen;
 pub use sprite::Sprite;
+pub use tags::{MAX_TAGS_PER_ENTITY, Tags};
 pub use tile_map::TileMap;
 pub use transform::Transform;
 pub use trigger_zone::{Fires, NOTICES, TriggerZone, ZoneForm};
@@ -68,6 +70,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Parallax>()?;
     registry.register_type::<Brush>()?;
     registry.register_type::<TriggerZone>()?;
+    registry.register_type::<Tags>()?;
     Ok(registry)
 }
 
@@ -195,6 +198,7 @@ mod tests {
                 "RigidBody",
                 "Screen",
                 "Sprite",
+                "Tags",
                 "TileMap",
                 "Transform",
                 "TriggerZone"

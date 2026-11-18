@@ -147,6 +147,12 @@ struct App {
     tidying: crate::known_projects::Tidying,
     /// Counts of prefabs' copies, on a worker, for Details.
     prefab_counts: prefabs::Counting,
+    /// Counts of where tags are used, on a worker, for Project settings ›
+    /// Tags (stage 1).
+    tag_counts: tags_window::Counting,
+    /// What the project's `tags.lst` was when last read or written, to
+    /// read it again when it changes.
+    tags_seen: tags_window::Stamp,
     /// Whether the splash screen still shows, until the editor opens.
     splashing: bool,
     /// File › Exit (or closing the launcher) asked to quit: the window's
@@ -190,6 +196,9 @@ mod launcher_window;
 
 #[path = "window_prefabs.rs"]
 mod prefabs;
+
+#[path = "window_tags.rs"]
+mod tags_window;
 
 impl App {
     fn new(
@@ -259,6 +268,8 @@ impl App {
             text_files: crate::text_files::TextFiles::default(),
             tidying: Default::default(),
             prefab_counts: Default::default(),
+            tag_counts: Default::default(),
+            tags_seen: None,
             splashing: playtest.is_none(),
             quitting: false,
             editor_place: saved.editor_place,
@@ -495,6 +506,13 @@ impl App {
                 // Its 2D settings (Phase 9, D1).
                 let (pixels, notes) = crate::play_files::load_pixels(root);
                 self.workbench.set_pixels(pixels);
+                for note in notes {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
+                // Its tags (stage 1), watched for changes from here on.
+                self.tags_seen = tags_window::stamp(root);
+                let (tags, notes) = crate::play_files::load_tags(root);
+                self.workbench.set_tags(tags);
                 for note in notes {
                     self.workbench.log(LogLevel::Warning, note);
                 }
@@ -752,6 +770,8 @@ impl App {
     /// engine is described again and the code checked, on a worker.
     fn assets_changed(&mut self) {
         self.refresh_library();
+        // tags.lst changed by hand or by Git: read again.
+        self.follow_tags_file();
         // A code file may have changed: checked again on a worker, and
         // reported only if the code is different.
         if let Some(assets) = self.projects.db().map(|db| db.project().files()) {
@@ -1233,6 +1253,8 @@ impl App {
                         }
                     }
                 }
+                WorkbenchAction::SaveTags(tags) => self.save_tags(&tags),
+                WorkbenchAction::CountTagUse => self.count_tag_use(),
                 WorkbenchAction::SavePixels(settings) => {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {
                         match crate::play_files::save_pixels(&root, &settings) {
@@ -1839,6 +1861,7 @@ impl eframe::App for App {
             self.tidied(done);
         }
         self.take_counts();
+        self.take_tag_use();
         self.guide.take_in(&ctx, &mut self.workbench);
         self.follow_folder_looks();
         let (changes, notes) = self.projects.poll();

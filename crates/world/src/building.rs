@@ -471,6 +471,11 @@ fn components_of(id: EntityId, data: &level::EntityData) -> hecs::EntityBuilder 
             level::builtin::TriggerZone::NAME => {
                 builder.add(level::builtin::TriggerZone::from_data(component));
             }
+            level::builtin::Tags::NAME => {
+                let tags = level::builtin::Tags::from_data(component);
+                start.read_tags(&tags);
+                builder.add(tags);
+            }
             _ => {
                 if name == level::builtin::Screen::NAME {
                     start.read_screen(component);

@@ -1,7 +1,8 @@
-//! The world's own objects: `World` (words, spawning, chance and the clock), `Physics` and `Saves`.
+//! The world's own objects: `World` (words, spawning, chance, the clock and
+//! questions about tags), `Physics` and `Saves`; and an entity's tags.
 
 use super::Scope;
-use crate::convert::{vec3_of, vec3_value};
+use crate::convert::{entity_of, vec3_of, vec3_value};
 use crate::host::{Lent, MAX_SAID_BYTES, MAX_SAID_LINES, Shot, SoundAt, random_int};
 use crate::luau::capped;
 use crate::native_values::native;
@@ -22,6 +23,77 @@ pub(super) fn lend<'s>(
     lend_clock(scope, natives, h)?;
     lend_physics(scope, natives, h)?;
     lend_saves(scope, natives, h)?;
+    lend_tags(scope, natives, h)?;
+    Ok(())
+}
+
+/// Tags (stage 1): `hasTag`, `addTag` and `removeTag` on an entity, and
+/// `World:within` and `World:nearest`. A tag comes as its name (`Enemy`
+/// for `Tag.Enemy`).
+fn lend_tags<'s>(
+    scope: &'s Scope<'s, '_>,
+    natives: &Table,
+    h: &'s Lent<'_, '_>,
+) -> mlua::Result<()> {
+    natives.raw_set(
+        "entity_hasTag",
+        native(
+            scope,
+            "entity_hasTag",
+            move |_, (which, tag): (LuaValue, mlua::LuaString)| {
+                let tag = tag.to_str()?;
+                Ok(entity_of(&which).is_some_and(|e| h.borrow().has_tag(e, &tag)))
+            },
+        )?,
+    )?;
+    for (key, on) in [("entity_addTag", true), ("entity_removeTag", false)] {
+        natives.raw_set(
+            key,
+            native(
+                scope,
+                key,
+                move |_, (which, tag): (LuaValue, mlua::LuaString)| {
+                    let tag = tag.to_str()?;
+                    if let Some(e) = entity_of(&which) {
+                        let mut host = h.borrow_mut();
+                        if on {
+                            host.add_tag(e, &tag);
+                        } else {
+                            host.remove_tag(e, &tag);
+                        }
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+    }
+    natives.raw_set(
+        "World_within",
+        native(
+            scope,
+            "World_within",
+            move |lua, (_world, tag, place, radius): (LuaValue, mlua::LuaString, LuaValue, f64)| {
+                let tag = tag.to_str()?;
+                let found = vec3_of(&place).map_or_else(Vec::new, |place| {
+                    h.borrow().within(&tag, place, radius as f32)
+                });
+                lua.create_sequence_from(found.into_iter().map(|id| id.to_string()))
+            },
+        )?,
+    )?;
+    natives.raw_set(
+        "World_nearest",
+        native(
+            scope,
+            "World_nearest",
+            move |_, (_world, tag, place): (LuaValue, mlua::LuaString, LuaValue)| {
+                let tag = tag.to_str()?;
+                Ok(vec3_of(&place)
+                    .and_then(|place| h.borrow().nearest(&tag, place))
+                    .map(|id| id.to_string()))
+            },
+        )?,
+    )?;
     Ok(())
 }
 

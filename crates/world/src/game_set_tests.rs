@@ -224,6 +224,7 @@ fn every_part_names_fields_its_component_has() {
             Part::Sounding => AudioSource::default().to_data(),
             Part::AnimatorState | Part::AnimatorSpeed => Animator::default().to_data(),
             Part::Screen => Screen::default().to_data(),
+            Part::Tags => level::builtin::Tags::default().to_data(),
         };
         assert!(!fields.is_empty(), "{part:?}");
         for field in fields {

@@ -104,6 +104,7 @@ pub mod sprite_sheets;
 mod standard;
 mod state_dump;
 pub mod state_list;
+pub mod tags;
 #[cfg(test)]
 mod test_support;
 pub mod text_view;
@@ -168,6 +169,7 @@ pub use shell::{BottomTab, RibbonTab, ShellState};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use state_list::{PartDifference, StateList, StateListError};
+pub use tags::TagUse;
 pub use transforming::Snapping;
 pub use updates::{ReleaseNotes, UpdateNotice};
 pub use viewport::{
@@ -219,6 +221,10 @@ mod scale_levels_tests;
 mod shell_reach_tests;
 #[cfg(test)]
 mod source_rules_tests;
+#[cfg(test)]
+mod tag_picture_tests;
+#[cfg(test)]
+mod tags_play_tests;
 #[cfg(test)]
 mod tools_1a_gate_tests;
 #[cfg(test)]

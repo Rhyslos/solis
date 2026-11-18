@@ -517,6 +517,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
         K::TileMap,
         K::Atlas,
         K::Text,
+        K::Tags,
         K::Other,
     ] {
         // A kind added to the list above is added here too, or this
@@ -535,6 +536,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
             | K::Tileset
             | K::Atlas
             | K::Text
+            | K::Tags
             | K::Other => (1, 0),
         };
         let mut w = Workbench::new(info());

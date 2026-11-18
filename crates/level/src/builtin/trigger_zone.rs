@@ -11,7 +11,7 @@ use super::field;
 use glam::{Vec2, Vec3};
 use mesh::outline::{MAX_OUTLINE_POINTS, OutlineError};
 use reflect::{
-    Component, ComponentData, ComponentSchema, FieldInfo, FieldKind, Fields, Hint, Value,
+    Component, ComponentData, ComponentSchema, FieldInfo, FieldKind, Fields, Hint, TagId, Value,
 };
 
 /// A zone's shape.
@@ -86,8 +86,8 @@ impl Fires {
     }
 }
 
-/// What a zone notices. Only one choice until tags exist, when "only
-/// these tags" joins it.
+/// What a zone notices: characters and bodies that move. Only tags
+/// ([`TriggerZone::only`]) narrows it to those carrying a tag.
 pub const NOTICES: [&str; 1] = ["Characters and bodies"];
 
 /// A place that tells game code when something walks in or out.
@@ -105,6 +105,9 @@ pub struct TriggerZone {
     pub points: Vec<Vec2>,
     /// Every time, or once.
     pub fires: Fires,
+    /// Only tags (stage 1, tags): when any are chosen, only what carries
+    /// at least one of them counts. Empty: everything it notices counts.
+    pub only: Vec<TagId>,
 }
 
 impl Default for TriggerZone {
@@ -115,6 +118,7 @@ impl Default for TriggerZone {
             radius: 1.0,
             points: Vec::new(),
             fires: Fires::EveryTime,
+            only: Vec::new(),
         }
     }
 }
@@ -253,6 +257,17 @@ impl Component for TriggerZone {
                     "Every time: whenever something walks in or out. Once: the first time \
                      something walks in, then never again, even after loading a save.",
                 ),
+                FieldInfo::new(
+                    "only_tags",
+                    "Only tags",
+                    FieldKind::Text,
+                    Value::Text(String::new()),
+                )
+                .hint(Hint {
+                    help: "Only things carrying at least one of these tags count; none chosen, \
+                           everything it notices does. Kept as the tags' IDs.",
+                    ..Hint::default()
+                }),
             ],
         }
     }
@@ -274,6 +289,10 @@ impl Component for TriggerZone {
         );
         data.set("notices", Value::Text(NOTICES[0].to_owned()));
         data.set("fires", Value::Text(self.fires.name().to_owned()));
+        data.set(
+            "only_tags",
+            Value::Text(super::Tags::of(self.only.iter().copied()).text()),
+        );
         data
     }
 
@@ -286,6 +305,7 @@ impl Component for TriggerZone {
             radius: f.float("radius", d.radius),
             points: points_of(data.get("points")),
             fires: Fires::named(f.text("fires").unwrap_or_default()),
+            only: super::Tags::read(f.text("only_tags").unwrap_or_default()).ids,
         }
         .sanitized()
     }

@@ -23,6 +23,7 @@ pub mod projectiles;
 mod screens_and_sounds;
 pub mod sprites;
 pub mod state_parts;
+mod tags;
 pub mod tile_maps;
 pub mod triggers;
 
@@ -294,6 +295,7 @@ impl World {
             Animator::NAME => typed::<Animator>(self, id),
             TileMap::NAME => typed::<TileMap>(self, id),
             level::builtin::TriggerZone::NAME => typed::<level::builtin::TriggerZone>(self, id),
+            level::builtin::Tags::NAME => typed::<level::builtin::Tags>(self, id),
             _ => self.values_named_for(id, name),
         }
     }

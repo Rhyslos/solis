@@ -256,6 +256,57 @@ pub fn save_pixels(
     )
 }
 
+/// Reads the project's tags (`tags.lst`, stage 1), with notes on any
+/// left out; none (and a note) if the file can't be read. A project
+/// without the file has none yet.
+pub fn load_tags(root: &Path) -> (level::tags::TagList, Vec<String>) {
+    let file = level::tags::FILE_NAME;
+    let text = match read_limited(&root.join(file), level::tags::MAX_BYTES as u64) {
+        Ok(Some(text)) => text,
+        Ok(None) => return (level::tags::TagList::default(), Vec::new()),
+        Err(why) => {
+            return (
+                level::tags::TagList::default(),
+                vec![format!(
+                    "Couldn't read {file}: {why}; the project has no tags until it can be."
+                )],
+            );
+        }
+    };
+    match level::tags::read(&text) {
+        Ok(read) => (
+            read.tags,
+            crate::upgrades::older_note(file, &text, &level::tags::FORMAT)
+                .into_iter()
+                .chain(read.notes.into_iter().map(|n| format!("{file}: {n}")))
+                .collect(),
+        ),
+        Err(why) => (
+            level::tags::TagList::default(),
+            vec![format!(
+                "{file} {why}, so the project has no tags until it's fixed (a change in Project \
+                 settings › Tags writes it again, keeping this one as a backup)."
+            )],
+        ),
+    }
+}
+
+/// Writes the project's tags, keeping a damaged file first as a backup
+/// and an older one in the backups, as [`save_mixer`] does.
+pub fn save_tags(root: &Path, tags: &level::tags::TagList) -> std::io::Result<Option<Kept>> {
+    save_keeping_damaged(
+        root,
+        level::tags::FILE_NAME,
+        &level::tags::write(tags),
+        &level::tags::FORMAT,
+        |text| {
+            level::tags::read(text)
+                .map(|read| level::tags::write(&read.tags))
+                .map_err(|e| e.to_string())
+        },
+    )
+}
+
 /// What saving kept of the file that was there.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Kept {

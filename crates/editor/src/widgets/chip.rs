@@ -90,3 +90,72 @@ pub fn chip(
     focus_ring(ui, &response, rect, round);
     response
 }
+
+/// A tag an entity carries (stage 1, tags; `docs/design/tags/02-entity-tags.png`):
+/// its name in a rounded chip filled a step up from the card, with an ×
+/// after it when `removable`. Gives back the ×'s response (named "Remove
+/// tag …"), or the chip's when there's none.
+pub fn tag_chip(ui: &mut Ui, label: &str, removable: bool) -> Response {
+    let font = egui::FontId::proportional(text::SMALL_SIZE);
+    let pad = 8.0;
+    let cross = if removable { 12.0 } else { 0.0 };
+    let gap = if removable { 4.0 } else { 0.0 };
+    let height = size::CHIP_H - 2.0;
+    let width = 2.0 * pad + width_of(ui, label, font.clone()) + gap + cross;
+    let (rect, chip) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
+    chip.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Label, true, label));
+    let round = size::radius::CONTROL;
+    let x_rect = Rect::from_min_max(
+        pos2(rect.right() - pad - cross, rect.top()),
+        pos2(rect.right() - pad / 2.0, rect.bottom()),
+    );
+    let response = if removable {
+        let named = format!("Remove tag {label}");
+        let x = ui.interact(x_rect, chip.id.with("remove"), Sense::click());
+        x.widget_info(|| WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), &named));
+        x
+    } else {
+        chip
+    };
+    if ui.is_rect_visible(rect) {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(round), tokens::line());
+        border(ui, rect, round, tokens::field_border());
+        let room = Rect::from_min_max(
+            pos2(rect.left() + pad, rect.top()),
+            pos2(rect.right() - pad - cross - gap, rect.bottom()),
+        );
+        words(
+            ui,
+            room,
+            Align2::LEFT_CENTER,
+            label,
+            font,
+            tokens::text_primary(),
+        );
+        if removable {
+            let ink = if response.hovered() {
+                tokens::text_emphasis()
+            } else {
+                tokens::text_meta()
+            };
+            words(
+                ui,
+                x_rect,
+                Align2::CENTER_CENTER,
+                "\u{d7}",
+                egui::FontId::proportional(text::ROW_SIZE),
+                ink,
+            );
+            focus_ring(ui, &response, x_rect, round);
+        }
+    }
+    response
+}
+
+/// Room for a chip before a list of chips wraps: what [`tag_chip`] takes.
+pub fn tag_chip_width(ui: &Ui, label: &str, removable: bool) -> f32 {
+    let font = egui::FontId::proportional(text::SMALL_SIZE);
+    let extra = if removable { 16.0 } else { 0.0 };
+    16.0 + width_of(ui, label, font) + extra
+}

@@ -4,9 +4,10 @@
 //!   in 2D, which starts drawing in the view;
 //! - **Size:** a box's width and height (and depth in 3D), a round zone's
 //!   radius, or a freeform zone's count of points and **Edit points**;
-//! - **Notices**, **Fires** (Every time | Once), **Only tags** greyed until
-//!   tags exist, and **Inside now**: "Shown while playing", or who is
-//!   inside while the game plays.
+//! - **Notices**, **Fires** (Every time | Once), **Only tags** (stage 1's
+//!   tags: chips and + Tag, as under an entity's name; none chosen, the
+//!   zone notices everything), and **Inside now**: "Shown while playing",
+//!   or who is inside while the game plays.
 
 use crate::inspector;
 use crate::tokens::{self, text};
@@ -23,6 +24,8 @@ pub(crate) struct ZoneFacts {
     pub(crate) flat: bool,
     /// While playing: the names of who is inside the zone now.
     pub(crate) inside: Option<Vec<String>>,
+    /// The project's tags, for Only tags.
+    pub(crate) tags: level::tags::TagList,
 }
 
 /// What a change on the card asks for.
@@ -34,6 +37,8 @@ pub(crate) enum ZoneAsk {
     Draw,
     /// Edit points: edit the freeform outline's points in the view.
     EditPoints,
+    /// A change to Only tags.
+    Only(crate::tags::TagAsk),
 }
 
 /// The widest a number field for one of a size's numbers is.
@@ -66,24 +71,24 @@ pub(crate) fn rows(ui: &mut Ui, data: &ComponentData, facts: &ZoneFacts) -> Vec<
             }
         },
     );
-    inspector::row(
-        ui,
-        "Only tags",
-        "Comes with tags: notice only some kinds of thing.",
-        |ui| {
-            let width = ui.available_width();
-            ui.add_enabled_ui(false, |ui| {
-                widgets::field::text_field(
-                    ui,
-                    "Only tags",
-                    &mut String::new(),
-                    "Comes with tags",
-                    width,
-                )
-            })
-            .response
-            .on_disabled_hover_text("Comes with tags: a zone will notice only some kinds of thing");
-        },
+    let only: Vec<reflect::TagId> = zone
+        .only
+        .iter()
+        .copied()
+        .filter(|id| facts.tags.get(*id).is_some())
+        .collect();
+    let row = crate::tags::chips::TagRow {
+        label: "Only tags",
+        help: "Only what carries at least one of these tags counts: \"only the player\". None \
+               chosen, the zone notices everything it can.",
+        tags: &facts.tags,
+        shown: &only,
+        changed: false,
+    };
+    asks.extend(
+        crate::tags::chips::chips(ui, &row)
+            .into_iter()
+            .map(ZoneAsk::Only),
     );
     inside_row(ui, facts);
     asks

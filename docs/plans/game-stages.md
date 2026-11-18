@@ -16,12 +16,12 @@ The order of work from 18 November 2026 ([decision 0122](../decisions/0122-the-g
 
 Walking a world, rooms and doors, talking to people, picking things up, an inventory, saving. Solis is closest to this already: top-down walking, tile maps, day and night, game UI.
 
-- **Triggers:** walking into or out of a zone (a door, a counter, a pit) tells game code. *Built* ([below](#the-next-milestone-triggers), with its As built note). (2D 2)
+- **Triggers:** walking into or out of a zone (a door, a counter, a pit) tells game code. (2D 2) *Built* ([below](#triggers)).
 - **The same game on two PCs:** a recorded game replayed on two machines, checksums compared tick by tick, before timers put more maths into game state (decision 0120). (Shared 2) *Built.*
   - **As built** (branch `stage1/two-pcs`): `tests/two-pcs/` holds a small game (`game/`: 3D character, crates, a moving platform, drones spawned at random and despawned, a turret's projectiles and hits, a box zone and a round one that fires once; a 2D walker with a sprite and an animator in a tile map whose walls game code raises and lowers, a freeform zone; the game-wide `Director` changing the game's speed; Lust, Lua and Rust, the Rust being Solis's own Armour), ten seconds of recorded gamepad play (`game.solrec`, 48 KB) and the state at the end of every tick (`game.states`, 260 KB): both checksums, and the state part by part (`world::state_parts` with game code's values, `Workbench::game_state`), kept as what changed since the tick before, each part numbered once, a value over 32 characters kept as a checksum of it (`editor::StateList`). `crates/app/src/two_pcs.rs` plays it on one core and on four in `cargo test --workspace`, so on CI's Windows machine in every pull request; the first tick that differs fails with the parts named, both states written to `target/two-pcs/`, which the Windows job uploads, and a sentence on what to do. `SOLIS_UPDATE_TWO_PCS=1` writes the list again; `record_the_game` (ignored) records the game again. About 1.1 s on one core and 1.7 s on four here (the two run side by side; a debug build).
   - **Kept clear of decision 0106's gaps:** no tween has a done block, and no Lust `Random`.
   - **Found:** `--check-project` read prefabs as levels, so since they became `.prefab.lst` files a check knew none and a recording's spawns made nothing; fixed. Linux and four cores agree with Linux on one core. **Windows' first run** (pull request 284) differed at tick 9 in the `Director` object's `Maths:sin`, `exp` and `atan2`: Luau's `math` called the C library, which rounds differently on Windows. Game code's maths now comes from `libm`, pure Rust, the same bits everywhere (`script::exact_maths`, with each function's bits pinned in a test); Lust's runtime raises to powers with it too. A call costs 13 to 60 ns more (release build), so the benchmark's 20,000 sines and cosines a tick at the stress level add about 0.6 ms of game code's time, shared between cores. Lua's own `^` still calls the C library: the manual says to use `math.pow`.
-- **Tags and questions about the world:** "all of a kind within 3 m", "the nearest". (Shared 2)
+- **Tags and questions about the world:** "all of a kind within 3 m", "the nearest". (Shared 2) *Built* ([below](#the-next-milestone-tags-and-questions-about-the-world), with its As built note).
 - **Timers and steps in order:** "open in 2 seconds", "walk there, wait, say this". (Shared 3)
 - **States that know when they start and stop.** (Shared 3)
 - **Field hints and more kinds of settings:** sliders, limits, help, and fields that pick a sound, a sprite, a prefab or a list. (Shared 4, with 2D 1's typed fields)
@@ -95,55 +95,37 @@ Planned in detail when 2D is done. The outline stays as ROADMAP.md has it:
 - netcode;
 - Solis 0.1.
 
-## The next milestone: triggers
+## Built
 
-**What it gives:** a zone you place in a level (a door, a shop counter, a pit) tells game code when something walks in or out. Every kind of game above uses it. Left over from decision 0071.
+### Triggers
+Zones that tell game code when something walks in or out (stage 1's first milestone, branch `stage1/triggers`; [approved mock-up](../design/triggers/README.md)):
+- `TriggerZone` (`level::builtin`): a box, a round shape (a circle in 2D, a sphere in 3D) or, in 2D, a freeform outline drawn point by point; Notices, Fires (every time or once), and Only tags, which became real with tags.
+- Solis's own overlap pass (`world::triggers`) as each tick begins, on a tree of boxes made from where moving things are now; results sorted by zone and entity, so the same on any number of cores. Who is inside is game state (saves are version 10, with a `zones` section).
+- Game code: `Entered(entity who)` and `Exited(entity who)` on the zone, `EnteredZone(entity zone)` and `LeftZone(entity zone)` on whoever walked, `inside()` on a zone; in Lust, Lua and Rust.
+- The editor: Trigger zone on Home's Create, the teal outline with handles, the TriggerZone card and What game code hears with New code for this zone, freeform drawing and editing.
+- Scale: 2,000 characters among 500 zones, about 1.2 ms a tick in a release build (target 2 ms).
 
-**How** (from [report 04](../reports/after-the-rethink/04-2d-2.md), M1):
-- **Solis's own overlap pass after physics:** each tick, each trigger asks which characters and bodies overlap its shape. The results are sorted by trigger and entity, and compared with last tick's, so the events come in the same order on any number of cores.
-- **The same code for 2D and 3D** (decision 0097: built once): `Trigger2D` on the flat world, and `Trigger` on the 3D world, as box or circle (sphere in 3D).
-- **Which things it notices:** characters and bodies by default, optionally only some kinds, once tags exist (stage 1's next steps).
-- **Once or every time.**
-- **What's inside is game state:** saved, and in the checksum, so loading a save doesn't fire "entered" again.
+## The next milestone: tags and questions about the world
 
-**Game code** (rule 25; answered by the project lead, 2026-11-18):
-- The zone hears `Entered(entity who)` and `Exited(entity who)`.
-- The one who walked in hears `EnteredZone(entity zone)` and `LeftZone(entity zone)`.
-- All of this works in Lust, Rust and Lua, and a zone carries its own code like any entity (+ Component).
-- Something that goes in and out within one tick, such as a teleport straight through, fires nothing.
+**What it gives** (approved by the project lead, 2026-11-18; [mock-up](../design/tags/README.md)): labels such as Enemy or Collectible that entities carry, with the spelling checked before the game runs, and game code asking "every enemy within 3 m, nearest first" and "the nearest collectible". From [report 02](../reports/after-the-rethink/02-shared-2.md), M2.
 
-**Editor** ([approved mock-up](../design/triggers/README.md)):
-- **Trigger zone** on Home's ribbon (an unfinished part until now) makes one in the view, where you're looking.
-- The zone is a teal outline: solid with handles when picked, dashed when not, with its name and size beside it. In 2D it's a box or a circle; in 3D a box or a sphere.
-- Its card in Properties has:
-  - Shape and Size;
-  - Notices (characters and bodies);
-  - Fires (every time, or once);
-  - Only tags, greyed until tags exist;
-  - Inside now, filled while playing.
-- A card says what game code hears, with a **New code for this zone…** button that makes a code file with empty `Entered` and `Exited` handlers, attached to the zone.
-- A zone can be made into a prefab like any entity.
-- **Freeform, in 2D only** (the project lead, 2026-11-18): Shape in 2D is Box, Circle or Freeform; 3D keeps Box and Sphere.
-  - **Drawing (the lead's choice):** choosing Freeform starts drawing in the view. Each click places a point, and clicking the first point or pressing `Enter` closes the shape. `Esc` cancels and keeps the previous shape.
-  - **Editing:** `Tab` edits the points, as shape brushes do. Drag a point to move it, `Ctrl` + click on an edge adds a point, `Delete` removes the picked point (never below 3), and `Tab` or `Esc` finishes.
-  - Shapes may bend inward; they're split into simple pieces for the overlap test. Outlines that cross themselves are refused with a reason. There's a limit of 256 points.
+**The project's list** (Project settings › **Tags**, a tab of its own): each tag's name and "Used by N entities and M prefabs"; **+ New tag**, which starts naming one; a double-click on a name renames it **everywhere** (levels, prefabs and game code's generated name); ⋯ › Delete, which asks first when anything uses it, saying what. Names are checked: a name Lust can make an option of, never twice, with a plain reason when refused. Kept in `tags.lst` in the project's folder, a Lust data file (decision 0081) with a format, a version, a fixture and a fuzz target; read when the project opens and watched for changes.
 
-**Tests and scale:**
-- in, staying, out;
-- two in the same tick, in order;
-- the teleport rule;
-- saved inside and loaded with no second "entered";
-- 1 and 4 cores the same;
-- 2,000 characters and 500 triggers within the scale target.
+**An entity's tags:** under its name in Properties, chips with ×, and **+ Tag ▾** (a list with search, the project's tags, and New tag…). Each change one undo step; several picked entities show and edit the tags they share. The Level panel shows an entity's tags faintly after its name, and its search finds entities by tag. Saved in the level. **Prefabs carry tags** (the lead's answer): a prefab's are on every copy; a copy may add or take one away, with the changed dot and ↶ (R5's rule: a copy's own change wins).
 
-**Not in this milestone:** doors, teleporting and fades. They're the Door in the kit, later in stage 1.
+**Game code** (rule 25): tags are a state, `Tag.Enemy`, in the project's Lust file; on entities `hasTag(Tag.X)`, `addTag(Tag.X)` and `removeTag(Tag.X)` (changes landing at the tick's end in order); on the world `World:within(Tag.X, place, radius)` (nearest first, ties by entity ID) and `World:nearest(Tag.X, place)` (the nearest, or nothing); in Lust, Rust and Lua. **Distance** (the lead's answer): across the ground in a 2D project, whatever the layers; in 3D in a 3D project or Both.
 
-**As built** (branch `stage1/triggers`):
-- **The component:** `TriggerZone` (`level::builtin`), a box, a round shape (shown as a circle in 2D and a sphere in 3D) or a freeform outline in 2D (saved as `Box`, `Round`, `Freeform`), Notices (characters and bodies, the only choice until tags) and Fires (every time, once). A new component needed no new level version; `tests/fixtures/area/v5/zones.sollevel` is its example, and the level fuzz target reads zones.
-- **The overlap pass** (`world::triggers`) runs as each tick begins, on where physics' last step left everything, not straight after the step: its events and the inside set a save keeps can then never be apart. It asks a tree of boxes made from where the moving things are now (parry's BVH), not Rapier's own query pipeline, which a physics step alone brings up to date: right after an edit while playing, a save or a load it would know nothing, and every zone would see everyone leave and come back.
-- **What's noticed:** "characters and bodies" means things that move: characters and dynamic or kinematic bodies in 3D, characters in 2D (2D has no other moving bodies). Fixed bodies, walls and brushes never count. A zone never counts itself.
-- **Once** sends the first tick's `Entered` (and `EnteredZone`), then nothing more, not even that visitor's `Exited`; the zone still knows who's inside. **Despawned while inside:** the zone hears `Exited`. **A zone despawned:** nothing is said.
-- **Game code:** the four events in `solis/zones.lst`, and `inside()` on a zone (`method entity array entity:inside() native;`), as the tick started.
-- **Saves** are version 10, with a `zones` section; version 9's upgrader adds an empty one.
-- **The editor:** Trigger zone on Home's Create (in More in 3D, where the unfinished part was); the outline, label and handles over every view (a click on the outline picks a zone; sizes snap as moves do); the TriggerZone card and What game code hears; New code for this zone (a file named after the zone at the top of the project, a `main.lst` made if there's none, and otherwise the line to add said in the Console); freeform drawing and editing with the keys asked about. The card's title is the component's name, `TriggerZone`, as every card's is; the header and the Level panel say "Trigger zone".
-- **Scale:** the overlap pass for 2,000 characters among 500 zones (a third of them freeform) takes about 1.2 ms a tick in a release build (target 2 ms).
+**Fast and the same on every core:** answered from a uniform grid made once a tick from where tagged entities are as it starts (decision 0033), its cell sized sensibly and big radii looking through the tag's own list; the scale target is 2,000 tagged units each asking in one tick. Tags are game state: saved, in the checksum and the two-PC check's state parts. **Trigger zones' Only tags** becomes real.
+
+**Keys:** only the approved double-click to rename (rule 17).
+
+**As built** (branch `stage1/tags`):
+- **Kept by ID:** each tag has a stable ID (`reflect::TagId`); `tags.lst` (`level::tags`, version 1) holds IDs and names, and an entity's `Tags` component (`level::builtin`) one line of IDs. A rename changes only `tags.lst`: every level, prefab and save follows without being written again. A tag gone from the list (deleted, or lost in a merge) is carried by nothing: not shown, not seen by the game, and left out at the entity's next change of tags. A trigger zone's Only tags are IDs too (`only_tags`). A new component and a new field needed no new level version; `tags.lst` is a new format at version 1.
+- **The names game code can use:** a capital first, then letters, digits and `_`, not all capitals, not one of Lust's own words or `None`, at most 40 characters, no two the same but for capitals; each refusal says why and suggests a name (`big door` → BigDoor). At most 1,024 tags a project and 32 an entity.
+- **The calls' names** are the research's: `within` and `nearest` read as what they give back (no `get`, no `Of`), so they fit rule 5's shapes as readers; `hasTag` reads after `is`; `addTag` and `removeTag` are verbs. `hasTag` sees the tags as the tick started (a tag added is seen from the next tick), as `within` and `nearest` do; Lua and Rust name a tag by its text (`"Enemy"`), as they name the project's other names.
+- **The grid** (`script::tag_view`, `TagView`): made once a tick by the editor as the tick begins (`move_world_on`), from `world::World::tagged`, and shared by every phase and core. Each tag's members are kept in ID order and, from 32 of them, counted into a uniform grid over the ground: cells sized from the area the members cover, about two to a cell, never more than four cells a member. `within` looks in the cells its square of distance reaches (a hair more, for rounding), or through the tag's whole list when that square has more cells than the tag has members; `nearest` looks ring by ring outwards until nothing nearer can be left. Both measure and sort the same way, so a property test holds the grid to a look through every member.
+- **In the Library** the project's `tags.lst` (at the top of its files) shows as **Project's tags** with a gear, and opens Project settings › Tags; the code gatherer leaves it out of the game's program. **Several zones picked** show their shared Only tags by name, and leave the row out when they differ.
+- **Used by** counts the open level as it is now, the project's other levels as saved (each read and its prefabs' copies made, on a worker, when the Tags tab is shown) and the prefabs carrying the tag.
+- **Watching `tags.lst`:** read again when the project's files change and its time or size on disk differ (only its metadata is looked at otherwise). A project from before decision 0118 keeps its files in `assets/`, so its `tags.lst` beside `project.solis` is read when it opens and when the editor saves it.
+- **Game state:** tags game code changes are kept over edits while playing (`world::game_set`), saved (the save's level holds them; no new save version) and in the checksum and the state parts only once something carries a tag, so the two-PC check's recorded game is unchanged.
+- **Scale:** 2,000 tagged units in a 200 m square, half of them enemies, each asking `nearest` and `within` 3 m, with the view made once a tick: about 0.8 ms a tick in a release build (target 2 ms; `script` scale check). The same in Lust, end to end (`editor`'s `scale_check_2000_lust_units_asking_by_tag_each_tick`), is 6 to 9 ms a tick in a release build (target one frame, 16 ms), beside 3 ms for 2,000 components each finding one entity by name: each unit makes two calls and gets a list back.
