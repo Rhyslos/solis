@@ -410,6 +410,8 @@ What each left for later is listed in one place at the top of the [plan](docs/pl
 
 ### Tools 1b · World sculpting — 1 of 6
 
+Moved into the 3D track, after 3D 1 ([decision 0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md)). G1 waits, mostly built, on the branch `tools-1b/g1-ground`.
+
 `██░░░░░░░░░░░` 17%
 
 <details>

@@ -231,7 +231,7 @@ The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/009
 
 **The order:**
 
-1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)), then **Shared 1f**, the editor rethink ([decision 0118](docs/decisions/0118-the-editor-rethink.md), *built*), then **Tools 1b**.
+1. **Shared 1a to 1d:** the editor's UI, remade to the project lead's design: the look and the frame, the everyday screens, 2D and its editors, then the rest and the finish. *Built.* Then **Shared 1e** (layouts and resizing, *built*), the 27 problems of the full review's second pass, and **Tools 1** (shape brushes and world sculpting), moved ahead on 13 November 2026 ([decision 0108](docs/decisions/0108-shape-brushes-and-sculpting-come-next.md)), then **Shared 1f**, the editor rethink ([decision 0118](docs/decisions/0118-the-editor-rethink.md), *built*). Tools 1b, the sculpted ground, moved into the 3D track on 18 November 2026 ([decision 0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md)).
 2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
 3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes), ending with a check that a game replays the same on two PCs.
 4. **2D 1, then Shared 3, then 2D 2:** 2D complete. Shared 3 (time and feel) comes between them, so 2D 2's polish (hit-stop, squash, shake) is built on it ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
@@ -239,7 +239,7 @@ The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/009
 6. **Shared 7 to 10:** materials and shaders, effects, weather and the finished picture, cutscenes and behaviour, for sprites and models alike.
 7. **A pause to rethink,** and the project lead's big testing pass: 2D and effects are complete.
 8. **Shared 11:** scripting, the full export, Git and mods, so finished games can ship.
-9. **3D 1, then Open worlds and foliage, then 3D 2 to 5:** 3D animation and navigation (with feet on slopes), the ground at 10 × 10 km and beyond with grass, trees and rocks scattered on it, then light, sky and atmosphere in four steps. Open worlds moved here from after Tools 1b, so the far ground arrives where haze and far shadows make it look right ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)).
+9. **3D 1, then Tools 1b, Open worlds and foliage, then 3D 2 to 5:** 3D animation and navigation (with feet on slopes), the sculpted ground, then the ground at 10 × 10 km and beyond with grass, trees and rocks scattered on it, then light, sky and atmosphere in four steps. Open worlds moved here from after Tools 1b, so the far ground arrives where haze and far shadows make it look right ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md)); Tools 1b joined them, so the ground, big worlds and foliage come as one stretch of 3D world work ([decision 0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md)).
 10. **Shared 12 and 13:** netcode, and Solis 0.1.
 
 Steps 8 to 10 are written down so nothing is lost, but they aren't planned in detail or reordered until the rethink ([decision 0059](docs/decisions/0059-2d-first.md)): 2D and effects will turn up things nobody can foresee yet.
@@ -325,17 +325,6 @@ The project lead's review of the remade interface (2026-11-17): nine points, ans
 - **R6 2D projects, and the gate:** a 2D project hides every 3D-only part; speed; the guide's pictures taken again.
 
 **Gate:** start at the launcher; make a 2D project by its name; arrange the panels and pick a layout from its pictures; make folders, a level and a prefab by right-clicking, rename by double-clicking, move files between two folder trees; build a prefab on its page, place three copies and change them all through it; close back to the launcher.
-
-## Tools 1b: World sculpting
-
-- **G0 The study** (rule 22): competing ways to store and draw a ground with caves, measured.
-- **G1 The ground, Smooth:** one per level, in chunks made on workers, solid, saved.
-- **G2 Sculpting:** left-drag adds, Ctrl digs, Shift smooths, [ and ] size, Shift + [ and ] strength; Flatten.
-- **G3 Blocky and Sharp:** the ground's look as a setting per ground.
-- **G4 Painting:** materials painted with the same brush.
-- **G5 Speed, game code, the manual.**
-
-**Gate:** a level of brushes on a sculpted, painted ground with a cave, in each look, played, saved and reopened, at the scale check's targets.
 
 ## Shared 2: Game code: finding and making things
 
@@ -496,9 +485,22 @@ Was Phase 16 ([decision 0059](docs/decisions/0059-2d-first.md)). The working pla
 
 **Gate:** a character walks and runs with smooth blending, its footsteps play on the right frames, and it finds its way across a 3D level.
 
+## Tools 1b: World sculpting
+
+In the 3D track, after 3D 1 and before Open worlds ([decision 0121](docs/decisions/0121-tools-1b-joins-the-3d-track.md); it came straight after the editor rethink before). The study (G0) and decisions 0111, 0116 and 0117 stand. G1 was mostly built when the phase moved: its work waits on the branch `tools-1b/g1-ground`, and picks up from there.
+
+- **G0 The study** (rule 22): competing ways to store and draw a ground with caves, measured.
+- **G1 The ground, Smooth:** one per level, in chunks made on workers, solid, saved.
+- **G2 Sculpting:** left-drag adds, Ctrl digs, Shift smooths, [ and ] size, Shift + [ and ] strength; Flatten.
+- **G3 Blocky and Sharp:** the ground's look as a setting per ground.
+- **G4 Painting:** materials painted with the same brush.
+- **G5 Speed, game code, the manual.**
+
+**Gate:** a level of brushes on a sculpted, painted ground with a cave, in each look, played, saved and reopened, at the scale check's targets.
+
 ## Open worlds
 
-After 3D 1 and before or alongside 3D 2 and 3D 3, whose haze over distance and far shadows make far ground look right ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md); it came straight after Tools 1b before). The ground grows from 1 × 1 km to big worlds ([decision 0116](docs/decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)), planned by [the open-worlds study](docs/reports/open-worlds-study.md), with the project lead's answers in [decision 0117](docs/decisions/0117-open-worlds-ten-km-a-recipe-and-far-caves.md): **10 × 10 km by default** (further by setting, 20 km and 41 km tested), voxels to 4 km with voxels to the horizon as an option made as well, **the starting ground a recipe** with only sculpted regions stored, 1 GB of memory, 512 m high or more. The milestones were revised from decision 0117 in [the plan after the rethink](docs/plans/after-the-rethink.md#open-worlds-report-14-revised-from-decision-0117). **The recipe** is local (erosion-like noise and a height-map picture, no simulated erosion), its versions are kept forever so an update never reshapes a world, and ground the game reads is made exactly on the processor; **baking a whole world into files** is a setting for worlds that must never depend on the recipe (decision 0120).
+After Tools 1b, before or alongside 3D 2 and 3D 3, whose haze over distance and far shadows make far ground look right ([decision 0120](docs/decisions/0120-the-order-after-the-rethink.md); it came straight after Tools 1b before). The ground grows from 1 × 1 km to big worlds ([decision 0116](docs/decisions/0116-the-ground-voxels-regions-and-what-games-may-change.md)), planned by [the open-worlds study](docs/reports/open-worlds-study.md), with the project lead's answers in [decision 0117](docs/decisions/0117-open-worlds-ten-km-a-recipe-and-far-caves.md): **10 × 10 km by default** (further by setting, 20 km and 41 km tested), voxels to 4 km with voxels to the horizon as an option made as well, **the starting ground a recipe** with only sculpted regions stored, 1 GB of memory, 512 m high or more. The milestones were revised from decision 0117 in [the plan after the rethink](docs/plans/after-the-rethink.md#open-worlds-report-14-revised-from-decision-0117). **The recipe** is local (erosion-like noise and a height-map picture, no simulated erosion), its versions are kept forever so an update never reshapes a world, and ground the game reads is made exactly on the processor; **baking a whole world into files** is a setting for worlds that must never depend on the recipe (decision 0120).
 
 - **W1 Recipes, regions and streaming:** a versioned recipe made per chunk on workers, with a quick surface-height query; only sculpted chunks stored; chunks streamed by priority from memory, a disk cache, region files and the recipe, under the 1 GB budget; 512 m high in stacked chunks.
 - **W2 Far ground coarser, to 4 km, and the horizon option:** rings of fixed-size chunks joined by transition bands (Smooth, Sharp) or walls (Blocky), a height-map far field beyond; voxels to the horizon as an option made as well, with its own scale cases and an honest message when a PC can't keep up.
