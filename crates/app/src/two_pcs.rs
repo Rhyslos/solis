@@ -35,8 +35,8 @@ pub(crate) const STATES: &str = "game.states";
 const MADE_BY: &str = "Two PCs 1.0";
 /// How long the recorded game is: ten seconds.
 pub(crate) const TICKS: usize = 600;
-/// A frame shorter than a tick even at the game's fastest (1.5 times, in
-/// the recorded game), so each tick is seen by itself.
+/// A frame shorter than a tick (the game's speed changes how much game
+/// time a tick is, never how many run), so each tick is seen by itself.
 pub(crate) const FRAME: f32 = (TICK * 0.6) as f32;
 /// How long a tick is, in seconds (the world's `TICK`).
 const TICK: f64 = 1.0 / 60.0;
