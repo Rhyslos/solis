@@ -21,6 +21,10 @@ pub(super) struct TestWorld {
     sounds: Vec<Change>,
     /// Who is inside each trigger zone, as the world's pass found.
     pub(super) zones: std::collections::BTreeMap<EntityId, Vec<EntityId>>,
+    /// The tags as the tick starts.
+    pub(super) tags: Arc<crate::TagView>,
+    /// Tags given and taken away, as they landed.
+    pub(super) tag_changes: Vec<Change>,
 }
 
 impl TestWorld {
@@ -88,6 +92,7 @@ impl GameWorld for TestWorld {
             map_bounds: Arc::default(),
             view_size: Vec3::ZERO,
             zones: Arc::new(self.zones.clone()),
+            tags: Arc::clone(&self.tags),
         }
     }
 
@@ -100,6 +105,9 @@ impl GameWorld for TestWorld {
                 && let Some(entity) = self.entities.iter_mut().find(|(id, _, _)| id == e)
             {
                 entity.2 = Mat4::from_translation(*place);
+            }
+            if let Change::Tag(..) = change {
+                self.tag_changes.push(change.clone());
             }
             if let Change::Fire(shot) = change {
                 self.shots.push(*shot);

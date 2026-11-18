@@ -157,6 +157,14 @@ impl Workbench {
             .in_front
             .contains(&Panel::Properties)
             .then(|| self.zone_facts());
+        // Whether a prefab copy's tags differ from its prefab's (stage 1).
+        let tags_changed = self
+            .open
+            .document
+            .selection
+            .primary()
+            .and_then(|id| self.open.document.level().get(id))
+            .is_some_and(|e| self.tags_changed_from_prefab(e, part.as_ref()));
         let atlas_problem = self.atlas_picture().1;
         let frames = self.open.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
@@ -269,7 +277,10 @@ impl Workbench {
                 places: self.open.program.as_ref().map(|p| &p.places),
                 brush: brush_facts.as_ref(),
                 zone: zone_facts.as_ref(),
+                tags: Some(&self.open.tags),
+                tags_changed,
             },
+            tags: (&self.open.tags, self.open.tags_revision),
             accent: self.accent,
             in_front: &self.in_front,
             shown: &mut shown,

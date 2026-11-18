@@ -271,6 +271,7 @@ impl Workbench {
         let cameras = world.placed::<level::builtin::Camera>().len();
         let mut view = ViewCache::default();
         view.settings = self.player_settings;
+        view.tags = crate::tags::tag_view(&self.open.tags, self.open.kind, &world);
         let (game, pending) = self.start_game(&mut world, &mut view);
         self.open.playing = Some(Playing {
             world,

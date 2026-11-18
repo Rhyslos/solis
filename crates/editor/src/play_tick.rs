@@ -288,6 +288,9 @@ impl Workbench {
         // Trigger zones (stage 1): who walked in or out since the last
         // tick, on where physics' last step left everything.
         events.extend(zones::zone_events(&mut playing.world));
+        // Tags (stage 1): where the tagged entities are as the tick
+        // starts, which every phase and core asks of.
+        playing.view.tags = crate::tags::tag_view(&self.open.tags, self.open.kind, &playing.world);
         Some((sounds, events))
     }
 

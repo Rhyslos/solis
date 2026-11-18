@@ -523,6 +523,8 @@ impl Workbench {
                 let _ = entity;
             }
             PropertyRequest::NewZoneCode(entity) => self.new_code_for_zone(entity),
+            PropertyRequest::Tags { entities, ask } => self.change_tags(&entities, ask),
+            PropertyRequest::ZoneOnly { entity, ask } => self.change_zone_tags(entity, ask),
         }
     }
 
@@ -610,7 +612,8 @@ impl Workbench {
         });
     }
 
-    fn part_of(&self, entity: EntityId) -> Option<PrefabPart> {
+    /// What `entity`'s prefab says about it, if it's part of a placed copy.
+    pub(crate) fn part_of(&self, entity: EntityId) -> Option<PrefabPart> {
         let origin = self.open.document.level().get(entity)?.origin.clone()?;
         let lookup = |asset| self.open.prefabs.get(&asset).cloned();
         let expected = Expander::new(&lookup).expected(self.open.document.level(), &origin);

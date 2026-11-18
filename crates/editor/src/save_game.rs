@@ -427,6 +427,12 @@ impl Workbench {
                 {
                     data.set(&sprite);
                 }
+                // And its tags as game code left them (stage 1).
+                if let Some(tags) = playing.world.get::<level::builtin::Tags>(id)
+                    && data.get::<level::builtin::Tags>().as_ref() != Some(&tags)
+                {
+                    data.set(&tags);
+                }
                 // And its animator's state (D3b); its parameters are in
                 // their own section.
                 if let Some(animator) = playing.world.get::<level::builtin::Animator>(id)

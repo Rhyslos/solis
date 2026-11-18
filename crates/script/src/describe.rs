@@ -405,6 +405,20 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "within",
+        owner: "World",
+        lust: "method entity array within(Tag tag, vec3 place, float radius) native;",
+        about: "Every entity carrying the tag (Tag.Enemy) within radius metres of place, nearest first (ties go by ID), where they were as the tick started. In a 2D project distance is measured across the ground, whatever the layers.",
+    },
+    Native {
+        file: "world",
+        name: "nearest",
+        owner: "World",
+        lust: "method entity nearest(Tag tag, vec3 place) native;",
+        about: "The entity carrying the tag nearest to place, where they were as the tick started (ties go by ID), or nothing when none does.",
+    },
+    Native {
+        file: "world",
         name: "fire",
         owner: "World",
         lust: "method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;",
@@ -423,6 +437,27 @@ pub const NATIVES: &[Native] = &[
         owner: "entity",
         lust: "method entity:despawn() native;",
         about: "Takes the entity, and everything under it, out of the game at the end of the tick.",
+    },
+    Native {
+        file: "world",
+        name: "hasTag",
+        owner: "entity",
+        lust: "method bool entity:hasTag(Tag tag) native;",
+        about: "Whether the entity carried the tag (Tag.Enemy, one of the project's) as the tick started: a tag added this tick counts from the next.",
+    },
+    Native {
+        file: "world",
+        name: "addTag",
+        owner: "entity",
+        lust: "method entity:addTag(Tag tag) native;",
+        about: "Gives the entity the tag at the end of the tick, in the tick's order, as moves land. One it carries already stays, so calling it every tick is safe.",
+    },
+    Native {
+        file: "world",
+        name: "removeTag",
+        owner: "entity",
+        lust: "method entity:removeTag(Tag tag) native;",
+        about: "Takes the tag off the entity at the end of the tick, in the tick's order. One it doesn't carry changes nothing.",
     },
     Native {
         file: "world",
@@ -1122,13 +1157,14 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
     (animation::atlas::KIND, animation::atlas::CLASSES),
     (tiles::tileset::KIND, tiles::tileset::CLASSES),
     (level::prefab_file::KIND, level::prefab_file::CLASSES),
+    (level::tags::KIND, level::tags::CLASSES),
 ];
 
 /// The project's own names as states, written by the editor into
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
-    "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture",
+    "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag",
 ];
 
 /// What the first line of each file describing the engine says after who made it.
@@ -1172,7 +1208,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 18);
+        assert_eq!(files.len(), 19);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
@@ -1180,7 +1216,7 @@ mod tests {
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":[Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture];\n\
+             fetch \"solis/project\":[Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag];\n\
              fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
              fetch \"solis/physics\":[Physics, RayHit];\n\

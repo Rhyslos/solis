@@ -74,6 +74,9 @@ pub(crate) struct FilePages {
     pub(crate) shortcuts_search: String,
     /// Which of the shortcuts are shown.
     pub(crate) shortcuts_device: shortcuts::Device,
+    /// Project settings › Tags: the name being typed, the Delete waiting
+    /// for an answer (stage 1).
+    pub(crate) tags: crate::tags::page::TagsPage,
 }
 
 impl Default for FilePages {
@@ -87,6 +90,7 @@ impl Default for FilePages {
             name_typed: None,
             shortcuts_search: String::new(),
             shortcuts_device: shortcuts::Device::All,
+            tags: crate::tags::page::TagsPage::default(),
         }
     }
 }

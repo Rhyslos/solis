@@ -18,6 +18,7 @@ pub mod prefab;
 pub mod prefab_file;
 pub mod prefab_follow;
 pub mod settings;
+pub mod tags;
 pub mod text;
 mod tree;
 

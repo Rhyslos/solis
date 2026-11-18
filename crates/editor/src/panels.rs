@@ -76,6 +76,9 @@ pub(crate) struct PanelViewer<'a> {
     /// Where game code components are written, for Properties' **Open in
     /// Ledger** (decision 0085); the **?** opens the user guide instead.
     pub(crate) help: crate::properties::Help<'a>,
+    /// The project's tags and their revision (stage 1): the Level panel
+    /// shows each entity's after its name, and its search finds them.
+    pub(crate) tags: (&'a level::tags::TagList, u64),
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
     pub(crate) shown: &'a mut HashSet<Panel>,
@@ -410,7 +413,7 @@ impl PanelViewer<'_> {
             Panel::Level => {
                 let requests = level_tree(
                     ui,
-                    self.document,
+                    (self.document, self.tags),
                     self.models,
                     self.accent,
                     self.level_state,

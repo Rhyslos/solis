@@ -18,6 +18,10 @@ use egui::{Rect, Ui, pos2, vec2};
 impl Workbench {
     /// Shows Preferences (`project` false) or Project settings on `tab`.
     pub(crate) fn show_settings(&mut self, tab: Tab) {
+        if tab == Tab::Tags && self.file_pages.project_tab != Tab::Tags {
+            // Shown again: where the levels use each tag is counted again.
+            self.open.tag_use_asked = false;
+        }
         let page = if tab.is_project() {
             self.file_pages.project_tab = tab;
             Page::ProjectSettings
@@ -99,6 +103,10 @@ impl Workbench {
         // own, and the layouts cards; the rest scroll as rows.
         if words.is_empty() && tab == Tab::Input {
             self.input_page(ui);
+            return;
+        }
+        if words.is_empty() && tab == Tab::Tags {
+            self.tags_page(ui);
             return;
         }
         egui::ScrollArea::vertical()

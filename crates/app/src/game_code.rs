@@ -286,6 +286,10 @@ impl GameCode {
                 .into_iter()
                 .map(|a| a.name)
                 .collect(),
+            // The project's tags (stage 1): Tag.Enemy.
+            tags: root.map_or_else(Vec::new, |root| {
+                crate::play_files::load_tags(root).0.names()
+            }),
         };
         let (mut files, mut notes) =
             script::describe::descriptions_for(made_by, crate::branding::CODE_FOLDER, &names);

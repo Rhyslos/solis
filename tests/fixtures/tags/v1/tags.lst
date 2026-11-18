@@ -1,0 +1,11 @@
+-- The project's tags (Project settings › Tags). Written by Solis; safe to edit by hand.
+fetch "solis/data/tags":[Tag];
+
+lock int version = 1;
+lock Tag array tags = [
+    new Tag { id = "1BWHNR3RV8PYY", name = "Enemy" },
+    new Tag { id = "0X3CM2V7Q1TWA", name = "Collectible" },
+    new Tag { id = "2K9FD4HJ6MN8P", name = "Flying" },
+    new Tag { id = "3QRS5TVW7XYZ0", name = "Door" },
+];
+end

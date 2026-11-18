@@ -218,8 +218,10 @@ pub fn gather(assets: &Path) -> Code {
                     .extension()
                     .is_some_and(|e| e.eq_ignore_ascii_case("lst") || e.eq_ignore_ascii_case("lua"))
                 // What Solis makes (a tile map's farm.tilemap.lst) is
-                // data, not part of the game's program (decision 0081).
+                // data, not part of the game's program (decision 0081);
+                // so is the project's own tags.lst at the top.
                 && reflect::data_files::kind_of(&path).is_none()
+                && !(folder == assets && name.to_string_lossy() == level::tags::FILE_NAME)
             {
                 found.push(path);
             }

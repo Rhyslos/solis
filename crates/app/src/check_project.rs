@@ -602,6 +602,8 @@ pub(crate) fn workbench_for(
     // review).
     w.set_pixels(crate::play_files::load_pixels(root).0);
     w.set_mixer(crate::play_files::load_mixer(root).0);
+    // And its tags (stage 1), which game code asks about.
+    w.set_tags(crate::play_files::load_tags(root).0);
     let (items, folders) = crate::project::Projects::library(&db.listing(), |_| None);
     // Every prefab, so game code can spawn any of them: read once for
     // all of a check's recordings (the Phase 8 review).

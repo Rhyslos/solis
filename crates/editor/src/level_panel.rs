@@ -73,29 +73,40 @@ struct KeptRows {
     collapsed: HashSet<EntityId>,
     search: String,
     revision: Option<u64>,
+    /// The project's tags' revision, while searching (the search finds
+    /// entities by tag too).
+    tags: Option<u64>,
     rows: std::sync::Arc<Vec<(EntityId, usize)>>,
 }
 
 impl LevelPanelState {
     /// The rows of `document`'s tree as this shows it, listed again only
     /// when what they're listed from changes.
-    fn rows(&mut self, document: &Document) -> std::sync::Arc<Vec<(EntityId, usize)>> {
+    fn rows(
+        &mut self,
+        document: &Document,
+        (tags, tags_revision): (&level::tags::TagList, u64),
+    ) -> std::sync::Arc<Vec<(EntityId, usize)>> {
         let tree = document.tree();
-        let revision = (!self.search.trim().is_empty()).then(|| document.revision());
+        let searching = !self.search.trim().is_empty();
+        let revision = searching.then(|| document.revision());
+        let tags_revision = searching.then_some(tags_revision);
         if let Some(kept) = &self.rows_kept
             && std::sync::Arc::ptr_eq(&kept.tree, &tree)
             && kept.revision == revision
+            && kept.tags == tags_revision
             && kept.search == self.search
             && kept.collapsed == self.collapsed
         {
             return std::sync::Arc::clone(&kept.rows);
         }
-        let rows = std::sync::Arc::new(tree_rows(document.level(), &tree, self));
+        let rows = std::sync::Arc::new(tree_rows(document.level(), &tree, tags, self));
         self.rows_kept = Some(KeptRows {
             tree,
             collapsed: self.collapsed.clone(),
             search: self.search.clone(),
             revision,
+            tags: tags_revision,
             rows: std::sync::Arc::clone(&rows),
         });
         rows
@@ -480,7 +491,7 @@ fn stop_renaming(ctx: &egui::Context) {
 /// the user asked for.
 pub(crate) fn level_tree(
     ui: &mut Ui,
-    document: &Document,
+    (document, tags): (&Document, (&level::tags::TagList, u64)),
     models: &BTreeMap<AssetId, ModelInfo>,
     accent: Accent,
     state: &mut LevelPanelState,
@@ -495,7 +506,7 @@ pub(crate) fn level_tree(
             state.collapsed.remove(&parent);
         }
     }
-    let rows = state.rows(document);
+    let rows = state.rows(document, tags);
     let tree = document.tree();
     let scroll_to = state
         .reveal
@@ -535,7 +546,7 @@ pub(crate) fn level_tree(
                         };
                         entity_row(
                             ui,
-                            (document, models),
+                            (document, models, tags.0),
                             accent,
                             (id, entity),
                             shown,
@@ -549,7 +560,7 @@ pub(crate) fn level_tree(
                 let note = if state.search.is_empty() {
                     "Nothing here yet. Home \u{203a} Create adds an entity, a light or a camera."
                 } else {
-                    "Nothing has that name."
+                    "Nothing has that name or tag."
                 };
                 crate::panels::empty_note(ui, note);
             }
@@ -703,20 +714,34 @@ fn row_menu(ui: &mut Ui) -> Option<MenuCommand> {
 
 /// Every entity with how deep it sits, in the order the panel lists them:
 /// depth-first, parents before children, leaving out what's folded away.
-/// With a search, only names containing it are listed, each with its
-/// parents (folded or not). A loop in a damaged level is cut where it comes
+/// With a search, only names containing it (or carrying a tag whose name
+/// does) are listed, each with its parents (folded or not). A loop in a damaged level is cut where it comes
 /// round again; entities caught in one come last.
 fn tree_rows(
     level: &level::Level,
     tree: &level::Tree,
+    tags: &level::tags::TagList,
     state: &LevelPanelState,
 ) -> Vec<(EntityId, usize)> {
     let search = state.search.trim().to_lowercase();
+    // The tags whose names hold the search: an entity carrying one is
+    // found too (stage 1).
+    let tagged: Vec<reflect::TagId> = tags
+        .iter()
+        .filter(|t| !search.is_empty() && t.name.to_lowercase().contains(&search))
+        .map(|t| t.id)
+        .collect();
+    let carries = |entity: &EntityData| {
+        !tagged.is_empty()
+            && entity
+                .get::<level::builtin::Tags>()
+                .is_some_and(|t| t.ids.iter().any(|id| tagged.contains(id)))
+    };
     // With a search: the matches and everything above them.
     let wanted: Option<HashSet<EntityId>> = (!search.is_empty()).then(|| {
         let mut wanted = HashSet::new();
         for (id, entity) in level.iter() {
-            if entity.name.to_lowercase().contains(&search) {
+            if entity.name.to_lowercase().contains(&search) || carries(entity) {
                 let mut at = Some(id);
                 while let Some(e) = at {
                     if !wanted.insert(e) {
@@ -813,7 +838,7 @@ struct Shown {
 #[allow(clippy::too_many_arguments)]
 fn entity_row(
     ui: &mut Ui,
-    (document, models): (&Document, &BTreeMap<AssetId, ModelInfo>),
+    (document, models, tags): (&Document, &BTreeMap<AssetId, ModelInfo>, &level::tags::TagList),
     accent: Accent,
     (id, entity): (EntityId, &EntityData),
     shown: Shown,
@@ -854,6 +879,19 @@ fn entity_row(
     let off_kind = kind.note().filter(|_| !crate::kinds::shown(kind));
     if let Some(only) = kind.only().filter(|_| off_kind.is_some()) {
         only.clone_into(&mut note);
+    }
+    // Its tags, faintly after its name (stage 1): "Enemy · Flying".
+    let carried: Vec<&str> = crate::tags::carried(tags, entity)
+        .into_iter()
+        .filter_map(|id| tags.name_of(id))
+        .collect();
+    if !carried.is_empty() {
+        let words = carried.join(" \u{b7} ");
+        note = if note.is_empty() {
+            words
+        } else {
+            format!("{note} \u{b7} {words}")
+        };
     }
     let toggles = Toggles {
         hidden: state.hidden.contains(&id),
@@ -1039,10 +1077,10 @@ mod rows_tests {
     fn the_rows_are_listed_again_only_when_what_they_show_changes() {
         let (mut d, room, lamp) = room();
         let mut state = LevelPanelState::default();
-        let rows = state.rows(&d);
+        let rows = state.rows(&d, (&level::tags::TagList::default(), 0));
         assert!(rows.iter().any(|&(id, depth)| id == lamp && depth == 1));
         for _ in 0..3 {
-            assert!(Arc::ptr_eq(&rows, &state.rows(&d)), "kept");
+            assert!(Arc::ptr_eq(&rows, &state.rows(&d, (&level::tags::TagList::default(), 0))), "kept");
         }
         // Renaming changes the level, not its tree: still kept.
         d.edit(
@@ -1055,20 +1093,20 @@ mod rows_tests {
             None,
         )
         .unwrap();
-        assert!(Arc::ptr_eq(&rows, &state.rows(&d)));
+        assert!(Arc::ptr_eq(&rows, &state.rows(&d, (&level::tags::TagList::default(), 0))));
         // Folding the room: listed again, without the lamp.
         state.collapsed.insert(room);
-        let folded = state.rows(&d);
+        let folded = state.rows(&d, (&level::tags::TagList::default(), 0));
         assert!(!folded.iter().any(|&(id, _)| id == lamp));
-        assert!(Arc::ptr_eq(&folded, &state.rows(&d)));
+        assert!(Arc::ptr_eq(&folded, &state.rows(&d, (&level::tags::TagList::default(), 0))));
         // Searching: what's found, and again when a name changes.
         state.search = "lig".into();
-        let found = state.rows(&d);
+        let found = state.rows(&d, (&level::tags::TagList::default(), 0));
         assert_eq!(
             found.iter().map(|&(id, _)| id).collect::<Vec<_>>(),
             [room, lamp]
         );
-        assert!(Arc::ptr_eq(&found, &state.rows(&d)));
+        assert!(Arc::ptr_eq(&found, &state.rows(&d, (&level::tags::TagList::default(), 0))));
         d.edit(
             "Rename",
             vec![Edit::Rename {
@@ -1079,10 +1117,10 @@ mod rows_tests {
             None,
         )
         .unwrap();
-        assert!(state.rows(&d).is_empty(), "nothing called that now");
+        assert!(state.rows(&d, (&level::tags::TagList::default(), 0)).is_empty(), "nothing called that now");
         // A new entity: listed again.
         state.search.clear();
-        let before = state.rows(&d);
+        let before = state.rows(&d, (&level::tags::TagList::default(), 0));
         d.edit(
             "Add",
             vec![Edit::Spawn {
@@ -1092,6 +1130,6 @@ mod rows_tests {
             None,
         )
         .unwrap();
-        assert_eq!(state.rows(&d).len(), before.len() + 1);
+        assert_eq!(state.rows(&d, (&level::tags::TagList::default(), 0)).len(), before.len() + 1);
     }
 }

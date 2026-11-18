@@ -106,6 +106,35 @@ pub trait Host {
         let _ = zone;
         Vec::new()
     }
+    /// Whether an entity carried the tag called `tag` (`Enemy`) as the
+    /// tick started (`hasTag(Tag.Enemy)` in Lust).
+    fn has_tag(&self, which: EntityId, tag: &str) -> bool {
+        let _ = (which, tag);
+        false
+    }
+    /// Gives an entity the tag called `tag` at the end of the tick
+    /// (`addTag`).
+    fn add_tag(&mut self, which: EntityId, tag: &str) {
+        let _ = (which, tag);
+    }
+    /// Takes the tag called `tag` off an entity at the end of the tick
+    /// (`removeTag`).
+    fn remove_tag(&mut self, which: EntityId, tag: &str) {
+        let _ = (which, tag);
+    }
+    /// Every entity carrying the tag called `tag` within `radius` metres
+    /// of `place` as the tick started, nearest first, ties by ID
+    /// (`World:within`).
+    fn within(&self, tag: &str, place: Vec3, radius: f32) -> Vec<EntityId> {
+        let _ = (tag, place, radius);
+        Vec::new()
+    }
+    /// The entity carrying the tag called `tag` nearest to `place` as the
+    /// tick started, ties by ID (`World:nearest`); none when none does.
+    fn nearest(&self, tag: &str, place: Vec3) -> Option<EntityId> {
+        let _ = (tag, place);
+        None
+    }
     /// Saves the game in `slot` (or, with `load`, loads the game saved
     /// there), at the end of the tick (decision 0038).
     fn save_game(&mut self, slot: &str, load: bool) {

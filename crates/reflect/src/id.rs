@@ -155,6 +155,12 @@ typed_id!(
     /// file beside it so renaming the file breaks nothing.
     AssetId
 );
+typed_id!(
+    /// A tag in the project's list (stage 1, tags), kept in its `tags.lst`
+    /// and on each entity that carries it, so renaming a tag breaks
+    /// nothing.
+    TagId
+);
 
 #[cfg(test)]
 mod tests {

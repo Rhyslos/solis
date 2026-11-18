@@ -32,6 +32,8 @@ pub(crate) enum Tab {
     TwoD,
     /// Project settings › Input: the game's input actions.
     Input,
+    /// Project settings › Tags: the project's tags (stage 1).
+    Tags,
     /// Project settings › Build: Export for playtesting.
     Build,
 }
@@ -58,6 +60,7 @@ impl Tab {
             Entry::Built(Self::TwoD),
             Entry::Unbuilt(UnbuiltId::ProjTabPhysics),
             Entry::Built(Self::Input),
+            Entry::Built(Self::Tags),
             Entry::Unbuilt(UnbuiltId::ProjTabAudio),
             Entry::Unbuilt(UnbuiltId::ProjTabPlatforms),
             Entry::Built(Self::Build),
@@ -75,13 +78,17 @@ impl Tab {
             Self::Shortcuts => "Shortcuts",
             Self::TwoD => "2D",
             Self::Input => "Input",
+            Self::Tags => "Tags",
             Self::Build => "Build",
         }
     }
 
     /// Whether it is one of Project settings' (the project's own).
     pub(crate) fn is_project(self) -> bool {
-        matches!(self, Self::Project | Self::TwoD | Self::Input | Self::Build)
+        matches!(
+            self,
+            Self::Project | Self::TwoD | Self::Input | Self::Tags | Self::Build
+        )
     }
 
     /// Its sections: small capitals over the settings in them.
@@ -186,7 +193,7 @@ impl Tab {
                 ],
             )],
             // Laid out as tables of their own.
-            Self::Shortcuts | Self::Input => Vec::new(),
+            Self::Shortcuts | Self::Input | Self::Tags => Vec::new(),
         }
     }
 }

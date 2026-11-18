@@ -198,6 +198,12 @@ pub enum WorkbenchAction {
     /// Save the project's 2D settings to its `pixels.solpix` (Settings >
     /// 2D).
     SavePixels(level::pixels::PixelSettings),
+    /// Save the project's tags to its `tags.lst` (Project settings ›
+    /// Tags; stage 1), and write game code's names again.
+    SaveTags(level::tags::TagList),
+    /// Count where the project's saved levels use each tag, on a worker,
+    /// and answer with [`Workbench::set_tag_use`](crate::Workbench::set_tag_use).
+    CountTagUse,
     /// Change one field of an entity inside a prefab's file (Apply to
     /// prefab); the app saves it and hands it back with
     /// [`Workbench::set_prefab`](crate::Workbench::set_prefab), which updates every copy.

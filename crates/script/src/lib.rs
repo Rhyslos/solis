@@ -29,6 +29,7 @@ pub mod rust_component;
 pub mod screens;
 pub mod settings;
 mod syncing;
+pub mod tag_view;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 mod ticking;
@@ -46,6 +47,7 @@ pub use objects::ObjectValues;
 pub use runtime::{Failure, Runtime, Swapped, Ticked};
 pub use rust_component::{Context, RustComponent, RustKind};
 pub use screens::{NoReader, ScreenCode, ScreenReader, Screens};
+pub use tag_view::TagView;
 pub use ticking::Order;
 
 /// The Lust compiler's version.

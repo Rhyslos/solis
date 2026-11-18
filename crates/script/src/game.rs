@@ -98,6 +98,9 @@ pub enum Change {
     MapTile(String, usize, [u32; 2], u8),
     /// A map's own file setting a value on a cell (map file, value, cell).
     MapValue(String, usize, [u32; 2], tiles::CellValue),
+    /// `addTag` (true) or `removeTag` (false): give the entity this tag,
+    /// or take it away (stage 1, tags).
+    Tag(EntityId, reflect::TagId, bool),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -182,6 +185,10 @@ pub struct WorldView {
     /// Who is inside each trigger zone as the tick started, by zone, each
     /// list in the order of their IDs (`inside()`).
     pub zones: Arc<std::collections::BTreeMap<EntityId, Vec<EntityId>>>,
+    /// The tags as the tick started: who carries which, and where each
+    /// tag's members are (`hasTag`, `World:within`, `World:nearest`),
+    /// made once a tick and shared by every core.
+    pub tags: Arc<crate::TagView>,
 }
 
 impl WorldView {
@@ -282,6 +289,19 @@ impl ViewHost {
             own_turns: reflect::IdMap::default(),
             own_velocities: reflect::IdMap::default(),
             kept: Kept::default(),
+        }
+    }
+
+    /// Keeps a tag given or taken away, landing at the end of the phase
+    /// in its place in the order; a tag the project hasn't, or an entity
+    /// not in the game, changes nothing.
+    fn tag_change(&mut self, which: EntityId, tag: &str, on: bool) {
+        let Some(tag) = self.view.tags.tag(tag) else {
+            return;
+        };
+        if self.view.index.slots.contains_key(&which) && self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::Tag(which, tag, on)));
         }
     }
 
@@ -450,6 +470,26 @@ impl Host for ViewHost {
 
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
         self.view.physics.cast_ray(from, direction, reach)
+    }
+
+    fn has_tag(&self, which: EntityId, tag: &str) -> bool {
+        self.view.tags.has(which, tag)
+    }
+
+    fn add_tag(&mut self, which: EntityId, tag: &str) {
+        self.tag_change(which, tag, true);
+    }
+
+    fn remove_tag(&mut self, which: EntityId, tag: &str) {
+        self.tag_change(which, tag, false);
+    }
+
+    fn within(&self, tag: &str, place: Vec3, radius: f32) -> Vec<EntityId> {
+        self.view.tags.within(tag, place, radius)
+    }
+
+    fn nearest(&self, tag: &str, place: Vec3) -> Option<EntityId> {
+        self.view.tags.nearest(tag, place)
     }
 
     fn inside(&self, zone: EntityId) -> Vec<EntityId> {
@@ -1655,3 +1695,7 @@ mod tweens_tests;
 #[cfg(test)]
 #[path = "game_maths_tests.rs"]
 mod maths_tests;
+
+#[cfg(test)]
+#[path = "game_tags_tests.rs"]
+mod tags_tests;

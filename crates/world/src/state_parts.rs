@@ -100,6 +100,9 @@ impl World {
         for (id, sum) in self.map_sums() {
             part(id, "TileMap cells (checksum)", format!("{sum:016x}"));
         }
+        for (id, tags) in self.all_tags() {
+            part(id, "Tags", tags.text());
+        }
         for (zone, who) in self.zone_states().0 {
             part(zone, &format!("TriggerZone has {who} inside"), "yes".into());
         }

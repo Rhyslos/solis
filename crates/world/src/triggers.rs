@@ -5,7 +5,9 @@
 //! sorted by zone and then by entity, are compared with last tick's, and
 //! each difference is a [`Crossing`] for game code to hear. What is inside
 //! is game state: kept in saves and in the checksum, so loading a save
-//! never says "entered" twice.
+//! never says "entered" twice. A zone limited to some tags (Only tags,
+//! stage 1's tags) counts only what carries at least one of them, as the
+//! tick begins.
 //!
 //! Only where things are at each tick counts, so something that goes in
 //! and out within one tick (a teleport straight through) crosses nothing.
@@ -166,7 +168,27 @@ impl World {
         for (query, found) in flat.iter().zip(self.flat.overlapping(&flat)) {
             inside.extend(found.into_iter().map(|who| (query.zone, who)));
         }
+        self.keep_only_tagged(zones, &mut inside);
         inside
+    }
+
+    /// Leaves out of `inside` whatever a zone limited to some tags (Only
+    /// tags) finds that carries none of them.
+    fn keep_only_tagged(&self, zones: &[Placed], inside: &mut BTreeSet<(EntityId, EntityId)>) {
+        let only: BTreeMap<EntityId, &[reflect::TagId]> = zones
+            .iter()
+            .filter(|z| !z.zone.only.is_empty())
+            .map(|z| (z.id, z.zone.only.as_slice()))
+            .collect();
+        if only.is_empty() {
+            return;
+        }
+        inside.retain(|(zone, who)| {
+            only.get(zone).is_none_or(|wanted| {
+                let carried = self.tags_of(*who);
+                wanted.iter().any(|tag| carried.has(*tag))
+            })
+        });
     }
 
     /// Makes each zone's 2D shape again where the zone or its scale
