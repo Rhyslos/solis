@@ -114,6 +114,14 @@ fn names() -> Names {
         "Flying".into(),
         "Player".into(),
     ];
+    // The timers the Timers page's examples start (a game's come from
+    // where its Lust starts them).
+    names.timers = vec![
+        "DoorOpens".into(),
+        "Wave".into(),
+        "Dawn".into(),
+        "NextStep".into(),
+    ];
     names
 }
 

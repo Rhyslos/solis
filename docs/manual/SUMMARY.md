@@ -78,6 +78,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 
 - [Trigger zones: a door, a counter or a pit that tells game code when something walks in or out](trigger-zones.md)
 - [Tags: labels such as Enemy or Collectible, and asking the world for the nearest one or all within reach](tags.md)
+- [Timers: "open in 2 seconds", "every 5 seconds", "each day at six", and steps in order](timers.md)
 - [Characters and cameras: a character that walks and jumps, third-person, first-person and RTS cameras, and the playground](characters-and-cameras.md)
 - [Save games: save everything, and load it back exactly](save-games.md)
 - [Exporting for playtesting: a folder with your game, to send to a friend](playtest-export.md)

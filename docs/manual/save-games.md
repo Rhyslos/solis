@@ -1,6 +1,6 @@
 # Save games
 
-> Save the whole game and load it back exactly as it was: every entity, every component's values, the lasers in flight, physics, sprites' clips, animators' states, tile maps as the game changed them, the clock, the time of day and the random numbers.
+> Save the whole game and load it back exactly as it was: every entity, every component's values, the lasers in flight, physics, sprites' clips, animators' states, tile maps as the game changed them, the [timers](timers.md) waiting, the clock, the time of day and the random numbers.
 
 ## When to use it
 Whenever a player should be able to stop and carry on later: a quick-save key, a save point, a checkpoint before a boss. Solis saves **everything** for you, so you don't write any code to list what to keep, and nothing gets forgotten. A loaded game carries on *exactly* as the saved one would have: the same crate falls the same way, the same random numbers come up.
@@ -87,7 +87,7 @@ Add the QuickSave and QuickLoad actions in **File › Project settings › Input
 
 A save, a recording and (later) a game played online all rest on one promise: **the same game, given the same input, comes out exactly the same**, tick by tick, on any PC and with any number of cores ([determinism](concepts.md#simulation)). A loaded save only carries on as the saved game would have if every sum works out to the very same bits; a recording only replays if it does on the PC replaying it; two players online only stay in step if their PCs agree, since they send each other only their input.
 
-The **game state** is what has to agree: where everything is, physics, every component's values, tile maps, animators, zones, the random numbers. What's only shown (sounds, light, the sky, screens, shakes) doesn't, and needn't.
+The **game state** is what has to agree: where everything is, physics, every component's values, tile maps, animators, zones, timers, the random numbers. What's only shown (sounds, light, the sky, screens, shakes) doesn't, and needn't.
 
 Solis keeps its own side of the promise:
 
@@ -95,7 +95,7 @@ Solis keeps its own side of the promise:
 - physics is built to give the same answer on every PC ([Physics](physics.md));
 - game code's maths (`Maths:sin`, `Maths:exp`, `Maths:power` and the rest in Lust; `math.sin`, `math.exp`, `math.pow` and the rest in Lua) is worked out by Solis's own maths, the same to the last bit everywhere, never by the computer's system library, which rounds the last digit differently on Windows and on Linux;
 - every tick, the game's [checksum](concepts.md#simulation) sums up its whole state, so a replay that stops matching says at which tick;
-- Solis checks itself: every change to Solis plays a recorded game, with physics, 2D and 3D, spawns, tile maps, animators, zones, speed changes and game code in all three languages, on Linux and on Windows, on one core and on four, and compares every tick. A sum that works out differently on another PC is caught before it reaches your game.
+- Solis checks itself: every change to Solis plays a recorded game, with physics, 2D and 3D, spawns, tile maps, animators, zones, timers, speed changes and game code in all three languages, on Linux and on Windows, on one core and on four, and compares every tick. A sum that works out differently on another PC is caught before it reaches your game.
 
 Your side, in game code:
 
