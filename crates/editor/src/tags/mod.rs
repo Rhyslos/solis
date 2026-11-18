@@ -255,7 +255,9 @@ impl Workbench {
             TagAsk::Add(id) => (id, self.tag_label("Add tag", id)),
             TagAsk::Remove(id) => {
                 let label = self.tag_label("Remove tag", id);
-                self.edit_tags(entities, &label, |tags| drop(tags.remove(id)));
+                self.edit_tags(entities, &label, |tags| {
+                    tags.remove(id);
+                });
                 return;
             }
         };
@@ -278,7 +280,9 @@ impl Workbench {
                 ),
             );
         }
-        self.edit_tags(entities, &label, |tags| drop(tags.add(id)));
+        self.edit_tags(entities, &label, |tags| {
+            tags.add(id);
+        });
     }
 
     /// "Add tag Enemy".

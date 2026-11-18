@@ -433,6 +433,7 @@ fn the_file_page_s_items_do_what_the_menus_did() {
         ("2D", "Base resolution"),
         ("Build", "Game's name"),
         ("Input", "Jump"),
+        ("Tags", "New tag"),
     ] {
         h.get_by_role_and_label(egui::accesskit::Role::Button, tab)
             .click();
@@ -442,7 +443,7 @@ fn the_file_page_s_items_do_what_the_menus_did() {
             "{tab}: {shows}"
         );
     }
-    assert_eq!(h.state().0.file_pages.project_tab, Tab::Input);
+    assert_eq!(h.state().0.file_pages.project_tab, Tab::Tags);
     crate::test_support::file_item(&mut h, "About");
     assert_eq!(h.state().0.file_pages.page, crate::file_pages::Page::About);
     assert!(

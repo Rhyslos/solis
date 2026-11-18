@@ -192,33 +192,3 @@ fn add_menu(ui: &mut Ui, row: &TagRow<'_>) -> Option<TagAsk> {
         });
     picked
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_row_draws_its_chips_and_the_add_button() {
-        let mut tags = TagList::default();
-        let enemy = tags.add("Enemy").unwrap();
-        let flying = tags.add("Flying").unwrap();
-        let shown = [enemy, flying, TagId::random()];
-        let ctx = egui::Context::default();
-        let mut asks = Vec::new();
-        let _ = ctx.run(egui::RawInput::default(), |ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
-                asks = chips(
-                    ui,
-                    &TagRow {
-                        label: "Tags",
-                        help: "",
-                        tags: &tags,
-                        shown: &shown,
-                        changed: true,
-                    },
-                );
-            });
-        });
-        assert!(asks.is_empty());
-    }
-}

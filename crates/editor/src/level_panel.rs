@@ -82,7 +82,7 @@ struct KeptRows {
 impl LevelPanelState {
     /// The rows of `document`'s tree as this shows it, listed again only
     /// when what they're listed from changes.
-    fn rows(
+    pub(crate) fn rows(
         &mut self,
         document: &Document,
         (tags, tags_revision): (&level::tags::TagList, u64),
@@ -172,6 +172,17 @@ struct Toggles {
     shown: Shown,
     /// A placed copy's link, and a dot for its own changes (board 07).
     marks: (bool, bool),
+}
+
+/// An entity's tags as the Level panel shows them after its name, faintly
+/// (stage 1, `docs/design/tags/02-entity-tags.png`): "Enemy · Flying";
+/// none for an entity carrying none of the project's.
+pub(crate) fn tags_note(tags: &level::tags::TagList, entity: &EntityData) -> Option<String> {
+    let names: Vec<&str> = crate::tags::carried(tags, entity)
+        .into_iter()
+        .filter_map(|id| tags.name_of(id))
+        .collect();
+    (!names.is_empty()).then(|| names.join(" \u{b7} "))
 }
 
 /// Which switch was clicked.
@@ -885,12 +896,7 @@ fn entity_row(
         only.clone_into(&mut note);
     }
     // Its tags, faintly after its name (stage 1): "Enemy · Flying".
-    let carried: Vec<&str> = crate::tags::carried(tags, entity)
-        .into_iter()
-        .filter_map(|id| tags.name_of(id))
-        .collect();
-    if !carried.is_empty() {
-        let words = carried.join(" \u{b7} ");
+    if let Some(words) = tags_note(tags, entity) {
         note = if note.is_empty() {
             words
         } else {
