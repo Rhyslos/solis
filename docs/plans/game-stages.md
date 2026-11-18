@@ -3,6 +3,7 @@
 The order of work from 18 November 2026 ([decision 0122](../decisions/0122-the-game-stages.md)). The project lead wants to make every kind of 2D game in Solis, learning as they go, with 3D later because 2D features are easier to build first. So the 2D work is ordered by **the kind of game it lets you make**, one stage at a time.
 
 **What doesn't change:**
+- **Tools, never game systems** (CLAUDE.md, "The project lead's games are made with Solis, never built into it"). A dialogue system, an inventory, quests, shops or crafting are games made with Solis's tools, such as text effects, drag and drop, tables and tags; they're never built into the engine. A line below may name a game use, but only as an example of what its tool is for.
 - **Every feature is a general tool any game can use** (CLAUDE.md, "The project lead's games are made with Solis, never built into it"). A stage only decides *when* a feature is built. The features are the ones ROADMAP.md's phase sections already describe; each line below names the section it comes from.
 - **How each is built** (technique, code, tests) is in [the plan after the rethink](after-the-rethink.md) and its research.
 - One milestone per pull request, UI mocked up first, keys asked about first (rule 17), the scale target kept.
@@ -21,16 +22,16 @@ Walking a world, rooms and doors, talking to people, picking things up, an inven
 - **Timers and steps in order:** "open in 2 seconds", "walk there, wait, say this". (Shared 3)
 - **States that know when they start and stop.** (Shared 3)
 - **Field hints and more kinds of settings:** sliders, limits, help, and fields that pick a sound, a sprite, a prefab or a list. (Shared 4, with 2D 1's typed fields)
-- **Data tables:** items, prices, descriptions in one file, edited as a table. (Shared 4)
-- **Text layout, then text effects:** dialogue that types itself out, coloured and wavy words, icons in text. (Shared 5)
-- **Tooltips, and drag and drop,** for an inventory and a shop. (Shared 5)
+- **Data tables:** any game's data (rows and typed columns) in one file, edited as a table and read by game code with its spelling checked. For example, items with prices and descriptions. (Shared 4)
+- **Text layout, then text effects:** text that wraps, types itself out letter by letter, and has coloured, wavy or shaking words and icons inside it, for any text a game shows: menus, signs, item descriptions, and dialogue boxes. (Shared 5)
+- **Tooltips, and drag and drop in game screens:** any piece of a screen can show a tip and be dragged onto another, and game code hears what was dropped where. For example, inventories, shops, equipment slots or a hotbar. (Shared 5)
 - **Fades:** to black and back, or another colour, as a general tool. (Shared 3, brought from stage 2's shake and flash.)
 - **Rooms on a world map, and moving between them,** with a fade. (2D 1 and Shared 6)
 - **A Door in the kit,** built on triggers, fades and rooms (the project lead, 2026-11-18): **Send to** a place in this level or an entry point in another room or level, **Two-way** (two doors linked, each sending to the other), and a **Transition** (none, or a fade, with its time). Written in Lust and open to read and change, like the kit's top-down walker. The trigger zone itself stays lean.
 - **Sorting tall things:** walking behind and in front of trees and houses properly. (2D 1)
 - **Pathfinding:** characters walk round walls to where they're going. (2D 1)
 - **Save slots:** several saves with a picture and the time played. (Shared 4)
-- **The sample:** a small top-down adventure in Learn.
+- **The sample:** a small top-down adventure in Learn, with a little dialogue and an inventory written in Lust, as a game maker would write them, not built into Solis.
 
 ## Stage 2: a platformer
 
