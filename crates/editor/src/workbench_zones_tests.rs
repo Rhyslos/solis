@@ -196,3 +196,31 @@ fn tab_needs_one_freeform_zone_picked() {
     w.toggle_zone_points();
     assert!(w.viewport.zones.points.is_none());
 }
+
+#[test]
+fn the_level_panel_shows_a_zone_with_its_dashed_icon() {
+    let (w, id) = with_a_zone();
+    let entity = w.open.document.level().get(id).unwrap();
+    let (icon, _, note) = crate::level_panel::looks(entity, &Default::default());
+    assert_eq!(icon, crate::icons::Icon::Volume);
+    assert_eq!(note, "Trigger zone");
+}
+
+#[test]
+fn a_click_on_a_zone_s_outline_picks_it_and_one_inside_does_not() {
+    use crate::camera::{Camera, ViewKind};
+    let zone = crate::zones::ViewZone {
+        entity: EntityId::random(),
+        name: "Door".into(),
+        zone: TriggerZone::default(),
+        transform: Mat4::IDENTITY,
+    };
+    let camera = Camera::default().as_kind(ViewKind::TwoD);
+    let size = Vec2::new(800.0, 600.0);
+    let edge = camera.project(Vec3::new(1.0, 0.0, 0.0), size).unwrap();
+    let middle = camera.project(Vec3::ZERO, size).unwrap();
+    let locked = Default::default();
+    let at = |p| crate::zones::zone_at(&[zone.clone()], &locked, (&camera, size), p, 10.0);
+    assert_eq!(at(edge), Some(zone.entity));
+    assert_eq!(at(middle), None, "inside is left for what's in the zone");
+}

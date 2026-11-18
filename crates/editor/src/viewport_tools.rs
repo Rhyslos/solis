@@ -448,7 +448,17 @@ impl Tools {
                 (d <= MARKER_REACH).then_some((d, entity))
             })
             .min_by(|a, b| a.0.total_cmp(&b.0));
-        if let Some((_, entity)) = marker {
+        // A trigger zone has no surface: its outline is clicked.
+        let zone = || {
+            crate::zones::zone_at(
+                &level.zones,
+                &level.locked,
+                (camera, size),
+                at,
+                MARKER_REACH,
+            )
+        };
+        if let Some(entity) = marker.map(|(_, e)| e).or_else(zone) {
             self.events.push(ViewportEvent::Click {
                 hit: Some(entity),
                 mode,

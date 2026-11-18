@@ -161,6 +161,55 @@ pub(crate) fn lines_3d(zone: &TriggerZone) -> Vec<(Vec3, Vec3)> {
     }
 }
 
+/// The zone whose outline passes within `reach` points of `at` (points
+/// from the view's corner), nearest first: how a click picks a zone,
+/// which has no surface for the renderer to find. Zones in `locked` can't
+/// be picked.
+pub(crate) fn zone_at(
+    zones: &[ViewZone],
+    locked: &std::collections::HashSet<EntityId>,
+    (camera, size): (&crate::camera::Camera, Vec2),
+    at: Vec2,
+    reach: f32,
+) -> Option<EntityId> {
+    let flat = camera.kind == crate::camera::ViewKind::TwoD;
+    let near = |a: Vec2, b: Vec2| {
+        let along = (b - a).length_squared();
+        let t = if along > 0.0 {
+            ((at - a).dot(b - a) / along).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        (a + (b - a) * t).distance(at)
+    };
+    zones
+        .iter()
+        .filter(|z| !locked.contains(&z.entity))
+        .filter_map(|zone| {
+            let lines: Vec<(Vec3, Vec3)> = if flat {
+                let ring = footprint(&zone.zone);
+                let n = ring.len();
+                (0..n)
+                    .map(|i| (ring[i].extend(0.0), ring[(i + 1) % n].extend(0.0)))
+                    .collect()
+            } else {
+                lines_3d(&zone.zone)
+            };
+            let world = zone.transform;
+            let nearest = lines
+                .iter()
+                .filter_map(|(a, b)| {
+                    let a = camera.project(world.transform_point3(*a), size)?;
+                    let b = camera.project(world.transform_point3(*b), size)?;
+                    Some(near(a, b))
+                })
+                .fold(f32::MAX, f32::min);
+            (nearest <= reach).then_some((nearest, zone.entity))
+        })
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, id)| id)
+}
+
 /// The twelve edges of a box, by corner number (bit 0: x, 1: y, 2: z).
 const BOX_EDGES: [(usize, usize); 12] = [
     (0, 1),

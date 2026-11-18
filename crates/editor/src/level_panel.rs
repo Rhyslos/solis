@@ -387,6 +387,10 @@ pub(crate) fn looks(
     if entity.has("Camera") {
         return (Icon::Camera, theme::kind::CAMERA, "Camera".into());
     }
+    // A trigger zone (stage 1): the dashed square, in the zone's teal.
+    if entity.has("TriggerZone") {
+        return (Icon::Volume, theme::TRIGGER_ZONE, "Trigger zone".into());
+    }
     // A brush (Tools 1a, B2, as the mock-ups draw it): its shape's icon and
     // name, read from that one field, never its mesh.
     if let Some(brush) = entity.components.get("Brush") {
