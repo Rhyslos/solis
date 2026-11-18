@@ -90,3 +90,30 @@ fn the_tags_file_is_saved_read_back_and_a_damaged_one_kept() {
     );
     assert_eq!(crate::play_files::load_tags(&root).0, tags);
 }
+
+#[test]
+fn the_library_shows_the_project_s_tags_file_as_its_tags() {
+    use asset_db::{FileEntry, FileKind, Listing};
+    let entry = |path: &str| FileEntry {
+        path: PathBuf::from(path),
+        kind: FileKind::of(Path::new(path)),
+        id: None,
+    };
+    let listing = Listing {
+        folders: vec![PathBuf::from("enemies")],
+        files: vec![
+            entry("tags.lst"),
+            entry("enemies/tags.lst"),
+            entry("main.lst"),
+        ],
+    };
+    let (items, _) = crate::project::Projects::library(&listing, |_| None);
+    let kind = |path: &str| items.iter().find(|i| i.path == path).unwrap().kind;
+    assert_eq!(kind("tags.lst"), editor::LibraryKind::Tags);
+    assert_eq!(
+        kind("enemies/tags.lst"),
+        editor::LibraryKind::Code,
+        "only the top one"
+    );
+    assert_eq!(kind("main.lst"), editor::LibraryKind::Code);
+}

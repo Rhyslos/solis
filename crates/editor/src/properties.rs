@@ -552,6 +552,18 @@ impl Card<'_> {
             });
             return;
         }
+        // Several zones: Only tags is IDs as saved, so it's shown as the
+        // tags' names (when every zone has the same), never as the IDs.
+        let zone_only = component == <level::builtin::TriggerZone as reflect::Component>::NAME;
+        let without_only;
+        let schema = if zone_only {
+            let mut fewer = reflect::ComponentSchema::clone(schema);
+            fewer.fields.retain(|f| f.name != ONLY_TAGS);
+            without_only = fewer;
+            &without_only
+        } else {
+            schema
+        };
         let changes = ui
             .add_enabled_ui(editable, |ui| {
                 inspector::fields(
@@ -593,11 +605,58 @@ impl Card<'_> {
                 },
             });
         }
+        if zone_only {
+            self.shared_only_tags(ui, data, &others);
+        }
         if component == "Model" {
             cards::model_rows_to_come(ui);
         }
     }
+
+    /// Several zones' Only tags, as names, when every zone has the same;
+    /// nothing when they differ (each zone's own card changes them).
+    fn shared_only_tags(
+        &self,
+        ui: &mut Ui,
+        data: &reflect::ComponentData,
+        others: &[&reflect::ComponentData],
+    ) {
+        let (Some(tags), Some(Value::Text(mine))) = (self.help.tags, data.get(ONLY_TAGS)) else {
+            return;
+        };
+        let same = others
+            .iter()
+            .all(|o| o.get(ONLY_TAGS) == Some(&Value::Text(mine.clone())));
+        if !same {
+            return;
+        }
+        let names: Vec<&str> = level::builtin::Tags::read(mine)
+            .ids
+            .into_iter()
+            .filter_map(|id| tags.name_of(id))
+            .collect();
+        let words = if names.is_empty() {
+            "None: everything it notices".to_owned()
+        } else {
+            names.join(" \u{b7} ")
+        };
+        inspector::row(
+            ui,
+            "Only tags",
+            "The tags every picked zone notices. Pick one zone to change them.",
+            |ui| {
+                ui.label(
+                    egui::RichText::new(words)
+                        .font(crate::tokens::text::row())
+                        .color(crate::tokens::text_primary()),
+                );
+            },
+        );
+    }
 }
+
+/// A trigger zone's Only tags field, as the level keeps it.
+const ONLY_TAGS: &str = "only_tags";
 
 impl Card<'_> {
     /// The Brush card's rows (`brushing::card`), and what changing them

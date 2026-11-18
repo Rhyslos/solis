@@ -40,6 +40,9 @@ pub enum LibraryKind {
     /// Plain text: notes (`.md`, `.txt`) and data (`.json`, `.csv`,
     /// `.toml`, `.ron`), shown in Properties.
     Text,
+    /// The project's tags (`tags.lst` at the top of its files, stage 1):
+    /// opened, it shows Project settings › Tags.
+    Tags,
     /// Anything else.
     Other,
 }
@@ -62,6 +65,7 @@ impl LibraryKind {
             Self::TileMap => "Tile map",
             Self::Atlas => "Atlas crops",
             Self::Text => "Text",
+            Self::Tags => "Project's tags",
             Self::Other => "File",
         }
     }
@@ -80,14 +84,14 @@ impl LibraryKind {
             Self::Code => k::CODE,
             Self::Sound => k::SOUND,
             Self::SoundEvent => k::SOUND_EVENT,
-            Self::Text => k::TEXT,
+            Self::Text | Self::Tags => k::TEXT,
             Self::Other => k::OTHER,
         }
     }
 
     /// Every kind, in the order the colour sheet shows them.
     #[cfg(test)]
-    pub(crate) const ALL: [Self; 15] = [
+    pub(crate) const ALL: [Self; 16] = [
         Self::Model,
         Self::Prefab,
         Self::Level,
@@ -102,6 +106,7 @@ impl LibraryKind {
         Self::SoundEvent,
         Self::Code,
         Self::Text,
+        Self::Tags,
         Self::Other,
     ];
 
@@ -122,6 +127,7 @@ impl LibraryKind {
             Self::TileMap => Icon::TileMap,
             Self::Atlas => Icon::Crops,
             Self::Text | Self::Other => Icon::TextFile,
+            Self::Tags => Icon::Gear,
         }
     }
 
@@ -145,7 +151,12 @@ impl LibraryKind {
     pub fn opens_on_double_click(self) -> bool {
         matches!(
             self,
-            Self::SpriteClips | Self::Animator | Self::Tileset | Self::Atlas | Self::Prefab
+            Self::SpriteClips
+                | Self::Animator
+                | Self::Tileset
+                | Self::Atlas
+                | Self::Prefab
+                | Self::Tags
         )
     }
 
@@ -241,7 +252,7 @@ impl Filter {
             ),
             Self::Maps => matches!(kind, K::Level | K::TileMap | K::Tileset),
             Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
-            Self::Code => matches!(kind, K::Code | K::Text),
+            Self::Code => matches!(kind, K::Code | K::Text | K::Tags),
         }
     }
 

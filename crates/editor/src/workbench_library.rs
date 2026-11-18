@@ -214,6 +214,10 @@ impl Workbench {
                 actions.push(WorkbenchAction::NewPrefab(folder.into()));
             }
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
+            // The project's tags are edited on their own page.
+            LibraryRequest::Open(LibraryKind::Tags, _) => {
+                self.show_settings(crate::file_pages::Tab::Tags);
+            }
             LibraryRequest::Open(LibraryKind::Animator, path) => self.open_animator(&path),
             LibraryRequest::Open(LibraryKind::Tileset, path) => self.open_tileset(&path),
             LibraryRequest::AtlasCrop(picture) => self.open_atlas(&picture),

@@ -432,3 +432,49 @@ fn a_zone_s_only_tags_are_chosen_on_its_card() {
     h.run();
     assert_eq!(only(&h.state().0), [enemy]);
 }
+
+#[test]
+fn the_tags_file_in_the_library_opens_project_settings_tags() {
+    let (mut w, ..) = with_tags();
+    let mut actions = Vec::new();
+    w.library_request(
+        crate::library::LibraryRequest::Open(crate::library::LibraryKind::Tags, "tags.lst".into()),
+        &mut actions,
+    );
+    assert_eq!(w.file_pages.page, crate::file_pages::Page::ProjectSettings);
+    assert_eq!(w.file_pages.project_tab, Tab::Tags);
+    assert!(actions.is_empty(), "nothing is opened in another program");
+    assert!(crate::library::LibraryKind::Tags.opens_on_double_click());
+    assert!(!crate::library::LibraryKind::Tags.opens_in_its_program("tags.lst"));
+}
+
+#[test]
+fn several_zones_show_their_only_tags_by_name_or_not_at_all() {
+    let (mut w, enemy, flying, ..) = with_tags();
+    let a = w.add_trigger_zone();
+    let b = w.add_trigger_zone();
+    for zone in [a, b] {
+        w.change_zone_tags(zone, TagAsk::Add(enemy));
+        w.change_zone_tags(zone, TagAsk::Add(flying));
+    }
+    w.select(a);
+    w.open.document.selection.toggle(b);
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    assert!(
+        h.query_by_label("Enemy \u{b7} Flying").is_some(),
+        "the shared tags by name"
+    );
+    let ids = enemy.to_string();
+    assert!(
+        h.query_all_by_label_contains(&ids).next().is_none(),
+        "never the IDs"
+    );
+    // They differ: the row is left out.
+    h.state_mut().0.change_zone_tags(b, TagAsk::Remove(flying));
+    h.run();
+    h.run();
+    assert!(h.query_by_label("Enemy \u{b7} Flying").is_none());
+    assert!(h.query_all_by_label_contains(&ids).next().is_none());
+}

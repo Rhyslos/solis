@@ -12,7 +12,7 @@ The Library ([decision 0021](../../../../docs/decisions/0021-asset-database-and-
 | `rename.rs` | Renaming in place: the box, `Enter`, `Esc` and clicking away, and why a name won't do. | `name_box`, `checked_name`, `rename_to` |
 | `tree.rs` | The browser's folder tree, and the row every tree draws. | `folder_tree`, `visible_folders`, `draw_row` |
 | `trees.rs` | Home's left slot as folder trees, several side by side, each with its own folder, the edges between them dragged. | `folder_trees`, `Trees`, `LeftShows` |
-| `kinds.rs` | The kinds of file the Library knows, what each can do, and the groups of kinds its filter shows. | `LibraryKind`, `Filter` |
+| `kinds.rs` | The kinds of file the Library knows, what each can do, and the groups of kinds its filter shows; the project's `tags.lst` is `Tags`, opening Project settings › Tags (stage 1). | `LibraryKind`, `Filter` |
 | `tests.rs` | The parts on their own: what's shown, picking, back and up, names, moves, the trees. | |
 
 **Read next:** the folder's parent, [`../README.md`](../README.md) (the `library/` row).

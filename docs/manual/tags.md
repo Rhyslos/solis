@@ -20,7 +20,7 @@ Why tags and not names? A name belongs to one entity, and `World:find("Bat 12")`
 
 **Deleting:** ⋯ › **Delete**. A tag nothing uses goes at once. One that's used asks first, saying what carries it (which levels' entities, which prefabs): deleting it takes it off all of them.
 
-The tags are kept in the project's `tags.lst`, a small text file beside `project.solis` that Git can merge. If it changes on disk (a pull, an edit by hand), Solis reads it again.
+The tags are kept in the project's `tags.lst`, a small text file beside `project.solis` that Git can merge. If it changes on disk (a pull, an edit by hand), Solis reads it again. In the [Library](projects-and-the-library.md) it's shown as **Project's tags**, with a gear: a double-click opens Project settings › Tags, never a code editor.
 
 ### Tag entities
 1. Pick an entity. Its tags are under its name in **Properties**, as chips.
@@ -163,6 +163,7 @@ A [trigger zone](trigger-zones.md)'s **Only tags** limits it to entities carryin
 |---|---|
 | Project settings › Tags | The project's tags: make, rename everywhere, delete. Kept in `tags.lst`. |
 | Tags (under an entity's name) | The tags it carries: chips with ×, and **+ Tag ▾**. On a prefab's copy, the orange dot and ↶ when they differ from the prefab's. |
+| Only tags with several zones picked | The tags they share, by name; nothing when they differ. Pick one zone to change them. |
 | Only tags (a trigger zone's card) | The tags a zone notices; none chosen, it notices everything it can. |
 
 ## Shortcuts

@@ -7321,7 +7321,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 </ol>
 <p><strong>Renaming:</strong> double-click a tag's name (or ⋯ › <strong>Rename</strong>), type the new one and press <span class="keys"><kbd>Enter</kbd></span>. It's renamed <strong>everywhere</strong> at once: every level and prefab keeps its tags by an ID that never changes, so they all follow, and game code's name changes with it. Code still saying the old name (<code>Tag.Enemy</code> after renaming it <strong>Monster</strong>) becomes a mistake in <a href="#problems">Problems</a>, pointing at each line to change.</p>
 <p><strong>Deleting:</strong> ⋯ › <strong>Delete</strong>. A tag nothing uses goes at once. One that's used asks first, saying what carries it (which levels' entities, which prefabs): deleting it takes it off all of them.</p>
-<p>The tags are kept in the project's <code>tags.lst</code>, a small text file beside <code>project.solis</code> that Git can merge. If it changes on disk (a pull, an edit by hand), Solis reads it again.</p>
+<p>The tags are kept in the project's <code>tags.lst</code>, a small text file beside <code>project.solis</code> that Git can merge. If it changes on disk (a pull, an edit by hand), Solis reads it again. In the <a href="#projects-and-the-library">Library</a> it's shown as <strong>Project's tags</strong>, with a gear: a double-click opens Project settings › Tags, never a code editor.</p>
 <h4 id="tags--tag-entities">Tag entities<a class="anchor" href="#tags--tag-entities" aria-label="Link to this section">#</a></h4>
 <ol class="steps">
 <li>Pick an entity. Its tags are under its name in <strong>Properties</strong>, as chips.</li>
@@ -7456,6 +7456,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <tbody>
 <tr><td>Project settings › Tags</td><td>The project's tags: make, rename everywhere, delete. Kept in <code>tags.lst</code>.</td></tr>
 <tr><td>Tags (under an entity's name)</td><td>The tags it carries: chips with ×, and <strong>+ Tag ▾</strong>. On a prefab's copy, the orange dot and ↶ when they differ from the prefab's.</td></tr>
+<tr><td>Only tags with several zones picked</td><td>The tags they share, by name; nothing when they differ. Pick one zone to change them.</td></tr>
 <tr><td>Only tags (a trigger zone's card)</td><td>The tags a zone notices; none chosen, it notices everything it can.</td></tr>
 </tbody>
 </table></div>
