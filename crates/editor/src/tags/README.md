@@ -1,0 +1,12 @@
+# editor/src/tags
+
+Tags in the editor (stage 1, tags; [the plan](../../../../docs/plans/game-stages.md#the-next-milestone-tags-and-questions-about-the-world); the approved mock-up [`docs/design/tags/`](../../../../docs/design/tags/README.md)). The project's tags are kept by the workbench (`ProjectState::tags`, from the app's reading of `tags.lst`) and saved by the app when they change (`WorkbenchAction::SaveTags`). An entity keeps its tags by their IDs, so a rename changes only the list.
+
+| File | What it holds |
+| --- | --- |
+| `mod.rs` | The workbench's side: the list set, made, renamed (everywhere: a note in the Console says game code's name changed) and deleted; what uses a tag (`used_by`: the open level as it is, the other levels as the app counted them, `TagUse`, and the prefabs); an entity's tags changed as one undo step for every picked entity (`change_tags`, adding a `Tags` where there's none, leaving out tags gone from the list), a prefab copy's ↶ and whether its tags differ from its prefab's; a zone's Only tags; and `tag_view`, the tick's `script::TagView` (flat in a 2D project). | `TagUse`, `TagAsk`, `UsedBy`, `tag_view`, `carried` |
+| `chips.rs` | A row of tags as chips with ×, then **+ Tag ▾** (the project's tags with a box to search them, and New tag…, Enter taking the first found or making the one typed), and ↶ on a prefab copy whose tags differ: under an entity's name in Properties, and a zone's Only tags. | `TagRow`, `chips` |
+| `page.rs` | Project settings › Tags: the section's words, a row per tag (its name, Used by, its ⋯ with Rename and Delete), the new tag's row, + New tag, renaming in place with the name checked as it's typed (a double-click; `Enter` keeps it, `Esc` leaves it), Delete's question when the tag is used, and the In game code card. | `TagsPage`, `Naming`, `Workbench::tags_page` |
+| `tests.rs` | Names refused with reasons, a rename reaching a level, a prefab and game code, adding and taking off with undo, several picked entities, + Tag's list, prefab copies and ↶, the Level panel's note and search, Delete asking first, the page making and renaming, a zone's Only tags. | |
+
+The Level panel's side is in `../level_panel.rs` (`tags_note`, and its search), the play side in `../play_tick.rs` and `../game_code.rs` (`Change::Tag`), saving in `../save_game.rs`; pictures in `../tag_picture_tests.rs`, play in `../tags_play_tests.rs`.

@@ -33,20 +33,26 @@ fn farm_days() -> (Workbench, EntityId) {
     tags.add("Collectible").unwrap();
     let flying = tags.add("Flying").unwrap();
     w.set_tags(tags);
-    let id = EntityId::random();
+    // The starter level's sun and environment, then the bat, with IDs and
+    // places in the list that are the same every time.
+    let fixed = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let mut level = level::Level::new();
+    let mut starter: Vec<EntityData> = level::builtin::starter_level()
+        .iter()
+        .map(|(_, e)| e.clone())
+        .collect();
+    starter.sort_by(|a, b| b.name.cmp(&a.name));
+    for (n, mut entity) in starter.into_iter().enumerate() {
+        entity.order = level.order_at_end(None);
+        level.insert(fixed(n as u64 + 1), entity);
+    }
+    let id = fixed(9);
     let mut bat = EntityData::new("Bat")
         .with(&Transform::default())
         .with(&Sprite::default());
-    // Last in the Level panel, as the mock-up lists it.
-    bat.order = w.open.document.level().order_at_end(None);
-    w.command(
-        "Add",
-        vec![level::Edit::Spawn {
-            entities: vec![(id, bat)],
-        }],
-        None,
-        None,
-    );
+    bat.order = level.order_at_end(None);
+    level.insert(id, bat);
+    w.open.document = crate::document::Document::new(level);
     w.change_tags(&[id], TagAsk::Add(enemy));
     w.change_tags(&[id], TagAsk::Add(flying));
     w.select(id);
