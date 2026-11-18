@@ -116,7 +116,9 @@ impl Animation {
 /// Takes away the animators' or maps' files in `assets/solis/<kind>/` that
 /// `files` no longer has (one deleted or renamed). Only `.lst` files, never
 /// through a link.
-fn forget_animator_files(assets: &Path, files: &[(String, String)], kind: &str) {
+/// Whether it took any away.
+fn forget_animator_files(assets: &Path, files: &[(String, String)], kind: &str) -> bool {
+    let mut took = false;
     let folder = assets.join(crate::branding::CODE_FOLDER).join(kind);
     let wanted: std::collections::HashSet<std::path::PathBuf> =
         files.iter().map(|(p, _)| assets.join(p)).collect();
@@ -136,10 +138,11 @@ fn forget_animator_files(assets: &Path, files: &[(String, String)], kind: &str) 
                 && path.extension().is_some_and(|e| e == "lst")
                 && !wanted.contains(&path)
             {
-                let _ = std::fs::remove_file(&path);
+                took |= std::fs::remove_file(&path).is_ok();
             }
         }
     }
+    took
 }
 
 /// The project's files whose names end in one of `endings` (prefabs'
@@ -185,15 +188,6 @@ fn asset_paths(assets: &Path, endings: &[&str]) -> Vec<String> {
     found.sort();
     found.dedup();
     found
-}
-
-/// `code` with the engine's file at `path` holding `text`, as it's
-/// written now (the code was read before it was).
-fn code_takes(code: &mut script::Code, path: &str, text: &str) {
-    match code.files.binary_search_by(|(p, _)| p.as_str().cmp(path)) {
-        Ok(at) => code.files[at].1 = text.to_string(),
-        Err(at) => code.files.insert(at, (path.to_string(), text.to_string())),
-    }
 }
 
 /// The project's own folder, for its files' folder `files`: itself when
@@ -246,19 +240,20 @@ impl GameCode {
         if !assets.is_dir() {
             return Vec::new();
         }
-        let mut code = script::gather(assets);
-        Self::describe_from(assets, made_by, animation, &mut code)
+        let code = script::gather(assets);
+        Self::describe_from(assets, made_by, animation, &code).0
     }
 
     /// [`GameCode::describe_with`] for the game's `code`, already read:
-    /// its timers' names are the ones its Lust starts (stage 1, timers),
-    /// and the code is given the project file as it's written now.
+    /// its timers' names are the ones its Lust starts (stage 1, timers).
+    /// Also whether any file was written, so the code read before is out
+    /// of date.
     fn describe_from(
         assets: &Path,
         made_by: &str,
         animation: &Animation,
-        code: &mut script::Code,
-    ) -> Vec<String> {
+        code: &script::Code,
+    ) -> (Vec<String>, bool) {
         let Animation {
             clips,
             cues,
@@ -360,12 +355,8 @@ impl GameCode {
                 }
             }
         }
-        forget_animator_files(assets, &files, script::animator_code::FOLDER);
-        forget_animator_files(assets, &files, script::map_code::FOLDER);
-        let project = format!("{}/project.lst", crate::branding::CODE_FOLDER);
-        if let Some((_, text)) = files.iter().find(|(path, _)| *path == project) {
-            code_takes(code, &project, text);
-        }
+        let mut wrote = forget_animator_files(assets, &files, script::animator_code::FOLDER);
+        wrote |= forget_animator_files(assets, &files, script::map_code::FOLDER);
         for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {
@@ -379,13 +370,14 @@ impl GameCode {
                     asset_db::own_folder(assets, folder).map(|_| ())
                 })
                 .and_then(|()| asset_db::write_atomically(&file, text.as_bytes()));
-            if let Err(why) = written {
-                notes.push(format!(
+            match written {
+                Ok(()) => wrote = true,
+                Err(why) => notes.push(format!(
                     "Couldn't write {path}, which describes the engine to game code: {why}."
-                ));
+                )),
             }
         }
-        notes
+        (notes, wrote)
     }
 
     /// What describing the engine said since last asked, when it changed
@@ -423,12 +415,17 @@ impl GameCode {
                 // A crash is answered too, so it's said and the next
                 // change is checked (the review, BUG-33).
                 let answer = std::panic::catch_unwind(|| {
+                    // Read once to find the timers' names; again only when
+                    // describing the engine wrote a file.
                     let mut code = script::gather(&assets);
-                    let described = if assets.is_dir() {
-                        Self::describe_from(&assets, &made_by, &animation, &mut code)
+                    let (described, wrote) = if assets.is_dir() {
+                        Self::describe_from(&assets, &made_by, &animation, &code)
                     } else {
-                        Vec::new()
+                        (Vec::new(), false)
                     };
+                    if wrote {
+                        code = script::gather(&assets);
+                    }
                     let found = hash(&code);
                     // Most changes in the assets aren't code (a model, the
                     // level saved): then there's nothing to compile.
@@ -607,6 +604,53 @@ mod tests {
         finished(code);
         assert!(!code.waiting());
         code.take_notes()
+    }
+
+    #[test]
+    fn the_timers_the_code_starts_are_its_timer_state_on_the_first_check() {
+        // Stage 1, timers: no list to keep; the call that starts a timer
+        // names it, and the check that first sees it already has it.
+        let (_temp, assets) = folder("timers");
+        let main = "fetch \"solis/project\":Timer;\n\
+            component Door {\n\
+                method update(float dt) {\n\
+                    -- startTimer(Timer.InAComment, 1.0); isn't one.\n\
+                    startTimer(Timer.DoorOpens, 2.0);\n\
+                    this:startTimerEvery(Timer.Wave, 5.0);\n\
+                    is timerRunning(Timer.DoorOpens)? then {\n\
+                        stopTimer(Timer.Wave);\n\
+                    }\n\
+                }\n\
+            }\n\
+            pass Door;\nend\n";
+        std::fs::write(assets.join("main.lst"), main).unwrap();
+        let mut code = GameCode::new("Test 1.0");
+        code.check(assets.clone());
+        let checked = finished(&mut code).expect("checked");
+        assert!(checked.problems.is_empty(), "{:?}", checked.problems);
+        let program = checked.program.flatten().expect("a program");
+        assert_eq!(program.timers, ["DoorOpens", "Wave"]);
+        let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
+        assert!(
+            project.contains("state Timer = [DoorOpens, Wave];"),
+            "{project}"
+        );
+        // A misspelt name anywhere else is a mistake before the game runs.
+        std::fs::write(
+            assets.join("main.lst"),
+            main.replace("Running(Timer.DoorOpens", "Running(Timer.DorOpens"),
+        )
+        .unwrap();
+        code.check(assets.clone());
+        let checked = finished(&mut code).expect("checked");
+        assert!(
+            checked
+                .problems
+                .iter()
+                .any(|p| p.message.contains("DorOpens")),
+            "{:?}",
+            checked.problems
+        );
     }
 
     #[test]

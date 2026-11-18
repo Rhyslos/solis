@@ -32,6 +32,8 @@ cp tests/fixtures/area/v4/blockout.sollevel "$seeds/brush/"
 # Older versions of saves and input actions, so the upgraders are fuzzed.
 cp tests/fixtures/save/v1/harbour.solsave "$seeds/save_game/v1.solsave"
 cp tests/fixtures/save/v2/harbour.solsave "$seeds/save_game/v2.solsave"
+# A save with a timer waiting (version 11), so its timers section is fuzzed.
+cp tests/fixtures/save/v11/harbour.solsave "$seeds/save_game/timers.solsave"
 cp tests/fixtures/input-actions/v1/input.solinput "$seeds/input_actions/v1.solinput"
 cp tests/fixtures/recording/v1/play.solrec "$seeds/recording/v1.solrec"
 cp tests/fixtures/recording/v2/play.solrec "$seeds/recording/v2.solrec"
