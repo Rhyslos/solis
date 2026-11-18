@@ -1,0 +1,17 @@
+-- A tileset. Written by Solis; safe to edit by hand.
+-- Each terrain is something a tile map's cell can be: its name, the one character
+-- a map file writes for it, its colour, how its art is chosen (its kind), and
+-- whether it's solid (nothing with a body passes into it).
+-- Each piece is a tile of the picture filling one of a terrain's slots; each rule
+-- a pattern of the cells around one, for a terrain of its own rules.
+fetch "solis/data/tileset":[Tileset, Terrain, Piece, Rule];
+
+lock int version = 4;
+lock Tileset tileset = new Tileset { tile = [16, 16] };
+lock Terrain array terrains = [
+    new Terrain { id = "2PC00000000T1", name = "grass", code = ".", colour = [0.31, 0.48, 0.23] },
+    new Terrain { id = "2PC00000000T2", name = "wall", code = "#", colour = [0.5, 0.5, 0.5], solid = true },
+];
+lock Piece array pieces = [];
+lock Rule array rules = [];
+end

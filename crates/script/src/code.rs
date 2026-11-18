@@ -438,7 +438,7 @@ fn compile_here(
                 folders: crate::describe::engine_folders(),
             };
             match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &files)) {
-                Ok(Ok(chunk)) => lust = Some(chunk),
+                Ok(Ok(chunk)) => lust = Some(crate::exact_maths::exact_lust(chunk)),
                 Ok(Err(found)) => problems.extend(found.into_iter().map(CodeProblem::from)),
                 Err(_) => problems.push(compiler_stopped()),
             }

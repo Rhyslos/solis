@@ -22,6 +22,7 @@ mod placing;
 pub mod projectiles;
 mod screens_and_sounds;
 pub mod sprites;
+pub mod state_parts;
 pub mod tile_maps;
 pub mod triggers;
 
@@ -29,6 +30,7 @@ pub use animators::Animators;
 pub use flat_physics::{FlatBroke, RESTART_WAIT, SolidSets};
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
+pub use state_parts::StateParts;
 pub use tile_maps::MapFiles;
 pub use triggers::{Crossing, InsideZones};
 

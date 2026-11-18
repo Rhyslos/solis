@@ -83,6 +83,27 @@ Add the QuickSave and QuickLoad actions in **File › Project settings › Input
 
 **Where saves live:** in the project's `saves` folder, one `.solsave` file per slot, beside `project.solis`. New projects keep this folder out of Git, since saves are your test plays, not part of the game. An exported game keeps players' saves in their own saved-games folder instead ([Exporting for playtesting](playtest-export.md)).
 
+### Why the game must come out the same everywhere
+
+A save, a recording and (later) a game played online all rest on one promise: **the same game, given the same input, comes out exactly the same**, tick by tick, on any PC and with any number of cores ([determinism](concepts.md#simulation)). A loaded save only carries on as the saved game would have if every sum works out to the very same bits; a recording only replays if it does on the PC replaying it; two players online only stay in step if their PCs agree, since they send each other only their input.
+
+The **game state** is what has to agree: where everything is, physics, every component's values, tile maps, animators, zones, the random numbers. What's only shown (sounds, light, the sky, screens, shakes) doesn't, and needn't.
+
+Solis keeps its own side of the promise:
+
+- game code reads the world as the tick started and its changes land in a fixed order, so the number of cores never changes the result ([what game code sees](game-code.md#components));
+- physics is built to give the same answer on every PC ([Physics](physics.md));
+- game code's maths (`Maths:sin`, `Maths:exp`, `Maths:power` and the rest in Lust; `math.sin`, `math.exp`, `math.pow` and the rest in Lua) is worked out by Solis's own maths, the same to the last bit everywhere, never by the computer's system library, which rounds the last digit differently on Windows and on Linux;
+- every tick, the game's [checksum](concepts.md#simulation) sums up its whole state, so a replay that stops matching says at which tick;
+- Solis checks itself: every change to Solis plays a recorded game, with physics, 2D and 3D, spawns, tile maps, animators, zones, speed changes and game code in all three languages, on Linux and on Windows, on one core and on four, and compares every tick. A sum that works out differently on another PC is caught before it reaches your game.
+
+Your side, in game code:
+
+- **Roll random numbers with the game's own:** `World:random()`, `World:randomRange` and `World:randomInt`; in Rust `cx.host().random()`, and in Lua `math.random` follows it too ([Random numbers](game-code.md#random-numbers)). They follow the game's seed, so a save or a replay rolls the same numbers. Lust's own `Random` (`Random[1, 6]`, `Random:chance`) doesn't follow it yet, so avoid it in anything the game keeps.
+- **Never keep real time in game state:** `World:frameTime()` is how long the frame took on this PC, which differs every time. Use the `dt` your `update` is given.
+- **In Lua, raise to a power with `math.pow(a, b)`**, not `a ^ b`: the `^` sign is worked out by the computer's own library, which can round differently on another PC (a whole power of two, such as `2 ^ 3`, is exact anywhere). In Lust, `Maths:power` is always exact.
+- **A tween's done block** (`tween … { … }`) can run in a different order, against another tween's ending in the same tick, with another number of cores. Until Solis puts them in a fixed order, keep what a done block does to the component's own fields, or glide the value yourself in `update`.
+
 ## Settings
 Save games have no settings: everything is saved.
 
@@ -106,4 +127,5 @@ None of its own. A game chooses its own save and load keys through [input action
 - [Game code](game-code.md)
 - [Input](input.md)
 - [Play mode](play-mode.md)
+- [Checking a project](checking-a-project.md): recordings a project keeps, played back before an update
 - Concepts: [save game, determinism, checksum](concepts.md#simulation)

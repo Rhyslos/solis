@@ -1,0 +1,240 @@
+-- The game the two-PC check plays back (tests/two-pcs/README.md): a little
+-- of everything that is game state, so that maths rounding differently on
+-- another PC shows. 3D: a character, crates, a moving platform, drones
+-- spawned at random, a turret firing, a zone. 2D: a walker with an
+-- animator, a yard whose walls come and go, a freeform zone. Lua (wobble.lua)
+-- and Rust (armour.rs, Solis's own Armour) do their share.
+--
+-- Kept clear of the two known gaps (decision 0106): no tween has a done
+-- block, and nothing rolls Lust's own Random; every roll is World's,
+-- kept to the game's seed.
+
+fetch "solis/world":World;
+fetch "solis/input":Input;
+fetch "solis/project":[Action, Prefab];
+fetch "solis/tiles":Maps;
+fetch "solis/animation":Animators;
+fetch "solis/zones":[Entered, Exited, EnteredZone, LeftZone];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/topdown":[TopDownController];
+
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+
+-- The whole game's pace: slows to half, speeds up, then back to normal,
+-- and keeps a wave of numbers going.
+object Director {
+    has {
+        float t = 0;
+        float wave = 0;
+        int stage = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        wave = Maths:sin(t * 3.1) * Maths:exp(0 - t * 0.2) + Maths:atan2(t, 2) * 0.1;
+        is stage == 0 && t > 2? then {
+            World:setGameSpeed(0.5);
+            stage = 1;
+        } or is stage == 1 && t > 3? then {
+            World:setGameSpeed(1.5);
+            stage = 2;
+        } or is stage == 2 && t > 5? then {
+            World:setGameSpeed(1);
+            stage = 3;
+        }
+    }
+}
+
+-- Slides back and forth along x, easing at each end.
+component Platform {
+    has {
+        vec3 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 3;
+        float t = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(from + (to - from) * k);
+    }
+}
+
+-- Spawns drones at random places: when Interact is pressed, and by
+-- chance every so often.
+component Hive {
+    has {
+        float cooldown = 0;
+        int made = 0;
+    }
+
+    method update(float dt) {
+        cooldown = cooldown - dt;
+        bool now = Input:pressed(Action.Interact);
+        is cooldown <= 0? then {
+            cooldown = World:randomRange(0.3, 0.9);
+            now = now || World:random() < 0.6;
+        }
+        is now && made < 40? then {
+            vec3 at = position() + [World:randomRange(-2, 2), World:randomRange(-2, 2), 3];
+            entity drone = World:spawn(Prefab.Drone, at);
+            made = made + 1;
+        }
+    }
+}
+
+-- A drone lives a random while, pushed about, then goes.
+component Drone {
+    has {
+        int age = 0;
+        int life = 0;
+        float heading = 0;
+    }
+
+    method update(float dt) {
+        is life == 0? then {
+            life = World:randomInt(40, 160);
+            heading = World:randomRange(0, 2 * Maths.pi);
+        }
+        age = age + 1;
+        is age % 30 == 0? then {
+            heading = heading + World:randomRange(-1, 1);
+            push([Maths:cos(heading) * 0.6, Maths:sin(heading) * 0.6, 2.5]);
+        }
+        is age >= life? then {
+            despawn();
+        }
+    }
+}
+
+-- Fires at the target now and then, and tells it it's hit.
+component Turret {
+    has {
+        entity target = nothing;
+        float reload = 0;
+        float aim = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        aim = aim + dt * 0.7;
+        is reload <= 0 && target != nothing? then {
+            vec3 way = [Maths:cos(aim), Maths:sin(aim), 0.15];
+            World:fire(position() + [0, 0, 1], way, World:randomRange(8, 14), 1.2, [1, 0.4, 0.1]);
+            send Hit(this, World:randomRange(1, 3)) to target;
+            reload = 0.4;
+        }
+    }
+}
+
+-- Takes the hits; its armour (Rust) tells it when a plate dents.
+component Health {
+    has {
+        float hp = 40;
+        int dents = 0;
+        float glow = 0;
+    }
+
+    method update(float dt) {
+        glow = glow * Maths:power(0.5, dt * 4);
+    }
+
+    on Hit(entity by, float damage) {
+        hp = Maths:max(hp - damage, 0);
+        glow = 1;
+        tween glow to 0 over 0.3 [ease OutCubic];
+    }
+
+    on Dented(int platesLeft) {
+        dents = dents + 1;
+    }
+}
+
+-- Counts who comes and goes through its zone.
+component Gate {
+    has {
+        int visits = 0;
+        int inside = 0;
+    }
+
+    on Entered(entity who) {
+        visits = visits + 1;
+        inside = #inside();
+    }
+
+    on Exited(entity who) {
+        inside = #inside();
+    }
+}
+
+-- Remembers the zones it walked through.
+component Visitor {
+    has {
+        int zones = 0;
+        float distance = 0;
+        vec3 was = [0, 0, 0];
+    }
+
+    method update(float dt) {
+        vec3 now = position();
+        vec3 step = now - was;
+        distance = distance + Maths:sqrt(step.x * step.x + step.y * step.y + step.z * step.z);
+        was = now;
+    }
+
+    on EnteredZone(entity zone) {
+        zones = zones + 1;
+    }
+
+    on LeftZone(entity zone) {
+        zones = zones - 1;
+    }
+}
+
+-- Tells the 2D walker's animator how it moves.
+component Strider {
+    has {
+        vec3 was = [0, 0, 0];
+        float speed = 0;
+    }
+
+    method update(float dt) {
+        vec3 now = position();
+        vec3 step = now - was;
+        speed = Maths:sqrt(step.x * step.x + step.y * step.y) / Maths:max(dt, 0.0001);
+        Animators:setSwitch(this, "moving", speed > 0.1);
+        Animators:setNumber(this, "speed", speed);
+        Animators:setDirection(this, "facing", step);
+        was = now;
+    }
+}
+
+-- Raises and lowers walls in the yard at random: terrain "#" is solid.
+component Gardener {
+    has {
+        int every = 12;
+        int count = 0;
+    }
+
+    method update(float dt) {
+        count = count + 1;
+        is count % every == 0? then {
+            int x = World:randomInt(1, 10);
+            int y = World:randomInt(1, 10);
+            int wall = 35;
+            int grass = 46;
+            is Maps:terrain("yard", 0, x, y) == wall? then {
+                Maps:setTerrain("yard", 0, x, y, grass);
+            } or {
+                Maps:setTerrain("yard", 0, x, y, wall);
+            }
+        }
+    }
+}
+
+pass Director, Platform, Hive, Drone, Turret, Health, Gate, Visitor, Strider, Gardener,
+    Hit, Dented;
+end

@@ -1,0 +1,21 @@
+-- A tile map. Written by Solis; safe to edit by hand.
+-- Cells are in chunks of 32 by 32: each layer's rows of terrain codes (a space
+-- for an empty cell), and the values of cells that aren't at their start,
+-- each [x, y, value] within the chunk. Exact tiles are cells that show one
+-- piece of the tileset as it is, each [x, y] within the chunk with its piece.
+fetch "solis/data/tilemap":[ValueKind, TileMap, Layer, Value, Cells, Exact, Numbers, Switches, Choices];
+
+lock int version = 3;
+lock TileMap tiles = new TileMap { tileset = "2PC0000000001", size = [12, 12] };
+lock Layer array layers = [
+    new Layer { id = "2PC00000000L1", name = "Ground", over = false },
+];
+lock Value array values = [];
+lock Cells array cells = [
+    new Cells { layer = "2PC00000000L1", chunk = [0, 0], rows = ["############", "#..........#", "#..........#", "#..........#", "#...##.....#", "#..........#", "#..........#", "#..........#", "#......#...#", "#..........#", "#..........#", "############"] },
+];
+lock Exact array exact = [];
+lock Numbers array numbers = [];
+lock Switches array switches = [];
+lock Choices array choices = [];
+end

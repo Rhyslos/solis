@@ -159,4 +159,14 @@ jobs:
       - if: failure()
         shell: bash
         run: tools/ci/failed-tests.sh test-output.txt
+      # The two-PC check (crates/app/src/two_pcs.rs) writes both states of
+      # the first tick that came out differently here from the list made
+      # on Linux: kept, to compare, when it fails.
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: two-pcs-states
+          path: target/two-pcs/
+          if-no-files-found: ignore
+          retention-days: 14
       - run: cargo doc --workspace --no-deps --locked

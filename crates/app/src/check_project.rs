@@ -335,7 +335,7 @@ fn check_files(root: &Path, report: &mut Report) {
 
 /// Checks the game's code, as the editor would on opening. The program,
 /// when it has code and that code has no mistakes.
-fn check_code(
+pub(crate) fn check_code(
     project: &asset_db::Project,
     made_by: &str,
     report: &mut Report,
@@ -612,9 +612,10 @@ pub(crate) fn workbench_for(
             .filter_map(|item| Some((item.id?, db.file(item.id?)?)))
             // One the editor can't read is left out, as the editor does
             // (the Files step reports it); only a game that uses it fails.
+            // Read as the editor reads them: a `.prefab.lst` (decision
+            // 0081), or an older prefab's file.
             .filter_map(|(id, file)| {
-                let read =
-                    crate::level_file::LevelFiles::read(&file, &w.document().registry).ok()?;
+                let (read, _) = crate::prefab_files::read(&file, &w.document().registry).ok()?;
                 Some((id, std::sync::Arc::new(read)))
             })
             .collect()

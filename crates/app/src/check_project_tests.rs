@@ -410,3 +410,31 @@ fn a_project_saved_before_the_fix_checks_out() {
         assert!(assets.join(made).is_file(), "{made} kept");
     }
 }
+
+#[test]
+fn a_check_knows_the_project_s_prefabs_in_their_lust_files() {
+    // Regression (stage 1, the two-PC check): a check read prefabs as
+    // levels, so since prefabs became `.prefab.lst` files (decision 0081)
+    // none was known, and a recording whose game code spawned one played
+    // back without it.
+    let (_temp, root) = playground_with_a_check("prefabs");
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/prefab/v1/crate.prefab.lst"),
+        root.join("crate.prefab.lst"),
+    )
+    .unwrap();
+    let project = asset_db::Project::open(&root).unwrap();
+    settle_new_files(&project, &mut Report::default());
+    let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
+    let w = workbench_for(
+        &root,
+        &db,
+        None,
+        MADE_BY,
+        crate::playground::LEVEL,
+        &mut Read::default(),
+    )
+    .unwrap();
+    assert_eq!(w.prefabs().len(), 1, "the crate is known");
+}

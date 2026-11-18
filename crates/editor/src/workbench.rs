@@ -162,7 +162,7 @@ pub struct Workbench {
     pub(crate) plays: u64,
     /// Which real-time limits this test's games keep (TEST-02): a test
     /// that compares one run with another plays unhurried.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
     pub(crate) unhurried: crate::game_code::Unhurried,
 }
 
@@ -237,7 +237,7 @@ impl Workbench {
             release_pointer: false,
             pad_now: None,
             plays: 0,
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-support"))]
             unhurried: crate::game_code::Unhurried::default(),
             play_only: false,
             may_close: false,

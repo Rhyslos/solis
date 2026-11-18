@@ -1,0 +1,8 @@
+# Kept by Solis beside its asset: commit it with the asset, and move or
+# rename them together (or let Solis do it).
+format = 1
+id = "2PC0000000004"
+hash = "00a3a3f252b4bad3"
+part = []
+
+[import]

@@ -1651,3 +1651,7 @@ mod clock_tests;
 #[cfg(test)]
 #[path = "game_tweens_tests.rs"]
 mod tweens_tests;
+
+#[cfg(test)]
+#[path = "game_maths_tests.rs"]
+mod maths_tests;

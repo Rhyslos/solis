@@ -188,7 +188,7 @@ impl Workbench {
         };
         if playing.game.is_none() {
             playing.game = Some(new_game(&self.open.rust_components)?);
-            #[cfg(test)]
+            #[cfg(any(test, feature = "test-support"))]
             if let Some(game) = &mut playing.game {
                 self.unhurried.give(game);
             }
@@ -296,23 +296,25 @@ pub(crate) fn new_game(rust: &[script::RustKind]) -> Result<Game, Failure> {
 /// (the review's TEST-02). The limits are kept on the real clock, so a
 /// test thread the machine keeps off the processor uses them up running
 /// nothing: a tick is cut short and the game pauses, though nothing was
-/// wrong. Set per test (`Workbench::unhurried`), never for all: other
+/// wrong. Set per test (`Workbench::unhurried`, or `play_unhurried` for
+/// other crates' tests), never for all: other
 /// tests rely on the real limits to stop code that never ends.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) enum Unhurried {
     /// A game's limits.
     #[default]
     No,
     /// An hour for each call into game code, the rest a game's: for tests
-    /// of the tick's own limit.
+    /// of the tick's own limit (this crate's own).
+    #[cfg_attr(not(test), allow(dead_code))]
     Calls,
     /// An hour for everything, physics' tick too: for tests that compare
     /// one run of a game with another.
     Everything,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
 impl Unhurried {
     /// Gives `game` these limits.
     pub(crate) fn give(self, game: &mut Game) {

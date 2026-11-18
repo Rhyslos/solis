@@ -11,3 +11,7 @@ docs/user-guide/index.html -text linguist-generated=true
 # (The manual's pages are read with their line ends made the same.)
 tools/user-guide/assets/** text eol=lf
 branding/logo.svg text eol=lf
+
+# The two-PC check's game, recording and list of states (stage 1) are kept
+# byte for byte: a Windows checkout must play exactly the game Linux recorded.
+tests/two-pcs/** -text

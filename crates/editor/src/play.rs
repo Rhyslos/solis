@@ -359,7 +359,7 @@ impl Workbench {
                 return (None, Vec::new());
             }
         };
-        #[cfg(test)]
+        #[cfg(any(test, feature = "test-support"))]
         self.unhurried.give(&mut game);
         game.leave_out(self.open.left_out.clone());
         let mut host = PlayWorld::new(world, view, 0.0);
@@ -540,7 +540,7 @@ impl Workbench {
     /// The longest one tick of physics may take: [`PHYSICS_LIMIT`], or
     /// no limit for a test that plays unhurried (TEST-02).
     fn physics_limit(&self) -> std::time::Duration {
-        #[cfg(test)]
+        #[cfg(any(test, feature = "test-support"))]
         if self.unhurried == crate::game_code::Unhurried::Everything {
             return std::time::Duration::MAX;
         }

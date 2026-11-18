@@ -33,3 +33,7 @@ Not a file format's examples but a whole small project, "Harbor_Prototype", name
 Unlike the versioned examples it may grow when a milestone needs more to show, and a picture approved from it is then approved again. It is checked the way any project is before a release: `solis --check-project` on a copy of it reports that it opens, its files read and its code checks. **Open a copy, never the folder itself:** Solis writes its own files into a project it opens (the engine's Lust files, its cache).
 
 Each `v<N>/` folder holds files as that version wrote them, byte for byte: the repository's `.gitattributes` stops Git changing their line endings on Windows (a save carries a checksum). `fixtures/` and its folders are data, so they have no README of their own.
+
+## two-pcs/
+
+The two-PC check's game (stage 1): a small project with a little of every kind of game state, ten seconds of recorded play, and the state it must come out as at every tick, made on Linux. `crates/app/src/two_pcs.rs` plays it back in every test run (on GitHub's Windows machine too) on one core and on four, and fails at the first tick that differs, naming the parts. Its own [README](two-pcs/README.md) says what's in it and how to make it again.

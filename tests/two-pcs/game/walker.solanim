@@ -1,0 +1,54 @@
+-- An animator. Written by Solis; safe to edit by hand.
+-- Parameters are set by game code; each state plays a clip (or a clip per
+-- direction, the nearest to its direction parameter); a transition is taken
+-- once all its conditions hold, earlier ones first.
+animator version 1;
+
+sheet = "2PC0000000003";
+entry = "2PC00000000S1";
+any_place = [120.0, 300.0];
+
+parameter 2PC00000000P1 {
+    name = "facing";
+    kind = "direction";
+    start = "down";
+}
+
+parameter 2PC00000000P2 {
+    name = "moving";
+    kind = "switch";
+    start = false;
+}
+
+parameter 2PC00000000P3 {
+    name = "speed";
+    kind = "number";
+    start = 1.0;
+}
+
+state 2PC00000000S1 {
+    name = "Idle";
+    place = [120.0, 80.0];
+    clip = "walk";
+    speed = 0.25;
+}
+
+state 2PC00000000S2 {
+    name = "Walk";
+    place = [400.0, 80.0];
+    clip = "walk";
+    speed = 1.0;
+    speed_by = "speed";
+}
+
+transition 2PC00000000R1 {
+    from = "2PC00000000S1";
+    to = "2PC00000000S2";
+    when = ["moving"];
+}
+
+transition 2PC00000000R2 {
+    from = "2PC00000000S2";
+    to = "2PC00000000S1";
+    when = ["not moving"];
+}

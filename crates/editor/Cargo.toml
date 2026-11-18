@@ -41,5 +41,12 @@ script = { workspace = true, features = ["test-support"] }
 egui_kittest.workspace = true
 ron.workspace = true
 
+[features]
+# What other crates' tests need of a running game (`Workbench::play_unhurried`
+# and `Workbench::nudge`): time limits no busy machine reaches, and a way to
+# break a rule on purpose. Only ever a dev-dependency's feature, never in a
+# build of Solis.
+test-support = ["script/test-support"]
+
 [lints]
 workspace = true
