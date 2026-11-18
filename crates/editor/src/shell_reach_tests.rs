@@ -611,7 +611,13 @@ fn what_home_s_ribbon_and_the_shelf_gave_up_is_still_reachable() {
     h.run();
     h.get_by_label("More").click();
     h.run();
-    for item in ["Sprite", "Tile map", "Reverb zone", "Make prefab\u{2026}"] {
+    for item in [
+        "Sprite",
+        "Tile map",
+        "Reverb zone",
+        "Trigger zone",
+        "Make prefab\u{2026}",
+    ] {
         assert!(h.query_by_label(item).is_some(), "More has {item}");
     }
     // The shelf's Animation tab is the Animate tab's now.
