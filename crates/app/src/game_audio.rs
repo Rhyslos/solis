@@ -761,7 +761,7 @@ mod tests {
             tick,
             order: 0,
             seed: 1,
-            request: Request::Play("step".into(), script::SoundAt::Nowhere, None),
+            request: Request::Play("step".into(), script::SoundAt::Nowhere, None, None),
         }
     }
 
