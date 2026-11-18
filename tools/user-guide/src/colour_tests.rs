@@ -162,10 +162,38 @@ fn lust_states_are_marine() {
         "state Mood = [Calm, Busy [Rushed]];",
         &[("state", S), ("Mood", S), ("Calm", None), ("Rushed", None)],
     );
+    // A thing's own state set with = (Lust alpha 74): the option it's set
+    // to stays plain, like the options where the state is declared.
     check(
         "lust",
-        "state is Mood.Calm;",
-        &[("state", S), ("is", F), ("Mood", None), ("Calm", None)],
+        "state = Mood.Calm;",
+        &[("state", S), ("Mood", None), ("Calm", None)],
+    );
+    check(
+        "lust",
+        "has {\n    state = Mood.Calm;\n}\nmethod rush() {\n    state=Mood.Busy;\n}",
+        &[("state", S), ("Mood", None), ("Calm", None), ("Busy", None)],
+    );
+    // `is` only asks questions: comparing a state is a question, and its
+    // option is the state's.
+    check(
+        "lust",
+        "is state == Mood.Calm? then {",
+        &[
+            ("is", F),
+            ("state", S),
+            ("Mood", S),
+            ("Calm", S),
+            ("?", F),
+            ("then", F),
+        ],
+    );
+    // A variable of a state set with =: the state's name is a state, its
+    // value an object's state, as anywhere a state is used.
+    check(
+        "lust",
+        "Mood now = Mood.Calm;\nnow = Mood.Busy;",
+        &[("now", None), ("Mood", N), ("Busy", S)],
     );
     // A state's value used: the object it's on, then the state.
     check(
@@ -456,7 +484,7 @@ fn edge_cases_neither_crash_nor_change_the_text() {
     for source in [
         "", "\n", " ", "\"", "'", "--", "--[[", "]]", "/*", "#[", "#![", "'\\", "é", "é'", "'é'",
         "\"\\", "\"\\\n", "1e", "1e+", "1.", "0x", "a!", "=>", "::", "..", "...", "[[", "\t\t",
-        "style", "state", "state is", "view [", "[[]]]]", "}}}]]]", "\r\n",
+        "style", "state", "state is", "state =", "state ==", "view [", "[[]]]]", "}}}]]]", "\r\n",
     ] {
         for language in ["lust", "rust", "lua", "text"] {
             let html = code(language, source);
