@@ -390,9 +390,9 @@ What each left for later is listed in one place at the top of the [plan](docs/pl
 
 **Gate:** a small level blocked out with brushes, edited and extruded, played, saved and reopened. Built; waiting for the project lead.
 
-### Shared 1f · The editor rethink — 5 of 6
+### Shared 1f · The editor rethink — 6 of 6
 
-`███████████░░` 83%
+`█████████████` 100%
 
 <details>
 <summary>Milestones</summary>
@@ -402,11 +402,11 @@ What each left for later is listed in one place at the top of the [plan](docs/pl
 - [x] R3 One frame on every tab: left and right slots full height, the centre, and a bottom panel (Library, Console, Problems) under it that folds to one line; every edge drags and is remembered per tab; any panel hidden and shown; layouts in Preferences as drawn cards with Undo; Save and Build off Home's ribbon
 - [x] R4 One Library browser: the same browser on Home and the Library tab; the project's own folders, no assets folder made; breadcrumb, back and up, grid or list, kind filter, search; right-click to make, rename, duplicate, delete; double-click a name or F2 to rename in place; drag to move; Home's left side shows the Level panel or folder trees, several side by side
 - [x] R5 Prefabs: assemblies are prefabs everywhere, each a `.prefab.lst` Lust file (older projects' `.solassembly` files renamed when they open); Make prefab… from picked entities, swapped for a linked copy in one undo step; the prefab's tile, New prefab and Details in the Library; a prefab's own page beside the level's; copies marked with a link and a dot; Prefab: Chicken · Open · Unlink and ↶ in Properties; game code's `Prefab.X`
-- [ ] R6 2D projects, and the gate
+- [x] R6 2D projects, and the end of the phase: one kind table decides what a 2D, 3D or both project shows (tabs, ribbons, Create items, components, settings, views, the search); Home laid out for 2D with Paint tiles and the tile snaps; a change of kind applied at once, nothing deleted, off-kind things listed with a note; the note on Home, the status line's kind; the guide's pictures taken again, the scale check and the gate tried
 
 </details>
 
-**Gate:** a new 2D project from the launcher, panels arranged by every edge, folders, a level and a prefab made in the Library, a prefab's three copies changing with it, and back to the launcher ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)).
+**Gate:** a new 2D project from the launcher, panels arranged by every edge, folders, a level and a prefab made in the Library, a prefab's three copies changing with it, and back to the launcher ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)). Built; waiting for the project lead.
 
 ### Tools 1b · World sculpting — 1 of 6
 

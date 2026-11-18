@@ -155,6 +155,18 @@ One pull request each, in this order. Each builds against the mock-ups, updates 
 - **The status line** says a 2D or 3D project's name and kind ("Farm Days · 2D"; Both keeps the level's words, so its pictures are unchanged), the tile map's cell under the pointer in the 2D view ("Tile 13, 9", which existed for the painter), and "Snap 16 px" on tiles. The 2D view's pill says its zoom ("2D · 200%").
 - **New project's starters** take their kind from the same table (`kinds::starter`), so they grey exactly what the editor hides.
 - **Pictures:** `kind-home-2d.png`, `kind-home-3d.png`, `kind-project-settings.png`, and a test holding Both to the unchanged `editor.png`.
+- **The end of the phase:** the guide's pictures taken again (the steps the rethink's layout had moved fixed, a new one of a 2D project's Home), `GUIDE_PICTURES_STRICT=1` passing; the scale check run (a new case, Home in a 2D project, as fast as Both; R5's prefab case 14 ms in release against 8 ms, the one new miss).
+
+**The gate tried by the builder** (R6, as far as tests and a script on a virtual screen can):
+1. The launcher opens: passed (the window test starts with no project named; `the_program_starts_on_the_launcher_unless_a_project_is_named`).
+2. A new 2D project by its name, its folder made: passed in a test (`create_makes_the_folder_and_the_project_and_opens_it`, the dialog's own tests); typing in the real window's dialog wasn't tried.
+3. No 3D-only parts: passed (`shell/kind_tests.rs`, and a 2D project on a virtual screen: no Shading tab or Lighting group, Create, Paint tiles, the tile snaps, the note, "Farm Days · 2D").
+4. Every edge dragged, a layout chosen from its picture: passed (`every_edge_drags_is_held_to_its_least_and_a_double_click_puts_it_back`, `a_layout_chosen_from_its_card_applies_at_once_with_undo`; the window test drags two edges).
+5. Folders, a level and a prefab made by right-click, a double-click rename, files moved between two trees: passed (`library_browser_tests.rs`).
+6. A prefab built on its page, three copies changing with it: passed (`saving_the_page_updates_every_copy_keeping_each_copy_s_own_change`).
+7. Close project, back to the launcher: passed (the window test's File › Close project; `the_program_starts_on_the_launcher_and_comes_back_to_it`).
+
+How it feels by hand, and the dialog typed into for real, are the project lead's to try.
 
 **Gate:**
 1. Start the program: the launcher opens.
