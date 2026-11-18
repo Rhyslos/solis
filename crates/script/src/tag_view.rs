@@ -41,6 +41,9 @@ const MIN_CELL: f32 = 0.25;
 /// leaves out a member a look through every member would find.
 const SLACK: f32 = 1e-4;
 
+/// A run of columns or rows, from and to (both kept).
+type Span = (i64, i64);
+
 /// The tags of a tick: who carries which, and where each tag's members
 /// are.
 #[derive(Debug, Default, PartialEq)]
@@ -316,12 +319,7 @@ impl Grid {
     /// The columns and rows (each from, to) a question of `radius` about
     /// `place` looks in, a hair more each way for rounding; none when
     /// looking through all `members` is quicker.
-    fn cells_near(
-        &self,
-        place: Vec3,
-        radius: f32,
-        members: usize,
-    ) -> Option<(&Self, (i64, i64), (i64, i64))> {
+    fn cells_near(&self, place: Vec3, radius: f32, members: usize) -> Option<(&Self, Span, Span)> {
         let ground = place.truncate();
         let reach = radius * (1.0 + SLACK) + self.cell * SLACK;
         let (x0, y0) = self.cell_of(ground - Vec2::splat(reach));

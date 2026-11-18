@@ -3,7 +3,7 @@
 //! Tags (`page.rs`) and kept in its `tags.lst`, which the app reads and
 //! writes; an entity's tags as chips under its name in Properties
 //! (`chips.rs`), each change one undo step; and what the running game
-//! asks of them, answered from a view made once a tick ([`tag_view`]).
+//! asks of them, answered from a view made once a tick (`tag_view`).
 //!
 //! An entity keeps its tags by their IDs (`level::builtin::Tags`), so a
 //! rename changes only the list: every level, prefab and save follows,

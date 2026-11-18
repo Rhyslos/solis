@@ -155,9 +155,9 @@ fn tag_questions_reach_lust_the_same_on_any_number_of_shards() {
 #[test]
 fn a_misspelt_tag_fails_the_check_before_anything_runs() {
     let misspelt = HUNT.replace("Tag.Ghost", "Tag.Gohst");
-    let problems = compile(&misspelt)
-        .err()
-        .expect("a misspelt tag is a mistake");
+    let Err(problems) = compile(&misspelt) else {
+        panic!("a misspelt tag is a mistake");
+    };
     let first = problems[0].to_string();
     assert!(first.contains("Gohst"), "{first}");
     // A tag the project hasn't any more (renamed in Project settings) is
