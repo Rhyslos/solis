@@ -193,7 +193,7 @@ The engine audit of 3 November ([decision 0070](docs/decisions/0070-usable-first
 8. **Day and night, and lamps** on sprites. *Built ([decision 0092](docs/decisions/0092-day-and-night-and-lamps-on-sprites.md)).*
 9. **The playtest export** (Phase 11, brought forward). *Built ([decision 0093](docs/decisions/0093-the-playtest-export.md)).*
 
-**Gate:** the project lead starts their farming game in Solis, in Lust: walk the farm, till, plant and water, crops grow over days, a menu and an inventory, saving, and a build a friend can play.
+**Gate:** the project lead makes a small 2D game of their choosing in Solis, in Lust, while learning: walking around, a tile map that changes as you play, a menu, saving, and a build a friend can play. (It was their farming game, which is shelved for now; the project lead, 2026-11-18.)
 
 ## Phase 9: 2D, part 1: a 2D game can move in
 
