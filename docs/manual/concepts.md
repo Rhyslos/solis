@@ -128,6 +128,13 @@
 - **Command:** a short instruction typed in the Console's command line, such as `select Crate` or `set Transform.position 0 0 2`. Commands do the same things as the menus, so each change can be undone.
 - **Problem:** a mistake in the level that Solis can't fix by itself, such as a model whose file is gone. The Problems panel lists them. See [Problems](problems.md).
 
+## The ground
+
+- **Ground:** the land under a 3D level, up to 2 × 2 km: hills now, caves and overhangs once it can be sculpted. A level has one. See [The ground](ground.md).
+- **Voxel:** a one-metre cube of the ground. Each keeps how far it is from the surface (inside or out) and what it's made of, its ground kind. The surface is drawn smooth through where those distances cross zero, which is why the ground isn't blocky even though voxels are cubes.
+- **Chunk:** 32 × 32 × 32 voxels, the piece the ground is made, drawn and made solid in. Sky and deep rock are kept as one voxel a chunk, so they cost almost nothing. Chunks are made on other cores, nearest the camera first.
+- **Region file:** one binary file holding the voxels of a 256 × 256 m square of the ground, in a folder beside its settings file. Each region is a file of its own so people can work on different parts of a big world.
+
 ## Playing
 
 - **Game UI:** what a game draws over its picture: health bars, money, menus, an inventory. Each piece is **pinned** (anchored) to a corner, an edge or the middle of the screen, so it stays there on any screen shape. A screen's **scale rule** says how big it gets on a bigger screen: **grow with the screen** (the same share of it), **keep its size** (the same pixels) or **whole steps** (pixel art, scaled ×2, ×3, ×4 so every pixel stays square).

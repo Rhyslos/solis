@@ -26,6 +26,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Saving levels: files Git can merge](saving-levels.md)
 - [Prefabs: build once, place everywhere](prefabs.md)
 - [Brushes: shapes made in the editor, for blocking out a level](brushes.md)
+- [The ground: rolling land of voxels under your level, one per level](ground.md)
 - [Play mode: run the level as a game, and Stop puts everything back](play-mode.md)
 
 ## Projects and files

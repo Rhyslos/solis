@@ -408,15 +408,15 @@ What each left for later is listed in one place at the top of the [plan](docs/pl
 
 **Gate:** a new 2D project from the launcher, panels arranged by every edge, folders, a level and a prefab made in the Library, a prefab's three copies changing with it, and back to the launcher ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)). Built; waiting for the project lead.
 
-### Tools 1b · World sculpting — 1 of 6
+### Tools 1b · World sculpting — 2 of 6
 
-`██░░░░░░░░░░░` 17%
+`████░░░░░░░░░` 33%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] The study: three ways to keep the ground and two ways to draw each look, built and measured ([report](docs/reports/ground-study.md))
-- [ ] The ground, Smooth
+- [x] The ground, Smooth: one per level, 1 × 1 km by default, made from gentle hills or flat, its chunks meshed and made solid on workers, saved as a Lust settings file and binary region files ([manual](docs/manual/ground.md))
 - [ ] Sculpting
 - [ ] Blocky and Sharp
 - [ ] Painting
