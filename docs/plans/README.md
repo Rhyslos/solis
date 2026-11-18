@@ -28,6 +28,6 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). Phase numbers st
 | `tools-1.md` | Tools 1a and 1b: shape brushes edited point, edge and face, and a sculpted ground with caves in three looks, painted; the project lead's answers, the milestones, the mock-ups waiting for approval, and what's still to settle |
 | `editor-rethink.md` | Shared 1f, the editor rethink: the project lead's nine points about the remade interface, their answers, the approved mock-ups, and the six milestones R1 to R6 (decision 0118) |
 | `ideas.md` | Shared 2 to 6, 10 and 11, 2D 1 and 3D 1: tools that help make games (timers, tween, tags and more), each idea marked with the milestone that builds it (decision 0098) |
-| `after-the-rethink.md` | Draft: everything after the editor rethink (Tools 1b, the rest of Usable first, Shared 2 to 10, 2D 1 and 2, 3D 1 to 5, Open worlds), with a recommended order, the groundwork every phase shares, each phase's milestones and how to build them, and the questions for the project lead; from the research in `../reports/after-the-rethink/` |
+| `after-the-rethink.md` | Everything after the editor rethink (Tools 1b, the rest of Usable first, Shared 2 to 10, 2D 1 and 2, 3D 1 to 5, Open worlds), with a recommended order, the groundwork every phase shares, each phase's milestones and how to build them, and the questions for the project lead; from the research in `../reports/after-the-rethink/` |
 
 Name a new plan after its phase (`phase-N.md`) or its subject, and add it here.
