@@ -1,28 +1,28 @@
-//! Assemblies placed in levels ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
-//! a placed assembly is written as its root entity plus overrides, never a
+//! Prefabs placed in levels ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
+//! a placed prefab is written as its root entity plus overrides, never a
 //! copy, and expanded into ordinary entities while it's edited.
 //!
 //! Each entity inside a placed copy gets an ID worked out from the copy's
-//! root and the entity's ID inside the assembly ([`derive()`]), so the same
+//! root and the entity's ID inside the prefab ([`derive()`]), so the same
 //! file always expands to the same IDs: undo, selection and references to
-//! them keep working when the assembly changes, and overrides find their
+//! them keep working when the prefab changes, and overrides find their
 //! entity again.
 //!
 //! Expanding is also where parents that lead round in a loop are put
 //! right ([`Level::mend_loops`]): only then is every entity there, a
 //! parent may be a part of a copy, and a copy's changes can make a loop
-//! too. Each assembly's contents are mended as they're expanded, and the
+//! too. Each prefab's contents are mended as they're expanded, and the
 //! whole file at the end, so no level that comes out has one.
 //!
 //! A copy's part is where the copy puts it: one moved to another parent
-//! or out to the top level stays when the part the assembly has it under
+//! or out to the top level stays when the part the prefab has it under
 //! is removed from the copy, and goes when what it was moved under goes.
 //! Deleting a copy's root leaves a part moved out from under it as an
 //! ordinary entity ([`despawn`]).
 //!
 //! Expanding counts entities before making any (a copy's changes to parts
 //! too, since one whose part is gone becomes an entity), keeps to the same
-//! limit while it makes them, refuses assemblies that place each other in a
+//! limit while it makes them, refuses prefabs that place each other in a
 //! loop (naming the chain), and stops at [`MAX_NESTING`] levels, so no file
 //! can make the editor explode.
 
@@ -49,14 +49,14 @@ pub fn derive(instance: EntityId, path: &[EntityId]) -> EntityId {
     EntityId(reflect::Id::from_raw(id).unwrap_or(instance.0))
 }
 
-/// Why placed assemblies couldn't be expanded.
+/// Why placed prefabs couldn't be expanded.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AssemblyError {
-    /// The assembly isn't in the project (or couldn't be read).
+pub enum PrefabError {
+    /// The prefab isn't in the project (or couldn't be read).
     Missing(AssetId),
-    /// The file is a level, not an assembly.
-    NotAnAssembly(AssetId),
-    /// Assemblies place each other in a loop: this chain.
+    /// The file is a level, not a prefab.
+    NotAnPrefab(AssetId),
+    /// Prefabs place each other in a loop: this chain.
     Loop(Vec<AssetId>),
     /// Placed inside each other more than [`MAX_NESTING`] deep.
     TooDeep,
@@ -66,32 +66,32 @@ pub enum AssemblyError {
     Clash(EntityId),
 }
 
-impl fmt::Display for AssemblyError {
+impl fmt::Display for PrefabError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Missing(id) => write!(f, "the assembly {id} isn't in the project"),
-            Self::NotAnAssembly(id) => write!(f, "{id} is a level, not an assembly"),
+            Self::Missing(id) => write!(f, "the prefab {id} isn't in the project"),
+            Self::NotAnPrefab(id) => write!(f, "{id} is a level, not a prefab"),
             Self::Loop(chain) => {
                 let names: Vec<String> = chain.iter().map(ToString::to_string).collect();
                 write!(
                     f,
-                    "assemblies place each other in a loop: {}",
+                    "prefabs place each other in a loop: {}",
                     names.join(" → ")
                 )
             }
-            Self::TooDeep => write!(f, "assemblies are placed more than {MAX_NESTING} deep"),
+            Self::TooDeep => write!(f, "prefabs are placed more than {MAX_NESTING} deep"),
             Self::TooBig => write!(f, "it would make more than {MAX_ENTITIES} entities"),
             Self::Clash(id) => write!(f, "two entities would share the ID {id}"),
         }
     }
 }
 
-impl std::error::Error for AssemblyError {}
+impl std::error::Error for PrefabError {}
 
-/// Finds assembly files by ID (the app reads them from the project).
+/// Finds prefab files by ID (the app reads them from the project).
 pub type Lookup<'a> = &'a dyn Fn(AssetId) -> Option<Arc<LevelFile>>;
 
-/// Expands and collapses placed assemblies, remembering each assembly's
+/// Expands and collapses placed prefabs, remembering each prefab's
 /// expanded contents while it lives.
 pub struct Expander<'a> {
     lookup: Lookup<'a>,
@@ -100,7 +100,7 @@ pub struct Expander<'a> {
     /// The most entities one expansion may make ([`MAX_ENTITIES`]; less in
     /// tests).
     most_made: usize,
-    /// Entities held in `expanded`, all assemblies together, and the
+    /// Entities held in `expanded`, all prefabs together, and the
     /// most it may hold ([`MAX_HELD`]; less in tests).
     held: usize,
     most_held: usize,
@@ -109,18 +109,18 @@ pub struct Expander<'a> {
 }
 
 /// The most entities an [`Expander`] keeps expanded at once, every
-/// assembly together: each expansion is limited on its own, but assemblies
+/// prefab together: each expansion is limited on its own, but prefabs
 /// placed inside each other are each kept expanded, so a chain of small
 /// files could otherwise hold many times the limit.
 pub const MAX_HELD: usize = 2 * MAX_ENTITIES;
 
 impl fmt::Debug for Expander<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Expander({} assemblies)", self.expanded.len())
+        write!(f, "Expander({} prefabs)", self.expanded.len())
     }
 }
 
-/// The way to `id` inside an expanded assembly whose root is `root`.
+/// The way to `id` inside an expanded prefab whose root is `root`.
 fn path_in(level: &Level, root: EntityId, id: EntityId) -> Vec<EntityId> {
     if id == root {
         return Vec::new();
@@ -145,7 +145,7 @@ fn changes_of(
 }
 
 /// Whether `changes` to the part at `path` are kept as an entity of their
-/// own when that part is gone from the assembly: what [`Expander::count`]
+/// own when that part is gone from the prefab: what [`Expander::count`]
 /// counts and [`Expander::place_in`] makes, asked in one place so the two
 /// can't come apart.
 fn outlives_its_part(path: &[EntityId], changes: &Override) -> bool {
@@ -166,7 +166,7 @@ fn remap(value: &mut Value, map: &HashMap<EntityId, EntityId>) {
 }
 
 impl<'a> Expander<'a> {
-    /// An expander reading assemblies through `lookup`.
+    /// An expander reading prefabs through `lookup`.
     pub fn new(lookup: Lookup<'a>) -> Self {
         Self {
             lookup,
@@ -186,34 +186,34 @@ impl<'a> Expander<'a> {
         &self.mended
     }
 
-    /// How many entities a copy of assembly `id` is at most, counted
+    /// How many entities a copy of prefab `id` is at most, counted
     /// without making any (a copy can be refused for room before it's
     /// made).
-    pub fn size_of(&mut self, id: AssetId) -> Result<usize, AssemblyError> {
+    pub fn size_of(&mut self, id: AssetId) -> Result<usize, PrefabError> {
         self.size(id, &mut Vec::new())
     }
 
-    /// The file of assembly `id`.
-    fn file(&self, id: AssetId) -> Result<(Arc<LevelFile>, EntityId), AssemblyError> {
-        let file = (self.lookup)(id).ok_or(AssemblyError::Missing(id))?;
+    /// The file of prefab `id`.
+    fn file(&self, id: AssetId) -> Result<(Arc<LevelFile>, EntityId), PrefabError> {
+        let file = (self.lookup)(id).ok_or(PrefabError::Missing(id))?;
         match file.kind {
-            FileKind::Assembly { root } => Ok((file, root)),
-            FileKind::Level => Err(AssemblyError::NotAnAssembly(id)),
+            FileKind::Prefab { root } => Ok((file, root)),
+            FileKind::Level => Err(PrefabError::NotAnPrefab(id)),
         }
     }
 
-    /// How many entities assembly `id` expands to at most, counted without
+    /// How many entities prefab `id` expands to at most, counted without
     /// making any.
-    fn size(&mut self, id: AssetId, chain: &mut Vec<AssetId>) -> Result<usize, AssemblyError> {
+    fn size(&mut self, id: AssetId, chain: &mut Vec<AssetId>) -> Result<usize, PrefabError> {
         if let Some(&n) = self.sizes.get(&id) {
             return Ok(n);
         }
         if chain.contains(&id) {
             chain.push(id);
-            return Err(AssemblyError::Loop(chain.clone()));
+            return Err(PrefabError::Loop(chain.clone()));
         }
         if chain.len() >= MAX_NESTING {
-            return Err(AssemblyError::TooDeep);
+            return Err(PrefabError::TooDeep);
         }
         let (file, _) = self.file(id)?;
         chain.push(id);
@@ -224,17 +224,13 @@ impl<'a> Expander<'a> {
     }
 
     /// How many entities `file` expands to at most: its own, each copy's
-    /// assembly, and each change a copy makes to a part without removing
-    /// it, because a change whose part is gone from the assembly becomes an
-    /// entity. Which parts are gone isn't known until the assembly is
+    /// prefab, and each change a copy makes to a part without removing
+    /// it, because a change whose part is gone from the prefab becomes an
+    /// entity. Which parts are gone isn't known until the prefab is
     /// expanded, so changes to parts still there are counted as well:
     /// counting high only refuses a little sooner, while counting low let
     /// a small file expand without limit.
-    fn count(
-        &mut self,
-        file: &LevelFile,
-        chain: &mut Vec<AssetId>,
-    ) -> Result<usize, AssemblyError> {
+    fn count(&mut self, file: &LevelFile, chain: &mut Vec<AssetId>) -> Result<usize, PrefabError> {
         let mut total = 0usize;
         for (id, entity) in file.level.iter() {
             let n = match &entity.origin {
@@ -242,36 +238,36 @@ impl<'a> Expander<'a> {
                     let kept = changes_of(file, id)
                         .filter(|(path, changes)| outlives_its_part(path, changes))
                         .count();
-                    self.size(o.assembly, chain)?.saturating_add(kept)
+                    self.size(o.prefab, chain)?.saturating_add(kept)
                 }
                 _ => 1,
             };
-            total = total.checked_add(n).ok_or(AssemblyError::TooBig)?;
+            total = total.checked_add(n).ok_or(PrefabError::TooBig)?;
             if total > self.most_made {
-                return Err(AssemblyError::TooBig);
+                return Err(PrefabError::TooBig);
             }
         }
         Ok(total)
     }
 
-    /// Assembly `id`'s contents with its own placed assemblies expanded,
+    /// Prefab `id`'s contents with its own placed prefabs expanded,
     /// and its root.
-    pub fn assembly(&mut self, id: AssetId) -> Result<(Arc<Level>, EntityId), AssemblyError> {
-        self.assembly_in(id, &mut Vec::new())
+    pub fn prefab(&mut self, id: AssetId) -> Result<(Arc<Level>, EntityId), PrefabError> {
+        self.prefab_in(id, &mut Vec::new())
     }
 
-    fn assembly_in(
+    fn prefab_in(
         &mut self,
         id: AssetId,
         chain: &mut Vec<AssetId>,
-    ) -> Result<(Arc<Level>, EntityId), AssemblyError> {
+    ) -> Result<(Arc<Level>, EntityId), PrefabError> {
         if let Some(found) = self.expanded.get(&id) {
             return Ok(found.clone());
         }
         let size = self.size(id, &mut chain.clone())?;
         self.held = self.held.saturating_add(size);
         if self.held > self.most_held {
-            return Err(AssemblyError::TooBig);
+            return Err(PrefabError::TooBig);
         }
         let (file, root) = self.file(id)?;
         chain.push(id);
@@ -284,10 +280,10 @@ impl<'a> Expander<'a> {
         Ok(found)
     }
 
-    /// Every placed assembly in `file` expanded into ordinary entities,
+    /// Every placed prefab in `file` expanded into ordinary entities,
     /// with its overrides, and with no loop of parents: any the file had
     /// is put right, and listed in [`Self::mended`].
-    pub fn expand(&mut self, file: &LevelFile) -> Result<Level, AssemblyError> {
+    pub fn expand(&mut self, file: &LevelFile) -> Result<Level, PrefabError> {
         self.count(file, &mut Vec::new())?;
         let mut level = self.expand_in(file, &mut Vec::new())?;
         self.mended.extend(level.mend_loops());
@@ -298,7 +294,7 @@ impl<'a> Expander<'a> {
         &mut self,
         file: &LevelFile,
         chain: &mut Vec<AssetId>,
-    ) -> Result<Level, AssemblyError> {
+    ) -> Result<Level, PrefabError> {
         let mut level = Level::new();
         for (id, entity) in file.level.iter() {
             let entities = match &entity.origin {
@@ -306,7 +302,7 @@ impl<'a> Expander<'a> {
                     let overrides: HashMap<Vec<EntityId>, Override> = changes_of(file, id)
                         .map(|(path, changes)| (path.clone(), changes.clone()))
                         .collect();
-                    self.place_in(o.assembly, id, entity, &overrides, chain)?
+                    self.place_in(o.prefab, id, entity, &overrides, chain)?
                 }
                 _ => vec![(
                     id,
@@ -321,29 +317,29 @@ impl<'a> Expander<'a> {
                 // is kept on what's really made as well, so that a count
                 // which is ever wrong can't let a file expand without end.
                 if level.len() >= self.most_made {
-                    return Err(AssemblyError::TooBig);
+                    return Err(PrefabError::TooBig);
                 }
                 if level.insert(new, data).is_some() {
-                    return Err(AssemblyError::Clash(new));
+                    return Err(PrefabError::Clash(new));
                 }
             }
         }
         Ok(level)
     }
 
-    /// The entities of a copy of `assembly` whose root is `root`: `placed`
+    /// The entities of a copy of `prefab` whose root is `root`: `placed`
     /// gives the root's name, parent and order; `overrides` this copy's
     /// changes, by path (kept even when their part is gone from the
-    /// assembly).
+    /// prefab).
     fn place_in(
         &mut self,
-        assembly: AssetId,
+        prefab: AssetId,
         root: EntityId,
         placed: &EntityData,
         overrides: &HashMap<Vec<EntityId>, Override>,
         chain: &mut Vec<AssetId>,
-    ) -> Result<Vec<(EntityId, EntityData)>, AssemblyError> {
-        let (contents, inner_root) = self.assembly_in(assembly, chain)?;
+    ) -> Result<Vec<(EntityId, EntityData)>, PrefabError> {
+        let (contents, inner_root) = self.prefab_in(prefab, chain)?;
         let order = contents.depth_first();
         let paths: HashMap<EntityId, Vec<EntityId>> = order
             .iter()
@@ -365,7 +361,7 @@ impl<'a> Expander<'a> {
             let changes = overrides.get(path);
             // A removed part takes everything still under it. A part this
             // copy moved (to another parent, or out to the top level) is
-            // where it was put, not where the assembly has it, so it
+            // where it was put, not where the prefab has it, so it
             // isn't taken along: it was once, and a part dragged out and
             // kept was gone when the level opened again (BUG-56).
             let moved = changes.is_some_and(|c| c.parent != ParentChange::Unchanged);
@@ -394,22 +390,22 @@ impl<'a> Expander<'a> {
                 apply(&mut data, changes);
             }
             data.origin = Some(Origin {
-                assembly,
+                prefab,
                 instance: root,
                 path: path.clone(),
             });
             out.push((ids[&id], data));
         }
-        // Overrides whose part is gone from the assembly are kept as
+        // Overrides whose part is gone from the prefab are kept as
         // entities of their own, so nothing is lost; the editor warns.
-        // The assembly's own parts fit the limit, being an expansion;
+        // The prefab's own parts fit the limit, being an expansion;
         // these are as many as the file says, so the limit is kept here.
         for (path, changes) in overrides {
             if found.contains(path) || !outlives_its_part(path, changes) {
                 continue;
             }
             if out.len() >= self.most_made {
-                return Err(AssemblyError::TooBig);
+                return Err(PrefabError::TooBig);
             }
             let mut data = EntityData::new(changes.name.as_deref().unwrap_or("Missing part"));
             // With nothing said it hangs under the copy's root, so it's
@@ -424,7 +420,7 @@ impl<'a> Expander<'a> {
             }
             data.components.clone_from(&changes.components);
             data.origin = Some(Origin {
-                assembly,
+                prefab,
                 instance: root,
                 path: path.clone(),
             });
@@ -433,33 +429,33 @@ impl<'a> Expander<'a> {
         Ok(out)
     }
 
-    /// A new copy of `assembly` with its root at `root`, named, parented
+    /// A new copy of `prefab` with its root at `root`, named, parented
     /// and ordered as `placed` says, with no changes.
     pub fn place(
         &mut self,
-        assembly: AssetId,
+        prefab: AssetId,
         root: EntityId,
         placed: &EntityData,
-    ) -> Result<Vec<(EntityId, EntityData)>, AssemblyError> {
-        self.size(assembly, &mut Vec::new())?;
-        self.place_in(assembly, root, placed, &HashMap::new(), &mut Vec::new())
+    ) -> Result<Vec<(EntityId, EntityData)>, PrefabError> {
+        self.size(prefab, &mut Vec::new())?;
+        self.place_in(prefab, root, placed, &HashMap::new(), &mut Vec::new())
     }
 
-    /// What the assembly says the entity at `origin` should be, before its
+    /// What the prefab says the entity at `origin` should be, before its
     /// copy's changes (for showing changes in bold, and reverting them).
-    /// `None` for a part that's gone from the assembly.
+    /// `None` for a part that's gone from the prefab.
     pub fn expected(&mut self, level: &Level, origin: &Origin) -> Option<EntityData> {
         let placed = level.get(origin.instance)?;
-        let copy = self.place(origin.assembly, origin.instance, placed).ok()?;
+        let copy = self.place(origin.prefab, origin.instance, placed).ok()?;
         copy.into_iter()
             .find(|(_, e)| e.origin.as_ref().is_some_and(|o| o.path == origin.path))
             .map(|(_, e)| e)
     }
 
-    /// `level` as a file: placed assemblies become their root plus what
-    /// differs from the assembly; entities that belong to no placed
-    /// assembly stay as they are.
-    pub fn collapse(&mut self, level: &Level, kind: FileKind) -> Result<LevelFile, AssemblyError> {
+    /// `level` as a file: placed prefabs become their root plus what
+    /// differs from the prefab; entities that belong to no placed
+    /// prefab stay as they are.
+    pub fn collapse(&mut self, level: &Level, kind: FileKind) -> Result<LevelFile, PrefabError> {
         let mut file = LevelFile {
             kind,
             level: Level::new(),
@@ -480,7 +476,7 @@ impl<'a> Expander<'a> {
                     placed.order.clone_from(&entity.order);
                     placed.origin = Some(o.clone());
                     file.level.insert(id, placed);
-                    roots.push((id, o.assembly));
+                    roots.push((id, o.prefab));
                 }
                 Some(o) if is_root(o.instance) => {} // part of a placed copy
                 _ => {
@@ -494,9 +490,19 @@ impl<'a> Expander<'a> {
                 }
             }
         }
-        for (root, assembly) in roots {
+        // Each copy's entities, found in one pass over the level, so a
+        // level of many copies isn't walked once for each.
+        let mut parts_of: HashMap<EntityId, Vec<EntityId>> = HashMap::new();
+        for (id, entity) in level.iter() {
+            if let Some(o) = &entity.origin
+                && !o.path.is_empty()
+            {
+                parts_of.entry(o.instance).or_default().push(id);
+            }
+        }
+        for (root, prefab) in roots {
             let placed = file.level.get(root).cloned().unwrap_or_default();
-            let expected = self.place(assembly, root, &placed)?;
+            let expected = self.place(prefab, root, &placed)?;
             let mut known: HashSet<Vec<EntityId>> = HashSet::new();
             let present: HashSet<EntityId> = expected
                 .iter()
@@ -530,10 +536,11 @@ impl<'a> Expander<'a> {
                     file.overrides.insert((root, path), changes);
                 }
             }
-            // Parts whose place in the assembly is gone are written whole.
-            for (_, entity) in level.iter() {
+            // Parts whose place in the prefab is gone are written whole.
+            let parts = parts_of.get(&root).map_or(&[][..], Vec::as_slice);
+            for entity in parts.iter().filter_map(|id| level.get(*id)) {
                 let Some(o) = &entity.origin else { continue };
-                if o.instance != root || o.path.is_empty() || known.contains(&o.path) {
+                if known.contains(&o.path) {
                     continue;
                 }
                 file.overrides.insert(
@@ -553,7 +560,7 @@ impl<'a> Expander<'a> {
 }
 
 /// The edits that delete `roots` and everything under each (none under
-/// another). A part of a placed assembly that was moved out from under
+/// another). A part of a placed prefab that was moved out from under
 /// its copy isn't under the copy's root when that goes, so it stays; but
 /// it's part of nothing then, and a file has no way to say otherwise
 /// (it's written as the ordinary entity it has become). So each such
@@ -586,9 +593,9 @@ pub fn despawn(level: &Level, roots: &[EntityId]) -> Vec<Edit> {
     edits
 }
 
-/// Sets `component.field` of the entity at `path` inside assembly `file`
-/// (Apply to assembly): on the entity itself, or, for an entity inside an
-/// assembly placed in this one, as that copy's override.
+/// Sets `component.field` of the entity at `path` inside prefab `file`
+/// (Apply to prefab): on the entity itself, or, for an entity inside an
+/// prefab placed in this one, as that copy's override.
 pub fn set_in_file(
     file: &mut LevelFile,
     path: &[EntityId],
@@ -597,7 +604,7 @@ pub fn set_in_file(
     value: Value,
 ) -> bool {
     let target = match (file.kind, path) {
-        (FileKind::Assembly { root }, []) => vec![root],
+        (FileKind::Prefab { root }, []) => vec![root],
         (_, path) => path.to_vec(),
     };
     match target.as_slice() {
@@ -612,7 +619,7 @@ pub fn set_in_file(
                     .insert(field.to_string(), value);
                 true
             }
-            // The root of a copy placed in the assembly: its own override.
+            // The root of a copy placed in the prefab: its own override.
             Some(_) => {
                 set_override(file, *id, Vec::new(), component, field, value);
                 true
@@ -671,9 +678,9 @@ fn apply(data: &mut EntityData, changes: &Override) {
     }
 }
 
-/// What changed from `wanted` (the assembly's) to `actual` (the level's).
+/// What changed from `wanted` (the prefab's) to `actual` (the level's).
 /// The root's name, parent and order belong to the level, not the
-/// assembly, so they're never overrides.
+/// prefab, so they're never overrides.
 fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override {
     let mut changes = Override::default();
     if !root {
@@ -709,7 +716,7 @@ fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override 
 }
 
 #[cfg(test)]
-#[path = "assembly_moves_tests.rs"]
+#[path = "prefab_moves_tests.rs"]
 mod moves_tests;
 
 #[cfg(test)]
@@ -742,7 +749,7 @@ mod tests {
         lamp.parent = Some(id(1));
         level.insert(id(2), lamp);
         LevelFile {
-            kind: FileKind::Assembly { root: id(1) },
+            kind: FileKind::Prefab { root: id(1) },
             level,
             overrides: Default::default(),
         }
@@ -756,7 +763,7 @@ mod tests {
             let mut post = EntityData::new("Post");
             post.parent = Some(id(10));
             post.origin = Some(Origin {
-                assembly: asset(100),
+                prefab: asset(100),
                 instance: id(n),
                 path: Vec::new(),
             });
@@ -774,7 +781,7 @@ mod tests {
             },
         );
         LevelFile {
-            kind: FileKind::Assembly { root: id(10) },
+            kind: FileKind::Prefab { root: id(10) },
             level,
             overrides,
         }
@@ -791,7 +798,7 @@ mod tests {
         let mut level = Level::new();
         let mut placed = EntityData::new("Main street");
         placed.origin = Some(Origin {
-            assembly: asset(200),
+            prefab: asset(200),
             instance: root,
             path: Vec::new(),
         });
@@ -815,7 +822,7 @@ mod tests {
         let mut placed = EntityData::new("Post");
         placed.parent = Some(sign);
         placed.origin = Some(Origin {
-            assembly: asset(100),
+            prefab: asset(100),
             instance: post,
             path: Vec::new(),
         });
@@ -850,7 +857,7 @@ mod tests {
         for n in [40, 41] {
             let mut placed = EntityData::new("Post");
             placed.origin = Some(Origin {
-                assembly: asset(100),
+                prefab: asset(100),
                 instance: id(n),
                 path: Vec::new(),
             });
@@ -860,9 +867,9 @@ mod tests {
     }
 
     #[test]
-    fn copies_of_an_assembly_with_a_loop_inside_are_sound() {
-        // The assembly's own file has its lamp and a shade under each
-        // other. It's mended once, as the assembly is expanded, so every
+    fn copies_of_a_prefab_with_a_loop_inside_are_sound() {
+        // The prefab's own file has its lamp and a shade under each
+        // other. It's mended once, as the prefab is expanded, so every
         // copy is the same sound tree and saves with no changes.
         let mut looped = lamp_post();
         let mut shade = EntityData::new("Shade");
@@ -912,7 +919,7 @@ mod tests {
     #[test]
     fn a_part_moved_to_the_top_level_is_saved_there() {
         // The review of Phase 9, BUG-13: "no parent" was written the same
-        // as "the assembly's parent" (nothing), so a part dragged out of
+        // as "the prefab's parent" (nothing), so a part dragged out of
         // its copy came back under its old parent when the level was
         // opened again, with its place in the world taken as a place
         // under that parent: it had jumped.
@@ -944,7 +951,7 @@ mod tests {
         assert_eq!(opened.get(lamp).unwrap().parent, Some(id(60)));
         assert_eq!(opened.world_matrix(lamp), there);
         assert_eq!(opened, level);
-        // And back where the assembly has it: nothing is left to write.
+        // And back where the prefab has it: nothing is left to write.
         let home = Expander::new(&lib)
             .expected(&level, level.get(lamp).unwrap().origin.as_ref().unwrap())
             .unwrap();
@@ -958,8 +965,8 @@ mod tests {
     }
 
     #[test]
-    fn a_part_gone_from_its_assembly_stays_at_the_top_level_if_moved_there() {
-        // BUG-13 again: changes to a part the assembly no longer has are
+    fn a_part_gone_from_its_prefab_stays_at_the_top_level_if_moved_there() {
+        // BUG-13 again: changes to a part the prefab no longer has are
         // kept as an entity, under its copy until it's moved.
         let lib = library(vec![(asset(100), lamp_post())]);
         let mut file = town_of_posts();
@@ -992,7 +999,7 @@ mod tests {
     }
 
     #[test]
-    fn nested_assemblies_expand_with_overrides_innermost_first() {
+    fn nested_prefabs_expand_with_overrides_innermost_first() {
         let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
         let mut expander = Expander::new(&lib);
         let root = id(50);
@@ -1001,7 +1008,7 @@ mod tests {
         assert_eq!(level.len(), 5);
         let first_lamp = derive(root, &[id(11), id(2)]);
         let second_lamp = derive(root, &[id(12), id(2)]);
-        assert_eq!(strength(&level, first_lamp), 1000.0, "the assembly's value");
+        assert_eq!(strength(&level, first_lamp), 1000.0, "the prefab's value");
         assert_eq!(
             strength(&level, second_lamp),
             5000.0,
@@ -1060,7 +1067,7 @@ mod tests {
     }
 
     #[test]
-    fn overrides_survive_edits_to_the_assembly() {
+    fn overrides_survive_edits_to_the_prefab() {
         let root = id(50);
         let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
         let mut level = Expander::new(&lib).expand(&town(root)).unwrap();
@@ -1072,7 +1079,7 @@ mod tests {
         let file = Expander::new(&lib)
             .collapse(&level, FileKind::Level)
             .unwrap();
-        // The lamp post gets a new colour and a bench in the assembly.
+        // The lamp post gets a new colour and a bench in the prefab.
         let mut post = lamp_post();
         post.level.get_mut(id(2)).unwrap().set(&Light {
             color: [1.0, 0.5, 0.0],
@@ -1085,11 +1092,7 @@ mod tests {
         let level = Expander::new(&lib).expand(&file).unwrap();
         let light = level.get(lamp).unwrap().get::<Light>().unwrap();
         assert_eq!(light.strength, 42.0, "the copy's change stays");
-        assert_eq!(
-            light.color,
-            [1.0, 0.5, 0.0],
-            "the assembly's change arrives"
-        );
+        assert_eq!(light.color, [1.0, 0.5, 0.0], "the prefab's change arrives");
         assert!(
             level.contains(derive(root, &[id(11), id(3)])),
             "and its new bench"
@@ -1097,7 +1100,7 @@ mod tests {
     }
 
     #[test]
-    fn a_change_to_a_part_gone_from_the_assembly_is_kept() {
+    fn a_change_to_a_part_gone_from_the_prefab_is_kept() {
         let root = id(50);
         let lib = library(vec![(asset(100), lamp_post())]);
         let mut file = town(root);
@@ -1107,7 +1110,7 @@ mod tests {
             .origin
             .as_mut()
             .unwrap()
-            .assembly = asset(100);
+            .prefab = asset(100);
         let mut light = reflect::ComponentData::default();
         light.fields.insert("strength".into(), Value::Float(9.0));
         file.overrides.insert(
@@ -1133,19 +1136,19 @@ mod tests {
 
     #[test]
     fn loops_depth_and_size_are_refused() {
-        // An assembly that places itself.
+        // A prefab that places itself.
         let mut selfish = lamp_post();
         let mut inner = EntityData::new("Me again");
         inner.parent = Some(id(1));
         inner.origin = Some(Origin {
-            assembly: asset(100),
+            prefab: asset(100),
             instance: id(5),
             path: Vec::new(),
         });
         selfish.level.insert(id(5), inner);
         let lib = library(vec![(asset(100), selfish)]);
-        let err = Expander::new(&lib).assembly(asset(100)).unwrap_err();
-        assert_eq!(err, AssemblyError::Loop(vec![asset(100), asset(100)]));
+        let err = Expander::new(&lib).prefab(asset(100)).unwrap_err();
+        assert_eq!(err, PrefabError::Loop(vec![asset(100), asset(100)]));
         assert!(err.to_string().contains("loop"));
         // A chain deeper than allowed.
         let mut files = Vec::new();
@@ -1154,7 +1157,7 @@ mod tests {
             let mut next = EntityData::new("Deeper");
             next.parent = Some(id(1));
             next.origin = Some(Origin {
-                assembly: asset(300 + depth + 1),
+                prefab: asset(300 + depth + 1),
                 instance: id(5),
                 path: Vec::new(),
             });
@@ -1164,8 +1167,8 @@ mod tests {
         files.push((asset(300 + MAX_NESTING as u64 + 2), lamp_post()));
         let lib = library(files);
         assert_eq!(
-            Expander::new(&lib).assembly(asset(300)).unwrap_err(),
-            AssemblyError::TooDeep
+            Expander::new(&lib).prefab(asset(300)).unwrap_err(),
+            PrefabError::TooDeep
         );
         // Ten copies of ten copies… of a post: counted, refused, never made.
         let mut files = vec![(asset(400), lamp_post())];
@@ -1176,7 +1179,7 @@ mod tests {
                 let mut copy = EntityData::new("Copy");
                 copy.parent = Some(id(1));
                 copy.origin = Some(Origin {
-                    assembly: asset(400 + depth),
+                    prefab: asset(400 + depth),
                     instance: id(100 + n),
                     path: Vec::new(),
                 });
@@ -1185,7 +1188,7 @@ mod tests {
             files.push((
                 asset(401 + depth),
                 LevelFile {
-                    kind: FileKind::Assembly { root: id(1) },
+                    kind: FileKind::Prefab { root: id(1) },
                     level,
                     overrides: Default::default(),
                 },
@@ -1193,17 +1196,17 @@ mod tests {
         }
         let lib = library(files);
         assert_eq!(
-            Expander::new(&lib).assembly(asset(408)).unwrap_err(),
-            AssemblyError::TooBig
+            Expander::new(&lib).prefab(asset(408)).unwrap_err(),
+            PrefabError::TooBig
         );
         assert_eq!(
-            Expander::new(&lib).assembly(asset(999)).unwrap_err(),
-            AssemblyError::Missing(asset(999))
+            Expander::new(&lib).prefab(asset(999)).unwrap_err(),
+            PrefabError::Missing(asset(999))
         );
     }
 
     #[test]
-    fn assemblies_inside_each_other_hold_at_most_their_share_expanded() {
+    fn prefabs_inside_each_other_hold_at_most_their_share_expanded() {
         // The third security audit: each level placed the next once, so
         // every level's expansion was the size of the whole crowd, each
         // kept: thirteen tiny files took over 5 GB.
@@ -1214,7 +1217,7 @@ mod tests {
             let mut copy = EntityData::new("Copy");
             copy.parent = Some(id(1));
             copy.origin = Some(Origin {
-                assembly: asset(500 + depth),
+                prefab: asset(500 + depth),
                 instance: id(100),
                 path: Vec::new(),
             });
@@ -1222,7 +1225,7 @@ mod tests {
             files.push((
                 asset(501 + depth),
                 LevelFile {
-                    kind: FileKind::Assembly { root: id(1) },
+                    kind: FileKind::Prefab { root: id(1) },
                     level,
                     overrides: Default::default(),
                 },
@@ -1234,16 +1237,16 @@ mod tests {
         let size = expander.size_of(asset(506)).unwrap();
         expander.most_held = size + 3;
         assert_eq!(
-            expander.assembly(asset(506)).unwrap_err(),
-            AssemblyError::TooBig
+            expander.prefab(asset(506)).unwrap_err(),
+            PrefabError::TooBig
         );
         // With room for them all, it expands.
         let mut expander = Expander::new(&lib);
         expander.most_held = size * 7;
-        assert_eq!(expander.assembly(asset(506)).unwrap().0.len(), size);
+        assert_eq!(expander.prefab(asset(506)).unwrap().0.len(), size);
     }
 
-    /// An assembly holding one lamp post (`asset(100)`), with `gone`
+    /// A prefab holding one lamp post (`asset(100)`), with `gone`
     /// empty changes to parts the lamp post doesn't have.
     fn padded(gone: u64) -> LevelFile {
         let mut level = Level::new();
@@ -1251,13 +1254,13 @@ mod tests {
         let mut post = EntityData::new("Post");
         post.parent = Some(id(10));
         post.origin = Some(Origin {
-            assembly: asset(100),
+            prefab: asset(100),
             instance: id(11),
             path: Vec::new(),
         });
         level.insert(id(11), post);
         LevelFile {
-            kind: FileKind::Assembly { root: id(10) },
+            kind: FileKind::Prefab { root: id(10) },
             level,
             overrides: (0..gone)
                 .map(|n| ((id(11), vec![id(1000 + n)]), Override::default()))
@@ -1265,14 +1268,14 @@ mod tests {
         }
     }
 
-    /// A level of `copies` copies of the padded assembly (`asset(700)`),
+    /// A level of `copies` copies of the padded prefab (`asset(700)`),
     /// their roots numbered from 50.
     fn crowd(copies: u64) -> LevelFile {
         let mut level = Level::new();
         for n in 0..copies {
             let mut copy = EntityData::new("Copy");
             copy.origin = Some(Origin {
-                assembly: asset(700),
+                prefab: asset(700),
                 instance: id(50 + n),
                 path: Vec::new(),
             });
@@ -1282,9 +1285,9 @@ mod tests {
     }
 
     #[test]
-    fn changes_to_parts_gone_from_the_assembly_are_counted_before_expanding() {
+    fn changes_to_parts_gone_from_the_prefab_are_counted_before_expanding() {
         // Found in a full code review: a change to a part that's gone becomes
-        // an entity, but wasn't counted. An assembly of a few megabytes
+        // an entity, but wasn't counted. A prefab of a few megabytes
         // with 100,000 such changes counted as 3 entities, so a level
         // placing it 1,000 times passed the count and expanded to a
         // hundred million: the third security audit's bomb by another way.
@@ -1296,9 +1299,9 @@ mod tests {
         assert_eq!(expander.size_of(asset(700)).unwrap(), 100_003);
         assert_eq!(
             expander.expand(&crowd(1_000)).unwrap_err(),
-            AssemblyError::TooBig
+            PrefabError::TooBig
         );
-        // Counted and refused: not one assembly was expanded to find out.
+        // Counted and refused: not one prefab was expanded to find out.
         assert!(expander.expanded.is_empty());
         assert_eq!(expander.held, 0);
     }
@@ -1333,7 +1336,7 @@ mod tests {
                 assert_eq!(
                     kept.origin,
                     Some(Origin {
-                        assembly: asset(700),
+                        prefab: asset(700),
                         instance: copy,
                         path,
                     })
@@ -1362,12 +1365,12 @@ mod tests {
         let lib = library(vec![(asset(100), lamp_post()), (asset(700), read)]);
         let mut expander = Expander::new(&lib);
         assert_eq!(expander.size_of(asset(700)).unwrap(), 7);
-        assert_eq!(expander.assembly(asset(700)).unwrap().0.len(), 7);
+        assert_eq!(expander.prefab(asset(700)).unwrap().0.len(), 7);
     }
 
     #[test]
     fn making_entities_stops_at_the_limit_even_if_the_count_is_wrong() {
-        // The padded assembly is 8 entities: its root, the post, its lamp
+        // The padded prefab is 8 entities: its root, the post, its lamp
         // and five kept parts. Its size is put in as 1, the kind of
         // mistake the count once made.
         let lib = library(vec![(asset(100), lamp_post()), (asset(700), padded(5))]);
@@ -1375,14 +1378,14 @@ mod tests {
             let mut expander = Expander::new(&lib);
             expander.most_made = limit;
             expander.sizes.insert(asset(700), 1);
-            expander.assembly(asset(700)).map(|(level, _)| level.len())
+            expander.prefab(asset(700)).map(|(level, _)| level.len())
         };
         assert_eq!(expand(8), Ok(8), "room for it all");
         // One short: stopped as the last entity goes into the level.
-        assert_eq!(expand(7), Err(AssemblyError::TooBig));
+        assert_eq!(expand(7), Err(PrefabError::TooBig));
         // Too little for the post's copy alone: stopped while it's made.
-        assert_eq!(expand(5), Err(AssemblyError::TooBig));
-        assert_eq!(expand(0), Err(AssemblyError::TooBig));
+        assert_eq!(expand(5), Err(PrefabError::TooBig));
+        assert_eq!(expand(0), Err(PrefabError::TooBig));
     }
 
     #[test]
@@ -1401,9 +1404,9 @@ mod tests {
                 ..Override::default()
             }),
         };
-        // In the assembly, about its lamp post's lamp and two parts the
+        // In the prefab, about its lamp post's lamp and two parts the
         // post doesn't have; in the level, about the first copy's lamp, a
-        // part the assembly may have kept, and one nobody has: every mix.
+        // part the prefab may have kept, and one nobody has: every mix.
         let inner = [vec![id(2)], vec![id(98)], vec![id(99)]];
         let outer = [
             vec![id(11), id(2)],
@@ -1411,10 +1414,10 @@ mod tests {
             vec![id(11), id(77)],
         ];
         for mix in 0..4u32.pow(6) {
-            let mut assembly = padded(0);
+            let mut prefab = padded(0);
             for (n, path) in inner.iter().enumerate() {
                 if let Some(changes) = says(mix >> (2 * n)) {
-                    assembly.overrides.insert((id(11), path.clone()), changes);
+                    prefab.overrides.insert((id(11), path.clone()), changes);
                 }
             }
             let mut file = crowd(2);
@@ -1423,13 +1426,13 @@ mod tests {
                     file.overrides.insert((id(50), path.clone()), changes);
                 }
             }
-            let lib = library(vec![(asset(100), lamp_post()), (asset(700), assembly)]);
+            let lib = library(vec![(asset(100), lamp_post()), (asset(700), prefab)]);
             let mut expander = Expander::new(&lib);
             let counted = expander.count(&file, &mut Vec::new()).unwrap();
             let made = expander.expand(&file).unwrap().len();
             assert!(made <= counted, "mix {mix}: {made} made, {counted} counted");
             let size = expander.size_of(asset(700)).unwrap();
-            let held = expander.assembly(asset(700)).unwrap().0.len();
+            let held = expander.prefab(asset(700)).unwrap().0.len();
             assert!(held <= size, "mix {mix}: {held} held, {size} counted");
             // What the count lets through is never stopped part-way.
             let mut exact = Expander::new(&lib);
@@ -1440,7 +1443,7 @@ mod tests {
             tight.most_made = made - 1;
             assert_eq!(
                 tight.expand(&file).unwrap_err(),
-                AssemblyError::TooBig,
+                PrefabError::TooBig,
                 "mix {mix}"
             );
         }
@@ -1449,7 +1452,7 @@ mod tests {
     #[test]
     fn a_copy_s_references_to_its_own_parts_point_at_the_copy_s_parts() {
         // The hardening milestone's mutation testing: emptying `remap`
-        // went unnoticed, so a placed turret would aim with the assembly's
+        // went unnoticed, so a placed turret would aim with the prefab's
         // own barrel (or none) instead of its copy's.
         let mut level = Level::new();
         let mut turret = EntityData::new("Turret").with(&Transform::default());
@@ -1471,7 +1474,7 @@ mod tests {
         let lib = library(vec![(
             asset(600),
             LevelFile {
-                kind: FileKind::Assembly { root: id(1) },
+                kind: FileKind::Prefab { root: id(1) },
                 level,
                 overrides: Default::default(),
             },
@@ -1505,14 +1508,14 @@ mod tests {
     }
 
     #[test]
-    fn expected_values_come_from_the_assembly() {
+    fn expected_values_come_from_the_prefab() {
         let root = id(50);
         let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
         let level = Expander::new(&lib).expand(&town(root)).unwrap();
         let lamp = derive(root, &[id(12), id(2)]);
         let origin = level.get(lamp).unwrap().origin.clone().unwrap();
         let wanted = Expander::new(&lib).expected(&level, &origin).unwrap();
-        // The street's own override is part of what the street assembly
+        // The street's own override is part of what the street prefab
         // says; only this copy's changes differ from it.
         assert_eq!(wanted.get::<Light>().unwrap().strength, 5000.0);
     }

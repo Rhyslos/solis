@@ -262,8 +262,8 @@ meaning! {
     KIND_ANIMATION = 0xb48cff;
     /// A sound (the design's "audio").
     KIND_SOUND = 0xe8b04a;
-    /// An assembly (the design's "prefab").
-    KIND_ASSEMBLY = 0x7fb2ff;
+    /// A prefab (the design's "prefab").
+    KIND_PREFAB = 0x7fb2ff;
     /// A graph pin carrying one number.
     PIN_NUMBER = 0x9a9a9a;
     /// A graph pin carrying three numbers.

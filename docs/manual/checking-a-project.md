@@ -22,7 +22,7 @@ The check opens the project the way the editor does (with its input actions, 2D 
 ## What it checks
 | Step | What fails |
 |---|---|
-| Files | Any level, assembly, sound event, Mixer, input actions, 2D settings, tile map, tileset, Atlas Crop file, animator, clips file, recording, save game, sidecar or project file that this build can't read. An older one that's upgraded as it's read is a note, not a failure. |
+| Files | Any level, prefab, sound event, Mixer, input actions, 2D settings, tile map, tileset, Atlas Crop file, animator, clips file, recording, save game, sidecar or project file that this build can't read. An older one that's upgraded as it's read is a note, not a failure. |
 | Game code | Any mistake in the game's Lust or Lua. A call to a name that was renamed is a note. |
 | Recordings | Each recording in `recordings/checks/` is played back in the level it was recorded in, with the project's sprite sheets, tilesets and tile maps read as the editor reads them (so a 2D game's walls are there). If the game comes out differently from the same input on any tick, it fails, with the tick. It also fails, saying so, if the level isn't as it was when recorded (record it again), or if it was made before recordings said their level. Saves the game makes while it plays back are kept by the check, never written into your project. |
 

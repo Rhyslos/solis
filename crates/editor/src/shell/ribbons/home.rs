@@ -69,7 +69,7 @@ fn build_form(w: &Workbench) -> Vec<Group> {
                     Entry::Unbuilt(UnbuiltId::PlacePaintBrush),
                 ),
                 unbuilt_at(
-                    Shape::Big(Icon::Assembly),
+                    Shape::Big(Icon::Prefab),
                     Entry::Unbuilt(UnbuiltId::PlacePaintScatter),
                 ),
             ]
@@ -134,7 +134,7 @@ fn create(w: &Workbench, label: &'static str) -> Group {
                     item("Sprite", C::AddSprite),
                     item("Tile map", C::NewTileMap),
                     item("Reverb zone", C::AddReverbZone),
-                    item("Assembly from selection", C::CreateAssembly),
+                    item("Make prefab\u{2026}", C::MakePrefab),
                     Entry::Unbuilt(UnbuiltId::HomeCreateTrigger),
                 ],
             ),

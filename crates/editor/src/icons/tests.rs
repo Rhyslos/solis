@@ -121,9 +121,9 @@ fn the_table_is_in_the_enum_s_order_with_every_name_once() {
             "{name}"
         );
     }
-    // The design's 58, the 69 made for what it lacks, and the brush
-    // list's 8 (Tools 1a, B2).
-    assert_eq!(Icon::ALL.len(), 135);
+    // The design's 58, the 70 made for what it lacks (the link of a
+    // placed copy, R5, among them), and the brush list's 8 (Tools 1a, B2).
+    assert_eq!(Icon::ALL.len(), 136);
 }
 
 #[test]

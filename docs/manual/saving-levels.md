@@ -43,7 +43,7 @@ entity 2B8D4NE6TV0HC {
 - One block per entity, sorted by its ID (13 letters and digits that never change), never by the tree or by when it was made, so renaming or moving an entity never moves its block.
 - One line per setting: `Component.setting = value;`. Text is in quotes, lists in `[ ]`, and `--` starts a comment.
 - A child names its parent with `parent = "…";`.
-- A copy of an [assembly](assemblies.md) is one block naming its assembly. Each part you changed in that copy has a short block of its own, named after the copy and the part (`copy/part`), holding only what you changed. If you moved the part, its `parent` line names what it's under now, or is `parent = "";` when you moved it out to the top level.
+- A copy of an [prefab](prefabs.md) is one block naming its prefab. Each part you changed in that copy has a short block of its own, named after the copy and the part (`copy/part`), holding only what you changed. If you moved the part, its `parent` line names what it's under now, or is `parent = "";` when you moved it out to the top level.
 - Models are named by their asset ID, with the file's path in a comment for people to read; the comment is rewritten on every save and never read.
 - Components Solis doesn't know (from game code that isn't there) are kept exactly as written.
 - A [brush](brushes.md)'s shape is three long lists of numbers, written twelve to a line so no line grows too long: `Brush.points` (x, y and z of each point, in metres), `Brush.faces` (for each face, how many corners it has, then which points, counting from 0) and `Brush.materials` (each face's material, 0 for the plain one). Each brush may hold at most 65,536 points and 65,536 faces, and a face at most 256 corners.

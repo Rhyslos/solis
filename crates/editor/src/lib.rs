@@ -28,6 +28,7 @@ mod day_colours;
 #[cfg(test)]
 mod debug_screen_tests;
 pub mod document;
+mod document_diff;
 mod elements_view;
 pub mod export_dialog;
 mod field_rows;
@@ -58,6 +59,7 @@ pub mod level_view;
 pub mod library;
 pub mod look;
 mod made_from;
+pub mod make_prefab;
 mod map_tab;
 mod menu_items;
 mod mixer_console;
@@ -72,6 +74,9 @@ pub mod play;
 pub mod play_changes;
 mod play_input;
 pub mod play_only;
+pub mod prefab_details;
+mod prefab_marks;
+mod prefab_page;
 pub mod problems;
 pub mod profiler;
 mod profiler_view;
@@ -145,11 +150,13 @@ pub use launcher::{FolderState, KnownProject, NewProjectPlan, ProjectKind, Start
 pub use level_view::{LevelView, ViewLight, ViewModel};
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
+pub use make_prefab::{MakePrefabPlan, SwapPlan};
 pub use mixer_view::MixerState;
 pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use own_files::OwnFile;
 pub use panel::Panel;
 pub use play::PlayState;
+pub use prefab_details::Placed;
 pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back, save_reads};
 pub use shell::{BottomTab, RibbonTab, ShellState};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
@@ -193,6 +200,10 @@ mod picture_support;
 mod picture_tests;
 #[cfg(test)]
 mod placing_tests;
+#[cfg(test)]
+mod prefab_picture_tests;
+#[cfg(test)]
+mod prefab_scale_tests;
 #[cfg(test)]
 mod scale_levels_tests;
 #[cfg(test)]

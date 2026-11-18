@@ -199,6 +199,20 @@ impl Workbench {
                 self.open.place_targets.remove(&id);
                 actions.push(WorkbenchAction::PlaceAsset(id));
             }
+            LibraryRequest::Open(LibraryKind::Prefab, path) => {
+                let id = self
+                    .open
+                    .library
+                    .iter()
+                    .find(|i| i.path == path)
+                    .and_then(|i| i.id);
+                if let Some(id) = id {
+                    self.open_prefab_page(id);
+                }
+            }
+            LibraryRequest::NewPrefab(folder) => {
+                actions.push(WorkbenchAction::NewPrefab(folder.into()));
+            }
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
             LibraryRequest::Open(LibraryKind::Animator, path) => self.open_animator(&path),
             LibraryRequest::Open(LibraryKind::Tileset, path) => self.open_tileset(&path),
@@ -386,6 +400,7 @@ impl Workbench {
                     && matches!(
                         i.kind,
                         LibraryKind::Sound
+                            | LibraryKind::Prefab
                             | LibraryKind::SoundEvent
                             | LibraryKind::SpriteSheet
                             | LibraryKind::Tileset
@@ -396,6 +411,16 @@ impl Workbench {
         {
             self.open.sound_shown = Some((path.clone(), self.open.document.selection.clone()));
             self.open.mixer.shown = None;
+            // Details counts where a prefab is placed, on a worker.
+            if let Some(id) = self
+                .open
+                .library
+                .iter()
+                .find(|i| &i.path == path && i.kind == LibraryKind::Prefab)
+                .and_then(|i| i.id)
+            {
+                self.open.outbox.push(WorkbenchAction::CountPlaced(id));
+            }
         }
     }
 
@@ -662,7 +687,7 @@ impl Workbench {
         self.open.place_targets.remove(&asset);
     }
 
-    /// Where a model or assembly being placed goes: the point it was
+    /// Where a model or prefab being placed goes: the point it was
     /// dropped at (made relative to the entity it goes under) and that
     /// entity, or `None` to place it where the camera looks.
     pub(crate) fn take_place_target(&mut self, asset: AssetId) -> Option<(Vec3, Option<EntityId>)> {

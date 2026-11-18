@@ -9,7 +9,7 @@ use reflect::Value;
 use std::collections::HashSet;
 
 /// Each roller rolls a number and spawns a drone, every tick.
-const ROLLERS: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+const ROLLERS: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
     component Roller {\n\
         has {\n\
             float rolled = 0;\n\
@@ -17,7 +17,7 @@ const ROLLERS: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Ass
         }\n\
         method update(float dt) {\n\
             rolled = World:random();\n\
-            made = World:spawn(Assembly.Drone, [0, 0, 0]);\n\
+            made = World:spawn(Prefab.Drone, [0, 0, 0]);\n\
         }\n\
     }\n\
     pass Roller;\nend\n";

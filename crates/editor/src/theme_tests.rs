@@ -94,7 +94,7 @@ fn colours_that_mean_something_read_as_words_on_every_surface() {
         ("z", tokens::AXIS_Z_TEXT),
         ("collider", COLLIDER),
         ("model", kind::MODEL),
-        ("assembly", kind::ASSEMBLY),
+        ("prefab", kind::PREFAB),
         ("level", kind::LEVEL),
         ("picture", kind::PICTURE),
         ("code", kind::CODE),

@@ -48,7 +48,7 @@ pub struct AppInfo {
     pub version: String,
 }
 
-/// What [`Workbench::assembly_part`] was worked out for: the selected
+/// What [`Workbench::prefab_part`] was worked out for: the selected
 /// entity, the level's revision and the sources' count.
 pub(crate) type PartKey = (Option<reflect::EntityId>, u64, u64);
 
@@ -129,7 +129,7 @@ pub struct Workbench {
     /// handler asks this, and none decides for itself.
     pub(crate) keys: KeyOwner,
     /// Goes up whenever what Problems checks the level against changes:
-    /// the models loaded, the Library, the assemblies, the components
+    /// the models loaded, the Library, the prefabs, the components
     /// known. It only ever goes up, another project included, so nothing
     /// worked out for one count is taken for a later one's.
     pub(crate) sources: u64,

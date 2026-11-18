@@ -42,9 +42,9 @@ pub(crate) struct Playing {
     /// Only its file changes meanwhile: it follows the level's file when
     /// the Library moves or deletes it (`Workbench::file_moved`).
     pub(crate) before: Box<Document>,
-    /// The assemblies as they were when Play was pressed, to rebuild
+    /// The prefabs as they were when Play was pressed, to rebuild
     /// copies from on Stop if any changed meanwhile.
-    assemblies_before: BTreeMap<AssetId, Arc<LevelFile>>,
+    prefabs_before: BTreeMap<AssetId, Arc<LevelFile>>,
     /// The level as its file holds it now, if the file changed on disk
     /// while playing: offered again after Stop.
     pub(crate) reload: Option<level::Level>,
@@ -60,7 +60,7 @@ pub(crate) struct Playing {
     /// Whether the Console was told 2D physics stopped and was started
     /// again (said once a play, however often it happens).
     told_flat_broke: bool,
-    /// Assembly names game code spawned of which no copy could be made
+    /// Prefab names game code spawned of which no copy could be made
     /// (none by that name, or one that can't be copied), each said once.
     told_unmade: std::collections::HashSet<String>,
     /// Whether the Console was told game code spawned too much.
@@ -164,7 +164,7 @@ pub(crate) fn collapse_saves(saves: Vec<(String, bool)>) -> (Vec<(String, bool)>
     (kept, dropped)
 }
 
-/// The most copies of assemblies game code may make in one tick; more
+/// The most copies of prefabs game code may make in one tick; more
 /// aren't made, and the Console says so (a component spawning every tick by
 /// mistake would otherwise grow the level until the computer runs out of
 /// memory).
@@ -180,7 +180,7 @@ impl std::fmt::Debug for Playing {
 }
 
 /// Whether `action` must wait until the game stops: it saves or replaces
-/// the level (or writes an assembly), which would save the game's changes
+/// the level (or writes a prefab), which would save the game's changes
 /// or lose the copy kept for Stop.
 pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
     matches!(
@@ -198,8 +198,10 @@ pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
             | WorkbenchAction::MakeUiSample
             | WorkbenchAction::MakeBenchmark
             | WorkbenchAction::MakePlayground
-            | WorkbenchAction::CreateAssembly(_)
-            | WorkbenchAction::ApplyToAssembly { .. }
+            | WorkbenchAction::MakePrefab(_)
+            | WorkbenchAction::NewPrefab(_)
+            | WorkbenchAction::SavePrefab { .. }
+            | WorkbenchAction::ApplyToPrefab { .. }
     )
 }
 
@@ -233,6 +235,8 @@ impl Workbench {
     /// Play: runs the level as a game (or carries on, if paused). The
     /// Game panel comes to the front.
     pub fn play(&mut self) {
+        // The level plays, not a prefab's page in front of it.
+        self.level_to_front();
         // Changes from the last play wait for Keep or Undo all first.
         if self.open.play_changes.is_some() {
             self.log(
@@ -273,7 +277,7 @@ impl Workbench {
             paused: false,
             step: false,
             before: Box::new(self.open.document.clone()),
-            assemblies_before: self.open.assemblies.clone(),
+            prefabs_before: self.open.prefabs.clone(),
             reload: None,
             game,
             view,
@@ -459,7 +463,7 @@ impl Workbench {
 
     /// Stop: throws the game away and puts the level, its undo history
     /// and the selection back as they were when Play was pressed.
-    /// Assemblies changed on disk meanwhile update their copies again,
+    /// Prefabs changed on disk meanwhile update their copies again,
     /// and a level file changed on disk is offered again.
     pub fn stop(&mut self) {
         let Some(playing) = self.open.playing.take() else {
@@ -490,12 +494,12 @@ impl Workbench {
         // The user's changes to the level while playing wait for Keep or
         // Undo all (decision 0085): never thrown away silently. Not the
         // game's: what it spawned, took out or loaded goes with it.
-        let asked = self.note_play_changes(&playing.before, &playing.assemblies_before);
+        let asked = self.note_play_changes(&playing.before, &playing.prefabs_before);
         // The level as it was, but the components known now: code that
         // changed while playing keeps its components in the registry.
         self.replace_document(*playing.before);
         self.open.document.touch();
-        let now = std::mem::replace(&mut self.open.assemblies, playing.assemblies_before);
+        let now = std::mem::replace(&mut self.open.prefabs, playing.prefabs_before);
         self.log(
             LogLevel::Info,
             if asked {
@@ -510,7 +514,7 @@ impl Workbench {
         }
     }
 
-    /// Makes the assemblies `now` (as their files are now) known, in
+    /// Makes the prefabs `now` (as their files are now) known, in
     /// place of the ones known (as they were at Play, which the open
     /// level's copies were built from): the copies of each that changed
     /// meanwhile are rebuilt.
@@ -518,11 +522,11 @@ impl Workbench {
         for (id, file) in now {
             let changed = self
                 .open
-                .assemblies
+                .prefabs
                 .get(&id)
                 .is_none_or(|old| !Arc::ptr_eq(old, &file));
             if changed {
-                self.set_assembly(id, file);
+                self.set_prefab(id, file);
             }
         }
     }
@@ -571,7 +575,7 @@ impl Workbench {
         if actions.len() < before {
             self.log(
                 LogLevel::Warning,
-                "Stop playing first: saving, opening and making assemblies wait until the \
+                "Stop playing first: saving, opening and making prefabs wait until the \
                  game stops, so its changes are never saved by mistake.",
             );
         }

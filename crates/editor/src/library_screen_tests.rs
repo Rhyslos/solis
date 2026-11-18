@@ -14,7 +14,7 @@ use egui_kittest::kittest::Queryable;
 fn the_kinds_colours_are_option_a_with_three_of_today_s() {
     use LibraryKind as K;
     assert_eq!(K::Model.color(), tokens::KIND_MODEL);
-    assert_eq!(K::Assembly.color(), tokens::KIND_ASSEMBLY);
+    assert_eq!(K::Prefab.color(), tokens::KIND_PREFAB);
     assert_eq!(K::Texture.color(), tokens::KIND_PICTURE);
     assert_eq!(K::SpriteSheet.color(), tokens::KIND_PICTURE);
     assert_eq!(K::SpriteClips.color(), tokens::KIND_ANIMATION);

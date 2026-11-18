@@ -88,9 +88,8 @@ pub(crate) fn space_menu(
 /// A row of the New menu's More: its icon, words and request.
 type MoreRow = (Icon, &'static str, fn(String) -> LibraryRequest);
 
-/// What can be made in `folder`: a folder, a level, a prefab (from R5), a
-/// code file and a sound event, as board 04 has them, then the 2D files
-/// under More.
+/// What can be made in `folder`: a folder, a level, a prefab, a code file
+/// and a sound event, as board 04 has them, then the 2D files under More.
 fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
     let at = folder.to_owned();
     ask(
@@ -105,11 +104,12 @@ fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
         LibraryRequest::NewLevel(at.clone()),
         requests,
     );
-    for part in unbuilt::filter(vec![Part::<()>::Unbuilt(UnbuiltId::LibNewPrefab)]) {
-        if let Part::Unbuilt(id) = part {
-            unbuilt::context_item(ui, id, Icon::FourSquares);
-        }
-    }
+    ask(
+        ui,
+        (Icon::Prefab, "New prefab"),
+        LibraryRequest::NewPrefab(at.clone()),
+        requests,
+    );
     ask(
         ui,
         (Icon::CodeFile, "New code file"),

@@ -83,7 +83,8 @@ impl Projects {
             other => other?,
         };
         // Older files Solis made move to their new names first (Lust,
-        // decision 0081; areas to levels, decision 0118), so the asset
+        // decision 0081; areas to levels and assemblies to prefabs,
+        // decision 0118), so the asset
         // database finds them there; then the project file says so.
         let mut moved = crate::older_files::move_older_files(root, &project.files());
         moved.extend(upgrade_project_file(root, &project));
@@ -299,12 +300,14 @@ impl Projects {
                 kind: library_kind(f.kind),
                 // Files Solis doesn't know keep their whole name, so
                 // "brick.png.exe" never passes for "brick.png".
+                // A data file's name is its stem: `chicken`, not
+                // `chicken.prefab`.
                 name: if matches!(f.kind, FileKind::Other | FileKind::Text) {
-                    f.path.file_name()
+                    f.path.file_name().map(|n| n.to_string_lossy().into_owned())
                 } else {
-                    f.path.file_stem()
+                    reflect::data_files::stem(&f.path)
                 }
-                .map_or_else(|| slashed(&f.path), |s| s.to_string_lossy().into_owned()),
+                .unwrap_or_else(|| slashed(&f.path)),
                 path: slashed(&f.path),
                 thumbnail: thumbnail(&f.path),
             })
@@ -721,7 +724,7 @@ fn folder_is_there(file: &Path) -> Result<(), String> {
 pub fn library_kind(kind: FileKind) -> LibraryKind {
     match kind {
         FileKind::Model => LibraryKind::Model,
-        FileKind::Assembly => LibraryKind::Assembly,
+        FileKind::Prefab => LibraryKind::Prefab,
         FileKind::Level => LibraryKind::Level,
         FileKind::Texture => LibraryKind::Texture,
         FileKind::Code => LibraryKind::Code,
@@ -754,6 +757,10 @@ mod saving_tests;
 #[cfg(test)]
 #[path = "project_levels_tests.rs"]
 mod levels_tests;
+
+#[cfg(test)]
+#[path = "project_prefabs_tests.rs"]
+mod prefabs_tests;
 
 #[cfg(test)]
 mod tests {

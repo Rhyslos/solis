@@ -7,12 +7,12 @@ use crate::console::LogLevel;
 use crate::document::Selection;
 use crate::level_panel::LevelRequest;
 use crate::models::{FileLight, FileLightKind, ModelInfo};
-use crate::properties::AssemblyPart;
+use crate::properties::PrefabPart;
 use crate::properties::PropertyRequest;
 use crate::workbench::{Workbench, WorkbenchAction};
 use glam::{Quat, Vec3};
-use level::assembly::Expander;
 use level::builtin::{Brush, Light, LightKind, Model, Transform};
+use level::prefab::Expander;
 use level::text::{FileKind, LevelFile};
 use level::{Edit, EntityData, MergeKey};
 use reflect::AssetId;
@@ -466,6 +466,7 @@ impl Workbench {
                 field,
             } => self.apply_field(entity, &component, &field),
             PropertyRequest::Unpack(root) => self.unpack(root),
+            PropertyRequest::OpenPrefab(asset) => self.open_prefab_page(asset),
             // Asked of the Library, so a component's file is treated as a
             // double-click on it there is: Lust opens in its program, a
             // .lua file is shown in its folder (never run), and a file
@@ -518,30 +519,31 @@ impl Workbench {
         }
     }
 
-    /// What the selected entity's assembly says about it, for Properties.
-    pub(crate) fn assembly_part(&self) -> Option<AssemblyPart> {
+    /// What the selected entity's prefab says about it, for Properties.
+    pub(crate) fn prefab_part(&self) -> Option<PrefabPart> {
         let key = (
             self.open.document.selection.primary(),
             self.open.document.revision(),
             self.sources,
         );
-        if let Some((kept, part)) = &*self.open.assembly_part_kept.borrow()
+        if let Some((kept, part)) = &*self.open.prefab_part_kept.borrow()
             && *kept == key
         {
             return part.clone();
         }
-        let part = self.work_out_assembly_part();
-        *self.open.assembly_part_kept.borrow_mut() = Some((key, part.clone()));
+        let part = self.work_out_prefab_part();
+        *self.open.prefab_part_kept.borrow_mut() = Some((key, part.clone()));
         part
     }
 
-    fn work_out_assembly_part(&self) -> Option<AssemblyPart> {
+    fn work_out_prefab_part(&self) -> Option<PrefabPart> {
         let id = self.open.document.selection.primary()?;
         let origin = self.open.document.level().get(id)?.origin.clone()?;
-        let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+        let lookup = |asset| self.open.prefabs.get(&asset).cloned();
         let expected = Expander::new(&lookup).expected(self.open.document.level(), &origin);
-        Some(AssemblyPart {
-            name: self.asset_name(origin.assembly),
+        Some(PrefabPart {
+            asset: origin.prefab,
+            name: self.asset_name(origin.prefab),
             expected,
             root: origin.path.is_empty(),
         })
@@ -553,10 +555,10 @@ impl Workbench {
             .library
             .iter()
             .find(|item| item.id == Some(id))
-            .map_or_else(|| "its assembly".to_string(), |item| item.name.clone())
+            .map_or_else(|| "its prefab".to_string(), |item| item.name.clone())
     }
 
-    /// Puts a field of a placed assembly's entity back to the assembly's
+    /// Puts a field of a placed prefab's entity back to the prefab's
     /// value.
     pub fn revert_field(&mut self, entity: EntityId, component: &str, field: &str) {
         let Some(part) = self.part_of(entity) else {
@@ -578,7 +580,7 @@ impl Workbench {
         self.command(&label, vec![edit], None, None);
     }
 
-    /// Asks the app to make a field's value its assembly's, for every copy.
+    /// Asks the app to make a field's value its prefab's, for every copy.
     pub fn apply_field(&mut self, entity: EntityId, component: &str, field: &str) {
         let Some(data) = self.open.document.level().get(entity) else {
             return;
@@ -592,8 +594,8 @@ impl Workbench {
         ) else {
             return;
         };
-        self.open.outbox.push(WorkbenchAction::ApplyToAssembly {
-            assembly: origin.assembly,
+        self.open.outbox.push(WorkbenchAction::ApplyToPrefab {
+            prefab: origin.prefab,
             path: origin.path,
             component: component.to_string(),
             field: field.to_string(),
@@ -601,19 +603,20 @@ impl Workbench {
         });
     }
 
-    fn part_of(&self, entity: EntityId) -> Option<AssemblyPart> {
+    fn part_of(&self, entity: EntityId) -> Option<PrefabPart> {
         let origin = self.open.document.level().get(entity)?.origin.clone()?;
-        let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+        let lookup = |asset| self.open.prefabs.get(&asset).cloned();
         let expected = Expander::new(&lookup).expected(self.open.document.level(), &origin);
-        Some(AssemblyPart {
-            name: self.asset_name(origin.assembly),
+        Some(PrefabPart {
+            asset: origin.prefab,
+            name: self.asset_name(origin.prefab),
             expected,
             root: origin.path.is_empty(),
         })
     }
 
     /// Turns the placed copy at `root` into plain entities that no longer
-    /// follow the assembly; or splits a model at `root` into one entity per
+    /// follow the prefab; or splits a model at `root` into one entity per
     /// part of it (the file's nodes), each drawing its own part.
     pub fn unpack(&mut self, root: EntityId) {
         let level = self.open.document.level();
@@ -639,7 +642,7 @@ impl Workbench {
             return;
         };
         if !edits.is_empty() {
-            self.command(&format!("Unpack {name}"), edits, None, None);
+            self.command(&format!("Unlink {name}"), edits, None, None);
         }
     }
 
@@ -696,14 +699,14 @@ impl Workbench {
         self.command(&format!("Unpack {name}"), edits, None, None);
     }
 
-    /// Makes the assembly `id`'s contents known (read from its file),
+    /// Makes the prefab `id`'s contents known (read from its file),
     /// rebuilding every copy in the level from it while keeping each
     /// copy's changes. Nothing to save if nothing was unsaved: the level's
     /// file is the same. While the game plays it isn't an undo step: the
     /// rebuilt level has the game's entities in it, and Stop rebuilds the
     /// copies of the level from before Play itself.
-    pub fn set_assembly(&mut self, id: AssetId, file: Arc<LevelFile>) {
-        let had = self.open.assemblies.contains_key(&id);
+    pub fn set_prefab(&mut self, id: AssetId, file: Arc<LevelFile>) {
+        let had = self.open.prefabs.contains_key(&id);
         let uses = self
             .open
             .document
@@ -711,14 +714,14 @@ impl Workbench {
             .iter()
             .any(|(_, e)| e.origin.is_some());
         if !had || !uses {
-            self.open.assemblies.insert(id, file);
+            self.open.prefabs.insert(id, file);
             self.sources += 1;
             return;
         }
         let name = self.asset_name(id);
         // The copies' changes, worked out against the old contents…
         let collapsed = {
-            let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+            let lookup = |asset| self.open.prefabs.get(&asset).cloned();
             Expander::new(&lookup).collapse(self.open.document.level(), FileKind::Level)
         };
         let collapsed = match collapsed {
@@ -727,7 +730,7 @@ impl Workbench {
                 // The copies can't be told apart from their old contents:
                 // the new file is used from now on, but nothing is
                 // rebuilt, so nothing is lost.
-                self.open.assemblies.insert(id, file);
+                self.open.prefabs.insert(id, file);
                 self.sources += 1;
                 self.log(
                     LogLevel::Error,
@@ -736,7 +739,7 @@ impl Workbench {
                 return;
             }
         };
-        // …laid over the new contents. If they can't be (an assembly it
+        // …laid over the new contents. If they can't be (a prefab it
         // now places isn't read yet), the old file stays in use, so saving
         // never writes the copies against contents they weren't built from.
         let (rebuilt, mended) = {
@@ -744,7 +747,7 @@ impl Workbench {
                 if asset == id {
                     Some(file.clone())
                 } else {
-                    self.open.assemblies.get(&asset).cloned()
+                    self.open.prefabs.get(&asset).cloned()
                 }
             };
             let mut expander = Expander::new(&lookup);
@@ -752,7 +755,7 @@ impl Workbench {
             (rebuilt, expander.mended().to_vec())
         };
         if rebuilt.is_ok() {
-            self.open.assemblies.insert(id, file);
+            self.open.prefabs.insert(id, file);
             self.sources += 1;
             self.log_mended(&mended);
         }
@@ -790,21 +793,21 @@ impl Workbench {
         }
     }
 
-    /// The assembly files known, by ID.
-    pub fn assemblies(&self) -> &BTreeMap<AssetId, Arc<LevelFile>> {
-        &self.open.assemblies
+    /// The prefab files known, by ID.
+    pub fn prefabs(&self) -> &BTreeMap<AssetId, Arc<LevelFile>> {
+        &self.open.prefabs
     }
 
-    /// `file` (a level as read) with its placed assemblies expanded, from
-    /// the assemblies known. Entities whose parents led round in a loop (a
+    /// `file` (a level as read) with its placed prefabs expanded, from
+    /// the prefabs known. Entities whose parents led round in a loop (a
     /// damaged file) come out at the top level, and the Console says
     /// which.
     pub fn expand_file(
         &mut self,
         file: &LevelFile,
-    ) -> Result<level::Level, level::assembly::AssemblyError> {
+    ) -> Result<level::Level, level::prefab::PrefabError> {
         let (level, mended) = {
-            let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+            let lookup = |asset| self.open.prefabs.get(&asset).cloned();
             let mut expander = Expander::new(&lookup);
             let level = expander.expand(file);
             (level, expander.mended().to_vec())
@@ -833,22 +836,22 @@ impl Workbench {
         }
     }
 
-    /// The open level as a file: placed assemblies as their root plus what
-    /// differs from the assembly.
-    pub fn level_file(&self) -> Result<LevelFile, level::assembly::AssemblyError> {
-        let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+    /// The open level as a file: placed prefabs as their root plus what
+    /// differs from the prefab.
+    pub fn level_file(&self) -> Result<LevelFile, level::prefab::PrefabError> {
+        let lookup = |asset| self.open.prefabs.get(&asset).cloned();
         Expander::new(&lookup).collapse(self.open.document.level(), FileKind::Level)
     }
 
-    /// Places a copy of assembly `id` where the camera looks, selected.
-    pub fn place_assembly(&mut self, id: AssetId) {
+    /// Places a copy of prefab `id` where the camera looks, selected.
+    pub fn place_prefab(&mut self, id: AssetId) {
         let root = EntityId::random();
         let target = self.take_place_target(id);
         let mut placed = EntityData::new(&self.asset_name(id));
         placed.parent = target.and_then(|(_, parent)| parent);
         placed.order = self.open.document.level().order_at_end(placed.parent);
         let entities = {
-            let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+            let lookup = |asset| self.open.prefabs.get(&asset).cloned();
             Expander::new(&lookup).place(id, root, &placed)
         };
         let mut entities = match entities {
@@ -875,27 +878,24 @@ impl Workbench {
         self.command(&label, vec![Edit::Spawn { entities }], None, Some(selected));
     }
 
-    /// Turns `root` and everything under it into a copy of assembly `id`
+    /// Turns `root` and everything under it into a copy of prefab `id`
     /// (just made from them), keeping the root's ID, name and place.
     pub fn make_copy(&mut self, root: EntityId, id: AssetId) {
         let Some(original) = self.open.document.level().get(root).cloned() else {
             return;
         };
         let entities = {
-            let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+            let lookup = |asset| self.open.prefabs.get(&asset).cloned();
             Expander::new(&lookup).place(id, root, &original)
         };
         let entities = match entities {
             Ok(e) => e,
             Err(why) => {
-                self.log(
-                    LogLevel::Error,
-                    format!("Couldn't make the assembly: {why}."),
-                );
+                self.log(LogLevel::Error, format!("Couldn't make the prefab: {why}."));
                 return;
             }
         };
-        let label = format!("Create assembly {}", self.asset_name(id));
+        let label = format!("Create prefab {}", self.asset_name(id));
         let selection = self.open.document.selection.clone();
         self.command(
             &label,
@@ -905,10 +905,10 @@ impl Workbench {
         );
     }
 
-    /// `root` and everything under it as an assembly file (for Create
-    /// assembly from selection): the root at the top, nested copies as
+    /// `root` and everything under it as a prefab file (for Create
+    /// prefab from selection): the root at the top, nested copies as
     /// copies.
-    pub fn assembly_file(&self, root: EntityId) -> Option<LevelFile> {
+    pub fn prefab_file(&self, root: EntityId) -> Option<LevelFile> {
         let level = self.open.document.level();
         let tree = level.tree(root);
         let inside: std::collections::HashSet<EntityId> = tree.iter().copied().collect();
@@ -919,7 +919,7 @@ impl Workbench {
                 data.parent = None;
             }
             // Copies placed inside the tree stay copies; a copy at the root
-            // (and parts whose copy is outside) become the assembly's own.
+            // (and parts whose copy is outside) become the prefab's own.
             if data
                 .origin
                 .as_ref()
@@ -929,9 +929,9 @@ impl Workbench {
             }
             part.insert(id, data);
         }
-        let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+        let lookup = |asset| self.open.prefabs.get(&asset).cloned();
         Expander::new(&lookup)
-            .collapse(&part, FileKind::Assembly { root })
+            .collapse(&part, FileKind::Prefab { root })
             .ok()
     }
 
@@ -1074,8 +1074,8 @@ impl Workbench {
         let mut orders: std::collections::HashMap<Option<EntityId>, String> = Default::default();
         for root in roots {
             let ids = level.tree(root);
-            // Parts of placed assemblies get the IDs a new copy of their
-            // assembly would (so they stay copies); everything else gets a
+            // Parts of placed prefabs get the IDs a new copy of their
+            // prefab would (so they stay copies); everything else gets a
             // new random one. Parts whose copy's root stays behind become
             // plain.
             let inside: std::collections::HashSet<EntityId> = ids.iter().copied().collect();
@@ -1093,7 +1093,7 @@ impl Workbench {
             for &id in &ids {
                 if let Some(o) = part_of(id) {
                     let new_instance = new_ids.get(&o.instance).copied().unwrap_or(o.instance);
-                    new_ids.insert(id, level::assembly::derive(new_instance, &o.path));
+                    new_ids.insert(id, level::prefab::derive(new_instance, &o.path));
                 }
             }
             let mut entities = Vec::new();
@@ -1114,7 +1114,7 @@ impl Workbench {
                         .parent
                         .map(|p| new_ids.get(&p).copied().unwrap_or(p));
                 }
-                // Still part of a copied assembly, or plain if its copy's
+                // Still part of a copied prefab, or plain if its copy's
                 // root stays behind.
                 copy.origin = original
                     .origin
@@ -1167,7 +1167,7 @@ impl Workbench {
             [one] => self.delete(*one),
             many => {
                 let label = format!("Delete {} entities", many.len());
-                let edits = level::assembly::despawn(self.open.document.level(), many);
+                let edits = level::prefab::despawn(self.open.document.level(), many);
                 let left = left_behind(&edits);
                 if self.command(&label, edits, None, None) {
                     self.log(LogLevel::Info, format!("{label}.{left}"));
@@ -1231,7 +1231,7 @@ impl Workbench {
             1 => " and 1 entity under it".into(),
             n => format!(" and {n} entities under it"),
         };
-        let edits = level::assembly::despawn(level, &[id]);
+        let edits = level::prefab::despawn(level, &[id]);
         let left = left_behind(&edits);
         if self.command(&label, edits, None, None) {
             self.log(LogLevel::Info, format!("{label}{extra}.{left}"));

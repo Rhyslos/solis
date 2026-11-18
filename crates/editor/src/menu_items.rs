@@ -4,7 +4,7 @@
 //! editor's commands (`shell/commands.rs`) run the same ones, so a thing
 //! is done one way wherever it is asked for.
 
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 
 /// Something picked from a menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,7 +21,7 @@ pub(crate) enum MenuCommand {
     AddPointLight,
     AddSpotlight,
     AddCamera,
-    CreateAssembly,
+    MakePrefab,
     ExpandAll,
     CollapseAll,
 }
@@ -56,11 +56,7 @@ impl Workbench {
             MenuCommand::AddCamera => {
                 self.add_camera();
             }
-            MenuCommand::CreateAssembly => {
-                if let Some(id) = self.open.document.selection.primary() {
-                    self.open.outbox.push(WorkbenchAction::CreateAssembly(id));
-                }
-            }
+            MenuCommand::MakePrefab => self.ask_make_prefab(),
             MenuCommand::ExpandAll => self.open.level_panel.collapsed.clear(),
             MenuCommand::CollapseAll => {
                 let level = self.open.document.level();

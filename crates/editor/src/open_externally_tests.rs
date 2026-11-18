@@ -136,7 +136,7 @@ fn only_pictures_text_and_lust_may_open_in_another_program() {
     // another kind's.
     let kinds = [
         (K::Model, "ship.glb"),
-        (K::Assembly, "tower.solassembly"),
+        (K::Prefab, "tower.solassembly"),
         (K::Level, "farm.sollevel"),
         (K::Texture, "brick.png"),
         (K::Code, "main.lst"),

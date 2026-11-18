@@ -68,7 +68,7 @@ pub(crate) enum ShellCommand {
     /// Backspace while editing.
     BrushDelete,
     NewTileMap,
-    CreateAssembly,
+    MakePrefab,
     SnapToGrid,
     SnapAngles,
     SnapScale,
@@ -287,7 +287,7 @@ impl ShellCommand {
         C::BrushSplit,
         C::BrushDelete,
         C::NewTileMap,
-        C::CreateAssembly,
+        C::MakePrefab,
         C::SnapToGrid,
         C::SnapAngles,
         C::SnapScale,
@@ -423,7 +423,7 @@ impl ShellCommand {
             ),
             C::Undo => when(history.undo_label().is_some(), "Nothing to undo"),
             C::Redo => when(history.redo_label().is_some(), "Nothing to redo"),
-            C::Duplicate | C::Delete | C::Rename | C::SelectNone | C::CreateAssembly => {
+            C::Duplicate | C::Delete | C::Rename | C::SelectNone | C::MakePrefab => {
                 when(selected, "Select an entity first")
             }
             C::Play => match w.why_not_play() {
@@ -460,7 +460,7 @@ impl ShellCommand {
             C::NewInLibrary(_) => when(project, "Open or make a project first (File)"),
             C::PlacePicked => when(
                 w.picked_placeable().is_some(),
-                "Pick a model, an assembly, a sprite sheet or a tile map in the Library first",
+                "Pick a model, a prefab, a sprite sheet or a tile map in the Library first",
             ),
             C::PaintWith(_)
             | C::PaintOnLayer(_)
@@ -741,7 +741,7 @@ impl ShellCommand {
             C::AddPointLight => MenuCommand::AddPointLight,
             C::AddSpotlight => MenuCommand::AddSpotlight,
             C::AddCamera => MenuCommand::AddCamera,
-            C::CreateAssembly => MenuCommand::CreateAssembly,
+            C::MakePrefab => MenuCommand::MakePrefab,
             _ => return None,
         })
     }

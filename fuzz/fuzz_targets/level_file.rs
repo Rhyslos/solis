@@ -1,4 +1,4 @@
-//! A level or assembly file: refused or read, its assemblies expanded
+//! A level or prefab file: refused or read, its prefabs expanded
 //! (it may place itself), and written and read back.
 #![no_main]
 use std::sync::Arc;
@@ -13,11 +13,11 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     let Ok(file) = level::text::read_file(text, &registry) else {
         return;
     };
-    // Every assembly it names is this file again: loops and depth must be
+    // Every prefab it names is this file again: loops and depth must be
     // refused, never followed.
     let shared = Arc::new(file.clone());
     let lookup = |_| Some(Arc::clone(&shared));
-    let _ = level::assembly::Expander::new(&lookup).expand(&file);
+    let _ = level::prefab::Expander::new(&lookup).expand(&file);
     let written = level::text::write(&file.level, &registry, &|_| None);
     let _ = level::text::read(&written, &registry);
 });

@@ -3,7 +3,7 @@
 > Your game's own rules (how a turret aims, when a door opens) are written as code, as components you put on entities. Solis checks the code as you save, shows its fields in Properties, and runs it when you press Play.
 
 ## When to use it
-Whenever your game needs to *do* something: react to the player, count score, move things on its own. Levels and assemblies say what's in the world; [game code](concepts.md#game-code) says what happens in it.
+Whenever your game needs to *do* something: react to the player, count score, move things on its own. Levels and prefabs say what's in the world; [game code](concepts.md#game-code) says what happens in it.
 
 Solis games can be written in three languages:
 - **[Lust](concepts.md#game-code)**, made for Solis's kind of games and the one this manual teaches first;
@@ -17,7 +17,7 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 ## How to use it
 1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`. Everything in it is written by Solis for your code to read, and written again whenever the project opens, so changes you make there don't last:
    - a Lust file for each part of the engine (`world.lst`, `entity.lst`, `input.lst` and so on). They describe what your code can ask of the engine, such as `World:say` (write in the Console) or `moveTo` (put an entity somewhere). [What the engine offers](#what-the-engine-offers) lists every call and the file it's in.
-   - `project.lst`, which holds your project's own names, such as its assemblies, written again whenever you add or rename one.
+   - `project.lst`, which holds your project's own names, such as its prefabs, written again whenever you add or rename one.
    - folders: `kit` holds the [ready-made components](concepts.md#simulation), `animators` and `maps` hold a file for each animator and tile map you make, and `data` says what the Lust files Solis makes (tile maps, tilesets and the like) hold.
 
    Why files? Lust checks every call you write against them before the game runs, so a misspelt call is a mistake you see at once, not a surprise while playing.
@@ -416,11 +416,11 @@ end
 
 ## Making and removing entities
 
-Game code can make copies of [assemblies](assemblies.md) while it plays, and take entities away:
+Game code can make copies of [prefabs](prefabs.md) while it plays, and take entities away:
 
 ```lust
 fetch "solis/world":World;
-fetch "solis/project":Assembly;
+fetch "solis/project":Prefab;
 
 component Hangar {
     has {
@@ -429,7 +429,7 @@ component Hangar {
 
     method update(float dt) {
         is made < 10? then {
-            entity ship = World:spawn(Assembly.Ships.Fighter, [made * 5, 0, 10]);
+            entity ship = World:spawn(Prefab.Ships.Fighter, [made * 5, 0, 10]);
             made = made + 1;
         }
     }
@@ -450,7 +450,7 @@ pub struct Hangar {
 impl RustComponent for Hangar {
     fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
         if self.made < 10 {
-            // The assembly by its file in assets, without .solassembly.
+            // The prefab by its file in the project, without .prefab.lst.
             let place = Vec3::new(self.made as f32 * 5.0, 0.0, 10.0);
             let _ship = cx.host().spawn("ships/fighter", place);
             self.made += 1;
@@ -468,18 +468,18 @@ local Hangar = component("Hangar", {
 
 function Hangar:update(dt)
     if self.made < 10 then
-        -- The assembly's name as text: Assembly.Ships.Fighter is "Ships.Fighter".
+        -- The prefab's name as text: Prefab.Ships.Fighter is "Ships.Fighter".
         local ship = solis.World:spawn("Ships.Fighter", vec3(self.made * 5, 0, 10))
         self.made = self.made + 1
     end
 end
 ```
 
-- **Which assembly:** one of the project's, named from its file with folders as options inside options: `ships/fighter.solassembly` is `Assembly.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove an assembly, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Assembly.None` is there when the project has none, and makes nothing.
+- **Which prefab:** one of the project's, named from its file with folders as options inside options: `ships/fighter.prefab.lst` is `Prefab.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove a prefab, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Prefab.None` is there when the project has none, and makes nothing.
 - **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Level panel while playing, and are gone when you press **Stop**, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours ([Play mode](play-mode.md)), so a change you make to one of these copies goes with it.
 - At most 10,000 copies are made in one tick, and a level holds at most a million entities; past that, the Console says so and the rest aren't made.
-- **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places an assembly (…) that isn't in the project, so nothing was made.* The reasons are those of [assemblies](assemblies.md) themselves: the assembly places another whose file is missing or can't be read, assemblies place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each assembly's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the assembly and press Play again.
+- **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places a prefab (…) that isn't in the project, so nothing was made.* The reasons are those of [prefabs](prefabs.md) themselves: the prefab places another whose file is missing or can't be read, prefabs place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each prefab's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the prefab and press Play again.
 - `despawn()` is how a component takes its own entity away, and `target:despawn()` takes another. It ends at the end of the tick.
 
 ## Random numbers
@@ -796,7 +796,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `float World:time()` | How long the game has been running, in seconds. |
 | `solis/world` | `entity World:find(string name)` | The first entity with this name, in the Level panel's order, or `nothing`. |
 | `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
-| `solis/world` | `entity World:spawn(Assembly which, vec3 place)` | Makes a copy of one of the project's assemblies at a place (see Making and removing entities, below). |
+| `solis/world` | `entity World:spawn(Prefab which, vec3 place)` | Makes a copy of one of the project's prefabs at a place (see Making and removing entities, below). |
 | `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
 | `solis/world` | `float World:random()` | A random number from 0 up to 1 (see Random numbers, above). |
 | `solis/world` | `float World:randomRange(float low, float high)` | A random number from low up to high. |
@@ -812,7 +812,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |
-| `solis/project` | `state Assembly` | The project's assemblies, folders as options inside options (`Assembly.Ships.Fighter`). |
+| `solis/project` | `state Prefab` | The project's prefabs, folders as options inside options (`Prefab.Ships.Fighter`). |
 | `solis/sound` | `Audio:play(Sound event)` | Plays a sound event the same everywhere (see Sounds, above). |
 | `solis/sound` | `Audio:playAt(Sound event, vec3 place)` | Plays a sound event at a place in the world. |
 | `solis/sound` | `Audio:setVolume(Bus bus, float volume)` | Sets a bus's volume for the rest of the play, 0 to 1. |
@@ -865,7 +865,8 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `rotationOf(e)`, `turnTo(e, r)`, `nameOf(e)`, `despawn(e)` | `e:rotation()`, `e:turnTo(r)`, `e:name()`, `e:despawn()` |
 | `turnTo(this, facingAlong(d))` | `face(d)` |
 | `say`, `time`, `frameTime`, `find`, `fire`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
-| `spawn("ships/fighter", p)` | `World:spawn(Assembly.Ships.Fighter, p)` |
+| `spawn("ships/fighter", p)` | `World:spawn(Prefab.Ships.Fighter, p)` |
+| `Assembly.Ships.Fighter`, `fetch "solis/project":Assembly;` (assemblies are called prefabs, [decision 0118](../decisions/0118-the-editor-rethink.md)) | `Prefab.Ships.Fighter`, `fetch "solis/project":Prefab;`. The old name is a mistake that says the new one. Rust and Lua name a prefab by its path as text, which didn't change. |
 | `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
 | `held("Jump")`, `pressed`, `released`, `axis("Move")` | `Input:held(Action.Jump)` and so on, with `fetch "solis/input":Input;` and `fetch "solis/project":Action;` |
 | `bindingOf("Jump")`, `rebind("Jump", key)` | `Input:binding(Action.Jump)`, `Input:rebind(Action.Jump, key)` |

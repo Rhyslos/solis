@@ -23,7 +23,7 @@ The ceiling run measures for two seconds after each step settles, so it takes a 
 
 ## What's in it
 Everything is ordinary Solis, so you can read and change it:
-- **`ships/fighter.glb`**: a ship model Solis made (about 2,000 triangles, with [levels of detail](levels-of-detail.md)), and **`ships/fighter.solassembly`**, an [assembly](assemblies.md) of it with the `Ship` component.
+- **`ships/fighter.glb`**: a ship model Solis made (about 2,000 triangles, with [levels of detail](levels-of-detail.md)), and **`ships/fighter.solassembly`**, an [prefab](prefabs.md) of it with the `Ship` component.
 - **`main.lst`**: the [game code](game-code.md). `Ship` flies its loop and fires a laser six times a second; `Fleets` makes the ships with `World:spawn`; `Ceiling` is the ceiling run, reading `frameTime()`.
 - The three levels: the sun and sky, a camera, and one entity whose component makes the fleets. Change **Ships** on it in Properties to try your own number.
 

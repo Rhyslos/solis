@@ -198,8 +198,8 @@ icons! {
             "M3 9h3a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1z",
             "M10 9h3a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1z",
         ];
-    /// Three blocks: an assembly; Scatter.
-    Assembly = "assembly", Line,
+    /// Three blocks: a prefab; Scatter.
+    Prefab = "prefab", Line,
         lines: [
             "M3 2h3a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1z",
             "M10 2h3a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1z",
@@ -324,6 +324,14 @@ icons! {
     /// An arrow turning back: Home › Edit › Undo.
     Undo = "undo", Line,
         lines: ["M5.5 3.5l-3 3 3 3", "M2.5 6.5H10a3.5 3.5 0 010 7H6.5"];
+    /// Two links of a chain: a placed copy, linked to its prefab (board
+    /// 07).
+    Link = "link", Line,
+        lines: [
+            "M6.5 9.5l3-3",
+            "M7 4.5l1.5-1.5a2.5 2.5 0 013.5 3.5L10.5 8",
+            "M9 11.5L7.5 13a2.5 2.5 0 01-3.5-3.5L5.5 8",
+        ];
     /// An arrow turning forward: Home › Edit › Redo.
     Redo = "redo", Line,
         lines: ["M10.5 3.5l3 3-3 3", "M13.5 6.5H6a3.5 3.5 0 000 7h3.5"];

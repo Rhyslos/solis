@@ -80,7 +80,7 @@ fn row_kind_of(id: UnbuiltId) -> Option<RowKind> {
 /// The icon an unbuilt part of the sheet is drawn with.
 fn icon_of(id: UnbuiltId) -> Icon {
     match id {
-        UnbuiltId::PlacePaintScatter => Icon::Assembly,
+        UnbuiltId::PlacePaintScatter => Icon::Prefab,
         UnbuiltId::HomeLightingBake => Icon::Sun,
         UnbuiltId::ShellPlaySimulate => Icon::Simulate,
         UnbuiltId::HomeToolPose => Icon::PoseBones,

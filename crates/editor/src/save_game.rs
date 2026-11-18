@@ -202,7 +202,7 @@ pub(crate) struct Save {
     pub(crate) time: f64,
     /// The random seed.
     pub(crate) seed: u64,
-    /// The level as the editor had it (copies of assemblies kept as plain
+    /// The level as the editor had it (copies of prefabs kept as plain
     /// entities): where the game moved things is in `places`, as the
     /// running game keeps them apart.
     pub(crate) level: String,
@@ -426,7 +426,7 @@ impl Workbench {
                 {
                     data.set(&animator);
                 }
-                // Every entity whole: a copy of an assembly (placed, or
+                // Every entity whole: a copy of a prefab (placed, or
                 // spawned by game code) is kept as the entities it is
                 // now, not as "a copy of" (which loses what's on its root,
                 // and can't be read back on its own). Found by the

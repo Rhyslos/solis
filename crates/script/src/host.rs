@@ -45,11 +45,11 @@ pub trait Host {
     fn fire(&mut self, shot: Shot) {
         let _ = shot;
     }
-    /// Makes a copy of the assembly named `assembly` (its file in the
+    /// Makes a copy of the prefab named `prefab` (its file in the
     /// project's assets) at `place`, and gives back its entity, which is
     /// in the game from the next tick; `None` when it can't be made.
-    fn spawn(&mut self, assembly: &str, place: Vec3) -> Option<EntityId> {
-        let _ = (assembly, place);
+    fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId> {
+        let _ = (prefab, place);
         None
     }
     /// Takes an entity (and everything under it) out of the game, at the

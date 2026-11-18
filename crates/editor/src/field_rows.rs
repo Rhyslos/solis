@@ -14,10 +14,11 @@ use egui::{Response, RichText, Ui};
 use reflect::{AssetId, ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
 use std::collections::BTreeMap;
 
-/// A row whose name is bold when `changed` (a placed assembly's copy that
-/// differs from the assembly), with a dot before it when `moved` (its
-/// value isn't the standard one, decision 0085). Returns what `add`
-/// returned and the name's response (a drag on it changes a number).
+/// A row with an orange dot before its name when `changed` (a placed
+/// copy's own setting, differing from its prefab's, board 07), or an
+/// accent one when `moved` (its value isn't the standard one, decision
+/// 0085). Returns what `add` returned and the name's response (a drag on
+/// it changes a number).
 pub(crate) fn row_marked<R>(
     ui: &mut Ui,
     (label, help): (&str, &str),
@@ -25,16 +26,9 @@ pub(crate) fn row_marked<R>(
     add: impl FnOnce(&mut Ui) -> R,
 ) -> (R, Response) {
     ui.horizontal(|ui| {
-        let text = if changed {
-            RichText::new(label)
-                .font(text::row())
-                .strong()
-                .color(tokens::text_primary())
-        } else {
-            RichText::new(label)
-                .font(text::row())
-                .color(tokens::text_label())
-        };
+        let text = RichText::new(label)
+            .font(text::row())
+            .color(tokens::text_label());
         let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
         // The changed-from-its-start dot goes before the name, as the
         // design's settings mark it.
@@ -58,7 +52,10 @@ pub(crate) fn row_marked<R>(
             )
             .inner;
         ui.spacing_mut().item_spacing.x = spacing;
-        if moved {
+        if changed {
+            ui.painter()
+                .circle_filled(dot.center(), size::FIELD_DOT / 2.0, tokens::WARNING);
+        } else if moved {
             ui.painter().circle_filled(
                 dot.center(),
                 size::FIELD_DOT / 2.0,
@@ -114,12 +111,13 @@ fn scrubbed(name: &Response, field: &FieldInfo, value: &Value) -> Option<Value> 
     (&new != value).then_some(new)
 }
 
-/// What a row's marks say: whether it differs from its assembly, whether
+/// What a row's marks say: whether it differs from its prefab, whether
 /// it isn't its standard value, and its value from before Play if the
 /// user changed it since.
 #[derive(Clone, Copy)]
 struct Marks<'a> {
-    changed: bool,
+    /// The prefab's value, when this copy's differs from it.
+    changed: Option<&'a Value>,
     moved: bool,
     played: Option<&'a Value>,
 }
@@ -136,8 +134,9 @@ struct After {
 
 /// Draws every field of `schema` with its value in `data`, and returns what
 /// the user did. Fields `data` doesn't have show their starting value. With
-/// `assembly` (the component as the entity's assembly has it), fields that
-/// differ are bold, with Revert and Apply buttons. `yours` are the fields
+/// `prefab` (the component as the entity's prefab has it), fields that
+/// differ have an orange dot, ↶ with the prefab's value faint after it
+/// (back to it), and ↑ (make this the prefab's, for every copy). `yours` are the fields
 /// the user changed while playing, with their values from before Play.
 /// `others` are the same component on the other selected entities: values
 /// that differ show as "—". `users` says how many entities use each file
@@ -146,7 +145,7 @@ pub(crate) fn fields(
     ui: &mut Ui,
     schema: &ComponentSchema,
     data: &ComponentData,
-    (assembly, yours): (Option<&ComponentData>, &BTreeMap<&str, Option<&Value>>),
+    (prefab, yours): (Option<&ComponentData>, &BTreeMap<&str, Option<&Value>>),
     others: &[&ComponentData],
     (models, sheets): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets),
     (level, users): (&level::Level, &crate::document::AssetUsers),
@@ -155,16 +154,16 @@ pub(crate) fn fields(
     for field in &schema.fields {
         let value = data.get(&field.name).unwrap_or(&field.default);
         let mixed = Mixed::of(field, value, others);
-        let changed =
-            assembly.is_some_and(|a| a.get(&field.name).unwrap_or(&field.default) != value);
+        let prefab_value = prefab.map(|a| a.get(&field.name).unwrap_or(&field.default));
+        let changed = prefab_value.filter(|was| *was != value);
         let played = yours
             .get(field.name.as_str())
             .map(|was| was.unwrap_or(&field.default))
             .filter(|was| *was != value);
         // Not its standard value: a dot, and a way back (decision 0085).
-        // An assembly's copy shows how it differs from the assembly
+        // A prefab's copy shows how it differs from the prefab
         // instead, and a change while playing its value from before.
-        let moved = !changed && !mixed.whole && moved_from_default(field, value);
+        let moved = changed.is_none() && !mixed.whole && moved_from_default(field, value);
         let marks = Marks {
             changed,
             moved: moved && played.is_none(),
@@ -176,7 +175,7 @@ pub(crate) fn fields(
             let ((set, after), name) = row_marked(
                 ui,
                 (&field.label, field.hint.help),
-                (changed, moved, scrub),
+                (changed.is_some(), moved, scrub),
                 |ui| {
                     let set = field_and_marks(ui, marks, |ui| {
                         field_widget(ui, field, value, (models, sheets, data), level, mixed)
@@ -219,7 +218,7 @@ pub(crate) fn fields(
 /// The field itself, filling the card less room for what follows it, with
 /// the accent border kept round it while it differs from before Play.
 fn field_and_marks<R>(ui: &mut Ui, marks: Marks<'_>, draw: impl FnOnce(&mut Ui) -> R) -> R {
-    let after = if marks.moved || marks.changed || marks.played.is_some() {
+    let after = if marks.moved || marks.changed.is_some() || marks.played.is_some() {
         size::FIELD_AFTER_W
     } else {
         0.0
@@ -242,8 +241,11 @@ fn field_and_marks<R>(ui: &mut Ui, marks: Marks<'_>, draw: impl FnOnce(&mut Ui) 
     drawn.inner
 }
 
+/// The most characters of the prefab's value shown after ↶.
+const SHOWN_AFTER: usize = 6;
+
 /// The small buttons after a field: back to the value from before Play,
-/// back to the standard value, or an assembly copy's Revert and Apply.
+/// back to the standard value, or a prefab copy's Revert and Apply.
 fn after_field(ui: &mut Ui, field: &FieldInfo, marks: Marks<'_>) -> After {
     let small = |ui: &mut Ui, words: String, hover: &str, name: String| {
         let button = ui
@@ -282,17 +284,28 @@ fn after_field(ui: &mut Ui, field: &FieldInfo, marks: Marks<'_>) -> After {
         }
         return after;
     }
-    if marks.changed {
+    if let Some(was) = marks.changed {
+        // The prefab's value faint after ↶ where it's short (a number);
+        // a longer one (three numbers) is said on hover, so the row keeps
+        // its room.
+        let value = short(was);
+        let words = if value.chars().count() <= SHOWN_AFTER {
+            format!("\u{21b6} {value}")
+        } else {
+            "\u{21b6}".to_string()
+        };
         after.revert = small(
             ui,
-            "↺".into(),
-            "Back to the assembly's value",
+            words,
+            &format!(
+                "Back to the prefab's value ({value}): this copy follows the prefab here again"
+            ),
             format!("Revert {}", field.label),
         );
         after.apply = small(
             ui,
             "↑".into(),
-            "Make this the assembly's value, for every copy",
+            "Make this the prefab's value, for every copy",
             format!("Apply {}", field.label),
         );
     }

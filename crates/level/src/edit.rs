@@ -2,7 +2,7 @@
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 //! Every change the editor makes is one of these. Applying an edit gives
 //! back its inverse, which is how undo works; the same edits will describe
-//! changes in the Git panel and in assembly overrides.
+//! changes in the Git panel and in prefab overrides.
 
 use crate::document::{EntityData, Level, Origin};
 use reflect::{ComponentData, EntityId, Value};
@@ -58,7 +58,7 @@ pub enum Edit {
         /// Its new name.
         name: String,
     },
-    /// Links an entity to the assembly it comes from, or unlinks it
+    /// Links an entity to the prefab it comes from, or unlinks it
     /// (Unpack).
     SetOrigin {
         /// The entity.
@@ -383,7 +383,7 @@ mod tests {
             Edit::SetOrigin {
                 entity: b,
                 origin: Some(Origin {
-                    assembly: reflect::AssetId::random(),
+                    prefab: reflect::AssetId::random(),
                     instance: a,
                     path: vec![b],
                 }),
