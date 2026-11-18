@@ -32,6 +32,7 @@ fn every_planned_crate_exists() {
             "asset_db",
             "assets",
             "editor",
+            "ground",
             "input",
             "level",
             "mesh",

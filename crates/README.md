@@ -17,6 +17,7 @@ The engine and editor's code, split into small crates (Rust packages), one job e
 | [`sound`](sound/README.md) | 1 Engine | Reads WAV and Ogg Vorbis files and plays sound. |
 | [`animation`](animation/README.md) | 1 Engine | Clips of frames played by time with their events, and sprites' clips files. |
 | [`tiles`](tiles/README.md) | 1 Engine | Tilesets' terrains and tile maps: layers of terrain codes and values per cell, in chunks, and their files. |
+| [`ground`](ground/README.md) | 1 Engine | The ground: voxel chunks with caves and overhangs, the Smooth look's mesher, its settings and region files, and its questions (height, kind, a ray). |
 | [`ui`](ui/README.md) | 1 Engine | Game UI: screens as trees of elements pinned by anchors, laid out on any screen by a scale rule into shapes to draw. |
 | [`level`](level/README.md) | 0 Core | The level document the editor edits, its undo, its text files, and the built-in components. |
 | [`mesh`](mesh/README.md) | 0 Core | Polygon meshes for brushes: points and n-sided faces by stable id, how they connect, extrude and inset, cutting into triangles, and the brushes' shapes. |

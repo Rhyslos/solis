@@ -237,6 +237,7 @@ dependencies = [
  "eframe",
  "gilrs",
  "glam 0.33.12",
+ "ground",
  "image",
  "input",
  "level",
@@ -1088,6 +1089,7 @@ dependencies = [
  "egui",
  "egui_kittest",
  "glam 0.33.12",
+ "ground",
  "input",
  "level",
  "mesh",
@@ -1844,6 +1846,16 @@ dependencies = [
  "presser",
  "thiserror 2.0.21",
  "windows",
+]
+
+[[package]]
+name = "ground"
+version = "0.0.1"
+dependencies = [
+ "flate2",
+ "glam 0.33.12",
+ "level",
+ "reflect",
 ]
 
 [[package]]
@@ -4141,6 +4153,7 @@ version = "0.0.1"
 dependencies = [
  "animation",
  "glam 0.33.12",
+ "ground",
  "input",
  "level",
  "lust",
@@ -5814,6 +5827,7 @@ version = "0.0.1"
 dependencies = [
  "animation",
  "glam 0.33.12",
+ "ground",
  "hecs",
  "level",
  "mesh",

@@ -31,6 +31,7 @@ animation = { path = "crates/animation" }
 tiles = { path = "crates/tiles" }
 ui = { path = "crates/ui" }
 mesh = { path = "crates/mesh" }
+ground = { path = "crates/ground" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
