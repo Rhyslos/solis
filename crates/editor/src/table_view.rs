@@ -467,6 +467,7 @@ fn name_icon(kind: reflect::NameKind) -> crate::icons::Icon {
         reflect::NameKind::Screen => Icon::Screen,
         reflect::NameKind::Level => Icon::LevelFile,
         reflect::NameKind::Tag => Icon::Key,
+        reflect::NameKind::Font => Icon::Text,
     }
 }
 
