@@ -167,9 +167,7 @@ impl Filling {
             self.pen -= self.advances.pop().unwrap_or(0.0);
         }
         let ink_end = self.spaces.iter().rposition(|s| !s);
-        self.ink = ink_end.map_or(0.0, |i| {
-            self.advances[..=i].iter().sum::<f32>()
-        });
+        self.ink = ink_end.map_or(0.0, |i| self.advances[..=i].iter().sum::<f32>());
     }
 
     fn is_empty(&self) -> bool {
@@ -196,7 +194,9 @@ fn follows(c: char) -> bool {
 }
 
 /// The characters a line may end with that start a new one.
-const LINE_ENDS: &[char] = &['\n', '\r', '\u{0B}', '\u{0C}', '\u{85}', '\u{2028}', '\u{2029}'];
+const LINE_ENDS: &[char] = &[
+    '\n', '\r', '\u{0B}', '\u{0C}', '\u{85}', '\u{2028}', '\u{2029}',
+];
 
 /// The line being filled: the last one.
 fn filling(lines: &mut Vec<Filling>) -> &mut Filling {
@@ -219,15 +219,15 @@ impl Builder<'_> {
         let sized = self.slots[primary].font.at(size);
         let natural = sized.line();
         let height = finite_or(self.style.line_height, 1.0);
-        let height = if height > 0.0 { height.clamp(0.25, 8.0) } else { 1.0 };
+        let height = if height > 0.0 {
+            height.clamp(0.25, 8.0)
+        } else {
+            1.0
+        };
         let advance = natural * height;
         let first = sized.ascent() + (advance - natural) * 0.5;
         let spacing = finite_or(self.style.letter_spacing, 0.0).clamp(-size, size * 4.0);
-        let width = self
-            .fit
-            .width
-            .filter(|w| w.is_finite())
-            .map(|w| w.max(0.0));
+        let width = self.fit.width.filter(|w| w.is_finite()).map(|w| w.max(0.0));
         let wrap = self.fit.wrap && width.is_some();
         let limit = width.map_or(f32::INFINITY, |w| w + EASE);
 
@@ -407,9 +407,7 @@ impl Builder<'_> {
         };
         self.shape_run(words, 0, font, size, spacing, &mut dots);
         let wide: f32 = dots.iter().map(|p| p.advance).sum();
-        while !line.is_empty()
-            && (line.spaces.last() == Some(&true) || line.ink + wide > limit)
-        {
+        while !line.is_empty() && (line.spaces.last() == Some(&true) || line.ink + wide > limit) {
             line.pop_cluster();
         }
         line.pen = line.ink;

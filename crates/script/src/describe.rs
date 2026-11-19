@@ -1226,8 +1226,8 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
-    "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer", "Level",
-    "Font",
+    "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer",
+    "Level", "Font",
 ];
 
 /// What the first line of each file describing the engine says after who made it.

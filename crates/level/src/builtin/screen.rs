@@ -230,7 +230,10 @@ impl Component for Screen {
         data.set("outlineColor", Value::floats(&self.outline_color));
         data.set("pixelSize", Value::Int(self.pixel_size));
         data.set("lineHeight", Value::Int(self.line_height));
-        data.set("letterSpacing", Value::Float(f64::from(self.letter_spacing)));
+        data.set(
+            "letterSpacing",
+            Value::Float(f64::from(self.letter_spacing)),
+        );
         data
     }
 

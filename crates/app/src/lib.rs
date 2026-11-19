@@ -14,8 +14,8 @@ pub mod cli;
 mod external;
 #[cfg(test)]
 mod fixtures_tests;
-pub mod game_audio;
 mod font_reads;
+pub mod game_audio;
 pub mod game_code;
 pub mod gamepad;
 pub mod gpu;

@@ -69,11 +69,19 @@ fn fonts_named_by_screens_are_read_and_put_on_them_with_their_fallbacks() {
     let problems = w.font_problems();
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert_eq!(
-        (problems[0].file.as_str(), problems[0].line, problems[0].column),
+        (
+            problems[0].file.as_str(),
+            problems[0].line,
+            problems[0].column
+        ),
         ("ui/shop.lst", 2, 17),
         "at the name, inside the list"
     );
-    assert!(problems[0].message.contains("couldn't be read"), "{}", problems[0]);
+    assert!(
+        problems[0].message.contains("couldn't be read"),
+        "{}",
+        problems[0]
+    );
     assert_eq!(w.all_code_problems().len(), 1, "listed in Problems");
 }
 
@@ -134,5 +142,8 @@ fn font_names_seen_as_screens_run_are_found_in_their_views() {
     };
     let mut seen = std::collections::BTreeSet::new();
     crate::screen_fonts::names_in(&view, &mut seen);
-    assert_eq!(seen.into_iter().collect::<Vec<_>>(), ["a.ttf", "b.otf", "c.ttf"]);
+    assert_eq!(
+        seen.into_iter().collect::<Vec<_>>(),
+        ["a.ttf", "b.otf", "c.ttf"]
+    );
 }

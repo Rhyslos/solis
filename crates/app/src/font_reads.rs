@@ -52,7 +52,10 @@ pub(crate) fn read_font(path: &Path) -> Result<Vec<u8>, String> {
     let limit = ui::text::MAX_FONT_BYTES as u64;
     asset_db::read_limited(path, limit).map_err(|e| {
         if e.kind() == std::io::ErrorKind::FileTooLarge {
-            format!("it's bigger than {} MB, the most a font may be", limit >> 20)
+            format!(
+                "it's bigger than {} MB, the most a font may be",
+                limit >> 20
+            )
         } else {
             format!("it couldn't be read ({e})")
         }

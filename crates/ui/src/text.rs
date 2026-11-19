@@ -353,7 +353,8 @@ impl Fonts {
             .iter()
             .filter_map(|name| {
                 let name = name.trim().replace('\\', "/");
-                (self.own..self.fonts.len()).find(|&i| self.fonts[i].name.eq_ignore_ascii_case(&name))
+                (self.own..self.fonts.len())
+                    .find(|&i| self.fonts[i].name.eq_ignore_ascii_case(&name))
             })
             .collect();
         if self.own > 0 {
@@ -464,7 +465,11 @@ impl Fonts {
         scale: f32,
         crisp: Option<f32>,
     ) -> Vec<Placed> {
-        let scale = if scale.is_finite() { scale.clamp(0.0, 1.0e4) } else { 0.0 };
+        let scale = if scale.is_finite() {
+            scale.clamp(0.0, 1.0e4)
+        } else {
+            0.0
+        };
         let k = paragraph.text_size * scale / SDF_SIZE;
         let mut out = Vec::with_capacity(paragraph.letters());
         for line in &paragraph.lines {

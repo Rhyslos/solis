@@ -205,7 +205,8 @@ pub fn layout_with(
             None => &mut none,
         };
         let mut measure = crate::view::WithPictures { text, pictures };
-        let (elements, _) = crate::view::lay_out_with(view, design, &mut measure, view_looks(screen));
+        let (elements, _) =
+            crate::view::lay_out_with(view, design, &mut measure, view_looks(screen));
         for e in &elements {
             walking.walk(e, whole, 1.0, 0, UNCLIPPED);
         }

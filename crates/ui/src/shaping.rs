@@ -56,12 +56,7 @@ impl std::fmt::Debug for Shaping {
 impl Shaping {
     /// Ready to shape with the font in `bytes`.
     pub(crate) fn new(bytes: &[u8]) -> Self {
-        let data = caught(|| {
-            FontRef::new(bytes)
-                .ok()
-                .map(|font| ShaperData::new(&font))
-        })
-        .flatten();
+        let data = caught(|| FontRef::new(bytes).ok().map(|font| ShaperData::new(&font))).flatten();
         Self {
             data,
             plans: HashMap::new(),

@@ -273,7 +273,10 @@ fn text_wraps_at_the_room_it_has_and_bold_picks_the_second_font() {
     else {
         panic!("text");
     };
-    assert_eq!(text, "ab cd ef", "the words as written: they wrap as they're drawn");
+    assert_eq!(
+        text, "ab cd ef",
+        "the words as written: they wrap as they're drawn"
+    );
     assert_eq!(fixed_lines(text, fit), ["ab cd", "ef"]);
     assert_eq!(
         *fit,
