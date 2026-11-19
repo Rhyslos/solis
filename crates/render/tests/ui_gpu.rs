@@ -315,9 +315,9 @@ fn text_is_drawn_from_the_letters_atlas_in_its_colour() {
             "big",
             ui::ElementKind::Text {
                 text: "H".into(),
-                size: 80.0,
-                font: 1,
+                style: ui::TextStyle::new(80.0, 1),
                 align: ui::Edge::Start,
+                fit: ui::Fit::default(),
             },
         )
         .at(
@@ -356,9 +356,9 @@ fn each_set_of_fonts_draws_from_its_own_atlas() {
                 "word",
                 ui::ElementKind::Text {
                     text: text.into(),
-                    size: 80.0,
-                    font: 0,
+                    style: ui::TextStyle::new(80.0, 0),
                     align: ui::Edge::Start,
+                    fit: ui::Fit::default(),
                 },
             )
             .at(
@@ -669,6 +669,7 @@ fn a_hollow_shape_s_glow_and_outline_stay_outside_it() {
         outline: 3.0,
         outline_colour: ui::Colour::rgb(255, 0, 0),
         pixel: 1.0,
+        ..ui::ScreenLook::default()
     };
     let shapes = ui::layout(&screen, [100, 100], None);
     let Some(pixels) = draw([100, 100], &shapes) else {

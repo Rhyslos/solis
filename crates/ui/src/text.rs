@@ -117,7 +117,7 @@ struct Kept {
 #[derive(Debug, Clone)]
 pub struct Fonts {
     /// The game's own fonts first, then the project's.
-    fonts: Vec<Slot>,
+    pub(crate) fonts: Vec<Slot>,
     /// How many of [`Self::fonts`] are the game's own.
     own: usize,
     /// The revision of the project's fonts in use.

@@ -417,3 +417,7 @@ impl Builder<'_> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "paragraph_tests.rs"]
+mod tests;
