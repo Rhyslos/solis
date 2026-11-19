@@ -60,6 +60,12 @@ pub(crate) fn compile(
 ) -> Result<(Function, Table), Failure> {
     let failed = |err: mlua::Error| start_failure(chunk, &err);
     let env = luau.env().map_err(failed)?;
+    // Lust's runtime finds the component running now here (stage 1,
+    // states).
+    if let Some(running) = luau.lua.app_data_ref::<crate::states::Running>() {
+        env.raw_set(crate::states::GLOBAL, &running.table)
+            .map_err(failed)?;
+    }
     let load = match bytecode {
         Some(bytes) => luau
             .lua
@@ -110,7 +116,7 @@ pub(crate) fn prepare(
     let ((fields, schemas, methods), events, objects) =
         call_with(luau, Some(&env), host, discard, || {
             Ok((
-                read_components(&api)?,
+                read_components(&luau.lua, &api)?,
                 read_events(&api)?,
                 crate::objects::Objects::read(luau, &api)?,
             ))
@@ -149,7 +155,7 @@ type Components = (
 
 /// Each component's fields, its schema for the editor (starting values
 /// from a new one), and its methods.
-fn read_components(api: &Table) -> mlua::Result<Components> {
+fn read_components(lua: &mlua::Lua, api: &Table) -> mlua::Result<Components> {
     let components: Table = api.get("components")?;
     let new: mlua::Function = api.get("new")?;
     let mut fields = BTreeMap::new();
@@ -169,17 +175,32 @@ fn read_components(api: &Table) -> mlua::Result<Components> {
         let schema: Table = class.get("__schema")?;
         // Fields the engine fills in (an animator's class): kind "object".
         let mut filled = Vec::new();
+        let mut kinds: Vec<(String, String)> = Vec::new();
         for entry in schema.sequence_values::<Table>() {
             let entry = entry?;
-            if entry.get::<String>(3)? == "object" {
-                filled.push((entry.get::<String>(1)?, entry.get::<String>(4)?));
+            let (key, kind) = (entry.get::<String>(1)?, entry.get::<String>(3)?);
+            if kind == "object" {
+                filled.push((key.clone(), entry.get::<String>(4)?));
             }
+            kinds.push((key, kind));
         }
+        // A component with a state of its own runs noted as the one
+        // running, so what it starts finds its option (stage 1, states).
+        let own_state =
+            crate::states::has_own_state(kinds.iter().map(|(k, d)| (k.as_str(), d.as_str())));
+        let (update, handle) = (method("update")?, method("handle")?);
+        let (update, handle) = match lua.app_data_ref::<crate::states::Running>() {
+            Some(running) if own_state => (
+                update.map(|f| running.update.call(f)).transpose()?,
+                handle.map(|f| running.handle.call(f)).transpose()?,
+            ),
+            _ => (update, handle),
+        };
         methods.insert(
             name.clone(),
             Methods {
-                update: method("update")?,
-                handle: method("handle")?,
+                update,
+                handle,
                 filled,
             },
         );

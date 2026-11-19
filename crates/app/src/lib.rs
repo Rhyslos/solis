@@ -22,6 +22,7 @@ pub mod import;
 pub mod known_projects;
 pub mod level_file;
 pub mod logger;
+mod loop_owners;
 mod older_files;
 pub mod play_files;
 pub mod playground;

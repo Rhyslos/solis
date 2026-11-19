@@ -893,6 +893,13 @@ pub const NATIVES: &[Native] = &[
         about: "The seconds of game time left before one of this component's timers finishes, as the tick started; 0 when it isn't running.",
     },
     Native {
+        file: "states",
+        name: "keepStarted",
+        owner: "entity",
+        lust: "method entity:keepStarted() native;",
+        about: "What this component has started in its own state so far (its timers, tweens and looping sounds) carries on when the state changes, instead of ending with it. Called bare, inside a component.",
+    },
+    Native {
         file: "entity",
         name: "position",
         owner: "entity",
@@ -1256,7 +1263,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 20);
+        assert_eq!(files.len(), 21);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
@@ -1441,7 +1448,8 @@ mod tests {
                     "screens",
                     "window",
                     "zones",
-                    "timers"
+                    "timers",
+                    "states"
                 ]
                 .contains(&native.file)
             );

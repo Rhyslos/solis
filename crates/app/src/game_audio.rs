@@ -87,6 +87,9 @@ pub struct GameAudio {
     /// Loops whose AudioSource changed its event this frame, to start
     /// again with the new one.
     changed_loops: Vec<u64>,
+    /// What game code's loops belong to (stage 1, states): the options of
+    /// components' own states they stop with.
+    owners: crate::loop_owners::LoopOwners,
 }
 
 /// One sound that wants to play this frame, worked out: what to play,
@@ -102,6 +105,9 @@ struct Wanted<'a> {
     extra_db: f32,
     /// The entity it belongs to, whether or not it's placed.
     on: Option<u64>,
+    /// The option of a state it stops with, by its number
+    /// ([`crate::loop_owners::LoopOwners`]).
+    owner: Option<u64>,
 }
 
 impl GameAudio {
@@ -160,7 +166,8 @@ impl GameAudio {
         let mut notes = Vec::new();
         let mut plays: Vec<(GameSound, String, script::SoundAt, Option<EntityId>)> = Vec::new();
         // In the order asked for: a stop also stops what was asked to
-        // play on that entity earlier this frame.
+        // play on that entity earlier this frame, and a state left the
+        // loops asked for in it.
         for request in fresh(requests) {
             match request.request {
                 Request::StopOn(which) => {
@@ -169,6 +176,14 @@ impl GameAudio {
                         |(_, _, at, _)| !matches!(at, script::SoundAt::On(e) if *e == which),
                     );
                 }
+                Request::StateLeft(ref change) => {
+                    let ended = self.owners.left(change);
+                    for owner in &ended {
+                        device.stop_game_loops_of(*owner);
+                    }
+                    plays.retain(|(asked, ..)| !ended_loop(asked, change, sounds));
+                }
+                Request::Keep(which, ref component) => self.owners.keep(which, component),
                 Request::BusVolume(ref bus, share) => {
                     // Only a bus the project has: game code naming made-up
                     // buses every tick can't grow this without end (the
@@ -186,7 +201,7 @@ impl GameAudio {
                         self.shares.insert(mixer.buses[i].name.clone(), share);
                     }
                 }
-                Request::Play(ref name, at, caller) => {
+                Request::Play(ref name, at, caller, _) => {
                     let name = name.clone();
                     plays.push((request, name, at, caller));
                 }
@@ -253,6 +268,7 @@ impl GameAudio {
                 start_s,
                 extra_db: w.extra_db,
                 on: w.on,
+                owner: w.owner,
             };
             let result = match w.key {
                 Key::Loop(entity) if real.contains(&entity) => continue,
@@ -324,6 +340,7 @@ impl GameAudio {
         self.shares.clear();
         self.loops.clear();
         self.changed_loops.clear();
+        self.owners.clear();
         self.clock = 0.0;
     }
 
@@ -447,6 +464,10 @@ impl GameAudio {
                     script::SoundAt::On(which) => Some(which.0.raw()),
                     _ => None,
                 },
+                owner: match &request.request {
+                    Request::Play(_, _, _, Some(started)) => Some(self.owners.number(started)),
+                    _ => None,
+                },
             });
         }
     }
@@ -547,6 +568,7 @@ impl GameAudio {
                 loudness_db: loudness(&placement, pick.volume_db, hearing),
                 extra_db: 0.0,
                 on: Some(entity),
+                owner: None,
             });
         }
     }
@@ -574,6 +596,24 @@ impl GameAudio {
         let peaks = device.take_bus_meters();
         workbench.set_bus_meters(&peaks, &ducked, dt, ctx);
     }
+}
+
+/// Whether `asked` is a loop game code asked for this frame in an option
+/// of a component's own state that `change` left: it never starts.
+fn ended_loop(
+    asked: &GameSound,
+    change: &script::StateChange,
+    sounds: &crate::sounds::Sounds,
+) -> bool {
+    let Request::Play(name, _, _, Some(started)) = &asked.request else {
+        return false;
+    };
+    started.entity == change.entity
+        && started.component == change.component
+        && !script::still_in(&change.to, &started.option)
+        && sounds
+            .event_named(name)
+            .is_some_and(|(_, event)| event.looping)
 }
 
 /// The reverbs heard from `hearing` among `zones` (each with where it's
@@ -720,7 +760,7 @@ mod tests {
             tick,
             order: 0,
             seed: 1,
-            request: Request::Play("step".into(), script::SoundAt::Nowhere, None),
+            request: Request::Play("step".into(), script::SoundAt::Nowhere, None, None),
         }
     }
 

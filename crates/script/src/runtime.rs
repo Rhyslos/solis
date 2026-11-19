@@ -430,6 +430,11 @@ impl Runtime {
         all
     }
 
+    /// The events the Lust declares, and what each carries.
+    pub(crate) fn lust_events(&self) -> Option<&crate::events::EventKinds> {
+        self.lust.as_ref().map(|p| &*p.events)
+    }
+
     /// Whether there's a component called `name` to run: a Rust one, or
     /// the Lust's or a Lua one not left out.
     pub fn has_component(&self, name: &str) -> bool {
@@ -698,6 +703,7 @@ impl Runtime {
             lua_classes: &self.lua_classes,
             kinds: self.lust.as_ref().map_or(&self.no_events, |p| &*p.events),
             unstopped: RefCell::default(),
+            texts: crate::events::Texts::default(),
         };
         let running = RefCell::new(&mut self.running);
         let lust_env = self.lust.as_ref().map(|p| &p.env);
@@ -788,6 +794,7 @@ impl Runtime {
             lua_classes: &self.lua_classes,
             kinds: self.lust.as_ref().map_or(&self.no_events, |p| &*p.events),
             unstopped: RefCell::default(),
+            texts: crate::events::Texts::default(),
         };
         let running = &mut self.running;
         let lust_env = self.lust.as_ref().map(|p| &p.env);

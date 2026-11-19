@@ -6,7 +6,10 @@
 -- and Rust (armour.rs, Solis's own Armour) do their share. Timers: the hive
 -- pulses every 0.75 s and rings a bell as the day passes 8:03, and each
 -- drone blinks a second after it starts, if it's still there (most are
--- despawned first, which ends their timers).
+-- despawned first, which ends their timers). States: the hive's swarm
+-- wakes and settles every fourth drone; while buzzing it stings on a
+-- timer, glows with a tween and hums on a loop, all ended as it settles,
+-- and it hears each change; its pulse and bell are kept past its state.
 --
 -- Kept clear of the two known gaps (decision 0106): no tween has a done
 -- block, and nothing rolls Lust's own Random; every roll is World's,
@@ -14,7 +17,7 @@
 
 fetch "solis/world":World;
 fetch "solis/input":Input;
-fetch "solis/project":[Action, Prefab, Timer];
+fetch "solis/project":[Action, Prefab, Timer, Sound];
 fetch "solis/timers":TimerFinished;
 fetch "solis/tiles":Maps;
 fetch "solis/animation":Animators;
@@ -24,6 +27,9 @@ fetch "solis/kit/topdown":[TopDownController];
 
 event Hit(entity by, float damage);
 event Dented(int platesLeft);
+
+state Swarm = [Quiet, Buzzing];
+event SwarmChanged(Swarm from, Swarm to);
 
 -- The whole game's pace: slows to half, speeds up, then back to normal,
 -- and keeps a wave of numbers going.
@@ -71,17 +77,23 @@ component Platform {
 -- chance every so often.
 component Hive {
     has {
+        state = Swarm.Quiet;
         float cooldown = 0;
         int made = 0;
         bool started = false;
         int pulses = 0;
         int bells = 0;
+        int stings = 0;
+        int changes = 0;
+        float glow = 0;
     }
 
     method update(float dt) {
+        -- The pulse and the bell go on whatever the swarm does.
         is not started? then {
             startTimerEvery(Timer.Pulse, 0.75);
             startTimerAtHour(Timer.Bell, 8.05);
+            keepStarted();
             started = true;
         }
         cooldown = cooldown - dt;
@@ -94,6 +106,19 @@ component Hive {
             vec3 at = position() + [World:randomRange(-2, 2), World:randomRange(-2, 2), 3];
             entity drone = World:spawn(Prefab.Drone, at);
             made = made + 1;
+
+            -- Every fourth drone the swarm wakes or settles: what it
+            -- starts buzzing ends as it settles.
+            is made % 4 == 0? then {
+                is state == Swarm.Quiet? then {
+                    state = Swarm.Buzzing;
+                    startTimerEvery(Timer.Sting, 0.2);
+                    tween glow to 1 over 3.0;
+                    playSound(Sound.Hum);
+                } or {
+                    state = Swarm.Quiet;
+                }
+            }
         }
     }
 
@@ -104,6 +129,13 @@ component Hive {
         is which == Timer.Bell? then {
             bells = bells + 1;
         }
+        is which == Timer.Sting? then {
+            stings = stings + 1;
+        }
+    }
+
+    on SwarmChanged(Swarm from, Swarm to) {
+        changes = changes + 1;
     }
 }
 
@@ -264,5 +296,5 @@ component Gardener {
 }
 
 pass Director, Platform, Hive, Drone, Turret, Health, Gate, Visitor, Strider, Gardener,
-    Hit, Dented;
+    Hit, Dented, SwarmChanged;
 end

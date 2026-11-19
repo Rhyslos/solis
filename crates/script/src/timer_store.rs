@@ -40,6 +40,9 @@ pub(super) struct Entry {
     pub(super) kind: Kind,
     /// When it's due, in units (0 for one at an hour).
     pub(super) due: u64,
+    /// The option of its component's own state it belongs to, by number
+    /// (stage 1, states): it ends when the component leaves it.
+    pub(super) during: Option<u32>,
 }
 
 /// The names of components and timers, each kept once and known by its
@@ -161,6 +164,10 @@ pub struct Timers {
     spare: Vec<Vec<(u32, u64)>>,
     /// The slots of the timers at an hour.
     hourly: Vec<u32>,
+    /// The slots of each component's timers that belong to an option of
+    /// its state, by (entity, component): what a change of state looks
+    /// at, without a search.
+    owned: HashMap<(EntityId, u32), Vec<u32>, Quick>,
 }
 
 impl PartialEq for Timers {
@@ -190,6 +197,7 @@ impl Timers {
     pub fn apply(&mut self, change: &TimerChange) -> bool {
         let component = self.words.number(&change.component);
         let name = self.words.number(&change.name);
+        let during = change.during.as_ref().map(|d| self.words.number(d));
         let key = (change.entity, component, name);
         let Some(plan) = change.plan else {
             self.remove(key);
@@ -219,6 +227,7 @@ impl Timers {
             start,
             kind,
             due,
+            during,
         };
         // Started again: the same slot, filed anew (its old entry is old
         // by its start).
@@ -293,6 +302,7 @@ impl Timers {
                 entity: entry.entity,
                 component: Arc::clone(words.word(entry.component)),
                 name: Arc::clone(words.word(entry.name)),
+                during: entry.during.map(|d| Arc::clone(words.word(d))),
             })
             .collect();
         self.settle();
@@ -388,6 +398,12 @@ impl Timers {
                 Kind::Every(every) => one.u64(every),
                 Kind::AtHour(hour) => one.f64(hour),
             }
+            // Only once a timer belongs to a state, so recordings from
+            // before states keep their sums.
+            if let Some(during) = entry.during {
+                one.bytes(b"in");
+                one.bytes(self.words.word(during).as_bytes());
+            }
             sum = sum.wrapping_add(one.finish());
         }
         Some(sum)
@@ -422,17 +438,22 @@ impl Timers {
         all
     }
 
+    /// The option a timer belongs to, by its number in an [`Entry`].
+    pub(super) fn option(&self, during: u32) -> &str {
+        self.words.word(during)
+    }
+
     /// Puts a timer a save kept in its place; false when its owner has a
     /// timer of that name already.
     pub(super) fn restore(
         &mut self,
         (entity, component, name): (EntityId, &str, &str),
-        start: u64,
-        kind: Kind,
-        due: u64,
+        (start, kind, due): (u64, Kind, u64),
+        during: Option<&str>,
     ) -> bool {
         let component = self.words.number(&Arc::from(component));
         let name = self.words.number(&Arc::from(name));
+        let during = during.map(|d| self.words.number(&Arc::from(d)));
         let key = (entity, component, name);
         if self.entry_of(key).is_some() {
             return false;
@@ -446,10 +467,80 @@ impl Timers {
                 start,
                 kind,
                 due,
+                during,
             },
             slot,
         );
         true
+    }
+
+    /// A component's own state changed to `to` (stage 1, states): its
+    /// timers of the options it left end, silently.
+    pub fn state_left(&mut self, entity: EntityId, component: &str, to: &str) {
+        let Some(component) = self.words.find(component) else {
+            return;
+        };
+        let Some(mut slots) = self.owned.remove(&(entity, component)) else {
+            return;
+        };
+        let words = &self.words;
+        let entries = &mut self.slots;
+        let mut ended = 0;
+        let mut hourly = false;
+        slots.retain(|&slot| {
+            let Some(entry) = entries[slot as usize] else {
+                return false;
+            };
+            let gone = entry
+                .during
+                .is_some_and(|during| !crate::states::still_in(to, words.word(during)));
+            if gone {
+                entries[slot as usize] = None;
+                ended += 1;
+                hourly |= matches!(entry.kind, Kind::AtHour(_));
+            }
+            !gone
+        });
+        self.live -= ended;
+        if hourly {
+            let entries = &self.slots;
+            self.hourly.retain(|&s| entries[s as usize].is_some());
+        }
+        // Kept even when empty: the component likely starts another in its
+        // new option straight away.
+        self.owned.insert((entity, component), slots);
+        self.settle();
+        self.tidy();
+    }
+
+    /// `keepStarted()`: a component's timers no longer belong to its
+    /// state, so they carry on past it.
+    pub fn keep(&mut self, entity: EntityId, component: &str) {
+        let Some(component) = self.words.find(component) else {
+            return;
+        };
+        let Some(slots) = self.owned.remove(&(entity, component)) else {
+            return;
+        };
+        for slot in slots {
+            if let Some(entry) = self.slots[slot as usize].as_mut() {
+                entry.during = None;
+            }
+        }
+    }
+
+    /// Notes that `slot` holds a timer of `entry`'s that belongs to an
+    /// option, or no longer does.
+    fn own(&mut self, entry: &Entry, slot: u32, belongs: bool) {
+        if entry.during.is_none() {
+            return;
+        }
+        let key = (entry.entity, entry.component);
+        if belongs {
+            self.owned.entry(key).or_default().push(slot);
+        } else if let Some(slots) = self.owned.get_mut(&key) {
+            slots.retain(|s| *s != slot);
+        }
     }
 
     fn entry(&self, entity: EntityId, component: &str, name: &str) -> Option<Entry> {
@@ -516,9 +607,12 @@ impl Timers {
                 .insert((entry.entity, entry.component, entry.name), slot);
             slot
         });
-        if self.slots[slot as usize].replace(entry).is_none() {
-            self.live += 1;
+        let was = self.slots[slot as usize].replace(entry);
+        match was {
+            None => self.live += 1,
+            Some(was) => self.own(&was, slot, false),
         }
+        self.own(&entry, slot, true);
         match entry.kind {
             Kind::AtHour(_) => self.hourly.push(slot),
             Kind::Once | Kind::Every(_) => self.file(slot, entry.start, entry.due),
@@ -571,6 +665,7 @@ impl Timers {
             return;
         };
         self.live -= 1;
+        self.own(&was, slot, false);
         if matches!(was.kind, Kind::AtHour(_)) {
             self.hourly.retain(|s| *s != slot);
         }
@@ -591,6 +686,7 @@ impl Timers {
         self.slots.clear();
         self.by_key.clear();
         self.hourly.clear();
+        self.owned.clear();
         self.live = 0;
         self.buckets.clear();
         self.filed = 0;
@@ -611,6 +707,7 @@ impl Timers {
             self.buckets.clear();
             self.filed = 0;
             self.hourly.clear();
+            self.owned.clear();
         }
     }
 }

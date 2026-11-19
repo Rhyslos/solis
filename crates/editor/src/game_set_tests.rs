@@ -129,6 +129,9 @@ const NOT_ON_AN_ENTITY: &[&str] = &[
     "entity_stopTimer",
     "entity_timerRunning",
     "entity_timeLeft",
+    // What a state started carrying on past it is game code's and the
+    // sounds' own (stage 1, states), never set on an entity.
+    "entity_keepStarted",
     "entity_inside",
     "entity_hasTag",
     "World_within",

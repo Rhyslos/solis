@@ -94,6 +94,15 @@ impl Workbench {
             // And the timers waiting (stage 1, timers): each fires on the
             // tick it would have in the saved game.
             game.set_timers(std::mem::take(&mut save.timers));
+            // And the state changes waiting to be heard (stage 1,
+            // states): heard as the next tick begins, as in the saved
+            // game, and never again.
+            if let Err(why) = game.set_states_waiting(&save.states) {
+                self.log(
+                    LogLevel::Warning,
+                    format!("{name}'s waiting state changes weren't loaded: {why}."),
+                );
+            }
         }
         let loaded = Loaded {
             world,

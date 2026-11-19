@@ -151,7 +151,7 @@ fn the_playground_is_made_as_a_project_and_plays() {
     let steps = w
         .take_game_sounds()
         .iter()
-        .filter(|s| matches!(&s.request, editor::game_sound::Request::Play(name, _, _) if name == "sfx/footstep"))
+        .filter(|s| matches!(&s.request, editor::game_sound::Request::Play(name, _, _, _) if name == "sfx/footstep"))
         .count();
     assert_eq!(steps, 0, "standing still");
 }
@@ -252,7 +252,7 @@ fn footsteps_follow_ground_covered_and_never_while_still() {
         sounds
             .iter()
             .filter(|s| match &s.request {
-                editor::game_sound::Request::Play(name, script::SoundAt::On(e), _) => {
+                editor::game_sound::Request::Play(name, script::SoundAt::On(e), _, _) => {
                     name == "sfx/footstep" && *e == who
                 }
                 _ => false,

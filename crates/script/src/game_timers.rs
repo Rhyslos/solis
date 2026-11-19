@@ -7,7 +7,8 @@
 
 use super::{Change, Game, GameWorld, WorldView};
 use crate::events::Event;
-use crate::timers::{Fired, TimerChange, Timers};
+use crate::states::StateChange;
+use crate::timers::{Fired, TimerOp, Timers};
 use reflect::{EntityId, Value};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -43,9 +44,12 @@ impl Game {
         fired.into_iter().map(finished).collect()
     }
 
-    /// Keeps the timer changes a phase landed, for the tick's end.
-    pub(super) fn keep_timer_changes(&mut self, changes: Vec<TimerChange>) {
-        self.timer_changes.extend(changes);
+    /// Keeps what a phase landed for the timers, for the tick's end, and
+    /// the state changes the components that changed hear (stage 1,
+    /// states).
+    pub(super) fn keep_landed(&mut self, (ops, states): Landed) {
+        self.timer_changes.extend(ops);
+        self.hear(states);
     }
 
     /// Makes the timer changes kept so far, in the order they landed;
@@ -55,11 +59,24 @@ impl Game {
         if self.timer_changes.is_empty() {
             return None;
         }
+        // A state left or kept changes nothing while no timer waits.
+        let ops = std::mem::take(&mut self.timer_changes);
+        if self.timers.is_empty() && !ops.iter().any(|op| matches!(op, TimerOp::Change(_))) {
+            return None;
+        }
         let timers = Arc::make_mut(&mut self.timers);
         let mut left_out = 0_usize;
-        for change in std::mem::take(&mut self.timer_changes) {
-            if !timers.apply(&change) {
-                left_out += 1;
+        for op in ops {
+            match op {
+                TimerOp::Change(change) => {
+                    if !timers.apply(&change) {
+                        left_out += 1;
+                    }
+                }
+                TimerOp::Left(change) => {
+                    timers.state_left(change.entity, &change.component, &change.to);
+                }
+                TimerOp::Keep(entity, component) => timers.keep(entity, &component),
             }
         }
         (left_out > 0 && !std::mem::replace(&mut self.told_timers, true)).then(|| {
@@ -142,19 +159,36 @@ fn finished(fired: Fired) -> Event {
         name: FINISHED.to_string(),
         values: vec![Value::Text(fired.name.to_string())],
         only: Some(fired.component),
+        during: fired.during,
     }
 }
 
-/// The timer changes among `changes`, taken out (the game keeps its
-/// timers; the world never sees them).
-pub(super) fn timer_changes(changes: &mut Vec<Change>) -> Vec<TimerChange> {
-    let mut timers = Vec::new();
+/// What a phase landed for the timers, in order, and the states that
+/// changed.
+pub(super) type Landed = (Vec<TimerOp>, Vec<StateChange>);
+
+/// What `changes` do to the timers, in order: timers started and stopped
+/// (taken out: the game keeps its timers, and the world never sees them),
+/// states left and what's kept past them (left in, for the world's
+/// sounds); and the states that changed.
+pub(super) fn timer_ops(changes: &mut Vec<Change>) -> Landed {
+    let mut ops = Vec::new();
+    let mut states = Vec::new();
     changes.retain_mut(|change| match change {
         Change::Timer(timer) => {
-            timers.push(timer.clone());
+            ops.push(TimerOp::Change(timer.clone()));
             false
+        }
+        Change::State(state) => {
+            ops.push(TimerOp::Left(state.clone()));
+            states.push(state.clone());
+            true
+        }
+        Change::KeepStarted(entity, component) => {
+            ops.push(TimerOp::Keep(*entity, Arc::clone(component)));
+            true
         }
         _ => true,
     });
-    timers
+    (ops, states)
 }

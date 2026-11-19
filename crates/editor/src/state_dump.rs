@@ -47,6 +47,12 @@ impl Workbench {
         if !timers.is_empty() {
             parts.insert("timers".to_string(), timers);
         }
+        // And the state changes waiting to be heard, once one does (stage
+        // 1, states).
+        let states = game.states_waiting();
+        if !states.is_empty() {
+            parts.insert("states waiting".to_string(), states);
+        }
         Some(parts)
     }
 }

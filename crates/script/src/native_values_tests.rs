@@ -29,6 +29,7 @@ fn id(n: u64) -> EntityId {
 fn lua_code(files: &[(&str, &str)]) -> Compiled {
     Compiled {
         timers: Vec::new(),
+        state_events: Default::default(),
         lust: None,
         lua: files
             .iter()

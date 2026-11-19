@@ -901,6 +901,7 @@ mod game_sounds {
             start_s: 0.5,
             extra_db: 3.0,
             on: None,
+            owner: None,
         };
         device
             .play_game_sound(&clip, &pick(), Placement::On(4, spot(2.0)), looped)
@@ -956,6 +957,30 @@ mod game_sounds {
         );
         silent.stop_loop_on(4);
         assert!(silent.loops_playing().is_empty());
+    }
+
+    #[test]
+    fn a_state_s_loops_stop_with_it_and_nothing_else_does() {
+        // Stage 1, states: an owner's loops are stopped; another owner's,
+        // and an AudioSource's, play on. (The test device never finishes
+        // a fade, so the stopped one is still counted.)
+        let mut device = SoundDevice::for_tests();
+        let owned = |owner| Voice {
+            event: 7,
+            looping: true,
+            on: Some(4),
+            owner: Some(owner),
+            ..Voice::on_bus(0)
+        };
+        for voice in [owned(1), owned(2)] {
+            device
+                .play_game_sound(&clip(), &pick(), Placement::On(4, spot(1.0)), voice)
+                .unwrap();
+        }
+        device.stop_game_loops_of(1);
+        device.stop_game_loops_of(99);
+        assert_eq!(device.game_sounds_of_event(7), 2);
+        SoundDevice::silent().stop_game_loops_of(1);
     }
 
     #[test]

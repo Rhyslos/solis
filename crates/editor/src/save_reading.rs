@@ -84,6 +84,8 @@ impl Save {
         let day_shift = read_day_shift(section("day")?)?;
         let zones = super::zones::read_zones(section("zones")?)?;
         let timers = script::Timers::read(section("timers")?)?;
+        let states = section("states")?.to_string();
+        script::Game::check_states_waiting(&states)?;
         Ok(Self {
             project,
             ticks,
@@ -102,6 +104,7 @@ impl Save {
             day_shift,
             zones,
             timers,
+            states,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {

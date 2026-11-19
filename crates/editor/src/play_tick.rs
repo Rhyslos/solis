@@ -327,6 +327,7 @@ impl Workbench {
             name: s.name.clone(),
             values: s.values.clone(),
             only: None,
+            during: None,
         }));
         Some(TickInput {
             frame: Arc::new(frame),

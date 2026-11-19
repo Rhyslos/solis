@@ -298,7 +298,9 @@ end
 table.freeze(groups)
 local reach = { __index = function(_, key)
   if groups[key] then return groups[key] end
-  local f = natives and key ~= "send_event" and natives[key]
+  -- Names starting __ are Solis's own (Lust's runtime's), never game code's.
+  local own = type(key) == "string" and key:sub(1, 2) == "__"
+  local f = natives and key ~= "send_event" and not own and natives[key]
   if not f then
     error("solis." .. tostring(key) .. " isn't something the engine offers to game code", 2)
   end
@@ -321,7 +323,7 @@ local sub = string.sub
 local function ways()
   local found = {}
   for key, native in pairs(natives or {}) do
-    if key ~= "send_event" then
+    if key ~= "send_event" and sub(key, 1, 2) ~= "__" then
       local way = { key }
       for name, inside in pairs(groups) do
         local method = sub(key, #name + 2)
@@ -412,6 +414,7 @@ impl Luau {
             .set_name("=solis")
             .call(crate::describe::owners())?;
         let wrap_object = lua.load(crate::objects::WRAP).set_name("=objects").eval()?;
+        crate::states::Running::make(&lua)?;
         // The libraries, the prelude's tables and the globals themselves
         // become read-only.
         lua.sandbox(true)?;

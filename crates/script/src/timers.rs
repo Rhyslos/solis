@@ -127,6 +127,24 @@ pub struct TimerChange {
     pub name: Arc<str>,
     /// Started (again) with this plan, or stopped (`None`).
     pub plan: Option<Plan>,
+    /// The option of the component's own state it was started in, which
+    /// it ends with (stage 1, states); none: it belongs to no option.
+    pub during: Option<Arc<str>>,
+}
+
+/// What the game does to its timers as a tick ends, in the order game
+/// code did it: a timer started or stopped, a component's state left
+/// (its timers of the options it left end), or what a component started
+/// kept past its state (`keepStarted`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum TimerOp {
+    /// A timer started or stopped.
+    Change(TimerChange),
+    /// A component's own state changed.
+    Left(crate::states::StateChange),
+    /// `keepStarted()`: the component's timers no longer belong to its
+    /// state.
+    Keep(EntityId, Arc<str>),
 }
 
 /// A timer that finished this tick: whose it is, and its name.
@@ -138,6 +156,9 @@ pub struct Fired {
     pub component: Arc<str>,
     /// Its name (`DoorOpens`).
     pub name: Arc<str>,
+    /// The option of the component's own state it was started in: its
+    /// event reaches the component only while it's still there.
+    pub during: Option<Arc<str>>,
 }
 
 /// `ticks` of game time in units.

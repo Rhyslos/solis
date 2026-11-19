@@ -6,6 +6,10 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **States that start and stop** (stage 1, states; [decision 0126](docs/decisions/0126-things-started-in-a-state-end-with-it.md), [the manual](docs/manual/states.md)): a Lust component's own state (`state = Mood.Calm;` in its `has`) now ends what the component started while in it. The timers, tweens and looping sounds it starts in an option end when it leaves that option: a timer never finishes, a tween stops where it is without its done block, a sound set to Loop fades out. Spawned entities stay. Options inside options count separately: leaving `Combat.Melee` for `Combat.Ranged` ends Melee's things only. Entering a state is just the code that sets it, with no new words to learn.
+- **`keepStarted()`** inside a component: what it has started in its state so far carries on past it (battle music that plays on into the victory).
+- **A component hears its own state change**: declare `event MoodChanged(Mood from, Mood to);` beside a state, and every component whose own state is a `Mood` hears it when it changes, however it changed, once a tick (the first option and the last), in the next tick's first round after the timers' events. Declared otherwise, it's a mistake in Problems saying how to write it. What a state starts and the changes waiting to be heard are kept in save games, and loading never hears a change twice.
+
 - **Timers** (stage 1, timers; [decision 0125](docs/decisions/0125-named-timers-now-blocks-later.md), [the manual](docs/manual/timers.md)): game code starts a named wait and hears when it's done. Inside a component, `startTimer(Timer.DoorOpens, 2.0)` finishes once, `startTimerEvery(Timer.Wave, 5.0)` again and again, and `startTimerAtHour(Timer.Dawn, 6.0)` each day as the Environment's clock passes six; `stopTimer`, `timerRunning` and `timeLeft` stop and ask. The component that started it hears `on TimerFinished(Timer which)`, in the tick's first round of events, in a fixed order on any number of cores. In Lust, Lua and Rust.
 - **Timers count game time, exactly**: seconds become whole ticks as a timer starts, so it follows the game's speed, stands still while the game is paused, and never drifts; a repeating one keeps its rhythm. Sleeping past a timer's hour (`setTimeOfDay`) finishes it once.
 - **A timer's name comes from the code that starts it**: Solis lists every name the game's Lust starts as the state `Timer` in `solis/project.lst`, so a misspelt name anywhere else is a mistake before the game runs. There's no list to keep.
@@ -61,6 +65,8 @@ What changed in each version, for people using Solis. Newest first.
 - **The editor rethink is planned** ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)): the project lead's review of the remade interface, answered and mocked up (`docs/design/ui-rethink/`): the launcher as its own window, new projects that make their folder and are 2D, 3D or both, Area renamed Level, prefabs, one frame on every tab, and one Library browser. It's built next, as six milestones, before the ground.
 
 ### Breaking
+
+- **Save games are version 12** (stage 1, states): a timer waiting says which state it ends with, and a state change waiting to be heard is kept. Older saves still load, their timers belonging to no state; a Solis from before can't load a save made now. **What to do:** nothing for older saves; update every copy of Solis that loads your game's saves.
 
 - **Save games are version 11** (stage 1, timers): they keep game code's timers waiting. Older saves still load, with no timers waiting; a Solis from before can't load a save made now. **What to do:** nothing for older saves; update every copy of Solis that loads your game's saves.
 

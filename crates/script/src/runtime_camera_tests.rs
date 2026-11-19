@@ -93,6 +93,7 @@ fn compiled(main: &str) -> Compiled {
     .unwrap_or_else(|problems| panic!("{}", problems[0]));
     Compiled {
         timers: Vec::new(),
+        state_events: Default::default(),
         lust: Some(chunk),
         lua: Vec::new(),
         schemas: Vec::new(),

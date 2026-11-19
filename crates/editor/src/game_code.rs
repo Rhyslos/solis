@@ -588,9 +588,22 @@ impl GameWorld for PlayWorld<'_> {
                 }
                 Change::Save(ref slot) => self.saves.push((slot.clone(), false)),
                 Change::Load(ref slot) => self.saves.push((slot.clone(), true)),
-                Change::Sound(ref event, at, caller) => self
+                Change::Sound(ref event, at, caller, ref started) => {
+                    self.sounds.push(crate::game_sound::Request::Play(
+                        event.clone(),
+                        at,
+                        caller,
+                        started.clone(),
+                    ));
+                }
+                // What a state started ends with it (stage 1, states): the
+                // game ends its timers and tweens, the sounds end here.
+                Change::State(ref change) => self
                     .sounds
-                    .push(crate::game_sound::Request::Play(event.clone(), at, caller)),
+                    .push(crate::game_sound::Request::StateLeft(change.clone())),
+                Change::KeepStarted(which, ref component) => self.sounds.push(
+                    crate::game_sound::Request::Keep(which, std::sync::Arc::clone(component)),
+                ),
                 Change::StopSounds(which) => {
                     self.sounds.push(crate::game_sound::Request::StopOn(which));
                 }

@@ -165,6 +165,30 @@ pub trait Host {
         let _ = (which, name);
         Err(NO_TIMERS.to_string())
     }
+    /// `keepStarted()` (stage 1, states): what the running component
+    /// started in its own state so far (timers, tweens, looping sounds)
+    /// no longer belongs to it, and carries on when it changes. `which`
+    /// must be the component's own entity. A Rust component has no state
+    /// of its own, so nothing of its belongs to one.
+    fn keep_started(&mut self, which: EntityId) -> Result<(), String> {
+        let _ = which;
+        Ok(())
+    }
+    /// What the next timer or sound the running component starts belongs
+    /// to: the option of its own state (stage 1, states), said by Solis's
+    /// natives just before they start one; none for a component without a
+    /// state of its own. Rust components never need it.
+    fn set_started_in(&mut self, option: Option<std::sync::Arc<str>>) {
+        let _ = option;
+    }
+    /// The component `component` on `which` changed its own state from
+    /// `from` to `to`: what it started in the options it left ends, and
+    /// it hears the change as the tick ends (stage 1, states). Said by
+    /// Lust's runtime whenever a Lust component's state changes; Rust
+    /// components have no state of their own.
+    fn state_changed(&mut self, which: EntityId, component: &str, from: &str, to: &str) {
+        let _ = (which, component, from, to);
+    }
     /// Saves the game in `slot` (or, with `load`, loads the game saved
     /// there), at the end of the tick (decision 0038).
     fn save_game(&mut self, slot: &str, load: bool) {

@@ -28,6 +28,7 @@ pub(super) fn zone_events(world: &mut world::World) -> Vec<script::Event> {
                     name: name.to_owned(),
                     values: vec![Value::Entity(Some(about))],
                     only: None,
+                    during: None,
                 });
             }
         }
