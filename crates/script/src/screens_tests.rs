@@ -390,3 +390,33 @@ fn the_game_s_events_are_found_with_their_files() {
         ]
     );
 }
+
+#[test]
+fn fonts_named_in_screens_are_found_each_with_its_place() {
+    let text = "assembly Shop {\n    view [font \"fonts/Lora.ttf\"] {\n        text \"Hi\" [font \"fonts/Mono.ttf, fonts/NotoSansJP.otf\"];\n        text \"fonts\"; -- font \"not/this.ttf\"\n        text x [fonts 3];\n    }\n}\n";
+    let found = fonts_named(&[("ui/shop.lst".into(), text.into())]);
+    let names: Vec<(&str, u32, u32)> = found
+        .iter()
+        .map(|f| (f.name.as_str(), f.line, f.column))
+        .collect();
+    assert_eq!(
+        names,
+        [
+            ("fonts/Lora.ttf", 2, 17),
+            ("fonts/Mono.ttf", 3, 26),
+            ("fonts/NotoSansJP.otf", 3, 42),
+        ]
+    );
+    assert!(
+        fonts_named(&[("main.lst".into(), text.into())]).is_empty(),
+        "screens only"
+    );
+}
+
+proptest::proptest! {
+    #[test]
+    fn finding_font_names_never_panics(text in "(font|\"|,|-|\\\\|[a-zé/. \n]){0,80}") {
+        let found = fonts_named(&[("ui/x.lst".into(), text)]);
+        proptest::prop_assert!(found.iter().all(|f| f.line >= 1 && f.column >= 1 && !f.name.is_empty()));
+    }
+}

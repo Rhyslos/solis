@@ -1061,3 +1061,113 @@ fn scale_check_wrapping_a_long_text_in_a_real_font() {
     );
     assert!(ms <= TARGET_MS, "{ms:.3} ms");
 }
+
+#[test]
+fn a_view_s_font_is_every_piece_s_and_a_piece_can_name_its_own_with_fallbacks() {
+    let view = node(
+        "view",
+        &[("font", Style::Text("fonts/Lora.ttf".into()))],
+        vec![node(
+            "column",
+            &[],
+            vec![
+                text("Title", &[]),
+                text(
+                    "日本",
+                    &[(
+                        "font",
+                        Style::Text(" fonts/Mono.ttf ,fonts/NotoSansJP.otf,".into()),
+                    )],
+                ),
+            ],
+        )],
+    );
+    let out = lay_out(&view, [400.0, 300.0], &mut Fixed);
+    let fonts: Vec<Vec<String>> = out
+        .iter()
+        .filter_map(|e| match &e.kind {
+            ElementKind::Text { style, .. } => Some(style.fonts.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        fonts,
+        [
+            vec!["fonts/Lora.ttf".to_string()],
+            vec![
+                "fonts/Mono.ttf".to_string(),
+                "fonts/NotoSansJP.otf".to_string()
+            ]
+        ]
+    );
+}
+
+#[test]
+fn a_text_asks_for_an_ellipsis_by_limiting_its_own_size() {
+    let fit_of = |styles: &[(&str, Style)]| {
+        let view = node(
+            "view",
+            &[],
+            vec![node(
+                "column",
+                &[("width", n(100.0))],
+                vec![text("words here", styles)],
+            )],
+        );
+        let out = lay_out(&view, [400.0, 300.0], &mut Fixed);
+        match &out[0].kind {
+            ElementKind::Text { fit, .. } => *fit,
+            _ => panic!("text"),
+        }
+    };
+    // As screens were: wraps in its room, never cut.
+    assert_eq!(
+        fit_of(&[]),
+        Fit {
+            width: Some(100.0),
+            wrap: true,
+            lines: None,
+            cut: false
+        }
+    );
+    assert_eq!(
+        fit_of(&[("nowrap", on())]),
+        Fit::default(),
+        "nowrap: one line as long as its words"
+    );
+    // A height (or the most it may be) cuts after the lines that fit.
+    let tall = fit_of(&[("height", n(45.0))]);
+    assert_eq!((tall.lines, tall.cut), (Some(2), true), "{tall:?}");
+    assert_eq!(fit_of(&[("maxHeight", n(20.0))]).lines, Some(1));
+    // A nowrap line with a width (or the most it may be) is cut at it.
+    let narrow = fit_of(&[("nowrap", on()), ("maxWidth", n(60.0))]);
+    assert_eq!(
+        narrow,
+        Fit {
+            width: Some(60.0),
+            wrap: false,
+            lines: None,
+            cut: true
+        }
+    );
+}
+
+#[test]
+fn the_screen_s_line_height_and_letter_spacing_reach_its_text() {
+    let view = node("view", &[], vec![text("Hi", &[])]);
+    let looks = Looks {
+        line_height: 1.5,
+        letter_spacing: 2.0,
+        ..Looks::default()
+    };
+    let (out, _) = lay_out_with(&view, [400.0, 300.0], &mut Fixed, looks);
+    let ElementKind::Text { style, .. } = &out[0].kind else {
+        panic!("text");
+    };
+    assert_eq!((style.line_height, style.letter_spacing), (1.5, 2.0));
+    let (out, _) = lay_out_with(&view, [400.0, 300.0], &mut Fixed, Looks::default());
+    let ElementKind::Text { style, .. } = &out[0].kind else {
+        panic!("text");
+    };
+    assert_eq!(style.line_height, 1.0, "0 is the font's own");
+}

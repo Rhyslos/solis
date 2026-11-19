@@ -682,3 +682,205 @@ fn a_hollow_shape_s_glow_and_outline_stay_outside_it() {
         "the outline outside: {ring:?}"
     );
 }
+
+/// The approved pictures of game UI's text, drawn on Linux with Mesa's
+/// software driver (`tests/data/`).
+fn approved(name: &str) -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("data")
+        .join(format!("{name}.png"))
+}
+
+/// Holds `pixels` (`size` big) against the approved picture `name`: at
+/// most one pixel in a hundred may differ by more than a driver's
+/// rounding. With `SOLIS_UPDATE_PICTURES=1` it becomes the approved one
+/// instead: do that only after looking at it. Compared on Linux only,
+/// where the pictures were drawn.
+fn matches_approved(name: &str, size: [u32; 2], pixels: &[u8]) {
+    if !cfg!(target_os = "linux") {
+        eprintln!("Approved pictures are compared on Linux only; {name} was not compared.");
+        return;
+    }
+    let path = approved(name);
+    let png = assets::tile_art::png_of(size, pixels).unwrap();
+    if std::env::var_os("SOLIS_UPDATE_PICTURES").is_some() {
+        std::fs::write(&path, png).unwrap();
+        eprintln!("Approved picture written: {}", path.display());
+        return;
+    }
+    let kept = std::fs::read(&path).unwrap_or_else(|e| {
+        panic!(
+            "{}: {e}\nLook at the drawing, then run with SOLIS_UPDATE_PICTURES=1",
+            path.display()
+        )
+    });
+    let kept = assets::tile_art::read_tile_art(&kept, false).unwrap();
+    assert_eq!(kept.size, size, "{name}'s size");
+    let differ = pixels
+        .chunks(4)
+        .zip(kept.frames[0].chunks(4))
+        .filter(|(a, b)| (0..3).any(|i| a[i].abs_diff(b[i]) > 24))
+        .count();
+    if differ * 100 > (size[0] * size[1]) as usize {
+        let drawn = std::env::temp_dir().join(format!("{name}.drawn.png"));
+        std::fs::write(&drawn, png).unwrap();
+        panic!(
+            "{name}: {differ} pixels differ from {}\ndrawn: {}\nIf the change is meant, look at \
+             it and run with SOLIS_UPDATE_PICTURES=1.",
+            path.display(),
+            drawn.display()
+        );
+    }
+}
+
+/// A text element in a box at `at`, `size` design pixels, on a dark
+/// panel so its edges show.
+fn text_in(
+    name: &str,
+    words: &str,
+    style: ui::TextStyle,
+    align: ui::Edge,
+    fit: ui::Fit,
+    at: [f32; 2],
+    size: [f32; 2],
+) -> Vec<ui::Element> {
+    let panel = ui::Element::new(
+        &format!("{name} panel"),
+        ui::ElementKind::Box { round: 4.0 },
+    )
+    .at(ui::Anchor::TOP_LEFT, at)
+    .sized(size)
+    .filled(ui::Fill::Solid(ui::Colour::rgb(30, 34, 40)));
+    let text = ui::Element::new(
+        name,
+        ui::ElementKind::Text {
+            text: words.into(),
+            style,
+            align,
+            fit,
+        },
+    )
+    .at(ui::Anchor::TOP_LEFT, [at[0] + 6.0, at[1]])
+    .sized([size[0] - 12.0, size[1]])
+    .filled(ui::Fill::Solid(ui::Colour::rgb(240, 236, 224)));
+    vec![panel, text]
+}
+
+#[test]
+fn text_wraps_aligns_falls_back_and_draws_in_a_project_s_font() {
+    // Stage 1's text layout, drawn: a paragraph wrapped in its box (a long
+    // word broken between its letters), lines placed left, in the middle
+    // and right, a line cut with "…", letters Inter lacks taken from the
+    // project's next font, and a project's own font.
+    let mut files = ui::FontFiles::new();
+    files
+        .add(
+            "fonts/Inter.ttf",
+            include_bytes!("../../editor/assets/fonts/Inter-Regular.ttf").to_vec(),
+        )
+        .unwrap();
+    files
+        .add(
+            "fonts/Mono.ttf",
+            include_bytes!("../../editor/assets/fonts/JetBrainsMonoNL-Regular.ttf").to_vec(),
+        )
+        .unwrap();
+    let style = |size: f32, fonts: &[&str]| ui::TextStyle {
+        fonts: fonts.iter().map(|f| f.to_string()).collect(),
+        ..ui::TextStyle::new(size, 0)
+    };
+    let wrap = |width: f32| ui::Fit {
+        width: Some(width),
+        wrap: true,
+        ..ui::Fit::default()
+    };
+    let mut elements = Vec::new();
+    elements.extend(text_in(
+        "wrapped",
+        "Words wrap inside their box by Unicode's rules, and one too long for \
+         a line, Pneumonoultramicroscopicsilicovolcanoconiosis, breaks between its letters.",
+        style(16.0, &[]),
+        ui::Edge::Start,
+        wrap(208.0),
+        [8.0, 8.0],
+        [220.0, 150.0],
+    ));
+    for (i, (words, align)) in [
+        ("Left", ui::Edge::Start),
+        ("In the middle", ui::Edge::Middle),
+        ("Right", ui::Edge::End),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        elements.extend(text_in(
+            words,
+            words,
+            style(16.0, &[]),
+            align,
+            ui::Fit::default(),
+            [236.0, 8.0 + 34.0 * i as f32],
+            [236.0, 28.0],
+        ));
+    }
+    elements.extend(text_in(
+        "cut",
+        "A line too long for its box is cut short",
+        style(16.0, &[]),
+        ui::Edge::Start,
+        ui::Fit {
+            width: Some(224.0),
+            cut: true,
+            ..ui::Fit::default()
+        },
+        [236.0, 110.0],
+        [236.0, 28.0],
+    ));
+    elements.extend(text_in(
+        "fallback",
+        "Inter, then Mono: ∀x ∈ ℕ",
+        style(18.0, &["fonts/Inter.ttf", "fonts/Mono.ttf"]),
+        ui::Edge::Start,
+        ui::Fit::default(),
+        [8.0, 166.0],
+        [464.0, 32.0],
+    ));
+    elements.extend(text_in(
+        "project font",
+        "A project's own font: Mono 0O 1lI",
+        style(18.0, &["fonts/Mono.ttf"]),
+        ui::Edge::Start,
+        ui::Fit::default(),
+        [8.0, 204.0],
+        [464.0, 32.0],
+    ));
+    let mut spaced = style(16.0, &[]);
+    spaced.letter_spacing = 3.0;
+    spaced.line_height = 1.4;
+    elements.extend(text_in(
+        "spaced",
+        "Letter spacing 3,\nline height 140%",
+        spaced,
+        ui::Edge::Start,
+        ui::Fit::default(),
+        [8.0, 242.0],
+        [464.0, 70.0],
+    ));
+    let size = [480, 320];
+    let mut screen = ui::Screen::new("Text", [480.0, 320.0], ui::ScaleRule::Keep);
+    screen.elements = elements;
+    screen.fonts = Some(std::sync::Arc::new(files));
+    let mut fonts = fonts();
+    fonts.begin_frame();
+    let shapes = ui::layout_with(&screen, size, None, Some(&mut fonts));
+    let letters = shapes
+        .iter()
+        .filter(|s| s.kind == ui::ShapeKind::Letter)
+        .count();
+    assert!(letters > 200, "{letters} letters");
+    let Some(pixels) = draw_with(size, &shapes, Some(&fonts.atlas)) else {
+        return;
+    };
+    matches_approved("text-layout", size, &pixels);
+}
