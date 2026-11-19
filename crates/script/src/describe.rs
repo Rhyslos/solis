@@ -143,6 +143,12 @@ pub const ENGINE_EVENTS: &[EngineEvent] = &[
         lust: "event TimerFinished(Timer which);",
         about: "Sent to the component that started a timer when it finishes, in the tick's first round of events: which timer. Several in one tick come in the order they were due, then by entity, component and the order they started.",
     },
+    EngineEvent {
+        file: "screens",
+        name: "TypingFinished",
+        lust: "event TypingFinished(Screen which);",
+        about: "Sent to the entity showing a screen when its text has finished typing itself out (its Screen's Typing speed), or finishTyping showed it all: which screen. It comes with the next tick's input, so a replay gets it on the same tick.",
+    },
 ];
 
 /// Natives renamed on purpose, with their old names kept working for a
@@ -974,6 +980,13 @@ pub const NATIVES: &[Native] = &[
         owner: "entity",
         lust: "method bool entity:screenShown(Screen which) native;",
         about: "Whether the entity's Screen shows this screen, as the tick started.",
+    },
+    Native {
+        file: "screens",
+        name: "finishTyping",
+        owner: "entity",
+        lust: "method entity:finishTyping(Screen which) native;",
+        about: "Shows all of the text the entity's Screen is typing out, at the end of the tick (a player pressing a key to skip): TypingFinished follows. Nothing happens if it isn't typing.",
     },
     Native {
         file: "screens",

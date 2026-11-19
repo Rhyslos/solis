@@ -35,6 +35,10 @@ pub(crate) struct GameScene {
     /// parallax layers are drawn as placed while it's there (decision
     /// 0094).
     pub(crate) camera_start: Option<Vec3>,
+    /// The UI's clock, in seconds: the game's ticks and how far into the
+    /// next, what screens' text waves, shakes and types out by (stage 1,
+    /// text effects).
+    pub(crate) ui_seconds: f64,
 }
 
 impl GameScene {
@@ -71,6 +75,7 @@ impl GameScene {
             }),
             play_only: false,
             camera_start: None,
+            ui_seconds: (world.clock().ticks as f64 + f64::from(world.progress())) * world::TICK,
         }
     }
 
@@ -376,6 +381,7 @@ pub(crate) fn game_panel(
         pixel,
         layers,
         ui: screens,
+        ui_seconds: scene.ui_seconds,
     };
     // Where the renderer lays the screens out: a 2D game's picture inside
     // its bars, in its whole steps (ui::layout::picture_area, which the

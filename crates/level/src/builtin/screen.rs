@@ -5,7 +5,8 @@
 //! every computer. The screen reads the entity it's on through the engine.
 
 use reflect::{
-    Component, ComponentData, ComponentSchema, FieldInfo, FieldKind, Fields, Hint, Offer, Value,
+    Component, ComponentData, ComponentSchema, FieldInfo, FieldKind, Fields, Hint, NameKind, Offer,
+    Value,
 };
 
 use super::field;
@@ -35,7 +36,18 @@ pub struct Screen {
     pub line_height: i64,
     /// Room added after each letter of its text, in design pixels (0).
     pub letter_spacing: f32,
+    /// How many letters a second its text types out at (0: it shows at
+    /// once; stage 1, text effects).
+    pub typing_speed: f32,
+    /// The sound event played as its text types out (its name as game
+    /// code has it, `Sfx.Blip`; empty for none).
+    pub typing_sound: String,
+    /// Whether the typing sound plays on each letter or each word.
+    pub sound_every_word: bool,
 }
+
+/// The choices of the Screen's "Sound on" setting.
+const SOUND_ON: [&str; 2] = ["Each letter", "Each word"];
 
 impl Default for Screen {
     fn default() -> Self {
@@ -49,6 +61,9 @@ impl Default for Screen {
             pixel_size: 1,
             line_height: 100,
             letter_spacing: 0.0,
+            typing_speed: 0.0,
+            typing_sound: String::new(),
+            sound_every_word: false,
         }
     }
 }
@@ -66,6 +81,10 @@ impl Screen {
     pub const LINE_HEIGHTS: (i64, i64) = (50, 300);
     /// The least and most letter spacing, in design pixels.
     pub const LETTER_SPACINGS: (f32, f32) = (-10.0, 50.0);
+    /// The fastest text types out, in letters a second.
+    pub const MAX_TYPING_SPEED: f32 = 1000.0;
+    /// The longest typing sound's name kept.
+    pub const MAX_SOUND_NAME: usize = 256;
 
     /// A screen showing `name`.
     pub fn showing(name: &str) -> Self {
@@ -114,6 +133,18 @@ impl Screen {
                     .clamp(Self::LETTER_SPACINGS.0, Self::LETTER_SPACINGS.1)
             } else {
                 0.0
+            },
+            typing_speed: if self.typing_speed.is_finite() {
+                self.typing_speed.clamp(0.0, Self::MAX_TYPING_SPEED)
+            } else {
+                0.0
+            },
+            typing_sound: if self.typing_sound.len() > Self::MAX_SOUND_NAME
+                || self.typing_sound.contains(char::is_control)
+            {
+                String::new()
+            } else {
+                self.typing_sound
             },
             ..self
         }
@@ -216,6 +247,43 @@ impl Component for Screen {
                          design), for wide titles or tight labels. 0 as the font spaces them.",
                     ),
                 ),
+                field::float(
+                    "typingSpeed",
+                    "Typing speed",
+                    0.0,
+                    Hint {
+                        range: Some((0.0, f64::from(Self::MAX_TYPING_SPEED))),
+                        speed: Some(1.0),
+                        unit: "letters/s".into(),
+                        help: "Its text types itself out, this many letters a second, each time \
+                               the words change (30 to 60 suits dialogue). 0 shows it at once. \
+                               Game code hears TypingFinished when it's done, and can call \
+                               finishTyping to show it all."
+                            .into(),
+                        ..Hint::default()
+                    },
+                ),
+                FieldInfo::new(
+                    "typingSound",
+                    "Typing sound",
+                    FieldKind::Text,
+                    Value::Text(String::new()),
+                )
+                .hint(Hint {
+                    help: "A sound event played as the text types out, for a voice of blips. \
+                           None for silence."
+                        .into(),
+                    offers: Offer::Names(NameKind::Sound),
+                    ..Hint::default()
+                }),
+                field::choice(
+                    "soundOn",
+                    "Sound on",
+                    &SOUND_ON,
+                    SOUND_ON[0],
+                    "Whether the typing sound plays for each letter or only for the first \
+                     letter of each word (softer for fast text). At most once a tick.",
+                ),
             ],
         }
     }
@@ -233,6 +301,12 @@ impl Component for Screen {
         data.set(
             "letterSpacing",
             Value::Float(f64::from(self.letter_spacing)),
+        );
+        data.set("typingSpeed", Value::Float(f64::from(self.typing_speed)));
+        data.set("typingSound", Value::Text(self.typing_sound.clone()));
+        data.set(
+            "soundOn",
+            Value::Text(SOUND_ON[usize::from(self.sound_every_word)].to_string()),
         );
         data
     }
@@ -258,6 +332,9 @@ impl Component for Screen {
                 _ => 100,
             },
             letter_spacing: f.float("letterSpacing", 0.0),
+            typing_speed: f.float("typingSpeed", 0.0),
+            typing_sound: f.text("typingSound").unwrap_or_default().to_owned(),
+            sound_every_word: f.text("soundOn") == Some(SOUND_ON[1]),
         }
         .sanitized()
     }
@@ -279,6 +356,9 @@ mod tests {
             pixel_size: 3,
             line_height: 140,
             letter_spacing: 1.5,
+            typing_speed: 40.0,
+            typing_sound: "Sfx.Blip".into(),
+            sound_every_word: true,
         };
         assert_eq!(Screen::from_data(&s.to_data()), s);
         let odd = Screen {
@@ -291,8 +371,13 @@ mod tests {
             pixel_size: -4,
             line_height: 9_999,
             letter_spacing: f32::NAN,
+            typing_speed: f32::INFINITY,
+            typing_sound: "a\nb".into(),
+            sound_every_word: false,
         }
         .sanitized();
+        assert_eq!(odd.typing_speed, 0.0);
+        assert_eq!(odd.typing_sound, "");
         assert_eq!(odd.screen, "");
         assert_eq!(odd.order, Screen::MAX_ORDER);
         assert_eq!(odd.glow, 0.0);
@@ -301,6 +386,11 @@ mod tests {
         assert_eq!(odd.pixel_size, 1);
         let old = Screen::from_data(&ComponentData::default());
         assert_eq!((old.glow, old.pixel_size), (0.0, 1), "older files: no look");
+        assert_eq!(
+            (old.typing_speed, old.typing_sound.as_str(), old.sound_every_word),
+            (0.0, "", false),
+            "older files: shown at once, silent"
+        );
         assert!(
             Screen::from_data(&ComponentData::default()).shown,
             "shown unless said"

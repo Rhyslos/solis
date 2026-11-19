@@ -77,16 +77,30 @@ impl Workbench {
     }
 
     /// The code's mistakes, then pictures its screens name that can't be
-    /// shown (decision 0089) and fonts they name that can't be used (stage
-    /// 1, text layout): everything Problems lists from the code.
+    /// shown (decision 0089), fonts they name that can't be used (stage
+    /// 1, text layout) and mistakes in their text's effects (stage 1, text
+    /// effects): everything Problems lists from the code.
     pub(crate) fn all_code_problems(&self) -> std::borrow::Cow<'_, [script::CodeProblem]> {
         let pictures = self.picture_problems();
         let fonts = self.font_problems();
-        if pictures.is_empty() && fonts.is_empty() {
+        let markup = self.markup_problems();
+        if pictures.is_empty() && fonts.is_empty() && markup.is_empty() {
             std::borrow::Cow::Borrowed(&self.open.code_problems)
         } else {
-            std::borrow::Cow::Owned([&self.open.code_problems[..], pictures, fonts].concat())
+            std::borrow::Cow::Owned(
+                [&self.open.code_problems[..], pictures, fonts, markup].concat(),
+            )
         }
+    }
+
+    /// Mistakes in the text effects written in the screens' text (stage
+    /// 1, text effects: `[wave]` never closed, a word that isn't one).
+    pub fn markup_problems(&self) -> &[script::CodeProblem] {
+        self.open
+            .program
+            .as_ref()
+            .and_then(|p| p.screens.as_ref())
+            .map_or(&[][..], |s| s.markup.as_slice())
     }
 
     /// The problems found in the level, for the app and tests.

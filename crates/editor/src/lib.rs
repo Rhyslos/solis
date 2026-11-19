@@ -93,6 +93,7 @@ pub mod screen;
 mod screen_doc;
 mod screen_fonts;
 mod screen_pictures;
+mod screen_typing;
 mod screen_props;
 mod screen_ties;
 mod search;

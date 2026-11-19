@@ -302,6 +302,7 @@ fn text_elements_are_laid_out_as_letters_aligned_in_their_box() {
                 style: crate::TextStyle::new(40.0, 0),
                 align,
                 fit: crate::Fit::default(),
+                effects: None,
             },
         )
         .at(Anchor::TOP_LEFT, [100.0, 100.0])

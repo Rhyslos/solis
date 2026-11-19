@@ -109,7 +109,7 @@ fn names() -> Names {
             ],
             &["footstep", "hoeHits"],
         )
-        .and_screens(&["PauseMenu", "Hud", "DroneHealth", "Where", "Hotbar"])
+        .and_screens(&["PauseMenu", "Hud", "DroneHealth", "Where", "Hotbar", "Talk"])
         .and_actions(&["Interact", "Use", "QuickSave", "QuickLoad", "Pause", "Fire"]);
     names.pictures = vec![
         "sprites/tools/Axe".into(),

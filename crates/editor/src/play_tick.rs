@@ -46,6 +46,8 @@ struct TickInput {
     chosen: Option<(usize, usize)>,
     /// The events the engine sends game code this tick.
     events: Vec<script::Event>,
+    /// The screens' typing sounds due this tick (sound events' names).
+    typing_sounds: Vec<String>,
 }
 
 impl Workbench {
@@ -188,10 +190,15 @@ impl Workbench {
             frame,
             chosen,
             events,
+            typing_sounds,
         }) = self.tick_input(cue_events)
         else {
             return false;
         };
+        let mut cue_sounds = cue_sounds;
+        cue_sounds.extend(typing_sounds.into_iter().map(|sound| {
+            crate::game_sound::Request::Play(sound, script::SoundAt::Nowhere, None, None)
+        }));
         self.play_cue_sounds(cue_sounds, run);
         let (slow, saves) = self.run_tick_code(time, seconds, &frame, events, run);
         // A button the menu keys chose runs now; what it sends is the
@@ -213,9 +220,24 @@ impl Workbench {
             run.pause = slow;
         }
         let loading = self.saves_and_loads(saves, time, seconds, run);
+        self.typing_after_tick();
         // `Window:quit()`: no more ticks.
         let quit = self.open.playing.as_ref().is_some_and(|p| p.view.quit);
         !(loading || run.pause.is_some() || quit)
+    }
+
+    /// The UI's clock as this tick ends (stage 1, text effects); while a
+    /// screen types its text out, the screens are read after every tick,
+    /// so a text begins typing on the tick it shows at any frame rate.
+    fn typing_after_tick(&mut self) {
+        let Some(playing) = &self.open.playing else {
+            return;
+        };
+        self.open.game_screens.clock = playing.world.clock().ticks as f64 * world::TICK;
+        if self.open.game_screens.typing.active {
+            self.refresh_game_screens();
+            self.open.game_screens.read_after_tick = true;
+        }
     }
 
     /// Begins a tick: the clock moves on (so a frame that stops early
@@ -319,6 +341,15 @@ impl Workbench {
         // its focus and choose, and the game's own actions wait; what
         // game code sees (and a recording keeps) is that frame.
         let chosen = self.open.game_screens.take_menu_keys(&mut frame);
+        // The screens' text typing out (stage 1, text effects): its
+        // sounds, and TypingFinished with this tick's input.
+        let now = playing.world.clock().ticks as f64 * world::TICK;
+        let (typed, sounds) = self.open.game_screens.typing.tick(now);
+        for sent in typed {
+            if self.open.game_screens.sent.len() < input::MAX_SENT {
+                self.open.game_screens.sent.push(sent);
+            }
+        }
         let sent = std::mem::take(&mut self.open.game_screens.sent);
         if playing.replay.is_none() {
             frame.sent = sent;
@@ -334,6 +365,7 @@ impl Workbench {
             frame: Arc::new(frame),
             chosen,
             events,
+            typing_sounds: sounds,
         })
     }
 
@@ -387,6 +419,7 @@ impl Workbench {
         run.dropped_sounds +=
             crate::game_sound::gather(&mut self.open.game_sounds, sounds, sound_tick, sound_seed);
         let seed = host.seed.take();
+        let typed = std::mem::take(&mut host.typed);
         // Rebinding takes effect from the next tick. The tick's
         // own share of the bindings goes first, so they're changed
         // in place rather than copied.
@@ -394,6 +427,11 @@ impl Workbench {
         drop(host);
         for (action, input) in rebinds {
             Arc::make_mut(&mut playing.bindings).rebind(&action, &input);
+        }
+        // `finishTyping`: the text shows whole from now (UI only).
+        let clock = self.open.game_screens.clock;
+        for (entity, screen) in typed {
+            self.open.game_screens.typing.finish(entity, &screen, clock);
         }
         let slow = ticked.pause;
         let landing = Instant::now();

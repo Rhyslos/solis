@@ -323,6 +323,7 @@ fn review_findings_stay_fixed() {
                 style: crate::TextStyle::new(30.0, 0),
                 align: Edge::Start,
                 fit: crate::Fit::default(),
+                effects: None,
             },
         )
         .sized([300.0, 50.0])

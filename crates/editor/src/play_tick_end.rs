@@ -131,7 +131,9 @@ impl Workbench {
         }
         // The game's screens read what this frame's ticks left (decision
         // 0087), and start again when the code changes.
-        if ran > 0
+        // (While text types out they were read after each tick already.)
+        let read = std::mem::take(&mut self.open.game_screens.read_after_tick);
+        if (ran > 0 && !read)
             || self
                 .open
                 .game_screens

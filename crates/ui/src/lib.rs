@@ -19,12 +19,18 @@
 //!   ([decision 0084](../../../docs/decisions/0084-game-ui-text.md)).
 //! - [`view`]: a screen written in Lust, its view's tree laid out with
 //!   Lust's rules ([decision 0087](../../../docs/decisions/0087-screens-through-the-engine.md)).
+//! - [`markup`], [`effects`] and [`typing`]: text effects written inside a
+//!   screen's text (`[wave]`, `[colour=…]`, `[icon=…]`, `[pause 0.5]`),
+//!   what they do to each letter, and a text typing itself out (stage 1,
+//!   text effects).
 //!
 //! No GPU and no window: `render` draws the shapes, the editor shows them.
 
+pub mod effects;
 mod font;
 mod font_files;
 pub mod layout;
+pub mod markup;
 mod paragraph;
 pub mod pictures;
 pub mod presets;
@@ -33,10 +39,11 @@ pub mod screen;
 mod shaping;
 pub mod source;
 pub mod text;
+pub mod typing;
 pub mod view;
 
 pub use layout::{Shape, ShapeKind, Stretch, UNCLIPPED, layout, layout_at, layout_with};
-pub use paragraph::{Fit, Line, Paragraph, TextStyle};
+pub use paragraph::{Fit, Inline, Line, Paragraph, TextStyle};
 pub use pictures::Pictures;
 pub use screen::{Anchor, Colour, Edge, Element, ElementKind, Fill, ScaleRule, Screen, ScreenLook};
 pub use text::{FontFiles, Fonts};

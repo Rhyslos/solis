@@ -171,6 +171,36 @@ impl LibraryFiles {
         self.names.contains_key(&names::key(kind, option))
     }
 
+    /// Every name of `kind` the Library's files stand for, sorted: what a
+    /// built-in component's field of the project's names offers (stage 1,
+    /// text effects: a Screen's typing sound).
+    pub(crate) fn names_of(&self, kind: reflect::NameKind) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .items
+            .iter()
+            .filter_map(names::name_of)
+            .filter(|(k, _)| *k == kind)
+            .map(|(_, option)| option)
+            .collect();
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    /// The picture a screen's `[icon=Picture.Ui.Coin]` names, as an image
+    /// name screens show (`ui/coin.png`, or a crop: `ui.png#Coin`), if the
+    /// Library has its file (stage 1, text effects).
+    pub(crate) fn icon_picture(&self, name: &str) -> Option<String> {
+        let option = name.strip_prefix("Picture.")?;
+        let item = self.named(reflect::NameKind::Picture, option)?;
+        let (_, its) = names::name_of(item)?;
+        if its.eq_ignore_ascii_case(option) {
+            return Some(item.path.clone());
+        }
+        let crop = option.get(its.len() + 1..)?;
+        Some(format!("{}#{crop}", item.path))
+    }
+
     /// The file one of the project's names stands for (`Sfx.Alert`, a
     /// sound), if the Library has it. A clip's is its sheet's, and a
     /// picture's crop's its picture's: the nearest the option is inside.

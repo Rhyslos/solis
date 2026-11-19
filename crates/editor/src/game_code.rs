@@ -440,6 +440,9 @@ pub(crate) struct PlayWorld<'a> {
     /// A seed game code set (`setSeed`), made at the end of the tick so
     /// the whole tick draws from one seed.
     pub(crate) seed: Option<u64>,
+    /// Screens whose typing game code finished (`finishTyping`: the entity
+    /// and the screen's name), for the editor after the tick.
+    pub(crate) typed: Vec<(EntityId, String)>,
 }
 
 impl<'a> PlayWorld<'a> {
@@ -457,6 +460,7 @@ impl<'a> PlayWorld<'a> {
             saves: Vec::new(),
             sounds: Vec::new(),
             seed: None,
+            typed: Vec::new(),
         }
     }
 
@@ -634,6 +638,11 @@ impl GameWorld for PlayWorld<'_> {
                 }
                 Change::ShowScreen(which, ref screen, shown) => {
                     self.world.set_screen(which, screen, shown);
+                }
+                Change::FinishTyping(which, ref screen) => {
+                    if self.typed.len() < 256 {
+                        self.typed.push((which, screen.clone()));
+                    }
                 }
                 Change::PlayClip(which, ref clip, again) => {
                     self.world.play_clip(which, clip, again);

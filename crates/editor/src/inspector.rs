@@ -222,6 +222,24 @@ pub(crate) fn field_widget(
                 },
             );
         }
+        // A built-in component's field of the project's names (a Screen's
+        // typing sound): the Library's names of that kind.
+        (FieldKind::Text, Offer::Names(kind)) => {
+            let label = (field.label.as_str(), value, mixed.whole);
+            let mut options = vec![script::project_names::NO_OPTION.to_string()];
+            options.extend(library.names_of(kind));
+            return crate::name_picker::name_picker(ui, label, (&options, kind), library).map(
+                |ask| match ask {
+                    crate::name_picker::NameAsk::Set(Value::Text(t))
+                        if t == script::project_names::NO_OPTION =>
+                    {
+                        Picked::Set(Value::Text(String::new()), None)
+                    }
+                    crate::name_picker::NameAsk::Set(v) => Picked::Set(v, None),
+                    crate::name_picker::NameAsk::Play(path) => Picked::Play(path),
+                },
+            );
+        }
         // A number with a range, from game code's hints.
         (FieldKind::Int | FieldKind::Float, _) if field.hint.slider => {
             return whole(crate::hinted_fields::slider_number(

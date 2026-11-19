@@ -56,6 +56,10 @@ pub struct ScreenCode {
     pub pictures: Vec<PictureUse>,
     /// Every font a screen names in its code (stage 1, text layout), where.
     pub fonts: Vec<FileUse>,
+    /// Mistakes in the markup of the texts written out in screens' code
+    /// (stage 1, text effects: `[wave]` never closed, a word that isn't
+    /// one), where.
+    pub markup: Vec<CodeProblem>,
     /// The screens' files as they were compiled (path, text), for the UI
     /// editor's canvas to read and change.
     pub sources: Vec<(String, String)>,
@@ -129,6 +133,47 @@ pub fn fonts_named(files: &[(String, String)]) -> Vec<FileUse> {
         found.len() < MAX_PICTURE_USES
     });
     found
+}
+
+/// What the markup of every `text "…"` and `button "…"` written out in
+/// `files`' screens shows and gets wrong (stage 1, text effects): the
+/// pictures its icons name (`[icon=Picture.Ui.Coin]`), and its mistakes,
+/// each at its `[`. Text worked out as the game runs is read then.
+pub fn text_marks(files: &[(String, String)]) -> (Vec<FileUse>, Vec<CodeProblem>) {
+    let mut icons = Vec::new();
+    let mut mistakes = Vec::new();
+    for word in ["text", "button"] {
+        quoted_after(files, word, |file, line, column, words| {
+            if !words.contains('[') {
+                return true;
+            }
+            let marked = ui::markup::parse(words);
+            let at = |chars: u32| column.saturating_add(1).saturating_add(chars);
+            // Each icon at its own `[` as written.
+            let char_at = |name: &str| {
+                let byte = words.find(&format!("icon={name}")).map_or(0, |b| b.saturating_sub(1));
+                u32::try_from(words[..byte].chars().count()).unwrap_or(u32::MAX)
+            };
+            for icon in &marked.icons {
+                icons.push(FileUse {
+                    file: file.to_string(),
+                    line,
+                    column: at(char_at(&icon.name)),
+                    name: icon.name.clone(),
+                });
+            }
+            for mistake in marked.mistakes {
+                mistakes.push(CodeProblem {
+                    file: file.to_string(),
+                    line,
+                    column: at(mistake.at),
+                    message: format!("In this text's effects: {}.", mistake.message),
+                });
+            }
+            icons.len() + mistakes.len() < MAX_PICTURE_USES
+        });
+    }
+    (icons, mistakes)
 }
 
 /// Calls `each` with the file, line, column (of the opening quote) and
@@ -519,8 +564,13 @@ pub fn compile(
             screens,
             readers,
             notes,
-            pictures: pictures_named(files),
+            pictures: pictures_named(files)
+                .into_iter()
+                .chain(text_marks(files).0)
+                .take(MAX_PICTURE_USES)
+                .collect(),
             fonts: fonts_named(files),
+            markup: text_marks(files).1,
             sources,
             events: events_named(files),
         })),

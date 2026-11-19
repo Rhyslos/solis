@@ -149,6 +149,8 @@ impl KeptDrawing {
             ui_size: 1.0,
             look: ui::ScreenLook::default(),
             fonts: font_files.clone(),
+            // The canvas shows every text whole.
+            typing: None,
         });
         // Each place in the view, to the place in the file it came from
         // (the first, as the list has them).
@@ -589,6 +591,8 @@ fn canvas_image(size_px: [u32; 2], screen: Arc<ui::Screen>) -> ViewportView {
         pixel: None,
         layers: Vec::new(),
         ui: vec![screen],
+        // Still on the canvas: waves and shakes as they stand at the start.
+        ui_seconds: 0.0,
     }
 }
 

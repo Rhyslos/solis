@@ -15,6 +15,7 @@ fn label(name: &str, words: &str, size: f32, colour: Colour, left: f32, font: us
             style: crate::TextStyle::new(size, font),
             align: crate::Edge::Start,
             fit: crate::Fit::default(),
+            effects: None,
         },
     )
     .at(
