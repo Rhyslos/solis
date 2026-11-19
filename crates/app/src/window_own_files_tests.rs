@@ -13,7 +13,7 @@
 use super::*;
 use editor::OwnFile;
 use editor::sprite_sheets::{
-    AnimatorState, AtlasState, FramesState, MapFileState, SpriteSheets, TilesetState,
+    AnimatorState, AtlasState, FramesState, MapFileState, SpriteSheets, TableState, TilesetState,
 };
 use std::sync::Arc;
 
@@ -135,6 +135,18 @@ fn kinds() -> Vec<Kind> {
     let mut third = second.clone();
     third.add_layer("Clouds", true).unwrap();
     let map = |map: tiles::TileMap| OwnFile::TileMap(Arc::new(map));
+    let table = |price: i64| {
+        let mut table = level::table::Table::new("Item");
+        table.columns.push(level::table::Column::new(
+            "price",
+            level::table::ColumnKind::Whole,
+        ));
+        table.rows.push(Arc::new(level::table::Row {
+            id: "Apple".into(),
+            cells: vec![level::table::Cell::Whole(price)],
+        }));
+        OwnFile::Table(Arc::new(table))
+    };
     vec![
         Kind {
             file: "hero.solframes",
@@ -160,6 +172,10 @@ fn kinds() -> Vec<Kind> {
             file: "farm.tilemap.lst",
             versions: [map(first), map(second), map(third)],
         },
+        Kind {
+            file: "items.table.lst",
+            versions: [table(1), table(20), table(300)],
+        },
     ]
 }
 
@@ -171,6 +187,7 @@ fn text(file: &OwnFile) -> String {
         OwnFile::Tileset(file) => tiles::tileset::write(file),
         OwnFile::Atlas(file) => animation::atlas::write(file),
         OwnFile::TileMap(file) => tiles::map_file::write(file).unwrap(),
+        OwnFile::Table(file) => level::table::file::write(file),
     }
 }
 
@@ -188,6 +205,9 @@ fn held(sheets: &SpriteSheets, path: &str) -> Option<OwnFile> {
     if let Some(AtlasState::Read(file, _)) = sheets.atlases.get(path) {
         return Some(OwnFile::Atlas(Arc::clone(file)));
     }
+    if let Some(TableState::Read(file, _)) = sheets.tables.get(path) {
+        return Some(OwnFile::Table(Arc::clone(file)));
+    }
     match sheets.tile_maps.get(path) {
         Some(MapFileState::Read(file, _)) => Some(OwnFile::TileMap(Arc::clone(file))),
         _ => None,
@@ -202,13 +222,16 @@ fn same_one(a: &OwnFile, b: &OwnFile) -> bool {
         (OwnFile::Tileset(a), OwnFile::Tileset(b)) => Arc::ptr_eq(a, b),
         (OwnFile::Atlas(a), OwnFile::Atlas(b)) => Arc::ptr_eq(a, b),
         (OwnFile::TileMap(a), OwnFile::TileMap(b)) => Arc::ptr_eq(a, b),
+        (OwnFile::Table(a), OwnFile::Table(b)) => Arc::ptr_eq(a, b),
         _ => false,
     }
 }
 
 /// The file on disk at `path`, read as the app reads a file like `like`.
 fn on_disk(path: &Path, like: &OwnFile) -> Option<OwnFile> {
-    use crate::sprites::{read_animator, read_atlas, read_frames, read_tile_map, read_tileset};
+    use crate::sprites::{
+        read_animator, read_atlas, read_frames, read_table, read_tile_map, read_tileset,
+    };
     let mut sheets = SpriteSheets::default();
     match like {
         OwnFile::Frames(_) => drop(sheets.frames.insert("f".into(), read_frames(path))),
@@ -216,6 +239,7 @@ fn on_disk(path: &Path, like: &OwnFile) -> Option<OwnFile> {
         OwnFile::Tileset(_) => drop(sheets.tilesets.insert("f".into(), read_tileset(path))),
         OwnFile::Atlas(_) => drop(sheets.atlases.insert("f".into(), read_atlas(path))),
         OwnFile::TileMap(_) => drop(sheets.tile_maps.insert("f".into(), read_tile_map(path))),
+        OwnFile::Table(_) => drop(sheets.tables.insert("f".into(), read_table(path))),
     }
     held(&sheets, "f")
 }

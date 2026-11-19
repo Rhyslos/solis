@@ -378,10 +378,19 @@ impl GameCode {
         // Each data table's own file (stage 1): a row's field naming one
         // of the project's names starts as that kind's first.
         let states = script::project_names::states_in(&files);
+        // The first that's a name of its own, not a folder of others.
         let first_name = |kind: reflect::NameKind| {
-            states
+            let options = states
                 .get(kind.state())
-                .and_then(|o| o.first())
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            options
+                .iter()
+                .find(|o| {
+                    let inside = format!("{o}.");
+                    !options.iter().any(|other| other.starts_with(&inside))
+                })
+                .or(options.first())
                 .cloned()
                 .unwrap_or_else(|| script::project_names::NO_OPTION.to_string())
         };
@@ -804,6 +813,48 @@ mod tests {
         // Another project: its notes are all said, even the same ones.
         code.forget();
         assert_eq!(notes_of_a_check(&mut code, &assets).len(), 2);
+    }
+
+    #[test]
+    fn each_table_gets_its_own_file_and_a_gone_one_s_is_taken_away() {
+        use level::table::{Column, ColumnKind, Table};
+        let (_temp, assets) = folder("tables");
+        let mut table = Table::new("Item");
+        table.columns.push(Column::new(
+            "icon",
+            ColumnKind::Name(reflect::NameKind::Picture),
+        ));
+        table
+            .rows
+            .push(std::sync::Arc::new(table.new_row("Apple".into())));
+        std::fs::create_dir_all(assets.join("art")).unwrap();
+        std::fs::write(assets.join("art/apple.png"), b"").unwrap();
+        let items = script::table_code::TableNames {
+            path: "data/items".into(),
+            table: std::sync::Arc::new(table),
+        };
+        let notes = GameCode::describe_with(
+            &assets,
+            "Test 1.0",
+            &Animation {
+                tables: vec![items],
+                ..Animation::default()
+            },
+        );
+        assert!(notes.is_empty(), "{notes:?}");
+        let file = assets.join("solis/tables/data/items.lst");
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(text.contains("state Item = [Apple];"), "{text}");
+        // A row's picture starts as the project's first.
+        assert!(
+            text.contains("lock Picture icon = Picture.Art.Apple;"),
+            "{text}"
+        );
+        GameCode::describe_with(&assets, "Test 1.0", &Animation::default());
+        assert!(
+            !file.exists(),
+            "a table no longer there takes its file away"
+        );
     }
 
     #[test]
