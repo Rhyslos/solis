@@ -116,6 +116,18 @@ impl Workbench {
             return KeyOwner::Binding;
         }
         if ctx.egui_wants_keyboard_input() {
+            // The Table tab's grid holds the keyboard once clicked, so its
+            // keys stay its own (stage 1, data tables).
+            let grid = ctx.memory(|m| m.focused()) == Some(crate::table_view::grid_id());
+            if grid
+                && open.table_editor.is_some()
+                && open
+                    .table_editor
+                    .as_ref()
+                    .is_some_and(|e| e.typing.is_none())
+            {
+                return KeyOwner::Table;
+            }
             return KeyOwner::Field;
         }
         if self.shell.covers_center() {

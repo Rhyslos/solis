@@ -72,6 +72,9 @@ pub(crate) struct TableEditor {
     pub(crate) said: Vec<String>,
     /// The tab's scroll should bring the cursor into view.
     pub(crate) reveal: bool,
+    /// Where the grid's top left corner was drawn last (its headings'),
+    /// as scrolled.
+    pub(crate) drawn_at: Option<(f32, f32)>,
 }
 
 impl TableEditor {
@@ -92,6 +95,7 @@ impl TableEditor {
             revision: 0,
             said: Vec::new(),
             reveal: false,
+            drawn_at: None,
         }
     }
 

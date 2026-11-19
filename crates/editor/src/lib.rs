@@ -108,6 +108,8 @@ mod standard;
 mod state_dump;
 pub mod state_list;
 mod table_editor;
+#[cfg(test)]
+mod table_tab_tests;
 mod table_view;
 pub mod tags;
 #[cfg(test)]

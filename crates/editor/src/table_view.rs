@@ -231,7 +231,11 @@ fn grid(
     let width = places.last().map_or(ID_W, |(x, w)| x + w);
     let shown = editor.shown().to_vec();
     let height = HEAD_H + shown.len() as f32 * ROW_H;
-    if keys_here {
+    // The box typed in has the keyboard, so the keys are the grid's
+    // while typing wherever the pointer is.
+    if editor.typing.is_some() {
+        typing_keys(ui, editor, out);
+    } else if keys_here {
         keys(ui, editor, &shown, out);
     }
     let reveal = std::mem::take(&mut editor.reveal);
@@ -239,11 +243,29 @@ fn grid(
         .id_salt("table grid")
         .auto_shrink(false)
         .show_viewport(ui, |ui, view| {
-            let (full, response) = ui.allocate_exact_size(
-                vec2(width.max(view.width()), height),
-                Sense::click_and_drag(),
-            );
+            let (full, _) =
+                ui.allocate_exact_size(vec2(width.max(view.width()), height), Sense::hover());
+            let response = ui.interact(full, grid_id(), Sense::click_and_drag());
+            // The grid keeps the keys once clicked: Tab and the arrows
+            // move its cursor rather than to another field.
+            if response.clicked() || response.drag_started() || response.secondary_clicked() {
+                response.request_focus();
+            }
+            if response.has_focus() {
+                ui.memory_mut(|m| {
+                    m.set_focus_lock_filter(
+                        grid_id(),
+                        egui::EventFilter {
+                            tab: true,
+                            horizontal_arrows: true,
+                            vertical_arrows: true,
+                            escape: true,
+                        },
+                    );
+                });
+            }
             let origin = full.min;
+            editor.drawn_at = Some((origin.x, origin.y + view.min.y));
             let cell_rect = |at: usize, place: usize| {
                 let (x, w) = places[place];
                 Rect::from_min_size(origin + vec2(x, HEAD_H + at as f32 * ROW_H), vec2(w, ROW_H))
@@ -267,6 +289,12 @@ fn grid(
             click(ui, editor, &shown, &places, origin, &response, out);
             typing_box(ui, editor, &shown, &cell_rect, names, out);
         });
+}
+
+/// The grid's own name: holding the keyboard, the keys are the
+/// grid's (`key_owner.rs`).
+pub(crate) fn grid_id() -> egui::Id {
+    egui::Id::new("table grid cells")
 }
 
 /// One row's cells at its place among those shown (`at`).
@@ -860,30 +888,27 @@ fn keys(ui: &mut Ui, editor: &mut TableEditor, shown: &[usize], out: &mut TableO
         }
         return;
     }
-    if editor.typing.is_some() {
-        typing_keys(ui, editor, out);
-        return;
-    }
     let pressed = |ui: &mut Ui, key: Key| ui.input_mut(|i| i.consume_key(Modifiers::NONE, key));
-    let shifted = |ui: &mut Ui, key: Key| ui.input_mut(|i| i.consume_key(Modifiers::SHIFT, key));
+    let times = |ui: &mut Ui, m: Modifiers, key: Key| {
+        ui.input_mut(|i| i.count_and_consume_key(m, key)) as isize
+    };
     for (key, rows, places) in [
         (Key::ArrowUp, -1, 0),
         (Key::ArrowDown, 1, 0),
         (Key::ArrowLeft, 0, -1),
         (Key::ArrowRight, 0, 1),
+        (Key::Tab, 0, 1),
     ] {
-        if pressed(ui, key) {
-            editor.step(rows, places, false);
+        let n = times(ui, Modifiers::NONE, key);
+        if n > 0 {
+            editor.step(rows * n, places * n, false);
         }
-        if shifted(ui, key) {
-            editor.step(rows, places, true);
+        let n = times(ui, Modifiers::SHIFT, key);
+        if n > 0 && key == Key::Tab {
+            editor.step(0, -n, false);
+        } else if n > 0 {
+            editor.step(rows * n, places * n, true);
         }
-    }
-    if pressed(ui, Key::Tab) {
-        editor.step(0, 1, false);
-    }
-    if shifted(ui, Key::Tab) {
-        editor.step(0, -1, false);
     }
     if pressed(ui, Key::Enter) || pressed(ui, Key::F2) {
         let at = editor.cursor;
@@ -945,6 +970,7 @@ fn typing_keys(ui: &mut Ui, editor: &mut TableEditor, out: &mut TableOut) {
     let take = |ui: &mut Ui, m: Modifiers, key: Key| ui.input_mut(|i| i.consume_key(m, key));
     if take(ui, Modifiers::NONE, Key::Escape) {
         editor.typing = None;
+        ui.memory_mut(|m| m.request_focus(grid_id()));
         return;
     }
     let moves = if take(ui, Modifiers::NONE, Key::Enter) {
@@ -963,6 +989,7 @@ fn typing_keys(ui: &mut Ui, editor: &mut TableEditor, out: &mut TableOut) {
         Ok(()) => {
             out.changed = true;
             editor.step(rows, places, false);
+            ui.memory_mut(|m| m.request_focus(grid_id()));
         }
         Err(why) => out.said = Some(why),
     }
