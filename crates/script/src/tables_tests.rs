@@ -209,7 +209,10 @@ fn a_misspelt_row_or_column_fails_before_the_game_runs() {
     let problems = checked(&column).unwrap_err();
     assert!(problems[0].message.contains("prise"), "{}", problems[0]);
     let changed = LUST_SHOP.replace("price = sword.price;", "sword.price = 3;");
-    assert!(checked(&changed).is_err(), "a row's values can't be changed");
+    assert!(
+        checked(&changed).is_err(),
+        "a row's values can't be changed"
+    );
 }
 
 const LUA_SHOP: &str = "local Shop = component(\"Shop\", {\n\
@@ -245,7 +248,10 @@ fn lua_reads_a_row_by_its_id_and_every_row() {
 fn a_misspelt_row_in_lua_stops_with_the_nearest_id() {
     let code = compiled(
         "",
-        &[("shop.lua", &LUA_SHOP.replace("\"IronSword\"", "\"IronSwrod\""))],
+        &[(
+            "shop.lua",
+            &LUA_SHOP.replace("\"IronSword\"", "\"IronSwrod\""),
+        )],
     );
     let mut host = Shop {
         tables: tables(120),
@@ -258,7 +264,10 @@ fn a_misspelt_row_in_lua_stops_with_the_nearest_id() {
         .unwrap();
     let failures = runtime.tick(0.1, &mut host).failures;
     let said = format!("{failures:?}");
-    assert!(said.contains("Items has no row IronSwrod: did you mean IronSword?"), "{said}");
+    assert!(
+        said.contains("Items has no row IronSwrod: did you mean IronSword?"),
+        "{said}"
+    );
     assert!(said.contains("shop.lua"), "{said}");
 }
 
@@ -272,7 +281,10 @@ fn a_game_without_tables_has_no_table_in_lua() {
         .sync(id(1), "Shop", &ComponentData::default(), &mut host)
         .unwrap();
     let failures = runtime.tick(0.1, &mut host).failures;
-    assert!(format!("{failures:?}").contains("solis.Items"), "{failures:?}");
+    assert!(
+        format!("{failures:?}").contains("solis.Items"),
+        "{failures:?}"
+    );
 }
 
 #[test]

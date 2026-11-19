@@ -324,7 +324,8 @@ impl Lent {
             let made = lua.create_table()?;
             let names = lua.create_sequence_from(tables.names())?;
             for (name, table) in &tables.inner.by_name {
-                let ids = lua.create_sequence_from(table.table.rows.iter().map(|r| r.id.as_str()))?;
+                let ids =
+                    lua.create_sequence_from(table.table.rows.iter().map(|r| r.id.as_str()))?;
                 let (row, rows): (Function, Function) =
                     make.call((name.as_str(), builder(lua, name, Arc::clone(table))?, ids))?;
                 made.raw_set(format!("{name}_row"), row)?;

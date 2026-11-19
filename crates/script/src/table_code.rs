@@ -128,12 +128,7 @@ pub fn table_file(
     } = &named;
     let wanted: Vec<&str> = NameKind::ALL
         .into_iter()
-        .filter(|k| {
-            table
-                .columns
-                .iter()
-                .any(|c| c.kind == ColumnKind::Name(*k))
-        })
+        .filter(|k| table.columns.iter().any(|c| c.kind == ColumnKind::Name(*k)))
         .map(NameKind::state)
         .collect();
     let mut text = format!(
