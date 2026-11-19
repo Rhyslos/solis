@@ -92,6 +92,12 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) animator: Option<crate::animator_view::AnimatorUi<'a>>,
     /// The tileset open in the Tileset tab, if any (Phase 9, D5).
     pub(crate) tileset: Option<crate::tileset_view::TilesetUi<'a>>,
+    /// The data table open in the Table tab, if any, and the project's
+    /// names for its name columns (stage 1).
+    pub(crate) table: Option<(
+        &'a mut crate::table_editor::TableEditor,
+        Option<&'a script::project_names::States>,
+    )>,
     /// The atlas open in the Atlas Crop tab, its picture, and why there's
     /// none (decision 0089).
     pub(crate) atlas: Option<(
@@ -161,6 +167,10 @@ pub(crate) struct FramesOut {
     pub(crate) frame_picked: Option<u64>,
     /// The prefab's page was closed (its ×).
     pub(crate) prefab_page_closed: bool,
+    /// What the Table tab asked for.
+    pub(crate) table: crate::table_view::TableOut,
+    /// The Table tab was closed (its ×).
+    pub(crate) table_closed: bool,
 }
 
 /// The names on the document tabs while a prefab's page is open.
@@ -190,6 +200,11 @@ impl PanelViewer<'_> {
             Panel::Tileset => {
                 if let Some(t) = &self.tileset {
                     return file(&t.editor.path);
+                }
+            }
+            Panel::Table => {
+                if let Some((t, _)) = &self.table {
+                    return file(&t.path);
                 }
             }
             Panel::AtlasCrop => {
@@ -234,6 +249,7 @@ impl PanelViewer<'_> {
             Panel::AtlasCrop => self.atlas.is_some(),
             Panel::Canvas | Panel::Elements | Panel::Pictures => self.screen.is_some(),
             Panel::PrefabPage => self.page.is_some(),
+            Panel::Table => self.table.is_some(),
             Panel::Viewport
             | Panel::Game
             | Panel::Level
@@ -272,6 +288,7 @@ impl PanelViewer<'_> {
                 self.frames_out.screen_closed = true;
             }
             Panel::PrefabPage => self.frames_out.prefab_page_closed = true,
+            Panel::Table => self.frames_out.table_closed = true,
             // These have no × (`closes_a_file`): nothing closes them.
             Panel::Viewport
             | Panel::Game
@@ -881,6 +898,28 @@ impl PanelViewer<'_> {
                     animator,
                     self.keys == KeyOwner::Animator,
                 );
+            }
+            Panel::Table => {
+                let Some((editor, names)) = &mut self.table else {
+                    empty_note(ui, "No table is open.");
+                    return;
+                };
+                let out = crate::table_view::table_tab(
+                    ui,
+                    crate::table_view::TableUi {
+                        editor,
+                        names: *names,
+                        keys: self.keys == KeyOwner::Table,
+                        accent: self.accent,
+                    },
+                );
+                let mine = &mut self.frames_out.table;
+                mine.changed |= out.changed;
+                mine.import |= out.import;
+                mine.export |= out.export;
+                if out.said.is_some() {
+                    mine.said = out.said;
+                }
             }
             Panel::Viewport | Panel::PrefabPage => {}
         }

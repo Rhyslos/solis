@@ -57,6 +57,9 @@ pub(crate) enum KeyOwner {
     Clips,
     /// The Frames tab: the clips file's undo, Delete and Space.
     Frames,
+    /// The Table tab: the table's undo, and the grid's spreadsheet keys
+    /// (stage 1, data tables).
+    Table,
     /// The Animator tab: the animator's undo and its graph's keys.
     Animator,
     /// The Tileset tab: the tileset's undo.
@@ -131,6 +134,7 @@ impl Workbench {
             Some(Panel::Tileset | Panel::Terrains) if open.tilesets.tab().is_some() => {
                 Some(KeyOwner::Tileset)
             }
+            Some(Panel::Table) if open.table_editor.is_some() => Some(KeyOwner::Table),
             // Properties showing the screen's settings, as Elements and
             // Pictures beside it on the Screen shelf tab (the second
             // review pass's N-28).

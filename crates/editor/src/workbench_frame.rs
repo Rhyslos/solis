@@ -289,6 +289,11 @@ impl Workbench {
             frames_out: &mut asks.frames,
             animator,
             tileset,
+            table: self
+                .open
+                .table_editor
+                .as_mut()
+                .map(|e| (e, self.open.program.as_ref().map(|p| &*p.names))),
             atlas,
             map,
             map_requests: &mut asks.map,

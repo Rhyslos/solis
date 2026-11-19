@@ -44,7 +44,13 @@
 //!     with the option of its component's own state it ends with, if any)
 //! states 52
 //! ENTITY COMPONENT EVENT FROM TO (a state change waiting to be heard)
+//! tables 16
+//! 7d02… (a number standing for the project's data tables; version 13)
 //! ```
+//!
+//! The data tables themselves aren't saved: they're the project's, read
+//! only while playing (decision 0128). A load with tables that have
+//! changed since says so once.
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
 //! insides: saving builds the running game's physics again from those
@@ -61,9 +67,9 @@ use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 12";
+const HEADER: &str = "solis save 13";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 12;
+const SAVE_VERSION: u32 = 13;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -94,6 +100,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         zones::zones_kept,
         timers_kept,
         states_kept,
+        tables_kept,
     ],
 };
 
@@ -109,7 +116,7 @@ pub fn save_reads(text: &str) -> Result<(), String> {
     Save::read(text).map(drop)
 }
 
-/// The most sections a save has (it writes seventeen).
+/// The most sections a save has (it writes eighteen).
 const MAX_SECTIONS: usize = 20;
 
 /// A save's sections as written (`name length`, then that much text),
@@ -252,6 +259,9 @@ pub(crate) struct Save {
     /// The changes of components' own states waiting to be heard next
     /// tick, as the game writes them (stage 1, states; version 12).
     pub(crate) states: String,
+    /// A number standing for the project's data tables when it was saved
+    /// (stage 1, data tables; version 13): none when not known.
+    pub(crate) tables: Option<u64>,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -372,6 +382,8 @@ impl Save {
         section("zones", &zones::zones_text(&self.zones.0, &self.zones.1));
         section("timers", &self.timers.write());
         section("states", &self.states);
+        let tables = self.tables.map(|h| format!("{h:016x}")).unwrap_or_default();
+        section("tables", &tables);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -509,6 +521,7 @@ impl Workbench {
                 .as_ref()
                 .map(script::Game::states_waiting)
                 .unwrap_or_default(),
+            tables: Some(playing.view.tables.hash()),
             notes: Vec::new(),
         })
     }
@@ -567,6 +580,16 @@ fn states_kept(sections: &mut Sections) -> Result<(), String> {
         return Err("it already has states".into());
     }
     sections.list.push(("states".into(), String::new()));
+    Ok(())
+}
+
+/// Version 12 to 13 (stage 1, data tables): an older save says nothing of
+/// the tables, so nothing is warned of when they differ.
+fn tables_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "tables") {
+        return Err("it already has tables".into());
+    }
+    sections.list.push(("tables".into(), String::new()));
     Ok(())
 }
 

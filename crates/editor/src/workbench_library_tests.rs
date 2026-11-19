@@ -516,6 +516,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
         K::Tileset,
         K::TileMap,
         K::Atlas,
+        K::Table,
         K::Text,
         K::Tags,
         K::Other,
@@ -535,6 +536,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
             | K::Animator
             | K::Tileset
             | K::Atlas
+            | K::Table
             | K::Text
             | K::Tags
             | K::Other => (1, 0),

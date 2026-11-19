@@ -230,6 +230,8 @@ pub struct OpenNow {
     pub folders: bool,
     /// A prefab's page is open: a tab beside the level's on Home.
     pub prefab_page: bool,
+    /// A data table is open: a tab beside the level's on Home.
+    pub table: bool,
 }
 
 /// The documents of a tab's editor groups: one or two groups, each a
@@ -244,6 +246,9 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
             let mut level = vec![P::Viewport];
             if open.prefab_page {
                 level.push(P::PrefabPage);
+            }
+            if open.table {
+                level.push(P::Table);
             }
             if open.playing {
                 level.push(P::Game);

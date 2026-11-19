@@ -187,6 +187,20 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
+    /// Write a data table's CSV (`items.csv` beside `items.table.lst`,
+    /// inside the project's files), replacing one there (stage 1).
+    ExportCsv {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to write.
+        text: String,
+    },
+    /// Read the CSV at `path` (inside the project's files) and hand it to
+    /// `Workbench::import_table_csv` (stage 1).
+    ReadCsv {
+        /// The file.
+        path: std::path::PathBuf,
+    },
     /// Save a new picture (a PNG inside the project's assets): a tileset
     /// kind's template to draw over (Phase 9, D5). Never replaces a file.
     SavePicture {

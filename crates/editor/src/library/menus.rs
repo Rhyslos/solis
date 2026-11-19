@@ -122,6 +122,12 @@ fn new_rows(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
         LibraryRequest::NewSoundEvent(at.clone()),
         requests,
     );
+    ask(
+        ui,
+        (Icon::Table, "New table"),
+        LibraryRequest::NewTable(at.clone()),
+        requests,
+    );
     ui.menu_button("More", |ui| {
         fit(ui, &["New tile map"]);
         use crate::shell::commands::NewFile;

@@ -5,10 +5,11 @@
 //! The file is text, a line per tick:
 //!
 //! ```text
-//! solis recording 4
+//! solis recording 5
 //! seed 12345
 //! level levels/farm.sollevel
 //! start 0f3a…
+//! tables 7d02…
 //! 0 w 9c1d… g 77ab… Move=h,3f800000,0 Jump=hp
 //! s 5A329QT768NJB Resumed
 //! 1 w 1e2f…
@@ -16,7 +17,9 @@
 //!
 //! After the seed, the level the play started in (version 2; until
 //! version 4, when areas were renamed levels, the line said `area` and
-//! its path ended `.solarea`). Each tick:
+//! its path ended `.solarea`). Then (version 5) a number standing for the
+//! project's data tables as they were (0 when it has none), so playing
+//! back with a changed table can warn. Each tick:
 //! its number, the world's checksum (`w`), game code's when it was taken
 //! (`g`), and each busy action: `h`, `p`, `r` for held, pressed and
 //! released, and an axis's two numbers as their exact bits (hex), so
@@ -58,6 +61,10 @@ pub struct Recording {
     /// with `/` between folders (format 2 on; `None` when not known), so
     /// a project's check can play it back on its own (Phase 8, C4).
     pub level: Option<String>,
+    /// A number standing for the project's data tables when it was
+    /// recorded (`script::Tables::hash`; 0 for none), from version 5 on:
+    /// `None` when it isn't known.
+    pub tables: Option<u64>,
 }
 
 /// The longest level path a recording keeps.
@@ -88,7 +95,7 @@ impl std::fmt::Display for RecordingError {
 }
 
 /// The format version this build writes.
-pub(crate) const VERSION: u32 = 4;
+pub(crate) const VERSION: u32 = 5;
 /// The level line's word from version 4, and before it (versions 2 and 3).
 const LEVEL_WORD: &str = "level";
 const OLD_LEVEL_WORD: &str = "area";
@@ -105,8 +112,20 @@ pub static FORMAT: reflect::upgrade::Format<Recording> = reflect::upgrade::Forma
         let line = text.lines().next()?.trim();
         line.strip_prefix(HEADER)?.trim().parse().ok()
     },
-    steps: &[the_level_isn_t_known, nothing_was_sent, areas_are_levels],
+    steps: &[
+        the_level_isn_t_known,
+        nothing_was_sent,
+        areas_are_levels,
+        tables_not_known,
+    ],
 };
+
+/// Version 4 to 5 (stage 1, data tables): a recording from before says
+/// nothing of the tables, so nothing is warned of when they differ.
+fn tables_not_known(recording: &mut Recording) -> Result<(), String> {
+    recording.tables = None;
+    Ok(())
+}
 
 /// Version 3 to 4 (decision 0118): areas were renamed levels, and a
 /// project's `.solarea` files became `.sollevel` files when it opened, so
@@ -177,8 +196,10 @@ impl Recording {
             .unwrap_or_default()
             .replace(char::is_control, " ");
         let mut text = format!(
-            "{HEADER} {VERSION}\nseed {}\n{LEVEL_WORD} {level}\nstart {:016x}\n",
-            self.seed, self.start
+            "{HEADER} {VERSION}\nseed {}\n{LEVEL_WORD} {level}\nstart {:016x}\ntables {:016x}\n",
+            self.seed,
+            self.start,
+            self.tables.unwrap_or(0)
         );
         for (n, tick) in self.ticks.iter().enumerate() {
             text.push_str(&format!("{n} w {:016x}", tick.world));
@@ -276,6 +297,15 @@ impl Recording {
         };
         let start = u64::from_str_radix(field("start")?.trim(), 16)
             .map_err(|_| RecordingError::Damaged(3))?;
+        // Format 5 on: the data tables it was recorded with.
+        let tables = if version >= 5 {
+            Some(
+                u64::from_str_radix(field("tables")?.trim(), 16)
+                    .map_err(|_| RecordingError::Damaged(5))?,
+            )
+        } else {
+            None
+        };
         let mut ticks = Vec::new();
         for (n, line) in lines {
             if line.trim().is_empty() {
@@ -359,6 +389,7 @@ impl Recording {
             start,
             ticks,
             level,
+            tables,
         };
         FORMAT
             .upgrade(version, &mut recording)

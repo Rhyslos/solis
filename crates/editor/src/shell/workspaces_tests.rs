@@ -12,6 +12,7 @@ const EVERYTHING: OpenNow = OpenNow {
     layout: PanelLayout::Standard,
     folders: false,
     prefab_page: true,
+    table: true,
 };
 
 /// Every panel `tab` shows anywhere with `open` open.

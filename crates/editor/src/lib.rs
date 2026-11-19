@@ -82,6 +82,8 @@ pub mod prefab_details;
 mod prefab_marks;
 mod prefab_page;
 mod table_editor;
+mod table_view;
+mod workbench_table;
 pub mod problems;
 pub mod profiler;
 mod profiler_view;

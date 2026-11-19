@@ -1125,6 +1125,19 @@ impl App {
                         );
                     }
                 }
+                WorkbenchAction::ExportCsv { path, text } => {
+                    if let Err(why) = self.projects.write_csv(&path, &text) {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't write {}: {why}.", path.display()),
+                        );
+                    }
+                }
+                WorkbenchAction::ReadCsv { path } => {
+                    let read = self.projects.read_csv(&path);
+                    let shown = crate::project::slashed(&path);
+                    self.workbench.import_table_csv(&shown, read);
+                }
                 WorkbenchAction::SavePicture { path, bytes } => {
                     if let Err(why) = self.projects.save_picture(&path, &bytes) {
                         self.workbench.log(

@@ -229,6 +229,7 @@ fn sample_recording() -> Recording {
         start: 0xdead_beef,
         ticks,
         level: Some("levels/harbour.sollevel".into()),
+        tables: Some(0),
     }
 }
 
@@ -236,7 +237,7 @@ fn sample_recording() -> Recording {
 fn recordings_round_trip_exactly() {
     let r = sample_recording();
     let text = r.write();
-    assert!(text.starts_with("solis recording 4\nseed 42\nlevel levels/harbour.sollevel\n"));
+    assert!(text.starts_with("solis recording 5\nseed 42\nlevel levels/harbour.sollevel\n"));
     assert_eq!(Recording::read(&text).unwrap(), r);
     // Playing back the same: no difference; a changed checksum is found.
     assert_eq!(r.first_difference(&r.ticks), None);
@@ -253,7 +254,7 @@ fn damaged_recordings_are_refused_never_crashing() {
     let good = sample_recording().write();
     assert_eq!(Recording::read("hello"), Err(RecordingError::NotARecording));
     // A newer one is refused before it's read on, with why.
-    let newer = Recording::read("solis recording 5\nseed 1\nstart 0\n").unwrap_err();
+    let newer = Recording::read("solis recording 6\nseed 1\nstart 0\n").unwrap_err();
     assert!(newer.to_string().contains("newer version"), "{newer}");
     assert!(matches!(
         Recording::read("solis recording 0\nseed 1\nstart 0\n"),
@@ -722,6 +723,7 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
     // Not known: an empty line, read back as none.
     let none = Recording {
         level: None,
+        tables: Some(0),
         ..r.clone()
     };
     assert_eq!(Recording::read(&none.write()).unwrap().level, None);
@@ -730,6 +732,7 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
     // A line break in a path can't break the file.
     let odd = Recording {
         level: Some("a\nb".into()),
+        tables: Some(0),
         ..r.clone()
     };
     assert_eq!(
@@ -738,8 +741,9 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
     );
     // Version 1 had no level line: it reads, with none.
     let one: String = text
-        .replacen("solis recording 4", "solis recording 1", 1)
+        .replacen("solis recording 5", "solis recording 1", 1)
         .replacen("level levels/harbour.sollevel\n", "", 1)
+        .replacen("tables 0000000000000000\n", "", 1)
         .lines()
         .filter(|l| !l.starts_with("s "))
         .map(|l| format!("{l}\n"))
@@ -786,7 +790,8 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
         ("notes/readme.txt", "notes/readme.txt"),
     ] {
         let three = text
-            .replacen("solis recording 4", "solis recording 3", 1)
+            .replacen("solis recording 5", "solis recording 3", 1)
+            .replacen("tables 0000000000000000\n", "", 1)
             .replacen("level levels/harbour.sollevel", &format!("area {old}"), 1);
         assert_eq!(
             Recording::read(&three).unwrap().level.as_deref(),
@@ -797,7 +802,9 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
     // saying `level`.
     let wrong = text.replacen("\nlevel ", "\narea ", 1);
     assert_eq!(Recording::read(&wrong), Err(RecordingError::Damaged(3)));
-    let wrong = text.replacen("solis recording 4", "solis recording 3", 1);
+    let wrong = text
+        .replacen("solis recording 5", "solis recording 3", 1)
+        .replacen("tables 0000000000000000\n", "", 1);
     assert_eq!(Recording::read(&wrong), Err(RecordingError::Damaged(3)));
 }
 
@@ -842,6 +849,7 @@ fn only_what_a_recording_reads_back_the_same_is_recordable() {
             game: None,
         }],
         level: None,
+        tables: Some(0),
     };
     let back = Recording::read(&recording.write()).unwrap();
     assert_eq!(back.ticks[0].frame.sent, vec![kept]);
@@ -855,6 +863,29 @@ fn the_version_3_example_is_written_as_the_version_4_one() {
     let four = include_str!("../../../tests/fixtures/recording/v4/play.solrec");
     let read = Recording::read(three).unwrap();
     assert_eq!(read.level.as_deref(), Some("areas/turret.sollevel"));
-    assert_eq!(read.write(), four);
+    let as_five = four.replacen("solis recording 4", "solis recording 5", 1).replacen(
+        "start 0000000000000abc\n",
+        "start 0000000000000abc\ntables 0000000000000000\n",
+        1,
+    );
+    assert_eq!(read.write(), as_five);
     assert_eq!(Recording::read(four).unwrap(), read);
+    // Version 5 says which tables it was recorded with.
+    let five = include_str!("../../../tests/fixtures/recording/v5/play.solrec");
+    assert_eq!(Recording::read(five).unwrap().tables, Some(0xc0ff_ee12));
+}
+
+#[test]
+fn a_recording_keeps_its_tables_and_older_ones_know_none() {
+    let mut recording = sample_recording();
+    recording.tables = Some(0x7d02_6c11_aa00_0013);
+    let text = recording.write();
+    assert!(text.contains("\ntables 7d026c11aa000013\n"));
+    assert_eq!(Recording::read(&text).unwrap().tables, recording.tables);
+    let older = text
+        .replacen("solis recording 5", "solis recording 4", 1)
+        .replacen("tables 7d026c11aa000013\n", "", 1);
+    assert_eq!(Recording::read(&older).unwrap().tables, None);
+    let damaged = text.replacen("tables 7d02", "tables zz02", 1);
+    assert!(Recording::read(&damaged).is_err());
 }

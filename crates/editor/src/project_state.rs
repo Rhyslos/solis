@@ -146,6 +146,8 @@ pub(crate) struct ProjectState {
     /// The project's tilesets being changed, each with its file's undo
     /// steps, and the one open in the Tileset tab (Phase 9, D5).
     pub(crate) tilesets: crate::workbench_tileset::TilesetEdits,
+    /// The data table open in the Table tab (stage 1, data tables).
+    pub(crate) table_editor: Option<crate::table_editor::TableEditor>,
     /// The atlas open in the Atlas Crop tab (decision 0089).
     pub(crate) atlas_editor: Option<crate::atlas_editor::AtlasEditor>,
     /// The open atlas's picture as a texture.

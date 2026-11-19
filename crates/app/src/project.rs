@@ -529,6 +529,29 @@ impl Projects {
         asset_db::write_atomically(&file, bytes).map_err(|e| e.to_string())
     }
 
+    /// Writes a data table's CSV (`items.csv`, in the project), replacing
+    /// one there (stage 1, data tables).
+    pub fn write_csv(&self, path: &Path, text: &str) -> Result<(), String> {
+        let (_, file) = self.place(path, "a CSV file", |path| ends_in(path, &["csv"]))?;
+        folder_is_there(&file)?;
+        asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
+    }
+
+    /// Reads a CSV file in the project, within the tables' limit, to take
+    /// into a data table.
+    pub fn read_csv(&self, path: &Path) -> Result<String, String> {
+        let (_, file) = self.place(path, "a CSV file", |path| ends_in(path, &["csv"]))?;
+        if !file.is_file() {
+            return Err(format!(
+                "there's no {} beside the table: export one, or put a CSV of that name there",
+                path.display()
+            ));
+        }
+        let bytes = asset_db::read_limited(&file, level::table::text::MAX_BYTES as u64)
+            .map_err(|e| e.to_string())?;
+        String::from_utf8(bytes).map_err(|_| "it isn't text (save it as UTF-8 CSV)".to_owned())
+    }
+
     /// Makes a new text file in the project (E1): a Lust code file
     /// (`.lst`) or a level (`.sollevel`). Never replaces a file.
     pub fn save_new_text(&self, path: &Path, text: &str) -> Result<(), String> {

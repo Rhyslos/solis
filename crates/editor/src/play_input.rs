@@ -272,11 +272,13 @@ impl Workbench {
         }
         self.play();
         if let Some(playing) = &mut self.open.playing {
+            playing.view.set_tables(&self.viewport.sheets);
             playing.recording = Some(input::Recording {
                 seed: playing.start_seed,
                 start: playing.world.checksum(),
                 ticks: Vec::new(),
                 level,
+                tables: Some(playing.view.tables.hash()),
             });
             self.log(
                 LogLevel::Info,
@@ -337,6 +339,7 @@ impl Workbench {
             return;
         };
         let same_start = playing.world.checksum() == recording.start;
+        let tables_then = recording.tables;
         let count = recording.ticks.len();
         playing.replay = Some((recording, 0));
         self.log(
@@ -353,6 +356,7 @@ impl Workbench {
                  same.",
             );
         }
+        self.warn_if_tables_changed(tables_then, &format!("{name} was recorded"));
     }
 
     /// What the editor asks of the app, taken (for tools that run the game

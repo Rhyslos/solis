@@ -438,6 +438,7 @@ impl Workbench {
             }
         }
         told.extend(self.follow_tilesets(&sheets));
+        told.extend(self.follow_table(&sheets));
         told.retain(|told| told.followed != Followed::Same);
         told
     }

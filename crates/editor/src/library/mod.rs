@@ -399,6 +399,8 @@ pub(crate) enum LibraryRequest {
     NewAnimator(String),
     /// Make a new tileset in this folder (Phase 9, D4).
     NewTileset(String),
+    /// Make a new data table in this folder (stage 1) and open it.
+    NewTable(String),
     /// Make a new tile map in this folder (Phase 9, D4).
     NewTileMap(String),
     /// Change a tileset's terrains, asked for in its Properties (path, the
