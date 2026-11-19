@@ -48,6 +48,7 @@ mod graph_canvas;
 mod guide;
 #[cfg(test)]
 mod guide_keys_tests;
+mod hinted_fields;
 pub mod hints;
 pub mod icons;
 mod inspector;
@@ -66,6 +67,7 @@ mod menu_items;
 mod mixer_console;
 pub mod mixer_view;
 pub mod models;
+mod name_picker;
 mod own_files;
 pub mod panel;
 mod panels;

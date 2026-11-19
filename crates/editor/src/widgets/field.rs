@@ -377,6 +377,44 @@ pub fn list_note(ui: &mut Ui, note: &str) {
 /// The closed drop-down: the field's box, `shown` in it, and the arrow.
 /// Its list is opened from the response (`egui::Popup::menu`).
 pub fn dropdown_button(ui: &mut Ui, name: &str, shown: &str, width: f32) -> Response {
+    dropdown_button_led(ui, name, shown, width, Lead::None)
+}
+
+/// What a field shows before its words: nothing, a picture (a file's
+/// thumbnail), or an icon in a kind's colour.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Lead {
+    /// Only the words.
+    None,
+    /// A picture, as a small square.
+    Picture(egui::TextureId),
+    /// An icon in a colour.
+    Icon(crate::icons::Icon, Color32),
+}
+
+impl Lead {
+    /// Draws it in `rect` (a small square).
+    pub fn paint(self, painter: &egui::Painter, rect: Rect) {
+        match self {
+            Self::None => {}
+            Self::Picture(texture) => {
+                let whole = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+                painter.image(texture, rect, whole, Color32::WHITE);
+            }
+            Self::Icon(icon, colour) => crate::icons::icon(painter, rect, icon, colour),
+        }
+    }
+}
+
+/// [`dropdown_button`] with `lead` before its words: a sound's icon, a
+/// picture's thumbnail (decision 0127).
+pub fn dropdown_button_led(
+    ui: &mut Ui,
+    name: &str,
+    shown: &str,
+    width: f32,
+    lead: Lead,
+) -> Response {
     let (rect, response) = ui.allocate_exact_size(vec2(width, size::field_h()), Sense::click());
     response.widget_info(|| {
         let mut info = WidgetInfo::labeled(egui::WidgetType::ComboBox, ui.is_enabled(), name);
@@ -387,7 +425,17 @@ pub fn dropdown_button(ui: &mut Ui, name: &str, shown: &str, width: f32) -> Resp
         ui.painter().add(box_shape(ui, rect, false));
         let room = rect.shrink2(vec2(size::FIELD_PAD, 0.0));
         let arrow = Rect::from_min_max(pos2(room.right() - DROP_ARROW, room.top()), room.max);
-        let text_room = Rect::from_min_max(room.min, pos2(arrow.left() - size::GAP, room.bottom()));
+        let mut text_room =
+            Rect::from_min_max(room.min, pos2(arrow.left() - size::GAP, room.bottom()));
+        if lead != Lead::None {
+            let side = size::LEAD;
+            let at = Rect::from_center_size(
+                pos2(room.left() + side / 2.0, room.center().y),
+                vec2(side, side),
+            );
+            lead.paint(ui.painter(), at);
+            text_room.min.x = at.right() + size::GAP;
+        }
         words(
             ui,
             text_room,

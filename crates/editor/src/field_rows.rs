@@ -6,12 +6,12 @@
 //! keeps the accent border, with a way back to its value from before Play
 //! (`04-properties-playing.png`).
 
-use crate::inspector::{FieldChange, Mixed, field_widget, moved_from_default, shared_by, short};
-use crate::models::ModelInfo;
-use crate::sprite_sheets::SpriteSheets;
+use crate::inspector::{
+    FieldChange, Known, Mixed, Picked, field_widget, moved_from_default, shared_by, short,
+};
 use crate::tokens::{self, size, text};
 use egui::{Response, RichText, Ui};
-use reflect::{AssetId, ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
+use reflect::{ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
 use std::collections::BTreeMap;
 
 /// A row with an orange dot before its name when `changed` (a placed
@@ -99,10 +99,7 @@ fn scrubbed(name: &Response, field: &FieldInfo, value: &Value) -> Option<Value> 
     ctx.data_mut(|d| d.insert_temp(id, (start, so_far)));
     let whole = field.kind == FieldKind::Int;
     let speed = field.hint.speed.unwrap_or(if whole { 1.0 } else { 0.1 });
-    let mut wanted = start + so_far * speed;
-    if let Some((low, high)) = field.hint.range {
-        wanted = wanted.clamp(low, high);
-    }
+    let wanted = crate::hinted_fields::kept(start + so_far * speed, field);
     let new = if whole {
         Value::Int(wanted.round() as i64)
     } else {
@@ -148,12 +145,24 @@ pub(crate) fn fields(
     data: &ComponentData,
     (prefab, yours): (Option<&ComponentData>, &BTreeMap<&str, Option<&Value>>),
     others: &[&ComponentData],
-    (models, sheets): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets),
+    known: Known<'_>,
     (level, users): (&level::Level, &crate::document::AssetUsers),
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
     let standard = crate::standard::of(&schema.name, data);
+    let mut group = "";
     for field in &schema.fields {
+        // Game code's hints (decision 0127): a hidden field is kept but
+        // not shown, and a group's heading goes over its first field.
+        if field.hint.hidden {
+            continue;
+        }
+        if field.hint.group != group {
+            group = &field.hint.group;
+            if !group.is_empty() {
+                crate::hinted_fields::group_heading(ui, group);
+            }
+        }
         let value = data.get(&field.name).unwrap_or(&field.default);
         let standard = crate::standard::value(standard.as_ref(), field);
         let mixed = Mixed::of(field, value, others);
@@ -177,11 +186,11 @@ pub(crate) fn fields(
         ui.push_id(id, |ui| {
             let ((set, after), name) = row_marked(
                 ui,
-                (&field.label, field.hint.help),
+                (&field.label, &field.hint.help),
                 (changed.is_some(), moved, scrub),
                 |ui| {
                     let set = field_and_marks(ui, marks, |ui| {
-                        field_widget(ui, field, value, (models, sheets, data), level, mixed)
+                        field_widget(ui, field, value, (known, data), level, mixed)
                     });
                     if let Value::Asset(Some(used)) = value {
                         shared_by(ui, users.get(&used.asset).copied().unwrap_or(0));
@@ -200,6 +209,14 @@ pub(crate) fn fields(
                 .then(|| scrubbed(&name, field, value))
                 .flatten()
                 .map(|v| (v, None));
+            let set = match set {
+                Some(Picked::Set(value, part)) => Some((value, part)),
+                Some(Picked::Play(path)) => {
+                    changes.push(FieldChange::Play(path));
+                    None
+                }
+                None => None,
+            };
             if let Some((value, part)) = set.or(scrubbed) {
                 changes.push(FieldChange::Set {
                     field: field.name.clone(),
@@ -214,6 +231,9 @@ pub(crate) fn fields(
                 changes.push(FieldChange::Apply(field.name.clone()));
             }
         });
+        if let Some(words) = crate::hinted_fields::under_words(field) {
+            crate::hinted_fields::under(ui, &words);
+        }
     }
     changes
 }

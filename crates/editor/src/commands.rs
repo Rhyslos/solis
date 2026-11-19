@@ -513,6 +513,8 @@ impl Workbench {
                 component,
             } => self.reset_component(&entities, &component),
             PropertyRequest::HintsOff => self.hints = false,
+            // Heard, not done: the panels hand it to the Library's player.
+            PropertyRequest::PlaySound(_) => {}
             PropertyRequest::BrushSize { entity, size } => {
                 self.resize_brush(entity, size, gesture);
             }

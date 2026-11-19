@@ -5,18 +5,20 @@
 
 use crate::document::Document;
 use crate::inspector::{self, FieldChange};
-use crate::models::ModelInfo;
 use crate::panels::empty_note;
 use crate::properties_cards as cards;
 use crate::properties_header as head;
 use crate::tokens::size;
 use egui::Ui;
-use reflect::{AssetId, EntityId, Value};
+use reflect::{EntityId, Value};
 use std::collections::BTreeMap;
 
 /// Something the user asked for in Properties.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum PropertyRequest {
+    /// Play the sound event at this path in the project, to hear it (a
+    /// sound field's ▶, decision 0127). Changes nothing.
+    PlaySound(String),
     /// Set a component's field.
     SetField {
         /// The entity.
@@ -256,10 +258,7 @@ pub(crate) fn properties(
     ui: &mut Ui,
     document: &Document,
     part: Option<&PrefabPart>,
-    (models, sheets): (
-        &BTreeMap<AssetId, ModelInfo>,
-        &crate::sprite_sheets::SpriteSheets,
-    ),
+    (models, sheets, library): crate::inspector::Known<'_>,
     copied: &[String],
     playing: Option<WhilePlaying<'_>>,
     (help, hints): (Help<'_>, Option<&[String]>),
@@ -353,7 +352,7 @@ pub(crate) fn properties(
                         document,
                         selected: &selected,
                         part,
-                        assets: (models, sheets),
+                        assets: (models, sheets, library),
                         copied,
                         playing: playing.filter(|_| !many),
                         help,
@@ -432,10 +431,7 @@ struct Card<'a> {
     /// The selected entities; the first is the one Properties shows.
     selected: &'a [EntityId],
     part: Option<&'a PrefabPart>,
-    assets: (
-        &'a BTreeMap<AssetId, ModelInfo>,
-        &'a crate::sprite_sheets::SpriteSheets,
-    ),
+    assets: crate::inspector::Known<'a>,
     copied: &'a [String],
     /// While playing (one entity): game code's values as they are now,
     /// and what the user changed since Play.
@@ -603,6 +599,7 @@ impl Card<'_> {
                     component,
                     field,
                 },
+                FieldChange::Play(path) => PropertyRequest::PlaySound(path),
             });
         }
         if zone_only {
@@ -694,6 +691,7 @@ impl Card<'_> {
                     component: component.clone(),
                     field,
                 },
+                CardChange::Field(FieldChange::Play(path)) => PropertyRequest::PlaySound(path),
             });
         }
     }

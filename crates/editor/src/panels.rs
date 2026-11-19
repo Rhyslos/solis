@@ -574,12 +574,20 @@ impl PanelViewer<'_> {
                     ui,
                     self.document,
                     self.part,
-                    (self.models, self.sounds.sheets),
+                    (self.models, self.sounds.sheets, self.library),
                     self.copied,
                     self.running,
                     (self.help, self.hints),
                 );
-                self.requests.extend(requests);
+                // A sound field's ▶ plays as the Library's does.
+                for request in requests {
+                    match request {
+                        crate::properties::PropertyRequest::PlaySound(path) => {
+                            self.library_requests.push(LibraryRequest::PlaySound(path))
+                        }
+                        other => self.requests.push(other),
+                    }
+                }
             }
             Panel::Library | Panel::Code => {
                 let code = *tab == Panel::Code;

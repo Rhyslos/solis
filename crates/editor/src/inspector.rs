@@ -6,6 +6,7 @@
 
 pub(crate) use crate::field_rows::fields;
 use crate::field_rows::row_marked;
+use crate::library::LibraryFiles;
 use crate::models::ModelInfo;
 use crate::sprite_sheets::SpriteSheets;
 use crate::tokens::{size, text};
@@ -33,7 +34,29 @@ pub(crate) enum FieldChange {
     Revert(String),
     /// Made its value the prefab's, for every copy.
     Apply(String),
+    /// Play the sound event at this path in the project, to hear it
+    /// (a sound field's ▶, decision 0127). Changes nothing.
+    Play(String),
 }
+
+/// What the user did with one field's widget.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Picked {
+    /// Gave it this value; for a field of three numbers, which one was
+    /// changed and to what (see [`FieldChange::Set`]).
+    Set(Value, Option<(usize, f64)>),
+    /// Asked to hear this sound event (its path in the project).
+    Play(String),
+}
+
+/// What a field knows of the project beyond its component: the models,
+/// the sprite sheets and the rest the editor has read, and the Library's
+/// files (for the project's names, decision 0127).
+pub(crate) type Known<'a> = (
+    &'a BTreeMap<AssetId, ModelInfo>,
+    &'a SpriteSheets,
+    &'a LibraryFiles,
+);
 
 /// The order rotations are shown in: turning around Z (heading) last, so a
 /// light's X tilts it from straight down and its Z turns it round.
@@ -182,13 +205,40 @@ pub(crate) fn field_widget(
     ui: &mut Ui,
     field: &FieldInfo,
     value: &Value,
-    (models, sheets, data): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets, &ComponentData),
+    ((models, sheets, library), data): (Known<'_>, &ComponentData),
     level: &level::Level,
     mixed: Mixed,
-) -> Option<(Value, Option<(usize, f64)>)> {
-    let whole = |v: Option<Value>| v.map(|v| (v, None));
+) -> Option<Picked> {
+    let whole = |v: Option<Value>| v.map(|v| Picked::Set(v, None));
     // What the schema says to offer (Phase 9, D2).
     match (&field.kind, field.hint.offers) {
+        // One of the project's names (decision 0127).
+        (FieldKind::Choice(options), Offer::Names(kind)) => {
+            let label = (field.label.as_str(), value, mixed.whole);
+            return crate::name_picker::name_picker(ui, label, (options, kind), library).map(
+                |ask| match ask {
+                    crate::name_picker::NameAsk::Set(v) => Picked::Set(v, None),
+                    crate::name_picker::NameAsk::Play(path) => Picked::Play(path),
+                },
+            );
+        }
+        // A number with a range, from game code's hints.
+        (FieldKind::Int | FieldKind::Float, _) if field.hint.slider => {
+            return whole(crate::hinted_fields::slider_number(
+                ui,
+                field,
+                value,
+                mixed.whole,
+            ));
+        }
+        (FieldKind::Text, _) if field.hint.multiline => {
+            return whole(crate::hinted_fields::multiline(
+                ui,
+                field,
+                value,
+                mixed.whole,
+            ));
+        }
         (FieldKind::Asset, Offer::Assets("sprite sheet")) => {
             return whole(asset_picker(
                 ui,
@@ -281,7 +331,12 @@ pub(crate) fn field_widget(
                 Value::Int(n) => *n,
                 _ => 0,
             };
-            let mut drag = egui::DragValue::new(&mut n).suffix(field.hint.unit);
+            let mut drag = egui::DragValue::new(&mut n)
+                .suffix(&*field.hint.unit)
+                .clamp_existing_to_range(false);
+            if let Some((low, high)) = field.hint.range {
+                drag = drag.range(low..=high);
+            }
             if mixed.whole {
                 drag = drag.custom_formatter(|_, _| "—".to_string());
             }
@@ -289,13 +344,19 @@ pub(crate) fn field_widget(
             whole(
                 widgets::field::framed(ui, width, None, |ui| ui.add(drag))
                     .changed()
-                    .then_some(Value::Int(n)),
+                    .then(|| {
+                        let kept = crate::hinted_fields::kept(n as f64, field);
+                        Value::Int(kept.round() as i64)
+                    }),
             )
         }
         FieldKind::Float => {
             let mut v = value.as_f64().unwrap_or(0.0);
             let width = ui.available_width();
-            whole(number(ui, &mut v, field, (mixed.whole, None, width)).then_some(Value::Float(v)))
+            whole(
+                number(ui, &mut v, field, (mixed.whole, None, width))
+                    .then(|| Value::Float(crate::hinted_fields::kept(v, field))),
+            )
         }
         FieldKind::Text => {
             let mut text = match value {
@@ -340,24 +401,38 @@ pub(crate) fn field_widget(
         FieldKind::Vec3 => {
             let mut v = value.as_floats::<3>().unwrap_or([0.0; 3]).map(f64::from);
             let part = numbers(ui, &mut v, field, &mixed.parts);
-            part.map(|p| (Value::floats(&v.map(|c| c as f32)), Some(p)))
+            part.map(|p| Picked::Set(Value::floats(&v.map(|c| c as f32)), Some(p)))
         }
         FieldKind::Vec2 => {
             let mut v = value.as_floats::<2>().unwrap_or([0.0; 2]).map(f64::from);
             let part = numbers(ui, &mut v, field, &mixed.parts[..2]);
-            part.map(|p| (Value::floats(&v.map(|c| c as f32)), Some(p)))
+            part.map(|p| Picked::Set(Value::floats(&v.map(|c| c as f32)), Some(p)))
         }
         FieldKind::Rotation => {
             let mut degrees = degrees_of(value);
             let part = numbers(ui, &mut degrees, field, &mixed.parts);
-            part.map(|p| (rotation_of(degrees), Some(p)))
+            part.map(|p| Picked::Set(rotation_of(degrees), Some(p)))
         }
         FieldKind::Color => {
             // Game code's colours may be see-through: the picker sets the
             // colour and keeps that.
             let [r, g, b, a] = value.as_colour().unwrap_or([1.0; 4]);
             let mut bytes = [r, g, b].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            whole(ui.color_edit_button_srgb(&mut bytes).changed().then(|| {
+            let changed = ui.color_edit_button_srgb(&mut bytes).changed();
+            // Its hex after the swatch (decision 0127), as the design's
+            // colour fields show it.
+            let [r8, g8, b8] = bytes;
+            let hex = if mixed.whole {
+                "—".to_owned()
+            } else {
+                format!("#{r8:02X}{g8:02X}{b8:02X}")
+            };
+            ui.label(
+                RichText::new(hex)
+                    .font(text::mono())
+                    .color(crate::tokens::text_primary()),
+            );
+            whole(changed.then(|| {
                 let [r, g, b] = bytes.map(|b| f32::from(b) / 255.0);
                 Value::colour([r, g, b, a])
             }))
@@ -724,6 +799,9 @@ fn numbers(
     let mut part = None;
     for (i, (c, axis)) in values.iter_mut().zip(widgets::field::Axis::ALL).enumerate() {
         if number(ui, c, field, (mixed[i], Some(axis), width)) {
+            if field.kind != FieldKind::Rotation {
+                *c = crate::hinted_fields::kept(*c, field);
+            }
             part = Some((i, *c));
         }
     }
@@ -743,7 +821,7 @@ fn number(
     let mut drag = egui::DragValue::new(value)
         .speed(field.hint.speed.unwrap_or(0.1))
         .max_decimals(3)
-        .suffix(field.hint.unit)
+        .suffix(&*field.hint.unit)
         .clamp_existing_to_range(false);
     if mixed {
         drag = drag.custom_formatter(|_, _| "—".to_string());

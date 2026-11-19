@@ -7,7 +7,7 @@ use crate::inspector::{moved_from_default, short};
 use crate::test_support::*;
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui_kittest::kittest::{NodeT as _, Queryable};
-use reflect::{FieldInfo, FieldKind};
+use reflect::{AssetId, FieldInfo, FieldKind};
 
 #[test]
 fn only_values_worth_a_dot_get_one() {
