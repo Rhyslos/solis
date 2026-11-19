@@ -203,6 +203,9 @@ fn project_root_of(files: &Path) -> PathBuf {
     }
 }
 
+/// The endings of the pictures `solis/project.lst` names (`Picture`).
+const PICTURE_ENDINGS: &[&str] = &[".png", ".jpg", ".jpeg"];
+
 /// The most of each kind of file named in `solis/project.lst`: past it,
 /// the rest can't be named from game code (a guard against a folder of
 /// millions).
@@ -285,7 +288,20 @@ impl GameCode {
                 .collect(),
             clips: clips.to_vec(),
             cues: cues.to_vec(),
-            pictures: pictures.to_vec(),
+            // Every picture, with the parts cut out of it inside it
+            // (decision 0127): Picture.Sprites.Tools and
+            // Picture.Sprites.Tools.Axe.
+            pictures: asset_paths(assets, PICTURE_ENDINGS)
+                .into_iter()
+                .chain(pictures.iter().cloned())
+                .collect(),
+            levels: asset_paths(
+                assets,
+                &[
+                    &format!(".{}", asset_db::LEVEL_EXTENSION),
+                    &format!(".{}", asset_db::OLD_LEVEL_EXTENSION),
+                ],
+            ),
             // ui/pauseMenu.lst is the screen PauseMenu (as the screens'
             // program finds them).
             screens: asset_paths(&assets.join(script::screens::FOLDER), &[".lst"])
@@ -524,7 +540,15 @@ impl GameCode {
         let (problems, program) = match compiled {
             // Code that runs, but calls a native by an old name: warned
             // about in Problems (Phase 8, C3).
-            Ok(program) => (script::renamed_uses(&code), Some(program.map(Arc::new))),
+            // And mistakes in its fields' hints, which leave out only the
+            // hint (decision 0127).
+            Ok(program) => {
+                let mut problems = script::renamed_uses(&code);
+                if let Some(program) = &program {
+                    problems.extend(program.hint_problems.iter().cloned());
+                }
+                (problems, Some(program.map(Arc::new)))
+            }
             Err(problems) => (problems, None),
         };
         Some(Checked {

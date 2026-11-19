@@ -117,7 +117,7 @@ impl Component for Screen {
                     Value::Text(String::new()),
                 )
                 .hint(Hint {
-                    help: "Which screen: a file in the Library's ui folder, by its name (ui/hud.lst is Hud).",
+                    help: "Which screen: a file in the Library's ui folder, by its name (ui/hud.lst is Hud).".into(),
                     offers: Offer::Screens,
                     ..Hint::default()
                 }),
@@ -128,7 +128,7 @@ impl Component for Screen {
                     "Whether it's on screen. Game code shows and hides it by changing this.",
                 ),
                 FieldInfo::new("order", "Order", FieldKind::Int, Value::Int(0)).hint(Hint {
-                    help: "Its place among the screens shown: higher ones are drawn on top.",
+                    help: "Its place among the screens shown: higher ones are drawn on top.".into(),
                     ..Hint::default()
                 }),
                 field::float(
@@ -164,7 +164,7 @@ impl Component for Screen {
                     Hint {
                         range: Some((1.0, Self::MAX_PIXEL as f64)),
                         help: "Draws the whole screen in blocks this many pixels big, for a \
-                               pixel-art look (1: smooth).",
+                               pixel-art look (1: smooth).".into(),
                         ..Hint::default()
                     },
                 ),

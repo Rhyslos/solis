@@ -9,7 +9,9 @@ mod convert;
 pub mod describe;
 pub mod events;
 mod exact_maths;
+mod field_hints;
 pub mod game;
+mod hint_comments;
 pub mod host;
 pub mod interface;
 #[allow(unsafe_code)]
@@ -125,6 +127,9 @@ mod slot_tests {
 #[cfg(test)]
 #[path = "editor_files_tests.rs"]
 mod editor_files_tests;
+#[cfg(test)]
+#[path = "field_hints_code_tests.rs"]
+mod field_hints_code_tests;
 #[cfg(test)]
 #[path = "manual_examples_tests.rs"]
 mod manual_examples_tests;

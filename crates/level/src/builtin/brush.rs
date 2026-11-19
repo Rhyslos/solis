@@ -97,7 +97,7 @@ impl Component for Brush {
                     .unwrap_or(Value::List(Vec::new())),
             )
             .hint(Hint {
-                help,
+                help: help.into(),
                 ..Hint::default()
             })
         };
@@ -114,11 +114,11 @@ impl Component for Brush {
                     Value::Text(Shape::Box.name().into()),
                 )
                 .hint(Hint {
-                    help: "The shape the brush was made as.",
+                    help: "The shape the brush was made as.".into(),
                     ..Hint::default()
                 }),
                 FieldInfo::new("solid", "Solid", FieldKind::Bool, Value::Bool(true)).hint(Hint {
-                    help: "Whether characters and bodies in the game collide with it.",
+                    help: "Whether characters and bodies in the game collide with it.".into(),
                     ..Hint::default()
                 }),
                 numbers(

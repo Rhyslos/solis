@@ -74,6 +74,14 @@ pub struct Compiled {
     /// The Lust and Lua compiled for Luau on the worker, so loading them
     /// on the frame is quick (empty: they're compiled when loaded).
     pub bytecode: Bytecode,
+    /// Mistakes in its fields' hints (decision 0127), each with its
+    /// line: the code runs, the hint is left out, and Problems lists
+    /// them.
+    pub hint_problems: Vec<CodeProblem>,
+    /// The project's names, each state's options (from
+    /// `solis/project.lst`), for Lua fields of their kinds
+    /// (`{ "alertSound", "Sound" }`).
+    pub names: std::sync::Arc<crate::project_names::States>,
     /// The game's screens, compiled into a program of their own
     /// (decision 0087), if it has any.
     pub screens: Option<crate::screens::ScreenCode>,
@@ -496,6 +504,8 @@ fn compile_here(
         schemas: Vec::new(),
         places: std::collections::BTreeMap::new(),
         bytecode,
+        hint_problems: Vec::new(),
+        names: std::sync::Arc::new(crate::project_names::states_in(&code.files)),
         screens: None,
         state_events: std::collections::BTreeMap::new(),
     };
@@ -516,6 +526,12 @@ fn compile_here(
         }
     };
     compiled.schemas = runtime.schemas();
+    // Hints change nothing about how the game runs: they're put on what
+    // the editor shows (decision 0127).
+    compiled.hint_problems = crate::hint_comments::put_on(&code.files, &mut compiled.schemas);
+    compiled
+        .hint_problems
+        .extend(runtime.lua_hint_problems(&code.lua));
     for schema in &compiled.schemas {
         let place = match runtime.lua_file(&schema.name) {
             Some(path) => Some((path.to_string(), 0)),

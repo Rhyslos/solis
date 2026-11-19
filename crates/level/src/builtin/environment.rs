@@ -235,7 +235,7 @@ impl Component for Environment {
                     Value::Text(d.day_colours.text()),
                 )
                 .hint(Hint {
-                    help: "The day's colours at their hours: the world is tinted by them, smoothly from one to the next.",
+                    help: "The day's colours at their hours: the world is tinted by them, smoothly from one to the next.".into(),
                     offers: reflect::Offer::DayColours,
                     ..Hint::default()
                 }),
@@ -248,7 +248,7 @@ impl Component for Environment {
                 FieldInfo::new("light_steps", "Light steps", FieldKind::Int, Value::Int(0)).hint(
                     Hint {
                         range: Some((0.0, Self::MAX_STEPS as f64)),
-                        help: "0 for smooth light on sprites; 2 to 8 for bands of light, a stylized look.",
+                        help: "0 for smooth light on sprites; 2 to 8 for bands of light, a stylized look.".into(),
                         ..Hint::default()
                     },
                 ),

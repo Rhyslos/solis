@@ -435,6 +435,13 @@ impl Runtime {
         self.lust.as_ref().map(|p| &*p.events)
     }
 
+    /// The mistakes in the Lua components' hints, and their fields that
+    /// start outside their ranges (decision 0127), each at the line of
+    /// its field in `lua` (the Lua files, path and text) where it's found.
+    pub(crate) fn lua_hint_problems(&self, lua: &[(String, String)]) -> Vec<CodeProblem> {
+        crate::lua_components::hint_problems(self.lua_classes.values(), lua)
+    }
+
     /// Whether there's a component called `name` to run: a Rust one, or
     /// the Lust's or a Lua one not left out.
     pub fn has_component(&self, name: &str) -> bool {
@@ -847,7 +854,7 @@ impl Runtime {
                 }
                 None => None,
             };
-            let classes = read_classes(luau, &files, |chunk| {
+            let classes = read_classes(luau, (&files, &code.names), |chunk| {
                 call_with(luau, None, host, Some(&luau.discard), || {
                     chunk.call::<()>(())
                 })

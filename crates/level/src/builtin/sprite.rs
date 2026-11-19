@@ -100,7 +100,7 @@ impl Component for Sprite {
                 .into(),
             fields: vec![
                 FieldInfo::new("sheet", "Sheet", FieldKind::Asset, Value::Asset(None)).hint(Hint {
-                    help: "The sprite sheet: an Aseprite file in the project.",
+                    help: "The sprite sheet: an Aseprite file in the project.".into(),
                     offers: Offer::Assets("sprite sheet"),
                     ..Hint::default()
                 }),
@@ -108,7 +108,8 @@ impl Component for Sprite {
                     Hint {
                         help: "The clip it plays: one of the sheet's Aseprite tags, or a clip \
                                made in its clips file. Empty: the clips file's first clip, or \
-                               with none, the still Frame.",
+                               with none, the still Frame."
+                            .into(),
                         offers: Offer::ClipsOf("sheet"),
                         ..Hint::default()
                     },
@@ -147,7 +148,8 @@ impl Component for Sprite {
                     range: Some((1.0, Self::MAX_FRAME as f64)),
                     speed: Some(0.1),
                     help: "Which frame it shows when no clip plays, counting from 1 as \
-                           Aseprite does.",
+                           Aseprite does."
+                        .into(),
                     ..Hint::default()
                 }),
                 FieldInfo::new(
@@ -158,7 +160,8 @@ impl Component for Sprite {
                 )
                 .hint(Hint {
                     help: "The slice it stands on, such as feet: its pivot (or its middle) \
-                               sits on the entity's place. Empty: the bottom middle of the frame.",
+                               sits on the entity's place. Empty: the bottom middle of the frame."
+                        .into(),
                     offers: Offer::SlicesOf("sheet"),
                     ..Hint::default()
                 }),

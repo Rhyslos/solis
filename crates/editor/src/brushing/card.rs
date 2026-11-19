@@ -58,9 +58,10 @@ pub(crate) fn rows(
     let size_field =
         FieldInfo::new("size", "Size", FieldKind::Vec3, Value::vec3(facts.size)).hint(Hint {
             speed: Some(0.05),
-            unit: " m",
+            unit: " m".into(),
             help: "The brush's box, in metres: typing a size stretches the brush about its \
-                   middle.",
+                   middle."
+                .into(),
             ..Hint::default()
         });
     let mut top = ComponentSchema {

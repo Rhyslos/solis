@@ -279,8 +279,8 @@ impl Component for Collider {
                 ),
                 FieldInfo::new("size", "Size", FieldKind::Vec3, Value::vec3(d.size)).hint(Hint {
                     speed: Some(0.01),
-                    unit: " m",
-                    help: "A box's size along X, Y and Z, in metres.",
+                    unit: " m".into(),
+                    help: "A box's size along X, Y and Z, in metres.".into(),
                     ..Hint::default()
                 }),
                 metres(
@@ -298,9 +298,10 @@ impl Component for Collider {
                 FieldInfo::new("center", "Centre", FieldKind::Vec3, Value::vec3(d.center)).hint(
                     Hint {
                         speed: Some(0.01),
-                        unit: " m",
+                        unit: " m".into(),
                         help: "Where the shape's middle is, from the entity's origin: raise a \
-                               character's capsule so its feet are at the origin.",
+                               character's capsule so its feet are at the origin."
+                            .into(),
                         ..Hint::default()
                     },
                 ),

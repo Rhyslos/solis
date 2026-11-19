@@ -81,7 +81,7 @@ impl Component for Listener {
                     Value::Text(String::new()),
                 )
                 .hint(Hint {
-                    help: "The groups it's in, with commas between: \"Team Red, Radio\".",
+                    help: "The groups it's in, with commas between: \"Team Red, Radio\".".into(),
                     ..Hint::default()
                 }),
             ],

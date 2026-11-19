@@ -141,8 +141,8 @@ impl Component for ReverbZone {
                 ),
                 FieldInfo::new("size", "Size", FieldKind::Vec3, Value::vec3(d.size)).hint(Hint {
                     speed: Some(0.05),
-                    unit: " m",
-                    help: "A box's size along X, Y and Z, in metres.",
+                    unit: " m".into(),
+                    help: "A box's size along X, Y and Z, in metres.".into(),
                     ..Hint::default()
                 }),
                 metres("radius", "Radius", d.radius, "A ball's radius."),

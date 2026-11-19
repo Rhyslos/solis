@@ -56,8 +56,8 @@ impl Component for Transform {
                 )
                 .hint(Hint {
                     speed: Some(0.05),
-                    unit: " m",
-                    help: "Where it is, in metres (Z is up).",
+                    unit: " m".into(),
+                    help: "Where it is, in metres (Z is up).".into(),
                     ..Hint::default()
                 }),
                 FieldInfo::new(
@@ -68,14 +68,14 @@ impl Component for Transform {
                 )
                 .hint(Hint {
                     speed: Some(1.0),
-                    unit: "°",
-                    help: "How it's turned, in degrees around X, Y and Z.",
+                    unit: "°".into(),
+                    help: "How it's turned, in degrees around X, Y and Z.".into(),
                     ..Hint::default()
                 }),
                 FieldInfo::new("scale", "Scale", FieldKind::Vec3, Value::vec3(Vec3::ONE)).hint(
                     Hint {
                         speed: Some(0.01),
-                        help: "Its size along each axis: 1 as made.",
+                        help: "Its size along each axis: 1 as made.".into(),
                         ..Hint::default()
                     },
                 ),

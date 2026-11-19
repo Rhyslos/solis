@@ -216,8 +216,8 @@ impl Component for TriggerZone {
                 ),
                 FieldInfo::new("size", "Size", FieldKind::Vec3, Value::vec3(d.size)).hint(Hint {
                     speed: Some(0.05),
-                    unit: " m",
-                    help: "A box's size along X, Y and Z, in metres (2D uses X and Y).",
+                    unit: " m".into(),
+                    help: "A box's size along X, Y and Z, in metres (2D uses X and Y).".into(),
                     ..Hint::default()
                 }),
                 field::float(
@@ -239,7 +239,8 @@ impl Component for TriggerZone {
                 )
                 .hint(Hint {
                     help: "A freeform outline's points: two numbers (x, y) for each, in metres \
-                           from the entity's place.",
+                           from the entity's place."
+                        .into(),
                     ..Hint::default()
                 }),
                 field::choice(
@@ -265,7 +266,8 @@ impl Component for TriggerZone {
                 )
                 .hint(Hint {
                     help: "Only things carrying at least one of these tags count; none chosen, \
-                           everything it notices does. Kept as the tags' IDs.",
+                           everything it notices does. Kept as the tags' IDs."
+                        .into(),
                     ..Hint::default()
                 }),
             ],
