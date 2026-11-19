@@ -141,8 +141,8 @@ impl Workbench {
         }
     }
 
-    /// + Language ▾: the languages Solis knows that the project hasn't,
-    /// and a field for any code.
+    /// The add-a-language button and its list: the languages Solis knows
+    /// that the project hasn't, and a field for any code.
     fn add_language_button(&mut self, ui: &mut Ui, page: &mut LanguagesPage) {
         let add = Button::plain("+ Language ▾")
             .named("Add a language")

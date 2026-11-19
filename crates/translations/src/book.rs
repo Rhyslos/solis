@@ -124,9 +124,9 @@ impl Translations {
         let mut table_order = Vec::with_capacity(tables.len());
         for cell in tables {
             let lower = cell.key.to_ascii_lowercase();
-            if !by_key.contains_key(&lower) {
-                table_order.push(lower.clone());
-                by_key.insert(lower, cell);
+            if let std::collections::hash_map::Entry::Vacant(free) = by_key.entry(lower.clone()) {
+                table_order.push(lower);
+                free.insert(cell);
             }
         }
         Self {

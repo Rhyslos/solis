@@ -48,8 +48,8 @@ proptest! {
     /// read back as typed, or refused and the file left as it was.
     #[test]
     fn typed_text_round_trips_or_is_refused(text in "[ -~\\n]{1,60}") {
-        match set_line(FILE, "Shop.Typed", &text) {
-            Ok(out) => {
+        if let Ok(out) = set_line(FILE, "Shop.Typed", &text) {
+            {
                 let read = crate::ftl::read("x.ftl", &out);
                 prop_assert!(read.problems.is_empty(), "{:?}", read.problems);
                 if !text.trim().is_empty() {
@@ -59,7 +59,6 @@ proptest! {
                     prop_assert_eq!(typed, back);
                 }
             }
-            Err(_) => {}
         }
     }
 }
