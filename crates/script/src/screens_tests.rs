@@ -420,3 +420,28 @@ proptest::proptest! {
         proptest::prop_assert!(found.iter().all(|f| f.line >= 1 && f.column >= 1 && !f.name.is_empty()));
     }
 }
+
+#[test]
+fn text_effects_written_out_are_checked_with_their_places() {
+    // Stage 1, text effects: each text's markup read where it's written,
+    // its mistakes at their `[` and its icons named for the pictures.
+    let text = "assembly Talk {\n    view {\n        text \"Hi [wave]there[/wave]\";\n        text \"Oops [glow]x\" [white]; -- text \"[not] this\"\n        button \"Buy 5 [icon=Picture.Ui.Coin]\";\n        text \"[[fine]\";\n    }\n}\n";
+    let (icons, mistakes) = text_marks(&[("ui/talk.lst".into(), text.into())]);
+    assert_eq!(icons.len(), 1);
+    assert_eq!(
+        (icons[0].line, icons[0].column, icons[0].name.as_str()),
+        (5, 23, "Picture.Ui.Coin")
+    );
+    assert_eq!(mistakes.len(), 1, "{mistakes:?}");
+    assert_eq!((mistakes[0].line, mistakes[0].column), (4, 20));
+    assert!(mistakes[0].message.contains("[glow] isn't a text effect"));
+}
+
+proptest::proptest! {
+    #[test]
+    fn reading_text_effects_never_panics(text in "(text|button|\"|\\[|\\]|/|wave|icon=|Picture\\.A|-|\\\\|[a-z \n]){0,80}") {
+        let (icons, mistakes) = text_marks(&[("ui/x.lst".into(), text)]);
+        proptest::prop_assert!(icons.iter().all(|p| p.line >= 1 && p.column >= 1));
+        proptest::prop_assert!(mistakes.iter().all(|p| p.line >= 1 && p.column >= 1));
+    }
+}
