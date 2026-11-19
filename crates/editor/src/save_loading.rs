@@ -51,6 +51,7 @@ impl Workbench {
         for note in &save.notes {
             self.log(LogLevel::Warning, format!("Loading {name}: {note}."));
         }
+        self.warn_if_tables_changed(save.tables, &format!("{name} was saved"));
         // The loaded game sounds afresh: what played before the load fades
         // out, and nothing queued from before it plays after.
         self.plays += 1;

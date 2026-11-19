@@ -7,7 +7,8 @@
 
 use asset_db::{FileKind, Jobs, Listing};
 use editor::sprite_sheets::{
-    AnimatorState, ArtState, FramesState, MapFileState, SheetState, SpriteSheets, TilesetState,
+    AnimatorState, ArtState, FramesState, MapFileState, SheetState, SpriteSheets, TableState,
+    TilesetState,
 };
 use reflect::ordinary_file::Refused;
 use reflect::{AssetId, Id};
@@ -35,6 +36,8 @@ enum Kind {
     Sheet,
     /// A tile map ([`read_tile_map`]).
     TileMap,
+    /// A data table ([`read_table`]).
+    Table,
     /// A picture read whole ([`read_art`]).
     Art,
 }
@@ -43,6 +46,7 @@ enum Kind {
 enum Read {
     Sheet(SheetState),
     TileMap(MapFileState),
+    Table(TableState),
     Art(ArtState),
 }
 
@@ -196,6 +200,19 @@ pub fn read_tile_map(path: &Path) -> MapFileState {
     }
 }
 
+/// Reads a data table (`.table.lst`, stage 1): its rows are each named
+/// from its file's name when it names none.
+pub fn read_table(path: &Path) -> TableState {
+    let stem = reflect::data_files::stem(path).unwrap_or_default();
+    let fallback = level::table::row_name_for(&stem);
+    match text_within(path, level::table::file::MAX_BYTES, "a data table")
+        .and_then(|t| level::table::file::read(&t, &fallback).map_err(|e| e.to_string()))
+    {
+        Ok(read) => TableState::Read(Arc::new(read.table), read.notes),
+        Err(why) => TableState::Failed(why),
+    }
+}
+
 /// Reads a tileset's picture (Phase 9, D5): a PNG, JPEG or Aseprite file,
 /// whole.
 pub fn read_art(path: &Path) -> ArtState {
@@ -230,6 +247,10 @@ fn read_on_a_worker(kind: Kind, full: &Path) -> Read {
         Kind::TileMap => Read::TileMap(
             std::panic::catch_unwind(|| read_tile_map(full))
                 .unwrap_or_else(|_| MapFileState::Failed(unexpected())),
+        ),
+        Kind::Table => Read::Table(
+            std::panic::catch_unwind(|| read_table(full))
+                .unwrap_or_else(|_| TableState::Failed(unexpected())),
         ),
         Kind::Art => Read::Art(
             std::panic::catch_unwind(|| read_art(full))
@@ -369,7 +390,7 @@ impl Sprites {
         for file in listing.files.iter().filter(|f| {
             matches!(
                 f.kind,
-                FileKind::Tileset | FileKind::TileMap | FileKind::Atlas
+                FileKind::Tileset | FileKind::TileMap | FileKind::Atlas | FileKind::Table
             )
         }) {
             let path = crate::project::slashed(&file.path);
@@ -387,6 +408,11 @@ impl Sprites {
                 self.sheets.tilesets.insert(path, read_tileset(&full));
             } else if file.kind == FileKind::Atlas {
                 self.sheets.atlases.insert(path, read_atlas(&full));
+            } else if file.kind == FileKind::Table {
+                // Tables can be big: read on a worker, the last one read
+                // staying until this one's read.
+                self.queue(Kind::Table, path, full, now);
+                continue;
             } else {
                 // The last one read stays until this one's read.
                 self.queue(Kind::TileMap, path, full, now);
@@ -394,6 +420,7 @@ impl Sprites {
             }
             self.dirty = true;
         }
+        let tables_before = self.sheets.tables.len();
         let before =
             self.sheets.tilesets.len() + self.sheets.tile_maps.len() + self.sheets.atlases.len();
         self.sheets.atlases.retain(|p, _| tiles_present.contains(p));
@@ -403,6 +430,8 @@ impl Sprites {
         self.sheets
             .tile_maps
             .retain(|p, _| tiles_present.contains(p));
+        self.sheets.tables.retain(|p, _| tiles_present.contains(p));
+        self.dirty |= tables_before != self.sheets.tables.len();
         self.tiles_tried.retain(|p, _| tiles_present.contains(p));
         self.dirty |= before
             != self.sheets.tilesets.len() + self.sheets.tile_maps.len() + self.sheets.atlases.len();
@@ -511,14 +540,16 @@ impl Sprites {
         let tried = match &file {
             OwnFile::Frames(_) => &mut self.frames_tried,
             OwnFile::Animator(_) => &mut self.animators_tried,
-            OwnFile::Tileset(_) | OwnFile::Atlas(_) | OwnFile::TileMap(_) => &mut self.tiles_tried,
+            OwnFile::Tileset(_) | OwnFile::Atlas(_) | OwnFile::TileMap(_) | OwnFile::Table(_) => {
+                &mut self.tiles_tried
+            }
         };
         if let Some(assets) = &self.assets {
             tried.insert(path.to_owned(), stamp(&assets.join(path)));
         }
         // A read of the file before this save is no longer wanted.
         self.queued
-            .retain(|q| q.kind != Kind::TileMap || q.path != path);
+            .retain(|q| !matches!(q.kind, Kind::TileMap | Kind::Table) || q.path != path);
         self.sheets.put(path, file);
         self.dirty = true;
     }
@@ -554,7 +585,7 @@ impl Sprites {
     fn still_wanted(&self, file: &Queued) -> bool {
         let tried = match file.kind {
             Kind::Sheet => &self.tried,
-            Kind::TileMap => &self.tiles_tried,
+            Kind::TileMap | Kind::Table => &self.tiles_tried,
             Kind::Art => &self.art_tried,
         };
         tried.get(&file.path) == Some(&file.stamp)
@@ -611,6 +642,9 @@ impl Sprites {
                 }
                 Read::TileMap(state) => {
                     self.sheets.tile_maps.insert(path, state);
+                }
+                Read::Table(state) => {
+                    self.sheets.tables.insert(path, state);
                 }
                 Read::Art(state) => {
                     self.sheets.tile_art.insert(path, state);

@@ -57,6 +57,9 @@ pub(crate) enum KeyOwner {
     Clips,
     /// The Frames tab: the clips file's undo, Delete and Space.
     Frames,
+    /// The Table tab: the table's undo, and the grid's spreadsheet keys
+    /// (stage 1, data tables).
+    Table,
     /// The Animator tab: the animator's undo and its graph's keys.
     Animator,
     /// The Tileset tab: the tileset's undo.
@@ -113,6 +116,18 @@ impl Workbench {
             return KeyOwner::Binding;
         }
         if ctx.egui_wants_keyboard_input() {
+            // The Table tab's grid holds the keyboard once clicked, so its
+            // keys stay its own (stage 1, data tables).
+            let grid = ctx.memory(|m| m.focused()) == Some(crate::table_view::grid_id());
+            if grid
+                && open.table_editor.is_some()
+                && open
+                    .table_editor
+                    .as_ref()
+                    .is_some_and(|e| e.typing.is_none())
+            {
+                return KeyOwner::Table;
+            }
             return KeyOwner::Field;
         }
         if self.shell.covers_center() {
@@ -131,6 +146,7 @@ impl Workbench {
             Some(Panel::Tileset | Panel::Terrains) if open.tilesets.tab().is_some() => {
                 Some(KeyOwner::Tileset)
             }
+            Some(Panel::Table) if open.table_editor.is_some() => Some(KeyOwner::Table),
             // Properties showing the screen's settings, as Elements and
             // Pictures beside it on the Screen shelf tab (the second
             // review pass's N-28).

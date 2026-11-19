@@ -26,7 +26,12 @@ pub(crate) fn made_in_an_editor(path: &str) -> bool {
     else {
         return false;
     };
-    [crate::animator_code::FOLDER, crate::map_code::FOLDER].contains(&folder)
+    [
+        crate::animator_code::FOLDER,
+        crate::map_code::FOLDER,
+        crate::table_code::FOLDER,
+    ]
+    .contains(&folder)
         && rest.ends_with(".lst")
 }
 

@@ -159,6 +159,25 @@ These work while the pointer is over the Tileset tab; see [Tilesets and autotili
 | Give a tile to a slot | Click the tile in the picture, then the slot; or drag the tile onto the slot |
 | Undo or redo a change to the tileset | `Ctrl + Z`, `Ctrl + Y` (over Properties while it shows the tileset, too) |
 
+## The Table tab (a data table open)
+
+These work inside the grid once you've clicked a cell (the grid then keeps the keyboard); see [Data tables](data-tables.md). They're the keys spreadsheets use.
+
+| Action | Shortcut |
+|---|---|
+| Type in the cell; keep what's typed and move down | `Enter` |
+| Type in the cell | `F2`, or any key typed |
+| Keep what's typed and move right; move right | `Tab` |
+| Move left | `Shift + Tab` |
+| Move | The arrow keys |
+| Pick a block of cells | `Shift` with an arrow key, `Shift + click`, or a drag |
+| Leave the cell as it was | `Esc` |
+| Empty the cells picked | `Delete` |
+| Copy, paste cells (as a spreadsheet's) | `Ctrl + C`, `Ctrl + V` |
+| Flip a yes-or-no cell | Click it, or `Enter` on it |
+| Sort by a column, for looking | Click its heading |
+| Undo or redo a change to the table | `Ctrl + Z`, `Ctrl + Y` |
+
 ## The Atlas Crop tab (a picture's crops open)
 
 These work while the pointer is over the Atlas Crop tab; see [Atlas Crop](atlas-crop.md).

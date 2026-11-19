@@ -132,7 +132,7 @@ pub(crate) fn starter_tileset() -> Tileset {
 }
 
 impl Workbench {
-    fn taken(&self, path: &str) -> bool {
+    pub(crate) fn taken(&self, path: &str) -> bool {
         self.open.library.iter().any(|i| i.path == path)
             || self.viewport.sheets.tilesets.contains_key(path)
             || self.viewport.sheets.tile_maps.contains_key(path)

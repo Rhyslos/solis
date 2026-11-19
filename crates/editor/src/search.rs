@@ -111,11 +111,13 @@ impl Workbench {
     }
 
     /// Space, with nothing being typed, the pointer not over the Frames
-    /// tab (where Space plays the clip) and the game not holding the keys,
+    /// tab (where Space plays the clip) or the Table tab's grid (where it
+    /// types a space, as any key does) and the game not holding the keys,
     /// opens the search.
     pub(crate) fn search_key(&mut self, ui: &Ui) {
         let keys = self.keys;
-        if self.search.open || keys == KeyOwner::Frames || !keys.takes_shortcuts() {
+        let own_space = matches!(keys, KeyOwner::Frames | KeyOwner::Table);
+        if self.search.open || own_space || !keys.takes_shortcuts() {
             return;
         }
         let space = ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space));

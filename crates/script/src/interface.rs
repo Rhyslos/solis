@@ -47,6 +47,10 @@ pub fn snapshot() -> String {
     for way in lua {
         out.push_str(&format!("solis.{way}\n"));
     }
+    // Each data table's two (stage 1), under the name game code calls the
+    // table: solis.Items:row("IronSword").
+    out.push_str("\n## Each data table's, in Lua (solis.<Table>, such as solis.Items)\n\n");
+    out.push_str("solis.<Table>:row\nsolis.<Table>:rows\n");
     out.push_str("\n## Lua's own names Solis adds or changes (its prelude)\n\n");
     for line in crate::luau::PRELUDE.lines() {
         let line = line.trim_end();

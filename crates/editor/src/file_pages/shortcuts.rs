@@ -96,6 +96,32 @@ pub(crate) const SHORTCUTS: &[(&str, &[Shortcut])] = &[
         ],
     ),
     (
+        "The Table tab's grid",
+        &[
+            (
+                "Type in the cell; keep it and move down",
+                "The Table tab's grid",
+                "Enter",
+            ),
+            ("Type in the cell", "The Table tab's grid", "F2"),
+            ("Keep it and move right", "The Table tab's grid", "Tab"),
+            ("Move left", "The Table tab's grid", "Shift+Tab"),
+            (
+                "Pick a block of cells",
+                "The Table tab's grid",
+                "Shift+Arrows or Drag",
+            ),
+            ("Leave the cell as it was", "The Table tab's grid", "Esc"),
+            ("Empty the cells picked", "The Table tab's grid", "Delete"),
+            (
+                "Copy, paste cells",
+                "The Table tab's grid",
+                "Ctrl+C or Ctrl+V",
+            ),
+            ("Sort by a column", "The Table tab's heading", "Click"),
+        ],
+    ),
+    (
         "The camera",
         &[
             ("Look around", "The viewport", "Right mouse drag"),

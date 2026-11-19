@@ -89,6 +89,9 @@ pub enum Panel {
     /// level's on Home, the view of the prefab built on its own, while
     /// one is open.
     PrefabPage,
+    /// A data table's rows and columns (stage 1, data tables): a tab
+    /// beside the level's on Home while a table is open.
+    Table,
 }
 
 impl Panel {
@@ -114,7 +117,7 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`].
-    pub const OPEN_WITH_A_FILE: [Self; 15] = [
+    pub const OPEN_WITH_A_FILE: [Self; 16] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
@@ -130,6 +133,7 @@ impl Panel {
         Self::Preview,
         Self::Pictures,
         Self::PrefabPage,
+        Self::Table,
     ];
 
     /// The tabs a clips file opens (and closes) together.
@@ -177,6 +181,7 @@ impl Panel {
             Self::SoundEvents => "Sound events",
             Self::Export => "Export for playtesting",
             Self::PrefabPage => "Prefab",
+            Self::Table => "Table",
         }
     }
 
@@ -214,6 +219,7 @@ impl Panel {
             Self::SoundEvents => Icon::SoundEvent,
             Self::Export => Icon::Build,
             Self::PrefabPage => Icon::Prefab,
+            Self::Table => Icon::Table,
         }
     }
 }

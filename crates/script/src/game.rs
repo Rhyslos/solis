@@ -215,6 +215,8 @@ pub struct WorldView {
     /// The timers as the tick started (`timerRunning`, `timeLeft`): the
     /// [`Game`] puts its own here, whatever the world gives.
     pub timers: Arc<crate::Timers>,
+    /// The project's data tables, read-only (stage 1, decision 0128).
+    pub tables: crate::Tables,
 }
 
 impl WorldView {
@@ -783,6 +785,10 @@ impl Host for ViewHost {
 
     fn map(&self, file: &str) -> Option<Arc<tiles::TileMap>> {
         self.view.maps.get(file).cloned()
+    }
+
+    fn tables(&self) -> crate::Tables {
+        self.view.tables.clone()
     }
 
     fn map_place(&self, file: &str) -> Option<crate::MapPlace> {

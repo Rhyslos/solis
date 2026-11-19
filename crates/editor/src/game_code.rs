@@ -354,9 +354,30 @@ pub(crate) struct ViewCache {
     /// The tags as this tick started (stage 1, tags): made once a tick,
     /// as it begins, and read by every phase and core.
     pub(crate) tags: Arc<script::TagView>,
+    /// The project's data tables, read-only (stage 1, data tables), and
+    /// the tables they were made from.
+    pub(crate) tables: script::Tables,
+    tables_from: Vec<(String, usize)>,
 }
 
 impl ViewCache {
+    /// Takes in the editor's data tables when they change (a table saved
+    /// while the game runs is read from the next phase on).
+    pub(crate) fn set_tables(&mut self, sheets: &crate::sprite_sheets::SpriteSheets) {
+        let names = sheets.table_names();
+        let from: Vec<(String, usize)> = names
+            .iter()
+            .map(|n| (n.path.clone(), Arc::as_ptr(&n.table) as usize))
+            .collect();
+        if from == self.tables_from {
+            return;
+        }
+        let list: Vec<(String, Arc<level::table::Table>)> =
+            names.into_iter().map(|n| (n.path, n.table)).collect();
+        self.tables = script::Tables::new(&list, &script::describe::owners_of_natives());
+        self.tables_from = from;
+    }
+
     /// Works out the map files' paths again when the editor's map files
     /// change.
     pub(crate) fn set_map_paths(&mut self, sheets: &crate::sprite_sheets::SpriteSheets) {
@@ -559,6 +580,7 @@ impl GameWorld for PlayWorld<'_> {
             day_length: self.world.day_length(),
             // The game puts its own timers in (stage 1, timers).
             timers: Arc::default(),
+            tables: self.cache.tables.clone(),
         }
     }
 

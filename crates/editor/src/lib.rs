@@ -107,6 +107,12 @@ pub mod sprite_sheets;
 mod standard;
 mod state_dump;
 pub mod state_list;
+mod table_editor;
+#[cfg(test)]
+mod table_scale_tests;
+#[cfg(test)]
+mod table_tab_tests;
+mod table_view;
 pub mod tags;
 #[cfg(test)]
 mod test_support;
@@ -141,6 +147,7 @@ mod workbench_library;
 mod workbench_library_tools;
 mod workbench_paint;
 mod workbench_screens;
+mod workbench_table;
 mod workbench_tile_tools;
 mod workbench_tiles;
 mod workbench_tileset;

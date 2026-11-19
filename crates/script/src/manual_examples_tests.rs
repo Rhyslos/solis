@@ -178,6 +178,15 @@ fn engine_files(code: &str) -> Vec<(String, String)> {
     if code.contains("\"solis/maps/maps/farm\"") {
         files.extend(map_file(MADE_BY, "solis", &farm).0);
     }
+    // The Data tables page's items.
+    if code.contains("\"solis/tables/data/items\"") {
+        let items = crate::table_code::TableNames {
+            path: "data/items".into(),
+            table: crate::tables::tests::items(120),
+        };
+        let first = |_| "Sprites.Tools.Axe".to_string();
+        files.extend(crate::table_code::table_file(MADE_BY, "solis", &items, &first).0);
+    }
     files
 }
 

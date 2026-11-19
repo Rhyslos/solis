@@ -40,6 +40,12 @@ pub(crate) fn owners() -> Vec<&'static str> {
     owners
 }
 
+/// Every engine object and `entity`: names no table of a project's may
+/// take (the owners `solis` groups natives under, for other crates).
+pub fn owners_of_natives() -> Vec<&'static str> {
+    owners()
+}
+
 impl Native {
     /// Its body's key in `LUST_NATIVES`, as Lust's Lua calls it: the name,
     /// `entity_<name>` for an entity's method, `<Object>_<name>` for an
@@ -1213,6 +1219,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
     (tiles::tileset::KIND, tiles::tileset::CLASSES),
     (level::prefab_file::KIND, level::prefab_file::CLASSES),
     (level::tags::KIND, level::tags::CLASSES),
+    (level::table::file::KIND, level::table::file::CLASSES),
 ];
 
 /// The project's own names as states, written by the editor into
@@ -1263,10 +1270,11 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 21);
+        assert_eq!(files.len(), 22);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
+        assert!(files.iter().any(|(p, _)| p == "solis/data/table.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),

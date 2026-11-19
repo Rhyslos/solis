@@ -289,6 +289,11 @@ impl Workbench {
             frames_out: &mut asks.frames,
             animator,
             tileset,
+            table: self
+                .open
+                .table_editor
+                .as_mut()
+                .map(|e| (e, self.open.program.as_ref().map(|p| &*p.names))),
             atlas,
             map,
             map_requests: &mut asks.map,
@@ -580,6 +585,8 @@ impl Workbench {
         for request in asks.properties {
             self.apply_property(request, self.gesture);
         }
+        // A table's text written on a worker is saved once it's ready.
+        self.poll_table_saves(false);
         actions.append(&mut self.open.outbox);
         for request in asks.library {
             self.library_request(request, actions);

@@ -33,6 +33,8 @@ pub mod settings;
 pub mod state_names;
 pub mod states;
 mod syncing;
+pub mod table_code;
+pub mod tables;
 pub mod tag_view;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
@@ -54,6 +56,7 @@ pub use runtime::{Failure, Runtime, Swapped, Ticked};
 pub use rust_component::{Context, RustComponent, RustKind};
 pub use screens::{NoReader, ScreenCode, ScreenReader, Screens};
 pub use states::{Started, StateChange, still_in};
+pub use tables::{RowRef, TableRef, Tables};
 pub use tag_view::TagView;
 pub use ticking::Order;
 pub use timers::{Timers, Timing};

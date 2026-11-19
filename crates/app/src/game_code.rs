@@ -97,6 +97,8 @@ pub struct Animation {
     pub maps: Vec<script::map_code::MapNames>,
     /// The pictures cut by Atlas Crop (`sprites/tools/Axe`).
     pub pictures: Vec<String>,
+    /// Each data table, for its own file (stage 1).
+    pub tables: Vec<script::table_code::TableNames>,
 }
 
 impl Animation {
@@ -109,6 +111,7 @@ impl Animation {
             animators: sheets.animator_names(),
             maps: sheets.map_names(),
             pictures: sheets.picture_names(),
+            tables: sheets.table_names(),
         }
     }
 }
@@ -263,6 +266,7 @@ impl GameCode {
             animators,
             maps,
             pictures,
+            tables,
         } = animation;
         // The settings beside the project file (input actions, buses): the
         // files' own folder for a project made now, the one holding an
@@ -371,8 +375,37 @@ impl GameCode {
                 }
             }
         }
+        // Each data table's own file (stage 1): a row's field naming one
+        // of the project's names starts as that kind's first.
+        let states = script::project_names::states_in(&files);
+        // The first that's a name of its own, not a folder of others.
+        let first_name = |kind: reflect::NameKind| {
+            let options = states
+                .get(kind.state())
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            options
+                .iter()
+                .find(|o| {
+                    let inside = format!("{o}.");
+                    !options.iter().any(|other| other.starts_with(&inside))
+                })
+                .or(options.first())
+                .cloned()
+                .unwrap_or_else(|| script::project_names::NO_OPTION.to_string())
+        };
+        let (table_files, said) = script::table_code::table_files(
+            made_by,
+            crate::branding::CODE_FOLDER,
+            tables,
+            &script::describe::owners_of_natives(),
+            &first_name,
+        );
+        notes.extend(said);
+        files.extend(table_files);
         let mut wrote = forget_animator_files(assets, &files, script::animator_code::FOLDER);
         wrote |= forget_animator_files(assets, &files, script::map_code::FOLDER);
+        wrote |= forget_animator_files(assets, &files, script::table_code::FOLDER);
         for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {
@@ -780,6 +813,48 @@ mod tests {
         // Another project: its notes are all said, even the same ones.
         code.forget();
         assert_eq!(notes_of_a_check(&mut code, &assets).len(), 2);
+    }
+
+    #[test]
+    fn each_table_gets_its_own_file_and_a_gone_one_s_is_taken_away() {
+        use level::table::{Column, ColumnKind, Table};
+        let (_temp, assets) = folder("tables");
+        let mut table = Table::new("Item");
+        table.columns.push(Column::new(
+            "icon",
+            ColumnKind::Name(reflect::NameKind::Picture),
+        ));
+        table
+            .rows
+            .push(std::sync::Arc::new(table.new_row("Apple".into())));
+        std::fs::create_dir_all(assets.join("art")).unwrap();
+        std::fs::write(assets.join("art/apple.png"), b"").unwrap();
+        let items = script::table_code::TableNames {
+            path: "data/items".into(),
+            table: std::sync::Arc::new(table),
+        };
+        let notes = GameCode::describe_with(
+            &assets,
+            "Test 1.0",
+            &Animation {
+                tables: vec![items],
+                ..Animation::default()
+            },
+        );
+        assert!(notes.is_empty(), "{notes:?}");
+        let file = assets.join("solis/tables/data/items.lst");
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(text.contains("state Item = [Apple];"), "{text}");
+        // A row's picture starts as the project's first.
+        assert!(
+            text.contains("lock Picture icon = Picture.Art.Apple;"),
+            "{text}"
+        );
+        GameCode::describe_with(&assets, "Test 1.0", &Animation::default());
+        assert!(
+            !file.exists(),
+            "a table no longer there takes its file away"
+        );
     }
 
     #[test]

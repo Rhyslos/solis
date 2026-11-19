@@ -199,6 +199,22 @@ impl Workbench {
         if out.prefab_page_closed {
             self.close_prefab_page();
         }
+        let table = out.table.clone();
+        if let Some(said) = table.said {
+            self.log(crate::console::LogLevel::Warning, said);
+        }
+        if table.changed {
+            self.table_changed();
+        }
+        if table.import {
+            self.ask_table_csv();
+        }
+        if table.export {
+            self.export_table_csv();
+        }
+        if out.table_closed {
+            self.close_table();
+        }
         self.open.tilesets.in_properties = out.properties_tileset;
         if out.tileset_changed {
             self.save_open_tileset();

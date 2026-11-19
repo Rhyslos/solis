@@ -182,6 +182,7 @@ fn record(w: &mut Workbench, ticks: u64) -> String {
     let playing = w.open.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording {
         level: None,
+        tables: Some(0),
         seed: playing.world.seed(),
         start: playing.world.checksum(),
         ticks: Vec::new(),

@@ -41,6 +41,8 @@ pub enum FileKind {
     TileMap,
     /// A picture's crops (`.atlas.lst`, Atlas Crop).
     Atlas,
+    /// A data table (`.table.lst`, stage 1): rows and typed columns.
+    Table,
     /// Plain text: notes and data ([`TEXT_EXTENSIONS`]), shown in
     /// Properties and opened in the computer's program for it.
     Text,
@@ -73,6 +75,7 @@ impl FileKind {
             Some("tilemap") => return Self::TileMap,
             Some("atlas") => return Self::Atlas,
             Some("prefab") => return Self::Prefab,
+            Some("table") => return Self::Table,
             _ => {}
         }
         let ext = path
