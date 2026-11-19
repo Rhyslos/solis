@@ -283,6 +283,7 @@ pub(crate) struct TableSaves(
 
 impl TableSaves {
     /// Whether none is waiting.
+    #[cfg(test)]
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

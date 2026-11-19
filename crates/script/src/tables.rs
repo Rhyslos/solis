@@ -13,7 +13,7 @@
 //! natives each table's Lust file declares (`Items:row(Item.IronSword)`,
 //! Lua's `solis.Items:row("IronSword")`). Those are lent for each table
 //! from functions each Luau makes once for the tables it was given
-//! ([`Lent`]): a row is made into Lua the first time it's asked for and
+//! (`Lent`): a row is made into Lua the first time it's asked for and
 //! kept, so asking again is a lookup in a Lua table, never a trip into
 //! Rust. New tables (a table saved while the game runs) are new
 //! functions, so the next phase reads the new rows.

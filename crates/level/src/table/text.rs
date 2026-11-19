@@ -1,7 +1,7 @@
 //! A table's cells as text: how each kind is written in the file and
 //! typed in the Table tab ([`cell_text`], [`parse_cell`]), and a table as
 //! spreadsheet text: CSV for importing and exporting, and the
-//! tab-separated text spreadsheets copy and paste ([`parse`], [`write`]).
+//! tab-separated text spreadsheets copy and paste ([`parse`], [`write()`]).
 //!
 //! Both are read as RFC 4180 has them: a field in double quotes may hold
 //! the separator, line breaks and `""` for a quote; `\r\n` and `\n` both
@@ -476,15 +476,13 @@ pub fn paste(table: &mut Table, row: usize, place: usize, text: &str) -> (Vec<St
             added += 1;
         }
         let mut fields = line.iter();
-        if place == 0 {
-            if let Some(id) = fields.next() {
-                let id = id.trim();
-                if table.rows[at].id != id {
-                    match table.id_problem(id, Some(at)) {
-                        None => std::sync::Arc::make_mut(&mut table.rows[at]).id = id.to_string(),
-                        Some(why) => note(&mut notes, &mut said, || why),
-                    }
-                }
+        if place == 0
+            && let Some(id) = fields.next().map(|id| id.trim())
+            && table.rows[at].id != id
+        {
+            match table.id_problem(id, Some(at)) {
+                None => std::sync::Arc::make_mut(&mut table.rows[at]).id = id.to_string(),
+                Some(why) => note(&mut notes, &mut said, || why),
             }
         }
         let first = place.max(1) - 1;

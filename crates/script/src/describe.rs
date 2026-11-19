@@ -41,7 +41,7 @@ pub(crate) fn owners() -> Vec<&'static str> {
 }
 
 /// Every engine object and `entity`: names no table of a project's may
-/// take ([`owners`], for other crates).
+/// take (the owners `solis` groups natives under, for other crates).
 pub fn owners_of_natives() -> Vec<&'static str> {
     owners()
 }

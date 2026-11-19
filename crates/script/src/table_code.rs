@@ -205,9 +205,14 @@ pub fn table_files(
             named.state.clone(),
             named.class.clone(),
         ];
-        wanted.extend(names.table.columns.iter().filter_map(|c| {
-            matches!(c.kind, ColumnKind::Choice(_)).then(|| choice_state(&named.state, &c.name))
-        }));
+        wanted.extend(
+            names
+                .table
+                .columns
+                .iter()
+                .filter(|c| matches!(c.kind, ColumnKind::Choice(_)))
+                .map(|c| choice_state(&named.state, &c.name)),
+        );
         if let Some((clash, owner)) = wanted
             .iter()
             .find_map(|w| used.get(&w.to_ascii_lowercase()).map(|o| (w, o)))

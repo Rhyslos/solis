@@ -11,7 +11,7 @@
 //! prefab…) and colours. Rows keep their order, which is the order game
 //! code lists them in.
 //!
-//! The file is [`file`]'s; spreadsheet text (CSV, and the tab-separated
+//! The file is [`mod@file`]'s; spreadsheet text (CSV, and the tab-separated
 //! text copied between spreadsheets) is [`text`]'s.
 
 pub mod file;

@@ -598,11 +598,6 @@ impl TableEditor {
         self.keep_picks();
     }
 
-    /// The file's text.
-    pub(crate) fn text(&self) -> String {
-        level::table::file::write(&self.file)
-    }
-
     /// Whether there's a change to undo.
     #[cfg(test)]
     pub(crate) fn can_undo(&self) -> bool {

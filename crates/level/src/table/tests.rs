@@ -52,7 +52,7 @@ fn items() -> Table {
                 Cell::Colour([0.2, 0.4, 0.6, 0.5]),
             ],
         ),
-        row("Potion", (0..7).map(|c| table_empty(c)).collect()),
+        row("Potion", (0..7).map(table_empty).collect()),
     ];
     table
 }
