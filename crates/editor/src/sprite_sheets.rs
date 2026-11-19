@@ -62,6 +62,15 @@ pub enum MapFileState {
     Failed(String),
 }
 
+/// What the editor knows of one data table (`.table.lst`, stage 1).
+#[derive(Debug, Clone, PartialEq)]
+pub enum TableState {
+    /// Read, with what was put right or left out while reading it.
+    Read(Arc<level::table::Table>, Vec<String>),
+    /// Couldn't be read, and why.
+    Failed(String),
+}
+
 /// What the editor knows of one tileset's picture (Phase 9, D5).
 #[derive(Debug, Clone, PartialEq)]
 pub enum ArtState {
@@ -107,6 +116,8 @@ pub struct SpriteSheets {
     /// Each atlas file (`.atlas.lst`, Atlas Crop), by path inside the
     /// assets; its picture is read whole too (into `tile_art`).
     pub atlases: HashMap<String, AtlasState>,
+    /// Each data table (`.table.lst`, stage 1), by path inside the assets.
+    pub tables: HashMap<String, TableState>,
     /// Each sheet's, clips file's, animator's, tileset's, map's and
     /// picture's path, by asset ID.
     pub paths: HashMap<AssetId, String>,
@@ -168,6 +179,24 @@ pub fn is_plain_picture(path: &str) -> bool {
 }
 
 impl SpriteSheets {
+    /// Every table read, for its own Lust file and the running game: its
+    /// path without `.table.lst`, in order of their paths.
+    pub fn table_names(&self) -> Vec<script::table_code::TableNames> {
+        let mut all: Vec<script::table_code::TableNames> = self
+            .tables
+            .iter()
+            .filter_map(|(path, state)| match state {
+                TableState::Read(table, _) => Some(script::table_code::TableNames {
+                    path: reflect::data_files::path_stem(path),
+                    table: Arc::clone(table),
+                }),
+                TableState::Failed(_) => None,
+            })
+            .collect();
+        all.sort_by(|a, b| a.path.cmp(&b.path));
+        all
+    }
+
     /// Each tile map game code can reach, by its names (decision 0079),
     /// sorted by path: its layers, its tileset's terrains and its values.
     pub fn map_names(&self) -> Vec<script::map_code::MapNames> {

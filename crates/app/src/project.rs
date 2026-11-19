@@ -461,7 +461,25 @@ impl Projects {
             OwnFile::Tileset(_) => self.save_tileset(path, text),
             OwnFile::Atlas(_) => self.save_atlas(path, text).map(|()| None),
             OwnFile::TileMap(_) => self.save_tile_map(path, text),
+            OwnFile::Table(_) => self.save_table(path, text),
         }
+    }
+
+    /// Saves a data table (`.table.lst`, stage 1), making it if it isn't
+    /// there. Gives back where an older one was kept, if it was.
+    pub fn save_table(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+        let kind = Saved {
+            what: "a data table",
+            is: level::table::file::is_table_file,
+            format: &level::table::file::FORMAT,
+            made_when_missing: true,
+            read_back: |text| {
+                level::table::file::read(text, "Row")
+                    .map(|read| level::table::file::write(&read.table))
+                    .map_err(|e| e.to_string())
+            },
+        };
+        self.save_versioned(path, text, &kind)
     }
 
     /// Saves a sprite's clips file (`.solframes`, in the project),
@@ -742,6 +760,7 @@ pub fn library_kind(kind: FileKind) -> LibraryKind {
         FileKind::Tileset => LibraryKind::Tileset,
         FileKind::TileMap => LibraryKind::TileMap,
         FileKind::Atlas => LibraryKind::Atlas,
+        FileKind::Table => LibraryKind::Table,
         FileKind::Text => LibraryKind::Text,
         FileKind::Other => LibraryKind::Other,
     }

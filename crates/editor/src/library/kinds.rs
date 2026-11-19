@@ -37,6 +37,9 @@ pub enum LibraryKind {
     TileMap,
     /// A picture's crops (`.atlas.lst`, Atlas Crop).
     Atlas,
+    /// A data table (`.table.lst`, stage 1): rows and typed columns,
+    /// opened in the Table tab.
+    Table,
     /// Plain text: notes (`.md`, `.txt`) and data (`.json`, `.csv`,
     /// `.toml`, `.ron`), shown in Properties.
     Text,
@@ -64,6 +67,7 @@ impl LibraryKind {
             Self::Tileset => "Tileset",
             Self::TileMap => "Tile map",
             Self::Atlas => "Atlas crops",
+            Self::Table => "Data table",
             Self::Text => "Text",
             Self::Tags => "Project's tags",
             Self::Other => "File",
@@ -85,13 +89,14 @@ impl LibraryKind {
             Self::Sound => k::SOUND,
             Self::SoundEvent => k::SOUND_EVENT,
             Self::Text | Self::Tags => k::TEXT,
+            Self::Table => k::TABLE,
             Self::Other => k::OTHER,
         }
     }
 
     /// Every kind, in the order the colour sheet shows them.
     #[cfg(test)]
-    pub(crate) const ALL: [Self; 16] = [
+    pub(crate) const ALL: [Self; 17] = [
         Self::Model,
         Self::Prefab,
         Self::Level,
@@ -105,6 +110,7 @@ impl LibraryKind {
         Self::Sound,
         Self::SoundEvent,
         Self::Code,
+        Self::Table,
         Self::Text,
         Self::Tags,
         Self::Other,
@@ -126,6 +132,7 @@ impl LibraryKind {
             Self::Tileset => Icon::Tileset,
             Self::TileMap => Icon::TileMap,
             Self::Atlas => Icon::Crops,
+            Self::Table => Icon::Table,
             Self::Text | Self::Other => Icon::TextFile,
             Self::Tags => Icon::Gear,
         }
@@ -156,6 +163,7 @@ impl LibraryKind {
                 | Self::Tileset
                 | Self::Atlas
                 | Self::Prefab
+                | Self::Table
                 | Self::Tags
         )
     }

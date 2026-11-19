@@ -24,7 +24,7 @@
 
 use crate::console::LogLevel;
 use crate::sprite_sheets::{
-    AnimatorState, AtlasState, FramesState, MapFileState, SpriteSheets, TilesetState,
+    AnimatorState, AtlasState, FramesState, MapFileState, SpriteSheets, TableState, TilesetState,
 };
 use crate::workbench::{Workbench, WorkbenchAction};
 use std::collections::HashMap;
@@ -45,6 +45,8 @@ pub enum OwnFile {
     Atlas(Arc<animation::atlas::Atlas>),
     /// A tile map file (`.tilemap.lst`).
     TileMap(Arc<tiles::TileMap>),
+    /// A data table (`.table.lst`, stage 1).
+    Table(Arc<level::table::Table>),
 }
 
 /// What the project's files hold at a path ([`SpriteSheets::held`]).
@@ -84,6 +86,9 @@ impl SpriteSheets {
             OwnFile::TileMap(file) => {
                 self.tile_maps.insert(path, MapFileState::Read(file, notes));
             }
+            OwnFile::Table(file) => {
+                self.tables.insert(path, TableState::Read(file, notes));
+            }
         }
     }
 
@@ -113,6 +118,12 @@ impl SpriteSheets {
             return held(match state {
                 AtlasState::Read(file, _) => Some(OwnFile::Atlas(Arc::clone(file))),
                 AtlasState::Failed(_) => None,
+            });
+        }
+        if let Some(state) = self.tables.get(path) {
+            return held(match state {
+                TableState::Read(file, _) => Some(OwnFile::Table(Arc::clone(file))),
+                TableState::Failed(_) => None,
             });
         }
         match self.tile_maps.get(path) {
@@ -300,7 +311,7 @@ impl Workbench {
                 sheets.put(path, file);
                 sheets.work_out_maps();
             }
-            OwnFile::Tileset(_) | OwnFile::Atlas(_) => sheets.put(path, file),
+            OwnFile::Tileset(_) | OwnFile::Atlas(_) | OwnFile::Table(_) => sheets.put(path, file),
         }
     }
 

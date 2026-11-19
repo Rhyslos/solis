@@ -40,6 +40,12 @@ pub(crate) fn owners() -> Vec<&'static str> {
     owners
 }
 
+/// Every engine object and `entity`: names no table of a project's may
+/// take ([`owners`], for other crates).
+pub fn owners_of_natives() -> Vec<&'static str> {
+    owners()
+}
+
 impl Native {
     /// Its body's key in `LUST_NATIVES`, as Lust's Lua calls it: the name,
     /// `entity_<name>` for an entity's method, `<Object>_<name>` for an

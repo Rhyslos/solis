@@ -632,6 +632,10 @@ icons! {
     /// Crossing rules: Show the grid; Grid step.
     Grid = "grid", Line,
         lines: ["M5.5 2v12M10.5 2v12", "M2 5.5h12M2 10.5h12"];
+    /// A table: its frame, a heading row, a row and a column (a data
+    /// table, stage 1).
+    Table = "table", Line,
+        lines: ["M2.5 3h11v10h-11z", "M2.5 6.5h11", "M2.5 9.75h11", "M6.5 3v10"];
     /// A globe: World axes (against Object axes).
     World = "world", Line,
         lines: [

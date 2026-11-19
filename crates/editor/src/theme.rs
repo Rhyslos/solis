@@ -171,6 +171,8 @@ pub mod kind {
     /// Text: notes (`.md`, `.txt`) and data (`.json`, `.csv`, `.toml`,
     /// `.ron`).
     pub const TEXT: Color32 = Color32::from_rgb(0x8f, 0xb8, 0xf0);
+    /// Data tables (stage 1): a warm sand, apart from text's blue.
+    pub const TABLE: Color32 = Color32::from_rgb(0xd9, 0xb8, 0x6c);
     /// Anything else.
     pub const OTHER: Color32 = Color32::from_rgb(0x8c, 0x8c, 0x8c);
 }
