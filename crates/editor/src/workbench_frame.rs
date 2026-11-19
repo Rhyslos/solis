@@ -585,6 +585,8 @@ impl Workbench {
         for request in asks.properties {
             self.apply_property(request, self.gesture);
         }
+        // A table's text written on a worker is saved once it's ready.
+        self.poll_table_saves(false);
         actions.append(&mut self.open.outbox);
         for request in asks.library {
             self.library_request(request, actions);

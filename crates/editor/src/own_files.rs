@@ -142,7 +142,7 @@ pub(crate) struct Unanswered(HashMap<String, (usize, OwnFile)>);
 
 impl Unanswered {
     /// Notes a save of `file` to `path`, sent to the app.
-    fn sent(&mut self, path: &str, file: OwnFile) {
+    pub(crate) fn sent(&mut self, path: &str, file: OwnFile) {
         let entry = self.0.entry(path.to_owned()).or_insert((0, file.clone()));
         entry.0 += 1;
         entry.1 = file;

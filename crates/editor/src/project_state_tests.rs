@@ -264,6 +264,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         tilesets,
         atlas_editor,
         table_editor,
+        table_saves,
         atlas_texture,
         tile_textures,
         map_edits,
@@ -346,6 +347,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     );
     assert!(atlas_editor.is_none());
     assert!(table_editor.is_none());
+    assert!(table_saves.is_empty());
     assert!(atlas_texture.is_none() && tile_textures.is_empty());
     same(
         map_edits,

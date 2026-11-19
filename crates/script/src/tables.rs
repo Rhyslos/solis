@@ -347,4 +347,4 @@ impl Lent {
 
 #[cfg(test)]
 #[path = "tables_tests.rs"]
-mod tests;
+pub(crate) mod tests;

@@ -26,6 +26,10 @@ impl Workbench {
                 self.level_to_front();
             }
         }
+        // A table's save still being written is finished first.
+        if leaves_the_project(&action) || action == WorkbenchAction::Quit {
+            self.poll_table_saves(true);
+        }
         if leaves_the_project(&action) && self.prefab_page_dirty() {
             // Its changes are asked about first: Save, Don't save or
             // Cancel, then this is asked for again.

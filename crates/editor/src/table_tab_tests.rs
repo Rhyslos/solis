@@ -186,6 +186,10 @@ fn enter_types_in_a_cell_and_enter_again_keeps_it_and_moves_down() {
     h.run();
     h.key_press(egui::Key::Enter);
     h.run();
+    // The table's text is written on a worker: wait for it, as leaving
+    // the project does.
+    h.state_mut().0.poll_table_saves(true);
+    h.run();
     let w = &h.state().0;
     let editor = w.open.table_editor.as_ref().unwrap();
     assert_eq!(editor.file.rows[1].cells[1], Cell::Whole(150));

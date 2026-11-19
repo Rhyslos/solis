@@ -81,14 +81,74 @@ impl Workbench {
         self.open.table_editor = None;
     }
 
-    /// Saves the open table as its editor has it, shown at once.
+    /// Saves the open table as its editor has it, shown at once. Its
+    /// text (a big table's is megabytes) is written on a worker and handed
+    /// to the app once it's ready ([`Self::poll_table_saves`]), so typing
+    /// in a table of 10,000 rows stays within the frame.
     pub(crate) fn save_table(&mut self) {
         let Some(editor) = &self.open.table_editor else {
             return;
         };
-        let (path, text) = (editor.path.clone(), editor.text());
-        let file = OwnFile::Table(Arc::new(editor.file.clone()));
-        self.save_file(&path, file, text);
+        let path = editor.path.clone();
+        let table = Arc::new(editor.file.clone());
+        let file = OwnFile::Table(Arc::clone(&table));
+        let (send, text) = std::sync::mpsc::channel();
+        let written = std::thread::Builder::new()
+            .name("table text".into())
+            .spawn(move || {
+                let _ = send.send(level::table::file::write(&table));
+            });
+        if written.is_err() {
+            // No thread to be had: written here instead.
+            let text = level::table::file::write(&editor.file);
+            self.save_file(&path, file, text);
+            return;
+        }
+        self.open.unanswered.sent(&path, file.clone());
+        // Nothing the level's problems or a prefab's part look at changed,
+        // so `sources` stays as it is.
+        self.show_file(&path, file.clone());
+        self.open.table_saves.0.push_back((path, file, text));
+    }
+
+    /// Hands the app each table save whose text is ready, in the order
+    /// they were made; with `wait`, waits for every one (before the
+    /// project is left or the editor closes).
+    pub(crate) fn poll_table_saves(&mut self, wait: bool) {
+        while let Some((_, _, text)) = self.open.table_saves.0.front() {
+            let ready = if wait {
+                text.recv()
+                    .map_err(|_| std::sync::mpsc::TryRecvError::Disconnected)
+            } else {
+                text.try_recv()
+            };
+            let text = match ready {
+                Ok(text) => Some(text),
+                Err(std::sync::mpsc::TryRecvError::Empty) => return,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => None,
+            };
+            let Some((path, file, _)) = self.open.table_saves.0.pop_front() else {
+                return;
+            };
+            match text {
+                Some(text) => self.open.outbox.push(WorkbenchAction::SaveFile {
+                    path: path.into(),
+                    file,
+                    text,
+                }),
+                None => {
+                    let text = match &file {
+                        OwnFile::Table(table) => level::table::file::write(table),
+                        _ => continue,
+                    };
+                    self.open.outbox.push(WorkbenchAction::SaveFile {
+                        path: path.into(),
+                        file,
+                        text,
+                    });
+                }
+            }
+        }
     }
 
     /// Says what the open table's last change had to say, and saves it.
@@ -211,6 +271,20 @@ impl Workbench {
             }
             Err(why) => self.log(LogLevel::Error, format!("Couldn't take in {path}: {why}.")),
         }
+    }
+}
+
+/// The open table's saves whose text is still being written: the file's
+/// path, the table, and where its text will come.
+#[derive(Debug, Default)]
+pub(crate) struct TableSaves(
+    pub(crate) std::collections::VecDeque<(String, OwnFile, std::sync::mpsc::Receiver<String>)>,
+);
+
+impl TableSaves {
+    /// Whether none is waiting.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
