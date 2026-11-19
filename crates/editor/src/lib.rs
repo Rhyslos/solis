@@ -185,7 +185,11 @@ pub use workbench::{AppInfo, Workbench, WorkbenchAction};
 pub use workbench_library::plain_relative;
 
 #[cfg(test)]
+mod field_hints_tests;
+#[cfg(test)]
 mod game_set_tests;
+#[cfg(test)]
+mod hint_picture_tests;
 #[cfg(test)]
 mod home_screen_tests;
 #[cfg(test)]
@@ -224,10 +228,6 @@ mod scale_levels_tests;
 mod shell_reach_tests;
 #[cfg(test)]
 mod source_rules_tests;
-#[cfg(test)]
-mod field_hints_tests;
-#[cfg(test)]
-mod hint_picture_tests;
 #[cfg(test)]
 mod tag_picture_tests;
 #[cfg(test)]

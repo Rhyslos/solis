@@ -132,7 +132,11 @@ mod tests {
     fn a_file_or_folder_moved_renames_its_names() {
         assert_eq!(
             renamed("sfx/alert.solsound", "sfx/alarm.solsound"),
-            Some((vec![NameKind::Sound], "Sfx.Alert".into(), "Sfx.Alarm".into()))
+            Some((
+                vec![NameKind::Sound],
+                "Sfx.Alert".into(),
+                "Sfx.Alarm".into()
+            ))
         );
         assert_eq!(
             renamed("coin.prefab.lst", "loot/coin.prefab.lst"),
@@ -141,8 +145,16 @@ mod tests {
         let (kinds, old, new) = renamed("sfx", "effects").unwrap();
         assert!(kinds.contains(&NameKind::Sound) && kinds.contains(&NameKind::Picture));
         assert_eq!((old.as_str(), new.as_str()), ("Sfx", "Effects"));
-        assert_eq!(renamed("a.solsound", "a.png"), None, "it isn't the same kind now");
-        assert_eq!(renamed("notes.md", "more.md"), None, "a text file names nothing");
+        assert_eq!(
+            renamed("a.solsound", "a.png"),
+            None,
+            "it isn't the same kind now"
+        );
+        assert_eq!(
+            renamed("notes.md", "more.md"),
+            None,
+            "a text file names nothing"
+        );
         assert_eq!(
             renamed("ui/hud.lst", "ui/overlay.lst"),
             Some((vec![NameKind::Screen], "Hud".into(), "Overlay".into()))
@@ -151,11 +163,28 @@ mod tests {
 
     #[test]
     fn a_name_and_the_names_inside_it_follow() {
-        assert_eq!(followed("Sfx.Alert", "Sfx.Alert", "Sfx.Alarm").as_deref(), Some("Sfx.Alarm"));
-        assert_eq!(followed("sfx.alert", "Sfx.Alert", "Sfx.Alarm").as_deref(), Some("Sfx.Alarm"));
-        assert_eq!(followed("Sfx.Alert", "Sfx", "Effects").as_deref(), Some("Effects.Alert"));
-        assert_eq!(followed("Sfxs.Alert", "Sfx", "Effects"), None, "only whole names");
-        assert_eq!(followed("Tools.Axe", "Tools", "Kit").as_deref(), Some("Kit.Axe"), "a picture's crops");
+        assert_eq!(
+            followed("Sfx.Alert", "Sfx.Alert", "Sfx.Alarm").as_deref(),
+            Some("Sfx.Alarm")
+        );
+        assert_eq!(
+            followed("sfx.alert", "Sfx.Alert", "Sfx.Alarm").as_deref(),
+            Some("Sfx.Alarm")
+        );
+        assert_eq!(
+            followed("Sfx.Alert", "Sfx", "Effects").as_deref(),
+            Some("Effects.Alert")
+        );
+        assert_eq!(
+            followed("Sfxs.Alert", "Sfx", "Effects"),
+            None,
+            "only whole names"
+        );
+        assert_eq!(
+            followed("Tools.Axe", "Tools", "Kit").as_deref(),
+            Some("Kit.Axe"),
+            "a picture's crops"
+        );
         assert_eq!(followed("Sf", "Sfx", "Effects"), None);
     }
 }

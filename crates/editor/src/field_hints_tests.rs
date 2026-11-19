@@ -53,7 +53,11 @@ fn program() -> Arc<script::Compiled> {
         lua: Vec::new(),
         notes: Vec::new(),
     };
-    Arc::new(script::test_support::compile_unhurried(&code).unwrap().unwrap())
+    Arc::new(
+        script::test_support::compile_unhurried(&code)
+            .unwrap()
+            .unwrap(),
+    )
 }
 
 /// A workbench with the Guard program, a guard selected, and the Library
@@ -127,7 +131,10 @@ fn properties_shows_the_hints_and_the_pickers() {
         let picker = h.get_by_role_and_label(egui::accesskit::Role::ComboBox, label);
         assert_eq!(picker.value().as_deref(), Some(shown), "{label}");
     }
-    assert!(h.query_by_label("Notes").is_none(), "a hidden field isn't shown");
+    assert!(
+        h.query_by_label("Notes").is_none(),
+        "a hidden field isn't shown"
+    );
 }
 
 #[test]
@@ -142,7 +149,11 @@ fn a_slider_s_drag_is_one_undo_step_kept_to_the_step_and_range() {
         .rect();
     drag_for_frames(&mut h, slider.center(), egui::vec2(9.0, 0.0), 12);
     let state = &h.state().0;
-    assert_eq!(state.document().history().undo_len(), before + 1, "one step");
+    assert_eq!(
+        state.document().history().undo_len(),
+        before + 1,
+        "one step"
+    );
     let Value::Float(speed) = guard_value(state, id, "speed") else {
         panic!("a number");
     };
@@ -193,17 +204,26 @@ fn a_renamed_file_is_followed_as_one_undo_step() {
     let (mut w, id) = with_a_guard();
     let before = w.document().history().undo_len();
     w.follow_renamed_names("sfx/alert.solsound", "sfx/warn.solsound");
-    assert_eq!(guard_value(&w, id, "alertSound"), Value::Text("Sfx.Warn".into()));
+    assert_eq!(
+        guard_value(&w, id, "alertSound"),
+        Value::Text("Sfx.Warn".into())
+    );
     assert_eq!(w.document().history().undo_len(), before + 1);
     // A folder moved takes the names inside it along.
     w.follow_renamed_names("portraits", "faces");
-    assert_eq!(guard_value(&w, id, "portrait"), Value::Text("Faces.GuardFace".into()));
+    assert_eq!(
+        guard_value(&w, id, "portrait"),
+        Value::Text("Faces.GuardFace".into())
+    );
     // A file nothing names changes nothing.
     w.follow_renamed_names("sfx/other.solsound", "sfx/else.solsound");
     assert_eq!(w.document().history().undo_len(), before + 2);
     w.undo();
     w.undo();
-    assert_eq!(guard_value(&w, id, "alertSound"), Value::Text("Sfx.Alert".into()));
+    assert_eq!(
+        guard_value(&w, id, "alertSound"),
+        Value::Text("Sfx.Alert".into())
+    );
 }
 
 /// The Guard's name fields, each given its second name.
@@ -244,15 +264,26 @@ fn each_kind_of_name_is_kept_through_a_level_and_a_prefab() {
     let prefab_text = level::prefab_file::write(&prefab, registry).unwrap();
     let prefab_read = level::prefab_file::read(&prefab_text, registry).unwrap();
     for (field, option) in PICKED {
-        let in_level = read.get(id).and_then(|e| e.components.get("Guard")).and_then(|c| c.get(field));
-        assert_eq!(in_level, Some(&Value::Text(option.into())), "level: {field}");
+        let in_level = read
+            .get(id)
+            .and_then(|e| e.components.get("Guard"))
+            .and_then(|c| c.get(field));
+        assert_eq!(
+            in_level,
+            Some(&Value::Text(option.into())),
+            "level: {field}"
+        );
         assert!(text.contains(option), "written as its name: {option}");
         let in_prefab = prefab_read
             .level
             .get(id)
             .and_then(|e| e.components.get("Guard"))
             .and_then(|c| c.get(field));
-        assert_eq!(in_prefab, Some(&Value::Text(option.into())), "prefab: {field}");
+        assert_eq!(
+            in_prefab,
+            Some(&Value::Text(option.into())),
+            "prefab: {field}"
+        );
     }
 }
 
@@ -277,6 +308,10 @@ fn each_kind_of_name_is_kept_through_a_save_game() {
         .values(id, "Guard")
         .expect("the guard runs");
     for (field, option) in PICKED {
-        assert_eq!(values.get(field), Some(&Value::Text(option.into())), "{field}");
+        assert_eq!(
+            values.get(field),
+            Some(&Value::Text(option.into())),
+            "{field}"
+        );
     }
 }
