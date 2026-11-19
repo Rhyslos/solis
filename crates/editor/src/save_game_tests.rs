@@ -1470,3 +1470,85 @@ fn the_version_12_example_is_written_as_the_version_13_one_with_no_tables() {
     has_tables.list.push(("tables".into(), String::new()));
     assert!(super::tables_kept(&mut has_tables).is_err());
 }
+
+/// A table given to the project's files, as the app hands them over.
+fn give_a_table(w: &mut Workbench, price: i64) {
+    let mut table = level::table::Table::new("Item");
+    table.columns.push(level::table::Column::new(
+        "price",
+        level::table::ColumnKind::Whole,
+    ));
+    table.rows.push(std::sync::Arc::new(level::table::Row {
+        id: "Apple".into(),
+        cells: vec![level::table::Cell::Whole(price)],
+    }));
+    std::sync::Arc::make_mut(&mut w.viewport.sheets)
+        .tables
+        .insert(
+            "items.table.lst".into(),
+            crate::sprite_sheets::TableState::Read(std::sync::Arc::new(table), Vec::new()),
+        );
+}
+
+/// How many lines the Console has saying the tables changed.
+fn tables_warnings(w: &Workbench) -> usize {
+    w.log_lines()
+        .iter()
+        .filter(|l| l.level == LogLevel::Warning && l.text.contains("data tables have changed"))
+        .count()
+}
+
+#[test]
+fn a_save_made_with_other_tables_warns_once_as_it_loads() {
+    let mut w = busy("Harbour");
+    give_a_table(&mut w, 5);
+    w.play();
+    run_to(&mut w, 10);
+    let text = w.save_text().expect("saved");
+    let save = Save::read(&text).unwrap();
+    assert_eq!(save.tables, Some(w.tables_now().hash()));
+    assert_ne!(save.tables, Some(0));
+    // The same tables: nothing said.
+    w.load_game(&text, "quick");
+    assert_eq!(tables_warnings(&w), 0);
+    // The price changed since: said once.
+    give_a_table(&mut w, 6);
+    w.load_game(&text, "quick");
+    assert_eq!(tables_warnings(&w), 1);
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("since quick was saved"))
+    );
+}
+
+#[test]
+fn a_recording_made_with_other_tables_warns_once_as_it_plays_back() {
+    let mut w = busy("Harbour");
+    give_a_table(&mut w, 5);
+    let recording = |tables| {
+        input::Recording {
+            seed: 1,
+            start: 0,
+            ticks: vec![input::Tick::default(); 3],
+            level: None,
+            tables,
+        }
+        .write()
+    };
+    let now = w.tables_now().hash();
+    w.replay(&recording(Some(now)), "same.solrec");
+    // One from before version 5 says nothing of the tables.
+    let older = recording(None)
+        .replacen("solis recording 5", "solis recording 4", 1)
+        .replacen("tables 0000000000000000\n", "", 1);
+    w.replay(&older, "older.solrec");
+    assert_eq!(tables_warnings(&w), 0);
+    w.replay(&recording(Some(now ^ 1)), "other.solrec");
+    assert_eq!(tables_warnings(&w), 1);
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("since other.solrec was recorded"))
+    );
+}
