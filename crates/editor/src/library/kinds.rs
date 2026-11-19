@@ -227,7 +227,8 @@ pub(crate) enum Filter {
     Maps,
     /// Sound files and sound events.
     Sounds,
-    /// Lust, Lua and Rust files.
+    /// Lust, Lua and Rust files, and the other text a game reads: notes,
+    /// tables, tags and fonts.
     Code,
 }
 
@@ -266,7 +267,7 @@ impl Filter {
             ),
             Self::Maps => matches!(kind, K::Level | K::TileMap | K::Tileset),
             Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
-            Self::Code => matches!(kind, K::Code | K::Text | K::Tags | K::Table),
+            Self::Code => matches!(kind, K::Code | K::Text | K::Tags | K::Table | K::Font),
         }
     }
 

@@ -1,0 +1,18 @@
+# The text layout study's program (docs/reports/text-layout-study.md). Its
+# own workspace, never built with Solis: parley is here only to be measured.
+[package]
+name = "text-layout-study"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "text-layout-study"
+path = "main.rs"
+
+[dependencies]
+parley = { version = "=0.11.1", default-features = false, features = ["std"] }
+harfrust = { version = "=0.12.0", default-features = false, features = ["std"] }
+unicode-linebreak = "=0.1.5"
+
+[workspace]

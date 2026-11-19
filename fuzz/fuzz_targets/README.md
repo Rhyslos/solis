@@ -21,6 +21,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `project_file.rs` | A project file: refused or read. |
 | `recording.rs` | A recording of play: refused or read, then written and read back the same. |
 | `save_game.rs` | A save game loaded into a fresh editor: refused with why, or loaded and played on a few ticks. |
+| `font_file.rs` | A project's own font (stage 1, text layout): refused with why, or added and used to lay out text of every kind (wrapped, cut, falling back to the game's Inter) and draw its letters, every box finite. |
 | `screen_source.rs` | A screen's Lust file as the UI editor reads it: refused or read, every piece's place inside the text, and the editor's changes (a style, words, a piece taken out or moved) never a panic. |
 | `sidecar.rs` | A sidecar (`*.solmeta`): refused or read, then written and read back. |
 | `sound_event.rs` | A sound event file (`.solsound`): refused or read, always within its limits, written back to itself, and every pick one of its takes. |

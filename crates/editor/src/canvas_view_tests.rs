@@ -39,6 +39,7 @@ fn harness_of(menu: &str) -> Harness<'static, State> {
                         renderer: &mut s.picker,
                         fonts: &mut s.fonts,
                         pictures: None,
+                        font_files: None,
                         accent: Color32::from_rgb(0x24, 0x68, 0xd8),
                         readable: &[],
                         keys,
