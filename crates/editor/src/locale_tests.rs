@@ -117,3 +117,93 @@ fn the_names_game_code_gets() {
     assert_eq!(names.keys, ["Shop.Welcome", "Shop.Bye"]);
     assert_eq!(names.languages, ["En", "Nb"]);
 }
+
+/// A tick of the game.
+fn tick(w: &mut Workbench) {
+    w.run_game((world::TICK + 1e-9) as f32);
+}
+
+/// The caption screen's lines now, if it's shown.
+fn caption_lines(w: &Workbench) -> Vec<String> {
+    w.game_screens()
+        .iter()
+        .filter(|s| s.name == "Captions")
+        .flat_map(|s| {
+            let mut words = Vec::new();
+            fn walk(n: &ui::view::Node, out: &mut Vec<String>) {
+                if n.kind == "text" {
+                    out.push(n.text.clone());
+                }
+                for c in &n.children {
+                    walk(c, out);
+                }
+            }
+            if let Some(view) = &s.view {
+                walk(view, &mut words);
+            }
+            words
+        })
+        .collect()
+}
+
+#[test]
+fn a_sound_heard_shows_its_caption_while_captions_are_on() {
+    let mut w = shop();
+    w.set_locale(
+        w.languages().clone(),
+        vec![(
+            "locale/en/captions.ftl".into(),
+            "Captions-DoorCreaks = [The door creaks]\nSpeakers-Gardener = Gardener\nGardener-Hello = Hello!\n".into(),
+        )],
+    );
+    w.play();
+    tick(&mut w);
+    let heard = [
+        ("Captions.DoorCreaks".to_owned(), String::new(), 1.0),
+        (
+            "Gardener.Hello".to_owned(),
+            "Speakers.Gardener".to_owned(),
+            1.0,
+        ),
+    ];
+    // Captions for sounds start off; subtitles on.
+    w.captions_heard(&heard);
+    tick(&mut w);
+    assert_eq!(caption_lines(&w), ["Gardener:", "Hello!"], "only the voice");
+    let mut settings = w.player_settings();
+    settings.captions = true;
+    w.set_player_settings(settings);
+    w.captions_heard(&heard);
+    tick(&mut w);
+    // The creak was heard first (kept while captions were off), so it's
+    // above the voice.
+    assert_eq!(
+        caption_lines(&w),
+        ["[The door creaks]", "Gardener:", "Hello!"]
+    );
+    // Two seconds at least, then gone.
+    for _ in 0..(2.5 / world::TICK) as usize {
+        tick(&mut w);
+    }
+    assert!(caption_lines(&w).is_empty(), "their time is up");
+    settings.captions = false;
+    settings.subtitles = false;
+    w.set_player_settings(settings);
+    w.captions_heard(&heard);
+    tick(&mut w);
+    assert!(caption_lines(&w).is_empty(), "both off: nothing");
+}
+
+#[test]
+fn a_subtitle_shown_from_rust_stays_until_stopped() {
+    let mut w = shop();
+    w.play();
+    tick(&mut w);
+    let line = w.show_subtitle("Mira", "Roses!", None);
+    for _ in 0..300 {
+        tick(&mut w);
+    }
+    assert_eq!(caption_lines(&w), ["Mira:", "Roses!"]);
+    w.stop_subtitle(line);
+    assert!(caption_lines(&w).is_empty());
+}

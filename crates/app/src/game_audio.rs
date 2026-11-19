@@ -260,24 +260,18 @@ impl GameAudio {
         let real: HashSet<u64> = device.loops_playing().into_iter().collect();
         // Sounds heard with a caption (stage 1, translations): each a
         // shot, or a loop as it starts, on a bus game code hasn't silenced.
-        let mut captions: Vec<(String, String, f64)> = Vec::new();
-        for w in wanted.iter().filter(|w| heard.contains(&w.key)) {
-            let starts = match w.key {
+        let captions: Vec<(String, String, f64)> = wanted
+            .iter()
+            .filter(|w| heard.contains(&w.key))
+            .filter(|w| match w.key {
                 Key::Loop(entity) => !real.contains(&entity),
                 Key::Shot(_) => true,
-            };
-            let silenced = self
-                .shares
-                .iter()
-                .any(|(bus, share)| *share <= 0.0 && bus.eq_ignore_ascii_case(&w.event.bus));
-            if starts && !silenced && !w.event.caption.is_empty() {
-                captions.push((
-                    w.event.caption.clone(),
-                    w.event.speaker.clone(),
-                    w.clip.info.seconds() / w.pick.speed().max(0.01),
-                ));
-            }
-        }
+            })
+            .filter_map(|w| {
+                let seconds = w.clip.info.seconds() / w.pick.speed().max(0.01);
+                caption_of(w.event, &self.shares, seconds)
+            })
+            .collect();
         workbench.captions_heard(&captions);
         for w in wanted.iter().filter(|w| heard.contains(&w.key)) {
             let event_number = self.event_number(w.name);
@@ -762,6 +756,22 @@ pub fn choose_for_scale(loops: usize, shots: usize, room: usize) -> usize {
     choose(&candidates, room).len()
 }
 
+/// The caption a sound heard as it starts shows (stage 1, translations):
+/// its caption's key, its speaker's key and how long it plays; none when
+/// it has no caption, or game code set its bus's volume to nothing
+/// (`shares`, by bus).
+fn caption_of(
+    event: &sound::SoundEvent,
+    shares: &HashMap<String, f32>,
+    seconds: f64,
+) -> Option<(String, String, f64)> {
+    let silenced = shares
+        .iter()
+        .any(|(bus, share)| *share <= 0.0 && bus.eq_ignore_ascii_case(&event.bus));
+    (!event.caption.is_empty() && !silenced)
+        .then(|| (event.caption.clone(), event.speaker.clone(), seconds))
+}
+
 /// The requests worth playing: after a stall (many ticks in one frame),
 /// only the last few ticks' sounds play, not a pile-up; stopping and
 /// volumes always count.
@@ -800,6 +810,51 @@ mod tests {
             .collect();
         assert_eq!(kept, vec![9, 10, 1, 1], "old stops and volumes still count");
         assert_eq!(fresh(Vec::new()).count(), 0);
+    }
+
+    #[test]
+    fn a_sound_heard_shows_its_caption_unless_its_bus_is_silenced() {
+        let creak = sound::SoundEvent {
+            caption: "Captions.DoorCreaks".into(),
+            ..sound::SoundEvent::default()
+        };
+        let none = HashMap::new();
+        assert_eq!(
+            caption_of(&creak, &none, 1.5),
+            Some(("Captions.DoorCreaks".into(), String::new(), 1.5))
+        );
+        let quiet: HashMap<String, f32> = [("effects".to_owned(), 0.0)].into();
+        assert_eq!(
+            caption_of(&creak, &quiet, 1.5),
+            None,
+            "silenced by game code"
+        );
+        assert_eq!(
+            caption_of(&sound::SoundEvent::default(), &none, 1.5),
+            None,
+            "no caption"
+        );
+    }
+
+    #[test]
+    fn a_sound_out_of_range_is_never_heard_so_shows_no_caption() {
+        let far = Placement::At(Spot {
+            place: [100.0, 0.0, 0.0],
+            near_m: 2.0,
+            far_m: 30.0,
+            fade: sound::event::Fade::Realistic,
+        });
+        assert!(
+            !loudness(&far, 0.0, [0.0; 3]).is_finite(),
+            "never started, never captioned"
+        );
+        let near = Placement::At(Spot {
+            place: [10.0, 0.0, 0.0],
+            near_m: 2.0,
+            far_m: 30.0,
+            fade: sound::event::Fade::Realistic,
+        });
+        assert!(loudness(&near, 0.0, [0.0; 3]).is_finite());
     }
 
     #[test]
