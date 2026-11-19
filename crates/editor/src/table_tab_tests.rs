@@ -436,6 +436,18 @@ fn shot_of_the_table_tab() {
     }
     crate::picture_support::drawn(&mut h)
         .write(&std::path::Path::new(&folder).join("table-tab.png"));
+    let w = crate::picture_support::sample_project();
+    let Some(mut h) = crate::picture_support::editor_window(
+        w,
+        crate::interface_look::InterfaceLook::default(),
+        [1440.0, 900.0],
+    ) else {
+        return;
+    };
+    for _ in 0..5 {
+        h.run();
+    }
+    crate::picture_support::drawn(&mut h).write(&std::path::Path::new(&folder).join("home.png"));
 }
 
 /// The Table tab as the sketch has it: the items, their kinds under each
