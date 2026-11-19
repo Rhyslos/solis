@@ -54,6 +54,8 @@ pub struct ScreenCode {
     pub notes: Vec<String>,
     /// Every picture a screen names in its code (decision 0089), where.
     pub pictures: Vec<PictureUse>,
+    /// Every font a screen names in its code (stage 1, text layout), where.
+    pub fonts: Vec<FileUse>,
     /// The screens' files as they were compiled (path, text), for the UI
     /// editor's canvas to read and change.
     pub sources: Vec<(String, String)>,
@@ -62,21 +64,27 @@ pub struct ScreenCode {
     pub events: Vec<(String, String)>,
 }
 
-/// A picture named in a screen's code: `image "sprites/tools.png#Axe"`.
+/// A file named in a screen's code: a picture (`image "sprites/tools.png#Axe"`)
+/// or a font (`font "fonts/Lora.ttf"`).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PictureUse {
+pub struct FileUse {
     /// The screen's file.
     pub file: String,
     /// Its line and column, from 1.
     pub line: u32,
-    /// Its column, from 1 (at the name's opening quote).
+    /// Its column, from 1 (at the name's first letter, or its opening
+    /// quote for a picture).
     pub column: u32,
-    /// The name, as written: a picture's path inside the assets, perhaps
-    /// with `#` and a crop's name.
+    /// The name, as written: a file's path inside the assets (a picture's
+    /// perhaps with `#` and a crop's name).
     pub name: String,
 }
 
-/// The most picture names read from the screens' code.
+/// A picture named in a screen's code (decision 0089).
+pub type PictureUse = FileUse;
+
+/// The most picture names read from the screens' code, and the most
+/// font names.
 pub const MAX_PICTURE_USES: usize = 4096;
 
 /// Every `image "…"` with its name written out in `files`' screens (those
@@ -84,14 +92,61 @@ pub const MAX_PICTURE_USES: usize = 4096;
 /// found then. At most [`MAX_PICTURE_USES`].
 pub fn pictures_named(files: &[(String, String)]) -> Vec<PictureUse> {
     let mut found = Vec::new();
+    quoted_after(files, "image", |file, line, column, name| {
+        found.push(FileUse {
+            file: file.to_string(),
+            line,
+            column,
+            name: name.to_string(),
+        });
+        found.len() < MAX_PICTURE_USES
+    });
+    found
+}
+
+/// Every font named by a `font "…"` style written out in `files`' screens
+/// (stage 1, text layout): one name, or several between commas, the first
+/// font first and the rest its fallbacks (`font "fonts/Lora.ttf,
+/// fonts/NotoSansJP.otf"`), each with the column it starts at. Comments
+/// are skipped. At most [`MAX_PICTURE_USES`].
+pub fn fonts_named(files: &[(String, String)]) -> Vec<FileUse> {
+    let mut found = Vec::new();
+    quoted_after(files, "font", |file, line, column, list| {
+        let mut at = column + 1;
+        for name in list.split(',') {
+            let lead = name.chars().take_while(|c| c.is_whitespace()).count();
+            let trimmed = name.trim();
+            if !trimmed.is_empty() {
+                found.push(FileUse {
+                    file: file.to_string(),
+                    line,
+                    column: at.saturating_add(u32::try_from(lead).unwrap_or(u32::MAX)),
+                    name: trimmed.to_string(),
+                });
+            }
+            at = at.saturating_add(u32::try_from(name.chars().count() + 1).unwrap_or(u32::MAX));
+        }
+        found.len() < MAX_PICTURE_USES
+    });
+    found
+}
+
+/// Calls `each` with the file, line, column (of the opening quote) and
+/// words of every `word "…"` written out in `files`' screens, skipping
+/// comments and `word` inside another word, until it says stop.
+fn quoted_after(
+    files: &[(String, String)],
+    word: &str,
+    mut each: impl FnMut(&str, u32, u32, &str) -> bool,
+) {
     for (path, text) in files.iter().filter(|(p, _)| p.starts_with(FOLDER)) {
         for (n, line) in text.lines().enumerate() {
             let code = line.split("--").next().unwrap_or("");
             let mut rest = code;
             let mut gone = 0;
-            while let Some(at) = rest.find("image") {
+            while let Some(at) = rest.find(word) {
                 let before = code[..gone + at].chars().next_back();
-                let after = &rest[at + "image".len()..];
+                let after = &rest[at + word.len()..];
                 let word_start = before.is_none_or(|c| !(c.is_alphanumeric() || c == '_'));
                 let trimmed = after.trim_start();
                 if word_start
@@ -100,24 +155,19 @@ pub fn pictures_named(files: &[(String, String)]) -> Vec<PictureUse> {
                     && let Some(end) = quoted.find('"')
                     && !quoted[..end].contains('\\')
                 {
-                    if found.len() >= MAX_PICTURE_USES {
-                        return found;
+                    let quote_at = gone + at + word.len() + (after.len() - trimmed.len());
+                    let line = u32::try_from(n + 1).unwrap_or(u32::MAX);
+                    let column =
+                        u32::try_from(code[..quote_at].chars().count() + 1).unwrap_or(u32::MAX);
+                    if !each(path, line, column, &quoted[..end]) {
+                        return;
                     }
-                    let quote_at = gone + at + "image".len() + (after.len() - trimmed.len());
-                    found.push(PictureUse {
-                        file: path.clone(),
-                        line: u32::try_from(n + 1).unwrap_or(u32::MAX),
-                        column: u32::try_from(code[..quote_at].chars().count() + 1)
-                            .unwrap_or(u32::MAX),
-                        name: quoted[..end].to_string(),
-                    });
                 }
-                gone += at + "image".len();
+                gone += at + word.len();
                 rest = &code[gone..];
             }
         }
     }
-    found
 }
 
 /// The module only screens fetch (decision 0087), `solis/screen`: `Ui`,
@@ -470,6 +520,7 @@ pub fn compile(
             readers,
             notes,
             pictures: pictures_named(files),
+            fonts: fonts_named(files),
             sources,
             events: events_named(files),
         })),

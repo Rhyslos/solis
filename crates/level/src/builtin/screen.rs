@@ -30,6 +30,11 @@ pub struct Screen {
     /// The screen drawn in blocks this many design pixels big, for a
     /// pixel-art look (1: smooth).
     pub pixel_size: i64,
+    /// The room from one line of its text to the next, in percent of the
+    /// font's own (100; stage 1, text layout).
+    pub line_height: i64,
+    /// Room added after each letter of its text, in design pixels (0).
+    pub letter_spacing: f32,
 }
 
 impl Default for Screen {
@@ -42,6 +47,8 @@ impl Default for Screen {
             outline: 0.0,
             outline_color: [0.0, 0.0, 0.0],
             pixel_size: 1,
+            line_height: 100,
+            letter_spacing: 0.0,
         }
     }
 }
@@ -55,6 +62,10 @@ impl Screen {
     pub const MAX_HALO: f32 = 64.0;
     /// The biggest pixel size.
     pub const MAX_PIXEL: i64 = 32;
+    /// The least and most line height, in percent.
+    pub const LINE_HEIGHTS: (i64, i64) = (50, 300);
+    /// The least and most letter spacing, in design pixels.
+    pub const LETTER_SPACINGS: (f32, f32) = (-10.0, 50.0);
 
     /// A screen showing `name`.
     pub fn showing(name: &str) -> Self {
@@ -95,6 +106,15 @@ impl Screen {
                 }
             }),
             pixel_size: self.pixel_size.clamp(1, Self::MAX_PIXEL),
+            line_height: self
+                .line_height
+                .clamp(Self::LINE_HEIGHTS.0, Self::LINE_HEIGHTS.1),
+            letter_spacing: if self.letter_spacing.is_finite() {
+                self.letter_spacing
+                    .clamp(Self::LETTER_SPACINGS.0, Self::LETTER_SPACINGS.1)
+            } else {
+                0.0
+            },
             ..self
         }
     }
@@ -168,6 +188,34 @@ impl Component for Screen {
                         ..Hint::default()
                     },
                 ),
+                FieldInfo::new("lineHeight", "Line height", FieldKind::Int, Value::Int(100)).hint(
+                    Hint {
+                        range: Some((
+                            Self::LINE_HEIGHTS.0 as f64,
+                            Self::LINE_HEIGHTS.1 as f64,
+                        )),
+                        unit: "%".into(),
+                        help: "The room from one line of the screen's text to the next, as a \
+                               share of the font's own (100%). More spreads lines out; less \
+                               packs them closer.".into(),
+                        ..Hint::default()
+                    },
+                ),
+                field::float(
+                    "letterSpacing",
+                    "Letter spacing",
+                    0.0,
+                    field::hint(
+                        (
+                            f64::from(Self::LETTER_SPACINGS.0),
+                            f64::from(Self::LETTER_SPACINGS.1),
+                        ),
+                        0.1,
+                        "px",
+                        "Room added after each letter of the screen's text (on a 1920 × 1080 \
+                         design), for wide titles or tight labels. 0 as the font spaces them.",
+                    ),
+                ),
             ],
         }
     }
@@ -181,6 +229,11 @@ impl Component for Screen {
         data.set("outline", Value::Float(f64::from(self.outline)));
         data.set("outlineColor", Value::floats(&self.outline_color));
         data.set("pixelSize", Value::Int(self.pixel_size));
+        data.set("lineHeight", Value::Int(self.line_height));
+        data.set(
+            "letterSpacing",
+            Value::Float(f64::from(self.letter_spacing)),
+        );
         data
     }
 
@@ -200,6 +253,11 @@ impl Component for Screen {
                 Some(Value::Int(n)) => *n,
                 _ => 1,
             },
+            line_height: match data.get("lineHeight") {
+                Some(Value::Int(n)) => *n,
+                _ => 100,
+            },
+            letter_spacing: f.float("letterSpacing", 0.0),
         }
         .sanitized()
     }
@@ -219,6 +277,8 @@ mod tests {
             outline: 2.0,
             outline_color: [1.0, 0.5, 0.0],
             pixel_size: 3,
+            line_height: 140,
+            letter_spacing: 1.5,
         };
         assert_eq!(Screen::from_data(&s.to_data()), s);
         let odd = Screen {
@@ -229,6 +289,8 @@ mod tests {
             outline: 1e9,
             outline_color: [f32::INFINITY, -1.0, 0.5],
             pixel_size: -4,
+            line_height: 9_999,
+            letter_spacing: f32::NAN,
         }
         .sanitized();
         assert_eq!(odd.screen, "");

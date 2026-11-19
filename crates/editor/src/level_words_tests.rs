@@ -200,6 +200,11 @@ const ALLOWED_ASSEMBLY: &[(&str, &str, &str)] = &[
         "~assembly",
         "Lust's own word for a game screen",
     ),
+    (
+        "screen-text.md",
+        "~assembly",
+        "Lust's own word for a game screen, in the page's examples",
+    ),
 ];
 
 /// Where "assets folder" or "the assets" is still right, as [`ALLOWED`]

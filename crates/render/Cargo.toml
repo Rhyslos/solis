@@ -26,6 +26,8 @@ ui.workspace = true
 [dev-dependencies]
 pollster.workspace = true
 mesh.workspace = true
+# Reads and writes the approved pictures of game UI's text (tests/data).
+assets.workspace = true
 
 [lints]
 workspace = true

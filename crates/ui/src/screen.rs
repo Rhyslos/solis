@@ -144,16 +144,17 @@ pub enum ElementKind {
         rising: bool,
     },
     /// Text in the element's box, in its fill's first colour, vertically
-    /// in the middle (decision 0084).
+    /// in the middle (decision 0084), wrapped and cut as `fit` says
+    /// (stage 1, text layout).
     Text {
         /// What it says (`\n` starts a new line).
         text: String,
-        /// How tall its letters are, in design pixels.
-        size: f32,
-        /// Which of the game's fonts (0: the standard one).
-        font: usize,
-        /// Where along the box: left, middle or right.
+        /// Its size, fonts and spacing.
+        style: crate::paragraph::TextStyle,
+        /// Where along the box its lines go: left, middle or right.
         align: Edge,
+        /// The room it has: as wide as it is, or wrapped or cut.
+        fit: crate::paragraph::Fit,
     },
     /// A bar: a box filled `value` of the way across (0 to 1), its
     /// background behind it (the energy bar).
@@ -354,6 +355,9 @@ pub struct Screen {
     /// Its look, from the Screen component showing it: a glow and an
     /// outline round everything, and its pixel size.
     pub look: ScreenLook,
+    /// The project's own fonts its text may use (stage 1, text layout),
+    /// shared by every screen of the game.
+    pub fonts: Option<std::sync::Arc<crate::text::FontFiles>>,
 }
 
 /// A whole screen's look (decision 0089, M6), set on the Screen
@@ -371,6 +375,11 @@ pub struct ScreenLook {
     /// The screen drawn in blocks this many design pixels big (1 or less:
     /// smooth).
     pub pixel: f32,
+    /// The room from one line of text to the next, times the font's own
+    /// (1; stage 1, text layout).
+    pub line_height: f32,
+    /// Room added after each letter of text, in design pixels (0).
+    pub letter_spacing: f32,
 }
 
 impl Default for ScreenLook {
@@ -380,6 +389,8 @@ impl Default for ScreenLook {
             outline: 0.0,
             outline_colour: Colour::rgb(0, 0, 0),
             pixel: 1.0,
+            line_height: 1.0,
+            letter_spacing: 0.0,
         }
     }
 }
@@ -397,6 +408,7 @@ impl Screen {
             pictures: None,
             ui_size: 1.0,
             look: ScreenLook::default(),
+            fonts: None,
         }
     }
 

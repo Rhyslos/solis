@@ -306,6 +306,8 @@ impl GameCode {
                     &format!(".{}", asset_db::OLD_LEVEL_EXTENSION),
                 ],
             ),
+            // fonts/Lora.ttf is Font.Fonts.Lora (stage 1, text layout).
+            fonts: asset_paths(assets, &[".ttf", ".otf"]),
             // ui/pauseMenu.lst is the screen PauseMenu (as the screens'
             // program finds them).
             screens: asset_paths(&assets.join(script::screens::FOLDER), &[".lst"])

@@ -287,6 +287,7 @@ fn the_screen_s_look_reaches_every_shape_in_screen_pixels() {
         outline: 1.0,
         outline_colour: Colour::rgb(255, 0, 0),
         pixel: 2.0,
+        ..ScreenLook::default()
     };
     let shapes = layout(&screen, [300, 300], None);
     assert_eq!(shapes.len(), 2);
@@ -319,9 +320,9 @@ fn review_findings_stay_fixed() {
             "words",
             ElementKind::Text {
                 text: "Hello".into(),
-                size: 30.0,
-                font: 0,
+                style: crate::TextStyle::new(30.0, 0),
                 align: Edge::Start,
+                fit: crate::Fit::default(),
             },
         )
         .sized([300.0, 50.0])

@@ -785,6 +785,7 @@ pub fn library_kind(kind: FileKind) -> LibraryKind {
         FileKind::Atlas => LibraryKind::Atlas,
         FileKind::Table => LibraryKind::Table,
         FileKind::Text => LibraryKind::Text,
+        FileKind::Font => LibraryKind::Font,
         FileKind::Other => LibraryKind::Other,
     }
 }

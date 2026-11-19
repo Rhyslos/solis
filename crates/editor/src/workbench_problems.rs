@@ -77,13 +77,15 @@ impl Workbench {
     }
 
     /// The code's mistakes, then pictures its screens name that can't be
-    /// shown (decision 0089): everything Problems lists from the code.
+    /// shown (decision 0089) and fonts they name that can't be used (stage
+    /// 1, text layout): everything Problems lists from the code.
     pub(crate) fn all_code_problems(&self) -> std::borrow::Cow<'_, [script::CodeProblem]> {
         let pictures = self.picture_problems();
-        if pictures.is_empty() {
+        let fonts = self.font_problems();
+        if pictures.is_empty() && fonts.is_empty() {
             std::borrow::Cow::Borrowed(&self.open.code_problems)
         } else {
-            std::borrow::Cow::Owned([&self.open.code_problems[..], pictures].concat())
+            std::borrow::Cow::Owned([&self.open.code_problems[..], pictures, fonts].concat())
         }
     }
 

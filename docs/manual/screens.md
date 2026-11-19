@@ -437,7 +437,7 @@ end
 - The name can be worked out as the game runs (`image item.icon;`): that picture is read the first time it's shown.
 - A name written out in the screen's code that names no picture, or no crop of it, is listed in **Problems** with its line before you press Play. A missing picture shows as a grey box with its name.
 
-**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `image`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border`, `opacity` and, for pictures, `cover`. Other pieces are laid out but not drawn yet.
+**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `image`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, `nowrap`, `font` (one of the project's fonts, with fallbacks: [Text on screens](screen-text.md)), the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border`, `opacity` and, for pictures, `cover`. Other pieces are laid out but not drawn yet.
 
 ## Settings
 
@@ -452,6 +452,8 @@ The **Screen** component:
 | Outline | A line just outside everything on the screen, this thick. 0 for none. |
 | Outline colour | The outline's colour. |
 | Pixel size | Draws the whole screen in blocks this many pixels big (1 is smooth). |
+| Line height | The room from one line of its text to the next, as a share of the font's own (100%). See [Text on screens](screen-text.md#settings). |
+| Letter spacing | Room added after every letter of its text, in pixels. See [Text on screens](screen-text.md#settings). |
 
 ## Tips and common problems
 
@@ -469,11 +471,12 @@ The **Screen** component:
 - **Problem:** Problems says a picture "has no crop called Axe". **Why:** the part after `#` is the name of a crop made in Atlas Crop, and capitals don't matter but spelling does. **Fix:** open the picture's Atlas Crop tab and name a crop that, or use one of the names Problems lists.
 - **Problem:** a picture "can't be shown on a screen: there's no room left". **Why:** all the screens' pictures share one sheet of 2048 × 2048 pixels on the graphics card. **Fix:** use smaller pictures, or crops of one sprite sheet instead of whole big pictures.
 - **Problem:** the Console says "a screen can't change the player's settings". **Why:** screens only read the game, settings included. **Fix:** have the button send an event, and call `Screens:setTextSize` in the entity's code.
-- **Problem:** with a big text size, words reach past a box. **Why:** a piece with a set `width` or `height` stays that size, so its text has no room to grow. **Fix:** leave the size out (it then fits what's in it), or use `minWidth`; check on the canvas with **Text 150%** and **200%**.
+- **Problem:** with a big text size, words reach past a box. **Why:** a piece with a set `width` or `height` stays that size, so its text has no room to grow. **Fix:** leave the size out (it then fits what's in it), or use `minWidth`; or let it end in "…" ([Text on screens](screen-text.md)); check on the canvas with **Text 150%** and **200%**.
 - **Problem:** text is dark and hard to read over the game. **Why:** like Lust's windows, text is dark unless told otherwise. **Fix:** give it a colour word: `white`.
 
 ## Related
 
+- [Text on screens](screen-text.md): wrapping, alignment, "…", the project's own fonts and fallbacks.
 - [Game code](game-code.md): game-wide objects, which screens read.
 - [Play mode](play-mode.md): the Game panel, where screens are drawn, and recordings.
 - [The UI sample](ui-sample.md): a HUD and a pause menu with the player's settings, start to finish.

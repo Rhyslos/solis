@@ -25,6 +25,8 @@ fn item_at(path: &str) -> LibraryItem {
         (".aseprite", LibraryKind::SpriteSheet),
         (".ase", LibraryKind::SpriteSheet),
         (".solframes", LibraryKind::SpriteClips),
+        (".ttf", LibraryKind::Font),
+        (".otf", LibraryKind::Font),
         (".lst", LibraryKind::Code),
     ]
     .into_iter()
@@ -56,6 +58,7 @@ pub(crate) fn renamed(from: &str, to: &str) -> Option<(Vec<NameKind>, String, St
         NameKind::Picture,
         NameKind::Prefab,
         NameKind::Level,
+        NameKind::Font,
     ];
     (old != new).then_some((kinds, old, new))
 }

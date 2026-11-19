@@ -109,6 +109,8 @@ struct App {
     sprites: crate::sprites::Sprites,
     /// The text file shown in Properties, read when it changes.
     text_files: crate::text_files::TextFiles,
+    /// The project's fonts the game's screens use, read on a worker.
+    font_reads: crate::font_reads::FontReads,
     /// The game's sounds: playing what game code asks for.
     game_audio: crate::game_audio::GameAudio,
     /// The open project and its assets.
@@ -266,6 +268,7 @@ impl App {
             messages: crate::logger::install(),
             updates: crate::updates::Updates::new(pending, skipped, copy.clone()),
             text_files: crate::text_files::TextFiles::default(),
+            font_reads: crate::font_reads::FontReads::default(),
             tidying: Default::default(),
             prefab_counts: Default::default(),
             tag_counts: Default::default(),
@@ -1984,6 +1987,8 @@ impl eframe::App for App {
         self.follow_sprites();
         let assets = self.projects.db().map(|db| db.project().files());
         self.text_files
+            .follow(&mut self.workbench, assets.as_deref());
+        self.font_reads
             .follow(&mut self.workbench, assets.as_deref());
         if let Some(note) = self.sounds.failure(self.sound.device()) {
             self.workbench.log(LogLevel::Warning, note);

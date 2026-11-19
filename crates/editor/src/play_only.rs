@@ -93,6 +93,7 @@ impl Workbench {
         self.feed_input(&ctx);
         self.run_game(ui.input(|i| i.stable_dt));
         self.refresh_screen_pictures();
+        self.refresh_screen_fonts();
         let rect = ui.max_rect();
         ui.painter().rect_filled(rect, 0.0, egui::Color32::BLACK);
         let game = self.game_scene_now().map(|(key, mut scene)| {

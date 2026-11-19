@@ -27,6 +27,7 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | `sound_file/` | WAV files of each kind the reader takes, and Ogg Vorbis files from `crates/sound/tests/data`: good ones (one of many pages), and hostile ones the reader refuses (a second stream after a good sound, one of them hidden behind a stray byte). |
 | `tile_art/` | The logo's PNG and the walker's Aseprite file, each after the byte that chooses its reader. |
 | `tile_map/` | Tile map files: the fixtures of version 1 and of version 2 (with exact tiles) as `.soltilemap`, and of version 3 as `.tilemap.lst`. |
+| `font_file/` | JetBrains Mono, one of the fonts in the program (the smaller one), as a project's own font; the target lays it out beside Inter. |
 | `text_file/` | A Markdown file using every mark Properties draws, and the project's CONTRIBUTING.md. |
 | `tileset/` | Tilesets: the fixtures of version 1 and of version 2 (`.soltileset`; art, every kind, rules) and of version 4 (`.tileset.lst`), and a hostile one from `crates/tiles/tests/data` that the reader refuses (two classes with one name, which it never finished reading: the file the fuzzer's first run found, made small). |
 | `update_answer/` | A release answer and its checksum file, joined by a 0x01 byte. |

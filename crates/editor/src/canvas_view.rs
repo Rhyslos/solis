@@ -35,6 +35,8 @@ pub(crate) struct CanvasUi<'a> {
     pub(crate) fonts: &'a mut ui::Fonts,
     /// The game's screens' pictures.
     pub(crate) pictures: Option<Arc<ui::Pictures>>,
+    /// The project's fonts the screens use (stage 1, text layout).
+    pub(crate) font_files: Option<Arc<ui::FontFiles>>,
     /// The accent colour.
     pub(crate) accent: Color32,
     /// What the screen's entity can be read for (Preview values).
@@ -82,6 +84,7 @@ pub(crate) struct KeptDrawing {
     size_px: [u32; 2],
     text_percent: u16,
     pictures: Option<Arc<ui::Pictures>>,
+    font_files: Option<Arc<ui::FontFiles>>,
     screen: Arc<ui::Screen>,
     /// Each matched piece: its place in the file, in the view, and its box.
     pieces: Vec<(Vec<usize>, Vec<usize>, [f32; 4])>,
@@ -96,12 +99,14 @@ impl KeptDrawing {
         doc: &ScreenDoc,
         size_px: [u32; 2],
         pictures: &Option<Arc<ui::Pictures>>,
+        font_files: &Option<Arc<ui::FontFiles>>,
     ) -> bool {
         let same_pictures = match (&self.pictures, pictures) {
             (Some(a), Some(b)) => Arc::ptr_eq(a, b),
             (a, b) => a.is_none() && b.is_none(),
         };
         same_pictures
+            && self.font_files == *font_files
             && self.size_px == size_px
             && self.behind == doc.behind
             && self.text_percent == doc.text_percent
@@ -117,6 +122,7 @@ impl KeptDrawing {
         view: &ui::view::Node,
         size_px: [u32; 2],
         pictures: Option<Arc<ui::Pictures>>,
+        font_files: Option<Arc<ui::FontFiles>>,
         fonts: &mut ui::Fonts,
     ) -> Self {
         let matches = doc.matches();
@@ -142,6 +148,7 @@ impl KeptDrawing {
             pictures: pictures.clone(),
             ui_size: 1.0,
             look: ui::ScreenLook::default(),
+            fonts: font_files.clone(),
         });
         // Each place in the view, to the place in the file it came from
         // (the first, as the list has them).
@@ -168,6 +175,7 @@ impl KeptDrawing {
             size_px,
             text_percent: doc.text_percent,
             pictures,
+            font_files,
             screen,
             pieces,
             code,
@@ -329,6 +337,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
         renderer,
         fonts,
         pictures,
+        font_files,
         accent,
         readable: _,
         keys,
@@ -379,9 +388,9 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
     if !doc
         .drawn
         .as_ref()
-        .is_some_and(|kept| kept.is_of(doc, size_px, &pictures))
+        .is_some_and(|kept| kept.is_of(doc, size_px, &pictures, &font_files))
     {
-        let kept = KeptDrawing::new(doc, view, size_px, pictures, fonts);
+        let kept = KeptDrawing::new(doc, view, size_px, pictures, font_files, fonts);
         doc.drawn = Some(kept);
     }
     let Some(kept) = &doc.drawn else {

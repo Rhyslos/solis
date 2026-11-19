@@ -145,7 +145,7 @@ impl GameScreens {
             let looks = ui::view::Looks {
                 hover: on(self.hover),
                 focus: on(self.focus.filter(|_| self.keys_used)),
-                text_percent: picture.looks.text_percent,
+                ..picture.looks
             };
             if picture.looks != looks {
                 Arc::make_mut(picture).looks = looks;
@@ -298,6 +298,8 @@ pub(crate) fn shown_with_looks(
                 outline: s.outline,
                 outline_colour: ui::Colour::rgb(r, g, b),
                 pixel: s.pixel_size as f32,
+                line_height: s.line_height as f32 / 100.0,
+                letter_spacing: s.letter_spacing,
             };
             (id, s.screen, look)
         })
@@ -363,6 +365,8 @@ impl Workbench {
         let screens = &mut self.open.game_screens;
         let seen = &mut self.open.screen_pictures.seen;
         let shown_pictures = self.open.screen_pictures.pictures.clone();
+        let fonts_seen = &mut self.open.screen_fonts.seen;
+        let shown_fonts = self.open.screen_fonts.files.clone();
         // Started with the program, and again when it changes: once for
         // each build, also when they can't start.
         let fresh = !screens.tried_with(&program);
@@ -394,6 +398,7 @@ impl Workbench {
                 match running.view(&name, Some(entity), &mut reader) {
                     Ok(view) => {
                         crate::screen_pictures::names_in(&view, seen);
+                        crate::screen_fonts::names_in(&view, fonts_seen);
                         let picture = Arc::new(ui::Screen {
                             name: name.clone(),
                             design: ui::view::design_of(&view),
@@ -407,6 +412,7 @@ impl Workbench {
                             pictures: shown_pictures.clone(),
                             ui_size: settings.ui_size as f32,
                             look,
+                            fonts: shown_fonts.clone(),
                         });
                         screens.last.insert(name.clone(), Arc::clone(&picture));
                         pictures.push(picture);

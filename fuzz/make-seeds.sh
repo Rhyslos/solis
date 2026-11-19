@@ -41,6 +41,9 @@ cp tests/fixtures/input-actions/v1/input.solinput "$seeds/input_actions/v1.solin
 cp tests/fixtures/recording/v1/play.solrec "$seeds/recording/v1.solrec"
 cp tests/fixtures/recording/v2/play.solrec "$seeds/recording/v2.solrec"
 printf 'name = "Harbour"\nformat = 1\n' > "$seeds/project_file/harbour.solis"
+# Fonts a project might add (fuzz_targets/font_file.rs).
+mkdir -p "$seeds/font_file"
+cp crates/editor/assets/fonts/JetBrainsMonoNL-Regular.ttf "$seeds/font_file/"
 # GitHub's answer about a release, a 0x01 byte, then the checksum file
 # (fuzz_targets/update_answer.rs).
 mkdir -p "$seeds/update_answer"

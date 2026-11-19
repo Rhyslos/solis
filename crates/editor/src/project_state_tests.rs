@@ -285,6 +285,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         fixed_seed,
         game_screens,
         screen_pictures,
+        screen_fonts,
         screen_doc,
         screen_from,
         screen_game,
@@ -370,6 +371,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert_eq!(fixed_seed, &None);
     assert!(game_screens.pictures.is_empty() && game_screens.sent.is_empty());
     same(screen_pictures, &fresh.screen_pictures, "screens' pictures");
+    same(screen_fonts, &fresh.screen_fonts, "screens' fonts");
     assert!(screen_doc.is_none() && screen_game.is_none());
     assert!(screen_from.is_none());
     assert!(prefab_part_kept.borrow().is_none());

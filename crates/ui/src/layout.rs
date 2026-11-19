@@ -175,6 +175,10 @@ pub fn layout_with(
     let screen_px = [size[0] as f32, size[1] as f32];
     let scale = screen_scale(screen, screen_px, pixel_step);
     let crisp = screen.scale == ScaleRule::WholeSteps;
+    let mut fonts = fonts;
+    if let Some(fonts) = fonts.as_deref_mut() {
+        fonts.use_files(screen.fonts.as_deref());
+    }
     let mut out = Vec::new();
     let mut count = 0;
     let whole = [0.0, 0.0, screen_px[0], screen_px[1]];
@@ -201,7 +205,8 @@ pub fn layout_with(
             None => &mut none,
         };
         let mut measure = crate::view::WithPictures { text, pictures };
-        let (elements, _) = crate::view::lay_out_with(view, design, &mut measure, screen.looks);
+        let (elements, _) =
+            crate::view::lay_out_with(view, design, &mut measure, view_looks(screen));
         for e in &elements {
             walking.walk(e, whole, 1.0, 0, UNCLIPPED);
         }
@@ -215,6 +220,16 @@ pub fn layout_with(
         }
     }
     out
+}
+
+/// `screen`'s view's looks, with its look's spacing of text (stage 1,
+/// text layout).
+fn view_looks(screen: &Screen) -> crate::view::Looks {
+    crate::view::Looks {
+        line_height: screen.look.line_height,
+        letter_spacing: screen.look.letter_spacing,
+        ..screen.looks
+    }
 }
 
 /// The biggest pixel size, in design pixels.
@@ -296,11 +311,12 @@ pub fn clickables(
         return (Vec::new(), scale);
     };
     let design = [screen_px[0] / scale, screen_px[1] / scale];
+    measure.use_fonts(screen.fonts.as_deref());
     let mut measure = crate::view::WithPictures {
         text: measure,
         pictures: screen.pictures.as_deref(),
     };
-    let (_, clickable) = crate::view::lay_out_with(view, design, &mut measure, screen.looks);
+    let (_, clickable) = crate::view::lay_out_with(view, design, &mut measure, view_looks(screen));
     (clickable, scale)
 }
 
@@ -319,11 +335,12 @@ pub fn boxes(
         return Vec::new();
     };
     let design = [screen_px[0] / scale, screen_px[1] / scale];
+    measure.use_fonts(screen.fonts.as_deref());
     let mut measure = crate::view::WithPictures {
         text: measure,
         pictures: screen.pictures.as_deref(),
     };
-    crate::view::boxes(view, design, &mut measure, screen.looks)
+    crate::view::boxes(view, design, &mut measure, view_looks(screen))
         .into_iter()
         .map(|(path, r)| (path, r.map(|v| v * scale)))
         .collect()
@@ -538,13 +555,16 @@ impl Walk<'_> {
             ElementKind::Group => {}
             ElementKind::Text {
                 text,
-                size,
-                font,
+                style,
                 align,
+                fit,
             } => {
                 if let Some(fonts) = self.fonts.as_deref_mut() {
-                    let px = finite(*size).max(0.0) * scale;
-                    let [w, h] = fonts.measure(*font, text, px);
+                    // Laid out in design pixels (kept while it stays the
+                    // same), then scaled onto the screen.
+                    let paragraph = fonts.paragraph(text, style, fit);
+                    let px = paragraph.text_size * scale;
+                    let [w, h] = paragraph.size.map(|v| v * scale);
                     let left = match align {
                         Edge::Middle => (rect[0] + rect[2] - w) * 0.5,
                         Edge::End => rect[2] - w,
@@ -553,7 +573,7 @@ impl Walk<'_> {
                     let top = (rect[1] + rect[3] - h) * 0.5;
                     let step = crisp.then_some(scale);
                     let letters: Vec<Shape> = fonts
-                        .place(*font, text, px, [left, top], step)
+                        .place_paragraph(&paragraph, *align, [left, top], scale, step)
                         .into_iter()
                         .map(|letter| {
                             let [l, t, r, b] = letter.atlas.map(f32::from);

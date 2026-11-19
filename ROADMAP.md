@@ -32,7 +32,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | Shared 3. Time and feel | Timers, tween, steps in order, states, shake and fade, noise and weighted random |
 | 2D 2. Movement, light and polish | Platformer and grid-step controllers, triggers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
 | Shared 4. Data and the editor | Data tables, save slots, field hints, more kinds of settings, drawing in the editor, paths |
-| Shared 5. Screens, words and sound | Text effects, button pictures, tooltips and drag and drop, translations and subtitles, music that follows the game |
+| Shared 5. Screens, words and sound | Text layout, text effects, button pictures, tooltips and drag and drop, translations and subtitles, music that follows the game |
 | Shared 6. Worlds and testing | Rooms, pools, debug drawing and a cheat box, bug reports with recordings |
 | Shared 7. Materials and shaders | Materials for sprites and models, values driven by the world, a node graph for shaders |
 | Shared 8. Effects | Solstice: particles, trails, flipbooks; a pixel mode for pixel art |
@@ -386,6 +386,7 @@ Ideas 15, 18 to 21 and 12.
 
 Ideas 23 to 27 and 17.
 
+- **Text layout:** words that wrap in their box, shaped and aligned, cut with "…", in a project's own fonts with fallbacks. Built in stage 1 ([decision 0129](docs/decisions/0129-text-layout.md)).
 - **Text effects:** text that types itself out, wavy or shaking words, small icons inside text.
 - **Button pictures that match the player's controller,** switching between keyboard and gamepad.
 - **Tooltips, and drag and drop** for inventories and shops.

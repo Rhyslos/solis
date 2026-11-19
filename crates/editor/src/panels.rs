@@ -122,6 +122,8 @@ pub(crate) struct ScreenUi<'a> {
     pub(crate) doc: &'a mut crate::screen_doc::ScreenDoc,
     pub(crate) fonts: &'a mut ui::Fonts,
     pub(crate) pictures: Option<std::sync::Arc<ui::Pictures>>,
+    /// The project's fonts the screens use (stage 1, text layout).
+    pub(crate) font_files: Option<std::sync::Arc<ui::FontFiles>>,
     /// The project's pictures, for the Image tool.
     pub(crate) picture_files: Vec<String>,
     /// What screens can be tied to and send.
@@ -832,6 +834,7 @@ impl PanelViewer<'_> {
                         renderer: self.renderer,
                         fonts: screen.fonts,
                         pictures: screen.pictures.clone(),
+                        font_files: screen.font_files.clone(),
                         accent: self.accent.colors().fill,
                         readable: &screen.game.readable,
                         keys: self.keys == KeyOwner::Canvas,
