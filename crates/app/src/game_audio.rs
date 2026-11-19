@@ -598,8 +598,6 @@ impl GameAudio {
     }
 }
 
-/// The reverbs heard from `hearing` among `zones` (each with where it's
-
 /// Whether `asked` is a loop game code asked for this frame in an option
 /// of a component's own state that `change` left: it never starts.
 fn ended_loop(
@@ -618,6 +616,7 @@ fn ended_loop(
             .is_some_and(|(_, event)| event.looping)
 }
 
+/// The reverbs heard from `hearing` among `zones` (each with where it's
 /// drawn now): each zone's preset and how much of it.
 fn reverbs_heard(
     zones: &[(level::builtin::ReverbZone, glam::Mat4)],

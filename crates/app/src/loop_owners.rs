@@ -9,12 +9,15 @@ use reflect::EntityId;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// A component, by its entity and name.
+type Component = (EntityId, Arc<str>);
+
 /// The numbers of the options game code's sounds were started in, by
 /// the component that started them.
 #[derive(Debug, Default)]
 pub(crate) struct LoopOwners {
     /// Each component's options with sounds, and their numbers.
-    by_component: HashMap<(EntityId, Arc<str>), Vec<(Arc<str>, u64)>>,
+    by_component: HashMap<Component, Vec<(Arc<str>, u64)>>,
     /// The last number given.
     last: u64,
 }

@@ -21,16 +21,16 @@
 //!
 //! How it's done, without reading any component's state every tick:
 //!
-//! - Lust's runtime is told ([`own_states`]): its `setstate` (every change
+//! - Lust's runtime is told (`own_states`): its `setstate` (every change
 //!   of an object's own state, however written) ends the component's
 //!   tweens of the options it leaves and tells Solis through a hidden
-//!   native ([`CHANGED`]), which keeps the change in the tick's order
+//!   native (`CHANGED`), which keeps the change in the tick's order
 //!   (`Change::State`); its `tween` notes which option of the running
 //!   component each tween starts in.
 //! - A Lust component with a state of its own runs with itself noted as
-//!   the one running ([`RUNNING`], set around its `update` and handlers),
+//!   the one running (`RUNNING`, set around its `update` and handlers),
 //!   so a timer, tween or sound it starts finds its option at the moment
-//!   it starts ([`started_in`]), the value its code has just set.
+//!   it starts (`started_in`), the value its code has just set.
 //! - The game ends timers in order with their starts, and adds up each
 //!   component's changes as the tick ends: the event says the first
 //!   `from` and the last `to`, and nothing when they're the same.

@@ -516,20 +516,15 @@ fn compile_here(
         }
     };
     compiled.schemas = runtime.schemas();
-    let places_now = |schemas: &[reflect::ComponentSchema]| {
-        let mut places = std::collections::BTreeMap::new();
-        for schema in schemas {
-            let place = match runtime.lua_file(&schema.name) {
-                Some(path) => Some((path.to_string(), 0)),
-                None => lust_place(&code.files, &schema.name),
-            };
-            if let Some(place) = place {
-                places.insert(schema.name.clone(), place);
-            }
+    for schema in &compiled.schemas {
+        let place = match runtime.lua_file(&schema.name) {
+            Some(path) => Some((path.to_string(), 0)),
+            None => lust_place(&code.files, &schema.name),
+        };
+        if let Some(place) = place {
+            compiled.places.insert(schema.name.clone(), place);
         }
-        places
-    };
-    compiled.places = places_now(&compiled.schemas);
+    }
     // The event each component with a state of its own hears (stage 1,
     // states), checked now: one declared wrongly is a mistake.
     if let Some(events) = runtime.lust_events() {
