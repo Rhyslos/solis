@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// A project's own fonts (stage 1, text layout): TrueType and OpenType
 /// files from its assets, each checked as it's added, by their place in
 /// the assets (`fonts/Lora.ttf`). Screens carry them
-/// ([`crate::Screen::fonts`]); every [`Fonts`] laying a screen out takes
+/// ([`crate::Screen::fonts`]); every [`crate::Fonts`] laying a screen out takes
 /// them from it.
 #[derive(Debug, Clone)]
 pub struct FontFiles {

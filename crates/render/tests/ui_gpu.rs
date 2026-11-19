@@ -3,7 +3,12 @@
 //! and pixel-art screens have hard edges; pictures show from their atlas
 //! (decision 0089).
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::print_stderr)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::print_stderr
+)]
 
 use render::{UiPipeline, read_texture};
 
