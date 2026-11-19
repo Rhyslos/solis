@@ -249,6 +249,8 @@ mod timers_play_tests;
 #[cfg(test)]
 mod tools_1a_gate_tests;
 #[cfg(test)]
+mod translations_picture_tests;
+#[cfg(test)]
 mod two_d_screen_tests;
 #[cfg(test)]
 mod zone_picture_tests;

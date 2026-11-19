@@ -300,22 +300,27 @@ fn language_row(
             .layout(Layout::left_to_right(Align::Center)),
     );
     let ui = &mut inside;
-    ui.allocate_ui_with_layout(
-        egui::vec2(NAME_W, ROW_H),
-        Layout::left_to_right(Align::Center),
-        |ui| {
-            plain(
-                ui,
-                &language.name(),
-                text::setting_name(),
-                tokens::text_emphasis(),
-            );
-            plain(ui, language.code(), text::mono_small(), tokens::text_meta());
-            if main {
-                widgets::pill::pill(ui, "main");
-            }
-        },
+    let (names, _) = ui.allocate_exact_size(egui::vec2(NAME_W, ROW_H), egui::Sense::hover());
+    let mut name_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(names)
+            .layout(Layout::left_to_right(Align::Center)),
     );
+    plain(
+        &mut name_ui,
+        &language.name(),
+        text::setting_name(),
+        tokens::text_emphasis(),
+    );
+    plain(
+        &mut name_ui,
+        language.code(),
+        text::mono_small(),
+        tokens::text_meta(),
+    );
+    if main {
+        widgets::pill::pill(&mut name_ui, "main");
+    }
     let share = if total == 0 {
         1.0
     } else {

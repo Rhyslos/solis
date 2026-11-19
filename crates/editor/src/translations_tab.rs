@@ -193,7 +193,7 @@ fn bar(ui: &mut Ui, tab: &mut TranslationsTab, out: &mut TranslationsOut) {
             .filter(|r| r.cells.get(1) == Some(&Cell::Text(String::new())))
             .count();
         ui.label(
-            RichText::new("Beside the main language:")
+            RichText::new(format!("Beside {}:", tab.main.name()))
                 .font(text::ui())
                 .color(tokens::text_meta()),
         );
@@ -223,7 +223,7 @@ fn bar(ui: &mut Ui, tab: &mut TranslationsTab, out: &mut TranslationsOut) {
             "Search keys and text",
             &mut tab.editor.search,
             "Search keys and text",
-            200.0,
+            160.0,
         );
         let mut only = tab.missing_only;
         if widgets::checkbox::checkbox(ui, &mut only, "Missing only").changed() {
