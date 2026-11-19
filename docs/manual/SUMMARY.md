@@ -60,6 +60,8 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Game screens: a HUD and menus in Lust](screens.md)
 - [Text on screens: wrapping, alignment, fonts and fallback](screen-text.md)
 - [Text effects: colours, waves, icons and typing out](text-effects.md)
+- [Translations: your game's text in several languages](translations.md)
+- [Subtitles and captions: words for what's said and heard](subtitles-and-captions.md)
 - [The UI editor: drawing a screen on the canvas](ui-editor.md)
 - [The UI sample: a HUD and a pause menu, start to finish](ui-sample.md)
 

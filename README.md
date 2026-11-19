@@ -446,7 +446,7 @@ The 2D and shared work in the order of the [game stages](docs/plans/game-stages.
 - [x] Data tables: rows and typed columns in one file, edited in the Table tab with the common spreadsheet keys, CSV in and out, and read by game code with checked names (`Items:row(Item.IronSword).price`); read-only while playing ([manual](docs/manual/data-tables.md))
 - [x] Text layout: words wrap in their box by Unicode's rules, are shaped, line up left, in the middle or right, and are cut with "…" when a box asks; a project's own fonts with fallbacks (Chinese, Japanese and Korean through a fallback font), line height and letter spacing on the Screen component ([manual](docs/manual/screen-text.md))
 - [x] Text effects: words in a screen's text coloured, bold, slanted, wavy or shaking (`[wave]…[/wave]`), pictures inside text (`[icon=Picture.Ui.Coin]`), and text typing itself out with a sound, `[pause]` and `[speed]`, heard as `TypingFinished` and skipped with `finishTyping` ([manual](docs/manual/text-effects.md))
-- [ ] Translations and subtitles (brought from Shared 5 for dialogue, [decision 0124](docs/decisions/0124-a-dialogue-system-in-the-engine.md))
+- [x] Translations and subtitles: the game's text by key (`Text.Shop.Welcome`) in Fluent files per language with the main language as the fallback, Project settings › Languages, the Translations tab, the translators' spreadsheet, the check in Problems, tables' translated columns, the player's language, and captions for sounds and voices drawn by Solis ([manual](docs/manual/translations.md), [decision 0131](docs/decisions/0131-translations-and-captions.md))
 - [ ] Dialogue, a full system in the engine ([outline](docs/plans/dialogue/README.md)): six milestones, counted in Dialogue below
 - [ ] Tooltips, and drag and drop
 - [ ] Fades
@@ -545,9 +545,9 @@ The 2D and shared work in the order of the [game stages](docs/plans/game-stages.
 
 **Gate:** a shop reads its prices from a table; a guard's path and view cone tuned in the editor; three save slots.
 
-### Shared 5 · Screens, words and sound — 2 of 6
+### Shared 5 · Screens, words and sound — 3 of 6
 
-`████░░░░░░░░░` 33%
+`██████░░░░░░░` 50%
 
 <details>
 <summary>Milestones</summary>
@@ -556,7 +556,7 @@ The 2D and shared work in the order of the [game stages](docs/plans/game-stages.
 - [x] Text effects (built in stage 1)
 - [ ] Button pictures that match the controller
 - [ ] Tooltips, and drag and drop
-- [ ] Translations and subtitles
+- [x] Translations and subtitles (built in stage 1)
 - [ ] Music that follows the game
 
 </details>

@@ -134,7 +134,27 @@ fn names() -> Names {
         "Swing".into(),
         "Lock".into(),
     ];
+    // The Translations page's lines and languages.
+    let (texts, _) = crate::text_code::TextNames::of(&manual_text(), &[]);
+    names.texts = texts.keys;
+    names.languages = texts.languages;
     names
+}
+
+/// The lines the Translations page's examples read: the shop's, in
+/// English and Norwegian.
+fn manual_text() -> translations::Translations {
+    let mut languages = level::languages::Languages::default();
+    let _ = languages.add("nb");
+    translations::Translations::new(
+        &languages,
+        &[(
+            "locale/en/shop.ftl".into(),
+            "Shop-Welcome = Welcome!\nShop-Apples = { $count ->\n    [one] { $who } has one apple\n   *[other] { $who } has { $count } apples\n}\n"
+                .into(),
+        )],
+        Vec::new(),
+    )
 }
 
 /// The engine's files and the stand-in project's names, with the farm's
@@ -177,6 +197,13 @@ fn engine_files(code: &str) -> Vec<(String, String)> {
     };
     if code.contains("\"solis/maps/maps/farm\"") {
         files.extend(map_file(MADE_BY, "solis", &farm).0);
+    }
+    // The Translations page's lines with values.
+    if code.contains("\"solis/texts\"") {
+        let (texts, _) = crate::text_code::TextNames::of(&manual_text(), &[]);
+        if let Some(text) = crate::text_code::texts_file(MADE_BY, &texts) {
+            files.push((format!("solis/{}", crate::text_code::FILE), text));
+        }
     }
     // The Data tables page's items.
     if code.contains("\"solis/tables/data/items\"") {

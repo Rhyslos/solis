@@ -29,7 +29,7 @@ Your friend unzips it (all of it, somewhere they can write, such as their Docume
 **Where the player's things go:** everything that's the player's goes in their own folder, `Saved Games/<Game>` on Windows (next to other games' saves):
 
 - `saves/`: the game's [save games](save-games.md);
-- `settings.txt`: the player's [settings](concepts.md#player-setting) (text size, UI size, fullscreen, window size), kept from one start to the next;
+- `settings.txt`: the player's [settings](concepts.md#player-setting) (text size, UI size, fullscreen, window size, language, subtitles and captions), kept from one start to the next;
 - `log.txt`: warnings and mistakes the game reported, like the Console's (past 1 MB it starts again, keeping the one before as `log.old.txt`);
 - `crash log.txt`: written if the program stops unexpectedly. It says what happened and the last things the game said. Ask your playtesters to send it to you.
 

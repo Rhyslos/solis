@@ -51,6 +51,10 @@ pub fn snapshot() -> String {
     // table: solis.Items:row("IronSword").
     out.push_str("\n## Each data table's, in Lua (solis.<Table>, such as solis.Items)\n\n");
     out.push_str("solis.<Table>:row\nsolis.<Table>:rows\n");
+    out.push_str(
+        "\n## Each line of text with values, in Lua (solis.<Group>Text, such as solis.ShopText)\n\n",
+    );
+    out.push_str("solis.<Group>Text:<line>\n");
     out.push_str("\n## Lua's own names Solis adds or changes (its prelude)\n\n");
     for line in crate::luau::PRELUDE.lines() {
         let line = line.trim_end();

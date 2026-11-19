@@ -21,15 +21,11 @@ Words that aren't the game's text (a name the player typed, a number) aren't tra
 
 Each row shows how much of that language is translated, and how many lines it's missing.
 
-![Project settings › Languages: English as the main language, Norsk nearly done, Deutsch under half done, and the player's subtitle and caption settings beside them](pictures/translations-languages.png)
-The Languages page: each language's share translated, + Language, the Translations tab, and the spreadsheet out and back in.
 
 **Lines of text.** A line's **key** is a group and a name joined by a dot, such as `Shop.Welcome` or `Menu.Options.Volume`. Make one in the **Translations** tab (Project settings › Languages › **Open the Translations tab**): press **+ Key**, type the key and press `Enter`, then type its words in the main language's column.
 
 The tab shows every line, the main language beside one other (choose which at the top). A line that language lacks says **missing** in red. Type in a cell to write it: `Enter` or `F2` starts typing, `Enter` keeps it and moves down, `Tab` keeps it and moves across, `Esc` leaves it as it was, and `Ctrl + Z` undoes. **Missing only** shows just the lines still to translate, and the search finds a key or any words.
 
-![The Translations tab: each key with its words in English and Norsk, a missing line marked in red](pictures/translations-tab.png)
-The Translations tab, beside the level's view.
 
 > **Good to know:** a key is made once and never changed. Change a line's words as often as you like, but keep its key: translators' work is found by it. To rename a line, make a new key.
 

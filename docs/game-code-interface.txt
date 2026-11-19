@@ -239,6 +239,10 @@ solis.send
 solis.<Table>:row
 solis.<Table>:rows
 
+## Each line of text with values, in Lua (solis.<Group>Text, such as solis.ShopText)
+
+solis.<Group>Text:<line>
+
 ## Lua's own names Solis adds or changes (its prelude)
 
 function component(name, fields)
