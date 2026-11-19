@@ -6,6 +6,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Text effects in game screens** (stage 1, text effects; [decision 0130](docs/decisions/0130-text-effects.md), [the manual](docs/manual/text-effects.md)): words in square brackets inside any screen's text change part of it: `[wave]…[/wave]` and `[shake]…[/shake]` move its letters, `[colour=red5]…[/colour]` colours them (the screen's colour words or `#hex`), `[b]…[/b]` and `[i]…[/i]` make them bold and slanted, and `[[` writes a `[`. Waves and shakes move only the letters, never the words around them or the box.
+- **Pictures inside text**: `[icon=Picture.Ui.Coin]` shows one of the project's pictures, or a crop cut with Atlas Crop, as tall as the text, between its words.
+- **Text that types itself out**: a Screen's **Typing speed** (letters a second) types every text on it out a letter at a time, each time its words change; `[pause 0.5]` waits and `[speed 2]` hurries inside the text. **Typing sound** plays a sound event on each letter or each word (**Sound on**). It follows the game's ticks, so it types the same at any frame rate.
+- **Game code hears when it's done, and can skip**: `TypingFinished(Screen which)` comes to the entity showing the screen once its text has typed out, with the next tick's input, so recordings keep it; `finishTyping(Screen.Talk)` shows the rest at once (Lua `solis.entity.finishTyping(self.me, "Talk")`, Rust `cx.host().finish_typing(cx.me(), "Talk")`).
+- **Mistakes in a text's effects are listed in Problems** at their line (a word that isn't an effect, one never closed, a colour that isn't one), and shown as written rather than hidden. `[button=…]` isn't built yet: button pictures come later.
+
 - **Text on game screens is shaped, wraps and can be cut short** (stage 1, text layout; [decision 0129](docs/decisions/0129-text-layout.md), [the manual](docs/manual/screen-text.md), [the study](docs/reports/text-layout-study.md)): words wrap inside their box where Unicode's line-break rules allow (between words, after a hyphen, between Chinese or Japanese letters), and a word too long for a line breaks between its letters. Letters are shaped as their font says, so pairs like "AV" kern and accents sit over their letters; a wrapped paragraph's lines each line up left, in the middle or right.
 - **"…" when text doesn't fit, if its box asks**: a wrapping text with a `height` or `maxHeight` shows the lines that fit and ends in "…"; a `nowrap` text with a `width` or `maxWidth` is cut on its line.
 - **A project's own fonts**: `.ttf` and `.otf` files in the Library are **Fonts** (their own kind, under the Code chip), named in a screen with Lust's `font "fonts/Lora.ttf"`, on a piece or on the view for every piece. They're read on a worker, at most 32 MB each; one that isn't there, isn't a font or can't be read is in Problems at its line. Game code can hold one in a field (`Font.Fonts.Lora`, picked in Properties).
@@ -85,6 +91,8 @@ What changed in each version, for people using Solis. Newest first.
 - **The editor rethink is planned** ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)): the project lead's review of the remade interface, answered and mocked up (`docs/design/ui-rethink/`): the launcher as its own window, new projects that make their folder and are 2D, 3D or both, Area renamed Level, prefabs, one frame on every tab, and one Library browser. It's built next, as six milestones, before the ground.
 
 ### Breaking
+
+- **A `[` in a game screen's text starts a text effect now** (stage 1, text effects): `text "Press [E]"` is a mistake in Problems, shown as written. **What to do:** write `[[` for a `[` that's part of the words: `text "Press [[E]"`.
 
 - **Save games are version 13 and recordings version 5** (stage 1, data tables): each says which data tables it was made with, so loading or playing one back with changed tables warns. Older ones still load and play, with nothing to warn of; a Solis from before can't read ones made now. **What to do:** nothing for older files; update every copy of Solis that loads your game's saves or plays its recordings.
 
