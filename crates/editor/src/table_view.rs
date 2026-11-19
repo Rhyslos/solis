@@ -939,7 +939,7 @@ fn keys(ui: &mut Ui, editor: &mut TableEditor, shown: &[usize], out: &mut TableO
         let copy = i.events.iter().any(|e| matches!(e, egui::Event::Copy));
         let paste = i.events.iter().any(|e| matches!(e, egui::Event::Paste(_)));
         let typed = i.events.iter().find_map(|e| match e {
-            egui::Event::Text(t) if !t.trim().is_empty() && !i.modifiers.command => Some(t.clone()),
+            egui::Event::Text(t) if !t.is_empty() && !i.modifiers.command => Some(t.clone()),
             _ => None,
         });
         (copy, paste, typed)

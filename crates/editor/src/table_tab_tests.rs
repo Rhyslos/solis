@@ -490,3 +490,21 @@ fn a_choice_being_typed_matches_its_approved_picture() {
     let picture = crate::picture_support::drawn(&mut h).cropped([252, 100], [868, 540]);
     crate::picture_support::matches_approved("table-typing", &picture);
 }
+
+#[test]
+fn space_in_the_grid_types_a_space_rather_than_opening_the_search() {
+    let mut h = harness(with_table(small_items()));
+    for _ in 0..4 {
+        h.run();
+    }
+    let at = cell_at(&h, 0, 1);
+    click(&mut h, at, egui::Modifiers::NONE);
+    h.key_press(egui::Key::Space);
+    h.event(egui::Event::Text(" ".into()));
+    h.run();
+    h.run();
+    let w = &h.state().0;
+    assert!(!w.search.open, "Space is the grid's while it has the keys");
+    let typing = w.open.table_editor.as_ref().unwrap().typing.clone();
+    assert_eq!(typing.map(|t| t.text), Some(" ".to_string()));
+}
