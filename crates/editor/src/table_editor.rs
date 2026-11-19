@@ -150,14 +150,23 @@ impl TableEditor {
         };
         self.cursor = inside(self.cursor);
         self.anchor = inside(self.anchor);
-        if self.typing.as_ref().is_some_and(|t| t.at.0 >= rows || t.at.1 >= places) {
+        if self
+            .typing
+            .as_ref()
+            .is_some_and(|t| t.at.0 >= rows || t.at.1 >= places)
+        {
             self.typing = None;
         }
     }
 
     /// The block picked: its rows and places, each low to high (the
     /// cursor alone when nothing more is).
-    pub(crate) fn block(&self) -> Option<(std::ops::RangeInclusive<usize>, std::ops::RangeInclusive<usize>)> {
+    pub(crate) fn block(
+        &self,
+    ) -> Option<(
+        std::ops::RangeInclusive<usize>,
+        std::ops::RangeInclusive<usize>,
+    )> {
         let (r, c) = self.cursor?;
         let (ar, ac) = self.anchor.unwrap_or((r, c));
         Some((r.min(ar)..=r.max(ar), c.min(ac)..=c.max(ac)))
@@ -190,9 +199,9 @@ impl TableEditor {
     /// from its kind, and puts the cursor on it.
     pub(crate) fn add_column(&mut self, kind: ColumnKind) -> Result<(), String> {
         self.file.column_room()?;
-        let at = self
-            .cursor
-            .map_or(self.file.columns.len(), |(_, c)| c.min(self.file.columns.len()));
+        let at = self.cursor.map_or(self.file.columns.len(), |(_, c)| {
+            c.min(self.file.columns.len())
+        });
         let added = self.change(|table| {
             let base = match &kind {
                 ColumnKind::Name(k) => k.state().to_ascii_lowercase(),
@@ -262,7 +271,8 @@ impl TableEditor {
             }
             true
         });
-        if moved && let Some((r, c)) = self.cursor
+        if moved
+            && let Some((r, c)) = self.cursor
             && c == from + 1
         {
             self.cursor = Some((r, to + 1));
@@ -294,7 +304,8 @@ impl TableEditor {
             }
             for row in &mut table.rows {
                 let cell = &mut Arc::make_mut(row).cells[column];
-                *cell = sheet::parse_cell(&kind, &sheet::cell_text(cell)).unwrap_or_else(|_| kind.empty());
+                *cell = sheet::parse_cell(&kind, &sheet::cell_text(cell))
+                    .unwrap_or_else(|_| kind.empty());
             }
             true
         })
@@ -303,7 +314,11 @@ impl TableEditor {
     /// Sets a choice column's options: cells holding an option renamed
     /// (same place in the list) follow it; cells holding one taken out
     /// become the first.
-    pub(crate) fn set_options(&mut self, column: usize, options: Vec<String>) -> Result<(), String> {
+    pub(crate) fn set_options(
+        &mut self,
+        column: usize,
+        options: Vec<String>,
+    ) -> Result<(), String> {
         if options.is_empty() {
             return Err("A choice needs at least one option.".into());
         }
@@ -390,7 +405,8 @@ impl TableEditor {
             table.rows.insert(to, row);
             true
         });
-        if moved && let Some((r, c)) = self.cursor
+        if moved
+            && let Some((r, c)) = self.cursor
             && r == from
         {
             self.cursor = Some((to, c));
@@ -422,9 +438,8 @@ impl TableEditor {
         let Some(column) = self.file.columns.get(place - 1) else {
             return Ok(());
         };
-        let cell = sheet::parse_cell(&column.kind, text).map_err(|why| {
-            format!("\"{}\" {why}.", text.chars().take(40).collect::<String>())
-        })?;
+        let cell = sheet::parse_cell(&column.kind, text)
+            .map_err(|why| format!("\"{}\" {why}.", text.chars().take(40).collect::<String>()))?;
         self.set_cell(at, cell);
         Ok(())
     }
@@ -477,7 +492,9 @@ impl TableEditor {
     /// Pastes a spreadsheet's `text` with its top left at the cursor, as
     /// one undo step; what couldn't be taken is in [`Self::said`].
     pub(crate) fn paste(&mut self, text: &str) -> bool {
-        let Some((row, place)) = self.cursor.or((self.file.rows.is_empty()).then_some((0, 0)))
+        let Some((row, place)) = self
+            .cursor
+            .or((self.file.rows.is_empty()).then_some((0, 0)))
         else {
             return false;
         };

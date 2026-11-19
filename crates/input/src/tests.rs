@@ -863,11 +863,13 @@ fn the_version_3_example_is_written_as_the_version_4_one() {
     let four = include_str!("../../../tests/fixtures/recording/v4/play.solrec");
     let read = Recording::read(three).unwrap();
     assert_eq!(read.level.as_deref(), Some("areas/turret.sollevel"));
-    let as_five = four.replacen("solis recording 4", "solis recording 5", 1).replacen(
-        "start 0000000000000abc\n",
-        "start 0000000000000abc\ntables 0000000000000000\n",
-        1,
-    );
+    let as_five = four
+        .replacen("solis recording 4", "solis recording 5", 1)
+        .replacen(
+            "start 0000000000000abc\n",
+            "start 0000000000000abc\ntables 0000000000000000\n",
+            1,
+        );
     assert_eq!(read.write(), as_five);
     assert_eq!(Recording::read(four).unwrap(), read);
     // Version 5 says which tables it was recorded with.

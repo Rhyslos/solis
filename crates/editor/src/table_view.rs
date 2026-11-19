@@ -109,7 +109,11 @@ pub(crate) fn table_tab(ui: &mut Ui, t: TableUi<'_>) -> TableOut {
 fn bar(ui: &mut Ui, editor: &mut TableEditor, out: &mut TableOut) {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = size::CARD_INNER_GAP;
-        if Button::primary("+ Row").named("Add a row").show(ui).clicked() {
+        if Button::primary("+ Row")
+            .named("Add a row")
+            .show(ui)
+            .clicked()
+        {
             match editor.add_row() {
                 Ok(()) => out.changed = true,
                 Err(why) => out.said = Some(why),
@@ -143,10 +147,18 @@ fn bar(ui: &mut Ui, editor: &mut TableEditor, out: &mut TableOut) {
             }
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if Button::plain("Export CSV").named("Export the table as CSV").show(ui).clicked() {
+            if Button::plain("Export CSV")
+                .named("Export the table as CSV")
+                .show(ui)
+                .clicked()
+            {
                 out.export = true;
             }
-            if Button::plain("Import CSV").named("Import CSV into the table").show(ui).clicked() {
+            if Button::plain("Import CSV")
+                .named("Import CSV into the table")
+                .show(ui)
+                .clicked()
+            {
                 out.import = true;
             }
             let count = editor.shown().len();
@@ -156,7 +168,11 @@ fn bar(ui: &mut Ui, editor: &mut TableEditor, out: &mut TableOut) {
             } else {
                 format!("{count} of {all} rows")
             };
-            ui.label(egui::RichText::new(words).font(text::row()).color(tokens::text_meta()));
+            ui.label(
+                egui::RichText::new(words)
+                    .font(text::row())
+                    .color(tokens::text_meta()),
+            );
         });
     });
 }
@@ -183,7 +199,11 @@ fn how_code_reads(ui: &mut Ui, path: &str, table: &Table) {
         let mut job = egui::text::LayoutJob::default();
         let plain = egui::TextFormat::simple(text::row(), tokens::text_body());
         let code = egui::TextFormat::simple(text::mono(), tokens::text_primary());
-        job.append("Game code reads it with checked names: ", 0.0, plain.clone());
+        job.append(
+            "Game code reads it with checked names: ",
+            0.0,
+            plain.clone(),
+        );
         job.append(&example, 0.0, code);
         job.append(
             ". A misspelt row or column fails before the game runs.",
@@ -219,17 +239,17 @@ fn grid(
         .id_salt("table grid")
         .auto_shrink(false)
         .show_viewport(ui, |ui, view| {
-            let (full, response) =
-                ui.allocate_exact_size(vec2(width.max(view.width()), height), Sense::click_and_drag());
+            let (full, response) = ui.allocate_exact_size(
+                vec2(width.max(view.width()), height),
+                Sense::click_and_drag(),
+            );
             let origin = full.min;
             let cell_rect = |at: usize, place: usize| {
                 let (x, w) = places[place];
-                Rect::from_min_size(
-                    origin + vec2(x, HEAD_H + at as f32 * ROW_H),
-                    vec2(w, ROW_H),
-                )
+                Rect::from_min_size(origin + vec2(x, HEAD_H + at as f32 * ROW_H), vec2(w, ROW_H))
             };
-            if reveal && let Some((row, place)) = editor.cursor
+            if reveal
+                && let Some((row, place)) = editor.cursor
                 && let Some(at) = shown.iter().position(|r| *r == row)
             {
                 let mut r = cell_rect(at, place);
@@ -237,7 +257,8 @@ fn grid(
                 ui.scroll_to_rect(r, None);
             }
             let first = ((view.min.y - HEAD_H) / ROW_H).floor().max(0.0) as usize;
-            let last = (((view.max.y - HEAD_H) / ROW_H).ceil().max(0.0) as usize + 1).min(shown.len());
+            let last =
+                (((view.max.y - HEAD_H) / ROW_H).ceil().max(0.0) as usize + 1).min(shown.len());
             let painter = ui.painter().clone();
             for (at, &row) in shown.iter().enumerate().take(last).skip(first) {
                 draw_row(&painter, editor, row, at, &places, origin, accent);
@@ -274,11 +295,22 @@ fn draw_row(
             tokens::card()
         };
         painter.rect_filled(rect, CornerRadius::ZERO, fill);
-        painter.rect_stroke(rect, CornerRadius::ZERO, Stroke::new(1.0, line), StrokeKind::Inside);
+        painter.rect_stroke(
+            rect,
+            CornerRadius::ZERO,
+            Stroke::new(1.0, line),
+            StrokeKind::Inside,
+        );
         let inner = rect.shrink2(vec2(12.0, 0.0));
         let clip = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
         if place == 0 {
-            clip.text(inner.left_center(), Align2::LEFT_CENTER, &r.id, text::ui(), tokens::text_primary());
+            clip.text(
+                inner.left_center(),
+                Align2::LEFT_CENTER,
+                &r.id,
+                text::ui(),
+                tokens::text_primary(),
+            );
             continue;
         }
         let Some(cell) = r.cells.get(place - 1) else {
@@ -291,12 +323,22 @@ fn draw_row(
             pos2(origin.x, y),
             vec2(places.last().map_or(0.0, |(x, w)| x + w), ROW_H),
         );
-        painter.rect_stroke(full, CornerRadius::same(2), Stroke::new(1.5, accent.colors().fill), StrokeKind::Inside);
+        painter.rect_stroke(
+            full,
+            CornerRadius::same(2),
+            Stroke::new(1.5, accent.colors().fill),
+            StrokeKind::Inside,
+        );
         if let Some((_, place)) = editor.cursor
             && let Some(&(x, w)) = places.get(place)
         {
             let cell = Rect::from_min_size(pos2(origin.x + x, y), vec2(w, ROW_H));
-            painter.rect_stroke(cell, CornerRadius::same(2), Stroke::new(2.0, accent.colors().fill), StrokeKind::Inside);
+            painter.rect_stroke(
+                cell,
+                CornerRadius::same(2),
+                Stroke::new(2.0, accent.colors().fill),
+                StrokeKind::Inside,
+            );
         }
     }
 }
@@ -304,22 +346,44 @@ fn draw_row(
 /// A cell's value, drawn in `inner` as its kind shows it.
 fn draw_cell(painter: &egui::Painter, inner: Rect, cell: &Cell, kind: &ColumnKind) {
     let words = |s: &str, colour: Color32, x: f32| {
-        painter.text(pos2(x, inner.center().y), Align2::LEFT_CENTER, s, text::ui(), colour);
+        painter.text(
+            pos2(x, inner.center().y),
+            Align2::LEFT_CENTER,
+            s,
+            text::ui(),
+            colour,
+        );
     };
     match (cell, kind) {
         (Cell::YesNo(on), _) => {
-            let square = Rect::from_center_size(pos2(inner.min.x + 7.0, inner.center().y), vec2(14.0, 14.0));
+            let square =
+                Rect::from_center_size(pos2(inner.min.x + 7.0, inner.center().y), vec2(14.0, 14.0));
             draw_check(painter, square, *on);
         }
         (Cell::Colour(c), _) => {
-            let swatch = Rect::from_min_size(pos2(inner.min.x, inner.center().y - 7.0), vec2(22.0, 14.0));
+            let swatch =
+                Rect::from_min_size(pos2(inner.min.x, inner.center().y - 7.0), vec2(22.0, 14.0));
             let [r, g, b, a] = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            painter.rect_filled(swatch, CornerRadius::same(2), Color32::from_rgba_unmultiplied(r, g, b, a));
-            painter.rect_stroke(swatch, CornerRadius::same(2), Stroke::new(1.0, tokens::field_border()), StrokeKind::Inside);
-            words(&sheet::colour_hex(*c), tokens::text_body(), swatch.max.x + 8.0);
+            painter.rect_filled(
+                swatch,
+                CornerRadius::same(2),
+                Color32::from_rgba_unmultiplied(r, g, b, a),
+            );
+            painter.rect_stroke(
+                swatch,
+                CornerRadius::same(2),
+                Stroke::new(1.0, tokens::field_border()),
+                StrokeKind::Inside,
+            );
+            words(
+                &sheet::colour_hex(*c),
+                tokens::text_body(),
+                swatch.max.x + 8.0,
+            );
         }
         (Cell::Option(o), ColumnKind::Name(k)) => {
-            let spot = Rect::from_center_size(pos2(inner.min.x + 7.0, inner.center().y), vec2(14.0, 14.0));
+            let spot =
+                Rect::from_center_size(pos2(inner.min.x + 7.0, inner.center().y), vec2(14.0, 14.0));
             crate::icons::icon(painter, spot, name_icon(*k), tokens::text_meta());
             if o.is_empty() {
                 words("none", tokens::text_faint(), spot.max.x + 8.0);
@@ -341,12 +405,25 @@ fn draw_cell(painter: &egui::Painter, inner: Rect, cell: &Cell, kind: &ColumnKin
 
 /// A yes-or-no box: ticked or empty.
 fn draw_check(painter: &egui::Painter, square: Rect, on: bool) {
-    let fill = if on { tokens::text_primary() } else { tokens::field() };
+    let fill = if on {
+        tokens::text_primary()
+    } else {
+        tokens::field()
+    };
     painter.rect_filled(square, CornerRadius::same(3), fill);
-    painter.rect_stroke(square, CornerRadius::same(3), Stroke::new(1.0, tokens::field_border()), StrokeKind::Inside);
+    painter.rect_stroke(
+        square,
+        CornerRadius::same(3),
+        Stroke::new(1.0, tokens::field_border()),
+        StrokeKind::Inside,
+    );
     if on {
         let c = square.center();
-        let tick = [pos2(c.x - 3.5, c.y), pos2(c.x - 1.0, c.y + 3.0), pos2(c.x + 4.0, c.y - 3.0)];
+        let tick = [
+            pos2(c.x - 3.5, c.y),
+            pos2(c.x - 1.0, c.y + 3.0),
+            pos2(c.x + 4.0, c.y - 3.0),
+        ];
         painter.line(tick.to_vec(), Stroke::new(1.8, tokens::app()));
     }
 }
@@ -382,13 +459,20 @@ fn heads(
     for (place, &(x, w)) in places.iter().enumerate() {
         let rect = Rect::from_min_size(pos2(origin.x + x, top), vec2(w, HEAD_H));
         painter.rect_filled(rect, CornerRadius::ZERO, tokens::panel());
-        painter.rect_stroke(rect, CornerRadius::ZERO, Stroke::new(1.0, tokens::strong_line()), StrokeKind::Inside);
+        painter.rect_stroke(
+            rect,
+            CornerRadius::ZERO,
+            Stroke::new(1.0, tokens::strong_line()),
+            StrokeKind::Inside,
+        );
         let (name, what) = match place {
             0 => ("ID".to_string(), String::new()),
             p => {
                 let c = &editor.file.columns[p - 1];
                 let mut what = match &c.kind {
-                    ColumnKind::Choice(_) => script::table_code::choice_state(&editor.file.row_name, &c.name),
+                    ColumnKind::Choice(_) => {
+                        script::table_code::choice_state(&editor.file.row_name, &c.name)
+                    }
                     k => k.label(),
                 };
                 if c.translated {
@@ -398,13 +482,31 @@ fn heads(
             }
         };
         let arrow = match editor.sort {
-            Some(Sort { place: p, rising }) if p == place => if rising { " ▲" } else { " ▼" },
+            Some(Sort { place: p, rising }) if p == place => {
+                if rising {
+                    " ▲"
+                } else {
+                    " ▼"
+                }
+            }
             _ => "",
         };
         let clip = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
         let at = pos2(rect.min.x + 12.0, rect.center().y);
-        let head = clip.text(at, Align2::LEFT_CENTER, format!("{name}{arrow}"), text::header(), tokens::text_label());
-        clip.text(pos2(head.max.x + 6.0, at.y + 1.0), Align2::LEFT_CENTER, what, text::mono_small(), tokens::text_meta());
+        let head = clip.text(
+            at,
+            Align2::LEFT_CENTER,
+            format!("{name}{arrow}"),
+            text::header(),
+            tokens::text_label(),
+        );
+        clip.text(
+            pos2(head.max.x + 6.0, at.y + 1.0),
+            Align2::LEFT_CENTER,
+            what,
+            text::mono_small(),
+            tokens::text_meta(),
+        );
     }
     let Some(pointer) = response.interact_pointer_pos().or(response.hover_pos()) else {
         return;
@@ -413,18 +515,36 @@ fn heads(
         return;
     }
     let local = pointer.x - origin.x;
-    let Some(place) = places.iter().position(|(x, w)| local >= *x && local < x + w) else {
+    let Some(place) = places
+        .iter()
+        .position(|(x, w)| local >= *x && local < x + w)
+    else {
         return;
     };
     if response.clicked() {
         editor.sort = match editor.sort {
-            Some(Sort { place: p, rising: true }) if p == place => Some(Sort { place, rising: false }),
-            Some(Sort { place: p, rising: false }) if p == place => None,
-            _ => Some(Sort { place, rising: true }),
+            Some(Sort {
+                place: p,
+                rising: true,
+            }) if p == place => Some(Sort {
+                place,
+                rising: false,
+            }),
+            Some(Sort {
+                place: p,
+                rising: false,
+            }) if p == place => None,
+            _ => Some(Sort {
+                place,
+                rising: true,
+            }),
         };
     }
     if response.secondary_clicked() && place > 0 {
-        ui.memory_mut(|m| m.data.insert_temp(egui::Id::new("table column menu"), place - 1));
+        ui.memory_mut(|m| {
+            m.data
+                .insert_temp(egui::Id::new("table column menu"), place - 1)
+        });
     }
     let column: Option<usize> = ui.memory(|m| m.data.get_temp(egui::Id::new("table column menu")));
     if let Some(column) = column {
@@ -441,7 +561,9 @@ fn column_menu(response: &Response, editor: &mut TableEditor, column: usize, out
         };
         widgets::menu::caps(ui, &c.label());
         let key = egui::Id::new(("table column name", column));
-        let mut name: String = ui.memory(|m| m.data.get_temp(key)).unwrap_or_else(|| c.name.clone());
+        let mut name: String = ui
+            .memory(|m| m.data.get_temp(key))
+            .unwrap_or_else(|| c.name.clone());
         let typed = field::text_field(ui, "The column's name", &mut name, "price", 180.0);
         ui.memory_mut(|m| m.data.insert_temp(key, name.clone()));
         if typed.lost_focus() && name != c.name {
@@ -453,11 +575,18 @@ fn column_menu(response: &Response, editor: &mut TableEditor, column: usize, out
         }
         if let ColumnKind::Choice(options) = &c.kind {
             let key = egui::Id::new(("table options", column));
-            let mut list: String = ui.memory(|m| m.data.get_temp(key)).unwrap_or_else(|| options.join(", "));
-            let typed = field::text_field(ui, "The column's options", &mut list, "Common, Rare", 180.0);
+            let mut list: String = ui
+                .memory(|m| m.data.get_temp(key))
+                .unwrap_or_else(|| options.join(", "));
+            let typed =
+                field::text_field(ui, "The column's options", &mut list, "Common, Rare", 180.0);
             ui.memory_mut(|m| m.data.insert_temp(key, list.clone()));
             if typed.lost_focus() {
-                let new: Vec<String> = list.split(',').map(|o| o.trim().to_string()).filter(|o| !o.is_empty()).collect();
+                let new: Vec<String> = list
+                    .split(',')
+                    .map(|o| o.trim().to_string())
+                    .filter(|o| !o.is_empty())
+                    .collect();
                 if &new != options {
                     match editor.set_options(column, new) {
                         Ok(()) => out.changed = true,
@@ -487,7 +616,9 @@ fn column_menu(response: &Response, editor: &mut TableEditor, column: usize, out
             out.changed |= editor.move_column(column, column - 1);
             ui.close();
         }
-        if column + 1 < editor.file.columns.len() && widgets::menu::item(ui, "Move right", "").clicked() {
+        if column + 1 < editor.file.columns.len()
+            && widgets::menu::item(ui, "Move right", "").clicked()
+        {
             out.changed |= editor.move_column(column, column + 1);
             ui.close();
         }
@@ -544,7 +675,11 @@ fn click(
         editor.cursor = Some(spot);
     }
     let yes_no = spot.1 > 0
-        && editor.file.columns.get(spot.1 - 1).is_some_and(|c| c.kind == ColumnKind::YesNo);
+        && editor
+            .file
+            .columns
+            .get(spot.1 - 1)
+            .is_some_and(|c| c.kind == ColumnKind::YesNo);
     if response.clicked() && yes_no && !shift {
         out.changed |= flip(editor, spot);
     } else if response.double_clicked() && !yes_no {
@@ -554,14 +689,23 @@ fn click(
         editor.cursor = Some(spot);
         ui.memory_mut(|m| m.data.remove::<usize>(egui::Id::new("table column menu")));
     }
-    if ui.memory(|m| m.data.get_temp::<usize>(egui::Id::new("table column menu")).is_none()) {
+    if ui.memory(|m| {
+        m.data
+            .get_temp::<usize>(egui::Id::new("table column menu"))
+            .is_none()
+    }) {
         row_menu(response, editor, out);
     }
 }
 
 /// Flips a yes-or-no cell.
 fn flip(editor: &mut TableEditor, at: Place) -> bool {
-    match editor.file.rows.get(at.0).and_then(|r| r.cells.get(at.1 - 1)) {
+    match editor
+        .file
+        .rows
+        .get(at.0)
+        .and_then(|r| r.cells.get(at.1 - 1))
+    {
         Some(Cell::YesNo(on)) => {
             let on = !*on;
             editor.set_cell(at, Cell::YesNo(on))
@@ -633,18 +777,25 @@ fn typing_box(
         return;
     };
     let rect = cell_rect(index, at.1);
-    let options: Option<Vec<String>> = match at.1.checked_sub(1).and_then(|c| editor.file.columns.get(c)) {
-        Some(c) => match &c.kind {
-            ColumnKind::Choice(options) => Some(options.clone()),
-            ColumnKind::Name(kind) => Some(names.and_then(|n| n.get(kind.state())).cloned().unwrap_or_default()),
-            _ => None,
-        },
-        None => None,
-    };
+    let options: Option<Vec<String>> =
+        match at.1.checked_sub(1).and_then(|c| editor.file.columns.get(c)) {
+            Some(c) => match &c.kind {
+                ColumnKind::Choice(options) => Some(options.clone()),
+                ColumnKind::Name(kind) => Some(
+                    names
+                        .and_then(|n| n.get(kind.state()))
+                        .cloned()
+                        .unwrap_or_default(),
+                ),
+                _ => None,
+            },
+            None => None,
+        };
     let Some(mut typing) = editor.typing.take() else {
         return;
     };
-    ui.painter().rect_filled(rect, CornerRadius::same(2), tokens::field());
+    ui.painter()
+        .rect_filled(rect, CornerRadius::same(2), tokens::field());
     let edit = egui::TextEdit::singleline(&mut typing.text)
         .frame(egui::Frame::NONE)
         .font(text::ui())
@@ -667,7 +818,10 @@ fn typing_box(
         .filter(|o| words.is_empty() || o.to_lowercase().contains(&words))
         .take(MAX_LISTED)
         .collect();
-    let list = Rect::from_min_size(rect.left_bottom(), vec2(rect.width().max(200.0), fits.len() as f32 * 24.0 + 8.0));
+    let list = Rect::from_min_size(
+        rect.left_bottom(),
+        vec2(rect.width().max(200.0), fits.len() as f32 * 24.0 + 8.0),
+    );
     let mut picked = None;
     egui::Area::new(egui::Id::new("table options list"))
         .fixed_pos(list.min)
@@ -734,7 +888,12 @@ fn keys(ui: &mut Ui, editor: &mut TableEditor, shown: &[usize], out: &mut TableO
     if pressed(ui, Key::Enter) || pressed(ui, Key::F2) {
         let at = editor.cursor;
         let yes_no = at.is_some_and(|(_, p)| {
-            p > 0 && editor.file.columns.get(p - 1).is_some_and(|c| c.kind == ColumnKind::YesNo)
+            p > 0
+                && editor
+                    .file
+                    .columns
+                    .get(p - 1)
+                    .is_some_and(|c| c.kind == ColumnKind::YesNo)
         });
         match at {
             Some(at) if yes_no => out.changed |= flip(editor, at),

@@ -123,7 +123,10 @@ impl Workbench {
     }
 
     /// Makes the open table follow its file (changed by hand, or by Git).
-    pub(crate) fn follow_table(&mut self, sheets: &crate::sprite_sheets::SpriteSheets) -> Option<Told> {
+    pub(crate) fn follow_table(
+        &mut self,
+        sheets: &crate::sprite_sheets::SpriteSheets,
+    ) -> Option<Told> {
         let editor = self.open.table_editor.as_mut()?;
         let followed = follow(editor, sheets);
         let told = Told {
@@ -142,13 +145,15 @@ impl Workbench {
     /// name), with a Name column and one row, saves it, shows it in the
     /// Library being named, and opens it.
     pub(crate) fn new_table(&mut self, folder: &str) {
-        let ending = level::table::file::KIND.to_owned() + "." + reflect::data_files::LUST_EXTENSION;
+        let ending =
+            level::table::file::KIND.to_owned() + "." + reflect::data_files::LUST_EXTENSION;
         let path = crate::workbench_tiles::free_path(folder, "table", &ending, |p| self.taken(p));
         let stem = reflect::data_files::stem(std::path::Path::new(&path)).unwrap_or_default();
         let mut table = level::table::Table::new(level::table::row_name_for(&stem));
-        table
-            .columns
-            .push(level::table::Column::new("name", level::table::ColumnKind::Text));
+        table.columns.push(level::table::Column::new(
+            "name",
+            level::table::ColumnKind::Text,
+        ));
         let id = table.free_id(&table.row_name.clone());
         table.rows.push(Arc::new(table.new_row(id)));
         let text = level::table::file::write(&table);

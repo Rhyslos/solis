@@ -1428,10 +1428,16 @@ fn the_version_11_example_is_written_as_the_version_12_one_with_no_states() {
     let twelve = std::fs::read_to_string(save_fixtures().join("v12/harbour.solsave")).unwrap();
     let upgraded = super::save_read_back(&eleven).unwrap();
     assert!(upgraded.starts_with("solis save 13\n"));
-    assert!(upgraded.ends_with("\nstates 0\n\ntables 0\n\n"), "{upgraded}");
+    assert!(
+        upgraded.ends_with("\nstates 0\n\ntables 0\n\n"),
+        "{upgraded}"
+    );
     assert!(!upgraded.contains(" in Stunned"));
     let thirteen = super::save_read_back(&twelve).unwrap();
-    assert_eq!(thirteen.replace("solis save 13", "solis save 12").len(), twelve.len() + 10);
+    assert_eq!(
+        thirteen.replace("solis save 13", "solis save 12").len(),
+        twelve.len() + 10
+    );
     let save = Save::read(&twelve).unwrap();
     assert!(
         save.timers
