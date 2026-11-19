@@ -207,6 +207,11 @@ solis.entity.walk
 solis.facingAlong
 solis.send
 
+## Each data table's, in Lua (solis.<Table>, such as solis.Items)
+
+solis.<Table>:row
+solis.<Table>:rows
+
 ## Lua's own names Solis adds or changes (its prelude)
 
 function component(name, fields)

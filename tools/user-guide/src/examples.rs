@@ -169,7 +169,14 @@ pub fn unknown_calls(example: &Example, interface: &str) -> Vec<String> {
     let [_, rust, lua] = &example.code;
     let mut unknown = Vec::new();
     for name in lua_calls(lua) {
+        // A data table's (`solis.Items:row`) is listed as `solis.<Table>:row`.
+        let table = name
+            .strip_prefix("solis.")
+            .and_then(|rest| rest.split_once(':'))
+            .filter(|(table, _)| table.starts_with(|c: char| c.is_ascii_uppercase()))
+            .map(|(_, method)| format!("solis.<Table>:{method}"));
         let listed = interface.lines().any(|l| l.trim() == name)
+            || table.is_some_and(|t| interface.lines().any(|l| l.trim() == t))
             || interface.contains(&format!("function {name}("));
         if !listed {
             unknown.push(format!("Lua's {name}"));

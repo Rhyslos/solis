@@ -117,3 +117,18 @@ fn calls_game_code_cant_make_are_named() {
         ]
     );
 }
+
+#[test]
+fn a_data_table_s_calls_pass_by_the_interface_s_table_lines() {
+    let tables = format!("{INTERFACE_TEXT}solis.<Table>:row\nsolis.<Table>:rows\n");
+    let code = example(
+        "",
+        "local sword = solis.Items:row(\"IronSword\")\nlocal all = solis.Crops:rows()\nsolis.Items:sell()",
+    );
+    assert_eq!(unknown_calls(&code, &tables), ["Lua's solis.Items:sell"]);
+    assert_eq!(
+        unknown_calls(&code, INTERFACE_TEXT).len(),
+        3,
+        "not listed without them"
+    );
+}
