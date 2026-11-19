@@ -58,6 +58,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Physics: things that fall, collide and get pushed](physics.md)
 - [Input: the game's controls as named actions, gamepads, rebinding and recordings](input.md)
 - [Game screens: a HUD and menus in Lust](screens.md)
+- [Text on screens: wrapping, alignment, fonts and fallback](screen-text.md)
 - [The UI editor: drawing a screen on the canvas](ui-editor.md)
 - [The UI sample: a HUD and a pause menu, start to finish](ui-sample.md)
 

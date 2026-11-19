@@ -98,6 +98,9 @@ Each letter comes from the first font in the list that has it: here the English 
 **In game code,** a field can hold one of the project's fonts, as it can a sound or a picture: its type is `Font`, and Properties offers a list of the project's fonts to pick from, which follows a font file you rename. The fonts are `Font.Fonts.Lora` for `fonts/Lora.ttf` (see [Game code](game-code.md)).
 
 ```lust
+-- sign.lst: a sign whose words and font are picked in Properties.
+fetch "solis/project":[Font];
+
 component Sign {
     has {
         Font font = Font.None;
@@ -110,13 +113,31 @@ end
 ```
 
 ```rust
-// A Rust component's field picks a project font with a Font hint in its
-// schema; it holds the font's name as text ("Fonts.Lora").
+use reflect::{ComponentSchema, FieldInfo, FieldKind, Hint, NameKind, Offer, Value};
+
+// A Rust component's field picks one of the project's fonts with an offer
+// of Font names; it holds the font's name ("Fonts.Lora"). (Its update,
+// values, set and RustKind are as in Game code, so they're left out.)
+pub fn sign_schema(fonts: Vec<String>) -> ComponentSchema {
+    let font = FieldInfo::new("font", "Font", FieldKind::Choice(fonts), Value::Text("None".into()))
+        .hint(Hint {
+            offers: Offer::Names(NameKind::Font),
+            ..Hint::default()
+        });
+    ComponentSchema {
+        name: "Sign".into(),
+        help: "A sign whose words and font are picked in Properties.".into(),
+        fields: vec![font],
+    }
+}
 ```
 
 ```lua
--- A Lua component's field picks a project font when its fifth entry names
--- the kind: { "font", "text", "None", "Font", { picks = "Font" } }
+-- sign.lua: a field whose kind is Font picks one of the project's fonts.
+local Sign = component("Sign", {
+    { "font", "Font", "None" },
+    { "words", "string", "Welcome" },
+})
 ```
 
 ## Settings
