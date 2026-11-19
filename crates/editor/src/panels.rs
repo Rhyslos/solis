@@ -98,6 +98,8 @@ pub(crate) struct PanelViewer<'a> {
         &'a mut crate::table_editor::TableEditor,
         Option<&'a script::project_names::States>,
     )>,
+    /// The Translations tab, if it's open (stage 1, translations).
+    pub(crate) translations: Option<&'a mut crate::translations_tab::TranslationsTab>,
     /// The atlas open in the Atlas Crop tab, its picture, and why there's
     /// none (decision 0089).
     pub(crate) atlas: Option<(
@@ -173,6 +175,10 @@ pub(crate) struct FramesOut {
     pub(crate) table: crate::table_view::TableOut,
     /// The Table tab was closed (its ×).
     pub(crate) table_closed: bool,
+    /// What the Translations tab asked for (stage 1, translations).
+    pub(crate) translations: crate::translations_tab::TranslationsOut,
+    /// The Translations tab was closed (its ×).
+    pub(crate) translations_closed: bool,
 }
 
 /// The names on the document tabs while a prefab's page is open.
@@ -252,6 +258,7 @@ impl PanelViewer<'_> {
             Panel::Canvas | Panel::Elements | Panel::Pictures => self.screen.is_some(),
             Panel::PrefabPage => self.page.is_some(),
             Panel::Table => self.table.is_some(),
+            Panel::Translations => self.translations.is_some(),
             Panel::Viewport
             | Panel::Game
             | Panel::Level
@@ -291,6 +298,7 @@ impl PanelViewer<'_> {
             }
             Panel::PrefabPage => self.frames_out.prefab_page_closed = true,
             Panel::Table => self.frames_out.table_closed = true,
+            Panel::Translations => self.frames_out.translations_closed = true,
             // These have no × (`closes_a_file`): nothing closes them.
             Panel::Viewport
             | Panel::Game
@@ -923,6 +931,19 @@ impl PanelViewer<'_> {
                 if out.said.is_some() {
                     mine.said = out.said;
                 }
+            }
+            Panel::Translations => {
+                let Some(tab) = &mut self.translations else {
+                    empty_note(ui, "The Translations tab isn't open.");
+                    return;
+                };
+                let out = crate::translations_tab::translations_tab(
+                    ui,
+                    tab,
+                    self.keys == KeyOwner::Translations,
+                    self.accent,
+                );
+                self.frames_out.translations.take(out);
             }
             Panel::Viewport | Panel::PrefabPage => {}
         }

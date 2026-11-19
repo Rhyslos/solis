@@ -13,6 +13,7 @@ const EVERYTHING: OpenNow = OpenNow {
     folders: false,
     prefab_page: true,
     table: true,
+    translations: true,
 };
 
 /// Every panel `tab` shows anywhere with `open` open.

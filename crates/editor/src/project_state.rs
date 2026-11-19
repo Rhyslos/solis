@@ -123,6 +123,8 @@ pub(crate) struct ProjectState {
     /// The project's languages and translation files (stage 1,
     /// translations).
     pub(crate) locale: crate::locale::Locale,
+    /// The Translations tab, while it's open.
+    pub(crate) translations_tab: Option<crate::translations_tab::TranslationsTab>,
     /// Where the project's saved levels use each tag, as the app last
     /// counted them; none until counted.
     pub(crate) tag_use: Option<crate::tags::TagUse>,

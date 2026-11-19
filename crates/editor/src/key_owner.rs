@@ -60,6 +60,9 @@ pub(crate) enum KeyOwner {
     /// The Table tab: the table's undo, and the grid's spreadsheet keys
     /// (stage 1, data tables).
     Table,
+    /// The Translations tab: its lines' undo, and the grid's spreadsheet
+    /// keys (stage 1, translations).
+    Translations,
     /// The Animator tab: the animator's undo and its graph's keys.
     Animator,
     /// The Tileset tab: the tileset's undo.
@@ -128,6 +131,15 @@ impl Workbench {
             {
                 return KeyOwner::Table;
             }
+            let lines = ctx.memory(|m| m.focused()) == Some(crate::table_view::lines_grid_id());
+            if lines
+                && open
+                    .translations_tab
+                    .as_ref()
+                    .is_some_and(|t| t.editor.typing.is_none())
+            {
+                return KeyOwner::Translations;
+            }
             return KeyOwner::Field;
         }
         if self.shell.covers_center() {
@@ -147,6 +159,9 @@ impl Workbench {
                 Some(KeyOwner::Tileset)
             }
             Some(Panel::Table) if open.table_editor.is_some() => Some(KeyOwner::Table),
+            Some(Panel::Translations) if open.translations_tab.is_some() => {
+                Some(KeyOwner::Translations)
+            }
             // Properties showing the screen's settings, as Elements and
             // Pictures beside it on the Screen shelf tab (the second
             // review pass's N-28).

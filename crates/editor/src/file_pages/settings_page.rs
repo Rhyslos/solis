@@ -109,6 +109,10 @@ impl Workbench {
             self.tags_page(ui);
             return;
         }
+        if words.is_empty() && tab == Tab::Languages {
+            self.languages_page(ui);
+            return;
+        }
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {

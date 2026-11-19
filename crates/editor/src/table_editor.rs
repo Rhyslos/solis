@@ -41,9 +41,28 @@ pub(crate) struct Sort {
     pub(crate) rising: bool,
 }
 
+/// What the grid shows: a data table, or lines of text side by side
+/// (the Translations tab, stage 1): their keys can't be changed, and
+/// rows and columns can't be added, moved or deleted.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) enum Sheet {
+    /// A data table.
+    #[default]
+    Table,
+    /// Lines of text: the keys' heading, and each column's heading and
+    /// what's under its name (`Norsk`, `locale/nb`); an empty cell of the
+    /// last column is a line not translated yet.
+    Lines {
+        /// Each column's heading, the keys' first.
+        heads: Vec<(String, String)>,
+    },
+}
+
 /// A data table being changed, with its undo steps and the tab's view.
 #[derive(Debug, Clone)]
 pub(crate) struct TableEditor {
+    /// What the grid shows.
+    pub(crate) sheet: Sheet,
     /// Its path inside the project's files.
     pub(crate) path: String,
     /// The table as it is now.
@@ -82,6 +101,7 @@ impl TableEditor {
     pub(crate) fn new(path: String, file: Table) -> Self {
         let cursor = (!file.rows.is_empty()).then_some((0, 0));
         Self {
+            sheet: Sheet::Table,
             path,
             file,
             history: FileHistory::new(MAX_UNDO),
@@ -437,6 +457,11 @@ impl TableEditor {
         let (row, place) = at;
         if row >= self.file.rows.len() {
             return Ok(());
+        }
+        if place == 0 && self.sheet != Sheet::Table {
+            return Err(
+                "A line's key is made once and never changed: make a new key instead.".into(),
+            );
         }
         if place == 0 {
             let id = text.trim();

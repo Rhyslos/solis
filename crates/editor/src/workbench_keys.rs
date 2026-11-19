@@ -105,6 +105,7 @@ impl Workbench {
             }
             KeyOwner::Atlas => self.atlas_undo(redo),
             KeyOwner::Table => self.table_undo(redo, undo),
+            KeyOwner::Translations => self.translations_undo(redo, undo),
             KeyOwner::Canvas | KeyOwner::Elements => self.screen_undo(redo),
         }
     }

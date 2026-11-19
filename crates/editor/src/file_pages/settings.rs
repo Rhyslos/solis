@@ -34,6 +34,9 @@ pub(crate) enum Tab {
     Input,
     /// Project settings › Tags: the project's tags (stage 1).
     Tags,
+    /// Project settings › Languages: the game's languages and the
+    /// player's subtitles and captions (stage 1, translations).
+    Languages,
     /// Project settings › Build: Export for playtesting.
     Build,
 }
@@ -61,6 +64,7 @@ impl Tab {
             Entry::Unbuilt(UnbuiltId::ProjTabPhysics),
             Entry::Built(Self::Input),
             Entry::Built(Self::Tags),
+            Entry::Built(Self::Languages),
             Entry::Unbuilt(UnbuiltId::ProjTabAudio),
             Entry::Unbuilt(UnbuiltId::ProjTabPlatforms),
             Entry::Built(Self::Build),
@@ -79,6 +83,7 @@ impl Tab {
             Self::TwoD => "2D",
             Self::Input => "Input",
             Self::Tags => "Tags",
+            Self::Languages => "Languages",
             Self::Build => "Build",
         }
     }
@@ -87,7 +92,7 @@ impl Tab {
     pub(crate) fn is_project(self) -> bool {
         matches!(
             self,
-            Self::Project | Self::TwoD | Self::Input | Self::Tags | Self::Build
+            Self::Project | Self::TwoD | Self::Input | Self::Tags | Self::Languages | Self::Build
         )
     }
 
@@ -193,7 +198,7 @@ impl Tab {
                 ],
             )],
             // Laid out as tables of their own.
-            Self::Shortcuts | Self::Input | Self::Tags => Vec::new(),
+            Self::Shortcuts | Self::Input | Self::Tags | Self::Languages => Vec::new(),
         }
     }
 }

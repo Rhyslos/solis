@@ -232,6 +232,8 @@ pub struct OpenNow {
     pub prefab_page: bool,
     /// A data table is open: a tab beside the level's on Home.
     pub table: bool,
+    /// The Translations tab is open: a tab beside the level's on Home.
+    pub translations: bool,
 }
 
 /// The documents of a tab's editor groups: one or two groups, each a
@@ -249,6 +251,9 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
             }
             if open.table {
                 level.push(P::Table);
+            }
+            if open.translations {
+                level.push(P::Translations);
             }
             if open.playing {
                 level.push(P::Game);

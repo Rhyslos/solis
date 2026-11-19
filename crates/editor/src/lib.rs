@@ -55,6 +55,7 @@ mod inspector;
 pub mod interface_look;
 mod key_owner;
 mod kinds;
+mod languages_page;
 pub mod launcher;
 mod level_panel;
 pub mod level_view;
@@ -129,6 +130,7 @@ mod tileset_view;
 pub mod tokens;
 mod toolbox;
 pub mod transforming;
+mod translations_tab;
 pub mod unbuilt;
 #[cfg(test)]
 mod unbuilt_screens_tests;

@@ -253,6 +253,8 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         pixels,
         tags,
         tags_revision,
+        locale,
+        translations_tab,
         tag_use,
         tag_use_asked,
         code_checked,
@@ -337,6 +339,11 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert_eq!(tags, &fresh.tags);
     assert_eq!(tags_revision, &fresh.tags_revision);
     assert_eq!(tag_use, &fresh.tag_use);
+    assert_eq!(locale.languages, fresh.locale.languages, "the languages");
+    assert!(
+        locale.files.is_empty() && translations_tab.is_none(),
+        "the text"
+    );
     assert_eq!(tag_use_asked, &fresh.tag_use_asked);
     assert_eq!(code_checked, &None);
     same(unanswered, &fresh.unanswered, "saves waiting for an answer");

@@ -26,7 +26,7 @@ pub(crate) struct Locale {
     /// each table's place in memory.
     made: Option<(Arc<Translations>, u64, Vec<usize>)>,
     /// The check's problems, with what they were made from.
-    checked: Option<(u64, Vec<translations::FileProblem>)>,
+    checked: Option<(u64, Vec<script::CodeProblem>)>,
 }
 
 /// The project's text: `languages`, its translation `files` and the
@@ -141,7 +141,7 @@ impl Workbench {
     /// lines missing in each language, lines nothing uses and values that
     /// don't match. Worked out again only when the text, the tables or the
     /// game's code changed.
-    pub(crate) fn translation_problems(&mut self) -> Vec<translations::FileProblem> {
+    pub(crate) fn translation_problems(&mut self) -> Vec<script::CodeProblem> {
         let all = self.translations();
         let program = self
             .open
@@ -171,9 +171,26 @@ impl Workbench {
                 }
             }
         }
-        let problems = translations::check::check(&all, &used);
+        let problems: Vec<script::CodeProblem> = translations::check::check(&all, &used)
+            .into_iter()
+            .map(|p| script::CodeProblem {
+                file: p.file,
+                line: p.line,
+                column: u32::from(p.line > 0),
+                message: p.message,
+            })
+            .collect();
         self.open.locale.checked = Some((made, problems.clone()));
         problems
+    }
+
+    /// The translations' problems as last worked out, for Problems.
+    pub(crate) fn translation_problems_now(&self) -> &[script::CodeProblem] {
+        self.open
+            .locale
+            .checked
+            .as_ref()
+            .map_or(&[][..], |(_, p)| p.as_slice())
     }
 
     /// Sets `key`'s line in `language` to `text` (empty takes it out): a

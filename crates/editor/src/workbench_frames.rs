@@ -215,6 +215,10 @@ impl Workbench {
         if out.table_closed {
             self.close_table();
         }
+        self.translations_asked(out.translations.clone());
+        if out.translations_closed {
+            self.open.translations_tab = None;
+        }
         self.open.tilesets.in_properties = out.properties_tileset;
         if out.tileset_changed {
             self.save_open_tileset();
