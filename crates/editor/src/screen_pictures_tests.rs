@@ -255,3 +255,41 @@ fn sheets_handed_over_again_get_the_pictures_made_again() {
     assert!(!Arc::ptr_eq(&first, &again), "made again");
     assert_eq!(again.get("sprites/tools.png").unwrap().size, [32, 16]);
 }
+
+#[test]
+fn an_icon_in_text_shows_the_picture_or_crop_its_name_stands_for() {
+    // Stage 1, text effects: `[icon=Picture.Sprites.Tools.Axe]` is the crop
+    // Axe of sprites/tools.png; a name that stands for nothing is a problem
+    // at its line, and markup mistakes are listed with it.
+    let mut w = Workbench::new(info());
+    w.set_program(Some(program(&items(
+        "text \"An [icon=Picture.Sprites.Tools.Axe] axe\";\n            text \"A [icon=Picture.Sprites.Spade] spade [glow]\";",
+    ))));
+    with_tools(&mut w, Some(&[("Axe", [0, 0, 16, 16])]));
+    w.refresh_screen_pictures();
+    let problems = w.picture_problems();
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert_eq!(problems[0].line, 6);
+    assert!(
+        problems[0]
+            .message
+            .contains("no picture Picture.Sprites.Spade"),
+        "{}",
+        problems[0]
+    );
+    let pictures = w.open.screen_pictures.pictures.clone().unwrap();
+    assert_eq!(
+        pictures.get("Picture.Sprites.Tools.Axe").unwrap().size,
+        [16, 16],
+        "packed under its project name"
+    );
+    assert_eq!(w.markup_problems().len(), 1, "[glow]");
+    assert_eq!(w.all_code_problems().len(), 2);
+    assert_eq!(w.status().problems, 2);
+    // A whole picture by its own name.
+    assert_eq!(
+        w.open.library.icon_picture("Picture.Sprites.Tools").as_deref(),
+        Some("sprites/tools.png")
+    );
+    assert_eq!(w.open.library.icon_picture("Sprites.Tools"), None);
+}

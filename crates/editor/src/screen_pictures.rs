@@ -64,6 +64,10 @@ pub(crate) fn names_in(view: &ui::view::Node, out: &mut BTreeSet<String>) {
     walk(view, 0, out);
 }
 
+/// The picture (or crop) an icon's project name stands for
+/// (`Picture.Ui.Coin`), if the Library has it (stage 1, text effects).
+type IconPicture<'a> = dyn Fn(&str) -> Option<String> + 'a;
+
 /// A picture's pixels (straight RGBA) and its size.
 type Pixels = (Vec<u8>, [u32; 2]);
 
@@ -150,7 +154,7 @@ impl ScreenPictures {
         &mut self,
         uses: &[script::screens::PictureUse],
         sheets: &Arc<SpriteSheets>,
-        (in_project, icon): (&dyn Fn(&str) -> bool, &dyn Fn(&str) -> Option<String>),
+        (in_project, icon): (&dyn Fn(&str) -> bool, &IconPicture<'_>),
         fingerprint: u64,
     ) -> Vec<String> {
         let seen = self.seen.len();

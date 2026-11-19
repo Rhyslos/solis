@@ -386,12 +386,12 @@ pub fn write(marked: &Marked) -> String {
     let mut runs = marked.runs.iter().peekable();
     let mut icons = marked.icons.iter();
     let mut beats = marked.beats.iter().peekable();
-    let mut index = 0u32;
     let ends = plain
         .char_indices()
         .map(|(at, c)| (at, Some(c)))
         .chain(std::iter::once((plain.len(), None)));
-    for (at, c) in ends {
+    for (index, (at, c)) in ends.enumerate() {
+        let index = u32::try_from(index).unwrap_or(u32::MAX);
         let at = u32::try_from(at).unwrap_or(u32::MAX);
         // Close what ends here, innermost first.
         let mut i = open.len();
@@ -422,7 +422,6 @@ pub fn write(marked: &Marked) -> String {
             Some(c) => out.push(c),
             None => {}
         }
-        index += 1;
     }
     out
 }

@@ -177,6 +177,7 @@ impl ScreenTyping {
 
     /// The starts of the entity's screen `screen`, as its picture carries
     /// them.
+    #[cfg(test)]
     pub(crate) fn started(&self, entity: EntityId, screen: &str) -> Option<Arc<Started>> {
         self.shown
             .iter()
