@@ -1404,6 +1404,12 @@ impl App {
                                 format!("Moved {} to {}.", from.display(), to.display()),
                             );
                             self.follow_level_file(&from, Some(&to));
+                            // Fields naming it by the project's names
+                            // follow it (decision 0127).
+                            self.workbench.follow_renamed_names(
+                                &crate::project::slashed(&from),
+                                &crate::project::slashed(&to),
+                            );
                         }
                         Err(why) => self.workbench.log(
                             LogLevel::Error,

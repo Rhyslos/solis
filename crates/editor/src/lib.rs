@@ -67,6 +67,7 @@ mod menu_items;
 mod mixer_console;
 pub mod mixer_view;
 pub mod models;
+mod name_follow;
 mod name_picker;
 mod own_files;
 pub mod panel;
@@ -223,6 +224,10 @@ mod scale_levels_tests;
 mod shell_reach_tests;
 #[cfg(test)]
 mod source_rules_tests;
+#[cfg(test)]
+mod field_hints_tests;
+#[cfg(test)]
+mod hint_picture_tests;
 #[cfg(test)]
 mod tag_picture_tests;
 #[cfg(test)]

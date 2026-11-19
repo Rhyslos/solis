@@ -142,6 +142,8 @@ pub(crate) fn under_words(field: &FieldInfo) -> Option<String> {
 
 /// The words under a field, quiet, from where the fields start.
 pub(crate) fn under(ui: &mut Ui, words: &str) {
+    // Close under its field, as the design's hint lines sit.
+    ui.add_space(size::ROW_GAP - ui.spacing().item_spacing.y);
     ui.horizontal(|ui| {
         ui.add_space(size::FIELD_LABEL_W);
         ui.add(
