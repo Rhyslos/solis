@@ -288,7 +288,10 @@ fn an_icon_in_text_shows_the_picture_or_crop_its_name_stands_for() {
     assert_eq!(w.status().problems, 2);
     // A whole picture by its own name.
     assert_eq!(
-        w.open.library.icon_picture("Picture.Sprites.Tools").as_deref(),
+        w.open
+            .library
+            .icon_picture("Picture.Sprites.Tools")
+            .as_deref(),
         Some("sprites/tools.png")
     );
     assert_eq!(w.open.library.icon_picture("Sprites.Tools"), None);
