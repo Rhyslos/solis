@@ -195,6 +195,20 @@ const NOT_ON_AN_ENTITY: &[&str] = &[
     "Window_setResolution",
     "Window_useNextResolution",
     "Window_quit",
+    // The game's text and the player's language and captions (stage 1,
+    // translations): the player's, never an entity's.
+    "World_text",
+    "Screens_language",
+    "Screens_setLanguage",
+    "Screens_languageName",
+    "Screens_subtitles",
+    "Screens_setSubtitles",
+    "Screens_captions",
+    "Screens_setCaptions",
+    "Screens_captionSize",
+    "Screens_setCaptionSize",
+    "Screens_captionBackground",
+    "Screens_setCaptionBackground",
 ];
 
 #[test]
