@@ -74,7 +74,10 @@ fn types(files: &[(&str, &str)]) -> Vec<(String, String)> {
         lua: Vec::new(),
         notes: Vec::new(),
     };
-    crate::state_names::state_types(&code).into_iter().collect()
+    crate::state_names::state_types(&code)
+        .into_iter()
+        .map(|(component, own)| (component, own.state))
+        .collect()
 }
 
 #[test]
@@ -122,4 +125,35 @@ fn damaged_code_finds_nothing_and_never_stops() {
     ] {
         assert!(types(&[("main.lst", text)]).is_empty(), "{text}");
     }
+}
+
+#[test]
+fn only_a_component_that_handles_its_change_is_followed() {
+    let code = Code {
+        files: vec![(
+            "main.lst".to_string(),
+            "component Hero {\n\
+                 has { state = Mood.Calm; }\n\
+                 method update(float dt) { -- on MoodChanged( in a comment\n\
+                 }\n\
+             }\n\
+             component Guard {\n\
+                 has { state = Mood.Calm; }\n\
+                 on MoodChanged(Mood from, Mood to) { }\n\
+             }\n\
+             component Other {\n\
+                 has { state = Gate.Shut; }\n\
+                 on MoodChanged(Mood from, Mood to) { }\n\
+             }\n"
+            .to_string(),
+        )],
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let found = crate::state_names::state_types(&code);
+    let handled = |name: &str| found[name].handled;
+    assert!(!handled("Hero"));
+    assert!(handled("Guard"));
+    // Another state's event isn't its own.
+    assert!(!handled("Other"));
 }

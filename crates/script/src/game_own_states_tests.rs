@@ -263,11 +263,11 @@ fn started(shards: usize) -> (Game, TestWorld) {
     game.add_rust(clock());
     let code = compile(GAME).unwrap();
     // Only the components with a state of their own whose event the game
-    // declares hear it (Keeper doesn't handle it, but hears it all the
-    // same; Plain has no state of its own).
+    // declares, and which handle it, are followed (Keeper doesn't handle
+    // it; Plain has no state of its own).
     assert_eq!(
         code.state_events.keys().collect::<Vec<_>>(),
-        ["Echo", "Fighter", "Keeper", "Stun"]
+        ["Echo", "Fighter", "Stun"]
     );
     game.load(&code, &mut world).unwrap();
     let empty = ComponentData::default();
@@ -596,12 +596,18 @@ fn waiting_changes_a_save_holds_are_checked_line_by_line() {
 
 /// 10,000 copies of a component changing its own state every tick, each
 /// time starting a timer and a tween in it (`own`), or the same with a
-/// plain field for its mood, so nothing ends and nothing is heard.
-fn changing(own: bool) -> String {
+/// plain field for its mood, so nothing ends; `heard`: it handles the
+/// change, with nothing in its handler.
+fn changing(own: bool, heard: bool) -> String {
     let (has, set) = if own {
         ("state = Mood.Calm;", "state")
     } else {
         ("Mood mood = Mood.Calm;", "mood")
+    };
+    let handler = if heard {
+        "on MoodChanged(Mood from, Mood to) {\n}\n"
+    } else {
+        ""
     };
     format!(
         "fetch \"solis/project\":Timer;\n\
@@ -621,19 +627,22 @@ fn changing(own: bool) -> String {
                  startTimer(Timer.Recover, 1.0);\n\
                  tween glow to 1 over 1.0;\n\
              }}\n\
+             {handler}\
          }}\n\
          pass Changer;\nend\n"
     )
 }
 
-/// The milliseconds a tick of [`changing`] takes, on average, on one core.
-fn tick_ms(own: bool, ticks: u32) -> f64 {
+/// The milliseconds a tick of `code` (10,000 `Changer`s) takes, on
+/// average, on one core.
+fn tick_ms(code: &str, ticks: u32) -> f64 {
     let names: Vec<String> = (0..10_000).map(|n| format!("C{n}")).collect();
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let mut world = TestWorld::with(&names);
+    // The test world keeping every change would be counted too.
+    world.quiet = true;
     let mut game = unhurried(1);
-    game.load(&compile(&changing(own)).unwrap(), &mut world)
-        .unwrap();
+    game.load(&compile(code).unwrap(), &mut world).unwrap();
     let empty = ComponentData::default();
     let components = (1..=10_000).map(|n| (id(n), "Changer", &empty));
     assert!(game.sync_many(components, &mut world).is_empty());
@@ -651,19 +660,30 @@ fn tick_ms(own: bool, ticks: u32) -> f64 {
 fn scale_check_10000_components_changing_state_every_tick() {
     // Stage 1's scale case for states: 10,000 components each changing
     // its own state every tick, each time with a timer and a tween started
-    // in it, which the next change ends (and is heard). Its cost apart
-    // from game code: the same game with a plain field for the mood, so
-    // nothing ends and nothing is heard, taken from it. Each measured a
-    // few times, the quickest kept, as a busy machine only adds.
+    // in it, which the next change ends. Its cost apart from game code:
+    // the same game with a plain field for the mood (nothing ends) taken
+    // from it. Then the same again handling the change with an empty
+    // handler: noticing 10,000 changes a tick and delivering them. Each
+    // measured a few times, the quickest kept, as a busy machine only
+    // adds.
     const TARGET_MS: f64 = 2.0;
-    let quickest = |own: bool| (0..3).map(|_| tick_ms(own, 30)).fold(f64::MAX, f64::min);
-    let (plain, own) = (quickest(false), quickest(true));
-    let ms = (own - plain).max(0.0);
-    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    let quickest = |own, heard| {
+        let code = changing(own, heard);
+        (0..3).map(|_| tick_ms(&code, 30)).fold(f64::MAX, f64::min)
+    };
+    let (plain, own) = (quickest(false, false), quickest(true, false));
+    let (plain_heard, own_heard) = (quickest(false, true), quickest(true, true));
+    let ending = (own - plain).max(0.0);
+    let hearing = (own_heard - plain_heard - ending).max(0.0);
+    let verdict = if ending <= TARGET_MS { "ok" } else { "SLOW" };
     println!(
         "Scale check: 10,000 components changing state every tick, each with a timer and a \
-         tween in it: ending them and hearing the changes {ms:.3} ms a tick (target \
-         {TARGET_MS} ms) {verdict}; the whole tick {own:.3} ms, {plain:.3} ms with a plain field"
+         tween in it: ending them {ending:.3} ms a tick (target {TARGET_MS} ms) {verdict}; \
+         noticing the 10,000 changes and delivering them to an empty handler {hearing:.3} ms \
+         more; the whole tick {own_heard:.3} ms, {plain:.3} ms with a plain field"
     );
-    assert!(ms <= TARGET_MS, "states take {ms:.3} ms a tick");
+    assert!(
+        ending <= TARGET_MS,
+        "ending things takes {ending:.3} ms a tick"
+    );
 }

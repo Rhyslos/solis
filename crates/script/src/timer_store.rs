@@ -506,9 +506,9 @@ impl Timers {
             let entries = &self.slots;
             self.hourly.retain(|&s| entries[s as usize].is_some());
         }
-        if !slots.is_empty() {
-            self.owned.insert((entity, component), slots);
-        }
+        // Kept even when empty: the component likely starts another in its
+        // new option straight away.
+        self.owned.insert((entity, component), slots);
         self.settle();
         self.tidy();
     }
@@ -540,9 +540,6 @@ impl Timers {
             self.owned.entry(key).or_default().push(slot);
         } else if let Some(slots) = self.owned.get_mut(&key) {
             slots.retain(|s| *s != slot);
-            if slots.is_empty() {
-                self.owned.remove(&key);
-            }
         }
     }
 

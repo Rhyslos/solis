@@ -31,28 +31,40 @@ pub(super) fn lend<'s>(
     )?;
     natives.raw_set(
         crate::states::CHANGED,
-        scope.create_function(move |_, (thing, from, to): (Table, LuaValue, LuaValue)| {
-            // Only a component has an entity of its own (`me`): a plain
-            // object's or a game-wide one's state belongs to Lust alone.
-            let Some(entity) = entity_of(&thing.raw_get::<LuaValue>("me")?) else {
-                return Ok(());
-            };
-            let Some(class) = thing.metatable() else {
-                return Ok(());
-            };
-            let (LuaValue::String(component), LuaValue::String(from), LuaValue::String(to)) =
-                (class.raw_get::<LuaValue>("__name")?, from, to)
-            else {
-                return Ok(());
-            };
-            h.borrow_mut().state_changed(
-                entity,
-                &component.to_str()?,
-                &from.to_str()?,
-                &to.to_str()?,
-            );
-            Ok(())
-        })?,
+        scope.create_function(
+            move |_, (me, component, from, to): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+                // Only a component's (Lust's runtime asks only when the
+                // object has an entity, `me`): taken as Lust's text as it
+                // is, so a change made ten thousand times a tick costs
+                // little.
+                let (
+                    LuaValue::String(me),
+                    LuaValue::String(component),
+                    LuaValue::String(from),
+                    LuaValue::String(to),
+                ) = (me, component, from, to)
+                else {
+                    return Ok(());
+                };
+                let Some(entity) = std::str::from_utf8(&me.as_bytes())
+                    .ok()
+                    .and_then(|t| t.parse::<reflect::Id>().ok())
+                    .map(reflect::EntityId)
+                else {
+                    return Ok(());
+                };
+                let (component, from, to) = (component.as_bytes(), from.as_bytes(), to.as_bytes());
+                let (Ok(component), Ok(from), Ok(to)) = (
+                    std::str::from_utf8(&component),
+                    std::str::from_utf8(&from),
+                    std::str::from_utf8(&to),
+                ) else {
+                    return Ok(());
+                };
+                h.borrow_mut().state_changed(entity, component, from, to);
+                Ok(())
+            },
+        )?,
     )?;
     Ok(())
 }

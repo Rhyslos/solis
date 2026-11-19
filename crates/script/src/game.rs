@@ -304,6 +304,8 @@ struct ViewHost {
     /// The option of the running component's own state that the next
     /// timer or sound it starts belongs to (stage 1, states).
     started_in: Option<Arc<str>>,
+    /// The options states changed to and from this phase, each kept once.
+    options: Vec<Arc<str>>,
     kept: Kept,
 }
 
@@ -318,6 +320,7 @@ impl ViewHost {
             own_turns: reflect::IdMap::default(),
             own_velocities: reflect::IdMap::default(),
             started_in: None,
+            options: Vec::new(),
             kept: Kept::default(),
         }
     }
@@ -355,6 +358,19 @@ impl ViewHost {
         Ok(Arc::clone(&self.at.component))
     }
 
+    /// The option named `name`, shared: a state has a few options, and
+    /// its changes name them over and over.
+    fn option(&mut self, name: &str) -> Arc<str> {
+        if let Some(known) = self.options.iter().find(|o| ***o == *name) {
+            return Arc::clone(known);
+        }
+        let option: Arc<str> = name.into();
+        if self.options.len() < 64 {
+            self.options.push(Arc::clone(&option));
+        }
+        option
+    }
+
     /// What the running component's sound belongs to, if it was started
     /// in an option of its own state.
     fn sound_started_in(&mut self) -> Option<crate::states::Started> {
@@ -375,8 +391,9 @@ impl ViewHost {
         name: &str,
         plan: Option<crate::timers::Plan>,
     ) -> Result<(), String> {
-        let component = self.timer_owner(which)?;
+        // Taken first, so a mistake leaves nothing for the next start.
         let during = self.started_in.take().filter(|_| plan.is_some());
+        let component = self.timer_owner(which)?;
         if self.kept.room() {
             let order = self.order();
             let change = crate::timers::TimerChange {
@@ -588,7 +605,7 @@ impl Host for ViewHost {
         name: &str,
         timing: crate::timers::Timing,
     ) -> Result<(), String> {
-        let plan = timing.plan()?;
+        let plan = timing.plan().inspect_err(|_| self.started_in = None)?;
         self.timer_change(which, name, Some(plan))
     }
 
@@ -640,8 +657,8 @@ impl Host for ViewHost {
         let change = crate::states::StateChange {
             entity: which,
             component,
-            from: from.into(),
-            to: to.into(),
+            from: self.option(from),
+            to: self.option(to),
         };
         self.kept.changes.push((order, Change::State(change)));
     }

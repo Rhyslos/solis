@@ -9,7 +9,9 @@
 //! state is a `Mood` hears it when its state changes. Lust's compiled
 //! code doesn't say which state a component's own is (only its options),
 //! so the name is read from where the component sets its starting option
-//! (`state = Mood.Calm;` in its `has`), comments and text skipped.
+//! (`state = Mood.Calm;` in its `has`), comments and text skipped. Only a
+//! component that handles the event (`on MoodChanged(…)`) is followed:
+//! the others' changes cost nothing to notice.
 
 use crate::code::{Code, CodeProblem};
 use crate::events::EventKinds;
@@ -24,9 +26,19 @@ pub const CHANGED: &str = "Changed";
 /// hear no change (a guard against generated code).
 const MAX_COMPONENTS: usize = 4_096;
 
-/// Each Lust component with a state of its own, and that state's name:
-/// `Hero` → `Mood` for `component Hero { has { state = Mood.Calm; } }`.
-pub fn state_types(code: &Code) -> BTreeMap<String, String> {
+/// A Lust component's own state, as its code says.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwnState {
+    /// The state's name (`Mood`).
+    pub state: String,
+    /// Whether the component handles its change (`on MoodChanged(…)`).
+    pub handled: bool,
+}
+
+/// Each Lust component with a state of its own, that state's name, and
+/// whether it handles the change: `Hero` → `Mood` for
+/// `component Hero { has { state = Mood.Calm; } on MoodChanged(…) { … } }`.
+pub fn state_types(code: &Code) -> BTreeMap<String, OwnState> {
     let mut found = BTreeMap::new();
     for (_, text) in &code.files {
         let words = crate::timer_names::words_of(text);
@@ -40,8 +52,11 @@ pub fn state_types(code: &Code) -> BTreeMap<String, String> {
                 continue;
             }
             let end = closing(&words, i + 2);
-            if let Some(state) = own_state(&words[i + 3..end]) {
-                found.insert(words[i + 1].clone(), state);
+            let body = &words[i + 3..end];
+            if let Some(state) = own_state(body) {
+                let event = format!("{state}{CHANGED}");
+                let handled = handles(body, &event);
+                found.insert(words[i + 1].clone(), OwnState { state, handled });
                 if found.len() >= MAX_COMPONENTS {
                     return found;
                 }
@@ -86,6 +101,28 @@ fn own_state(body: &[String]) -> Option<String> {
     None
 }
 
+/// Whether `body` has a handler for `event` at its top level
+/// (`on MoodChanged(`).
+fn handles(body: &[String], event: &str) -> bool {
+    let mut depth = 0_usize;
+    for (i, word) in body.iter().enumerate() {
+        match word.as_str() {
+            "{" => depth += 1,
+            "}" => depth = depth.saturating_sub(1),
+            "on" if depth == 0 => {
+                if let [name, open, ..] = &body[i + 1..]
+                    && name == event
+                    && open == "("
+                {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
 /// Where the `{` at `open` closes (or the end).
 fn closing(words: &[String], open: usize) -> usize {
     let mut depth = 0_usize;
@@ -112,10 +149,11 @@ fn is_name(word: &str) -> bool {
 
 /// The event each component with a state of its own hears when it
 /// changes, by component: its state's name and [`CHANGED`], when the game
-/// declares it carrying two of that state. One declared otherwise is a
-/// mistake, at the component, saying how to declare it.
+/// declares it carrying two of that state and the component handles it.
+/// One declared otherwise is a mistake, at the component, saying how to
+/// declare it.
 pub(crate) fn state_events(
-    types: &BTreeMap<String, String>,
+    types: &BTreeMap<String, OwnState>,
     schemas: &[ComponentSchema],
     events: &EventKinds,
     places: &BTreeMap<String, (String, u32)>,
@@ -129,7 +167,7 @@ pub(crate) fn state_events(
         }) else {
             continue;
         };
-        let Some(state) = types.get(&schema.name) else {
+        let Some(OwnState { state, handled }) = types.get(&schema.name) else {
             continue;
         };
         let event = format!("{state}{CHANGED}");
@@ -141,7 +179,9 @@ pub(crate) fn state_events(
             [FieldKind::Choice(a), FieldKind::Choice(b)] if a == options && b == options
         );
         if carries_two {
-            heard.insert(schema.name.clone(), event);
+            if *handled {
+                heard.insert(schema.name.clone(), event);
+            }
             continue;
         }
         let (file, line) = places.get(&schema.name).cloned().unwrap_or_default();

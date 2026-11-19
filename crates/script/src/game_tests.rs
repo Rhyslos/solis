@@ -28,6 +28,8 @@ pub(super) struct TestWorld {
     /// States changed, what's kept past them, spawns and despawns, as
     /// they landed (stage 1, states).
     pub(super) state_changes: Vec<Change>,
+    /// Whether to keep none of those (a scale case's thousands a tick).
+    pub(super) quiet: bool,
     /// The game's speed (none: 1) and the day's hour (none: 8), as the
     /// tick starts.
     pub(super) speed: Option<f64>,
@@ -122,6 +124,7 @@ impl GameWorld for TestWorld {
             | Change::KeepStarted(..)
             | Change::Spawn(..)
             | Change::Despawn(_) = change
+                && !self.quiet
             {
                 self.state_changes.push(change.clone());
             }

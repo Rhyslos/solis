@@ -89,7 +89,8 @@ pub(crate) const CHANGED: &str = "__solisState";
 /// now; `owned`, each component's tweens started in its state), the
 /// wrappers that note a component as running around its `update` and
 /// handlers, and `keep`, which lets a component's tweens carry on past
-/// its state.
+/// its state. Each component's tweens are a list, not a set: a table
+/// whose keys come and go every tick costs far more to keep.
 pub(crate) const RUNNING: &str = r#"
 local run = { owned = setmetatable({}, { __mode = "k" }) }
 local function update(f)
@@ -110,7 +111,7 @@ end
 local function keep(o)
   local mine = o and run.owned[o]
   if mine then
-    for rec in pairs(mine) do rec.during = nil end
+    for i = 1, #mine do mine[i].during = nil end
     run.owned[o] = nil
   end
 end
@@ -132,6 +133,10 @@ pub(crate) struct Running {
     pub(crate) handle: Function,
     /// Lets a component's tweens carry on past its state.
     keep: Function,
+    /// `"state"`, made once: a native asks for it at every start.
+    state_key: mlua::LuaString,
+    /// The options asked for so far, each kept once.
+    options: std::cell::RefCell<Vec<Arc<str>>>,
 }
 
 impl Running {
@@ -143,6 +148,8 @@ impl Running {
             update,
             handle,
             keep,
+            state_key: lua.create_string("state")?,
+            options: std::cell::RefCell::default(),
         });
         Ok(())
     }
@@ -164,10 +171,20 @@ pub(crate) fn started_in(lua: &Lua) -> Option<Arc<str>> {
     let LuaValue::Table(by) = running.table.raw_get::<LuaValue>(1).ok()? else {
         return None;
     };
-    match by.raw_get::<LuaValue>("state").ok()? {
-        LuaValue::String(option) => Some(Arc::from(&*option.to_str().ok()?)),
-        _ => None,
+    let LuaValue::String(option) = by.raw_get::<LuaValue>(&running.state_key).ok()? else {
+        return None;
+    };
+    let option = option.as_bytes();
+    let option = std::str::from_utf8(&option).ok()?;
+    let mut options = running.options.borrow_mut();
+    if let Some(known) = options.iter().find(|o| ***o == *option) {
+        return Some(Arc::clone(known));
     }
+    let made: Arc<str> = option.into();
+    if options.len() < 256 {
+        options.push(Arc::clone(&made));
+    }
+    Some(made)
 }
 
 /// `keepStarted()`'s part in Luau: the running component's tweens no
@@ -215,9 +232,10 @@ const PATCHES: [(&str, &str); 5] = [
 /// option, `solis_drop` forgets an ended one, and `solis_left` stops the
 /// tweens of the options a state leaves and tells Solis ([`CHANGED`]).
 const RUNTIME_ADDED: &str = "local stepping, viewing = false, 0; \
-function L.solis_own(rec) local S = __solis; local by = S and S[1]; local now = by and rawget(by, \"state\"); if now == nil then return end; rec.by = by; rec.during = now; local mine = S.owned[by]; if not mine then mine = {}; S.owned[by] = mine end; mine[rec] = true end; \
-function L.solis_drop(rec) local S = __solis; local mine = S and rec and rec.by and S.owned[rec.by]; if mine then mine[rec] = nil end end; \
-function L.solis_left(o, was, new) local S = __solis; local mine = S and S.owned[o]; if mine then for rec in pairs(mine) do if rec.during ~= nil and not L.sin(new, rec.during) then mine[rec] = nil; local here = places[rec.owner]; local at = here and here[rec.name]; if at and tweens[at] == rec then tweens[at] = false; here[rec.name] = nil; live = live - 1 end end end end; local n = LUST_NATIVES; local h = n and n.__solisState; if h then h(o, was, new) end end\n";
+function L.solis_own(rec) local S = __solis; local by = S and S[1]; local now = by and rawget(by, \"state\"); if now == nil then return end; rec.by = by; rec.during = now; local mine = S.owned[by]; if not mine then mine = {}; S.owned[by] = mine end; local n = #mine; if n >= 16 then local k = 0; for i = 1, n do local r = mine[i]; mine[i] = nil; if not r.solis_ended and r.during ~= nil then k = k + 1; mine[k] = r end end; n = k end; mine[n + 1] = rec end; \
+function L.solis_in(a, b) local na, nb = #a, #b; if na > nb then return a:byte(nb + 1) == 46 and a:find(b, 1, true) == 1 end; return nb > na and b:byte(na + 1) == 46 and b:find(a, 1, true) == 1 end; \
+function L.solis_drop(rec) if rec and rec.by then rec.solis_ended = true end end; \
+function L.solis_left(o, was, new) local S = __solis; local mine = S and S.owned[o]; if mine then local k = 0; for i = 1, #mine do local rec = mine[i]; mine[i] = nil; if not rec.solis_ended and rec.during ~= nil then if new == rec.during or L.solis_in(new, rec.during) then k = k + 1; mine[k] = rec else rec.solis_ended = true; local here = places[rec.owner]; local at = here and here[rec.name]; if at and tweens[at] == rec then tweens[at] = false; here[rec.name] = nil; live = live - 1 end end end end end; local me = rawget(o, \"me\"); local n = me and LUST_NATIVES; local h = n and n.__solisState; local mt = h and getmetatable(o); if mt then h(me, mt.__name, was, new) end end\n";
 
 /// Where Lust's chunk closes its runtime: the game's own code comes after,
 /// and is never changed.

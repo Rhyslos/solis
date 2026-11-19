@@ -94,21 +94,26 @@ pub(super) fn lend<'s>(
 /// entity is checked, and its names are its `Timer` state's options):
 /// nothing to call it on, or a name a timer can't have.
 fn owner(key: &str, which: &LuaValue, name: &mlua::LuaString) -> mlua::Result<(EntityId, String)> {
-    let call = crate::describe::NATIVES
-        .iter()
-        .find(|native| native.key() == key)
-        .map_or_else(|| key.to_string(), crate::native_values::written);
+    // Found only for a mistake: every native's key is made to find it.
+    let call = || {
+        crate::describe::NATIVES
+            .iter()
+            .find(|native| native.key() == key)
+            .map_or_else(|| key.to_string(), crate::native_values::written)
+    };
     let Some(entity) = entity_of(which) else {
         return Err(mlua::Error::runtime(format!(
-            "{call} was called on nothing: call it inside a component, on the component's own \
-             entity (self.me)."
+            "{} was called on nothing: call it inside a component, on the component's own \
+             entity (self.me).",
+            call()
         )));
     };
     let name = name.to_str()?.to_string();
     if !valid_name(&name) {
         return Err(mlua::Error::runtime(format!(
-            "{call} wants a timer's name: a capital letter, then letters, digits and _ \
+            "{} wants a timer's name: a capital letter, then letters, digits and _ \
              (\"DoorOpens\"), at most {} long, and \"{}\" isn't one.",
+            call(),
             crate::timers::MAX_NAME,
             crate::luau::capped(&name, crate::timers::MAX_NAME + 8)
         )));
