@@ -13,6 +13,7 @@ Example files of every version of every file format Solis has ever released (Pha
 | `sound-event/` | Sound events (`.solsound`) | v1 |
 | `mixer/` | The project's buses (`mixer.solmix`) | v1 |
 | `pixels/` | The project's 2D settings (`pixels.solpix`) | v1 |
+| `languages/` | The project's languages (`languages.lst`, Lust, stage 1) | v1 |
 | `tags/` | The project's tags (`tags.lst`, Lust, stage 1) | v1 |
 | `frames/` | A sprite's clips (`.solframes`) | v1 |
 | `animator/` | An animator (`.solanim`) | v1 |

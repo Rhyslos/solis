@@ -1,0 +1,6 @@
+-- The project's languages (Project settings › Languages). Written by Solis; safe to edit by hand.
+fetch "solis/data/languages":[Languages];
+
+lock int version = 1;
+lock Languages languages = new Languages { main = "en", all = ["en", "nb", "de"] };
+end

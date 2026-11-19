@@ -28,6 +28,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `sound_file.rs` | A WAV or Ogg Vorbis file: refused or read, always within the limits, every sample between -1 and 1. |
 | `tileset.rs` | A tileset (`.tileset.lst`, or an older `.soltileset`): refused or read, within the limits, each terrain's name and code used once, and written back to itself. |
 | `tile_art.rs` | A tileset's picture (the first byte chooses PNG or JPEG, or Aseprite): refused or read whole within the limits, every frame its size, then its grid found and its tiles weighed. |
+| `translation_file.rs` | A translation file (`locale/nb/shop.ftl`): read within the limits, every line a key game code can use, each written again and read back without mistakes, and text, a spreadsheet and its import made from it without stopping. |
 | `table_file.rs` | A data table's file (`items.table.lst`): refused or read, within the limits, every ID and column one game code can use, a cell a column, written back to itself, and its CSV taken in. |
 | `tile_map.rs` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`): refused or read, within the limits, written back to itself (or refused by the writer, when it would be more than is read back), then changed cell by cell (inside and past its edges), resized and summed. |
 | `playtest_file.rs` | A playtest file (`playtest.txt` beside an exported game, or a project's `.solis/last export.txt`): refused or read, every part put right (a usable name and level, a window Solis opens), and written back to itself. |

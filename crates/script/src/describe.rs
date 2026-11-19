@@ -1233,6 +1233,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
     (level::prefab_file::KIND, level::prefab_file::CLASSES),
     (level::tags::KIND, level::tags::CLASSES),
     (level::table::file::KIND, level::table::file::CLASSES),
+    (level::languages::KIND, level::languages::CLASSES),
 ];
 
 /// The project's own names as states, written by the editor into
