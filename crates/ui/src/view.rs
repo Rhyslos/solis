@@ -9,6 +9,7 @@
 //! nothing (yet). Nothing here trusts the tree: sizes, depth and counts
 //! are kept within limits.
 
+use crate::paragraph::{Fit, TextStyle};
 use crate::screen::{Colour, Edge, Element, ElementKind, Fill, MAX_DEPTH, MAX_ELEMENTS};
 
 /// The biggest size or place taken from a screen, in design pixels.
@@ -36,7 +37,7 @@ pub struct Node {
 
 /// What's happening to a view's clickable pieces, by their numbers: the
 /// one under the pointer, and the one with the keys' focus.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Looks {
     /// Under the pointer.
     pub hover: Option<usize>,
@@ -46,6 +47,11 @@ pub struct Looks {
     /// as 100): every text's `size` grows by it, and the pieces round it
     /// make room.
     pub text_percent: u16,
+    /// The room from one line of text to the next, times the font's own
+    /// (0 as 1; stage 1, text layout).
+    pub line_height: f32,
+    /// Room added after each letter, in design pixels.
+    pub letter_spacing: f32,
 }
 
 impl Looks {
@@ -89,8 +95,13 @@ pub enum Style {
 
 /// What laying a view out needs to know about text and pictures.
 pub trait Measure {
-    /// How wide and tall `text` is in `font` at `size` design pixels.
-    fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2];
+    /// How wide and tall `text` is in `style`, laid out to `fit`, in
+    /// design pixels.
+    fn text(&mut self, text: &str, style: &TextStyle, fit: &Fit) -> [f32; 2];
+
+    /// Uses the project's fonts `files` from now on (stage 1, text
+    /// layout). One that doesn't lay text out ignores them.
+    fn use_fonts(&mut self, _files: Option<&crate::text::FontFiles>) {}
 
     /// How big the picture `name` is, in its own pixels, if there is one
     /// (decision 0089). None knows of none.
@@ -108,8 +119,12 @@ pub struct WithPictures<'a> {
 }
 
 impl Measure for WithPictures<'_> {
-    fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
-        self.text.measure(font, text, size)
+    fn text(&mut self, text: &str, style: &TextStyle, fit: &Fit) -> [f32; 2] {
+        self.text.text(text, style, fit)
+    }
+
+    fn use_fonts(&mut self, files: Option<&crate::text::FontFiles>) {
+        self.text.use_fonts(files);
     }
 
     fn picture(&mut self, name: &str) -> Option<[u32; 2]> {
@@ -118,8 +133,12 @@ impl Measure for WithPictures<'_> {
 }
 
 impl Measure for crate::text::Fonts {
-    fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
-        crate::text::Fonts::measure(self, font, text, size)
+    fn text(&mut self, text: &str, style: &TextStyle, fit: &Fit) -> [f32; 2] {
+        self.paragraph(text, style, fit).size
+    }
+
+    fn use_fonts(&mut self, files: Option<&crate::text::FontFiles>) {
+        self.use_files(files);
     }
 }
 
@@ -127,7 +146,7 @@ impl Measure for crate::text::Fonts {
 pub struct NoFonts;
 
 impl Measure for NoFonts {
-    fn measure(&mut self, _: usize, _: &str, _: f32) -> [f32; 2] {
+    fn text(&mut self, _: &str, _: &TextStyle, _: &Fit) -> [f32; 2] {
         [0.0, 0.0]
     }
 }
@@ -191,6 +210,10 @@ struct Look {
     /// Lust's `shadow`: drawn as a soft glow in its own colour
     /// (decision 0089).
     shadow: bool,
+    /// Lust's `font "fonts/Lora.ttf"`: the project's fonts its words are
+    /// in, first choice first, then fallbacks (`"a.ttf, b.otf"`); none for
+    /// the game's own (stage 1, text layout).
+    fonts: Vec<String>,
 }
 
 /// Lust's text colour on a light window, and its muted one.
@@ -233,6 +256,7 @@ fn base_look(kind: &str) -> Look {
         disabled: false,
         cover: false,
         shadow: false,
+        fonts: Vec::new(),
     };
     match kind {
         "row" => l.valign = Align::Center,
@@ -334,6 +358,11 @@ fn apply(l: &mut Look, kind: &str, styles: &[(String, Style)]) {
             "bold" => l.bold = true,
             "muted" => l.color = MUTED,
             "nowrap" => l.wrap = false,
+            "font" => {
+                if let Some(list) = word(v) {
+                    l.fonts = font_list(list);
+                }
+            }
             "color" => {
                 if let Some(c) = word(v).and_then(colour) {
                     l.color = c;
@@ -391,6 +420,20 @@ fn apply(l: &mut Look, kind: &str, styles: &[(String, Style)]) {
             }
         }
     }
+}
+
+/// The most fonts one `font` style names.
+const MAX_FONT_LIST: usize = 8;
+
+/// The fonts `font "…"` names: one, or several between commas, first
+/// choice first.
+fn font_list(list: &str) -> Vec<String> {
+    list.split(',')
+        .map(str::trim)
+        .filter(|f| !f.is_empty())
+        .take(MAX_FONT_LIST)
+        .map(str::to_string)
+        .collect()
 }
 
 /// Whether a colour is light (dark text reads on it), as Lust decides.
@@ -530,7 +573,9 @@ struct Laid {
     y: f32,
     w: f32,
     h: f32,
-    lines: Vec<String>,
+    /// For text, once placed: its room and its style.
+    fit: Option<Fit>,
+    style: Option<TextStyle>,
     /// Its number among the clickable pieces, if it's one.
     action: Option<usize>,
     /// Drawn with the focus ring.
@@ -539,10 +584,12 @@ struct Laid {
 
 /// Turns the tree into placed pieces, within the limits, with `looks`'
 /// hover and focus styles on the pieces they name.
-fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks) -> Laid {
+fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks, fonts: &[String]) -> Laid {
     let id = *count;
     *count += 1;
     let mut look = base_look(&node.kind);
+    // The view's own font is every piece's without one (as in Lust).
+    look.fonts = fonts.to_vec();
     apply(&mut look, &node.kind, &node.styles);
     let live = node.action.filter(|_| !look.disabled);
     if live.is_some() && live == looks.hover {
@@ -573,7 +620,7 @@ fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks) -> Laid {
             if *count >= MAX_ELEMENTS {
                 break;
             }
-            children.push(lay(c, depth + 1, count, looks));
+            children.push(lay(c, depth + 1, count, looks, fonts));
         }
     }
     Laid {
@@ -590,7 +637,8 @@ fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks) -> Laid {
         y: 0.0,
         w: 0.0,
         h: 0.0,
-        lines: Vec::new(),
+        fit: None,
+        style: None,
         action: live,
         focused,
     }
@@ -603,11 +651,17 @@ fn shade(c: u32, k: f32) -> u32 {
     (s(r) << 16) | (s(g) << 8) | s(b)
 }
 
-/// Laying out: the text measurer, and sizes already measured.
+/// Laying out: the text measurer, sizes already measured, and the
+/// screen's looks (its spacing of text).
 struct Layout<'a> {
     measure: &'a mut dyn Measure,
     measured: std::collections::HashMap<(usize, u32), (f32, f32)>,
+    looks: Looks,
 }
+
+/// A little room, so a line that just fits a box's height (at another
+/// scale) still counts.
+const EASE_ROOM: f32 = 0.5;
 
 fn font_of(l: &Look) -> usize {
     usize::from(l.bold)
@@ -672,53 +726,54 @@ fn spread_out(a: Align, spread: bool, room: f32, count: usize) -> (f32, f32) {
 }
 
 impl Layout<'_> {
-    fn text_width(&mut self, s: &str, l: &Look) -> f32 {
-        self.measure.measure(font_of(l), s, l.size)[0]
-    }
-
-    fn line_height(&mut self, l: &Look) -> f32 {
-        self.measure.measure(font_of(l), "", l.size)[1].ceil()
-    }
-
-    /// Breaks text into lines at `\n`, and between words where a line
-    /// would be wider than `max_w` (a word too long alone stays whole).
-    fn wrap_lines(&mut self, text: &str, l: &Look, max_w: f32) -> Vec<String> {
-        let mut out = Vec::new();
-        for para in text.split('\n') {
-            if !l.wrap || !max_w.is_finite() || self.text_width(para, l) <= max_w + 0.5 {
-                out.push(para.to_string());
-                continue;
-            }
-            // The line's width is kept as words join it, each measured
-            // once with its space (the phase review: measuring the whole
-            // line again for every word made long text quadratic). Close
-            // to the edge, where letters' kerning across the join could
-            // tip it, the joined line is measured exactly.
-            let mut line = String::new();
-            let mut line_w = 0.0;
-            for w in para.split(' ') {
-                if line.is_empty() {
-                    line = w.to_string();
-                    line_w = self.text_width(w, l);
-                    continue;
-                }
-                let spaced = format!(" {w}");
-                let mut joined_w = line_w + self.text_width(&spaced, l);
-                if (joined_w - (max_w + 0.5)).abs() < 2.0 {
-                    joined_w = self.text_width(&format!("{line}{spaced}"), l);
-                }
-                if joined_w <= max_w + 0.5 {
-                    line.push_str(&spaced);
-                    line_w = joined_w;
-                } else {
-                    out.push(std::mem::take(&mut line));
-                    line = w.to_string();
-                    line_w = self.text_width(w, l);
-                }
-            }
-            out.push(line);
+    /// The text style a piece's look gives, with the screen's spacing.
+    fn style_of(&self, l: &Look) -> TextStyle {
+        TextStyle {
+            size: l.size,
+            font: font_of(l),
+            fonts: l.fonts.clone(),
+            line_height: if self.looks.line_height > 0.0 {
+                self.looks.line_height
+            } else {
+                1.0
+            },
+            letter_spacing: self.looks.letter_spacing,
         }
-        out
+    }
+
+    /// The room text piece `n` has, `w` design pixels wide inside its
+    /// padding. Its words wrap there unless it's `nowrap`. It asks for
+    /// "…" by limiting its own size (stage 1, text layout): a `height` or
+    /// `maxHeight` cuts wrapped text after the last line that fits, and a
+    /// `width` or `maxWidth` cuts a `nowrap` line that's too long.
+    fn fit_of(&mut self, n: &Laid, w: f32) -> Fit {
+        let l = &n.look;
+        let width = w.is_finite().then_some(w.max(0.0));
+        if !l.wrap {
+            let cut = matches!(l.width, Size::Fixed(_)) || l.max_w.is_finite();
+            return Fit {
+                width: width.filter(|_| cut),
+                wrap: false,
+                lines: None,
+                cut,
+            };
+        }
+        let room = match l.height {
+            Size::Fixed(h) => Some(h.min(l.max_h)),
+            _ => l.max_h.is_finite().then_some(l.max_h),
+        }
+        .map(|h| h - l.pad[0] - l.pad[2]);
+        let lines = room.map(|room| {
+            let style = self.style_of(l);
+            let line = self.measure.text("", &style, &Fit::default())[1].max(1e-3);
+            ((room + EASE_ROOM) / line).floor().clamp(1.0, 1.0e6) as u32
+        });
+        Fit {
+            width,
+            wrap: true,
+            lines,
+            cut: lines.is_some(),
+        }
     }
 
     fn natural(&mut self, n: &Laid, max_w: f32) -> (f32, f32) {
@@ -746,12 +801,10 @@ impl Layout<'_> {
         let gaps = l.gap * (n.children.len().saturating_sub(1)) as f32;
         let (mut w, mut h) = match n.kind.as_str() {
             k if shows_text(k) => {
-                let lines = self.wrap_lines(&n.text, l, inner);
-                let mut w = 0.0_f32;
-                for line in &lines {
-                    w = w.max(self.text_width(line, l));
-                }
-                (w.ceil(), self.line_height(l) * lines.len().max(1) as f32)
+                let fit = self.fit_of(n, inner);
+                let style = self.style_of(l);
+                let [w, h] = self.measure.text(&n.text, &style, &fit);
+                (w.ceil(), h.ceil())
             }
             "space" | "progress" | "canvas" | "box" | "line" => (0.0, 0.0),
             "circle" => (2.0 * l.rad, 2.0 * l.rad),
@@ -869,7 +922,8 @@ impl Layout<'_> {
         let iw = (w - l.pad[1] - l.pad[3]).max(0.0);
         let ih = (h - l.pad[0] - l.pad[2]).max(0.0);
         if shows_text(&n.kind) {
-            n.lines = self.wrap_lines(&n.text.clone(), &l, iw);
+            n.fit = Some(self.fit_of(n, iw));
+            n.style = Some(self.style_of(&l));
             return;
         }
         if n.children.is_empty() {
@@ -1017,7 +1071,16 @@ pub fn lay_out_with(
 /// The view's tree placed on a screen `size` design pixels big.
 fn laid_out(view: &Node, size: [f32; 2], measure: &mut dyn Measure, looks: Looks) -> Laid {
     let mut count = 0;
-    let mut top = lay(view, 0, &mut count, looks);
+    let fonts = view
+        .styles
+        .iter()
+        .rev()
+        .find_map(|(k, v)| match (k.as_str(), v) {
+            ("font", Style::Text(list)) => Some(font_list(list)),
+            _ => None,
+        })
+        .unwrap_or_default();
+    let mut top = lay(view, 0, &mut count, looks, &fonts);
     // The view's top is a column as big as the screen; columns and rows
     // directly in it are as wide as it, as in Lust's windows.
     top.kind = "view".into();
@@ -1037,6 +1100,7 @@ fn laid_out(view: &Node, size: [f32; 2], measure: &mut dyn Measure, looks: Looks
     let mut layout = Layout {
         measure,
         measured: std::collections::HashMap::new(),
+        looks,
     };
     layout.place(&mut top, 0.0, 0.0, size[0], size[1]);
     top
@@ -1267,7 +1331,9 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
         e.fill = Fill::Solid(Colour::WHITE.with_alpha(opacity));
         out.push(halo(e, 0xffffff));
     }
-    if shows_text(&n.kind) && !n.lines.is_empty() {
+    if shows_text(&n.kind)
+        && let (Some(fit), Some(style)) = (n.fit, n.style.clone())
+    {
         let (ix, iy) = (n.x + l.pad[3], n.y + l.pad[0]);
         let iw = (n.w - l.pad[1] - l.pad[3]).max(0.0);
         let ih = (n.h - l.pad[0] - l.pad[2]).max(0.0);
@@ -1282,10 +1348,10 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
             iw,
             ih,
             ElementKind::Text {
-                text: n.lines.join("\n"),
-                size: l.size,
-                font: font_of(l),
+                text: n.text.clone(),
+                style,
                 align,
+                fit,
             },
         );
         e.fill = Fill::Solid(rgb(l.color, opacity));

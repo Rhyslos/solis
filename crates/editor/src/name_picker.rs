@@ -36,6 +36,7 @@ fn kind_lead(kind: NameKind) -> Lead {
         NameKind::Screen => (Icon::Screen, theme::kind::CODE),
         NameKind::Level => (Icon::LevelFile, theme::kind::LEVEL),
         NameKind::Tag => (Icon::Key, theme::kind::OTHER),
+        NameKind::Font => (Icon::Text, theme::kind::TEXT),
     };
     Lead::Icon(icon, colour)
 }

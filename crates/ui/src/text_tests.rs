@@ -66,32 +66,35 @@ fn letters_run_left_to_right_and_lines_down() {
 fn measuring_reads_each_character_from_the_font_once() {
     // The second review pass: every word measured read the font's tables
     // again. Now the common characters are read with the font, and each
-    // other one the first time it's measured, then remembered.
+    // other one the first time it's measured, then remembered; and each
+    // run of words is shaped once.
     let mut f = fonts();
     let text = "Spring → spring ←→";
     let first = f.measure(0, text, 24.0);
-    assert_eq!(f.fonts[0].remembered(), [2, 0], "the two arrows");
+    assert_eq!(f.fonts[0].font.remembered(), 2, "the two arrows");
+    let shaped = f.fonts[0].shaped();
+    assert!(shaped > 0);
+    // Another text of the same words: nothing read or shaped again.
+    let _ = f.measure(0, "spring Spring ", 24.0);
+    assert_eq!(f.fonts[0].font.remembered(), 2, "nothing read again");
+    assert_eq!(f.fonts[0].shaped(), shaped, "nothing shaped again");
     assert_eq!(f.measure(0, text, 24.0), first, "the same the second time");
-    assert_eq!(f.fonts[0].remembered(), [2, 0], "nothing read again");
     assert_eq!(f.place(0, text, 24.0, [0.0, 0.0], None).len(), 15);
-    assert_eq!(f.fonts[0].remembered(), [2, 0]);
-    // As wide as the font says, letter by letter (Inter kerns in another
-    // table, so no pairs are looked up).
-    use skrifa::MetadataProvider as _;
-    let face = skrifa::FontRef::new(INTER).unwrap();
-    let (charmap, advances) = (
-        face.charmap(),
-        face.glyph_metrics(
-            skrifa::instance::Size::unscaled(),
-            skrifa::instance::LocationRef::default(),
-        ),
-    );
-    let units: f32 = text
-        .chars()
-        .map(|c| advances.advance_width(charmap.map(c).unwrap()).unwrap())
-        .sum();
-    let scale = f.fonts[0].at(24.0).px(1.0);
-    assert!((first[0] - units * scale).abs() < 0.01, "{first:?} {units}");
+}
+
+#[test]
+fn letters_are_shaped_kerned_and_joined_as_the_font_says() {
+    // Inter kerns in its GPOS table, which the old layout never read:
+    // shaping moves the V closer to the A.
+    let mut f = fonts();
+    let alone = f.measure(0, "A", 40.0)[0] + f.measure(0, "V", 40.0)[0];
+    let together = f.measure(0, "AV", 40.0)[0];
+    assert!(together < alone - 1.0, "{together} {alone}");
+    // Letters with an accent made of two characters (e and a combining
+    // acute) are one letter's width, the accent over it.
+    let joined = f.measure(0, "e\u{301}", 40.0)[0];
+    let plain = f.measure(0, "e", 40.0)[0];
+    assert!((joined - plain).abs() < 0.5, "{joined} {plain}");
 }
 
 #[test]
@@ -103,12 +106,16 @@ fn what_a_font_remembers_has_a_limit() {
         .chunks(4000)
         .map(|line| line.iter().collect())
         .collect();
-    let every = every.join("\n");
-    let _ = f.measure(0, &every, 12.0);
-    assert!(f.fonts[0].remembered()[0] <= crate::font::MAX_REMEMBERED);
+    for text in &every {
+        let _ = f.measure(0, text, 12.0);
+    }
+    assert!(f.fonts[0].font.remembered() <= crate::font::MAX_REMEMBERED);
+    assert!(f.fonts[0].shaped() <= crate::shaping::MAX_RUNS);
     let wide = f.measure(0, "Wy→", 30.0);
-    let _ = f.measure(0, &every, 12.0);
-    assert!(f.fonts[0].remembered()[0] <= crate::font::MAX_REMEMBERED);
+    for text in &every {
+        let _ = f.measure(0, text, 12.0);
+    }
+    assert!(f.fonts[0].font.remembered() <= crate::font::MAX_REMEMBERED);
     // What it measures stays the same after starting again.
     assert_eq!(f.measure(0, "Wy→", 30.0), wide);
 }
@@ -292,9 +299,9 @@ fn text_elements_are_laid_out_as_letters_aligned_in_their_box() {
             "label",
             ElementKind::Text {
                 text: "Hi".into(),
-                size: 40.0,
-                font: 0,
+                style: crate::TextStyle::new(40.0, 0),
                 align,
+                fit: crate::Fit::default(),
             },
         )
         .at(Anchor::TOP_LEFT, [100.0, 100.0])

@@ -16,7 +16,9 @@ layer = 1
 
 [dependencies]
 ab_glyph_rasterizer.workspace = true
+harfrust.workspace = true
 skrifa.workspace = true
+unicode-linebreak.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

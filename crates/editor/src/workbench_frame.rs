@@ -186,6 +186,7 @@ impl Workbench {
             )
         });
         let screen_pictures = self.open.screen_pictures.pictures.clone();
+        let font_files = self.open.screen_fonts.files.clone();
         let screen_fonts = self
             .screen_fonts
             .get_or_insert_with(crate::game_screens::editor_fonts);
@@ -197,6 +198,7 @@ impl Workbench {
                 doc,
                 fonts: screen_fonts,
                 pictures: screen_pictures,
+                font_files,
                 picture_files,
                 game: screen_game,
             });
@@ -466,6 +468,7 @@ impl Workbench {
         self.prepare_zones();
         self.find_problems();
         self.refresh_screen_pictures();
+        self.refresh_screen_fonts();
         self.refresh_screen();
         let code_problems = self.all_code_problems().into_owned();
         let copied: Vec<String> = self

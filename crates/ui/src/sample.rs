@@ -12,9 +12,9 @@ fn label(name: &str, words: &str, size: f32, colour: Colour, left: f32, font: us
         name,
         ElementKind::Text {
             text: words.into(),
-            size,
-            font,
+            style: crate::TextStyle::new(size, font),
             align: crate::Edge::Start,
+            fit: crate::Fit::default(),
         },
     )
     .at(

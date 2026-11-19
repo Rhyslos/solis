@@ -46,6 +46,9 @@ pub enum LibraryKind {
     /// The project's tags (`tags.lst` at the top of its files, stage 1):
     /// opened, it shows Project settings › Tags.
     Tags,
+    /// A font (`.ttf`, `.otf`) for game screens' text (stage 1, text
+    /// layout).
+    Font,
     /// Anything else.
     Other,
 }
@@ -70,6 +73,7 @@ impl LibraryKind {
             Self::Table => "Data table",
             Self::Text => "Text",
             Self::Tags => "Project's tags",
+            Self::Font => "Font",
             Self::Other => "File",
         }
     }
@@ -88,7 +92,7 @@ impl LibraryKind {
             Self::Code => k::CODE,
             Self::Sound => k::SOUND,
             Self::SoundEvent => k::SOUND_EVENT,
-            Self::Text | Self::Tags => k::TEXT,
+            Self::Text | Self::Tags | Self::Font => k::TEXT,
             Self::Table => k::TABLE,
             Self::Other => k::OTHER,
         }
@@ -96,7 +100,7 @@ impl LibraryKind {
 
     /// Every kind, in the order the colour sheet shows them.
     #[cfg(test)]
-    pub(crate) const ALL: [Self; 17] = [
+    pub(crate) const ALL: [Self; 18] = [
         Self::Model,
         Self::Prefab,
         Self::Level,
@@ -113,6 +117,7 @@ impl LibraryKind {
         Self::Table,
         Self::Text,
         Self::Tags,
+        Self::Font,
         Self::Other,
     ];
 
@@ -135,6 +140,7 @@ impl LibraryKind {
             Self::Table => Icon::Table,
             Self::Text | Self::Other => Icon::TextFile,
             Self::Tags => Icon::Gear,
+            Self::Font => Icon::Text,
         }
     }
 

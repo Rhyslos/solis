@@ -54,6 +54,12 @@ skrifa = "0.44"
 # Turns a letter's outline into how much of each pixel it covers, for game
 # UI's text (decision 0107).
 ab_glyph_rasterizer = "0.1.10"
+# Shapes game UI's text (kerning, joined letters; stage 1's text layout):
+# the shaper egui uses, at its version.
+harfrust = { version = "0.12", default-features = false, features = ["std"] }
+# Where game UI's text may break onto a new line, by Unicode's line-break
+# rules (stage 1's text layout).
+unicode-linebreak = "0.1.5"
 # Reading glTF models: the JSON and binary layout only. Buffers and
 # images are read by Solis itself, with size limits (crates/assets).
 gltf = { version = "1.4", default-features = false, features = ["names", "utils", "KHR_lights_punctual"] }

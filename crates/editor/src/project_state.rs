@@ -202,6 +202,8 @@ pub(crate) struct ProjectState {
     pub(crate) game_screens: crate::game_screens::GameScreens,
     /// The pictures the game's screens show (decision 0089).
     pub(crate) screen_pictures: crate::screen_pictures::ScreenPictures,
+    /// The project's fonts the game's screens use (stage 1, text layout).
+    pub(crate) screen_fonts: crate::screen_fonts::ScreenFonts,
     /// The screen open on the UI editor's canvas (decision 0089).
     pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
     /// The build of the game's code its view was last tried with,

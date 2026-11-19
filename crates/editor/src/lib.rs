@@ -91,6 +91,7 @@ mod properties_header;
 mod save_game;
 pub mod screen;
 mod screen_doc;
+mod screen_fonts;
 mod screen_pictures;
 mod screen_props;
 mod screen_ties;

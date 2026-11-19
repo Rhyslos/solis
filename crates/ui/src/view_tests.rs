@@ -2,18 +2,44 @@
 
 use super::*;
 
-/// Text as wide as 10 design pixels a letter, 20 a line.
+/// Text as wide as 10 design pixels a letter, 20 a line, wrapped
+/// between words and cut to its lines as the real layout does.
 struct Fixed;
 
+/// `text`'s lines as [`Fixed`] lays them out.
+fn fixed_lines(text: &str, fit: &Fit) -> Vec<String> {
+    let most = fit
+        .width
+        .filter(|_| fit.wrap)
+        .map_or(usize::MAX, |w| ((w + 0.5) / 10.0) as usize);
+    let mut out = Vec::new();
+    for para in text.split('\n') {
+        let mut line = String::new();
+        for word in para.split(' ') {
+            let joined = if line.is_empty() {
+                word.to_string()
+            } else {
+                format!("{line} {word}")
+            };
+            if !line.is_empty() && joined.chars().count() > most {
+                out.push(std::mem::replace(&mut line, word.to_string()));
+            } else {
+                line = joined;
+            }
+        }
+        out.push(line);
+    }
+    if let Some(most) = fit.lines.filter(|_| fit.cut) {
+        out.truncate(most.max(1) as usize);
+    }
+    out
+}
+
 impl Measure for Fixed {
-    fn measure(&mut self, _: usize, text: &str, _: f32) -> [f32; 2] {
-        let lines = text.split('\n').count() as f32;
-        let widest = text
-            .split('\n')
-            .map(|l| l.chars().count())
-            .max()
-            .unwrap_or(0);
-        [widest as f32 * 10.0, lines * 20.0]
+    fn text(&mut self, text: &str, _: &TextStyle, fit: &Fit) -> [f32; 2] {
+        let lines = fixed_lines(text, fit);
+        let widest = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0);
+        [widest as f32 * 10.0, lines.len() as f32 * 20.0]
     }
 }
 
@@ -241,11 +267,24 @@ fn text_wraps_at_the_room_it_has_and_bold_picks_the_second_font() {
         )],
     );
     let out = lay_out(&view, [400.0, 300.0], &mut Fixed);
-    let ElementKind::Text { text, font, .. } = &out[0].kind else {
+    let ElementKind::Text {
+        text, style, fit, ..
+    } = &out[0].kind
+    else {
         panic!("text");
     };
-    assert_eq!(text, "ab cd\nef");
-    assert_eq!(*font, 1);
+    assert_eq!(text, "ab cd ef", "the words as written: they wrap as they're drawn");
+    assert_eq!(fixed_lines(text, fit), ["ab cd", "ef"]);
+    assert_eq!(
+        *fit,
+        Fit {
+            width: Some(50.0),
+            wrap: true,
+            lines: None,
+            cut: false
+        }
+    );
+    assert_eq!(style.font, 1);
     assert_eq!(out[0].size, [50.0, 40.0]);
 }
 
@@ -274,10 +313,10 @@ fn a_background_and_opacity_carry_down() {
         &[],
         vec![text("a", &[("bold", Style::Flag(false))])],
     );
-    let ElementKind::Text { font, .. } = lay_out(&off, [100.0, 100.0], &mut Fixed)[0].kind else {
+    let ElementKind::Text { style, .. } = &lay_out(&off, [100.0, 100.0], &mut Fixed)[0].kind else {
         panic!("text");
     };
-    assert_eq!(font, 0);
+    assert_eq!(style.font, 0);
 }
 
 #[test]
@@ -597,6 +636,7 @@ fn a_screen_s_button_is_found_where_its_picture_is_drawn() {
         pictures: None,
         ui_size: 1.0,
         look: crate::ScreenLook::default(),
+        fonts: None,
     };
     let at = |p: [f32; 2]| clickable_at(&screen, area.size, Some(3), p, &mut Fixed);
     assert_eq!(at([480.0, 270.0]), Some(0));
@@ -689,6 +729,7 @@ fn a_canvas_cuts_off_its_shapes_at_its_edges() {
         pictures: None,
         ui_size: 1.0,
         look: crate::ScreenLook::default(),
+        fonts: None,
     };
     let shapes = crate::layout(&screen, [400, 300], None);
     let boxed = shapes
@@ -898,10 +939,10 @@ fn the_player_s_text_size_grows_text_and_the_room_round_it() {
             .iter()
             .find(|e| matches!(e.kind, ElementKind::Text { .. }))
             .unwrap();
-        let ElementKind::Text { size, .. } = t.kind else {
+        let ElementKind::Text { style, .. } = &t.kind else {
             unreachable!()
         };
-        (size, t.size)
+        (style.size, t.size)
     };
     let (normal, _) = size(100);
     let (big, _) = size(200);
@@ -911,21 +952,22 @@ fn the_player_s_text_size_grows_text_and_the_room_round_it() {
     assert_eq!(size(900).0, 60.0, "at most three times");
 }
 
-/// Counts how many letters were measured, as [`Fixed`] measures them.
+/// Counts how many times text was measured, as [`Fixed`] measures it.
 struct Counting(usize);
 
 impl Measure for Counting {
-    fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
-        self.0 += text.len();
-        Fixed.measure(font, text, size)
+    fn text(&mut self, text: &str, style: &TextStyle, fit: &Fit) -> [f32; 2] {
+        self.0 += 1;
+        Fixed.text(text, style, fit)
     }
 }
 
 #[test]
-fn long_lines_wrap_measuring_each_word_once_not_the_whole_line_again() {
+fn long_text_is_measured_a_few_times_not_once_a_word() {
     // The phase review: every word measured the whole line so far again,
-    // so wide lines of long text took time growing with their square.
-    // 1,300 words: within the most a text keeps (4,096 letters).
+    // so wide lines of long text took time growing with their square. Now
+    // the whole text is laid out at once, a few times (its natural size,
+    // then in its room), each kept by the fonts after the first.
     let paragraph: Vec<String> = (0..1300).map(|i| format!("w{}", i % 10)).collect();
     let paragraph = paragraph.join(" ");
     let view = node(
@@ -939,20 +981,14 @@ fn long_lines_wrap_measuring_each_word_once_not_the_whole_line_again() {
     );
     let mut counting = Counting(0);
     let out = lay_out(&view, [20_000.0, 30_000.0], &mut counting);
-    let ElementKind::Text { text, .. } = &out[0].kind else {
+    let ElementKind::Text { text, fit, .. } = &out[0].kind else {
         panic!("text");
     };
-    // Lines of at most 1,000 letters, as full as they can be.
-    let lines: Vec<&str> = text.split('\n').collect();
+    assert_eq!(text, &paragraph, "nothing lost");
+    let lines = fixed_lines(text, fit);
     assert!(lines.iter().all(|l| l.len() <= 1000));
     assert!(lines[0].len() > 990, "{}", lines[0].len());
-    assert_eq!(lines.join(" "), paragraph, "nothing lost");
-    assert!(
-        counting.0 < paragraph.len() * 10,
-        "{} letters measured for {}",
-        counting.0,
-        paragraph.len()
-    );
+    assert!(counting.0 <= 4, "measured {} times", counting.0);
 }
 
 #[test]
@@ -1004,10 +1040,13 @@ fn scale_check_wrapping_a_long_text_in_a_real_font() {
         )],
     );
     let out = lay_out(&view, [20_000.0, 30_000.0], &mut fonts);
-    let ElementKind::Text { text, .. } = &out[0].kind else {
+    let ElementKind::Text {
+        text, style, fit, ..
+    } = &out[0].kind
+    else {
         panic!("text");
     };
-    assert!(text.split('\n').count() > 2, "wrapped");
+    assert!(fonts.paragraph(text, style, fit).lines.len() > 2, "wrapped");
     let start = std::time::Instant::now();
     for _ in 0..10 {
         let _ = lay_out(&view, [20_000.0, 30_000.0], &mut fonts);

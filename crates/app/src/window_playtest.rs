@@ -142,6 +142,9 @@ impl App {
         {
             self.sprites.want_pictures(wanted, &assets);
         }
+        let assets = self.projects.db().map(|db| db.project().files());
+        self.font_reads
+            .follow(&mut self.workbench, assets.as_deref());
         self.follow_sprites();
         self.workbench.set_gamepad(self.gamepads.read());
         // Starts once the code is read, and the tile maps and pictures

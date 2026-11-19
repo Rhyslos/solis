@@ -20,6 +20,7 @@ fn kind_of(item: &LibraryItem) -> Option<(NameKind, usize)> {
         LibraryKind::Level => Some((NameKind::Level, ending(&[".sollevel", ".solarea"])?)),
         LibraryKind::SpriteSheet => Some((NameKind::Clip, ending(&[".aseprite", ".ase"])?)),
         LibraryKind::SpriteClips => Some((NameKind::Clip, ending(&[".solframes"])?)),
+        LibraryKind::Font => Some((NameKind::Font, ending(&[".ttf", ".otf"])?)),
         LibraryKind::Code if path.starts_with(script::screens::FOLDER) => {
             Some((NameKind::Screen, 0))
         }
@@ -115,6 +116,12 @@ mod tests {
                 "ui/pauseMenu.lst",
                 NameKind::Screen,
                 "PauseMenu",
+            ),
+            (
+                LibraryKind::Font,
+                "fonts/Lora.TTF",
+                NameKind::Font,
+                "Fonts.Lora",
             ),
         ];
         for (kind, path, names, option) in cases {

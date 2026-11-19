@@ -1227,6 +1227,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
     "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer", "Level",
+    "Font",
 ];
 
 /// What the first line of each file describing the engine says after who made it.

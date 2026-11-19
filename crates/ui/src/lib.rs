@@ -12,7 +12,10 @@
 //! - [`sample`]: the mock-up's sample HUD, for the Console's `ui test`.
 //! - [`source`]: a screen's Lust file as the UI editor reads and changes it
 //!   (decision 0089).
-//! - [`text`]: fonts, and letters as distance images in an atlas
+//! - [`text`]: fonts (the game's own and the project's, [`FontFiles`]),
+//!   text laid out as paragraphs (shaped, wrapped and cut: [`Paragraph`],
+//!   [`TextStyle`], [`Fit`]; stage 1's text layout), and letters as
+//!   distance images in an atlas
 //!   ([decision 0084](../../../docs/decisions/0084-game-ui-text.md)).
 //! - [`view`]: a screen written in Lust, its view's tree laid out with
 //!   Lust's rules ([decision 0087](../../../docs/decisions/0087-screens-through-the-engine.md)).
@@ -20,11 +23,14 @@
 //! No GPU and no window: `render` draws the shapes, the editor shows them.
 
 mod font;
+mod font_files;
 pub mod layout;
+mod paragraph;
 pub mod pictures;
 pub mod presets;
 pub mod sample;
 pub mod screen;
+mod shaping;
 pub mod source;
 pub mod text;
 pub mod view;
@@ -32,7 +38,8 @@ pub mod view;
 pub use layout::{Shape, ShapeKind, Stretch, UNCLIPPED, layout, layout_at, layout_with};
 pub use pictures::Pictures;
 pub use screen::{Anchor, Colour, Edge, Element, ElementKind, Fill, ScaleRule, Screen, ScreenLook};
-pub use text::Fonts;
+pub use paragraph::{Fit, Line, Paragraph, TextStyle};
+pub use text::{FontFiles, Fonts};
 
 /// The next number from one count shared by every atlas (the letters' and
 /// the pictures'), so no two atlases, or one atlas before and after a

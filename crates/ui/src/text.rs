@@ -5,11 +5,19 @@
 //! and its edge, an outline or a glow are worked out in the shader.
 //! Pixel-art screens draw the same letters with hard edges.
 //!
-//! Layout is simple and exact: left to right, a line per `\n`, each
-//! letter's advance and the font's kerning; long lines aren't wrapped yet.
+//! Text is laid out as paragraphs (`paragraph.rs`, stage 1's text
+//! layout): shaped, wrapped and cut, in the project's own fonts with
+//! fallbacks ([`FontFiles`]), and kept while it stays the same, so text
+//! that doesn't change costs nothing each frame.
 
 use crate::font::{Font, GlyphId};
+pub use crate::font_files::FontFiles;
+pub(crate) use crate::font_files::Slot;
+use crate::paragraph::{Builder, Fit, Paragraph, TextStyle};
+use crate::screen::Edge;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 /// The size letters are drawn at for their distance images, in pixels.
 pub const SDF_SIZE: f32 = 48.0;
@@ -22,6 +30,10 @@ pub const ATLAS_SIDE: u32 = 1024;
 pub const MAX_LETTERS: usize = 4096;
 /// The biggest a font file may be.
 pub const MAX_FONT_BYTES: usize = 32 << 20;
+/// The most fonts of its own a project's screens use.
+pub const MAX_PROJECT_FONTS: usize = 32;
+/// The most paragraphs kept laid out; past it, those used longest ago go.
+pub const MAX_PARAGRAPHS: usize = 8192;
 
 /// A letter's distance image in the atlas.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -86,6 +98,17 @@ impl Atlas {
     }
 }
 
+/// A paragraph kept, with what it was laid out from.
+#[derive(Debug, Clone)]
+struct Kept {
+    text: Box<str>,
+    style: TextStyle,
+    fit: Fit,
+    paragraph: Arc<Paragraph>,
+    /// When it was last asked for, by [`Fonts::paragraph`]'s count.
+    used: u64,
+}
+
 /// The fonts a game's UI uses, and their letters' distance images.
 ///
 /// Call [`Self::begin_frame`] once a frame, before laying out any text:
@@ -93,10 +116,20 @@ impl Atlas {
 /// keeps its place in the atlas until the frame is drawn.
 #[derive(Debug, Clone)]
 pub struct Fonts {
-    fonts: Vec<Font>,
-    /// Each letter made (none for one with no outline, a space), and the
-    /// frame it was last placed in.
-    letters: HashMap<(usize, GlyphId), Option<(Letter, u64)>>,
+    /// The game's own fonts first, then the project's.
+    fonts: Vec<Slot>,
+    /// How many of [`Self::fonts`] are the game's own.
+    own: usize,
+    /// The revision of the project's fonts in use.
+    files: Option<u64>,
+    /// Each letter made (none for one with no outline, a space), by its
+    /// font's key, and the frame it was last placed in.
+    letters: HashMap<(u64, GlyphId), Option<(Letter, u64)>>,
+    /// Paragraphs laid out, by a hash of what they're laid out from.
+    paragraphs: HashMap<u64, Vec<Kept>>,
+    kept: usize,
+    /// Counts paragraphs asked for, to know which were used longest ago.
+    asked: u64,
     /// The atlas the letters are in.
     pub atlas: Atlas,
     /// Whether a letter didn't fit (the atlas is full): said once.
@@ -120,9 +153,9 @@ enum Made {
 }
 
 impl Fonts {
-    /// Fonts from their files' bytes, in order (the first is the
-    /// standard). A file that isn't a font, or is too big, is left out;
-    /// the reasons come back.
+    /// The game's own fonts from their files' bytes, in order (the first
+    /// is the standard, the second its bold). A file that isn't a font, or
+    /// is too big, is left out; the reasons come back.
     pub fn new(files: Vec<Vec<u8>>) -> (Self, Vec<String>) {
         let mut fonts = Vec::new();
         let mut notes = Vec::new();
@@ -136,14 +169,20 @@ impl Fonts {
                 continue;
             }
             match Font::read(bytes) {
-                Some(font) => fonts.push(font),
+                Some(font) => fonts.push(Slot::new("", crate::next_revision(), font)),
                 None => notes.push(format!("font {} isn't a font Solis can read", i + 1)),
             }
         }
+        let own = fonts.len();
         (
             Self {
                 fonts,
+                own,
+                files: None,
                 letters: HashMap::new(),
+                paragraphs: HashMap::new(),
+                kept: 0,
+                asked: 0,
                 atlas: Atlas::default(),
                 full: false,
                 start_again: false,
@@ -153,7 +192,7 @@ impl Fonts {
         )
     }
 
-    /// How many fonts there are.
+    /// How many fonts there are, the project's included.
     pub fn len(&self) -> usize {
         self.fonts.len()
     }
@@ -161,6 +200,24 @@ impl Fonts {
     /// Whether there are none.
     pub fn is_empty(&self) -> bool {
         self.fonts.is_empty()
+    }
+
+    /// Uses the project's fonts `files` (none: only the game's own) from
+    /// now on. Nothing changes when they're the ones in use already.
+    pub fn use_files(&mut self, files: Option<&FontFiles>) {
+        let revision = files.map(|f| f.revision);
+        if revision == self.files {
+            return;
+        }
+        self.files = revision;
+        self.fonts.truncate(self.own);
+        for file in files.map_or(&[][..], |f| &f.files[..]) {
+            if let Some(font) = Font::read(file.bytes.to_vec()) {
+                self.fonts.push(Slot::new(&file.name, file.uid, font));
+            }
+        }
+        self.paragraphs.clear();
+        self.kept = 0;
     }
 
     /// Starts a frame: when a letter didn't fit during the last one, the
@@ -180,7 +237,7 @@ impl Fonts {
     /// the rest into a new atlas, in their old order.
     fn make_room(&mut self) {
         let shown = self.frame;
-        let mut kept: Vec<((usize, GlyphId), Letter)> = self
+        let mut kept: Vec<((u64, GlyphId), Letter)> = self
             .letters
             .iter()
             .filter_map(|(&key, made)| {
@@ -216,24 +273,25 @@ impl Fonts {
         }
     }
 
-    /// The letter `id` of font `font`, its distance image made the first
-    /// time it's asked for. None for a letter with no outline (a space)
-    /// or when the atlas has no room for it this frame.
-    fn letter(&mut self, font: usize, id: GlyphId) -> Option<Letter> {
+    /// The letter `id` of the font in place `slot`, its distance image
+    /// made the first time it's asked for. None for a letter with no
+    /// outline (a space) or when the atlas has no room for it this frame.
+    fn letter(&mut self, slot: usize, id: GlyphId) -> Option<Letter> {
         let frame = self.frame;
-        if let Some(found) = self.letters.get_mut(&(font, id)) {
+        let key = (self.fonts.get(slot)?.uid, id);
+        if let Some(found) = self.letters.get_mut(&key) {
             return found.as_mut().map(|(letter, used)| {
                 *used = frame;
                 *letter
             });
         }
-        match self.make(font, id) {
+        match self.make(slot, id) {
             Made::Letter(letter) => {
-                self.letters.insert((font, id), Some((letter, frame)));
+                self.letters.insert(key, Some((letter, frame)));
                 Some(letter)
             }
             Made::Blank => {
-                self.letters.insert((font, id), None);
+                self.letters.insert(key, None);
                 None
             }
             // Not remembered: tried again once the atlas has made room.
@@ -241,8 +299,12 @@ impl Fonts {
         }
     }
 
-    fn make(&mut self, font: usize, id: GlyphId) -> Made {
-        let Some(outlined) = self.fonts.get(font).and_then(|f| f.outline(id, SDF_SIZE)) else {
+    fn make(&mut self, slot: usize, id: GlyphId) -> Made {
+        let Some(outlined) = self
+            .fonts
+            .get(slot)
+            .and_then(|f| f.font.outline(id, SDF_SIZE))
+        else {
             return Made::Blank;
         };
         let [left, top, right, bottom] = outlined.bounds();
@@ -283,37 +345,101 @@ impl Fonts {
         })
     }
 
-    /// How wide `text` is at `size` pixels in font `font`, and how tall a
-    /// line is.
-    pub fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
-        let last_font = self.fonts.len().saturating_sub(1);
-        let Some(f) = self.fonts.get_mut(font.min(last_font)) else {
-            return [0.0, 0.0];
-        };
-        let scaled = f.at(size.max(0.0));
-        let mut widest = 0.0_f32;
-        let mut lines = 0;
-        for text_line in text.split('\n') {
-            lines += 1;
-            let mut x = 0.0;
-            let mut last: Option<GlyphId> = None;
-            for c in text_line.chars().take(MAX_LETTERS) {
-                let (id, advance) = f.letter(c);
-                if let Some(prev) = last {
-                    x += scaled.px(f.kern(prev, id));
-                }
-                x += scaled.px(advance);
-                last = Some(id);
-            }
-            widest = widest.max(x);
+    /// The fonts `style` asks for, in order: the project's it names that
+    /// are in use, then the game's own [`TextStyle::font`].
+    fn stack(&self, style: &TextStyle) -> Vec<usize> {
+        let mut stack: Vec<usize> = style
+            .fonts
+            .iter()
+            .filter_map(|name| {
+                let name = name.trim().replace('\\', "/");
+                (self.own..self.fonts.len()).find(|&i| self.fonts[i].name.eq_ignore_ascii_case(&name))
+            })
+            .collect();
+        if self.own > 0 {
+            stack.push(style.font.min(self.own - 1));
+        } else if self.fonts.is_empty() {
+            return Vec::new();
         }
-        [widest, scaled.line() * lines as f32]
+        if stack.is_empty() {
+            stack.push(0);
+        }
+        stack.dedup();
+        stack
     }
 
-    /// Lays `text` out at `size` pixels in font `font` with its first
-    /// line's top left corner at `at`: each letter's box on the screen and
-    /// its place in the atlas. With `crisp`, each letter lands on whole
-    /// multiples of `step` (pixel art).
+    /// `text` laid out in `style` to `fit` (in design pixels at the text's
+    /// size): made the first time it's asked for, and kept while it's
+    /// asked for again. With no fonts at all, an empty paragraph.
+    pub fn paragraph(&mut self, text: &str, style: &TextStyle, fit: &Fit) -> Arc<Paragraph> {
+        self.asked += 1;
+        let hash = paragraph_hash(text, style, fit);
+        let asked = self.asked;
+        if let Some(found) = self.paragraphs.get_mut(&hash).and_then(|kept| {
+            kept.iter_mut()
+                .find(|k| &*k.text == text && k.style == *style && k.fit == *fit)
+        }) {
+            found.used = asked;
+            return Arc::clone(&found.paragraph);
+        }
+        let stack = self.stack(style);
+        let paragraph = if stack.is_empty() {
+            Arc::new(Paragraph::default())
+        } else {
+            Arc::new(
+                Builder {
+                    slots: &mut self.fonts,
+                    stack: &stack,
+                    style,
+                    fit: *fit,
+                    max_letters: MAX_LETTERS,
+                }
+                .build(text),
+            )
+        };
+        if self.kept >= MAX_PARAGRAPHS {
+            self.forget_old_paragraphs();
+        }
+        self.kept += 1;
+        self.paragraphs.entry(hash).or_default().push(Kept {
+            text: text.into(),
+            style: style.clone(),
+            fit: *fit,
+            paragraph: Arc::clone(&paragraph),
+            used: asked,
+        });
+        paragraph
+    }
+
+    /// Lets go of the half of the paragraphs kept that were asked for
+    /// longest ago.
+    fn forget_old_paragraphs(&mut self) {
+        let since = self.asked.saturating_sub(MAX_PARAGRAPHS as u64 / 2);
+        let mut kept = 0;
+        self.paragraphs.retain(|_, list| {
+            list.retain(|k| k.used >= since);
+            kept += list.len();
+            !list.is_empty()
+        });
+        self.kept = kept;
+    }
+
+    /// How many paragraphs are kept.
+    pub fn paragraphs_kept(&self) -> usize {
+        self.kept
+    }
+
+    /// How wide `text` is at `size` pixels in the game's font `font`, and
+    /// how tall its lines are, a line per `\n`.
+    pub fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
+        self.paragraph(text, &TextStyle::new(size, font), &Fit::default())
+            .size
+    }
+
+    /// Lays `text` out at `size` pixels in the game's font `font` with its
+    /// first line's top left corner at `at`, a line per `\n`: each letter's
+    /// box on the screen and its place in the atlas. With `crisp`, each
+    /// letter lands on whole multiples of `step` (pixel art).
     pub fn place(
         &mut self,
         font: usize,
@@ -322,51 +448,74 @@ impl Fonts {
         at: [f32; 2],
         crisp: Option<f32>,
     ) -> Vec<Placed> {
-        let font = font.min(self.fonts.len().saturating_sub(1));
-        let size = if size.is_finite() {
-            size.clamp(0.0, 4096.0)
-        } else {
-            0.0
-        };
-        let Some(scaled) = self.fonts.get(font).map(|f| f.at(size)) else {
-            return Vec::new();
-        };
-        let k = size / SDF_SIZE;
-        let line = scaled.line();
-        let mut out = Vec::new();
-        let mut y = at[1] + scaled.ascent();
-        for text_line in text.split('\n') {
-            let mut x = at[0];
-            let mut last: Option<GlyphId> = None;
-            for c in text_line.chars() {
-                if out.len() >= MAX_LETTERS {
-                    return out;
+        let paragraph = self.paragraph(text, &TextStyle::new(size, font), &Fit::default());
+        self.place_paragraph(&paragraph, Edge::Start, at, 1.0, crisp)
+    }
+
+    /// `paragraph`'s letters on the screen: its top left corner at `at`
+    /// (screen pixels), `scale` screen pixels to a design pixel, each line
+    /// placed along the paragraph's width by `align`. With `crisp`, each
+    /// letter lands on whole multiples of `step` (pixel art).
+    pub fn place_paragraph(
+        &mut self,
+        paragraph: &Paragraph,
+        align: Edge,
+        at: [f32; 2],
+        scale: f32,
+        crisp: Option<f32>,
+    ) -> Vec<Placed> {
+        let scale = if scale.is_finite() { scale.clamp(0.0, 1.0e4) } else { 0.0 };
+        let k = paragraph.text_size * scale / SDF_SIZE;
+        let mut out = Vec::with_capacity(paragraph.letters());
+        for line in &paragraph.lines {
+            let room = paragraph.size[0] - line.width;
+            let dx = match align {
+                Edge::Middle => room * 0.5,
+                Edge::End => room,
+                Edge::Start | Edge::Stretch => 0.0,
+            };
+            for g in paragraph.glyphs_of(line) {
+                let Some(letter) = self.letter(usize::from(g.slot), g.id) else {
+                    continue;
+                };
+                let [l, t, r, b] = letter.atlas.map(f32::from);
+                let pen = [
+                    at[0] + (dx + g.at[0]) * scale,
+                    at[1] + (line.baseline + g.at[1]) * scale,
+                ];
+                let mut left = pen[0] + letter.offset[0] * k;
+                let mut top = pen[1] + letter.offset[1] * k;
+                if let Some(step) = crisp.filter(|s| *s > 0.0) {
+                    left = (left / step).round() * step;
+                    top = (top / step).round() * step;
                 }
-                let f = &mut self.fonts[font];
-                let (id, advance) = f.letter(c);
-                if let Some(prev) = last {
-                    x += scaled.px(f.kern(prev, id));
-                }
-                if let Some(letter) = self.letter(font, id) {
-                    let [l, t, r, b] = letter.atlas.map(f32::from);
-                    let mut left = x + letter.offset[0] * k;
-                    let mut top = y + letter.offset[1] * k;
-                    if let Some(step) = crisp.filter(|s| *s > 0.0) {
-                        left = (left / step).round() * step;
-                        top = (top / step).round() * step;
-                    }
+                let rect = [left, top, left + (r - l) * k, top + (b - t) * k];
+                if rect.iter().all(|v| v.is_finite()) {
                     out.push(Placed {
-                        rect: [left, top, left + (r - l) * k, top + (b - t) * k],
+                        rect,
                         atlas: letter.atlas,
                     });
                 }
-                x += scaled.px(advance);
-                last = Some(id);
             }
-            y += line;
         }
         out
     }
+}
+
+/// What a paragraph is laid out from, as one number.
+fn paragraph_hash(text: &str, style: &TextStyle, fit: &Fit) -> u64 {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut h);
+    style.size.to_bits().hash(&mut h);
+    style.font.hash(&mut h);
+    style.fonts.hash(&mut h);
+    style.line_height.to_bits().hash(&mut h);
+    style.letter_spacing.to_bits().hash(&mut h);
+    fit.width.map(f32::to_bits).hash(&mut h);
+    fit.wrap.hash(&mut h);
+    fit.lines.hash(&mut h);
+    fit.cut.hash(&mut h);
+    h.finish()
 }
 
 /// A distance image from a letter's coverage (0 to 1 a pixel): 128 on

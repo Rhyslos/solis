@@ -124,11 +124,13 @@ pub enum NameKind {
     Level,
     /// A tag (`Tag.Enemy`).
     Tag,
+    /// A font (`Font.Lora`, stage 1's text layout).
+    Font,
 }
 
 impl NameKind {
     /// Every kind, in the order Solis lists them.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Sound,
         Self::Clip,
         Self::Picture,
@@ -136,6 +138,7 @@ impl NameKind {
         Self::Screen,
         Self::Level,
         Self::Tag,
+        Self::Font,
     ];
 
     /// The state's name in `solis/project.lst`: `Sound`.
@@ -148,6 +151,7 @@ impl NameKind {
             Self::Screen => "Screen",
             Self::Level => "Level",
             Self::Tag => "Tag",
+            Self::Font => "Font",
         }
     }
 

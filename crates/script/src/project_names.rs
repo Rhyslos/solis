@@ -64,6 +64,9 @@ pub struct Names {
     /// Its levels: their paths in the assets, without `.sollevel`
     /// (`forest/cave`; decision 0127, for a field that picks one).
     pub levels: Vec<String>,
+    /// Its fonts: their paths in the assets, without `.ttf` or `.otf`
+    /// (`fonts/lora`; stage 1, text layout).
+    pub fonts: Vec<String>,
 }
 
 impl Names {
@@ -86,6 +89,7 @@ impl Names {
             tags: Vec::new(),
             timers: Vec::new(),
             levels: Vec::new(),
+            fonts: Vec::new(),
         }
     }
 }
@@ -188,6 +192,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let tag = names_text("Tag", &names.tags, "tag", true, &mut notes);
     let timer = names_text("Timer", &names.timers, "timer", true, &mut notes);
     let level = state_text("Level", &names.levels, "level", &mut notes);
+    let font = state_text("Font", &names.fonts, "font", &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -218,6 +223,9 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          -- The project's levels, folders as options inside options: Level.Forest.Cave for\n\
          -- forest/cave.sollevel.\n\
          {level}\n\n\
+         -- The project's fonts (TrueType and OpenType files), folders as options inside options:\n\
+         -- Font.Fonts.Lora for fonts/Lora.ttf.\n\
+         {font}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")

@@ -46,12 +46,18 @@ pub enum FileKind {
     /// Plain text: notes and data ([`TEXT_EXTENSIONS`]), shown in
     /// Properties and opened in the computer's program for it.
     Text,
+    /// A font (TrueType `.ttf` or OpenType `.otf`), for game screens'
+    /// text (stage 1, text layout).
+    Font,
     /// Anything else.
     Other,
 }
 
 /// The extensions of plain text files the Library shows as text.
 pub const TEXT_EXTENSIONS: [&str; 6] = ["md", "txt", "json", "csv", "toml", "ron"];
+
+/// The extensions of font files a project's screens can use.
+pub const FONT_EXTENSIONS: [&str; 2] = ["ttf", "otf"];
 
 /// The extension of level files.
 pub const LEVEL_EXTENSION: &str = "sollevel";
@@ -94,6 +100,7 @@ impl FileKind {
             e if e == TILESET_EXTENSION => Self::Tileset,
             e if e == TILE_MAP_EXTENSION => Self::TileMap,
             e if TEXT_EXTENSIONS.contains(&e) => Self::Text,
+            e if FONT_EXTENSIONS.contains(&e) => Self::Font,
             _ => Self::Other,
         }
     }
@@ -701,5 +708,9 @@ mod tests {
             assert_eq!(FileKind::of(Path::new(text)), FileKind::Text, "{text}");
         }
         assert_eq!(FileKind::of(Path::new("notes.md.exe")), FileKind::Other);
+        for font in ["fonts/Lora.ttf", "NotoSansJP.OTF"] {
+            assert_eq!(FileKind::of(Path::new(font)), FileKind::Font, "{font}");
+        }
+        assert_eq!(FileKind::of(Path::new("lora.ttf.exe")), FileKind::Other);
     }
 }
