@@ -194,10 +194,16 @@ fn read_word(inside: &str) -> Result<Word, String> {
             }
         }
         "pause" | "speed" => {
-            let number = value.and_then(|v| v.parse::<f32>().ok()).filter(|n| n.is_finite());
+            let number = value
+                .and_then(|v| v.parse::<f32>().ok())
+                .filter(|n| n.is_finite());
             match (name, number) {
-                ("pause", Some(s)) if (0.0..=MAX_PAUSE).contains(&s) => Ok(Word::Beat(Beat::Pause(s))),
-                ("speed", Some(s)) if (0.0..=MAX_SPEED).contains(&s) => Ok(Word::Beat(Beat::Speed(s))),
+                ("pause", Some(s)) if (0.0..=MAX_PAUSE).contains(&s) => {
+                    Ok(Word::Beat(Beat::Pause(s)))
+                }
+                ("speed", Some(s)) if (0.0..=MAX_SPEED).contains(&s) => {
+                    Ok(Word::Beat(Beat::Speed(s)))
+                }
                 ("pause", _) => Err(format!(
                     "[pause] takes the seconds to wait, from 0 to {MAX_PAUSE}: [pause 0.5]"
                 )),
@@ -271,7 +277,10 @@ impl Reading {
             }
             Word::Close(name) => {
                 let Some(i) = self.open.iter().rposition(|(e, _)| e.name() == name) else {
-                    self.mistake(at, format!("[/{name}] closes nothing: no [{name}] is open before it"));
+                    self.mistake(
+                        at,
+                        format!("[/{name}] closes nothing: no [{name}] is open before it"),
+                    );
                     return false;
                 };
                 let (effect, from) = self.open.remove(i);

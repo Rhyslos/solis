@@ -159,12 +159,12 @@ fn ui_fs(o_in: Out) -> @location(0) vec4<f32> {
     if (kind == KIND_LETTER) {
         // A slanted letter: each point read from where it is upright,
         // moved back along the lean by its height over the baseline.
-        var at = o.at;
-        at.x = at.x - o.letter.y * (o.letter.z - at.y);
-        let lp = at - centre;
+        var q = o.at;
+        q.x = q.x - o.letter.y * (o.letter.z - q.y);
+        let lp = q - centre;
         // Where in the letter's distance image, then how far from its
         // edge in the image's pixels, then in the screen's.
-        let t = clamp((at - o.rect.xy) / max(o.rect.zw - o.rect.xy, vec2<f32>(0.0001)), vec2<f32>(0.0), vec2<f32>(1.0));
+        let t = clamp((q - o.rect.xy) / max(o.rect.zw - o.rect.xy, vec2<f32>(0.0001)), vec2<f32>(0.0), vec2<f32>(1.0));
         let uv = mix(o.ends.xy, o.ends.zw, t) / ATLAS_SIDE;
         let v = textureSampleLevel(atlas, atlas_sampler, uv, 0.0).r;
         d = -((v * 255.0 - 128.0) / 127.0 * SPREAD) * o.shape.x;

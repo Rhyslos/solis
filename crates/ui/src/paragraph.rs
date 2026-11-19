@@ -347,7 +347,13 @@ impl Builder<'_> {
         let mut paragraph = Paragraph {
             text_size: size,
             cut,
-            icons: self.style.inline.icons.iter().map(|&w| icon_width(w) * size).collect(),
+            icons: self
+                .style
+                .inline
+                .icons
+                .iter()
+                .map(|&w| icon_width(w) * size)
+                .collect(),
             ..Paragraph::default()
         };
         let mut widest = 0.0_f32;

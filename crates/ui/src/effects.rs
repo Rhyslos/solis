@@ -40,9 +40,7 @@ impl TextEffects {
     /// What `marked` does, for text number `number`, typing out at `speed`
     /// letters a second (0: at once). None when it does nothing.
     pub fn of(marked: &Marked, number: u32, speed: Option<f32>) -> Option<Self> {
-        let typing = speed
-            .map(|s| TypeOut::of(marked, s))
-            .filter(TypeOut::waits);
+        let typing = speed.map(|s| TypeOut::of(marked, s)).filter(TypeOut::waits);
         if marked.runs.is_empty() && marked.icons.is_empty() && typing.is_none() {
             return None;
         }

@@ -640,6 +640,7 @@ fn a_screen_s_button_is_found_where_its_picture_is_drawn() {
         ui_size: 1.0,
         look: crate::ScreenLook::default(),
         fonts: None,
+        typing: None,
     };
     let at = |p: [f32; 2]| clickable_at(&screen, area.size, Some(3), p, &mut Fixed);
     assert_eq!(at([480.0, 270.0]), Some(0));
@@ -733,6 +734,7 @@ fn a_canvas_cuts_off_its_shapes_at_its_edges() {
         ui_size: 1.0,
         look: crate::ScreenLook::default(),
         fonts: None,
+        typing: None,
     };
     let shapes = crate::layout(&screen, [400, 300], None);
     let boxed = shapes

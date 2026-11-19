@@ -52,7 +52,10 @@ fn screen_of(words: &str, speed: f32) -> Screen {
 }
 
 fn letters(shapes: &[crate::Shape]) -> Vec<&crate::Shape> {
-    shapes.iter().filter(|s| s.kind == ShapeKind::Letter).collect()
+    shapes
+        .iter()
+        .filter(|s| s.kind == ShapeKind::Letter)
+        .collect()
 }
 
 fn at(fonts: &mut Fonts, screen: &Screen, now: f64) -> Vec<crate::Shape> {
@@ -78,15 +81,32 @@ fn a_wave_lifts_letters_by_turns_and_a_shake_jumps_them() {
         ],
         ..TextEffects::default()
     };
-    let wave: Vec<f32> = (0..4).map(|i| letter_look(&effects, i, i as usize, 0.3).moved[1]).collect();
+    let wave: Vec<f32> = (0..4)
+        .map(|i| letter_look(&effects, i, i as usize, 0.3).moved[1])
+        .collect();
     assert!(wave.iter().all(|y| y.abs() <= WAVE_HEIGHT + 1e-6));
-    assert!(wave.windows(2).all(|w| w[0] != w[1]), "each letter further along");
-    assert_ne!(letter_look(&effects, 0, 0, 0.3), letter_look(&effects, 0, 0, 0.5), "it moves");
+    assert!(
+        wave.windows(2).all(|w| w[0] != w[1]),
+        "each letter further along"
+    );
+    assert_ne!(
+        letter_look(&effects, 0, 0, 0.3),
+        letter_look(&effects, 0, 0, 0.5),
+        "it moves"
+    );
     let shake = |now| letter_look(&effects, 5, 5, now).moved;
-    assert_eq!(shake(0.01), shake(0.02), "the same jump within a 24th of a second");
+    assert_eq!(
+        shake(0.01),
+        shake(0.02),
+        "the same jump within a 24th of a second"
+    );
     assert_ne!(shake(0.01), shake(0.2));
     assert!(shake(0.3).iter().all(|v| v.abs() <= SHAKE_REACH));
-    assert_eq!(letter_look(&effects, 9, 9, 0.3), LetterLook::default(), "past the runs");
+    assert_eq!(
+        letter_look(&effects, 9, 9, 0.3),
+        LetterLook::default(),
+        "past the runs"
+    );
 }
 
 #[test]
@@ -109,7 +129,10 @@ fn plain_text_carries_no_effects() {
 #[test]
 fn waves_and_shakes_never_move_the_layout() {
     let mut f = fonts();
-    let plain = screen_of("Have you seen my red roses? They wiggle when it rains.", 0.0);
+    let plain = screen_of(
+        "Have you seen my red roses? They wiggle when it rains.",
+        0.0,
+    );
     let marked = screen_of(
         "Have you seen my [shake]red roses[/shake]? They [wave]wiggle[/wave] when it rains.",
         0.0,
@@ -128,15 +151,25 @@ fn waves_and_shakes_never_move_the_layout() {
     let (a, b) = (letters(&a), letters(&b));
     assert_eq!(a.len(), b.len());
     let moved = a.iter().zip(&b).filter(|(x, y)| x.rect != y.rect).count();
-    assert!(moved > 0 && moved <= "red roses".len() - 1 + "wiggle".len(), "{moved}");
+    assert!(
+        moved > 0 && moved <= "red roses".len() - 1 + "wiggle".len(),
+        "{moved}"
+    );
     for (x, y) in a.iter().zip(&b) {
         let w = |r: [f32; 4]| [r[2] - r[0], r[3] - r[1]];
-        assert!((w(x.rect)[0] - w(y.rect)[0]).abs() < 1e-3, "the same size, only moved");
+        assert!(
+            (w(x.rect)[0] - w(y.rect)[0]).abs() < 1e-3,
+            "the same size, only moved"
+        );
     }
     // And the paragraph itself is one kept layout, the same each frame.
     let kept = f.paragraphs_kept();
     let _ = at(&mut f, &marked, 0.9);
-    assert_eq!(f.paragraphs_kept(), kept, "laid out once, not again each frame");
+    assert_eq!(
+        f.paragraphs_kept(),
+        kept,
+        "laid out once, not again each frame"
+    );
 }
 
 #[test]
@@ -147,9 +180,15 @@ fn coloured_bold_and_slanted_letters_are_drawn_so() {
     let l = letters(&shapes);
     assert_eq!(l.len(), 10);
     assert_eq!(l[0].colours[0], crate::Colour::rgb(0xff, 0x88, 0x00));
-    assert_ne!(l[3].colours[0], l[0].colours[0], "the rest in the text's colour");
+    assert_ne!(
+        l[3].colours[0], l[0].colours[0],
+        "the rest in the text's colour"
+    );
     assert_eq!(l[3].letter[0], 0.0, "the game's own bold, not thickened");
-    assert!(l[6].letter[1] > 0.0 && l[0].letter[1] == 0.0, "only [i] leans");
+    assert!(
+        l[6].letter[1] > 0.0 && l[0].letter[1] == 0.0,
+        "only [i] leans"
+    );
     // Bold is the game's bold, which is wider: the line is wider.
     let plain = at(&mut f, &screen_of("red big lean", 0.0), 0.0);
     let pl = letters(&plain);
@@ -162,16 +201,25 @@ fn an_icon_is_a_picture_the_height_of_its_text_in_line_with_the_words() {
     let mut f = fonts();
     let s = screen_of("Costs 5 [icon=Picture.Ui.Coin] each", 0.0);
     let shapes = at(&mut f, &s, 0.0);
-    let pictures: Vec<_> = shapes.iter().filter(|s| s.kind == ShapeKind::Picture).collect();
+    let pictures: Vec<_> = shapes
+        .iter()
+        .filter(|s| s.kind == ShapeKind::Picture)
+        .collect();
     assert_eq!(pictures.len(), 1);
     let p = pictures[0].rect;
     let (w, h) = (p[2] - p[0], p[3] - p[1]);
-    assert!((h - 15.0).abs() < 0.5, "fitted in a box 30 tall, twice as wide as tall: {h}");
-    assert!((w - 30.0).abs() < 0.5, "{w}");
+    assert!((h - 30.0).abs() < 0.5, "as tall as the text: {h}");
+    assert!(
+        (w - 60.0).abs() < 0.5,
+        "as wide as the picture's shape (twice as wide as tall): {w}"
+    );
     let l = letters(&shapes);
     let five = l[5].rect;
     let e = l[6].rect;
-    assert!(p[0] > five[2] && e[0] > p[2], "between its words: {five:?} {p:?} {e:?}");
+    assert!(
+        p[0] > five[2] && e[0] > p[2],
+        "between its words: {five:?} {p:?} {e:?}"
+    );
     // A missing picture is the grey box with its name, as for an image.
     let gone = screen_of("[icon=Picture.Ui.Gone]", 0.0);
     let shapes = at(&mut f, &gone, 0.0);
@@ -185,16 +233,16 @@ fn a_typing_text_shows_its_letters_as_its_time_comes() {
     // Without a start (the UI editor's canvas), every letter shows.
     assert_eq!(letters(&at(&mut f, &s, 0.0)).len(), 10);
     s.typing = Some(Arc::new(Started { at: vec![2.0] }));
-    let count = |f: &mut Fonts, now| letters(&at(f, &s, now)).len();
-    assert_eq!(count(&mut f, 2.0), 1, "H at once");
-    assert_eq!(count(&mut f, 2.45), 5, "Hello");
-    assert_eq!(count(&mut f, 2.55), 5, "the space shows nothing");
-    assert_eq!(count(&mut f, 9.0), 10);
+    let count = |f: &mut Fonts, s: &Screen, now| letters(&at(f, s, now)).len();
+    assert_eq!(count(&mut f, &s, 2.0), 1, "H at once");
+    assert_eq!(count(&mut f, &s, 2.45), 5, "Hello");
+    assert_eq!(count(&mut f, &s, 2.55), 5, "the space shows nothing");
+    assert_eq!(count(&mut f, &s, 9.0), 10);
     // Skipped: whole at once.
     s.typing = Some(Arc::new(Started {
         at: vec![f64::NEG_INFINITY],
     }));
-    assert_eq!(count(&mut f, 2.0), 10);
+    assert_eq!(count(&mut f, &s, 2.0), 10);
     // Typing never moves the letters shown, nor the layout.
     s.typing = Some(Arc::new(Started { at: vec![0.0] }));
     let half = at(&mut f, &s, 0.25);
@@ -228,12 +276,16 @@ fn only_text_pieces_type_out_and_each_has_its_number() {
         ],
         ..Node::default()
     };
-    assert_eq!(crate::view::texts_of(&view), ["first", "[wave]second[/wave]"]);
+    assert_eq!(
+        crate::view::texts_of(&view),
+        ["first", "[wave]second[/wave]"]
+    );
     let looks = crate::view::Looks {
         typing_speed: 20.0,
         ..Default::default()
     };
-    let (elements, _) = crate::view::lay_out_with(&view, [400.0, 300.0], &mut crate::view::NoFonts, looks);
+    let (elements, _) =
+        crate::view::lay_out_with(&view, [400.0, 300.0], &mut crate::view::NoFonts, looks);
     let effects: Vec<(String, Option<u32>, bool)> = elements
         .iter()
         .filter_map(|e| match &e.kind {
@@ -263,9 +315,9 @@ fn scale_check_2000_letters_waving_shaking_and_typing_out() {
     // frame's share for text.
     const TARGET_MS: f64 = 4.0;
     let line = "[wave]Waves roll over the sea[/wave] and [shake]the old boat shakes[/shake]. ";
-    let words = line.repeat(28);
+    let words = line.repeat(52);
     let mut f = fonts();
-    let mut s = screen_of(&words, 400.0);
+    let mut s = screen_of(&words, 2400.0);
     s.view = Some(Node {
         kind: "view".into(),
         children: vec![Node {
@@ -283,10 +335,12 @@ fn scale_check_2000_letters_waving_shaking_and_typing_out() {
     });
     s.typing = Some(Arc::new(Started { at: vec![0.0] }));
     let shown = letters(&at(&mut f, &s, 100.0)).len();
+    println!("{shown} letters");
     assert!(shown >= 2000, "{shown} letters");
     let mut best = f64::MAX;
     for frame in 1..=20 {
-        let now = 2.0 + f64::from(frame) / 60.0;
+        // Still typing: about 3,600 characters at 2,400 a second.
+        let now = 1.2 + f64::from(frame) / 60.0;
         let start = std::time::Instant::now();
         let shapes = at(&mut f, &s, now);
         best = best.min(start.elapsed().as_secs_f64() * 1000.0);

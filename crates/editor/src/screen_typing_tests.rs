@@ -40,23 +40,49 @@ fn entity() -> EntityId {
 fn a_text_keeps_its_start_while_its_words_stay_and_starts_again_when_they_change() {
     let mut t = ScreenTyping::default();
     let e = entity();
-    let first = t.update((e, "Talk"), &view(&["Mira", "Hello there"]), typist(10.0, None), 1.0);
+    let first = t.update(
+        (e, "Talk"),
+        &view(&["Mira", "Hello there"]),
+        typist(10.0, None),
+        1.0,
+    );
     assert_eq!(first.at, [1.0, 1.0]);
-    let same = t.update((e, "Talk"), &view(&["Mira", "Hello there"]), typist(10.0, None), 2.0);
-    assert!(Arc::ptr_eq(&first, &same), "nothing changed: the same starts");
-    let next = t.update((e, "Talk"), &view(&["Mira", "Next line"]), typist(10.0, None), 3.0);
+    let same = t.update(
+        (e, "Talk"),
+        &view(&["Mira", "Hello there"]),
+        typist(10.0, None),
+        2.0,
+    );
+    assert!(
+        Arc::ptr_eq(&first, &same),
+        "nothing changed: the same starts"
+    );
+    let next = t.update(
+        (e, "Talk"),
+        &view(&["Mira", "Next line"]),
+        typist(10.0, None),
+        3.0,
+    );
     assert_eq!(next.at, [1.0, 3.0], "only the changed text starts again");
     t.keep_only(&[(e, "Talk".into())]);
     assert!(t.active);
     t.keep_only(&[]);
-    assert!(!t.active && t.started(e, "Talk").is_none(), "hidden: forgotten");
+    assert!(
+        !t.active && t.started(e, "Talk").is_none(),
+        "hidden: forgotten"
+    );
 }
 
 #[test]
 fn typing_finished_is_said_once_when_every_text_has_typed_out() {
     let mut t = ScreenTyping::default();
     let e = entity();
-    t.update((e, "Talk"), &view(&["Hi", "Hello"]), typist(10.0, None), 0.0);
+    t.update(
+        (e, "Talk"),
+        &view(&["Hi", "Hello"]),
+        typist(10.0, None),
+        0.0,
+    );
     // "Hello" types for 0.4 s.
     assert!(t.tick(0.3).0.is_empty());
     let (sent, _) = t.tick(0.45);
@@ -74,7 +100,12 @@ fn typing_finished_is_said_once_when_every_text_has_typed_out() {
 #[test]
 fn a_screen_that_shows_text_at_once_says_nothing() {
     let mut t = ScreenTyping::default();
-    t.update((entity(), "Hud"), &view(&["Gold 5"]), typist(0.0, Some("Sfx.Blip")), 0.0);
+    t.update(
+        (entity(), "Hud"),
+        &view(&["Gold 5"]),
+        typist(0.0, Some("Sfx.Blip")),
+        0.0,
+    );
     let (sent, sounds) = t.tick(1.0);
     assert!(sent.is_empty() && sounds.is_empty());
     t.keep_only(&[(entity(), "Hud".into())]);
@@ -85,7 +116,12 @@ fn a_screen_that_shows_text_at_once_says_nothing() {
 fn finish_typing_shows_it_all_and_typing_finished_follows() {
     let mut t = ScreenTyping::default();
     let e = entity();
-    t.update((e, "Talk"), &view(&["A long line of dialogue"]), typist(10.0, None), 0.0);
+    t.update(
+        (e, "Talk"),
+        &view(&["A long line of dialogue"]),
+        typist(10.0, None),
+        0.0,
+    );
     t.finish(e, "talk", 0.2);
     let started = t.started(e, "Talk").unwrap();
     assert_eq!(started.at, [f64::NEG_INFINITY], "shown whole");
@@ -99,7 +135,12 @@ fn finish_typing_shows_it_all_and_typing_finished_follows() {
 fn the_typing_sound_plays_at_most_once_a_tick_and_never_on_spaces() {
     let mut t = ScreenTyping::default();
     let e = entity();
-    t.update((e, "Talk"), &view(&["ab  cd"]), typist(60.0, Some("Sfx.Blip")), 0.0);
+    t.update(
+        (e, "Talk"),
+        &view(&["ab  cd"]),
+        typist(60.0, Some("Sfx.Blip")),
+        0.0,
+    );
     let tick = world::TICK;
     // Half way through each tick, so no letter is due exactly on one.
     let sounds: Vec<usize> = (0..8)
@@ -133,7 +174,11 @@ fn a_load_that_takes_the_clock_back_starts_typing_again() {
 fn mistakes_in_text_worked_out_as_the_game_runs_are_said() {
     let said = mistakes_in("Talk", &view(&["fine", "[glow]oops", "[wave]ok[/wave]"]));
     assert_eq!(said.len(), 1);
-    assert!(said[0].contains("Talk") && said[0].contains("isn't a text effect"), "{}", said[0]);
+    assert!(
+        said[0].contains("Talk") && said[0].contains("isn't a text effect"),
+        "{}",
+        said[0]
+    );
 }
 
 /// Game code that shows the Talk screen, counts `TypingFinished` and the
@@ -242,7 +287,10 @@ fn play_at(fps: u32, ticks: u64, skip_at: i64) -> (Workbench, EntityId, Vec<(f64
         fonts.set_clock(now);
         fonts.begin_frame();
         let shapes = ui::layout_with(&picture, [1280, 720], None, Some(&mut fonts));
-        let letters = shapes.iter().filter(|s| s.kind == ui::ShapeKind::Letter).count();
+        let letters = shapes
+            .iter()
+            .filter(|s| s.kind == ui::ShapeKind::Letter)
+            .count();
         frames.push((now, letters));
     }
     (w, id, frames)
@@ -263,7 +311,10 @@ fn the_line_types_out_the_same_and_finishes_on_the_same_tick_at_30_and_144_frame
     assert!(shared > 20, "{shared}");
     // Half way it was half typed; at the end, whole.
     // Mira and the line's 46 letters.
-    assert!(slow_frames.iter().any(|(_, n)| *n > 4 && *n < 50), "{slow_frames:?}");
+    assert!(
+        slow_frames.iter().any(|(_, n)| *n > 4 && *n < 50),
+        "{slow_frames:?}"
+    );
     assert_eq!(slow_frames.last().unwrap().1, 50);
     // Game code heard TypingFinished once, on the same tick.
     assert_eq!(talker_field(&mut slow, id, "finished"), 1);
@@ -273,7 +324,11 @@ fn the_line_types_out_the_same_and_finishes_on_the_same_tick_at_30_and_144_frame
     // 58 characters at 40 a second and a pause of 0.2: about 1.6 s.
     assert!((95..=105).contains(&at), "{at}");
     // The typing sound played, a tick at a time.
-    assert!(slow.open.game_sounds.len() > 30, "{}", slow.open.game_sounds.len());
+    assert!(
+        slow.open.game_sounds.len() > 30,
+        "{}",
+        slow.open.game_sounds.len()
+    );
 }
 
 #[test]

@@ -151,7 +151,9 @@ pub fn text_marks(files: &[(String, String)]) -> (Vec<FileUse>, Vec<CodeProblem>
             let at = |chars: u32| column.saturating_add(1).saturating_add(chars);
             // Each icon at its own `[` as written.
             let char_at = |name: &str| {
-                let byte = words.find(&format!("icon={name}")).map_or(0, |b| b.saturating_sub(1));
+                let byte = words
+                    .find(&format!("icon={name}"))
+                    .map_or(0, |b| b.saturating_sub(1));
                 u32::try_from(words[..byte].chars().count()).unwrap_or(u32::MAX)
             };
             for icon in &marked.icons {

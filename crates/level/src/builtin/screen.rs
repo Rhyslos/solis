@@ -387,7 +387,11 @@ mod tests {
         let old = Screen::from_data(&ComponentData::default());
         assert_eq!((old.glow, old.pixel_size), (0.0, 1), "older files: no look");
         assert_eq!(
-            (old.typing_speed, old.typing_sound.as_str(), old.sound_every_word),
+            (
+                old.typing_speed,
+                old.typing_sound.as_str(),
+                old.sound_every_word
+            ),
             (0.0, "", false),
             "older files: shown at once, silent"
         );

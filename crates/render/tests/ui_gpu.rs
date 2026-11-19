@@ -977,8 +977,12 @@ fn text_effects_colour_wave_show_icons_and_type_out() {
     screen.typing = None;
     let whole = letters(&ui::layout_with(&screen, size, None, Some(&mut fonts)));
     assert!(half < whole, "{half} of {whole}");
-    let Some(pixels) = draw_all(size, &shapes, Some(&fonts.atlas), screen.pictures.as_deref())
-    else {
+    let Some(pixels) = draw_all(
+        size,
+        &shapes,
+        Some(&fonts.atlas),
+        screen.pictures.as_deref(),
+    ) else {
         return;
     };
     matches_approved("text-effects", size, &pixels);

@@ -625,7 +625,11 @@ pub fn texts_of(view: &Node) -> Vec<String> {
 /// A text piece's words read for markup (stage 1, text effects): its
 /// plain words, and what the markup does when it does anything (or the
 /// text types out).
-fn read_text(kind: &str, text: String, typing: bool) -> (String, Option<Box<crate::markup::Marked>>) {
+fn read_text(
+    kind: &str,
+    text: String,
+    typing: bool,
+) -> (String, Option<Box<crate::markup::Marked>>) {
     if !shows_text(kind) || !(text.contains('[') || text.contains(crate::markup::ICON) || typing) {
         return (text, None);
     }
@@ -683,7 +687,11 @@ fn lay(node: &Node, depth: usize, counts: &mut Counts, looks: Looks, fonts: &[St
         }
     }
     let typing = number.is_some() && looks.typing_speed > 0.0;
-    let (text, marked) = read_text(&node.kind, node.text.chars().take(MAX_TEXT).collect(), typing);
+    let (text, marked) = read_text(
+        &node.kind,
+        node.text.chars().take(MAX_TEXT).collect(),
+        typing,
+    );
     Laid {
         kind: node.kind.clone(),
         text,

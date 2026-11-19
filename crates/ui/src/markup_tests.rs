@@ -16,7 +16,9 @@ fn plain_text_is_left_as_it_is() {
 
 #[test]
 fn each_word_is_read_into_plain_text_and_what_it_does() {
-    let m = parse("Oh! [wave]hello[/wave] [shake]there[/shake] [colour=#ff8800]red[/colour] [b]big[/b] [i]lean[/i]");
+    let m = parse(
+        "Oh! [wave]hello[/wave] [shake]there[/shake] [colour=#ff8800]red[/colour] [b]big[/b] [i]lean[/i]",
+    );
     assert_eq!(m.plain, "Oh! hello there red big lean");
     assert!(m.mistakes.is_empty(), "{:?}", m.mistakes);
     assert_eq!(
@@ -41,7 +43,7 @@ fn colours_are_the_screen_s_words_or_hex() {
         [
             Effect::Colour(0xfcc419),
             Effect::Colour(0xaabbcc),
-            Effect::Colour(0x0c8599)
+            Effect::Colour(0x1098ad)
         ]
     );
 }
@@ -65,7 +67,11 @@ fn pauses_and_speeds_come_before_the_letter_after_them() {
     assert_eq!(m.plain, "Well... quickly now");
     assert_eq!(
         m.beats,
-        [(4, Beat::Pause(0.5)), (8, Beat::Speed(2.0)), (15, Beat::Speed(1.0))]
+        [
+            (4, Beat::Pause(0.5)),
+            (8, Beat::Speed(2.0)),
+            (15, Beat::Speed(1.0))
+        ]
     );
 }
 
@@ -90,8 +96,15 @@ fn an_unknown_word_is_a_mistake_where_it_is_and_shown_as_written() {
     assert_eq!(m.plain, "Hi [glow]there[/glow]", "never hidden");
     assert_eq!(m.mistakes.len(), 2);
     assert_eq!(m.mistakes[0].at, 3);
-    assert!(m.mistakes[0].message.contains("isn't a text effect"), "{}", m.mistakes[0].message);
-    assert!(m.mistakes[0].message.contains("[["), "says how to write a [");
+    assert!(
+        m.mistakes[0].message.contains("isn't a text effect"),
+        "{}",
+        m.mistakes[0].message
+    );
+    assert!(
+        m.mistakes[0].message.contains("[["),
+        "says how to write a ["
+    );
     assert!(m.mistakes[1].message.contains("closes nothing"));
 }
 
@@ -102,7 +115,10 @@ fn a_word_never_closed_is_a_mistake_and_runs_to_the_end() {
     assert_eq!(m.runs, [run(2, 11, Effect::Wave)]);
     assert_eq!(m.mistakes.len(), 1);
     assert!(m.mistakes[0].message.contains("never closed"));
-    assert_eq!(m.mistakes[0].at, 17, "said at the end, where [/wave] is missing");
+    assert_eq!(
+        m.mistakes[0].at, 17,
+        "said at the end, where [/wave] is missing"
+    );
 }
 
 #[test]

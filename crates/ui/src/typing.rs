@@ -46,7 +46,11 @@ impl TypeOut {
     /// `marked` typed out at `speed` letters a second (0 or less: at once),
     /// with its pauses and speed changes.
     pub fn of(marked: &Marked, speed: f32) -> Self {
-        let speed = if speed.is_finite() { f64::from(speed.max(0.0)) } else { 0.0 };
+        let speed = if speed.is_finite() {
+            f64::from(speed.max(0.0))
+        } else {
+            0.0
+        };
         let mut beats = marked.beats.iter().peekable();
         let mut times = 1.0_f64;
         let mut t = 0.0_f64;

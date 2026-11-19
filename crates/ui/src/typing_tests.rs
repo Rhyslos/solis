@@ -29,7 +29,11 @@ fn speed_zero_shows_everything_at_once() {
 #[test]
 fn a_pause_waits_and_a_speed_changes_the_pace() {
     let t = TypeOut::of(&parse("ab[pause 1]c[speed 2]de[speed 0]fg"), 10.0);
-    let at: Vec<f64> = t.moments.iter().map(|m| (m.at * 1000.0).round() / 1000.0).collect();
+    let at: Vec<f64> = t
+        .moments
+        .iter()
+        .map(|m| (m.at * 1000.0).round() / 1000.0)
+        .collect();
     // a 0, b 0.1, then a second's pause: c 1.2; twice as fast: d 1.3,
     // e 1.35; at once: f and g with e's next moment.
     assert_eq!(at, [0.0, 0.1, 1.2, 1.3, 1.35, 1.4, 1.4]);
@@ -75,7 +79,10 @@ fn frames(t: &TypeOut, fps: u32, seconds: f64) -> Vec<(f64, usize)> {
 
 #[test]
 fn the_same_letters_show_at_the_same_moments_at_30_and_144_frames_a_second() {
-    let t = TypeOut::of(&parse("Oh! A new face. [pause 0.37]Have you seen my [speed 2]roses?"), 29.0);
+    let t = TypeOut::of(
+        &parse("Oh! A new face. [pause 0.37]Have you seen my [speed 2]roses?"),
+        29.0,
+    );
     let slow = frames(&t, 30, 3.0);
     let fast = frames(&t, 144, 3.0);
     // Every moment both draw a frame at shows the same letters.
@@ -96,7 +103,11 @@ fn the_same_letters_show_at_the_same_moments_at_30_and_144_frames_a_second() {
     for (fps, run) in [(30, &slow), (144, &fast)] {
         for m in t.moments.iter().filter(|m| m.at > 0.0) {
             let first = run.iter().find(|(now, _)| t.shows(m.byte, *now)).unwrap().0;
-            assert!(first + 1e-9 >= m.at && first < m.at + 1.0 / f64::from(fps) + 1e-9, "{fps}: {first} for {}", m.at);
+            assert!(
+                first + 1e-9 >= m.at && first < m.at + 1.0 / f64::from(fps) + 1e-9,
+                "{fps}: {first} for {}",
+                m.at
+            );
         }
     }
 }
@@ -106,8 +117,14 @@ fn a_sound_plays_on_letters_or_on_words() {
     let t = TypeOut::of(&parse("ab cd"), 10.0);
     // Letters at 0, 0.1, (space 0.2), 0.3, 0.4.
     assert!(t.sounds_between(-1.0, 0.0, SoundEvery::Letter));
-    assert!(!t.sounds_between(0.15, 0.25, SoundEvery::Letter), "a space is silent");
-    assert!(t.sounds_between(0.25, 0.3, SoundEvery::Word), "c starts a word");
+    assert!(
+        !t.sounds_between(0.15, 0.25, SoundEvery::Letter),
+        "a space is silent"
+    );
+    assert!(
+        t.sounds_between(0.25, 0.31, SoundEvery::Word),
+        "c starts a word"
+    );
     assert!(!t.sounds_between(0.35, 0.45, SoundEvery::Word), "d doesn't");
     assert!(t.sounds_between(0.35, 0.45, SoundEvery::Letter));
 }

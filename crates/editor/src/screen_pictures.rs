@@ -195,11 +195,11 @@ impl ScreenPictures {
             let added = source(name)
                 .and_then(|file| pixels_of(&file, sheets, in_project))
                 .and_then(|got| match got {
-                Some((rgba, size)) => pictures
-                    .add(name, size, &rgba)
-                    .map_err(|why| format!("{name} can't be shown on a screen: {why}")),
-                None => Ok(()),
-            });
+                    Some((rgba, size)) => pictures
+                        .add(name, size, &rgba)
+                        .map_err(|why| format!("{name} can't be shown on a screen: {why}")),
+                    None => Ok(()),
+                });
             if let Err(why) = added {
                 why_not.insert(name.clone(), why);
             }
