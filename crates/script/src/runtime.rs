@@ -703,6 +703,7 @@ impl Runtime {
             lua_classes: &self.lua_classes,
             kinds: self.lust.as_ref().map_or(&self.no_events, |p| &*p.events),
             unstopped: RefCell::default(),
+            texts: crate::events::Texts::default(),
         };
         let running = RefCell::new(&mut self.running);
         let lust_env = self.lust.as_ref().map(|p| &p.env);
@@ -793,6 +794,7 @@ impl Runtime {
             lua_classes: &self.lua_classes,
             kinds: self.lust.as_ref().map_or(&self.no_events, |p| &*p.events),
             unstopped: RefCell::default(),
+            texts: crate::events::Texts::default(),
         };
         let running = &mut self.running;
         let lust_env = self.lust.as_ref().map(|p| &p.env);

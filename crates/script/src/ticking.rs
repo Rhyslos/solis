@@ -80,6 +80,9 @@ pub(crate) struct Ticking<'a> {
     /// Failures that leave their component running (a Rust component's
     /// refused send), said once per component until the code changes.
     pub(crate) unstopped: RefCell<Vec<Failure>>,
+    /// Text events carry, made into Luau's strings once a phase: a round
+    /// of 10,000 state changes names a few options over and over.
+    pub(crate) texts: crate::events::Texts,
 }
 
 /// Where something game code did belongs in the tick's order: during the
@@ -117,10 +120,11 @@ pub(crate) struct Phase {
 
 /// An event on its way to the components on its entity, with what they
 /// all share made once.
-pub(crate) struct Delivery {
-    pub(crate) event: Event,
-    /// The name of a Lua component's function for it: `on_Hit`.
-    on: String,
+pub(crate) struct Delivery<'e> {
+    pub(crate) event: &'e Event,
+    /// The name of a Lua component's function for it (`on_Hit`), made
+    /// only when a Lua component is there to take it.
+    on: std::cell::OnceCell<String>,
     /// Its values as Lust takes them (`None`: they don't fit).
     values: std::cell::OnceCell<Option<Table>>,
 }
@@ -370,9 +374,9 @@ impl Ticking<'_> {
                 break;
             }
             let delivery = Delivery {
-                on: format!("on_{}", event.name),
+                on: std::cell::OnceCell::new(),
                 values: std::cell::OnceCell::new(),
-                event: event.clone(),
+                event,
             };
             let from = (event.to, String::new());
             let mut claimed = false;
@@ -451,7 +455,7 @@ impl Ticking<'_> {
         component: &mut Running,
         delivery: &Delivery,
     ) -> Result<(), CodeProblem> {
-        let event = &delivery.event;
+        let event = delivery.event;
         let declared = self.events.and_then(|e| e.get(&event.name));
         let wrong = |declared: usize| {
             plain(format!(
@@ -484,10 +488,13 @@ impl Ticking<'_> {
                 // reaches.
                 let values = delivery
                     .values
-                    .get_or_init(|| values_table(&self.luau.lua, kinds, &event.values))
+                    .get_or_init(|| values_table(&self.luau.lua, kinds, &event.values, &self.texts))
                     .as_ref()
                     .ok_or_else(|| wrong(kinds.len()))?;
-                let event_name = event.name.as_str();
+                let event_name = self
+                    .texts
+                    .string(&self.luau.lua, &event.name)
+                    .ok_or_else(|| wrong(kinds.len()))?;
                 self.luau
                     .clock
                     .limited(|| {
@@ -507,7 +514,12 @@ impl Ticking<'_> {
                 let on = self
                     .luau
                     .clock
-                    .limited(|| method(&table, &delivery.on))
+                    .limited(|| {
+                        method(
+                            &table,
+                            delivery.on.get_or_init(|| format!("on_{}", event.name)),
+                        )
+                    })
                     .map_err(|err| lua_problem(file, &err))?;
                 let Some(on) = on else {
                     return Ok(());

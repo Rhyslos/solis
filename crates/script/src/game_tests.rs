@@ -30,6 +30,8 @@ pub(super) struct TestWorld {
     pub(super) state_changes: Vec<Change>,
     /// Whether to keep none of those (a scale case's thousands a tick).
     pub(super) quiet: bool,
+    /// The entities' index, made once.
+    index: IndexOnce,
     /// The game's speed (none: 1) and the day's hour (none: 8), as the
     /// tick starts.
     pub(super) speed: Option<f64>,
@@ -73,17 +75,36 @@ impl TestWorld {
     }
 }
 
+/// The test world's index, made once; never part of what it equals.
+#[derive(Debug, Clone, Default)]
+pub(super) struct IndexOnce(Option<Arc<ViewIndex>>);
+
+impl PartialEq for IndexOnce {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
 impl GameWorld for TestWorld {
     fn view(&mut self) -> WorldView {
-        let entities: Vec<_> = self
-            .entities
-            .iter()
-            .map(|(e, n, _)| Some((*e, n.clone())))
-            .collect();
+        // Made once: the test world's entities never change (as the
+        // editor's world keeps its index while they don't).
+        let entities = &self.entities;
+        let index = self
+            .index
+            .0
+            .get_or_insert_with(|| {
+                let named: Vec<_> = entities
+                    .iter()
+                    .map(|(e, n, _)| Some((*e, n.clone())))
+                    .collect();
+                Arc::new(ViewIndex::new(&named))
+            })
+            .clone();
         WorldView {
             time: self.time,
             tick: self.tick,
-            index: Arc::new(ViewIndex::new(&entities)),
+            index,
             places: Arc::new(self.entities.iter().map(|(_, _, m)| *m).collect()),
             frame_time: 1.0 / 60.0,
             seed: self.seed,

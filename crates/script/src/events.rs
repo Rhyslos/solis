@@ -251,17 +251,86 @@ fn kind_name(kind: &FieldKind) -> &'static str {
 /// An event's values as Lust's `handle` takes them: a list with its count
 /// in `n`, each value as its declared kind. `None` if the values don't fit
 /// what the event declares.
-pub(crate) fn values_table(lua: &Lua, kinds: &[FieldKind], values: &[Value]) -> Option<Table> {
+pub(crate) fn values_table(
+    lua: &Lua,
+    kinds: &[FieldKind],
+    values: &[Value],
+    texts: &Texts,
+) -> Option<Table> {
     if kinds.len() != values.len() {
         return None;
     }
-    let list = lua.create_table().ok()?;
+    // Options only (a state's change): the same list serves every event
+    // carrying the same ones, as Lust only reads it.
+    let options: Option<Vec<&str>> = values
+        .iter()
+        .zip(kinds)
+        .map(|(value, kind)| match (kind, value) {
+            (FieldKind::Choice(_), Value::Text(text)) => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    let key = options.map(|o| o.join("\u{1}"));
+    if let Some(list) = key
+        .as_ref()
+        .and_then(|k| texts.lists.borrow().get(k).cloned())
+    {
+        return Some(list);
+    }
+    let list = lua.create_table_with_capacity(values.len(), 1).ok()?;
     for (i, (kind, value)) in kinds.iter().zip(values).enumerate() {
-        let converted = to_lua(lua, kind, value)?;
+        let converted = match (kind, value) {
+            // A state's option or text: the same few, again and again.
+            (FieldKind::Choice(_) | FieldKind::Text, Value::Text(text)) => {
+                LuaValue::String(texts.get(lua, text)?)
+            }
+            _ => to_lua(lua, kind, value)?,
+        };
         list.raw_set(i + 1, converted).ok()?;
     }
-    list.raw_set("n", values.len()).ok()?;
+    list.raw_set(texts.get(lua, "n")?, values.len()).ok()?;
+    if let Some(key) = key {
+        let mut lists = texts.lists.borrow_mut();
+        if lists.len() >= Texts::MOST {
+            lists.clear();
+        }
+        lists.insert(key, list.clone());
+    }
     Some(list)
+}
+
+/// Text made into Luau's strings, each once: making one is the dearest
+/// part of handing an event over.
+#[derive(Default)]
+pub(crate) struct Texts {
+    strings: RefCell<std::collections::HashMap<String, mlua::LuaString>>,
+    /// Lists of values that are all options, by them.
+    lists: RefCell<std::collections::HashMap<String, Table>>,
+}
+
+impl Texts {
+    /// The most kept: past it, they start again (a game sending a new text
+    /// with every event gains nothing from keeping them).
+    const MOST: usize = 1_024;
+
+    /// `text` as a Luau string (an event's name, say).
+    pub(crate) fn string(&self, lua: &Lua, text: &str) -> Option<mlua::LuaString> {
+        self.get(lua, text)
+    }
+
+    /// `text` as a Luau string.
+    fn get(&self, lua: &Lua, text: &str) -> Option<mlua::LuaString> {
+        let mut known = self.strings.borrow_mut();
+        if let Some(string) = known.get(text) {
+            return Some(string.clone());
+        }
+        if known.len() >= Self::MOST {
+            known.clear();
+        }
+        let string = lua.create_string(text).ok()?;
+        known.insert(text.to_string(), string.clone());
+        Some(string)
+    }
 }
 
 /// An event's values as arguments for a Lua component's `on_` function:
