@@ -95,6 +95,7 @@ mod screen_fonts;
 mod screen_pictures;
 mod screen_props;
 mod screen_ties;
+mod screen_typing;
 mod search;
 mod settled;
 mod sheet_view;

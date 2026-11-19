@@ -431,7 +431,7 @@ end
 ```
 
 - **When they arrive:** after every component's `update` in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
-- **From the engine:** some events are Solis's own, such as a [trigger zone](trigger-zones.md)'s `Entered` or a [timer](timers.md)'s `TimerFinished`. They arrive first, in the tick's first round. `TimerFinished` is the one event that reaches a single component: the one that started the timer.
+- **From the engine:** some events are Solis's own, such as a [trigger zone](trigger-zones.md)'s `Entered` or a [timer](timers.md)'s `TimerFinished` (a screen's [`TypingFinished`](text-effects.md) comes with the tick's input instead, as a button's event does). They arrive first, in the tick's first round. `TimerFinished` is the one event that reaches a single component: the one that started the timer.
 - **To something you just spawned:** an event sent to an entity spawned in the same tick (`entity shot = World:spawn(…); send Launch(dir) to shot;`) arrives at the start of the next tick's events, once its components exist. Its first `update` runs just before, so set it moving in the `on`, not in `update`'s first run.
 - **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
 - **An event sent while starting** goes nowhere too. The lines outside components run before anything plays, and a field's starting value is worked out as its component is made (`int id = register();`, where `register` has a `send` in it): nothing is running yet to take the event. Send from `update` or an `on`.
@@ -943,6 +943,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `showScreen(Screen which)` | Shows one of the game's screens on the entity, at the end of the tick ([Game screens](screens.md)). |
 | any entity | `hideScreen(Screen which)` | Hides it, if the entity shows it. |
 | any entity | `screenShown(Screen which)` | Whether the entity shows that screen, as the tick started. |
+| any entity | `finishTyping(Screen which)` | Shows all the text that screen is typing out, at the end of the tick; `TypingFinished` follows ([Text effects](text-effects.md)). |
+| `solis/screens` | event `TypingFinished(Screen which)` | Sent to the entity showing a screen once its text has typed out (its Screen's Typing speed), with the next tick's input. |
 | `solis/project` | `state Screen` | The game's screens, by their files in `ui/` (`Screen.PauseMenu` for `ui/pauseMenu.lst`). |
 | a component | `startTimer(Timer which, float seconds)` | Starts one of the component's timers: `TimerFinished` comes that many seconds of game time later; started again if it runs ([Timers](timers.md)). |
 | a component | `startTimerEvery(Timer which, float seconds)`, `startTimerAtHour(Timer which, float hour)` | A timer that finishes every so often, or each day as the day's clock passes an hour, until stopped. |

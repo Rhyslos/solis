@@ -155,6 +155,9 @@ pub enum ElementKind {
         align: Edge,
         /// The room it has: as wide as it is, or wrapped or cut.
         fit: crate::paragraph::Fit,
+        /// What its markup does to its letters, and when they show as it
+        /// types out (stage 1, text effects); none for plain text.
+        effects: Option<std::sync::Arc<crate::effects::TextEffects>>,
     },
     /// A bar: a box filled `value` of the way across (0 to 1), its
     /// background behind it (the energy bar).
@@ -358,6 +361,9 @@ pub struct Screen {
     /// The project's own fonts its text may use (stage 1, text layout),
     /// shared by every screen of the game.
     pub fonts: Option<std::sync::Arc<crate::text::FontFiles>>,
+    /// When each of its texts began typing out (stage 1, text effects),
+    /// kept by the editor as the game runs; none shows every text whole.
+    pub typing: Option<std::sync::Arc<crate::typing::Started>>,
 }
 
 /// A whole screen's look (decision 0089, M6), set on the Screen
@@ -380,6 +386,9 @@ pub struct ScreenLook {
     pub line_height: f32,
     /// Room added after each letter of text, in design pixels (0).
     pub letter_spacing: f32,
+    /// How many letters a second its texts type out at (0: they show at
+    /// once; stage 1, text effects).
+    pub typing_speed: f32,
 }
 
 impl Default for ScreenLook {
@@ -391,6 +400,7 @@ impl Default for ScreenLook {
             pixel: 1.0,
             line_height: 1.0,
             letter_spacing: 0.0,
+            typing_speed: 0.0,
         }
     }
 }
@@ -409,6 +419,7 @@ impl Screen {
             ui_size: 1.0,
             look: ScreenLook::default(),
             fonts: None,
+            typing: None,
         }
     }
 

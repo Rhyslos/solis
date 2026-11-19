@@ -84,6 +84,9 @@ pub struct ViewportView {
     /// after screen: the renderer lays each out on the picture's real
     /// size.
     pub ui: Vec<std::sync::Arc<ui::Screen>>,
+    /// The UI's clock for this frame, in seconds (stage 1, text effects):
+    /// what the screens' text waves, shakes and types out by.
+    pub ui_seconds: f64,
 }
 
 /// A parallax layer of a 2D game's picture drawn on its own (decision
@@ -350,6 +353,7 @@ impl Viewport {
             pixel: None,
             layers: Vec::new(),
             ui: Vec::new(),
+            ui_seconds: 0.0,
         }
     }
 }

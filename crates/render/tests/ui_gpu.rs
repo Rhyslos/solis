@@ -323,6 +323,7 @@ fn text_is_drawn_from_the_letters_atlas_in_its_colour() {
                 style: ui::TextStyle::new(80.0, 1),
                 align: ui::Edge::Start,
                 fit: ui::Fit::default(),
+                effects: None,
             },
         )
         .at(
@@ -364,6 +365,7 @@ fn each_set_of_fonts_draws_from_its_own_atlas() {
                     style: ui::TextStyle::new(80.0, 0),
                     align: ui::Edge::Start,
                     fit: ui::Fit::default(),
+                    effects: None,
                 },
             )
             .at(
@@ -764,6 +766,7 @@ fn text_in(
             style,
             align,
             fit,
+            effects: None,
         },
     )
     .at(ui::Anchor::TOP_LEFT, [at[0] + 6.0, at[1]])
@@ -888,4 +891,99 @@ fn text_wraps_aligns_falls_back_and_draws_in_a_project_s_font() {
         return;
     };
     matches_approved("text-layout", size, &pixels);
+}
+
+/// A Lust `text` piece saying `words`, `size` tall, in `colour`.
+fn said(words: &str, size: f64, colour: &str) -> ui::view::Node {
+    ui::view::Node {
+        kind: "text".into(),
+        text: words.into(),
+        styles: vec![
+            ("size".into(), ui::view::Style::Number(size)),
+            ("color".into(), ui::view::Style::Text(colour.into())),
+        ],
+        ..ui::view::Node::default()
+    }
+}
+
+#[test]
+fn text_effects_colour_wave_show_icons_and_type_out() {
+    // Stage 1's text effects, drawn as the dialogue box of the overnight
+    // mock-up: a speaker's name, a line with a coloured word, a wavy word,
+    // a bold and a slanted one, an icon inside the text, and the same line
+    // half typed out.
+    let line = "Oh! Have you seen my [colour=#e8955a]red roses[/colour]? They \
+                [wave]wiggle[/wave] when it [b]rains[/b], [i]really[/i]. 5 [icon=Picture.Ui.Coin] each!";
+    let mut column = ui::view::Node {
+        kind: "column".into(),
+        styles: vec![
+            ("width".into(), ui::view::Style::Number(560.0)),
+            ("pad".into(), ui::view::Style::Number(14.0)),
+            ("gap".into(), ui::view::Style::Number(8.0)),
+            ("background".into(), ui::view::Style::Text("#121619".into())),
+            ("round".into(), ui::view::Style::Number(8.0)),
+        ],
+        ..ui::view::Node::default()
+    };
+    column.children = vec![
+        said("[b]Mira[/b]", 15.0, "#e2b54a"),
+        said(line, 17.0, "#ece8de"),
+        said(line, 17.0, "#ece8de"),
+    ];
+    let view = ui::view::Node {
+        kind: "view".into(),
+        children: vec![column],
+        ..ui::view::Node::default()
+    };
+    let mut pictures = ui::Pictures::new();
+    let coin: Vec<u8> = (0..16 * 16)
+        .flat_map(|i| {
+            let (x, y) = ((i % 16) as f32 - 7.5, (i / 16) as f32 - 7.5);
+            if x * x + y * y < 56.0 {
+                [240, 196, 60, 255]
+            } else {
+                [0, 0, 0, 0]
+            }
+        })
+        .collect();
+    pictures.add("Picture.Ui.Coin", [16, 16], &coin).unwrap();
+    let size = [600, 200];
+    let mut screen = ui::Screen::new("Talk", [600.0, 200.0], ui::ScaleRule::Keep);
+    screen.view = Some(view);
+    screen.pictures = Some(std::sync::Arc::new(pictures));
+    screen.look.typing_speed = 30.0;
+    // The name and the first line have typed out; the second began a
+    // second ago.
+    screen.typing = Some(std::sync::Arc::new(ui::typing::Started {
+        at: vec![f64::NEG_INFINITY, f64::NEG_INFINITY, 2.0],
+    }));
+    let mut fonts = fonts();
+    fonts.set_clock(3.0);
+    fonts.begin_frame();
+    let shapes = ui::layout_with(&screen, size, None, Some(&mut fonts));
+    let letters = |shapes: &[ui::Shape]| {
+        shapes
+            .iter()
+            .filter(|s| s.kind == ui::ShapeKind::Letter)
+            .count()
+    };
+    let icons = shapes
+        .iter()
+        .filter(|s| s.kind == ui::ShapeKind::Picture)
+        .count();
+    assert_eq!(icons, 1, "the half-typed line hasn't reached its coin");
+    assert!(shapes.iter().any(|s| s.letter[1] > 0.0), "a slanted word");
+    let half = letters(&shapes);
+    screen.typing = None;
+    let whole = letters(&ui::layout_with(&screen, size, None, Some(&mut fonts)));
+    assert!(half < whole, "{half} of {whole}");
+    let Some(pixels) = draw_all(
+        size,
+        &shapes,
+        Some(&fonts.atlas),
+        screen.pictures.as_deref(),
+    ) else {
+        return;
+    };
+    matches_approved("text-effects", size, &pixels);
 }

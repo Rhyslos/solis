@@ -52,6 +52,9 @@ pub struct Looks {
     pub line_height: f32,
     /// Room added after each letter, in design pixels.
     pub letter_spacing: f32,
+    /// How many letters a second its `text` pieces type out at (0: they
+    /// show at once; stage 1, text effects).
+    pub typing_speed: f32,
 }
 
 impl Looks {
@@ -580,13 +583,73 @@ struct Laid {
     action: Option<usize>,
     /// Drawn with the focus ring.
     focused: bool,
+    /// For a piece showing text whose markup does something (stage 1,
+    /// text effects): what it does; `text` is then its plain words.
+    marked: Option<Box<crate::markup::Marked>>,
+    /// For a `text` piece: its number among the view's texts.
+    number: Option<u32>,
+}
+
+/// What laying the tree out counts as it goes: every piece, and the
+/// `text` pieces.
+#[derive(Default)]
+struct Counts {
+    pieces: usize,
+    texts: u32,
+}
+
+/// Every `text` piece's words in `view`, as written (markup and all), in
+/// the order their numbers count them ([`crate::effects::TextEffects::number`]),
+/// within the same limits as laying the view out: what the editor keeps
+/// each text's typing by.
+pub fn texts_of(view: &Node) -> Vec<String> {
+    fn walk(node: &Node, depth: usize, pieces: &mut usize, out: &mut Vec<String>) {
+        *pieces += 1;
+        if node.kind == "text" && depth > 0 {
+            out.push(node.text.chars().take(MAX_TEXT).collect());
+        }
+        if depth + 1 < MAX_DEPTH {
+            for c in &node.children {
+                if *pieces >= MAX_ELEMENTS {
+                    break;
+                }
+                walk(c, depth + 1, pieces, out);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(view, 0, &mut 0, &mut out);
+    out
+}
+
+/// A text piece's words read for markup (stage 1, text effects): its
+/// plain words, and what the markup does when it does anything (or the
+/// text types out).
+fn read_text(
+    kind: &str,
+    text: String,
+    typing: bool,
+) -> (String, Option<Box<crate::markup::Marked>>) {
+    if !shows_text(kind) || !(text.contains('[') || text.contains(crate::markup::ICON) || typing) {
+        return (text, None);
+    }
+    let mut marked = crate::markup::parse(&text);
+    let plain = std::mem::take(&mut marked.plain);
+    let keep = typing || !marked.is_plain();
+    marked.plain = if keep { plain.clone() } else { String::new() };
+    (plain, keep.then(|| Box::new(marked)))
 }
 
 /// Turns the tree into placed pieces, within the limits, with `looks`'
 /// hover and focus styles on the pieces they name.
-fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks, fonts: &[String]) -> Laid {
-    let id = *count;
-    *count += 1;
+fn lay(node: &Node, depth: usize, counts: &mut Counts, looks: Looks, fonts: &[String]) -> Laid {
+    let id = counts.pieces;
+    counts.pieces += 1;
+    // The view itself (depth 0) is never a text.
+    let number = (node.kind == "text" && depth > 0).then(|| {
+        counts.texts += 1;
+        counts.texts - 1
+    });
     let mut look = base_look(&node.kind);
     // The view's own font is every piece's without one (as in Lust).
     look.fonts = fonts.to_vec();
@@ -617,15 +680,21 @@ fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks, fonts: &[Stri
     let mut children = Vec::new();
     if depth + 1 < MAX_DEPTH {
         for c in &node.children {
-            if *count >= MAX_ELEMENTS {
+            if counts.pieces >= MAX_ELEMENTS {
                 break;
             }
-            children.push(lay(c, depth + 1, count, looks, fonts));
+            children.push(lay(c, depth + 1, counts, looks, fonts));
         }
     }
+    let typing = number.is_some() && looks.typing_speed > 0.0;
+    let (text, marked) = read_text(
+        &node.kind,
+        node.text.chars().take(MAX_TEXT).collect(),
+        typing,
+    );
     Laid {
         kind: node.kind.clone(),
-        text: node.text.chars().take(MAX_TEXT).collect(),
+        text,
         value: node
             .value
             .filter(|v| v.is_finite())
@@ -641,6 +710,8 @@ fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks, fonts: &[Stri
         style: None,
         action: live,
         focused,
+        marked,
+        number,
     }
 }
 
@@ -738,7 +809,34 @@ impl Layout<'_> {
                 1.0
             },
             letter_spacing: self.looks.letter_spacing,
+            inline: crate::paragraph::Inline::default(),
         }
+    }
+
+    /// The text style of text piece `n`: its look's, with what its markup
+    /// changes in its layout (bold parts, icons' shapes).
+    fn text_style(&mut self, n: &Laid) -> TextStyle {
+        let mut style = self.style_of(&n.look);
+        if let Some(marked) = &n.marked {
+            use crate::markup::Effect;
+            style.inline.bold = marked
+                .runs
+                .iter()
+                .filter(|r| r.effect == Effect::Bold)
+                .map(|r| [r.from, r.to])
+                .collect();
+            style.inline.icons = marked
+                .icons
+                .iter()
+                .map(|icon| {
+                    self.measure
+                        .picture(&icon.name)
+                        .filter(|[w, h]| *w > 0 && *h > 0)
+                        .map_or(1.0, |[w, h]| w as f32 / h as f32)
+                })
+                .collect();
+        }
+        style
     }
 
     /// The room text piece `n` has, `w` design pixels wide inside its
@@ -802,7 +900,7 @@ impl Layout<'_> {
         let (mut w, mut h) = match n.kind.as_str() {
             k if shows_text(k) => {
                 let fit = self.fit_of(n, inner);
-                let style = self.style_of(l);
+                let style = self.text_style(n);
                 let [w, h] = self.measure.text(&n.text, &style, &fit);
                 (w.ceil(), h.ceil())
             }
@@ -923,7 +1021,7 @@ impl Layout<'_> {
         let ih = (h - l.pad[0] - l.pad[2]).max(0.0);
         if shows_text(&n.kind) {
             n.fit = Some(self.fit_of(n, iw));
-            n.style = Some(self.style_of(&l));
+            n.style = Some(self.text_style(n));
             return;
         }
         if n.children.is_empty() {
@@ -1062,7 +1160,7 @@ pub fn lay_out_with(
 ) -> (Vec<Element>, Vec<Clickable>) {
     let top = laid_out(view, size, measure, looks);
     let mut out = Vec::new();
-    emit(&top, 1.0, &mut out);
+    emit(&top, 1.0, looks.typing_speed, &mut out);
     let mut clickable = Vec::new();
     clickables(&top, &mut clickable);
     (out, clickable)
@@ -1070,7 +1168,7 @@ pub fn lay_out_with(
 
 /// The view's tree placed on a screen `size` design pixels big.
 fn laid_out(view: &Node, size: [f32; 2], measure: &mut dyn Measure, looks: Looks) -> Laid {
-    let mut count = 0;
+    let mut counts = Counts::default();
     let fonts = view
         .styles
         .iter()
@@ -1080,7 +1178,7 @@ fn laid_out(view: &Node, size: [f32; 2], measure: &mut dyn Measure, looks: Looks
             _ => None,
         })
         .unwrap_or_default();
-    let mut top = lay(view, 0, &mut count, looks, &fonts);
+    let mut top = lay(view, 0, &mut counts, looks, &fonts);
     // The view's top is a column as big as the screen; columns and rows
     // directly in it are as wide as it, as in Lust's windows.
     top.kind = "view".into();
@@ -1219,7 +1317,7 @@ pub fn design_of(view: &Node) -> [f32; 2] {
 }
 
 /// The elements one placed piece draws, then those inside it.
-fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
+fn emit(n: &Laid, opacity: f32, typing: f32, out: &mut Vec<Element>) {
     if out.len() >= MAX_ELEMENTS {
         return;
     }
@@ -1342,6 +1440,11 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
             Align::Center => Edge::Middle,
             Align::End => Edge::End,
         };
+        let effects = n.marked.as_deref().and_then(|marked| {
+            let speed = (n.kind == "text").then_some(typing);
+            crate::effects::TextEffects::of(marked, n.number.unwrap_or(0), speed)
+                .map(std::sync::Arc::new)
+        });
         let mut e = at(
             ix,
             iy,
@@ -1352,6 +1455,7 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
                 style,
                 align,
                 fit,
+                effects,
             },
         );
         e.fill = Fill::Solid(rgb(l.color, opacity));
@@ -1362,7 +1466,7 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
     if n.kind == "canvas" {
         let mut inside = Vec::new();
         for c in &n.children {
-            emit(c, opacity, &mut inside);
+            emit(c, opacity, typing, &mut inside);
         }
         for e in &mut inside {
             e.offset = [e.offset[0] - n.x, e.offset[1] - n.y];
@@ -1374,7 +1478,7 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
         return;
     }
     for c in &n.children {
-        emit(c, opacity, out);
+        emit(c, opacity, typing, out);
     }
 }
 

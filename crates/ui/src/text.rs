@@ -13,7 +13,7 @@
 use crate::font::{Font, GlyphId};
 pub use crate::font_files::FontFiles;
 pub(crate) use crate::font_files::Slot;
-use crate::paragraph::{Builder, Fit, Paragraph, TextStyle};
+use crate::paragraph::{Builder, Fit, ICON_SLOT, Paragraph, TextStyle};
 use crate::screen::Edge;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -52,6 +52,15 @@ pub struct Placed {
     pub rect: [f32; 4],
     /// Its place in the atlas, in pixels.
     pub atlas: [u16; 4],
+    /// Where its characters start in the text, in bytes.
+    pub cluster: u32,
+    /// Its baseline, in screen pixels (what a slant leans from).
+    pub baseline: f32,
+    /// Whether it's from the game's own bold.
+    pub game_bold: bool,
+    /// For an icon (stage 1, text effects): its number in the text, and
+    /// `rect` is its box (no place in the atlas).
+    pub icon: Option<u32>,
 }
 
 /// The atlas: one channel, a byte a pixel (128 is the edge).
@@ -140,6 +149,9 @@ pub struct Fonts {
     start_again: bool,
     /// The frame being laid out, counted by [`Self::begin_frame`].
     frame: u64,
+    /// The UI's clock for this frame, in seconds (stage 1, text effects):
+    /// what waves, shakes and typing out follow. See [`Self::set_clock`].
+    clock: f64,
 }
 
 /// What making a letter came to.
@@ -187,6 +199,7 @@ impl Fonts {
                 full: false,
                 start_again: false,
                 frame: 0,
+                clock: 0.0,
             },
             notes,
         )
@@ -271,6 +284,19 @@ impl Fonts {
             };
             self.letters.insert(key, Some((moved, shown)));
         }
+    }
+
+    /// Sets the UI's clock, in seconds, for the frame about to be laid out
+    /// (stage 1, text effects): the game's ticks plus how far into the
+    /// next one, so text waves, shakes and types out the same at any frame
+    /// rate. Not a number is taken as 0.
+    pub fn set_clock(&mut self, seconds: f64) {
+        self.clock = if seconds.is_finite() { seconds } else { 0.0 };
+    }
+
+    /// The UI's clock, as [`Self::set_clock`] set it.
+    pub fn clock(&self) -> f64 {
+        self.clock
     }
 
     /// The letter `id` of the font in place `slot`, its distance image
@@ -394,6 +420,8 @@ impl Fonts {
                     style,
                     fit: *fit,
                     max_letters: MAX_LETTERS,
+                    bold: (self.own >= 2 && style.font == 0).then_some((0, 1)),
+                    icons: 0,
                 }
                 .build(text),
             )
@@ -479,15 +507,33 @@ impl Fonts {
                 Edge::End => room,
                 Edge::Start | Edge::Stretch => 0.0,
             };
+            let baseline = at[1] + line.baseline * scale;
             for g in paragraph.glyphs_of(line) {
-                let Some(letter) = self.letter(usize::from(g.slot), g.id) else {
-                    continue;
-                };
-                let [l, t, r, b] = letter.atlas.map(f32::from);
                 let pen = [
                     at[0] + (dx + g.at[0]) * scale,
                     at[1] + (line.baseline + g.at[1]) * scale,
                 ];
+                if g.slot == ICON_SLOT {
+                    let number = g.id.to_u32();
+                    let wide = paragraph.icons.get(number as usize).copied().unwrap_or(0.0);
+                    let tall = paragraph.text_size;
+                    let rect = [pen[0], pen[1], pen[0] + wide * scale, pen[1] + tall * scale];
+                    if rect.iter().all(|v| v.is_finite()) {
+                        out.push(Placed {
+                            rect,
+                            atlas: [0; 4],
+                            cluster: g.cluster,
+                            baseline,
+                            game_bold: false,
+                            icon: Some(number),
+                        });
+                    }
+                    continue;
+                }
+                let Some(letter) = self.letter(usize::from(g.slot), g.id) else {
+                    continue;
+                };
+                let [l, t, r, b] = letter.atlas.map(f32::from);
                 let mut left = pen[0] + letter.offset[0] * k;
                 let mut top = pen[1] + letter.offset[1] * k;
                 if let Some(step) = crisp.filter(|s| *s > 0.0) {
@@ -499,6 +545,10 @@ impl Fonts {
                     out.push(Placed {
                         rect,
                         atlas: letter.atlas,
+                        cluster: g.cluster,
+                        baseline,
+                        game_bold: self.own >= 2 && usize::from(g.slot) == 1,
+                        icon: None,
                     });
                 }
             }
@@ -516,6 +566,10 @@ fn paragraph_hash(text: &str, style: &TextStyle, fit: &Fit) -> u64 {
     style.fonts.hash(&mut h);
     style.line_height.to_bits().hash(&mut h);
     style.letter_spacing.to_bits().hash(&mut h);
+    style.inline.bold.hash(&mut h);
+    for w in &style.inline.icons {
+        w.to_bits().hash(&mut h);
+    }
     fit.width.map(f32::to_bits).hash(&mut h);
     fit.wrap.hash(&mut h);
     fit.lines.hash(&mut h);

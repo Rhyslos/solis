@@ -40,7 +40,8 @@ pub(crate) struct ScreenPictures {
 }
 
 /// Every image name in `view` and what's inside it, into `out` (at most
-/// [`MAX_SEEN`] in all).
+/// [`MAX_SEEN`] in all), with the pictures its text shows as icons
+/// (`[icon=Picture.Ui.Coin]`, stage 1, text effects).
 pub(crate) fn names_in(view: &ui::view::Node, out: &mut BTreeSet<String>) {
     fn walk(node: &ui::view::Node, depth: usize, out: &mut BTreeSet<String>) {
         if out.len() >= MAX_SEEN || depth >= ui::screen::MAX_DEPTH {
@@ -49,12 +50,23 @@ pub(crate) fn names_in(view: &ui::view::Node, out: &mut BTreeSet<String>) {
         if node.kind == "image" && !node.text.is_empty() {
             out.insert(node.text.chars().take(ui::pictures::MAX_NAME).collect());
         }
+        if node.text.contains("[icon") {
+            for icon in ui::markup::parse(&node.text).icons {
+                if out.len() < MAX_SEEN {
+                    out.insert(icon.name.chars().take(ui::pictures::MAX_NAME).collect());
+                }
+            }
+        }
         for child in &node.children {
             walk(child, depth + 1, out);
         }
     }
     walk(view, 0, out);
 }
+
+/// The picture (or crop) an icon's project name stands for
+/// (`Picture.Ui.Coin`), if the Library has it (stage 1, text effects).
+type IconPicture<'a> = dyn Fn(&str) -> Option<String> + 'a;
 
 /// A picture's pixels (straight RGBA) and its size.
 type Pixels = (Vec<u8>, [u32; 2]);
@@ -142,7 +154,7 @@ impl ScreenPictures {
         &mut self,
         uses: &[script::screens::PictureUse],
         sheets: &Arc<SpriteSheets>,
-        in_project: &dyn Fn(&str) -> bool,
+        (in_project, icon): (&dyn Fn(&str) -> bool, &IconPicture<'_>),
         fingerprint: u64,
     ) -> Vec<String> {
         let seen = self.seen.len();
@@ -154,12 +166,28 @@ impl ScreenPictures {
         self.from = Some((fingerprint, MadeFrom::new(sheets), seen));
         let mut names: BTreeSet<String> = uses.iter().map(|u| u.name.clone()).collect();
         names.extend(self.seen.iter().cloned());
+        // An icon in text names a picture by the project's name for it:
+        // the picture (or crop) it stands for, or why there's none.
+        let source = |name: &str| -> Result<String, String> {
+            if !name.starts_with("Picture.") {
+                return Ok(name.to_string());
+            }
+            icon(name).ok_or_else(|| {
+                format!(
+                    "there's no picture {name} in the project: an icon names a picture as game \
+                     code does, like [icon=Picture.Ui.Coin] for ui/coin.png or for the crop Coin \
+                     of ui.png"
+                )
+            })
+        };
         // The files to read: those in the project.
         let wanted: BTreeSet<String> = names
             .iter()
-            .map(|n| ui::pictures::split(n).0)
-            .filter(|f| is_picture(f) && in_project(f))
-            .map(str::to_string)
+            .filter_map(|n| source(n).ok())
+            .filter_map(|n| {
+                let file = ui::pictures::split(&n).0;
+                (is_picture(file) && in_project(file)).then(|| file.to_string())
+            })
             .collect();
         if wanted != self.wanted {
             self.wanted = wanted;
@@ -168,12 +196,14 @@ impl ScreenPictures {
         let mut pictures = ui::Pictures::new();
         let mut why_not = std::collections::HashMap::new();
         for name in &names {
-            let added = pixels_of(name, sheets, in_project).and_then(|got| match got {
-                Some((rgba, size)) => pictures
-                    .add(name, size, &rgba)
-                    .map_err(|why| format!("{name} can't be shown on a screen: {why}")),
-                None => Ok(()),
-            });
+            let added = source(name)
+                .and_then(|file| pixels_of(&file, sheets, in_project))
+                .and_then(|got| match got {
+                    Some((rgba, size)) => pictures
+                        .add(name, size, &rgba)
+                        .map_err(|why| format!("{name} can't be shown on a screen: {why}")),
+                    None => Ok(()),
+                });
             if let Err(why) = added {
                 why_not.insert(name.clone(), why);
             }
@@ -234,10 +264,11 @@ impl Workbench {
                 .get_or_init(|| items.iter().map(|i| i.path.as_str()).collect())
                 .contains(f)
         };
+        let icon = |name: &str| items.icon_picture(name);
         let said = self.open.screen_pictures.refresh(
             uses,
             &self.viewport.sheets,
-            &in_project,
+            (&in_project, &icon),
             self.sources,
         );
         for line in said {

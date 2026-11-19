@@ -465,6 +465,7 @@ impl GpuViewport {
         }
         // Game UI over the picture (decision 0083): laid out on the
         // picture's part of the screen, in its whole steps when it has them.
+        self.fonts.set_clock(view.ui_seconds);
         for screen in &view.ui {
             let shapes = ui::layout_at(
                 screen,
@@ -710,6 +711,7 @@ impl ViewportRenderer for GpuViewport {
         );
         count(&mut self.report, &stats);
         // Game UI over the finished picture (decision 0083).
+        self.fonts.set_clock(view.ui_seconds);
         for screen in &view.ui {
             let shapes = ui::layout_with(screen, image.target.size(), None, Some(&mut self.fonts));
             self.renderer.draw_ui(

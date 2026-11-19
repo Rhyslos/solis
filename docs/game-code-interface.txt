@@ -89,6 +89,7 @@ entity: method string entity:name() native;
 screens: method entity:showScreen(Screen which) native;
 screens: method entity:hideScreen(Screen which) native;
 screens: method bool entity:screenShown(Screen which) native;
+screens: method entity:finishTyping(Screen which) native;
 screens: object Screens: method float textSize() native;
 screens: object Screens: method setTextSize(float size) native;
 screens: object Screens: method float uiSize() native;
@@ -109,6 +110,7 @@ zones: event Exited(entity who);
 zones: event EnteredZone(entity zone);
 zones: event LeftZone(entity zone);
 timers: event TimerFinished(Timer which);
+screens: event TypingFinished(Screen which);
 
 ## Lua (solis.<name>)
 
@@ -175,6 +177,7 @@ solis.entity.animate
 solis.entity.animateFromStart
 solis.entity.despawn
 solis.entity.face
+solis.entity.finishTyping
 solis.entity.grounded
 solis.entity.hasTag
 solis.entity.hideScreen
@@ -263,6 +266,7 @@ Host: fn play_sound(&mut self, event: &str, at: SoundAt)
 Host: fn stop_sounds_on(&mut self, which: EntityId)
 Host: fn set_sound_playing(&mut self, which: EntityId, playing: bool)
 Host: fn show_screen(&mut self, which: EntityId, screen: &str, shown: bool)
+Host: fn finish_typing(&mut self, which: EntityId, screen: &str)
 Host: fn screen_shown(&self, which: EntityId, screen: &str) -> bool
 Host: fn play_clip(&mut self, which: EntityId, clip: &str, again: bool)
 Host: fn stop_clip(&mut self, which: EntityId)

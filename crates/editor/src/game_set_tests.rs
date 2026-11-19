@@ -183,6 +183,8 @@ const NOT_ON_AN_ENTITY: &[&str] = &[
     "facingAlong",
     "entity_name",
     "entity_screenShown",
+    // Shows a screen's text whole: the UI's, never the entity's state.
+    "entity_finishTyping",
     "Screens_textSize",
     "Screens_setTextSize",
     "Screens_uiSize",

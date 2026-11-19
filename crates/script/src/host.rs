@@ -231,6 +231,12 @@ pub trait Host {
     fn show_screen(&mut self, which: EntityId, screen: &str, shown: bool) {
         let _ = (which, screen, shown);
     }
+    /// Shows all the text the entity's Screen named `screen` is typing out,
+    /// at the end of the tick (stage 1, text effects): `TypingFinished`
+    /// follows.
+    fn finish_typing(&mut self, which: EntityId, screen: &str) {
+        let _ = (which, screen);
+    }
     /// Whether the entity's Screen shows the screen named `screen`, as the
     /// tick started.
     fn screen_shown(&self, which: EntityId, screen: &str) -> bool {

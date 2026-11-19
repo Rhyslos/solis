@@ -13,6 +13,8 @@ Every `text` and `button` on a [screen](screens.md) is laid out this way, with n
 
 The editor's own menus and panels aren't game screens: their text isn't changed by anything here.
 
+Words inside a text can also be coloured, bold, slanted, wavy or shaking, hold small pictures, and type themselves out: see [Text effects](text-effects.md).
+
 ## How to use it
 
 **Wrapping.** A text wraps when it's wider than the room it's given: put it in a `column` with a `width` (or anywhere narrower than it), and its words move onto new lines where [Unicode's line-break rules](concepts.md#line-breaking) allow: between words, after a hyphen or a slash, between Chinese or Japanese letters. A word too long for a line on its own (a very long name) breaks between its letters. `\n` in the text always starts a new line, and `nowrap` keeps a text on one line.
@@ -164,5 +166,6 @@ The player's **text size** ([Game screens](screens.md#how-to-use-it)) still grow
 ## Related
 
 - [Game screens](screens.md): writing screens, and the Screen component.
+- [Text effects](text-effects.md): colours, waves, icons and typing out inside a text.
 - [The UI editor](ui-editor.md): the canvas draws text as the game does.
 - [Concepts](concepts.md): [shaping](concepts.md#shaping), [line breaking](concepts.md#line-breaking), [fallback font](concepts.md#fallback-font).

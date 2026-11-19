@@ -108,7 +108,8 @@ impl Workbench {
     pub fn status(&self) -> Status {
         let mistakes = self.open.code_problems.len()
             + self.picture_problems().len()
-            + self.font_problems().len();
+            + self.font_problems().len()
+            + self.markup_problems().len();
         let code = self.open.code_checked.as_ref().map(|at| {
             match mistakes {
                 0 => Part::new("Code checked", tokens::text_label()).marked(Mark::Tick),

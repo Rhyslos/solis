@@ -74,6 +74,11 @@ pub struct Shape {
     /// The screen's pixel size: drawn in blocks this many pixels big (1 or
     /// less: smooth), lined up from the screen's top left.
     pub pixel: f32,
+    /// For a letter (stage 1, text effects): how far its edge is moved
+    /// out, in pixels (a bold its font hasn't got; 0 for none), how far
+    /// its top leans right for each pixel above its baseline (0 upright),
+    /// and that baseline, in the screen's pixels.
+    pub letter: [f32; 3],
 }
 
 /// A [`Shape::clip`] that cuts nothing off.
@@ -191,6 +196,7 @@ pub fn layout_with(
         out: &mut out,
         fonts,
         pictures,
+        typing: screen.typing.as_deref(),
     };
     for e in &screen.elements {
         walking.walk(e, whole, 1.0, 0, UNCLIPPED);
@@ -228,6 +234,7 @@ fn view_looks(screen: &Screen) -> crate::view::Looks {
     crate::view::Looks {
         line_height: screen.look.line_height,
         letter_spacing: screen.look.letter_spacing,
+        typing_speed: screen.look.typing_speed,
         ..screen.looks
     }
 }
@@ -373,6 +380,8 @@ struct Walk<'a> {
     out: &'a mut Vec<Shape>,
     fonts: Option<&'a mut crate::text::Fonts>,
     pictures: Option<&'a crate::pictures::Pictures>,
+    /// When the screen's texts began typing out.
+    typing: Option<&'a crate::typing::Started>,
 }
 
 /// [`layout`] in part of a screen: the game's picture, `size` pixels big
@@ -396,11 +405,130 @@ pub fn layout_at(
             s.from = [s.from[0] + x, s.from[1] + y];
             s.to = [s.to[0] + x, s.to[1] + y];
         }
+        if s.kind == ShapeKind::Letter {
+            s.letter[2] += y;
+        }
     }
     shapes
 }
 
 impl Walk<'_> {
+    /// A text in `base`'s box: laid out in design pixels (kept while it
+    /// stays the same), scaled onto the screen, its effects worked on each
+    /// letter, every letter's glow and outline first, then the letters, so
+    /// one letter's halo never covers the letter before it.
+    fn text(
+        &mut self,
+        text: &str,
+        style: &crate::paragraph::TextStyle,
+        (align, fit): (Edge, crate::paragraph::Fit),
+        effects: Option<&crate::effects::TextEffects>,
+        base: &Shape,
+    ) {
+        let (scale, rect) = (self.scale, base.rect);
+        let Some(fonts) = self.fonts.as_deref_mut() else {
+            return;
+        };
+        let paragraph = fonts.paragraph(text, style, &fit);
+        let px = paragraph.text_size * scale;
+        let [w, h] = paragraph.size.map(|v| v * scale);
+        let left = match align {
+            Edge::Middle => (rect[0] + rect[2] - w) * 0.5,
+            Edge::End => rect[2] - w,
+            Edge::Start | Edge::Stretch => rect[0],
+        };
+        let top = (rect[1] + rect[3] - h) * 0.5;
+        let step = self.crisp.then_some(scale);
+        let placed = fonts.place_paragraph(&paragraph, align, [left, top], scale, step);
+        let ink = base.colours[0];
+        let letter = |p: &crate::text::Placed| {
+            let [l, t, r, b] = p.atlas.map(f32::from);
+            Shape {
+                kind: ShapeKind::Letter,
+                rect: p.rect,
+                from: [l, t],
+                to: [r, b],
+                round: px / crate::text::SDF_SIZE,
+                colours: [ink, ink],
+                border: (0.0, Colour::NONE),
+                letter: [0.0, 0.0, p.baseline],
+                ..*base
+            }
+        };
+        let mut letters: Vec<Shape> = Vec::with_capacity(placed.len());
+        let mut icons: Vec<(u32, [f32; 4])> = Vec::new();
+        match effects {
+            None => letters.extend(placed.iter().filter(|p| p.icon.is_none()).map(letter)),
+            Some(effects) => {
+                let now = fonts.clock();
+                let elapsed = self
+                    .typing
+                    .map_or(f64::NAN, |t| t.elapsed(effects.number, now));
+                let size = px;
+                for (index, p) in placed.iter().enumerate() {
+                    if let Some(typing) = &effects.typing
+                        && !typing.shows(p.cluster, elapsed)
+                    {
+                        continue;
+                    }
+                    let look = crate::effects::letter_look(effects, p.cluster, index, now);
+                    let [dx, dy] = look.moved.map(|v| v * size);
+                    let moved = |r: [f32; 4]| [r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy];
+                    if let Some(number) = p.icon {
+                        icons.push((number, moved(p.rect)));
+                        continue;
+                    }
+                    let mut shape = letter(p);
+                    shape.rect = moved(shape.rect);
+                    shape.letter[2] += dy;
+                    if let Some(c) = look.colour {
+                        let [_, r, g, b] = c.to_be_bytes();
+                        let c = Colour::rgb(r, g, b).with_alpha(ink.0[3]);
+                        shape.colours = [c, c];
+                    }
+                    if look.bold && !p.game_bold {
+                        shape.letter[0] = crate::effects::FAUX_BOLD * size;
+                    }
+                    if look.slant {
+                        shape.letter[1] = crate::effects::SLANT;
+                    }
+                    letters.push(shape);
+                }
+            }
+        }
+        if base.glow.0 > 0.0 || base.outline.0 > 0.0 {
+            for l in &letters {
+                self.out.push(Shape {
+                    colours: [Colour::NONE, Colour::NONE],
+                    ..*l
+                });
+            }
+            for l in letters {
+                self.out.push(Shape {
+                    glow: (0.0, Colour::NONE),
+                    outline: (0.0, Colour::NONE),
+                    ..l
+                });
+            }
+        } else {
+            self.out.extend(letters);
+        }
+        // Icons, in white (their own colours), the screen's opacity kept.
+        let white = Colour::WHITE.with_alpha(ink.0[3]);
+        for (number, rect) in icons {
+            let Some(name) = effects.and_then(|e| e.icons.get(number as usize)) else {
+                continue;
+            };
+            let icon_base = Shape {
+                rect,
+                colours: [white, white],
+                border: (0.0, Colour::NONE),
+                ..*base
+            };
+            self.picture(&name.name, 0.0, false, &icon_base);
+        }
+    }
+
     /// A picture in `base`'s box: fitted inside it (or covering it, the
     /// part outside cut off), or a grey box with its name when the screen
     /// has no picture of that name.
@@ -550,6 +678,7 @@ impl Walk<'_> {
             glow,
             outline,
             pixel: 0.0,
+            letter: [0.0; 3],
         };
         match &e.kind {
             ElementKind::Group => {}
@@ -558,59 +687,8 @@ impl Walk<'_> {
                 style,
                 align,
                 fit,
-            } => {
-                if let Some(fonts) = self.fonts.as_deref_mut() {
-                    // Laid out in design pixels (kept while it stays the
-                    // same), then scaled onto the screen.
-                    let paragraph = fonts.paragraph(text, style, fit);
-                    let px = paragraph.text_size * scale;
-                    let [w, h] = paragraph.size.map(|v| v * scale);
-                    let left = match align {
-                        Edge::Middle => (rect[0] + rect[2] - w) * 0.5,
-                        Edge::End => rect[2] - w,
-                        Edge::Start | Edge::Stretch => rect[0],
-                    };
-                    let top = (rect[1] + rect[3] - h) * 0.5;
-                    let step = crisp.then_some(scale);
-                    let letters: Vec<Shape> = fonts
-                        .place_paragraph(&paragraph, *align, [left, top], scale, step)
-                        .into_iter()
-                        .map(|letter| {
-                            let [l, t, r, b] = letter.atlas.map(f32::from);
-                            Shape {
-                                kind: ShapeKind::Letter,
-                                rect: letter.rect,
-                                from: [l, t],
-                                to: [r, b],
-                                round: px / crate::text::SDF_SIZE,
-                                colours: [colours[0], colours[0]],
-                                border: (0.0, Colour::NONE),
-                                ..base
-                            }
-                        })
-                        .collect();
-                    // Every letter's glow and outline first, then the
-                    // letters, so one letter's halo never covers the
-                    // letter before it.
-                    if base.glow.0 > 0.0 || base.outline.0 > 0.0 {
-                        for l in &letters {
-                            self.out.push(Shape {
-                                colours: [Colour::NONE, Colour::NONE],
-                                ..*l
-                            });
-                        }
-                        for l in letters {
-                            self.out.push(Shape {
-                                glow: (0.0, Colour::NONE),
-                                outline: (0.0, Colour::NONE),
-                                ..l
-                            });
-                        }
-                    } else {
-                        self.out.extend(letters);
-                    }
-                }
-            }
+                effects,
+            } => self.text(text, style, (*align, *fit), effects.as_deref(), &base),
             ElementKind::Picture { name, round, cover } => {
                 self.picture(name, finite(*round).max(0.0) * scale, *cover, &base);
             }

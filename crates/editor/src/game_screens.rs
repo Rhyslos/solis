@@ -47,6 +47,14 @@ pub(crate) struct GameScreens {
     /// Whether the pointer is free over the game while it has the keys,
     /// for a screen with buttons.
     pub(crate) freed: bool,
+    /// The screens' text typing out (stage 1, text effects).
+    pub(crate) typing: crate::screen_typing::ScreenTyping,
+    /// The UI's clock as the last tick ended, in seconds: when a text that
+    /// shows now began typing (stage 1, text effects).
+    pub(crate) clock: f64,
+    /// Whether the screens were read after the frame's last tick (they
+    /// are after every tick while text types out).
+    pub(crate) read_after_tick: bool,
     /// The editor's own fonts, to measure text where buttons are (the
     /// renderer draws with the same).
     fonts: Option<ui::Fonts>,
@@ -274,12 +282,19 @@ impl GameScreens {
     }
 }
 
+/// A screen shown: its entity, its name, its look (decision 0089, M6) and
+/// how its text types out (stage 1, text effects).
+type ShownScreen = (
+    reflect::EntityId,
+    String,
+    ui::ScreenLook,
+    crate::screen_typing::Typist,
+);
+
 /// The screens shown in `world`, in drawing order: each entity's Screen
 /// that's shown and names one, by its order, then the level's order.
-/// With each Screen component's look (decision 0089, M6).
-pub(crate) fn shown_with_looks(
-    world: &world::World,
-) -> Vec<(reflect::EntityId, String, ui::ScreenLook)> {
+/// With each Screen component's look and typing.
+pub(crate) fn shown_with_looks(world: &world::World) -> Vec<ShownScreen> {
     let mut shown: Vec<(i64, usize, reflect::EntityId, level::builtin::Screen)> = world
         .values_named(level::builtin::Screen::NAME)
         .into_iter()
@@ -300,8 +315,18 @@ pub(crate) fn shown_with_looks(
                 pixel: s.pixel_size as f32,
                 line_height: s.line_height as f32 / 100.0,
                 letter_spacing: s.letter_spacing,
+                typing_speed: s.typing_speed,
             };
-            (id, s.screen, look)
+            let typist = crate::screen_typing::Typist {
+                speed: s.typing_speed,
+                sound: (!s.typing_sound.is_empty()).then(|| s.typing_sound.clone()),
+                every: if s.sound_every_word {
+                    ui::typing::SoundEvery::Word
+                } else {
+                    ui::typing::SoundEvery::Letter
+                },
+            };
+            (id, s.screen, look, typist)
         })
         .collect()
 }
@@ -347,7 +372,7 @@ impl Workbench {
             || now
                 .iter()
                 .zip(&self.open.game_screens.shown)
-                .any(|((e, n, _), (se, sn))| e != se || n != sn)
+                .any(|((e, n, _, _), (se, sn))| e != se || n != sn)
     }
 
     /// Runs the shown screens' views again (after ticks, or when the code
@@ -394,11 +419,14 @@ impl Workbench {
             let mut shown = Vec::new();
             let settings = playing.view.settings;
             let mut reader = GameReader(playing.game.as_mut(), &playing.world, settings);
-            for (entity, name, look) in shown_with_looks(&playing.world) {
+            let clock = screens.clock;
+            for (entity, name, look, typist) in shown_with_looks(&playing.world) {
                 match running.view(&name, Some(entity), &mut reader) {
                     Ok(view) => {
                         crate::screen_pictures::names_in(&view, seen);
                         crate::screen_fonts::names_in(&view, fonts_seen);
+                        let typing = screens.typing.update((entity, &name), &view, typist, clock);
+                        warned.extend(crate::screen_typing::mistakes_in(&name, &view));
                         let picture = Arc::new(ui::Screen {
                             name: name.clone(),
                             design: ui::view::design_of(&view),
@@ -413,6 +441,7 @@ impl Workbench {
                             ui_size: settings.ui_size as f32,
                             look,
                             fonts: shown_fonts.clone(),
+                            typing: Some(typing),
                         });
                         screens.last.insert(name.clone(), Arc::clone(&picture));
                         pictures.push(picture);
@@ -433,6 +462,7 @@ impl Workbench {
                     .map(|(e, n)| (n.clone(), Some(*e)))
                     .collect::<Vec<_>>(),
             );
+            screens.typing.keep_only(&shown);
             // The same button stays hovered and focused while its screen
             // stays.
             let by_screen = |b: Option<(usize, usize)>, shown: &[(reflect::EntityId, String)]| {

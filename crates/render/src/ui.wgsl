@@ -36,6 +36,10 @@ struct Instance {
     @location(7) halo: vec4<f32>,
     @location(8) glow: vec4<f32>,
     @location(9) outline: vec4<f32>,
+    // A letter's bold (pixels its edge moves out), slant (how far its top
+    // leans right per pixel above its baseline), baseline (stage 1, text
+    // effects).
+    @location(10) letter: vec4<f32>,
 };
 
 struct Out {
@@ -51,6 +55,7 @@ struct Out {
     @location(8) @interpolate(flat) halo: vec4<f32>,
     @location(9) @interpolate(flat) glow: vec4<f32>,
     @location(10) @interpolate(flat) outline: vec4<f32>,
+    @location(11) @interpolate(flat) letter: vec4<f32>,
 };
 
 // Each kind of shape's number (any other is a box), and a shape's flags.
@@ -73,9 +78,16 @@ fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
         hi = max(i.ends.xy, i.ends.zw) + vec2<f32>(i.shape.x);
     }
     // Room for its glow and outline, and a whole block of pixels.
-    let reach = 1.0 + i.halo.x + i.halo.y + max(i.halo.z, 0.0);
+    let reach = 1.0 + i.halo.x + i.halo.y + max(i.halo.z, 0.0) + max(i.letter.x, 0.0);
     lo = lo - vec2<f32>(reach);
     hi = hi + vec2<f32>(reach);
+    // A slanted letter leans: room for its top to the right and its foot
+    // to the left of its box.
+    if (i.shape.z == KIND_LETTER && i.letter.y != 0.0) {
+        let s = abs(i.letter.y);
+        lo.x = lo.x - s * max(hi.y - i.letter.z, 0.0);
+        hi.x = hi.x + s * max(i.letter.z - lo.y, 0.0);
+    }
     let corner = vec2<f32>(f32(v & 1u), f32((v >> 1u) & 1u));
     let at = mix(lo, hi, corner);
     let ndc = vec2<f32>(at.x / screen.size.x * 2.0 - 1.0, 1.0 - at.y / screen.size.y * 2.0);
@@ -92,6 +104,7 @@ fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
     o.halo = i.halo;
     o.glow = i.glow;
     o.outline = i.outline;
+    o.letter = i.letter;
     return o;
 }
 
@@ -144,15 +157,22 @@ fn ui_fs(o_in: Out) -> @location(0) vec4<f32> {
     let crisp = (flags & FLAG_CRISP) != 0u;
     var d: f32;
     if (kind == KIND_LETTER) {
+        // A slanted letter: each point read from where it is upright,
+        // moved back along the lean by its height over the baseline.
+        var q = o.at;
+        q.x = q.x - o.letter.y * (o.letter.z - q.y);
+        let lp = q - centre;
         // Where in the letter's distance image, then how far from its
         // edge in the image's pixels, then in the screen's.
-        let t = clamp((o.at - o.rect.xy) / max(o.rect.zw - o.rect.xy, vec2<f32>(0.0001)), vec2<f32>(0.0), vec2<f32>(1.0));
+        let t = clamp((q - o.rect.xy) / max(o.rect.zw - o.rect.xy, vec2<f32>(0.0001)), vec2<f32>(0.0), vec2<f32>(1.0));
         let uv = mix(o.ends.xy, o.ends.zw, t) / ATLAS_SIDE;
         let v = textureSampleLevel(atlas, atlas_sampler, uv, 0.0).r;
         d = -((v * 255.0 - 128.0) / 127.0 * SPREAD) * o.shape.x;
         // Past the letter's own image (a glow reaching further): its
         // distance from the image's edge added on.
-        d = d + length(max(abs(p) - half, vec2<f32>(0.0)));
+        d = d + length(max(abs(lp) - half, vec2<f32>(0.0)));
+        // A bold its font hasn't got: the edge moved out.
+        d = d - o.letter.x;
     } else if (kind == KIND_LINE) {
         d = segment(o.at, o.ends.xy, o.ends.zw) - o.shape.x * 0.5;
     } else if (kind == KIND_ELLIPSE) {

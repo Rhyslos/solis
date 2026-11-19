@@ -235,6 +235,19 @@ fn lend_screens<'s>(
         )?,
     )?;
     natives.raw_set(
+        "entity_finishTyping",
+        native(
+            scope,
+            "entity_finishTyping",
+            move |_, (which, screen): (LuaValue, mlua::LuaString)| {
+                if let (Some(e), Some(screen)) = (entity_of(&which), screen_named(&screen)) {
+                    h.borrow_mut().finish_typing(e, &screen);
+                }
+                Ok(())
+            },
+        )?,
+    )?;
+    natives.raw_set(
         "entity_screenShown",
         native(
             scope,

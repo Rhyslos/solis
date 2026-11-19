@@ -29,6 +29,31 @@ pub struct TextStyle {
     pub line_height: f32,
     /// Room added after each letter, in design pixels (0: the font's).
     pub letter_spacing: f32,
+    /// What its markup changes in its layout: bold parts and icons'
+    /// widths (stage 1, text effects).
+    pub inline: Inline,
+}
+
+/// What a text's markup changes in how it's laid out (stage 1, text
+/// effects); every other effect leaves the layout alone.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Inline {
+    /// The parts in bold, as bytes of the text (from, to): letters from
+    /// the game's own font come from its bold, which is wider.
+    pub bold: Vec<[u32; 2]>,
+    /// Each icon's width over its height, in order: each
+    /// [`crate::markup::ICON`] in the text is a box as tall as the text's
+    /// size and this many times as wide.
+    pub icons: Vec<f32>,
+}
+
+impl Inline {
+    /// Whether byte `byte` is in bold.
+    fn bold_at(&self, byte: usize) -> bool {
+        self.bold
+            .iter()
+            .any(|[from, to]| (*from as usize..*to as usize).contains(&byte))
+    }
 }
 
 impl TextStyle {
@@ -41,6 +66,7 @@ impl TextStyle {
             fonts: Vec::new(),
             line_height: 1.0,
             letter_spacing: 0.0,
+            inline: Inline::default(),
         }
     }
 }
@@ -61,12 +87,17 @@ pub struct Fit {
     pub cut: bool,
 }
 
+/// The [`Glyph::slot`] of an icon: its [`Glyph::id`] is the icon's
+/// number in its text.
+pub(crate) const ICON_SLOT: u16 = u16::MAX;
+
 /// One letter placed in a paragraph.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Glyph {
-    /// The font it's from: its place among the fonts laid out with.
+    /// The font it's from: its place among the fonts laid out with
+    /// ([`ICON_SLOT`] for an icon).
     pub(crate) slot: u16,
-    /// The font's letter.
+    /// The font's letter (an icon's number).
     pub(crate) id: GlyphId,
     /// Where its pen is: from its line's left, and from its baseline (down).
     pub(crate) at: [f32; 2],
@@ -97,6 +128,8 @@ pub struct Paragraph {
     /// Whether it was cut with "…".
     pub cut: bool,
     pub(crate) glyphs: Vec<Glyph>,
+    /// Each icon's width, in design pixels, by its number.
+    pub(crate) icons: Vec<f32>,
 }
 
 impl Paragraph {
@@ -183,6 +216,11 @@ pub(crate) struct Builder<'a> {
     pub(crate) style: &'a TextStyle,
     pub(crate) fit: Fit,
     pub(crate) max_letters: usize,
+    /// The game's own font and its bold (places in `slots`), for bold
+    /// parts of the text.
+    pub(crate) bold: Option<(usize, usize)>,
+    /// Icons met so far.
+    pub(crate) icons: usize,
 }
 
 /// Characters that belong with the letter before them, never choosing a
@@ -205,6 +243,15 @@ fn filling(lines: &mut Vec<Filling>) -> &mut Filling {
     }
     let last = lines.len() - 1;
     &mut lines[last]
+}
+
+/// An icon's width over its height, kept sensible.
+fn icon_width(ratio: f32) -> f32 {
+    if ratio.is_finite() {
+        ratio.clamp(0.1, 10.0)
+    } else {
+        1.0
+    }
 }
 
 fn finite_or(v: f32, or: f32) -> f32 {
@@ -300,6 +347,13 @@ impl Builder<'_> {
         let mut paragraph = Paragraph {
             text_size: size,
             cut,
+            icons: self
+                .style
+                .inline
+                .icons
+                .iter()
+                .map(|&w| icon_width(w) * size)
+                .collect(),
             ..Paragraph::default()
         };
         let mut widest = 0.0_f32;
@@ -327,15 +381,55 @@ impl Builder<'_> {
             .unwrap_or(stack[0])
     }
 
+    /// The font for `c` at byte `byte`: the first that has it, from the
+    /// game's bold where the game's font is chosen in a bold part.
+    fn font_at(&mut self, c: char, byte: usize) -> usize {
+        let font = self.font_for(c);
+        match self.bold {
+            Some((regular, bold))
+                if font == regular
+                    && self.style.inline.bold_at(byte)
+                    && self.slots[bold].font.has(c) =>
+            {
+                bold
+            }
+            _ => font,
+        }
+    }
+
+    /// An icon's box at the pen: as tall as the text, its top at the
+    /// font's ascent.
+    fn icon(&mut self, byte: usize, size: f32, spacing: f32, out: &mut Vec<Piece>) {
+        let number = self.icons;
+        self.icons += 1;
+        let ratio = self.style.inline.icons.get(number).copied().unwrap_or(1.0);
+        let ascent = self.slots[self.stack[0]].font.at(size).ascent();
+        out.push(Piece {
+            slot: ICON_SLOT,
+            id: GlyphId::new(u32::try_from(number).unwrap_or(u32::MAX)),
+            advance: icon_width(ratio) * size + spacing,
+            offset: [0.0, ascent],
+            cluster: u32::try_from(byte).unwrap_or(u32::MAX),
+            space: false,
+        });
+    }
+
     /// `body` (from byte `base` of the text) as letters: in runs of one
     /// font each, shaped, at `size` with `spacing` after each letter.
     fn shape(&mut self, body: &str, base: usize, size: f32, spacing: f32, out: &mut Vec<Piece>) {
         let mut run: Option<(usize, usize)> = None;
         for (i, c) in body.char_indices() {
+            if c == crate::markup::ICON {
+                if let Some((from, font)) = run.take() {
+                    self.shape_run(&body[from..i], base + from, font, size, spacing, out);
+                }
+                self.icon(base + i, size, spacing, out);
+                continue;
+            }
             let keeps = c.is_whitespace() || c.is_control() || follows(c);
             let font = match run {
                 Some((_, font)) if keeps => font,
-                _ => self.font_for(c),
+                _ => self.font_at(c, base + i),
             };
             match run {
                 Some((from, was)) if was != font => {

@@ -79,6 +79,9 @@ pub enum Change {
     /// `showScreen` (true) or `hideScreen` (false): this entity's Screen
     /// shows, or stops showing, the screen named here.
     ShowScreen(EntityId, String, bool),
+    /// `finishTyping`: the text this entity's Screen named here is typing
+    /// out shows all at once (stage 1, text effects).
+    FinishTyping(EntityId, String),
     /// `setTimeOfDay`: the game's hour (decision 0092).
     TimeOfDay(f64),
     /// `Screens:set…` or `Window:set…`: one of the player's settings (decision 0091).
@@ -738,6 +741,18 @@ impl Host for ViewHost {
             self.kept
                 .changes
                 .push((order, Change::ShowScreen(which, screen.to_string(), shown)));
+        }
+    }
+
+    fn finish_typing(&mut self, which: EntityId, screen: &str) {
+        let named = screen.len() <= level::builtin::Screen::MAX_NAME
+            && !screen.is_empty()
+            && screen.chars().all(|c| c.is_ascii_alphanumeric());
+        if named && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::FinishTyping(which, screen.to_string())));
         }
     }
 

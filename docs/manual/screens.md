@@ -437,7 +437,7 @@ end
 - The name can be worked out as the game runs (`image item.icon;`): that picture is read the first time it's shown.
 - A name written out in the screen's code that names no picture, or no crop of it, is listed in **Problems** with its line before you press Play. A missing picture shows as a grey box with its name.
 
-**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `image`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, `nowrap`, `font` (one of the project's fonts, with fallbacks: [Text on screens](screen-text.md)), the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border`, `opacity` and, for pictures, `cover`. Other pieces are laid out but not drawn yet.
+**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `image`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, `nowrap`, `font` (one of the project's fonts, with fallbacks: [Text on screens](screen-text.md)), the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border`, `opacity` and, for pictures, `cover`. Inside a text's words go its effects (`[wave]`, `[colour=red5]`, `[icon=Picture.Ui.Coin]`: [Text effects](text-effects.md)). Other pieces are laid out but not drawn yet.
 
 ## Settings
 
@@ -454,6 +454,9 @@ The **Screen** component:
 | Pixel size | Draws the whole screen in blocks this many pixels big (1 is smooth). |
 | Line height | The room from one line of its text to the next, as a share of the font's own (100%). See [Text on screens](screen-text.md#settings). |
 | Letter spacing | Room added after every letter of its text, in pixels. See [Text on screens](screen-text.md#settings). |
+| Typing speed | How many letters a second its text types out at (0: at once). See [Text effects](text-effects.md#settings). |
+| Typing sound | A sound event played as its text types out. |
+| Sound on | Whether the typing sound plays on each letter or each word. |
 
 ## Tips and common problems
 
@@ -477,6 +480,7 @@ The **Screen** component:
 ## Related
 
 - [Text on screens](screen-text.md): wrapping, alignment, "…", the project's own fonts and fallbacks.
+- [Text effects](text-effects.md): coloured, wavy and shaking words, icons inside text, and text typing out.
 - [Game code](game-code.md): game-wide objects, which screens read.
 - [Play mode](play-mode.md): the Game panel, where screens are drawn, and recordings.
 - [The UI sample](ui-sample.md): a HUD and a pause menu with the player's settings, start to finish.
