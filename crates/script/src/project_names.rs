@@ -539,7 +539,7 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level;\nend\n"
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font;\nend\n"
         ));
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
@@ -567,6 +567,15 @@ mod tests {
         );
         assert!(
             text.contains("state Picture = [Portraits [GuardFace], Sprites [Tools [Axe]]];"),
+            "{text}"
+        );
+        // Fonts too (stage 1, text layout), and none is Font.None.
+        assert!(text.contains("state Font = [None];"), "{text}");
+        let mut with_fonts = Names::standard();
+        with_fonts.fonts = vec!["fonts/Lora".into(), "Pixel".into()];
+        let (text, _) = project_file("Test 1.0", &with_fonts);
+        assert!(
+            text.contains("state Font = [Fonts [Lora], Pixel];"),
             "{text}"
         );
         // A prefab both a file and a folder is still said.
@@ -658,7 +667,7 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level;\nend\n"
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font;\nend\n"
         ));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
