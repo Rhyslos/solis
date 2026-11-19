@@ -47,10 +47,7 @@ pub(crate) fn rows(
     ui: &mut Ui,
     (schema, data): (&ComponentSchema, &ComponentData),
     facts: &BrushFacts,
-    assets: (
-        &std::collections::BTreeMap<reflect::AssetId, crate::models::ModelInfo>,
-        &crate::sprite_sheets::SpriteSheets,
-    ),
+    assets: crate::inspector::Known<'_>,
     level: &level::Level,
 ) -> Vec<CardChange> {
     let mut changes = Vec::new();
@@ -58,9 +55,10 @@ pub(crate) fn rows(
     let size_field =
         FieldInfo::new("size", "Size", FieldKind::Vec3, Value::vec3(facts.size)).hint(Hint {
             speed: Some(0.05),
-            unit: " m",
+            unit: " m".into(),
             help: "The brush's box, in metres: typing a size stretches the brush about its \
-                   middle.",
+                   middle."
+                .into(),
             ..Hint::default()
         });
     let mut top = ComponentSchema {
@@ -109,19 +107,16 @@ fn solid_row(
     ui: &mut Ui,
     solid: &FieldInfo,
     data: &ComponentData,
-    (models, sheets): (
-        &std::collections::BTreeMap<reflect::AssetId, crate::models::ModelInfo>,
-        &crate::sprite_sheets::SpriteSheets,
-    ),
+    known: crate::inspector::Known<'_>,
     level: &level::Level,
 ) -> Option<CardChange> {
     let value = data.get("solid").unwrap_or(&solid.default);
-    inspector::row(ui, &solid.label, solid.hint.help, |ui| {
+    inspector::row(ui, &solid.label, &solid.hint.help, |ui| {
         let set = inspector::field_widget(
             ui,
             solid,
             value,
-            (models, sheets, data),
+            (known, data),
             level,
             inspector::Mixed::default(),
         );
@@ -132,12 +127,13 @@ fn solid_row(
         );
         set
     })
-    .map(|(value, part)| {
-        CardChange::Field(FieldChange::Set {
+    .and_then(|picked| match picked {
+        inspector::Picked::Set(value, part) => Some(CardChange::Field(FieldChange::Set {
             field: "solid".into(),
             value,
             part,
-        })
+        })),
+        inspector::Picked::Play(_) => None,
     })
 }
 

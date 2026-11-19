@@ -51,7 +51,7 @@ impl Component for Animator {
             fields: vec![
                 FieldInfo::new("animator", "Animator", FieldKind::Asset, Value::Asset(None)).hint(
                     Hint {
-                        help: "The animator file (.solanim) in the project.",
+                        help: "The animator file (.solanim) in the project.".into(),
                         offers: Offer::Assets("animator"),
                         ..Hint::default()
                     },
@@ -64,7 +64,8 @@ impl Component for Animator {
                 )
                 .hint(Hint {
                     help: "The state it starts in: empty for the animator's own start. \
-                               While the game runs, the state it's in.",
+                               While the game runs, the state it's in."
+                        .into(),
                     offers: Offer::StatesOf("animator"),
                     ..Hint::default()
                 }),

@@ -82,7 +82,8 @@ impl Component for AudioSource {
                 )
                 .hint(Hint {
                     help: "The sound event to play, by its file in assets without \
-                               .solsound: \"sfx/engine\".",
+                               .solsound: \"sfx/engine\"."
+                        .into(),
                     ..Hint::default()
                 }),
                 field::boolean(

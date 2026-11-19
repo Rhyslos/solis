@@ -159,7 +159,7 @@ end
 4. Change **Speed** in Properties while it plays: the running Mover takes the new speed at once, and keeps everything else it has (here, where it is). While the game plays, Properties shows a game code component's values as they are right now, not the ones it started with: a turret that has fired shows the ammo it has left. Why? So you can watch what your code is doing without writing anything to the Console. A value you set there is taken by the running component as you set it, even when it's the value it started with: type the turret's full ammo and it has full ammo again. (With several entities selected, it shows the values they started with.)
 5. Press **Stop**. Everything the game changed is back as it was before Play. The Speed you changed yourself is a change to the level, so Solis lists it and asks: **Keep** it, or **Undo all** (see [Play mode](play-mode.md)).
 
-What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `vec2`, `rotation`, `colour` and `entity` (another entity, or `nothing`).
+What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `vec2`, `rotation`, `colour`, `entity` (another entity, or `nothing`), and one of the project's names (a sound, a picture, a prefab: see [Field hints and the project's names](#field-hints-and-the-projects-names)).
 
 - **`vec2`** is two numbers, for 2D: a place on a tile map, a direction to walk (`vec2 speed = [2, -1];`). Properties shows its X and Y.
 - **`colour`** is red, green and blue from 0 to 1, and how solid it is (`colour tint = orange5;`, `colour shadow = [0, 0, 0, 0.5];`). Properties shows a colour picker; picking a colour keeps how see-through it was. **Why it matters:** a field of either kind is saved in the level and in save games, and a loaded game carries on with it exactly as it was.
@@ -183,6 +183,117 @@ So a game runs the same way on a computer with 2 cores or 32. Most code never no
 **When the whole tick is too slow:** if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
 
 **What game code says** goes to the Console a line at a time. A very long line is cut short, and past 200 lines in one tick the rest are counted ("Game code said 800 more lines just now"), so a component that talks too much can't drown the Console or fill the computer's memory.
+
+## Field hints and the project's names
+
+A component's own settings can say how Properties shows them: a **slider** between two limits, a **step** values snap to, a **unit** after the number, a sentence of **help** under the field, a **heading** over a group of fields, text over **several lines**, or not shown at all. And a field can hold one of the project's own things (a sound, a sprite's clip, a picture, a prefab, a screen, a level or a tag), which Properties shows as a list to pick from. **Why?** A designer tuning a guard in Properties shouldn't have to guess that its speed makes sense between 0 and 10, or type a sound's name: the code says so once, and Properties helps everyone who sets it.
+
+```lust
+-- guard.lst: a guard whose settings explain themselves.
+fetch "solis/project":[Sound, Picture, Prefab];
+
+component Guard {
+    has {
+        -- How it moves.
+        float speed = 4.0; -- [range 0 10, step 0.5, unit "m/s", tip "Walking speed"]
+
+        -- What it uses: picked from the project's own files.
+        Sound alertSound = Sound.Sfx.Footstep;
+        Picture portrait = Picture.Sprites.Tools;
+        Prefab drops = Prefab.Drones.Drone;
+
+        -- How it sees.
+        float sightRange = 8.0; -- [range 0 20, unit "m", group "Seeing"]
+        string says = "Halt!"; -- [multiline]
+        int seen = 0; -- [hidden]
+    }
+
+    method update(float dt) {
+        moveTo(position() + [speed * dt, 0, 0]);
+    }
+}
+
+pass Guard;
+end
+```
+
+```rust
+use reflect::{ComponentSchema, FieldInfo, FieldKind, Hint, NameKind, Offer, Value};
+
+// A Rust component writes its hints into its schema: the same ones Lust's
+// comments and Lua's tables give. (Its update, values, set and RustKind
+// are as for the Mover above, so they're left out.)
+pub fn guard_schema(sounds: Vec<String>) -> ComponentSchema {
+    let speed = FieldInfo::new("speed", "Speed", FieldKind::Float, Value::Float(4.0)).hint(Hint {
+        range: Some((0.0, 10.0)),
+        slider: true,
+        step: Some(0.5),
+        unit: " m/s".into(),
+        tip: "Walking speed".into(),
+        ..Hint::default()
+    });
+    let alert = FieldInfo::new(
+        "alertSound",
+        "Alert sound",
+        FieldKind::Choice(sounds),
+        Value::Text("Sfx.Footstep".into()),
+    )
+    .hint(Hint {
+        offers: Offer::Names(NameKind::Sound),
+        ..Hint::default()
+    });
+    ComponentSchema {
+        name: "Guard".into(),
+        help: "A guard whose settings explain themselves.".into(),
+        fields: vec![speed, alert],
+    }
+}
+```
+
+```lua
+-- guard.lua: the hints are a table after a field's options (nil when it has none).
+local Guard = component("Guard", {
+    { "speed", "float", 4.0, nil, { range = { 0, 10 }, step = 0.5, unit = "m/s", tip = "Walking speed" } },
+    -- A kind that's one of the project's names picks from them.
+    { "alertSound", "Sound", "Sfx.Footstep" },
+    { "portrait", "Picture", "Sprites.Tools" },
+    { "drops", "Prefab", "Drones.Drone" },
+    { "sightRange", "float", 8.0, nil, { range = { 0, 20 }, unit = "m", group = "Seeing" } },
+    { "says", "string", "Halt!", nil, { multiline = true } },
+    { "seen", "int", 0, nil, { hidden = true } },
+})
+
+function Guard:update(dt)
+    local here = solis.entity.position(self.me)
+    solis.entity.moveTo(self.me, here + vec3(self.speed * dt, 0, 0))
+end
+```
+
+**The hints**, written in Lust in a comment straight after the field's `;`, between `[` and `]`, with commas between them:
+
+| Hint | What Properties does | For |
+|---|---|---|
+| `range 0 10` | A slider from 0 to 10 with the number beside it (three numbers: each dragged within it), and "0 to 10" under the field | `int`, `float`, `vec2`, `vec3` |
+| `step 0.5` | Dragged and typed values snap to multiples of it | the same |
+| `unit "m/s"` | Written after the number | the same |
+| `tip "Walking speed"` | A sentence under the field, and when you point at its name | any field |
+| `group "Seeing"` | A heading over this field and the ones after it, until another group | any field |
+| `multiline` | A box of several lines | `string` |
+| `hidden` | Not shown; still kept, saved and run | any field |
+
+**Why a comment?** Lust has no way to put words like these on a field yet. A comment changes nothing about how the code runs, so the hints can't break a game, and when Lust learns them, moving over is taking away the `--`.
+
+**Limits help, never forbid.** Properties keeps what you drag or type within a field's range, but game code may set anything, and a value outside the range is shown as it is (the slider sits at its end) until you move it. A starting value outside its own range is listed in [Problems](problems.md), since you couldn't drag back to it. Each slider drag is one [undo](undo.md) step.
+
+**Mistakes in a hint** (a word Solis doesn't know, `range 10 0`, a range on a sound) are listed in Problems with their line, saying what to write. The rest of the code runs, and the field shows without that hint. Hints belong to the code, not the level: they're never saved in a level, and change as soon as you save new code.
+
+**The project's names.** A field whose kind is `Sound`, `Clip`, `Picture`, `Prefab`, `Screen`, `Level` or `Tag` (from `solis/project.lst`) holds one of them, and Properties shows a list to pick from: a box to find one by typing, the project's folders as headings, each name with its file's picture or its kind's icon, and on a sound a **▶** to hear it, in the list and after the field. You can also **drag a file from the Library onto the field**: it lights up when the file is one it can hold, and letting go sets it, one undo step. The field keeps the name (`Sfx.Alert`), so **renaming or moving the file in the Library changes every field naming it** in the open level, as one undo step. In Lua, write the kind's name as the field's kind (`"Sound"`); in Rust, a `Choice` field with `Offer::Names(NameKind::Sound)`.
+
+**Pictures** are the project's PNG and JPEG files (`Picture.Portraits.GuardFace` for `portraits/guardFace.png`), with the parts cut out of each with [Atlas Crop](atlas-crop.md) inside it (`Picture.Sprites.Tools.Axe`). **Levels** are its `.sollevel` files (`Level.Forest.Cave`).
+
+**Colours** show a swatch, which opens a colour picker, and the colour's hex after it (`#5AA0E0`).
+
+**Lists aren't here yet.** A component can't keep a list of things (a guard's patrol points) until Lust can keep an array in a component; it's been asked for. Until then, use several fields, or child entities as markers.
 
 ## Changing code while the game runs
 

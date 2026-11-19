@@ -61,6 +61,9 @@ pub struct Names {
     /// Its timers' names (`DoorOpens`), as its Lust starts them (stage 1,
     /// timers; [`crate::timer_names::names_started`]).
     pub timers: Vec<String>,
+    /// Its levels: their paths in the assets, without `.sollevel`
+    /// (`forest/cave`; decision 0127, for a field that picks one).
+    pub levels: Vec<String>,
 }
 
 impl Names {
@@ -82,6 +85,7 @@ impl Names {
             pictures: Vec::new(),
             tags: Vec::new(),
             timers: Vec::new(),
+            levels: Vec::new(),
         }
     }
 }
@@ -139,6 +143,13 @@ impl Names {
         self
     }
 
+    /// These names with these levels (paths without the extension).
+    #[must_use]
+    pub fn and_levels(mut self, levels: &[&str]) -> Self {
+        self.levels.extend(levels.iter().map(|a| (*a).to_string()));
+        self
+    }
+
     /// These names with more input actions.
     #[must_use]
     pub fn and_actions(mut self, actions: &[&str]) -> Self {
@@ -173,9 +184,10 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let clip = state_text("Clip", &names.clips, "sprite clip", &mut notes);
     let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
     let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
-    let picture = state_text("Picture", &names.pictures, "cropped picture", &mut notes);
+    let picture = state_text("Picture", &names.pictures, "picture", &mut notes);
     let tag = names_text("Tag", &names.tags, "tag", true, &mut notes);
     let timer = names_text("Timer", &names.timers, "timer", true, &mut notes);
+    let level = state_text("Level", &names.levels, "level", &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -195,13 +207,17 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {cue}\n\n\
          -- The game's screens (files in ui/): showScreen(Screen.PauseMenu) for ui/pauseMenu.lst.\n\
          {screen}\n\n\
-         -- The pictures cut out with Atlas Crop, by their pictures: Picture.Sprites.Tools.Axe for\n\
-         -- sprites/tools.png's Axe.\n\
+         -- The project's pictures, folders as options inside options, and the parts cut out of\n\
+         -- them with Atlas Crop inside their pictures: Picture.Sprites.Tools for sprites/tools.png,\n\
+         -- and Picture.Sprites.Tools.Axe for its Axe.\n\
          {picture}\n\n\
          -- The project's tags (Project settings > Tags): is hasTag(Tag.Enemy)?, World:nearest(Tag.Enemy, place).\n\
          {tag}\n\n\
          -- The game's timers, each named where code starts it: startTimer(Timer.DoorOpens, 2.0).\n\
          {timer}\n\n\
+         -- The project's levels, folders as options inside options: Level.Forest.Cave for\n\
+         -- forest/cave.sollevel.\n\
+         {level}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -252,6 +268,7 @@ fn state_text(state: &str, paths: &[String], what: &str, notes: &mut Vec<String>
         level.file = true;
     }
     let mut options = Vec::new();
+    let what = (what, state == PARTS_INSIDE);
     write_level(&top, "", what, notes, &mut options);
     if options.is_empty() {
         options.push(NO_OPTION.to_string());
@@ -294,13 +311,19 @@ fn names_text(
     format!("state {state} = [{}];", options.join(", "))
 }
 
+/// The state whose files hold named parts of their own: a picture's
+/// crops are options inside it (`Picture.Sprites.Tools.Axe` in
+/// `Picture.Sprites.Tools`), so a picture with options inside is no
+/// mistake.
+const PARTS_INSIDE: &str = "Picture";
+
 /// The options of one level, written: a file is its name, a folder its
 /// name and the options inside. A name both a file and a folder keeps the
-/// folder, with a note.
+/// folder, with a note, unless files hold parts (`what`'s second).
 fn write_level(
     level: &Level,
     at: &str,
-    what: &str,
+    (what, parts): (&str, bool),
     notes: &mut Vec<String>,
     out: &mut Vec<String>,
 ) {
@@ -314,15 +337,87 @@ fn write_level(
             out.push(name.clone());
             continue;
         }
-        if inner.file {
+        if inner.file && !parts {
             notes.push(format!(
                 "The {what} {path} has the same name as a folder beside it, so game code can't name it. \
                  Rename one to use it from code."
             ));
         }
         let mut inside = Vec::new();
-        write_level(inner, &path, what, notes, &mut inside);
+        write_level(inner, &path, (what, parts), notes, &mut inside);
         out.push(format!("{name} [{}]", inside.join(", ")));
+    }
+}
+
+/// Each state's options in a project file, by the state's name: every
+/// option's full name, folders too, in the order written (as Lust lists
+/// them: `Sfx`, `Sfx.Footstep`).
+pub type States = BTreeMap<String, Vec<String>>;
+
+/// The project's names in `files` (the game's code, path and text): the
+/// states of its `solis/project.lst`, or none if it has none. Read for
+/// Lua fields of their kinds (decision 0127), which have no Lust to ask.
+pub fn states_in(files: &[(String, String)]) -> States {
+    let path = format!("{}/project.lst", level::lust_data::ENGINE_FOLDER);
+    let Some((_, text)) = files.iter().find(|(p, _)| *p == path) else {
+        return States::new();
+    };
+    let mut states = States::new();
+    for line in text.lines() {
+        let Some(rest) = line.trim().strip_prefix("state ") else {
+            continue;
+        };
+        let Some((name, list)) = rest.split_once('=') else {
+            continue;
+        };
+        let list = list.trim().trim_end_matches(';').trim();
+        let Some(inside) = list.strip_prefix('[').and_then(|l| l.strip_suffix(']')) else {
+            continue;
+        };
+        states.insert(name.trim().to_string(), options_in(inside));
+    }
+    states
+}
+
+/// A state's options as written (`Sfx [Footstep, Hoe], Music`), as full
+/// names in order: `Sfx`, `Sfx.Footstep`, `Sfx.Hoe`, `Music`.
+fn options_in(list: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut at: Vec<String> = Vec::new();
+    let mut word = String::new();
+    for c in list.chars() {
+        match c {
+            '[' => {
+                flush(&mut word, &at, &mut out);
+                if let Some(last) = out.last() {
+                    let inside = last.rsplit('.').next().unwrap_or_default().to_string();
+                    at.push(inside);
+                }
+            }
+            ']' => {
+                flush(&mut word, &at, &mut out);
+                at.pop();
+            }
+            ',' => flush(&mut word, &at, &mut out),
+            c if c.is_alphanumeric() || c == '_' => word.push(c),
+            _ => {}
+        }
+    }
+    flush(&mut word, &at, &mut out);
+    out
+}
+
+/// `word`, inside the options `at`, as a full name in `out`; then
+/// emptied.
+fn flush(word: &mut String, at: &[String], out: &mut Vec<String>) {
+    if !word.is_empty() {
+        let mut full = at.join(".");
+        if !full.is_empty() {
+            full.push('.');
+        }
+        full.push_str(word);
+        out.push(full);
+        word.clear();
     }
 }
 
@@ -436,12 +531,66 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer;\nend\n"
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level;\nend\n"
         ));
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));
+        assert!(text.contains("state Level = [None];"));
+    }
+
+    #[test]
+    fn levels_and_whole_pictures_are_names_with_crops_inside_their_pictures() {
+        let mut names = Names::standard().and_levels(&["forest/cave", "town"]);
+        names.pictures = vec![
+            "sprites/tools".into(),
+            "sprites/tools/Axe".into(),
+            "portraits/guardFace".into(),
+        ];
+        let (text, notes) = project_file("Test 1.0", &names);
+        assert!(
+            notes.is_empty(),
+            "a picture holding crops is no mistake: {notes:?}"
+        );
+        assert!(
+            text.contains("state Level = [Forest [Cave], Town];"),
+            "{text}"
+        );
+        assert!(
+            text.contains("state Picture = [Portraits [GuardFace], Sprites [Tools [Axe]]];"),
+            "{text}"
+        );
+        // A prefab both a file and a folder is still said.
+        let (_, notes) = project_file("Test 1.0", &prefabs(&["ships", "ships/fighter"]));
+        assert_eq!(notes.len(), 1, "{notes:?}");
+    }
+
+    #[test]
+    fn a_project_file_s_states_read_back_as_lust_lists_them() {
+        let names = Names::standard()
+            .and_sounds(&["sfx/footstep", "sfx/hoe", "music/farm"])
+            .and_tags(&["Enemy"]);
+        let (text, _) = project_file("Test 1.0", &names);
+        let files = vec![("solis/project.lst".to_string(), text)];
+        let states = states_in(&files);
+        assert_eq!(
+            states["Sound"],
+            ["Music", "Music.Farm", "Sfx", "Sfx.Footstep", "Sfx.Hoe"]
+        );
+        assert_eq!(states["Tag"], ["Enemy"]);
+        assert_eq!(states["Level"], ["None"]);
+        assert!(states_in(&[("main.lst".into(), "state X = [A];".into())]).is_empty());
+        assert_eq!(
+            options_in("A [B [C], D], E"),
+            ["A", "A.B", "A.B.C", "A.D", "E"]
+        );
+        assert_eq!(options_in(""), Vec::<String>::new());
+        assert_eq!(
+            options_in("]]]["),
+            Vec::<String>::new(),
+            "damaged text is no crash"
+        );
     }
 
     #[test]
@@ -501,7 +650,7 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer;\nend\n"
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level;\nend\n"
         ));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));

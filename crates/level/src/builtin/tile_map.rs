@@ -25,7 +25,7 @@ impl Component for TileMap {
                 .into(),
             fields: vec![
                 FieldInfo::new("map", "Map", FieldKind::Asset, Value::Asset(None)).hint(Hint {
-                    help: "The tile map file (.tilemap.lst) in the project.",
+                    help: "The tile map file (.tilemap.lst) in the project.".into(),
                     offers: Offer::Assets("tile map"),
                     ..Hint::default()
                 }),

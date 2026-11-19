@@ -2,6 +2,7 @@
 //! starting values and hints for the inspector.
 
 use crate::value::Value;
+use std::borrow::Cow;
 
 /// What kind of value a field holds.
 #[derive(Debug, Clone, PartialEq)]
@@ -62,19 +63,98 @@ impl FieldKind {
 }
 
 /// How the inspector shows a field. Hints never limit what's stored:
-/// `range` is where dragging stops, nothing more.
+/// `range` is where dragging and typing stop, nothing more, and game code
+/// may set anything. They belong to the code, so they're never saved in a
+/// level: new code brings new hints.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Hint {
-    /// The smallest and largest value dragging reaches.
+    /// The smallest and largest value dragging and typing reach.
     pub range: Option<(f64, f64)>,
     /// How much one point of dragging changes the value.
     pub speed: Option<f64>,
+    /// What a dragged or typed value is rounded to a multiple of
+    /// (game code's `step 0.5`).
+    pub step: Option<f64>,
     /// The unit shown after the value, such as " m" or " W".
-    pub unit: &'static str,
+    pub unit: Cow<'static, str>,
     /// What the field does, in plain words, shown when pointed at.
-    pub help: &'static str,
+    pub help: Cow<'static, str>,
+    /// A sentence shown under the field (game code's `tip "…"`).
+    pub tip: Cow<'static, str>,
+    /// The heading the field is shown under, with the fields after it
+    /// (game code's `group "Movement"`); empty for none.
+    pub group: Cow<'static, str>,
+    /// A slider between the range's ends rather than a number box alone.
+    pub slider: bool,
+    /// Text over several lines.
+    pub multiline: bool,
+    /// Kept and saved, but not shown in Properties.
+    pub hidden: bool,
     /// What the inspector offers to pick from, beyond typing.
     pub offers: Offer,
+}
+
+impl Hint {
+    /// A hint with `help` (shown when pointed at) and nothing else.
+    pub fn help(help: &'static str) -> Self {
+        Self {
+            help: Cow::Borrowed(help),
+            ..Self::default()
+        }
+    }
+}
+
+/// A kind of the project's names (`solis/project.lst`), which a state
+/// field of that kind picks from: a sound, a prefab, a picture… Kept as
+/// the option's name, so a renamed file follows (decision 0127).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum NameKind {
+    /// A sound event (`Sound.Sfx.Footstep`).
+    Sound,
+    /// A sprite's clip (`Clip.Sprites.Farmer.Walk`).
+    Clip,
+    /// A picture, or a part of one cut with Atlas Crop
+    /// (`Picture.Sprites.Hero`).
+    Picture,
+    /// A prefab (`Prefab.Ships.Fighter`).
+    Prefab,
+    /// A game screen (`Screen.PauseMenu`).
+    Screen,
+    /// A level (`Level.Forest`).
+    Level,
+    /// A tag (`Tag.Enemy`).
+    Tag,
+}
+
+impl NameKind {
+    /// Every kind, in the order Solis lists them.
+    pub const ALL: [Self; 7] = [
+        Self::Sound,
+        Self::Clip,
+        Self::Picture,
+        Self::Prefab,
+        Self::Screen,
+        Self::Level,
+        Self::Tag,
+    ];
+
+    /// The state's name in `solis/project.lst`: `Sound`.
+    pub fn state(self) -> &'static str {
+        match self {
+            Self::Sound => "Sound",
+            Self::Clip => "Clip",
+            Self::Picture => "Picture",
+            Self::Prefab => "Prefab",
+            Self::Screen => "Screen",
+            Self::Level => "Level",
+            Self::Tag => "Tag",
+        }
+    }
+
+    /// The kind whose state is called `state`.
+    pub fn of_state(state: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|k| k.state() == state)
+    }
 }
 
 /// What the inspector offers to pick a field's value from (Phase 9, D2).
@@ -103,6 +183,10 @@ pub enum Offer {
     /// A day's colours at their hours, for a text field holding them
     /// (`6:00 #e99a6a, 9:00 #fff6e0`; decision 0092).
     DayColours,
+    /// The project's names of this kind, for a state field holding one
+    /// (a sound, a prefab: decision 0127): a list with search and a
+    /// preview, and the Library's files dropped on it.
+    Names(NameKind),
 }
 
 /// One field of a component.

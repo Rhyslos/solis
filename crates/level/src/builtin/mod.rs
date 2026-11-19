@@ -117,7 +117,7 @@ pub(crate) mod field {
 
     pub(crate) fn boolean(name: &str, label: &str, default: bool, help: &'static str) -> FieldInfo {
         FieldInfo::new(name, label, FieldKind::Bool, Value::Bool(default)).hint(Hint {
-            help,
+            help: help.into(),
             ..Hint::default()
         })
     }
@@ -136,7 +136,7 @@ pub(crate) mod field {
             Value::Text(default.to_string()),
         )
         .hint(Hint {
-            help,
+            help: help.into(),
             ..Hint::default()
         })
     }
@@ -148,7 +148,7 @@ pub(crate) mod field {
         help: &'static str,
     ) -> FieldInfo {
         FieldInfo::new(name, label, FieldKind::Color, Value::floats(&default)).hint(Hint {
-            help,
+            help: help.into(),
             ..Hint::default()
         })
     }
@@ -162,8 +162,8 @@ pub(crate) mod field {
         Hint {
             range: Some(range),
             speed: Some(speed),
-            unit,
-            help,
+            unit: unit.into(),
+            help: help.into(),
             ..Hint::default()
         }
     }

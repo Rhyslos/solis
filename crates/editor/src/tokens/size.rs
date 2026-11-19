@@ -267,6 +267,12 @@ pub const FIELD_MIN_W: f32 = 60.0;
 pub const FIELD_AFTER_W: f32 = 64.0;
 /// The gap between a field's parts, and between small controls.
 pub const GAP: f32 = 6.0;
+/// The picture or icon before a field's words (a picker's thumbnail).
+pub const LEAD: f32 = 14.0;
+/// The number box after a slider in a card's field.
+pub const SLIDER_NUMBER_W: f32 = 62.0;
+/// A text field over several lines: how many it shows.
+pub const MULTILINE_ROWS: usize = 3;
 /// The gap between rows of controls.
 pub const ROW_GAP: f32 = 4.0;
 /// An icon button's side.

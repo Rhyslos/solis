@@ -819,12 +819,12 @@ fn shown_value(field: &FieldInfo, value: &Value) -> String {
     match (&field.kind, value) {
         (FieldKind::Vec3, v) => v.as_floats::<3>().map_or_else(
             || "?".into(),
-            |f| numbers(&f.map(f64::from), field.hint.unit),
+            |f| numbers(&f.map(f64::from), &field.hint.unit),
         ),
         (FieldKind::Rotation, v) => numbers(&degrees_of(v), "°"),
         (FieldKind::Vec2, v) => v.as_floats::<2>().map_or_else(
             || "?".into(),
-            |f| numbers(&f.map(f64::from), field.hint.unit),
+            |f| numbers(&f.map(f64::from), &field.hint.unit),
         ),
         (FieldKind::Color, v) => v.as_colour().map_or_else(
             || "?".into(),

@@ -48,6 +48,7 @@ mod graph_canvas;
 mod guide;
 #[cfg(test)]
 mod guide_keys_tests;
+mod hinted_fields;
 pub mod hints;
 pub mod icons;
 mod inspector;
@@ -66,6 +67,8 @@ mod menu_items;
 mod mixer_console;
 pub mod mixer_view;
 pub mod models;
+mod name_follow;
+mod name_picker;
 mod own_files;
 pub mod panel;
 mod panels;
@@ -182,7 +185,11 @@ pub use workbench::{AppInfo, Workbench, WorkbenchAction};
 pub use workbench_library::plain_relative;
 
 #[cfg(test)]
+mod field_hints_tests;
+#[cfg(test)]
 mod game_set_tests;
+#[cfg(test)]
+mod hint_picture_tests;
 #[cfg(test)]
 mod home_screen_tests;
 #[cfg(test)]

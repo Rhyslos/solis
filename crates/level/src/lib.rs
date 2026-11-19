@@ -12,6 +12,7 @@ mod edit;
 mod history;
 mod lust_check;
 pub mod lust_data;
+pub mod lust_fields;
 pub mod lust_guard;
 pub mod pixels;
 pub mod prefab;

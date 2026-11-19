@@ -360,6 +360,9 @@ pub(crate) fn check_code(
             for old in script::renamed_uses(&code) {
                 report.note(old.to_string());
             }
+            for hint in &compiled.hint_problems {
+                report.note(hint.to_string());
+            }
             report.ok(format!(
                 "the game's code checks ({} component{})",
                 compiled.schemas.len(),

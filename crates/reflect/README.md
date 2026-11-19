@@ -36,3 +36,5 @@ Phase 2, milestone 1. Phase 5: `IdMap`, a map keyed by entity IDs with `IdHasher
 Decision 0089: `atlas` joins the data kinds (`tools.atlas.lst`, Atlas Crop). Usable first, L1 (decision 0081): `data_files` names the Lust data files Solis makes (`farm.tilemap.lst`): the one list of kinds, a file's kind and its name without it.
 
 Tools 1a, B1: `FieldKind::Numbers`, a list of numbers of any length (a brush's points and faces), kept and saved as it is; Properties only says how many there are, and game code can't declare one.
+
+Stage 1, field hints (decision 0127): `Hint` gains `step`, `tip` (a sentence under the field), `group` (a heading), `slider`, `multiline` and `hidden`, and holds `unit` and `help` as `Cow<'static, str>`, so hints read from game code can be kept beside Solis's own; `Offer::Names(NameKind)` says a state field holds one of the project's names (a sound, a clip, a picture, a prefab, a screen, a level, a tag), picked from in Properties.

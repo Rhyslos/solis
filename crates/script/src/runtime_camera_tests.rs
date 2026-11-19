@@ -99,6 +99,8 @@ fn compiled(main: &str) -> Compiled {
         schemas: Vec::new(),
         places: Default::default(),
         bytecode: Default::default(),
+        hint_problems: Vec::new(),
+        names: Default::default(),
         screens: None,
     }
 }

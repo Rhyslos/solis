@@ -32,10 +32,11 @@ use crate::code::CodeProblem;
 use crate::convert::{empty, from_lua, kind_of, label, to_lua};
 use crate::luau::{Luau, capped};
 use crate::native_values::KEPT;
+use crate::project_names::States;
 use crate::runtime::Swapped;
 use crate::ticking::{Instance, RunningMap};
 use mlua::{Lua, Table, Value as LuaValue};
-use reflect::{ComponentData, ComponentSchema, EntityId, FieldInfo, FieldKind};
+use reflect::{ComponentData, ComponentSchema, EntityId, FieldInfo, FieldKind, NameKind, Offer};
 use std::collections::BTreeMap;
 
 /// A field as a component keeps it: its key in the component's table, and
@@ -54,6 +55,9 @@ pub(crate) struct LuaClass {
     pub(crate) schema: ComponentSchema,
     /// The file that made it, inside the assets.
     pub(crate) path: String,
+    /// Mistakes in its fields' hints (decision 0127), by field: the hint
+    /// is left out, and Problems lists them.
+    pub(crate) hint_mistakes: Vec<(String, String)>,
 }
 
 /// A Lua error's place and message, from its text (`spinner.lua:5:
@@ -165,7 +169,7 @@ pub(crate) fn compile_files(
 /// stops it.
 pub(crate) fn read_classes(
     luau: &Luau,
-    files: &[(String, mlua::Function)],
+    (files, names): (&[(String, mlua::Function)], &States),
     mut run: impl FnMut(&mlua::Function) -> mlua::Result<()>,
 ) -> Result<BTreeMap<String, LuaClass>, CodeProblem> {
     let mut classes = BTreeMap::new();
@@ -177,7 +181,7 @@ pub(crate) fn read_classes(
         let made = luau.made().map_err(problem)?;
         for class in made.sequence_values::<Table>() {
             let class = class.map_err(problem)?;
-            let read = read_class(path, class)?;
+            let read = read_class(path, class, names)?;
             if classes.contains_key(&read.schema.name) {
                 return Err(CodeProblem {
                     file: path.clone(),
@@ -195,8 +199,55 @@ pub(crate) fn read_classes(
     Ok(classes)
 }
 
-/// One class's fields and schema, from its list of fields.
-fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
+/// The mistakes in `classes`' hints, and their fields starting outside
+/// their ranges, each at its field's line in its file among `lua` (path
+/// and text): the first line after `component("Name"` naming the field in
+/// quotes, or none.
+pub(crate) fn hint_problems<'a>(
+    classes: impl Iterator<Item = &'a LuaClass>,
+    lua: &[(String, String)],
+) -> Vec<CodeProblem> {
+    let mut problems = Vec::new();
+    for class in classes {
+        let text = lua
+            .iter()
+            .find(|(path, _)| *path == class.path)
+            .map_or("", |(_, text)| text.as_str());
+        let name = &class.schema.name;
+        let line_of = |field: &str| -> u32 {
+            let start = text
+                .lines()
+                .position(|l| l.contains(&format!("component(\"{name}\"")))
+                .unwrap_or(0);
+            text.lines()
+                .enumerate()
+                .skip(start)
+                .find(|(_, l)| l.contains(&format!("\"{field}\"")))
+                .map_or(0, |(i, _)| u32::try_from(i + 1).unwrap_or(0))
+        };
+        let mistakes = class
+            .hint_mistakes
+            .iter()
+            .map(|(field, m)| (field.clone(), format!("the hint on {name}'s {field}: {m}")));
+        let outside = class.schema.fields.iter().filter_map(|f| {
+            crate::field_hints::outside_range(f).map(|m| (f.name.clone(), format!("{name}'s {m}")))
+        });
+        for (field, message) in mistakes.chain(outside) {
+            problems.push(CodeProblem {
+                file: class.path.clone(),
+                line: line_of(&field),
+                column: 0,
+                message,
+            });
+        }
+    }
+    problems
+}
+
+/// One class's fields and schema, from its list of fields. A field whose
+/// kind is one of the project's names (`"Sound"`) takes its options from
+/// `names`.
+fn read_class(path: &str, class: Table, names: &States) -> Result<LuaClass, CodeProblem> {
     let mistake = |message: String| CodeProblem {
         file: path.to_string(),
         line: 0,
@@ -210,6 +261,7 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
     let list: Table = class.raw_get("__fields").map_err(problem)?;
     let mut fields = Vec::new();
     let mut infos = Vec::new();
+    let mut hint_mistakes = Vec::new();
     for (i, entry) in list.sequence_values::<Table>().enumerate() {
         let entry = entry.map_err(|_| {
             mistake(format!(
@@ -235,17 +287,28 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
                 "{name}'s field {field} has no kind (such as \"float\")"
             ))
         })?;
-        let options: Vec<String> = match entry.raw_get::<LuaValue>(4).map_err(problem)? {
+        let mut options: Vec<String> = match entry.raw_get::<LuaValue>(4).map_err(problem)? {
             LuaValue::Table(t) => t
                 .sequence_values::<String>()
                 .collect::<Result<_, _>>()
                 .map_err(problem)?,
             _ => Vec::new(),
         };
-        let Some(kind) = kind_of(&kind_name, options) else {
+        // One of the project's names: a state of its options, picked
+        // from in Properties (decision 0127).
+        let picks = NameKind::of_state(&kind_name);
+        if picks.is_some() {
+            options = names
+                .get(&kind_name)
+                .cloned()
+                .unwrap_or_else(|| vec![crate::project_names::NO_OPTION.to_string()]);
+        }
+        let Some(kind) = kind_of(if picks.is_some() { "state" } else { &kind_name }, options)
+        else {
             return Err(mistake(format!(
                 "{name}'s field {field} is a {kind_name}, which isn't a kind a component can \
-                 hold: bool, int, float, string, state, vec3, vec2, colour, rotation or entity"
+                 hold: bool, int, float, string, state, vec3, vec2, colour, rotation, entity, \
+                 or one of the project's names (Sound, Clip, Picture, Prefab, Screen, Level, Tag)"
             )));
         };
         // A state lists its states (found by the hardening milestone's
@@ -265,12 +328,16 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
                 ))
             })?,
         };
-        infos.push(FieldInfo::new(
-            &field,
-            &label(&field),
-            kind.clone(),
-            default,
-        ));
+        let mut info = FieldInfo::new(&field, &label(&field), kind.clone(), default);
+        if let Some(picks) = picks {
+            info.hint.offers = Offer::Names(picks);
+        }
+        if let LuaValue::Table(hints) = entry.raw_get::<LuaValue>(5).map_err(problem)? {
+            let (words, mut said) = crate::field_hints::from_lua(&hints);
+            said.extend(crate::field_hints::apply(&mut info, words, &kind_name));
+            hint_mistakes.extend(said.into_iter().map(|m| (field.clone(), m)));
+        }
+        infos.push(info);
         fields.push(Field {
             key: field.clone(),
             name: field,
@@ -286,6 +353,7 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
             fields: infos,
         },
         path: path.to_string(),
+        hint_mistakes,
     })
 }
 

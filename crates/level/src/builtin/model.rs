@@ -21,7 +21,7 @@ impl Component for Model {
             help: "Draws an imported model at the entity.".into(),
             fields: vec![
                 FieldInfo::new("asset", "Model", FieldKind::Asset, Value::Asset(None)).hint(Hint {
-                    help: "The imported model to draw.",
+                    help: "The imported model to draw.".into(),
                     ..Hint::default()
                 }),
             ],

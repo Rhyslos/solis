@@ -24,6 +24,7 @@ use std::path::PathBuf;
 mod browser;
 mod kinds;
 mod menus;
+pub(crate) mod names;
 mod rename;
 mod shown;
 mod tiles;
@@ -120,12 +121,27 @@ impl LibraryDrag {
 pub(crate) struct LibraryFiles {
     items: Vec<LibraryItem>,
     lowered: Vec<String>,
+    /// Each file that stands for one of the project's names, by
+    /// [`names::key`] (decision 0127).
+    names: HashMap<(reflect::NameKind, String), usize>,
 }
 
 impl From<Vec<LibraryItem>> for LibraryFiles {
     fn from(items: Vec<LibraryItem>) -> Self {
         let lowered = items.iter().map(|i| i.name.to_lowercase()).collect();
-        Self { items, lowered }
+        let names = items
+            .iter()
+            .enumerate()
+            .filter_map(|(at, item)| {
+                let (kind, option) = names::name_of(item)?;
+                Some((names::key(kind, &option), at))
+            })
+            .collect();
+        Self {
+            items,
+            lowered,
+            names,
+        }
     }
 }
 
@@ -148,6 +164,27 @@ impl LibraryFiles {
     /// The file at `path`, if there is one.
     pub(crate) fn at(&self, path: &str) -> Option<&LibraryItem> {
         self.items.iter().find(|i| i.path == path)
+    }
+
+    /// Whether a file stands for exactly this one of the project's names.
+    pub(crate) fn has(&self, kind: reflect::NameKind, option: &str) -> bool {
+        self.names.contains_key(&names::key(kind, option))
+    }
+
+    /// The file one of the project's names stands for (`Sfx.Alert`, a
+    /// sound), if the Library has it. A clip's is its sheet's, and a
+    /// picture's crop's its picture's: the nearest the option is inside.
+    pub(crate) fn named(&self, kind: reflect::NameKind, option: &str) -> Option<&LibraryItem> {
+        let mut option = option;
+        loop {
+            if let Some(&at) = self.names.get(&names::key(kind, option)) {
+                return self.items.get(at);
+            }
+            if !matches!(kind, reflect::NameKind::Clip | reflect::NameKind::Picture) {
+                return None;
+            }
+            option = option.rsplit_once('.')?.0;
+        }
     }
 }
 
