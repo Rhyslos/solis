@@ -215,6 +215,19 @@ pub enum WorkbenchAction {
     /// Save the project's tags to its `tags.lst` (Project settings ›
     /// Tags; stage 1), and write game code's names again.
     SaveTags(level::tags::TagList),
+    /// Save the project's languages to its `languages.lst` (Project
+    /// settings › Languages; stage 1, translations), and write game code's
+    /// names again.
+    SaveLanguages(level::languages::Languages),
+    /// Save a translation file (`locale/nb/shop.ftl`: its path inside the
+    /// project's files, and its text), and write game code's names again.
+    SaveLocaleFile(String, String),
+    /// Write the translators' spreadsheet (`translations.csv` in the
+    /// project's folder) with this text.
+    ExportTranslations(String),
+    /// Read the translators' spreadsheet back, and answer with
+    /// [`Workbench::import_translations`](crate::Workbench::import_translations).
+    ReadTranslations,
     /// Count where the project's saved levels use each tag, on a worker,
     /// and answer with [`Workbench::set_tag_use`](crate::Workbench::set_tag_use).
     CountTagUse,

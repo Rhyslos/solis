@@ -426,7 +426,11 @@ fn sprite_clip_names(project: &asset_db::Project) -> crate::game_code::Animation
     let (db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
     let mut sheets = read_sheets(&db);
     sheets.work_out_clips();
-    crate::game_code::Animation::of(&sheets)
+    let root = project.root();
+    let (languages, files, _) = crate::window::load_locale(root, &project.files());
+    let all = editor::locale::translations_of(&languages, &files, &sheets);
+    let texts = editor::locale::text_names_of(&all, &sheets).0;
+    crate::game_code::Animation::of(&sheets, texts)
 }
 
 /// Plays back each recording in `recordings/checks/`.
@@ -607,6 +611,9 @@ pub(crate) fn workbench_for(
     w.set_mixer(crate::play_files::load_mixer(root).0);
     // And its tags (stage 1), which game code asks about.
     w.set_tags(crate::play_files::load_tags(root).0);
+    // And its languages and text (stage 1, translations).
+    let (languages, files, _) = crate::window::load_locale(root, &db.project().files());
+    w.set_locale(languages, files);
     let (items, folders) = crate::project::Projects::library(&db.listing(), |_| None);
     // Every prefab, so game code can spawn any of them: read once for
     // all of a check's recordings (the Phase 8 review).

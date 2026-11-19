@@ -251,6 +251,7 @@ dependencies = [
  "serde",
  "sound",
  "tiles",
+ "translations",
  "ui",
  "updater",
  "winresource",
@@ -1100,6 +1101,7 @@ dependencies = [
  "serde",
  "sound",
  "tiles",
+ "translations",
  "ui",
  "world",
 ]

@@ -339,12 +339,24 @@ pub fn documents() -> Option<PathBuf> {
 /// The player's settings as written in their settings file.
 pub fn settings_text(settings: &PlayerSettings) -> String {
     let [w, h] = settings.resolution;
-    format!(
-        "text size {}\nui size {}\nfullscreen {}\nresolution {w} {h}\n",
+    let on = |b: bool| if b { "on" } else { "off" };
+    let mut text = format!(
+        "text size {}\nui size {}\nfullscreen {}\nresolution {w} {h}\n\
+         subtitles {}\ncaptions {}\ncaption size {}\ncaption background {}\n",
         settings.text_size,
         settings.ui_size,
-        if settings.fullscreen { "on" } else { "off" },
-    )
+        on(settings.fullscreen),
+        on(settings.subtitles),
+        on(settings.captions),
+        settings.caption_size,
+        settings.caption_background,
+    );
+    // Only a language the player chose: otherwise the computer's is
+    // followed, as it changes.
+    if let Some(language) = settings.language {
+        text.push_str(&format!("language {language}\n"));
+    }
+    text
 }
 
 /// Reads the player's settings file, starting from `start` (the export's
@@ -357,6 +369,13 @@ pub fn parse_settings(text: &str, start: PlayerSettings) -> PlayerSettings {
             ["text", "size", v] => v.parse().ok().map(Setting::TextSize),
             ["ui", "size", v] => v.parse().ok().map(Setting::UiSize),
             ["fullscreen", v] => Some(Setting::Fullscreen(*v == "on")),
+            ["subtitles", v] => Some(Setting::Subtitles(*v == "on")),
+            ["captions", v] => Some(Setting::Captions(*v == "on")),
+            ["caption", "size", v] => v.parse().ok().map(Setting::CaptionSize),
+            ["caption", "background", v] => v.parse().ok().map(Setting::CaptionBackground),
+            ["language", code] => translations::Language::new(code)
+                .ok()
+                .map(Setting::Language),
             ["resolution", w, h] => match (w.parse(), h.parse()) {
                 (Ok(w), Ok(h)) => Some(Setting::Resolution(w, h)),
                 _ => None,

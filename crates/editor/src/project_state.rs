@@ -120,6 +120,9 @@ pub(crate) struct ProjectState {
     /// and a count that goes up whenever they change.
     pub(crate) tags: level::tags::TagList,
     pub(crate) tags_revision: u64,
+    /// The project's languages and translation files (stage 1,
+    /// translations).
+    pub(crate) locale: crate::locale::Locale,
     /// Where the project's saved levels use each tag, as the app last
     /// counted them; none until counted.
     pub(crate) tag_use: Option<crate::tags::TagUse>,

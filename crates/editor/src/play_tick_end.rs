@@ -176,7 +176,13 @@ impl Workbench {
                          While playing in the editor, the game stays in the Game panel."
                     ));
                 }
-                Setting::TextSize(_) | Setting::UiSize(_) => {}
+                Setting::TextSize(_)
+                | Setting::UiSize(_)
+                | Setting::Language(_)
+                | Setting::Subtitles(_)
+                | Setting::Captions(_)
+                | Setting::CaptionSize(_)
+                | Setting::CaptionBackground(_) => {}
             }
         }
     }

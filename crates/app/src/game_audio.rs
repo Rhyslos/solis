@@ -258,6 +258,27 @@ impl GameAudio {
             device.stop_loop_on(entity);
         }
         let real: HashSet<u64> = device.loops_playing().into_iter().collect();
+        // Sounds heard with a caption (stage 1, translations): each a
+        // shot, or a loop as it starts, on a bus game code hasn't silenced.
+        let mut captions: Vec<(String, String, f64)> = Vec::new();
+        for w in wanted.iter().filter(|w| heard.contains(&w.key)) {
+            let starts = match w.key {
+                Key::Loop(entity) => !real.contains(&entity),
+                Key::Shot(_) => true,
+            };
+            let silenced = self
+                .shares
+                .iter()
+                .any(|(bus, share)| *share <= 0.0 && bus.eq_ignore_ascii_case(&w.event.bus));
+            if starts && !silenced && !w.event.caption.is_empty() {
+                captions.push((
+                    w.event.caption.clone(),
+                    w.event.speaker.clone(),
+                    w.clip.info.seconds() / w.pick.speed().max(0.01),
+                ));
+            }
+        }
+        workbench.captions_heard(&captions);
         for w in wanted.iter().filter(|w| heard.contains(&w.key)) {
             let event_number = self.event_number(w.name);
             let voice = |looping, source, start_s| Voice {

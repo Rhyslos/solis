@@ -92,6 +92,39 @@ pub struct Compiled {
     /// it changes, by component (stage 1, states): its state's name and
     /// `Changed`, when the game declares it.
     pub state_events: std::collections::BTreeMap<String, String>,
+    /// The game's text keys its code and screens use (stage 1,
+    /// translations), in small letters: `Text.Shop.Welcome`,
+    /// `ShopText:welcome`, `"Shop.Welcome"` in Lua. For the check of lines
+    /// nothing uses.
+    pub texts_used: Vec<String>,
+}
+
+/// The text keys `files` (the game's code) use, in small letters: those
+/// of `Text` in its `solis/project.lst` named in any file but the
+/// engine's own.
+fn texts_used(files: &[(String, String)]) -> Vec<String> {
+    let states = crate::project_names::states_in(files);
+    let Some(options) = states.get("Text") else {
+        return Vec::new();
+    };
+    // Only whole keys: an option with options inside is a group.
+    let keys: Vec<String> = options
+        .iter()
+        .filter(|o| {
+            let inside = format!("{o}.");
+            !options.iter().any(|other| other.starts_with(&inside))
+        })
+        .cloned()
+        .collect();
+    let mut used = std::collections::HashSet::new();
+    for (path, text) in files {
+        if !crate::describe::in_engine_folder(path) {
+            translations::check::note_uses(text, &keys, &mut used);
+        }
+    }
+    let mut used: Vec<String> = used.into_iter().collect();
+    used.sort();
+    used
 }
 
 /// Luau's own compiled form of the game's code (see
@@ -505,6 +538,7 @@ fn compile_here(
         places: std::collections::BTreeMap::new(),
         bytecode,
         hint_problems: Vec::new(),
+        texts_used: texts_used(&code.files),
         names: std::sync::Arc::new(crate::project_names::states_in(&code.files)),
         screens: None,
         state_events: std::collections::BTreeMap::new(),

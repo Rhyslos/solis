@@ -60,6 +60,10 @@ pub(crate) struct GameScreens {
     fonts: Option<ui::Fonts>,
     /// Each screen's last good picture, by name.
     last: BTreeMap<String, Arc<ui::Screen>>,
+    /// The lines the caption screen shows (stage 1, translations), and
+    /// whether its picture is the last of `pictures`.
+    pub(crate) captions: ui::captions::Captions,
+    caption_shown: bool,
     /// Messages said already, so a failing screen isn't said every tick.
     told: BTreeSet<String>,
 }
@@ -337,6 +341,7 @@ struct GameReader<'a>(
     Option<&'a mut script::Game>,
     &'a world::World,
     script::settings::PlayerSettings,
+    Option<translations::Texts>,
 );
 
 impl script::ScreenReader for GameReader<'_> {
@@ -349,6 +354,10 @@ impl script::ScreenReader for GameReader<'_> {
 
     fn settings(&self) -> script::settings::PlayerSettings {
         self.2
+    }
+
+    fn texts(&self) -> Option<translations::Texts> {
+        self.3.clone()
     }
 }
 
@@ -384,7 +393,11 @@ impl Workbench {
         };
         let program = self.open.program.clone().filter(|p| p.screens.is_some());
         let Some(program) = program else {
+            // A game without screens still shows captions.
+            let captions = std::mem::take(&mut self.open.game_screens.captions);
             self.open.game_screens.clear();
+            self.open.game_screens.captions = captions;
+            self.refresh_captions();
             return;
         };
         let screens = &mut self.open.game_screens;
@@ -418,7 +431,12 @@ impl Workbench {
             let mut pictures = Vec::new();
             let mut shown = Vec::new();
             let settings = playing.view.settings;
-            let mut reader = GameReader(playing.game.as_mut(), &playing.world, settings);
+            let mut reader = GameReader(
+                playing.game.as_mut(),
+                &playing.world,
+                settings,
+                playing.view.texts.clone(),
+            );
             let clock = screens.clock;
             for (entity, name, look, typist) in shown_with_looks(&playing.world) {
                 match running.view(&name, Some(entity), &mut reader) {
@@ -471,6 +489,7 @@ impl Workbench {
             let hovered = by_screen(screens.hover, &screens.shown);
             let focused = by_screen(screens.focus, &screens.shown);
             screens.pictures = pictures;
+            screens.caption_shown = false;
             screens.shown = shown;
             let again = |b: Option<((reflect::EntityId, String), usize)>,
                          shown: &[(reflect::EntityId, String)]| {
@@ -480,6 +499,7 @@ impl Workbench {
             screens.focus = again(focused, &screens.shown);
             screens.show_looks();
         }
+        self.refresh_captions();
         for line in warned {
             if self.open.game_screens.told.insert(line.clone()) {
                 self.log(LogLevel::Warning, line);
@@ -513,7 +533,12 @@ impl Workbench {
         let Some(running) = &self.open.game_screens.running else {
             return;
         };
-        let mut reader = GameReader(playing.game.as_mut(), &playing.world, playing.view.settings);
+        let mut reader = GameReader(
+            playing.game.as_mut(),
+            &playing.world,
+            playing.view.settings,
+            playing.view.texts.clone(),
+        );
         match running.press(&name, Some(entity), action, &mut reader) {
             Ok(events) => {
                 let mut dropped = 0;
@@ -561,6 +586,90 @@ impl Workbench {
         self.player_settings = settings.sanitized();
         if let Some(playing) = &mut self.open.playing {
             playing.view.settings = self.player_settings;
+        }
+    }
+
+    /// Sounds heard with a caption (stage 1, translations), as the app
+    /// played them: each its caption's key, its speaker's key (empty for
+    /// none) and how long it plays, in seconds. Shown in the player's
+    /// language from the next tick's end: a voice's words (it has a
+    /// speaker) while subtitles are on, a sound's while captions are on.
+    pub fn captions_heard(&mut self, heard: &[(String, String, f64)]) {
+        if heard.is_empty() || self.open.playing.is_none() {
+            return;
+        }
+        let texts = self.game_texts();
+        let now = self.open.game_screens.clock;
+        for (caption, speaker, seconds) in heard {
+            let speaker = if speaker.is_empty() {
+                String::new()
+            } else {
+                texts.text(speaker)
+            };
+            let kind = if speaker.is_empty() {
+                ui::captions::Kind::Sound
+            } else {
+                ui::captions::Kind::Subtitle
+            };
+            // Long enough to read: at least two seconds, at most eight.
+            let seconds = seconds.clamp(2.0, 8.0);
+            self.open.game_screens.captions.show(
+                kind,
+                &speaker,
+                &texts.text(caption),
+                now,
+                Some(seconds),
+            );
+        }
+    }
+
+    /// Shows a voice line's words on the caption screen while subtitles
+    /// are on, already in the player's language: for `seconds`, or until
+    /// [`Workbench::stop_subtitle`] (a line kept up exactly as long as its
+    /// voice plays). For the dialogue system.
+    pub fn show_subtitle(
+        &mut self,
+        speaker: &str,
+        words: &str,
+        seconds: Option<f64>,
+    ) -> ui::captions::LineId {
+        let now = self.open.game_screens.clock;
+        let id = self.open.game_screens.captions.show(
+            ui::captions::Kind::Subtitle,
+            speaker,
+            words,
+            now,
+            seconds,
+        );
+        self.refresh_captions();
+        id
+    }
+
+    /// Stops showing a voice line's words.
+    pub fn stop_subtitle(&mut self, id: ui::captions::LineId) {
+        self.open.game_screens.captions.stop(id);
+        self.refresh_captions();
+    }
+
+    /// The caption screen drawn again over the game's screens, as the
+    /// player's settings ask, its lines whose time is up let go.
+    pub(crate) fn refresh_captions(&mut self) {
+        let settings = self.player_settings;
+        let look = ui::captions::Look {
+            subtitles: settings.subtitles,
+            captions: settings.captions,
+            size: settings.caption_size as f32,
+            background: settings.caption_background as f32,
+        };
+        let screens = &mut self.open.game_screens;
+        screens.captions.tick(screens.clock);
+        if screens.caption_shown {
+            screens.pictures.pop();
+            screens.caption_shown = false;
+        }
+        if let Some(screen) = screens.captions.screen(&look) {
+            screens.pictures.push(Arc::new(screen));
+            screens.caption_shown = true;
         }
     }
 

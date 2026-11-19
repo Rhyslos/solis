@@ -30,6 +30,7 @@ input.workspace = true
 reflect.workspace = true
 level.workspace = true
 ui.workspace = true
+translations.workspace = true
 render.workspace = true
 eframe.workspace = true
 rfd.workspace = true
