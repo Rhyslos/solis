@@ -8,6 +8,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `recording` | A recording of play; read back after writing |
 | `input_actions` | `input.solinput`; read back the same after writing |
 | `level_file` | A level file, its prefabs expanded (it may place itself); every trigger zone read is within its limits, and a usable freeform outline is cut into convex pieces |
+| `table_file` | A data table's file (`items.table.lst`, stage 1): what's read is within the limits, every ID and column one game code can use, a cell a column, written and read back as the same table, and its CSV taken in |
 | `tags_file` | The project's tags (`tags.lst`, stage 1): what's read is within the limits, every name one game code can use, and written and read back as the same list |
 | `prefab_file` | A prefab file (`.prefab.lst`, or an assembly's older `.solassembly`), its copies expanded (it may place itself), written and read back as the same prefab |
 | `brush` | A level file holding brushes (Tools 1a, B1); every brush read is within the limits, writes back to itself and is cut into triangles without panicking |

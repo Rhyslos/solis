@@ -1,0 +1,21 @@
+-- A data table (the Table tab). Written by Solis; safe to edit by hand.
+fetch "solis/data/table":[Table, Column, Row];
+
+lock int version = 1;
+lock Table table = new Table { rowName = "Item" };
+lock Column array columns = [
+    new Column { name = "name", kind = "text", translated = true, options = [] },
+    new Column { name = "price", kind = "whole", translated = false, options = [] },
+    new Column { name = "weight", kind = "number", translated = false, options = [] },
+    new Column { name = "stacks", kind = "yesno", translated = false, options = [] },
+    new Column { name = "rarity", kind = "choice", translated = false, options = ["Common", "Rare"] },
+    new Column { name = "icon", kind = "Picture", translated = false, options = [] },
+    new Column { name = "pickUp", kind = "Sound", translated = false, options = [] },
+    new Column { name = "tint", kind = "colour", translated = false, options = [] },
+];
+lock Row array rows = [
+    new Row { id = "Apple", cells = ["Apple", "5", "0.2", "yes", "Common", "Sprites.Apple", "Sfx.Crunch", "#ff0000"] },
+    new Row { id = "IronSword", cells = ["Iron sword, \"sharp\"\nand heavy", "120", "3.5", "no", "Rare", "", "", "#336699"] },
+    new Row { id = "Potion", cells = ["Potion", "50", "0.5", "yes", "Common", "Sprites.Potion", "", "#00ff0080"] },
+];
+end

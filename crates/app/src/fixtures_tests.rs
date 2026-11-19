@@ -39,6 +39,14 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 Err(format!("notes: {:?}", read.notes))
             }
         }),
+        ("table", &level::table::file::FORMAT, |text| {
+            let read = level::table::file::read(text, "Item").map_err(|e| e.to_string())?;
+            if read.notes.is_empty() {
+                Ok(())
+            } else {
+                Err(format!("notes: {:?}", read.notes))
+            }
+        }),
         ("sound-event", &sound::event::FORMAT, |text| {
             let read = sound::event::read(text).map_err(|e| e.to_string())?;
             if read.notes.is_empty() {
