@@ -191,7 +191,13 @@ impl ScreenTyping {
         let mut sent = Vec::new();
         let mut sounds = Vec::new();
         for shown in &mut self.shown {
-            if let Some(sound) = &shown.typist.sound {
+            // Text shown at once makes no typing sound.
+            if let Some(sound) = shown
+                .typist
+                .sound
+                .as_ref()
+                .filter(|_| shown.typist.speed > 0.0)
+            {
                 let every = shown.typist.every;
                 let mut due = false;
                 for text in &mut shown.texts {
