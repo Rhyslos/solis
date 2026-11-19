@@ -987,3 +987,47 @@ fn text_effects_colour_wave_show_icons_and_type_out() {
     };
     matches_approved("text-effects", size, &pixels);
 }
+
+#[test]
+fn the_caption_screen_shows_a_sound_and_a_voice_low_on_a_dark_box() {
+    // Stage 1's translations: the ready-made caption screen over a game, a
+    // sound's caption and a voice line with its speaker, at the player's
+    // size and background (the mock-up's 03-a-caption.png).
+    let mut captions = ui::captions::Captions::default();
+    captions.show(
+        ui::captions::Kind::Sound,
+        "",
+        "[The door creaks]",
+        0.0,
+        None,
+    );
+    captions.show(
+        ui::captions::Kind::Subtitle,
+        "Gardener",
+        "Oh! A new face in the village.",
+        0.0,
+        None,
+    );
+    let look = ui::captions::Look {
+        captions: true,
+        ..ui::captions::Look::default()
+    };
+    let screen = captions.screen(&look).expect("two lines to show");
+    let size = [960, 540];
+    let mut fonts = fonts();
+    fonts.begin_frame();
+    let shapes = ui::layout_with(&screen, size, None, Some(&mut fonts));
+    let letters: Vec<&ui::Shape> = shapes
+        .iter()
+        .filter(|s| s.kind == ui::ShapeKind::Letter)
+        .collect();
+    assert!(letters.len() > 40, "{} letters", letters.len());
+    assert!(
+        letters.iter().all(|s| s.rect[1] > 400.0),
+        "low on the screen"
+    );
+    let Some(pixels) = draw_all(size, &shapes, Some(&fonts.atlas), None) else {
+        return;
+    };
+    matches_approved("captions", size, &pixels);
+}

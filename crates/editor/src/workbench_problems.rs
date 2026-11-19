@@ -80,15 +80,18 @@ impl Workbench {
     /// shown (decision 0089), fonts they name that can't be used (stage
     /// 1, text layout) and mistakes in their text's effects (stage 1, text
     /// effects): everything Problems lists from the code.
+    /// (And the game's text's: lines missing, unused or whose values
+    /// don't match, stage 1, translations.)
     pub(crate) fn all_code_problems(&self) -> std::borrow::Cow<'_, [script::CodeProblem]> {
         let pictures = self.picture_problems();
         let fonts = self.font_problems();
         let markup = self.markup_problems();
-        if pictures.is_empty() && fonts.is_empty() && markup.is_empty() {
+        let text = self.translation_problems_now();
+        if pictures.is_empty() && fonts.is_empty() && markup.is_empty() && text.is_empty() {
             std::borrow::Cow::Borrowed(&self.open.code_problems)
         } else {
             std::borrow::Cow::Owned(
-                [&self.open.code_problems[..], pictures, fonts, markup].concat(),
+                [&self.open.code_problems[..], pictures, fonts, markup, text].concat(),
             )
         }
     }

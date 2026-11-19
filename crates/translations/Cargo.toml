@@ -1,0 +1,28 @@
+[package]
+name = "translations"
+description = "A game's text in several languages: Fluent files per language, the main language as the fallback, checks, spreadsheets and the player's language"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Architecture layer, checked by tools/layer-check:
+# a crate may only depend on crates in its own layer or below.
+[package.metadata.architecture]
+layer = 1
+
+[dependencies]
+fluent-bundle.workspace = true
+fluent-syntax.workspace = true
+level.workspace = true
+sys-locale.workspace = true
+unic-langid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

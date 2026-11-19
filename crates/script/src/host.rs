@@ -403,6 +403,26 @@ pub trait Host {
         crate::Tables::default()
     }
 
+    /// The game's text in the player's language (stage 1, translations):
+    /// `texts().text("Shop.Welcome")`. None when the project has no text.
+    fn texts(&self) -> Option<translations::Texts> {
+        None
+    }
+
+    /// `World:text(key)`: a line of the game's text in the player's
+    /// language (the main language's where it isn't translated), or the
+    /// key itself when there's no such line.
+    fn text(&self, key: &str) -> String {
+        self.texts().map_or_else(|| key.to_owned(), |t| t.text(key))
+    }
+
+    /// A line of the game's text that takes values, with them
+    /// (`("name", TextValue::Text("Ada".into()))`).
+    fn text_with(&self, key: &str, values: &[(&str, translations::TextValue)]) -> String {
+        self.texts()
+            .map_or_else(|| key.to_owned(), |t| t.text_with(key, values))
+    }
+
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
     /// A host that keeps changes to land later (game code on several
@@ -608,8 +628,11 @@ pub(crate) fn with_natives<'h, R>(
         let said = &lines;
         crate::natives::lend(scope, &natives, h, keys, said)?;
         // The data tables' natives: made once for each set of tables.
-        let tables = h.borrow().tables();
-        luau.lend_tables(tables, &natives)?;
+        let (tables, texts) = {
+            let host = h.borrow();
+            (host.tables(), host.texts())
+        };
+        luau.lend_tables(tables, texts, &natives)?;
         // A native renamed on purpose keeps working under its old name for
         // a while (Phase 8, C3): the same function, lent twice.
         lend_old_names(&natives, crate::describe::RENAMED)?;

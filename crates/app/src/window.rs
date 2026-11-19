@@ -155,6 +155,9 @@ struct App {
     /// What the project's `tags.lst` was when last read or written, to
     /// read it again when it changes.
     tags_seen: tags_window::Stamp,
+    /// The project's languages and translation files as last read or
+    /// written (stage 1, translations).
+    locale_seen: locale_window::Stamp,
     /// Whether the splash screen still shows, until the editor opens.
     splashing: bool,
     /// File › Exit (or closing the launcher) asked to quit: the window's
@@ -201,6 +204,10 @@ mod prefabs;
 
 #[path = "window_tags.rs"]
 mod tags_window;
+
+#[path = "window_locale.rs"]
+mod locale_window;
+pub(crate) use locale_window::load_locale;
 
 impl App {
     fn new(
@@ -273,6 +280,7 @@ impl App {
             prefab_counts: Default::default(),
             tag_counts: Default::default(),
             tags_seen: None,
+            locale_seen: Vec::new(),
             splashing: playtest.is_none(),
             quitting: false,
             editor_place: saved.editor_place,
@@ -518,6 +526,16 @@ impl App {
                 self.workbench.set_tags(tags);
                 for note in notes {
                     self.workbench.log(LogLevel::Warning, note);
+                }
+                // Its languages and text (stage 1, translations), watched
+                // for changes from here on.
+                if let Some(files) = self.projects.db().map(|db| db.project().files()) {
+                    self.locale_seen = locale_window::stamp(root, &files);
+                    let (languages, read, notes) = locale_window::load_locale(root, &files);
+                    self.workbench.set_locale(languages, read);
+                    for note in notes {
+                        self.workbench.log(LogLevel::Warning, note);
+                    }
                 }
                 self.workbench
                     .set_project_kind(crate::known_projects::editor_kind(
@@ -775,6 +793,8 @@ impl App {
         self.refresh_library();
         // tags.lst changed by hand or by Git: read again.
         self.follow_tags_file();
+        // The languages or a translation file changed: read again.
+        self.follow_locale();
         // A code file may have changed: checked again on a worker, and
         // reported only if the code is different.
         if let Some(assets) = self.projects.db().map(|db| db.project().files()) {
@@ -826,7 +846,8 @@ impl App {
         self.workbench.set_sprite_sheets(sheets.clone());
         // The clips and their cues are names game code uses: the project
         // file is written again with them, and the code checked.
-        let names = crate::game_code::Animation::of(self.workbench.sprite_sheets());
+        let texts = self.workbench.text_names().0;
+        let names = crate::game_code::Animation::of(self.workbench.sprite_sheets(), texts);
         if self.game_code.set_animation(names)
             && let Some(assets) = self.projects.db().map(|db| db.project().files())
         {
@@ -1270,6 +1291,10 @@ impl App {
                     }
                 }
                 WorkbenchAction::SaveTags(tags) => self.save_tags(&tags),
+                WorkbenchAction::SaveLanguages(languages) => self.save_languages(&languages),
+                WorkbenchAction::SaveLocaleFile(path, text) => self.save_locale_file(&path, &text),
+                WorkbenchAction::ExportTranslations(text) => self.export_translations(&text),
+                WorkbenchAction::ReadTranslations => self.read_translations(),
                 WorkbenchAction::CountTagUse => self.count_tag_use(),
                 WorkbenchAction::SavePixels(settings) => {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {

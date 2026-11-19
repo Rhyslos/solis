@@ -116,7 +116,10 @@ impl Workbench {
     /// opens the search.
     pub(crate) fn search_key(&mut self, ui: &Ui) {
         let keys = self.keys;
-        let own_space = matches!(keys, KeyOwner::Frames | KeyOwner::Table);
+        let own_space = matches!(
+            keys,
+            KeyOwner::Frames | KeyOwner::Table | KeyOwner::Translations
+        );
         if self.search.open || own_space || !keys.takes_shortcuts() {
             return;
         }

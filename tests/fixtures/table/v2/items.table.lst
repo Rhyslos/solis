@@ -1,0 +1,15 @@
+-- A data table (the Table tab). Written by Solis; safe to edit by hand.
+fetch "solis/data/table":[Table, Column, Row];
+
+lock int version = 2;
+lock Table table = new Table { rowName = "Item", key = "Items" };
+lock Column array columns = [
+    new Column { name = "title", key = "name", kind = "text", translated = true, options = [] },
+    new Column { name = "description", kind = "text", translated = true, options = [] },
+    new Column { name = "price", kind = "whole", translated = false, options = [] },
+];
+lock Row array rows = [
+    new Row { id = "Apple", cells = ["Apple", "Crisp and red.", "5"] },
+    new Row { id = "SteelSword", key = "IronSword", cells = ["Steel sword", "A plain blade.", "120"] },
+];
+end

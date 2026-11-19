@@ -77,6 +77,8 @@ pub(crate) struct FilePages {
     /// Project settings › Tags: the name being typed, the Delete waiting
     /// for an answer (stage 1).
     pub(crate) tags: crate::tags::page::TagsPage,
+    /// Project settings › Languages' own state (stage 1, translations).
+    pub(crate) languages: crate::languages_page::LanguagesPage,
 }
 
 impl Default for FilePages {
@@ -91,6 +93,7 @@ impl Default for FilePages {
             shortcuts_search: String::new(),
             shortcuts_device: shortcuts::Device::All,
             tags: crate::tags::page::TagsPage::default(),
+            languages: crate::languages_page::LanguagesPage::default(),
         }
     }
 }

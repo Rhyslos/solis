@@ -26,6 +26,7 @@
 //!
 //! No GPU and no window: `render` draws the shapes, the editor shows them.
 
+pub mod captions;
 pub mod effects;
 mod font;
 mod font_files;

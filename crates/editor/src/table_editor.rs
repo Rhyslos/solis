@@ -41,9 +41,28 @@ pub(crate) struct Sort {
     pub(crate) rising: bool,
 }
 
+/// What the grid shows: a data table, or lines of text side by side
+/// (the Translations tab, stage 1): their keys can't be changed, and
+/// rows and columns can't be added, moved or deleted.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) enum Sheet {
+    /// A data table.
+    #[default]
+    Table,
+    /// Lines of text: the keys' heading, and each column's heading and
+    /// what's under its name (`Norsk`, `locale/nb`); an empty cell of the
+    /// last column is a line not translated yet.
+    Lines {
+        /// Each column's heading, the keys' first.
+        heads: Vec<(String, String)>,
+    },
+}
+
 /// A data table being changed, with its undo steps and the tab's view.
 #[derive(Debug, Clone)]
 pub(crate) struct TableEditor {
+    /// What the grid shows.
+    pub(crate) sheet: Sheet,
     /// Its path inside the project's files.
     pub(crate) path: String,
     /// The table as it is now.
@@ -82,6 +101,7 @@ impl TableEditor {
     pub(crate) fn new(path: String, file: Table) -> Self {
         let cursor = (!file.rows.is_empty()).then_some((0, 0));
         Self {
+            sheet: Sheet::Table,
             path,
             file,
             history: FileHistory::new(MAX_UNDO),
@@ -235,12 +255,12 @@ impl TableEditor {
         if let Some(why) = self.file.column_problem(name, Some(column)) {
             return Err(why);
         }
-        self.change(|table| match table.columns.get_mut(column) {
-            Some(c) => {
-                name.clone_into(&mut c.name);
-                true
+        self.change(|table| {
+            if column >= table.columns.len() {
+                return false;
             }
-            None => false,
+            table.rename_column(column, name);
+            true
         });
         Ok(())
     }
@@ -285,14 +305,27 @@ impl TableEditor {
     }
 
     /// Marks a text column translated or not.
+    /// The first time, the table's part of its keys is kept, so renaming
+    /// the file never changes them (stage 1, translations).
     pub(crate) fn set_translated(&mut self, column: usize, on: bool) -> bool {
+        let object = self.object_name();
         self.change(|table| match table.columns.get_mut(column) {
             Some(c) if c.kind == ColumnKind::Text => {
                 c.translated = on;
+                if on && table.kept.table.is_empty() {
+                    table.kept.table = object;
+                }
                 true
             }
             _ => false,
         })
+    }
+
+    /// What game code calls the table (`Items`), from its file's name.
+    pub(crate) fn object_name(&self) -> String {
+        let stem = reflect::data_files::path_stem(&self.path);
+        let stem = stem.rsplit('/').next().unwrap_or_default();
+        level::table::object_name_for(stem).unwrap_or_else(|| "Table".to_owned())
     }
 
     /// Changes what a column holds, each cell turned into the new kind
@@ -425,6 +458,11 @@ impl TableEditor {
         if row >= self.file.rows.len() {
             return Ok(());
         }
+        if place == 0 && self.sheet != Sheet::Table {
+            return Err(
+                "A line's key is made once and never changed: make a new key instead.".into(),
+            );
+        }
         if place == 0 {
             let id = text.trim();
             if let Some(why) = self.file.id_problem(id, Some(row)) {
@@ -434,7 +472,7 @@ impl TableEditor {
                 if table.rows[row].id == id {
                     return false;
                 }
-                Arc::make_mut(&mut table.rows[row]).id = id.to_string();
+                table.rename_row(row, id);
                 true
             });
             return Ok(());

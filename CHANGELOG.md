@@ -6,6 +6,15 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Translations** (stage 1, translations; [decision 0131](docs/decisions/0131-translations-and-captions.md), [the manual](docs/manual/translations.md), the mock-up `docs/design/translations/`): your game's text in several languages. Each line has a key made once and never changed (`Shop.Welcome`), and its words in each language in small Fluent files (`locale/<code>/*.ftl`), plurals and values in each language's own shape. The main language (English unless you choose another) is shown wherever a language lacks a line, so a game works with no translations at all.
+- **Project settings › Languages**: the project's languages with how much of each is translated, **+ Language**, **Make main**, **Remove**, **Export spreadsheet** (`translations.csv`: a key, the main language and a column per language) and **Import** to read it back.
+- **The Translations tab**: every line beside the main language and one other you choose, missing lines marked in red, search, **Missing only** and **+ Key**, on the data tables' grid with its keys; typing writes the language's file, and `Ctrl + Z` undoes.
+- **Game code reads text by key**: `World:text(Text.Shop.Welcome)` in the player's language, and a line with values as a method of its group, `ShopText:welcome(name, gold)` (from `solis/texts`), in Lust, Lua (`solis.World:text("Shop.Welcome")`) and Rust (`cx.host().text("Shop.Welcome")`); a misspelt key or a value left out is a mistake before the game runs. Screens show a line with `text World:text(Text.Shop.Welcome);`.
+- **Data tables' translated columns are real**: each cell has a key (`Items.IronSword.description`), listed in the Translations tab, and game code reads it in the player's language.
+- **The player's language**: their choice, else Windows' language when the project has it, else the main one; game code offers it with `Screens:setLanguage(Language.Nb)`, `Screens:language()` and `Screens:languageName(…)`. Changing it shows from the next tick.
+- **Problems lists** the lines each language is missing, lines nothing uses, and translations whose values don't match the main language's.
+- **Subtitles and captions** ([the manual](docs/manual/subtitles-and-captions.md)): a sound event's **Caption** (the key of its words) and **Speaker**. Solis draws them low on the screen when the sound is heard, a voice line's with its speaker's name while subtitles are on, a sound's while captions are on. The player's settings gain Subtitles, Captions for sounds, Size and Background (`Screens:setCaptions(true)` and the rest), set while playing in the editor on the Languages page.
+
 - **Text effects in game screens** (stage 1, text effects; [decision 0130](docs/decisions/0130-text-effects.md), [the manual](docs/manual/text-effects.md)): words in square brackets inside any screen's text change part of it: `[wave]…[/wave]` and `[shake]…[/shake]` move its letters, `[colour=red5]…[/colour]` colours them (the screen's colour words or `#hex`), `[b]…[/b]` and `[i]…[/i]` make them bold and slanted, and `[[` writes a `[`. Waves and shakes move only the letters, never the words around them or the box.
 - **Pictures inside text**: `[icon=Picture.Ui.Coin]` shows one of the project's pictures, or a crop cut with Atlas Crop, as tall as the text, between its words.
 - **Text that types itself out**: a Screen's **Typing speed** (letters a second) types every text on it out a letter at a time, each time its words change; `[pause 0.5]` waits and `[speed 2]` hurries inside the text. **Typing sound** plays a sound event on each letter or each word (**Sound on**). It follows the game's ticks, so it types the same at any frame rate.
@@ -91,6 +100,10 @@ What changed in each version, for people using Solis. Newest first.
 - **The editor rethink is planned** ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)): the project lead's review of the remade interface, answered and mocked up (`docs/design/ui-rethink/`): the launcher as its own window, new projects that make their folder and are 2D, 3D or both, Area renamed Level, prefabs, one frame on every tab, and one Library browser. It's built next, as six milestones, before the ground.
 
 ### Breaking
+
+- **Data tables are version 2** (stage 1, translations): a table, row or column renamed after its text is translated keeps the name its keys were made from (`key = "IronSword"`). Older tables open as before; a Solis from before can't read a table that keeps a key. **What to do:** nothing; update every copy of Solis that opens the project.
+
+- **Sound events are version 2** (stage 1, translations): a sound event has a `caption` and a `speaker`. Older events open as before, with none. **What to do:** nothing; update every copy of Solis that opens the project.
 
 - **A `[` in a game screen's text starts a text effect now** (stage 1, text effects): `text "Press [E]"` is a mistake in Problems, shown as written. **What to do:** write `[[` for a `[` that's part of the words: `text "Press [[E]"`.
 

@@ -67,6 +67,11 @@ pub struct Names {
     /// Its fonts: their paths in the assets, without `.ttf` or `.otf`
     /// (`fonts/lora`; stage 1, text layout).
     pub fonts: Vec<String>,
+    /// Its text keys (`Shop.Welcome`), the main language's lines (stage 1,
+    /// translations).
+    pub texts: Vec<String>,
+    /// Its languages' options (`En`, `Nb`, `PtBr`), the main one first.
+    pub languages: Vec<String>,
 }
 
 impl Names {
@@ -90,6 +95,8 @@ impl Names {
             timers: Vec::new(),
             levels: Vec::new(),
             fonts: Vec::new(),
+            texts: Vec::new(),
+            languages: vec!["En".to_owned()],
         }
     }
 }
@@ -154,6 +161,13 @@ impl Names {
         self
     }
 
+    /// These names with these text keys (`Shop.Welcome`).
+    #[must_use]
+    pub fn and_texts(mut self, keys: &[&str]) -> Self {
+        self.texts.extend(keys.iter().map(|a| (*a).to_string()));
+        self
+    }
+
     /// These names with more input actions.
     #[must_use]
     pub fn and_actions(mut self, actions: &[&str]) -> Self {
@@ -193,6 +207,9 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let timer = names_text("Timer", &names.timers, "timer", true, &mut notes);
     let level = state_text("Level", &names.levels, "level", &mut notes);
     let font = state_text("Font", &names.fonts, "font", &mut notes);
+    let keys: Vec<String> = names.texts.iter().map(|k| k.replace('.', "/")).collect();
+    let text_state = state_text("Text", &keys, "text key", &mut notes);
+    let language = names_text("Language", &names.languages, "language", true, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -226,6 +243,10 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          -- The project's fonts (TrueType and OpenType files), folders as options inside options:\n\
          -- Font.Fonts.Lora for fonts/Lora.ttf.\n\
          {font}\n\n\
+         -- The game's text, by key (locale/<language>/*.ftl): World:text(Text.Shop.Welcome).\n\
+         {text_state}\n\n\
+         -- The project's languages (Project settings > Languages): Screens:setLanguage(Language.Nb).\n\
+         {language}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -539,7 +560,7 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font;\nend\n"
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font, Text, Language;\nend\n"
         ));
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
@@ -667,7 +688,7 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font;\nend\n"
+            "pass Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font, Text, Language;\nend\n"
         ));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));

@@ -296,6 +296,7 @@ impl Workbench {
                 .table_editor
                 .as_mut()
                 .map(|e| (e, self.open.program.as_ref().map(|p| &*p.names))),
+            translations: self.open.translations_tab.as_mut(),
             atlas,
             map,
             map_requests: &mut asks.map,
@@ -351,6 +352,10 @@ impl Workbench {
     /// or an unfinished screen stands where the panels would be.
     fn begin_frame(&mut self, ui: &mut Ui) -> (Vec<WorkbenchAction>, bool) {
         self.profiler.begin();
+        // The Translations tab's lines, made again when the text changed.
+        self.refresh_translations_tab(ui.ctx());
+        // And the text's problems, worked out again only when it changed.
+        self.translation_problems();
         // The look the editor holds is the one in use: the sizes that
         // follow the density read it there, and so does everything that
         // draws an unfinished part or leaves it out.

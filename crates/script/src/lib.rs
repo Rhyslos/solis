@@ -38,6 +38,8 @@ pub mod tables;
 pub mod tag_view;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
+pub mod text_code;
+mod texts;
 mod ticking;
 pub mod timer_names;
 pub mod timers;

@@ -175,8 +175,18 @@ pub fn unknown_calls(example: &Example, interface: &str) -> Vec<String> {
             .and_then(|rest| rest.split_once(':'))
             .filter(|(table, _)| table.starts_with(|c: char| c.is_ascii_uppercase()))
             .map(|(_, method)| format!("solis.<Table>:{method}"));
+        // A line of text's (`solis.ShopText:welcome`) is listed as
+        // `solis.<Group>Text:<line>`.
+        let text = name
+            .strip_prefix("solis.")
+            .and_then(|rest| rest.split_once(':'))
+            .is_some_and(|(object, _)| object.len() > 4 && object.ends_with("Text"));
         let listed = interface.lines().any(|l| l.trim() == name)
             || table.is_some_and(|t| interface.lines().any(|l| l.trim() == t))
+            || text
+                && interface
+                    .lines()
+                    .any(|l| l.trim() == "solis.<Group>Text:<line>")
             || interface.contains(&format!("function {name}("));
         if !listed {
             unknown.push(format!("Lua's {name}"));

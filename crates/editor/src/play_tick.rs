@@ -237,6 +237,8 @@ impl Workbench {
         if self.open.game_screens.typing.active {
             self.refresh_game_screens();
             self.open.game_screens.read_after_tick = true;
+        } else {
+            self.refresh_captions();
         }
     }
 
@@ -269,7 +271,12 @@ impl Workbench {
     /// pass. The sounds and events the sprites' cues make and the events
     /// the zones' crossings make, or none when play has stopped.
     fn move_world_on(&mut self) -> Option<(Vec<crate::game_sound::Request>, Vec<script::Event>)> {
+        self.open.playing.as_ref()?;
+        // The game's text in the player's language, as it is now: a
+        // language changed by game code or a menu shows from this tick.
+        let texts = self.game_texts();
         let playing = self.open.playing.as_mut()?;
+        playing.view.set_texts(texts);
         // Where everything is as the tick starts: what drawing between
         // ticks moves from.
         playing.world.remember();

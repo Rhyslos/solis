@@ -10,6 +10,7 @@ pub mod builtin;
 mod document;
 mod edit;
 mod history;
+pub mod languages;
 mod lust_check;
 pub mod lust_data;
 pub mod lust_fields;

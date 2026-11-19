@@ -1097,9 +1097,14 @@ mod tests {
         assert!(made.id.is_some(), "an ID at once, not after settling");
         assert!(projects.new_sound_event(Path::new("nowhere"), "x").is_err());
 
-        projects
-            .save_sound_event(&first, "sound version 1;\nloop = true;\n")
-            .unwrap();
+        // Saved as the editor writes it: the current version, which reads
+        // back the same (the file made a moment ago is version 1, so a
+        // copy of it is kept first).
+        let looping = sound::event::write(&sound::SoundEvent {
+            looping: true,
+            ..sound::SoundEvent::default()
+        });
+        projects.save_sound_event(&first, &looping).unwrap();
         let text = std::fs::read_to_string(root.join(&first)).unwrap();
         assert!(text.contains("loop = true"));
         std::fs::write(root.join("notes.txt"), "mine").unwrap();

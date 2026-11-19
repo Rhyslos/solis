@@ -24,6 +24,7 @@ fn chunk(main: &str) -> Compiled {
             places: Default::default(),
             bytecode: Default::default(),
             hint_problems: Vec::new(),
+            texts_used: Vec::new(),
             names: Default::default(),
             screens: None,
         },

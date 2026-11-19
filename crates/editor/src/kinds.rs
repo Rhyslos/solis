@@ -423,6 +423,7 @@ pub(crate) fn settings_tab(tab: Tab) -> PartKind {
         | Tab::Project
         | Tab::Input
         | Tab::Tags
+        | Tab::Languages
         | Tab::Build => PartKind::Shared,
     }
 }

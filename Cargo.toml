@@ -31,6 +31,7 @@ animation = { path = "crates/animation" }
 tiles = { path = "crates/tiles" }
 ui = { path = "crates/ui" }
 mesh = { path = "crates/mesh" }
+translations = { path = "crates/translations" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
@@ -60,6 +61,14 @@ harfrust = { version = "0.12", default-features = false, features = ["std"] }
 # Where game UI's text may break onto a new line, by Unicode's line-break
 # rules (stage 1's text layout).
 unicode-linebreak = "0.1.5"
+# A game's text in several languages (stage 1's translations): Fluent files
+# read and messages formatted with each language's plural rules
+# (crates/translations).
+fluent-bundle = "0.16"
+fluent-syntax = "0.12"
+unic-langid = "0.9"
+# The language Windows is set to, for the player's language at first.
+sys-locale = "0.3"
 # Reading glTF models: the JSON and binary layout only. Buffers and
 # images are read by Solis itself, with size limits (crates/assets).
 gltf = { version = "1.4", default-features = false, features = ["names", "utils", "KHR_lights_punctual"] }

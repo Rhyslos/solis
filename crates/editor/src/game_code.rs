@@ -358,6 +358,9 @@ pub(crate) struct ViewCache {
     /// the tables they were made from.
     pub(crate) tables: script::Tables,
     tables_from: Vec<(String, usize)>,
+    /// The game's text in the player's language (stage 1, translations):
+    /// made again when the text or the language changes.
+    pub(crate) texts: Option<translations::Texts>,
 }
 
 impl ViewCache {
@@ -376,6 +379,14 @@ impl ViewCache {
             names.into_iter().map(|n| (n.path, n.table)).collect();
         self.tables = script::Tables::new(&list, &script::describe::owners_of_natives());
         self.tables_from = from;
+    }
+
+    /// Takes in the game's text in the player's language when it isn't
+    /// the one held (the text, or the language, changed).
+    pub(crate) fn set_texts(&mut self, texts: translations::Texts) {
+        if self.texts.as_ref().is_none_or(|t| !t.same(&texts)) {
+            self.texts = Some(texts);
+        }
     }
 
     /// Works out the map files' paths again when the editor's map files
@@ -585,6 +596,7 @@ impl GameWorld for PlayWorld<'_> {
             // The game puts its own timers in (stage 1, timers).
             timers: Arc::default(),
             tables: self.cache.tables.clone(),
+            texts: self.cache.texts.clone(),
         }
     }
 

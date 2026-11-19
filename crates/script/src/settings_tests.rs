@@ -28,8 +28,17 @@ fn settings_read_from_anywhere_are_made_sane() {
         ui_size: 40.0,
         fullscreen: true,
         resolution: [0, 1080],
+        language: Some(translations::Language::new("nb").unwrap()),
+        subtitles: false,
+        captions: true,
+        caption_size: f64::INFINITY,
+        caption_background: -3.0,
     };
     let s = wild.sanitized();
+    assert_eq!(s.caption_size, 1.0, "not a number: as it starts");
+    assert_eq!(s.caption_background, 0.0);
+    assert!(!s.subtitles && s.captions);
+    assert_eq!(s.language.map(|l| l.option()).as_deref(), Some("Nb"));
     assert_eq!(s.text_size, 1.0);
     assert_eq!(s.ui_size, 2.0);
     assert!(s.fullscreen);
@@ -55,5 +64,29 @@ fn text_size_is_in_percent_and_resolutions_step_round() {
         odd.next_resolution(),
         [1280, 720],
         "an unusual size: the first"
+    );
+}
+
+#[test]
+fn the_players_language_falls_back_to_the_main_one() {
+    let l = |c: &str| translations::Language::new(c).unwrap();
+    let project = [l("en"), l("nb")];
+    let chose = PlayerSettings::default().with(Setting::Language(l("nb")));
+    assert_eq!(chose.language_of(&project), l("nb"));
+    let other = PlayerSettings::default().with(Setting::Language(l("ja")));
+    assert_eq!(other.language_of(&project), l("en"));
+    let s = PlayerSettings::default()
+        .with(Setting::CaptionSize(5.0))
+        .with(Setting::CaptionBackground(0.25))
+        .with(Setting::Captions(true))
+        .with(Setting::Subtitles(false));
+    assert_eq!(
+        (
+            s.caption_size,
+            s.caption_background,
+            s.captions,
+            s.subtitles
+        ),
+        (2.0, 0.25, true, false)
     );
 }

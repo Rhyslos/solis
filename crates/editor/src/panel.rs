@@ -92,6 +92,9 @@ pub enum Panel {
     /// A data table's rows and columns (stage 1, data tables): a tab
     /// beside the level's on Home while a table is open.
     Table,
+    /// The game's lines of text side by side in two languages (stage 1,
+    /// translations): a tab beside the level's on Home while it's open.
+    Translations,
 }
 
 impl Panel {
@@ -117,7 +120,7 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`].
-    pub const OPEN_WITH_A_FILE: [Self; 16] = [
+    pub const OPEN_WITH_A_FILE: [Self; 17] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
@@ -134,6 +137,7 @@ impl Panel {
         Self::Pictures,
         Self::PrefabPage,
         Self::Table,
+        Self::Translations,
     ];
 
     /// The tabs a clips file opens (and closes) together.
@@ -182,6 +186,7 @@ impl Panel {
             Self::Export => "Export for playtesting",
             Self::PrefabPage => "Prefab",
             Self::Table => "Table",
+            Self::Translations => "Translations",
         }
     }
 
@@ -220,6 +225,7 @@ impl Panel {
             Self::Export => Icon::Build,
             Self::PrefabPage => Icon::Prefab,
             Self::Table => Icon::Table,
+            Self::Translations => Icon::Text,
         }
     }
 }

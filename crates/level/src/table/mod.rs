@@ -225,11 +225,30 @@ pub struct Table {
     pub columns: Vec<Column>,
     /// Its rows, in order.
     pub rows: Vec<Arc<Row>>,
+    /// The keys of its translated text kept as names change (stage 1,
+    /// translations): a key is made once and never changed.
+    pub kept: KeptKeys,
+}
+
+/// The names a table's translated cells' keys were made from, kept when
+/// the names change, so a key is made once and never changed: a cell's
+/// key is `<table>.<row>.<column>` (`Items.IronSword.description`), each
+/// part the name it had when the key was made. A name not here is its
+/// own key's part.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct KeptKeys {
+    /// The table's part (empty: the name game code calls the table).
+    pub table: String,
+    /// Each renamed row's part, by its ID now.
+    pub rows: std::collections::BTreeMap<String, String>,
+    /// Each renamed column's part, by its name now.
+    pub columns: std::collections::BTreeMap<String, String>,
 }
 
 impl PartialEq for Table {
     fn eq(&self, other: &Self) -> bool {
         self.row_name == other.row_name
+            && self.kept == other.kept
             && self.columns == other.columns
             && self.rows.len() == other.rows.len()
             && self
@@ -381,6 +400,71 @@ impl Table {
         Row {
             id,
             cells: self.columns.iter().map(|c| c.kind.empty()).collect(),
+        }
+    }
+
+    /// The key of the translated cell in `row` and `column`, for a table
+    /// game code calls `object` (`Items`): `Items.IronSword.description`,
+    /// each part as it was when the key was made.
+    pub fn text_key(&self, object: &str, row: &Row, column: &Column) -> String {
+        let table = if self.kept.table.is_empty() {
+            object
+        } else {
+            &self.kept.table
+        };
+        let row = self.kept.rows.get(&row.id).unwrap_or(&row.id);
+        let column = self.kept.columns.get(&column.name).unwrap_or(&column.name);
+        format!("{table}.{row}.{column}")
+    }
+
+    /// Every translated cell: its key and its text, in the table's order
+    /// (a row at a time).
+    pub fn texts(&self, object: &str) -> Vec<(String, String)> {
+        let columns: Vec<usize> = (0..self.columns.len())
+            .filter(|c| self.columns[*c].translated)
+            .collect();
+        let mut out = Vec::with_capacity(columns.len() * self.rows.len());
+        for row in &self.rows {
+            for c in &columns {
+                if let Some(Cell::Text(text)) = row.cells.get(*c) {
+                    out.push((self.text_key(object, row, &self.columns[*c]), text.clone()));
+                }
+            }
+        }
+        out
+    }
+
+    /// Whether any column is translated.
+    pub fn has_translated(&self) -> bool {
+        self.columns.iter().any(|c| c.translated)
+    }
+
+    /// Renames a row's ID, keeping its key's part when the table has
+    /// translated text.
+    pub fn rename_row(&mut self, at: usize, id: &str) {
+        let Some(row) = self.rows.get_mut(at) else {
+            return;
+        };
+        let old = std::mem::replace(&mut Arc::make_mut(row).id, id.to_owned());
+        if self.has_translated() || self.kept.rows.contains_key(&old) {
+            let part = self.kept.rows.remove(&old).unwrap_or(old);
+            if part != id {
+                self.kept.rows.insert(id.to_owned(), part);
+            }
+        }
+    }
+
+    /// Renames a column, keeping its key's part when it's translated.
+    pub fn rename_column(&mut self, at: usize, name: &str) {
+        let Some(column) = self.columns.get_mut(at) else {
+            return;
+        };
+        let old = std::mem::replace(&mut column.name, name.to_owned());
+        if column.translated || self.kept.columns.contains_key(&old) {
+            let part = self.kept.columns.remove(&old).unwrap_or(old);
+            if part != name {
+                self.kept.columns.insert(name.to_owned(), part);
+            }
         }
     }
 

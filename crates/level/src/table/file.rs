@@ -1,12 +1,12 @@
 //! A table's file, `items.table.lst`: a Lust data file
 //! ([decision 0081](../../../../docs/decisions/0081-what-solis-makes-is-lust.md)),
-//! version 1, a row a line so Git shows exactly which rows changed:
+//! version 2, a row a line so Git shows exactly which rows changed:
 //!
 //! ```text
 //! -- A data table (the Table tab). Written by Solis; safe to edit by hand.
 //! fetch "solis/data/table":[Table, Column, Row];
 //!
-//! lock int version = 1;
+//! lock int version = 2;
 //! lock Table table = new Table { rowName = "Item" };
 //! lock Column array columns = [
 //!     new Column { name = "price", kind = "whole", translated = false, options = [] },
@@ -17,6 +17,10 @@
 //! ];
 //! end
 //! ```
+//!
+//! A table, row or column renamed once its text is translated keeps the
+//! name its cells' keys were made from as `key` (`new Row { id =
+//! "SteelSword", key = "IronSword", … }`), so a key never changes.
 //!
 //! Every cell is written as text, each read by its column's kind. A row,
 //! column or cell that can't be used is left out (or made its column's
@@ -35,7 +39,7 @@ use std::sync::Arc;
 pub const KIND: &str = "table";
 
 /// The version this build writes.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 /// The most bytes a table's file may have.
 pub const MAX_BYTES: usize = 96 << 20;
@@ -43,17 +47,19 @@ pub const MAX_BYTES: usize = 96 << 20;
 /// What a table's file holds, in Lust: written into every project's
 /// `solis/data/table.lst`, and handed to Lust when a file is read.
 pub const CLASSES: &str = "-- What a data table's file holds (Solis writes this; tables fetch it).\n\
-class Table {\n    has {\n        string rowName = \"\";\n    }\n}\n\n\
-class Column {\n    has {\n        string name = \"\";\n        string kind = \"text\";\n        bool translated = false;\n        string array options = [];\n    }\n}\n\n\
-class Row {\n    has {\n        string id = \"\";\n        string array cells = [];\n    }\n}\n\n\
+class Table {\n    has {\n        string rowName = \"\";\n        string key = \"\";\n    }\n}\n\n\
+class Column {\n    has {\n        string name = \"\";\n        string key = \"\";\n        string kind = \"text\";\n        bool translated = false;\n        string array options = [];\n    }\n}\n\n\
+class Row {\n    has {\n        string id = \"\";\n        string key = \"\";\n        string array cells = [];\n    }\n}\n\n\
 pass Table, Column, Row;\nend\n";
 
-/// The tables' version and upgraders. Version 1 is the first.
+/// The tables' version and upgraders. Version 2 (stage 1, translations)
+/// keeps the key part of a renamed table, row or column (`key`); a file of
+/// version 1 has none, so its parts are its names.
 pub static FORMAT: reflect::upgrade::Format<Table> = reflect::upgrade::Format {
     name: "data table",
     current: VERSION,
     version_of: data::version_of,
-    steps: &[],
+    steps: &[|_| Ok(())],
 };
 
 const COMMENT: &str = "A data table (the Table tab). Written by Solis; safe to edit by hand.";
@@ -75,9 +81,13 @@ pub fn is_table_file(path: &std::path::Path) -> bool {
 /// `table` as a file that [`read`] reads back.
 pub fn write(table: &Table) -> String {
     let mut out = data::header(COMMENT, KIND, &["Table", "Column", "Row"], VERSION);
+    let mut fields = vec![("rowName", data::text(&table.row_name))];
+    if !table.kept.table.is_empty() {
+        fields.push(("key", data::text(&table.kept.table)));
+    }
     out.push_str(&format!(
         "lock Table table = {};\n",
-        data::thing("Table", &[("rowName", data::text(&table.row_name))])
+        data::thing("Table", &fields)
     ));
     let columns: Vec<String> = table
         .columns
@@ -87,15 +97,16 @@ pub fn write(table: &Table) -> String {
                 ColumnKind::Choice(options) => options,
                 _ => &[],
             };
-            data::thing(
-                "Column",
-                &[
-                    ("name", data::text(&c.name)),
-                    ("kind", data::text(c.kind.word())),
-                    ("translated", c.translated.to_string()),
-                    ("options", data::texts(options.iter().map(String::as_str))),
-                ],
-            )
+            let mut fields = vec![("name", data::text(&c.name))];
+            if let Some(key) = table.kept.columns.get(&c.name) {
+                fields.push(("key", data::text(key)));
+            }
+            fields.extend([
+                ("kind", data::text(c.kind.word())),
+                ("translated", c.translated.to_string()),
+                ("options", data::texts(options.iter().map(String::as_str))),
+            ]);
+            data::thing("Column", &fields)
         })
         .collect();
     data::list(&mut out, "Column", "columns", &columns);
@@ -107,6 +118,10 @@ pub fn write(table: &Table) -> String {
         for row in &table.rows {
             rows.push_str("    new Row { id = ");
             rows.push_str(&data::text(&row.id));
+            if let Some(key) = table.kept.rows.get(&row.id) {
+                rows.push_str(", key = ");
+                rows.push_str(&data::text(key));
+            }
             rows.push_str(", cells = [");
             for (n, cell) in row.cells.iter().enumerate() {
                 if n > 0 {
@@ -158,6 +173,13 @@ pub fn read(text: &str, fallback_row_name: &str) -> Result<Read, DataError> {
         }
     };
     let mut table = Table::new(row_name);
+    let part = |thing: &data::Fixed| {
+        let key = data::field_text(thing, "key");
+        (option_problem(key, "").is_none() || field_problem_free(key)).then(|| key.to_owned())
+    };
+    if let Some(key) = values.get("table").and_then(part) {
+        table.kept.table = key;
+    }
     let mut kept = Vec::new();
     for (at, thing) in data::things(&values, "columns").iter().enumerate() {
         if let Some(column) = read_column(&table, thing, &mut notes) {
@@ -166,6 +188,9 @@ pub fn read(text: &str, fallback_row_name: &str) -> Result<Read, DataError> {
                     "Only the first {MAX_COLUMNS} columns are kept; the rest are left out."
                 ));
                 break;
+            }
+            if let Some(key) = part(thing).filter(|k| *k != column.name) {
+                table.kept.columns.insert(column.name.clone(), key);
             }
             table.columns.push(column);
             kept.push(at);
@@ -184,6 +209,9 @@ pub fn read(text: &str, fallback_row_name: &str) -> Result<Read, DataError> {
         }
         if let Some(row) = read_row(&table, &kept, thing, &mut notes) {
             if ids.insert(row.id.to_ascii_lowercase()) {
+                if let Some(key) = part(thing).filter(|k| *k != row.id) {
+                    table.kept.rows.insert(row.id.clone(), key);
+                }
                 table.rows.push(Arc::new(row));
             } else {
                 notes.push(format!(
@@ -282,6 +310,12 @@ fn read_row(
         id: id.to_string(),
         cells,
     })
+}
+
+/// Whether `key` can be a part of a text key (a column's name is a
+/// field's, so it may start with a small letter).
+fn field_problem_free(key: &str) -> bool {
+    !key.is_empty() && super::field_problem(key).is_none()
 }
 
 /// The start of `text`, for a note.

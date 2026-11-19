@@ -290,6 +290,31 @@ fn editor(
         );
     });
 
+    section(ui, "Caption");
+    key_row(
+        ui,
+        (path, "caption"),
+        &mut event.caption,
+        (
+            "Words",
+            "The key of the words shown when it's heard and the player has captions on (stage 1, \
+             translations): Captions.DoorCreaks, its text in each language in locale/. Empty: no \
+             caption.",
+            "Captions.DoorCreaks",
+        ),
+    );
+    key_row(
+        ui,
+        (path, "speaker"),
+        &mut event.speaker,
+        (
+            "Speaker",
+            "The key of who says them, for a voice line: Speakers.Gardener. With a speaker, the \
+             words are a subtitle, shown while the player has subtitles on.",
+            "Speakers.Gardener",
+        ),
+    );
+
     section(ui, "When many play");
     inspector::row(
         ui,
@@ -323,6 +348,37 @@ fn editor(
             requests.push(LibraryRequest::SaveSoundEvent(path.to_owned(), event));
         }
     }
+}
+
+/// A text key's row: typed, and kept when the field is left.
+fn key_row(
+    ui: &mut Ui,
+    (path, what): (&str, &str),
+    key: &mut String,
+    (name, about, hint): (&str, &str, &str),
+) {
+    inspector::row(ui, name, about, |ui| {
+        let id = ui.id().with((what, path));
+        let mut text = ui
+            .data(|d| d.get_temp::<String>(id))
+            .unwrap_or_else(|| key.clone());
+        let field = ui.add(
+            egui::TextEdit::singleline(&mut text)
+                .hint_text(hint)
+                .desired_width(180.0),
+        );
+        if field.changed() {
+            ui.data_mut(|d| d.insert_temp(id, text.clone()));
+        }
+        if field.lost_focus() {
+            ui.data_mut(|d| d.remove::<String>(id));
+            *key = text
+                .trim()
+                .chars()
+                .take(sound::event::MAX_KEY_CHARS)
+                .collect();
+        }
+    });
 }
 
 /// A heading between groups of settings.

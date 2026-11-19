@@ -99,11 +99,17 @@ pub struct Animation {
     pub pictures: Vec<String>,
     /// Each data table, for its own file (stage 1).
     pub tables: Vec<script::table_code::TableNames>,
+    /// The game's text: its keys, languages and lines with values, for
+    /// `solis/project.lst` and `solis/texts.lst` (stage 1, translations).
+    pub texts: script::text_code::TextNames,
 }
 
 impl Animation {
-    /// The names in the editor's sheets.
-    pub fn of(sheets: &editor::sprite_sheets::SpriteSheets) -> Self {
+    /// The names in the editor's sheets, and the game's text.
+    pub fn of(
+        sheets: &editor::sprite_sheets::SpriteSheets,
+        texts: script::text_code::TextNames,
+    ) -> Self {
         let (clips, cues) = sheets.clip_names();
         Self {
             clips,
@@ -112,6 +118,7 @@ impl Animation {
             maps: sheets.map_names(),
             pictures: sheets.picture_names(),
             tables: sheets.table_names(),
+            texts,
         }
     }
 }
@@ -267,6 +274,7 @@ impl GameCode {
             maps,
             pictures,
             tables,
+            texts,
         } = animation;
         // The settings beside the project file (input actions, buses): the
         // files' own folder for a project made now, the one holding an
@@ -331,6 +339,13 @@ impl GameCode {
             }),
             // The game's timers, each named where its Lust starts it.
             timers: script::timer_names::names_started(code),
+            // The game's text and languages (stage 1, translations).
+            texts: texts.keys.clone(),
+            languages: if texts.languages.is_empty() {
+                vec!["En".to_owned()]
+            } else {
+                texts.languages.clone()
+            },
         };
         let (mut files, mut notes) =
             script::describe::descriptions_for(made_by, crate::branding::CODE_FOLDER, &names);
@@ -396,6 +411,7 @@ impl GameCode {
                 .cloned()
                 .unwrap_or_else(|| script::project_names::NO_OPTION.to_string())
         };
+        let mut wrote_texts = false;
         let (table_files, said) = script::table_code::table_files(
             made_by,
             crate::branding::CODE_FOLDER,
@@ -405,7 +421,23 @@ impl GameCode {
         );
         notes.extend(said);
         files.extend(table_files);
-        let mut wrote = forget_animator_files(assets, &files, script::animator_code::FOLDER);
+        // The lines of text that take values (stage 1, translations).
+        let texts_path = format!(
+            "{}/{}",
+            crate::branding::CODE_FOLDER,
+            script::text_code::FILE
+        );
+        match script::text_code::texts_file(made_by, texts) {
+            Some(text) => files.push((texts_path, text)),
+            None => {
+                let old = assets.join(&texts_path);
+                if old.is_file() && std::fs::remove_file(&old).is_ok() {
+                    wrote_texts = true;
+                }
+            }
+        }
+        let mut wrote = wrote_texts;
+        wrote |= forget_animator_files(assets, &files, script::animator_code::FOLDER);
         wrote |= forget_animator_files(assets, &files, script::map_code::FOLDER);
         wrote |= forget_animator_files(assets, &files, script::table_code::FOLDER);
         for (path, text) in files {

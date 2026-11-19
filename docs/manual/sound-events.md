@@ -31,6 +31,8 @@ The project's sound events in the Audio tab's left slot, dragged wider: each one
 | At once | The most plays of this event heard at the same time; more are skipped. 8 is a good start; a machine gun might want 4. When game code asks for one event many times in one tick (a volley of a hundred shots), up to 3 copies play, a little louder, instead of a hundred. |
 | Heard by | Who hears it: **Everyone**, **Only who caused it** (the listener on the entity that played it), or **Groups** (listeners in one of its groups). See [Listeners and who hears what](listeners.md). |
 | Priority | When more sounds want to play than the project's **Heard at once** (in the [Mixer](mixer.md)), **High** ones are heard first, then the loudest where you are; **Low** ones go first. |
+| Caption › Words | The [key](concepts.md#text-key) of the words shown when it's heard and the player has captions on: `Captions.DoorCreaks`, written in each language in the Translations tab. Empty: no caption. See [Subtitles and captions](subtitles-and-captions.md). |
+| Caption › Speaker | For a voice line, the key of who says it (`Speakers.Gardener`): its words are then a subtitle, shown with the speaker's name while the player has subtitles on. |
 
 ## Sounds that keep playing
 

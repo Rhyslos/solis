@@ -133,11 +133,37 @@ fn the_player_s_settings_read_back_and_start_from_the_export_s_window() {
 }
 
 #[test]
+fn the_players_language_and_captions_are_kept() {
+    let nb = translations::Language::new("nb").unwrap();
+    let chosen = PlayerSettings::default()
+        .with(Setting::Language(nb))
+        .with(Setting::Subtitles(false))
+        .with(Setting::Captions(true))
+        .with(Setting::CaptionSize(1.5))
+        .with(Setting::CaptionBackground(0.25));
+    let text = settings_text(&chosen);
+    assert!(text.contains("language nb\n"), "{text}");
+    assert_eq!(parse_settings(&text, PlayerSettings::default()), chosen);
+    let unchosen = settings_text(&PlayerSettings::default());
+    assert!(!unchosen.contains("language"), "the computer's is followed");
+    let odd = parse_settings(
+        "language Klingon\ncaption size 9\n",
+        PlayerSettings::default(),
+    );
+    assert_eq!(odd.language, None);
+    assert_eq!(odd.caption_size, 2.0);
+}
+
+#[test]
 fn settings_files_survive_being_damaged() {
     let text = settings_text(
         &PlayerSettings::default()
             .with(Setting::TextSize(1.25))
-            .with(Setting::Resolution(2560, 1440)),
+            .with(Setting::Resolution(2560, 1440))
+            .with(Setting::Language(
+                translations::Language::new("pt-BR").unwrap(),
+            ))
+            .with(Setting::Captions(true)),
     );
     let bytes = text.as_bytes();
     let mut seed = 0xBEEF_CAFEu64;

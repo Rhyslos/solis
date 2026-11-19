@@ -220,6 +220,8 @@ pub struct WorldView {
     pub timers: Arc<crate::Timers>,
     /// The project's data tables, read-only (stage 1, decision 0128).
     pub tables: crate::Tables,
+    /// The game's text in the player's language (stage 1, translations).
+    pub texts: Option<translations::Texts>,
 }
 
 impl WorldView {
@@ -804,6 +806,10 @@ impl Host for ViewHost {
 
     fn tables(&self) -> crate::Tables {
         self.view.tables.clone()
+    }
+
+    fn texts(&self) -> Option<translations::Texts> {
+        self.view.texts.clone()
     }
 
     fn map_place(&self, file: &str) -> Option<crate::MapPlace> {

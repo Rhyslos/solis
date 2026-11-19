@@ -55,11 +55,13 @@ mod inspector;
 pub mod interface_look;
 mod key_owner;
 mod kinds;
+mod languages_page;
 pub mod launcher;
 mod level_panel;
 pub mod level_view;
 pub mod library;
-pub mod look;
+pub mod locale;
+mod look;
 mod made_from;
 pub mod make_prefab;
 mod map_tab;
@@ -128,6 +130,7 @@ mod tileset_view;
 pub mod tokens;
 mod toolbox;
 pub mod transforming;
+mod translations_tab;
 pub mod unbuilt;
 #[cfg(test)]
 mod unbuilt_screens_tests;
@@ -245,6 +248,8 @@ mod tags_play_tests;
 mod timers_play_tests;
 #[cfg(test)]
 mod tools_1a_gate_tests;
+#[cfg(test)]
+mod translations_picture_tests;
 #[cfg(test)]
 mod two_d_screen_tests;
 #[cfg(test)]

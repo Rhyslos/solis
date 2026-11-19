@@ -23,6 +23,8 @@ cp tests/fixtures/area/v5/zones.sollevel "$seeds/level_file/"
 # each layout, so the move from the older layout is fuzzed too.
 mkdir -p "$seeds/table_file"
 cp tests/fixtures/table/v1/items.table.lst "$seeds/table_file/"
+mkdir -p "$seeds/translation_file"
+cp crates/translations/tests/data/shop.ftl "$seeds/translation_file/"
 mkdir -p "$seeds/tags_file"
 cp tests/fixtures/tags/v1/tags.lst "$seeds/tags_file/"
 mkdir -p "$seeds/prefab_file"

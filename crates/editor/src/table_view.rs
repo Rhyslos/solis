@@ -13,7 +13,7 @@
 //! block, and Ctrl+C and Ctrl+V copy and paste it as the tab-separated
 //! text spreadsheets use.
 
-use crate::table_editor::{Place, Sort, TableEditor, Typing};
+use crate::table_editor::{Place, Sheet, Sort, TableEditor, Typing};
 use crate::tokens::{self, Accent, size, text};
 use crate::widgets::{self, button::Button, field};
 use egui::{
@@ -69,14 +69,30 @@ pub(crate) fn width_of(kind: &ColumnKind) -> f32 {
     }
 }
 
+/// The keys' column's width, for lines of text.
+const KEY_W: f32 = 240.0;
+/// A language's column's width, for lines of text.
+const LINE_W: f32 = 320.0;
+
 /// Each place's left edge and width in the grid (0 is the IDs).
-fn places_of(table: &Table) -> Vec<(f32, f32)> {
+fn places_of(table: &Table, sheet: &Sheet) -> Vec<(f32, f32)> {
     let mut x = 0.0;
     let mut out = Vec::with_capacity(table.columns.len() + 1);
-    for w in std::iter::once(ID_W).chain(table.columns.iter().map(|c| width_of(&c.kind))) {
+    let lines = *sheet != Sheet::Table;
+    let first = if lines { KEY_W } else { ID_W };
+    let width = |c: &level::table::Column| if lines { LINE_W } else { width_of(&c.kind) };
+    for w in std::iter::once(first).chain(table.columns.iter().map(width)) {
         out.push((x, w));
         x += w;
     }
+    out
+}
+
+/// Draws the grid alone, filling `ui`: the shared piece the Translations
+/// tab shows lines of text in (stage 1, translations).
+pub(crate) fn grid_only(ui: &mut Ui, t: TableUi<'_>) -> TableOut {
+    let mut out = TableOut::default();
+    grid(ui, t.editor, (t.names, t.keys, t.accent), &mut out);
     out
 }
 
@@ -227,7 +243,7 @@ fn grid(
     (names, keys_here, accent): (Option<&script::project_names::States>, bool, Accent),
     out: &mut TableOut,
 ) {
-    let places = places_of(&editor.file);
+    let places = places_of(&editor.file, &editor.sheet);
     let width = places.last().map_or(ID_W, |(x, w)| x + w);
     let shown = editor.shown().to_vec();
     let height = HEAD_H + shown.len() as f32 * ROW_H;
@@ -240,12 +256,12 @@ fn grid(
     }
     let reveal = std::mem::take(&mut editor.reveal);
     egui::ScrollArea::both()
-        .id_salt("table grid")
+        .id_salt(("table grid", editor.sheet == Sheet::Table))
         .auto_shrink(false)
         .show_viewport(ui, |ui, view| {
             let (full, _) =
                 ui.allocate_exact_size(vec2(width.max(view.width()), height), Sense::hover());
-            let response = ui.interact(full, grid_id(), Sense::click_and_drag());
+            let response = ui.interact(full, grid_id_of(editor), Sense::click_and_drag());
             // The grid keeps the keys once clicked: Tab and the arrows
             // move its cursor rather than to another field.
             if response.clicked() || response.drag_started() || response.secondary_clicked() {
@@ -254,7 +270,7 @@ fn grid(
             if response.has_focus() {
                 ui.memory_mut(|m| {
                     m.set_focus_lock_filter(
-                        grid_id(),
+                        grid_id_of(editor),
                         egui::EventFilter {
                             tab: true,
                             horizontal_arrows: true,
@@ -297,6 +313,20 @@ pub(crate) fn grid_id() -> egui::Id {
     egui::Id::new("table grid cells")
 }
 
+/// The Translations tab's grid's own name (stage 1, translations).
+pub(crate) fn lines_grid_id() -> egui::Id {
+    egui::Id::new("lines grid cells")
+}
+
+/// The name of the grid `editor` is drawn in.
+fn grid_id_of(editor: &TableEditor) -> egui::Id {
+    if editor.sheet == Sheet::Table {
+        grid_id()
+    } else {
+        lines_grid_id()
+    }
+}
+
 /// One row's cells at its place among those shown (`at`).
 fn draw_row(
     painter: &egui::Painter,
@@ -332,11 +362,16 @@ fn draw_row(
         let inner = rect.shrink2(vec2(12.0, 0.0));
         let clip = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
         if place == 0 {
+            let font = if editor.sheet == Sheet::Table {
+                text::ui()
+            } else {
+                text::mono_small()
+            };
             clip.text(
                 inner.left_center(),
                 Align2::LEFT_CENTER,
                 &r.id,
-                text::ui(),
+                font,
                 tokens::text_primary(),
             );
             continue;
@@ -344,6 +379,17 @@ fn draw_row(
         let Some(cell) = r.cells.get(place - 1) else {
             continue;
         };
+        let lines = editor.sheet != Sheet::Table;
+        if lines && place == places.len() - 1 && *cell == Cell::Text(String::new()) {
+            clip.text(
+                inner.left_center(),
+                Align2::LEFT_CENTER,
+                "missing",
+                text::ui(),
+                tokens::ERROR_TEXT,
+            );
+            continue;
+        }
         draw_cell(&clip, inner, cell, &editor.file.columns[place - 1].kind);
     }
     if cursor_row {
@@ -494,9 +540,10 @@ fn heads(
             Stroke::new(1.0, tokens::strong_line()),
             StrokeKind::Inside,
         );
-        let (name, what) = match place {
-            0 => ("ID".to_string(), String::new()),
-            p => {
+        let (name, what) = match (place, &editor.sheet) {
+            (p, Sheet::Lines { heads }) => heads.get(p).cloned().unwrap_or_default(),
+            (0, Sheet::Table) => ("ID".to_string(), String::new()),
+            (p, Sheet::Table) => {
                 let c = &editor.file.columns[p - 1];
                 let mut what = match &c.kind {
                     ColumnKind::Choice(_) => {
@@ -569,7 +616,7 @@ fn heads(
             }),
         };
     }
-    if response.secondary_clicked() && place > 0 {
+    if response.secondary_clicked() && place > 0 && editor.sheet == Sheet::Table {
         ui.memory_mut(|m| {
             m.data
                 .insert_temp(egui::Id::new("table column menu"), place - 1)
@@ -718,11 +765,13 @@ fn click(
         editor.cursor = Some(spot);
         ui.memory_mut(|m| m.data.remove::<usize>(egui::Id::new("table column menu")));
     }
-    if ui.memory(|m| {
-        m.data
-            .get_temp::<usize>(egui::Id::new("table column menu"))
-            .is_none()
-    }) {
+    if editor.sheet == Sheet::Table
+        && ui.memory(|m| {
+            m.data
+                .get_temp::<usize>(egui::Id::new("table column menu"))
+                .is_none()
+        })
+    {
         row_menu(response, editor, out);
     }
 }
@@ -975,7 +1024,7 @@ fn typing_keys(ui: &mut Ui, editor: &mut TableEditor, out: &mut TableOut) {
     let take = |ui: &mut Ui, m: Modifiers, key: Key| ui.input_mut(|i| i.consume_key(m, key));
     if take(ui, Modifiers::NONE, Key::Escape) {
         editor.typing = None;
-        ui.memory_mut(|m| m.request_focus(grid_id()));
+        ui.memory_mut(|m| m.request_focus(grid_id_of(editor)));
         return;
     }
     let moves = if take(ui, Modifiers::NONE, Key::Enter) {
@@ -994,7 +1043,7 @@ fn typing_keys(ui: &mut Ui, editor: &mut TableEditor, out: &mut TableOut) {
         Ok(()) => {
             out.changed = true;
             editor.step(rows, places, false);
-            ui.memory_mut(|m| m.request_focus(grid_id()));
+            ui.memory_mut(|m| m.request_focus(grid_id_of(editor)));
         }
         Err(why) => out.said = Some(why),
     }
