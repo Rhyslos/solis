@@ -8,7 +8,7 @@
 //!
 //! ```text
 //! -- A sound event. Safe to edit by hand: one line per setting.
-//! sound version 1;
+//! sound version 2;
 //!
 //! takes = ["2EGJNFMTCSQ8G", "5A329QT768NJB"];
 //! volume = -3.0;
@@ -25,7 +25,13 @@
 //! loop = false;
 //! heard_by = "Everyone";
 //! heard_by_groups = [];
+//! caption = "Captions.DoorCreaks";
+//! speaker = "";
 //! ```
+//!
+//! Version 2 (stage 1, translations) adds `caption` and `speaker`: the
+//! keys of the words shown when it's heard and the player has captions
+//! on, and of who says them (empty: none).
 //!
 //! Read as a hostile file: within limits, a value out of range is brought
 //! into range (with a note), a setting it doesn't know is skipped (with a
@@ -42,7 +48,7 @@ use std::fmt;
 /// The extension of sound event files.
 pub const EXTENSION: &str = "solsound";
 /// The layout version this build writes and reads.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 /// The word the file starts with.
 const KIND: &str = "sound";
 /// This file's version and upgraders (Phase 8, C1): each step turns
@@ -52,8 +58,11 @@ pub static FORMAT: reflect::upgrade::Format<settings::Settings> = reflect::upgra
     name: "sound event",
     current: VERSION,
     version_of: |text| reflect::upgrade::header_version(text, &[KIND]),
-    steps: &[],
+    // Version 1 had no caption: its absence is none.
+    steps: &[|_| Ok(())],
 };
+/// The longest caption or speaker key kept, in characters.
+pub const MAX_KEY_CHARS: usize = 200;
 /// The biggest sound event file read (they're a few hundred bytes).
 pub const MAX_BYTES: usize = 64 << 10;
 /// The most takes in one event.
@@ -203,6 +212,12 @@ pub struct SoundEvent {
     pub heard_by: HeardBy,
     /// The groups that hear it, when it's heard by Groups.
     pub groups: Vec<String>,
+    /// The key of the words a caption shows when it's heard
+    /// (`Captions.DoorCreaks`; empty: no caption). Stage 1, translations.
+    pub caption: String,
+    /// The key of who says them (`Speakers.Gardener`), shown before them;
+    /// empty for none.
+    pub speaker: String,
 }
 
 impl Default for SoundEvent {
@@ -223,6 +238,8 @@ impl Default for SoundEvent {
             looping: false,
             heard_by: HeardBy::Everyone,
             groups: Vec::new(),
+            caption: String::new(),
+            speaker: String::new(),
         }
     }
 }
@@ -450,6 +467,19 @@ fn apply(event: &mut SoundEvent, field: &Field, notes: &mut Vec<String>) -> Resu
                 }
             }
         }
+        "caption" | "speaker" => {
+            let key = word()?.trim();
+            if key.chars().count() > MAX_KEY_CHARS || key.contains(char::is_control) {
+                return Err(wrong(&format!(
+                    "a text key in quotes, up to {MAX_KEY_CHARS} characters, such as \"Captions.DoorCreaks\""
+                )));
+            }
+            if field.key == "caption" {
+                event.caption = key.to_owned();
+            } else {
+                event.speaker = key.to_owned();
+            }
+        }
         other => notes.push(format!(
             "line {line}: \"{other}\" isn't a sound event setting, so it's skipped"
         )),
@@ -497,6 +527,8 @@ pub fn write(event: &SoundEvent) -> String {
                         .collect(),
                 ),
             ),
+            ("caption", Value::Text(event.caption.clone())),
+            ("speaker", Value::Text(event.speaker.clone())),
         ],
     )
 }

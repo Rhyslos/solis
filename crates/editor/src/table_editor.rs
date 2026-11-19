@@ -235,12 +235,12 @@ impl TableEditor {
         if let Some(why) = self.file.column_problem(name, Some(column)) {
             return Err(why);
         }
-        self.change(|table| match table.columns.get_mut(column) {
-            Some(c) => {
-                name.clone_into(&mut c.name);
-                true
+        self.change(|table| {
+            if column >= table.columns.len() {
+                return false;
             }
-            None => false,
+            table.rename_column(column, name);
+            true
         });
         Ok(())
     }
@@ -285,14 +285,27 @@ impl TableEditor {
     }
 
     /// Marks a text column translated or not.
+    /// The first time, the table's part of its keys is kept, so renaming
+    /// the file never changes them (stage 1, translations).
     pub(crate) fn set_translated(&mut self, column: usize, on: bool) -> bool {
+        let object = self.object_name();
         self.change(|table| match table.columns.get_mut(column) {
             Some(c) if c.kind == ColumnKind::Text => {
                 c.translated = on;
+                if on && table.kept.table.is_empty() {
+                    table.kept.table = object;
+                }
                 true
             }
             _ => false,
         })
+    }
+
+    /// What game code calls the table (`Items`), from its file's name.
+    pub(crate) fn object_name(&self) -> String {
+        let stem = reflect::data_files::path_stem(&self.path);
+        let stem = stem.rsplit('/').next().unwrap_or_default();
+        level::table::object_name_for(stem).unwrap_or_else(|| "Table".to_owned())
     }
 
     /// Changes what a column holds, each cell turned into the new kind
@@ -434,7 +447,7 @@ impl TableEditor {
                 if table.rows[row].id == id {
                     return false;
                 }
-                Arc::make_mut(&mut table.rows[row]).id = id.to_string();
+                table.rename_row(row, id);
                 true
             });
             return Ok(());

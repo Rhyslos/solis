@@ -223,7 +223,7 @@ fn a_second_row_of_one_id_is_left_out() {
 
 #[test]
 fn a_file_from_a_newer_version_or_not_lust_is_refused() {
-    let newer = write(&items()).replace("version = 1", "version = 9");
+    let newer = write(&items()).replace("version = 2", "version = 9");
     assert!(read(&newer, "X").unwrap_err().message.contains("newer"));
     assert!(read("hello", "X").is_err());
     assert!(read("", "X").is_err());
@@ -394,4 +394,57 @@ proptest! {
         let back = read(&write(&table), "Item").unwrap();
         prop_assert_eq!(back.table, table);
     }
+}
+
+#[test]
+fn translated_cells_keep_their_keys_through_renames() {
+    let text = include_str!("../../../../tests/fixtures/table/v2/items.table.lst");
+    let read = file::read(text, "Item").unwrap();
+    assert!(read.notes.is_empty(), "{:?}", read.notes);
+    let mut table = read.table;
+    assert_eq!(
+        table.texts("Shop"),
+        [
+            ("Items.Apple.name".to_owned(), "Apple".to_owned()),
+            (
+                "Items.Apple.description".to_owned(),
+                "Crisp and red.".to_owned()
+            ),
+            ("Items.IronSword.name".to_owned(), "Steel sword".to_owned()),
+            (
+                "Items.IronSword.description".to_owned(),
+                "A plain blade.".to_owned()
+            ),
+        ],
+        "the parts as made, not the names now"
+    );
+    // Renamed again, and back: the key stays as it was made.
+    table.rename_row(1, "Blade");
+    table.rename_column(1, "about");
+    assert_eq!(table.texts("Shop")[3].0, "Items.IronSword.description");
+    table.rename_row(1, "IronSword");
+    assert!(
+        table.kept.rows.is_empty(),
+        "back to its own name: nothing to keep"
+    );
+    assert_eq!(
+        table.texts("Shop")[3].0,
+        "Items.IronSword.about".replace("about", "description")
+    );
+    // Written and read back the same.
+    let again = file::read(&file::write(&table), "Item").unwrap();
+    assert_eq!(again.table, table);
+    assert!(file::write(&table).contains("key = \"description\""));
+}
+
+#[test]
+fn a_table_without_translated_text_keeps_no_keys() {
+    let mut table = Table::new("Item");
+    table.columns.push(Column::new("price", ColumnKind::Whole));
+    table.rows.push(Arc::new(table.new_row("Apple".into())));
+    table.rename_row(0, "Pear");
+    table.rename_column(0, "cost");
+    assert_eq!(table.kept, KeptKeys::default());
+    assert!(!file::write(&table).contains("key ="));
+    assert!(table.texts("Items").is_empty());
 }

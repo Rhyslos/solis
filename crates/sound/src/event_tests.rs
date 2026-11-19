@@ -26,6 +26,8 @@ fn footstep() -> SoundEvent {
         looping: true,
         heard_by: HeardBy::Caller,
         groups: Vec::new(),
+        caption: String::new(),
+        speaker: String::new(),
     }
 }
 
@@ -34,7 +36,7 @@ fn an_event_round_trips_through_its_file() {
     let event = footstep();
     let text = write(&event);
     assert!(text.starts_with("-- A sound event."));
-    assert!(text.contains("\nsound version 1;\n"));
+    assert!(text.contains("\nsound version 2;\n"));
     assert!(text.contains("\nbus = \"Effects\";\n"));
     let read = read(&text).unwrap();
     assert_eq!(read.event, event);
@@ -240,4 +242,24 @@ fn heard_by_round_trips_and_older_files_are_heard_by_everyone() {
     // A group listed twice is kept once.
     let twice = read("sound version 1;\nheard_by_groups = [\"A\", \" A \"];\n").unwrap();
     assert_eq!(twice.event.groups, ["A"]);
+}
+
+#[test]
+fn a_caption_and_speaker_round_trip_and_older_files_have_none() {
+    let event = SoundEvent {
+        caption: "Captions.DoorCreaks".into(),
+        speaker: "Speakers.Gardener".into(),
+        ..SoundEvent::default()
+    };
+    let back = read(&write(&event)).unwrap();
+    assert!(back.notes.is_empty(), "{:?}", back.notes);
+    assert_eq!(back.event, event);
+    let old = read("sound version 1;\nvolume = -3.0;\n").unwrap().event;
+    assert_eq!((old.caption.as_str(), old.speaker.as_str()), ("", ""));
+    let long = format!(
+        "sound version 2;\ncaption = \"{}\";\n",
+        "x".repeat(MAX_KEY_CHARS + 1)
+    );
+    assert!(read(&long).unwrap_err().message.contains("text key"));
+    assert!(read("sound version 2;\ncaption = 3;\n").is_err());
 }
