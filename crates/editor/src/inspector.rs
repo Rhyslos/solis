@@ -418,20 +418,23 @@ pub(crate) fn field_widget(
             // colour and keeps that.
             let [r, g, b, a] = value.as_colour().unwrap_or([1.0; 4]);
             let mut bytes = [r, g, b].map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            let changed = ui.color_edit_button_srgb(&mut bytes).changed();
-            // Its hex after the swatch (decision 0127), as the design's
-            // colour fields show it.
-            let [r8, g8, b8] = bytes;
-            let hex = if mixed.whole {
+            // In the design's field box: the swatch (which opens the
+            // colour picker), then its hex (decision 0127).
+            let hex = |[r, g, b]: [u8; 3]| format!("#{r:02X}{g:02X}{b:02X}");
+            let shown = if mixed.whole {
                 "—".to_owned()
             } else {
-                format!("#{r8:02X}{g8:02X}{b8:02X}")
+                hex(bytes)
             };
-            ui.label(
-                RichText::new(hex)
-                    .font(text::mono())
-                    .color(crate::tokens::text_primary()),
-            );
+            let width = ui.available_width();
+            let mut changed = false;
+            widgets::field::framed(ui, width, None, |ui| {
+                ui.spacing_mut().interact_size = egui::vec2(size::LEAD, size::LEAD);
+                let swatch = ui.color_edit_button_srgb(&mut bytes);
+                changed = swatch.changed();
+                ui.label(RichText::new(&shown).font(text::mono()));
+                swatch
+            });
             whole(changed.then(|| {
                 let [r, g, b] = bytes.map(|b| f32::from(b) / 255.0);
                 Value::colour([r, g, b, a])

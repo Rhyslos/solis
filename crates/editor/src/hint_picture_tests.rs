@@ -26,7 +26,7 @@ fn properties_of(
     for _ in 0..3 {
         h.run();
     }
-    Some(drawn(&mut h).cropped([1120, 100], [320, 700]))
+    Some(drawn(&mut h).cropped([1120, 100], [320, 770]))
 }
 
 #[test]

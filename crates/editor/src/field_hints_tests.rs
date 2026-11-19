@@ -27,6 +27,8 @@ component Guard {\n\
         Level home = Level.Town;\n\
         Tag hunts = Tag.Enemy;\n\
         float sightRange = 8.0; -- [range 0 20, unit \"m\", group \"Seeing\"]\n\
+        colour tint = [0.35, 0.63, 0.88];\n\
+        string says = \"Halt!\"; -- [multiline]\n\
         string notes = \"\"; -- [hidden]\n\
     }\n\
 }\n\
