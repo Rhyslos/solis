@@ -296,8 +296,19 @@ for _, name in ipairs(owners) do
   groups[name] = group(name)
 end
 table.freeze(groups)
+-- The project's data tables (solis.Items:row("IronSword")), named by Solis
+-- whenever the tables it lends change.
+local tableGroups = {}
+local function nameTables(names)
+  local made = {}
+  for _, name in ipairs(names) do
+    if not groups[name] then made[name] = group(name) end
+  end
+  tableGroups = made
+end
 local reach = { __index = function(_, key)
   if groups[key] then return groups[key] end
+  if tableGroups[key] then return tableGroups[key] end
   -- Names starting __ are Solis's own (Lust's runtime's), never game code's.
   local own = type(key) == "string" and key:sub(1, 2) == "__"
   local f = natives and key ~= "send_event" and not own and natives[key]
@@ -338,7 +349,7 @@ local function ways()
   end
   return found
 end
-return function(n) natives = n end, function() local m = made; made = {}; return m end, ways
+return function(n) natives = n end, function() local m = made; made = {}; return m end, ways, nameTables
 "#;
 
 /// The Luau game code runs in, with its deadlines and Solis's own parts.
@@ -361,6 +372,12 @@ pub(crate) struct Luau {
     pub(crate) discard: Function,
     /// Puts the guard on a game-wide object ([`crate::objects::WRAP`]).
     pub(crate) wrap_object: Function,
+    /// Makes a data table's natives ([`crate::tables::MAKE`]).
+    make_table: Function,
+    /// Tells `solis` the data tables' names.
+    name_tables: Function,
+    /// The data tables' natives, made for the tables last lent.
+    tables: std::cell::RefCell<crate::tables::Lent>,
 }
 
 /// What Luau's safe libraries give that game code must not have:
@@ -409,11 +426,12 @@ impl Luau {
         // `solis` groups the natives under their owners in the engine's
         // own list, so an engine object added there is within Lua's reach
         // with nothing more to remember.
-        let (lend, made, ways): (Function, Function, Function) = lua
+        let (lend, made, ways, name_tables): (Function, Function, Function, Function) = lua
             .load(PRELUDE)
             .set_name("=solis")
             .call(crate::describe::owners())?;
         let wrap_object = lua.load(crate::objects::WRAP).set_name("=objects").eval()?;
+        let make_table = lua.load(crate::tables::MAKE).set_name("=tables").eval()?;
         crate::states::Running::make(&lua)?;
         // The libraries, the prelude's tables and the globals themselves
         // become read-only.
@@ -433,7 +451,26 @@ impl Luau {
             ways,
             discard,
             wrap_object,
+            make_table,
+            name_tables,
+            tables: std::cell::RefCell::default(),
         })
+    }
+
+    /// Puts the data tables' natives into `natives` (the ones lent while
+    /// game code runs), for `tables`.
+    pub(crate) fn lend_tables(
+        &self,
+        tables: crate::tables::Tables,
+        natives: &Table,
+    ) -> mlua::Result<()> {
+        self.tables.borrow_mut().lend(
+            &self.lua,
+            &self.make_table,
+            &self.name_tables,
+            tables,
+            natives,
+        )
     }
 
     /// Globals of their own for one file (or the Lust): what's set in

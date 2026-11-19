@@ -290,6 +290,7 @@ Host: fn resolution(&self) -> [u32
 Host: fn set_resolution(&mut self, width: u32, height: u32)
 Host: fn use_next_resolution(&mut self)
 Host: fn quit(&mut self)
+Host: fn tables(&self) -> crate::Tables
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)
 RustComponent: fn handle(&mut self, _cx: &mut Context<'_>, _event: &Event) -> bool

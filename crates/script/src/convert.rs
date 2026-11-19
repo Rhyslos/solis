@@ -123,7 +123,7 @@ pub(crate) fn colour_of(value: &LuaValue) -> Option<[f32; 4]> {
 }
 
 /// A table with these keys and numbers, as Lust keeps a vec2 or colour.
-fn numbers_table(lua: &Lua, keys: &[&str], values: &[f32]) -> mlua::Result<Table> {
+pub(crate) fn numbers_table(lua: &Lua, keys: &[&str], values: &[f32]) -> mlua::Result<Table> {
     let t = lua.create_table_with_capacity(0, keys.len())?;
     for (k, v) in keys.iter().zip(values) {
         t.raw_set(*k, *v)?;

@@ -390,6 +390,13 @@ pub trait Host {
     /// 0093). While playing in the editor, play stops.
     fn quit(&mut self) {}
 
+    /// The project's data tables, read-only (stage 1; decision 0128):
+    /// `tables().get("Items")` and its `row("IronSword")`, whose
+    /// `whole("price")` is a cell. None by default.
+    fn tables(&self) -> crate::Tables {
+        crate::Tables::default()
+    }
+
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
     /// A host that keeps changes to land later (game code on several
@@ -594,6 +601,9 @@ pub(crate) fn with_natives<'h, R>(
         let h = &host;
         let said = &lines;
         crate::natives::lend(scope, &natives, h, keys, said)?;
+        // The data tables' natives: made once for each set of tables.
+        let tables = h.borrow().tables();
+        luau.lend_tables(tables, &natives)?;
         // A native renamed on purpose keeps working under its old name for
         // a while (Phase 8, C3): the same function, lent twice.
         lend_old_names(&natives, crate::describe::RENAMED)?;

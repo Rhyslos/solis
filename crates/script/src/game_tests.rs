@@ -125,6 +125,7 @@ impl GameWorld for TestWorld {
             tags: Arc::clone(&self.tags),
             day_length: 24.0 * 60.0,
             timers: Arc::default(),
+            tables: crate::Tables::default(),
         }
     }
 
