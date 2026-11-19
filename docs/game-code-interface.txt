@@ -7,6 +7,7 @@
 ## Lust (solis/<file>.lst)
 
 world: object World: method say(string words) native;
+world: object World: method string text(Text which) native;
 world: object World: method float time() native;
 world: object World: method entity find(string name) native;
 world: object World: method entity array within(Tag tag, vec3 place, float radius) native;
@@ -94,6 +95,17 @@ screens: object Screens: method float textSize() native;
 screens: object Screens: method setTextSize(float size) native;
 screens: object Screens: method float uiSize() native;
 screens: object Screens: method setUiSize(float size) native;
+screens: object Screens: method Language language() native;
+screens: object Screens: method setLanguage(Language which) native;
+screens: object Screens: method string languageName(Language which) native;
+screens: object Screens: method bool subtitles() native;
+screens: object Screens: method setSubtitles(bool on) native;
+screens: object Screens: method bool captions() native;
+screens: object Screens: method setCaptions(bool on) native;
+screens: object Screens: method float captionSize() native;
+screens: object Screens: method setCaptionSize(float size) native;
+screens: object Screens: method float captionBackground() native;
+screens: object Screens: method setCaptionBackground(float strength) native;
 window: object Window: method bool fullscreen() native;
 window: object Window: method setFullscreen(bool on) native;
 window: object Window: method vec3 resolution() native;
@@ -145,8 +157,19 @@ solis.Maps:width
 solis.Physics:castRay
 solis.Saves:loadFrom
 solis.Saves:saveTo
+solis.Screens:captionBackground
+solis.Screens:captionSize
+solis.Screens:captions
+solis.Screens:language
+solis.Screens:languageName
+solis.Screens:setCaptionBackground
+solis.Screens:setCaptionSize
+solis.Screens:setCaptions
+solis.Screens:setLanguage
+solis.Screens:setSubtitles
 solis.Screens:setTextSize
 solis.Screens:setUiSize
+solis.Screens:subtitles
 solis.Screens:textSize
 solis.Screens:uiSize
 solis.Window:fullscreen
@@ -168,6 +191,7 @@ solis.World:setGameSpeed
 solis.World:setSeed
 solis.World:setTimeOfDay
 solis.World:spawn
+solis.World:text
 solis.World:time
 solis.World:timeOfDay
 solis.World:viewSize
@@ -300,6 +324,9 @@ Host: fn set_resolution(&mut self, width: u32, height: u32)
 Host: fn use_next_resolution(&mut self)
 Host: fn quit(&mut self)
 Host: fn tables(&self) -> crate::Tables
+Host: fn texts(&self) -> Option<translations::Texts>
+Host: fn text(&self, key: &str) -> String
+Host: fn text_with(&self, key: &str, values: &[(&str, translations::TextValue)]) -> String
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)
 RustComponent: fn handle(&mut self, _cx: &mut Context<'_>, _event: &Event) -> bool

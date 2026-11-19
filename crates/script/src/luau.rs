@@ -378,6 +378,12 @@ pub(crate) struct Luau {
     name_tables: Function,
     /// The data tables' natives, made for the tables last lent.
     tables: std::cell::RefCell<crate::tables::Lent>,
+    /// Makes the game's text's natives ([`crate::texts::MAKE`]).
+    make_text: Function,
+    /// The game's text's natives, made for the text last lent.
+    texts: std::cell::RefCell<crate::texts::Lent>,
+    /// The groups last named to `solis` (the tables' and text's objects).
+    named: std::cell::RefCell<Vec<String>>,
 }
 
 /// What Luau's safe libraries give that game code must not have:
@@ -432,6 +438,7 @@ impl Luau {
             .call(crate::describe::owners())?;
         let wrap_object = lua.load(crate::objects::WRAP).set_name("=objects").eval()?;
         let make_table = lua.load(crate::tables::MAKE).set_name("=tables").eval()?;
+        let make_text = lua.load(crate::texts::MAKE).set_name("=texts").eval()?;
         crate::states::Running::make(&lua)?;
         // The libraries, the prelude's tables and the globals themselves
         // become read-only.
@@ -454,23 +461,40 @@ impl Luau {
             make_table,
             name_tables,
             tables: std::cell::RefCell::default(),
+            make_text,
+            texts: std::cell::RefCell::default(),
+            named: std::cell::RefCell::default(),
         })
     }
 
-    /// Puts the data tables' natives into `natives` (the ones lent while
-    /// game code runs), for `tables`.
+    /// Puts the data tables' natives and the game's text's into `natives`
+    /// (the ones lent while game code runs), for `tables` and `texts`,
+    /// and tells Lua's `solis` their objects' names when they change.
     pub(crate) fn lend_tables(
         &self,
         tables: crate::tables::Tables,
+        texts: Option<translations::Texts>,
         natives: &Table,
     ) -> mlua::Result<()> {
+        let mut names: Vec<String> = tables.names().map(str::to_owned).collect();
         self.tables.borrow_mut().lend(
             &self.lua,
             &self.make_table,
-            &self.name_tables,
             tables,
+            texts.clone(),
             natives,
-        )
+        )?;
+        let mut lent = self.texts.borrow_mut();
+        lent.lend(&self.lua, &self.make_text, texts, natives)?;
+        names.extend(lent.groups.iter().cloned());
+        if *self.named.borrow() != names {
+            self.name_tables.call::<()>(
+                self.lua
+                    .create_sequence_from(names.iter().map(String::as_str))?,
+            )?;
+            *self.named.borrow_mut() = names;
+        }
+        Ok(())
     }
 
     /// Globals of their own for one file (or the Lust): what's set in

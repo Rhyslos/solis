@@ -631,6 +631,12 @@ pub trait ScreenReader {
     fn settings(&self) -> crate::settings::PlayerSettings {
         crate::settings::PlayerSettings::default()
     }
+
+    /// The game's text in the player's language, for `World:text` and the
+    /// lines with values (stage 1, translations).
+    fn texts(&self) -> Option<translations::Texts> {
+        None
+    }
 }
 
 /// No game to read: every entity has no components.

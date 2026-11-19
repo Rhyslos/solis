@@ -280,7 +280,46 @@ impl Runtime {
                     )))
                 })?,
             )?;
+            // The game's text, and the player's language and captions
+            // (stage 1, translations).
+            let texts = reader.borrow().texts();
+            self.luau
+                .lend_tables(crate::Tables::default(), texts.clone(), &natives)?;
+            let language = crate::natives::settings::shown_language(texts.as_ref(), settings);
+            natives.raw_set(
+                "Screens_language",
+                lua.create_function(move |_, _w: LuaValue| Ok(language.option()))?,
+            )?;
+            natives.raw_set(
+                "Screens_languageName",
+                lua.create_function(move |_, (_w, which): (LuaValue, String)| {
+                    crate::natives::settings::language_named(texts.as_ref(), &which)
+                        .map(|l| l.name())
+                        .map_err(mlua::Error::runtime)
+                })?,
+            )?;
+            natives.raw_set(
+                "Screens_subtitles",
+                lua.create_function(move |_, _w: LuaValue| Ok(settings.subtitles))?,
+            )?;
+            natives.raw_set(
+                "Screens_captions",
+                lua.create_function(move |_, _w: LuaValue| Ok(settings.captions))?,
+            )?;
+            natives.raw_set(
+                "Screens_captionSize",
+                lua.create_function(move |_, _w: LuaValue| Ok(settings.caption_size))?,
+            )?;
+            natives.raw_set(
+                "Screens_captionBackground",
+                lua.create_function(move |_, _w: LuaValue| Ok(settings.caption_background))?,
+            )?;
             for (owner, name) in [
+                ("Screens", "setLanguage"),
+                ("Screens", "setSubtitles"),
+                ("Screens", "setCaptions"),
+                ("Screens", "setCaptionSize"),
+                ("Screens", "setCaptionBackground"),
                 ("Screens", "setTextSize"),
                 ("Screens", "setUiSize"),
                 ("Window", "setFullscreen"),

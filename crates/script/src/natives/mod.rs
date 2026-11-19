@@ -13,7 +13,7 @@ mod animators;
 mod entity;
 mod input;
 mod maps;
-mod settings;
+pub(crate) mod settings;
 mod sound;
 mod states;
 mod timers;

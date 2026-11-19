@@ -28,12 +28,14 @@ use std::sync::Arc;
 pub struct TableRef {
     /// The table.
     pub table: Arc<Table>,
+    /// What game code calls it (`Items`).
+    name: String,
     ids: HashMap<String, usize>,
     columns: HashMap<String, usize>,
 }
 
 impl TableRef {
-    fn new(table: Arc<Table>) -> Self {
+    fn new(name: String, table: Arc<Table>) -> Self {
         let ids = table
             .rows
             .iter()
@@ -48,6 +50,7 @@ impl TableRef {
             .collect();
         Self {
             table,
+            name,
             ids,
             columns,
         }
@@ -58,16 +61,16 @@ impl TableRef {
         let at = *self.ids.get(id)?;
         Some(RowRef {
             row: &self.table.rows[at],
-            columns: &self.columns,
+            table: self,
         })
     }
 
     /// Every row, in the table's order.
     pub fn rows(&self) -> impl Iterator<Item = RowRef<'_>> {
-        self.table.rows.iter().map(|row| RowRef {
-            row,
-            columns: &self.columns,
-        })
+        self.table
+            .rows
+            .iter()
+            .map(|row| RowRef { row, table: self })
     }
 
     /// The ID nearest `id` by spelling, for a message.
@@ -104,7 +107,7 @@ fn distance(a: &str, b: &str) -> usize {
 pub struct RowRef<'a> {
     /// The row.
     pub row: &'a Row,
-    columns: &'a HashMap<String, usize>,
+    table: &'a TableRef,
 }
 
 impl<'a> RowRef<'a> {
@@ -115,7 +118,26 @@ impl<'a> RowRef<'a> {
 
     /// The cell in the column called `column`.
     pub fn cell(&self, column: &str) -> Option<&'a Cell> {
-        self.row.cells.get(*self.columns.get(column)?)
+        self.row.cells.get(*self.table.columns.get(column)?)
+    }
+
+    /// A text column's value as the player reads it (stage 1,
+    /// translations): a translated column's in their language (`texts`,
+    /// `cx.host().texts()`), the main language's where it isn't translated;
+    /// any other text column's as it is.
+    pub fn translated(&self, column: &str, texts: Option<&translations::Texts>) -> Option<String> {
+        let at = *self.table.columns.get(column)?;
+        let Cell::Text(text) = self.row.cells.get(at)? else {
+            return None;
+        };
+        let col = &self.table.table.columns[at];
+        Some(match texts {
+            Some(texts) if col.translated => {
+                let key = self.table.table.text_key(&self.table.name, self.row, col);
+                texts.text(&key)
+            }
+            _ => text.clone(),
+        })
     }
 
     /// A whole number column's value.
@@ -195,7 +217,10 @@ impl Tables {
             }
             hash = level::table::fnv(named.object.as_bytes(), hash);
             hash = level::table::fnv(&table.content_hash().to_le_bytes(), hash);
-            by_name.insert(named.object, Arc::new(TableRef::new(Arc::clone(table))));
+            by_name.insert(
+                named.object.clone(),
+                Arc::new(TableRef::new(named.object, Arc::clone(table))),
+            );
         }
         let hash = if by_name.is_empty() { 0 } else { hash };
         Self {
@@ -267,6 +292,8 @@ end
 #[derive(Default)]
 pub(crate) struct Lent {
     from: Tables,
+    /// The text translated cells were read in.
+    texts: Option<translations::Texts>,
     natives: Option<LuaTable>,
 }
 
@@ -287,7 +314,12 @@ fn cell_value(lua: &Lua, cell: &Cell) -> mlua::Result<LuaValue> {
 
 /// The function that makes `name`'s rows into Lua: a row by ID, or nil
 /// and why there's none.
-fn builder(lua: &Lua, name: &str, table: Arc<TableRef>) -> mlua::Result<Function> {
+fn builder(
+    lua: &Lua,
+    name: &str,
+    table: Arc<TableRef>,
+    texts: Option<translations::Texts>,
+) -> mlua::Result<Function> {
     let name = name.to_string();
     lua.create_function(move |lua, id: mlua::LuaString| {
         let id = id.to_str()?;
@@ -301,6 +333,12 @@ fn builder(lua: &Lua, name: &str, table: Arc<TableRef>) -> mlua::Result<Function
         let made = lua.create_table_with_capacity(0, table.table.columns.len() + 1)?;
         made.raw_set(level::table::ID_FIELD, row.id())?;
         for (column, cell) in table.table.columns.iter().zip(&row.row.cells) {
+            if column.translated
+                && let Some(text) = row.translated(&column.name, texts.as_ref())
+            {
+                made.raw_set(column.name.as_str(), text)?;
+                continue;
+            }
             made.raw_set(column.name.as_str(), cell_value(lua, cell)?)?;
         }
         Ok((LuaValue::Table(made), None))
@@ -310,30 +348,38 @@ fn builder(lua: &Lua, name: &str, table: Arc<TableRef>) -> mlua::Result<Function
 impl Lent {
     /// Puts each table's natives into `natives` (the ones lent while game
     /// code runs), made again first when `tables` aren't the ones they
-    /// were made for. `make` is [`MAKE`], and `groups` tells Lua's `solis`
-    /// the tables' names.
+    /// were made for. `make` is [`MAKE`]; the tables' names, for Lua's
+    /// `solis`, are [`Tables::names`].
     pub(crate) fn lend(
         &mut self,
         lua: &Lua,
         make: &Function,
-        groups: &Function,
         tables: Tables,
+        texts: Option<translations::Texts>,
         natives: &LuaTable,
     ) -> mlua::Result<()> {
-        if !self.from.same(&tables) || (self.natives.is_none() && !tables.is_empty()) {
+        let same_texts = match (&self.texts, &texts) {
+            (Some(a), Some(b)) => a.same(b),
+            (None, None) => true,
+            _ => false,
+        };
+        if !self.from.same(&tables) || !same_texts || (self.natives.is_none() && !tables.is_empty())
+        {
             let made = lua.create_table()?;
-            let names = lua.create_sequence_from(tables.names())?;
             for (name, table) in &tables.inner.by_name {
                 let ids =
                     lua.create_sequence_from(table.table.rows.iter().map(|r| r.id.as_str()))?;
-                let (row, rows): (Function, Function) =
-                    make.call((name.as_str(), builder(lua, name, Arc::clone(table))?, ids))?;
+                let (row, rows): (Function, Function) = make.call((
+                    name.as_str(),
+                    builder(lua, name, Arc::clone(table), texts.clone())?,
+                    ids,
+                ))?;
                 made.raw_set(format!("{name}_row"), row)?;
                 made.raw_set(format!("{name}_rows"), rows)?;
             }
-            groups.call::<()>(names)?;
             self.natives = Some(made);
             self.from = tables;
+            self.texts = texts;
         }
         if let Some(made) = &self.natives {
             for pair in made.pairs::<LuaValue, LuaValue>() {

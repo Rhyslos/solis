@@ -409,6 +409,13 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "text",
+        owner: "World",
+        lust: "method string text(Text which) native;",
+        about: "A line of the game's text in the player's language (Project settings › Languages): World:text(Text.Shop.Welcome). A line not translated into it is in the main language. A line that takes values is a method of its group's object instead: ShopText:welcome(name), from solis/texts.",
+    },
+    Native {
+        file: "world",
         name: "time",
         owner: "World",
         lust: "method float time() native;",
@@ -1017,6 +1024,83 @@ pub const NATIVES: &[Native] = &[
         about: "Sets the player's UI size, at the end of the tick: every screen grows or shrinks. Kept for the next time the game starts.",
     },
     Native {
+        file: "screens",
+        name: "language",
+        owner: "Screens",
+        lust: "method Language language() native;",
+        about: "The language the player reads the game's text in, one of the project's (Project settings › Languages).",
+    },
+    Native {
+        file: "screens",
+        name: "setLanguage",
+        owner: "Screens",
+        lust: "method setLanguage(Language which) native;",
+        about: "Sets the player's language, at the end of the tick: every text, screen and caption changes to it at once. Kept for the next time the game starts.",
+    },
+    Native {
+        file: "screens",
+        name: "languageName",
+        owner: "Screens",
+        lust: "method string languageName(Language which) native;",
+        about: "A language's own name, for a menu that offers them: Norsk, Deutsch, Français.",
+    },
+    Native {
+        file: "screens",
+        name: "subtitles",
+        owner: "Screens",
+        lust: "method bool subtitles() native;",
+        about: "Whether the player wants subtitles: what characters say, shown as they say it.",
+    },
+    Native {
+        file: "screens",
+        name: "setSubtitles",
+        owner: "Screens",
+        lust: "method setSubtitles(bool on) native;",
+        about: "Turns subtitles on or off, at the end of the tick. Kept for the next time the game starts.",
+    },
+    Native {
+        file: "screens",
+        name: "captions",
+        owner: "Screens",
+        lust: "method bool captions() native;",
+        about: "Whether the player wants captions for sounds: a door creaking, footsteps behind them.",
+    },
+    Native {
+        file: "screens",
+        name: "setCaptions",
+        owner: "Screens",
+        lust: "method setCaptions(bool on) native;",
+        about: "Turns captions for sounds on or off, at the end of the tick. Kept for the next time the game starts.",
+    },
+    Native {
+        file: "screens",
+        name: "captionSize",
+        owner: "Screens",
+        lust: "method float captionSize() native;",
+        about: "How big subtitles and captions are: 1 as designed (0.5 to 2).",
+    },
+    Native {
+        file: "screens",
+        name: "setCaptionSize",
+        owner: "Screens",
+        lust: "method setCaptionSize(float size) native;",
+        about: "Sets how big subtitles and captions are, at the end of the tick (0.5 to 2). Kept for the next time the game starts.",
+    },
+    Native {
+        file: "screens",
+        name: "captionBackground",
+        owner: "Screens",
+        lust: "method float captionBackground() native;",
+        about: "How dark the box behind subtitles and captions is: 0 none, 1 solid.",
+    },
+    Native {
+        file: "screens",
+        name: "setCaptionBackground",
+        owner: "Screens",
+        lust: "method setCaptionBackground(float strength) native;",
+        about: "Sets how dark the box behind subtitles and captions is, at the end of the tick (0 none to 1 solid). Kept for the next time the game starts.",
+    },
+    Native {
         file: "window",
         name: "fullscreen",
         owner: "Window",
@@ -1241,7 +1325,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
     "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer",
-    "Level", "Font",
+    "Level", "Font", "Text", "Language",
 ];
 
 /// What the first line of each file describing the engine says after who made it.
@@ -1285,7 +1369,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 22);
+        assert_eq!(files.len(), 23);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
