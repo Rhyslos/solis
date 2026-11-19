@@ -1,9 +1,10 @@
 //! How Properties lays out its cards (spec 199-213; the approved
 //! additions, round 2, `04-properties-*.png` and `01-hints-card-a.png`):
-//! the cards side by side as many as fit at their least width, each row
-//! of cards as tall as its tallest; a card's title row with ? (its manual
-//! page) and ⋯ (its menu, which a right-click on the card opens too); and
-//! Hints as the last, quieter card.
+//! the cards one under another however wide the panel is (the project
+//! lead, 2026-11-19: side by side was hard to read); a card's title row
+//! with a chevron that folds it, ? (its manual page) and ⋯ (its menu,
+//! which a right-click on the card opens too); and Hints as the last,
+//! quieter card.
 
 use crate::icons::Icon;
 use crate::properties::PropertyRequest;
@@ -17,11 +18,22 @@ use egui::{
 };
 use reflect::EntityId;
 
-/// How many cards go side by side in `width`: as many as fit at the
-/// least card width, but never more than there are.
-pub(crate) fn across(width: f32, cards: usize) -> usize {
-    let fit = ((width + size::CARD_GAP) / (size::CARD_MIN_W + size::CARD_GAP)).floor() as usize;
-    fit.clamp(1, cards.max(1))
+/// Where a card remembers whether it's folded: by the component's name,
+/// so every entity's card of that kind folds together, and it stays
+/// folded from one session to the next.
+fn folded_id(name: &str) -> Id {
+    Id::new(("card folded", name))
+}
+
+/// Whether the card of component `name` is folded to its title row.
+pub(crate) fn is_folded(ui: &Ui, name: &str) -> bool {
+    ui.data_mut(|d| d.get_persisted::<bool>(folded_id(name)))
+        .unwrap_or(false)
+}
+
+/// Folds or unfolds the card of component `name`.
+pub(crate) fn set_folded(ui: &Ui, name: &str, folded: bool) {
+    ui.data_mut(|d| d.insert_persisted(folded_id(name), folded));
 }
 
 /// One row of `count` cards, of `slots` across the width (a last row
@@ -122,9 +134,9 @@ pub(crate) struct MenuHas<'a> {
     pub help: bool,
 }
 
-/// A card's title row: its name, then at the right ? and ⋯. Returns
-/// what was asked for, also from the menu `background` opens on a
-/// right-click.
+/// A card's title row: a chevron that folds the card, its name (a click
+/// folds it too), then at the right ? and ⋯. Returns what was asked
+/// for, also from the menu `background` opens on a right-click.
 pub(crate) fn title_row(
     ui: &mut Ui,
     has: MenuHas<'_>,
@@ -157,7 +169,33 @@ pub(crate) fn title_row(
     {
         asked = Some(CardAsk::Help);
     }
-    let words = row.max_rect().with_max_x(row.cursor().right());
+    let folded = is_folded(ui, has.name);
+    let fold = Rect::from_min_size(line.min, vec2(size::TREE_FOLD_W, line.height()));
+    let chevron = ui.interact(fold, Id::new(("card fold", has.name)), Sense::click());
+    let colour = if chevron.hovered() {
+        tokens::text_primary()
+    } else {
+        tokens::text_meta()
+    };
+    let mark = Rect::from_center_size(fold.center(), vec2(size::FOLD_ICON, size::FOLD_ICON));
+    let icon = if folded {
+        Icon::ChevronRight
+    } else {
+        Icon::ChevronDown
+    };
+    crate::icons::icon(ui.painter(), mark, icon, colour);
+    let say = if folded { "Unfold" } else { "Fold" };
+    chevron.widget_info(|| {
+        egui::WidgetInfo::labeled(
+            egui::WidgetType::Button,
+            true,
+            format!("{say} {}", has.name),
+        )
+    });
+    let words = row
+        .max_rect()
+        .with_min_x(fold.right())
+        .with_max_x(row.cursor().right());
     let named = ui.interact(
         widgets::words(
             ui,
@@ -168,10 +206,14 @@ pub(crate) fn title_row(
             tokens::text_primary(),
         ),
         Id::new(("card title", has.name)),
-        Sense::hover(),
+        Sense::click(),
     );
     named.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, has.name));
+    let toggled = chevron.clicked() || named.clicked();
     named.on_hover_text(hover);
+    if toggled {
+        set_folded(ui, has.name, !folded);
+    }
     asked
 }
 

@@ -351,3 +351,31 @@ fn a_search_with_no_match_says_so_and_enter_does_nothing() {
         before
     );
 }
+
+#[test]
+fn cards_stack_one_under_another_and_fold_to_their_title() {
+    let (w, _) = with_a_lamp();
+    let mut h = harness(w);
+    h.run();
+    // However wide Properties is, the cards are in one column.
+    let transform = h.get_by_label("Fold Transform").rect();
+    let light = h.get_by_label("Fold Light").rect();
+    assert!(
+        light.top() > transform.bottom(),
+        "Light sits under Transform, not beside it"
+    );
+    assert!(
+        (light.left() - transform.left()).abs() < 1.0,
+        "the same column"
+    );
+    let strength = |h: &egui_kittest::Harness<'static, State>| {
+        h.query_all_by_label_contains("Strength").count()
+    };
+    assert!(strength(&h) > 0, "unfolded");
+    h.get_by_label("Fold Light").click();
+    h.run();
+    assert_eq!(strength(&h), 0, "folded to its title");
+    h.get_by_label("Unfold Light").click();
+    h.run();
+    assert!(strength(&h) > 0, "open again");
+}

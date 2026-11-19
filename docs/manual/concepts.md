@@ -32,7 +32,7 @@
 - **Placing:** Home's Library with its **Place** switch on: the ribbon in its building form, how placed things land beside the files, and only the files that can be placed, ready to drag into the level. See [Projects and the Library](projects-and-the-library.md).
 - **Shelf:** what the [bottom panel](#the-window) was called in older builds, when it ran the whole width of the window and held Home's lists too.
 - <a id="pill"></a>**Pill:** a small see-through button floating over the viewport, such as **Perspective ▾** or the frame time. Pills keep the picture as large as it can be. See [Moving around the viewport](navigating-the-viewport.md).
-- **Card:** a lifted box holding a few settings that belong together, such as one component in Properties. Cards sit side by side as many as fit.
+- **Card:** a lifted box holding a few settings that belong together, such as one component in Properties. Cards sit one under another, and the chevron by a card's name folds it to its title.
 - **Status line:** the one thin line along the very bottom: whether the code is clean, whether the level is saved (click to save), what's selected, what moves snap to, and the version. Older builds called it the *status bar*. See [Interface tour](interface-tour.md).
 
 ## The 3D view

@@ -357,10 +357,9 @@ pub(crate) fn properties(
                         playing: playing.filter(|_| !many),
                         help,
                     };
-                    let slots = cards::across(ui.available_width(), names.len());
-                    for row in names.chunks(slots) {
-                        cards::card_row(ui, row[0], (row.len(), slots), |ui, i, background| {
-                            card.draw(ui, row[i], background, &mut requests);
+                    for name in &names {
+                        cards::card_row(ui, name, (1, 1), |ui, _, background| {
+                            card.draw(ui, name, background, &mut requests);
                         });
                     }
                     if !many
@@ -494,6 +493,9 @@ impl Card<'_> {
                 requests.extend(header_request(row, self.selected, component));
             }
             None => {}
+        }
+        if cards::is_folded(ui, component) {
+            return;
         }
         if let Some((file, _)) = place
             && cards::code_line(ui, component, file)

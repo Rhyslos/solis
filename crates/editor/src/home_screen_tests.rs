@@ -5,25 +5,12 @@
 use crate::console::LogLevel;
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::panel::Panel;
-use crate::properties_cards::across;
 use crate::shell::status::snap_words;
 use crate::test_support::*;
 use crate::tokens::size;
 use crate::transforming::{PixelSnap, Snapping};
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui_kittest::kittest::{By, NodeT as _, Queryable};
-
-#[test]
-fn as_many_cards_go_across_as_fit_at_their_least_width() {
-    let least = size::CARD_MIN_W;
-    let gap = size::CARD_GAP;
-    assert_eq!(across(920.0, 4), 4, "the design's four Light card row");
-    assert_eq!(across(920.0, 3), 3, "never more than there are");
-    assert_eq!(across(2.0 * least + gap, 5), 2);
-    assert_eq!(across(2.0 * least + gap - 1.0, 5), 1, "a point short");
-    assert_eq!(across(50.0, 3), 1, "one, however narrow");
-    assert_eq!(across(920.0, 0), 1);
-}
 
 #[test]
 fn the_status_bar_says_what_moves_snap_to() {
