@@ -433,3 +433,44 @@ fn shot_of_the_table_tab() {
     crate::picture_support::drawn(&mut h)
         .write(&std::path::Path::new(&folder).join("table-tab.png"));
 }
+
+/// The Table tab as the sketch has it: the items, their kinds under each
+/// heading, the cursor's row picked, and how game code reads it.
+#[test]
+fn the_table_tab_matches_its_approved_picture() {
+    let w = with_table(sketch_items());
+    let Some(mut h) = crate::picture_support::editor_window(
+        w,
+        crate::interface_look::InterfaceLook::default(),
+        [1440.0, 900.0],
+    ) else {
+        return;
+    };
+    for _ in 0..5 {
+        h.run();
+    }
+    let picture = crate::picture_support::drawn(&mut h).cropped([252, 100], [868, 540]);
+    crate::picture_support::matches_approved("table-tab", &picture);
+}
+
+/// A cell being typed in, with a choice's options listed under it.
+#[test]
+fn a_choice_being_typed_matches_its_approved_picture() {
+    let mut w = with_table(sketch_items());
+    if let Some(editor) = w.open.table_editor.as_mut() {
+        editor.pick((1, 4));
+        editor.start_typing(Some("R".into()));
+    }
+    let Some(mut h) = crate::picture_support::editor_window(
+        w,
+        crate::interface_look::InterfaceLook::default(),
+        [1440.0, 900.0],
+    ) else {
+        return;
+    };
+    for _ in 0..5 {
+        h.run();
+    }
+    let picture = crate::picture_support::drawn(&mut h).cropped([252, 100], [868, 540]);
+    crate::picture_support::matches_approved("table-typing", &picture);
+}

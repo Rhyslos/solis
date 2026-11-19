@@ -260,7 +260,7 @@ impl Filter {
             ),
             Self::Maps => matches!(kind, K::Level | K::TileMap | K::Tileset),
             Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
-            Self::Code => matches!(kind, K::Code | K::Text | K::Tags),
+            Self::Code => matches!(kind, K::Code | K::Text | K::Tags | K::Table),
         }
     }
 

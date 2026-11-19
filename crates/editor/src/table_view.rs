@@ -828,10 +828,14 @@ fn typing_box(
         .frame(egui::Frame::NONE)
         .font(text::ui())
         .text_color(tokens::text_primary())
-        .margin(egui::Margin::symmetric(11, 7))
-        .desired_width(rect.width())
+        .margin(egui::Margin::ZERO)
+        .desired_width(rect.width() - 24.0)
         .lock_focus(true);
-    let response = ui.put(rect, edit);
+    let line = Rect::from_center_size(
+        pos2(rect.center().x, rect.center().y),
+        vec2(rect.width() - 24.0, 16.0),
+    );
+    let response = ui.put(line, edit);
     if !typing.focused {
         response.request_focus();
         typing.focused = true;

@@ -111,6 +111,11 @@ const ALLOWED: &[(&str, &str, &str)] = &[
 /// Where "assembly" is still right, as [`ALLOWED`] has it for "area".
 const ALLOWED_ASSEMBLY: &[(&str, &str, &str)] = &[
     (
+        "mod.rs",
+        "=assembly",
+        "one of Lust's own words, which no data table's column may be called",
+    ),
+    (
         "*",
         "assembly with a view",
         "Lust's own word for a game screen (`assembly Hud { view { … } }`)",
