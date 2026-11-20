@@ -12,3 +12,4 @@ Reports written for the project lead: research done before a phase, and what a m
 | `hardening-phase-6.md` | What the hardening milestone (decision 0042, [plan](../plans/phase-6-hardening.md)) did, what it found, and how much the tests now catch (coverage and mutation testing). |
 | `lighting-research.md` | Research for 3D's light (3D 2 to 3D 5 in ROADMAP.md, once Phase 13): techniques for light, sky and atmosphere, what they cost, and which open-source code may be reused. Feeds [`../plans/light.md`](../plans/light.md). |
 | `lua-native-code.md` | Phase 8, C6 (decision 0055): Luau's native code generation tried on the same work in Rust, Lust and Lua; Lust's heavy work got faster, Lua's slower, so it stays off. The numbers, and when to try again. |
+| `orc-invasion-hurdles.md` | The 27 hurdles a session hit making Orc Invasion, a small top-down action RPG, with Solis and Lust; fixed or asked for by the plan's four fix milestones (decision 0133) |

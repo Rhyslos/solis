@@ -28,6 +28,11 @@ Walking a world, rooms and doors, talking to people, picking things up, an inven
 - **Data tables:** any game's data (rows and typed columns) in one file, edited as a table and read by game code with its spelling checked. For example, items with prices and descriptions. (Shared 4) *Built* ([below](#data-tables)).
 - **Text layout, then text effects:** text that wraps, types itself out letter by letter, and has coloured, wavy or shaking words and icons inside it, for any text a game shows: menus, signs, item descriptions, and dialogue boxes. (Shared 5) Text layout *built* ([below](#text-layout)); text effects *built* ([below](#text-effects)).
 - **Translations and subtitles:** the game's text in several languages, with a check for missing lines, and captions for sounds and speech. Brought from the finishing stage for dialogue ([decision 0124](../decisions/0124-a-dialogue-system-in-the-engine.md)). (Shared 5) *Built* ([below](#the-next-milestone-translations-and-subtitles), with its As built note).
+- **Fixes from making Orc Invasion** (the project lead, 2026-11-20; [decision 0133](../decisions/0133-fixes-from-making-orc-invasion.md), [the report](../reports/orc-invasion-hurdles.md)): a game made with Solis found 27 hurdles. Four milestones fix Solis's 23, before dialogue, and Lust's four go on the requests for Lust ([below](#fixes-from-making-orc-invasion)):
+  1. Bugs, and a project check that starts the game.
+  2. The missing game-code calls.
+  3. Clips by action and direction, and a character's other look.
+  4. Solis's files written down, and playing a game from the command line.
 - **Dialogue, a full system in the engine** (the project lead, 2026-11-18; [decision 0124](../decisions/0124-a-dialogue-system-in-the-engine.md), [the outline](dialogue/README.md)): conversations as graphs of lines, choices and branches, with conditions and effects that call game code; a dialogue box on text effects; a conversation editor on the shared graph editor; starting from the world with triggers, timers and states; voice lines and sounds at moments in a line, with subtitles in step; and one place for all of a game's dialogue. Several milestones, each mocked up first. If one needs something that comes later, it moves behind it.
 - **Tooltips, and drag and drop in game screens:** any piece of a screen can show a tip and be dragged onto another, and game code hears what was dropped where. For example, inventories, shops, equipment slots or a hotbar. (Shared 5)
 - **Fades:** to black and back, or another colour, as a general tool. (Shared 3, brought from stage 2's shake and flash.)
@@ -212,7 +217,7 @@ Markup inside any game screen's text, letters moved without laying text out agai
 >
 > Lust's own windows could then type text out too; they'd show Solis's markup words as written until then.
 
-## The next milestone: translations and subtitles
+### Translations and subtitles
 
 **What it gives** ([report 07](../reports/after-the-rethink/07-shared-5.md), M4, and its questions 2 and 3, the recommended answers taken; the quick sketch `mock-3.png`): the game's text in several languages, with a check for missing lines, and captions for sounds and speech; the foundation the dialogue system (decision 0124) builds its lines, voice and subtitles on: keys made once and never changed, the main language working with no translation files, and the translators' spreadsheet.
 
@@ -232,3 +237,53 @@ Markup inside any game screen's text, letters moved without laying text out agai
 > 2. let `text`, `button` and a string's `{…}` take an option of such a state, turning it into words through a native the engine names (`World:text`), checked like any call?
 >
 > Then a screen writes `text Text.Shop.Welcome;`, a misspelt key is still a mistake before the game runs, and Lust's own windows could show translated words the same way.
+
+## Fixes from making Orc Invasion
+
+The project lead, 2026-11-20 ([decision 0133](../decisions/0133-fixes-from-making-orc-invasion.md)): a session made Orc Invasion, a small top-down action RPG, with Solis and Lust, and wrote down every hurdle ([the report](../reports/orc-invasion-hurdles.md)). Every one is fixed or asked for. **They come now, before dialogue**: two bugs break games that pass the project check, and dialogue leans on reading components and finding entities without strings. Each milestone is planned in detail when it's next, as usual, with UI mocked up first and choices asked.
+
+### Fixes 1: bugs, and a project check that starts the game (next)
+
+- **B1** (High) Screens fail with Lua's 200-locals limit when a screen's program holds many methods. Make each file's methods a table's fields (or one function a file) so the count can't overflow, with a test of a file with hundreds of methods.
+- **T2** (High) `--check-project` builds the screens' program too, and `--smoke <ticks>` plays the first level briefly and reports any Console error, so B1's kind of failure is a Problem, not a surprise on Play.
+- **B2** (Medium) A colour with transparency draws on screens (or, if it can't yet, is a Problem, never silently dropped).
+- **B3** (Low) Spawned copies are named after the prefab's root, as placing one in the editor does.
+- **B4** (Low) Opening a project opens its last level, or its only level, never an empty untitled one.
+- **B5** (Low) No warnings while the project's names are still loading: game code is checked once they've been read.
+- **T4** (Medium) The new-project template keeps small pictures and sounds in Git, not LFS, and the new-project page says how to turn LFS on.
+- **T5** (Low) The Linux packages the build needs, in CONTRIBUTING.md.
+
+### Fixes 2: the missing game-code calls
+
+All in Lust, Rust and Lua, checked against the guidelines (rule 25).
+- **M5** (High) Game code reads another entity's component, read-only, as the last tick left it, as screens already do (`entity:knight()`), so a gate can ask whether the knight carries its key.
+- **M6** (Medium) A one-off entity is reached without a string: a level's single component of a kind (`World:the(Quest)`) and/or a checked name for named entities. `World:find("…")`'s string use is then retired from the manual.
+- **M7** (Medium) Spawning with values: `World:spawn(prefab, place, values)`, or a promise that an event sent to a just-spawned entity reaches it on its first tick.
+- **M8** (Medium) `entity:exists()`, and a manual section on the order of updates, events and despawns in a tick.
+- **M3** (Medium) A collider turned off and on from game code (`setSolid(false)`), for bodies that fall.
+- **M4** (Low) `setVisible(bool)` on an entity.
+
+### Fixes 3: clips by action and direction, and another look
+
+- **M1** (High) Aseprite tags named with a direction (`walk/NE` or the like) read as one clip with directions, and `animate(Clip.Sprites.Knight.Walk, facing)` with a direction state, as animators already know directions. Ends 300-line lookup tables.
+- **M2** (Medium) Switching a character to another look while playing: another sheet, or animator variants that pick among clip sets.
+- **D2** (Low) The rule for how a tag becomes a clip's name, in the sprite animation page.
+
+### Fixes 4: Solis's files written down, and playing from the command line
+
+- **D1** (High) A manual page, "Solis's files": one short annotated example of each (Aseprite features read, sidecars and their hash, a level with a placed prefab copy and its changes, prefabs, tilesets, tile maps, how a state field is stored, the 2D components' fields), for anyone writing a game's own tools.
+- **D3** (Medium) Files can point at others by path, turned into an ID the first time Solis reads them, and/or `solis --new-id`.
+- **D4** (Low) A table of every key and button name in the input page.
+- **D5** (Low) A picture in the screens page of how `right` on a column stretches it, and, if Lust agrees, a separate word for "push me to the right" (asked of Lust).
+- **T1** (High) Playing a game without a window from the command line: `solis --play <project> <level> --ticks 600 --inputs script.txt --print Quest,Knight`, printing the Console and chosen components, for game makers and a game's own CI.
+- **T3** (Low) A plain-text input script that a check recording can be made from, from the command line.
+
+### Asked of Lust
+
+Lust's own rough edges go on the requests for Lust (ready to send, with the others in the As built notes):
+- **L1** (Medium) Arrays in components: already asked (field hints).
+- **L2** (Low) Common names such as `lock` and `has` allowed where a keyword can't appear (parameter and variable names), or Lust's words listed in one place.
+- **L3** (Medium) Names of one or two capitals (`N`, `NE`) allowed, at least as state options, for compass directions.
+- **L4** (Low) A result that isn't used is a warning, not a mistake, or `_ = World:spawn(…)` says it isn't needed.
+- **D5's word** "push me to the right" (`alignSelf right` or the like) for screens.
+
