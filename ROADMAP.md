@@ -395,6 +395,15 @@ Ideas 23 to 27 and 17.
 
 **Gate:** a shop where items are dragged into a bag, with tooltips, in two languages; dialogue types itself out; the music swells when an enemy is near.
 
+## Fixes from making Orc Invasion
+
+The project lead, 2026-11-20 ([decision 0133](docs/decisions/0133-fixes-from-making-orc-invasion.md), [the report](docs/reports/orc-invasion-hurdles.md)): four milestones before dialogue, planned in [the game stages](docs/plans/game-stages.md#fixes-from-making-orc-invasion):
+
+1. Bugs, and a project check that starts the game.
+2. The missing game-code calls: another entity's component, a one-off entity without a string, spawning with values, `exists`, a collider turned off, hiding.
+3. Clips by action and direction, and a character's other look.
+4. Solis's files written down, and playing a game from the command line.
+
 ## Dialogue
 
 The project lead, 2026-11-18 ([decision 0124](docs/decisions/0124-a-dialogue-system-in-the-engine.md)): a full dialogue system in the engine, built in stage 1 right after text effects, with translations and subtitles just before it. It starts from the project lead's prototype ([its specification](docs/plans/dialogue/prototype-spec.md)) and goes further ([the outline](docs/plans/dialogue/README.md)).
