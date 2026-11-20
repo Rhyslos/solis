@@ -415,3 +415,54 @@ fn a_save_dropped_with_the_queue_is_said_as_not_saved() {
     assert_eq!(shown(&app, kind.file).as_ref(), Some(first));
     close(app);
 }
+
+/// The editor with no project open yet.
+fn editor_alone() -> (egui::Context, App) {
+    let ctx = egui::Context::default();
+    let mut storage = super::tests::Memory::default();
+    eframe::set_value(&mut storage, AUTO_UPDATE_KEY, &false);
+    let mut cc = eframe::CreationContext::_new_kittest(ctx.clone());
+    cc.storage = Some(&storage);
+    let mut app = App::new(
+        &cc,
+        crate::app_info(),
+        crate::cli::Launch::default(),
+        crate::updates::PendingSlot::default(),
+        None,
+    );
+    app.sound = crate::sound::Sound::with_opener(
+        || Err("there's no sound card".to_owned()),
+        crate::sound::RETRY,
+    );
+    (ctx, app)
+}
+
+#[test]
+fn opening_a_project_opens_a_level_never_an_untitled_one() {
+    // Fixes 1, B4: with fresh settings, the project's only level; then
+    // the one last used; then, without that, the first by name.
+    let temp = reflect::test_support::TempFolder::new("first-level-window").unwrap();
+    let root = temp.join("Playground");
+    crate::playground::make(&root).unwrap();
+    let level = root.join(crate::playground::LEVEL);
+    let (_ctx, mut app) = editor_alone();
+    app.open_project_on_a_level(&root);
+    assert_eq!(app.workbench.document().file(), Some(level.as_path()));
+    assert_ne!(app.workbench.document().name(), "Untitled level");
+    drop(app);
+    // A second level, first by name: the last used still opens.
+    let first = root.join("aaa.sollevel");
+    std::fs::copy(&level, &first).unwrap();
+    let (_ctx, mut app) = editor_alone();
+    app.open_project_on_a_level(&root);
+    assert_eq!(app.workbench.document().file(), Some(level.as_path()));
+    drop(app);
+    std::fs::remove_file(root.join(".solis").join(crate::first_level::LAST_LEVEL)).unwrap();
+    let (_ctx, mut app) = editor_alone();
+    app.open_project_on_a_level(&root);
+    assert_eq!(app.workbench.document().file(), Some(first.as_path()));
+    // Opening it again keeps the level it's on.
+    app.open_project_on_a_level(&root);
+    assert_eq!(app.workbench.document().file(), Some(first.as_path()));
+    drop(app);
+}

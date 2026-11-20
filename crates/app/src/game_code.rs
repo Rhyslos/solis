@@ -81,6 +81,11 @@ pub struct GameCode {
     /// The sprites' clips (`sheet/clip` paths) and cues, for the project
     /// file, and the animators, as the editor last read them.
     animation: Animation,
+    /// A project just opened whose names (its sprites' clips and the
+    /// rest) haven't been read yet, and the folder to check once they
+    /// have (Fixes 1, B5): checked before, code naming a clip had
+    /// mistakes that weren't.
+    names_unread: Option<Option<PathBuf>>,
 }
 
 /// What the editor read of the project for game code's names: the sprites'
@@ -482,6 +487,10 @@ impl GameCode {
     /// actions saved), then reads and checks the code there, all on a
     /// worker; if a check is running, another starts when it ends.
     pub fn check(&mut self, assets: PathBuf) {
+        if let Some(waiting) = &mut self.names_unread {
+            *waiting = Some(assets);
+            return;
+        }
         if self.running.is_some() {
             self.again = Some(assets);
             return;
@@ -524,7 +533,8 @@ impl GameCode {
 
     /// Another project opened: what the last one's checks found is
     /// forgotten, and one still running is left to finish unheard. The
-    /// next check's notes on describing the engine are all said.
+    /// next check's notes on describing the engine are all said, and it
+    /// waits for the project's names ([`GameCode::names_read`]).
     pub fn forget(&mut self) {
         self.running = None;
         self.again = None;
@@ -533,6 +543,22 @@ impl GameCode {
         self.animation = Animation::default();
         self.told.clear();
         self.to_say.clear();
+        self.names_unread = Some(None);
+    }
+
+    /// Whether the project's names are still to be read once
+    /// ([`GameCode::names_read`]): until then, no code is checked.
+    pub fn waits_for_names(&self) -> bool {
+        self.names_unread.is_some()
+    }
+
+    /// The project's names have been read once (its sprite sheets, with
+    /// [`GameCode::set_animation`] given them): the check asked for since
+    /// it opened starts now.
+    pub fn names_read(&mut self) {
+        if let Some(Some(assets)) = self.names_unread.take() {
+            self.check(assets);
+        }
     }
 
     /// Whether a check is running.
@@ -844,8 +870,10 @@ mod tests {
             project.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{project}"
         );
-        // Another project: its notes are all said, even the same ones.
+        // Another project: its notes are all said, even the same ones,
+        // once its names are read.
         code.forget();
+        code.names_read();
         assert_eq!(notes_of_a_check(&mut code, &assets).len(), 2);
     }
 
@@ -932,6 +960,37 @@ mod tests {
             .map(|b| b.name)
             .collect();
         assert_eq!(buses, script::project_names::Names::standard().buses);
+    }
+
+    #[test]
+    fn a_project_just_opened_is_checked_once_its_names_are_read() {
+        // Fixes 1, B5: checked before its sheets were read, code naming a
+        // clip had a mistake that wasn't, said on every first open.
+        let (_temp, assets) = folder("names-first");
+        std::fs::write(
+            assets.join("main.lst"),
+            "fetch \"solis/project\":Clip;\ncomponent Walker {\n    has {\n        Clip \
+             clip = Clip.Sprites.Walker.Walk;\n    }\n}\npass Walker;\nend\n",
+        )
+        .unwrap();
+        let mut code = GameCode::default();
+        code.forget();
+        assert!(code.waits_for_names());
+        code.check(assets.clone());
+        code.check(assets.clone());
+        assert!(!code.waiting(), "nothing is checked yet");
+        assert!(finished(&mut code).is_none());
+        code.set_animation(Animation {
+            clips: vec!["sprites/walker/walk".into()],
+            ..Animation::default()
+        });
+        code.names_read();
+        assert!(!code.waits_for_names());
+        let found = finished(&mut code).expect("checked once the names are read");
+        assert!(found.problems.is_empty(), "{:?}", found.problems);
+        // Read again, nothing waits: it's checked as it always was.
+        code.names_read();
+        assert!(!code.waiting());
     }
 
     #[test]

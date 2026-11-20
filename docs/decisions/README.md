@@ -139,4 +139,5 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0131-translations-and-captions.md` | Translations as the project's names with Fluent files per language, the Translations tab, and captions Solis draws | Accepted |
 | `0132-properties-cards-in-one-column.md` | Properties' cards stack in one column across the editor, and each folds to its title | Accepted |
 | `0133-fixes-from-making-orc-invasion.md` | The hurdles found by making Orc Invasion: four fix milestones before dialogue, and four requests for Lust | Accepted |
+| `0134-fixes-1-choices.md` | Fixes 1: many names as the program's globals, the smoke check, the level a project opens on, copies named after their root, Git LFS for big files only | Accepted |
 | `0089-atlas-crop-and-the-ui-editor.md` | Atlas Crop (pictures cut from sheets, `.atlas.lst`), the UI editor's approved layout, and screens' looks, pictures and text size | Accepted (renames 0083's Cut out pictures; builds on 0087 and 0088) |

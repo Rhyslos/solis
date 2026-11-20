@@ -2496,3 +2496,41 @@ fn new_sound_event_is_in_the_new_menu() {
             .contains(&WorkbenchAction::NewSoundEvent("".into()))
     );
 }
+
+#[test]
+fn a_placed_copy_is_called_what_its_prefab_s_root_is_called() {
+    // Fixes 1, B3: as a spawned copy is, never after the prefab's file.
+    let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let mut parts = level::Level::new();
+    parts.insert(
+        id(1),
+        level::EntityData::new("Orc Warrior").with(&Transform::default()),
+    );
+    let file = level::text::LevelFile {
+        kind: level::text::FileKind::Prefab { root: id(1) },
+        level: parts,
+        overrides: Default::default(),
+    };
+    let asset = AssetId(reflect::Id::from_raw(902).unwrap());
+    let mut w = Workbench::new(info());
+    w.set_prefab(asset, std::sync::Arc::new(file.clone()));
+    w.set_library(vec![crate::library::LibraryItem {
+        id: Some(asset),
+        kind: crate::library::LibraryKind::Prefab,
+        name: "warrior".into(),
+        path: "characters/orcs/warrior.prefab.lst".into(),
+        thumbnail: None,
+    }]);
+    w.place_prefab(asset);
+    let root = w.selection().unwrap();
+    assert_eq!(w.document().level().get(root).unwrap().name, "Orc Warrior");
+    let opened = saved_and_opened(&mut w);
+    assert_eq!(opened.get(root).unwrap().name, "Orc Warrior", "saved so");
+    // A root with no name: the prefab's.
+    let mut nameless = file;
+    nameless.level.get_mut(id(1)).unwrap().name = "  ".into();
+    w.set_prefab(asset, std::sync::Arc::new(nameless));
+    w.place_prefab(asset);
+    let second = w.selection().unwrap();
+    assert_eq!(w.document().level().get(second).unwrap().name, "warrior");
+}

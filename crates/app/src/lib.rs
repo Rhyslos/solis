@@ -10,8 +10,10 @@ pub mod branding;
 mod browsers;
 mod brush_uploads;
 pub mod check_project;
+mod check_smoke;
 pub mod cli;
 mod external;
+pub mod first_level;
 #[cfg(test)]
 mod fixtures_tests;
 mod font_reads;

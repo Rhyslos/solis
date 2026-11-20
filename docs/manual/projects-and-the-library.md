@@ -21,6 +21,8 @@ The Library tab: the project's folders down the left, back, up and the breadcrum
 
 **Open a project:** pick it on the [launcher](launcher.md), where Solis always starts, or use its **Open folder…** and choose the project's folder. Solis doesn't open the last project again when it starts, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away. **File › Close project** goes back to the launcher.
 
+**A project opens on a level**, never on an empty untitled one, so pressing **Play** straight away plays your game. It's the level you last opened or saved in that project on this computer; or, the first time (or on another computer), the level the game was last exported to start in ([Playtesting](playtest-export.md)); or else the project's first level by name, which is its only one if it has one. A new project with no levels yet starts on a new, empty level. Solis remembers the last level in the project's `.solis` folder, which isn't shared through Git, so each person opens where they left off.
+
 **Opening another project starts afresh.** Everything of the project you leave goes with it: its level, the files open in tabs (Clips, Frames, Animator, Map, Tileset, Atlas Crop, the UI canvas) and their undo steps, components' values you copied, and a `seed` chosen in the Console. Nothing of one project can then be saved into another by mistake, which matters most with a copy of a project, whose files have the same names. What's yours stays as it is: the layout, the cameras, the theme and the Console's messages.
 
 **Add models:** **Library › Import**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project and placed in the level. You can also put files straight into the project's folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
@@ -75,6 +77,17 @@ A `.gltf` model reads the files beside it, so it can't be moved to another folde
 
 **The Code tab** beside the Library lists the project's code files (Lust `.lst`, Lua and Rust), with a search box. Double-click a Lust file to open it in the program Windows has for `.lst` files: make that a text or code editor (right-click a `.lst` file in Explorer > Open with > Choose another app), never a program that runs Lust, since a downloaded project's code should only run inside Solis's sandbox. A Lua file shows its folder instead (some computers have a program that runs `.lua` files rather than editing them), so open it from there in your editor. Solis checks your Lust whenever you save; see [Game code](game-code.md). The `solis` folder holds files Solis writes, describing the engine to your code; it's Solis's to change, so the Library doesn't show it (it's there in Explorer).
 
+<a id="git-and-big-files"></a>**Git and big files.** The `.gitattributes` file a new project gets keeps Solis's own text files with the same line endings on every computer, so Git can merge them, and marks pictures, sounds and models as binary, so Git never tries to merge them line by line. They're kept in Git itself: pixel art and short sounds are small (a whole game's pictures are often under a megabyte), and Git handles them without any setup. Only kinds of file that are usually big go through [Git LFS](concepts.md#git-lfs): layered paintings (`.psd`, `.kra`), 3D scenes from Blender (`.blend`, `.fbx`), HDR pictures (`.exr`, `.hdr`) and video (`.mp4`, `.mov`, `.webm`). If you use those, install Git LFS once (`git lfs install`); if you don't, nothing in the project needs it.
+
+**When LFS is worth it:** when a project holds many files over a few megabytes each that change often, such as painted textures or recorded music. Every version of every file is kept in Git's history, so a 50 MB file changed ten times makes the project half a gigabyte to clone; LFS keeps only the version you check out. **To send another kind through LFS**, add a line to `.gitattributes` and commit it, before committing those files:
+
+```text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+```
+
+(`git lfs track "*.png"` writes the same line.) **To stop using it** for a kind, take its line out. Projects made by an earlier Solis, which sent every picture and sound through LFS, keep their `.gitattributes` as it is: Solis never changes it.
+
 **Change a model:** export it again over the same file in Blender. Everything using it shows the new version a moment later. If the new file is broken, the old version stays, and the Console says why.
 
 ## Settings
@@ -85,13 +98,15 @@ A `.gltf` model reads the files beside it, so it can't be moved to another folde
 | Your folders and files | Everything you made or brought in, beside `project.solis`, in folders of your own. Watched for changes. (A project from an older Solis keeps them in `assets/`.) |
 | `solis/` | Files Solis writes describing the engine to your game code. Not shown in the Library. |
 | `<file>.solmeta` | A small text file beside each asset holding its ID. **Commit it with the asset**, and move or rename them together (Solis copes if you forget, as long as the content didn't change). |
-| `.solis/` | Solis's own folder. `cache/` holds models it has already read, so they open quickly; it keeps within 4 GB, deleting the models used least lately, and is safe to delete (it's rebuilt). `backups/` holds copies of files saved by an older Solis, kept before they were upgraded ([Backups and upgrades](backups-and-upgrades.md)). Never committed. |
+| `.gitattributes` | Tells Git how to keep each kind of file: Solis's text files with the same line endings everywhere, pictures, sounds and models as binary, and only big kinds of file in [Git LFS](concepts.md#git-lfs). Made once with the project; yours to change. |
+| `.solis/` | Solis's own folder. `cache/` holds models it has already read, so they open quickly; it keeps within 4 GB, deleting the models used least lately, and is safe to delete (it's rebuilt). `backups/` holds copies of files saved by an older Solis, kept before they were upgraded ([Backups and upgrades](backups-and-upgrades.md)). `last level.txt` names the level the project opens on. Never committed. |
 
 ## Tips and common problems
 - **Problem:** the Console says a sidecar couldn't be read. **Why:** the `.solmeta` file was damaged, perhaps by a bad Git merge. **Fix:** fix it in a text editor, or delete it to give the model a new ID (anything using the old ID will then say the model is missing).
 - **Problem:** the Console says a model "is a copy, so it got a new ID". **Why:** a file was copied together with its `.solmeta`; two files can't share an ID. The original (whose `.solmeta` is older) keeps its ID, so nothing using it changes. Nothing is wrong.
 - **Problem:** a model I saved into the project from Blender takes a couple of seconds to show in the Library. **Why:** Solis waits two seconds before giving a new file its ID, because Git writes a file and its `.solmeta` one after the other: a look in between would give the file a new ID and lose the one it has on other computers. **Fix:** nothing; models brought in with **Import model** show at once.
 - **Problem:** I renamed a model in Explorer *and* changed it before Solis was open, and it lost its ID. **Why:** Solis finds a renamed file by its content; with the content changed too, it can't tell. **Fix:** rename and change in separate steps, or rename the `.solmeta` along with it.
+- **Problem:** pushing the project fails with a message about Git LFS, or a clone has pictures that are tiny text files. **Why:** the project sends some files through Git LFS (an older Solis sent every picture and sound), and LFS isn't installed on that computer or the host refused the upload. **Fix:** install Git LFS (`git lfs install`), or take those kinds' lines out of `.gitattributes` to keep them in Git itself (see [Git and big files](#git-and-big-files)).
 - **Problem:** models placed before opening a project disappeared. **Why:** opening a project starts a new level. **Fix:** Solis asks to save first; [save the level](saving-levels.md) inside the project to keep it.
 - Imported models open much faster the second time: the cache remembers them, even after a rename.
 - **Problem:** a file shows an icon instead of a thumbnail. **Why:** thumbnails are made for models and pictures only, a few at a time on other threads, and a damaged file gets none; levels draw their kind for now. **Fix:** wait a moment; for a damaged file, the Console says what's wrong when you place it.

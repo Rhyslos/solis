@@ -126,7 +126,10 @@ fn is_name(word: &str) -> bool {
         .next()
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
-        && !matches!(word, "function" | "local" | "end" | "nil" | "true" | "false")
+        && !matches!(
+            word,
+            "function" | "local" | "end" | "nil" | "true" | "false"
+        )
 }
 
 /// Whether a name may become a global: not one of the names a host gives

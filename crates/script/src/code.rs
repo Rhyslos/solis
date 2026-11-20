@@ -609,6 +609,15 @@ fn compile_here(
             described.extend(builtin.iter().map(|s| (**s).clone()));
         }
         compiled.screens = crate::screens::compile(&code.files, &engine, &components, &described)?;
+        // Started here too, as Play starts them (Fixes 1, T2): screens
+        // that can't start are a mistake in their file, not a surprise.
+        if let Some(screens) = &compiled.screens {
+            crate::screens::Screens::start(screens).map_err(|failure| {
+                let mut at = failure.at;
+                at.message = format!("the game's screens couldn't start: {}", at.message);
+                vec![at]
+            })?;
+        }
     }
     Ok(Some(compiled))
 }

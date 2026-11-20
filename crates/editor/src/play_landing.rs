@@ -282,7 +282,7 @@ impl Workbench {
             let first = named.next();
             first.filter(|_| named.next().is_none())
         });
-        found.map(|(id, i)| (id, i.name.clone()))
+        found.map(|(id, _)| (id, self.copy_name(id)))
     }
 }
 

@@ -12,10 +12,13 @@
 # names the same packages for people: change both together.
 set -euo pipefail
 
-# The sound crate reaches the sound card through ALSA on Linux and builds
-# against its headers. Every crate that uses sound needs them to build
-# (the editor and the app among them), even when no sound is played.
-build=(libasound2-dev)
+# A C and C++ compiler and pkg-config: Luau (game code) is built from its
+# C++ source, and ALSA is found with pkg-config. The sound crate reaches
+# the sound card through ALSA and builds against its headers (every crate
+# that uses sound, the editor and the app among them). Gamepads (gilrs,
+# which would need libudev-dev) are read on Windows only, so Linux needs
+# no more.
+build=(build-essential pkg-config libasound2-dev)
 
 # A virtual screen, a software GPU driver, tools to click and take
 # screenshots, and the keyboard library a window needs on X11.

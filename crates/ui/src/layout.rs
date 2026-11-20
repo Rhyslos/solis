@@ -483,7 +483,7 @@ impl Walk<'_> {
                     shape.letter[2] += dy;
                     if let Some(c) = look.colour {
                         let [_, r, g, b] = c.to_be_bytes();
-                        let c = Colour::rgb(r, g, b).with_alpha(ink.0[3]);
+                        let c = Colour::rgb(r, g, b).with_alpha(ink.0[3] * crate::view::alpha(c));
                         shape.colours = [c, c];
                     }
                     if look.bold && !p.game_bold {

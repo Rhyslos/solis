@@ -11,7 +11,7 @@ Solis is a free, open-source 3D game engine with high standards for stability an
 ## Setting up
 
 1. Install Rust with [rustup](https://rustup.rs). The Rust version is pinned in `rust-toolchain.toml` and installs automatically.
-2. On Linux (to build there, though Solis is made for Windows), install the sound library's headers first: `sudo apt-get install libasound2-dev`. Without them the `sound` crate doesn't build.
+2. On Linux (to build there, though Solis is made for Windows), install what the build needs first: `sudo apt-get install build-essential pkg-config libasound2-dev` (on Ubuntu and Debian; `tools/ci/linux-packages.sh` installs the same). A C++ compiler builds Luau, which runs game code, and `libasound2-dev` is the sound library's headers: without them the `sound` crate doesn't build. (`libudev-dev` isn't needed: gamepads are read on Windows only.) Running the editor and the window test needs a few more, listed with the window test below.
 3. Clone the repository and run:
 
 ```

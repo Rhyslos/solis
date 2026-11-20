@@ -1173,3 +1173,19 @@ fn the_screen_s_line_height_and_letter_spacing_reach_its_text() {
     };
     assert_eq!(style.line_height, 1.0, "0 is the font's own");
 }
+
+#[test]
+fn colours_with_see_through_keep_it() {
+    // Fixes 1, B2: `#rrggbbaa` was dropped, so nothing was drawn.
+    assert_eq!(colour("#1a1c2c"), Some(0x1a1c2c));
+    assert_eq!(colour("#1a1c2cff"), Some(0x1a1c2c), "solid is solid");
+    let c = colour("#1a1c2ccc").unwrap();
+    assert_eq!(c & 0xffffff, 0x1a1c2c);
+    assert!((alpha(c) - 0.8).abs() < 0.001, "{}", alpha(c));
+    assert_eq!(alpha(colour("#fff0").unwrap()), 0.0);
+    assert_eq!(colour("#f008").map(|c| c & 0xffffff), Some(0xff0000));
+    assert_eq!(alpha(colour("white").unwrap()), 1.0);
+    for bad in ["#12345", "#1234567", "#gg0000", "#", "#+1a1c2c", "#1a1c2c80x"] {
+        assert_eq!(colour(bad), None, "{bad}");
+    }
+}

@@ -92,7 +92,9 @@ fn one_method_calling_hundreds_of_others_starts_and_runs() {
     // Each name a method reaches outside it is one of its upvalues, of
     // which Luau allows 200 too.
     let names: Vec<String> = (0..MANY).map(|i| format!("m{i}")).collect();
-    let calls: Vec<String> = (0..MANY).map(|i| format!("hour = hour + m{i}();")).collect();
+    let calls: Vec<String> = (0..MANY)
+        .map(|i| format!("hour = hour + m{i}();"))
+        .collect();
     let main = main_with(
         &format!("get \"lib\":[{}];", names.join(", ")),
         &calls.join("\n        "),
@@ -202,9 +204,16 @@ fn only_the_program_after_the_runtime_is_changed() {
     );
     let words = words(&code[..code.find(RUNTIME_END).unwrap()]);
     assert!(words.contains("m200") && words.contains("local"));
-    let out = fitted(&code[code.find(RUNTIME_END).unwrap() + RUNTIME_END.len()..], &words).unwrap();
+    let out = fitted(
+        &code[code.find(RUNTIME_END).unwrap() + RUNTIME_END.len()..],
+        &words,
+    )
+    .unwrap();
     let forward = out.lines().next().unwrap();
-    assert!(forward.ends_with(", m200"), "the runtime's word stays: {forward}");
+    assert!(
+        forward.ends_with(", m200"),
+        "the runtime's word stays: {forward}"
+    );
     assert!(!forward.contains("m124,"), "{forward}");
 }
 
@@ -226,7 +235,14 @@ fn odd_lines_never_panic_and_never_move() {
     for sample in samples {
         let program = format!("{}\n{sample}\n", filler.join("\n"));
         let out = fitted(&program, &BTreeSet::new()).unwrap();
-        assert_eq!(out.split('\n').count(), program.split('\n').count(), "{sample}");
-        assert!(out.contains(sample.trim_start_matches("local ")), "{sample}");
+        assert_eq!(
+            out.split('\n').count(),
+            program.split('\n').count(),
+            "{sample}"
+        );
+        assert!(
+            out.contains(sample.trim_start_matches("local ")),
+            "{sample}"
+        );
     }
 }
