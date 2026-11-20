@@ -445,3 +445,4 @@ proptest::proptest! {
         proptest::prop_assert!(mistakes.iter().all(|p| p.line >= 1 && p.column >= 1));
     }
 }
+

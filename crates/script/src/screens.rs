@@ -562,7 +562,7 @@ pub fn compile(
     let with_entry = crate::reach::for_lust(&with_entry, ENTRY);
     match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &with_entry)) {
         Ok(Ok(chunk)) if problems.is_empty() => Ok(Some(ScreenCode {
-            chunk,
+            chunk: crate::many_names::fit(chunk),
             screens,
             readers,
             notes,
