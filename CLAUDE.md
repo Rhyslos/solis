@@ -10,6 +10,7 @@ Solis is a 3D game engine. Read DESIGN.md before any change; it is the plan, and
 
 ## Rules
 
+- **THE SCOPE RESET COMES FIRST** (the project lead, 2026-11-21, decision 0135): read [docs/plans/scope-reset.md](docs/plans/scope-reset.md) before anything else. Solis is a small, simple engine judged by the games it makes well. The next jobs are the "done" list and the "Can I make this?" manual page. New game code is Lust only, most changes take the light path, and the big-engine goals are parked; the dialogue system stays. Where that plan and a rule below disagree, the plan wins.
 - **Engine development has begun** (Phase 0 onward). Design changes still go through DESIGN.md and a decision.
 - **Decisions go in two places:** a line in DESIGN.md §17, and a file in `docs/decisions/` numbered in order (`0002-short-name.md`) with Status, Date, Problem, Options where useful, Decision and Consequences.
 - **The engine is Rust; games can be Lust, Rust or Lua** (decisions 0002 and 0003). Lust is taught first; game code docs show all three.

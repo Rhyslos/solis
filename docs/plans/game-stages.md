@@ -1,5 +1,7 @@
 # The game stages: Solis's order, by what it lets you make
 
+> **The scope reset (2026-11-21, decision 0135) comes first:** see [scope-reset.md](scope-reset.md). The order below continues only where the "done" list needs it.
+
 The order of work from 18 November 2026 ([decision 0122](../decisions/0122-the-game-stages.md)). The project lead wants to make every kind of 2D game in Solis, learning as they go, with 3D later because 2D features are easier to build first. So the 2D work is ordered by **the kind of game it lets you make**, one stage at a time.
 
 **What doesn't change:**

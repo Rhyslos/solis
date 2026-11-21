@@ -29,6 +29,7 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). Phase numbers st
 | `editor-rethink.md` | Shared 1f, the editor rethink: the project lead's nine points about the remade interface, their answers, the approved mock-ups, and the six milestones R1 to R6 (decision 0118) |
 | `ideas.md` | Shared 2 to 6, 10 and 11, 2D 1 and 3D 1: tools that help make games (timers, tween, tags and more), each idea marked with the milestone that builds it (decision 0098) |
 | `game-stages.md` | **The build order** (decision 0122): the 2D and shared work in four stages by the kind of game it lets you make, each ending with a sample game; finishing and sharing games; later; 3D; and the next milestone's plan (triggers) |
+| `scope-reset.md` | **Read first.** The scope reset (decision 0135): what Solis is for now, the next two jobs, the light process, and what's parked |
 | `dialogue/` | **Dialogue** (decision 0124): the outline of the full dialogue system built in stage 1, and the project lead's prototype specification it starts from |
 | `after-the-rethink.md` | Everything after the editor rethink (Tools 1b, the rest of Usable first, Shared 2 to 10, 2D 1 and 2, 3D 1 to 5, Open worlds), with a recommended order, the groundwork every phase shares, each phase's milestones and how to build them, and the questions for the project lead; from the research in `../reports/after-the-rethink/` |
 
