@@ -60,7 +60,9 @@ pub(crate) fn smoke(
         report.fail(line);
     }
     if ran < ticks {
-        report.note(format!("play stopped by itself after {ran} of {ticks} ticks"));
+        report.note(format!(
+            "play stopped by itself after {ran} of {ticks} ticks"
+        ));
     }
 }
 

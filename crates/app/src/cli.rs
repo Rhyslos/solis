@@ -172,7 +172,8 @@ fn check_project(
             Some(ticks) => smoke = Some(ticks),
             None => {
                 return Err(format!(
-                    "--smoke needs how many ticks to play after it, from 1 to                      {MAX_SMOKE_TICKS} (60 is a second). Try --help."
+                    "--smoke needs how many ticks to play after it, from 1 to \
+                     {MAX_SMOKE_TICKS} (60 is a second). Try --help."
                 ));
             }
         }

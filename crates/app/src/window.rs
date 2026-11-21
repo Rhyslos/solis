@@ -576,7 +576,11 @@ impl App {
     /// ([`crate::first_level`]). For opening a project as it is; a sample
     /// or an exported game names its own level.
     fn open_project_on_a_level(&mut self, root: &Path) {
-        let open = |app: &Self| app.projects.root().is_some_and(|open| same_folder(open, root));
+        let open = |app: &Self| {
+            app.projects
+                .root()
+                .is_some_and(|open| same_folder(open, root))
+        };
         // The project open already keeps the level it's on.
         if open(self) {
             self.open_project(root, false);

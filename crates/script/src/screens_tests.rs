@@ -450,18 +450,21 @@ proptest::proptest! {
 fn screens_that_can_t_start_are_a_mistake_when_the_code_is_checked() {
     // Fixes 1, T2: the check starts the screens as Play would, so a screen
     // failing as it opens is a Problem in its file, never a surprise.
-    let hud = HUD.replace(
-        "int coins = 3;",
-        "int coins = 3;\n        colour tint = Colour:hex(\"#\" + shade());",
-    )
-    .replace(
-        "\nassembly Hud",
-        "\nmethod string shade() { return \"zz\"; }\n\nassembly Hud",
-    );
+    let hud = HUD
+        .replace(
+            "int coins = 3;",
+            "int coins = 3;\n        colour tint = Colour:hex(\"#\" + shade());",
+        )
+        .replace(
+            "\nassembly Hud",
+            "\nmethod string shade() { return \"zz\"; }\n\nassembly Hud",
+        );
     let problems = compile(&code(&[("main.lst", MAIN), ("ui/hud.lst", &hud)])).unwrap_err();
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert!(
-        problems[0].message.starts_with("the game's screens couldn't start"),
+        problems[0]
+            .message
+            .starts_with("the game's screens couldn't start"),
         "{problems:?}"
     );
     assert_eq!(problems[0].file, "ui/hud.lst");

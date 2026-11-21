@@ -44,7 +44,10 @@ fn the_only_level_or_the_first_by_name_opens_with_nothing_remembered() {
     let root = folder("fresh");
     assert_eq!(level_to_open(&root, &[]), None, "a project without levels");
     let one = vec!["world/main.sollevel".to_string()];
-    assert_eq!(level_to_open(&root, &one).as_deref(), Some("world/main.sollevel"));
+    assert_eq!(
+        level_to_open(&root, &one).as_deref(),
+        Some("world/main.sollevel")
+    );
     let two = vec!["a.sollevel".to_string(), "b.sollevel".to_string()];
     assert_eq!(level_to_open(&root, &two).as_deref(), Some("a.sollevel"));
     assert_eq!(start_level(&root, &two).as_deref(), Some("a.sollevel"));
@@ -76,13 +79,19 @@ fn the_level_last_used_comes_first_and_is_kept_inside_the_project() {
     let files = root.join("assets");
     let levels = vec!["a.sollevel".to_string(), "maps/b.sollevel".to_string()];
     remember(&root, &files, &files.join("maps").join("b.sollevel"));
-    assert_eq!(level_to_open(&root, &levels).as_deref(), Some("maps/b.sollevel"));
+    assert_eq!(
+        level_to_open(&root, &levels).as_deref(),
+        Some("maps/b.sollevel")
+    );
     // The check plays the game's start level, never this computer's last.
     assert_eq!(start_level(&root, &levels).as_deref(), Some("a.sollevel"));
     // Outside the files, or not a level: not remembered.
     remember(&root, &files, &root.join("elsewhere.sollevel"));
     remember(&root, &files, &files.join("main.lst"));
-    assert_eq!(level_to_open(&root, &levels).as_deref(), Some("maps/b.sollevel"));
+    assert_eq!(
+        level_to_open(&root, &levels).as_deref(),
+        Some("maps/b.sollevel")
+    );
     // Gone since: the first by name.
     assert_eq!(
         level_to_open(&root, &levels[..1]).as_deref(),

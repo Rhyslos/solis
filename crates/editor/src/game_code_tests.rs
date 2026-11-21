@@ -1274,7 +1274,11 @@ fn game_code_spawns_copies_of_prefabs_and_takes_them_out() {
     // its file (Fixes 1, B3); the fourth is named in the project file but
     // isn't a prefab any more (deleted since), and the Console says so.
     assert!(
-        w.open.document.level().iter().all(|(_, e)| e.name != "drone"),
+        w.open
+            .document
+            .level()
+            .iter()
+            .all(|(_, e)| e.name != "drone"),
         "named after the root, never the file"
     );
     let drones: Vec<EntityId> = w
@@ -1445,7 +1449,10 @@ fn random_numbers_and_spawns_carry_on_while_the_game_s_speed_is_0_and_after_a_lo
     };
     let drones = |w: &Workbench| {
         let level = w.open.document.level();
-        level.iter().filter(|(_, e)| e.name == "Worker drone").count()
+        level
+            .iter()
+            .filter(|(_, e)| e.name == "Worker drone")
+            .count()
     };
     let all_differ = |rolled: &[(u64, EntityId)]| {
         let numbers: std::collections::HashSet<u64> = rolled.iter().map(|r| r.0).collect();

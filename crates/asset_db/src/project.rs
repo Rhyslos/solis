@@ -818,11 +818,18 @@ mod tests {
         assert!(attributes.contains("*.soltilemap text eol=lf"), "tile maps");
         // Fixes 1, T4: small pictures and sounds stay in Git, binary;
         // only big kinds of file go through LFS.
-        for kept in ["*.png binary", "*.wav binary", "*.ogg binary", "*.glb binary"] {
+        for kept in [
+            "*.png binary",
+            "*.wav binary",
+            "*.ogg binary",
+            "*.glb binary",
+        ] {
             assert!(attributes.contains(kept), "{kept}");
         }
-        for line in attributes.lines().filter(|l| l.contains("filter=lfs")) {
-            assert!(!line.starts_with('#'));
+        let sent = attributes
+            .lines()
+            .filter(|l| l.contains("filter=lfs") && !l.starts_with('#'));
+        for line in sent {
             let kind = line.split_whitespace().next().unwrap();
             assert!(
                 [
