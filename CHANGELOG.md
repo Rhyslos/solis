@@ -376,6 +376,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **The scope reset** ([the plan](docs/plans/scope-reset.md), [decision 0135](docs/decisions/0135-the-scope-reset.md)): Solis goes back to being a small, simple engine judged by the games it makes well. A "done" list by games and a "Can I make this?" page come first, new game code is Lust only, most changes take a lighter path, and the big-engine goals are parked. The dialogue system stays.
 - **A new logo:** the sun core, a bright core inside two open rings, given by the project lead. It's on the window, the taskbar, the program file, the setup program, the splash screen, About and the user guide.
 - **The plan gains four milestones before dialogue** to fix the 27 hurdles found by making a game, Orc Invasion ([the report](docs/reports/orc-invasion-hurdles.md), [decision 0133](docs/decisions/0133-fixes-from-making-orc-invasion.md)): bugs and a project check that starts the game; the missing game-code calls; clips by action and direction; and Solis's files written down with playing from the command line. Lust's four go on the requests for Lust.
 - **Properties' cards stack in one column** however wide the panel is, and **each card folds** to its title from the chevron by its name, or a click on the name; it stays folded for that kind of component ([decision 0132](docs/decisions/0132-properties-cards-in-one-column.md)).
