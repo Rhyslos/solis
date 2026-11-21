@@ -490,7 +490,7 @@ fn compile_here(
             match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &files)) {
                 Ok(Ok(chunk)) => {
                     match crate::states::own_states(crate::exact_maths::exact_lust(chunk)) {
-                        Ok(chunk) => lust = Some(chunk),
+                        Ok(chunk) => lust = Some(crate::many_names::fit(chunk)),
                         Err(why) => problems.push(CodeProblem {
                             file: String::new(),
                             line: 0,
@@ -609,6 +609,15 @@ fn compile_here(
             described.extend(builtin.iter().map(|s| (**s).clone()));
         }
         compiled.screens = crate::screens::compile(&code.files, &engine, &components, &described)?;
+        // Started here too, as Play starts them (Fixes 1, T2): screens
+        // that can't start are a mistake in their file, not a surprise.
+        if let Some(screens) = &compiled.screens {
+            crate::screens::Screens::start(screens).map_err(|failure| {
+                let mut at = failure.at;
+                at.message = format!("the game's screens couldn't start: {}", at.message);
+                vec![at]
+            })?;
+        }
     }
     Ok(Some(compiled))
 }

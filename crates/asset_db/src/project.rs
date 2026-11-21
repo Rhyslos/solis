@@ -105,8 +105,12 @@ pub const GITIGNORE: &str = "\
 ";
 
 /// New projects keep Solis's text files with Unix line endings, so Git
-/// merges them line by line on every computer, and store big binary files
-/// (models, images, sound) with Git LFS (decision 0006).
+/// merges them line by line on every computer, mark pictures, sounds and
+/// models as binary, and keep them in Git itself: only kinds of file that
+/// are usually big go through Git LFS (Fixes 1, decision 0134, which
+/// narrows decision 0006). A game's pixel art and short sounds are small,
+/// and LFS needs installing and space of its own on most hosts, so a
+/// newcomer's first push failed for nothing.
 pub const GITATTRIBUTES: &str = "\
 # Solis's own text files: the same line endings everywhere, so they merge.
 *.solis text eol=lf
@@ -124,18 +128,33 @@ pub const GITATTRIBUTES: &str = "\
 *.soltilemap text eol=lf
 *.lst text eol=lf
 *.lua text eol=lf
-# Big files go through Git LFS.
-*.glb filter=lfs diff=lfs merge=lfs -text
 *.gltf text eol=lf
-*.bin filter=lfs diff=lfs merge=lfs -text
-*.png filter=lfs diff=lfs merge=lfs -text
-*.jpg filter=lfs diff=lfs merge=lfs -text
-*.jpeg filter=lfs diff=lfs merge=lfs -text
-*.ktx2 filter=lfs diff=lfs merge=lfs -text
-*.wav filter=lfs diff=lfs merge=lfs -text
-*.ogg filter=lfs diff=lfs merge=lfs -text
-*.mp3 filter=lfs diff=lfs merge=lfs -text
-*.flac filter=lfs diff=lfs merge=lfs -text
+# Pictures, sounds and models: kept in Git, never merged as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.aseprite binary
+*.ase binary
+*.ktx2 binary
+*.glb binary
+*.bin binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.flac binary
+*.ttf binary
+*.otf binary
+# Kinds of file that are usually big go through Git LFS (git lfs install).
+# To send another kind through it: *.png filter=lfs diff=lfs merge=lfs -text
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.kra filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.hdr filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+*.webm filter=lfs diff=lfs merge=lfs -text
 ";
 
 /// What a project makes: 2D, 3D or both (decision 0118). Asked when the
@@ -797,7 +816,31 @@ mod tests {
         assert!(attributes.contains("*.solinput text eol=lf"));
         assert!(attributes.contains("*.solanim text eol=lf"), "animators");
         assert!(attributes.contains("*.soltilemap text eol=lf"), "tile maps");
-        assert!(attributes.contains("*.glb filter=lfs"));
+        // Fixes 1, T4: small pictures and sounds stay in Git, binary;
+        // only big kinds of file go through LFS.
+        for kept in [
+            "*.png binary",
+            "*.wav binary",
+            "*.ogg binary",
+            "*.glb binary",
+        ] {
+            assert!(attributes.contains(kept), "{kept}");
+        }
+        let sent = attributes
+            .lines()
+            .filter(|l| l.contains("filter=lfs") && !l.starts_with('#'));
+        for line in sent {
+            let kind = line.split_whitespace().next().unwrap();
+            assert!(
+                [
+                    "*.psd", "*.kra", "*.blend", "*.fbx", "*.exr", "*.hdr", "*.mp4", "*.mov",
+                    "*.webm"
+                ]
+                .contains(&kind),
+                "{kind} in LFS"
+            );
+        }
+        assert!(attributes.contains("*.psd filter=lfs"));
         let opened = Project::open(&root).unwrap();
         assert_eq!(opened, made);
         assert_eq!(opened.name(), "Harbour");
@@ -818,10 +861,19 @@ mod tests {
         let root = test_folder("keeps-git");
         std::fs::create_dir_all(&root).unwrap();
         std::fs::write(root.join(".gitignore"), "mine\n").unwrap();
+        // A project's own LFS lines, as an older Solis wrote them (Fixes
+        // 1, T4): never changed, made or opened.
+        let older = "*.png filter=lfs diff=lfs merge=lfs -text\n";
+        std::fs::write(root.join(".gitattributes"), older).unwrap();
         Project::create(&root, "Mine").unwrap();
         assert_eq!(
             std::fs::read_to_string(root.join(".gitignore")).unwrap(),
             "mine\n"
+        );
+        Project::open(&root).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join(".gitattributes")).unwrap(),
+            older
         );
     }
 

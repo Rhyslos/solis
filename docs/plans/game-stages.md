@@ -29,7 +29,7 @@ Walking a world, rooms and doors, talking to people, picking things up, an inven
 - **Text layout, then text effects:** text that wraps, types itself out letter by letter, and has coloured, wavy or shaking words and icons inside it, for any text a game shows: menus, signs, item descriptions, and dialogue boxes. (Shared 5) Text layout *built* ([below](#text-layout)); text effects *built* ([below](#text-effects)).
 - **Translations and subtitles:** the game's text in several languages, with a check for missing lines, and captions for sounds and speech. Brought from the finishing stage for dialogue ([decision 0124](../decisions/0124-a-dialogue-system-in-the-engine.md)). (Shared 5) *Built* ([below](#the-next-milestone-translations-and-subtitles), with its As built note).
 - **Fixes from making Orc Invasion** (the project lead, 2026-11-20; [decision 0133](../decisions/0133-fixes-from-making-orc-invasion.md), [the report](../reports/orc-invasion-hurdles.md)): a game made with Solis found 27 hurdles. Four milestones fix Solis's 23, before dialogue, and Lust's four go on the requests for Lust ([below](#fixes-from-making-orc-invasion)):
-  1. Bugs, and a project check that starts the game.
+  1. Bugs, and a project check that starts the game. *Built* ([below](#fixes-1-bugs-and-a-project-check-that-starts-the-game-done)).
   2. The missing game-code calls.
   3. Clips by action and direction, and a character's other look.
   4. Solis's files written down, and playing a game from the command line.
@@ -242,7 +242,7 @@ Markup inside any game screen's text, letters moved without laying text out agai
 
 The project lead, 2026-11-20 ([decision 0133](../decisions/0133-fixes-from-making-orc-invasion.md)): a session made Orc Invasion, a small top-down action RPG, with Solis and Lust, and wrote down every hurdle ([the report](../reports/orc-invasion-hurdles.md)). Every one is fixed or asked for. **They come now, before dialogue**: two bugs break games that pass the project check, and dialogue leans on reading components and finding entities without strings. Each milestone is planned in detail when it's next, as usual, with UI mocked up first and choices asked.
 
-### Fixes 1: bugs, and a project check that starts the game (next)
+### Fixes 1: bugs, and a project check that starts the game (done)
 
 - **B1** (High) Screens fail with Lua's 200-locals limit when a screen's program holds many methods. Make each file's methods a table's fields (or one function a file) so the count can't overflow, with a test of a file with hundreds of methods.
 - **T2** (High) `--check-project` builds the screens' program too, and `--smoke <ticks>` plays the first level briefly and reports any Console error, so B1's kind of failure is a Problem, not a surprise on Play.
@@ -253,7 +253,18 @@ The project lead, 2026-11-20 ([decision 0133](../decisions/0133-fixes-from-makin
 - **T4** (Medium) The new-project template keeps small pictures and sounds in Git, not LFS, and the new-project page says how to turn LFS on.
 - **T5** (Low) The Linux packages the build needs, in CONTRIBUTING.md.
 
-### Fixes 2: the missing game-code calls
+**As built** (branch `fixes/1-bugs-and-check`; [decision 0134](../decisions/0134-fixes-1-choices.md), choices taken as recommended):
+- **B1:** the overflow was in the Lua Lust writes (every top-level name of a program a local of one function), not Solis's, and game code had it too (it failed at the check, with a less clear message). `script::many_names::fit` rewrites Lust's chunk line by line, as `exact_maths` and `states` already do: past the first 120 names, the rest become the program's own globals (its env), a word Lust's runtime uses staying a local; smaller programs are byte for byte as before. Tested at 300 methods (fetched by a screen, by game code, and all called from one method, for upvalues), 300 states, classes, objects and events, a component of 300 fields and a state of 1,200 options; nothing else Lust writes grows with the program (a class's methods and fields are a table's fields).
+- **T2:** `script::code::compile` starts the screens as Play does, so a screen that can't start is a mistake in its file in the check and in the editor's Problems. `--check-project <folder> --smoke <ticks>` (`app::check_smoke`, 1 to 36,000 ticks) plays the start level (`app::first_level::start_level`: the last export's, else the first by name) headless and fails on each different Console error or warning, with its first tick and how often.
+- **B2:** `ui::view::colour` reads `#rgba` and `#rrggbbaa`, keeping how see-through as the top byte (so a solid colour is unchanged), and every colour a screen draws (background, text, border, bars, shadows, text effects' colours) is drawn with it (`view::alpha`). Nowhere was left that can't draw it, so nothing goes to Problems. A picture test draws `#1a1c2ccc` over the world.
+- **B3:** the report's premise was half right: placing in the editor named a copy after the prefab's file too. Both now take the root part's name (`Workbench::copy_name`), or the prefab's when the root has none. The world's checksum includes names, so the two-PC game was recorded again (`record_the_game`, a new seed) and its list written again.
+- **B4:** nothing remembered the last level, and no project setting names one. `app::first_level`: the level last opened or saved (`.solis/last level.txt`), else the start level; only when a project is opened as it is (the launcher, Open recent, the command line), not for a sample, a new project or an exported game, which name their own.
+- **B5:** the eleven warnings were the first check running before the sprite sheets were read. `GameCode::forget` (a project opening) makes the first check wait until the sheets have been read once (`names_read`, from the window's `follow_sprites`).
+- **T4:** new projects' `.gitattributes` mark pictures, sounds, models and fonts `binary` and send only `.psd`, `.kra`, `.blend`, `.fbx`, `.exr`, `.hdr`, `.mp4`, `.mov` and `.webm` through LFS (narrowing decision 0006); the Projects page says when LFS is worth it and how to turn it on.
+- **T5:** `libudev-dev`, named in the report, isn't needed: gamepads (gilrs) are Windows only. The list is `build-essential` (Luau is C++), `pkg-config` and `libasound2-dev`.
+- **Asked of Lust** (ready to send): "A program's top-level names are all locals of one function in the Lua Lust writes, and Luau allows 200: a program of a few hundred methods, states and classes can't start. Could each file's names be fields of a table, or the ones past a count be written as globals of the program's environment? Solis rewrites the Lua to do the second until then (`script::many_names`)."
+
+### Fixes 2: the missing game-code calls (next)
 
 All in Lust, Rust and Lua, checked against the guidelines (rule 25).
 - **M5** (High) Game code reads another entity's component, read-only, as the last tick left it, as screens already do (`entity:knight()`), so a gate can ask whether the knight carries its key.

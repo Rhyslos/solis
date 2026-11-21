@@ -560,6 +560,20 @@ impl Workbench {
         })
     }
 
+    /// What a copy of prefab `id` is called, placed or spawned: its root
+    /// part's name, as the prefab's page shows it (Fixes 1, B3), or the
+    /// prefab's own name when the root has none.
+    pub(crate) fn copy_name(&self, id: AssetId) -> String {
+        let root = self.open.prefabs.get(&id).and_then(|file| match file.kind {
+            level::text::FileKind::Prefab { root } => file.level.get(root),
+            level::text::FileKind::Level => None,
+        });
+        match root.map(|r| r.name.trim()) {
+            Some(name) if !name.is_empty() => name.to_string(),
+            _ => self.asset_name(id),
+        }
+    }
+
     /// An asset's name, from the Library.
     pub(crate) fn asset_name(&self, id: AssetId) -> String {
         self.open
@@ -863,7 +877,7 @@ impl Workbench {
     pub fn place_prefab(&mut self, id: AssetId) {
         let root = EntityId::random();
         let target = self.take_place_target(id);
-        let mut placed = EntityData::new(&self.asset_name(id));
+        let mut placed = EntityData::new(&self.copy_name(id));
         placed.parent = target.and_then(|(_, parent)| parent);
         placed.order = self.open.document.level().order_at_end(placed.parent);
         let entities = {

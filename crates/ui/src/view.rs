@@ -445,17 +445,35 @@ fn light(c: u32) -> bool {
     0.299 * f32::from(r) + 0.587 * f32::from(g) + 0.114 * f32::from(b) > 160.0
 }
 
-/// A colour word (`red5`, `white`) or `#rgb` / `#rrggbb`, as Lust has them.
+/// A colour word (`red5`, `white`) or `#rgb` / `#rrggbb`, as Lust has them,
+/// or with see-through, `#rgba` / `#rrggbbaa` (Fixes 1, B2: drawn, never
+/// dropped). As `0xTTRRGGBB`, where `TT` is how see-through it is (255
+/// minus its alpha), so a solid colour is plain `0xRRGGBB`.
 pub fn colour(v: &str) -> Option<u32> {
     if let Some(hex) = v.strip_prefix('#') {
+        if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return None;
+        }
         let full = match hex.len() {
-            3 => hex.chars().flat_map(|c| [c, c]).collect::<String>(),
-            6 => hex.to_string(),
+            3 | 4 => hex.chars().flat_map(|c| [c, c]).collect::<String>(),
+            6 | 8 => hex.to_string(),
             _ => return None,
         };
-        return u32::from_str_radix(&full, 16).ok();
+        let value = u32::from_str_radix(&full, 16).ok()?;
+        return Some(if full.len() == 8 {
+            let alpha = value & 0xff;
+            ((255 - alpha) << 24) | (value >> 8)
+        } else {
+            value
+        });
     }
     PALETTE.iter().find(|(n, _)| *n == v).map(|(_, c)| *c)
+}
+
+/// How solid a colour from [`colour`] is, from 0 (see-through) to 1.
+pub fn alpha(c: u32) -> f32 {
+    let [see_through, ..] = c.to_be_bytes();
+    f32::from(255 - see_through) / 255.0
 }
 
 /// Lust's colour words (its `native_ui.rs`, `named`).
@@ -715,11 +733,11 @@ fn lay(node: &Node, depth: usize, counts: &mut Counts, looks: Looks, fonts: &[St
     }
 }
 
-/// `c` with each channel times `k`.
+/// `c` with each channel times `k`, as see-through as it was.
 fn shade(c: u32, k: f32) -> u32 {
-    let [_, r, g, b] = c.to_be_bytes();
+    let [t, r, g, b] = c.to_be_bytes();
     let s = |v: u8| (f32::from(v) * k).clamp(0.0, 255.0) as u32;
-    (s(r) << 16) | (s(g) << 8) | s(b)
+    (u32::from(t) << 24) | (s(r) << 16) | (s(g) << 8) | s(b)
 }
 
 /// Laying out: the text measurer, sizes already measured, and the
@@ -1137,10 +1155,11 @@ impl Layout<'_> {
     }
 }
 
-/// `v` as one of the screen's colours, `opacity` worked in.
+/// `v` as one of the screen's colours, its own see-through and `opacity`
+/// worked in.
 fn rgb(v: u32, opacity: f32) -> Colour {
     let [_, r, g, b] = v.to_be_bytes();
-    Colour::rgb(r, g, b).with_alpha(opacity)
+    Colour::rgb(r, g, b).with_alpha(opacity * alpha(v))
 }
 
 /// Lays `view` out in a screen `size` design pixels big (as wide as the

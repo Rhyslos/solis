@@ -20,8 +20,21 @@ pub enum Command {
     Help,
     /// Check the project in this folder without opening the editor, and
     /// exit (Phase 8, C4).
-    CheckProject(PathBuf),
+    CheckProject(CheckProject),
 }
+
+/// What `--check-project` checks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CheckProject {
+    /// The project's folder.
+    pub folder: PathBuf,
+    /// How many ticks to play its start level for, with no input
+    /// (`--smoke <ticks>`, Fixes 1): none plays nothing.
+    pub smoke: Option<u32>,
+}
+
+/// The most ticks `--smoke` plays: ten minutes of a game.
+pub const MAX_SMOKE_TICKS: u32 = 36_000;
 
 /// What the editor does as it opens.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -83,7 +96,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
             Some("--version" | "-V") => version = true,
             Some("--help" | "-h") => return Ok(Command::Help),
             Some("--check-project") => match args.next() {
-                Some(folder) => return Ok(Command::CheckProject(PathBuf::from(folder))),
+                Some(folder) => return check_project(PathBuf::from(folder), args),
                 None => {
                     return Err(
                         "--check-project needs a project's folder after it. Try --help."
@@ -137,11 +150,42 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     })
 }
 
+/// `--check-project <folder>`, then what's after it: `--smoke <ticks>`
+/// or nothing.
+fn check_project(
+    folder: PathBuf,
+    mut rest: impl Iterator<Item = OsString>,
+) -> Result<Command, String> {
+    let mut smoke = None;
+    while let Some(arg) = rest.next() {
+        if arg.to_str() != Some("--smoke") || smoke.is_some() {
+            return Err(format!(
+                "--check-project takes a folder and --smoke <ticks>, not {}. Try --help.",
+                arg.to_string_lossy()
+            ));
+        }
+        let ticks = rest
+            .next()
+            .and_then(|t| t.to_str().and_then(|t| t.parse::<u32>().ok()))
+            .filter(|t| (1..=MAX_SMOKE_TICKS).contains(t));
+        match ticks {
+            Some(ticks) => smoke = Some(ticks),
+            None => {
+                return Err(format!(
+                    "--smoke needs how many ticks to play after it, from 1 to \
+                     {MAX_SMOKE_TICKS} (60 is a second). Try --help."
+                ));
+            }
+        }
+    }
+    Ok(Command::CheckProject(CheckProject { folder, smoke }))
+}
+
 /// How to use the program, for `--help`.
 pub fn usage(program: &str) -> String {
     format!(
         "Usage: {program} [<project folder>] [--import <file>]... [--sample <which> <folder>] [--version | --help]\n       \
-         {program} --check-project <folder>\n\n\
+         {program} --check-project <folder> [--smoke <ticks>]\n\n\
          Opens the {name} launcher, or with a project's folder, that project in the editor.\n\n\
          Options:\n  \
          <project folder> Open this project in the editor straight away\n  \
@@ -153,6 +197,9 @@ pub fn usage(program: &str) -> String {
          Check a project without opening the editor: read every file, check\n                   \
          the game's code and play back recordings/checks/; the report is\n                   \
          printed and kept in .solis/check-report.txt. Exits 1 if anything failed\n  \
+         --smoke <ticks>  With --check-project: also play the game's start level for\n                   \
+         this many ticks (60 a second) with no input, and fail on any error\n                   \
+         or warning in the Console, said with its tick\n  \
          -V, --version    Print the version and exit\n  \
          -h, --help       Print this help and exit\n",
         name = crate::branding::APP_NAME
@@ -176,8 +223,30 @@ mod tests {
     fn check_project_takes_a_folder() {
         assert_eq!(
             parse(args(&["--check-project", "games/farm"])),
-            Ok(Command::CheckProject(PathBuf::from("games/farm")))
+            Ok(Command::CheckProject(CheckProject {
+                folder: PathBuf::from("games/farm"),
+                smoke: None
+            }))
         );
+        assert_eq!(
+            parse(args(&["--check-project", "games/farm", "--smoke", "60"])),
+            Ok(Command::CheckProject(CheckProject {
+                folder: PathBuf::from("games/farm"),
+                smoke: Some(60)
+            }))
+        );
+        for bad in [
+            &["--check-project", "f", "--smoke"][..],
+            &["--check-project", "f", "--smoke", "0"],
+            &["--check-project", "f", "--smoke", "ten"],
+            &["--check-project", "f", "--smoke", "-5"],
+            &["--check-project", "f", "--smoke", "36001"],
+            &["--check-project", "f", "--smoke", "5", "--smoke", "6"],
+            &["--check-project", "f", "--import", "a.glb"],
+        ] {
+            assert!(parse(args(bad)).is_err(), "{bad:?}");
+        }
+        assert!(usage("solis").contains("--smoke <ticks>"));
         assert!(
             parse(args(&["--check-project"]))
                 .unwrap_err()

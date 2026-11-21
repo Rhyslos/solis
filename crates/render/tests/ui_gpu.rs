@@ -1031,3 +1031,46 @@ fn the_caption_screen_shows_a_sound_and_a_voice_low_on_a_dark_box() {
     };
     matches_approved("captions", size, &pixels);
 }
+
+#[test]
+fn a_see_through_background_shows_the_world_through_it() {
+    // Fixes 1, B2: "#1a1c2ccc" drew nothing at all; now it's drawn 80 %
+    // solid over what's behind.
+    use ui::view::{Node, Style};
+    let panel = Node {
+        kind: "column".into(),
+        styles: vec![
+            ("width".into(), Style::Number(400.0)),
+            ("height".into(), Style::Number(400.0)),
+            ("background".into(), Style::Text("#1a1c2ccc".into())),
+        ],
+        ..Node::default()
+    };
+    let view = Node {
+        kind: "view".into(),
+        styles: vec![
+            ("width".into(), Style::Number(800.0)),
+            ("height".into(), Style::Number(800.0)),
+        ],
+        children: vec![panel],
+        ..Node::default()
+    };
+    let mut screen = ui::Screen::new("dialogue", ui::view::design_of(&view), ui::ScaleRule::Grow);
+    screen.view = Some(view);
+    let size = [200, 200];
+    let mut fonts = fonts();
+    let shapes = ui::layout_with(&screen, size, None, Some(&mut fonts));
+    assert!(!shapes.is_empty(), "the panel is drawn");
+    let Some(pixels) = draw(size, &shapes) else {
+        return;
+    };
+    let inside = px(&pixels, size[0], 50, 50);
+    let solid = [0x1a, 0x1c, 0x2c];
+    for i in 0..3 {
+        assert!(
+            inside[i] > solid[i] + 4 && inside[i] < GREY[i] - 4,
+            "between the colour and the world behind: {inside:?}"
+        );
+    }
+    assert!(near(px(&pixels, size[0], 150, 150), GREY), "outside it");
+}

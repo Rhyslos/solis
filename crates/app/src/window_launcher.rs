@@ -317,7 +317,7 @@ impl App {
             Err(asset_db::ProjectError::NotAProject(_)) if folder.is_dir() => {
                 self.scan_for_projects(folder);
             }
-            _ => self.open_project(&folder, false),
+            _ => self.open_project_on_a_level(&folder),
         }
     }
 

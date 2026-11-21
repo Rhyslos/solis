@@ -244,7 +244,7 @@ fn drones(w: &Workbench) -> usize {
     w.document()
         .level()
         .iter()
-        .filter(|(_, e)| e.name == "drone")
+        .filter(|(_, e)| e.name == "Drone")
         .count()
 }
 
@@ -304,7 +304,7 @@ fn rename(w: &mut Workbench, entity: EntityId, name: &str, gesture: u64) {
 
 fn a_drone(w: &Workbench) -> EntityId {
     let level = w.document().level();
-    level.iter().find(|(_, e)| e.name == "drone").unwrap().0
+    level.iter().find(|(_, e)| e.name == "Drone").unwrap().0
 }
 
 fn said(w: &Workbench, words: &str) -> bool {

@@ -315,7 +315,7 @@ impl App {
         // 0090 and 0118), unless the command line names one.
         saved.settle(&mut app.workbench);
         if let Some(project) = &launch.project {
-            app.open_project(project, false);
+            app.open_project_on_a_level(project);
         }
         if let Some((sample, folder)) = &launch.sample {
             app.make_sample(*sample, folder);
@@ -571,6 +571,32 @@ impl App {
         }
     }
 
+    /// Opens `root`'s project on a level, never an empty untitled one
+    /// (Fixes 1, B4): the one last used there, or the game's first
+    /// ([`crate::first_level`]). For opening a project as it is; a sample
+    /// or an exported game names its own level.
+    fn open_project_on_a_level(&mut self, root: &Path) {
+        let open = |app: &Self| {
+            app.projects
+                .root()
+                .is_some_and(|open| same_folder(open, root))
+        };
+        // The project open already keeps the level it's on.
+        if open(self) {
+            self.open_project(root, false);
+            return;
+        }
+        self.open_project(root, false);
+        let Some(db) = self.projects.db().filter(|_| open(self)) else {
+            return;
+        };
+        let files = db.project().files();
+        let levels = crate::first_level::levels(&db.listing());
+        if let Some(level) = crate::first_level::level_to_open(root, &levels) {
+            self.open_level(&files.join(level));
+        }
+    }
+
     /// Starts importing the model at `path`, or explains why it won't.
     /// With a project open, it's copied into the project's assets first.
     fn import(&mut self, path: &Path) {
@@ -816,11 +842,23 @@ impl App {
     /// the Console.
     fn follow_sprites(&mut self) {
         let (read, changed) = self.sprites.poll();
-        if !changed {
-            return;
+        if changed {
+            self.take_in_sprites(&read);
         }
+        // The project's names are all read once its sheets are (Fixes 1,
+        // B5): its code is checked now, never before, with them.
+        if self.game_code.waits_for_names() && !self.sprites.waiting() {
+            let texts = self.workbench.text_names().0;
+            let names = crate::game_code::Animation::of(self.workbench.sprite_sheets(), texts);
+            self.game_code.set_animation(names);
+            self.game_code.names_read();
+        }
+    }
+
+    /// Takes in the sprite sheets at `read`, just read.
+    fn take_in_sprites(&mut self, read: &[String]) {
         let sheets = self.sprites.sheets();
-        for path in &read {
+        for path in read {
             match sheets.by_path.get(path) {
                 Some(editor::sprite_sheets::SheetState::Read(sheet)) => {
                     let id = sheets
@@ -967,6 +1005,7 @@ impl App {
                     self.workbench.log(LogLevel::Info, note);
                 }
                 self.workbench.mark_saved(path.to_path_buf());
+                self.remember_level(path);
                 true
             }
             Err(why) => {
@@ -976,6 +1015,15 @@ impl App {
                 );
                 false
             }
+        }
+    }
+
+    /// Remembers the level at `path` as the open project's last used,
+    /// to open it on next time (Fixes 1, B4).
+    fn remember_level(&self, path: &Path) {
+        if let Some(db) = self.projects.db() {
+            let project = db.project();
+            crate::first_level::remember(project.root(), &project.files(), path);
         }
     }
 
@@ -992,6 +1040,7 @@ impl App {
         match read {
             Ok(level) => {
                 self.workbench.open_level(level, path.to_path_buf());
+                self.remember_level(path);
                 if let Some(note) = older {
                     self.workbench.log(LogLevel::Info, note);
                 }
@@ -1092,7 +1141,7 @@ impl App {
                 WorkbenchAction::ChooseCreateIn => self.importer.ask_folder(FolderFor::CreateIn),
                 WorkbenchAction::CloseProject => self.close_project(),
                 WorkbenchAction::SetProjectKind(kind) => self.set_project_kind(kind),
-                WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
+                WorkbenchAction::OpenRecent(root) => self.open_project_on_a_level(&root),
                 WorkbenchAction::ListProjects => self.list_projects(),
                 WorkbenchAction::PinProject(root, pinned) => {
                     self.projects.known_mut().pin(&root, pinned);

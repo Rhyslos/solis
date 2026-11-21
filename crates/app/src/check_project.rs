@@ -7,7 +7,10 @@
 //!    it would), and any that fails is reported;
 //! 2. the game's code is checked;
 //! 3. each recording in `recordings/checks/` is played back in the level it
-//!    names, and must match on every tick.
+//!    names, and must match on every tick;
+//! 4. with `--smoke <ticks>` (Fixes 1), the game's start level is played
+//!    for that many ticks with no input, and any error or warning in the
+//!    Console fails, said with its tick.
 //!
 //! The report is plain text; anything that changed is a failure, and the
 //! program exits with a failure code, so a workflow can stop the update.
@@ -36,15 +39,15 @@ pub struct Report {
 }
 
 impl Report {
-    fn ok(&mut self, line: impl Into<String>) {
+    pub(crate) fn ok(&mut self, line: impl Into<String>) {
         self.lines.push(format!("  ok    {}", line.into()));
     }
 
-    fn note(&mut self, line: impl Into<String>) {
+    pub(crate) fn note(&mut self, line: impl Into<String>) {
         self.lines.push(format!("  note  {}", line.into()));
     }
 
-    fn fail(&mut self, line: impl Into<String>) {
+    pub(crate) fn fail(&mut self, line: impl Into<String>) {
         self.failed += 1;
         self.lines.push(format!("  FAIL  {}", line.into()));
     }
@@ -75,6 +78,12 @@ impl Report {
 /// Checks the project at `root` as `made_by` (the program and version
 /// the engine's description files name).
 pub fn check(root: &Path, made_by: &str) -> Report {
+    check_with(root, made_by, None)
+}
+
+/// [`check`], and with `smoke`, its start level played for that many
+/// ticks with no input.
+pub fn check_with(root: &Path, made_by: &str, smoke: Option<u32>) -> Report {
     let mut report = Report::default();
     report.lines.push(format!("Checking {}", root.display()));
     let project = match asset_db::Project::open(root) {
@@ -91,7 +100,11 @@ pub fn check(root: &Path, made_by: &str) -> Report {
     report.heading("Game code");
     let program = check_code(&project, made_by, &mut report);
     report.heading("Recordings");
-    check_recordings(root, &project, program, made_by, &mut report);
+    check_recordings(root, &project, program.clone(), made_by, &mut report);
+    if let Some(ticks) = smoke {
+        report.heading("Playing");
+        crate::check_smoke::smoke(root, &project, program, made_by, ticks, &mut report);
+    }
     report
 }
 

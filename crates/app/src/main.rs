@@ -56,8 +56,10 @@ fn main() -> ExitCode {
     match cli::parse(args) {
         Ok(Command::Version) => exit_with(say(&format!("{}\n", app::version_banner()), false)),
         Ok(Command::Help) => exit_with(say(&cli::usage(&program), false)),
-        Ok(Command::CheckProject(folder)) => {
-            let report = app::check_project::check(&folder, &app::version_banner());
+        Ok(Command::CheckProject(asked)) => {
+            let folder = asked.folder;
+            let report =
+                app::check_project::check_with(&folder, &app::version_banner(), asked.smoke);
             let text = report.text();
             say(&text, false);
             // Kept in the project too: a Windows build has no console to

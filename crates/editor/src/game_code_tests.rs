@@ -1194,7 +1194,7 @@ fn past_the_projectile_limit_the_console_says_so_once() {
 fn with_drones(main: &str) -> Workbench {
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
     let mut level = level::Level::new();
-    let mut drone = EntityData::new("Drone").with(&Transform::default());
+    let mut drone = EntityData::new("Worker drone").with(&Transform::default());
     drone
         .components
         .insert("Drone".into(), reflect::ComponentData::default());
@@ -1270,14 +1270,23 @@ fn game_code_spawns_copies_of_prefabs_and_takes_them_out() {
     let before = w.open.document.level().len();
     w.play();
     w.run_game(1.0 / 60.0);
-    // Three made; the fourth is named in the project file but isn't an
-    // prefab any more (deleted since), and the Console says so.
+    // Three made, each called what the prefab's root is called, not after
+    // its file (Fixes 1, B3); the fourth is named in the project file but
+    // isn't a prefab any more (deleted since), and the Console says so.
+    assert!(
+        w.open
+            .document
+            .level()
+            .iter()
+            .all(|(_, e)| e.name != "drone"),
+        "named after the root, never the file"
+    );
     let drones: Vec<EntityId> = w
         .open
         .document
         .level()
         .iter()
-        .filter(|(_, e)| e.name == "drone")
+        .filter(|(_, e)| e.name == "Worker drone")
         .map(|(id, _)| id)
         .collect();
     assert_eq!(drones.len(), 3);
@@ -1348,7 +1357,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
             .document
             .level()
             .iter()
-            .filter(|(_, e)| e.name == "drone")
+            .filter(|(_, e)| e.name == "Worker drone")
             .map(|(id, _)| id)
             .collect();
         ids.sort();
@@ -1440,7 +1449,10 @@ fn random_numbers_and_spawns_carry_on_while_the_game_s_speed_is_0_and_after_a_lo
     };
     let drones = |w: &Workbench| {
         let level = w.open.document.level();
-        level.iter().filter(|(_, e)| e.name == "drone").count()
+        level
+            .iter()
+            .filter(|(_, e)| e.name == "Worker drone")
+            .count()
     };
     let all_differ = |rolled: &[(u64, EntityId)]| {
         let numbers: std::collections::HashSet<u64> = rolled.iter().map(|r| r.0).collect();
@@ -1579,7 +1591,7 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
                 .document
                 .level()
                 .get(id)
-                .is_some_and(|e| e.name == "drone")
+                .is_some_and(|e| e.name == "Worker drone")
         })
         .collect();
     assert_eq!(drones.len(), 3);
@@ -1659,7 +1671,7 @@ fn an_event_sent_to_an_entity_spawned_in_the_same_tick_reaches_it() {
                 .document
                 .level()
                 .get(id)
-                .is_some_and(|e| e.name == "drone")
+                .is_some_and(|e| e.name == "Worker drone")
         })
         .expect("spawned");
     let z = playing.world.global(drone).unwrap().w_axis.z;
