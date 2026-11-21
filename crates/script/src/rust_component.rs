@@ -35,6 +35,10 @@ pub struct RustKind {
     pub schema: ComponentSchema,
     /// Makes one from the level's values.
     pub make: fn(&ComponentData) -> Box<dyn RustComponent>,
+    /// The components it reads on other entities, by name, through
+    /// `Host::reading` (Fixes 2): only the kinds some code reads are
+    /// copied each tick.
+    pub reads: &'static [&'static str],
 }
 
 impl std::fmt::Debug for RustKind {

@@ -211,6 +211,7 @@ fn a_number_in_an_event_no_lust_declares_is_a_float_even_when_whole() {
             help: String::new(),
             fields: Vec::new(),
         },
+        reads: &[],
         make: |_| Box::new(Catcher),
     });
     runtime.load(&compiled, &mut NoHost).unwrap();
@@ -248,6 +249,7 @@ fn a_rust_component_s_wrong_send_is_said_once_and_it_keeps_running() {
             help: String::new(),
             fields: Vec::new(),
         },
+        reads: &[],
         make: |_| Box::new(Sloppy(0)),
     });
     runtime.load(&compiled, &mut NoHost).unwrap();

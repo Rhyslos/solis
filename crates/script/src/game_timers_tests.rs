@@ -133,6 +133,7 @@ fn clock() -> RustKind {
                 Value::Bool(true),
             )],
         },
+        reads: &[],
         make: |_| Box::new(Clock { started: false }),
     }
 }

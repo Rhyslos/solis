@@ -507,6 +507,7 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
                 Value::Int(0),
             )],
         },
+        reads: &[],
         make: |_| Box::new(Bell { rung: 0 }),
     })
     .unwrap();
@@ -829,6 +830,7 @@ fn ticker() -> script::RustKind {
                 Value::Int(0),
             )],
         },
+        reads: &[],
         make: |_| Box::new(Ticker(0)),
     }
 }
@@ -2191,6 +2193,7 @@ fn churning(language: &str) -> Workbench {
                     Value::Float(0.0),
                 )],
             },
+            reads: &[],
             make: |data| {
                 let mut churn = Churn { value: 0.0 };
                 script::RustComponent::set(&mut churn, data);

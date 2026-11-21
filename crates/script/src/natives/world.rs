@@ -127,6 +127,20 @@ fn lend_words<'s>(
         scope.create_function(move |_, _world: LuaValue| Ok(h.borrow().time()))?,
     )?;
     natives.raw_set(
+        "World_the",
+        native(
+            scope,
+            "World_the",
+            move |_, (_world, which): (LuaValue, mlua::LuaString)| {
+                let which = which.to_str()?;
+                h.borrow()
+                    .the(&which)
+                    .map(|id| id.to_string())
+                    .map_err(mlua::Error::runtime)
+            },
+        )?,
+    )?;
+    natives.raw_set(
         "World_find",
         native(
             scope,
@@ -187,6 +201,23 @@ fn lend_spawning<'s>(
                 Ok(prefab
                     .zip(vec3_of(&place))
                     .and_then(|(prefab, place)| h.borrow_mut().spawn(&prefab, place))
+                    .map(|id| id.to_string()))
+            },
+        )?,
+    )?;
+    natives.raw_set(
+        "World_spawnWith",
+        native(
+            scope,
+            "World_spawnWith",
+            move |lua, (_world, prefab, place, values): (LuaValue, mlua::LuaString, LuaValue, LuaValue)| {
+                let values = crate::readings::given(lua, &values).map_err(|why| {
+                    mlua::Error::runtime(format!("World:spawnWith couldn't give its values: {why}"))
+                })?;
+                let prefab = crate::project_names::path_of(&prefab.to_str()?);
+                Ok(prefab
+                    .zip(vec3_of(&place))
+                    .and_then(|(prefab, place)| h.borrow_mut().spawn_with(&prefab, place, values))
                     .map(|id| id.to_string()))
             },
         )?,

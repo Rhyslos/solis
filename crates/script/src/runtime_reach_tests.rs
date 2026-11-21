@@ -253,6 +253,7 @@ fn rust_reaches_every_engine_object() {
             help: "Calls one native of each engine object.".into(),
             fields: Vec::new(),
         },
+        reads: &[],
         make: |_| Box::new(Caller),
     });
     let mut host = Asked::default();

@@ -97,6 +97,9 @@ pub struct Compiled {
     /// `ShopText:welcome`, `"Shop.Welcome"` in Lua. For the check of lines
     /// nothing uses.
     pub texts_used: Vec<String>,
+    /// What its code reads of other entities' components (Fixes 2): the
+    /// kinds copied each tick, and notes on those it can't.
+    pub components: crate::component_code::Reach,
 }
 
 /// The text keys `files` (the game's code) use, in small letters: those
@@ -470,6 +473,7 @@ fn compile_here(
 ) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
     let mut lust = None;
+    let mut reach = crate::component_code::Reach::default();
     let own_lust = code.has_own_lust();
     if own_lust {
         let mut missing = check_entry(code);
@@ -479,9 +483,19 @@ fn compile_here(
         // they are now, before Lust only says they aren't there.
         missing.extend(crate::old_names::old_names(&code.files));
         if missing.is_empty() {
+            // The game's components told to the rest of its code (Fixes
+            // 2): solis/components.lst, written for this code.
+            let written = crate::component_code::write(
+                level::lust_data::ENGINE_FOLDER,
+                &code.files,
+                ENTRY,
+            );
+            reach.readable = written.readable;
+            reach.notes = written.notes;
+            let generated = written.files;
             // Without the editor's files for things the game never
             // fetches, which would want engine objects it never reaches.
-            let files = crate::reach::for_lust(&code.files, ENTRY);
+            let files = crate::reach::for_lust(&generated, ENTRY);
             // The engine's own folder (solis/): Lust's host folder, whose files give entity
             // its methods and come with every program.
             let engine = lust::Engine {
@@ -542,6 +556,7 @@ fn compile_here(
         names: std::sync::Arc::new(crate::project_names::states_in(&code.files)),
         screens: None,
         state_events: std::collections::BTreeMap::new(),
+        components: reach,
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.
@@ -560,6 +575,14 @@ fn compile_here(
         }
     };
     compiled.schemas = runtime.schemas();
+    // The kinds its code reads of other entities, copied each tick.
+    compiled.components.reads = crate::readings::kinds_read(
+        compiled.lust.as_ref().map(|chunk| chunk.code.as_str()),
+        &code.files,
+        &code.lua,
+        &compiled.components.readable,
+        &[],
+    );
     // Hints change nothing about how the game runs: they're put on what
     // the editor shows (decision 0127).
     compiled.hint_problems = crate::hint_comments::put_on(&code.files, &mut compiled.schemas);

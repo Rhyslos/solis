@@ -73,6 +73,7 @@ fn seeker_rust() -> RustKind {
             help: String::new(),
             fields: Vec::new(),
         },
+        reads: &[],
         make: |_| Box::new(SeekerRust),
     }
 }

@@ -42,6 +42,7 @@ fn syncing_the_same_values_again_does_nothing_and_batches_stop_what_s_gone() {
                 Value::Int(0),
             )],
         },
+        reads: &[],
         make: |_| Box::new(Counted),
     });
     let mut data = ComponentData::default();

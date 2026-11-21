@@ -74,6 +74,25 @@ fn lend_place<'s>(
         })?,
     )?;
     natives.raw_set(
+        "entity_exists",
+        scope.create_function(move |_, which: LuaValue| {
+            Ok(entity_of(&which).is_some_and(|e| h.borrow().exists(e)))
+        })?,
+    )?;
+    natives.raw_set(
+        "entity_setVisible",
+        native(
+            scope,
+            "entity_setVisible",
+            move |_, (which, shown): (LuaValue, bool)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().set_visible(e, shown);
+                }
+                Ok(())
+            },
+        )?,
+    )?;
+    natives.raw_set(
         "entity_despawn",
         scope.create_function(move |_, which: LuaValue| {
             if let Some(e) = entity_of(&which) {
@@ -141,6 +160,19 @@ fn lend_motion<'s>(
     natives: &Table,
     h: &'s Lent<'_, '_>,
 ) -> mlua::Result<()> {
+    natives.raw_set(
+        "entity_setSolid",
+        native(
+            scope,
+            "entity_setSolid",
+            move |_, (which, solid): (LuaValue, bool)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().set_solid(e, solid);
+                }
+                Ok(())
+            },
+        )?,
+    )?;
     natives.raw_set(
         "entity_push",
         native(

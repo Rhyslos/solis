@@ -121,6 +121,7 @@ fn armour() -> RustKind {
                 Value::Int(2),
             )],
         },
+        reads: &[],
         make: |data| {
             let mut armour = Armour { plates: 2 };
             armour.set(data);

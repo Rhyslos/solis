@@ -394,6 +394,7 @@ fn a_field_set_by_hand_is_given_whatever_the_level_held_in_lust_lua_and_rust() {
                 Value::Int(0),
             )],
         },
+        reads: &[],
         make: |data| Box::new(Tally(reflect::Fields(data).int("count", 0))),
     });
     runtime.load(&compiled, &mut NoHost).unwrap();

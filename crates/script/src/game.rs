@@ -36,9 +36,10 @@ pub enum Change {
     Turn(EntityId, Quat),
     /// `fire`: fire a projectile.
     Fire(crate::host::Shot),
-    /// `spawn`: make a copy of the prefab named here, as this entity,
-    /// at this place.
-    Spawn(EntityId, String, Vec3),
+    /// `spawn` or `spawnWith`: make a copy of the prefab named here, as
+    /// this entity, at this place, its root's components given these
+    /// values before their first update (Fixes 2).
+    Spawn(EntityId, String, Vec3, SpawnValues),
     /// `despawn`: take this entity (and those under it) out of the game.
     Despawn(EntityId),
     /// `setSeed`: start the game's randomness again from this seed.
@@ -98,6 +99,12 @@ pub enum Change {
     StopClip(EntityId),
     /// `setFlip`: mirror the entity's Sprite across and down.
     Flip(EntityId, bool, bool),
+    /// `setSolid`: the entity's collider (2D or 3D) blocks and is hit
+    /// (true), or isn't there to anything (Fixes 2).
+    Solid(EntityId, bool),
+    /// `setVisible`: the entity and everything under it are drawn (true),
+    /// or not (Fixes 2).
+    Visible(EntityId, bool),
     /// An animator's own file setting one of its parameters, by name.
     AnimatorSet(EntityId, String, crate::host::AnimatorValue),
     /// An animator's own file putting it straight into a state, by name.
@@ -125,6 +132,10 @@ pub enum Change {
     /// looping sounds going.
     KeepStarted(EntityId, Arc<str>),
 }
+
+/// Values for a spawned entity's components, by component (Fixes 2):
+/// `World:spawnWith`.
+pub type SpawnValues = Vec<(String, ComponentData)>;
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
 /// their order and their names are.
@@ -222,6 +233,9 @@ pub struct WorldView {
     pub tables: crate::Tables,
     /// The game's text in the player's language (stage 1, translations).
     pub texts: Option<translations::Texts>,
+    /// The components game code reads, as the tick started (Fixes 2):
+    /// the [`Game`] puts its own here, whatever the world gives.
+    pub readings: Arc<crate::Readings>,
 }
 
 impl WorldView {
@@ -485,6 +499,15 @@ impl Host for ViewHost {
     }
 
     fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId> {
+        self.spawn_with(prefab, place, Vec::new())
+    }
+
+    fn spawn_with(
+        &mut self,
+        prefab: &str,
+        place: Vec3,
+        values: SpawnValues,
+    ) -> Option<EntityId> {
         if !place.is_finite() || prefab.is_empty() || prefab.len() > 1024 {
             return None;
         }
@@ -503,8 +526,32 @@ impl Host for ViewHost {
         let id = spawned_id(&order, self.phase, self.view.tick)?;
         self.kept
             .changes
-            .push((order, Change::Spawn(id, prefab.to_string(), place)));
+            .push((order, Change::Spawn(id, prefab.to_string(), place, values)));
         Some(id)
+    }
+
+    fn exists(&self, which: EntityId) -> bool {
+        self.view.index.slots.contains_key(&which)
+    }
+
+    fn readings(&self) -> Option<Arc<crate::Readings>> {
+        Some(Arc::clone(&self.view.readings))
+    }
+
+    fn set_solid(&mut self, which: EntityId, solid: bool) {
+        if self.view.index.slots.contains_key(&which) && self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::Solid(which, solid)));
+        }
+    }
+
+    fn set_visible(&mut self, which: EntityId, visible: bool) {
+        if self.view.index.slots.contains_key(&which) && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Visible(which, visible)));
+        }
     }
 
     fn despawn(&mut self, which: EntityId) {
@@ -1036,6 +1083,9 @@ enum Job {
     SetObjects(Arc<crate::ObjectValues>),
     ObjectInfo,
     ObjectChecksum,
+    /// Copies of the running components of these kinds, for every core to
+    /// read this tick (Fixes 2).
+    Copy(Arc<Vec<String>>),
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
     #[cfg(any(test, feature = "test-support"))]
@@ -1058,6 +1108,7 @@ enum Done {
     /// Values that couldn't be given, as (object, field).
     LeftOut(Vec<(String, String)>),
     ObjectInfo(Vec<ComponentSchema>, Vec<(String, String)>),
+    Copied(Vec<crate::readings::Copied>),
 }
 
 /// Does `job` on `runtime`.
@@ -1130,6 +1181,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             Done::ObjectInfo(runtime.object_schemas(), runtime.unkept_object_fields())
         }
         Job::ObjectChecksum => Done::Checksum(runtime.object_checksum()),
+        Job::Copy(kinds) => Done::Copied(runtime.copies(&kinds)),
         Job::Round(events, view, round) => {
             let mut host = ViewHost::new(view, round);
             let phase = runtime.run_round(&events, &mut host);
@@ -1252,6 +1304,13 @@ pub struct Game {
     states_waiting: Vec<Event>,
     /// Whether too many timers at once was said, since the code changed.
     told_timers: bool,
+    /// The component kinds game code reads (Fixes 2): the code's, and
+    /// those its Rust components list.
+    reads: Arc<Vec<String>>,
+    /// The kinds each Rust component reads, by its name.
+    rust_reads: BTreeMap<String, Vec<String>>,
+    /// The readings as this tick started, shared with each phase's view.
+    readings: Arc<crate::Readings>,
 }
 
 impl std::fmt::Debug for Game {
@@ -1310,6 +1369,9 @@ impl Game {
             state_events: Arc::default(),
             states_waiting: Vec::new(),
             told_timers: false,
+            reads: Arc::default(),
+            rust_reads: BTreeMap::new(),
+            readings: Arc::default(),
         })
     }
 
@@ -1367,6 +1429,11 @@ impl Game {
     /// Adds a kind of Rust component, kept across loads.
     pub fn add_rust(&mut self, kind: RustKind) {
         self.rust.insert(kind.schema.name.clone());
+        self.rust_reads.insert(
+            kind.schema.name.clone(),
+            kind.reads.iter().map(|r| (*r).to_string()).collect(),
+        );
+        self.note_reads();
         let _ = self.all(|_| Job::AddRust(kind.clone()));
     }
 
@@ -1489,6 +1556,42 @@ impl Game {
         self.told_timers = false;
         self.state_events = Arc::new(code.state_events.clone());
         self.objects = !self.object_values().is_empty();
+        self.note_reads();
+    }
+
+    /// Notes the kinds game code reads: the code's and the Rust
+    /// components'.
+    fn note_reads(&mut self) {
+        let mut reads: BTreeSet<String> = self
+            .running
+            .as_ref()
+            .map(|code| code.components.reads.iter().cloned().collect())
+            .unwrap_or_default();
+        reads.extend(self.rust_reads.values().flatten().cloned());
+        self.reads = Arc::new(reads.into_iter().collect());
+        self.readings = Arc::default();
+    }
+
+    /// Copies the components game code reads from every shard, as the
+    /// tick starts (Fixes 2): nothing when it reads none.
+    fn copy_readings(&mut self) {
+        if self.reads.is_empty() {
+            return;
+        }
+        let kinds = Arc::clone(&self.reads);
+        let copies = self
+            .all(|_| Job::Copy(Arc::clone(&kinds)))
+            .into_iter()
+            .flat_map(|answer| match answer {
+                Some(Done::Copied(copies)) => copies,
+                _ => Vec::new(),
+            });
+        self.readings = Arc::new(crate::Readings::gathered(&kinds, copies));
+    }
+
+    /// The readings as this tick started (Fixes 2).
+    pub fn readings(&self) -> &Arc<crate::Readings> {
+        &self.readings
     }
 
     /// Stops the game's Lust and Lua (see [`Runtime::unload`]).
@@ -1496,6 +1599,7 @@ impl Game {
         self.count = None;
         let _ = self.all(|_| Job::Unload);
         self.running = None;
+        self.note_reads();
         self.code.clear();
         self.schemas.clear();
         self.objects = false;
@@ -1721,6 +1825,9 @@ impl Game {
         self.unclaimed.clear();
         // Game time moves on, and the timers due finish in the first
         // round, after the engine's other events (stage 1, timers).
+        // What game code reads of other entities, as the tick starts
+        // (Fixes 2).
+        self.copy_readings();
         let start = world.view();
         engine.extend(self.timers_due(&start));
         // Then the states that changed last tick, each to its component
@@ -1735,6 +1842,7 @@ impl Game {
         if objects {
             let mut view = start;
             view.timers = Arc::clone(&self.timers);
+            view.readings = Arc::clone(&self.readings);
             let answer = self.first(Job::Objects(dt, view));
             match self.gather(vec![answer], world) {
                 Ok(phase) => {

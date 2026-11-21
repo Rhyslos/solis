@@ -607,6 +607,7 @@ fn failing_starts_are_told_in_the_order_asked_on_any_number_of_shards() {
             help: "Never starts.".into(),
             fields: Vec::new(),
         },
+        reads: &[],
         make: |_| panic!("make broke"),
     };
     let order: Vec<u64> = vec![9, 2, 7, 4, 11, 1, 6, 3, 10, 5, 8, 12];

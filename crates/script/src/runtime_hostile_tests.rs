@@ -346,6 +346,7 @@ fn a_rust_component_that_panics_anywhere_fails_without_a_crash() {
     let mut runtime = Runtime::new().unwrap();
     runtime.add_rust(RustKind {
         schema: schema.clone(),
+        reads: &[],
         make: |_| Box::new(Fragile),
     });
     runtime.add_rust(RustKind {
@@ -353,6 +354,7 @@ fn a_rust_component_that_panics_anywhere_fails_without_a_crash() {
             name: "Broken".into(),
             ..schema
         },
+        reads: &[],
         make: |_| panic!("make broke"),
     });
     let me = id(2);

@@ -384,6 +384,8 @@ pub(crate) struct Luau {
     texts: std::cell::RefCell<crate::texts::Lent>,
     /// The groups last named to `solis` (the tables' and text's objects).
     named: std::cell::RefCell<Vec<String>>,
+    /// The reading natives, made for the readings last lent (Fixes 2).
+    readings: std::cell::RefCell<crate::readings::Lent>,
 }
 
 /// What Luau's safe libraries give that game code must not have:
@@ -464,6 +466,7 @@ impl Luau {
             make_text,
             texts: std::cell::RefCell::default(),
             named: std::cell::RefCell::default(),
+            readings: std::cell::RefCell::default(),
         })
     }
 
@@ -495,6 +498,25 @@ impl Luau {
             *self.named.borrow_mut() = names;
         }
         Ok(())
+    }
+
+    /// Takes the components' layouts of newly loaded code (Fixes 2), for
+    /// reading them and spawning with values.
+    pub(crate) fn set_layouts(&self, layouts: std::rc::Rc<crate::readings::Layouts>) {
+        self.lua
+            .set_app_data(crate::readings::Kept(std::rc::Rc::clone(&layouts)));
+        self.readings.borrow_mut().set_layouts(layouts);
+    }
+
+    /// Puts the reading natives into `natives` for `readings` (Fixes 2).
+    pub(crate) fn lend_readings(
+        &self,
+        readings: Option<std::sync::Arc<crate::Readings>>,
+        natives: &Table,
+    ) -> mlua::Result<()> {
+        self.readings
+            .borrow_mut()
+            .lend(&self.lua, readings, natives)
     }
 
     /// Globals of their own for one file (or the Lust): what's set in

@@ -55,10 +55,58 @@ pub trait Host {
         let _ = (prefab, place);
         None
     }
+    /// [`Self::spawn`], its root's components given `values` before their
+    /// first update (Fixes 2, `World:spawnWith`). A host that can't give
+    /// values spawns without them.
+    fn spawn_with(
+        &mut self,
+        prefab: &str,
+        place: Vec3,
+        values: crate::game::SpawnValues,
+    ) -> Option<EntityId> {
+        let _ = values;
+        self.spawn(prefab, place)
+    }
     /// Takes an entity (and everything under it) out of the game, at the
     /// end of the tick.
     fn despawn(&mut self, which: EntityId) {
         let _ = which;
+    }
+    /// Whether the entity is in the game, as the tick started (Fixes 2): a
+    /// spawned one from the tick after it was asked for, a despawned one
+    /// until the tick it was despawned in ends.
+    fn exists(&self, which: EntityId) -> bool {
+        self.position(which).is_some()
+    }
+    /// The components game code reads, as the tick started (Fixes 2): none
+    /// while no game runs.
+    fn readings(&self) -> Option<std::sync::Arc<crate::Readings>> {
+        None
+    }
+    /// The entity's component `component` as the tick started, if it has
+    /// one and some game code reads that kind (a Rust component lists it
+    /// in [`crate::RustKind::reads`]).
+    fn reading(&self, which: EntityId, component: &str) -> Option<reflect::ComponentData> {
+        self.readings()?.data(component, which)
+    }
+    /// The one entity with the component `component`, as the tick started
+    /// (`World:the`), or why there isn't one.
+    fn the(&self, component: &str) -> Result<EntityId, String> {
+        let readings = self.readings().unwrap_or_default();
+        readings
+            .the(component)
+            .map_err(|found| crate::readings::not_one(component, found))
+    }
+    /// Turns the entity's collider (2D or 3D) on or off at the end of the
+    /// tick (Fixes 2): off, nothing bumps into it, rays pass through and
+    /// trigger zones don't count it.
+    fn set_solid(&mut self, which: EntityId, solid: bool) {
+        let _ = (which, solid);
+    }
+    /// Shows or hides the entity and everything under it at the end of the
+    /// tick (Fixes 2): only its drawing; physics and game code go on.
+    fn set_visible(&mut self, which: EntityId, visible: bool) {
+        let _ = (which, visible);
     }
     /// How long the last frame took, in seconds of real time.
     fn frame_time(&self) -> f64 {
@@ -633,6 +681,10 @@ pub(crate) fn with_natives<'h, R>(
             (host.tables(), host.texts())
         };
         luau.lend_tables(tables, texts, &natives)?;
+        // Other entities' components as the tick started, and the values
+        // objects' methods (Fixes 2).
+        let readings = h.borrow().readings();
+        luau.lend_readings(readings, &natives)?;
         // A native renamed on purpose keeps working under its old name for
         // a while (Phase 8, C3): the same function, lent twice.
         lend_old_names(&natives, crate::describe::RENAMED)?;

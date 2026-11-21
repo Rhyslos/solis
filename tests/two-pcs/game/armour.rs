@@ -48,6 +48,7 @@ pub fn armour() -> RustKind {
                 Value::Int(3),
             )],
         },
+        reads: &[],
         make: |data| {
             let mut armour = Armour { plates: 3 };
             armour.set(data);

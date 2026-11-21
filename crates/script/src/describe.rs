@@ -173,6 +173,11 @@ pub struct Moved {
 /// saying what it is).
 pub const ENGINE_CLASSES: &[(&str, &str, &str)] = &[
     (
+        "world",
+        "class SpawnValues {\n    has {\n    }\n}",
+        "What every component's values class is like (KnightValues, in solis/components): World:spawnWith takes a list of them.",
+    ),
+    (
         "physics",
         "class RayHit {\n    has {\n        bool found = false;\n        float distance = -1;\n        entity entity = nothing;\n        vec3 normal = [0, 0, 0];\n    }\n}",
         "What Physics:castRay found: whether it met a collider, how far along, whose, and which way its surface faces.",
@@ -458,10 +463,31 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "spawnWith",
+        owner: "World",
+        lust: "method entity spawnWith(Prefab which, vec3 place, SpawnValues array values) native;",
+        about: "Makes a copy of a prefab as spawn does, its root's components given values before their first update: each a values object from solis/components (KnightValues given = new KnightValues; given:keys(3);), in a list ([given]).",
+    },
+    Native {
+        file: "world",
+        name: "the",
+        owner: "World",
+        lust: "method entity the(Component which) native;",
+        about: "The one entity with this component (Component.Quest), as the tick started. None, or more than one, stops with a message: give the component to one entity only.",
+    },
+    Native {
+        file: "world",
         name: "despawn",
         owner: "entity",
         lust: "method entity:despawn() native;",
         about: "Takes the entity, and everything under it, out of the game at the end of the tick.",
+    },
+    Native {
+        file: "world",
+        name: "exists",
+        owner: "entity",
+        lust: "method bool entity:exists() native;",
+        about: "Whether the entity is in the game as the tick started: one spawned is from the tick after, one despawned is until the tick it was despawned in ends. Asked of nothing, or an entity that's gone, it's false.",
     },
     Native {
         file: "world",
@@ -630,6 +656,13 @@ pub const NATIVES: &[Native] = &[
         owner: "entity",
         lust: "method entity:stopAnimation() native;",
         about: "Stops the entity's Sprite where it is in its clip.",
+    },
+    Native {
+        file: "animation",
+        name: "setVisible",
+        owner: "entity",
+        lust: "method entity:setVisible(bool shown) native;",
+        about: "Hides the entity and everything under it (false), or shows them again (true), at the end of the tick. Only its drawing: it still collides, and its code still runs.",
     },
     Native {
         file: "animation",
@@ -819,6 +852,13 @@ pub const NATIVES: &[Native] = &[
         owner: "Input",
         lust: "method rebind(Action action, string input) native;",
         about: "Binds an input (\"E\", \"Mouse Right\", \"Pad Y\") to an action from the next tick, in place of its inputs of the same kind: what a controls menu does. Lasts while the game plays.",
+    },
+    Native {
+        file: "physics",
+        name: "setSolid",
+        owner: "entity",
+        lust: "method entity:setSolid(bool solid) native;",
+        about: "Turns the entity's collider (2D or 3D) off (false) or on again (true), at the end of the tick: off, nothing bumps into it, rays pass through it and trigger zones don't count it. A fallen body, an open gate.",
     },
     Native {
         file: "physics",
@@ -1219,6 +1259,18 @@ fn descriptions_with(
                     wanted.join(", ")
                 ));
             }
+            // The game's components (Fixes 2), from the file the code's
+            // check writes.
+            let state = crate::component_code::STATE;
+            if mine
+                .iter()
+                .any(|n| n.lust.contains(&format!("({state} ")))
+            {
+                text.push_str(&format!(
+                    "fetch \"{folder}/{}\":{state};\n\n",
+                    crate::component_code::FILE
+                ));
+            }
             // Its classes first (what natives give back), then methods on
             // their own and the entity's, then each engine object's in a
             // block of its own.
@@ -1281,6 +1333,10 @@ fn descriptions_with(
             (format!("{folder}/{file}.lst"), text)
         })
         .chain(std::iter::once((format!("{folder}/project.lst"), project)))
+        .chain(std::iter::once((
+            format!("{folder}/{}.lst", crate::component_code::FILE),
+            crate::component_code::placeholder(made_by),
+        )))
         .chain(DATA_CLASSES.iter().map(|(kind, classes)| {
             (
                 format!("{folder}/{}/{kind}.lst", level::lust_data::CLASSES_FOLDER),

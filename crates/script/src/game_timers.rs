@@ -33,6 +33,7 @@ impl Game {
     pub(super) fn view_of(&self, world: &mut dyn GameWorld) -> WorldView {
         let mut view = world.view();
         view.timers = Arc::clone(&self.timers);
+        view.readings = Arc::clone(&self.readings);
         view
     }
 
