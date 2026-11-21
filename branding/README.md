@@ -1,6 +1,6 @@
 # The logo
 
-`logo.svg` is Solis's logo, given by the project lead. The rest is made from it:
+`logo.svg` is Solis's logo, the sun core (a bright core inside two open rings), given by the project lead on 2026-11-21. It replaced the first logo. The rest is made from it:
 
 | File | Used for |
 |---|---|
