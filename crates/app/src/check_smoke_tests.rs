@@ -13,7 +13,8 @@ fn ui_sample(name: &str, change: impl Fn(&str) -> String) -> reflect::test_suppo
     crate::ui_sample::make(&root).unwrap();
     let hud = root.join("ui/hud.lst");
     let text = std::fs::read_to_string(&hud).unwrap();
-    std::fs::write(&hud, change(&text)).unwrap();
+    // On Windows the sample may come with CRLF line ends; the changes look for "\n".
+    std::fs::write(&hud, change(&text.replace("\r\n", "\n"))).unwrap();
     temp
 }
 
