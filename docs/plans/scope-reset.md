@@ -28,11 +28,14 @@ Each step made sense on its own. Together they made a small button take half a d
 
 ## The first two jobs (the next chat starts here)
 
-1. **The "done" list, by games.** With the project lead, name the games Solis must make well. Suggested start:
+1. **The "done" list, by games: a guide, not a strict rule** (the project lead, 2026-11-22: "when I don't know myself what done means, it can't be a super strict rule"). Start with a rough first version and change it whenever ideas change. With the project lead, name the games Solis should make well. Suggested start:
    - a top-down adventure like Orc Invasion;
    - a simple platformer;
    - a dialogue-heavy story RPG.
-   For each, list what it needs from the engine. **Anything none of them needs is parked.** Write the list in this file, under "Done means".
+   For each, list what it needs from the engine. Write the list in this file, under "Done means".
+   - **How to use it:** work that helps one of these games, or a game the project lead is making or wants to make soon, comes first. Work that helps none of them waits, but it isn't forbidden.
+   - The project lead can add a game, drop one, or ask for anything at any time, and the list just changes.
+   - When nobody is sure, choose the smaller job that makes a real game easier to make now, and ask the project lead with a question to click.
 2. **A "Can I make this?" page** in the manual (`docs/manual/can-i-make-this.md`, in SUMMARY.md near the start). It lists every common need of those games (moving between rooms, characters finding their way, walking behind tall things, inventories, dialogue, saving, menus, directional animation and so on), each marked:
    - **works well**;
    - **works with a workaround**, saying how;
@@ -72,7 +75,7 @@ Fixes 2's unfinished start is saved on the branch `fixes/2-game-code-calls`.
 
 ## Parked
 
-Kept as they are, not extended, until the done list needs them:
+Kept as they are, not extended, until the done list needs them or the project lead asks for them:
 - **New determinism work per feature.**
   - The two-PC check and the checksum keep running for what's already in them.
   - New features don't have to join the check, run on several cores, or be measured against 1 and 4 cores, unless they're saved game state on the full path.
@@ -90,4 +93,4 @@ Kept as they are, not extended, until the done list needs them:
 
 ## Done means
 
-*(Written with the project lead in the next chat.)*
+*(A rough first version is written with the project lead in the next chat, and changed whenever it should be.)*
