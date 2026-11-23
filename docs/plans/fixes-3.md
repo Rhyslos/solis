@@ -159,7 +159,7 @@ One step per pull request, each well under an hour. Steps 1 and 5 change a file 
 | Step | What | Tests |
 | --- | --- | --- |
 | **F3.1** The clips file as Lust | `animation::clips_file`: the shape above (`solis/data/clips`), read within the limits `.solframes` has, written, `version = 2`; a fixture in `tests/fixtures/clips/v2/`; a fuzz target. Today's `.solframes` content maps onto it (a tag's changes, clips made here with one direction). | Round trip; every limit; a hostile file; an old `.solframes` read into the new shape gives the same clips; fuzz |
-| **F3.2** Moving the old files | `.solframes` moved to `.clips.lst` when a project opens (`app::to_lust`, `reflect::data_files::KINDS`), sidecar and ID kept; **Edit clips…** makes `.clips.lst`; the Library kind, `own_files`, `name_follow`, `project_names` (strip `.clips.lst`) follow. | A project with an old file opens, moves it, and every clip name stays the same; the old file goes into the backups |
+| **F3.2** The new file everywhere | `.clips.lst` replaces `.solframes` (no older projects to move, the project lead, 2026-11-23): **Edit clips…** makes `.clips.lst`; the Library kind, `own_files`, `name_follow` and `project_names` (strip `.clips.lst`) follow. | Clip names from a `.clips.lst` are as they were from a `.solframes` |
 | **F3.3** Cells from a grid | `assets::sprite_sheet` cuts a picture by cell, between and edge into numbered cells; `ClipSet` builds a clip's frames from cells; `detect_tile` learns the gap. | 306 × 170 at 32, 2, 1 gives 45 cells; a grid bigger than the picture gives none and a Problem; a zero cell is refused; the guess finds 32 with 2 between |
 | **F3.4** Cutting in the editor | **Make clips…** on a picture; the sheet group shows the picture with the live grid, numbers, rulers and the hovered cell; the **Cut into a grid** strip and the ribbon's **Grid** group with **Find grid**; dragging across cells picks a run. | `frames_editor` tests for the grid's undo; a picture test of frame (a) |
 | **F3.5** Directions in the Frames tab | **Directions** One, Four, Eight; a row per direction, a column per frame with its time and event; a run dropped on a row fills it; a picked frame plus a clicked cell swaps the cell; a tag dropped on a row; Ctrl + Z undoes each. | Editor tests: going from Eight to Four keeps the four straight rows; a drop of five cells onto four columns adds a column; undo; a picture test of frame (b) |
@@ -169,6 +169,18 @@ One step per pull request, each well under an hour. Steps 1 and 5 change a file 
 | **F3.9** Looks | The **Look** ribbon group and **+ Look**; the **Look** tab (Name, Picture, the size check, Make main, Remove look); the preview and sprites draw the look's picture; `state Look` in `solis/project.lst`. | A picture of another size is a Problem; switching look keeps the place; the names are written and follow a rename |
 | **F3.10** Game code | `Facing` in `solis/animation`; `setFacing`, `setFacingAlong`, `facing`, `setLook`, `look` in `describe.rs` (Lust); the two mistakes (a look from another file, `setFacing` with an animator). | Native tests for each call and each mistake; the manual's examples compile (`manual_examples_tests`) |
 | **F3.11** The manual's last pass | [Animating sprites](../manual/sprite-animation.md) rewritten around the clips file (cutting a picture, directions, looks, the before-and-after with the lookup table); [Animators](../manual/animators.md) (Faces by); [concepts](../manual/concepts.md) (cell, direction, look); D2, the rule that turns a tag into a clip's name; "directional animation" marked *works well* on the "Can I make this?" page if it exists by then. | The user guide's checks |
+
+## Decided by the Lust feel (2026-11-23)
+
+The project lead asked for engine calls to feel like Lust and left the code's shape to whoever designs it ([the guidelines' "The Lust feel"](../game-api-guidelines.md#the-lust-feel)). So questions 1 to 4 and 9 below are settled here, for these reasons:
+
+- **Question 1: A, calls plus the character's own `check`.** It reads out loud (`setFacing(Facing.NorthEast); animate(Clip.Sprites.Knight.Walk);`) and adds nothing new to learn. The clips reach code through `solis/project.lst`, as they already do (rule 4). And the project lead's own idea, a `check` on the character's state, is what picks the clip: `check` must cover every option, so a new state points at the missing clip. B would have game code set fields Solis plays later, which is driving through a side door. C adds a second set of names (`KnightClip.Walk`) beside `Clip.Sprites.Knight.Walk` for the same clips.
+- **Question 2: its own call, `setFacing`.** Lust has no optional arguments, and a facing the sprite remembers means idle keeps facing the way the knight walked (rules 5, 7 and 8).
+- **Question 3: `setFacingAlong(direction)`.** The same shape as the animator's `setFacing`, and safe every tick.
+- **Question 4: clips, as today.** One word for one thing: every call that takes a clip takes these.
+- **Question 9: the clips file grows and becomes Lust, `knight.clips.lst`.** One file per character. There are no older projects yet (the project lead, 2026-11-23), so `.solframes` is replaced, not moved: step F3.2 shrinks to the renames.
+
+Questions 5 to 8, 10 and 11 are about what it does and how it's used, so they go to the project lead.
 
 ## Questions for the project lead
 
