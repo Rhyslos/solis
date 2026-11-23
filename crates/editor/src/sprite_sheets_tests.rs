@@ -295,3 +295,104 @@ fn a_picture_is_asked_for_when_used_and_listed_as_a_picture() {
     assert!(is_plain_picture("a/b.PNG") && is_plain_picture("x.jpeg"));
     assert!(!is_plain_picture("walker.aseprite") && !is_plain_picture("png"));
 }
+
+/// An 8 × 4 picture, opaque, as a plain picture's sheet.
+fn plain_picture() -> SpriteSheet {
+    assets::sprite_sheet::build_sheet(assets::aseprite::Aseprite {
+        size: [8, 4],
+        frames: vec![assets::aseprite::AseFrame {
+            duration_ms: 100,
+            rgba: vec![200; 8 * 4 * 4],
+            events: Vec::new(),
+        }],
+        layers: Vec::new(),
+        tags: Vec::new(),
+        slices: Vec::new(),
+        palette: Vec::new(),
+        notes: Vec::new(),
+    })
+    .unwrap()
+}
+
+/// `knight.png` (8 × 4) and `knight.clips.lst` cutting it into 4 × 4
+/// cells, with a clip "walk" showing cells 1 then 0.
+fn cut_knight(cell: u32) -> (SpriteSheets, AssetId) {
+    let (picture, clips) = (AssetId::random(), AssetId::random());
+    let mut file = animation::ClipsFile::for_sheet(picture);
+    file.grid.cell = [cell, cell];
+    let frame = |n: u32| animation::ClipFrame {
+        frame: n,
+        ms: 100,
+        events: Vec::new(),
+    };
+    file.clips.push(animation::clips_file::Clip::one_way(
+        "walk".into(),
+        1.0,
+        animation::Direction::Forward,
+        0,
+        &[frame(1), frame(0)],
+    ));
+    let mut sheets = SpriteSheets::default();
+    sheets.by_path.insert(
+        "knight.png".into(),
+        SheetState::Read(Arc::new(plain_picture())),
+    );
+    sheets.frames.insert(
+        "knight.clips.lst".into(),
+        FramesState::Read(Arc::new(file), Vec::new()),
+    );
+    sheets.paths.insert(picture, "knight.png".into());
+    sheets.paths.insert(clips, "knight.clips.lst".into());
+    sheets.work_out_clips();
+    (sheets, clips)
+}
+
+#[test]
+fn a_clips_file_plays_its_picture_s_cells() {
+    let (sheets, clips) = cut_knight(4);
+    let sheet = sheets.get(clips).unwrap();
+    assert_eq!((sheet.size, sheet.frames.len()), ([4, 4], 2));
+    let walk = sheets.clips(clips).unwrap().get("walk").unwrap().clone();
+    assert_eq!(
+        walk.frames.iter().map(|f| f.frame).collect::<Vec<_>>(),
+        [1, 0]
+    );
+    assert_eq!(sheets.cut_sheet("knight.clips.lst"), Some(sheet));
+}
+
+#[test]
+fn the_picture_is_cut_again_only_when_its_cutting_changes() {
+    let (mut sheets, clips) = cut_knight(4);
+    let before = Arc::clone(sheets.get(clips).unwrap());
+    // A clip changed: the same cells.
+    let Some(FramesState::Read(file, _)) = sheets.frames.get_mut("knight.clips.lst") else {
+        panic!("read");
+    };
+    Arc::make_mut(file).clips[0].speed = 2.0;
+    sheets.work_out_clips();
+    assert!(Arc::ptr_eq(&before, sheets.get(clips).unwrap()));
+    // The grid changed: cut again.
+    let Some(FramesState::Read(file, _)) = sheets.frames.get_mut("knight.clips.lst") else {
+        panic!("read");
+    };
+    Arc::make_mut(file).grid.cell = [2, 2];
+    sheets.work_out_clips();
+    assert_eq!(sheets.get(clips).unwrap().frames.len(), 8);
+}
+
+#[test]
+fn a_grid_bigger_than_the_picture_gives_no_cells_and_says_so() {
+    let (sheets, clips) = cut_knight(16);
+    let cut = &sheets.cut["knight.clips.lst"];
+    assert_eq!(cut.notes.len(), 1, "{:?}", cut.notes);
+    assert!(sheets.get(clips).unwrap().frames.is_empty());
+    assert!(
+        sheets
+            .clips(clips)
+            .unwrap()
+            .get("walk")
+            .unwrap()
+            .frames
+            .is_empty()
+    );
+}

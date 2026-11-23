@@ -141,6 +141,23 @@ pub struct SpriteSheets {
     /// are read as sheets only when a sprite uses one, so a 3D project's
     /// textures aren't read twice.
     pub pictures_wanted: Arc<PicturesWanted>,
+    /// Each clips file's picture cut into its cells, by the clips file's
+    /// path: worked out by [`Self::work_out_clips`] when the file or its
+    /// picture changes.
+    pub cut: HashMap<String, CutPicture>,
+}
+
+/// A clips file's picture (a PNG or JPEG) cut into its cells.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CutPicture {
+    /// How it was cut.
+    pub cutting: assets::cells::Cutting,
+    /// The picture it was cut from.
+    pub picture: Arc<SpriteSheet>,
+    /// Its cells as a sheet's frames, or why it couldn't be cut.
+    pub sheet: Result<Arc<SpriteSheet>, String>,
+    /// Cells left out, in plain words.
+    pub notes: Vec<String>,
 }
 
 /// Paths of pictures wanted as sprite sheets (see
@@ -347,8 +364,16 @@ impl SpriteSheets {
             }
             None => match self.frames.get(path)? {
                 FramesState::Read(file, _) => {
-                    match self.by_path.get(self.paths.get(&file.sheet()?)?)? {
-                        SheetState::Read(sheet) => Some(sheet),
+                    if let Some(cut) = self.cut.get(path) {
+                        return cut.sheet.as_ref().ok();
+                    }
+                    let picture = self.paths.get(&file.sheet()?)?;
+                    match self.by_path.get(picture) {
+                        Some(SheetState::Read(sheet)) => Some(sheet),
+                        None if is_plain_picture(picture) => {
+                            self.pictures_wanted.ask(picture);
+                            None
+                        }
                         _ => None,
                     }
                 }
@@ -373,12 +398,13 @@ impl SpriteSheets {
     /// Works out every sheet's and clips file's clips again (after one
     /// was read or changed).
     pub fn work_out_clips(&mut self) {
+        self.cut_pictures();
         let mut sets = world::ClipSets::new();
         for (&id, path) in &self.paths {
             if let Some(SheetState::Read(sheet)) = self.by_path.get(path) {
                 sets.insert(id, Arc::new(ClipSet::of_sheet(sheet, None)));
             } else if let Some(FramesState::Read(file, _)) = self.frames.get(path)
-                && let Some(sheet) = file.sheet().and_then(|s| self.get(s))
+                && let Some(sheet) = self.get(id)
             {
                 sets.insert(id, Arc::new(ClipSet::of_sheet(sheet, Some(file))));
             }
@@ -386,6 +412,46 @@ impl SpriteSheets {
         self.clip_sets = Arc::new(sets);
         self.work_out_animators();
         self.work_out_maps();
+    }
+
+    /// Cuts each clips file's picture into its cells again where the
+    /// file or the picture changed (an Aseprite file's frames are its
+    /// cells already).
+    fn cut_pictures(&mut self) {
+        let mut cut = HashMap::new();
+        for (path, state) in &self.frames {
+            let FramesState::Read(file, _) = state else {
+                continue;
+            };
+            let Some(picture_path) = file.sheet().and_then(|s| self.paths.get(&s)) else {
+                continue;
+            };
+            let Some(SheetState::Read(picture)) = self.by_path.get(picture_path) else {
+                continue;
+            };
+            if !is_plain_picture(picture_path) {
+                continue;
+            }
+            let cutting = file.cutting();
+            let kept = self
+                .cut
+                .remove(path)
+                .filter(|c| c.cutting == cutting && Arc::ptr_eq(&c.picture, picture));
+            let done = kept.unwrap_or_else(|| {
+                let (sheet, notes) = match assets::cells::cut_sheet(picture, &cutting) {
+                    Ok((sheet, notes)) => (Ok(Arc::new(sheet)), notes),
+                    Err(why) => (Err(why.0), Vec::new()),
+                };
+                CutPicture {
+                    cutting,
+                    picture: Arc::clone(picture),
+                    sheet,
+                    notes,
+                }
+            });
+            cut.insert(path.clone(), done);
+        }
+        self.cut = cut;
     }
 
     /// Lists every tile map file read by asset ID again (after one was
@@ -586,6 +652,12 @@ impl SpriteSheets {
             SheetState::Read(sheet) => Some(sheet),
             _ => None,
         }
+    }
+
+    /// The clips file at `path`'s picture cut into its cells, if it's been
+    /// cut.
+    pub fn cut_sheet(&self, path: &str) -> Option<&Arc<SpriteSheet>> {
+        self.cut.get(path)?.sheet.as_ref().ok()
     }
 
     /// Every sheet and clips file that's been read, by name (its file's,

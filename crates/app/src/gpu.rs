@@ -48,6 +48,9 @@ pub struct GpuViewport {
     brushes: crate::brush_uploads::BrushUploads,
     /// Sprite sheets' atlases, uploaded (Phase 9, D2).
     sheets: HashMap<AssetId, render::GpuSheet>,
+    /// The sheet each clips file draws from, as last uploaded into
+    /// `sheets` under the clips file's ID (Fixes 3).
+    clips_sheets: HashMap<AssetId, std::sync::Arc<assets::sprite_sheet::SpriteSheet>>,
     /// Each tile map layer's picture uploaded (into `sheets`), by its key
     /// then (Phase 9, D4).
     tile_keys: HashMap<AssetId, u64>,
@@ -80,6 +83,7 @@ impl GpuViewport {
             models: HashMap::new(),
             brushes: Default::default(),
             sheets: HashMap::new(),
+            clips_sheets: HashMap::new(),
             tile_keys: HashMap::new(),
             thumbnail_target: None,
             report: editor::DrawReport::default(),
@@ -245,9 +249,29 @@ impl GpuViewport {
         self.sheets.insert(id, uploaded);
     }
 
+    /// Uploads the sheet a clips file `id` draws from (its picture cut
+    /// into cells, or its Aseprite file), unless it's the one already
+    /// uploaded for it.
+    pub fn keep_clips_sheet(
+        &mut self,
+        id: AssetId,
+        sheet: &std::sync::Arc<assets::sprite_sheet::SpriteSheet>,
+    ) {
+        if self
+            .clips_sheets
+            .get(&id)
+            .is_some_and(|s| std::sync::Arc::ptr_eq(s, sheet))
+        {
+            return;
+        }
+        self.add_sheet(id, sheet);
+        self.clips_sheets.insert(id, std::sync::Arc::clone(sheet));
+    }
+
     /// Frees every sprite sheet (another project was opened).
     pub fn clear_sheets(&mut self) {
         self.sheets.clear();
+        self.clips_sheets.clear();
         self.tile_keys.clear();
     }
 

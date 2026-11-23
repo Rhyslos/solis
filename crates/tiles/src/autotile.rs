@@ -682,6 +682,61 @@ pub fn detect_tile(size: [u32; 2], rgba: &[u8], preferred: [u32; 2]) -> [u32; 2]
     }
 }
 
+/// A grid a picture is most likely cut into, gaps and all: its cell size,
+/// the gap between cells and the margin round the edge, each across and
+/// down. A sprite sheet laid out with see-through gaps (a 32-pixel cell,
+/// 2 between, 1 round the edge) is found by its gaps: of the usual sizes
+/// that fit the picture exactly with some gap or margin, the biggest
+/// whose every gap and margin is see-through. Without one, it's
+/// [`detect_tile`]'s size with no gaps.
+pub fn detect_grid(size: [u32; 2], rgba: &[u8], preferred: [u32; 2]) -> [[u32; 2]; 3] {
+    let [w, h] = size;
+    let no_gaps = [detect_tile(size, rgba, preferred), [0, 0], [0, 0]];
+    if w == 0 || h == 0 || rgba.len() < (w as usize * h as usize * 4) {
+        return no_gaps;
+    }
+    let clear = |x: u32, y: u32| rgba[((y * w + x) * 4 + 3) as usize] == 0;
+    let cols: Vec<bool> = (0..w).map(|x| (0..h).all(|y| clear(x, y))).collect();
+    let rows: Vec<bool> = (0..h).map(|y| (0..w).all(|x| clear(x, y))).collect();
+    if cols.iter().all(|&c| c) {
+        return no_gaps;
+    }
+    // How many cells fit along a side, when they fit exactly with their
+    // gaps see-through.
+    let fits = |side: u32, cell: u32, between: u32, edge: u32, line: &[bool]| -> Option<u32> {
+        let room = side.checked_sub(2 * edge)?;
+        if room < cell || !(room + between).is_multiple_of(cell + between) {
+            return None;
+        }
+        let n = (room + between) / (cell + between);
+        let gap = |i: u32| {
+            let at = edge + i * (cell + between) - between;
+            (at..at + between).all(|p| line[p as usize])
+        };
+        let margins = (0..edge).all(|p| line[p as usize] && line[(side - 1 - p) as usize]);
+        (margins && (1..n).all(gap)).then_some(n)
+    };
+    let mut best: Option<[[u32; 2]; 3]> = None;
+    for cell in [8, 12, 16, 24, 32, 48, 64, 96, 128] {
+        for between in 0..=4 {
+            for edge in 0..=4 {
+                if between == 0 && edge == 0 {
+                    continue;
+                }
+                let across = fits(w, cell, between, edge, &cols);
+                let down = fits(h, cell, between, edge, &rows);
+                if let (Some(a), Some(d)) = (across, down)
+                    && a * d >= 2
+                    && best.is_none_or(|b| cell > b[0][0])
+                {
+                    best = Some([[cell; 2], [between; 2], [edge; 2]]);
+                }
+            }
+        }
+    }
+    best.unwrap_or(no_gaps)
+}
+
 /// The kind a terrain's art most likely is, from the picture's tiles
 /// starting at `from` (the template's top-left tile): a block of 8 × 6
 /// tiles nearly all drawn is 47-tile; a block of 4 × 4 drawn is 16-tile

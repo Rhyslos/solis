@@ -319,6 +319,17 @@ impl ClipsFile {
         }
     }
 
+    /// How its main look's picture is cut into cells: the grid, then the
+    /// cells drawn by hand.
+    pub fn cutting(&self) -> assets::cells::Cutting {
+        assets::cells::Cutting {
+            cell: self.grid.cell,
+            between: self.grid.between,
+            edge: self.grid.edge,
+            drawn: self.cells.iter().map(|c| (c.number, c.rect)).collect(),
+        }
+    }
+
     /// The clip called `name`.
     pub fn clip_mut(&mut self, name: &str) -> Option<&mut Clip> {
         self.clips.iter_mut().find(|c| c.name == name)

@@ -7,6 +7,7 @@
 //! never a crash. See this crate's README for its purpose and limits.
 
 pub mod aseprite;
+pub mod cells;
 mod geometry;
 pub mod lights;
 pub mod lods;

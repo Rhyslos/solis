@@ -24,16 +24,33 @@ pub(crate) fn frames_ui<'a>(
     pictures: &'a HashMap<String, egui::TextureHandle>,
     cue_sounds: &'a HashMap<String, String>,
 ) -> FramesUi<'a> {
-    let sheet = editor.file.sheet().and_then(|id| sheets.get(id));
-    let atlas = editor
-        .file
-        .sheet()
-        .and_then(|id| sheets.paths.get(&id))
-        .and_then(|path| pictures.get(path));
-    let notes = match sheets.frames.get(&editor.path) {
+    // A picture cut into cells shows its cells; an Aseprite file its
+    // frames.
+    let cut = (sheets.cut.get(&editor.path)).and_then(|c| c.sheet.as_ref().ok());
+    let (sheet, atlas) = match cut {
+        Some(cut) => (Some(cut), pictures.get(&editor.path)),
+        None => (
+            editor.file.sheet().and_then(|id| sheets.get(id)),
+            (editor.file.sheet())
+                .and_then(|id| sheets.paths.get(&id))
+                .and_then(|path| pictures.get(path)),
+        ),
+    };
+    let mut notes = match sheets.frames.get(&editor.path) {
         Some(FramesState::Read(_, notes)) => notes.clone(),
         _ => Vec::new(),
     };
+    // What cutting its picture into cells left out, or why it couldn't.
+    if let Some(cut) = sheets.cut.get(&editor.path) {
+        notes.extend(
+            cut.notes
+                .iter()
+                .map(|n| format!("Cutting the picture: {n}.")),
+        );
+        if let Err(why) = &cut.sheet {
+            notes.push(format!("The picture couldn't be cut: {why}."));
+        }
+    }
     FramesUi {
         sheets,
         cue_sounds,
