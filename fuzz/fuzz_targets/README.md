@@ -17,6 +17,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `mixer.rs` | The project's buses (`mixer.solmix`): refused or read, always a sound tree within the limits (Master first), written back to themselves, with levels and ducking that are numbers. |
 | `model.rs` | A model file (glb or glTF): refused with why, or imported within the limits, its numbers finite. |
 | `pixels.rs` | The project's 2D settings (`pixels.solpix`): refused or read, always within the limits, and written back to themselves. |
+| `clips_file.rs` | A picture's clips file (`.clips.lst`, Fixes 3): refused or read, within the limits, each clip named once and each row a direction its clip has, and written back to itself. |
 | `frames.rs` | A sprite's clips file (`.solframes`): refused or read, within the limits, written back to itself, and its clips played without panicking. |
 | `project_file.rs` | A project file: refused or read. |
 | `recording.rs` | A recording of play: refused or read, then written and read back the same. |

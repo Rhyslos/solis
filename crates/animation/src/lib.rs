@@ -27,6 +27,7 @@ pub mod animator_file;
 pub mod atlas;
 pub mod clip;
 pub mod clip_set;
+pub mod clips_file;
 pub mod frames_file;
 
 pub use animator::{Animator, ParamValue, Run, SetError};

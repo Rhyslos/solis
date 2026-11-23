@@ -1372,6 +1372,7 @@ fn descriptions_with(
 pub const DATA_CLASSES: &[(&str, &str)] = &[
     (tiles::map_lust::KIND, tiles::map_lust::CLASSES),
     (animation::atlas::KIND, animation::atlas::CLASSES),
+    (animation::clips_file::KIND, animation::clips_file::CLASSES),
     (tiles::tileset::KIND, tiles::tileset::CLASSES),
     (level::module_file::KIND, level::module_file::CLASSES),
     (level::tags::KIND, level::tags::CLASSES),
@@ -1428,8 +1429,9 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 24);
+        assert_eq!(files.len(), 25);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
+        assert!(files.iter().any(|(p, _)| p == "solis/data/clips.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/module.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/table.lst"));

@@ -1,0 +1,31 @@
+-- Clips of knight.png. Written by Solis; safe to edit by hand.
+fetch "solis/data/clips":[Sheet, Cell, LookPicture, ClipSettings, ClipRow, TagChange, Facing, Playback];
+
+lock int version = 2;
+lock Sheet sheet = new Sheet { cell = [32, 32], between = [2, 2], edge = [1, 1], first = "idle" };
+lock Cell array cells = [
+    new Cell { number = 23, box = [136, 69, 32, 32] },
+];
+lock LookPicture array looks = [
+    new LookPicture { name = "Normal", picture = "0000000000001" },
+    new LookPicture { name = "Mana", picture = "0000000000002" },
+];
+lock ClipSettings array clips = [
+    new ClipSettings { name = "walk", speed = 1.0, playback = Playback.Forward, plays = 0, directions = 8, sameFrames = true, mirror = true, times = [120, 120], events = ["footstep", ""] },
+    new ClipSettings { name = "attack", speed = 1.5, playback = Playback.PingPong, plays = 1, directions = 4, sameFrames = false, mirror = false, times = [], events = [] },
+    new ClipSettings { name = "idle", speed = 0.5, playback = Playback.Reverse, plays = 0, directions = 1, sameFrames = true, mirror = false, times = [200], events = [""] },
+];
+lock ClipRow array rows = [
+    new ClipRow { clip = "walk", facing = Facing.South, cells = [3, 4], times = [], events = [] },
+    new ClipRow { clip = "walk", facing = Facing.SouthEast, cells = [12, 13], times = [], events = [] },
+    new ClipRow { clip = "walk", facing = Facing.East, cells = [21, 22], times = [], events = [] },
+    new ClipRow { clip = "walk", facing = Facing.NorthEast, cells = [30, 31], times = [], events = [] },
+    new ClipRow { clip = "walk", facing = Facing.North, cells = [39, 40], times = [], events = [] },
+    new ClipRow { clip = "attack", facing = Facing.North, cells = [50], times = [80], events = ["swing"] },
+    new ClipRow { clip = "attack", facing = Facing.West, cells = [51, 52], times = [80, 90], events = ["", "swing"] },
+    new ClipRow { clip = "idle", facing = Facing.Any, cells = [0], times = [], events = [] },
+];
+lock TagChange array tags = [
+    new TagChange { name = "run", speed = 1.25, frames = [2], events = ["footstep"] },
+];
+end
