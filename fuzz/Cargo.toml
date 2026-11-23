@@ -237,6 +237,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "clips_file"
+path = "fuzz_targets/clips_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "text_file"
 path = "fuzz_targets/text_file.rs"
 test = false

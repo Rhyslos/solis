@@ -1,0 +1,31 @@
+-- Clips of knight.png. Written by Solis; safe to edit by hand.
+fetch "solis/data/clips":[Sheet, Cell, Look, Clip, Way, Tag, Facing, Playback];
+
+lock int version = 2;
+lock Sheet sheet = new Sheet { cell = [32, 32], between = [2, 2], edge = [1, 1], first = "idle" };
+lock Cell array cells = [
+    new Cell { number = 23, box = [136, 69, 32, 32] },
+];
+lock Look array looks = [
+    new Look { name = "Normal", picture = "0000000000001" },
+    new Look { name = "Mana", picture = "0000000000002" },
+];
+lock Clip array clips = [
+    new Clip { name = "walk", speed = 1.0, playback = Playback.Forward, plays = 0, directions = 8, sameFrames = true, mirror = true, times = [120, 120], events = ["footstep", ""] },
+    new Clip { name = "attack", speed = 1.5, playback = Playback.PingPong, plays = 1, directions = 4, sameFrames = false, mirror = false, times = [], events = [] },
+    new Clip { name = "idle", speed = 0.5, playback = Playback.Reverse, plays = 0, directions = 1, sameFrames = true, mirror = false, times = [200], events = [""] },
+];
+lock Way array ways = [
+    new Way { clip = "walk", facing = Facing.South, cells = [3, 4], times = [], events = [] },
+    new Way { clip = "walk", facing = Facing.SouthEast, cells = [12, 13], times = [], events = [] },
+    new Way { clip = "walk", facing = Facing.East, cells = [21, 22], times = [], events = [] },
+    new Way { clip = "walk", facing = Facing.NorthEast, cells = [30, 31], times = [], events = [] },
+    new Way { clip = "walk", facing = Facing.North, cells = [39, 40], times = [], events = [] },
+    new Way { clip = "attack", facing = Facing.North, cells = [50], times = [80], events = ["swing"] },
+    new Way { clip = "attack", facing = Facing.West, cells = [51, 52], times = [80, 90], events = ["", "swing"] },
+    new Way { clip = "idle", facing = Facing.Any, cells = [0], times = [], events = [] },
+];
+lock Tag array tags = [
+    new Tag { name = "run", speed = 1.25, frames = [2], events = ["footstep"] },
+];
+end

@@ -17,6 +17,7 @@ Example files of every version of every file format Solis has ever released (Pha
 | `languages/` | The project's languages (`languages.lst`, Lust, stage 1) | v1 |
 | `tags/` | The project's tags (`tags.lst`, Lust, stage 1) | v1 |
 | `frames/` | A sprite's clips (`.solframes`) | v1 |
+| `clips/` | A picture's clips, as Lust (`.clips.lst`, Fixes 3; what `.solframes` becomes, so it starts at version 2) | v2 (`knight.clips.lst`: a grid, a cell drawn by hand, two looks, clips of eight, four and one direction) |
 | `animator/` | An animator (`.solanim`) | v1 |
 | `tileset/` | A tileset (`.soltileset`, then `.tileset.lst`) | v1, v2 (its art: picture, kinds, pieces, rules), v3 (solid terrains), v4 (as Lust, `farm.tileset.lst`) |
 | `tilemap/` | A tile map (`.soltilemap`, then `.tilemap.lst`) | v1, v2 (exact tiles), v3 (as Lust, `farm.tilemap.lst`) |

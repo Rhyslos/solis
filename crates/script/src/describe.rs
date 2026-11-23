@@ -1372,6 +1372,7 @@ fn descriptions_with(
 pub const DATA_CLASSES: &[(&str, &str)] = &[
     (tiles::map_lust::KIND, tiles::map_lust::CLASSES),
     (animation::atlas::KIND, animation::atlas::CLASSES),
+    (animation::clips_file::KIND, animation::clips_file::CLASSES),
     (tiles::tileset::KIND, tiles::tileset::CLASSES),
     (level::module_file::KIND, level::module_file::CLASSES),
     (level::tags::KIND, level::tags::CLASSES),

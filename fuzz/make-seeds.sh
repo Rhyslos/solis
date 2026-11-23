@@ -81,6 +81,8 @@ wav('stereo_float', 44100, 2, 32, fmt=3)
 PY
 mkdir -p "$seeds/frames"
 cp tests/fixtures/frames/v1/walker.solframes "$seeds/frames/"
+mkdir -p "$seeds/clips_file"
+cp tests/fixtures/clips/v2/knight.clips.lst "$seeds/clips_file/"
 mkdir -p "$seeds/animator"
 cp tests/fixtures/animator/v1/farmer.solanim "$seeds/animator/"
 mkdir -p "$seeds/atlas"

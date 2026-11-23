@@ -25,6 +25,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `pixels` | The project's 2D settings (`pixels.solpix`); settings read are within the limits and write back to themselves |
 | `frames` | A sprite's clips file (`.solframes`); clips read are within the limits, write back to themselves, and play without panicking |
 | `animator` | An animator file (`.solanim`); an animator read is within the limits, writes back to itself, and runs without panicking whatever game code sets |
+| `clips_file` | A clips file (`.clips.lst`, Fixes 3): what's read is within the limits, each clip's name good and used once, each row a direction the clip has, and writes back to itself |
 | `atlas` | An atlas file (`.atlas.lst`, Atlas Crop); crops read are within the limits, each name good and used once, and write back to themselves |
 | `text_file` | A text file shown in Properties: any bytes become Markdown blocks and inline runs, never a panic |
 | `font_file` | A project's own font (`.ttf`, `.otf`; stage 1's text layout); a font read lays text out (wrapped, cut, falling back to Inter) and draws its letters, every box finite |
