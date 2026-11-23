@@ -81,20 +81,22 @@ struct Kind {
 
 fn kinds() -> Vec<Kind> {
     let clips = |name: &str| {
-        OwnFile::Frames(Arc::new(animation::FramesFile {
-            clips: vec![animation::frames_file::OwnClip {
-                name: name.into(),
-                speed: 1.0,
-                direction: animation::Direction::Forward,
-                repeats: 0,
-                frames: vec![animation::ClipFrame {
-                    frame: 0,
-                    ms: 100,
-                    events: Vec::new(),
+        OwnFile::Frames(Arc::new(animation::ClipsFile::from_frames(
+            &animation::frames_file::FramesFile {
+                clips: vec![animation::frames_file::OwnClip {
+                    name: name.into(),
+                    speed: 1.0,
+                    direction: animation::Direction::Forward,
+                    repeats: 0,
+                    frames: vec![animation::ClipFrame {
+                        frame: 0,
+                        ms: 100,
+                        events: Vec::new(),
+                    }],
                 }],
-            }],
-            ..animation::FramesFile::default()
-        }))
+                ..animation::frames_file::FramesFile::default()
+            },
+        )))
     };
     let id = reflect::Id::from_raw(7).unwrap();
     let animator = |name: &str| {
@@ -149,7 +151,7 @@ fn kinds() -> Vec<Kind> {
     };
     vec![
         Kind {
-            file: "hero.solframes",
+            file: "hero.clips.lst",
             versions: [clips("a"), clips("bb"), clips("ccc")],
         },
         Kind {
@@ -182,7 +184,7 @@ fn kinds() -> Vec<Kind> {
 /// `file` as the text Solis writes for it.
 fn text(file: &OwnFile) -> String {
     match file {
-        OwnFile::Frames(file) => animation::frames_file::write(file),
+        OwnFile::Frames(file) => animation::clips_file::write(file, "walker.aseprite"),
         OwnFile::Animator(file) => animation::animator_file::write(file),
         OwnFile::Tileset(file) => tiles::tileset::write(file),
         OwnFile::Atlas(file) => animation::atlas::write(file),

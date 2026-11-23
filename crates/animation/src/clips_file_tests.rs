@@ -179,6 +179,8 @@ fn a_newer_or_broken_file_is_refused_and_names_are_checked() {
     assert!(read(&newer).unwrap_err().to_string().contains("newer"));
     assert!(read("not lust").is_err());
     assert!(read(&"-".repeat(MAX_BYTES + 1)).is_err());
-    assert!(good_name("walk") && good_name("walk-ne") && !good_name("9walk") && !good_name(""));
+    assert!(good_name("walk") && good_name("walk left") && good_name("9walk"));
+    assert!(!good_name("") && !good_name(" walk") && !good_name("a\tb"));
+    assert!(!good_name(&"w".repeat(MAX_NAME + 1)));
     assert_eq!(file_for("sprites/knight.png"), "sprites/knight.clips.lst");
 }

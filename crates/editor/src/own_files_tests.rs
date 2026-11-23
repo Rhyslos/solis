@@ -14,7 +14,7 @@ use crate::panel::Panel;
 use crate::test_support::*;
 use crate::tileset_editor::TilesetEditor;
 
-const CLIPS: &str = "hero.solframes";
+const CLIPS: &str = "hero.clips.lst";
 const ANIMATOR: &str = "hero.solanim";
 const TILESET: &str = "farm.tileset.lst";
 const ATLAS: &str = "hero.atlas.lst";
@@ -81,13 +81,15 @@ impl Kind {
             Kind::Clips => {
                 let editor = w.open.frames_editor.as_mut().unwrap();
                 assert!(editor.change(|f| {
-                    f.clips.push(animation::frames_file::OwnClip {
-                        name: format!("clip {}", f.clips.len()),
-                        speed: 1.0,
-                        direction: animation::Direction::Forward,
-                        repeats: 0,
-                        frames: Vec::new(),
-                    });
+                    f.clips.push(animation::clips_file::Clip::from_own(
+                        &animation::frames_file::OwnClip {
+                            name: format!("clip {}", f.clips.len()),
+                            speed: 1.0,
+                            direction: animation::Direction::Forward,
+                            repeats: 0,
+                            frames: Vec::new(),
+                        },
+                    ));
                 }));
                 w.save_frames();
             }

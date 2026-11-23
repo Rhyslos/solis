@@ -122,7 +122,6 @@ pub const GITATTRIBUTES: &str = "\
 *.solinput text eol=lf
 *.solrec text eol=lf
 *.solpix text eol=lf
-*.solframes text eol=lf
 *.solanim text eol=lf
 *.soltileset text eol=lf
 *.soltilemap text eol=lf

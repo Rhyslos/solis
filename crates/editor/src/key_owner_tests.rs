@@ -19,7 +19,7 @@ use std::sync::Arc;
 const SET: &str = "maps/town.tileset.lst";
 const MAP: &str = "maps/town.tilemap.lst";
 const SHEET: &str = "walker.aseprite";
-const CLIPS: &str = "walker.solframes";
+const CLIPS: &str = "walker.clips.lst";
 const ANIMATOR: &str = "farmer.solanim";
 const PICTURE: &str = "sprites/tools.png";
 const SCREEN: &str = "ui/pauseMenu.lst";
@@ -52,11 +52,11 @@ fn farm() -> (Workbench, AssetId) {
         item(ANIMATOR, LibraryKind::Animator, animator),
         item(PICTURE, LibraryKind::Texture, picture),
     ]);
-    let wave = animation::FramesFile {
+    let wave = animation::ClipsFile::from_frames(&animation::frames_file::FramesFile {
         sheet: Some(sheet),
         first: "wave".into(),
         tags: Vec::new(),
-        clips: vec![animation::OwnClip {
+        clips: vec![animation::frames_file::OwnClip {
             name: "wave".into(),
             speed: 1.0,
             direction: animation::Direction::Forward,
@@ -69,7 +69,7 @@ fn farm() -> (Workbench, AssetId) {
                 })
                 .collect(),
         }],
-    };
+    });
     let idle = animation::State {
         id: reflect::Id::random(),
         name: "Idle".into(),

@@ -58,7 +58,7 @@ fn farmer(sheet: AssetId) -> AnimatorFile {
 }
 
 /// A workbench with a project holding the test sheet (`walker.aseprite`),
-/// a clips file with the clip "wave" (`walker.solframes`) and
+/// a clips file with the clip "wave" (`walker.clips.lst`) and
 /// `farmer.solanim`.
 pub(crate) fn with_animator() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info());
@@ -77,14 +77,14 @@ pub(crate) fn with_animator() -> (Workbench, AssetId, AssetId) {
     };
     w.set_library(vec![
         item("walker.aseprite", LibraryKind::SpriteSheet, sheet),
-        item("walker.solframes", LibraryKind::SpriteClips, clips),
+        item("walker.clips.lst", LibraryKind::SpriteClips, clips),
         item("farmer.solanim", LibraryKind::Animator, anim),
     ]);
-    let frames = animation::FramesFile {
+    let frames = animation::ClipsFile::from_frames(&animation::frames_file::FramesFile {
         sheet: Some(sheet),
         first: "wave".into(),
         tags: Vec::new(),
-        clips: vec![animation::OwnClip {
+        clips: vec![animation::frames_file::OwnClip {
             name: "wave".into(),
             speed: 1.0,
             direction: animation::Direction::Forward,
@@ -97,14 +97,14 @@ pub(crate) fn with_animator() -> (Workbench, AssetId, AssetId) {
                 })
                 .collect(),
         }],
-    };
+    });
     let mut sheets = SpriteSheets::default();
     sheets.by_path.insert(
         "walker.aseprite".into(),
         SheetState::Read(Arc::new(crate::sprite_sheets::tests::test_sheet())),
     );
     sheets.frames.insert(
-        "walker.solframes".into(),
+        "walker.clips.lst".into(),
         FramesState::Read(Arc::new(frames), Vec::new()),
     );
     sheets.animators.insert(
@@ -112,7 +112,7 @@ pub(crate) fn with_animator() -> (Workbench, AssetId, AssetId) {
         AnimatorState::Read(Arc::new(farmer(clips)), Vec::new()),
     );
     sheets.paths.insert(sheet, "walker.aseprite".into());
-    sheets.paths.insert(clips, "walker.solframes".into());
+    sheets.paths.insert(clips, "walker.clips.lst".into());
     sheets.paths.insert(anim, "farmer.solanim".into());
     w.set_sprite_sheets(sheets);
     (w, clips, anim)

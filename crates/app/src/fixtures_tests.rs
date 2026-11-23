@@ -79,8 +79,8 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 Err(format!("notes: {:?}", read.notes))
             }
         }),
-        ("frames", &animation::frames_file::FORMAT, |text| {
-            let read = animation::frames_file::read(text).map_err(|e| e.to_string())?;
+        ("clips", &animation::clips_file::FORMAT, |text| {
+            let read = animation::clips_file::read(text).map_err(|e| e.to_string())?;
             if read.notes.is_empty() {
                 Ok(())
             } else {
@@ -162,6 +162,7 @@ fn files_in(folder: &Path) -> Vec<PathBuf> {
 fn folder_for(folder: &'static str, version: u32) -> &'static str {
     match (folder, version) {
         ("module", 1) => "prefab",
+        ("clips", 1) => "frames",
         _ => folder,
     }
 }

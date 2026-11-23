@@ -143,7 +143,7 @@ fn only_pictures_text_and_lust_may_open_in_another_program() {
         (K::Sound, "step.wav"),
         (K::SoundEvent, "steps.solsound"),
         (K::SpriteSheet, "hero.aseprite"),
-        (K::SpriteClips, "hero.solframes"),
+        (K::SpriteClips, "hero.clips.lst"),
         (K::Animator, "hero.solanim"),
         (K::Tileset, "grass.tileset.lst"),
         (K::TileMap, "farm.tilemap.lst"),

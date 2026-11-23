@@ -112,14 +112,14 @@ pub fn read_sheet(path: &Path) -> SheetState {
     }
 }
 
-/// Reads a clips file (`.solframes`).
+/// Reads a clips file (`.clips.lst`).
 pub fn read_frames(path: &Path) -> FramesState {
-    let bytes = match asset_db::read_limited(path, animation::frames_file::MAX_BYTES as u64) {
+    let bytes = match asset_db::read_limited(path, animation::clips_file::MAX_BYTES as u64) {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::FileTooLarge => {
             return FramesState::Failed(format!(
                 "it's bigger than {} KB, too big for a clips file",
-                animation::frames_file::MAX_BYTES >> 10
+                animation::clips_file::MAX_BYTES >> 10
             ));
         }
         Err(e) => return FramesState::Failed(format!("it couldn't be read ({e})")),
@@ -127,7 +127,7 @@ pub fn read_frames(path: &Path) -> FramesState {
     let Ok(text) = String::from_utf8(bytes) else {
         return FramesState::Failed("it isn't text".to_owned());
     };
-    match animation::frames_file::read(&text) {
+    match animation::clips_file::read(&text) {
         Ok(read) => FramesState::Read(Arc::new(read.file), read.notes),
         Err(why) => FramesState::Failed(why.to_string()),
     }

@@ -35,8 +35,8 @@ use std::sync::Arc;
 /// the file once it's saved.
 #[derive(Debug, Clone, PartialEq)]
 pub enum OwnFile {
-    /// A sprite's clips file (`.solframes`).
-    Frames(Arc<animation::FramesFile>),
+    /// A sprite's clips file (`.clips.lst`).
+    Frames(Arc<animation::ClipsFile>),
     /// An animator file (`.solanim`).
     Animator(Arc<animation::AnimatorFile>),
     /// A tileset (`.tileset.lst`).

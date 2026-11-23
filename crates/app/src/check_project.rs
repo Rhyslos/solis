@@ -169,14 +169,14 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             },
             animation::animator_file::MAX_BYTES as u64,
         ),
-        "solframes" => (
-            &animation::frames_file::FORMAT,
+        "clips" => (
+            &animation::clips_file::FORMAT,
             |text| {
-                animation::frames_file::read(text)
+                animation::clips_file::read(text)
                     .map(drop)
                     .map_err(|e| e.to_string())
             },
-            animation::frames_file::MAX_BYTES as u64,
+            animation::clips_file::MAX_BYTES as u64,
         ),
         "module" | "solassembly" => (
             &level::module_file::FORMAT,

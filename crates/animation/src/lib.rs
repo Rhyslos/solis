@@ -7,10 +7,13 @@
 //!   two times ([`Clip::events_between`]) are plain sums, the same on every
 //!   PC, so the running game can step clips once per tick and replays and
 //!   saves agree.
-//! - [`frames_file`]: a sprite's clips file (`.solframes`): which sheet it
-//!   plays, and what Solis adds to the sheet's Aseprite tags (speed,
-//!   events, the clip played first) plus clips made in Solis from any of
-//!   the sheet's frames.
+//! - [`clips_file`]: a picture's clips file (`.clips.lst`, Lust): its
+//!   looks (the first is the sheet it plays), what Solis adds to an
+//!   Aseprite sheet's tags (speed, events), the clip played first, and
+//!   clips made in Solis from the sheet's cells, with one, four or eight
+//!   directions.
+//! - [`frames_file`]: the clips file before version 2 (`.solframes`),
+//!   still read and turned into a [`ClipsFile`].
 //! - [`clip_set`]: a sheet's tags and its clips file put together into the
 //!   clips a sprite can play ([`ClipSet`]).
 //! - [`animator_file`]: an animator (`.solanim`, D3b): a state machine of
@@ -36,4 +39,4 @@ pub use animator_file::{
 };
 pub use clip::{Clip, ClipFrame, Direction, Moment};
 pub use clip_set::ClipSet;
-pub use frames_file::{FramesFile, OwnClip, TagChange};
+pub use clips_file::{ClipsFile, TagChange};

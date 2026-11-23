@@ -47,13 +47,10 @@ fn sheet() -> SpriteSheet {
 
 fn editor() -> (FramesEditor, SpriteSheet) {
     let sheet = sheet();
-    let file = FramesFile {
-        sheet: Some(AssetId::random()),
-        ..FramesFile::default()
-    };
+    let file = ClipsFile::for_sheet(AssetId::random());
     let clips = ClipSet::of_sheet(&sheet, Some(&file));
     (
-        FramesEditor::new("sprites/walker.solframes".into(), file, &clips),
+        FramesEditor::new("sprites/walker.clips.lst".into(), file, &clips),
         sheet,
     )
 }
@@ -89,9 +86,9 @@ fn clips_are_made_copied_renamed_played_first_and_taken_away() {
     assert!(e.copy_clip(&clips));
     assert_eq!(e.clip, "walk copy");
     let copy = &e.file.clips[0];
-    assert_eq!(copy.frames.len(), 4);
-    assert_eq!(copy.direction, Direction::PingPong);
-    assert_eq!(copy.frames[2].events, ["step"], "one event a frame");
+    assert_eq!(copy.frames().len(), 4);
+    assert_eq!(copy.playback, Direction::PingPong);
+    assert_eq!(copy.frames()[2].events, ["step"], "one event a frame");
     let clips = e.clips(&sheet);
     assert!(e.new_clip(&clips, Vec::new()));
     assert_eq!(e.clip, "clip");
@@ -119,14 +116,15 @@ fn frames_of_a_clip_made_here_are_added_timed_moved_and_taken_out() {
     let clips = e.clips(&sheet);
     e.new_clip(&clips, Vec::new());
     assert!(e.add_frames(&sheet, &[0, 1, 2, 99]));
-    let frames =
-        |e: &FramesEditor| -> Vec<u32> { e.file.clips[0].frames.iter().map(|f| f.frame).collect() };
+    let frames = |e: &FramesEditor| -> Vec<u32> {
+        e.file.clips[0].frames().iter().map(|f| f.frame).collect()
+    };
     assert_eq!(
         frames(&e),
         [0, 1, 2],
         "a frame the sheet hasn't is left out"
     );
-    assert_eq!(e.file.clips[0].frames[1].ms, 110, "Aseprite's time");
+    assert_eq!(e.file.clips[0].frames()[1].ms, 110, "Aseprite's time");
     assert_eq!(e.selected, [0, 1, 2]);
     // Added after the last picked frame.
     e.pick(0, false, false);
@@ -150,18 +148,18 @@ fn frames_of_a_clip_made_here_are_added_timed_moved_and_taken_out() {
     assert!(e.set_event(&clips, "swing"));
     let c = &e.file.clips[0];
     assert_eq!(
-        (c.frames[0].ms, c.frames[3].ms, c.frames[1].ms),
+        (c.frames()[0].ms, c.frames()[3].ms, c.frames()[1].ms),
         (250, 250, 110)
     );
-    assert_eq!(c.frames[3].events, ["swing"]);
+    assert_eq!(c.frames()[3].events, ["swing"]);
     assert!(e.set_ms(0), "made 1 ms");
-    assert_eq!(e.file.clips[0].frames[0].ms, 1);
+    assert_eq!(e.file.clips[0].frames()[0].ms, 1);
     assert!(e.delete_frames());
     assert_eq!(frames(&e), [1, 0]);
     // Direction and repeats.
     assert!(e.set_direction(Direction::Reverse));
     assert!(e.set_repeats(3));
-    assert_eq!(e.file.clips[0].repeats, 3);
+    assert_eq!(e.file.clips[0].plays, 3);
 }
 
 #[test]
@@ -184,20 +182,20 @@ fn undo_and_redo_step_through_the_changes() {
     e.add_frames(&sheet, &[0, 1]);
     assert_eq!(e.can_undo_redo(), (true, false));
     assert!(e.undo());
-    assert!(e.file.clips[0].frames.is_empty());
+    assert!(e.file.clips[0].frames().is_empty());
     assert!(e.undo());
     assert!(e.file.clips.is_empty());
     assert!(!e.undo());
     assert!(e.redo());
     assert!(e.redo());
-    assert_eq!(e.file.clips[0].frames.len(), 2);
+    assert_eq!(e.file.clips[0].frames().len(), 2);
     assert!(!e.redo());
     // A new change forgets what could be redone.
     e.undo();
     e.set_repeats(2);
     assert!(!e.can_undo_redo().1);
     // The file as text reads back as it is.
-    let back = frames_file::read(&e.text()).unwrap().file;
+    let back = animation::clips_file::read(&e.text()).unwrap().file;
     assert_eq!(back, e.file);
 }
 

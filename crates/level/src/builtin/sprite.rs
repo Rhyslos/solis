@@ -13,7 +13,7 @@ use super::field;
 /// frames playing (Phase 9, D3).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sprite {
-    /// The sprite sheet (an Aseprite file), or a clips file (`.solframes`)
+    /// The sprite sheet (an Aseprite file), or a clips file (`.clips.lst`)
     /// naming one; `None` draws nothing.
     pub sheet: Option<AssetRef>,
     /// The clip it plays, by name ("walk"); empty for the clips file's

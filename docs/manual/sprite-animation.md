@@ -5,14 +5,14 @@
 ## When to use it
 For anything in a 2D game that moves frame by frame: a farmer walking, a hoe swinging, crops swaying, a door opening. A [clip](concepts.md#2d) is a run of a [sprite sheet](concepts.md#2d)'s frames, each shown for its own time, played forward, backward or there and back (ping-pong), over and over or a number of times.
 
-The quickest way is Aseprite's own: **tag** runs of frames there (*walk*, *idle*, *hoe*) and every tag is a clip in Solis, with Aseprite's frame times. To change a clip's speed, give frames events (a footstep on the frame a foot lands), or make clips Aseprite doesn't have, Solis keeps a small **clips file** (`.solframes`) beside the Aseprite file. A sprite can play either.
+The quickest way is Aseprite's own: **tag** runs of frames there (*walk*, *idle*, *hoe*) and every tag is a clip in Solis, with Aseprite's frame times. To change a clip's speed, give frames events (a footstep on the frame a foot lands), or make clips Aseprite doesn't have, Solis keeps a small **clips file** (`.clips.lst`) beside the Aseprite file. A sprite can play either.
 
 To choose clips by what's happening (walking when moving, idle when not, facing the right way), use an [animator](animators.md).
 
 ## How to use it
 1. **Tag your frames in Aseprite** and save. In Solis, click the file in the Library: Properties lists its tags.
 2. **Play a clip on a sprite:** select a sprite and pick a **Clip** in its Sprite component. Press **Play**: it plays at its frame times. To see it move while you edit, open the viewport's **≡** menu and tick **Preview animation**.
-3. **Open the clips:** in the Aseprite file's Properties, press **Edit clips…**. Solis makes `walker.solframes` beside `walker.aseprite` (or opens the one there) and opens two tabs:
+3. **Open the clips:** in the Aseprite file's Properties, press **Edit clips…**. Solis makes `walker.clips.lst` beside `walker.aseprite` (or opens the one there) and opens two tabs:
    - **Frames**, the timeline: a tab of the bottom panel on the **Animate** tab (the clips file opens there; an × after the Frames or Clip tab closes the file). In the left slot, **Clips**: every clip, with how long it is and where it comes from (*Aseprite* or *made here*). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The line in the accent colour is where it's playing; the lane below shows its events.
    - **Clip**, the next tab of the bottom panel: the chosen clip's **Speed**, **Direction**, how many times it **Plays**, and **Plays first**. A clip's settings have a tab of their own so the frames keep the panel's whole width.
 
@@ -172,7 +172,7 @@ The Sprite component's clip settings:
 
 | Setting | What it does |
 |---|---|
-| Sheet | An Aseprite file (its tags are its clips) or a clips file (`.solframes`). |
+| Sheet | An Aseprite file (its tags are its clips) or a clips file (`.clips.lst`). |
 | Clip | The clip it plays. Empty: the clips file's clip marked **Plays first**, or with none, the still **Frame**. |
 | Playing | Whether the clip moves on while the game runs. Game code's `animate` and `stopAnimation` turn it on and off. |
 | Speed | 1 as drawn, 2 twice as fast, 0 stopped. Multiplies the clip's own speed. |

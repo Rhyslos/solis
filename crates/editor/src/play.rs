@@ -617,9 +617,7 @@ fn cues_of(
             world::SpriteCue::Finished(id, clip) => {
                 let sheet = world.sprite_sheet(id).and_then(|s| paths.get(&s));
                 let option = sheet.and_then(|path| {
-                    let stem = path
-                        .rsplit_once('.')
-                        .map_or(path.as_str(), |(stem, _)| stem);
+                    let stem = reflect::data_files::path_stem(path);
                     script::project_names::option_of(&format!("{stem}/{clip}"))
                 });
                 (id, "ClipFinished", option)

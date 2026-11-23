@@ -24,10 +24,10 @@ pub(crate) fn frames_ui<'a>(
     pictures: &'a HashMap<String, egui::TextureHandle>,
     cue_sounds: &'a HashMap<String, String>,
 ) -> FramesUi<'a> {
-    let sheet = editor.file.sheet.and_then(|id| sheets.get(id));
+    let sheet = editor.file.sheet().and_then(|id| sheets.get(id));
     let atlas = editor
         .file
-        .sheet
+        .sheet()
         .and_then(|id| sheets.paths.get(&id))
         .and_then(|path| pictures.get(path));
     let notes = match sheets.frames.get(&editor.path) {
@@ -108,11 +108,16 @@ impl Workbench {
             .is_none_or(|e| e.path != path)
         {
             let clips = file
-                .sheet
+                .sheet()
                 .and_then(|id| sheets.get(id))
                 .map(|sheet| animation::ClipSet::of_sheet(sheet, Some(&file)))
                 .unwrap_or_default();
-            self.open.frames_editor = Some(FramesEditor::new(path.to_owned(), file, &clips));
+            let picture = file.sheet().and_then(|id| sheets.paths.get(&id)).cloned();
+            let mut editor = FramesEditor::new(path.to_owned(), file, &clips);
+            if let Some(picture) = picture {
+                editor.picture = picture.rsplit('/').next().unwrap_or_default().to_owned();
+            }
+            self.open.frames_editor = Some(editor);
         }
         self.show_panel(Panel::Frames);
     }
@@ -120,19 +125,14 @@ impl Workbench {
     /// Makes a clips file beside the Aseprite file at `sheet_path` (or
     /// opens the one already there) for the sheet `sheet`.
     pub(crate) fn make_clips_file(&mut self, sheet_path: &str, sheet: reflect::AssetId) {
-        let stem = sheet_path
-            .rsplit_once('.')
-            .map_or(sheet_path, |(stem, _)| stem);
-        let path = format!("{stem}.{}", animation::frames_file::EXTENSION);
+        let path = animation::clips_file::file_for(sheet_path);
         if self.viewport.sheets.frames.contains_key(&path) {
             self.open_frames(&path);
             return;
         }
-        let file = animation::FramesFile {
-            sheet: Some(sheet),
-            ..animation::FramesFile::default()
-        };
-        let text = animation::frames_file::write(&file);
+        let file = animation::ClipsFile::for_sheet(sheet);
+        let picture = sheet_path.rsplit('/').next().unwrap_or_default();
+        let text = animation::clips_file::write(&file, picture);
         self.save_file(&path, OwnFile::Frames(Arc::new(file)), text);
         self.open_frames(&path);
     }
@@ -154,7 +154,7 @@ impl Workbench {
         let sheets = &self.viewport.sheets;
         let clip = editor
             .file
-            .sheet
+            .sheet()
             .and_then(|id| sheets.get(id))
             .and_then(|sheet| editor.clips(sheet).get(&editor.clip).cloned());
         match clip {

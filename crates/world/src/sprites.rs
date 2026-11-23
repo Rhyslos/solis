@@ -15,7 +15,7 @@ use reflect::{AssetId, EntityId};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// The clips each sheet (an Aseprite file) or clips file (`.solframes`)
+/// The clips each sheet (an Aseprite file) or clips file (`.clips.lst`)
 /// offers, by its asset ID.
 pub type ClipSets = HashMap<AssetId, Arc<ClipSet>>;
 

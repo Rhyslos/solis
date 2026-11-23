@@ -27,7 +27,7 @@ pub enum LibraryKind {
     SoundEvent,
     /// An Aseprite file: a sprite sheet (Phase 9, D2).
     SpriteSheet,
-    /// A sprite's clips file (`.solframes`, Phase 9, D3).
+    /// A sprite's clips file (`.clips.lst`, Phase 9, D3, then Fixes 3).
     SpriteClips,
     /// An animator (`.solanim`, Phase 9, D3b).
     Animator,

@@ -31,10 +31,10 @@ pub enum Panel {
     /// The project's buses: a fader, meter, mute and solo each (Phase 7).
     Mixer,
     /// The clips of the clips file open (Phase 9, D3): beside Properties
-    /// while a `.solframes` file is open, and gone when it's closed.
+    /// while a `.clips.lst` file is open, and gone when it's closed.
     Clips,
     /// The chosen clip's frames along a time ruler (Phase 9, D3): at the
-    /// bottom while a `.solframes` file is open.
+    /// bottom while a `.clips.lst` file is open.
     Frames,
     /// The animator file open (Phase 9, D3b): its graph of states and
     /// transitions, beside the viewport while a `.solanim` file is open.

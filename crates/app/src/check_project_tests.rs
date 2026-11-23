@@ -299,7 +299,7 @@ fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
         ("ground.tileset.lst", "nor a tileset"),
         ("tools.atlas.lst", "nor crops"),
         ("farmer.solanim", "nor an animator"),
-        ("farmer.solframes", "nor clips"),
+        ("farmer.clips.lst", "nor clips"),
         ("old.soltilemap", "nor an old map"),
     ] {
         std::fs::write(root.join(name), text).unwrap();
@@ -311,7 +311,7 @@ fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
         "ground.tileset.lst",
         "tools.atlas.lst",
         "farmer.solanim",
-        "farmer.solframes",
+        "farmer.clips.lst",
         "old.soltilemap",
     ] {
         assert!(text.contains(&format!("FAIL  {name}")), "{name}: {text}");

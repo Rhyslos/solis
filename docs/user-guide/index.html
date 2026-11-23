@@ -548,7 +548,7 @@ footer p { color: var(--muted); }
 <li><a href="#launcher"><span class="num">17</span>The launcher</a><ol><li><a href="#launcher--when-to-use-it">When to use it</a></li><li><a href="#launcher--how-to-use-it">How to use it</a></li><li><a href="#launcher--new-project">New project</a></li><li><a href="#launcher--learn-and-updates">Learn and Updates</a></li><li><a href="#launcher--opening-a-project-from-the-command-line">Opening a project from the command line</a></li><li><a href="#launcher--settings">Settings</a></li><li><a href="#launcher--the-build-each-project-was-last-opened-with">The build each project was last opened with</a></li><li><a href="#launcher--shortcuts">Shortcuts</a></li><li><a href="#launcher--tips-and-common-problems">Tips and common problems</a></li><li><a href="#launcher--related">Related</a></li></ol></li>
 <li><a href="#projects-and-the-library"><span class="num">18</span>Projects and the Library</a><ol><li><a href="#projects-and-the-library--when-to-use-it">When to use it</a></li><li><a href="#projects-and-the-library--how-to-use-it">How to use it</a></li><li><a href="#projects-and-the-library--settings">Settings</a></li><li><a href="#projects-and-the-library--tips-and-common-problems">Tips and common problems</a></li><li><a href="#projects-and-the-library--related">Related</a></li></ol></li>
 <li><a href="#backups-and-upgrades"><span class="num">19</span>Backups and upgrades</a><ol><li><a href="#backups-and-upgrades--when-to-use-it">When to use it</a></li><li><a href="#backups-and-upgrades--how-it-works">How it works</a></li><li><a href="#backups-and-upgrades--settings">Settings</a></li><li><a href="#backups-and-upgrades--tips-and-common-problems">Tips and common problems</a></li><li><a href="#backups-and-upgrades--related">Related</a></li></ol></li>
-<li><a href="#solis-files"><span class="num">20</span>Solis's files</a><ol><li><a href="#solis-files--when-to-use-it">When to use it</a></li><li><a href="#solis-files--how-to-use-it">How to use it</a></li><li><a href="#solis-files--ids">IDs</a></li><li><a href="#solis-files--sidecars">Sidecars</a></li><li><a href="#solis-files--aseprite-files">Aseprite files</a></li><li><a href="#solis-files--levels">Levels</a></li><li><a href="#solis-files--modules">Modules</a></li><li><a href="#solis-files--tilesets">Tilesets</a></li><li><a href="#solis-files--tile-maps">Tile maps</a></li><li><a href="#solis-files--the-2d-components">The 2D components</a></li><li><a href="#solis-files--versions">Versions</a></li><li><a href="#solis-files--tips-and-common-problems">Tips and common problems</a></li><li><a href="#solis-files--related">Related</a></li></ol></li>
+<li><a href="#solis-files"><span class="num">20</span>Solis's files</a><ol><li><a href="#solis-files--when-to-use-it">When to use it</a></li><li><a href="#solis-files--how-to-use-it">How to use it</a></li><li><a href="#solis-files--ids">IDs</a></li><li><a href="#solis-files--sidecars">Sidecars</a></li><li><a href="#solis-files--aseprite-files">Aseprite files</a></li><li><a href="#solis-files--levels">Levels</a></li><li><a href="#solis-files--modules">Modules</a></li><li><a href="#solis-files--tilesets">Tilesets</a></li><li><a href="#solis-files--clips-files">Clips files</a></li><li><a href="#solis-files--tile-maps">Tile maps</a></li><li><a href="#solis-files--the-2d-components">The 2D components</a></li><li><a href="#solis-files--versions">Versions</a></li><li><a href="#solis-files--tips-and-common-problems">Tips and common problems</a></li><li><a href="#solis-files--related">Related</a></li></ol></li>
 <li><a href="#checking-a-project"><span class="num">21</span>Checking a project before updating</a><ol><li><a href="#checking-a-project--when-to-use-it">When to use it</a></li><li><a href="#checking-a-project--how-to-use-it">How to use it</a></li><li><a href="#checking-a-project--what-it-checks">What it checks</a></li><li><a href="#checking-a-project--tips-and-common-problems">Tips and common problems</a></li><li><a href="#checking-a-project--related">Related</a></li></ol></li>
 <li><a href="#playing-from-the-command-line"><span class="num">22</span>Playing a game from the command line</a><ol><li><a href="#playing-from-the-command-line--when-to-use-it">When to use it</a></li><li><a href="#playing-from-the-command-line--how-to-use-it">How to use it</a></li><li><a href="#playing-from-the-command-line--the-script">The script</a></li><li><a href="#playing-from-the-command-line--what-it-prints">What it prints</a></li><li><a href="#playing-from-the-command-line--tips-and-common-problems">Tips and common problems</a></li><li><a href="#playing-from-the-command-line--related">Related</a></li></ol></li>
 <li><a href="#importing-models"><span class="num">23</span>Importing models</a><ol><li><a href="#importing-models--when-to-use-it">When to use it</a></li><li><a href="#importing-models--how-to-use-it">How to use it</a></li><li><a href="#importing-models--settings">Settings</a></li><li><a href="#importing-models--tips-and-common-problems">Tips and common problems</a></li><li><a href="#importing-models--related">Related</a></li></ol></li>
@@ -1432,7 +1432,7 @@ footer p { color: var(--muted); }
 <li><strong>Pivot:</strong> the point a sprite stands on: it sits on its entity's place, so the sprite turns and flips round it. Usually between the feet.</li>
 <li><strong>Atlas:</strong> one big picture with many frames packed into it, so the graphics card draws a sheet's sprites all at once instead of one at a time.</li>
 <li><strong>Clip:</strong> a run of a sprite sheet's frames played as an animation (<em>walk</em>, <em>hoe</em>), each frame shown for its own time, forward, backward or ping-pong (there and back), over and over or a number of times. Aseprite's tags are clips; you can make more in Solis. See <a href="#sprite-animation">Animating sprites</a>.</li>
-<li><strong>Clips file:</strong> a <code>.solframes</code> file beside an Aseprite file, holding what Solis adds to its clips (speed, events) and clips made in Solis. Open it to edit its clips in the <strong>Clips</strong> and <strong>Frames</strong> tabs.</li>
+<li><strong>Clips file:</strong> a <code>.clips.lst</code> file beside an Aseprite file, holding what Solis adds to its clips (speed, events) and clips made in Solis. Open it to edit its clips in the <strong>Clips</strong> and <strong>Frames</strong> tabs.</li>
 <li><strong>Animator:</strong> a <code>.solanim</code> file that chooses which clip a sprite plays, from states, transitions and parameters, edited in the <strong>Animator</strong> tab; an <strong>Animator</strong> component puts one on an entity. See <a href="#animators">Animators</a>.</li>
 <li><strong>State:</strong> one thing an animated sprite can be doing (<em>Idle</em>, <em>Walk</em>), drawn as a box: it plays a clip, or a clip for each facing direction.</li>
 <li><strong>Transition:</strong> an arrow from one state to another (or from <em>Any state</em>), taken when all its conditions hold.</li>
@@ -3288,6 +3288,29 @@ end</code></pre>
 <li><strong>A rule</strong> (for a <code>rules</code> terrain) is a <code>pattern</code> of rows around a cell and the <code>slot</code> it shows, tried in order: <code>?</code> anything, <code>=</code> the same terrain, <code>!</code> not the same, <code>_</code> nothing, or a terrain's code.</li>
 </ul>
 </section>
+<section id="solis-files--clips-files">
+<h3>Clips files<a class="anchor" href="#solis-files--clips-files" aria-label="Link to this section">#</a></h3>
+<p>A clips file is a <code>.clips.lst</code> file beside its picture or Aseprite file (<code>knight.clips.lst</code> beside <code>knight.png</code>): what a sprite can play (<a href="#sprite-animation">Animating sprites</a>). Its first look is the sheet it plays; an Aseprite file's frames are its cells (from 0), and its tags are clips already, so the file only adds to them (<code>tags</code>). Clips made in Solis are <code>clips</code>, each with a row of cells for each of its directions (<code>rows</code>).</p>
+<pre data-lang="text"><code>-- Clips of walker.aseprite. Written by Solis; safe to edit by hand.
+fetch &quot;solis/data/clips&quot;:[Sheet, Cell, LookPicture, ClipSettings, ClipRow, TagChange, Facing, Playback];
+
+lock int version = 2;
+lock Sheet sheet = new Sheet { cell = [16, 16], between = [0, 0], edge = [0, 0], first = &quot;hoe&quot; };
+lock Cell array cells = [];
+lock LookPicture array looks = [
+    new LookPicture { name = &quot;Main&quot;, picture = &quot;1BWHNR3RV8PYY&quot; },
+];
+lock ClipSettings array clips = [
+    new ClipSettings { name = &quot;hoe&quot;, speed = 1.0, playback = Playback.Forward, plays = 1, directions = 1, sameFrames = true, mirror = false, times = [50, 200], events = [&quot;&quot;, &quot;swing&quot;] },
+];
+lock ClipRow array rows = [
+    new ClipRow { clip = &quot;hoe&quot;, facing = Facing.Any, cells = [4, 1], times = [], events = [] },
+];
+lock TagChange array tags = [
+    new TagChange { name = &quot;walk&quot;, speed = 2.0, frames = [0], events = [&quot;dust&quot;] },
+];
+end</code></pre>
+</section>
 <section id="solis-files--tile-maps">
 <h3>Tile maps<a class="anchor" href="#solis-files--tile-maps" aria-label="Link to this section">#</a></h3>
 <p>A tile map is a <code>.tilemap.lst</code> file: a grid of cells in layers, each cell a terrain's code, and values every cell has (<a href="#tile-maps">Tile maps</a>).</p>
@@ -3342,7 +3365,7 @@ end</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>Field</th><th>Holds</th><th>Standard</th></tr></thead>
 <tbody>
-<tr><td><code>sheet</code></td><td>the ID of an Aseprite file or picture, or of its clips file (<code>.solframes</code>)</td><td><code>&quot;&quot;</code></td></tr>
+<tr><td><code>sheet</code></td><td>the ID of an Aseprite file or picture, or of its clips file (<code>.clips.lst</code>)</td><td><code>&quot;&quot;</code></td></tr>
 <tr><td><code>clip</code></td><td>the clip it plays: a tag's name, or a clip made in its clips file. Empty: the clips file's <strong>Plays first</strong>, or the still <code>frame</code></td><td><code>&quot;&quot;</code></td></tr>
 <tr><td><code>playing</code></td><td>whether the clip moves on</td><td><code>true</code></td></tr>
 <tr><td><code>speed</code></td><td>1 as drawn, 2 twice as fast (0 to 16)</td><td><code>1.0</code></td></tr>
@@ -3429,8 +3452,9 @@ end</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Where its version is</th><th>Newest</th></tr></thead>
 <tbody>
-<tr><td>Level, <code>.sollevel</code></td><td><code>level version 5;</code></td><td>5</td></tr>
-<tr><td>Module, <code>.module.lst</code></td><td><code>lock int version = 1;</code></td><td>1</td></tr>
+<tr><td>Level, <code>.sollevel</code></td><td><code>level version 6;</code></td><td>6</td></tr>
+<tr><td>Module, <code>.module.lst</code></td><td><code>lock int version = 2;</code></td><td>2</td></tr>
+<tr><td>Clips, <code>.clips.lst</code></td><td><code>lock int version = 2;</code></td><td>2</td></tr>
 <tr><td>Tileset, <code>.tileset.lst</code></td><td><code>lock int version = 4;</code></td><td>4</td></tr>
 <tr><td>Tile map, <code>.tilemap.lst</code></td><td><code>lock int version = 3;</code></td><td>3</td></tr>
 <tr><td>Tags, <code>tags.lst</code></td><td><code>lock int version = 1;</code></td><td>1</td></tr>
@@ -3438,7 +3462,7 @@ end</code></pre>
 <tr><td>2D settings, <code>pixels.solpix</code></td><td><code>pixels version 1;</code></td><td>1</td></tr>
 </tbody>
 </table></div>
-<p>Clips files (<code>.solframes</code>) and animators (<code>.solanim</code>) are text too, with their version on their first line that isn't a comment, and a comment at the top saying what each line holds; they're made in the <a href="#sprite-animation">Clips and Frames tabs</a> and the <a href="#animators">Animator tab</a>.</p>
+<p>Animators (<code>.solanim</code>) are text too, with their version on their first line that isn't a comment, and a comment at the top saying what each line holds; they're made in the <a href="#sprite-animation">Clips and Frames tabs</a> and the <a href="#animators">Animator tab</a>.</p>
 </section>
 <section id="solis-files--tips-and-common-problems">
 <h3>Tips and common problems<a class="anchor" href="#solis-files--tips-and-common-problems" aria-label="Link to this section">#</a></h3>
@@ -7224,7 +7248,7 @@ Shop-Apples = { $count -&gt;
 <section id="sprite-animation--when-to-use-it">
 <h3>When to use it<a class="anchor" href="#sprite-animation--when-to-use-it" aria-label="Link to this section">#</a></h3>
 <p>For anything in a 2D game that moves frame by frame: a farmer walking, a hoe swinging, crops swaying, a door opening. A <a href="#concepts--2d">clip</a> is a run of a <a href="#concepts--2d">sprite sheet</a>'s frames, each shown for its own time, played forward, backward or there and back (ping-pong), over and over or a number of times.</p>
-<p>The quickest way is Aseprite's own: <strong>tag</strong> runs of frames there (<em>walk</em>, <em>idle</em>, <em>hoe</em>) and every tag is a clip in Solis, with Aseprite's frame times. To change a clip's speed, give frames events (a footstep on the frame a foot lands), or make clips Aseprite doesn't have, Solis keeps a small <strong>clips file</strong> (<code>.solframes</code>) beside the Aseprite file. A sprite can play either.</p>
+<p>The quickest way is Aseprite's own: <strong>tag</strong> runs of frames there (<em>walk</em>, <em>idle</em>, <em>hoe</em>) and every tag is a clip in Solis, with Aseprite's frame times. To change a clip's speed, give frames events (a footstep on the frame a foot lands), or make clips Aseprite doesn't have, Solis keeps a small <strong>clips file</strong> (<code>.clips.lst</code>) beside the Aseprite file. A sprite can play either.</p>
 <p>To choose clips by what's happening (walking when moving, idle when not, facing the right way), use an <a href="#animators">animator</a>.</p>
 </section>
 <section id="sprite-animation--how-to-use-it">
@@ -7234,7 +7258,7 @@ Shop-Apples = { $count -&gt;
 </li>
 <li><p><strong>Play a clip on a sprite:</strong> select a sprite and pick a <strong>Clip</strong> in its Sprite component. Press <strong>Play</strong>: it plays at its frame times. To see it move while you edit, open the viewport's <strong>≡</strong> menu and tick <strong>Preview animation</strong>.</p>
 </li>
-<li><p><strong>Open the clips:</strong> in the Aseprite file's Properties, press <strong>Edit clips…</strong>. Solis makes <code>walker.solframes</code> beside <code>walker.aseprite</code> (or opens the one there) and opens two tabs:</p>
+<li><p><strong>Open the clips:</strong> in the Aseprite file's Properties, press <strong>Edit clips…</strong>. Solis makes <code>walker.clips.lst</code> beside <code>walker.aseprite</code> (or opens the one there) and opens two tabs:</p>
 <ul>
 <li><strong>Frames</strong>, the timeline: a tab of the bottom panel on the <strong>Animate</strong> tab (the clips file opens there; an × after the Frames or Clip tab closes the file). In the left slot, <strong>Clips</strong>: every clip, with how long it is and where it comes from (<em>Aseprite</em> or <em>made here</em>). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The line in the accent colour is where it's playing; the lane below shows its events.</li>
 <li><strong>Clip</strong>, the next tab of the bottom panel: the chosen clip's <strong>Speed</strong>, <strong>Direction</strong>, how many times it <strong>Plays</strong>, and <strong>Plays first</strong>. A clip's settings have a tab of their own so the frames keep the panel's whole width.</li>
@@ -7395,7 +7419,7 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <div class="table-wrap"><table>
 <thead><tr><th>Setting</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td>Sheet</td><td>An Aseprite file (its tags are its clips) or a clips file (<code>.solframes</code>).</td></tr>
+<tr><td>Sheet</td><td>An Aseprite file (its tags are its clips) or a clips file (<code>.clips.lst</code>).</td></tr>
 <tr><td>Clip</td><td>The clip it plays. Empty: the clips file's clip marked <strong>Plays first</strong>, or with none, the still <strong>Frame</strong>.</td></tr>
 <tr><td>Playing</td><td>Whether the clip moves on while the game runs. Game code's <code>animate</code> and <code>stopAnimation</code> turn it on and off.</td></tr>
 <tr><td>Speed</td><td>1 as drawn, 2 twice as fast, 0 stopped. Multiplies the clip's own speed.</td></tr>

@@ -39,7 +39,8 @@
 //! Read as a hostile file: within limits; anything out of range is left out
 //! or put right, with a note. Never panics.
 
-use crate::clip::Direction;
+use crate::clip::{ClipFrame, Direction};
+use crate::frames_file::FramesFile;
 use level::lust_data::{self as data, DataError, Fixed};
 use reflect::AssetId;
 
@@ -77,9 +78,15 @@ pub const MAX_SIDE: u32 = 16_384;
 pub static FORMAT: reflect::upgrade::Format<ClipsFile> = reflect::upgrade::Format {
     name: "clips",
     current: VERSION,
-    version_of: data::version_of,
-    steps: &[],
+    version_of,
+    steps: &[frames_files_are_lust],
 };
+
+/// Version 1 to 2: a `.solframes` file became Lust (Fixes 3). `read`
+/// turns an older file into this version's, so nothing is left to change.
+fn frames_files_are_lust(_: &mut ClipsFile) -> Result<(), String> {
+    Ok(())
+}
 
 /// What a clips file holds, in Lust: written into every project's
 /// `solis/data/clips.lst`, and handed to Lust when one is read.
@@ -268,6 +275,190 @@ pub struct ClipsFile {
     pub tags: Vec<TagChange>,
 }
 
+/// The first word of a clips file before version 2 (`.solframes`, not
+/// Lust): it's still read, and written as version 2.
+pub const OLD_KIND: &str = "frames";
+
+/// A frame's time when a file doesn't give one, in milliseconds.
+pub const DEFAULT_MS: u32 = 100;
+
+/// A clips file's version: Lust's `version`, or an older file's first
+/// line (`frames version 1`).
+fn version_of(text: &str) -> Option<u32> {
+    data::version_of(text).or_else(|| reflect::upgrade::header_version(text, &[OLD_KIND]))
+}
+
+impl ClipsFile {
+    /// The main look's picture: the sheet its clips play.
+    pub fn sheet(&self) -> Option<AssetId> {
+        self.looks.first().map(|l| l.picture)
+    }
+
+    /// Makes `sheet` the main look's picture (a main look called Main is
+    /// made if there's none).
+    pub fn set_sheet(&mut self, sheet: AssetId) {
+        match self.looks.first_mut() {
+            Some(main) => main.picture = sheet,
+            None => {
+                *self = Self {
+                    looks: Self::for_sheet(sheet).looks,
+                    ..std::mem::take(self)
+                }
+            }
+        }
+    }
+
+    /// An empty clips file for `sheet`, its main look called Main.
+    pub fn for_sheet(sheet: AssetId) -> Self {
+        Self {
+            looks: vec![Look {
+                name: "Main".into(),
+                picture: sheet,
+            }],
+            ..Self::default()
+        }
+    }
+
+    /// The clip called `name`.
+    pub fn clip_mut(&mut self, name: &str) -> Option<&mut Clip> {
+        self.clips.iter_mut().find(|c| c.name == name)
+    }
+
+    /// An older file's clips (`.solframes`), as this version holds them.
+    pub fn from_frames(old: &FramesFile) -> Self {
+        let mut file = old.sheet.map(Self::for_sheet).unwrap_or_default();
+        file.first.clone_from(&old.first);
+        file.tags = (old.tags.iter())
+            .map(|t| TagChange {
+                name: t.name.clone(),
+                speed: t.speed,
+                events: t.events.clone(),
+            })
+            .collect();
+        file.clips = old.clips.iter().map(Clip::from_own).collect();
+        file
+    }
+}
+
+impl Clip {
+    /// A clip of an older file (`.solframes`), with one direction.
+    pub fn from_own(own: &crate::frames_file::OwnClip) -> Self {
+        Self::one_way(
+            own.name.clone(),
+            own.speed,
+            own.direction,
+            own.repeats,
+            &own.frames,
+        )
+    }
+
+    /// A clip with one direction, showing `frames`.
+    pub fn one_way(
+        name: String,
+        speed: f32,
+        playback: Direction,
+        plays: u32,
+        frames: &[ClipFrame],
+    ) -> Self {
+        let mut clip = Self {
+            name,
+            speed,
+            playback,
+            plays,
+            directions: 1,
+            same_frames: true,
+            mirror: false,
+            timings: Vec::new(),
+            ways: Vec::new(),
+        };
+        clip.set_frames(frames);
+        clip
+    }
+
+    /// Where the row it shows with no facing asked for is: the one for
+    /// any facing, then south, then its first.
+    fn shown(&self) -> Option<usize> {
+        let at = |f: Facing| self.ways.iter().position(|w| w.facing == f);
+        at(Facing::Any)
+            .or_else(|| at(Facing::South))
+            .or((!self.ways.is_empty()).then_some(0))
+    }
+
+    /// The frames of the row it shows with no facing asked for, each
+    /// cell's time from `ms_of` where the file gives none.
+    pub fn frames_with(&self, ms_of: impl Fn(u32) -> u32) -> Vec<ClipFrame> {
+        let Some(way) = self.shown().map(|i| &self.ways[i]) else {
+            return Vec::new();
+        };
+        let timings = if self.same_frames {
+            &self.timings
+        } else {
+            &way.timings
+        };
+        (way.cells.iter().enumerate())
+            .map(|(i, &cell)| {
+                let timing = timings.get(i);
+                ClipFrame {
+                    frame: cell,
+                    ms: (timing.map(|t| t.ms).filter(|&ms| ms > 0))
+                        .unwrap_or_else(|| ms_of(cell).max(1)),
+                    events: (timing.map(|t| t.event.clone()).into_iter())
+                        .filter(|e| !e.is_empty())
+                        .collect(),
+                }
+            })
+            .collect()
+    }
+
+    /// [`Self::frames_with`], each cell's time [`DEFAULT_MS`] where the
+    /// file gives none.
+    pub fn frames(&self) -> Vec<ClipFrame> {
+        self.frames_with(|_| DEFAULT_MS)
+    }
+
+    /// Makes the row it shows with no facing asked for (made if it has
+    /// none) show `frames`, with their times and first events.
+    pub fn set_frames(&mut self, frames: &[ClipFrame]) {
+        let at = self.shown().unwrap_or_else(|| {
+            let facing = if self.directions == 1 {
+                Facing::Any
+            } else {
+                Facing::South
+            };
+            self.ways.push(Way {
+                facing,
+                cells: Vec::new(),
+                timings: Vec::new(),
+            });
+            self.ways.len() - 1
+        });
+        let timings: Vec<Timing> = (frames.iter())
+            .map(|f| Timing {
+                ms: f.ms,
+                event: f.events.first().cloned().unwrap_or_default(),
+            })
+            .collect();
+        self.ways[at].cells = frames.iter().map(|f| f.frame).collect();
+        if self.same_frames {
+            self.timings = timings;
+        } else {
+            self.ways[at].timings = timings;
+        }
+    }
+
+    /// Changes the frames of the row it shows with no facing asked for.
+    pub fn edit_frames(&mut self, change: impl FnOnce(&mut Vec<ClipFrame>)) {
+        let mut frames = self.frames();
+        change(&mut frames);
+        self.set_frames(&frames);
+    }
+}
+
+/// Whether `path` names a clips file (`knight.clips.lst`).
+pub fn is_clips_file(path: &std::path::Path) -> bool {
+    reflect::data_files::kind_of(path) == Some(KIND)
+}
+
 /// The clips file's path for a picture's (`sprites/knight.png` gives
 /// `sprites/knight.clips.lst`).
 pub fn file_for(picture: &str) -> String {
@@ -275,13 +466,13 @@ pub fn file_for(picture: &str) -> String {
     format!("{stem}.{KIND}.lst")
 }
 
-/// Whether `name` can name a clip, look or event: a letter, then at most
-/// [`MAX_NAME`] letters, digits, `_` and `-` in all.
+/// Whether `name` can name a clip, look or event: anything Aseprite's
+/// tags can be called (`walk left`), but not empty, with no control
+/// characters or spaces at either end, and at most [`MAX_NAME`]
+/// characters. Game code reaches them by their project names, which
+/// leave the spaces out (`Clip.Knight.WalkLeft`).
 pub fn good_name(name: &str) -> bool {
-    let mut chars = name.chars();
-    name.len() <= MAX_NAME
-        && chars.next().is_some_and(|c| c.is_ascii_alphabetic())
-        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    !name.is_empty() && crate::frames_file::clean_name(name) == name
 }
 
 fn playback_name(d: Direction) -> &'static str {
@@ -305,6 +496,15 @@ fn playback_named(name: &str) -> Option<Direction> {
 
 fn pair(v: [u32; 2]) -> String {
     data::ints(v.iter().map(|&n| i64::from(n)))
+}
+
+/// The picture a clips file's first line says it's of ("knight.png"),
+/// so it's written again the same.
+pub fn picture_named(text: &str) -> &str {
+    (text.lines().next())
+        .and_then(|l| l.strip_prefix("-- Clips of "))
+        .and_then(|l| l.split_once(". Written by Solis"))
+        .map_or("", |(name, _)| name)
 }
 
 /// Writes `file` as its Lust data file, `picture` (the main look's file
@@ -488,6 +688,13 @@ fn timings_of(thing: &Fixed, what: &str, notes: &mut Vec<String>) -> Option<Vec<
 /// other limits, anything out of range left out or put right with a note.
 /// Never panics.
 pub fn read(text: &str) -> Result<ReadClips, DataError> {
+    if reflect::upgrade::header_version(text, &[OLD_KIND]).is_some() {
+        let old = crate::frames_file::read(text).map_err(|e| data::error(e.line, e.message))?;
+        return Ok(ReadClips {
+            file: ClipsFile::from_frames(&old.file),
+            notes: old.notes,
+        });
+    }
     let values = data::read(text, KIND, CLASSES, MAX_BYTES)?;
     if let Some(v) = data::version_of(text).filter(|&v| v > VERSION) {
         return Err(data::error(

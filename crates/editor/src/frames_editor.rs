@@ -3,7 +3,7 @@
 //! made here) with their speed, direction and repeats; the Frames tab at
 //! the bottom shows the chosen clip's frames along a time ruler, each as
 //! wide as it lasts, with their events in a lane below, and plays it.
-//! Both tabs come when a `.solframes` file is opened and go when it's
+//! Both tabs come when a `.clips.lst` file is opened and go when it's
 //! closed (the project lead's design, from a mock-up).
 //!
 //! Every change is saved at once (the app writes the file) and shown at
@@ -11,7 +11,8 @@
 //! tab undo and redo the file's changes.
 
 use crate::file_history::FileHistory;
-use animation::frames_file::{self, FramesFile, OwnClip, TagChange};
+use animation::clips_file::{self, Clip as OwnClip, ClipsFile, TagChange};
+use animation::frames_file;
 use animation::{Clip, ClipFrame, ClipSet, Direction};
 use assets::sprite_sheet::SpriteSheet;
 use reflect::AssetId;
@@ -25,7 +26,9 @@ pub struct FramesEditor {
     /// The file, by path inside the assets (`/` between folders).
     pub path: String,
     /// The file as it is now.
-    pub file: FramesFile,
+    pub file: ClipsFile,
+    /// The main look's file name (`knight.png`), for the file's first line.
+    pub picture: String,
     /// The clip chosen in the Clips tab, by name.
     pub clip: String,
     /// The chosen clip's frames picked in the Frames tab, by their place
@@ -44,7 +47,7 @@ pub struct FramesEditor {
     pub renaming: Option<(String, String)>,
     /// The Clips tab's search.
     pub search: String,
-    history: FileHistory<FramesFile>,
+    history: FileHistory<ClipsFile>,
 }
 
 /// The standard zoom: a 100 ms frame 100 points wide.
@@ -55,16 +58,20 @@ pub const ZOOM_RANGE: (f32, f32) = (250.0, 4000.0);
 impl FramesEditor {
     /// `file`, at `path`, open with its first clip (or the one played
     /// first) chosen.
-    pub fn new(path: String, file: FramesFile, clips: &ClipSet) -> Self {
+    pub fn new(path: String, file: ClipsFile, clips: &ClipSet) -> Self {
         let clip = clips
             .first
             .and_then(|i| clips.clips.get(i))
             .or_else(|| clips.clips.first())
             .map(|c| c.name.clone())
             .unwrap_or_default();
+        // The picture's own name comes once the sheet is known (see
+        // `Workbench::open_frames`); until then, the file's.
+        let picture = path.rsplit('/').next().unwrap_or_default().to_owned();
         Self {
             path,
             file,
+            picture,
             clip,
             selected: Vec::new(),
             anchor: None,
@@ -84,7 +91,7 @@ impl FramesEditor {
 
     /// Changes the file with `change`, kept for undo. Returns whether it
     /// changed (and so must be saved).
-    pub fn change(&mut self, change: impl FnOnce(&mut FramesFile)) -> bool {
+    pub fn change(&mut self, change: impl FnOnce(&mut ClipsFile)) -> bool {
         self.history.change(&mut self.file, |f| {
             change(f);
             true
@@ -126,12 +133,12 @@ impl FramesEditor {
 
     /// The file as text, to save.
     pub fn text(&self) -> String {
-        frames_file::write(&self.file)
+        clips_file::write(&self.file, &self.picture)
     }
 
     /// Takes in the file as it is on disk, as one undo step: nothing
     /// stays picked, since its frames may not be the ones picked.
-    pub(crate) fn taken_in(&mut self, file: FramesFile) {
+    pub(crate) fn taken_in(&mut self, file: ClipsFile) {
         if self.change(|f| *f = file) {
             self.selected.clear();
             self.anchor = None;
@@ -154,18 +161,18 @@ impl FramesEditor {
     /// Adds a clip made here, with `frames` (none for an empty one), and
     /// chooses it. Returns whether it was added.
     pub fn new_clip(&mut self, clips: &ClipSet, frames: Vec<ClipFrame>) -> bool {
-        if clips.clips.len() >= frames_file::MAX_CLIPS {
+        if clips.clips.len() >= clips_file::MAX_CLIPS {
             return false;
         }
         let name = Self::free_name(clips, "clip");
         let added = self.change(|f| {
-            f.clips.push(OwnClip {
-                name: name.clone(),
-                speed: 1.0,
-                direction: Direction::Forward,
-                repeats: 0,
-                frames,
-            });
+            f.clips.push(OwnClip::one_way(
+                name.clone(),
+                1.0,
+                Direction::Forward,
+                0,
+                &frames,
+            ));
         });
         self.choose(&name);
         added
@@ -177,27 +184,28 @@ impl FramesEditor {
         let Some(clip) = clips.get(&self.clip) else {
             return false;
         };
-        if clips.clips.len() >= frames_file::MAX_CLIPS {
+        if clips.clips.len() >= clips_file::MAX_CLIPS {
             return false;
         }
         let name = Self::free_name(clips, &format!("{} copy", clip.name));
-        let own = OwnClip {
-            name: name.clone(),
-            speed: clip.speed,
-            direction: clip.direction,
-            repeats: clip.repeats,
-            frames: clip
-                .frames
-                .iter()
-                .take(frames_file::MAX_FRAMES)
-                .map(|f| ClipFrame {
-                    frame: f.frame,
-                    ms: f.ms,
-                    // One event a frame in a clip made here.
-                    events: f.events.first().cloned().into_iter().collect(),
-                })
-                .collect(),
-        };
+        let frames: Vec<ClipFrame> = clip
+            .frames
+            .iter()
+            .take(clips_file::MAX_FRAMES)
+            .map(|f| ClipFrame {
+                frame: f.frame,
+                ms: f.ms,
+                // One event a frame in a clip made here.
+                events: f.events.first().cloned().into_iter().collect(),
+            })
+            .collect();
+        let own = OwnClip::one_way(
+            name.clone(),
+            clip.speed,
+            clip.direction,
+            clip.repeats,
+            &frames,
+        );
         let added = self.change(|f| f.clips.push(own));
         self.choose(&name);
         added
@@ -277,7 +285,7 @@ impl FramesEditor {
         let name = self.clip.clone();
         self.change(|f| {
             if let Some(c) = f.clips.iter_mut().find(|c| c.name == name) {
-                c.direction = direction;
+                c.playback = direction;
             }
         })
     }
@@ -286,10 +294,10 @@ impl FramesEditor {
     /// and over).
     pub fn set_repeats(&mut self, repeats: u32) -> bool {
         let name = self.clip.clone();
-        let repeats = repeats.min(frames_file::MAX_REPEATS);
+        let repeats = repeats.min(clips_file::MAX_PLAYS);
         self.change(|f| {
             if let Some(c) = f.clips.iter_mut().find(|c| c.name == name) {
-                c.repeats = repeats;
+                c.plays = repeats;
             }
         })
     }
@@ -299,14 +307,16 @@ impl FramesEditor {
     pub fn set_ms(&mut self, ms: u32) -> bool {
         let name = self.clip.clone();
         let picked = self.selected.clone();
-        let ms = ms.clamp(1, frames_file::MAX_MS);
+        let ms = ms.clamp(1, clips_file::MAX_MS);
         self.change(|f| {
-            if let Some(c) = f.clips.iter_mut().find(|c| c.name == name) {
-                for &i in &picked {
-                    if let Some(frame) = c.frames.get_mut(i) {
-                        frame.ms = ms;
+            if let Some(c) = f.clip_mut(&name) {
+                c.edit_frames(|frames| {
+                    for &i in &picked {
+                        if let Some(frame) = frames.get_mut(i) {
+                            frame.ms = ms;
+                        }
                     }
-                }
+                });
             }
         })
     }
@@ -329,16 +339,18 @@ impl FramesEditor {
         let own = !clip.from_aseprite;
         self.change(|f| {
             if own {
-                if let Some(c) = f.clips.iter_mut().find(|c| c.name == name) {
-                    for &(i, _) in &picked {
-                        if let Some(frame) = c.frames.get_mut(i) {
-                            frame.events = if event.is_empty() {
-                                Vec::new()
-                            } else {
-                                vec![event.clone()]
-                            };
+                if let Some(c) = f.clip_mut(&name) {
+                    c.edit_frames(|frames| {
+                        for &(i, _) in &picked {
+                            if let Some(frame) = frames.get_mut(i) {
+                                frame.events = if event.is_empty() {
+                                    Vec::new()
+                                } else {
+                                    vec![event.clone()]
+                                };
+                            }
                         }
-                    }
+                    });
                 }
             } else {
                 let change = tag_change(f, &name);
@@ -364,19 +376,19 @@ impl FramesEditor {
             .clips
             .iter()
             .find(|c| c.name == name)
-            .map(|c| c.frames.len())
+            .map(|c| c.frames().len())
         else {
             return false;
         };
         let at = self.selected.last().map_or(len, |&i| (i + 1).min(len));
-        let room = frames_file::MAX_FRAMES.saturating_sub(len);
+        let room = clips_file::MAX_FRAMES.saturating_sub(len);
         let adding: Vec<ClipFrame> = frames
             .iter()
             .filter_map(|&n| {
                 let f = sheet.frames.get(n as usize)?;
                 Some(ClipFrame {
                     frame: n,
-                    ms: f.duration_ms.clamp(1, frames_file::MAX_MS),
+                    ms: f.duration_ms.clamp(1, clips_file::MAX_MS),
                     events: Vec::new(),
                 })
             })
@@ -384,8 +396,10 @@ impl FramesEditor {
             .collect();
         let count = adding.len();
         let changed = self.change(|f| {
-            if let Some(c) = f.clips.iter_mut().find(|c| c.name == name) {
-                c.frames.splice(at..at, adding);
+            if let Some(c) = f.clip_mut(&name) {
+                c.edit_frames(|frames| {
+                    frames.splice(at..at, adding);
+                });
             }
         });
         if changed {
@@ -400,12 +414,14 @@ impl FramesEditor {
         let name = self.clip.clone();
         let picked = self.selected.clone();
         let changed = self.change(|f| {
-            if let Some(c) = f.clips.iter_mut().find(|c| c.name == name) {
-                let mut i = 0;
-                c.frames.retain(|_| {
-                    let keep = !picked.contains(&i);
-                    i += 1;
-                    keep
+            if let Some(c) = f.clip_mut(&name) {
+                c.edit_frames(|frames| {
+                    let mut i = 0;
+                    frames.retain(|_| {
+                        let keep = !picked.contains(&i);
+                        i += 1;
+                        keep
+                    });
                 });
             }
         });
@@ -424,13 +440,14 @@ impl FramesEditor {
         let picked = self.selected.clone();
         let mut placed = Vec::new();
         let changed = self.change(|f| {
-            let Some(c) = f.clips.iter_mut().find(|c| c.name == name) else {
+            let Some(c) = f.clip_mut(&name) else {
                 return;
             };
-            let to = to.min(c.frames.len());
+            let mut frames = c.frames();
+            let to = to.min(frames.len());
             let mut moving = Vec::new();
             let mut rest = Vec::new();
-            for (i, frame) in c.frames.drain(..).enumerate() {
+            for (i, frame) in frames.drain(..).enumerate() {
                 if picked.contains(&i) {
                     moving.push(frame);
                 } else {
@@ -441,7 +458,7 @@ impl FramesEditor {
             let at = to - picked.iter().filter(|&&i| i < to).count();
             let n = moving.len();
             rest.splice(at..at, moving);
-            c.frames = rest;
+            c.set_frames(&rest);
             placed = (at..at + n).collect();
         });
         if changed {
@@ -496,7 +513,7 @@ impl FramesEditor {
 }
 
 /// The tag change for the tag `name` in `file`, made if missing.
-fn tag_change<'a>(file: &'a mut FramesFile, name: &str) -> &'a mut TagChange {
+fn tag_change<'a>(file: &'a mut ClipsFile, name: &str) -> &'a mut TagChange {
     if let Some(i) = file.tags.iter().position(|t| t.name == name) {
         return &mut file.tags[i];
     }
@@ -510,7 +527,7 @@ fn tag_change<'a>(file: &'a mut FramesFile, name: &str) -> &'a mut TagChange {
 }
 
 /// Drops tag changes that change nothing, so the file stays short.
-fn tidy_tags(file: &mut FramesFile) {
+fn tidy_tags(file: &mut ClipsFile) {
     file.tags
         .retain(|t| (t.speed - 1.0).abs() > f32::EPSILON || !t.events.is_empty());
 }
@@ -526,21 +543,21 @@ pub fn id_of(sheets: &crate::sprite_sheets::SpriteSheets, path: &str) -> Option<
 }
 
 impl crate::own_files::OpenFile for FramesEditor {
-    type File = FramesFile;
+    type File = ClipsFile;
 
     fn path(&self) -> &str {
         &self.path
     }
 
-    fn file(&self) -> &FramesFile {
+    fn file(&self) -> &ClipsFile {
         &self.file
     }
 
-    fn take_in(&mut self, file: FramesFile) {
+    fn take_in(&mut self, file: ClipsFile) {
         self.taken_in(file);
     }
 
-    fn of(held: &crate::own_files::OwnFile) -> Option<&std::sync::Arc<FramesFile>> {
+    fn of(held: &crate::own_files::OwnFile) -> Option<&std::sync::Arc<ClipsFile>> {
         match held {
             crate::own_files::OwnFile::Frames(file) => Some(file),
             _ => None,
