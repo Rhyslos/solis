@@ -5,6 +5,7 @@
 pub mod animator_code;
 mod check_turns;
 pub mod code;
+pub mod component_code;
 mod convert;
 pub mod describe;
 pub mod events;
@@ -27,6 +28,7 @@ mod objects;
 pub mod old_names;
 pub mod project_names;
 mod reach;
+pub mod readings;
 pub mod runtime;
 pub mod rust_component;
 pub mod screens;
@@ -55,6 +57,7 @@ pub use host::{AnimatorValue, Host, MapPlace, NoHost, Shot, SoundAt};
 /// Game code turned into Lua, ready for a [`Runtime`].
 pub use lust::LuaChunk as Chunk;
 pub use objects::ObjectValues;
+pub use readings::Readings;
 pub use runtime::{Failure, Runtime, Swapped, Ticked};
 pub use rust_component::{Context, RustComponent, RustKind};
 pub use screens::{NoReader, ScreenCode, ScreenReader, Screens};

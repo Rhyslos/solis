@@ -306,7 +306,7 @@ const LUST_WORDS: &[&str] = &[
 
 /// Whether `name` can be a name in Lust: a letter, then letters, digits
 /// and `_`, not all capitals, and not one of Lust's own words.
-fn lust_name(name: &str) -> bool {
+pub(crate) fn lust_name(name: &str) -> bool {
     let mut chars = name.chars();
     chars.next().is_some_and(|c| c.is_ascii_alphabetic())
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
@@ -666,6 +666,7 @@ impl Screens {
         let compiled = crate::Compiled {
             timers: Vec::new(),
             state_events: Default::default(),
+            components: Default::default(),
             lust: Some(code.chunk.clone()),
             lua: Vec::new(),
             schemas: Vec::new(),

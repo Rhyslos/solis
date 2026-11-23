@@ -19,6 +19,10 @@ pub struct WrittenField<'a> {
     pub name: &'a str,
     /// The line its `;` is on, from 1.
     pub line: u32,
+    /// Its starting value as written, between `=` and `;` and trimmed:
+    /// `Sound.Sfx.Alert`, `[0, 0, 1]`; empty when it has none
+    /// (`FarmerAnimator anim;`).
+    pub start: &'a str,
 }
 
 /// Where the reader is in the text.
@@ -50,7 +54,13 @@ pub fn fields(text: &str, most: usize) -> Vec<WrittenField<'_>> {
     let mut words: Vec<&str> = Vec::new();
     let mut started = false;
     let mut depth = 0usize;
-    while let Some((line, piece)) = pieces.next() {
+    // Where the field's starting value begins in the text, after its `=`.
+    let mut from = None;
+    loop {
+        let before = text.len() - pieces.left();
+        let Some((line, piece)) = pieces.next() else {
+            break;
+        };
         if found.len() >= most {
             break;
         }
@@ -70,21 +80,27 @@ pub fn fields(text: &str, most: usize) -> Vec<WrittenField<'_>> {
                 words.clear();
                 started = false;
                 depth = 0;
+                from = None;
                 At::Fields(name)
             }
             (At::Has(name), _) => At::Inside(name, 1),
             (At::Fields(name), Piece::Symbol("}")) if depth == 0 => At::Inside(name, 1),
             (At::Fields(name), Piece::Symbol(";")) if depth == 0 => {
-                if let Some(field) = field_of(name, &words, line) {
+                let start = from.map_or("", |at| text[at..before].trim());
+                if let Some(field) = field_of(name, &words, line, start) {
                     found.push(field);
                 }
                 words.clear();
                 started = false;
+                from = None;
                 At::Fields(name)
             }
             (At::Fields(name), piece) => {
                 match piece {
-                    Piece::Symbol("=") if depth == 0 => started = true,
+                    Piece::Symbol("=") if depth == 0 && !started => {
+                        started = true;
+                        from = Some(text.len() - pieces.left());
+                    }
                     Piece::Symbol("{" | "(" | "[") => depth += 1,
                     Piece::Symbol("}" | ")" | "]") => depth = depth.saturating_sub(1),
                     Piece::Word(word) if !started && depth == 0 => words.push(word),
@@ -99,7 +115,12 @@ pub fn fields(text: &str, most: usize) -> Vec<WrittenField<'_>> {
 
 /// A field from the words before its `=` or `;`: `lock`, then its type
 /// (`Sound`, or `int array`), then its name.
-fn field_of<'a>(component: &'a str, words: &[&'a str], line: u32) -> Option<WrittenField<'a>> {
+fn field_of<'a>(
+    component: &'a str,
+    words: &[&'a str],
+    line: u32,
+    start: &'a str,
+) -> Option<WrittenField<'a>> {
     let words = match words.first() {
         Some(&"lock") => &words[1..],
         _ => words,
@@ -111,6 +132,7 @@ fn field_of<'a>(component: &'a str, words: &[&'a str], line: u32) -> Option<Writ
         kind,
         name,
         line,
+        start,
     })
 }
 
@@ -137,6 +159,16 @@ mod tests {
             .iter()
             .map(|f| (f.component, f.kind, f.name, f.line))
             .collect();
+        let starts: Vec<&str> = found.iter().map(|f| f.start).collect();
+        assert_eq!(
+            starts,
+            [
+                "4.0",
+                "Sound.Sfx.Alert",
+                "[0, 0,\n            1]",
+                "\"a } and a ;\""
+            ]
+        );
         assert_eq!(
             shown,
             [
@@ -156,6 +188,7 @@ mod tests {
         let found = fields(text, 100);
         assert_eq!(found.len(), 1);
         assert_eq!((found[0].kind, found[0].name), ("FarmerAnimator", "anim"));
+        assert_eq!(found[0].start, "");
     }
 
     #[test]

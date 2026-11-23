@@ -127,6 +127,7 @@ impl GameWorld for TestWorld {
             timers: Arc::default(),
             tables: crate::Tables::default(),
             texts: None,
+            readings: Arc::default(),
         }
     }
 

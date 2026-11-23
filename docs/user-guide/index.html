@@ -562,7 +562,7 @@ footer p { color: var(--muted); }
 <li><a href="#lights"><span class="num">29</span>Lights and shadows: the sun, point lights and spotlights</a><ol><li><a href="#lights--when-to-use-it">When to use it</a></li><li><a href="#lights--how-to-use-it">How to use it</a></li><li><a href="#lights--settings">Settings</a></li><li><a href="#lights--tips-and-common-problems">Tips and common problems</a></li><li><a href="#lights--related">Related</a></li></ol></li>
 <li><a href="#sky-fog-and-exposure"><span class="num">30</span>Sky, fog and exposure</a><ol><li><a href="#sky-fog-and-exposure--when-to-use-it">When to use it</a></li><li><a href="#sky-fog-and-exposure--how-to-use-it">How to use it</a></li><li><a href="#sky-fog-and-exposure--settings">Settings</a></li><li><a href="#sky-fog-and-exposure--tips-and-common-problems">Tips and common problems</a></li><li><a href="#sky-fog-and-exposure--related">Related</a></li></ol></li>
 <li class="group">Game code</li>
-<li><a href="#game-code"><span class="num">31</span>Game code</a><ol><li><a href="#game-code--when-to-use-it">When to use it</a></li><li><a href="#game-code--how-to-use-it">How to use it</a></li><li><a href="#game-code--components">Components</a></li><li><a href="#game-code--field-hints-and-the-projects-names">Field hints and the project's names</a></li><li><a href="#game-code--changing-code-while-the-game-runs">Changing code while the game runs</a></li><li><a href="#game-code--events">Events</a></li><li><a href="#game-code--projectiles">Projectiles</a></li><li><a href="#game-code--making-and-removing-entities">Making and removing entities</a></li><li><a href="#game-code--random-numbers">Random numbers</a></li><li><a href="#game-code--tweens">Tweens</a></li><li><a href="#game-code--game-wide-objects">Game-wide objects</a></li><li><a href="#game-code--saving-and-loading">Saving and loading</a></li><li><a href="#game-code--sounds">Sounds</a></li><li><a href="#game-code--input">Input</a></li><li><a href="#game-code--physics">Physics</a></li><li><a href="#game-code--what-the-engine-offers">What the engine offers</a></li><li><a href="#game-code--safe-to-open">Safe to open</a></li><li><a href="#game-code--tips-and-common-problems">Tips and common problems</a></li><li><a href="#game-code--related">Related</a></li></ol></li>
+<li><a href="#game-code"><span class="num">31</span>Game code</a><ol><li><a href="#game-code--when-to-use-it">When to use it</a></li><li><a href="#game-code--how-to-use-it">How to use it</a></li><li><a href="#game-code--components">Components</a></li><li><a href="#game-code--field-hints-and-the-projects-names">Field hints and the project's names</a></li><li><a href="#game-code--changing-code-while-the-game-runs">Changing code while the game runs</a></li><li><a href="#game-code--events">Events</a></li><li><a href="#game-code--projectiles">Projectiles</a></li><li><a href="#game-code--making-and-removing-entities">Making and removing entities</a></li><li><a href="#game-code--reading-other-entities">Reading other entities</a></li><li><a href="#game-code--random-numbers">Random numbers</a></li><li><a href="#game-code--tweens">Tweens</a></li><li><a href="#game-code--game-wide-objects">Game-wide objects</a></li><li><a href="#game-code--saving-and-loading">Saving and loading</a></li><li><a href="#game-code--sounds">Sounds</a></li><li><a href="#game-code--input">Input</a></li><li><a href="#game-code--physics">Physics</a></li><li><a href="#game-code--what-the-engine-offers">What the engine offers</a></li><li><a href="#game-code--safe-to-open">Safe to open</a></li><li><a href="#game-code--tips-and-common-problems">Tips and common problems</a></li><li><a href="#game-code--related">Related</a></li></ol></li>
 <li><a href="#which-language"><span class="num">32</span>Which language when</a><ol><li><a href="#which-language--when-to-use-it">When to use it</a></li><li><a href="#which-language--the-short-answer">The short answer</a></li><li><a href="#which-language--the-numbers">The numbers</a></li><li><a href="#which-language--tips-and-common-problems">Tips and common problems</a></li><li><a href="#which-language--related">Related</a></li></ol></li>
 <li><a href="#physics"><span class="num">33</span>Physics</a><ol><li><a href="#physics--when-to-use-it">When to use it</a></li><li><a href="#physics--how-to-use-it">How to use it</a></li><li><a href="#physics--settings">Settings</a></li><li><a href="#physics--shortcuts">Shortcuts</a></li><li><a href="#physics--tips-and-common-problems">Tips and common problems</a></li><li><a href="#physics--related">Related</a></li></ol></li>
 <li><a href="#input"><span class="num">34</span>Input</a><ol><li><a href="#input--when-to-use-it">When to use it</a></li><li><a href="#input--how-to-use-it">How to use it</a></li><li><a href="#input--settings">Settings</a></li><li><a href="#input--shortcuts">Shortcuts</a></li><li><a href="#input--tips-and-common-problems">Tips and common problems</a></li><li><a href="#input--related">Related</a></li></ol></li>
@@ -4285,6 +4285,65 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <li><code>despawn()</code> is how a component takes its own entity away, and <code>target:despawn()</code> takes another. It ends at the end of the tick.</li>
 </ul>
 </section>
+<section id="game-code--reading-other-entities">
+<h3>Reading other entities<a class="anchor" href="#game-code--reading-other-entities" aria-label="Link to this section">#</a></h3>
+<p>A gate wants to know whether the knight carries its key; a door wants the one quest in the level. Game code can read another entity's component, and find the one entity with a component, without naming anything by a string:</p>
+<pre data-lang="lust"><code><span class="tk-c">-- main.lst: a knight with a key, and a gate that opens for it.</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/components&quot;</span><span class="tk-p">:[</span><span class="tk-n">Component</span><span class="tk-p">,</span> <span class="tk-n">KnightReading</span><span class="tk-p">];</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Knight</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">bool</span> hasKey = <span class="tk-v">false</span><span class="tk-p">;</span>
+        <span class="tk-t">int</span> coins = <span class="tk-v">0</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Quest</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">entity</span> hero = <span class="tk-v">nothing</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Gate</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">bool</span> open = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        <span class="tk-t">entity</span> hero = <span class="tk-o">World</span><span class="tk-p">:</span>the<span class="tk-p">(</span><span class="tk-o">Component</span><span class="tk-p">.</span><span class="tk-s">Quest</span><span class="tk-p">):</span>quest<span class="tk-p">().</span>hero<span class="tk-p">;</span>
+        <span class="tk-n">KnightReading</span> knight = hero<span class="tk-p">:</span>knight<span class="tk-p">();</span>
+        <span class="tk-f">is</span> knight != <span class="tk-v">nothing</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            <span class="tk-f">is</span> knight<span class="tk-p">.</span>hasKey<span class="tk-f">? then</span> <span class="tk-p">{</span>
+                open = <span class="tk-v">true</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
+        <span class="tk-p">}</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Knight</span><span class="tk-p">,</span> <span class="tk-n">Quest</span><span class="tk-p">,</span> <span class="tk-n">Gate</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
+<ul>
+<li><strong><code>other:knight()</code></strong> gives a copy of the entity's <code>Knight</code> as the tick started, or <code>nothing</code> when it has none. Each component gets its own call, named after it with a small first letter (<code>Quest</code> gives <code>quest()</code>), and its own class to hold the copy, named after it with <code>Reading</code> (<code>KnightReading</code>). Fetch the class from <code>solis/components</code> to keep a copy in a variable, as above; a call used straight away (<code>hero:quest().hero</code>) needs nothing fetched.</li>
+<li><strong>A copy, never the component itself:</strong> its fields can be read but not changed, and changing one (<code>knight.coins = 1;</code>) is a mistake before the game runs. To change another entity, send it an <a href="#game-code--events">event</a>: the knight's own code decides what happens.</li>
+<li><strong>As the tick started:</strong> every component reads the same copy all tick, whichever runs first and on whichever core, so a game runs the same way every time. The gate sees the key from the tick after the knight takes it.</li>
+<li><strong><code>World:the(Component.Quest)</code></strong> is the one entity with a <code>Quest</code>, as the tick started. <code>Component</code> lists every component in your game, so a misspelt one is a mistake before the game runs. When there's none, or more than one, the component calling it stops and the <a href="#console">Console</a> says how many there were. For things there are many of, use <a href="#tags">tags</a> instead.</li>
+<li><strong><code>other:exists()</code></strong> says whether an entity is in the game as the tick started: one just spawned is from the next tick, and one despawned is until the end of the tick it was despawned in. Asked of <code>nothing</code>, it's <code>false</code>.</li>
+<li><strong>What can be read:</strong> fields of the built-in kinds (<code>bool</code>, <code>int</code>, <code>float</code>, <code>string</code>, <code>vec2</code>, <code>vec3</code>, <code>rotation</code>, <code>colour</code>, <code>entity</code>) and your own states. A field that holds an animator or another thing the engine fills in isn't in the copy.</li>
+<li><strong>Only what's read is copied:</strong> Solis looks at your code for the calls it makes, and copies only those components, once a tick. A game that reads nothing pays nothing.</li>
+</ul>
+<h4 id="game-code--one-tick-in-order">One tick, in order<a class="anchor" href="#game-code--one-tick-in-order" aria-label="Link to this section">#</a></h4>
+<p>Everything game code does in one tick happens in this order, the same on every computer:</p>
+<ol class="steps">
+<li>The components game code reads are copied, as above.</li>
+<li>Each <a href="#game-code--game-wide-objects">game-wide object</a>'s <code>update</code> runs, objects in the order of their names.</li>
+<li><a href="#game-code--tweens">Tweens</a> move.</li>
+<li>Every component's <code>update</code> runs: entities in the order of their IDs, and an entity's components in the order of their names. Each sees the world as the tick started, plus its own changes.</li>
+<li>The moves, turns and words those asked for happen, in that same order.</li>
+<li><a href="#game-code--events">Events</a> arrive, a round at a time: the engine's own first (<a href="#timers">timers</a>, <a href="#trigger-zones">trigger zones</a>), then <a href="#states">state changes</a>, then what components sent, in the order they were sent. An event sent while reacting to another arrives in a later round of the same tick.</li>
+<li>Spawns and despawns happen, in the order they were asked for. A spawned entity's components start now, and their first <code>update</code> is next tick.</li>
+</ol>
+</section>
 <section id="game-code--random-numbers">
 <h3>Random numbers<a class="anchor" href="#game-code--random-numbers" aria-label="Link to this section">#</a></h3>
 <p>Dice, loot, where an enemy wanders next: <code>random()</code> gives a number from 0 up to 1, <code>randomRange(low, high)</code> one between two numbers, and <code>randomInt(low, high)</code> a whole number, both ends included.</p>
@@ -4575,6 +4634,8 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <tr><td><code>solis/world</code></td><td><code>World:say(string words)</code></td><td>Writes words in the Console.</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:time()</code></td><td>How long the game has been running, in seconds.</td></tr>
 <tr><td><code>solis/world</code></td><td><code>entity World:find(string name)</code></td><td>The first entity with this name, in the Level panel's order, or <code>nothing</code>.</td></tr>
+<tr><td><code>solis/world</code></td><td><code>entity World:the(Component which)</code></td><td>The one entity with this component, as the tick started; none, or more than one, stops the component (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
+<tr><td><code>solis/components</code></td><td><code>KnightReading entity:knight()</code>, one for each component</td><td>A copy of another entity's component as the tick started, read-only, or <code>nothing</code> (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)</code></td><td>Fires a projectile (see Projectiles, below).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>entity World:spawn(Prefab which, vec3 place)</code></td><td>Makes a copy of one of the project's prefabs at a place (see Making and removing entities, below).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:frameTime()</code></td><td>How long the last frame took, in seconds of real time (1/60 at 60 frames a second).</td></tr>
@@ -4638,6 +4699,7 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <tr><td>any entity</td><td><code>face(vec3 direction)</code></td><td>Turns the entity, upright, to face along a direction (its forward is +Y): <code>face(target:position() - position())</code> faces a place.</td></tr>
 <tr><td>any entity</td><td><code>string name()</code></td><td>The entity's name.</td></tr>
 <tr><td>any entity</td><td><code>despawn()</code></td><td>Takes the entity, and everything under it, out of the game.</td></tr>
+<tr><td>any entity</td><td><code>bool exists()</code></td><td>Whether the entity is in the game as the tick started (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td>any entity</td><td><code>push(vec3 impulse)</code></td><td>Gives its body a push (<a href="#physics">Physics</a>).</td></tr>
 <tr><td>any entity</td><td><code>vec3 velocity()</code></td><td>How fast and which way its body moves, metres a second; for a 2D character, how fast its last tick's move went.</td></tr>
 <tr><td>any entity</td><td><code>setVelocity(vec3 velocity)</code></td><td>Sets how fast and which way its body moves.</td></tr>

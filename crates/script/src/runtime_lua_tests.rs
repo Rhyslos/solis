@@ -28,6 +28,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
     Compiled {
         timers: Vec::new(),
         state_events: Default::default(),
+        components: Default::default(),
         lust,
         lua: lua
             .iter()
@@ -426,6 +427,7 @@ fn a_component_drives_its_animator_through_the_animator_s_own_file() {
     let compiled = Compiled {
         timers: Vec::new(),
         state_events: Default::default(),
+        components: Default::default(),
         lust: Some(chunk),
         lua: Vec::new(),
         schemas: Vec::new(),
@@ -565,6 +567,7 @@ fn a_component_changes_a_tile_map_through_the_map_s_own_file() {
     let compiled = Compiled {
         timers: Vec::new(),
         state_events: Default::default(),
+        components: Default::default(),
         lust: Some(chunk),
         lua: Vec::new(),
         schemas: Vec::new(),

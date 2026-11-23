@@ -597,6 +597,8 @@ impl GameWorld for PlayWorld<'_> {
             timers: Arc::default(),
             tables: self.cache.tables.clone(),
             texts: self.cache.texts.clone(),
+            // The game puts its own readings in (Fixes 2).
+            readings: Arc::default(),
         }
     }
 
