@@ -8,6 +8,7 @@ This folder:
 | --- | --- |
 | `README.md` | This outline: what the system covers, how it fits Solis, and the milestones in rough order |
 | `prototype-spec.md` | The project lead's specification of their first prototype: data, runtime, dialogue box and graph editor. The starting point, kept as written |
+| [`milestone-2.md`](milestone-2.md) | The detailed plan for milestone 2, conversations and their runtime: the file, game code's calls and events, conditions and effects, holding the game, saves, the steps and their tests, and the questions for the project lead. It also links the mock-ups of milestones 3 and 4 |
 
 **Only the next milestone is planned in detail** ([the game stages](../game-stages.md)). This outline is the shape. Each milestone gets its research, its questions and its mock-up when it comes up, and **every part with UI is mocked up first** (the project lead: "as always, you mock it up first when we get to it").
 
@@ -74,19 +75,19 @@ Translations and subtitles come first, then dialogue. The split and the names wi
    - the game's text in several languages, with a check for missing lines;
    - captions for sounds and speech;
    - brought forward from Shared 5.
-2. **Conversations and their runtime:**
+2. **Conversations and their runtime** ([the plan](milestone-2.md)):
    - the conversation file and speakers;
    - the four node kinds;
    - conditions and effects through game code;
    - the runtime and its events;
    - pause requests;
    - saves.
-3. **The dialogue box:**
+3. **The dialogue box** ([mock-up, for approval](https://claude.ai/artifact/77CrihfvXyDwM318Q4fEFp)):
    - a game UI screen on text layout and effects;
    - choices;
    - interact and accept;
    - restyled or replaced by the game maker.
-4. **The conversation editor:**
+4. **The conversation editor** ([mock-up, for approval](https://claude.ai/artifact/N2YvGVm2oZ8G9j7jN4LXfD)):
    - on the shared graph editor;
    - Problems;
    - Properties;
