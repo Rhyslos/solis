@@ -21,6 +21,9 @@ pub enum Command {
     /// Check the project in this folder without opening the editor, and
     /// exit (Phase 8, C4).
     CheckProject(CheckProject),
+    /// Play a level without a window and print what happened (Fixes 4,
+    /// T1).
+    Play(Play),
     /// Print this many new IDs, one a line, for files written by hand or
     /// by a script, and exit (Fixes 4, D3).
     NewIds(u32),
@@ -37,6 +40,23 @@ pub struct CheckProject {
     /// How many ticks to play its start level for, with no input
     /// (`--smoke <ticks>`, Fixes 1): none plays nothing.
     pub smoke: Option<u32>,
+}
+
+/// What `--play` plays.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Play {
+    /// The project's folder.
+    pub folder: PathBuf,
+    /// The level, inside the project's assets (`levels/farm.sollevel`):
+    /// none plays the start level.
+    pub level: Option<String>,
+    /// How many ticks to play: none plays a script to its end and a tick
+    /// more, or ten seconds with no script.
+    pub ticks: Option<u32>,
+    /// A script of input to play with (`input::Script`).
+    pub inputs: Option<PathBuf>,
+    /// The components whose values are printed at the end, by name.
+    pub print: Vec<String>,
 }
 
 /// The most ticks `--smoke` plays: ten minutes of a game.
@@ -102,6 +122,12 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
             Some("--version" | "-V") => version = true,
             Some("--help" | "-h") => return Ok(Command::Help),
             Some("--new-id") => return new_ids(args),
+            Some("--play") => match args.next() {
+                Some(folder) => return play(PathBuf::from(folder), args),
+                None => {
+                    return Err("--play needs a project's folder after it. Try --help.".to_string());
+                }
+            },
             Some("--check-project") => match args.next() {
                 Some(folder) => return check_project(PathBuf::from(folder), args),
                 None => {
@@ -155,6 +181,69 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     } else {
         Command::Run(launch)
     })
+}
+
+/// `--play <folder>`, then what's after it: a level, `--ticks <n>`,
+/// `--inputs <script>` and `--print <Component,…>`, each once.
+fn play(folder: PathBuf, mut rest: impl Iterator<Item = OsString>) -> Result<Command, String> {
+    let mut asked = Play {
+        folder,
+        level: None,
+        ticks: None,
+        inputs: None,
+        print: Vec::new(),
+    };
+    let wrong = |what: &str| {
+        format!(
+            "--play takes a folder, then a level, --ticks <n>, --inputs <script> and --print \
+             <Component,…>, each once: {what}. Try --help."
+        )
+    };
+    let mut printing = false;
+    while let Some(arg) = rest.next() {
+        let word = arg
+            .to_str()
+            .ok_or_else(|| wrong("an argument isn't text"))?;
+        match word {
+            "--ticks" if asked.ticks.is_none() => {
+                let ticks = rest
+                    .next()
+                    .and_then(|t| t.to_str().and_then(|t| t.parse::<u32>().ok()))
+                    .filter(|t| (1..=MAX_SMOKE_TICKS).contains(t));
+                asked.ticks = Some(ticks.ok_or_else(|| {
+                    wrong(&format!(
+                        "--ticks needs a number from 1 to {MAX_SMOKE_TICKS}"
+                    ))
+                })?);
+            }
+            "--inputs" if asked.inputs.is_none() => {
+                let file = rest
+                    .next()
+                    .ok_or_else(|| wrong("--inputs needs a script's file"))?;
+                asked.inputs = Some(PathBuf::from(file));
+            }
+            "--print" if !printing => {
+                printing = true;
+                let names = rest
+                    .next()
+                    .and_then(|n| n.to_str().map(str::to_string))
+                    .ok_or_else(|| {
+                        wrong("--print needs components' names, such as Quest,Knight")
+                    })?;
+                for name in names.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+                    if asked.print.len() >= 64 || !input::valid_action_name(name) {
+                        return Err(wrong(&format!("{name} isn't a component's name")));
+                    }
+                    asked.print.push(name.to_string());
+                }
+            }
+            level if !level.starts_with('-') && asked.level.is_none() => {
+                asked.level = Some(level.replace('\\', "/"));
+            }
+            other => return Err(wrong(&format!("not {other}"))),
+        }
+    }
+    Ok(Command::Play(asked))
 }
 
 /// `--new-id`, then how many (one when nothing follows).
@@ -222,6 +311,7 @@ pub fn usage(program: &str) -> String {
     format!(
         "Usage: {program} [<project folder>] [--import <file>]... [--sample <which> <folder>] [--version | --help]\n       \
          {program} --check-project <folder> [--smoke <ticks>]\n       \
+         {program} --play <folder> [<level>] [--ticks <n>] [--inputs <script>] [--print <Component,…>]\n       \
          {program} --new-id [<count>]\n\n\
          Opens the {name} launcher, or with a project's folder, that project in the editor.\n\n\
          Options:\n  \
@@ -237,6 +327,12 @@ pub fn usage(program: &str) -> String {
          --smoke <ticks>  With --check-project: also play the game's start level for\n                   \
          this many ticks (60 a second) with no input, and fail on any error\n                   \
          or warning in the Console, said with its tick\n  \
+         --play <folder> [<level>]\n                   \
+         Play a level (the start level when none is named) without a window,\n                   \
+         printing what the Console says with its tick. --ticks <n> plays n\n                   \
+         ticks (60 a second); --inputs <script> plays a script of input\n                   \
+         (at 60 press Jump); --print Quest,Knight prints those components'\n                   \
+         values at the end. Exits 1 on any error\n  \
          --new-id [<count>]\n                   \
          Print new IDs, one a line (one, or up to {MAX_NEW_IDS}), for files\n                   \
          written by hand or by a script, and exit\n  \
@@ -293,6 +389,52 @@ mod tests {
                 .contains("folder")
         );
         assert!(usage("solis").contains("--check-project <folder>"));
+    }
+
+    #[test]
+    fn play_takes_a_folder_a_level_ticks_inputs_and_components() {
+        assert_eq!(
+            parse(args(&[
+                "--play",
+                "games/farm",
+                "levels/barn.sollevel",
+                "--ticks",
+                "120",
+                "--inputs",
+                "walk.txt",
+                "--print",
+                "Quest, Knight"
+            ])),
+            Ok(Command::Play(Play {
+                folder: PathBuf::from("games/farm"),
+                level: Some("levels/barn.sollevel".into()),
+                ticks: Some(120),
+                inputs: Some(PathBuf::from("walk.txt")),
+                print: vec!["Quest".into(), "Knight".into()],
+            }))
+        );
+        assert_eq!(
+            parse(args(&["--play", "f"])),
+            Ok(Command::Play(Play {
+                folder: PathBuf::from("f"),
+                level: None,
+                ticks: None,
+                inputs: None,
+                print: Vec::new(),
+            }))
+        );
+        for bad in [
+            &["--play"][..],
+            &["--play", "f", "--ticks", "0"],
+            &["--play", "f", "--ticks", "5", "--ticks", "6"],
+            &["--play", "f", "a.sollevel", "b.sollevel"],
+            &["--play", "f", "--inputs"],
+            &["--play", "f", "--print", "not-a-name"],
+            &["--play", "f", "--smoke", "5"],
+        ] {
+            assert!(parse(args(bad)).unwrap_err().contains("--help"), "{bad:?}");
+        }
+        assert!(usage("solis").contains("--play <folder> [<level>]"));
     }
 
     #[test]

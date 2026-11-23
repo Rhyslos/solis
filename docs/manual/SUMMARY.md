@@ -34,6 +34,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Backups and upgrades: older files keep opening, and a copy is kept before they change](backups-and-upgrades.md)
 - [Checking a project before updating: does this build still play my game the same?](checking-a-project.md)
+- [Playing a game from the command line: a level played with a script of input, printing what happened](playing-from-the-command-line.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 
 ## Sound

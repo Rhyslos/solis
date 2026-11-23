@@ -28,6 +28,7 @@ pub mod logger;
 mod loop_owners;
 mod older_files;
 pub mod play_files;
+pub mod play_headless;
 pub mod playground;
 mod playground_sounds;
 pub mod playtest;

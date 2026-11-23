@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Playing a game from the command line** (Fixes 4; [the manual](docs/manual/playing-from-the-command-line.md)): `solis --play <folder> [<level>] --inputs walk.txt --print Quest,Knight` plays a level without a window, with a plain-text script of what the player does (`at 30 press Jump`, `at 0 hold Move 1 0`), and prints what the Console said with its tick, then the components asked for. It fails on any error, so a game's own workflow can use it.
 - **The input page names every key and button** (Fixes 4; [the manual](docs/manual/input.md#names-of-keys-and-buttons)), for writing `input.solinput` by hand or calling `Input:rebind`; a test keeps the table complete.
 - **`solis --new-id [count]`** (Fixes 4) prints new IDs, one a line, for files written by hand or by a script.
 - **Hiding entities and turning colliders off** (Fixes 2c; [the manual](docs/manual/game-code.md#hiding-entities-and-turning-colliders-off)): `setSolid(false)` takes an entity's collider out of the way (a fallen orc no longer blocks the key it dropped), and `setVisible(false)` hides it and everything under it. Both are kept in save games; saves are now version 14, and older ones load as before.
