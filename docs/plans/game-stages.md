@@ -278,8 +278,9 @@ All in Lust, Rust and Lua, checked against the guidelines (rule 25).
 
 ### Fixes 3: clips by action and direction, and another look
 
-- **M1** (High) Aseprite tags named with a direction (`walk/NE` or the like) read as one clip with directions, and `animate(Clip.Sprites.Knight.Walk, facing)` with a direction state, as animators already know directions. Ends 300-line lookup tables.
-- **M2** (Medium) Switching a character to another look while playing: another sheet, or animator variants that pick among clip sets.
+Planned in [fixes-3.md](fixes-3.md) (draft, with mock-ups and questions). The project lead chose an editor-made sheet over reading direction names from Aseprite tags (2026-11-23).
+- **M1** (High) A picture cut into a grid in the editor, clips with one, four or eight directions made from its cells, and game code naming the direction (`setFacing(Facing.NorthEast)`, then `animate(Clip.Sprites.Knight.Walk)`). Ends 300-line lookup tables.
+- **M2** (Medium) Switching a character to another look while playing: a look is another picture on the same grid (`setLook(Look.Sprites.Knight.Mana)`).
 - **D2** (Low) The rule for how a tag becomes a clip's name, in the sprite animation page.
 
 ### Fixes 4: Solis's files written down, and playing from the command line
