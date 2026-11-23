@@ -11,7 +11,7 @@
 //! [`read`] gathers all of that from the repository, with the manual's
 //! pictures, [`build`] turns it into the guide or says what stops it: a
 //! page missing from the contents, a link to nothing, a picture missing
-//! or shown by no page, a game-code example not in all three languages. The tests in `tests/manual.rs` fail when
+//! or shown by no page, a Rust or Lua example with no Lust. The tests in `tests/manual.rs` fail when
 //! the copy kept in `docs/user-guide/index.html` isn't what [`build`]
 //! makes now.
 

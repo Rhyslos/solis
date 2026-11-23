@@ -6,8 +6,7 @@
 //! And its pictures and examples (decision 0113): a picture a page shows
 //! is missing, a picture is shown by no page, or (at a phase's end, with
 //! `GUIDE_PICTURES_STRICT=1`, decision 0115) the pictures are older than
-//! the editor's interface; a game-code example isn't in all three
-//! languages (those stop the build, so the test above fails), its Rust's
+//! the editor's interface; a Rust or Lua example has no Lust (those stop the build, so the test above fails), its Rust's
 //! brackets don't balance, or its Lua or Rust calls something game code
 //! can't. Its Lust, and its Lua's syntax, are checked against the engine
 //! by `crates/script/src/manual_examples_tests.rs`.

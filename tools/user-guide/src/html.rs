@@ -255,16 +255,16 @@ impl<'a> Writer<'a> {
             }
             Block::Paragraph(words) => self.paragraph(words),
             Block::Code(language, text) => {
-                if examples::is_game_code(language) {
+                if examples::is_game_code(language) && language != examples::LUST_ALONE {
                     self.places.problem(format!(
-                        "a game-code example in {language} isn't in all three languages: write \
-                         it as three blocks one after another, ```lust, ```rust and ```lua \
-                         (_template.md)"
+                        "a game-code example in {language} has no Lust: write it in Lust \
+                         alone, or as three blocks one after another, ```lust, ```rust and \
+                         ```lua (_template.md)"
                     ));
                 } else if language.is_empty() && examples::looks_like_lust(text) {
                     self.places.problem(format!(
                         "a code block starting \"{}\" reads as Lust game code: fence it \
-                         ```lust, with ```rust and ```lua after it (_template.md)",
+                         ```lust (_template.md)",
                         text.lines().next().unwrap_or("").trim()
                     ));
                 }
