@@ -90,6 +90,7 @@ fn compiled(main: &str, lua: &[(&str, &str)]) -> Compiled {
     Compiled {
         timers: Vec::new(),
         state_events: Default::default(),
+        components: Default::default(),
         lust,
         lua: lua
             .iter()

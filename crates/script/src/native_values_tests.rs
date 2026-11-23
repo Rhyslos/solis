@@ -30,6 +30,7 @@ fn lua_code(files: &[(&str, &str)]) -> Compiled {
     Compiled {
         timers: Vec::new(),
         state_events: Default::default(),
+        components: Default::default(),
         lust: None,
         lua: files
             .iter()

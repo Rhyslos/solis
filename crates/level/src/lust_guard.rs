@@ -98,6 +98,84 @@ pub fn fetched(text: &str) -> impl Iterator<Item = &str> {
     })
 }
 
+/// What a file shares and brings in by name, as Lust reads it: each
+/// `fetch "path":Name;` and `fetch "path":[A, B];` as (path, name), the
+/// names its `pass` lines share, and where its closing `end` starts (the
+/// last thing in it), for Solis to share one more name on that line
+/// without moving any other (`script::component_code`).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Shared<'a> {
+    /// Each name brought in with `fetch`, and the path it's from.
+    pub fetched: Vec<(&'a str, &'a str)>,
+    /// Each name a `pass` line shares.
+    pub passed: Vec<&'a str>,
+    /// Where the file's closing `end` starts, when the file ends with one.
+    pub end: Option<usize>,
+}
+
+/// [`Shared`] for `text`. At most `most` names of each kind are kept (the
+/// text is game code: never trusted to be small).
+pub fn shared(text: &str, most: usize) -> Shared<'_> {
+    #[derive(Clone, Copy, PartialEq)]
+    enum At<'a> {
+        Elsewhere,
+        Fetch,
+        FetchPath(&'a str),
+        FetchNames(&'a str, bool),
+        Pass,
+    }
+    let mut found = Shared::default();
+    let mut pieces = Pieces::new(text);
+    let mut at = At::Elsewhere;
+    let mut depth = 0usize;
+    let mut last_end = None;
+    while let Some((_, piece)) = pieces.next() {
+        // Where the word ends: the blank space and comments before it are
+        // behind it.
+        let after = text.len() - pieces.left();
+        last_end = match piece {
+            Piece::Word("end") if depth == 0 => Some(after - "end".len()),
+            _ => None,
+        };
+        at = match (at, piece) {
+            (_, Piece::Symbol("{")) => {
+                depth += 1;
+                At::Elsewhere
+            }
+            (_, Piece::Symbol("}")) => {
+                depth = depth.saturating_sub(1);
+                At::Elsewhere
+            }
+            (At::Elsewhere, Piece::Word("fetch")) if depth == 0 => At::Fetch,
+            (At::Elsewhere, Piece::Word("pass")) if depth == 0 => At::Pass,
+            (At::Fetch, Piece::Text { inside, .. }) => At::FetchPath(inside),
+            (At::FetchPath(path), Piece::Symbol(":")) => At::FetchNames(path, false),
+            (At::FetchNames(path, false), Piece::Symbol("[")) => At::FetchNames(path, true),
+            (At::FetchNames(path, many), Piece::Word(name)) => {
+                if found.fetched.len() < most {
+                    found.fetched.push((path, name));
+                }
+                if many {
+                    At::FetchNames(path, true)
+                } else {
+                    At::Elsewhere
+                }
+            }
+            (At::FetchNames(path, true), Piece::Symbol(",")) => At::FetchNames(path, true),
+            (At::Pass, Piece::Word(name)) => {
+                if found.passed.len() < most {
+                    found.passed.push(name);
+                }
+                At::Pass
+            }
+            (At::Pass, Piece::Symbol(",")) => At::Pass,
+            _ => At::Elsewhere,
+        };
+    }
+    found.end = last_end;
+    found
+}
+
 /// A piece of Lust text, as Lust's reader splits it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Piece<'a> {
@@ -134,6 +212,11 @@ impl<'a> Pieces<'a> {
             rest: text,
             line: 1,
         }
+    }
+
+    /// How many bytes of the text are still to read.
+    pub(crate) fn left(&self) -> usize {
+        self.rest.len()
     }
 
     /// The line the next piece is looked for from (the text's last, once
@@ -501,6 +584,36 @@ mod tests {
         // Unfinished or empty: at most the path begun, and no crash.
         for broken in ["fetch", "fetch \"open", "get :X;", "", "\"x\""] {
             assert!(fetched(broken).all(|p| p == "open"), "{broken:?}");
+        }
+    }
+
+    #[test]
+    fn what_a_file_brings_in_and_shares_is_read_as_lust_reads_it() {
+        let text = "fetch \"solis/project\":[Clip, Sound];\n\
+                    fetch \"game/types\":Mode; -- fetch \"no\":Not;\n\
+                    state Kind = [A, B];\n\
+                    component Knight { has { Mode mode = Mode.Calm; } method x() { is true? then { } } }\n\
+                    pass Knight, Kind;\n\
+                    pass Other;\n\
+                    end -- the end\n\n";
+        let found = shared(text, 100);
+        assert_eq!(
+            found.fetched,
+            [
+                ("solis/project", "Clip"),
+                ("solis/project", "Sound"),
+                ("game/types", "Mode")
+            ]
+        );
+        assert_eq!(found.passed, ["Knight", "Kind", "Other"]);
+        let end = found.end.expect("ends with end");
+        assert!(text[end..].starts_with("end -- the end"));
+        // A file without its end, or whose last word is something else.
+        assert_eq!(shared("pass A;\n", 10).end, None);
+        assert_eq!(shared("end\nx", 10).end, None);
+        assert_eq!(shared("pass A, B, C;\nend\n", 2).passed, ["A", "B"]);
+        for broken in ["fetch", "fetch \"x\":[", "pass", "pass ,;", "}}}end", ""] {
+            let _ = shared(broken, 10);
         }
     }
 }

@@ -458,10 +458,24 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "the",
+        owner: "World",
+        lust: "method entity the(Component which) native;",
+        about: "The one entity with this component (Component.Quest), as the tick started. None, or more than one, stops with a message: give the component to one entity only.",
+    },
+    Native {
+        file: "world",
         name: "despawn",
         owner: "entity",
         lust: "method entity:despawn() native;",
         about: "Takes the entity, and everything under it, out of the game at the end of the tick.",
+    },
+    Native {
+        file: "world",
+        name: "exists",
+        owner: "entity",
+        lust: "method bool entity:exists() native;",
+        about: "Whether the entity is in the game as the tick started: one spawned is from the tick after, one despawned is until the tick it was despawned in ends. Asked of nothing, or an entity that's gone, it's false.",
     },
     Native {
         file: "world",
@@ -1219,6 +1233,18 @@ fn descriptions_with(
                     wanted.join(", ")
                 ));
             }
+            // The game's components (Fixes 2), from the file the code's
+            // check writes.
+            let state = crate::component_code::STATE;
+            if mine
+                .iter()
+                .any(|n| n.lust.contains(&format!("({state} ")))
+            {
+                text.push_str(&format!(
+                    "fetch \"{folder}/{}\":{state};\n\n",
+                    crate::component_code::FILE
+                ));
+            }
             // Its classes first (what natives give back), then methods on
             // their own and the entity's, then each engine object's in a
             // block of its own.
@@ -1281,6 +1307,10 @@ fn descriptions_with(
             (format!("{folder}/{file}.lst"), text)
         })
         .chain(std::iter::once((format!("{folder}/project.lst"), project)))
+        .chain(std::iter::once((
+            format!("{folder}/{}.lst", crate::component_code::FILE),
+            crate::component_code::placeholder(made_by),
+        )))
         .chain(DATA_CLASSES.iter().map(|(kind, classes)| {
             (
                 format!("{folder}/{}/{kind}.lst", level::lust_data::CLASSES_FOLDER),
@@ -1369,7 +1399,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 23);
+        assert_eq!(files.len(), 24);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));

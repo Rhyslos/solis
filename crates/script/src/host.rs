@@ -60,6 +60,25 @@ pub trait Host {
     fn despawn(&mut self, which: EntityId) {
         let _ = which;
     }
+    /// Whether the entity is in the game, as the tick started (Fixes 2): a
+    /// spawned one from the tick after it was asked for, a despawned one
+    /// until the tick it was despawned in ends.
+    fn exists(&self, which: EntityId) -> bool {
+        self.position(which).is_some()
+    }
+    /// The components game code reads, as the tick started (Fixes 2a): none
+    /// while no game runs.
+    fn readings(&self) -> Option<std::sync::Arc<crate::Readings>> {
+        None
+    }
+    /// The one entity with the component `component`, as the tick started
+    /// (`World:the`), or why there isn't one.
+    fn the(&self, component: &str) -> Result<EntityId, String> {
+        let readings = self.readings().unwrap_or_default();
+        readings
+            .the(component)
+            .map_err(|found| crate::readings::not_one(component, found))
+    }
     /// How long the last frame took, in seconds of real time.
     fn frame_time(&self) -> f64 {
         1.0 / 60.0
@@ -633,6 +652,9 @@ pub(crate) fn with_natives<'h, R>(
             (host.tables(), host.texts())
         };
         luau.lend_tables(tables, texts, &natives)?;
+        // Other entities' components as the tick started (Fixes 2).
+        let readings = h.borrow().readings();
+        luau.lend_readings(readings, &natives)?;
         // A native renamed on purpose keeps working under its old name for
         // a while (Phase 8, C3): the same function, lent twice.
         lend_old_names(&natives, crate::describe::RENAMED)?;

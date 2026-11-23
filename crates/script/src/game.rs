@@ -222,6 +222,9 @@ pub struct WorldView {
     pub tables: crate::Tables,
     /// The game's text in the player's language (stage 1, translations).
     pub texts: Option<translations::Texts>,
+    /// The components game code reads, as the tick started (Fixes 2):
+    /// the [`Game`] puts its own here, whatever the world gives.
+    pub readings: Arc<crate::Readings>,
 }
 
 impl WorldView {
@@ -505,6 +508,14 @@ impl Host for ViewHost {
             .changes
             .push((order, Change::Spawn(id, prefab.to_string(), place)));
         Some(id)
+    }
+
+    fn exists(&self, which: EntityId) -> bool {
+        self.view.index.slots.contains_key(&which)
+    }
+
+    fn readings(&self) -> Option<Arc<crate::Readings>> {
+        Some(Arc::clone(&self.view.readings))
     }
 
     fn despawn(&mut self, which: EntityId) {
@@ -1036,6 +1047,9 @@ enum Job {
     SetObjects(Arc<crate::ObjectValues>),
     ObjectInfo,
     ObjectChecksum,
+    /// Copies of the running components of these kinds, for every core to
+    /// read this tick (Fixes 2).
+    Copy(Arc<Vec<String>>),
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
     #[cfg(any(test, feature = "test-support"))]
@@ -1058,6 +1072,7 @@ enum Done {
     /// Values that couldn't be given, as (object, field).
     LeftOut(Vec<(String, String)>),
     ObjectInfo(Vec<ComponentSchema>, Vec<(String, String)>),
+    Copied(Vec<crate::readings::Copied>),
 }
 
 /// Does `job` on `runtime`.
@@ -1130,6 +1145,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             Done::ObjectInfo(runtime.object_schemas(), runtime.unkept_object_fields())
         }
         Job::ObjectChecksum => Done::Checksum(runtime.object_checksum()),
+        Job::Copy(kinds) => Done::Copied(runtime.copies(&kinds)),
         Job::Round(events, view, round) => {
             let mut host = ViewHost::new(view, round);
             let phase = runtime.run_round(&events, &mut host);
@@ -1252,6 +1268,10 @@ pub struct Game {
     states_waiting: Vec<Event>,
     /// Whether too many timers at once was said, since the code changed.
     told_timers: bool,
+    /// The component kinds game code reads (Fixes 2a).
+    reads: Arc<Vec<String>>,
+    /// The readings as this tick started, shared with each phase's view.
+    readings: Arc<crate::Readings>,
 }
 
 impl std::fmt::Debug for Game {
@@ -1310,6 +1330,8 @@ impl Game {
             state_events: Arc::default(),
             states_waiting: Vec::new(),
             told_timers: false,
+            reads: Arc::default(),
+            readings: Arc::default(),
         })
     }
 
@@ -1489,6 +1511,40 @@ impl Game {
         self.told_timers = false;
         self.state_events = Arc::new(code.state_events.clone());
         self.objects = !self.object_values().is_empty();
+        self.note_reads();
+    }
+
+    /// Notes the kinds game code reads.
+    fn note_reads(&mut self) {
+        self.reads = Arc::new(
+            self.running
+                .as_ref()
+                .map(|code| code.components.reads.clone())
+                .unwrap_or_default(),
+        );
+        self.readings = Arc::default();
+    }
+
+    /// Copies the components game code reads from every shard, as the
+    /// tick starts (Fixes 2a): nothing when it reads none.
+    fn copy_readings(&mut self) {
+        if self.reads.is_empty() {
+            return;
+        }
+        let kinds = Arc::clone(&self.reads);
+        let copies = self
+            .all(|_| Job::Copy(Arc::clone(&kinds)))
+            .into_iter()
+            .flat_map(|answer| match answer {
+                Some(Done::Copied(copies)) => copies,
+                _ => Vec::new(),
+            });
+        self.readings = Arc::new(crate::Readings::gathered(&kinds, copies));
+    }
+
+    /// The readings as this tick started (Fixes 2).
+    pub fn readings(&self) -> &Arc<crate::Readings> {
+        &self.readings
     }
 
     /// Stops the game's Lust and Lua (see [`Runtime::unload`]).
@@ -1496,6 +1552,7 @@ impl Game {
         self.count = None;
         let _ = self.all(|_| Job::Unload);
         self.running = None;
+        self.note_reads();
         self.code.clear();
         self.schemas.clear();
         self.objects = false;
@@ -1721,6 +1778,9 @@ impl Game {
         self.unclaimed.clear();
         // Game time moves on, and the timers due finish in the first
         // round, after the engine's other events (stage 1, timers).
+        // What game code reads of other entities, as the tick starts
+        // (Fixes 2).
+        self.copy_readings();
         let start = world.view();
         engine.extend(self.timers_due(&start));
         // Then the states that changed last tick, each to its component
@@ -1735,6 +1795,7 @@ impl Game {
         if objects {
             let mut view = start;
             view.timers = Arc::clone(&self.timers);
+            view.readings = Arc::clone(&self.readings);
             let answer = self.first(Job::Objects(dt, view));
             match self.gather(vec![answer], world) {
                 Ok(phase) => {
@@ -2017,3 +2078,7 @@ mod timers_tests;
 #[cfg(test)]
 #[path = "game_own_states_tests.rs"]
 mod own_states_tests;
+
+#[cfg(test)]
+#[path = "game_readings_tests.rs"]
+mod readings_tests;

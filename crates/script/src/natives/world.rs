@@ -127,6 +127,29 @@ fn lend_words<'s>(
         scope.create_function(move |_, _world: LuaValue| Ok(h.borrow().time()))?,
     )?;
     natives.raw_set(
+        "World_the",
+        native(
+            scope,
+            "World_the",
+            move |_, (_world, which): (LuaValue, mlua::LuaString)| {
+                let which = which.to_str()?;
+                // Lust always names a component; only Lua can give a
+                // number or other text.
+                if !crate::screens::lust_name(&which) {
+                    return Err(mlua::Error::runtime(format!(
+                        "solis.World:the(which) wants the name of one of the game's components, \
+                         and was given {}",
+                        &*which
+                    )));
+                }
+                h.borrow()
+                    .the(&which)
+                    .map(|id| id.to_string())
+                    .map_err(mlua::Error::runtime)
+            },
+        )?,
+    )?;
+    natives.raw_set(
         "World_find",
         native(
             scope,

@@ -18,6 +18,7 @@ fn chunk(main: &str) -> Compiled {
         Ok(chunk) => Compiled {
             timers: Vec::new(),
             state_events: Default::default(),
+            components: Default::default(),
             lust: Some(chunk),
             lua: Vec::new(),
             schemas: Vec::new(),

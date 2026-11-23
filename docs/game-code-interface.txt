@@ -14,7 +14,9 @@ world: object World: method entity array within(Tag tag, vec3 place, float radiu
 world: object World: method entity nearest(Tag tag, vec3 place) native;
 world: object World: method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;
 world: object World: method entity spawn(Prefab which, vec3 place) native;
+world: object World: method entity the(Component which) native;
 world: method entity:despawn() native;
+world: method bool entity:exists() native;
 world: method bool entity:hasTag(Tag tag) native;
 world: method entity:addTag(Tag tag) native;
 world: method entity:removeTag(Tag tag) native;
@@ -192,6 +194,7 @@ solis.World:setSeed
 solis.World:setTimeOfDay
 solis.World:spawn
 solis.World:text
+solis.World:the
 solis.World:time
 solis.World:timeOfDay
 solis.World:viewSize
@@ -200,6 +203,7 @@ solis.entity.addTag
 solis.entity.animate
 solis.entity.animateFromStart
 solis.entity.despawn
+solis.entity.exists
 solis.entity.face
 solis.entity.finishTyping
 solis.entity.grounded
@@ -266,6 +270,9 @@ Host: fn name(&self, which: EntityId) -> Option<String>
 Host: fn fire(&mut self, shot: Shot)
 Host: fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId>
 Host: fn despawn(&mut self, which: EntityId)
+Host: fn exists(&self, which: EntityId) -> bool
+Host: fn readings(&self) -> Option<std::sync::Arc<crate::Readings>>
+Host: fn the(&self, component: &str) -> Result<EntityId, String>
 Host: fn frame_time(&self) -> f64
 Host: fn random(&mut self) -> f64
 Host: fn set_seed(&mut self, seed: u64)

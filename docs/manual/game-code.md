@@ -595,6 +595,68 @@ end
 - **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places a prefab (…) that isn't in the project, so nothing was made.* The reasons are those of [prefabs](prefabs.md) themselves: the prefab places another whose file is missing or can't be read, prefabs place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each prefab's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the prefab and press Play again.
 - `despawn()` is how a component takes its own entity away, and `target:despawn()` takes another. It ends at the end of the tick.
 
+## Reading other entities
+
+A gate wants to know whether the knight carries its key; a door wants the one quest in the level. Game code can read another entity's component, and find the one entity with a component, without naming anything by a string:
+
+```lust
+-- main.lst: a knight with a key, and a gate that opens for it.
+fetch "solis/world":World;
+fetch "solis/components":[Component, KnightReading];
+
+component Knight {
+    has {
+        bool hasKey = false;
+        int coins = 0;
+    }
+}
+
+component Quest {
+    has {
+        entity hero = nothing;
+    }
+}
+
+component Gate {
+    has {
+        bool open = false;
+    }
+
+    method update(float dt) {
+        entity hero = World:the(Component.Quest):quest().hero;
+        KnightReading knight = hero:knight();
+        is knight != nothing? then {
+            is knight.hasKey? then {
+                open = true;
+            }
+        }
+    }
+}
+
+pass Knight, Quest, Gate;
+end
+```
+
+- **`other:knight()`** gives a copy of the entity's `Knight` as the tick started, or `nothing` when it has none. Each component gets its own call, named after it with a small first letter (`Quest` gives `quest()`), and its own class to hold the copy, named after it with `Reading` (`KnightReading`). Fetch the class from `solis/components` to keep a copy in a variable, as above; a call used straight away (`hero:quest().hero`) needs nothing fetched.
+- **A copy, never the component itself:** its fields can be read but not changed, and changing one (`knight.coins = 1;`) is a mistake before the game runs. To change another entity, send it an [event](#events): the knight's own code decides what happens.
+- **As the tick started:** every component reads the same copy all tick, whichever runs first and on whichever core, so a game runs the same way every time. The gate sees the key from the tick after the knight takes it.
+- **`World:the(Component.Quest)`** is the one entity with a `Quest`, as the tick started. `Component` lists every component in your game, so a misspelt one is a mistake before the game runs. When there's none, or more than one, the component calling it stops and the [Console](console.md) says how many there were. For things there are many of, use [tags](tags.md) instead.
+- **`other:exists()`** says whether an entity is in the game as the tick started: one just spawned is from the next tick, and one despawned is until the end of the tick it was despawned in. Asked of `nothing`, it's `false`.
+- **What can be read:** fields of the built-in kinds (`bool`, `int`, `float`, `string`, `vec2`, `vec3`, `rotation`, `colour`, `entity`) and your own states. A field that holds an animator or another thing the engine fills in isn't in the copy.
+- **Only what's read is copied:** Solis looks at your code for the calls it makes, and copies only those components, once a tick. A game that reads nothing pays nothing.
+
+### One tick, in order
+
+Everything game code does in one tick happens in this order, the same on every computer:
+
+1. The components game code reads are copied, as above.
+2. Each [game-wide object](#game-wide-objects)'s `update` runs, objects in the order of their names.
+3. [Tweens](#tweens) move.
+4. Every component's `update` runs: entities in the order of their IDs, and an entity's components in the order of their names. Each sees the world as the tick started, plus its own changes.
+5. The moves, turns and words those asked for happen, in that same order.
+6. [Events](#events) arrive, a round at a time: the engine's own first ([timers](timers.md), [trigger zones](trigger-zones.md)), then [state changes](states.md), then what components sent, in the order they were sent. An event sent while reacting to another arrives in a later round of the same tick.
+7. Spawns and despawns happen, in the order they were asked for. A spawned entity's components start now, and their first `update` is next tick.
+
 ## Random numbers
 
 Dice, loot, where an enemy wanders next: `random()` gives a number from 0 up to 1, `randomRange(low, high)` one between two numbers, and `randomInt(low, high)` a whole number, both ends included.
@@ -908,6 +970,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `World:say(string words)` | Writes words in the Console. |
 | `solis/world` | `float World:time()` | How long the game has been running, in seconds. |
 | `solis/world` | `entity World:find(string name)` | The first entity with this name, in the Level panel's order, or `nothing`. |
+| `solis/world` | `entity World:the(Component which)` | The one entity with this component, as the tick started; none, or more than one, stops the component ([Reading other entities](#reading-other-entities)). |
+| `solis/components` | `KnightReading entity:knight()`, one for each component | A copy of another entity's component as the tick started, read-only, or `nothing` ([Reading other entities](#reading-other-entities)). |
 | `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
 | `solis/world` | `entity World:spawn(Prefab which, vec3 place)` | Makes a copy of one of the project's prefabs at a place (see Making and removing entities, below). |
 | `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
@@ -971,6 +1035,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `face(vec3 direction)` | Turns the entity, upright, to face along a direction (its forward is +Y): `face(target:position() - position())` faces a place. |
 | any entity | `string name()` | The entity's name. |
 | any entity | `despawn()` | Takes the entity, and everything under it, out of the game. |
+| any entity | `bool exists()` | Whether the entity is in the game as the tick started ([Reading other entities](#reading-other-entities)). |
 | any entity | `push(vec3 impulse)` | Gives its body a push ([Physics](physics.md)). |
 | any entity | `vec3 velocity()` | How fast and which way its body moves, metres a second; for a 2D character, how fast its last tick's move went. |
 | any entity | `setVelocity(vec3 velocity)` | Sets how fast and which way its body moves. |

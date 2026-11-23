@@ -139,6 +139,9 @@ const NOT_ON_AN_ENTITY: &[&str] = &[
     "World_say",
     "World_time",
     "World_find",
+    // Reading as the tick started (Fixes 2a).
+    "World_the",
+    "entity_exists",
     "World_fire",
     "World_spawn",
     "entity_despawn",

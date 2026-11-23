@@ -74,6 +74,12 @@ fn lend_place<'s>(
         })?,
     )?;
     natives.raw_set(
+        "entity_exists",
+        scope.create_function(move |_, which: LuaValue| {
+            Ok(entity_of(&which).is_some_and(|e| h.borrow().exists(e)))
+        })?,
+    )?;
+    natives.raw_set(
         "entity_despawn",
         scope.create_function(move |_, which: LuaValue| {
             if let Some(e) = entity_of(&which) {

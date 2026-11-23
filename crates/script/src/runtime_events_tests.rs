@@ -51,6 +51,7 @@ fn loaded(main: &str) -> Runtime {
         Ok(chunk) => crate::code::Compiled {
             timers: Vec::new(),
             state_events: Default::default(),
+            components: Default::default(),
             lust: Some(chunk),
             lua: Vec::new(),
             schemas: Vec::new(),

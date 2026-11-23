@@ -112,6 +112,9 @@ pub struct Runtime {
     /// For the screens' program (decision 0087): where each screen's view
     /// is put when Lust opens it.
     views: Option<Rc<RefCell<Vec<mlua::Function>>>>,
+    /// Each component's fields as its tables hold them, for copies other
+    /// entities read (Fixes 2).
+    layouts: Rc<crate::readings::Layouts>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -151,6 +154,7 @@ impl Runtime {
             no_events: EventKinds::new(),
             left_out: std::collections::BTreeSet::new(),
             views: None,
+            layouts: Rc::default(),
         })
     }
 
@@ -366,6 +370,66 @@ impl Runtime {
     /// Adds a kind of Rust component, kept across loads.
     pub fn add_rust(&mut self, kind: RustKind) {
         self.rust.insert(kind.schema.name.clone(), kind);
+        self.lay_out();
+    }
+
+    /// Notes each component's fields' layout (Fixes 2): a Rust
+    /// component's wins over the code's of the same name, as it runs.
+    fn lay_out(&mut self) {
+        let mut layouts = crate::readings::Layouts::new();
+        if let Some(program) = &self.lust {
+            for (name, fields) in &program.fields {
+                layouts.insert(name.clone(), fields.clone());
+            }
+        }
+        for (name, class) in &self.lua_classes {
+            layouts.insert(name.clone(), class.fields.clone());
+        }
+        for (name, kind) in &self.rust {
+            let fields = kind
+                .schema
+                .fields
+                .iter()
+                .map(|f| crate::lua_components::Field {
+                    key: f.name.clone(),
+                    name: f.name.clone(),
+                    kind: f.kind.clone(),
+                })
+                .collect();
+            layouts.insert(name.clone(), fields);
+        }
+        self.layouts = Rc::new(layouts);
+        self.luau.set_layouts(Rc::clone(&self.layouts));
+    }
+
+    /// A copy of each running component of `kinds`, for every core to read
+    /// this tick (Fixes 2): its fields in its layout's order.
+    pub(crate) fn copies(&self, kinds: &[String]) -> Vec<crate::readings::Copied> {
+        let mut out = Vec::new();
+        for kind in kinds {
+            let Some(fields) = self.layouts.get(kind) else {
+                continue;
+            };
+            let names: std::sync::Arc<[String]> = fields.iter().map(|f| f.name.clone()).collect();
+            let mut rows = Vec::new();
+            for ((entity, name), running) in &self.running {
+                if name != kind {
+                    continue;
+                }
+                let row = match &running.instance {
+                    Instance::Lust(table) | Instance::Lua(table) => {
+                        crate::readings::copy_row(table, fields)
+                    }
+                    Instance::Rust(component) => match caught(|| component.values()) {
+                        Ok(data) => crate::readings::rust_row(&data, fields),
+                        Err(_) => continue,
+                    },
+                };
+                rows.push((*entity, row));
+            }
+            out.push((kind.clone(), names, rows));
+        }
+        out
     }
 
     /// Loads the game's code: the Lust (its own start runs) and the Lua
@@ -453,6 +517,7 @@ impl Runtime {
         *self.kinds.borrow_mut() = Rc::new(EventKinds::new());
         self.running
             .retain(|_, running| matches!(running.instance, Instance::Rust(_)));
+        self.lay_out();
     }
 
     /// The game code's components (Lust and Lua), as the editor shows
@@ -924,6 +989,7 @@ impl Runtime {
         self.lust = lust;
         self.lua_classes = classes;
         self.told.set(false);
+        self.lay_out();
     }
 }
 

@@ -74,7 +74,7 @@ pub(crate) fn for_lust<'a>(
 
 /// The file a fetch's path names, as Lust finds it among the files:
 /// `.lst` added, and `.` and `..` worked out (`a/./b/../c` is `a/c.lst`).
-fn file_of(path: &str) -> String {
+pub(crate) fn file_of(path: &str) -> String {
     let mut parts: Vec<&str> = Vec::new();
     for part in path.split('/') {
         match part {
