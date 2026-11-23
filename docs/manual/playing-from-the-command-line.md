@@ -22,7 +22,7 @@ It plays the game exactly as **Play** does, screens and all, on the same [ticks]
 | Option | What it does |
 |---|---|
 | `--play <folder>` | The project to play. |
-| a level, after the folder | Which level to play, from the project's assets folder: `levels/barn.sollevel`. Without it, the game's [start level](concepts.md#start-level). |
+| a level, after the folder | Which level to play, as the Library shows it: `levels/barn.sollevel`. Without it, the game's [start level](concepts.md#start-level). |
 | `--ticks <n>` | How many ticks to play, from 1 to 36,000 (ten minutes). Without it: a script's last tick and one more, or 600 ticks (ten seconds) with no script. |
 | `--inputs <script>` | The script of input to play with. Without it, nothing is pressed. |
 | `--print <Component,…>` | The components whose values are printed at the end, on every entity that has one, separated by commas: `--print Quest,Knight`. |
