@@ -26,6 +26,15 @@ impl World {
         game("speed", self.speed.to_string());
         game("day moved on by", self.day_shift.to_string());
         game("zones fired once", ids(&self.zone_states().1));
+        // What game code switched off (Fixes 2c), when it has.
+        for (name, list) in [
+            ("hidden", &self.switches.hidden),
+            ("colliders off", &self.switches.unsolid),
+        ] {
+            if !list.is_empty() {
+                game(name, ids(&list.iter().copied().collect::<Vec<_>>()));
+            }
+        }
         let flat = self.flat.state();
         game("2D walls", flat.wall_count().to_string());
         let flying: Vec<String> = self

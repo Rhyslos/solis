@@ -42,6 +42,7 @@ sound: object Audio: method setVolume(Bus bus, float volume) native;
 animation: method entity:animate(Clip clip) native;
 animation: method entity:animateFromStart(Clip clip) native;
 animation: method entity:stopAnimation() native;
+animation: method entity:setVisible(bool shown) native;
 animation: method entity:setFlip(bool across, bool down) native;
 animation: object Animators: method setNumber(entity owner, string name, float value) native;
 animation: object Animators: method setSwitch(entity owner, string name, bool on) native;
@@ -69,6 +70,7 @@ input: object Input: method bool released(Action action) native;
 input: object Input: method vec3 axis(Action action) native;
 input: object Input: method string binding(Action action) native;
 input: object Input: method rebind(Action action, string input) native;
+physics: method entity:setSolid(bool solid) native;
 physics: method entity:push(vec3 impulse) native;
 physics: method vec3 entity:velocity() native;
 physics: method entity:setVelocity(vec3 velocity) native;
@@ -223,8 +225,10 @@ solis.entity.removeTag
 solis.entity.rotation
 solis.entity.screenShown
 solis.entity.setFlip
+solis.entity.setSolid
 solis.entity.setSoundPlaying
 solis.entity.setVelocity
+solis.entity.setVisible
 solis.entity.showScreen
 solis.entity.startTimer
 solis.entity.startTimerAtHour
@@ -276,6 +280,8 @@ Host: fn despawn(&mut self, which: EntityId)
 Host: fn exists(&self, which: EntityId) -> bool
 Host: fn readings(&self) -> Option<std::sync::Arc<crate::Readings>>
 Host: fn the(&self, component: &str) -> Result<EntityId, String>
+Host: fn set_solid(&mut self, which: EntityId, solid: bool)
+Host: fn set_visible(&mut self, which: EntityId, visible: bool)
 Host: fn frame_time(&self) -> f64
 Host: fn random(&mut self) -> f64
 Host: fn set_seed(&mut self, seed: u64)

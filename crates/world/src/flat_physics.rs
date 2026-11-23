@@ -124,6 +124,12 @@ impl World {
             self.flat.remove(id);
             return;
         };
+        // Turned off by game code (Fixes 2c): out of 2D physics.
+        if !self.is_solid(id) {
+            self.flat.remove(id);
+            self.touched = true;
+            return;
+        }
         let place = self.global(id).map_or(Vec3::ZERO, |g| g.w_axis.truncate());
         let collider = self.flat_collider(&c);
         self.flat.add(id, place.truncate(), collider, c.character);

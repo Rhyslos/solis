@@ -77,6 +77,8 @@ const ON_AN_ENTITY: &[(&str, Asks)] = &[
     }),
     ("entity_stopAnimation", || Change::StopClip(id(SIGN))),
     ("entity_setFlip", || Change::Flip(id(SIGN), true, false)),
+    ("entity_setVisible", || Change::Visible(id(SIGN), false)),
+    ("entity_setSolid", || Change::Solid(id(SIGN), false)),
     ("Animators_setNumber", || {
         Change::AnimatorSet(id(SIGN), "pace".into(), AnimatorValue::Number(3.0))
     }),
@@ -428,6 +430,12 @@ fn game_has(w: &mut Workbench) -> String {
             world.animator_of(entity),
             world.screen_shown(entity),
             world.tile_map(entity).map(|map| map.checksum()),
+        );
+        // What game code switched off (Fixes 2c).
+        all += &format!(
+            "shown {} solid {}\n",
+            world.is_shown(entity),
+            world.is_solid(entity)
         );
     }
     all

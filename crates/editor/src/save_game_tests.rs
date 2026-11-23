@@ -269,9 +269,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 13", "solis save 14", 1),
-        text.replacen("solis save 13", "solis save 2", 1),
-        text.replacen("solis save 13", "solis save 1", 1),
+        text.replacen("solis save 14", "solis save 15", 1),
+        text.replacen("solis save 14", "solis save 2", 1),
+        text.replacen("solis save 14", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -306,12 +306,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 13\r", "solis save 13 "] {
-        let why = Save::read(&text.replacen("solis save 13", header, 1)).unwrap_err();
+    for header in ["solis save 14\r", "solis save 14 "] {
+        let why = Save::read(&text.replacen("solis save 14", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 13", "solis save 14", 1))
+        Save::read(&text.replacen("solis save 14", "solis save 15", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -1013,7 +1013,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 13\n"));
+    assert!(text.starts_with("solis save 14\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);
@@ -1174,7 +1174,7 @@ fn a_game_whose_map_couldn_t_be_loaded_again_isn_t_saved() {
 
 #[test]
 fn a_save_keeps_the_game_s_speed() {
-    let text = std::fs::read_to_string(save_fixtures().join("v13/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v14/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.speed, 0.5);
     assert_eq!(save.write().unwrap(), text, "read back as written");
@@ -1222,7 +1222,7 @@ fn loading_a_game_keeps_the_player_s_settings() {
 
 #[test]
 fn a_save_keeps_the_time_of_day() {
-    let text = std::fs::read_to_string(save_fixtures().join("v13/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v14/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.day_shift, 6.0);
     assert_eq!(save.write().unwrap(), text, "read back as written");
@@ -1401,9 +1401,9 @@ fn the_version_10_example_is_written_as_the_version_11_one_with_no_timers() {
     let ten = std::fs::read_to_string(save_fixtures().join("v10/harbour.solsave")).unwrap();
     let eleven = std::fs::read_to_string(save_fixtures().join("v11/harbour.solsave")).unwrap();
     let upgraded = super::save_read_back(&ten).unwrap();
-    assert!(upgraded.starts_with("solis save 13\n"));
+    assert!(upgraded.starts_with("solis save 14\n"));
     assert!(
-        upgraded.ends_with("\ntimers 0\n\nstates 0\n\ntables 0\n\n"),
+        upgraded.ends_with("\ntimers 0\n\nstates 0\n\ntables 0\n\nswitched 0\n\n"),
         "{upgraded}"
     );
     let save = Save::read(&eleven).unwrap();
@@ -1427,16 +1427,17 @@ fn the_version_11_example_is_written_as_the_version_12_one_with_no_states() {
     let eleven = std::fs::read_to_string(save_fixtures().join("v11/harbour.solsave")).unwrap();
     let twelve = std::fs::read_to_string(save_fixtures().join("v12/harbour.solsave")).unwrap();
     let upgraded = super::save_read_back(&eleven).unwrap();
-    assert!(upgraded.starts_with("solis save 13\n"));
+    assert!(upgraded.starts_with("solis save 14\n"));
     assert!(
-        upgraded.ends_with("\nstates 0\n\ntables 0\n\n"),
+        upgraded.ends_with("\nstates 0\n\ntables 0\n\nswitched 0\n\n"),
         "{upgraded}"
     );
     assert!(!upgraded.contains(" in Stunned"));
     let thirteen = super::save_read_back(&twelve).unwrap();
     assert_eq!(
-        thirteen.replace("solis save 13", "solis save 12").len(),
-        twelve.len() + 10
+        thirteen.replace("solis save 14", "solis save 12").len(),
+        // The states and tables sections, and version 14's switched one.
+        twelve.len() + 10 + "switched 0\n\n".len()
     );
     let save = Save::read(&twelve).unwrap();
     assert!(
@@ -1461,11 +1462,22 @@ fn the_version_12_example_is_written_as_the_version_13_one_with_no_tables() {
     let twelve = std::fs::read_to_string(save_fixtures().join("v12/harbour.solsave")).unwrap();
     let thirteen = std::fs::read_to_string(save_fixtures().join("v13/harbour.solsave")).unwrap();
     let upgraded = super::save_read_back(&twelve).unwrap();
-    assert!(upgraded.ends_with("\ntables 0\n\n"), "{upgraded}");
+    assert!(
+        upgraded.ends_with("\ntables 0\n\nswitched 0\n\n"),
+        "{upgraded}"
+    );
     assert_eq!(Save::read(&twelve).unwrap().tables, None);
     let save = Save::read(&thirteen).unwrap();
     assert_eq!(save.tables, Some(0x7d02_6c11_aa00_0013));
-    assert_eq!(super::save_read_back(&thirteen).unwrap(), thirteen);
+    // Version 14 adds only an empty switched section (Fixes 2c).
+    let fourteen = std::fs::read_to_string(save_fixtures().join("v14/harbour.solsave")).unwrap();
+    assert_eq!(super::save_read_back(&thirteen).unwrap(), fourteen);
+    assert_eq!(super::save_read_back(&fourteen).unwrap(), fourteen);
+    let mut has_switches = Sections::default();
+    has_switches.list.push(("switched".into(), String::new()));
+    assert!(super::switches_kept(&mut has_switches).is_err());
+    assert!(super::read_switches("hidden\n").is_err());
+    assert!(super::read_switches("shown 0000000000003\n").is_err());
     let mut has_tables = Sections::default();
     has_tables.list.push(("tables".into(), String::new()));
     assert!(super::tables_kept(&mut has_tables).is_err());
@@ -1551,4 +1563,33 @@ fn a_recording_made_with_other_tables_warns_once_as_it_plays_back() {
             .iter()
             .any(|l| l.text.contains("since other.solrec was recorded"))
     );
+}
+
+#[test]
+fn what_game_code_switched_off_comes_back_with_a_save() {
+    // Fixes 2c: the floor turned off and the busy entity hidden; a save
+    // keeps both, and the loaded game carries on as the saved one would.
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 20);
+    let world = &mut w.open.playing.as_mut().unwrap().world;
+    world.set_solid(raw(1), false);
+    world.set_visible(raw(3), false);
+    let text = w.save_of_game().unwrap().write().unwrap();
+    let lines = format!("\nhidden {}\nunsolid {}\n", raw(3).0, raw(1).0);
+    assert!(text.contains(&lines), "{text}");
+    let saved_at = sums(&mut w);
+    run_to(&mut w, 80);
+    let carried_on = sums(&mut w);
+    // The crate fell through the floor that was turned off.
+    let crate_z = w.world().unwrap().global(raw(2)).unwrap().w_axis.z;
+    assert!(crate_z < 0.0, "{crate_z}");
+    w.stop();
+    w.play();
+    w.load_game(&text, "quick");
+    let world = w.world().unwrap();
+    assert!(!world.is_solid(raw(1)) && !world.is_shown(raw(3)));
+    assert_eq!(sums(&mut w), saved_at);
+    run_to(&mut w, 80);
+    assert_eq!(sums(&mut w), carried_on, "the same, to the bit");
 }

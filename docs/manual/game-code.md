@@ -701,6 +701,46 @@ Everything game code does in one tick happens in this order, the same on every c
 6. [Events](#events) arrive, a round at a time: the engine's own first ([timers](timers.md), [trigger zones](trigger-zones.md)), then [state changes](states.md), then what components sent, in the order they were sent. An event sent while reacting to another arrives in a later round of the same tick.
 7. Spawns and despawns happen, in the order they were asked for. A spawned entity's components start now, and their first `update` is next tick.
 
+## Hiding entities and turning colliders off
+
+A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. Two calls switch those off and on again, on any entity:
+
+```lust
+-- orc.lst: an orc that falls and stops blocking the way.
+fetch "solis/world":World;
+
+event Died();
+
+component Orc {
+    has {
+        bool fallen = false;
+    }
+
+    on Died() {
+        fallen = true;
+        setSolid(false);
+    }
+}
+
+component Glow {
+    has {
+        bool lit = true;
+    }
+
+    method update(float dt) {
+        setVisible(lit);
+    }
+}
+
+pass Died, Orc, Glow;
+end
+```
+
+- **`setSolid(false)`** takes the entity's collider out of the way: nothing bumps into it, [rays](physics.md) pass through it, and [trigger zones](trigger-zones.md) don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). `setSolid(true)` turns it back on.
+- **`setVisible(false)`** hides the entity **and everything under it**, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. `setVisible(true)` shows it again; a child of a hidden entity can't show on its own.
+- **When:** like a move, both happen at the end of the tick.
+- **They last:** both are saved in [save games](save-games.md), kept when you edit the level while playing, and gone when you press **Stop**, like everything else the game did. Your level's files never change for them.
+
 ## Random numbers
 
 Dice, loot, where an enemy wanders next: `random()` gives a number from 0 up to 1, `randomRange(low, high)` one between two numbers, and `randomInt(low, high)` a whole number, both ends included.
@@ -1049,6 +1089,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `animateFromStart(Clip clip)` | Plays a clip from its beginning, whatever it was doing. |
 | any entity | `stopAnimation()` | Stops the entity's Sprite where it is in its clip. |
 | any entity | `setFlip(bool across, bool down)` | Mirrors the entity's Sprite: across faces it the other way, down turns it upside down. |
+| any entity | `setVisible(bool shown)` | Hides the entity and everything under it, or shows them again ([Hiding entities and turning colliders off](#hiding-entities-and-turning-colliders-off)). |
+| any entity | `setSolid(bool solid)` | Turns the entity's collider off, or on again ([Hiding entities and turning colliders off](#hiding-entities-and-turning-colliders-off)). |
 | `solis/animation` | event `CueReached(Cue cue)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":CueReached;`). |
 | `solis/animation` | event `ClipFinished(Clip clip)` | Sent when a sprite's clip has played all its times. |
 | `solis/project` | `state Clip`, `state Cue` | The sprites' clips, under their sheets (`Clip.Sprites.Farmer.Walk`), and their frame events (`Cue.Footstep`). |

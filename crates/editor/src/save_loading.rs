@@ -302,6 +302,9 @@ fn world_of_save(level: &Level, save: &mut Save) -> world::World {
         world.set_transform(*id, *t);
     }
     world.settle();
+    // What game code switched off, before physics is built from the
+    // bodies' places and motion (Fixes 2c).
+    world.set_switches(std::mem::take(&mut save.switches));
     world.rebuild_physics(&save.physics, true);
     world.set_clock(save.ticks, save.time);
     world.set_seed(save.seed);

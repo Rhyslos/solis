@@ -562,7 +562,7 @@ footer p { color: var(--muted); }
 <li><a href="#lights"><span class="num">29</span>Lights and shadows: the sun, point lights and spotlights</a><ol><li><a href="#lights--when-to-use-it">When to use it</a></li><li><a href="#lights--how-to-use-it">How to use it</a></li><li><a href="#lights--settings">Settings</a></li><li><a href="#lights--tips-and-common-problems">Tips and common problems</a></li><li><a href="#lights--related">Related</a></li></ol></li>
 <li><a href="#sky-fog-and-exposure"><span class="num">30</span>Sky, fog and exposure</a><ol><li><a href="#sky-fog-and-exposure--when-to-use-it">When to use it</a></li><li><a href="#sky-fog-and-exposure--how-to-use-it">How to use it</a></li><li><a href="#sky-fog-and-exposure--settings">Settings</a></li><li><a href="#sky-fog-and-exposure--tips-and-common-problems">Tips and common problems</a></li><li><a href="#sky-fog-and-exposure--related">Related</a></li></ol></li>
 <li class="group">Game code</li>
-<li><a href="#game-code"><span class="num">31</span>Game code</a><ol><li><a href="#game-code--when-to-use-it">When to use it</a></li><li><a href="#game-code--how-to-use-it">How to use it</a></li><li><a href="#game-code--components">Components</a></li><li><a href="#game-code--field-hints-and-the-projects-names">Field hints and the project's names</a></li><li><a href="#game-code--changing-code-while-the-game-runs">Changing code while the game runs</a></li><li><a href="#game-code--events">Events</a></li><li><a href="#game-code--projectiles">Projectiles</a></li><li><a href="#game-code--making-and-removing-entities">Making and removing entities</a></li><li><a href="#game-code--reading-other-entities">Reading other entities</a></li><li><a href="#game-code--random-numbers">Random numbers</a></li><li><a href="#game-code--tweens">Tweens</a></li><li><a href="#game-code--game-wide-objects">Game-wide objects</a></li><li><a href="#game-code--saving-and-loading">Saving and loading</a></li><li><a href="#game-code--sounds">Sounds</a></li><li><a href="#game-code--input">Input</a></li><li><a href="#game-code--physics">Physics</a></li><li><a href="#game-code--what-the-engine-offers">What the engine offers</a></li><li><a href="#game-code--safe-to-open">Safe to open</a></li><li><a href="#game-code--tips-and-common-problems">Tips and common problems</a></li><li><a href="#game-code--related">Related</a></li></ol></li>
+<li><a href="#game-code"><span class="num">31</span>Game code</a><ol><li><a href="#game-code--when-to-use-it">When to use it</a></li><li><a href="#game-code--how-to-use-it">How to use it</a></li><li><a href="#game-code--components">Components</a></li><li><a href="#game-code--field-hints-and-the-projects-names">Field hints and the project's names</a></li><li><a href="#game-code--changing-code-while-the-game-runs">Changing code while the game runs</a></li><li><a href="#game-code--events">Events</a></li><li><a href="#game-code--projectiles">Projectiles</a></li><li><a href="#game-code--making-and-removing-entities">Making and removing entities</a></li><li><a href="#game-code--reading-other-entities">Reading other entities</a></li><li><a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a></li><li><a href="#game-code--random-numbers">Random numbers</a></li><li><a href="#game-code--tweens">Tweens</a></li><li><a href="#game-code--game-wide-objects">Game-wide objects</a></li><li><a href="#game-code--saving-and-loading">Saving and loading</a></li><li><a href="#game-code--sounds">Sounds</a></li><li><a href="#game-code--input">Input</a></li><li><a href="#game-code--physics">Physics</a></li><li><a href="#game-code--what-the-engine-offers">What the engine offers</a></li><li><a href="#game-code--safe-to-open">Safe to open</a></li><li><a href="#game-code--tips-and-common-problems">Tips and common problems</a></li><li><a href="#game-code--related">Related</a></li></ol></li>
 <li><a href="#which-language"><span class="num">32</span>Which language when</a><ol><li><a href="#which-language--when-to-use-it">When to use it</a></li><li><a href="#which-language--the-short-answer">The short answer</a></li><li><a href="#which-language--the-numbers">The numbers</a></li><li><a href="#which-language--tips-and-common-problems">Tips and common problems</a></li><li><a href="#which-language--related">Related</a></li></ol></li>
 <li><a href="#physics"><span class="num">33</span>Physics</a><ol><li><a href="#physics--when-to-use-it">When to use it</a></li><li><a href="#physics--how-to-use-it">How to use it</a></li><li><a href="#physics--settings">Settings</a></li><li><a href="#physics--shortcuts">Shortcuts</a></li><li><a href="#physics--tips-and-common-problems">Tips and common problems</a></li><li><a href="#physics--related">Related</a></li></ol></li>
 <li><a href="#input"><span class="num">34</span>Input</a><ol><li><a href="#input--when-to-use-it">When to use it</a></li><li><a href="#input--how-to-use-it">How to use it</a></li><li><a href="#input--settings">Settings</a></li><li><a href="#input--shortcuts">Shortcuts</a></li><li><a href="#input--tips-and-common-problems">Tips and common problems</a></li><li><a href="#input--related">Related</a></li></ol></li>
@@ -4384,6 +4384,44 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <li>Spawns and despawns happen, in the order they were asked for. A spawned entity's components start now, and their first <code>update</code> is next tick.</li>
 </ol>
 </section>
+<section id="game-code--hiding-entities-and-turning-colliders-off">
+<h3>Hiding entities and turning colliders off<a class="anchor" href="#game-code--hiding-entities-and-turning-colliders-off" aria-label="Link to this section">#</a></h3>
+<p>A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. Two calls switch those off and on again, on any entity:</p>
+<pre data-lang="lust"><code><span class="tk-c">-- orc.lst: an orc that falls and stops blocking the way.</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
+
+<span class="tk-k">event</span> <span class="tk-n">Died</span><span class="tk-p">();</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Orc</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">bool</span> fallen = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-f">on</span> <span class="tk-n">Died</span><span class="tk-p">() {</span>
+        fallen = <span class="tk-v">true</span><span class="tk-p">;</span>
+        setSolid<span class="tk-p">(</span><span class="tk-v">false</span><span class="tk-p">);</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Glow</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">bool</span> lit = <span class="tk-v">true</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        setVisible<span class="tk-p">(</span>lit<span class="tk-p">);</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Died</span><span class="tk-p">,</span> <span class="tk-n">Orc</span><span class="tk-p">,</span> <span class="tk-n">Glow</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
+<ul>
+<li><strong><code>setSolid(false)</code></strong> takes the entity's collider out of the way: nothing bumps into it, <a href="#physics">rays</a> pass through it, and <a href="#trigger-zones">trigger zones</a> don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). <code>setSolid(true)</code> turns it back on.</li>
+<li><strong><code>setVisible(false)</code></strong> hides the entity <strong>and everything under it</strong>, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. <code>setVisible(true)</code> shows it again; a child of a hidden entity can't show on its own.</li>
+<li><strong>When:</strong> like a move, both happen at the end of the tick.</li>
+<li><strong>They last:</strong> both are saved in <a href="#save-games">save games</a>, kept when you edit the level while playing, and gone when you press <strong>Stop</strong>, like everything else the game did. Your level's files never change for them.</li>
+</ul>
+</section>
 <section id="game-code--random-numbers">
 <h3>Random numbers<a class="anchor" href="#game-code--random-numbers" aria-label="Link to this section">#</a></h3>
 <p>Dice, loot, where an enemy wanders next: <code>random()</code> gives a number from 0 up to 1, <code>randomRange(low, high)</code> one between two numbers, and <code>randomInt(low, high)</code> a whole number, both ends included.</p>
@@ -4709,6 +4747,8 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <tr><td>any entity</td><td><code>animateFromStart(Clip clip)</code></td><td>Plays a clip from its beginning, whatever it was doing.</td></tr>
 <tr><td>any entity</td><td><code>stopAnimation()</code></td><td>Stops the entity's Sprite where it is in its clip.</td></tr>
 <tr><td>any entity</td><td><code>setFlip(bool across, bool down)</code></td><td>Mirrors the entity's Sprite: across faces it the other way, down turns it upside down.</td></tr>
+<tr><td>any entity</td><td><code>setVisible(bool shown)</code></td><td>Hides the entity and everything under it, or shows them again (<a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a>).</td></tr>
+<tr><td>any entity</td><td><code>setSolid(bool solid)</code></td><td>Turns the entity's collider off, or on again (<a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a>).</td></tr>
 <tr><td><code>solis/animation</code></td><td>event <code>CueReached(Cue cue)</code></td><td>Sent when a sprite's clip reaches a frame with an event (bring it in with <code>fetch &quot;solis/animation&quot;:CueReached;</code>).</td></tr>
 <tr><td><code>solis/animation</code></td><td>event <code>ClipFinished(Clip clip)</code></td><td>Sent when a sprite's clip has played all its times.</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Clip</code>, <code>state Cue</code></td><td>The sprites' clips, under their sheets (<code>Clip.Sprites.Farmer.Walk</code>), and their frame events (<code>Cue.Footstep</code>).</td></tr>

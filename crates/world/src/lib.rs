@@ -23,6 +23,7 @@ pub mod projectiles;
 mod screens_and_sounds;
 pub mod sprites;
 pub mod state_parts;
+pub mod switches;
 mod tags;
 pub mod tile_maps;
 pub mod triggers;
@@ -204,6 +205,9 @@ pub struct World {
     /// Trigger zones' game state: who is inside each, and which fired
     /// once (stage 1, triggers).
     triggers: triggers::Triggers,
+    /// What game code switched off: hidden entities and colliders out of
+    /// the way (Fixes 2c).
+    switches: switches::Switches,
 }
 
 /// A change to physics game code asked for, made at the next step.

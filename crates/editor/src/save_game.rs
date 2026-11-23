@@ -46,6 +46,9 @@
 //! ENTITY COMPONENT EVENT FROM TO (a state change waiting to be heard)
 //! tables 16
 //! 7d02… (a number standing for the project's data tables; version 13)
+//! switched 24
+//! hidden ID (an entity game code hid; version 14)
+//! unsolid ID (an entity whose collider game code turned off)
 //! ```
 //!
 //! The data tables themselves aren't saved: they're the project's, read
@@ -67,9 +70,9 @@ use level::builtin::Transform;
 use reflect::EntityId;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 13";
+const HEADER: &str = "solis save 14";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 13;
+const SAVE_VERSION: u32 = 14;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -101,6 +104,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         timers_kept,
         states_kept,
         tables_kept,
+        switches_kept,
     ],
 };
 
@@ -116,7 +120,7 @@ pub fn save_reads(text: &str) -> Result<(), String> {
     Save::read(text).map(drop)
 }
 
-/// The most sections a save has (it writes eighteen).
+/// The most sections a save has (it writes nineteen).
 const MAX_SECTIONS: usize = 20;
 
 /// A save's sections as written (`name length`, then that much text),
@@ -262,6 +266,9 @@ pub(crate) struct Save {
     /// A number standing for the project's data tables when it was saved
     /// (stage 1, data tables; version 13): none when not known.
     pub(crate) tables: Option<u64>,
+    /// What game code switched off: hidden entities and colliders out of
+    /// the way (Fixes 2c; version 14).
+    pub(crate) switches: world::switches::Switches,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -384,6 +391,7 @@ impl Save {
         section("states", &self.states);
         let tables = self.tables.map(|h| format!("{h:016x}")).unwrap_or_default();
         section("tables", &tables);
+        section("switched", &switches_text(&self.switches));
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -522,6 +530,7 @@ impl Workbench {
                 .map(script::Game::states_waiting)
                 .unwrap_or_default(),
             tables: Some(playing.view.tables.hash()),
+            switches: playing.world.switches().clone(),
             notes: Vec::new(),
         })
     }
@@ -591,6 +600,56 @@ fn tables_kept(sections: &mut Sections) -> Result<(), String> {
     }
     sections.list.push(("tables".into(), String::new()));
     Ok(())
+}
+
+/// Version 13 to 14 (Fixes 2c): an older save has nothing switched off.
+fn switches_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "switched") {
+        return Err("it already has switches".into());
+    }
+    sections.list.push(("switched".into(), String::new()));
+    Ok(())
+}
+
+/// What game code switched off, a line each: `hidden ID`, `unsolid ID`.
+fn switches_text(switches: &world::switches::Switches) -> String {
+    let mut text = String::new();
+    for (word, ids) in [("hidden", &switches.hidden), ("unsolid", &switches.unsolid)] {
+        for id in ids {
+            text.push_str(&format!("{word} {}\n", id.0));
+        }
+    }
+    text
+}
+
+/// The most switched-off lines a save holds.
+const MAX_SWITCHED: usize = 1 << 21;
+
+/// [`switches_text`] read back.
+pub(super) fn read_switches(text: &str) -> Result<world::switches::Switches, String> {
+    let damaged = || "it's damaged".to_string();
+    let mut switches = world::switches::Switches::default();
+    for (n, line) in text.lines().enumerate() {
+        if n >= MAX_SWITCHED {
+            return Err(damaged());
+        }
+        let mut words = line.split(' ');
+        let list = match words.next() {
+            Some("hidden") => &mut switches.hidden,
+            Some("unsolid") => &mut switches.unsolid,
+            _ => return Err(damaged()),
+        };
+        let id = words
+            .next()
+            .and_then(|w| w.parse::<reflect::Id>().ok())
+            .map(EntityId)
+            .ok_or_else(damaged)?;
+        if words.next().is_some() {
+            return Err(damaged());
+        }
+        list.insert(id);
+    }
+    Ok(switches)
 }
 
 #[cfg(test)]

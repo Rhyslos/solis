@@ -791,6 +791,27 @@ impl Physics {
         is_character
     }
 
+    /// Turns `id`'s colliders off (`false`) or on again: off, nothing
+    /// bumps into them and rays and zones pass through, while the body
+    /// keeps moving as it did (Fixes 2c, game code's `setSolid`).
+    pub fn set_solid(&mut self, id: EntityId, solid: bool) {
+        let Some(entry) = self.state.by_entity.get(&id) else {
+            return;
+        };
+        let body = entry.body;
+        let state = self.state_mut();
+        let handles: Vec<rp::ColliderHandle> = state
+            .bodies
+            .get(body)
+            .map(|b| b.colliders().to_vec())
+            .unwrap_or_default();
+        for handle in handles {
+            if let Some(collider) = state.colliders.get_mut(handle) {
+                collider.set_enabled(solid);
+            }
+        }
+    }
+
     /// Takes `id` out of physics, if it's in.
     pub fn remove(&mut self, id: EntityId) {
         if !self.state.by_entity.contains_key(&id) {

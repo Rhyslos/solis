@@ -88,6 +88,7 @@ impl World {
             walls_built: HashMap::new(),
             flat_recovery: flat_physics::FlatRecovery::default(),
             triggers: crate::triggers::Triggers::default(),
+            switches: crate::switches::Switches::default(),
         };
         world.index();
         world.place_everything();
@@ -151,6 +152,8 @@ impl World {
         let flat_recovery = self.flat_recovery;
         // Who is inside each zone is game state: it carries on.
         let triggers = std::mem::take(&mut self.triggers);
+        // So is what game code switched off (Fixes 2c).
+        let switches = std::mem::take(&mut self.switches);
         *self = Self::from_level_without_physics(level);
         self.flat_recovery = flat_recovery;
         self.triggers = triggers;
@@ -174,6 +177,9 @@ impl World {
             self.game_moved.insert(id, from);
         }
         self.settle();
+        // Kept for the entities the level still has, before physics is
+        // built again.
+        self.set_switches(switches);
         // Bodies where the game had them, moving as they were.
         self.rebuild_physics(&states, false);
     }
@@ -302,6 +308,7 @@ impl World {
                     self.place.remove(&id);
                     self.game_moved.remove(&id);
                     self.physics.remove(id);
+                    self.forget_switches(id);
                     // And from 2D physics: its collider, and a map's walls.
                     self.flat.remove(id);
                     if self.walls_built.remove(&id).is_some() {

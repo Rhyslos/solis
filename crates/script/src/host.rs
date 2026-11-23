@@ -91,6 +91,17 @@ pub trait Host {
             .the(component)
             .map_err(|found| crate::readings::not_one(component, found))
     }
+    /// Turns the entity's collider (2D or 3D) on or off at the end of the
+    /// tick (Fixes 2c): off, nothing bumps into it, rays pass through and
+    /// trigger zones don't count it.
+    fn set_solid(&mut self, which: EntityId, solid: bool) {
+        let _ = (which, solid);
+    }
+    /// Shows or hides the entity and everything under it at the end of the
+    /// tick (Fixes 2c): only its drawing; physics and game code go on.
+    fn set_visible(&mut self, which: EntityId, visible: bool) {
+        let _ = (which, visible);
+    }
     /// How long the last frame took, in seconds of real time.
     fn frame_time(&self) -> f64 {
         1.0 / 60.0

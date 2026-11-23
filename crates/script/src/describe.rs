@@ -654,6 +654,13 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "animation",
+        name: "setVisible",
+        owner: "entity",
+        lust: "method entity:setVisible(bool shown) native;",
+        about: "Hides the entity and everything under it (false), or shows them again (true), at the end of the tick. Only its drawing: it still collides, and its code still runs.",
+    },
+    Native {
+        file: "animation",
         name: "setFlip",
         owner: "entity",
         lust: "method entity:setFlip(bool across, bool down) native;",
@@ -840,6 +847,13 @@ pub const NATIVES: &[Native] = &[
         owner: "Input",
         lust: "method rebind(Action action, string input) native;",
         about: "Binds an input (\"E\", \"Mouse Right\", \"Pad Y\") to an action from the next tick, in place of its inputs of the same kind: what a controls menu does. Lasts while the game plays.",
+    },
+    Native {
+        file: "physics",
+        name: "setSolid",
+        owner: "entity",
+        lust: "method entity:setSolid(bool solid) native;",
+        about: "Turns the entity's collider (2D or 3D) off (false) or on again (true), at the end of the tick: off, nothing bumps into it, rays pass through it and trigger zones don't count it. A fallen body, an open gate.",
     },
     Native {
         file: "physics",

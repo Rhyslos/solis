@@ -86,6 +86,7 @@ impl Save {
         let timers = script::Timers::read(section("timers")?)?;
         let states = section("states")?.to_string();
         script::Game::check_states_waiting(&states)?;
+        let switches = super::read_switches(section("switched")?)?;
         let tables = match section("tables")?.trim() {
             "" => None,
             hex => Some(u64::from_str_radix(hex, 16).map_err(|_| damaged())?),
@@ -110,6 +111,7 @@ impl Save {
             timers,
             states,
             tables,
+            switches,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {
