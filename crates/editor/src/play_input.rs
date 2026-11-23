@@ -359,6 +359,24 @@ impl Workbench {
         self.warn_if_tables_changed(tables_then, &format!("{name} was recorded"));
     }
 
+    /// Plays the running game with a script of input in place of the
+    /// keys, mouse and gamepad, a frame of it each tick from the next
+    /// (Fixes 4, `solis --play`). Gives back the actions it names that the
+    /// project hasn't, which are pressed for nothing.
+    pub fn play_script(&mut self, script: input::Script) -> Vec<String> {
+        let Some(playing) = &mut self.open.playing else {
+            return Vec::new();
+        };
+        let unknown = script
+            .actions()
+            .into_iter()
+            .filter(|name| playing.bindings.get(name).is_none())
+            .map(str::to_string)
+            .collect();
+        playing.script = Some(script);
+        unknown
+    }
+
     /// What the editor asks of the app, taken (for tools that run the game
     /// without a window, which answer saves and loads themselves).
     pub fn take_outbox(&mut self) -> Vec<WorkbenchAction> {

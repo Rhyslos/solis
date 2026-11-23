@@ -87,6 +87,9 @@ pub(crate) struct Playing {
     /// The recording this play plays back, and how many of its ticks
     /// have run.
     pub(crate) replay: Option<(input::Recording, usize)>,
+    /// A script of input this play is played with in place of the
+    /// devices (Fixes 4, `solis --play`): a frame of it each tick.
+    pub(crate) script: Option<input::Script>,
     /// How the last playback ended: matched on every tick (their count),
     /// or stopped matching by this tick (Phase 8, C4: a project's check).
     pub(crate) replayed: Option<Result<usize, usize>>,
@@ -298,6 +301,7 @@ impl Workbench {
             told_recording_edited: false,
             told_too_many_sounds: false,
             replay: None,
+            script: None,
             replayed: None,
             yours: BTreeMap::new(),
         });

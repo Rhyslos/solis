@@ -328,18 +328,21 @@ impl Workbench {
     /// so every core sees the same (decision 0037). None when play has
     /// stopped.
     fn tick_input(&mut self, mut events: Vec<script::Event>) -> Option<TickInput> {
-        let playing = self.open.playing.as_ref()?;
+        let playing = self.open.playing.as_mut()?;
         let sampled = self.devices.sample(&playing.bindings, world::TICK as f32);
-        let frame = match &playing.replay {
+        let frame = match (&playing.replay, &mut playing.script) {
             // The devices are still sampled (and the sample dropped),
             // so nothing pressed during a replay piles up for after it.
-            Some((recording, at)) => recording
+            (Some((recording, at)), _) => recording
                 .ticks
                 .get(*at)
                 .map(|t| t.frame.clone())
                 .unwrap_or_default(),
-            None => sampled,
+            // A script of input (`solis --play`), the same way.
+            (None, Some(script)) => script.next_frame(),
+            (None, None) => sampled,
         };
+        let playing = self.open.playing.as_ref()?;
         // What screens' buttons sent since the last tick is part of its
         // input (decision 0088), so a replay sends it again; during a
         // replay, the recording's own.

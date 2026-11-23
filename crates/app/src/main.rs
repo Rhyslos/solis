@@ -56,6 +56,15 @@ fn main() -> ExitCode {
     match cli::parse(args) {
         Ok(Command::Version) => exit_with(say(&format!("{}\n", app::version_banner()), false)),
         Ok(Command::Help) => exit_with(say(&cli::usage(&program), false)),
+        Ok(Command::Play(asked)) => {
+            let played = app::play_headless::play(&asked, &app::version_banner());
+            say(&played.text, false);
+            if played.ok {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
         Ok(Command::NewIds(count)) => exit_with(say(&cli::new_id_lines(count), false)),
         Ok(Command::CheckProject(asked)) => {
             let folder = asked.folder;

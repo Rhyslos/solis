@@ -44,6 +44,7 @@ The check opens the project the way the editor does (with its input actions, 2D 
 - **Problem:** "it doesn't say which level it was recorded in". **Why:** recordings made before this version didn't name their level. **Fix:** record it again.
 
 ## Related
+- [Playing a game from the command line](playing-from-the-command-line.md): `--play` with a script of input
 - [Input](input.md): recording and replaying play.
 - [Backups and upgrades](backups-and-upgrades.md): what happens to older files.
 - [Installing and updating](installing-and-updating.md).

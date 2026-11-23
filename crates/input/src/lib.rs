@@ -29,6 +29,7 @@ mod bindings;
 mod devices;
 mod frame;
 mod recording;
+mod script;
 
 pub use bindings::{
     Action, ActionKind, Bindings, BindingsError, FORMAT as BINDINGS_FORMAT, MAX_ACTIONS,
@@ -42,6 +43,7 @@ pub use recording::{
     FORMAT as RECORDING_FORMAT, MAX_FILE_BYTES as MAX_RECORDING_BYTES, Recording, RecordingError,
     Tick,
 };
+pub use script::Script;
 
 /// The file in a project that holds its input actions, beside
 /// `project.solis`.
