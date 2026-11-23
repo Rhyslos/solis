@@ -7,6 +7,16 @@ Asked for by the project lead on 2026-11-23, to go over with them before it's bu
 1. **One look, built once.** The editor shouldn't style the same kind of element in several ways, and a part made for one place should be usable everywhere else it fits. Their example: the atlas's cutting of a picture into boxes. They expected sprites to use it already.
 2. **How the engine's calls read in Lust.** This means Solis's calls, not Lust itself. Long dotted names (`Something.Something.Something`, as in `Clip.Knight.Walk`, `Module.Ships.Fighter` or the planned `Look.Sprites.Knight.Mana`) are not how they want Solis code to look. The calls are to be rethought across the whole engine.
 
+## The project lead's rule for code (2026-11-23)
+
+Code should be **blocky and easy to read**:
+
+- Things list what they hold in a `has` block, and `method` is the one word for what they do.
+- A value is made by saying what it is (`something name = "something new"`).
+- **`:` and `.` are avoided as far as they can be.** Lust keeps them rare, and Solis's calls are where it goes wrong (`World:spawn(…)`, `Items:row(Item.IronSword).price`, `Clip.Knight.Walk`).
+
+Lust itself was partly shaped by Claude, so the rule isn't always enforced there either. The aim is a middle ground that still works: Solis's calls as close to that blocky style as Lust allows, and where Lust can't reach, a note of what Lust would need, for its own rulebook.
+
 ## How it's done
 
 1. **An audit, written down first.** This plan gains two lists:
