@@ -33,5 +33,6 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). Phase numbers st
 | `dialogue/` | **Dialogue** (decision 0124): the outline of the full dialogue system built in stage 1, the project lead's prototype specification it starts from, and the detailed plan for milestone 2 (conversations and their runtime) |
 | `fixes-3.md` | Fixes 3 from making Orc Invasion: a picture cut into cells in the editor (a pop-up with Grid and Free crop), clips with one, four or eight directions, looks, and how game code plays them; the mock-ups' links, the project lead's answers, and the twelve steps (mock-ups waiting for approval) |
 | `after-the-rethink.md` | Everything after the editor rethink (Tools 1b, the rest of Usable first, Shared 2 to 10, 2D 1 and 2, 3D 1 to 5, Open worlds), with a recommended order, the groundwork every phase shares, each phase's milestones and how to build them, and the questions for the project lead; from the research in `../reports/after-the-rethink/` |
+| `uniformity-pass.md` | The project lead's request (2026-11-23): one look for each kind of element and parts built once, and the engine's calls in Lust rethought (no long dotted names); an audit first, then proposals as questions, after Fixes 3 |
 
 Name a new plan after its phase (`phase-N.md`) or its subject, and add it here.
