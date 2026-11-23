@@ -262,6 +262,31 @@ end
 - More than one piece in a slot are variations, picked by `weight` (standard 1). `animation = "columns"` with `frames` and `ms` plays that many tiles to the right; `animation = "frames"` plays an Aseprite picture's frames.
 - **A rule** (for a `rules` terrain) is a `pattern` of rows around a cell and the `slot` it shows, tried in order: `?` anything, `=` the same terrain, `!` not the same, `_` nothing, or a terrain's code.
 
+## Clips files
+A clips file is a `.clips.lst` file beside its picture or Aseprite file (`knight.clips.lst` beside `knight.png`): what a sprite can play ([Animating sprites](sprite-animation.md)). Its first look is the sheet it plays; an Aseprite file's frames are its cells (from 0), and its tags are clips already, so the file only adds to them (`tags`). Clips made in Solis are `clips`, each with a row of cells for each of its directions (`rows`).
+
+```text
+-- Clips of walker.aseprite. Written by Solis; safe to edit by hand.
+fetch "solis/data/clips":[Sheet, Cell, LookPicture, ClipSettings, ClipRow, TagChange, Facing, Playback];
+
+lock int version = 2;
+lock Sheet sheet = new Sheet { cell = [16, 16], between = [0, 0], edge = [0, 0], first = "hoe" };
+lock Cell array cells = [];
+lock LookPicture array looks = [
+    new LookPicture { name = "Main", picture = "1BWHNR3RV8PYY" },
+];
+lock ClipSettings array clips = [
+    new ClipSettings { name = "hoe", speed = 1.0, playback = Playback.Forward, plays = 1, directions = 1, sameFrames = true, mirror = false, times = [50, 200], events = ["", "swing"] },
+];
+lock ClipRow array rows = [
+    new ClipRow { clip = "hoe", facing = Facing.Any, cells = [4, 1], times = [], events = [] },
+];
+lock TagChange array tags = [
+    new TagChange { name = "walk", speed = 2.0, frames = [0], events = ["dust"] },
+];
+end
+```
+
 ## Tile maps
 A tile map is a `.tilemap.lst` file: a grid of cells in layers, each cell a terrain's code, and values every cell has ([Tile maps](tile-maps.md)).
 
@@ -316,7 +341,7 @@ The fields of the built-in components a 2D game uses, as a level writes them, wi
 
 | Field | Holds | Standard |
 |---|---|---|
-| `sheet` | the ID of an Aseprite file or picture, or of its clips file (`.solframes`) | `""` |
+| `sheet` | the ID of an Aseprite file or picture, or of its clips file (`.clips.lst`) | `""` |
 | `clip` | the clip it plays: a tag's name, or a clip made in its clips file. Empty: the clips file's **Plays first**, or the still `frame` | `""` |
 | `playing` | whether the clip moves on | `true` |
 | `speed` | 1 as drawn, 2 twice as fast (0 to 16) | `1.0` |
@@ -399,15 +424,16 @@ The newest layout of each file, which is what Solis writes:
 
 | File | Where its version is | Newest |
 |---|---|---|
-| Level, `.sollevel` | `level version 5;` | 5 |
-| Module, `.module.lst` | `lock int version = 1;` | 1 |
+| Level, `.sollevel` | `level version 6;` | 6 |
+| Module, `.module.lst` | `lock int version = 2;` | 2 |
+| Clips, `.clips.lst` | `lock int version = 2;` | 2 |
 | Tileset, `.tileset.lst` | `lock int version = 4;` | 4 |
 | Tile map, `.tilemap.lst` | `lock int version = 3;` | 3 |
 | Tags, `tags.lst` | `lock int version = 1;` | 1 |
 | Sidecar, `.solmeta` | `format = 1` | 1 |
 | 2D settings, `pixels.solpix` | `pixels version 1;` | 1 |
 
-Clips files (`.solframes`) and animators (`.solanim`) are text too, with their version on their first line that isn't a comment, and a comment at the top saying what each line holds; they're made in the [Clips and Frames tabs](sprite-animation.md) and the [Animator tab](animators.md).
+Animators (`.solanim`) are text too, with their version on their first line that isn't a comment, and a comment at the top saying what each line holds; they're made in the [Clips and Frames tabs](sprite-animation.md) and the [Animator tab](animators.md).
 
 ## Tips and common problems
 - **Problem:** a sprite in a level you wrote floats or sinks. **Why:** `Sprite.pivot` is empty, so it stands on the bottom middle of its frame. **Fix:** write `Sprite.pivot = "feet";` (or the slice your sheet has).

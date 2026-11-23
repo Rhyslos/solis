@@ -16,7 +16,7 @@ use std::sync::Arc;
 const SET: &str = "maps/town.tileset.lst";
 const MAP: &str = "maps/town.tilemap.lst";
 const SHEET: &str = "walker.aseprite";
-const CLIPS: &str = "walker.solframes";
+const CLIPS: &str = "walker.clips.lst";
 
 /// The IDs of a project's files. A project and its copy share them, as
 /// they share their paths.
@@ -65,11 +65,11 @@ fn open_farm(w: &mut Workbench, name: &str, ids: Ids) {
         item(CLIPS, LibraryKind::SpriteClips, ids.clips),
     ]);
     w.set_folders(vec!["maps".into()]);
-    let clips = animation::FramesFile {
+    let clips = animation::ClipsFile::from_frames(&animation::frames_file::FramesFile {
         sheet: Some(ids.sheet),
         first: "wave".into(),
         tags: Vec::new(),
-        clips: vec![animation::OwnClip {
+        clips: vec![animation::frames_file::OwnClip {
             name: "wave".into(),
             speed: 1.0,
             direction: animation::Direction::Forward,
@@ -82,7 +82,7 @@ fn open_farm(w: &mut Workbench, name: &str, ids: Ids) {
                 })
                 .collect(),
         }],
-    };
+    });
     let mut sheets = SpriteSheets::default();
     sheets.tilesets.insert(
         SET.into(),

@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Clips files are Lust** (Fixes 3, F3.2): **Edit clips…** on an Aseprite file now makes `walker.clips.lst` beside it, which replaces `.solframes`. Everything plays and edits as before; the file's first look names the sheet it plays, and it has room for what's coming (cells, directions, looks). Clip and event names can be anything Aseprite's tag names can be.
 - **The clips file, as Lust** (Fixes 3, F3.1): `.clips.lst`, the file that will hold a picture's clips once the new animation tool is in. It cuts the picture into numbered cells by a grid, keeps cells drawn by hand, names the picture's looks, and gives each clip one, four or eight directions (`Facing.NorthEast`), with settings for the same frames in every direction and for mirroring the west side. Not used by the editor yet: the next step swaps it in for `.solframes`.
 - **Solis's files** (Fixes 4; [the manual](docs/manual/solis-files.md)): a manual page for anyone writing a game's files by hand or with a script, with a short example of each: what Solis reads from an Aseprite file, sidecars and their content hash, a level with a placed prefab's copy and its changes, how a state field is kept, prefabs, tilesets, tile maps, and every field of the 2D components with its standard value.
 - **Playing a game from the command line** (Fixes 4; [the manual](docs/manual/playing-from-the-command-line.md)): `solis --play <folder> [<level>] --inputs walk.txt --print Quest,Knight` plays a level without a window, with a plain-text script of what the player does (`at 30 press Jump`, `at 0 hold Move 1 0`), and prints what the Console said with its tick, then the components asked for. It fails on any error, so a game's own workflow can use it.
@@ -113,6 +114,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **Clips files are `.clips.lst`** (Fixes 3, F3.2): a project's `.solframes` files aren't found any more; their contents still read if renamed `walker.clips.lst`, and are saved as Lust. **What to do:** nothing, as there were no projects yet.
 - **Prefabs are now called modules, everywhere** (the project lead, 2026-11-23): in the editor (**Make module**, the Modules page), in game code (`Module.Ships.Fighter`, `World:spawn(Module which, …)`, in file names (`.module.lst`, which replaces `.prefab.lst`) and in the manual. Levels are now version 6 (a placed module is written `module = …`) and module files version 2 (`fetch "solis/data/module"`); a version 5 level's `prefab = …` and a version 1 file's contents still read, but a project's `.prefab.lst` files aren't found until renamed `.module.lst`. **What to do:** nothing, as there were no projects yet.
 
 - **Save games are version 14** (Fixes 2c): a save keeps what game code hid and the colliders it turned off. Older saves load as before, with nothing switched off; a Solis from before can't read a version 14 save. **What to do:** nothing; update every copy of Solis that loads the game's saves.

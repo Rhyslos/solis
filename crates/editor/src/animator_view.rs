@@ -375,7 +375,7 @@ fn aseprite_path(sheets: &SpriteSheets, id: AssetId) -> Option<String> {
         return Some(path.clone());
     }
     let file = sheets.frames_file(id)?;
-    sheets.paths.get(&file.sheet?).cloned()
+    sheets.paths.get(&file.sheet()?).cloned()
 }
 
 /// The graph: states as boxes, transitions as arrows.

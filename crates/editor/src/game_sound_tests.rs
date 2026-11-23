@@ -285,11 +285,11 @@ fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
     // The test sheet (two frames), and a clips file whose "walk" plays
     // them once, 50 ms each, a footstep on the second.
     let (sheet, clips) = (reflect::AssetId::random(), reflect::AssetId::random());
-    let file = animation::FramesFile {
+    let file = animation::ClipsFile::from_frames(&animation::frames_file::FramesFile {
         sheet: Some(sheet),
         first: String::new(),
         tags: Vec::new(),
-        clips: vec![animation::OwnClip {
+        clips: vec![animation::frames_file::OwnClip {
             name: "walk".into(),
             speed: 1.0,
             direction: animation::Direction::Forward,
@@ -307,18 +307,18 @@ fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
                 },
             ],
         }],
-    };
+    });
     let mut sheets = SpriteSheets::default();
     sheets.by_path.insert(
         "walker.aseprite".into(),
         SheetState::Read(Arc::new(crate::sprite_sheets::tests::test_sheet())),
     );
     sheets.frames.insert(
-        "walker.solframes".into(),
+        "walker.clips.lst".into(),
         FramesState::Read(Arc::new(file), Vec::new()),
     );
     sheets.paths.insert(sheet, "walker.aseprite".into());
-    sheets.paths.insert(clips, "walker.solframes".into());
+    sheets.paths.insert(clips, "walker.clips.lst".into());
     w.set_sprite_sheets(sheets);
     // Game code's names for them: the clips file's clip, and its cue.
     assert_eq!(

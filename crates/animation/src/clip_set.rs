@@ -2,7 +2,7 @@
 //! clips file adds to them, then the clips made in Solis.
 
 use crate::clip::{Clip, ClipFrame};
-use crate::frames_file::FramesFile;
+use crate::clips_file::ClipsFile;
 use assets::sprite_sheet::SpriteSheet;
 
 /// The clips of one sheet (and its clips file, if any).
@@ -21,7 +21,7 @@ pub struct ClipSet {
 impl ClipSet {
     /// The clips of `sheet`, with `file`'s changes and clips if there's
     /// one.
-    pub fn of_sheet(sheet: &SpriteSheet, file: Option<&FramesFile>) -> Self {
+    pub fn of_sheet(sheet: &SpriteSheet, file: Option<&ClipsFile>) -> Self {
         let mut set = Self::default();
         let count = sheet.frames.len() as u32;
         for tag in &sheet.tags {
@@ -82,13 +82,11 @@ impl ClipSet {
                     ));
                     continue;
                 }
-                let before = own.frames.len();
-                let frames: Vec<ClipFrame> = own
-                    .frames
-                    .iter()
-                    .filter(|f| f.frame < count)
-                    .cloned()
-                    .collect();
+                let ms_of =
+                    |cell: u32| sheet.frames.get(cell as usize).map_or(1, |f| f.duration_ms);
+                let all = own.frames_with(ms_of);
+                let before = all.len();
+                let frames: Vec<ClipFrame> = all.into_iter().filter(|f| f.frame < count).collect();
                 if frames.len() < before {
                     set.notes.push(format!(
                         "{} names frames the sheet doesn't have (it has {count}); they're \
@@ -99,8 +97,8 @@ impl ClipSet {
                 set.clips.push(Clip::new(
                     own.name.clone(),
                     frames,
-                    own.direction,
-                    own.repeats,
+                    own.playback,
+                    own.plays,
                     own.speed,
                     false,
                 ));

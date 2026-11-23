@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::clip::Direction;
-use crate::frames_file::{OwnClip, TagChange};
+use crate::frames_file::{FramesFile, OwnClip, TagChange};
 use assets::aseprite::AseTag;
 use assets::sprite_sheet::SheetFrame;
 
@@ -89,7 +89,7 @@ fn a_clips_file_adds_speed_events_its_own_clips_and_the_first() {
             ],
         }],
     };
-    let set = ClipSet::of_sheet(&sheet(), Some(&file));
+    let set = ClipSet::of_sheet(&sheet(), Some(&ClipsFile::from_frames(&file)));
     let walk = set.get("walk").unwrap();
     assert_eq!(walk.speed, 2.0);
     assert_eq!(walk.frames[0].events, ["dust"]);
@@ -137,7 +137,7 @@ fn what_doesn_t_fit_the_sheet_is_left_out_with_a_note() {
             },
         ],
     };
-    let set = ClipSet::of_sheet(&sheet(), Some(&file));
+    let set = ClipSet::of_sheet(&sheet(), Some(&ClipsFile::from_frames(&file)));
     assert_eq!(set.clips.len(), 3, "walk (the tag), idle, far");
     assert!(set.get("far").unwrap().frames.is_empty());
     assert_eq!(set.first, None);

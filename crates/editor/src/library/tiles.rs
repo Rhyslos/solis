@@ -439,7 +439,7 @@ pub(crate) fn paint_thumbnail(
         LibraryKind::SpriteClips => item
             .id
             .and_then(|id| sounds.sheets.frames_file(id))
-            .and_then(|f| sounds.sheets.paths.get(&f.sheet?))
+            .and_then(|f| sounds.sheets.paths.get(&f.sheet()?))
             .map(String::as_str),
         _ => None,
     };

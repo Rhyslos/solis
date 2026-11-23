@@ -24,7 +24,7 @@ fn item_at(path: &str) -> LibraryItem {
         (".solarea", LibraryKind::Level),
         (".aseprite", LibraryKind::SpriteSheet),
         (".ase", LibraryKind::SpriteSheet),
-        (".solframes", LibraryKind::SpriteClips),
+        (".clips.lst", LibraryKind::SpriteClips),
         (".ttf", LibraryKind::Font),
         (".otf", LibraryKind::Font),
         (".lst", LibraryKind::Code),

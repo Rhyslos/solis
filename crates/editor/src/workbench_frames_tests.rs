@@ -11,7 +11,7 @@ use egui_kittest::kittest::Queryable;
 use reflect::AssetId;
 
 /// A workbench with a project holding `walker.aseprite` (the test sheet:
-/// two frames, no tags) and `walker.solframes` playing it, with a clip
+/// two frames, no tags) and `walker.clips.lst` playing it, with a clip
 /// made here, "wave", of both frames.
 pub(crate) fn with_clips() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info());
@@ -30,13 +30,13 @@ pub(crate) fn with_clips() -> (Workbench, AssetId, AssetId) {
     };
     w.set_library(vec![
         item("walker.aseprite", LibraryKind::SpriteSheet, sheet),
-        item("walker.solframes", LibraryKind::SpriteClips, clips),
+        item("walker.clips.lst", LibraryKind::SpriteClips, clips),
     ]);
-    let file = animation::FramesFile {
+    let file = animation::ClipsFile::from_frames(&animation::frames_file::FramesFile {
         sheet: Some(sheet),
         first: "wave".into(),
         tags: Vec::new(),
-        clips: vec![animation::OwnClip {
+        clips: vec![animation::frames_file::OwnClip {
             name: "wave".into(),
             speed: 1.0,
             direction: animation::Direction::Forward,
@@ -49,18 +49,18 @@ pub(crate) fn with_clips() -> (Workbench, AssetId, AssetId) {
                 })
                 .collect(),
         }],
-    };
+    });
     let mut sheets = SpriteSheets::default();
     sheets.by_path.insert(
         "walker.aseprite".into(),
         SheetState::Read(Arc::new(crate::sprite_sheets::tests::test_sheet())),
     );
     sheets.frames.insert(
-        "walker.solframes".into(),
+        "walker.clips.lst".into(),
         FramesState::Read(Arc::new(file), Vec::new()),
     );
     sheets.paths.insert(sheet, "walker.aseprite".into());
-    sheets.paths.insert(clips, "walker.solframes".into());
+    sheets.paths.insert(clips, "walker.clips.lst".into());
     w.set_sprite_sheets(sheets);
     (w, sheet, clips)
 }
@@ -77,7 +77,7 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
     let (mut w, _, _) = with_clips();
     let mut actions = Vec::new();
     w.library_request(
-        LibraryRequest::Open(LibraryKind::SpriteClips, "walker.solframes".into()),
+        LibraryRequest::Open(LibraryKind::SpriteClips, "walker.clips.lst".into()),
         &mut actions,
     );
     assert!(w.open.frames_editor.is_some());
@@ -108,7 +108,7 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
 #[test]
 fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
     let (mut w, _, clips) = with_clips();
-    w.open_frames("walker.solframes");
+    w.open_frames("walker.clips.lst");
     let editor = w.open.frames_editor.as_mut().unwrap();
     assert!(editor.set_speed(2.0));
     w.frames_tabs_done(crate::panels::FramesOut {
@@ -117,14 +117,18 @@ fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
     });
     let texts = saved(&w.open.outbox);
     assert_eq!(texts.len(), 1);
-    assert!(texts[0].contains("clip1 = [\"wave\", 2.0"), "{}", texts[0]);
+    assert!(
+        texts[0].contains("new ClipSettings { name = \"wave\", speed = 2.0"),
+        "{}",
+        texts[0]
+    );
     // Every sprite playing the file sees it at once.
     let set = w.viewport.sheets.clips(clips).unwrap();
     assert_eq!(set.get("wave").unwrap().speed, 2.0);
     // Undo over the tabs undoes the file's change, and saves it.
     w.frames_undo(false, true);
     let undone = saved(&w.open.outbox);
-    assert!(undone.last().unwrap().contains("clip1 = [\"wave\", 1.0"));
+    assert!((undone.last().unwrap()).contains("new ClipSettings { name = \"wave\", speed = 1.0"));
     assert_eq!(
         w.viewport
             .sheets
@@ -156,10 +160,10 @@ fn a_sheet_s_properties_make_its_clips_file() {
     );
     let made = saved(&w.open.outbox);
     assert_eq!(made.len(), 1);
-    assert!(made[0].contains(&format!("sheet = \"{crops}\"")));
+    assert!(made[0].contains(&format!("picture = \"{crops}\"")));
     assert_eq!(
         w.open.frames_editor.as_ref().unwrap().path,
-        "crops.solframes",
+        "crops.clips.lst",
         "opened beside it"
     );
     // One that's there already is just opened.
@@ -171,7 +175,7 @@ fn a_sheet_s_properties_make_its_clips_file() {
     assert!(saved(&w.open.outbox).is_empty());
     assert_eq!(
         w.open.frames_editor.as_ref().unwrap().path,
-        "walker.solframes"
+        "walker.clips.lst"
     );
     let _ = sheet;
 }
@@ -181,17 +185,17 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
     let (mut w, _, _) = with_clips();
     let mut sheets = (*w.viewport.sheets).clone();
     sheets.frames.insert(
-        "walker.solframes".into(),
+        "walker.clips.lst".into(),
         FramesState::Failed("line 3: a clip line should be …".into()),
     );
     w.set_sprite_sheets(sheets);
-    w.open_frames("walker.solframes");
+    w.open_frames("walker.clips.lst");
     assert!(w.open.frames_editor.is_none());
     assert!(
         w.console
             .lines()
             .iter()
-            .any(|l| l.text.contains("Couldn't open walker.solframes: line 3"))
+            .any(|l| l.text.contains("Couldn't open walker.clips.lst: line 3"))
     );
 }
 
@@ -201,7 +205,7 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
 #[test]
 fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
     let (mut w, _, _) = with_clips();
-    w.open_frames("walker.solframes");
+    w.open_frames("walker.clips.lst");
     // A clip's settings are its own Clip shelf tab (round 3).
     w.show_panel(Panel::Clip);
     let mut h = harness(w);
@@ -226,7 +230,7 @@ fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
     }
     let editor = h.state_mut().0.open.frames_editor.as_mut().unwrap();
     let wave = &editor.file.clips[0];
-    assert!(wave.repeats > 1, "{} times", wave.repeats);
+    assert!(wave.plays > 1, "{} times", wave.plays);
     assert!(wave.speed > 1.5, "{} times as fast", wave.speed);
     // One step a drag.
     assert!(editor.undo());
@@ -243,18 +247,15 @@ fn with_clips_open() -> (Workbench, SpriteSheets) {
     (w, store)
 }
 
-const CLIPS: &str = "walker.solframes";
+const CLIPS: &str = "walker.clips.lst";
 
 /// The open clips file, as its editor has it.
-fn open_file(w: &Workbench) -> animation::FramesFile {
+fn open_file(w: &Workbench) -> animation::ClipsFile {
     w.open.frames_editor.as_ref().unwrap().file.clone()
 }
 
 /// The clips file changed outside Solis: another clip added, "blink".
-fn changed_by_hand(
-    store: &mut SpriteSheets,
-    file: &animation::FramesFile,
-) -> animation::FramesFile {
+fn changed_by_hand(store: &mut SpriteSheets, file: &animation::ClipsFile) -> animation::ClipsFile {
     let mut by_hand = file.clone();
     let mut blink = by_hand.clips[0].clone();
     blink.name = "blink".into();
@@ -284,7 +285,7 @@ fn a_clips_file_changed_on_disk_is_taken_in_as_one_undo_step() {
     assert_eq!(
         told,
         [
-            "walker.solframes changed on disk, so the Clips and Frames tabs show it as it is now \
+            "walker.clips.lst changed on disk, so the Clips and Frames tabs show it as it is now \
           (Ctrl+Z over them undoes that)."
         ]
     );
@@ -308,7 +309,7 @@ fn a_clips_file_changed_on_disk_is_taken_in_as_one_undo_step() {
     assert_eq!(open_file(&w), before);
     assert_eq!(
         saved(&w.open.outbox),
-        [animation::frames_file::write(&before)]
+        [animation::clips_file::write(&before, "walker.aseprite")]
     );
     w.frames_undo(false, true);
     assert_eq!(open_file(&w), before, "one step, not two");
@@ -329,7 +330,10 @@ fn a_change_after_the_file_changed_on_disk_never_writes_the_older_copy_over_it()
     let mut wanted = by_hand;
     wanted.clips[0].speed = 2.0;
     let texts = saved(&w.open.outbox);
-    assert_eq!(texts, [animation::frames_file::write(&wanted)]);
+    assert_eq!(
+        texts,
+        [animation::clips_file::write(&wanted, "walker.aseprite")]
+    );
     assert!(texts[0].contains("blink"), "what was added by hand is kept");
     // And Ctrl+Z after such a change undoes it alone, the file by hand
     // still there.
@@ -351,7 +355,7 @@ fn a_clips_file_gone_from_the_project_closes_its_tabs() {
     let last = w.console.lines().last().unwrap();
     assert_eq!(
         last.text,
-        "walker.solframes is gone, so the Clips and Frames tabs closed."
+        "walker.clips.lst is gone, so the Clips and Frames tabs closed."
     );
     // Nothing is left to make the file again with.
     w.frames_undo(false, true);
@@ -387,11 +391,11 @@ fn opening_the_clips_file_already_open_keeps_its_editor_and_undo_steps() {
     assert_eq!(open_file(&w), before);
     // Another clips file takes its place, as before.
     let mut store = (*w.viewport.sheets).clone();
-    store.put("other.solframes", crate::OwnFile::Frames(Arc::default()));
+    store.put("other.clips.lst", crate::OwnFile::Frames(Arc::default()));
     w.set_sprite_sheets(store);
-    w.open_frames("other.solframes");
+    w.open_frames("other.clips.lst");
     let editor = w.open.frames_editor.as_ref().unwrap();
-    assert_eq!(editor.path, "other.solframes");
+    assert_eq!(editor.path, "other.clips.lst");
     assert_eq!(editor.can_undo_redo(), (false, false));
 }
 

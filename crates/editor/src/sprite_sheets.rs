@@ -2,12 +2,12 @@
 //! files as the app read them, the sprites a level draws, and how each
 //! becomes what the renderer draws ([`ViewSprite`], laid out as
 //! `render::SpriteInstance`). With D3, the project's clips files
-//! (`.solframes`) too, and the clips each sheet and clips file offers
+//! (`.clips.lst`) too, and the clips each sheet and clips file offers
 //! ([`SpriteSheets::clip_sets`]), which pick the frame a playing sprite
 //! shows. With D3b, the project's animators (`.solanim`) too, ready to run
 //! ([`SpriteSheets::animator_set`]).
 
-use animation::{ClipSet, FramesFile};
+use animation::{ClipSet, ClipsFile};
 use assets::sprite_sheet::SpriteSheet;
 use glam::{Mat4, Vec2};
 use level::builtin::Sprite;
@@ -26,11 +26,11 @@ pub enum SheetState {
     Failed(String),
 }
 
-/// What the editor knows of one clips file (`.solframes`).
+/// What the editor knows of one clips file (`.clips.lst`).
 #[derive(Debug, Clone, PartialEq)]
 pub enum FramesState {
     /// Read, with what was put right while reading it.
-    Read(Arc<FramesFile>, Vec<String>),
+    Read(Arc<ClipsFile>, Vec<String>),
     /// Couldn't be read, and why.
     Failed(String),
 }
@@ -102,7 +102,7 @@ pub fn is_picture(path: &str) -> bool {
 pub struct SpriteSheets {
     /// Each Aseprite file, by path inside the assets (`/` between folders).
     pub by_path: HashMap<String, SheetState>,
-    /// Each clips file (`.solframes`), by path inside the assets.
+    /// Each clips file (`.clips.lst`), by path inside the assets.
     pub frames: HashMap<String, FramesState>,
     /// Each animator file (`.solanim`), by path inside the assets.
     pub animators: HashMap<String, AnimatorState>,
@@ -309,7 +309,7 @@ impl SpriteSheets {
     }
 
     /// The clips game code can name, as `sheet/clip` paths (the sheet's
-    /// path without its extension), and the names of their events (cues),
+    /// path without its extension, or a clips file's without `.clips.lst`), and the names of their events (cues),
     /// each sorted, for the project file (decision 0077).
     pub fn clip_names(&self) -> (Vec<String>, Vec<String>) {
         let mut clips = Vec::new();
@@ -318,9 +318,7 @@ impl SpriteSheets {
             let Some(path) = self.paths.get(id) else {
                 continue;
             };
-            let stem = path
-                .rsplit_once('.')
-                .map_or(path.as_str(), |(stem, _)| stem);
+            let stem = reflect::data_files::path_stem(path);
             for clip in &set.clips {
                 clips.push(format!("{stem}/{}", clip.name));
                 for frame in &clip.frames {
@@ -349,7 +347,7 @@ impl SpriteSheets {
             }
             None => match self.frames.get(path)? {
                 FramesState::Read(file, _) => {
-                    match self.by_path.get(self.paths.get(&file.sheet?)?)? {
+                    match self.by_path.get(self.paths.get(&file.sheet()?)?)? {
                         SheetState::Read(sheet) => Some(sheet),
                         _ => None,
                     }
@@ -360,7 +358,7 @@ impl SpriteSheets {
     }
 
     /// The clips file with asset ID `id`, if it's been read.
-    pub fn frames_file(&self, id: AssetId) -> Option<&Arc<FramesFile>> {
+    pub fn frames_file(&self, id: AssetId) -> Option<&Arc<ClipsFile>> {
         match self.frames.get(self.paths.get(&id)?)? {
             FramesState::Read(file, _) => Some(file),
             FramesState::Failed(_) => None,
@@ -380,7 +378,7 @@ impl SpriteSheets {
             if let Some(SheetState::Read(sheet)) = self.by_path.get(path) {
                 sets.insert(id, Arc::new(ClipSet::of_sheet(sheet, None)));
             } else if let Some(FramesState::Read(file, _)) = self.frames.get(path)
-                && let Some(sheet) = file.sheet.and_then(|s| self.get(s))
+                && let Some(sheet) = file.sheet().and_then(|s| self.get(s))
             {
                 sets.insert(id, Arc::new(ClipSet::of_sheet(sheet, Some(file))));
             }

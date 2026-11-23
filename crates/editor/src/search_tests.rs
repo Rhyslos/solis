@@ -87,7 +87,7 @@ fn every_panel_with_a_place_is_found_by_name() {
     w.library_request(
         crate::library::LibraryRequest::Open(
             crate::library::LibraryKind::SpriteClips,
-            "walker.solframes".into(),
+            "walker.clips.lst".into(),
         ),
         &mut actions,
     );

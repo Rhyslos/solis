@@ -35,7 +35,7 @@ pub enum AssetKind {
     SoundEvent,
     /// An Aseprite file (`.aseprite`, `.ase`; Phase 9, D2): a sprite sheet.
     SpriteSheet,
-    /// A sprite's clips file (`.solframes`; Phase 9, D3).
+    /// A picture's clips file (`.clips.lst`; Phase 9, D3, then Fixes 3).
     SpriteClips,
     /// An animator (`.solanim`; Phase 9, D3b): states choosing the clip.
     Animator,
@@ -63,10 +63,6 @@ pub const OLD_MODULE_EXTENSION: &str = "solassembly";
 /// The extension of sound event files (the `sound` crate reads them).
 pub const SOUND_EVENT_EXTENSION: &str = "solsound";
 
-/// The extension of sprites' clips files (the `animation` crate reads
-/// them).
-pub const SPRITE_CLIPS_EXTENSION: &str = "solframes";
-
 /// The extension of animator files (the `animation` crate reads them).
 pub const ANIMATOR_EXTENSION: &str = "solanim";
 
@@ -86,6 +82,7 @@ fn data_kind(path: &Path) -> Option<AssetKind> {
         "tileset" => Some(AssetKind::Tileset),
         "tilemap" => Some(AssetKind::TileMap),
         "module" => Some(AssetKind::Module),
+        "clips" => Some(AssetKind::SpriteClips),
         _ => None,
     }
 }
@@ -109,8 +106,6 @@ impl AssetKind {
             Some(Self::Sound)
         } else if ext == SOUND_EVENT_EXTENSION {
             Some(Self::SoundEvent)
-        } else if ext == SPRITE_CLIPS_EXTENSION {
-            Some(Self::SpriteClips)
         } else if ext == ANIMATOR_EXTENSION {
             Some(Self::Animator)
         } else if ext == TILESET_EXTENSION {

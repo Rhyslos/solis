@@ -38,7 +38,7 @@ fn fixture(path: &str) -> String {
 /// Every saver, with text of its kind as Solis writes it now.
 fn savers() -> Vec<Saver> {
     let event = sound::event::read(&fixture("sound-event/v1/footstep.solsound")).unwrap();
-    let frames = animation::frames_file::read(&fixture("frames/v1/walker.solframes")).unwrap();
+    let frames = animation::clips_file::read(&fixture("frames/v1/walker.solframes")).unwrap();
     let animator = animation::animator_file::read(&fixture("animator/v1/farmer.solanim")).unwrap();
     let tileset = tiles::tileset::read(&fixture("tileset/v4/farm.tileset.lst")).unwrap();
     let map = tiles::map_file::read(&fixture("tilemap/v3/farm.tilemap.lst")).unwrap();
@@ -52,8 +52,8 @@ fn savers() -> Vec<Saver> {
         },
         Saver {
             name: "save_frames",
-            file: "x.solframes",
-            text: animation::frames_file::write(&frames.file),
+            file: "x.clips.lst",
+            text: animation::clips_file::write(&frames.file, "x.png"),
             needs: Needs::Nothing,
             save: |p, path, text| p.save_frames(path, text).map(drop),
         },
@@ -341,7 +341,7 @@ fn no_made_up_path_makes_a_saver_write_outside_the_assets() {
     assert!(written.is_empty(), "a saver wrote outside: {written:?}");
     // The sweep did save where it may: plain paths inside the assets.
     assert!(assets.join("x.png").is_file());
-    assert!(assets.join("a/x.solframes").is_file());
+    assert!(assets.join("a/x.clips.lst").is_file());
 }
 
 #[test]

@@ -140,7 +140,7 @@ fn choose_sheet(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     };
     let chosen = crate::widgets::field::dropdown_of_names(ui, "Sprite sheet", &names, list)
         .map(|i| sheets[i].1);
-    chosen.is_some_and(|id| f.editor.change(|file| file.sheet = Some(id)))
+    chosen.is_some_and(|id| f.editor.change(|file| file.set_sheet(id)))
 }
 
 /// One clip's row in the list: chosen by a click, renamed (clips made

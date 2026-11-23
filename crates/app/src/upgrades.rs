@@ -75,7 +75,7 @@ pub(crate) mod tests {
             &level::tags::FORMAT,
             &level::languages::FORMAT,
             &level::table::file::FORMAT,
-            &animation::frames_file::FORMAT,
+            &animation::clips_file::FORMAT,
             &animation::animator_file::FORMAT,
             &tiles::tileset::FORMAT,
             &tiles::map_file::FORMAT,
@@ -101,7 +101,7 @@ pub(crate) mod tests {
         assert!(level::pixels::FORMAT.is_complete());
         assert!(level::tags::FORMAT.is_complete());
         assert!(level::table::file::FORMAT.is_complete());
-        assert!(animation::frames_file::FORMAT.is_complete());
+        assert!(animation::clips_file::FORMAT.is_complete());
         assert!(animation::animator_file::FORMAT.is_complete());
         assert!(tiles::tileset::FORMAT.is_complete());
         assert!(tiles::map_file::FORMAT.is_complete());

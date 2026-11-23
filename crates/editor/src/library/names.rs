@@ -19,7 +19,7 @@ fn kind_of(item: &LibraryItem) -> Option<(NameKind, usize)> {
         LibraryKind::Texture => Some((NameKind::Picture, ending(&[".png", ".jpg", ".jpeg"])?)),
         LibraryKind::Level => Some((NameKind::Level, ending(&[".sollevel", ".solarea"])?)),
         LibraryKind::SpriteSheet => Some((NameKind::Clip, ending(&[".aseprite", ".ase"])?)),
-        LibraryKind::SpriteClips => Some((NameKind::Clip, ending(&[".solframes"])?)),
+        LibraryKind::SpriteClips => Some((NameKind::Clip, ending(&[".clips.lst"])?)),
         LibraryKind::Font => Some((NameKind::Font, ending(&[".ttf", ".otf"])?)),
         LibraryKind::Code if path.starts_with(script::screens::FOLDER) => {
             Some((NameKind::Screen, 0))

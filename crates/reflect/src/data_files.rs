@@ -14,7 +14,7 @@ use std::path::Path;
 pub const LUST_EXTENSION: &str = "lst";
 
 /// Each kind of data file Solis writes, by the word before `.lst`.
-pub const KINDS: &[&str] = &["atlas", "module", "table", "tilemap", "tileset"];
+pub const KINDS: &[&str] = &["atlas", "clips", "module", "table", "tilemap", "tileset"];
 
 /// The kind of data file at `path` (`tilemap` for `farm.tilemap.lst`), if
 /// it is one. Capitals in the name don't matter.
@@ -108,6 +108,7 @@ mod tests {
         assert_eq!(path_stem("maps/farm.tilemap.lst"), "maps/farm");
         assert_eq!(path_stem("maps\\old.soltilemap"), "maps/old");
         assert_eq!(path_stem("farm.tilemap.lst"), "farm");
+        assert_eq!(path_stem("sprites/knight.clips.lst"), "sprites/knight");
         assert_eq!(file_name("farm", "tilemap"), "farm.tilemap.lst");
         assert_eq!(ending("tileset"), ".tileset.lst");
     }

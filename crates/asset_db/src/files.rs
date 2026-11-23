@@ -5,7 +5,7 @@
 
 use crate::db::{
     ANIMATOR_EXTENSION, AssetDb, OLD_MODULE_EXTENSION, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS,
-    SPRITE_CLIPS_EXTENSION, TILE_MAP_EXTENSION, TILESET_EXTENSION,
+    TILE_MAP_EXTENSION, TILESET_EXTENSION,
 };
 use crate::sidecar;
 use reflect::AssetId;
@@ -31,7 +31,7 @@ pub enum FileKind {
     SoundEvent,
     /// An Aseprite file (`.aseprite`, `.ase`): a sprite sheet.
     SpriteSheet,
-    /// A sprite's clips file (`.solframes`).
+    /// A picture's clips file (`.clips.lst`).
     SpriteClips,
     /// An animator (`.solanim`).
     Animator,
@@ -81,6 +81,7 @@ impl FileKind {
             Some("tilemap") => return Self::TileMap,
             Some("atlas") => return Self::Atlas,
             Some("module") => return Self::Module,
+            Some("clips") => return Self::SpriteClips,
             Some("table") => return Self::Table,
             _ => {}
         }
@@ -95,7 +96,6 @@ impl FileKind {
             "lst" | "lua" | "rs" => Self::Code,
             e if SOUND_EXTENSIONS.contains(&e) => Self::Sound,
             e if e == SOUND_EVENT_EXTENSION => Self::SoundEvent,
-            e if e == SPRITE_CLIPS_EXTENSION => Self::SpriteClips,
             e if e == ANIMATOR_EXTENSION => Self::Animator,
             e if e == TILESET_EXTENSION => Self::Tileset,
             e if e == TILE_MAP_EXTENSION => Self::TileMap,
@@ -644,11 +644,11 @@ mod tests {
         );
         assert_eq!(FileKind::of(Path::new("a.solassembly")), FileKind::Module);
         assert_eq!(
-            FileKind::of(Path::new("sprites/farmer.solframes")),
+            FileKind::of(Path::new("sprites/farmer.clips.lst")),
             FileKind::SpriteClips
         );
         assert_eq!(
-            crate::AssetKind::of(Path::new("farmer.SOLFRAMES")),
+            crate::AssetKind::of(Path::new("farmer.CLIPS.LST")),
             Some(crate::AssetKind::SpriteClips)
         );
         assert_eq!(

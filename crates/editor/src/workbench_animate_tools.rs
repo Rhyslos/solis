@@ -12,7 +12,7 @@ impl Workbench {
     /// The clip chosen in the open clips file, as its sheet makes it.
     pub(crate) fn chosen_clip(&self) -> Option<animation::Clip> {
         let editor = self.open.frames_editor.as_ref()?;
-        let sheet = self.viewport.sheets.get(editor.file.sheet?)?;
+        let sheet = self.viewport.sheets.get(editor.file.sheet()?)?;
         editor.clips(sheet).get(&editor.clip).cloned()
     }
 
@@ -78,7 +78,7 @@ impl Workbench {
         let Some(editor) = &mut self.open.frames_editor else {
             return;
         };
-        let Some(sheet) = editor.file.sheet.and_then(|id| sheets.get(id)) else {
+        let Some(sheet) = editor.file.sheet().and_then(|id| sheets.get(id)) else {
             return;
         };
         let clips = editor.clips(sheet);

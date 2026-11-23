@@ -320,7 +320,7 @@ fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
 fn with_clips_and_a_screen() -> Workbench {
     let (mut w, _, _) = crate::workbench_frames::tests::with_clips();
     w.set_program(Some(program(MENU)));
-    w.open_frames("walker.solframes");
+    w.open_frames("walker.clips.lst");
     assert!(w.open_screen("ui/pauseMenu.lst", None));
     for panel in Panel::FRAMES_TABS {
         assert!(has_panel(&w, panel), "{panel:?} is open");

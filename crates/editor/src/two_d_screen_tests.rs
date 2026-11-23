@@ -61,7 +61,7 @@ fn crops() -> Workbench {
 /// A clips file open on Animate, with its Frames tab in front.
 fn clips() -> Workbench {
     let (mut w, _, _) = crate::workbench_frames::tests::with_clips();
-    w.open_frames("walker.solframes");
+    w.open_frames("walker.clips.lst");
     w
 }
 

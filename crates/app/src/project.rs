@@ -482,18 +482,21 @@ impl Projects {
         self.save_versioned(path, text, &kind)
     }
 
-    /// Saves a sprite's clips file (`.solframes`, in the project),
+    /// Saves a picture's clips file (`.clips.lst`, in the project),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_frames(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
         let kind = Saved {
             what: "a clips file",
-            is: animation::frames_file::is_frames_file,
-            format: &animation::frames_file::FORMAT,
+            is: animation::clips_file::is_clips_file,
+            format: &animation::clips_file::FORMAT,
             made_when_missing: true,
             read_back: |text| {
-                animation::frames_file::read(text)
-                    .map(|read| animation::frames_file::write(&read.file))
+                animation::clips_file::read(text)
+                    .map(|read| {
+                        let picture = animation::clips_file::picture_named(text);
+                        animation::clips_file::write(&read.file, picture)
+                    })
                     .map_err(|e| e.to_string())
             },
         };

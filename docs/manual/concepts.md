@@ -241,7 +241,7 @@
 - **Pivot:** the point a sprite stands on: it sits on its entity's place, so the sprite turns and flips round it. Usually between the feet.
 - **Atlas:** one big picture with many frames packed into it, so the graphics card draws a sheet's sprites all at once instead of one at a time.
 - **Clip:** a run of a sprite sheet's frames played as an animation (*walk*, *hoe*), each frame shown for its own time, forward, backward or ping-pong (there and back), over and over or a number of times. Aseprite's tags are clips; you can make more in Solis. See [Animating sprites](sprite-animation.md).
-- **Clips file:** a `.solframes` file beside an Aseprite file, holding what Solis adds to its clips (speed, events) and clips made in Solis. Open it to edit its clips in the **Clips** and **Frames** tabs.
+- **Clips file:** a `.clips.lst` file beside an Aseprite file, holding what Solis adds to its clips (speed, events) and clips made in Solis. Open it to edit its clips in the **Clips** and **Frames** tabs.
 - **Animator:** a `.solanim` file that chooses which clip a sprite plays, from states, transitions and parameters, edited in the **Animator** tab; an **Animator** component puts one on an entity. See [Animators](animators.md).
 - **State:** one thing an animated sprite can be doing (*Idle*, *Walk*), drawn as a box: it plays a clip, or a clip for each facing direction.
 - **Transition:** an arrow from one state to another (or from *Any state*), taken when all its conditions hold.
