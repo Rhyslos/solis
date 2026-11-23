@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Solis's files** (Fixes 4; [the manual](docs/manual/solis-files.md)): a manual page for anyone writing a game's files by hand or with a script, with a short example of each: what Solis reads from an Aseprite file, sidecars and their content hash, a level with a placed prefab's copy and its changes, how a state field is kept, prefabs, tilesets, tile maps, and every field of the 2D components with its standard value.
 - **Playing a game from the command line** (Fixes 4; [the manual](docs/manual/playing-from-the-command-line.md)): `solis --play <folder> [<level>] --inputs walk.txt --print Quest,Knight` plays a level without a window, with a plain-text script of what the player does (`at 30 press Jump`, `at 0 hold Move 1 0`), and prints what the Console said with its tick, then the components asked for. It fails on any error, so a game's own workflow can use it.
 - **The input page names every key and button** (Fixes 4; [the manual](docs/manual/input.md#names-of-keys-and-buttons)), for writing `input.solinput` by hand or calling `Input:rebind`; a test keeps the table complete.
 - **`solis --new-id [count]`** (Fixes 4) prints new IDs, one a line, for files written by hand or by a script.

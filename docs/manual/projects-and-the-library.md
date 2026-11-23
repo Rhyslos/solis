@@ -117,4 +117,5 @@ A `.gltf` model reads the files beside it, so it can't be moved to another folde
 ## Related
 - [Importing models](importing-models.md)
 - [Entities and components](entities.md)
+- [Solis's files](solis-files.md): what's inside a project's files, for writing them by hand or by script
 - Concepts: [project, asset, sidecar, cache](concepts.md#projects)
