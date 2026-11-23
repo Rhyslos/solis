@@ -190,6 +190,8 @@ One step per pull request, each well under an hour. Steps F3.1 and F3.8 change a
 
 ## The project lead's answers (2026-11-23)
 
+**The mock-ups' second round is approved** (the project lead, 2026-11-23): build it. In Free crop, the arrow keys nudge the picked cell one pixel (rule 17). A clip's settings sit in the right-hand Properties, as the mock-up shows.
+
 ### On the mock-ups
 
 > "A and B looks best, but they're both a bit too messy. I think B is probably the one I'm leaning the most towards, but I think the cutout part should be a pop-up menu, since that will make the page better. Also it's important we get the atlas crop mode in the menu too, in case an animation is like one pixel off center, or something like that so a traditional grid won't work for the entire thing. That way we can free cutout a frame and still make it work."
