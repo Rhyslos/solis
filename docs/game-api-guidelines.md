@@ -18,6 +18,22 @@ The animation API shows all three problems:
 
 The guidelines below give every engine function one predictable shape. A game writer who knows Lust should be able to guess the call before looking it up.
 
+## The Lust feel
+
+Added 2026-11-23, after reading Lust's own rulebook ([LUST.md](https://github.com/Rhyslos/Lust/blob/main/LUST.md)), its notes for engines ([ENGINES.md](https://github.com/Rhyslos/Lust/blob/main/ENGINES.md)) and its ideas. The project lead isn't a programmer, so **whoever designs a call checks it against these, and against Lust's newest rulebook, rather than asking the project lead how code should look.** Questions about what a feature does still go to the project lead.
+
+- **Read it out loud.** Lust reads like plain sentences: `is hp <= 0? then { … }`, `tween hp to 0 over 0.5;`, `send Hit(this, 6) to target;`. A call should too: `hero:knight().hasKey`, `World:the(Component.Quest)`. If it needs a comment to explain what it says, rename it.
+- **States are the big idea.** A fixed set of choices is a state, so that `check` covers it. `check` must handle every option, so a new option points at every line that needs it. Design calls to give and take states, so game code can write `check state { when Walking { … } }` and Lust finds what's missing. Folders are options inside options, and `==` includes them.
+- **Things end with their state.** In Lust, what's made during a state ends when the state does. Solis already follows this for timers, tweens and sounds (decision 0126). Anything new that game code starts and that keeps going (a clip, a sound, a wait) should end with the option it started in, unless kept.
+- **Describe, don't drive, where you can.** Lust's views say what the screen should be now, given the data; Lust works out the changes. An engine call that is safe every frame (rule 8) lets game code describe what it wants each tick (`animate(Clip.Knight.Walk)`), instead of tracking what it asked for last time.
+- **Make things the Lust way.** A thing with values is made with `new` and braces: `new PickupValues { item = Item.Red, count = 2 }`, the same as `new Player { name = "Ada" }`. Never one method call per field. Fields are read with `.` (`hit.distance`), methods called with `:`.
+- **One thing for the whole game is an object, reached by name.** Like Lust's `Clock.hour` and Solis's `World`, `Input` and `Physics`. Keep their number small (rule 2).
+- **No new words.** Lust's own words (section 22) are fixed, and some are words only in one place (`tween … to … over`). The engine adds methods, classes, states and events, never syntax. If something truly needs a word, it's asked of Lust.
+- **Names Lust allows.** PascalCase for kinds and states, camelCase for the rest, no ALL_CAPS. One- and two-capital names (`N`, `NE`) aren't allowed (asked of Lust as L3), so spell them out: `Facing.NorthEast`. Avoid Lust's built-in objects (`Maths`, `Files`, `Time`, `Json`, `Web`, `Random`, `Rotation`, `Colour`, `Ease`).
+- **No optional arguments.** Lust has none, so a variant is its own method, base word first (rule 7): `animate` and `animateFromStart`. Often a separate setter reads better: `setFacing(Facing.North)`, then `animate(Clip.Knight.Walk)`.
+- **Mistakes say what to do.** Lust's messages are plain and suggest the fix ("did you mean name?"). So are the engine's, before the game runs when possible, and on the line when not (rule 11).
+- **Keep up with Lust.** Lust moves fast (alpha 77 on 2026-11-19; Solis pins alpha 74). Before designing a call, check Lust's rulebook for something that already does the job, and its ENGINES.md for what changed.
+
 ## The big idea: the project's names become states
 
 The editor already knows every name a game uses: its clips, input actions, sounds, cues, prefabs and buses. So the editor writes them into one Lust file as states. Folders become options inside options. Game code `fetch`es them like any other state.
@@ -249,6 +265,7 @@ Before any new engine call goes into Solis, it answers yes to all of these:
 - [ ] Lust, Lua and Rust use the same words.
 - [ ] A mistake stops with a message naming the line.
 - [ ] The user manual shows it with a before-and-after if it replaces something.
+- [ ] It has the Lust feel (above): reads out loud, gives and takes states, makes things with `new { }`, adds no new words, and uses only names Lust allows.
 
 Open questions for the project lead:
 
