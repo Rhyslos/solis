@@ -108,6 +108,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **Save games are version 14** (Fixes 2c): a save keeps what game code hid and the colliders it turned off. Older saves load as before, with nothing switched off; a Solis from before can't read a version 14 save. **What to do:** nothing; update every copy of Solis that loads the game's saves.
+
 - **Data tables are version 2** (stage 1, translations): a table, row or column renamed after its text is translated keeps the name its keys were made from (`key = "IronSword"`). Older tables open as before; a Solis from before can't read a table that keeps a key. **What to do:** nothing; update every copy of Solis that opens the project.
 
 - **Sound events are version 2** (stage 1, translations): a sound event has a `caption` and a `speaker`. Older events open as before, with none. **What to do:** nothing; update every copy of Solis that opens the project.
