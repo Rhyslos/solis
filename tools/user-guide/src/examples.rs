@@ -1,11 +1,13 @@
-//! Game-code examples in three languages (decision 0113). In the manual,
-//! an example is three fenced blocks one after another, `lust`, `rust`
-//! and `lua`; the guide shows them as one example with a switch above it.
+//! Game-code examples (decisions 0113 and 0135). In the manual, an
+//! example is a `lust` block alone, or three fenced blocks one after
+//! another, `lust`, `rust` and `lua`, which the guide shows as one
+//! example with a switch above it. New calls are taught in Lust alone
+//! (the scope reset); the three-language examples already written stay.
 //! Code that isn't game code (commands, files, settings) is fenced with
 //! no language or another one, and stays as it is.
 //!
-//! Here too are the checks that need no engine: each example has all
-//! three, its Rust's brackets balance, and its Lua and Rust call only
+//! Here too are the checks that need no engine: a Rust or Lua block never
+//! stands without its Lust, an example's Rust's brackets balance, and its Lua and Rust call only
 //! what game code can call (`docs/game-code-interface.txt`). Its Lust,
 //! and its Lua's syntax, are checked against the engine itself by the
 //! script crate's tests (`crates/script/src/manual_examples_tests.rs`).
@@ -15,6 +17,9 @@ use crate::blocks::Block;
 /// The three languages, in their order: the fence's word and the name
 /// the switch shows.
 pub const LANGUAGES: [(&str, &str); 3] = [("lust", "Lust"), ("rust", "Rust"), ("lua", "Lua")];
+
+/// The one language an example may be written in alone.
+pub const LUST_ALONE: &str = "lust";
 
 /// What game code can call, from the repository's top folder.
 pub const INTERFACE: &str = "docs/game-code-interface.txt";
@@ -38,7 +43,7 @@ pub fn three_at(blocks: &[Block], at: usize) -> Option<[&str; 3]> {
 }
 
 /// Whether code fenced without a language reads as Lust game code, which
-/// must be shown in all three.
+/// must be fenced `lust`.
 pub fn looks_like_lust(code: &str) -> bool {
     code.lines().any(|line| {
         let line = line.trim_start();

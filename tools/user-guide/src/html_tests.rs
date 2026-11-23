@@ -129,10 +129,23 @@ fn three_languages_in_a_row_are_one_example_with_a_switch() {
 }
 
 #[test]
-fn a_game_code_block_on_its_own_is_a_problem_and_other_code_is_not() {
+fn lust_alone_is_an_example_without_a_switch() {
+    let (out, problems) = told("```lust\nmoveTo(p);\n```\n\nThen more words.\n");
+    assert!(problems.is_empty(), "{problems:?}");
+    assert!(!out.contains("<div class=\"example\">"), "{out}");
+    assert!(out.starts_with("<pre data-lang=\"lust\"><code>"), "{out}");
+    // Lust, then Lua with no Rust between: the Lust stands alone, the Lua
+    // has no Lust of its own.
     let (_, problems) = told("```lust\nmoveTo(p);\n```\n\n```lua\nx()\n```\n");
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(problems[0].contains("in lua has no Lust"), "{problems:?}");
+}
+
+#[test]
+fn rust_or_lua_on_its_own_is_a_problem_and_other_code_is_not() {
+    let (_, problems) = told("```rust\nlet a = 1;\n```\n\n```lua\nx()\n```\n");
     assert_eq!(problems.len(), 2, "{problems:?}");
-    assert!(problems[0].contains("all three languages"));
+    assert!(problems[0].contains("in rust has no Lust"), "{problems:?}");
     let (_, problems) = told("```\ncomponent Mover {\n}\n```\n");
     assert!(problems[0].contains("reads as Lust"), "{problems:?}");
     let (out, problems) =
