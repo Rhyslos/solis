@@ -56,6 +56,7 @@ fn main() -> ExitCode {
     match cli::parse(args) {
         Ok(Command::Version) => exit_with(say(&format!("{}\n", app::version_banner()), false)),
         Ok(Command::Help) => exit_with(say(&cli::usage(&program), false)),
+        Ok(Command::NewIds(count)) => exit_with(say(&cli::new_id_lines(count), false)),
         Ok(Command::CheckProject(asked)) => {
             let folder = asked.folder;
             let report =

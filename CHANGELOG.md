@@ -6,6 +6,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **The input page names every key and button** (Fixes 4; [the manual](docs/manual/input.md#names-of-keys-and-buttons)), for writing `input.solinput` by hand or calling `Input:rebind`; a test keeps the table complete.
+- **`solis --new-id [count]`** (Fixes 4) prints new IDs, one a line, for files written by hand or by a script.
 - **Hiding entities and turning colliders off** (Fixes 2c; [the manual](docs/manual/game-code.md#hiding-entities-and-turning-colliders-off)): `setSolid(false)` takes an entity's collider out of the way (a fallen orc no longer blocks the key it dropped), and `setVisible(false)` hides it and everything under it. Both are kept in save games; saves are now version 14, and older ones load as before.
 - **Spawning with values** (Fixes 2b; [the manual](docs/manual/game-code.md#spawning-with-values)): `World:spawnWith(Prefab.Key, place, [given])` makes a copy whose components start with the values you give (`new PickupValues { item = Item.Red }`, only the fields written), so a dropped key is the red one from its first update.
 - **The manual teaches new game-code calls in Lust alone** (the scope reset; [decision 0135](docs/decisions/0135-the-scope-reset.md)): an example may now be a single Lust block, shown in the guide without a language switch. Examples already in Lust, Rust and Lua keep their switch, and a Rust or Lua block on its own is still refused.

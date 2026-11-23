@@ -517,3 +517,52 @@ fn alt_enter_held_switches_once_and_lets_enter_go() {
         "a let-go switches nothing"
     );
 }
+
+/// D4 (from making Orc Invasion): the input page's table names every key
+/// a binding can hold, every mouse and gamepad button, and the mouse's
+/// and sticks' whole-axis inputs; a key egui adds fails here until the
+/// page lists it.
+#[test]
+fn the_input_page_names_every_key_and_button() {
+    let page = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/manual/input.md"),
+    )
+    .unwrap();
+    let start = page
+        .find("## Names of keys and buttons")
+        .expect("the section");
+    let table = &page[start
+        ..page[start..]
+            .find("\n## Settings")
+            .map_or(page.len(), |e| start + e)];
+    let listed = |name: &str| table.contains(&format!("`{name}`"));
+    for key in egui::Key::ALL {
+        let name = super::key_name(*key);
+        // Letters, digits and F keys are given as ranges.
+        let ranged = name.len() == 1 && name.chars().all(|c| c.is_ascii_alphanumeric())
+            || name
+                .strip_prefix('F')
+                .is_some_and(|n| n.parse::<u8>().is_ok_and(|n| (1..=35).contains(&n)));
+        assert!(
+            ranged || listed(name),
+            "the input page doesn't name the key {name}"
+        );
+    }
+    for button in input::MOUSE_BUTTONS {
+        assert!(listed(&format!("Mouse {button}")), "Mouse {button}");
+    }
+    for button in input::PAD_BUTTONS {
+        assert!(listed(&format!("Pad {button}")), "Pad {button}");
+    }
+    for name in [
+        input::MOUSE_MOTION,
+        input::MOUSE_WHEEL,
+        "Mouse WheelUp",
+        "Mouse WheelDown",
+    ] {
+        assert!(listed(name), "{name}");
+    }
+    for modifier in input::MODIFIERS {
+        assert!(listed(modifier), "{modifier}");
+    }
+}

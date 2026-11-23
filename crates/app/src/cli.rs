@@ -21,7 +21,13 @@ pub enum Command {
     /// Check the project in this folder without opening the editor, and
     /// exit (Phase 8, C4).
     CheckProject(CheckProject),
+    /// Print this many new IDs, one a line, for files written by hand or
+    /// by a script, and exit (Fixes 4, D3).
+    NewIds(u32),
 }
+
+/// The most IDs `--new-id` prints at once.
+pub const MAX_NEW_IDS: u32 = 10_000;
 
 /// What `--check-project` checks.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,6 +101,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
         match arg.to_str() {
             Some("--version" | "-V") => version = true,
             Some("--help" | "-h") => return Ok(Command::Help),
+            Some("--new-id") => return new_ids(args),
             Some("--check-project") => match args.next() {
                 Some(folder) => return check_project(PathBuf::from(folder), args),
                 None => {
@@ -150,6 +157,35 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     })
 }
 
+/// `--new-id`, then how many (one when nothing follows).
+fn new_ids(mut rest: impl Iterator<Item = OsString>) -> Result<Command, String> {
+    let wrong = || {
+        format!(
+            "--new-id takes how many IDs to print, from 1 to {MAX_NEW_IDS}, or nothing for one. \
+             Try --help."
+        )
+    };
+    let count = match rest.next() {
+        None => 1,
+        Some(n) => n
+            .to_str()
+            .and_then(|n| n.parse::<u32>().ok())
+            .filter(|n| (1..=MAX_NEW_IDS).contains(n))
+            .ok_or_else(wrong)?,
+    };
+    if rest.next().is_some() {
+        return Err(wrong());
+    }
+    Ok(Command::NewIds(count))
+}
+
+/// `count` new IDs, one a line, as files write them.
+pub fn new_id_lines(count: u32) -> String {
+    (0..count)
+        .map(|_| format!("{}\n", reflect::Id::random()))
+        .collect()
+}
+
 /// `--check-project <folder>`, then what's after it: `--smoke <ticks>`
 /// or nothing.
 fn check_project(
@@ -185,7 +221,8 @@ fn check_project(
 pub fn usage(program: &str) -> String {
     format!(
         "Usage: {program} [<project folder>] [--import <file>]... [--sample <which> <folder>] [--version | --help]\n       \
-         {program} --check-project <folder> [--smoke <ticks>]\n\n\
+         {program} --check-project <folder> [--smoke <ticks>]\n       \
+         {program} --new-id [<count>]\n\n\
          Opens the {name} launcher, or with a project's folder, that project in the editor.\n\n\
          Options:\n  \
          <project folder> Open this project in the editor straight away\n  \
@@ -200,6 +237,9 @@ pub fn usage(program: &str) -> String {
          --smoke <ticks>  With --check-project: also play the game's start level for\n                   \
          this many ticks (60 a second) with no input, and fail on any error\n                   \
          or warning in the Console, said with its tick\n  \
+         --new-id [<count>]\n                   \
+         Print new IDs, one a line (one, or up to {MAX_NEW_IDS}), for files\n                   \
+         written by hand or by a script, and exit\n  \
          -V, --version    Print the version and exit\n  \
          -h, --help       Print this help and exit\n",
         name = crate::branding::APP_NAME
@@ -253,6 +293,28 @@ mod tests {
                 .contains("folder")
         );
         assert!(usage("solis").contains("--check-project <folder>"));
+    }
+
+    #[test]
+    fn new_id_prints_one_or_many() {
+        assert_eq!(parse(args(&["--new-id"])), Ok(Command::NewIds(1)));
+        assert_eq!(parse(args(&["--new-id", "20"])), Ok(Command::NewIds(20)));
+        for bad in [
+            &["--new-id", "0"][..],
+            &["--new-id", "ten"],
+            &["--new-id", "10001"],
+            &["--new-id", "2", "3"],
+        ] {
+            assert!(parse(args(bad)).unwrap_err().contains("--help"), "{bad:?}");
+        }
+        let lines = new_id_lines(50);
+        let ids: std::collections::BTreeSet<&str> = lines.lines().collect();
+        assert_eq!(ids.len(), 50, "every ID is new");
+        for id in ids {
+            // Each reads back as an ID, as a file holding it would.
+            assert!(id.parse::<reflect::Id>().is_ok(), "{id}");
+        }
+        assert!(usage("solis").contains("--new-id [<count>]"));
     }
 
     #[test]
