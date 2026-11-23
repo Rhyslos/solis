@@ -144,6 +144,7 @@ const NOT_ON_AN_ENTITY: &[&str] = &[
     "entity_exists",
     "World_fire",
     "World_spawn",
+    "World_spawnWith",
     "entity_despawn",
     "World_frameTime",
     "World_viewSize",

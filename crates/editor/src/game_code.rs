@@ -417,7 +417,8 @@ impl ViewCache {
 /// entity taken out.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum GameEdit {
-    Spawn(EntityId, String, glam::Vec3),
+    /// A copy of a prefab, its root's components given these values first.
+    Spawn(EntityId, String, glam::Vec3, script::SpawnValues),
     Despawn(EntityId),
 }
 
@@ -606,8 +607,9 @@ impl GameWorld for PlayWorld<'_> {
         let mut i = 0;
         while i < changes.len() {
             match changes[i] {
-                Change::Spawn(id, ref prefab, place) => {
-                    self.edits.push(GameEdit::Spawn(id, prefab.clone(), place));
+                Change::Spawn(id, ref prefab, place, ref values) => {
+                    self.edits
+                        .push(GameEdit::Spawn(id, prefab.clone(), place, values.clone()));
                 }
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
                 Change::Seed(seed) => self.seed = Some(seed),

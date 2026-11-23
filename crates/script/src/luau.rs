@@ -501,8 +501,10 @@ impl Luau {
     }
 
     /// Takes the components' layouts of newly loaded code (Fixes 2), for
-    /// reading them.
+    /// reading them and spawning with values.
     pub(crate) fn set_layouts(&self, layouts: std::rc::Rc<crate::readings::Layouts>) {
+        self.lua
+            .set_app_data(crate::readings::Kept(std::rc::Rc::clone(&layouts)));
         self.readings.borrow_mut().set_layouts(layouts);
     }
 

@@ -36,9 +36,10 @@ pub enum Change {
     Turn(EntityId, Quat),
     /// `fire`: fire a projectile.
     Fire(crate::host::Shot),
-    /// `spawn`: make a copy of the prefab named here, as this entity,
-    /// at this place.
-    Spawn(EntityId, String, Vec3),
+    /// `spawn` or `spawnWith`: make a copy of the prefab named here, as
+    /// this entity, at this place, its root's components given these
+    /// values before their first update (none for `spawn`).
+    Spawn(EntityId, String, Vec3, SpawnValues),
     /// `despawn`: take this entity (and those under it) out of the game.
     Despawn(EntityId),
     /// `setSeed`: start the game's randomness again from this seed.
@@ -125,6 +126,10 @@ pub enum Change {
     /// looping sounds going.
     KeepStarted(EntityId, Arc<str>),
 }
+
+/// Values for a spawned entity's components, by component (Fixes 2b,
+/// `World:spawnWith`).
+pub type SpawnValues = Vec<(String, ComponentData)>;
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
 /// their order and their names are.
@@ -488,6 +493,10 @@ impl Host for ViewHost {
     }
 
     fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId> {
+        self.spawn_with(prefab, place, Vec::new())
+    }
+
+    fn spawn_with(&mut self, prefab: &str, place: Vec3, values: SpawnValues) -> Option<EntityId> {
         if !place.is_finite() || prefab.is_empty() || prefab.len() > 1024 {
             return None;
         }
@@ -506,7 +515,7 @@ impl Host for ViewHost {
         let id = spawned_id(&order, self.phase, self.view.tick)?;
         self.kept
             .changes
-            .push((order, Change::Spawn(id, prefab.to_string(), place)));
+            .push((order, Change::Spawn(id, prefab.to_string(), place, values)));
         Some(id)
     }
 

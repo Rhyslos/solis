@@ -88,7 +88,7 @@ fn fenced() -> Vec<Fenced> {
 
 /// The names a project holding the manual's examples would have.
 fn names() -> Names {
-    let mut names = Names::with_prefabs(&["ships/fighter", "ships/bolt", "drones/drone"])
+    let mut names = Names::with_prefabs(&["ships/fighter", "ships/bolt", "drones/drone", "key"])
         .and_sounds(&[
             "sfx/footstep",
             "sfx/hoe",

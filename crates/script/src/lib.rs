@@ -52,7 +52,7 @@ pub use code::{
     renamed_uses, try_compile,
 };
 pub use events::Event;
-pub use game::{Change, Game, GameWorld, ViewIndex, WorldView};
+pub use game::{Change, Game, GameWorld, SpawnValues, ViewIndex, WorldView};
 pub use host::{AnimatorValue, Host, MapPlace, NoHost, Shot, SoundAt};
 /// Game code turned into Lua, ready for a [`Runtime`].
 pub use lust::LuaChunk as Chunk;

@@ -595,6 +595,50 @@ end
 - **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places a prefab (…) that isn't in the project, so nothing was made.* The reasons are those of [prefabs](prefabs.md) themselves: the prefab places another whose file is missing or can't be read, prefabs place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each prefab's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the prefab and press Play again.
 - `despawn()` is how a component takes its own entity away, and `target:despawn()` takes another. It ends at the end of the tick.
 
+### Spawning with values
+
+A chest that drops a key wants the key to be *the red one*, from the moment it appears. `World:spawnWith` makes a copy and gives its components their first values, so its first `update` already sees them:
+
+```lust
+-- main.lst: a chest that drops the red key once.
+fetch "solis/world":World;
+fetch "solis/project":Prefab;
+fetch "solis/components":PickupValues;
+
+state Item = [Blue, Red];
+
+component Pickup {
+    has {
+        Item item = Item.Blue;
+        int count = 1;
+    }
+}
+
+component Chest {
+    has {
+        bool opened = false;
+    }
+
+    method update(float dt) {
+        is opened == false? then {
+            PickupValues given = new PickupValues;
+            given:item(Item.Red);
+            given:count(2);
+            entity key = World:spawnWith(Prefab.Key, position(), [given]);
+            opened = true;
+        }
+    }
+}
+
+pass Item, Pickup, Chest;
+end
+```
+
+- **A values object for each component:** Solis makes one for each of your components, named after it with `Values` (`PickupValues`), with a method for each field. Fetch it from `solis/components`, make one with `new`, and call a method for each value you want to give. A value of the wrong kind is a mistake before the game runs.
+- **Only what you give changes:** fields you don't give keep the prefab's values. Give values for several components in one list: `[given, health]`.
+- **The copy's root:** the values go to the components on the prefab's root entity. If the root has no such component, the copy is still made, and the [Console](console.md) says once that the values were left out.
+- Everything else is as `World:spawn`: the copy joins at the end of the tick, and its first `update` is next tick, already with its values.
+
 ## Reading other entities
 
 A gate wants to know whether the knight carries its key; a door wants the one quest in the level. Game code can read another entity's component, and find the one entity with a component, without naming anything by a string:
@@ -974,6 +1018,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/components` | `KnightReading entity:knight()`, one for each component | A copy of another entity's component as the tick started, read-only, or `nothing` ([Reading other entities](#reading-other-entities)). |
 | `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
 | `solis/world` | `entity World:spawn(Prefab which, vec3 place)` | Makes a copy of one of the project's prefabs at a place (see Making and removing entities, below). |
+| `solis/world` | `entity World:spawnWith(Prefab which, vec3 place, SpawnValues array values)` | Makes a copy as `spawn` does, its root's components given these values before their first update ([Spawning with values](#spawning-with-values)). |
 | `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
 | `solis/world` | `float World:random()` | A random number from 0 up to 1 (see Random numbers, above). |
 | `solis/world` | `float World:randomRange(float low, float high)` | A random number from low up to high. |
