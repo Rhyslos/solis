@@ -621,10 +621,8 @@ component Chest {
 
     method update(float dt) {
         is opened == false? then {
-            PickupValues given = new PickupValues;
-            given:item(Item.Red);
-            given:count(2);
-            entity key = World:spawnWith(Prefab.Key, position(), [given]);
+            PickupValues red = new PickupValues { item = Item.Red, count = 2 };
+            entity key = World:spawnWith(Prefab.Key, position(), [red]);
             opened = true;
         }
     }
@@ -634,8 +632,8 @@ pass Item, Pickup, Chest;
 end
 ```
 
-- **A values object for each component:** Solis makes one for each of your components, named after it with `Values` (`PickupValues`), with a method for each field. Fetch it from `solis/components`, make one with `new`, and call a method for each value you want to give. A value of the wrong kind is a mistake before the game runs.
-- **Only what you give changes:** fields you don't give keep the prefab's values. Give values for several components in one list: `[given, health]`.
+- **A values object for each component:** Solis makes one for each of your components, named after it with `Values` (`PickupValues`), with the same fields. Fetch it from `solis/components` and make one with `new`, writing the values you want to give in its braces, as for any class. A value of the wrong kind is a mistake before the game runs.
+- **Only what you write changes:** fields you don't write keep the prefab's values, and a field set after `new` (`red.count = 3;`) counts as written too. Give values for several components in one list: `[red, health]`.
 - **The copy's root:** the values go to the components on the prefab's root entity. If the root has no such component, the copy is still made, and the [Console](console.md) says once that the values were left out.
 - Everything else is as `World:spawn`: the copy joins at the end of the tick, and its first `update` is next tick, already with its values.
 
