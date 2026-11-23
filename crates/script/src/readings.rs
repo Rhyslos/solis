@@ -6,7 +6,7 @@
 //! A component lives in the Luau of the core its entity falls to, and
 //! every core runs at once, so no core can look into another's. Instead,
 //! as each tick starts, every core copies out its components of the kinds
-//! game code reads (found in the code: [`kinds_read`]) into one
+//! game code reads (found in the code: `kinds_read`) into one
 //! [`Readings`], which every core then reads for the whole tick
 //! ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)):
 //! the same values on one core or sixteen, and never another core's

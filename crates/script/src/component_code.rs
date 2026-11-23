@@ -49,7 +49,7 @@ pub struct Reach {
     pub notes: Vec<String>,
 }
 
-/// What [`write`] made.
+/// What [`write()`] made.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ComponentCode {
     /// The game's files as Lust is handed them: `solis/components.lst`
