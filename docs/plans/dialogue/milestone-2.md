@@ -282,49 +282,18 @@ Each step is one pull request on the full path, built and checked before the nex
 - Portraits that change with a line's mood: one portrait a speaker for now.
 - Lua and Rust: the catch-up phase at the end of 2D.
 
-## Questions for the project lead
+## The project lead's answers (2026-11-23)
 
-One question per choice, each with a recommended answer. The plan above follows the recommendations.
+These were asked as questions and answered. **Where an answer differs from the sections above, the answer wins**, and the step that builds that part brings its section into line first.
 
-### For this milestone
+1. **Conditions and effects:** one line of Lust each, as planned. A condition reads the game as the tick started and gives yes or no; an effect sends an event the game's own code acts on.
+2. **Words:** the main language's words in the conversation file, other languages in the translation files, as planned.
+3. **Pausing: a setting.** A project setting decides whether a conversation holds the game still. New projects start with **holds the game still**, and each conversation can still turn it off. *Differs from "Holding the game still": step 7 adds the setting.*
+4. **How many at once: a setting.** A project setting allows **one at a time** (a dialogue box game) or **many at once** (speech popups over characters, each talker running its own). New projects start with one at a time; with one at a time, asking for a second is refused and the asker hears `ConversationRefused`. *Differs from the plan's one-in-the-game rule: steps 4 and 5a keep one runner per talker, the setting limiting it to one.*
+5. **Speakers:** a small file each (`speakers/mira.speaker.lst`), as planned.
+6. **Calls: everything on `Dialogue`.** `Dialogue:start(Conversation.Village.Gardener, this)` hands over the talker, which hears the events, beside `Dialogue:advance()`, `Dialogue:choose(2)`, `Dialogue:stop()` and `Dialogue:current()`. With many at once allowed, the calls after `start` name the talker too. *Differs from "Game code": step 2 writes the calls this way.*
+7. **The conversation editor:** its own top tab, **Dialogue**, after UI (the mock-up as drawn).
+8. **The ready-made box:** written into the project as `ui/dialogue.lst` with its first conversation, then the project's own (the mock-up as drawn).
+9. **The graph's keys and mouse:** the animator graph's, plus dragging a wire's end off a node to unjoin it and dragging from a port to empty canvas to add a node already joined.
 
-1. **How are conditions and effects written?**
-   - **Recommended:** each is one line of Lust. A condition reads the game as the tick started and gives yes or no; an effect sends an event that the game's own code acts on. Lust checks every name before the game runs.
-   - Alternative: picked from lists in the editor, nothing typed: a condition is a yes-or-no method of the game's code, an effect an event to send to the talker or to one entity.
-   - Alternative: lines of Lust run as the code of one game-wide "story" object the project names, so an effect can also change that object's fields directly (`metMira = true;`).
-
-2. **Where are a conversation's words kept?**
-   - **Recommended:** the main language's words in the conversation file, other languages in the translation files, as a data table's translated cells.
-   - Alternative: every language in the translation files, the conversation holding only keys (one place for all words, but writing a line touches two files).
-
-3. **Does a conversation pause the game?**
-   - **Recommended:** a conversation holds the game still while it runs, as a hold of its own on top of the game's speed, so a pause menu and a conversation never undo each other; a conversation can turn it off for chatter while walking.
-   - Alternative: general pause requests any game code can make (a menu, a cutscene, a conversation), which pause menus would move to.
-   - Alternative: conversations never pause; game code calls `World:setGameSpeed` itself.
-
-4. **How many conversations can run at once?**
-   - **Recommended:** one in the whole game; asking for another while one runs is refused, and the asker hears `ConversationRefused`.
-   - Alternative: one per talking entity, so several characters can chat at once, and the box shows the one the player is in.
-
-5. **How are speakers kept?**
-   - **Recommended:** one small file per speaker (`speakers/mira.speaker.lst`) in the Library, as the prototype has, each with its name and portrait.
-   - Alternative: one list for the whole project in Project settings › Speakers, as tags are kept.
-
-6. **What are the calls called?**
-   - **Recommended:** `startConversation(Conversation.Village.Gardener)` on the entity that talks (it hears the events), and an engine object `Dialogue` for the rest: `Dialogue:advance()`, `Dialogue:choose(2)`, `Dialogue:stop()`, `Dialogue:current()`.
-   - Alternative: everything on `Dialogue`, handing over the talker: `Dialogue:start(Conversation.Village.Gardener, this)`.
-
-### For the mock-ups
-
-7. **Where does the conversation editor live?** (editor mock-up, all three frames)
-   - **Recommended:** its own top tab, **Dialogue**, after UI: conversations and speakers on the left, the graph in the middle, the picked node's Properties on the right, Problems below. Milestone 7's overview of all dialogue would live there too.
-   - Alternative: a document tab beside the level on Home, opened from the Library, as tables and translations open.
-   - Alternative: a contextual tab, LIBRARY TOOLS · Conversation, opened from the Library.
-
-8. **How does a project get the ready-made box?** (box mock-up, frames 5 to 7)
-   - **Recommended:** Solis writes `ui/dialogue.lst` into the project with its first conversation, and from then on it's the project's own file, to restyle or replace on the UI tab or as code.
-   - Alternative: the box stays inside Solis until the game maker chooses **Make my own copy**, so Solis's later fixes to the box reach projects that never changed it.
-
-9. **The graph's keys and mouse** (editor mock-up, the hint pill)
-   - **Recommended:** the animator graph's (right-click adds a node, drag from a port to join, F fits, Delete takes away, middle-drag pans), plus two from the prototype: drag a wire's end off a node to unjoin it, and drag from a port to empty canvas to add a node already joined.
-   - Alternative: only the animator graph's actions; unjoining from Properties' **Goes to**, and new nodes from right-click or the ribbon.
+The mock-ups themselves still wait for the project lead's approval before milestones 3 and 4 are built.
