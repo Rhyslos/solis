@@ -142,10 +142,10 @@ fn zones_round_trip_through_a_level_file() {
 
 #[test]
 fn the_zones_example_is_what_this_build_writes() {
-    // tests/fixtures/area/v5/zones.sollevel: a box, a circle that fires
+    // tests/fixtures/area/v6/zones.sollevel: a box, a circle that fires
     // once, and a freeform L.
-    let zones = include_str!("../../../../tests/fixtures/area/v5/zones.sollevel");
-    assert_eq!((text::FORMAT.version_of)(zones), Some(5));
+    let zones = include_str!("../../../../tests/fixtures/area/v6/zones.sollevel");
+    assert_eq!((text::FORMAT.version_of)(zones), Some(6));
     let level = text::read(zones, &registry()).unwrap();
     let forms: Vec<ZoneForm> = level.with::<TriggerZone>().map(|(_, z)| z.form).collect();
     assert_eq!(forms, [ZoneForm::Box, ZoneForm::Round, ZoneForm::Freeform]);
@@ -159,7 +159,7 @@ fn the_zones_example_is_what_this_build_writes() {
 
 #[test]
 fn randomly_damaged_zone_files_never_crash() {
-    let zones = include_str!("../../../../tests/fixtures/area/v5/zones.sollevel");
+    let zones = include_str!("../../../../tests/fixtures/area/v6/zones.sollevel");
     let bytes = zones.as_bytes();
     let mut seed = 0x9e37_79b9_7f4a_7c15_u64;
     for _ in 0..3_000 {

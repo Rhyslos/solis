@@ -106,7 +106,7 @@ fn a_module_reads_back_exactly_and_writes_the_same_again() {
     let text = write(&file, &registry).unwrap();
     assert!(text.starts_with("-- A module."), "{text}");
     assert!(text.contains("fetch \"solis/data/module\":[Part];"));
-    assert!(text.contains("lock int version = 1;"));
+    assert!(text.contains("lock int version = 2;"));
     let read_back = read(&text, &registry).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(read_back, file);
     assert_eq!(write(&read_back, &registry).unwrap(), text);
@@ -132,11 +132,16 @@ fn each_setting_is_a_line_of_its_own() {
 #[test]
 fn the_fixture_of_version_1_reads() {
     let registry = registry().unwrap();
-    let text = fixture("module/v1/crate.module.lst");
+    // Version 1 was a prefab's file: read as a module's.
+    let text = fixture("prefab/v1/crate.prefab.lst");
     let file = read(&text, &registry).unwrap();
     assert!(matches!(file.kind, FileKind::Module { .. }));
     assert_eq!(file.level.len(), 2);
     assert_eq!((FORMAT.version_of)(&text), Some(1));
+    // Written again, it's version 2's example.
+    let now = fixture("module/v2/crate.module.lst");
+    assert_eq!(write(&file, &registry).unwrap(), now);
+    assert_eq!(read(&now, &registry).unwrap(), file);
 }
 
 #[test]
@@ -156,7 +161,7 @@ fn an_assembly_s_older_file_reads_as_the_same_module() {
         &registry,
     )
     .unwrap();
-    assert_eq!(moved, fixture("module/v1/crate.module.lst"));
+    assert_eq!(moved, fixture("module/v2/crate.module.lst"));
 }
 
 #[test]
@@ -204,7 +209,7 @@ fn a_newer_version_is_refused_and_never_half_read() {
     let registry = registry().unwrap();
     let text = write(&lamp_post(), &registry)
         .unwrap()
-        .replace("lock int version = 1;", "lock int version = 2;");
+        .replace("lock int version = 2;", "lock int version = 3;");
     let why = read(&text, &registry).unwrap_err();
     assert!(why.message.contains("newer version"), "{why}");
 }
@@ -212,7 +217,7 @@ fn a_newer_version_is_refused_and_never_half_read() {
 /// A module file with one part whose fields are `fields`.
 fn one_part(fields: &str) -> String {
     format!(
-        "fetch \"solis/data/module\":[Part];\n\nlock int version = 1;\n\
+        "fetch \"solis/data/module\":[Part];\n\nlock int version = 2;\n\
          lock string root = \"0000000000001\";\nlock Part array parts = [\n    \
          new Part {{ {fields} }},\n];\nend\n"
     )

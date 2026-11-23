@@ -96,7 +96,7 @@ fn a_project_s_areas_become_levels_when_it_opens_and_nothing_is_lost() {
     }
     assert_eq!(
         std::fs::read_to_string(assets.join("levels/docks.sollevel")).unwrap(),
-        fixture("area/v5/blockout.sollevel")
+        fixture("area/v6/blockout.sollevel")
     );
     // The yard still finds its crate: the module it places is the
     // project's, by the same ID.

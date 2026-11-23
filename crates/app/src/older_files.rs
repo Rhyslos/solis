@@ -377,7 +377,7 @@ mod tests {
         let new = assets.join("levels/blockout.sollevel");
         assert_eq!(
             std::fs::read_to_string(&new).unwrap(),
-            fixture("area/v5/blockout.sollevel")
+            fixture("area/v6/blockout.sollevel")
         );
         assert_eq!(
             std::fs::read_to_string(asset_db::sidecar::path_for(&new)).unwrap(),
@@ -391,7 +391,7 @@ mod tests {
             level::text::read_file(&old_turret, &registry).unwrap()
         );
         assert!(moved.starts_with("-- A level. Safe to edit by hand"));
-        assert_eq!(moved.lines().nth(1), Some("level version 5;"));
+        assert_eq!(moved.lines().nth(1), Some("level version 6;"));
         assert!(moved.contains("-- my own note"));
         assert_eq!(
             moved.lines().skip(2).collect::<Vec<_>>(),
@@ -454,7 +454,7 @@ mod tests {
 
     #[test]
     fn a_level_s_text_is_given_back_as_it_is() {
-        let level = fixture("area/v5/blockout.sollevel");
+        let level = fixture("area/v6/blockout.sollevel");
         assert_eq!(level_text(&level).unwrap(), level);
         // Damaged input in many ways is refused or moved, never a crash,
         // and what moves reads as the area did.

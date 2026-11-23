@@ -63,7 +63,11 @@ pub const OLD_EXTENSION: &str = "solassembly";
 /// The version this build writes. Version 1 is the first in Lust; the
 /// older layout (an assembly's file) has its own versions, the level
 /// format's, and is read through those.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
+
+/// Where version 1's files fetched their classes from, before prefabs
+/// were called modules.
+const OLD_CLASSES_PATH: &str = "\"solis/data/prefab\"";
 
 /// The most bytes a module file may have: a level's most.
 pub const MAX_BYTES: usize = text::MAX_BYTES;
@@ -86,8 +90,15 @@ pub static FORMAT: reflect::upgrade::Format<LevelFile> = reflect::upgrade::Forma
     name: "module",
     current: VERSION,
     version_of: data::version_of,
-    steps: &[],
+    steps: &[prefabs_are_modules],
 };
+
+/// Version 1 to 2: prefabs are called modules (the project lead,
+/// 2026-11-23). A version 1 file's classes are fetched from where they
+/// were (`read` turns the path), so nothing is left to change.
+fn prefabs_are_modules(_: &mut LevelFile) -> Result<(), String> {
+    Ok(())
+}
 
 const COMMENT: &str =
     "A module. Written by Solis; safe to edit by hand: a part per entity, a line per setting.";
@@ -256,6 +267,23 @@ pub fn read(text: &str, registry: &Registry) -> Result<LevelFile, ParseError> {
              {VERSION}). Update to open it."
         )));
     }
+    // Version 1 was a prefab's file, fetching its classes as such
+    // (`solis/data/prefab`); version 2 is a module's (2026-11-23).
+    let renamed;
+    let text = if version < 2 {
+        renamed = text.replacen(
+            OLD_CLASSES_PATH,
+            &format!(
+                "\"{}/{}/{KIND}\"",
+                data::ENGINE_FOLDER,
+                data::CLASSES_FOLDER
+            ),
+            1,
+        );
+        renamed.as_str()
+    } else {
+        text
+    };
     let values = data::read(text, KIND, CLASSES, MAX_BYTES).map_err(from_data)?;
     let root = data::get(&values, "root").map_err(from_data)?;
     let root = root.as_text().unwrap_or_default();

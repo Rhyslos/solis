@@ -1,0 +1,29 @@
+-- A module. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
+fetch "solis/data/module":[Part];
+
+lock int version = 2;
+lock string root = "3QH0Z2V4R9X1M";
+lock Part array parts = [
+    new Part {
+        id = "3QH0Z2V4R9X1M",
+        name = "Crate",
+        order = "a0",
+        settings = [
+            "Transform.position = [0.0, 0.0, 0.0]",
+            "Transform.rotation = [0.0, 0.0, 0.0, 1.0]",
+            "Transform.scale = [1.0, 1.0, 1.0]"
+        ]
+    },
+    new Part {
+        id = "6WJ8T1K5N2D4P",
+        name = "Lid",
+        parent = "3QH0Z2V4R9X1M",
+        order = "a0",
+        settings = [
+            "Transform.position = [0.0, 0.0, 0.5]",
+            "Transform.rotation = [0.0, 0.0, 0.0, 1.0]",
+            "Transform.scale = [1.0, 1.0, 1.0]"
+        ]
+    },
+];
+end

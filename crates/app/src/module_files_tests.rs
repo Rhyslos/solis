@@ -13,7 +13,7 @@ fn fixture(path: &str) -> String {
 #[test]
 fn an_assembly_s_file_becomes_the_module_fixture() {
     let moved = from_old(&fixture("area/v4/crate.solassembly")).unwrap();
-    assert_eq!(moved, fixture("module/v1/crate.module.lst"));
+    assert_eq!(moved, fixture("module/v2/crate.module.lst"));
     // A module's own text is given back as it is.
     assert_eq!(from_old(&moved).unwrap(), moved);
     // A level isn't a module.
@@ -75,7 +75,7 @@ fn saving_an_assembly_s_older_file_keeps_it_first() {
     let copy = copy.expect("the older file is kept");
     assert_eq!(std::fs::read_to_string(copy).unwrap(), old);
     let now = std::fs::read_to_string(&path).unwrap();
-    assert_eq!(now, fixture("module/v1/crate.module.lst"));
+    assert_eq!(now, fixture("module/v2/crate.module.lst"));
     // Saved again: current, so nothing more is kept.
     assert!(
         save(Some(&root), &path, &file, &registry)

@@ -420,7 +420,7 @@ fn a_check_knows_the_project_s_modules_in_their_lust_files() {
     let (_temp, root) = playground_with_a_check("modules");
     std::fs::copy(
         Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests/fixtures/module/v1/crate.module.lst"),
+            .join("../../tests/fixtures/module/v2/crate.module.lst"),
         root.join("crate.module.lst"),
     )
     .unwrap();
