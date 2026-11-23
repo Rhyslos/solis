@@ -1,8 +1,8 @@
 //! The fewest edits that turn one level into another: what goes, what
 //! comes, and for each entity in both only what differs (its name, its
-//! link to a prefab, its parent and place, its components and fields).
-//! Rebuilding a prefab's copies changes a little of many entities, and
-//! taking every entity out and putting it back made saving a prefab with
+//! link to a module, its parent and place, its components and fields).
+//! Rebuilding a module's copies changes a little of many entities, and
+//! taking every entity out and putting it back made saving a module with
 //! a thousand copies take seconds (R5's scale case).
 
 use level::{Edit, EntityData, Level};
@@ -20,7 +20,7 @@ pub(crate) fn edits_between(old: &Level, new: &Level) -> Vec<Edit> {
         .filter(|id| !new.contains(*id))
         .collect();
     // Walking a level in tree order sorts it, so it's walked only when
-    // something goes or comes (a prefab's copies following it change only
+    // something goes or comes (a module's copies following it change only
     // values).
     let old_order = if gone.is_empty() {
         Vec::new()

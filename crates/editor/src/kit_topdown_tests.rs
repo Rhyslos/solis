@@ -18,7 +18,7 @@ fn program() -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&["drones/drone", "nowhere"]),
+        &script::project_names::Names::with_modules(&["drones/drone", "nowhere"]),
     );
     files.push(("main.lst".into(), MAIN.to_string()));
     let code = script::Code {
@@ -196,7 +196,7 @@ fn a_2d_character_knows_it_s_grounded_and_how_fast_it_goes() {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&[]),
+        &script::project_names::Names::with_modules(&[]),
     );
     files.push(("main.lst".into(), FALLER.to_string()));
     let code = script::Code {
@@ -295,7 +295,7 @@ fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&[]),
+        &script::project_names::Names::with_modules(&[]),
     );
     files.push(("main.lst".into(), main));
     files.push(("hero.lst".into(), guide_file(&page, "-- hero.lst")));

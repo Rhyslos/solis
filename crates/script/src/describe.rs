@@ -218,7 +218,7 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "spawn",
-        lust: "World:spawn(Prefab.Ships.Fighter, place), with fetch \"solis/project\":Prefab;",
+        lust: "World:spawn(Module.Ships.Fighter, place), with fetch \"solis/project\":Module;",
         lua: "solis.World:spawn(\"Ships.Fighter\", place)",
     },
     Moved {
@@ -453,15 +453,15 @@ pub const NATIVES: &[Native] = &[
         file: "world",
         name: "spawn",
         owner: "World",
-        lust: "method entity spawn(Prefab which, vec3 place) native;",
-        about: "Makes a copy of a prefab (one of the project's, Prefab.Ships.Fighter for ships/fighter) at a place; its entity, which is in the game from the next tick, or nothing if it can't be made.",
+        lust: "method entity spawn(Module which, vec3 place) native;",
+        about: "Makes a copy of a module (one of the project's, Module.Ships.Fighter for ships/fighter) at a place; its entity, which is in the game from the next tick, or nothing if it can't be made.",
     },
     Native {
         file: "world",
         name: "spawnWith",
         owner: "World",
-        lust: "method entity spawnWith(Prefab which, vec3 place, SpawnValues array values) native;",
-        about: "Makes a copy of a prefab as spawn does, its root's components given values before their first update: each a values object from solis/components (new PickupValues { item = Item.KeyRed }: only the fields written are given), in a list.",
+        lust: "method entity spawnWith(Module which, vec3 place, SpawnValues array values) native;",
+        about: "Makes a copy of a module as spawn does, its root's components given values before their first update: each a values object from solis/components (new PickupValues { item = Item.KeyRed }: only the fields written are given), in a list.",
     },
     Native {
         file: "world",
@@ -1186,7 +1186,7 @@ pub const NATIVES: &[Native] = &[
 /// that wrote them, for their first line.
 ///
 /// They include `project.lst`, the project's names as states (here for a
-/// project with no prefabs and the ready-made input actions:
+/// project with no modules and the ready-made input actions:
 /// [`descriptions_for`] gives a project's own).
 pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
     descriptions_with(
@@ -1198,7 +1198,7 @@ pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
     .0
 }
 
-/// [`descriptions`] for a project with these prefabs (their paths in
+/// [`descriptions`] for a project with these modules (their paths in
 /// the assets, without `.solassembly`), with notes on any game code can't
 /// name.
 pub fn descriptions_for(
@@ -1232,7 +1232,7 @@ fn descriptions_with(
                 "-- Made by {made_by}{ENGINE_FILE} It's written again\n\
                  -- whenever the project opens, so changes made here don't last.\n\n"
             );
-            // The project's names it takes (Prefab, say), from the file
+            // The project's names it takes (Module, say), from the file
             // the editor writes beside these.
             let wanted: Vec<&str> = PROJECT_STATES
                 .iter()
@@ -1373,7 +1373,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
     (tiles::map_lust::KIND, tiles::map_lust::CLASSES),
     (animation::atlas::KIND, animation::atlas::CLASSES),
     (tiles::tileset::KIND, tiles::tileset::CLASSES),
-    (level::prefab_file::KIND, level::prefab_file::CLASSES),
+    (level::module_file::KIND, level::module_file::CLASSES),
     (level::tags::KIND, level::tags::CLASSES),
     (level::table::file::KIND, level::table::file::CLASSES),
     (level::languages::KIND, level::languages::CLASSES),
@@ -1383,7 +1383,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
-    "Prefab", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer",
+    "Module", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer",
     "Level", "Font", "Text", "Language",
 ];
 
@@ -1430,14 +1430,14 @@ mod tests {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
         assert_eq!(files.len(), 24);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
-        assert!(files.iter().any(|(p, _)| p == "solis/data/prefab.lst"));
+        assert!(files.iter().any(|(p, _)| p == "solis/data/module.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/table.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":[Prefab, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag];\n\
+             fetch \"solis/project\":[Module, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag];\n\
              fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
              fetch \"solis/physics\":[Physics, RayHit];\n\
@@ -1507,7 +1507,7 @@ mod tests {
                          Saves:loadFrom(\"quick\");\n\
                      }\n\
                      entity other = World:find(\"Crate\");\n\
-                     entity made = World:spawn(Prefab.None, other:position());\n\
+                     entity made = World:spawn(Module.None, other:position());\n\
                      made:moveTo(other:position() + [0, 0, 1]);\n\
                      made:turnTo(other:rotation());\n\
                      World:say(made:name());\n\

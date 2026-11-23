@@ -21,7 +21,7 @@ pub(crate) enum MenuCommand {
     AddPointLight,
     AddSpotlight,
     AddCamera,
-    MakePrefab,
+    MakeModule,
     ExpandAll,
     CollapseAll,
 }
@@ -56,7 +56,7 @@ impl Workbench {
             MenuCommand::AddCamera => {
                 self.add_camera();
             }
-            MenuCommand::MakePrefab => self.ask_make_prefab(),
+            MenuCommand::MakeModule => self.ask_make_module(),
             MenuCommand::ExpandAll => self.open.level_panel.collapsed.clear(),
             MenuCommand::CollapseAll => {
                 let level = self.open.document.level();

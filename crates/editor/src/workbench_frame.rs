@@ -48,7 +48,7 @@ impl Workbench {
         if self.launcher.shown {
             return self.show_launcher(ui);
         }
-        // A prefab's page in front: its document is the one shown and
+        // A module's page in front: its document is the one shown and
         // worked on, until the frame ends.
         self.page_in();
         let (mut actions, page) = self.begin_frame(ui);
@@ -57,11 +57,11 @@ impl Workbench {
         let mut asks = PanelAsks::default();
         let picked_before = self.open.library_state.selected.clone();
         self.drop_stale_sound();
-        let part = self.prefab_part();
+        let part = self.module_part();
         let page_names = self.page_names();
-        let prefab_details = self.prefab_details();
+        let module_details = self.module_details();
         self.open.level_panel.marks = if self.in_front.contains(&Panel::Level) {
-            self.prefab_marks()
+            self.module_marks()
         } else {
             std::sync::Arc::default()
         };
@@ -157,14 +157,14 @@ impl Workbench {
             .in_front
             .contains(&Panel::Properties)
             .then(|| self.zone_facts());
-        // Whether a prefab copy's tags differ from its prefab's (stage 1).
+        // Whether a module copy's tags differ from its module's (stage 1).
         let tags_changed = self
             .open
             .document
             .selection
             .primary()
             .and_then(|id| self.open.document.level().get(id))
-            .is_some_and(|e| self.tags_changed_from_prefab(e, part.as_ref()));
+            .is_some_and(|e| self.tags_changed_from_module(e, part.as_ref()));
         let atlas_problem = self.atlas_picture().1;
         let frames = self.open.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
@@ -239,7 +239,7 @@ impl Workbench {
             game_out: &mut asks.game,
             document: &self.open.document,
             page: page_names,
-            prefab_details: prefab_details.as_ref(),
+            module_details: module_details.as_ref(),
             models: &self.open.models,
             level_requests: &mut asks.level,
             project: self.open.project.as_ref(),
@@ -626,8 +626,8 @@ impl Workbench {
             drop_hint(ui, self.accent);
         }
         self.play_changes_window(ui);
-        self.make_prefab_dialog(ui.ctx(), actions);
-        self.prefab_page_question(ui.ctx());
+        self.make_module_dialog(ui.ctx(), actions);
+        self.module_page_question(ui.ctx());
         // What waited for Keep or Undo all (a quit, say) goes on now.
         actions.append(&mut self.open.outbox);
         self.prompts(ui, actions);

@@ -18,7 +18,7 @@ pub enum Panel {
     Level,
     /// The selected entity's components.
     Properties,
-    /// Assets: models, textures, sounds, prefabs.
+    /// Assets: models, textures, sounds, modules.
     Library,
     /// Game code in Lust, Rust or Lua (Phase 4).
     Code,
@@ -85,10 +85,10 @@ pub enum Panel {
     /// Export for playtesting as a page: the Build tab's middle (round
     /// 3, `10-build-tab`). The workbench draws it where the shell puts it.
     Export,
-    /// A prefab's own page (decision 0118, board 07): a tab beside the
-    /// level's on Home, the view of the prefab built on its own, while
+    /// A module's own page (decision 0118, board 07): a tab beside the
+    /// level's on Home, the view of the module built on its own, while
     /// one is open.
-    PrefabPage,
+    ModulePage,
     /// A data table's rows and columns (stage 1, data tables): a tab
     /// beside the level's on Home while a table is open.
     Table,
@@ -135,7 +135,7 @@ impl Panel {
         Self::Parameters,
         Self::Preview,
         Self::Pictures,
-        Self::PrefabPage,
+        Self::ModulePage,
         Self::Table,
         Self::Translations,
     ];
@@ -184,7 +184,7 @@ impl Panel {
             Self::Bus => "Bus",
             Self::SoundEvents => "Sound events",
             Self::Export => "Export for playtesting",
-            Self::PrefabPage => "Prefab",
+            Self::ModulePage => "Module",
             Self::Table => "Table",
             Self::Translations => "Translations",
         }
@@ -223,7 +223,7 @@ impl Panel {
             Self::Bus => Icon::Sliders,
             Self::SoundEvents => Icon::SoundEvent,
             Self::Export => Icon::Build,
-            Self::PrefabPage => Icon::Prefab,
+            Self::ModulePage => Icon::Module,
             Self::Table => Icon::Table,
             Self::Translations => Icon::Text,
         }

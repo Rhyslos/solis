@@ -19,7 +19,7 @@ A crate picked with the Move tool (`W`): drag an arrow to move it along that axi
 
 Clicking on empty sky or ground selects nothing.
 
-**Copies of prefabs** are selected whole the first time: clicking any part of a placed lamp post selects the whole lamp post. Click again on a part to select just that part. This stops you from pulling a copy apart by accident. See [Prefabs](prefabs.md).
+**Copies of modules** are selected whole the first time: clicking any part of a placed lamp post selects the whole lamp post. Click again on a part to select just that part. This stops you from pulling a copy apart by accident. See [Modules](modules.md).
 
 **Moving, turning and resizing:**
 1. Select something.
@@ -72,7 +72,7 @@ The axis locks and the axes are the [pills](concepts.md#pill) at the viewport's 
 
 - **Problem:** no gizmo appears. **Why:** the Select tool (Q) is chosen, nothing is selected, or what's selected has no position (the level's Environment, for example). **Fix:** press W, R, S or T, and select something with a Transform.
 - **Problem:** an arrow or ring is missing. **Why:** its axis is locked (its letter is lit in the **Lock** pill), or the arrow points almost straight at you, so it's too short to grab. **Fix:** free the axis, or move the camera a little.
-- **Problem:** clicking a part of a placed prefab selects the whole thing. **Why:** copies are selected whole first. **Fix:** click the part again.
+- **Problem:** clicking a part of a placed module selects the whole thing. **Why:** copies are selected whole first. **Fix:** click the part again.
 - **Problem:** a turned box stretches oddly when scaled. **Why:** stretching a turned object along the world's axes would skew it, which a Transform can't hold, so Solis keeps the nearest shape without a skew. **Fix:** press **L** for object axes, so it stretches along its own sides.
 - **Tip:** you can't select something hidden behind another model by clicking; select it in the Level panel instead.
 

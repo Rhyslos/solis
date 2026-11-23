@@ -129,7 +129,7 @@ fn saving_and_opening_wait_until_the_game_stops() {
         WorkbenchAction::NewLevel,
         WorkbenchAction::OpenLevel,
         WorkbenchAction::OpenProject,
-        WorkbenchAction::MakePrefab(crate::make_prefab::MakePrefabPlan {
+        WorkbenchAction::MakeModule(crate::make_module::MakeModulePlan {
             name: "Crate".into(),
             folder: std::path::PathBuf::new(),
             file: level::text::LevelFile::plain(level::Level::new()),
@@ -220,21 +220,21 @@ fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
 }
 
 #[test]
-fn a_prefab_changed_while_playing_updates_its_copies_after_stop() {
+fn a_module_changed_while_playing_updates_its_copies_after_stop() {
     let (mut w, asset, _, lamp) = with_a_lamp_post();
     w.open.document.mark_saved("harbour.sollevel".into());
     w.play();
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
     let two = EntityId(reflect::Id::from_raw(2).unwrap());
-    assert!(level::prefab::set_in_file(
+    assert!(level::module::set_in_file(
         &mut file,
         &[two],
         "Light",
         "strength",
         Value::Float(5.0)
     ));
-    w.set_prefab(asset, std::sync::Arc::new(file));
+    w.set_module(asset, std::sync::Arc::new(file));
     let strength = |w: &Workbench| {
         w.open
             .document
@@ -578,7 +578,7 @@ fn another_file_moved_while_playing_changes_nothing() {
 }
 
 /// The review, BUG-51: a spawn that can't be made says why in the
-/// Console, once a play for each prefab, however often it's asked for.
+/// Console, once a play for each module, however often it's asked for.
 mod spawns_that_cannot_be_made {
     use super::*;
     use crate::game_code::GameEdit;
@@ -599,9 +599,9 @@ mod spawns_that_cannot_be_made {
         AssetId(Id::from_raw(n).unwrap())
     }
 
-    /// A prefab of one entity, and one more for each of `places`: a
-    /// copy of that prefab, under the root.
-    fn prefab(places: &[AssetId]) -> LevelFile {
+    /// A module of one entity, and one more for each of `places`: a
+    /// copy of that module, under the root.
+    fn module(places: &[AssetId]) -> LevelFile {
         let mut level = Level::new();
         level.insert(id(1), EntityData::new("Root"));
         for (n, &placed) in places.iter().enumerate() {
@@ -609,20 +609,20 @@ mod spawns_that_cannot_be_made {
             let mut copy = EntityData::new("Copy");
             copy.parent = Some(id(1));
             copy.origin = Some(Origin {
-                prefab: placed,
+                module: placed,
                 instance,
                 path: Vec::new(),
             });
             level.insert(instance, copy);
         }
         LevelFile {
-            kind: FileKind::Prefab { root: id(1) },
+            kind: FileKind::Module { root: id(1) },
             level,
             overrides: Default::default(),
         }
     }
 
-    /// A workbench that knows `files` as prefabs, each in the Library
+    /// A workbench that knows `files` as modules, each in the Library
     /// under its name, playing a new level.
     fn playing(files: Vec<(AssetId, &str, LevelFile)>) -> Workbench {
         let mut w = knowing(files);
@@ -630,16 +630,16 @@ mod spawns_that_cannot_be_made {
         w
     }
 
-    /// A workbench that knows `files` as prefabs, each in the Library
+    /// A workbench that knows `files` as modules, each in the Library
     /// under its name.
     fn knowing(files: Vec<(AssetId, &str, LevelFile)>) -> Workbench {
         let mut w = Workbench::new(info());
         let mut library = Vec::new();
         for (asset, name, file) in files {
-            w.set_prefab(asset, Arc::new(file));
+            w.set_module(asset, Arc::new(file));
             library.push(LibraryItem {
                 id: Some(asset),
-                kind: LibraryKind::Prefab,
+                kind: LibraryKind::Module,
                 name: name.into(),
                 path: format!("{name}.solasm"),
                 thumbnail: None,
@@ -685,14 +685,14 @@ mod spawns_that_cannot_be_made {
 
     #[test]
     fn a_part_whose_file_is_missing_is_said_once() {
-        let w = playing(vec![(asset(10), "squad", prefab(&[asset(999)]))]);
+        let w = playing(vec![(asset(10), "squad", module(&[asset(999)]))]);
         says_once(w, "isn't in the project");
     }
 
     /// An exported game lands its spawns through the same code.
     #[test]
     fn an_exported_game_says_it_once_too() {
-        let mut w = knowing(vec![(asset(10), "squad", prefab(&[asset(999)]))]);
+        let mut w = knowing(vec![(asset(10), "squad", module(&[asset(999)]))]);
         w.set_play_only();
         w.play();
         says_once(w, "isn't in the project");
@@ -700,12 +700,12 @@ mod spawns_that_cannot_be_made {
 
     #[test]
     fn a_part_whose_file_cannot_be_read_is_named() {
-        // In the Library, but never read as a prefab.
-        let mut w = playing(vec![(asset(10), "squad", prefab(&[asset(11)]))]);
+        // In the Library, but never read as a module.
+        let mut w = playing(vec![(asset(10), "squad", module(&[asset(11)]))]);
         let mut library = w.open.library.to_vec();
         library.push(LibraryItem {
             id: Some(asset(11)),
-            kind: LibraryKind::Prefab,
+            kind: LibraryKind::Module,
             name: "scout".into(),
             path: "scout.solasm".into(),
             thumbnail: None,
@@ -715,35 +715,35 @@ mod spawns_that_cannot_be_made {
     }
 
     #[test]
-    fn a_level_spawned_as_a_prefab_is_said_once() {
-        let mut town = prefab(&[]);
+    fn a_level_spawned_as_a_module_is_said_once() {
+        let mut town = module(&[]);
         town.kind = FileKind::Level;
         let w = playing(vec![(asset(10), "squad", town)]);
-        says_once(w, "its file is a level, not a prefab");
+        says_once(w, "its file is a level, not a module");
     }
 
     #[test]
     fn a_part_that_is_an_level_is_said_once() {
-        let mut town = prefab(&[]);
+        let mut town = module(&[]);
         town.kind = FileKind::Level;
         let w = playing(vec![
-            (asset(10), "squad", prefab(&[asset(11)])),
+            (asset(10), "squad", module(&[asset(11)])),
             (asset(11), "town", town),
         ]);
-        says_once(w, "\"town\", which is a level, not a prefab");
+        says_once(w, "\"town\", which is a level, not a module");
     }
 
     #[test]
-    fn prefabs_placing_each_other_in_a_loop_are_said_once() {
+    fn modules_placing_each_other_in_a_loop_are_said_once() {
         let w = playing(vec![
-            (asset(10), "squad", prefab(&[asset(11)])),
-            (asset(11), "scout", prefab(&[asset(10)])),
+            (asset(10), "squad", module(&[asset(11)])),
+            (asset(11), "scout", module(&[asset(10)])),
         ]);
         says_once(w, "in a loop (\"squad\" → \"scout\" → \"squad\")");
     }
 
     #[test]
-    fn prefabs_placed_too_deep_are_said_once() {
+    fn modules_placed_too_deep_are_said_once() {
         let deep = level::text::MAX_NESTING as u64 + 2;
         let mut files: Vec<(AssetId, String, LevelFile)> = (0..deep)
             .map(|level| {
@@ -752,10 +752,10 @@ mod spawns_that_cannot_be_made {
                 } else {
                     format!("level{level}")
                 };
-                (asset(10 + level), name, prefab(&[asset(11 + level)]))
+                (asset(10 + level), name, module(&[asset(11 + level)]))
             })
             .collect();
-        files.push((asset(10 + deep), "last".into(), prefab(&[])));
+        files.push((asset(10 + deep), "last".into(), module(&[])));
         let files = files
             .iter()
             .map(|(asset, name, file)| (*asset, name.as_str(), file.clone()))
@@ -766,14 +766,14 @@ mod spawns_that_cannot_be_made {
     #[test]
     fn a_copy_too_big_to_make_is_said_once() {
         // Ten copies of ten copies… eight times over: a hundred million.
-        let mut files = vec![(asset(20), "one".to_string(), prefab(&[]))];
+        let mut files = vec![(asset(20), "one".to_string(), module(&[]))];
         for level in 1..=8u64 {
             let name = if level == 8 {
                 "squad".to_string()
             } else {
                 format!("crowd{level}")
             };
-            files.push((asset(20 + level), name, prefab(&[asset(19 + level); 10])));
+            files.push((asset(20 + level), name, module(&[asset(19 + level); 10])));
         }
         let files = files
             .iter()
@@ -785,16 +785,16 @@ mod spawns_that_cannot_be_made {
     #[test]
     fn two_parts_that_would_share_an_id_are_said_once() {
         // A part of its own with the ID a placed copy's part gets.
-        let mut scout = prefab(&[]);
+        let mut scout = module(&[]);
         let mut part = EntityData::new("Part");
         part.parent = Some(id(1));
         scout.level.insert(id(2), part);
-        let mut squad = prefab(&[asset(11)]);
+        let mut squad = module(&[asset(11)]);
         let mut twin = EntityData::new("Twin");
         twin.parent = Some(id(1));
         squad
             .level
-            .insert(level::prefab::derive(id(100), &[id(2)]), twin);
+            .insert(level::module::derive(id(100), &[id(2)]), twin);
         let w = playing(vec![
             (asset(10), "squad", squad),
             (asset(11), "scout", scout),
@@ -804,7 +804,7 @@ mod spawns_that_cannot_be_made {
 
     #[test]
     fn a_copy_whose_id_is_taken_is_said_once_and_others_are_still_made() {
-        let mut w = playing(vec![(asset(10), "squad", prefab(&[]))]);
+        let mut w = playing(vec![(asset(10), "squad", module(&[]))]);
         let before = w.open.document.level().len();
         // The first is made; asking for the same entity again can't be.
         for _ in 0..FRAMES {
@@ -817,7 +817,7 @@ mod spawns_that_cannot_be_made {
         let said = said_about(&w, "squad");
         assert_eq!(said.len(), 1, "{said:?}");
         assert!(said[0].contains("already in the level"), "{}", said[0]);
-        // Another entity of the same prefab is still made.
+        // Another entity of the same module is still made.
         spawn_every_frame(&mut w, "squad", 6000);
         assert_eq!(w.open.document.level().len(), before + 1 + FRAMES as usize);
         assert_eq!(said_about(&w, "squad").len(), 1);
@@ -825,7 +825,7 @@ mod spawns_that_cannot_be_made {
 
     #[test]
     fn a_copy_spawned_with_values_starts_with_them_and_values_it_can_t_take_are_said_once() {
-        let mut key = prefab(&[]);
+        let mut key = module(&[]);
         let mut pickup = reflect::ComponentData::default();
         pickup.set("item", reflect::Value::Text("Blue".into()));
         pickup.set("count", reflect::Value::Int(1));
@@ -853,7 +853,7 @@ mod spawns_that_cannot_be_made {
             .get(id(7000))
             .expect("the copy is made");
         let data = &made.components["Pickup"];
-        // The value given wins; the one not given stays the prefab's.
+        // The value given wins; the one not given stays the module's.
         assert_eq!(data.get("item"), Some(&reflect::Value::Text("Red".into())));
         assert_eq!(data.get("count"), Some(&reflect::Value::Int(1)));
         assert!(!made.components.contains_key("Health"));
@@ -863,11 +863,11 @@ mod spawns_that_cannot_be_made {
     }
 
     #[test]
-    fn each_prefab_s_reason_is_its_own_and_a_new_play_says_it_again() {
+    fn each_module_s_reason_is_its_own_and_a_new_play_says_it_again() {
         let mut w = playing(vec![
-            (asset(10), "squad", prefab(&[asset(999)])),
-            (asset(12), "patrol", prefab(&[asset(12)])),
-            (asset(13), "scout", prefab(&[])),
+            (asset(10), "squad", module(&[asset(999)])),
+            (asset(12), "patrol", module(&[asset(12)])),
+            (asset(13), "scout", module(&[])),
         ]);
         let before = w.open.document.level().len();
         for frame in 0..FRAMES {
@@ -885,7 +885,7 @@ mod spawns_that_cannot_be_made {
         assert_eq!(said_about(&w, "patrol").len(), 1);
         assert_eq!(said_about(&w, "nobody").len(), 1);
         assert!(said_about(&w, "patrol")[0].contains("in a loop"));
-        assert!(said_about(&w, "nobody")[0].contains("no prefab by that name"));
+        assert!(said_about(&w, "nobody")[0].contains("no module by that name"));
         assert!(said_about(&w, "scout").is_empty());
         assert_eq!(w.open.document.level().len(), before + FRAMES as usize);
         // The next play is a new one: it says so again, once.

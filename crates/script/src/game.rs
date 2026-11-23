@@ -36,7 +36,7 @@ pub enum Change {
     Turn(EntityId, Quat),
     /// `fire`: fire a projectile.
     Fire(crate::host::Shot),
-    /// `spawn` or `spawnWith`: make a copy of the prefab named here, as
+    /// `spawn` or `spawnWith`: make a copy of the module named here, as
     /// this entity, at this place, its root's components given these
     /// values before their first update (none for `spawn`).
     Spawn(EntityId, String, Vec3, SpawnValues),
@@ -264,7 +264,7 @@ struct Kept {
     said: Vec<(Order, String)>,
     /// Changes and lines left out past [`MAX_KEPT`].
     dropped: u64,
-    /// Bytes of prefab names kept for spawns.
+    /// Bytes of module names kept for spawns.
     spawn_bytes: usize,
     /// Sounds asked for.
     sounds: usize,
@@ -287,7 +287,7 @@ pub const MAX_SOUND_NAME: usize = 256;
 /// The longest clip name `animate` takes.
 pub const MAX_CLIP_NAME: usize = 64;
 
-/// The most bytes of prefab names one shard keeps for spawns in one
+/// The most bytes of module names one shard keeps for spawns in one
 /// phase.
 pub const MAX_SPAWN_BYTES: usize = 4 << 20;
 
@@ -498,22 +498,22 @@ impl Host for ViewHost {
         self.kept.changes.push((order, Change::Fire(shot)));
     }
 
-    fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId> {
-        self.spawn_with(prefab, place, Vec::new())
+    fn spawn(&mut self, module: &str, place: Vec3) -> Option<EntityId> {
+        self.spawn_with(module, place, Vec::new())
     }
 
-    fn spawn_with(&mut self, prefab: &str, place: Vec3, values: SpawnValues) -> Option<EntityId> {
-        if !place.is_finite() || prefab.is_empty() || prefab.len() > 1024 {
+    fn spawn_with(&mut self, module: &str, place: Vec3, values: SpawnValues) -> Option<EntityId> {
+        if !place.is_finite() || module.is_empty() || module.len() > 1024 {
             return None;
         }
-        if self.kept.spawn_bytes + prefab.len() > MAX_SPAWN_BYTES {
+        if self.kept.spawn_bytes + module.len() > MAX_SPAWN_BYTES {
             self.kept.dropped += 1;
             return None;
         }
         if !self.kept.room() {
             return None;
         }
-        self.kept.spawn_bytes += prefab.len();
+        self.kept.spawn_bytes += module.len();
         let order = self.order();
         // Made from which tick it is and where in the tick's order it was
         // asked for, so the same game makes the same entities on any
@@ -521,7 +521,7 @@ impl Host for ViewHost {
         let id = spawned_id(&order, self.phase, self.view.tick)?;
         self.kept
             .changes
-            .push((order, Change::Spawn(id, prefab.to_string(), place, values)));
+            .push((order, Change::Spawn(id, module.to_string(), place, values)));
         Some(id)
     }
 

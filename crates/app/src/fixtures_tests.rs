@@ -25,9 +25,9 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 .map(drop)
                 .map_err(|e| e.to_string())
         }),
-        ("prefab", &level::prefab_file::FORMAT, |text| {
+        ("module", &level::module_file::FORMAT, |text| {
             let registry = level::builtin::registry().map_err(|e| e.to_string())?;
-            level::prefab_file::read(text, &registry)
+            level::module_file::read(text, &registry)
                 .map(drop)
                 .map_err(|e| e.to_string())
         }),

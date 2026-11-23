@@ -80,7 +80,7 @@ pub(crate) enum ViewportEvent {
     },
     /// An asset dragged from the Library was dropped here.
     Drop {
-        /// The model or prefab.
+        /// The model or module.
         asset: reflect::AssetId,
         /// Where in the world: the surface under the mouse, or the ground.
         at: Vec3,

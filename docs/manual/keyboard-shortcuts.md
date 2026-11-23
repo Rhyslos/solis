@@ -299,13 +299,13 @@ See [Projects and the Library](projects-and-the-library.md).
 | Action | Shortcut |
 |---|---|
 | Open a file or folder (a level, a folder, a picture in its program) | Double-click its picture |
-| Place a model, prefab, sprite sheet or tile map | Drag it into the viewport, or pick it and press **Place** (a double-click on its picture only picks it); while placing, double-click it |
+| Place a model, module, sprite sheet or tile map | Drag it into the viewport, or pick it and press **Place** (a double-click on its picture only picks it); while placing, double-click it |
 | Drop without snapping to the grid, this once | Hold `Ctrl` as you let go |
 | Rename a file or folder | Double-click its name, or pick it and press `F2` with the pointer over the Library |
 | While renaming: keep the new name, or put the old one back | `Enter` (or click somewhere else), `Esc` |
 | Delete the files picked (to the Recycle Bin) | `Delete`, with the pointer over the Library |
 | Pick several | `Ctrl` and a click (another, or one again to take it out); `Shift` and a click (everything between) |
-| Place a model, prefab, sprite, picture or tile map where you point | Drag it into the viewport |
+| Place a model, module, sprite, picture or tile map where you point | Drag it into the viewport |
 | Place one under an entity | Drag it onto the entity in the Level panel |
 | Move files to another folder | Drag them onto a folder tile, a folder in a tree, or a part of the breadcrumb |
 | Add a sound to a [sound event](sound-events.md) as a take | Drag the sound onto the event |

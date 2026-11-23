@@ -168,7 +168,7 @@ fn the_wants_exactly_one() {
 /// A chest that spawns a key once, giving its Pickup the red key and how
 /// many, and a key whose first update says what it was given.
 const SPAWNING: &str = "fetch \"solis/world\":World;\n\
-    fetch \"solis/project\":Prefab;\n\
+    fetch \"solis/project\":Module;\n\
     fetch \"solis/components\":PickupValues;\n\n\
     state Item = [Blue, Red];\n\n\
     component Pickup {\n\
@@ -193,7 +193,7 @@ const SPAWNING: &str = "fetch \"solis/world\":World;\n\
                 PickupValues given = new PickupValues { item = Item.Red };\n\
                 World:say(\"unwritten \" + given.count.text());\n\
                 given.count = 2;\n\
-                entity key = World:spawnWith(Prefab.Key, [0, 0, 0], [given]);\n\
+                entity key = World:spawnWith(Module.Key, [0, 0, 0], [given]);\n\
                 opened = true;\n\
             }\n\
         }\n\
@@ -204,7 +204,7 @@ fn compile_spawning() -> Arc<Compiled> {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_prefabs(&["key"]),
+        &crate::project_names::Names::with_modules(&["key"]),
     );
     files.push(("main.lst".into(), SPAWNING.to_string()));
     let code = Code {
@@ -244,10 +244,10 @@ fn a_spawn_carries_its_values_to_the_world() {
         .filter(|c| matches!(c, Change::Spawn(..)))
         .collect();
     assert_eq!(spawns.len(), 1, "{spawns:?}");
-    let Change::Spawn(_, prefab, _, values) = spawns[0] else {
+    let Change::Spawn(_, module, _, values) = spawns[0] else {
         unreachable!()
     };
-    assert_eq!(prefab, "key");
+    assert_eq!(module, "key");
     let mut pickup = ComponentData::default();
     pickup.set("item", reflect::Value::Text("Red".into()));
     pickup.set("count", reflect::Value::Int(2));
@@ -278,7 +278,7 @@ fn values_for_a_field_of_the_wrong_kind_are_a_mistake_before_the_game_runs() {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_prefabs(&["key"]),
+        &crate::project_names::Names::with_modules(&["key"]),
     );
     files.push(("main.lst".into(), wrong));
     let code = Code {

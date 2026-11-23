@@ -83,7 +83,7 @@ impl Projects {
             other => other?,
         };
         // Older files Solis made move to their new names first (Lust,
-        // decision 0081; areas to levels and assemblies to prefabs,
+        // decision 0081; areas to levels and assemblies to modules,
         // decision 0118), so the asset
         // database finds them there; then the project file says so.
         let mut moved = crate::older_files::move_older_files(root, &project.files());
@@ -307,7 +307,7 @@ impl Projects {
                 // Files Solis doesn't know keep their whole name, so
                 // "brick.png.exe" never passes for "brick.png".
                 // A data file's name is its stem: `chicken`, not
-                // `chicken.prefab`.
+                // `chicken.module`.
                 name: if matches!(f.kind, FileKind::Other | FileKind::Text) {
                     f.path.file_name().map(|n| n.to_string_lossy().into_owned())
                 } else {
@@ -771,7 +771,7 @@ fn folder_is_there(file: &Path) -> Result<(), String> {
 pub fn library_kind(kind: FileKind) -> LibraryKind {
     match kind {
         FileKind::Model => LibraryKind::Model,
-        FileKind::Prefab => LibraryKind::Prefab,
+        FileKind::Module => LibraryKind::Module,
         FileKind::Level => LibraryKind::Level,
         FileKind::Texture => LibraryKind::Texture,
         FileKind::Code => LibraryKind::Code,
@@ -808,8 +808,8 @@ mod saving_tests;
 mod levels_tests;
 
 #[cfg(test)]
-#[path = "project_prefabs_tests.rs"]
-mod prefabs_tests;
+#[path = "project_modules_tests.rs"]
+mod modules_tests;
 
 #[cfg(test)]
 mod tests {

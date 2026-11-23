@@ -317,10 +317,10 @@ The project lead's review of the remade interface (2026-11-17): nine points, ans
 - **R2 Level, everywhere:** "Area" becomes "Level" in the interface, the manual, file names and game code, with upgraders for saved projects; game code's old names stop working at once (the project lead, 2026-11-17).
 - **R3 One frame on every tab:** left, centre, right and a bottom panel under the view; every edge drags; Library, Console and Problems in the bottom panel, collapsing to one thin line; layouts chosen from drawn miniatures; a tidier ribbon.
 - **R4 One Library browser:** the same everywhere; the project's own folders; right-click to create, double-click to rename, drag to move; the left side toggles between the Level panel and the folder tree; several folder trees side by side.
-- **R5 Prefabs:** an entity saved to be placed many times, with its own page; linked copies; changed settings shown and resettable.
+- **R5 Modules:** an entity saved to be placed many times, with its own page; linked copies; changed settings shown and resettable.
 - **R6 2D projects, and the gate:** a 2D project hides every 3D-only part; speed; the guide's pictures taken again.
 
-**Gate:** start at the launcher; make a 2D project by its name; arrange the panels and pick a layout from its pictures; make folders, a level and a prefab by right-clicking, rename by double-clicking, move files between two folder trees; build a prefab on its page, place three copies and change them all through it; close back to the launcher.
+**Gate:** start at the launcher; make a 2D project by its name; arrange the panels and pick a layout from its pictures; make folders, a level and a module by right-clicking, rename by double-clicking, move files between two folder trees; build a module on its page, place three copies and change them all through it; close back to the launcher.
 
 ## Shared 2: Game code: finding and making things
 
@@ -376,7 +376,7 @@ Ideas 15, 18 to 21 and 12.
 - **Data tables:** lists such as "every crop: days to grow, price, season", kept as a file and edited as a table.
 - **Save slots:** several saves with a picture, the date and time played, autosave; the player's own settings kept apart.
 - **Field hints:** a component's fields get sliders, limits and a sentence saying what they do.
-- **More kinds of settings:** a field can be a colour, a sound, a sprite, a prefab or a list; this takes in 2D 1's entities with typed fields.
+- **More kinds of settings:** a field can be a colour, a sound, a sprite, a module or a list; this takes in 2D 1's entities with typed fields.
 - **Components that draw in the editor,** such as a guard's view cone while you place it.
 - **Paths drawn in the editor,** for a guard to walk, a platform to follow or a camera to glide along.
 

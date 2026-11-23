@@ -2,7 +2,7 @@
 //! (decision 0127): a Guard written in Lust, shown with its slider, tip,
 //! group and pickers; a slider's drag as one undo step; a value outside
 //! the range left alone; ▶ playing a sound; a renamed file followed; and
-//! each kind of name kept through a level, a prefab and a save game.
+//! each kind of name kept through a level, a module and a save game.
 
 use crate::library::{LibraryFiles, LibraryItem, LibraryKind};
 use crate::properties::PropertyRequest;
@@ -14,7 +14,7 @@ use level::builtin::Transform;
 use reflect::{EntityId, Value};
 use std::sync::Arc;
 
-const GUARD: &str = "fetch \"solis/project\":[Sound, Clip, Picture, Prefab, Screen, Level, Tag];\n\
+const GUARD: &str = "fetch \"solis/project\":[Sound, Clip, Picture, Module, Screen, Level, Tag];\n\
 \n\
 component Guard {\n\
     has {\n\
@@ -22,7 +22,7 @@ component Guard {\n\
         Sound alertSound = Sound.Sfx.Alert;\n\
         Clip walk = Clip.Sprites.Guard.Walk;\n\
         Picture portrait = Picture.Portraits.GuardFace;\n\
-        Prefab drops = Prefab.Coin;\n\
+        Module drops = Module.Coin;\n\
         Screen shows = Screen.Hud;\n\
         Level home = Level.Town;\n\
         Tag hunts = Tag.Enemy;\n\
@@ -37,7 +37,7 @@ end\n";
 
 /// The project's names the Guard picks from.
 fn names() -> script::project_names::Names {
-    let mut names = script::project_names::Names::with_prefabs(&["coin", "loot/gem"])
+    let mut names = script::project_names::Names::with_modules(&["coin", "loot/gem"])
         .and_sounds(&["sfx/alert", "sfx/alarm"])
         .and_clips(&["sprites/guard/walk", "sprites/guard/run"], &[])
         .and_screens(&["Hud", "PauseMenu"])
@@ -256,15 +256,15 @@ fn picked() -> (Workbench, EntityId) {
 }
 
 #[test]
-fn each_kind_of_name_is_kept_through_a_level_and_a_prefab() {
+fn each_kind_of_name_is_kept_through_a_level_and_a_module() {
     let (w, id) = picked();
     let registry = &w.document().registry;
     let text = level::text::write(w.document().level(), registry, &|_| None);
     let read = level::text::read(&text, registry).unwrap();
-    let mut prefab = level::text::LevelFile::plain(w.document().level().clone());
-    prefab.kind = level::text::FileKind::Prefab { root: id };
-    let prefab_text = level::prefab_file::write(&prefab, registry).unwrap();
-    let prefab_read = level::prefab_file::read(&prefab_text, registry).unwrap();
+    let mut module = level::text::LevelFile::plain(w.document().level().clone());
+    module.kind = level::text::FileKind::Module { root: id };
+    let module_text = level::module_file::write(&module, registry).unwrap();
+    let module_read = level::module_file::read(&module_text, registry).unwrap();
     for (field, option) in PICKED {
         let in_level = read
             .get(id)
@@ -276,15 +276,15 @@ fn each_kind_of_name_is_kept_through_a_level_and_a_prefab() {
             "level: {field}"
         );
         assert!(text.contains(option), "written as its name: {option}");
-        let in_prefab = prefab_read
+        let in_module = module_read
             .level
             .get(id)
             .and_then(|e| e.components.get("Guard"))
             .and_then(|c| c.get(field));
         assert_eq!(
-            in_prefab,
+            in_module,
             Some(&Value::Text(option.into())),
-            "prefab: {field}"
+            "module: {field}"
         );
     }
 }

@@ -17,7 +17,7 @@
 
 fetch "solis/world":World;
 fetch "solis/input":Input;
-fetch "solis/project":[Action, Prefab, Timer, Sound];
+fetch "solis/project":[Action, Module, Timer, Sound];
 fetch "solis/timers":TimerFinished;
 fetch "solis/tiles":Maps;
 fetch "solis/animation":Animators;
@@ -104,7 +104,7 @@ component Hive {
         }
         is now && made < 40? then {
             vec3 at = position() + [World:randomRange(-2, 2), World:randomRange(-2, 2), 3];
-            entity drone = World:spawn(Prefab.Drone, at);
+            entity drone = World:spawn(Module.Drone, at);
             made = made + 1;
 
             -- Every fourth drone the swarm wakes or settles: what it

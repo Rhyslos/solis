@@ -41,10 +41,10 @@ fn a_project_s_areas_become_levels_when_it_opens_and_nothing_is_lost() {
     let assets = root.join("assets");
     std::fs::create_dir_all(assets.join("levels")).unwrap();
     std::fs::create_dir_all(assets.join("areas")).unwrap();
-    std::fs::create_dir_all(assets.join("prefabs")).unwrap();
+    std::fs::create_dir_all(assets.join("modules")).unwrap();
     let project_file = "name = \"Harbour\"\nformat = 1\n";
     std::fs::write(root.join(asset_db::PROJECT_FILE), project_file).unwrap();
-    // Three areas of three versions. The yard places the crate prefab
+    // Three areas of three versions. The yard places the crate module
     // by its ID, which its sidecar keeps.
     let docks = fixture("area/v3/blockout.solarea");
     let yard = fixture("area/v2/yard.solarea");
@@ -52,7 +52,7 @@ fn a_project_s_areas_become_levels_when_it_opens_and_nothing_is_lost() {
     std::fs::write(assets.join("levels/docks.solarea"), &docks).unwrap();
     std::fs::write(assets.join("levels/yard.solarea"), &yard).unwrap();
     std::fs::write(assets.join("areas/turret.solarea"), &turret).unwrap();
-    let crate_file = assets.join("prefabs/crate.solassembly");
+    let crate_file = assets.join("modules/crate.solassembly");
     std::fs::write(&crate_file, fixture("area/v2/crate.solassembly")).unwrap();
     let crate_id: reflect::AssetId = "5KD8V0Q2MX7TA".parse().unwrap();
     let sidecar = asset_db::Sidecar {
@@ -98,13 +98,13 @@ fn a_project_s_areas_become_levels_when_it_opens_and_nothing_is_lost() {
         std::fs::read_to_string(assets.join("levels/docks.sollevel")).unwrap(),
         fixture("area/v5/blockout.sollevel")
     );
-    // The yard still finds its crate: the prefab it places is the
+    // The yard still finds its crate: the module it places is the
     // project's, by the same ID.
     let yard_now = read(&std::fs::read_to_string(assets.join("levels/yard.sollevel")).unwrap());
     let placed: Vec<_> = yard_now
         .level
         .iter()
-        .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.prefab))
+        .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.module))
         .collect();
     assert_eq!(placed, [crate_id]);
     let listing = projects.listing();
@@ -112,7 +112,7 @@ fn a_project_s_areas_become_levels_when_it_opens_and_nothing_is_lost() {
         listing
             .files
             .iter()
-            .any(|f| f.id == Some(crate_id) && f.path.ends_with("crate.prefab.lst"))
+            .any(|f| f.id == Some(crate_id) && f.path.ends_with("crate.module.lst"))
     );
     let levels: Vec<_> = listing
         .files
@@ -130,7 +130,7 @@ fn a_project_s_areas_become_levels_when_it_opens_and_nothing_is_lost() {
     let played = input::Recording::read(&recording).unwrap();
     assert_eq!(played.level.as_deref(), Some("areas/turret.sollevel"));
     assert!(assets.join(played.level.unwrap()).is_file());
-    // The project file says format 3 now (its prefabs moved too),
+    // The project file says format 3 now (its modules moved too),
     // keeping its name.
     let now = std::fs::read_to_string(root.join(asset_db::PROJECT_FILE)).unwrap();
     assert_eq!(asset_db::PROJECT_FORMAT.version_of(&now), Some(3));
@@ -149,7 +149,7 @@ fn a_project_s_areas_become_levels_when_it_opens_and_nothing_is_lost() {
     assert_eq!(in_backup("assets/areas/turret.solarea"), turret);
     assert_eq!(in_backup(asset_db::PROJECT_FILE), project_file);
     assert_eq!(
-        in_backup("assets/prefabs/crate.solassembly"),
+        in_backup("assets/modules/crate.solassembly"),
         fixture("area/v2/crate.solassembly")
     );
     assert_eq!(kept.len(), 5, "{kept:?}");

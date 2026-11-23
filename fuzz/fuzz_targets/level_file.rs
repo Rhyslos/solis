@@ -1,4 +1,4 @@
-//! A level or prefab file: refused or read, its prefabs expanded
+//! A level or module file: refused or read, its modules expanded
 //! (it may place itself), and written and read back. Every trigger zone
 //! read is within its limits, and its freeform outline is checked and cut
 //! into convex pieces without panicking.
@@ -15,11 +15,11 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     let Ok(file) = level::text::read_file(text, &registry) else {
         return;
     };
-    // Every prefab it names is this file again: loops and depth must be
+    // Every module it names is this file again: loops and depth must be
     // refused, never followed.
     let shared = Arc::new(file.clone());
     let lookup = |_| Some(Arc::clone(&shared));
-    let _ = level::prefab::Expander::new(&lookup).expand(&file);
+    let _ = level::module::Expander::new(&lookup).expand(&file);
     for (_, zone) in file.level.with::<level::builtin::TriggerZone>() {
         assert!(zone.points.len() <= mesh::outline::MAX_OUTLINE_POINTS);
         if zone.outline().is_ok() {

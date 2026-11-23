@@ -332,7 +332,7 @@ impl Document {
     }
 
     /// Its name: its file's, without the end that says its kind
-    /// (`chicken` for a prefab's `chicken.prefab.lst`), or "Untitled
+    /// (`chicken` for a module's `chicken.module.lst`), or "Untitled
     /// level".
     pub fn name(&self) -> String {
         self.file
@@ -372,7 +372,7 @@ impl Document {
         Ok(())
     }
 
-    /// Makes `edits` (copies following a prefab's new values) one undo
+    /// Makes `edits` (copies following a module's new values) one undo
     /// step called `label`, keeping the selection. If nothing was unsaved,
     /// nothing is now: the level's file would be the same.
     pub fn rebuild_by(&mut self, edits: Vec<Edit>, label: &str) -> Result<(), EditError> {
@@ -386,7 +386,7 @@ impl Document {
     }
 
     /// Replaces the whole level with `level` (copies rebuilt from a changed
-    /// prefab), as one undo step called `label`. If nothing was unsaved,
+    /// module), as one undo step called `label`. If nothing was unsaved,
     /// nothing is now: the level's file would be the same.
     pub fn rebuild(&mut self, level: Level, label: &str) -> Result<(), EditError> {
         let clean = !self.is_dirty();
@@ -413,7 +413,7 @@ impl Document {
     }
 
     /// Replaces the whole level with `level` for the running game (a save
-    /// game loaded, or copies rebuilt from a prefab that changed on
+    /// game loaded, or copies rebuilt from a module that changed on
     /// disk meanwhile), not as an undo step: Stop puts the level back, and
     /// Keep takes only the undo steps made while playing
     /// (`Document::follow`). Returns how many edits couldn't be made.
@@ -653,7 +653,7 @@ impl Document {
     }
 
     /// Changes the level by `edits` made by the running game (copies of
-    /// prefabs it spawned, entities it took out), each on its own and
+    /// modules it spawned, entities it took out), each on its own and
     /// not as an undo step: Stop puts the level back, and that they aren't
     /// steps is how Keep tells them from the user's own edits
     /// (`Document::follow`). They aren't [`Self::take_changes`]' changes:

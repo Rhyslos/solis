@@ -24,7 +24,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [Selecting and moving things: clicking, boxes, and the move, rotate and scale gizmos](selecting-and-moving.md)
 - [Undo and redo: take back any change](undo.md)
 - [Saving levels: files Git can merge](saving-levels.md)
-- [Prefabs: build once, place everywhere](prefabs.md)
+- [Modules: build once, place everywhere](modules.md)
 - [Brushes: shapes made in the editor, for blocking out a level](brushes.md)
 - [Play mode: run the level as a game, and Stop puts everything back](play-mode.md)
 
@@ -33,7 +33,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 - [The launcher: your projects, New project, 2D or 3D, Learn and Updates](launcher.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Backups and upgrades: older files keep opening, and a copy is kept before they change](backups-and-upgrades.md)
-- [Solis's files: what's inside levels, prefabs, tilesets, tile maps, sidecars and Aseprite files, for writing them by script](solis-files.md)
+- [Solis's files: what's inside levels, modules, tilesets, tile maps, sidecars and Aseprite files, for writing them by script](solis-files.md)
 - [Checking a project before updating: does this build still play my game the same?](checking-a-project.md)
 - [Playing a game from the command line: a level played with a script of input, printing what happened](playing-from-the-command-line.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)

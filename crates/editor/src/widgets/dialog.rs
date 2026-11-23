@@ -73,7 +73,7 @@ pub fn dialog(
 }
 
 /// [`dialog`] with a quiet `note` at the left of the answers' row (Make
-/// prefab…'s "4 entities become one.", board 07); none when empty.
+/// module…'s "4 entities become one.", board 07); none when empty.
 pub fn dialog_with_note(
     ctx: &egui::Context,
     id: &str,

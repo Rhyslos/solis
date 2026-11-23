@@ -239,7 +239,7 @@ fn with_files() -> Workbench {
     w.set_library(
         [
             ("props/ship.glb", K::Model),
-            ("props/tower.solassembly", K::Prefab),
+            ("props/tower.solassembly", K::Module),
             ("sprites/hero.aseprite", K::SpriteSheet),
             ("maps/farm.tilemap.lst", K::TileMap),
             ("props/brick.png", K::Texture),
@@ -276,7 +276,7 @@ fn choose(w: &mut Workbench, path: &str) -> Vec<WorkbenchAction> {
 
 #[test]
 fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_nothing() {
-    // SEC-05: a model, prefab, sprite sheet, tile map or picture chosen
+    // SEC-05: a model, module, sprite sheet, tile map or picture chosen
     // in the search was handed, file and all, to whatever program the
     // computer has for it, where it was meant to be shown in the Library.
     for (path, folder) in [

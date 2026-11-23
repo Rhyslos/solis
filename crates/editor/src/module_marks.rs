@@ -3,12 +3,12 @@
 //! settings and on each of its parts that does. A plain entity has none.
 //!
 //! What a copy changes is what a level's file would keep for it: the
-//! copies alone are collapsed against their prefabs, worked out again
-//! only when the level or the prefabs change, so plain entities cost
+//! copies alone are collapsed against their modules, worked out again
+//! only when the level or the modules change, so plain entities cost
 //! nothing however many there are.
 
 use crate::Workbench;
-use level::prefab::{Expander, derive};
+use level::module::{Expander, derive};
 use level::text::FileKind;
 use reflect::EntityId;
 use std::collections::HashSet;
@@ -16,14 +16,14 @@ use std::sync::Arc;
 
 /// Which entities carry which marks.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub(crate) struct PrefabMarks {
+pub(crate) struct ModuleMarks {
     /// The roots of placed copies: a link each.
     pub(crate) linked: HashSet<EntityId>,
     /// Copies' roots and parts with changes of their own: a dot each.
     pub(crate) changed: HashSet<EntityId>,
 }
 
-impl PrefabMarks {
+impl ModuleMarks {
     /// `id`'s marks: (a link, a dot).
     pub(crate) fn of(&self, id: EntityId) -> (bool, bool) {
         (self.linked.contains(&id), self.changed.contains(&id))
@@ -31,12 +31,12 @@ impl PrefabMarks {
 }
 
 /// What the marks were last worked out for: the level's revision and the
-/// prefabs' count of changes.
+/// modules' count of changes.
 pub(crate) type MarksKey = (u64, u64);
 
 impl Workbench {
-    /// The marks for the open level, kept until it or its prefabs change.
-    pub(crate) fn prefab_marks(&mut self) -> Arc<PrefabMarks> {
+    /// The marks for the open level, kept until it or its modules change.
+    pub(crate) fn module_marks(&mut self) -> Arc<ModuleMarks> {
         let key = (self.open.document.revision(), self.sources);
         if let Some((kept, marks)) = &self.open.marks_kept
             && *kept == key
@@ -48,10 +48,10 @@ impl Workbench {
         marks
     }
 
-    fn work_out_marks(&self) -> PrefabMarks {
+    fn work_out_marks(&self) -> ModuleMarks {
         let level = self.open.document.level();
         let mut copies = level::Level::new();
-        let mut marks = PrefabMarks::default();
+        let mut marks = ModuleMarks::default();
         for (id, entity) in level.iter() {
             let Some(origin) = &entity.origin else {
                 continue;
@@ -64,7 +64,7 @@ impl Workbench {
         if marks.linked.is_empty() {
             return marks;
         }
-        let lookup = |asset| self.open.prefabs.get(&asset).cloned();
+        let lookup = |asset| self.open.modules.get(&asset).cloned();
         let Ok(file) = Expander::new(&lookup).collapse(&copies, FileKind::Level) else {
             return marks;
         };
@@ -88,5 +88,5 @@ impl Workbench {
 }
 
 #[cfg(test)]
-#[path = "prefab_marks_tests.rs"]
+#[path = "module_marks_tests.rs"]
 mod tests;

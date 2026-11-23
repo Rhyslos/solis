@@ -128,7 +128,7 @@ struct App {
     rust_note: Option<String>,
     /// What's in the assets folder, as the Library last showed it.
     listing: asset_db::Listing,
-    /// Prefabs that couldn't be read ahead for the Library's listing:
+    /// Modules that couldn't be read ahead for the Library's listing:
     /// not tried again until the listing changes.
     unreadable: HashSet<AssetId>,
     /// The open level's file: saving, opening, and changes on disk.
@@ -147,8 +147,8 @@ struct App {
     updates: crate::updates::Updates,
     /// Copying a project or looking for projects, for Recent projects.
     tidying: crate::known_projects::Tidying,
-    /// Counts of prefabs' copies, on a worker, for Details.
-    prefab_counts: prefabs::Counting,
+    /// Counts of modules' copies, on a worker, for Details.
+    module_counts: modules::Counting,
     /// Counts of where tags are used, on a worker, for Project settings ›
     /// Tags (stage 1).
     tag_counts: tags_window::Counting,
@@ -199,8 +199,8 @@ mod saved;
 #[path = "window_launcher.rs"]
 mod launcher_window;
 
-#[path = "window_prefabs.rs"]
-mod prefabs;
+#[path = "window_modules.rs"]
+mod modules;
 
 #[path = "window_tags.rs"]
 mod tags_window;
@@ -277,7 +277,7 @@ impl App {
             text_files: crate::text_files::TextFiles::default(),
             font_reads: crate::font_reads::FontReads::default(),
             tidying: Default::default(),
-            prefab_counts: Default::default(),
+            module_counts: Default::default(),
             tag_counts: Default::default(),
             tags_seen: None,
             locale_seen: Vec::new(),
@@ -754,13 +754,13 @@ impl App {
         for change in &changes {
             let Some(db) = self.projects.db() else { return };
             match change {
-                Change::Changed(id) if self.workbench.prefabs().contains_key(id) => {
+                Change::Changed(id) if self.workbench.modules().contains_key(id) => {
                     let id = *id;
-                    if let Err(why) = self.load_prefab(id, true) {
+                    if let Err(why) = self.load_module(id, true) {
                         self.workbench.log(
                             LogLevel::Warning,
                             format!(
-                                "Couldn't read the changed prefab: {why}; copies stay as they were."
+                                "Couldn't read the changed module: {why}; copies stay as they were."
                             ),
                         );
                     }
@@ -832,7 +832,7 @@ impl App {
                 self.workbench.log(LogLevel::Warning, note.clone());
             }
             self.rust_note = note;
-            // A prefab added or renamed changes the project's names.
+            // A module added or renamed changes the project's names.
             self.game_code.check(assets);
         }
     }
@@ -899,7 +899,7 @@ impl App {
         let Some(db) = self.projects.db() else { return };
         let wanted: Vec<AssetId> = models_wanted(
             self.workbench.document().level(),
-            self.workbench.prefabs().values().map(|file| &file.level),
+            self.workbench.modules().values().map(|file| &file.level),
         )
         .into_iter()
         .filter(|id| !self.workbench.has_model(*id))
@@ -924,16 +924,16 @@ impl App {
         })
     }
 
-    /// Reads prefab `id` (and the prefabs it places) from the project
-    /// and hands them to the editor. Prefabs already known are read
+    /// Reads module `id` (and the modules it places) from the project
+    /// and hands them to the editor. Modules already known are read
     /// again only when `fresh`.
-    fn load_prefab(&mut self, id: AssetId, fresh: bool) -> Result<(), String> {
+    fn load_module(&mut self, id: AssetId, fresh: bool) -> Result<(), String> {
         let mut todo = vec![id];
         let mut seen = HashSet::new();
         let mut read = Vec::new();
         while let Some(next) = todo.pop() {
             if !seen.insert(next)
-                || (next != id || !fresh) && self.workbench.prefabs().contains_key(&next)
+                || (next != id || !fresh) && self.workbench.modules().contains_key(&next)
             {
                 continue;
             }
@@ -941,36 +941,36 @@ impl App {
                 .projects
                 .db()
                 .and_then(|db| db.file(next))
-                .ok_or_else(|| format!("the prefab {next} isn't in the project"))?;
-            let (file, _) = crate::prefab_files::read(&path, &self.workbench.document().registry)
+                .ok_or_else(|| format!("the module {next} isn't in the project"))?;
+            let (file, _) = crate::module_files::read(&path, &self.workbench.document().registry)
                 .map_err(|why| format!("{}: {why}", file_name(&path)))?;
             todo.extend(
                 file.level
                     .iter()
-                    .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.prefab)),
+                    .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.module)),
             );
             read.push((next, file));
         }
         // Every file is read before any is used, and the ones placed
-        // inside others go first: a prefab that now places a new one
+        // inside others go first: a module that now places a new one
         // (a Git pull) finds it already known when its copies are rebuilt.
         for (next, file) in read.into_iter().rev() {
-            self.workbench.set_prefab(next, std::sync::Arc::new(file));
+            self.workbench.set_module(next, std::sync::Arc::new(file));
         }
         Ok(())
     }
 
-    /// Reads every prefab a level file places.
-    fn load_prefabs_of(&mut self, file: &level::text::LevelFile) {
+    /// Reads every module a level file places.
+    fn load_modules_of(&mut self, file: &level::text::LevelFile) {
         let wanted: HashSet<AssetId> = file
             .level
             .iter()
-            .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.prefab))
+            .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.module))
             .collect();
         for id in wanted {
-            if let Err(why) = self.load_prefab(id, false) {
+            if let Err(why) = self.load_module(id, false) {
                 self.workbench
-                    .log(LogLevel::Warning, format!("Couldn't read a prefab: {why}."));
+                    .log(LogLevel::Warning, format!("Couldn't read a module: {why}."));
             }
         }
     }
@@ -1033,7 +1033,7 @@ impl App {
         let read = LevelFiles::read_noting(path, &self.workbench.document().registry).and_then(
             |(file, note)| {
                 older = note;
-                self.load_prefabs_of(&file);
+                self.load_modules_of(&file);
                 self.workbench.expand_file(&file).map_err(|e| e.to_string())
             },
         );
@@ -1230,19 +1230,19 @@ impl App {
                         ),
                     }
                 }
-                WorkbenchAction::MakePrefab(plan) => self.make_prefab(plan),
-                WorkbenchAction::ChoosePrefabFolder(start) => self.choose_prefab_folder(&start),
-                WorkbenchAction::NewPrefab(folder) => self.new_prefab(&folder),
-                WorkbenchAction::OpenPrefab(id) => self.open_prefab(id),
-                WorkbenchAction::SavePrefab { asset, file } => self.save_prefab(asset, file),
+                WorkbenchAction::MakeModule(plan) => self.make_module(plan),
+                WorkbenchAction::ChooseModuleFolder(start) => self.choose_module_folder(&start),
+                WorkbenchAction::NewModule(folder) => self.new_module(&folder),
+                WorkbenchAction::OpenModule(id) => self.open_module(id),
+                WorkbenchAction::SaveModule { asset, file } => self.save_module(asset, file),
                 WorkbenchAction::CountPlaced(id) => self.count_placed(id),
-                WorkbenchAction::ApplyToPrefab {
-                    prefab,
+                WorkbenchAction::ApplyToModule {
+                    module,
                     path,
                     component,
                     field,
                     value,
-                } => self.apply_to_prefab(prefab, &path, &component, &field, value),
+                } => self.apply_to_module(module, &path, &component, &field, value),
                 WorkbenchAction::AddSampleLevel => self.add_sample(),
                 WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
                 WorkbenchAction::MakeUiSample => self.importer.ask_folder(FolderFor::UiSample),
@@ -1619,22 +1619,22 @@ impl App {
     fn show_library(&mut self) {
         let thumbnails = &self.thumbnails;
         let (items, folders) = Projects::library(&self.listing, |p| thumbnails.get(p));
-        // Every prefab in the project is known to the editor, so game
+        // Every module in the project is known to the editor, so game
         // code can make copies of any (`spawn`). A broken one shows in
         // Problems when it's used.
-        let prefabs: Vec<AssetId> = items
+        let modules: Vec<AssetId> = items
             .iter()
-            .filter(|item| item.kind == editor::LibraryKind::Prefab)
+            .filter(|item| item.kind == editor::LibraryKind::Module)
             .filter_map(|item| item.id)
-            .filter(|id| !self.workbench.prefabs().contains_key(id))
+            .filter(|id| !self.workbench.modules().contains_key(id))
             .filter(|id| !self.unreadable.contains(id))
             .collect();
         self.workbench.set_library(items);
         self.workbench.set_folders(folders);
-        let read_some = !prefabs.is_empty();
-        for id in prefabs {
-            if let Err(why) = self.load_prefab(id, false) {
-                log::debug!("couldn't read a prefab ahead: {why}");
+        let read_some = !modules.is_empty();
+        for id in modules {
+            if let Err(why) = self.load_module(id, false) {
+                log::debug!("couldn't read a module ahead: {why}");
                 self.unreadable.insert(id);
             }
         }
@@ -1644,29 +1644,29 @@ impl App {
         }
     }
 
-    /// Sets a field in a prefab's file (Apply to prefab), saves it,
+    /// Sets a field in a module's file (Apply to module), saves it,
     /// and updates every copy.
-    fn apply_to_prefab(
+    fn apply_to_module(
         &mut self,
-        prefab: AssetId,
+        module: AssetId,
         path: &[EntityId],
         component: &str,
         field: &str,
         value: reflect::Value,
     ) {
         let (Some(file), Some(on_disk)) = (
-            self.workbench.prefabs().get(&prefab).cloned(),
-            self.projects.db().and_then(|db| db.file(prefab)),
+            self.workbench.modules().get(&module).cloned(),
+            self.projects.db().and_then(|db| db.file(module)),
         ) else {
             return;
         };
         let mut file = (*file).clone();
-        if !level::prefab::set_in_file(&mut file, path, component, field, value) {
+        if !level::module::set_in_file(&mut file, path, component, field, value) {
             return;
         }
         let root = self.projects.root().map(Path::to_path_buf);
-        // An older prefab is copied to the backups first (Phase 8, C1).
-        let saved = crate::prefab_files::save(
+        // An older module is copied to the backups first (Phase 8, C1).
+        let saved = crate::module_files::save(
             root.as_deref(),
             &on_disk,
             &file,
@@ -1678,7 +1678,7 @@ impl App {
                     let note = crate::upgrades::kept_note(root, &file_name(&on_disk), &copy);
                     self.workbench.log(LogLevel::Info, note);
                 }
-                self.workbench.set_prefab(prefab, std::sync::Arc::new(file));
+                self.workbench.set_module(module, std::sync::Arc::new(file));
             }
             Err(why) => self.workbench.log(
                 LogLevel::Error,
@@ -1757,13 +1757,13 @@ impl App {
 
     /// Places a project asset where the camera looks: a model is read
     /// (from the cache, so quickly) and placed when it arrives; an
-    /// prefab is placed at once.
+    /// module is placed at once.
     fn place(&mut self, id: AssetId) {
         let kind = self.projects.db().and_then(|db| db.get(id)).map(|r| r.kind);
-        if kind == Some(asset_db::AssetKind::Prefab) {
-            match self.load_prefab(id, false) {
+        if kind == Some(asset_db::AssetKind::Module) {
+            match self.load_module(id, false) {
                 Ok(()) => {
-                    self.workbench.place_prefab(id);
+                    self.workbench.place_module(id);
                     self.load_level_models();
                 }
                 Err(why) => {
@@ -1830,16 +1830,16 @@ fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
 }
 
 /// The models the open project needs loaded: those the level uses, and
-/// every model any of the project's prefabs uses, since game code can
-/// make copies of any prefab while playing (`spawn`). Without the
+/// every model any of the project's modules uses, since game code can
+/// make copies of any module while playing (`spawn`). Without the
 /// second, copies made only by game code had no model to draw (the
 /// benchmark's stress level showed only its lasers).
 fn models_wanted<'a>(
     level: &'a level::Level,
-    prefabs: impl Iterator<Item = &'a level::Level>,
+    modules: impl Iterator<Item = &'a level::Level>,
 ) -> HashSet<AssetId> {
     std::iter::once(level)
-        .chain(prefabs)
+        .chain(modules)
         .flat_map(|a| {
             a.with::<level::builtin::Model>()
                 .filter_map(|(_, m)| m.asset.map(|r| r.asset))
@@ -1949,7 +1949,7 @@ impl eframe::App for App {
                 FolderFor::ScanFolder => self.scan_for_projects(folder),
                 FolderFor::ExportFolder => self.workbench.set_export_folder(folder),
                 FolderFor::CreateIn => self.workbench.set_create_in(folder),
-                FolderFor::PrefabFolder(_) => self.prefab_folder_chosen(&folder),
+                FolderFor::ModuleFolder(_) => self.module_folder_chosen(&folder),
                 FolderFor::OpenProject => self.open_folder(folder),
             }
         }
@@ -2011,7 +2011,7 @@ impl eframe::App for App {
         if let Some(path) = self.level_files.changed_on_disk() {
             let read =
                 LevelFiles::read(&path, &self.workbench.document().registry).and_then(|file| {
-                    self.load_prefabs_of(&file);
+                    self.load_modules_of(&file);
                     self.workbench.expand_file(&file).map_err(|e| e.to_string())
                 });
             match read {
@@ -2281,17 +2281,17 @@ mod tests {
                 part: None,
             }),
         };
-        let (in_level, in_prefab, nowhere) =
+        let (in_level, in_module, nowhere) =
             (AssetId::random(), AssetId::random(), AssetId::random());
         let mut level = level::Level::new();
         level.spawn(level::EntityData::new("Rock").with(&model(in_level)));
         level.spawn(level::EntityData::new("Empty"));
         let mut fighter = level::Level::new();
-        fighter.spawn(level::EntityData::new("Fighter").with(&model(in_prefab)));
+        fighter.spawn(level::EntityData::new("Fighter").with(&model(in_module)));
         let wanted = super::models_wanted(&level, [&fighter].into_iter());
         assert!(wanted.contains(&in_level));
         assert!(
-            wanted.contains(&in_prefab),
+            wanted.contains(&in_module),
             "spawned by game code: needed too"
         );
         assert!(!wanted.contains(&nowhere));

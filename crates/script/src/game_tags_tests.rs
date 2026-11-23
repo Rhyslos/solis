@@ -9,10 +9,10 @@ use super::*;
 use crate::code::Code;
 use reflect::TagId;
 
-/// The project's names: two prefabs, and the tags Enemy, Flying and
+/// The project's names: two modules, and the tags Enemy, Flying and
 /// Ghost.
 fn names() -> crate::project_names::Names {
-    crate::project_names::Names::with_prefabs(&["drone"]).and_tags(&["Enemy", "Flying", "Ghost"])
+    crate::project_names::Names::with_modules(&["drone"]).and_tags(&["Enemy", "Flying", "Ghost"])
 }
 
 fn compile(main: &str) -> Result<Arc<Compiled>, Vec<crate::CodeProblem>> {
@@ -165,7 +165,7 @@ fn a_misspelt_tag_fails_the_check_before_anything_runs() {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_prefabs(&[]).and_tags(&["Enemy", "Flying", "Spirit"]),
+        &crate::project_names::Names::with_modules(&[]).and_tags(&["Enemy", "Flying", "Spirit"]),
     );
     files.push(("main.lst".into(), HUNT.to_string()));
     let code = Code {

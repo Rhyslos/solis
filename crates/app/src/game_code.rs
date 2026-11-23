@@ -1,7 +1,7 @@
 //! The game's code, looked after on a worker (CONTRIBUTING rule 10):
 //! whenever something in the project's assets changes, the files
 //! describing the engine and the project's names to Lust are written again
-//! (walking the assets for its prefabs, sound events and screens), and
+//! (walking the assets for its modules, sound events and screens), and
 //! then its Lust is read, checked and turned into Lua for the editor to
 //! run. Only a check that found different code reports. Code that couldn't
 //! be checked, because an earlier check never finished and is still
@@ -160,11 +160,11 @@ fn forget_animator_files(assets: &Path, files: &[(String, String)], kind: &str) 
     took
 }
 
-/// The project's files whose names end in one of `endings` (prefabs'
-/// `.prefab.lst`, and an older `.solassembly` not yet moved; sound
+/// The project's files whose names end in one of `endings` (modules'
+/// `.module.lst`, and an older `.solassembly` not yet moved; sound
 /// events'), as paths in `assets` without it (`ships/fighter`), sorted,
 /// each once: hidden folders and the engine's own are skipped, and links
-/// to folders aren't followed. At most [`MAX_PREFAB_NAMES`].
+/// to folders aren't followed. At most [`MAX_MODULE_NAMES`].
 fn asset_paths(assets: &Path, endings: &[&str]) -> Vec<String> {
     let mut found = Vec::new();
     let mut folders = vec![assets.to_path_buf()];
@@ -193,7 +193,7 @@ fn asset_paths(assets: &Path, endings: &[&str]) -> Vec<String> {
             {
                 let inside = inside.to_string_lossy().replace('\\', "/");
                 found.push(inside[..inside.len() - ending.len()].to_string());
-                if found.len() >= MAX_PREFAB_NAMES {
+                if found.len() >= MAX_MODULE_NAMES {
                     folders.clear();
                     break;
                 }
@@ -224,7 +224,7 @@ const PICTURE_ENDINGS: &[&str] = &[".png", ".jpg", ".jpeg"];
 /// The most of each kind of file named in `solis/project.lst`: past it,
 /// the rest can't be named from game code (a guard against a folder of
 /// millions).
-const MAX_PREFAB_NAMES: usize = 10_000;
+const MAX_MODULE_NAMES: usize = 10_000;
 
 impl GameCode {
     /// The game code of the program and version `made_by`, which writes
@@ -241,7 +241,7 @@ impl GameCode {
     /// version. Returns notes on any that couldn't be written.
     ///
     /// They include `solis/project.lst`, the project's names (its
-    /// prefabs, and the input actions in its `input.solinput`, beside
+    /// modules, and the input actions in its `input.solinput`, beside
     /// `assets`) as states, so call this again when they change;
     /// the notes then also say which names game code can't use.
     pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
@@ -287,11 +287,11 @@ impl GameCode {
         let root = Some(project_root_of(assets));
         let root = root.as_deref();
         let names = script::project_names::Names {
-            prefabs: asset_paths(
+            modules: asset_paths(
                 assets,
                 &[
-                    asset_db::PREFAB_ENDING,
-                    &format!(".{}", asset_db::OLD_PREFAB_EXTENSION),
+                    asset_db::MODULE_ENDING,
+                    &format!(".{}", asset_db::OLD_MODULE_EXTENSION),
                 ],
             ),
             sounds: asset_paths(assets, &[&format!(".{}", sound::event::EXTENSION)]),
@@ -483,7 +483,7 @@ impl GameCode {
     }
 
     /// Describes the engine and the project's names to Lust in `assets`
-    /// (they may have changed with them: a prefab added, the input
+    /// (they may have changed with them: a module added, the input
     /// actions saved), then reads and checks the code there, all on a
     /// worker; if a check is running, another starts when it ends.
     pub fn check(&mut self, assets: PathBuf) {
@@ -798,20 +798,20 @@ mod tests {
     }
 
     #[test]
-    fn the_project_s_prefabs_become_names_and_its_notes_are_said_once() {
+    fn the_project_s_modules_become_names_and_its_notes_are_said_once() {
         let (_temp, assets) = folder("names");
         std::fs::create_dir_all(assets.join("ships")).unwrap();
         std::fs::create_dir_all(assets.join(".hidden")).unwrap();
         std::fs::create_dir_all(assets.join("solis")).unwrap();
-        // Prefabs' files, and an assembly's older one not yet moved (and
+        // Modules' files, and an assembly's older one not yet moved (and
         // one moved beside its older copy, named once).
         for file in [
-            "ships/fighter.prefab.lst",
+            "ships/fighter.module.lst",
             "crate.SOLASSEMBLY",
-            "crate.prefab.lst",
-            "big-ship.prefab.lst",
-            ".hidden/x.prefab.lst",
-            "solis/y.prefab.lst",
+            "crate.module.lst",
+            "big-ship.module.lst",
+            ".hidden/x.module.lst",
+            "solis/y.module.lst",
             "ships/notes.txt",
         ] {
             std::fs::write(assets.join(file), "").unwrap();
@@ -825,12 +825,12 @@ mod tests {
         assert!(notes[0].contains("big-ship"));
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
         assert!(
-            project.contains("state Prefab = [Crate, Ships [Fighter]];"),
+            project.contains("state Module = [Crate, Ships [Fighter]];"),
             "{project}"
         );
-        // The same again: nothing new to say. A new prefab joins.
+        // The same again: nothing new to say. A new module joins.
         assert!(notes_of_a_check(&mut code, &assets).is_empty());
-        std::fs::write(assets.join("ships/freighter.prefab.lst"), "").unwrap();
+        std::fs::write(assets.join("ships/freighter.module.lst"), "").unwrap();
         assert!(
             notes_of_a_check(&mut code, &assets).is_empty(),
             "the same note isn't said again"

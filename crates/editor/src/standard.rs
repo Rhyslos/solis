@@ -8,7 +8,7 @@
 //! Environment from a new level's (sprites lit, decision 0092). Without
 //! that, a level's own Sun showed four changed settings that nobody had
 //! changed, each with a way back to a lamp's value, and read as a
-//! prefab's copy with changes of its own (Shared 1f's loose ends).
+//! module's copy with changes of its own (Shared 1f's loose ends).
 
 use level::builtin::{Environment, Light, LightKind};
 use reflect::{Component, ComponentData, FieldInfo, Value};

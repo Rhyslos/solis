@@ -1,12 +1,12 @@
-//! Copies following a prefab's new values give exactly what rebuilding
+//! Copies following a module's new values give exactly what rebuilding
 //! them the whole way gives (collapsing each to its own changes and
-//! expanding it from the new prefab), and anything but values is left to
+//! expanding it from the new module), and anything but values is left to
 //! that whole way.
 
 use super::*;
 use crate::Origin;
 use crate::builtin::{Light, Transform};
-use crate::prefab::Expander;
+use crate::module::Expander;
 use crate::text::{FileKind, LevelFile};
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ fn lamp_post(lamp: Light) -> LevelFile {
     part.parent = Some(id(1));
     level.insert(id(2), part);
     LevelFile {
-        kind: FileKind::Prefab { root: id(1) },
+        kind: FileKind::Module { root: id(1) },
         level,
         overrides: Default::default(),
     }
@@ -75,8 +75,8 @@ fn followed(level: &Level, old: &LevelFile, new: &LevelFile) -> Option<Level> {
     let (old, new) = (Arc::new(old.clone()), Arc::new(new.clone()));
     let old_lookup = move |_| Some(old.clone());
     let new_lookup = move |_| Some(new.clone());
-    let was = Expander::new(&old_lookup).prefab(asset(POST)).unwrap();
-    let now = Expander::new(&new_lookup).prefab(asset(POST)).unwrap();
+    let was = Expander::new(&old_lookup).module(asset(POST)).unwrap();
+    let now = Expander::new(&new_lookup).module(asset(POST)).unwrap();
     let changes = ValueChanges::between((&was.0, was.1), (&now.0, now.1))?;
     let mut level = level.clone();
     for edit in changes.follow(&level, asset(POST)) {
@@ -87,7 +87,7 @@ fn followed(level: &Level, old: &LevelFile, new: &LevelFile) -> Option<Level> {
 
 /// The lamp of copy `n`.
 fn lamp_of(n: u64) -> EntityId {
-    crate::prefab::derive(id(1000 + n), &[id(2)])
+    crate::module::derive(id(1000 + n), &[id(2)])
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn copies_follow_new_values_and_keep_their_own() {
 }
 
 #[test]
-fn the_same_prefab_changes_nothing() {
+fn the_same_module_changes_nothing() {
     let old = lamp_post(Light::point());
     let level = placed(&old, 3);
     assert_eq!(followed(&level, &old, &old), Some(level));
@@ -210,8 +210,8 @@ fn many_random_changes_follow_as_the_whole_way_does() {
                         .components
                         .remove("Light"),
                 ),
-                // A copy without the field takes the prefab's new value.
-                // (One the prefab didn't change stays as it is: the whole
+                // A copy without the field takes the module's new value.
+                // (One the module didn't change stays as it is: the whole
                 // way would fill it in too, but that isn't this save's.)
                 _ if shadows_changed => drop(
                     level
@@ -232,7 +232,7 @@ fn many_random_changes_follow_as_the_whole_way_does() {
 }
 
 #[test]
-fn copies_of_another_prefab_are_left_alone() {
+fn copies_of_another_module_are_left_alone() {
     let old = lamp_post(Light::point());
     let new = lamp_post(Light {
         strength: 7.0,
@@ -241,7 +241,7 @@ fn copies_of_another_prefab_are_left_alone() {
     let mut level = placed(&old, 1);
     let lamp = lamp_of(0);
     level.get_mut(lamp).unwrap().origin = Some(Origin {
-        prefab: asset(1),
+        module: asset(1),
         instance: id(1000),
         path: vec![id(2)],
     });

@@ -5,17 +5,17 @@ fn copies_are_counted_in_each_level_by_either_word() {
     let root = reflect::test_support::TempFolder::new("count-copies").unwrap();
     let id: AssetId = "5KD8V0Q2MX7TA".parse().unwrap();
     let other = AssetId::random();
-    let block = |word: &str, prefab: AssetId| {
+    let block = |word: &str, module: AssetId| {
         format!(
-            "entity {} {{\n    {word} = \"{prefab}\";\n}}\n",
+            "entity {} {{\n    {word} = \"{module}\";\n}}\n",
             reflect::EntityId::random()
         )
     };
     let meadow = format!(
         "level version 5;\n{}{}{}",
-        block("prefab", id),
-        block("prefab", id),
-        block("prefab", other)
+        block("module", id),
+        block("module", id),
+        block("module", other)
     );
     let old = format!("level version 4;\n{}", block("assembly", id));
     std::fs::write(root.join("meadow.sollevel"), meadow).unwrap();

@@ -112,7 +112,7 @@ pub fn check_with(root: &Path, made_by: &str, smoke: Option<u32>) -> Report {
 /// says why it couldn't be).
 type Reader = fn(&str) -> Result<(), String>;
 
-/// Solis's own components, made once for every level and prefab the
+/// Solis's own components, made once for every level and module the
 /// check reads.
 fn solis_registry() -> Result<&'static reflect::Registry, String> {
     static REGISTRY: std::sync::OnceLock<Option<reflect::Registry>> = std::sync::OnceLock::new();
@@ -178,15 +178,15 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             },
             animation::frames_file::MAX_BYTES as u64,
         ),
-        "prefab" | "solassembly" => (
-            &level::prefab_file::FORMAT,
+        "module" | "solassembly" => (
+            &level::module_file::FORMAT,
             |text| {
                 let registry = solis_registry()?;
-                level::prefab_file::read(text, registry)
+                level::module_file::read(text, registry)
                     .map(drop)
                     .map_err(|e| e.to_string())
             },
-            level::prefab_file::MAX_BYTES as u64,
+            level::module_file::MAX_BYTES as u64,
         ),
         "sollevel" | "solarea" => (
             &level::text::FORMAT,
@@ -574,19 +574,19 @@ impl Saves {
     }
 }
 
-/// The project's prefabs, read once for a whole check.
-pub(crate) type Prefabs = Vec<(reflect::AssetId, std::sync::Arc<level::text::LevelFile>)>;
+/// The project's modules, read once for a whole check.
+pub(crate) type Modules = Vec<(reflect::AssetId, std::sync::Arc<level::text::LevelFile>)>;
 
-/// What a check reads once for all its recordings: the prefabs, and
+/// What a check reads once for all its recordings: the modules, and
 /// the sprite sheets with the tile maps and their pictures.
 #[derive(Default)]
 pub(crate) struct Read {
-    prefabs: Option<Prefabs>,
+    modules: Option<Modules>,
     sheets: Option<editor::sprite_sheets::SpriteSheets>,
 }
 
 /// A workbench with the project at `root` open as the editor would have
-/// it, headless: its code, input actions, prefabs, Library and sprite
+/// it, headless: its code, input actions, modules, Library and sprite
 /// sheets (with tilesets, tile maps and pictures, so a 2D game has its
 /// walls), and the level at `level_path` (inside the assets, `/` between
 /// folders).
@@ -628,25 +628,25 @@ pub(crate) fn workbench_for(
     let (languages, files, _) = crate::window::load_locale(root, &db.project().files());
     w.set_locale(languages, files);
     let (items, folders) = crate::project::Projects::library(&db.listing(), |_| None);
-    // Every prefab, so game code can spawn any of them: read once for
+    // Every module, so game code can spawn any of them: read once for
     // all of a check's recordings (the Phase 8 review).
-    let prefabs = read.prefabs.get_or_insert_with(|| {
+    let modules = read.modules.get_or_insert_with(|| {
         items
             .iter()
-            .filter(|item| item.kind == editor::LibraryKind::Prefab)
+            .filter(|item| item.kind == editor::LibraryKind::Module)
             .filter_map(|item| Some((item.id?, db.file(item.id?)?)))
             // One the editor can't read is left out, as the editor does
             // (the Files step reports it); only a game that uses it fails.
-            // Read as the editor reads them: a `.prefab.lst` (decision
-            // 0081), or an older prefab's file.
+            // Read as the editor reads them: a `.module.lst` (decision
+            // 0081), or an older module's file.
             .filter_map(|(id, file)| {
-                let (read, _) = crate::prefab_files::read(&file, &w.document().registry).ok()?;
+                let (read, _) = crate::module_files::read(&file, &w.document().registry).ok()?;
                 Some((id, std::sync::Arc::new(read)))
             })
             .collect()
     });
-    for (id, file) in prefabs.iter() {
-        w.set_prefab(*id, std::sync::Arc::clone(file));
+    for (id, file) in modules.iter() {
+        w.set_module(*id, std::sync::Arc::clone(file));
     }
     w.set_library(items);
     w.set_folders(folders);

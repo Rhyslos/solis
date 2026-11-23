@@ -406,7 +406,7 @@ pub(crate) fn drag_for_frames<S>(
     h.run();
 }
 
-/// A lamp-post prefab file: a post with a lamp under it.
+/// A lamp-post module file: a post with a lamp under it.
 pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<level::text::LevelFile>) {
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
     let mut level = level::Level::new();
@@ -418,7 +418,7 @@ pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<level::text::LevelFil
     lamp.parent = Some(id(1));
     level.insert(id(2), lamp);
     let file = level::text::LevelFile {
-        kind: level::text::FileKind::Prefab { root: id(1) },
+        kind: level::text::FileKind::Module { root: id(1) },
         level,
         overrides: Default::default(),
     };
@@ -432,10 +432,10 @@ pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<level::text::LevelFil
 pub(crate) fn with_a_lamp_post() -> (Workbench, AssetId, EntityId, EntityId) {
     let mut w = Workbench::new(info());
     let (asset, file) = lamp_post_file();
-    w.set_prefab(asset, file);
-    w.place_prefab(asset);
+    w.set_module(asset, file);
+    w.place_module(asset);
     let root = w.selection().unwrap();
-    let lamp = level::prefab::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
+    let lamp = level::module::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
     (w, asset, root, lamp)
 }
 

@@ -22,7 +22,7 @@ fn fixture(path: &str) -> String {
         .replace("\r\n", "\n")
 }
 
-/// A lamp post: a post, a lamp under it, and a crate (a placed prefab)
+/// A lamp post: a post, a lamp under it, and a crate (a placed module)
 /// with every kind of change a copy can make to its parts.
 fn lamp_post() -> LevelFile {
     let mut level = Level::new();
@@ -43,7 +43,7 @@ fn lamp_post() -> LevelFile {
     placed.parent = Some(id(1));
     placed.order = "a2".into();
     placed.origin = Some(Origin {
-        prefab: asset(99),
+        module: asset(99),
         instance: id(3),
         path: Vec::new(),
     });
@@ -93,19 +93,19 @@ fn lamp_post() -> LevelFile {
         },
     );
     LevelFile {
-        kind: FileKind::Prefab { root: id(1) },
+        kind: FileKind::Module { root: id(1) },
         level,
         overrides,
     }
 }
 
 #[test]
-fn a_prefab_reads_back_exactly_and_writes_the_same_again() {
+fn a_module_reads_back_exactly_and_writes_the_same_again() {
     let registry = registry().unwrap();
     let file = lamp_post();
     let text = write(&file, &registry).unwrap();
-    assert!(text.starts_with("-- A prefab."), "{text}");
-    assert!(text.contains("fetch \"solis/data/prefab\":[Part];"));
+    assert!(text.starts_with("-- A module."), "{text}");
+    assert!(text.contains("fetch \"solis/data/module\":[Part];"));
     assert!(text.contains("lock int version = 1;"));
     let read_back = read(&text, &registry).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(read_back, file);
@@ -132,15 +132,15 @@ fn each_setting_is_a_line_of_its_own() {
 #[test]
 fn the_fixture_of_version_1_reads() {
     let registry = registry().unwrap();
-    let text = fixture("prefab/v1/crate.prefab.lst");
+    let text = fixture("module/v1/crate.module.lst");
     let file = read(&text, &registry).unwrap();
-    assert!(matches!(file.kind, FileKind::Prefab { .. }));
+    assert!(matches!(file.kind, FileKind::Module { .. }));
     assert_eq!(file.level.len(), 2);
     assert_eq!((FORMAT.version_of)(&text), Some(1));
 }
 
 #[test]
-fn an_assembly_s_older_file_reads_as_the_same_prefab() {
+fn an_assembly_s_older_file_reads_as_the_same_module() {
     let registry = registry().unwrap();
     for version in ["v1", "v2", "v4"] {
         let old = fixture(&format!("area/{version}/crate.solassembly"));
@@ -156,17 +156,17 @@ fn an_assembly_s_older_file_reads_as_the_same_prefab() {
         &registry,
     )
     .unwrap();
-    assert_eq!(moved, fixture("prefab/v1/crate.prefab.lst"));
+    assert_eq!(moved, fixture("module/v1/crate.module.lst"));
 }
 
 #[test]
-fn an_empty_prefab_is_its_root_alone() {
+fn an_empty_module_is_its_root_alone() {
     let registry = registry().unwrap();
     let file = empty("Chicken");
     let text = write(&file, &registry).unwrap();
     let back = read(&text, &registry).unwrap();
     assert_eq!(back, file);
-    let FileKind::Prefab { root } = back.kind else {
+    let FileKind::Module { root } = back.kind else {
         panic!("a level")
     };
     assert_eq!(back.level.get(root).unwrap().name, "Chicken");
@@ -176,7 +176,7 @@ fn an_empty_prefab_is_its_root_alone() {
 fn a_brush_s_long_lists_are_broken_over_lines_as_they_re_read() {
     let registry = registry().unwrap();
     let mut file = empty("Wall");
-    let FileKind::Prefab { root } = file.kind else {
+    let FileKind::Module { root } = file.kind else {
         unreachable!()
     };
     let numbers: Vec<f32> = (0..5000u16).map(|n| f32::from(n) * 0.5).collect();
@@ -190,13 +190,13 @@ fn a_brush_s_long_lists_are_broken_over_lines_as_they_re_read() {
 }
 
 #[test]
-fn a_level_isn_t_a_prefab() {
+fn a_level_isn_t_a_module() {
     let registry = registry().unwrap();
     let level = LevelFile::plain(Level::new());
     assert!(write(&level, &registry).is_err());
     let level_text = text::write(&Level::new(), &registry, &|_| None);
     let why = read(&level_text, &registry).unwrap_err();
-    assert!(why.message.contains("a level, not a prefab"), "{why}");
+    assert!(why.message.contains("a level, not a module"), "{why}");
 }
 
 #[test]
@@ -209,10 +209,10 @@ fn a_newer_version_is_refused_and_never_half_read() {
     assert!(why.message.contains("newer version"), "{why}");
 }
 
-/// A prefab file with one part whose fields are `fields`.
+/// A module file with one part whose fields are `fields`.
 fn one_part(fields: &str) -> String {
     format!(
-        "fetch \"solis/data/prefab\":[Part];\n\nlock int version = 1;\n\
+        "fetch \"solis/data/module\":[Part];\n\nlock int version = 1;\n\
          lock string root = \"0000000000001\";\nlock Part array parts = [\n    \
          new Part {{ {fields} }},\n];\nend\n"
     )
@@ -245,7 +245,7 @@ fn a_part_can_t_say_more_than_its_own_block() {
         ("id = \"\"", "isn't an entity's ID"),
         ("id = \"0000000000001//2\"", "isn't an entity's ID"),
         ("id = \"0000000000001\", parent = \"x y\"", "isn't an ID"),
-        ("id = \"0000000000001\", prefab = \"\"", "isn't an ID"),
+        ("id = \"0000000000001\", module = \"\"", "isn't an ID"),
         (
             "id = \"0000000000001\", settings = [\"Light.strength = nope\"]",
             "the part 0000000000001",
@@ -280,7 +280,7 @@ fn what_isn_t_data_never_reaches_lust() {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
-    /// Damaged prefab files are refused or read, never a crash.
+    /// Damaged module files are refused or read, never a crash.
     #[test]
     fn damaged_files_never_crash(cuts in proptest::collection::vec((0usize..4000, any::<u8>()), 1..8)) {
         let registry = registry().unwrap();
@@ -310,7 +310,7 @@ proptest! {
     ) {
         let registry = registry().unwrap();
         let mut file = empty("Root");
-        let FileKind::Prefab { root } = file.kind else { unreachable!() };
+        let FileKind::Module { root } = file.kind else { unreachable!() };
         for (n, (name, strength)) in names.iter().zip(&strengths).enumerate() {
             let mut light = Light::point();
             light.strength = *strength;

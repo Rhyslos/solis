@@ -228,8 +228,8 @@ pub struct OpenNow {
     pub layout: PanelLayout,
     /// Home's left slot shows the project's folders, not the Level panel.
     pub folders: bool,
-    /// A prefab's page is open: a tab beside the level's on Home.
-    pub prefab_page: bool,
+    /// A module's page is open: a tab beside the level's on Home.
+    pub module_page: bool,
     /// A data table is open: a tab beside the level's on Home.
     pub table: bool,
     /// The Translations tab is open: a tab beside the level's on Home.
@@ -246,8 +246,8 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         RibbonTab::Build => vec![vec![P::Export]],
         RibbonTab::Home => {
             let mut level = vec![P::Viewport];
-            if open.prefab_page {
-                level.push(P::PrefabPage);
+            if open.module_page {
+                level.push(P::ModulePage);
             }
             if open.table {
                 level.push(P::Table);

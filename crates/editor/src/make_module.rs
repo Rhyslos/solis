@@ -1,11 +1,11 @@
-//! Make prefab… (board 07, panel 1): the picked entities saved as a prefab,
+//! Make module… (board 07, panel 1): the picked entities saved as a module,
 //! named and put in a folder in a dialog, and, if asked, swapped for a
 //! copy linked to it, as one undo step.
 //!
-//! One picked entity is the prefab's root, with everything under it.
-//! Several are put under a new root of the prefab's name, each keeping
+//! One picked entity is the module's root, with everything under it.
+//! Several are put under a new root of the module's name, each keeping
 //! its place in the world, and that root is what the copy stands in for.
-//! The file is the app's to write ([`WorkbenchAction::MakePrefab`]); once it
+//! The file is the app's to write ([`WorkbenchAction::MakeModule`]); once it
 //! has, the swap is [`Workbench::swap_for_copy`].
 
 use crate::Workbench;
@@ -13,7 +13,7 @@ use crate::console::LogLevel;
 use crate::widgets;
 use crate::workbench::WorkbenchAction;
 use level::builtin::Transform;
-use level::prefab::Expander;
+use level::module::Expander;
 use level::text::{FileKind, LevelFile};
 use level::{Edit, EntityData};
 use reflect::{AssetId, EntityId};
@@ -24,8 +24,8 @@ const LABEL_W: f32 = 60.0;
 
 /// The dialog while it's open.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct MakePrefabForm {
-    /// The prefab's name, which names its file.
+pub(crate) struct MakeModuleForm {
+    /// The module's name, which names its file.
     pub(crate) name: String,
     /// The folder it's saved in, inside the project's files (`/`
     /// between folders; empty for the top).
@@ -38,12 +38,12 @@ pub(crate) struct MakePrefabForm {
     pub(crate) count: usize,
 }
 
-/// What the app does to make a prefab: write `file` as a new prefab named
+/// What the app does to make a module: write `file` as a new module named
 /// `name` in `folder`, then, with `swap`, hand it back to
 /// [`Workbench::swap_for_copy`].
 #[derive(Debug, Clone, PartialEq)]
-pub struct MakePrefabPlan {
-    /// Its name, for its file (`chicken.prefab.lst`).
+pub struct MakeModulePlan {
+    /// Its name, for its file (`chicken.module.lst`).
     pub name: String,
     /// The folder, inside the project's files.
     pub folder: std::path::PathBuf,
@@ -65,22 +65,22 @@ pub struct SwapPlan {
 }
 
 impl Workbench {
-    /// Opens Make prefab… for what's picked in the level: named after the
+    /// Opens Make module… for what's picked in the level: named after the
     /// first picked entity, saved in the Library's folder, swapped for a
     /// copy. Nothing picked, or the game running: why, in the Console.
-    pub(crate) fn ask_make_prefab(&mut self) {
+    pub(crate) fn ask_make_module(&mut self) {
         let picks = self.selected_roots();
         let Some(&first) = picks.first() else {
             self.log(
                 LogLevel::Warning,
-                "Pick the entities to make a prefab of first.",
+                "Pick the entities to make a module of first.",
             );
             return;
         };
         if self.open.playing.is_some() {
             self.log(
                 LogLevel::Warning,
-                "Stop playing first: a prefab is made from the level.",
+                "Stop playing first: a module is made from the level.",
             );
             return;
         }
@@ -89,7 +89,7 @@ impl Workbench {
         let name = level
             .get(first)
             .map_or_else(String::new, |e| e.name.clone());
-        self.open.make_prefab = Some(MakePrefabForm {
+        self.open.make_module = Some(MakeModuleForm {
             name,
             folder: self.open.library_state.folder.clone(),
             swap: true,
@@ -98,27 +98,27 @@ impl Workbench {
         });
     }
 
-    /// A prefab was just made at `path` (inside the project): its tile
+    /// A module was just made at `path` (inside the project): its tile
     /// carries a "New" badge, and it's picked in the Library.
-    pub fn prefab_made(&mut self, path: &str) {
-        self.open.library_state.new_prefabs.insert(path.to_owned());
+    pub fn module_made(&mut self, path: &str) {
+        self.open.library_state.new_modules.insert(path.to_owned());
         self.pick_in_library(path);
     }
 
     /// The folder chosen with Browse…, inside the project's files.
-    pub fn set_prefab_folder(&mut self, folder: &str) {
-        if let Some(form) = &mut self.open.make_prefab {
+    pub fn set_module_folder(&mut self, folder: &str) {
+        if let Some(form) = &mut self.open.make_module {
             form.folder = folder.trim_matches('/').to_string();
         }
     }
 
-    /// Draws Make prefab… while it's open, and carries out its answer.
-    pub(crate) fn make_prefab_dialog(
+    /// Draws Make module… while it's open, and carries out its answer.
+    pub(crate) fn make_module_dialog(
         &mut self,
         ctx: &egui::Context,
         actions: &mut Vec<WorkbenchAction>,
     ) {
-        let Some(mut form) = self.open.make_prefab.take() else {
+        let Some(mut form) = self.open.make_module.take() else {
             return;
         };
         use widgets::dialog::{Answer, dialog_with_note};
@@ -133,11 +133,11 @@ impl Workbench {
             },
             if form.count == 1 { "s" } else { "" }
         );
-        let answers = [Answer::right("Cancel"), Answer::main("Make prefab")];
+        let answers = [Answer::right("Cancel"), Answer::main("Make module")];
         let picked = dialog_with_note(
             ctx,
-            "make prefab",
-            "Make prefab",
+            "make module",
+            "Make module",
             |ui| {
                 ui.horizontal(|ui| {
                     ui.add_sized(
@@ -150,7 +150,7 @@ impl Workbench {
                         ui,
                         "Name",
                         &mut form.name,
-                        "The prefab's name",
+                        "The module's name",
                         236.0,
                     );
                 });
@@ -178,7 +178,7 @@ impl Workbench {
                         })
                         .response
                         .on_hover_text(
-                            "The project's folder the prefab is saved in: Browse… picks another",
+                            "The project's folder the module is saved in: Browse… picks another",
                         );
                     browse = widgets::button::Button::plain("Browse\u{2026}")
                         .show(ui)
@@ -186,41 +186,41 @@ impl Workbench {
                 });
                 widgets::checkbox::checkbox(ui, &mut form.swap, "Swap these for a linked copy")
                     .on_hover_text(
-                        "The picked entities become one copy of the prefab, which follows it",
+                        "The picked entities become one copy of the module, which follows it",
                     );
             },
             &note,
             &answers,
         );
         if browse {
-            actions.push(WorkbenchAction::ChoosePrefabFolder(form.folder.clone()));
+            actions.push(WorkbenchAction::ChooseModuleFolder(form.folder.clone()));
         }
         match picked {
             Some(0) => {}
-            Some(_) => match self.make_prefab_plan(&form) {
-                Ok(plan) => actions.push(WorkbenchAction::MakePrefab(plan)),
+            Some(_) => match self.make_module_plan(&form) {
+                Ok(plan) => actions.push(WorkbenchAction::MakeModule(plan)),
                 Err(why) => {
                     self.log(LogLevel::Warning, why);
-                    self.open.make_prefab = Some(form);
+                    self.open.make_module = Some(form);
                 }
             },
-            None => self.open.make_prefab = Some(form),
+            None => self.open.make_module = Some(form),
         }
     }
 
-    /// The plan for the dialog's answer: the prefab's contents and the
+    /// The plan for the dialog's answer: the module's contents and the
     /// swap. A name that's empty is refused, with why.
-    pub(crate) fn make_prefab_plan(&self, form: &MakePrefabForm) -> Result<MakePrefabPlan, String> {
+    pub(crate) fn make_module_plan(&self, form: &MakeModuleForm) -> Result<MakeModulePlan, String> {
         let name = form.name.trim();
         if name.is_empty() {
-            return Err("A prefab needs a name.".into());
+            return Err("A module needs a name.".into());
         }
         let (file, root, placed) = match form.picks.as_slice() {
-            [] => return Err("Pick the entities to make a prefab of first.".into()),
+            [] => return Err("Pick the entities to make a module of first.".into()),
             [one] => {
                 let mut file = self
-                    .prefab_file(*one)
-                    .ok_or("The picked entities couldn't be made a prefab.")?;
+                    .module_file(*one)
+                    .ok_or("The picked entities couldn't be made a module.")?;
                 if let Some(top) = file.level.get_mut(*one) {
                     top.name = name.to_string();
                 }
@@ -231,9 +231,9 @@ impl Workbench {
                 placed.order.clone_from(&original.order);
                 (file, *one, placed)
             }
-            many => self.grouped_prefab(many, name)?,
+            many => self.grouped_module(many, name)?,
         };
-        Ok(MakePrefabPlan {
+        Ok(MakeModulePlan {
             name: name.to_string(),
             folder: std::path::PathBuf::from(&form.folder),
             file,
@@ -246,9 +246,9 @@ impl Workbench {
     }
 
     /// Several picked entities under one new root named `name`: the
-    /// prefab's contents, the root's ID, and where the copy goes (beside
+    /// module's contents, the root's ID, and where the copy goes (beside
     /// the first picked, under their parent if they share one).
-    fn grouped_prefab(
+    fn grouped_module(
         &self,
         picks: &[EntityId],
         name: &str,
@@ -292,7 +292,7 @@ impl Workbench {
                     });
                 }
                 // Copies placed inside stay copies; a part whose copy is
-                // outside becomes the prefab's own.
+                // outside becomes the module's own.
                 if data
                     .origin
                     .as_ref()
@@ -303,18 +303,18 @@ impl Workbench {
                 contents.insert(id, data);
             }
         }
-        let lookup = |asset| self.open.prefabs.get(&asset).cloned();
+        let lookup = |asset| self.open.modules.get(&asset).cloned();
         let file = Expander::new(&lookup)
-            .collapse(&contents, FileKind::Prefab { root })
-            .map_err(|why| format!("The picked entities couldn't be made a prefab: {why}."))?;
+            .collapse(&contents, FileKind::Module { root })
+            .map_err(|why| format!("The picked entities couldn't be made a module: {why}."))?;
         Ok((file, root, placed))
     }
 
-    /// The prefab `id` was made from a plan with `swap`: its picked
+    /// The module `id` was made from a plan with `swap`: its picked
     /// entities become one copy linked to it, in one undo step.
     pub fn swap_for_copy(&mut self, id: AssetId, swap: &SwapPlan) {
         let entities = {
-            let lookup = |asset| self.open.prefabs.get(&asset).cloned();
+            let lookup = |asset| self.open.modules.get(&asset).cloned();
             Expander::new(&lookup).place(id, swap.root, &swap.placed)
         };
         let entities = match entities {
@@ -331,15 +331,15 @@ impl Workbench {
             .copied()
             .filter(|&p| level.contains(p))
             .collect();
-        let mut edits = level::prefab::despawn(level, &picks);
+        let mut edits = level::module::despawn(level, &picks);
         edits.push(Edit::Spawn { entities });
         let mut selected = crate::document::Selection::default();
         selected.select_only(swap.root);
-        let label = format!("Make prefab {}", self.asset_name(id));
+        let label = format!("Make module {}", self.asset_name(id));
         self.command(&label, edits, None, Some(selected));
     }
 }
 
 #[cfg(test)]
-#[path = "make_prefab_tests.rs"]
+#[path = "make_module_tests.rs"]
 mod tests;

@@ -15,7 +15,7 @@ fn kind_of(item: &LibraryItem) -> Option<(NameKind, usize)> {
     let ending = |endings: &[&str]| endings.iter().find(|e| path.ends_with(*e)).map(|e| e.len());
     match item.kind {
         LibraryKind::SoundEvent => Some((NameKind::Sound, ending(&[".solsound"])?)),
-        LibraryKind::Prefab => Some((NameKind::Prefab, ending(&[".prefab.lst", ".solassembly"])?)),
+        LibraryKind::Module => Some((NameKind::Module, ending(&[".module.lst", ".solassembly"])?)),
         LibraryKind::Texture => Some((NameKind::Picture, ending(&[".png", ".jpg", ".jpeg"])?)),
         LibraryKind::Level => Some((NameKind::Level, ending(&[".sollevel", ".solarea"])?)),
         LibraryKind::SpriteSheet => Some((NameKind::Clip, ending(&[".aseprite", ".ase"])?)),
@@ -82,15 +82,15 @@ mod tests {
                 "Sfx.Alert",
             ),
             (
-                LibraryKind::Prefab,
-                "coin.prefab.lst",
-                NameKind::Prefab,
+                LibraryKind::Module,
+                "coin.module.lst",
+                NameKind::Module,
                 "Coin",
             ),
             (
-                LibraryKind::Prefab,
+                LibraryKind::Module,
                 "ships/old.solassembly",
-                NameKind::Prefab,
+                NameKind::Module,
                 "Ships.Old",
             ),
             (
@@ -151,7 +151,7 @@ mod tests {
             dropped_option(&alert, NameKind::Sound, &options),
             Some(&options[1])
         );
-        assert_eq!(dropped_option(&alert, NameKind::Prefab, &options), None);
+        assert_eq!(dropped_option(&alert, NameKind::Module, &options), None);
         let gone = item(LibraryKind::SoundEvent, "sfx/new.solsound");
         assert_eq!(
             dropped_option(&gone, NameKind::Sound, &options),

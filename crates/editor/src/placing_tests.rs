@@ -29,7 +29,7 @@ fn with_models() -> Workbench {
     w.set_library(vec![
         item("crate", "crate.glb", LibraryKind::Model),
         item("creak", "creak.wav", LibraryKind::Sound),
-        item("lamp", "lamp.solasm", LibraryKind::Prefab),
+        item("lamp", "lamp.solasm", LibraryKind::Module),
     ]);
     w
 }

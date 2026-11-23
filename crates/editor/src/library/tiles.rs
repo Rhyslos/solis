@@ -242,8 +242,8 @@ fn tile<'a>(
             if item.kind == LibraryKind::SoundEvent {
                 event_badge(ui, item, picture, &response, files.sounds);
             }
-            if item.kind == LibraryKind::Prefab {
-                prefab_marks(ui, picture, state.new_prefabs.contains(&item.path));
+            if item.kind == LibraryKind::Module {
+                module_marks(ui, picture, state.new_modules.contains(&item.path));
             }
         }
     }
@@ -290,9 +290,9 @@ fn tile<'a>(
     }
 }
 
-/// A prefab tile's blue mark in the picture's corner, and "New" at its
+/// A module tile's blue mark in the picture's corner, and "New" at its
 /// top left just after it's made (board 07, panel 2).
-fn prefab_marks(ui: &Ui, picture: Rect, new: bool) {
+fn module_marks(ui: &Ui, picture: Rect, new: bool) {
     let painter = ui.painter().with_clip_rect(picture);
     let side = (picture.width() * 0.22).clamp(size::ICON_SMALL, 2.0 * size::ICON_SMALL);
     let mark = Rect::from_min_size(
@@ -307,8 +307,8 @@ fn prefab_marks(ui: &Ui, picture: Rect, new: bool) {
     icons::icon(
         &painter,
         mark.shrink(2.0),
-        Icon::Prefab,
-        theme::kind::PREFAB,
+        Icon::Module,
+        theme::kind::MODULE,
     );
     if new {
         let galley = painter.layout_no_wrap("New".into(), text::tile_kind(), tokens::ON_ACCENT);
@@ -319,7 +319,7 @@ fn prefab_marks(ui: &Ui, picture: Rect, new: bool) {
         painter.rect_filled(
             badge,
             CornerRadius::same(size::radius::CONTROL),
-            theme::kind::PREFAB,
+            theme::kind::MODULE,
         );
         painter.galley(
             badge.min + vec2(size::ROW_GAP, 1.0),
@@ -368,7 +368,7 @@ fn hint(entry: Entry<'_>) -> String {
         Entry::File(item) => item,
     };
     let what = match item.kind {
-        LibraryKind::Model | LibraryKind::Prefab => {
+        LibraryKind::Model | LibraryKind::Module => {
             "Drag it into the viewport or onto an entity, or pick it and press Place, to place it."
         }
         LibraryKind::Level => "Double-click its picture to open it.",

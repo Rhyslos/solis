@@ -15,8 +15,8 @@ fn item_at(path: &str) -> LibraryItem {
     let lower = path.to_ascii_lowercase();
     let kind = [
         (".solsound", LibraryKind::SoundEvent),
-        (".prefab.lst", LibraryKind::Prefab),
-        (".solassembly", LibraryKind::Prefab),
+        (".module.lst", LibraryKind::Module),
+        (".solassembly", LibraryKind::Module),
         (".png", LibraryKind::Texture),
         (".jpg", LibraryKind::Texture),
         (".jpeg", LibraryKind::Texture),
@@ -56,7 +56,7 @@ pub(crate) fn renamed(from: &str, to: &str) -> Option<(Vec<NameKind>, String, St
         NameKind::Sound,
         NameKind::Clip,
         NameKind::Picture,
-        NameKind::Prefab,
+        NameKind::Module,
         NameKind::Level,
         NameKind::Font,
     ];
@@ -142,8 +142,8 @@ mod tests {
             ))
         );
         assert_eq!(
-            renamed("coin.prefab.lst", "loot/coin.prefab.lst"),
-            Some((vec![NameKind::Prefab], "Coin".into(), "Loot.Coin".into()))
+            renamed("coin.module.lst", "loot/coin.module.lst"),
+            Some((vec![NameKind::Module], "Coin".into(), "Loot.Coin".into()))
         );
         let (kinds, old, new) = renamed("sfx", "effects").unwrap();
         assert!(kinds.contains(&NameKind::Sound) && kinds.contains(&NameKind::Picture));

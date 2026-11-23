@@ -6,19 +6,19 @@
 Most people never open these files: the editor writes them. Read this page when you want to make or change them some other way:
 
 - **a level generator** that writes rooms or dungeons as level files;
-- **an exporter** from another tool (a map editor, a spreadsheet of enemies) into Solis's tile maps, prefabs or levels;
+- **an exporter** from another tool (a map editor, a spreadsheet of enemies) into Solis's tile maps, modules or levels;
 - **a script that fixes many files at once**, such as giving every enemy in every level a tag;
 - **reading a level** in your own tool, to count things or check them.
 
 Every file here is plain text, safe to edit by hand, and made to merge well in Git. Solis checks each one as it reads it and says what's wrong, with the line, so a mistake never breaks a project quietly.
 
-> **Good to know:** paths on this page are as the Library shows them: from the project's own folder, such as `props/crate.prefab.lst`. A project made by an older Solis keeps its files in an `assets` folder; there, read paths from inside it.
+> **Good to know:** paths on this page are as the Library shows them: from the project's own folder, such as `props/crate.module.lst`. A project made by an older Solis keeps its files in an `assets` folder; there, read paths from inside it.
 
 ## How to use it
-1. **Make the IDs you need** with `solis --new-id` (one) or `solis --new-id 20` (twenty, one a line). An entity, a prefab's part, a terrain and a sidecar each need one. See [IDs](#ids).
-2. **Write a sidecar beside each file** other files point at (a picture, a sprite sheet, a tileset, a tile map, a prefab), holding its ID. See [Sidecars](#sidecars).
+1. **Make the IDs you need** with `solis --new-id` (one) or `solis --new-id 20` (twenty, one a line). An entity, a module's part, a terrain and a sidecar each need one. See [IDs](#ids).
+2. **Write a sidecar beside each file** other files point at (a picture, a sprite sheet, a tileset, a tile map, a module), holding its ID. See [Sidecars](#sidecars).
 3. **Write the files** in the newest layout, as on this page. Files point at each other by ID, never by path.
-4. **Check the project:** `solis --check-project <folder>` reads every level, prefab, tile map, tileset and sidecar, and says which can't be read and why ([Checking a project](checking-a-project.md)).
+4. **Check the project:** `solis --check-project <folder>` reads every level, module, tile map, tileset and sidecar, and says which can't be read and why ([Checking a project](checking-a-project.md)).
 5. **Try it:** open the project in the editor, or play a level from the command line with `solis --play <folder> <level>` ([Playing a game from the command line](playing-from-the-command-line.md)).
 
 > **Good to know:** you don't have to write the newest layout to keep old files working. Solis reads every older version of its files, upgrading them as it reads, and writes the newest layout when it next saves one (keeping a copy of the old file first). Older kinds of file, such as `.soltilemap` and `.soltileset`, are moved to their Lust files when the project opens. See [Backups and upgrades](backups-and-upgrades.md). A script should still write the newest layout, so nothing needs moving.
@@ -39,9 +39,9 @@ Each kind of thing keeps its ID in its own place:
 
 | Thing | Its ID is |
 |---|---|
-| A file (a picture, a sprite sheet, a tileset, a tile map, a prefab) | in its sidecar, `<file>.solmeta` |
+| A file (a picture, a sprite sheet, a tileset, a tile map, a module) | in its sidecar, `<file>.solmeta` |
 | An entity in a level | its block's name: `entity 096Q14DR9GPQY { … }` |
-| A part of a prefab, a terrain, a tile, a layer, a cell value | its `id = "…"` in the file it's in |
+| A part of a module, a terrain, a tile, a layer, a cell value | its `id = "…"` in the file it's in |
 | A tag | its `id` in the project's `tags.lst` |
 
 ## Sidecars
@@ -59,7 +59,7 @@ part = []
 ```
 
 - `format` is the sidecar's version: 1.
-- `id` is the file's ID. Levels, tile maps and prefabs name the file by it.
+- `id` is the file's ID. Levels, tile maps and modules name the file by it.
 - `hash` is the file's content hash, 16 hexadecimal digits. Solis uses it for one thing: when a file is renamed outside Solis and its sidecar is left behind, the sidecar finds its file again by this hash. A hash that doesn't match does no harm while the two stay together.
 - `part` and `[import]` are for 3D models (the IDs of a model's parts). Leave them empty, or leave them out.
 
@@ -177,14 +177,14 @@ A component of your game code is written the same way, its fields by the names t
 
 A field left out starts as its code starts it, so `Guard = {};` is a guard with every field as written in `has`.
 
-### A placed prefab and its changes
-A copy of a [prefab](prefabs.md) placed in a level is one block for the copy, plus a short block for each part the copy changes. Say `props/crate.prefab.lst` (ID `AWJ47TAN9ZT24`) is a crate whose root has the ID `ANPZX45HY43KW` and whose lid, a part under it, has `9RP1XPA7Z3DJ8`:
+### A placed module and its changes
+A copy of a [module](modules.md) placed in a level is one block for the copy, plus a short block for each part the copy changes. Say `props/crate.module.lst` (ID `AWJ47TAN9ZT24`) is a crate whose root has the ID `ANPZX45HY43KW` and whose lid, a part under it, has `9RP1XPA7Z3DJ8`:
 
 ```text
 entity 909TQM83XSSSS {
     name = "Crate";
     order = "a3";
-    prefab = "AWJ47TAN9ZT24";  -- props/crate.prefab.lst
+    module = "AWJ47TAN9ZT24";  -- props/crate.module.lst
     Transform.position = [3.0, -1.0, 0.0];
 }
 
@@ -194,16 +194,16 @@ entity 909TQM83XSSSS/9RP1XPA7Z3DJ8 {
 }
 ```
 
-- **The copy's block** has an ID of its own (a new one for each copy) and `prefab = "<the prefab file's ID>";`. Its fields are only those that differ from the prefab's root: here, where it is. Everything else comes from the prefab, so changing the prefab changes every copy.
-- **A part's block** is named `<copy's ID>/<the part's ID in the prefab>`, and holds only what this copy changes: a `name`, an `order`, fields, `remove = ["Sprite"];` to take components off, `removed = true;` to take the part out of this copy, or `parent`. `parent = "<ID>";` moves the part under that entity; `parent = "";` moves it out to the top level; no `parent` line leaves it where the prefab has it.
-- A prefab placed inside another prefab is reached by a longer name: `<copy>/<inner copy>/<part>`, at most 16 deep.
+- **The copy's block** has an ID of its own (a new one for each copy) and `module = "<the module file's ID>";`. Its fields are only those that differ from the module's root: here, where it is. Everything else comes from the module, so changing the module changes every copy.
+- **A part's block** is named `<copy's ID>/<the part's ID in the module>`, and holds only what this copy changes: a `name`, an `order`, fields, `remove = ["Sprite"];` to take components off, `removed = true;` to take the part out of this copy, or `parent`. `parent = "<ID>";` moves the part under that entity; `parent = "";` moves it out to the top level; no `parent` line leaves it where the module has it.
+- A module placed inside another module is reached by a longer name: `<copy>/<inner copy>/<part>`, at most 16 deep.
 
-## Prefabs
-A prefab is a `.prefab.lst` file, a Lust data file: a list of parts, one for each of its entities, each with its fields as the lines a level would write.
+## Modules
+A module is a `.module.lst` file, a Lust data file: a list of parts, one for each of its entities, each with its fields as the lines a level would write.
 
 ```text
--- A prefab. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
-fetch "solis/data/prefab":[Part];
+-- A module. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
+fetch "solis/data/module":[Part];
 
 lock int version = 1;
 lock string root = "ANPZX45HY43KW";
@@ -231,8 +231,8 @@ end
 
 - `version` is 1. `root` is the ID of the part everything else hangs from.
 - Each `settings` line is a field as a level writes it, without the `;`, inside quotes, so the quotes of text in it are written `\"`. A component with no fields is `"Name = {}"`.
-- A part may also have `prefab = "<ID>"` (a prefab placed inside this one); then parts named `<that part's ID>/<a part inside>` hold its changes, as in a level, with `removed = true`, `remove = […]` and `parent` as there.
-- The prefab file's own ID, in its sidecar, is what a level's `prefab = "…";` names.
+- A part may also have `module = "<ID>"` (a module placed inside this one); then parts named `<that part's ID>/<a part inside>` hold its changes, as in a level, with `removed = true`, `remove = […]` and `parent` as there.
+- The module file's own ID, in its sidecar, is what a level's `module = "…";` names.
 
 ## Tilesets
 A tileset is a `.tileset.lst` file: the terrains a tile map's cells can be, and which tiles of a picture show them ([Tilesets and autotiling](tilesets.md)).
@@ -400,7 +400,7 @@ The newest layout of each file, which is what Solis writes:
 | File | Where its version is | Newest |
 |---|---|---|
 | Level, `.sollevel` | `level version 5;` | 5 |
-| Prefab, `.prefab.lst` | `lock int version = 1;` | 1 |
+| Module, `.module.lst` | `lock int version = 1;` | 1 |
 | Tileset, `.tileset.lst` | `lock int version = 4;` | 4 |
 | Tile map, `.tilemap.lst` | `lock int version = 3;` | 3 |
 | Tags, `tags.lst` | `lock int version = 1;` | 1 |
@@ -412,14 +412,14 @@ Clips files (`.solframes`) and animators (`.solanim`) are text too, with their v
 ## Tips and common problems
 - **Problem:** a sprite in a level you wrote floats or sinks. **Why:** `Sprite.pivot` is empty, so it stands on the bottom middle of its frame. **Fix:** write `Sprite.pivot = "feet";` (or the slice your sheet has).
 - **Problem:** "… isn't an ID (13 letters and digits)". **Why:** an ID is mistyped, or made by hand with a letter IDs don't use. **Fix:** make IDs with `solis --new-id`.
-- **Problem:** a sprite, tile map or prefab copy you wrote doesn't show. **Why:** the ID it names isn't in any sidecar: the sidecar wasn't written, was written with another ID, or isn't named `<file>.solmeta` (a sidecar of `knight.aseprite` is `knight.aseprite.solmeta`). **Fix:** check the sidecar beside the file.
+- **Problem:** a sprite, tile map or module copy you wrote doesn't show. **Why:** the ID it names isn't in any sidecar: the sidecar wasn't written, was written with another ID, or isn't named `<file>.solmeta` (a sidecar of `knight.aseprite` is `knight.aseprite.solmeta`). **Fix:** check the sidecar beside the file.
 - **Problem:** "the ID … is used twice". **Why:** two blocks of one level have the same ID (a script made one ID and used it twice). **Fix:** give each entity its own ID.
 - **Problem:** a file says it "was saved by a newer version". **Why:** its version is higher than this Solis reads. **Fix:** write the version on this page, or update Solis.
 - **Tip:** to learn a file's layout, make one in the editor and read it: Solis writes every file the way this page shows.
 
 ## Related
 - [Projects and the Library](projects-and-the-library.md): sidecars, IDs and `solis --new-id`.
-- [Saving levels](saving-levels.md), [Prefabs](prefabs.md), [Tile maps](tile-maps.md), [Tilesets and autotiling](tilesets.md), [Sprites from Aseprite](sprites.md).
+- [Saving levels](saving-levels.md), [Modules](modules.md), [Tile maps](tile-maps.md), [Tilesets and autotiling](tilesets.md), [Sprites from Aseprite](sprites.md).
 - [Checking a project](checking-a-project.md) and [Playing a game from the command line](playing-from-the-command-line.md): trying files a script wrote.
 - [Backups and upgrades](backups-and-upgrades.md): how older files are upgraded.
 - Concepts: [project, asset, sidecar](concepts.md#projects), [level, entity, component](concepts.md#the-level), [state](concepts.md#game-code), [2D terms](concepts.md#2d).

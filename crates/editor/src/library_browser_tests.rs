@@ -190,7 +190,7 @@ fn right_click_on_space_makes_things_in_the_folder_shown() {
         assert!(h.query_by_label(row).is_some(), "{row}");
     }
     assert!(
-        h.query_by_label("New prefab").is_some(),
+        h.query_by_label("New module").is_some(),
         "unfinished, shown"
     );
     h.get_by_label("New folder").click();

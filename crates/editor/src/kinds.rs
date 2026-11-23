@@ -193,7 +193,7 @@ pub(crate) fn command(command: ShellCommand) -> PartKind {
         // Lights are lamps on sprites in 2D too (decision 0092).
         // Turning and scaling snap in both views. A tileset's tools come
         // with its file (its tab is shared). The Library's kind filters
-        // mix kinds: Models holds prefabs, Maps holds levels.
+        // mix kinds: Models holds modules, Maps holds levels.
         C::CloseProject
         | C::NewLevel
         | C::OpenLevel
@@ -217,7 +217,7 @@ pub(crate) fn command(command: ShellCommand) -> PartKind {
         | C::AddCamera
         | C::AddReverbZone
         | C::AddTriggerZone
-        | C::MakePrefab
+        | C::MakeModule
         | C::SnapAngles
         | C::SnapScale
         | C::ViewportTools
@@ -299,7 +299,7 @@ pub(crate) fn menu(command: MenuCommand) -> PartKind {
         | M::AddPointLight
         | M::AddSpotlight
         | M::AddCamera
-        | M::MakePrefab
+        | M::MakeModule
         | M::ExpandAll
         | M::CollapseAll => PartKind::Shared,
     }

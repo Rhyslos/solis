@@ -28,8 +28,8 @@ pub const OWN_FOLDERS: &[&str] = &["builds", "saves", "recordings"];
 pub const CACHE_FOLDER: &str = ".solis";
 /// The project file's format version this build writes and reads.
 /// Version 2 is a project whose levels are `.sollevel` files (decision
-/// 0118: areas renamed levels); version 3 one whose prefabs are
-/// `.prefab.lst` files (assemblies renamed prefabs).
+/// 0118: areas renamed levels); version 3 one whose modules are
+/// `.module.lst` files (assemblies renamed modules).
 pub const FORMAT: u32 = 3;
 
 /// The project file's version and upgraders (Phase 8, C1): each step
@@ -40,7 +40,7 @@ pub static PROJECT_FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgr
     name: "project",
     current: FORMAT,
     version_of: format_key_version,
-    steps: &[levels_not_areas, prefabs_not_assemblies],
+    steps: &[levels_not_areas, modules_not_assemblies],
 };
 
 /// Version 1 to 2 (decision 0118): nothing in the file itself changes.
@@ -53,11 +53,11 @@ fn levels_not_areas(_: &mut toml::Table) -> Result<(), String> {
 }
 
 /// Version 2 to 3 (decision 0118): nothing in the file itself changes.
-/// A project at version 3 keeps its prefabs as `.prefab.lst` files, moved
+/// A project at version 3 keeps its modules as `.module.lst` files, moved
 /// from an assembly's `.solassembly` when it was opened, which a build
 /// from before can't read: such a build refuses the project as one from a
-/// newer Solis, rather than opening it with every copy missing its prefab.
-fn prefabs_not_assemblies(_: &mut toml::Table) -> Result<(), String> {
+/// newer Solis, rather than opening it with every copy missing its module.
+fn modules_not_assemblies(_: &mut toml::Table) -> Result<(), String> {
     Ok(())
 }
 
@@ -907,7 +907,7 @@ mod tests {
     #[test]
     fn a_project_of_format_1_is_brought_to_format_3_keeping_what_it_says() {
         // Decision 0118: format 2 is a project whose levels are .sollevel,
-        // and format 3 one whose prefabs are .prefab.lst.
+        // and format 3 one whose modules are .module.lst.
         assert_eq!(FORMAT, 3);
         assert!(PROJECT_FORMAT.is_complete());
         let root = test_folder("format-2");
@@ -936,7 +936,7 @@ mod tests {
     }
 
     #[test]
-    fn a_build_from_before_prefabs_refuses_a_format_3_project_as_newer() {
+    fn a_build_from_before_modules_refuses_a_format_3_project_as_newer() {
         // The reader of the build before R5: format 2 at most.
         let before = reflect::upgrade::Format::<toml::Table> {
             name: "project",

@@ -8,7 +8,7 @@
 //! names as a state's option (`Item.IronSword`), and up to [`MAX_COLUMNS`]
 //! typed columns: whole numbers, numbers, text, yes or no, a choice of the
 //! column's own options, one of the project's names (a sound, a picture, a
-//! prefab…) and colours. Rows keep their order, which is the order game
+//! module…) and colours. Rows keep their order, which is the order game
 //! code lists them in.
 //!
 //! The file is [`mod@file`]'s; spreadsheet text (CSV, and the tab-separated

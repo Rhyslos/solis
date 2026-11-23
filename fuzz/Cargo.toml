@@ -89,8 +89,8 @@ doc = false
 bench = false
 
 [[bin]]
-name = "prefab_file"
-path = "fuzz_targets/prefab_file.rs"
+name = "module_file"
+path = "fuzz_targets/module_file.rs"
 test = false
 doc = false
 bench = false

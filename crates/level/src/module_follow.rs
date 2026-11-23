@@ -1,25 +1,25 @@
-//! Copies following a prefab whose settings' values changed, without
+//! Copies following a module whose settings' values changed, without
 //! rebuilding the level (Shared 1f's loose ends).
 //!
-//! Saving a prefab usually changes values: a lamp's strength, a crate's
+//! Saving a module usually changes values: a lamp's strength, a crate's
 //! colour. Then each copy follows by a change to the same fields, wherever
 //! it doesn't change them itself, which is what collapsing every copy to
-//! its own changes and expanding it again from the new prefab would give,
+//! its own changes and expanding it again from the new module would give,
 //! at a fraction of the cost: no copy is made twice and no level is
-//! compared whole. Saving a prefab with 1,000 copies took 14 ms that way,
+//! compared whole. Saving a module with 1,000 copies took 14 ms that way,
 //! against a frame's 8 ms.
 //!
-//! (The one difference: a copy that lacks a field the prefab didn't
+//! (The one difference: a copy that lacks a field the module didn't
 //! change keeps lacking it, where the whole way fills it in; that field
 //! wasn't this save's.)
 //!
 //! Anything else (a part added, removed, renamed or moved, a component
 //! added or taken off, a value that names an entity) gives [`None`], and
-//! the caller rebuilds the copies the whole way ([`crate::prefab`]).
+//! the caller rebuilds the copies the whole way ([`crate::module`]).
 
 use crate::document::{EntityData, Level};
 use crate::edit::Edit;
-use crate::prefab::Walk;
+use crate::module::Walk;
 use reflect::{AssetId, EntityId, Value};
 use std::collections::HashMap;
 
@@ -32,7 +32,7 @@ struct Changed {
     now: Option<Value>,
 }
 
-/// What changed between two versions of a prefab, when only its values
+/// What changed between two versions of a module, when only its values
 /// did: the fields that changed, by the path to their part.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ValueChanges {
@@ -45,8 +45,8 @@ impl ValueChanges {
         self.by_path.is_empty()
     }
 
-    /// The changes between `old` and `new`, each a prefab's contents
-    /// expanded (as `Expander::prefab` gives them) with its root, when
+    /// The changes between `old` and `new`, each a module's contents
+    /// expanded (as `Expander::module` gives them) with its root, when
     /// only values differ: the same parts at the same paths, with the same
     /// names, parents, places, links and components, and no changed value
     /// naming an entity. `None` otherwise. The root's name, parent and
@@ -71,8 +71,8 @@ impl ValueChanges {
                 || (was.name == now.name
                     && was.order == now.order
                     && path_of(&old_walk, was.parent) == path_of(&new_walk, now.parent));
-            let same_link = was.origin.as_ref().map(|o| (o.prefab, &o.path))
-                == now.origin.as_ref().map(|o| (o.prefab, &o.path));
+            let same_link = was.origin.as_ref().map(|o| (o.module, &o.path))
+                == now.origin.as_ref().map(|o| (o.module, &o.path));
             if !same_place || !same_link || !was.components.keys().eq(now.components.keys()) {
                 return None;
             }
@@ -84,14 +84,14 @@ impl ValueChanges {
         Some(changes)
     }
 
-    /// The edits that make every copy of `prefab` in `level` follow these
+    /// The edits that make every copy of `module` in `level` follow these
     /// changes: each changed field of each part, where the copy has the
-    /// prefab's old value (or none); a field the copy changed itself
+    /// module's old value (or none); a field the copy changed itself
     /// keeps the copy's value, as a copy's own change wins.
-    pub fn follow(&self, level: &Level, prefab: AssetId) -> Vec<Edit> {
+    pub fn follow(&self, level: &Level, module: AssetId) -> Vec<Edit> {
         let mut edits = Vec::new();
         for (id, entity) in level.iter() {
-            let Some(origin) = entity.origin.as_ref().filter(|o| o.prefab == prefab) else {
+            let Some(origin) = entity.origin.as_ref().filter(|o| o.module == module) else {
                 continue;
             };
             let Some(fields) = self.by_path.get(&origin.path) else {
@@ -156,5 +156,5 @@ fn names_entity(value: &Value) -> bool {
 }
 
 #[cfg(test)]
-#[path = "prefab_follow_tests.rs"]
+#[path = "module_follow_tests.rs"]
 mod tests;

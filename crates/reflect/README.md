@@ -11,7 +11,7 @@ Give every part of Solis one way to see any component, whether it's built in, wr
 - the inspector draws fields from a schema;
 - level files write values in a schema's field order;
 - undo records values;
-- prefab overrides name a component and a field.
+- module overrides name a component and a field.
 
 Nothing here knows Rust types beyond the [`Component`] trait for typed access, so components defined while the program runs work the same way as built-in ones.
 
@@ -37,4 +37,4 @@ Decision 0089: `atlas` joins the data kinds (`tools.atlas.lst`, Atlas Crop). Usa
 
 Tools 1a, B1: `FieldKind::Numbers`, a list of numbers of any length (a brush's points and faces), kept and saved as it is; Properties only says how many there are, and game code can't declare one.
 
-Stage 1, field hints (decision 0127): `Hint` gains `step`, `tip` (a sentence under the field), `group` (a heading), `slider`, `multiline` and `hidden`, and holds `unit` and `help` as `Cow<'static, str>`, so hints read from game code can be kept beside Solis's own; `Offer::Names(NameKind)` says a state field holds one of the project's names (a sound, a clip, a picture, a prefab, a screen, a level, a tag), picked from in Properties.
+Stage 1, field hints (decision 0127): `Hint` gains `step`, `tip` (a sentence under the field), `group` (a heading), `slider`, `multiline` and `hidden`, and holds `unit` and `help` as `Cow<'static, str>`, so hints read from game code can be kept beside Solis's own; `Offer::Names(NameKind)` says a state field holds one of the project's names (a sound, a clip, a picture, a module, a screen, a level, a tag), picked from in Properties.

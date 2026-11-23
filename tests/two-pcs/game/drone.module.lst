@@ -1,5 +1,5 @@
--- A prefab. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
-fetch "solis/data/prefab":[Part];
+-- A module. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
+fetch "solis/data/module":[Part];
 
 lock int version = 1;
 lock string root = "2PC00000000D1";

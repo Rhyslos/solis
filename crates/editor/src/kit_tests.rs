@@ -28,7 +28,7 @@ fn program() -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&["drones/drone", "nowhere"]),
+        &script::project_names::Names::with_modules(&["drones/drone", "nowhere"]),
     );
     files.push(("main.lst".into(), MAIN.to_string()));
     let code = script::Code {
@@ -458,7 +458,7 @@ fn the_manual_s_hopper_is_sound_code_and_hops() {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&["drones/drone", "nowhere"]),
+        &script::project_names::Names::with_modules(&["drones/drone", "nowhere"]),
     );
     files.push(("main.lst".into(), code.to_string()));
     let compiled = script::compile(&script::Code {

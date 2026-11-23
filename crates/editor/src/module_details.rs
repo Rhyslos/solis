@@ -1,4 +1,4 @@
-//! A prefab in Details (board 07, panel 2): its picture, name, kind and
+//! A module in Details (board 07, panel 2): its picture, name, kind and
 //! folder, how many times it's placed and in how many levels, its parts,
 //! and **Open** and **Place**. The app counts the copies in the project's
 //! levels on a worker ([`crate::WorkbenchAction::CountPlaced`]); the open level's
@@ -12,7 +12,7 @@ use crate::tokens::{self, size, text};
 use egui::{RichText, Ui};
 use reflect::AssetId;
 
-/// The copies of a prefab in the project's levels, as the app counted
+/// The copies of a module in the project's levels, as the app counted
 /// them on disk: each level's path inside the project, and its count.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Placed {
@@ -20,10 +20,10 @@ pub struct Placed {
     pub levels: Vec<(String, usize)>,
 }
 
-/// What Details shows of a prefab, worked out before it's drawn.
+/// What Details shows of a module, worked out before it's drawn.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct PrefabDetails {
-    /// The prefab's file.
+pub(crate) struct ModuleDetails {
+    /// The module's file.
     pub(crate) item: LibraryItem,
     /// Its parts: the entities right under its root, each with its icon
     /// and colour.
@@ -38,23 +38,23 @@ impl Workbench {
         self.open.placed.insert(id, placed);
     }
 
-    /// Details' prefab, while a prefab is what it shows.
-    pub(crate) fn prefab_details(&self) -> Option<PrefabDetails> {
+    /// Details' module, while a module is what it shows.
+    pub(crate) fn module_details(&self) -> Option<ModuleDetails> {
         let (path, _) = self.open.sound_shown.as_ref()?;
         let item = self
             .open
             .library
             .iter()
-            .find(|i| &i.path == path && i.kind == crate::library::LibraryKind::Prefab)?
+            .find(|i| &i.path == path && i.kind == crate::library::LibraryKind::Module)?
             .clone();
         let id = item.id?;
         let parts = self
             .open
-            .prefabs
+            .modules
             .get(&id)
             .map(|file| parts_of(file, &self.open.models))
             .unwrap_or_default();
-        Some(PrefabDetails {
+        Some(ModuleDetails {
             placed: self.placed_count(id),
             parts,
             item,
@@ -78,7 +78,7 @@ impl Workbench {
             .filter(|(entity, e)| {
                 e.origin
                     .as_ref()
-                    .is_some_and(|o| o.prefab == id && o.path.is_empty() && o.instance == *entity)
+                    .is_some_and(|o| o.module == id && o.path.is_empty() && o.instance == *entity)
             })
             .count();
         let mut copies = here;
@@ -94,12 +94,12 @@ impl Workbench {
     }
 }
 
-/// The entities right under a prefab's root, in their order.
+/// The entities right under a module's root, in their order.
 fn parts_of(
     file: &level::text::LevelFile,
     models: &std::collections::BTreeMap<AssetId, crate::models::ModelInfo>,
 ) -> Vec<(Icon, egui::Color32, String)> {
-    let level::text::FileKind::Prefab { root } = file.kind else {
+    let level::text::FileKind::Module { root } = file.kind else {
         return Vec::new();
     };
     let mut under: Vec<(&str, &level::EntityData)> = file
@@ -118,7 +118,7 @@ fn parts_of(
         .collect()
 }
 
-/// The side of Details' picture of a prefab (board 07).
+/// The side of Details' picture of a module (board 07).
 const PICTURE: f32 = 64.0;
 
 /// "Placed 6 times, in 2 levels" (or "Not placed yet").
@@ -134,11 +134,11 @@ pub(crate) fn placed_words(placed: Option<(usize, usize)>) -> String {
     }
 }
 
-/// Draws Details for a prefab. Returns what was asked for: Open (its page),
+/// Draws Details for a module. Returns what was asked for: Open (its page),
 /// or Place.
 pub(crate) fn details(
     ui: &mut Ui,
-    details: &PrefabDetails,
+    details: &ModuleDetails,
     requests: &mut Vec<PropertyRequest>,
     library: &mut Vec<LibraryRequest>,
 ) {
@@ -167,8 +167,8 @@ pub(crate) fn details(
                     None => icons::icon(
                         ui.painter(),
                         picture.shrink(side * 0.3),
-                        Icon::Prefab,
-                        crate::theme::kind::PREFAB,
+                        Icon::Module,
+                        crate::theme::kind::MODULE,
                     ),
                 }
                 ui.vertical(|ui| {
@@ -179,9 +179,9 @@ pub(crate) fn details(
                     );
                     let folder = item.folder();
                     let kind = if folder.is_empty() {
-                        "Prefab".to_string()
+                        "Module".to_string()
                     } else {
-                        format!("Prefab \u{b7} {folder}")
+                        format!("Module \u{b7} {folder}")
                     };
                     ui.label(RichText::new(kind).color(tokens::text_meta()));
                     ui.label(
@@ -212,11 +212,11 @@ pub(crate) fn details(
             ui.horizontal(|ui| {
                 if crate::widgets::button::Button::plain("Open")
                     .show(ui)
-                    .on_hover_text("Opens the prefab on its own page")
+                    .on_hover_text("Opens the module on its own page")
                     .clicked()
                     && let Some(id) = item.id
                 {
-                    requests.push(PropertyRequest::OpenPrefab(id));
+                    requests.push(PropertyRequest::OpenModule(id));
                 }
                 if crate::widgets::button::Button::plain("Place")
                     .show(ui)
@@ -232,5 +232,5 @@ pub(crate) fn details(
 }
 
 #[cfg(test)]
-#[path = "prefab_details_tests.rs"]
+#[path = "module_details_tests.rs"]
 mod tests;

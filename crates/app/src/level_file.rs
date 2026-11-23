@@ -44,8 +44,8 @@ pub struct LevelFiles {
 }
 
 impl LevelFiles {
-    /// Reads the level or prefab file at `path`, within the reader's
-    /// limits (placed prefabs not yet expanded).
+    /// Reads the level or module file at `path`, within the reader's
+    /// limits (placed modules not yet expanded).
     pub fn read(
         path: &Path,
         registry: &reflect::Registry,

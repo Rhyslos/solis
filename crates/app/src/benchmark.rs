@@ -26,15 +26,15 @@ pub const LEVELS: [(&str, u32); 3] = [
 /// The level the benchmark opens on.
 pub const FIRST_LEVEL: &str = LEVELS[0].0;
 
-/// The ship's model, its prefab, and the game's code, inside the assets.
+/// The ship's model, its module, and the game's code, inside the assets.
 const SHIP_MODEL: &str = "ships/fighter.glb";
-const SHIP_PREFAB: &str = "ships/fighter.prefab.lst";
+const SHIP_MODULE: &str = "ships/fighter.module.lst";
 const CODE: &str = "main.lst";
 
 /// The game's code, from the very file the project shows.
 pub const MAIN: &str = include_str!("../../../samples/benchmark/assets/main.lst");
 
-/// The ship model's ID, fixed so the prefab made here can name it.
+/// The ship model's ID, fixed so the module made here can name it.
 fn ship_model() -> AssetId {
     AssetId(Id::from_raw(0x5015_BE4C_0000_0001).unwrap_or_else(Id::random))
 }
@@ -65,8 +65,8 @@ pub fn files() -> Vec<(String, Vec<u8>)> {
     let registry = registry.as_ref().unwrap_or(&empty);
     let path_of = |id: AssetId| (id == ship_model()).then(|| SHIP_MODEL.to_string());
     files.push((
-        SHIP_PREFAB.to_string(),
-        level::prefab_file::write(&fighter(), registry)
+        SHIP_MODULE.to_string(),
+        level::module_file::write(&fighter(), registry)
             .unwrap_or_default()
             .into_bytes(),
     ));
@@ -79,7 +79,7 @@ pub fn files() -> Vec<(String, Vec<u8>)> {
     files
 }
 
-/// The fighter prefab: one entity with the ship's model and its Lust
+/// The fighter module: one entity with the ship's model and its Lust
 /// component.
 fn fighter() -> LevelFile {
     let root = entity(1);
@@ -95,7 +95,7 @@ fn fighter() -> LevelFile {
     let mut level = Level::new();
     level.insert(root, ship);
     LevelFile {
-        kind: FileKind::Prefab { root },
+        kind: FileKind::Module { root },
         level,
         overrides: Default::default(),
     }
@@ -167,8 +167,8 @@ mod tests {
         let (mut files, _) = script::describe::descriptions_for(
             "Test Engine 9.9.9",
             "solis",
-            &script::project_names::Names::with_prefabs(&[
-                SHIP_PREFAB.trim_end_matches(asset_db::PREFAB_ENDING)
+            &script::project_names::Names::with_modules(&[
+                SHIP_MODULE.trim_end_matches(asset_db::MODULE_ENDING)
             ]),
         );
         files.push(("main.lst".into(), MAIN.to_string()));
@@ -198,8 +198,8 @@ mod tests {
         let registry = level::builtin::registry().unwrap();
         for (path, bytes) in files() {
             let text = String::from_utf8_lossy(&bytes);
-            if path.ends_with(".sollevel") || path.ends_with(asset_db::PREFAB_ENDING) {
-                let file = level::prefab_file::read(&text, &registry)
+            if path.ends_with(".sollevel") || path.ends_with(asset_db::MODULE_ENDING) {
+                let file = level::module_file::read(&text, &registry)
                     .or_else(|_| level::text::read_file(&text, &registry))
                     .unwrap_or_else(|e| panic!("{path}: {e}"));
                 assert!(!file.level.is_empty(), "{path}");
@@ -248,18 +248,18 @@ mod play_tests {
         });
         w.set_program(Some(std::sync::Arc::new(compiled)));
         let registry = w.document().registry.clone();
-        let fighter = level::prefab_file::read(
-            &std::fs::read_to_string(assets.join(SHIP_PREFAB)).unwrap(),
+        let fighter = level::module_file::read(
+            &std::fs::read_to_string(assets.join(SHIP_MODULE)).unwrap(),
             &registry,
         )
         .unwrap();
         let id = AssetId::random();
-        w.set_prefab(id, std::sync::Arc::new(fighter));
+        w.set_module(id, std::sync::Arc::new(fighter));
         w.set_library(vec![editor::LibraryItem {
             id: Some(id),
-            kind: editor::LibraryKind::Prefab,
+            kind: editor::LibraryKind::Module,
             name: "fighter".into(),
-            path: SHIP_PREFAB.into(),
+            path: SHIP_MODULE.into(),
             thumbnail: None,
         }]);
         let mut level = level::text::read(

@@ -95,7 +95,7 @@ unbuilt! {
     LibSourceHistory: "lib.source.history" => ("History", Shared11, "Lists the earlier versions of the selected file"),
     LibUseShowInLevel: "lib.use.show-in-level" => ("Show in level", NotPlanned, "Finds where the selected file is used in the open level"),
     LibPreviewModes: "lib.preview.modes" => ("Preview modes", NotPlanned, "Turns the preview around and shows it lit, as wires or by its picture layout"),
-    LibUsedByAllKinds: "lib.used-by.all-kinds" => ("Used by", NotPlanned, "Lists every level and prefab that uses the selected file"),
+    LibUsedByAllKinds: "lib.used-by.all-kinds" => ("Used by", NotPlanned, "Lists every level and module that uses the selected file"),
     LibShelfImportQueue: "lib.shelf.import-queue" => ("Import queue", NotPlanned, "Lists the files being brought in, with how far each has got"),
     LibPaste: "lib.paste" => ("Paste", NotPlanned, "Puts files you copied into this folder"),
     LibDragToHome: "lib.drag-to-home" => ("Drag to Home", NotPlanned, "Carries a file to the Home tab by dragging it onto the tab"),

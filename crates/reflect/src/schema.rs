@@ -105,7 +105,7 @@ impl Hint {
 }
 
 /// A kind of the project's names (`solis/project.lst`), which a state
-/// field of that kind picks from: a sound, a prefab, a picture… Kept as
+/// field of that kind picks from: a sound, a module, a picture… Kept as
 /// the option's name, so a renamed file follows (decision 0127).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum NameKind {
@@ -116,8 +116,8 @@ pub enum NameKind {
     /// A picture, or a part of one cut with Atlas Crop
     /// (`Picture.Sprites.Hero`).
     Picture,
-    /// A prefab (`Prefab.Ships.Fighter`).
-    Prefab,
+    /// A module (`Module.Ships.Fighter`).
+    Module,
     /// A game screen (`Screen.PauseMenu`).
     Screen,
     /// A level (`Level.Forest`).
@@ -134,7 +134,7 @@ impl NameKind {
         Self::Sound,
         Self::Clip,
         Self::Picture,
-        Self::Prefab,
+        Self::Module,
         Self::Screen,
         Self::Level,
         Self::Tag,
@@ -147,7 +147,7 @@ impl NameKind {
             Self::Sound => "Sound",
             Self::Clip => "Clip",
             Self::Picture => "Picture",
-            Self::Prefab => "Prefab",
+            Self::Module => "Module",
             Self::Screen => "Screen",
             Self::Level => "Level",
             Self::Tag => "Tag",
@@ -188,7 +188,7 @@ pub enum Offer {
     /// (`6:00 #e99a6a, 9:00 #fff6e0`; decision 0092).
     DayColours,
     /// The project's names of this kind, for a state field holding one
-    /// (a sound, a prefab: decision 0127): a list with search and a
+    /// (a sound, a module: decision 0127): a list with search and a
     /// preview, and the Library's files dropped on it.
     Names(NameKind),
 }

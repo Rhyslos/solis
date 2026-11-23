@@ -61,13 +61,13 @@ pub(crate) fn about(component: &str) -> Option<&'static str> {
     })
 }
 
-/// What the card says of a placed copy of a prefab: the Level panel's
+/// What the card says of a placed copy of a module: the Level panel's
 /// marks, which its foot has no room for (board 07's legend), and
 /// Properties' (decision 0118).
-const COPY_HINT: &str = "A placed copy of a prefab: it follows the prefab unless it changes a \
+const COPY_HINT: &str = "A placed copy of a module: it follows the module unless it changes a \
     setting. In the Level panel a link marks a copy and an orange dot one that changes some \
-    settings; a plain entity has no mark. In Properties, white values come from the prefab, a dot \
-    marks one this copy changes, and \u{21b6} puts it back. Open edits the prefab; Unlink makes \
+    settings; a plain entity has no mark. In Properties, white values come from the module, a dot \
+    marks one this copy changes, and \u{21b6} puts it back. Open edits the module; Unlink makes \
     the copy its own.";
 impl Workbench {
     /// The hints for now: what's selected and what to do with it, or how

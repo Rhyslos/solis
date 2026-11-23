@@ -3,7 +3,7 @@
 > Your game's own rules (how a turret aims, when a door opens) are written as code, as components you put on entities. Solis checks the code as you save, shows its fields in Properties, and runs it when you press Play.
 
 ## When to use it
-Whenever your game needs to *do* something: react to the player, count score, move things on its own. Levels and prefabs say what's in the world; [game code](concepts.md#game-code) says what happens in it.
+Whenever your game needs to *do* something: react to the player, count score, move things on its own. Levels and modules say what's in the world; [game code](concepts.md#game-code) says what happens in it.
 
 Solis games can be written in three languages:
 - **[Lust](concepts.md#game-code)**, made for Solis's kind of games and the one this manual teaches first;
@@ -17,7 +17,7 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 ## How to use it
 1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in it (the Library leaves it out, so it's seen only in Explorer). Everything in it is written by Solis for your code to read, and written again whenever the project opens, so changes you make there don't last:
    - a Lust file for each part of the engine (`world.lst`, `entity.lst`, `input.lst` and so on). They describe what your code can ask of the engine, such as `World:say` (write in the Console) or `moveTo` (put an entity somewhere). [What the engine offers](#what-the-engine-offers) lists every call and the file it's in.
-   - `project.lst`, which holds your project's own names, such as its prefabs, written again whenever you add or rename one.
+   - `project.lst`, which holds your project's own names, such as its modules, written again whenever you add or rename one.
    - folders: `kit` holds the [ready-made components](concepts.md#simulation), `animators` and `maps` hold a file for each animator and tile map you make, and `data` says what the Lust files Solis makes (tile maps, tilesets and the like) hold.
 
    Why files? Lust checks every call you write against them before the game runs, so a misspelt call is a mistake you see at once, not a surprise while playing.
@@ -159,7 +159,7 @@ end
 4. Change **Speed** in Properties while it plays: the running Mover takes the new speed at once, and keeps everything else it has (here, where it is). While the game plays, Properties shows a game code component's values as they are right now, not the ones it started with: a turret that has fired shows the ammo it has left. Why? So you can watch what your code is doing without writing anything to the Console. A value you set there is taken by the running component as you set it, even when it's the value it started with: type the turret's full ammo and it has full ammo again. (With several entities selected, it shows the values they started with.)
 5. Press **Stop**. Everything the game changed is back as it was before Play. The Speed you changed yourself is a change to the level, so Solis lists it and asks: **Keep** it, or **Undo all** (see [Play mode](play-mode.md)).
 
-What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `vec2`, `rotation`, `colour`, `entity` (another entity, or `nothing`), and one of the project's names (a sound, a picture, a prefab: see [Field hints and the project's names](#field-hints-and-the-projects-names)).
+What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `vec2`, `rotation`, `colour`, `entity` (another entity, or `nothing`), and one of the project's names (a sound, a picture, a module: see [Field hints and the project's names](#field-hints-and-the-projects-names)).
 
 - **`vec2`** is two numbers, for 2D: a place on a tile map, a direction to walk (`vec2 speed = [2, -1];`). Properties shows its X and Y.
 - **`colour`** is red, green and blue from 0 to 1, and how solid it is (`colour tint = orange5;`, `colour shadow = [0, 0, 0, 0.5];`). Properties shows a colour picker; picking a colour keeps how see-through it was. **Why it matters:** a field of either kind is saved in the level and in save games, and a loaded game carries on with it exactly as it was.
@@ -186,11 +186,11 @@ So a game runs the same way on a computer with 2 cores or 32. Most code never no
 
 ## Field hints and the project's names
 
-A component's own settings can say how Properties shows them: a **slider** between two limits, a **step** values snap to, a **unit** after the number, a sentence of **help** under the field, a **heading** over a group of fields, text over **several lines**, or not shown at all. And a field can hold one of the project's own things (a sound, a sprite's clip, a picture, a prefab, a screen, a level or a tag), which Properties shows as a list to pick from. **Why?** A designer tuning a guard in Properties shouldn't have to guess that its speed makes sense between 0 and 10, or type a sound's name: the code says so once, and Properties helps everyone who sets it.
+A component's own settings can say how Properties shows them: a **slider** between two limits, a **step** values snap to, a **unit** after the number, a sentence of **help** under the field, a **heading** over a group of fields, text over **several lines**, or not shown at all. And a field can hold one of the project's own things (a sound, a sprite's clip, a picture, a module, a screen, a level or a tag), which Properties shows as a list to pick from. **Why?** A designer tuning a guard in Properties shouldn't have to guess that its speed makes sense between 0 and 10, or type a sound's name: the code says so once, and Properties helps everyone who sets it.
 
 ```lust
 -- guard.lst: a guard whose settings explain themselves.
-fetch "solis/project":[Sound, Picture, Prefab];
+fetch "solis/project":[Sound, Picture, Module];
 
 component Guard {
     has {
@@ -200,7 +200,7 @@ component Guard {
         -- What it uses: picked from the project's own files.
         Sound alertSound = Sound.Sfx.Footstep;
         Picture portrait = Picture.Sprites.Tools;
-        Prefab drops = Prefab.Drones.Drone;
+        Module drops = Module.Drones.Drone;
 
         -- How it sees.
         float sightRange = 8.0; -- [range 0 20, unit "m", group "Seeing"]
@@ -257,7 +257,7 @@ local Guard = component("Guard", {
     -- A kind that's one of the project's names picks from them.
     { "alertSound", "Sound", "Sfx.Footstep" },
     { "portrait", "Picture", "Sprites.Tools" },
-    { "drops", "Prefab", "Drones.Drone" },
+    { "drops", "Module", "Drones.Drone" },
     { "sightRange", "float", 8.0, nil, { range = { 0, 20 }, unit = "m", group = "Seeing" } },
     { "says", "string", "Halt!", nil, { multiline = true } },
     { "seen", "int", 0, nil, { hidden = true } },
@@ -287,7 +287,7 @@ end
 
 **Mistakes in a hint** (a word Solis doesn't know, `range 10 0`, a range on a sound) are listed in Problems with their line, saying what to write. The rest of the code runs, and the field shows without that hint. Hints belong to the code, not the level: they're never saved in a level, and change as soon as you save new code.
 
-**The project's names.** A field whose kind is `Sound`, `Clip`, `Picture`, `Prefab`, `Screen`, `Level`, `Tag` or `Font` (from `solis/project.lst`) holds one of them, and Properties shows a list to pick from: a box to find one by typing, the project's folders as headings, each name with its file's picture or its kind's icon, and on a sound a **▶** to hear it, in the list and after the field. You can also **drag a file from the Library onto the field**: it lights up when the file is one it can hold, and letting go sets it, one undo step. The field keeps the name (`Sfx.Alert`), so **renaming or moving the file in the Library changes every field naming it** in the open level, as one undo step. In Lua, write the kind's name as the field's kind (`"Sound"`); in Rust, a `Choice` field with `Offer::Names(NameKind::Sound)`.
+**The project's names.** A field whose kind is `Sound`, `Clip`, `Picture`, `Module`, `Screen`, `Level`, `Tag` or `Font` (from `solis/project.lst`) holds one of them, and Properties shows a list to pick from: a box to find one by typing, the project's folders as headings, each name with its file's picture or its kind's icon, and on a sound a **▶** to hear it, in the list and after the field. You can also **drag a file from the Library onto the field**: it lights up when the file is one it can hold, and letting go sets it, one undo step. The field keeps the name (`Sfx.Alert`), so **renaming or moving the file in the Library changes every field naming it** in the open level, as one undo step. In Lua, write the kind's name as the field's kind (`"Sound"`); in Rust, a `Choice` field with `Offer::Names(NameKind::Sound)`.
 
 **Pictures** are the project's PNG and JPEG files (`Picture.Portraits.GuardFace` for `portraits/guardFace.png`), with the parts cut out of each with [Atlas Crop](atlas-crop.md) inside it (`Picture.Sprites.Tools.Axe`). **Levels** are its `.sollevel` files (`Level.Forest.Cave`), and **fonts** its `.ttf` and `.otf` files (`Font.Fonts.Lora`; see [Text on screens](screen-text.md)).
 
@@ -529,11 +529,11 @@ end
 
 ## Making and removing entities
 
-Game code can make copies of [prefabs](prefabs.md) while it plays, and take entities away:
+Game code can make copies of [modules](modules.md) while it plays, and take entities away:
 
 ```lust
 fetch "solis/world":World;
-fetch "solis/project":Prefab;
+fetch "solis/project":Module;
 
 component Hangar {
     has {
@@ -542,7 +542,7 @@ component Hangar {
 
     method update(float dt) {
         is made < 10? then {
-            entity ship = World:spawn(Prefab.Ships.Fighter, [made * 5, 0, 10]);
+            entity ship = World:spawn(Module.Ships.Fighter, [made * 5, 0, 10]);
             made = made + 1;
         }
     }
@@ -563,7 +563,7 @@ pub struct Hangar {
 impl RustComponent for Hangar {
     fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
         if self.made < 10 {
-            // The prefab by its file in the project, without .prefab.lst.
+            // The module by its file in the project, without .module.lst.
             let place = Vec3::new(self.made as f32 * 5.0, 0.0, 10.0);
             let _ship = cx.host().spawn("ships/fighter", place);
             self.made += 1;
@@ -581,18 +581,18 @@ local Hangar = component("Hangar", {
 
 function Hangar:update(dt)
     if self.made < 10 then
-        -- The prefab's name as text: Prefab.Ships.Fighter is "Ships.Fighter".
+        -- The module's name as text: Module.Ships.Fighter is "Ships.Fighter".
         local ship = solis.World:spawn("Ships.Fighter", vec3(self.made * 5, 0, 10))
         self.made = self.made + 1
     end
 end
 ```
 
-- **Which prefab:** one of the project's, named from its file with folders as options inside options: `ships/fighter.prefab.lst` is `Prefab.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove a prefab, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Prefab.None` is there when the project has none, and makes nothing.
+- **Which module:** one of the project's, named from its file with folders as options inside options: `ships/fighter.module.lst` is `Module.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Module.None` is there when the project has none, and makes nothing.
 - **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Level panel while playing, and are gone when you press **Stop**, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours ([Play mode](play-mode.md)), so a change you make to one of these copies goes with it.
 - At most 10,000 copies are made in one tick, and a level holds at most a million entities; past that, the Console says so and the rest aren't made.
-- **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places a prefab (…) that isn't in the project, so nothing was made.* The reasons are those of [prefabs](prefabs.md) themselves: the prefab places another whose file is missing or can't be read, prefabs place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each prefab's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the prefab and press Play again.
+- **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places a module (…) that isn't in the project, so nothing was made.* The reasons are those of [modules](modules.md) themselves: the module places another whose file is missing or can't be read, modules place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each module's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the module and press Play again.
 - `despawn()` is how a component takes its own entity away, and `target:despawn()` takes another. It ends at the end of the tick.
 
 ### Spawning with values
@@ -602,7 +602,7 @@ A chest that drops a key wants the key to be *the red one*, from the moment it a
 ```lust
 -- main.lst: a chest that drops the red key once.
 fetch "solis/world":World;
-fetch "solis/project":Prefab;
+fetch "solis/project":Module;
 fetch "solis/components":PickupValues;
 
 state Item = [Blue, Red];
@@ -622,7 +622,7 @@ component Chest {
     method update(float dt) {
         is opened == false? then {
             PickupValues red = new PickupValues { item = Item.Red, count = 2 };
-            entity key = World:spawnWith(Prefab.Key, position(), [red]);
+            entity key = World:spawnWith(Module.Key, position(), [red]);
             opened = true;
         }
     }
@@ -633,8 +633,8 @@ end
 ```
 
 - **A values object for each component:** Solis makes one for each of your components, named after it with `Values` (`PickupValues`), with the same fields. Fetch it from `solis/components` and make one with `new`, writing the values you want to give in its braces, as for any class. A value of the wrong kind is a mistake before the game runs.
-- **Only what you write changes:** fields you don't write keep the prefab's values, and a field set after `new` (`red.count = 3;`) counts as written too. Give values for several components in one list: `[red, health]`.
-- **The copy's root:** the values go to the components on the prefab's root entity. If the root has no such component, the copy is still made, and the [Console](console.md) says once that the values were left out.
+- **Only what you write changes:** fields you don't write keep the module's values, and a field set after `new` (`red.count = 3;`) counts as written too. Give values for several components in one list: `[red, health]`.
+- **The copy's root:** the values go to the components on the module's root entity. If the root has no such component, the copy is still made, and the [Console](console.md) says once that the values were left out.
 - Everything else is as `World:spawn`: the copy joins at the end of the tick, and its first `update` is next tick, already with its values.
 
 ## Reading other entities
@@ -1055,8 +1055,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `entity World:the(Component which)` | The one entity with this component, as the tick started; none, or more than one, stops the component ([Reading other entities](#reading-other-entities)). |
 | `solis/components` | `KnightReading entity:knight()`, one for each component | A copy of another entity's component as the tick started, read-only, or `nothing` ([Reading other entities](#reading-other-entities)). |
 | `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
-| `solis/world` | `entity World:spawn(Prefab which, vec3 place)` | Makes a copy of one of the project's prefabs at a place (see Making and removing entities, below). |
-| `solis/world` | `entity World:spawnWith(Prefab which, vec3 place, SpawnValues array values)` | Makes a copy as `spawn` does, its root's components given these values before their first update ([Spawning with values](#spawning-with-values)). |
+| `solis/world` | `entity World:spawn(Module which, vec3 place)` | Makes a copy of one of the project's modules at a place (see Making and removing entities, below). |
+| `solis/world` | `entity World:spawnWith(Module which, vec3 place, SpawnValues array values)` | Makes a copy as `spawn` does, its root's components given these values before their first update ([Spawning with values](#spawning-with-values)). |
 | `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
 | `solis/world` | `float World:random()` | A random number from 0 up to 1 (see Random numbers, above). |
 | `solis/world` | `float World:randomRange(float low, float high)` | A random number from low up to high. |
@@ -1075,7 +1075,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |
-| `solis/project` | `state Prefab` | The project's prefabs, folders as options inside options (`Prefab.Ships.Fighter`). |
+| `solis/project` | `state Module` | The project's modules, folders as options inside options (`Module.Ships.Fighter`). |
 | `solis/sound` | `Audio:play(Sound event)` | Plays a sound event the same everywhere (see Sounds, above). |
 | `solis/sound` | `Audio:playAt(Sound event, vec3 place)` | Plays a sound event at a place in the world. |
 | `solis/sound` | `Audio:setVolume(Bus bus, float volume)` | Sets a bus's volume for the rest of the play, 0 to 1. |
@@ -1138,8 +1138,8 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `rotationOf(e)`, `turnTo(e, r)`, `nameOf(e)`, `despawn(e)` | `e:rotation()`, `e:turnTo(r)`, `e:name()`, `e:despawn()` |
 | `turnTo(this, facingAlong(d))` | `face(d)` |
 | `say`, `time`, `frameTime`, `find`, `fire`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
-| `spawn("ships/fighter", p)` | `World:spawn(Prefab.Ships.Fighter, p)` |
-| `Assembly.Ships.Fighter`, `fetch "solis/project":Assembly;` (assemblies are called prefabs, [decision 0118](../decisions/0118-the-editor-rethink.md)) | `Prefab.Ships.Fighter`, `fetch "solis/project":Prefab;`. The old name is a mistake that says the new one. Rust and Lua name a prefab by its path as text, which didn't change. |
+| `spawn("ships/fighter", p)` | `World:spawn(Module.Ships.Fighter, p)` |
+| `Assembly.Ships.Fighter`, `fetch "solis/project":Assembly;` (assemblies are called modules, [decision 0118](../decisions/0118-the-editor-rethink.md)) | `Module.Ships.Fighter`, `fetch "solis/project":Module;`. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change. |
 | `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
 | `held("Jump")`, `pressed`, `released`, `axis("Move")` | `Input:held(Action.Jump)` and so on, with `fetch "solis/input":Input;` and `fetch "solis/project":Action;` |
 | `bindingOf("Jump")`, `rebind("Jump", key)` | `Input:binding(Action.Jump)`, `Input:rebind(Action.Jump, key)` |

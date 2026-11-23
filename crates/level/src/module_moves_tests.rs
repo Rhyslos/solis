@@ -1,4 +1,4 @@
-//! Parts of placed prefabs moved and deleted, then saved and opened
+//! Parts of placed modules moved and deleted, then saved and opened
 //! again: whatever is done to a copy, the level that opens is the level
 //! that was saved (the review of Phase 9, BUG-56).
 
@@ -27,11 +27,11 @@ fn part(name: &str, parent: Option<u64>, x: f32) -> EntityData {
     data
 }
 
-fn copy_of(prefab: u64, name: &str, parent: Option<u64>, root: u64) -> EntityData {
+fn copy_of(module: u64, name: &str, parent: Option<u64>, root: u64) -> EntityData {
     let mut data = part(name, parent, root as f32);
     data.components.clear();
     data.origin = Some(Origin {
-        prefab: asset(prefab),
+        module: asset(module),
         instance: id(root),
         path: Vec::new(),
     });
@@ -48,7 +48,7 @@ fn stall() -> LevelFile {
     level.insert(id(4), part("Drawer", Some(3), 3.0));
     level.insert(id(5), part("Awning", Some(1), 4.0));
     LevelFile {
-        kind: FileKind::Prefab { root: id(1) },
+        kind: FileKind::Module { root: id(1) },
         level,
         overrides: Default::default(),
     }
@@ -62,7 +62,7 @@ fn market() -> LevelFile {
     level.insert(id(12), copy_of(STALL, "South stall", Some(10), 12));
     level.insert(id(13), part("Well", Some(10), 5.0));
     LevelFile {
-        kind: FileKind::Prefab { root: id(10) },
+        kind: FileKind::Module { root: id(10) },
         level,
         overrides: Default::default(),
     }
@@ -72,7 +72,7 @@ fn library() -> impl Fn(AssetId) -> Option<Arc<LevelFile>> {
     library_with(stall())
 }
 
-/// The library, with `stall` as the stall's file (a prefab changed
+/// The library, with `stall` as the stall's file (a module changed
 /// since the town was saved).
 fn library_with(stall: LevelFile) -> impl Fn(AssetId) -> Option<Arc<LevelFile>> {
     let stall = Arc::new(stall);
@@ -119,7 +119,7 @@ fn saved_and_opened(level: &Level) -> Level {
     opened_with(&saved(level, &lib), &lib)
 }
 
-/// `level` as its file's text, with the prefabs of `lib`.
+/// `level` as its file's text, with the modules of `lib`.
 fn saved(level: &Level, lib: Lookup<'_>) -> String {
     let registry = crate::builtin::registry().unwrap();
     let file = Expander::new(lib).collapse(level, FileKind::Level).unwrap();
@@ -128,7 +128,7 @@ fn saved(level: &Level, lib: Lookup<'_>) -> String {
     written
 }
 
-/// What a file's text opens as, with the prefabs of `lib`.
+/// What a file's text opens as, with the modules of `lib`.
 fn opened_with(written: &str, lib: Lookup<'_>) -> Level {
     let registry = crate::builtin::registry().unwrap();
     let read = text::read_file(written, &registry).unwrap();
@@ -159,7 +159,7 @@ fn move_to(level: &mut Level, entity: EntityId, parent: Option<EntityId>) -> boo
 fn a_part_moved_out_stays_when_the_part_it_was_under_is_deleted() {
     // BUG-56: the till dragged out of the counter, then the counter
     // deleted. Opened again, the till was gone: a removed part took
-    // everything the prefab has under it, wherever this copy had put it.
+    // everything the module has under it, wherever this copy had put it.
     for new_parent in [None, Some(id(60)), Some(of_stall(5)), Some(id(40))] {
         let mut level = town();
         let (counter, till, drawer) = (of_stall(2), of_stall(3), of_stall(4));
@@ -175,8 +175,8 @@ fn a_part_moved_out_stays_when_the_part_it_was_under_is_deleted() {
 }
 
 #[test]
-fn a_part_moved_out_stays_where_it_was_put_when_its_prefab_loses_the_part_it_was_under() {
-    // The prefab changed after the town was saved: the counter is
+fn a_part_moved_out_stays_where_it_was_put_when_its_module_loses_the_part_it_was_under() {
+    // The module changed after the town was saved: the counter is
     // gone from the stall's own file, and the till is on the stall.
     let mut level = town();
     let (till, drawer) = (of_stall(3), of_stall(4));
@@ -193,7 +193,7 @@ fn a_part_moved_out_stays_where_it_was_put_when_its_prefab_loses_the_part_it_was
     assert_eq!(opened_with(&saved(&opened, &lib), &lib), opened);
     // The counter gone with everything on it: the till's changes are
     // kept as an entity, where the till was put; the drawer, which this
-    // copy never changed, is gone with the prefab's.
+    // copy never changed, is gone with the module's.
     let mut changed = stall();
     for gone in [2, 3, 4] {
         changed.level.remove(id(gone));
@@ -327,7 +327,7 @@ fn deleting_a_copy_leaves_a_part_moved_out_of_it_as_an_ordinary_entity() {
 fn whatever_is_moved_and_deleted_the_level_saved_is_the_level_opened() {
     // Every seed is a run of moves and deletes on the town: any entity
     // under any other or out to the top level, any entity deleted (parts,
-    // copies' roots, the copy inside a copy, the part the prefab lost,
+    // copies' roots, the copy inside a copy, the part the module lost,
     // ordinary entities). After each, the level is saved and opened again.
     let mut steps = 0;
     for seed in 1..=150u64 {

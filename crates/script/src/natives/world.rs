@@ -203,13 +203,13 @@ fn lend_spawning<'s>(
         native(
             scope,
             "World_spawn",
-            move |_, (_world, prefab, place): (LuaValue, mlua::LuaString, LuaValue)| {
-                // Prefab.Ships.Fighter comes as "Ships.Fighter": its file
+            move |_, (_world, module, place): (LuaValue, mlua::LuaString, LuaValue)| {
+                // Module.Ships.Fighter comes as "Ships.Fighter": its file
                 // is ships/fighter (the Library ignores capitals).
-                let prefab = crate::project_names::path_of(&prefab.to_str()?);
-                Ok(prefab
+                let module = crate::project_names::path_of(&module.to_str()?);
+                Ok(module
                     .zip(vec3_of(&place))
-                    .and_then(|(prefab, place)| h.borrow_mut().spawn(&prefab, place))
+                    .and_then(|(module, place)| h.borrow_mut().spawn(&module, place))
                     .map(|id| id.to_string()))
             },
         )?,
@@ -220,7 +220,7 @@ fn lend_spawning<'s>(
             scope,
             "World_spawnWith",
             move |lua,
-                  (_world, prefab, place, values): (
+                  (_world, module, place, values): (
                 LuaValue,
                 mlua::LuaString,
                 LuaValue,
@@ -232,10 +232,10 @@ fn lend_spawning<'s>(
                          {why}"
                     ))
                 })?;
-                let prefab = crate::project_names::path_of(&prefab.to_str()?);
-                Ok(prefab
+                let module = crate::project_names::path_of(&module.to_str()?);
+                Ok(module
                     .zip(vec3_of(&place))
-                    .and_then(|(prefab, place)| h.borrow_mut().spawn_with(&prefab, place, values))
+                    .and_then(|(module, place)| h.borrow_mut().spawn_with(&module, place, values))
                     .map(|id| id.to_string()))
             },
         )?,

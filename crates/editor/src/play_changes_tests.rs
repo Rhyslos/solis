@@ -100,10 +100,10 @@ use std::sync::Arc;
 
 /// A hive that spawns a drone every tick, a component that takes its own
 /// entity out on its first tick, and one that counts and climbs.
-const GAME: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
+const GAME: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
     component Hive {\n\
         method update(float dt) {\n\
-            entity made = World:spawn(Prefab.Drones.Drone, [0, 0, 1]);\n\
+            entity made = World:spawn(Module.Drones.Drone, [0, 0, 1]);\n\
         }\n\
     }\n\
     component Doomed {\n\
@@ -145,13 +145,13 @@ fn carrying(name: &str, component: &str) -> EntityData {
 
 /// A workbench whose game spawns drones, takes "Doomed" (and its child)
 /// out and counts on "Cart", in a level that also has a lamp, a crate, a
-/// barrel and a placed copy of the lamp post prefab. Not yet playing;
+/// barrel and a placed copy of the lamp post module. Not yet playing;
 /// nothing to undo.
 fn with_a_busy_game() -> Workbench {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&["drones/drone"]),
+        &script::project_names::Names::with_modules(&["drones/drone"]),
     );
     files.push(("main.lst".into(), GAME.to_string()));
     let code = script::Code {
@@ -175,19 +175,19 @@ fn with_a_busy_game() -> Workbench {
     let mut drones = level::Level::new();
     drones.insert(id(1), EntityData::new("Drone").with(&Transform::default()));
     let drone = reflect::AssetId(reflect::Id::from_raw(901).unwrap());
-    w.set_prefab(
+    w.set_module(
         drone,
         Arc::new(level::text::LevelFile {
-            kind: level::text::FileKind::Prefab { root: id(1) },
+            kind: level::text::FileKind::Module { root: id(1) },
             level: drones,
             overrides: Default::default(),
         }),
     );
     let (post, post_file) = crate::test_support::lamp_post_file();
-    w.set_prefab(post, post_file);
+    w.set_module(post, post_file);
     w.set_library(vec![crate::library::LibraryItem {
         id: Some(drone),
-        kind: crate::library::LibraryKind::Prefab,
+        kind: crate::library::LibraryKind::Module,
         name: "drone".into(),
         path: "drones/drone.solasm".into(),
         thumbnail: None,
@@ -210,8 +210,8 @@ fn with_a_busy_game() -> Workbench {
         EntityData::new("Crate").with(&Transform::default()),
     );
     level.insert(id(BARREL), EntityData::new("Barrel"));
-    let lookup = |asset| w.prefabs().get(&asset).cloned();
-    let placed = level::prefab::Expander::new(&lookup)
+    let lookup = |asset| w.modules().get(&asset).cloned();
+    let placed = level::module::Expander::new(&lookup)
         .place(post, id(POST), &EntityData::new("Lamp post"))
         .unwrap();
     for (entity, data) in placed {
@@ -587,7 +587,7 @@ fn keep_after_loading_a_save_puts_your_edits_on_the_level_from_before_play() {
     run(&mut w, 2);
     w.load_game(&saved, "quick.solsave");
     // The editor shows the saved game's level: its drones, Doomed gone,
-    // and the lamp post as plain entities, not a copy of its prefab.
+    // and the lamp post as plain entities, not a copy of its module.
     assert_eq!(drones(&w), 3);
     assert!(!w.document().level().contains(id(DOOMED)));
     assert!(w.document().level().get(id(POST)).unwrap().origin.is_none());
@@ -622,7 +622,7 @@ fn keep_after_loading_a_save_puts_your_edits_on_the_level_from_before_play() {
     assert_eq!(*w.document().level(), expected);
     assert!(
         w.document().level().get(id(POST)).unwrap().origin.is_some(),
-        "still a copy of its prefab"
+        "still a copy of its module"
     );
     assert_eq!(w.document().history().undo_len(), 2);
 }
@@ -631,7 +631,7 @@ fn keep_after_loading_a_save_puts_your_edits_on_the_level_from_before_play() {
 fn lamp_post_with(strength: f64) -> Arc<level::text::LevelFile> {
     let (_, file) = crate::test_support::lamp_post_file();
     let mut file = (*file).clone();
-    assert!(level::prefab::set_in_file(
+    assert!(level::module::set_in_file(
         &mut file,
         &[id(2)],
         "Light",
@@ -642,17 +642,17 @@ fn lamp_post_with(strength: f64) -> Arc<level::text::LevelFile> {
 }
 
 #[test]
-fn a_prefab_changed_on_disk_while_playing_is_no_change_of_yours() {
+fn a_module_changed_on_disk_while_playing_is_no_change_of_yours() {
     let mut w = with_a_busy_game();
     let (post, _) = crate::test_support::lamp_post_file();
-    let lamp = level::prefab::derive(id(POST), &[id(2)]);
+    let lamp = level::module::derive(id(POST), &[id(2)]);
     let strength = |w: &Workbench| {
         let lamp = w.document().level().get(lamp).unwrap();
         lamp.get::<Light>().unwrap().strength
     };
     w.play();
     run(&mut w, 3);
-    w.set_prefab(post, lamp_post_with(5.0));
+    w.set_module(post, lamp_post_with(5.0));
     assert_eq!(strength(&w), 5.0, "the game sees it at once");
     assert_eq!(drones(&w), 3, "and keeps what it spawned");
     run(&mut w, 2);
@@ -667,11 +667,11 @@ fn a_prefab_changed_on_disk_while_playing_is_no_change_of_yours() {
     let steps = w.document().history().undo_len();
     w.play();
     run(&mut w, 3);
-    w.set_prefab(post, lamp_post_with(7.0));
+    w.set_module(post, lamp_post_with(7.0));
     rename(&mut w, id(CRATE), "Box", 1);
     w.stop();
     assert_eq!(w.play_changes().unwrap(), ["Rename"]);
-    w.set_prefab(post, lamp_post_with(9.0));
+    w.set_module(post, lamp_post_with(9.0));
     w.keep_play_changes();
     assert_eq!(strength(&w), 9.0);
     assert_eq!(w.document().level().get(id(CRATE)).unwrap().name, "Box");

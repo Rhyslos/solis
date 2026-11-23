@@ -3,13 +3,13 @@ use level::builtin::{Tags, Transform};
 use level::{EntityData, Level};
 
 #[test]
-fn tags_are_counted_in_each_level_copies_of_prefabs_among_them() {
+fn tags_are_counted_in_each_level_copies_of_modules_among_them() {
     let root = reflect::test_support::TempFolder::new("count-tags").unwrap();
     let registry = level::builtin::registry().unwrap();
     let mut tags = TagList::default();
     let enemy = tags.add("Enemy").unwrap();
     let flying = tags.add("Flying").unwrap();
-    // A prefab, a bat, carrying Enemy.
+    // A module, a bat, carrying Enemy.
     let mut bat = Level::new();
     let bat_root = bat.spawn(
         EntityData::new("Bat")
@@ -17,16 +17,16 @@ fn tags_are_counted_in_each_level_copies_of_prefabs_among_them() {
             .with(&Tags::of([enemy])),
     );
     let bat_file = level::text::LevelFile {
-        kind: level::text::FileKind::Prefab { root: bat_root },
+        kind: level::text::FileKind::Module { root: bat_root },
         level: bat,
         overrides: BTreeMap::new(),
     };
     let bat_id = AssetId::random();
-    let prefabs = BTreeMap::from([(bat_id, Arc::new(bat_file))]);
+    let modules = BTreeMap::from([(bat_id, Arc::new(bat_file))]);
     // A cave with two bats placed and a crow carrying both tags.
-    let lookup = |id: AssetId| prefabs.get(&id).cloned();
+    let lookup = |id: AssetId| modules.get(&id).cloned();
     let mut cave = Level::new();
-    let mut expander = level::prefab::Expander::new(&lookup);
+    let mut expander = level::module::Expander::new(&lookup);
     for _ in 0..2 {
         let placed = EntityData::new("Bat").with(&Transform::default());
         for (id, data) in expander
@@ -56,7 +56,7 @@ fn tags_are_counted_in_each_level_copies_of_prefabs_among_them() {
     .into_iter()
     .map(PathBuf::from)
     .collect();
-    let counted = count_in(&root, &levels, &prefabs);
+    let counted = count_in(&root, &levels, &modules);
     assert_eq!(counted.levels[&enemy], [("cave.sollevel".to_string(), 3)]);
     assert_eq!(counted.levels[&flying], [("cave.sollevel".to_string(), 1)]);
     assert_eq!(counted.levels.len(), 2);

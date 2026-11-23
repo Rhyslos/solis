@@ -25,12 +25,12 @@ kind-project-settings.png 503844ff732ff240
 launcher.png 1f1a0bf390ec7586
 library-menu.png 7c6d04debf9e29e8
 library-rename.png 2f01057e0109c883
-make-prefab.png 0aefe6c0d1d52faf
+make-module.png 0aefe6c0d1d52faf
 new-project.png 4c4b6a7f2e5001f4
 placeholder-sheet.png b0ff0c1cbf32772a
 placing.png 91d610cbcfde062f
-prefab-copy-properties.png 4326ced834bb4415
-prefab-page.png 45f35405929cb6ff
+module-copy-properties.png 4326ced834bb4415
+module-page.png 45f35405929cb6ff
 preferences-layout.png d0254e93bc49382c
 tab-animate.png 13602fed8dfc120c
 tab-audio.png f1ce575cf3377282

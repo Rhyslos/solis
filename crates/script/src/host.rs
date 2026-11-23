@@ -48,11 +48,11 @@ pub trait Host {
     fn fire(&mut self, shot: Shot) {
         let _ = shot;
     }
-    /// Makes a copy of the prefab named `prefab` (its file in the
+    /// Makes a copy of the module named `module` (its file in the
     /// project's assets) at `place`, and gives back its entity, which is
     /// in the game from the next tick; `None` when it can't be made.
-    fn spawn(&mut self, prefab: &str, place: Vec3) -> Option<EntityId> {
-        let _ = (prefab, place);
+    fn spawn(&mut self, module: &str, place: Vec3) -> Option<EntityId> {
+        let _ = (module, place);
         None
     }
     /// [`Self::spawn`], its root's components given `values` before their
@@ -60,12 +60,12 @@ pub trait Host {
     /// values spawns without them.
     fn spawn_with(
         &mut self,
-        prefab: &str,
+        module: &str,
         place: Vec3,
         values: crate::game::SpawnValues,
     ) -> Option<EntityId> {
         let _ = values;
-        self.spawn(prefab, place)
+        self.spawn(module, place)
     }
     /// Takes an entity (and everything under it) out of the game, at the
     /// end of the tick.

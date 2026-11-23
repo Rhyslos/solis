@@ -70,7 +70,7 @@ pub(crate) mod tests {
         [
             &animation::atlas::FORMAT,
             &level::text::FORMAT,
-            &level::prefab_file::FORMAT,
+            &level::module_file::FORMAT,
             &level::pixels::FORMAT,
             &level::tags::FORMAT,
             &level::languages::FORMAT,
@@ -95,7 +95,7 @@ pub(crate) mod tests {
             assert!(format.current() >= 1, "{}", format.name());
         }
         assert!(level::text::FORMAT.is_complete());
-        assert!(level::prefab_file::FORMAT.is_complete());
+        assert!(level::module_file::FORMAT.is_complete());
         assert!(sound::event::FORMAT.is_complete());
         assert!(sound::mixer::FORMAT.is_complete());
         assert!(level::pixels::FORMAT.is_complete());

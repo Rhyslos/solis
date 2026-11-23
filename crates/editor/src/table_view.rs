@@ -509,7 +509,7 @@ fn name_icon(kind: reflect::NameKind) -> crate::icons::Icon {
         reflect::NameKind::Sound => Icon::SoundEvent,
         reflect::NameKind::Clip => Icon::Clips,
         reflect::NameKind::Picture => Icon::Picture,
-        reflect::NameKind::Prefab => Icon::Prefab,
+        reflect::NameKind::Module => Icon::Module,
         reflect::NameKind::Screen => Icon::Screen,
         reflect::NameKind::Level => Icon::LevelFile,
         reflect::NameKind::Tag => Icon::Key,

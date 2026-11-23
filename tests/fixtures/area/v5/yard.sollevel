@@ -4,7 +4,7 @@ level version 5;
 entity 0J4M7Q2X9T5B1 {
     name = "Crate";
     order = "a0";
-    prefab = "5KD8V0Q2MX7TA";  -- prefabs/crate.prefab.lst
+    module = "5KD8V0Q2MX7TA";  -- modules/crate.module.lst
     Transform.position = [4.0, 0.0, 0.0];
 }
 

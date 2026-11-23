@@ -14,11 +14,11 @@ Why tags and not names? A name belongs to one entity, and `World:find("Bat 12")`
 ### Make the project's tags
 1. Click the **File** tab, then **Project settings**, then the **Tags** sub-tab.
 2. Click **+ New tag**, type its name, and press `Enter` to keep it (`Esc` gives it up). A tag's name is what game code calls it, so it starts with a capital letter and holds only letters, digits and `_`: **Enemy**, **Collectible**, **BigDoor**. A name that can't be one says why beside it, and suggests one that can.
-3. Each tag's row says what uses it: "Used by 14 entities and 2 prefabs" (entities in all the project's levels, copies of prefabs among them).
+3. Each tag's row says what uses it: "Used by 14 entities and 2 modules" (entities in all the project's levels, copies of modules among them).
 
-**Renaming:** double-click a tag's name (or ⋯ › **Rename**), type the new one and press `Enter`. It's renamed **everywhere** at once: every level and prefab keeps its tags by an ID that never changes, so they all follow, and game code's name changes with it. Code still saying the old name (`Tag.Enemy` after renaming it **Monster**) becomes a mistake in [Problems](problems.md), pointing at each line to change.
+**Renaming:** double-click a tag's name (or ⋯ › **Rename**), type the new one and press `Enter`. It's renamed **everywhere** at once: every level and module keeps its tags by an ID that never changes, so they all follow, and game code's name changes with it. Code still saying the old name (`Tag.Enemy` after renaming it **Monster**) becomes a mistake in [Problems](problems.md), pointing at each line to change.
 
-**Deleting:** ⋯ › **Delete**. A tag nothing uses goes at once. One that's used asks first, saying what carries it (which levels' entities, which prefabs): deleting it takes it off all of them.
+**Deleting:** ⋯ › **Delete**. A tag nothing uses goes at once. One that's used asks first, saying what carries it (which levels' entities, which modules): deleting it takes it off all of them.
 
 The tags are kept in the project's `tags.lst`, a small text file beside `project.solis` that Git can merge. If it changes on disk (a pull, an edit by hand), Solis reads it again. In the [Library](projects-and-the-library.md) it's shown as **Project's tags**, with a gear: a double-click opens Project settings › Tags, never a code editor.
 
@@ -31,8 +31,8 @@ Each change is one step to [undo](undo.md). With several entities picked, Proper
 
 The [Level panel](interface-tour.md) shows each entity's tags faintly after its name ("Bat  Enemy · Flying"), and its search finds entities by tag as well as by name: search *enemy* to see every enemy in the level.
 
-### Tags on prefabs
-Tags set on a [prefab](prefabs.md) are on **every copy** of it: tag the Bat prefab Enemy, and every bat placed or spawned is an enemy. A copy may add a tag of its own or take one away: its Tags row then has the orange dot (it differs from its prefab) and ↶, which puts the prefab's tags back. As with any setting, the copy's own change wins: if the prefab's tags change later, a copy that changed its own keeps them, and the others follow.
+### Tags on modules
+Tags set on a [module](modules.md) are on **every copy** of it: tag the Bat module Enemy, and every bat placed or spawned is an enemy. A copy may add a tag of its own or take one away: its Tags row then has the orange dot (it differs from its module) and ↶, which puts the module's tags back. As with any setting, the copy's own change wins: if the module's tags change later, a copy that changed its own keeps them, and the others follow.
 
 ### Ask the world in game code
 Three questions, and two changes:
@@ -162,7 +162,7 @@ A [trigger zone](trigger-zones.md)'s **Only tags** limits it to entities carryin
 | Setting | What it does |
 |---|---|
 | Project settings › Tags | The project's tags: make, rename everywhere, delete. Kept in `tags.lst`. |
-| Tags (under an entity's name) | The tags it carries: chips with ×, and **+ Tag ▾**. On a prefab's copy, the orange dot and ↶ when they differ from the prefab's. |
+| Tags (under an entity's name) | The tags it carries: chips with ×, and **+ Tag ▾**. On a module's copy, the orange dot and ↶ when they differ from the module's. |
 | Only tags with several zones picked | The tags they share, by name; nothing when they differ. Pick one zone to change them. |
 | Only tags (a trigger zone's card) | The tags a zone notices; none chosen, it notices everything it can. |
 
@@ -177,11 +177,11 @@ A [trigger zone](trigger-zones.md)'s **Only tags** limits it to entities carryin
 - **Problem:** Problems says `Tag.Enmey` isn't a Tag. **Why:** the project has no tag of that name: a typo, or a tag renamed since. **Fix:** correct the line, or make the tag in Project settings › Tags.
 - **Problem:** `hasTag` says no just after `addTag`. **Why:** changes land at the end of the tick, so every core sees the same world during it. **Fix:** nothing to fix: from the next tick it says yes. Keep what you just did in a variable if the same tick needs it.
 - **Problem:** a name is refused. **Why:** game code calls a tag `Tag.<name>`, so it must be one Lust can name: a capital letter first, then letters, digits or `_`, not all capitals, and none of Lust's own words. **Fix:** take the suggestion beside it (*big door* becomes **BigDoor**).
-- **Problem:** a copy of a prefab doesn't get a tag the prefab was just given. **Why:** that copy changed its own tags (it has the orange dot), and a copy's own change wins. **Fix:** click ↶ on its Tags row to follow the prefab again.
+- **Problem:** a copy of a module doesn't get a tag the module was just given. **Why:** that copy changed its own tags (it has the orange dot), and a copy's own change wins. **Fix:** click ↶ on its Tags row to follow the module again.
 
 ## Related
 - [Trigger zones](trigger-zones.md): Only tags.
-- [Prefabs](prefabs.md): copies and their own changes.
+- [Modules](modules.md): copies and their own changes.
 - [Game code](game-code.md): components, the tick, and the project's names.
 - [Settings](settings.md): Project settings.
-- [Concepts](concepts.md): tag, tick, prefab.
+- [Concepts](concepts.md): tag, tick, module.

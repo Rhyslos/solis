@@ -6,7 +6,7 @@
 //! asks of them, answered from a view made once a tick (`tag_view`).
 //!
 //! An entity keeps its tags by their IDs (`level::builtin::Tags`), so a
-//! rename changes only the list: every level, prefab and save follows,
+//! rename changes only the list: every level, module and save follows,
 //! and game code's generated name (`Tag.Enemy`) changes with it. A tag
 //! that's gone from the list (deleted, or lost in a merge) is carried by
 //! nothing: it isn't shown, the game doesn't see it, and the next change
@@ -25,7 +25,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// Where the project's saved levels use each tag, as the app counted them
-/// (each level expanded, so copies of prefabs count): for each tag, each
+/// (each level expanded, so copies of modules count): for each tag, each
 /// level's path inside the project and how many of its entities carry it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TagUse {
@@ -40,31 +40,31 @@ pub(crate) struct UsedBy {
     pub(crate) entities: usize,
     /// The levels they're in, by name.
     pub(crate) levels: Vec<String>,
-    /// The prefabs carrying it, by name.
-    pub(crate) prefabs: Vec<String>,
+    /// The modules carrying it, by name.
+    pub(crate) modules: Vec<String>,
 }
 
 impl UsedBy {
     /// Whether nothing uses it.
     pub(crate) fn is_empty(&self) -> bool {
-        self.entities == 0 && self.prefabs.is_empty()
+        self.entities == 0 && self.modules.is_empty()
     }
 
-    /// "Used by 14 entities and 2 prefabs", or "Not used yet".
+    /// "Used by 14 entities and 2 modules", or "Not used yet".
     pub(crate) fn words(&self) -> String {
         let entities = match self.entities {
             1 => "1 entity".to_owned(),
             n => format!("{n} entities"),
         };
-        let prefabs = match self.prefabs.len() {
-            1 => "1 prefab".to_owned(),
-            n => format!("{n} prefabs"),
+        let modules = match self.modules.len() {
+            1 => "1 module".to_owned(),
+            n => format!("{n} modules"),
         };
-        match (self.entities, self.prefabs.len()) {
+        match (self.entities, self.modules.len()) {
             (0, 0) => "Not used yet".into(),
             (_, 0) => format!("Used by {entities}"),
-            (0, _) => format!("Used by {prefabs}"),
-            _ => format!("Used by {entities} and {prefabs}"),
+            (0, _) => format!("Used by {modules}"),
+            _ => format!("Used by {entities} and {modules}"),
         }
     }
 }
@@ -79,7 +79,7 @@ pub(crate) enum TagAsk {
     Remove(TagId),
     /// Make a tag of this name in the project, and give it.
     New(String),
-    /// A prefab's copy: back to the prefab's tags (↶).
+    /// A module's copy: back to the module's tags (↶).
     Revert,
 }
 
@@ -153,7 +153,7 @@ impl Workbench {
     }
 
     /// Renames the tag `id` everywhere: the list alone changes, since
-    /// levels and prefabs keep tags by ID, and game code's name follows.
+    /// levels and modules keep tags by ID, and game code's name follows.
     pub(crate) fn rename_tag(&mut self, id: TagId, name: &str) -> Result<(), String> {
         let old = self.open.tags.name_of(id).unwrap_or_default().to_owned();
         if old == name {
@@ -165,7 +165,7 @@ impl Workbench {
         self.log(
             LogLevel::Info,
             format!(
-                "Renamed the tag {old} to {name}: every entity and prefab carrying it follows. \
+                "Renamed the tag {old} to {name}: every entity and module carrying it follows. \
                  Game code says Tag.{name} now; a line still saying Tag.{old} is a mistake in \
                  Problems until it's changed."
             ),
@@ -188,7 +188,7 @@ impl Workbench {
     }
 
     /// What uses the tag `id`: the open level as it is now, the project's
-    /// other levels as the app counted them saved, and its prefabs.
+    /// other levels as the app counted them saved, and its modules.
     pub(crate) fn used_by(&self, id: TagId) -> UsedBy {
         let here = self
             .open
@@ -213,16 +213,16 @@ impl Workbench {
             used.entities += n;
             used.levels.push(reflect::data_files::path_stem(level));
         }
-        for (asset, file) in &self.open.prefabs {
+        for (asset, file) in &self.open.modules {
             if file
                 .level
                 .iter()
                 .any(|(_, e)| e.get::<Tags>().is_some_and(|t| t.has(id)))
             {
-                used.prefabs.push(self.asset_name(*asset));
+                used.modules.push(self.asset_name(*asset));
             }
         }
-        used.prefabs.sort();
+        used.modules.sort();
         used
     }
 
@@ -326,8 +326,8 @@ impl Workbench {
         }
     }
 
-    /// Puts a prefab copy's tags back to its prefab's (↶): the prefab's
-    /// own, or none when the prefab has no tags.
+    /// Puts a module copy's tags back to its module's (↶): the module's
+    /// own, or none when the module has no tags.
     fn revert_tags(&mut self, entity: EntityId) {
         let Some(expected) = self.part_of(entity).and_then(|p| p.expected) else {
             return;
@@ -402,12 +402,12 @@ impl Workbench {
         self.command(&label, vec![edit], None, None);
     }
 
-    /// Whether a prefab copy's tags differ from its prefab's (the changed
+    /// Whether a module copy's tags differ from its module's (the changed
     /// dot), for the one entity Properties shows.
-    pub(crate) fn tags_changed_from_prefab(
+    pub(crate) fn tags_changed_from_module(
         &self,
         entity: &level::EntityData,
-        part: Option<&crate::properties::PrefabPart>,
+        part: Option<&crate::properties::ModulePart>,
     ) -> bool {
         let Some(expected) = part.and_then(|p| p.expected.as_ref()) else {
             return false;

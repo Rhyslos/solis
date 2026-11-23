@@ -58,7 +58,7 @@ fn an_edit_weighs_what_it_keeps() {
         Edit::SetOrigin {
             entity: e,
             origin: Some(Origin {
-                prefab: reflect::AssetId(Id::from_raw(9).unwrap()),
+                module: reflect::AssetId(Id::from_raw(9).unwrap()),
                 instance: e,
                 path: vec![e; path],
             }),
