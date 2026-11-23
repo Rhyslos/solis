@@ -430,3 +430,60 @@ fn a_sheet_read_again_gets_its_picture_made_again() {
     w.refresh_sheet_pictures(&ctx);
     assert!(w.open.sheet_pictures.is_empty() && w.open.sheet_pictures_from.is_empty());
 }
+
+/// [`with_clips`] plus `knight.png` (one 8 × 8 frame), with Make clips…
+/// pressed on it: its clips file made, opened, and Cut picture… open.
+fn with_picture_cut_open() -> Workbench {
+    let (mut w, _, _) = with_clips();
+    let knight = AssetId::random();
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.by_path.insert(
+        "knight.png".into(),
+        SheetState::Read(Arc::new(crate::sprite_sheets::tests::test_sheet())),
+    );
+    sheets.paths.insert(knight, "knight.png".into());
+    w.set_sprite_sheets(sheets);
+    w.library_request(
+        LibraryRequest::MakeClipsFile("knight.png".into()),
+        &mut Vec::new(),
+    );
+    w.open.outbox.clear();
+    w
+}
+
+#[test]
+fn make_clips_on_a_picture_opens_cut_picture() {
+    let w = with_picture_cut_open();
+    let cut = w.open.cut_picture.as_ref().expect("Cut picture… open");
+    assert_eq!(
+        (cut.path.as_str(), cut.picture.as_str()),
+        ("knight.clips.lst", "knight.png")
+    );
+    assert_eq!(cut.grid, animation::clips_file::Grid::default());
+    // An Aseprite file's frames are its cells: no cutting.
+    let (mut w, _, _) = with_clips();
+    w.open_frames("walker.clips.lst");
+    w.open_cut_picture();
+    assert!(w.open.cut_picture.is_none());
+}
+
+#[test]
+fn use_these_cells_is_one_undo_step_and_cancel_changes_nothing() {
+    use crate::cut_picture::CutAnswer;
+    let mut w = with_picture_cut_open();
+    w.open.cut_picture.as_mut().unwrap().grid.cell = [4, 6];
+    w.cut_picture_answered(CutAnswer::Cancel);
+    assert!(w.open.cut_picture.is_none());
+    assert!(saved(&w.open.outbox).is_empty(), "Cancel saves nothing");
+    assert_eq!(open_file(&w).grid.cell, [16, 16]);
+    w.open_cut_picture();
+    let cut = w.open.cut_picture.as_mut().unwrap();
+    cut.grid.cell = [4, 6];
+    cut.grid.between = [1, 1];
+    w.cut_picture_answered(CutAnswer::Use);
+    assert_eq!(open_file(&w).grid.cell, [4, 6]);
+    assert_eq!(saved(&w.open.outbox).len(), 1, "saved once");
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    assert!(editor.undo(), "one step back");
+    assert_eq!(editor.file.grid, animation::clips_file::Grid::default());
+}

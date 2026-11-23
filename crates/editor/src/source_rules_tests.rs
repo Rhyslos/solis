@@ -96,7 +96,7 @@ fn colours_written(code: &str) -> usize {
 /// when its screen is rebuilt to the design.
 const KEPT: [(&str, usize, &str); 10] = [
     (
-        "atlas_view.rs",
+        "picture_board.rs",
         2,
         "under and over a picture: the grey behind it, its grid",
     ),

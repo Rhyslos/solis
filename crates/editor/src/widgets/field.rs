@@ -251,7 +251,19 @@ pub fn number_field(
 /// A field for a whole number, as [`number_field`] with no decimals
 /// shown: a size in pixels, a count.
 pub fn whole_number_field(ui: &mut Ui, name: &str, value: &mut f64, width: f32) -> Response {
-    framed(ui, width, None, |ui| {
+    whole_number_field_on(ui, name, value, None, width)
+}
+
+/// [`whole_number_field`] with `axis`'s letter before it (a size across
+/// and down, W and H).
+pub fn whole_number_field_on(
+    ui: &mut Ui,
+    name: &str,
+    value: &mut f64,
+    axis: Option<Axis>,
+    width: f32,
+) -> Response {
+    framed(ui, width, axis, |ui| {
         let response = ui.add(egui::DragValue::new(value).speed(0.25).fixed_decimals(0));
         named(
             ui,
