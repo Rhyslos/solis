@@ -1,7 +1,7 @@
 //! Tags in the editor: the project's list made, renamed everywhere and
 //! deleted (asking first when it's used) on Project settings › Tags; an
 //! entity's tags added and taken off in Properties, each one undo step,
-//! for several picked entities at once; a prefab's tags on every copy, a
+//! for several picked entities at once; a module's tags on every copy, a
 //! copy's own change with its dot and ↶; the Level panel showing tags and
 //! finding entities by them; and a zone's Only tags.
 
@@ -81,24 +81,24 @@ fn tags_are_made_with_names_checked_and_saved() {
 }
 
 #[test]
-fn a_rename_reaches_every_level_prefab_and_game_code() {
+fn a_rename_reaches_every_level_module_and_game_code() {
     let (mut w, enemy, _, bat, _) = with_tags();
     w.change_tags(&[bat], TagAsk::Add(enemy));
-    // A prefab carrying it.
+    // A module carrying it.
     let (asset, file) = lamp_post_file();
     let mut file = (*file).clone();
     let root = match file.kind {
-        level::text::FileKind::Prefab { root } => root,
+        level::text::FileKind::Module { root } => root,
         level::text::FileKind::Level => unreachable!(),
     };
     file.level.get_mut(root).unwrap().set(&Tags::of([enemy]));
-    w.set_prefab(asset, Arc::new(file));
+    w.set_module(asset, Arc::new(file));
     w.rename_tag(enemy, "Monster").unwrap();
-    // The level and the prefab keep it by its ID, so both follow.
+    // The level and the module keep it by its ID, so both follow.
     assert_eq!(tags_of(&w, bat), [enemy]);
     assert_eq!(w.tags().name_of(enemy), Some("Monster"));
     let used = w.used_by(enemy);
-    assert_eq!((used.entities, used.prefabs.len()), (1, 1));
+    assert_eq!((used.entities, used.modules.len()), (1, 1));
     // Game code's name follows: Tag.Monster checks, Tag.Enemy doesn't.
     let names = script::project_names::Names::standard().and_tags(
         &w.tags()
@@ -214,27 +214,27 @@ fn the_add_list_offers_the_project_s_tags_and_makes_a_new_one() {
 }
 
 #[test]
-fn a_prefab_s_tags_are_on_every_copy_and_a_copy_s_own_change_wins() {
+fn a_module_s_tags_are_on_every_copy_and_a_copy_s_own_change_wins() {
     let (mut w, enemy, flying, ..) = with_tags();
     let (asset, file) = lamp_post_file();
     let mut tagged = (*file).clone();
     let root_of = |f: &level::text::LevelFile| match f.kind {
-        level::text::FileKind::Prefab { root } => root,
+        level::text::FileKind::Module { root } => root,
         level::text::FileKind::Level => unreachable!(),
     };
     let root = root_of(&tagged);
     tagged.level.get_mut(root).unwrap().set(&Tags::of([enemy]));
-    w.set_prefab(asset, Arc::new(tagged.clone()));
-    w.place_prefab(asset);
+    w.set_module(asset, Arc::new(tagged.clone()));
+    w.place_module(asset);
     let first = w.selection().unwrap();
-    w.place_prefab(asset);
+    w.place_module(asset);
     let second = w.selection().unwrap();
     assert_eq!(
         tags_of(&w, first),
         [enemy],
-        "the prefab's tag is the copy's"
+        "the module's tag is the copy's"
     );
-    assert!(!w.tags_changed_from_prefab(
+    assert!(!w.tags_changed_from_module(
         w.open.document.level().get(first).unwrap(),
         w.part_of(first).as_ref()
     ));
@@ -242,23 +242,23 @@ fn a_prefab_s_tags_are_on_every_copy_and_a_copy_s_own_change_wins() {
     w.change_tags(&[first], TagAsk::Add(flying));
     assert_eq!(tags_of(&w, first), [enemy, flying]);
     let changed = |w: &Workbench, id| {
-        w.tags_changed_from_prefab(
+        w.tags_changed_from_module(
             w.open.document.level().get(id).unwrap(),
             w.part_of(id).as_ref(),
         )
     };
     assert!(changed(&w, first));
     assert!(!changed(&w, second));
-    // The prefab changes its tags: the second copy follows, the first
+    // The module changes its tags: the second copy follows, the first
     // keeps its own.
     tagged.level.get_mut(root).unwrap().set(&Tags::default());
-    w.set_prefab(asset, Arc::new(tagged));
+    w.set_module(asset, Arc::new(tagged));
     assert!(
         tags_of(&w, second).is_empty(),
-        "the copy follows its prefab"
+        "the copy follows its module"
     );
     assert_eq!(tags_of(&w, first), [enemy, flying], "its own change wins");
-    // ↶ puts the prefab's back.
+    // ↶ puts the module's back.
     w.change_tags(&[first], TagAsk::Revert);
     assert!(tags_of(&w, first).is_empty());
     assert!(!changed(&w, first));

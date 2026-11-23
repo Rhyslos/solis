@@ -305,7 +305,7 @@ impl Workbench {
             map: open.map_edits.path.is_some(),
             layout: self.interface.layout,
             folders: self.open.library_state.left == crate::library::LeftShows::Folders,
-            prefab_page: self.open.prefab_page.is_some(),
+            module_page: self.open.module_page.is_some(),
             table: self.open.table_editor.is_some(),
             translations: self.open.translations_tab.is_some(),
         }

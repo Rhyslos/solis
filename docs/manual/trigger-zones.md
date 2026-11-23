@@ -187,8 +187,8 @@ end
 ## Custom code on a zone
 A zone is an entity like any other, so it can carry your own components (**+ Component** in Properties), in Lust, Lua or Rust. **New code for this zone…** is the quick way: it makes the file and adds the component in one step (one step to undo, too). See [Game code](game-code.md) for components and events.
 
-## Making one a prefab
-A zone can be made into a [prefab](prefabs.md) like any entity: right-click it in the Level panel and make a prefab, and every copy has the same shape, settings and code. A "spike pit" prefab with its own `Entered` code, placed ten times, is ten pits that each know who fell in.
+## Making one a module
+A zone can be made into a [module](modules.md) like any entity: right-click it in the Level panel and make a module, and every copy has the same shape, settings and code. A "spike pit" module with its own `Entered` code, placed ten times, is ten pits that each know who fell in.
 
 ## Shortcuts
 | Action | Shortcut |
@@ -213,4 +213,4 @@ A zone can be made into a [prefab](prefabs.md) like any entity: right-click it i
 - [Game code](game-code.md): components and events.
 - [Physics](physics.md) and [Walls and walking in 2D](walls-and-walking.md): characters and bodies.
 - [Save games](save-games.md): what's kept.
-- [Prefabs](prefabs.md).
+- [Modules](modules.md).

@@ -36,7 +36,7 @@ Added 2026-11-23, after reading Lust's own rulebook ([LUST.md](https://github.co
 
 ## The big idea: the project's names become states
 
-The editor already knows every name a game uses: its clips, input actions, sounds, cues, prefabs and buses. So the editor writes them into one Lust file as states. Folders become options inside options. Game code `fetch`es them like any other state.
+The editor already knows every name a game uses: its clips, input actions, sounds, cues, modules and buses. So the editor writes them into one Lust file as states. Folders become options inside options. Game code `fetch`es them like any other state.
 
 ```
 -- solis/project.lst, written by the editor whenever the project changes. Never edited by hand.
@@ -47,9 +47,9 @@ state Clip = [
 state Cue = [Footstep, HoeHits, Moo];
 state Action = [Move, Jump, Use, Sprint, QuickSave, QuickLoad];
 state Sound = [Sfx [Footstep, Hoe], Music [Farm]];
-state Prefab = [Ships [Fighter, Freighter], Crops [Wheat]];
+state Module = [Ships [Fighter, Freighter], Crops [Wheat]];
 state Bus = [Music, Effects, Voices];
-pass Clip, Cue, Action, Sound, Prefab, Bus;
+pass Clip, Cue, Action, Sound, Module, Bus;
 end
 ```
 
@@ -74,7 +74,7 @@ File names are camelCase and state options are PascalCase, so the editor turns `
 
 1. **Inside a component, the thing's abilities are called bare.** `moveTo(place)`, `velocity()`, `playSound(Sound.Sfx.Hoe)`, as if they were the component's own. On any other thing they're methods, called with `:`: `target:push(force)`, `target:position()`. Never `moveTo(this, place)`. `this` is only for handing over the whole thing: `send Died() to this;`, `send Hit(this, 6) to target;`. A variable may share a name with an ability, so `vec3 velocity = velocity();` is fine.
 2. **Things with no owner are engine objects.** Whole-game tools live on a few named objects, like Lust's own `Maths:sqrt(x)`: `Input`, `World`, `Physics`, `Audio`, `Saves`. Keep the list short and avoid Lust's own names (`Maths`, `Files`, `Time`, `Json`, `Web`, `Random`).
-3. **Fixed choices are states, never strings.** Clips, actions, sounds, cues, prefabs, buses and save slots come from the project file. Strings are only for real text: what a player typed, what the game says, a name shown on screen.
+3. **Fixed choices are states, never strings.** Clips, actions, sounds, cues, modules, buses and save slots come from the project file. Strings are only for real text: what a player typed, what the game says, a name shown on screen.
 4. **Anything made in an editor reaches code through a file the editor writes.** An animator's states, switches, numbers and triggers; later a behaviour tree, a material's settings, a UI screen. Each gets a Lust file with a state for its names and a class with one method per thing code can set or ask. A new engine feature plugs in the same way, so the engine keeps growing and game code never names anything with a string.
 5. **Readers are nouns, writers are verbs.**
    - A value: a noun, no `get` or `Of`: `position()`, `velocity()`, `World:time()`.
@@ -215,7 +215,7 @@ Every call game code has today, under the same rules. Each old name goes in `REN
 | `facingAlong(dir)` | `face(dir)` when it's for turning; kept as a plain maths helper otherwise |
 | `nameOf(e)` | `e:name()` |
 | `find("name")` | `World:find("name")` (a name typed in the editor is real text) |
-| `spawn("ships/fighter.solasm", p)` / `despawn(e)` | `World:spawn(Prefab.Ships.Fighter, p)` / `e:despawn()` |
+| `spawn("ships/fighter.solasm", p)` / `despawn(e)` | `World:spawn(Module.Ships.Fighter, p)` / `e:despawn()` |
 | `time()` / `frameTime()` | `World:time()` / `World:frameTime()` |
 | `random()`, `randomRange`, `randomInt`, `setSeed` | `World:random()`, `World:randomRange(a, b)`, `World:randomInt(a, b)`, `World:setSeed(n)` (Lust reserves `Random`) |
 | `say(words)` | `World:say(words)` |

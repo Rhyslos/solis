@@ -2,11 +2,11 @@
 //! as Enemy or Collectible, so game code can ask for "every enemy within
 //! 3 m" or "the nearest collectible". Each tag is kept by its ID in the
 //! project's list (`crate::tags`), so renaming a tag there changes no
-//! level or prefab. Shown as chips under the entity's name in Properties,
+//! level or module. Shown as chips under the entity's name in Properties,
 //! never as a card of its own.
 //!
 //! Saved as one line of IDs (`tags = "1BWHNR3RV8PYY 0X3C…";`), in the
-//! order they were given. A prefab's copy that adds or takes away a tag
+//! order they were given. A module's copy that adds or takes away a tag
 //! changes this one field, so R5's rule holds: the copy's own change wins.
 
 use reflect::{Component, ComponentData, ComponentSchema, FieldInfo, FieldKind, TagId, Value};

@@ -196,8 +196,8 @@ impl Workbench {
         if self.open.atlas_editor.is_some() && out.atlas_closed {
             self.close_atlas();
         }
-        if out.prefab_page_closed {
-            self.close_prefab_page();
+        if out.module_page_closed {
+            self.close_module_page();
         }
         let table = out.table.clone();
         if let Some(said) = table.said {

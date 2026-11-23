@@ -75,7 +75,7 @@ fn build_form(w: &Workbench) -> Vec<Group> {
                     Entry::Unbuilt(UnbuiltId::PlacePaintBrush),
                 ),
                 unbuilt_at(
-                    Shape::Big(Icon::Prefab),
+                    Shape::Big(Icon::Module),
                     Entry::Unbuilt(UnbuiltId::PlacePaintScatter),
                 ),
             ]
@@ -141,7 +141,7 @@ fn create(w: &Workbench, label: &'static str) -> Group {
                     item("Tile map", C::NewTileMap),
                     item("Reverb zone", C::AddReverbZone),
                     item("Trigger zone", C::AddTriggerZone),
-                    item("Make prefab\u{2026}", C::MakePrefab),
+                    item("Make module\u{2026}", C::MakeModule),
                 ],
             ),
         ]
@@ -167,7 +167,7 @@ fn create_2d() -> Group {
                 vec![
                     item("Point light", C::AddPointLight),
                     item("Reverb zone", C::AddReverbZone),
-                    item("Make prefab\u{2026}", C::MakePrefab),
+                    item("Make module\u{2026}", C::MakeModule),
                 ],
             ),
         ]

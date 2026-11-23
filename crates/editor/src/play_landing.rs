@@ -1,5 +1,5 @@
 //! Landing what game code spawned and despawned (decision 0035): copies
-//! of prefabs made and joined to the level and the world, despawned
+//! of modules made and joined to the level and the world, despawned
 //! entities taken out, the running game's components started and stopped
 //! with them, and why a spawn made nothing said once a play.
 
@@ -9,17 +9,17 @@ use crate::document::Document;
 use crate::document::FieldsSet;
 use crate::game_code::{PlayWorld, sync_entities};
 use crate::workbench::Workbench;
-use level::prefab::PrefabError;
+use level::module::ModuleError;
 use level::{Edit, EntityData};
 use reflect::{AssetId, EntityId};
 use std::collections::BTreeMap;
 
 /// Why a spawn made nothing.
 enum Unmade {
-    /// No prefab in the project has the name.
-    NoSuchPrefab,
-    /// This prefab can't be copied.
-    Broken(AssetId, PrefabError),
+    /// No module in the project has the name.
+    NoSuchModule,
+    /// This module can't be copied.
+    Broken(AssetId, ModuleError),
     /// The entity it was to be is in the level already.
     IdTaken,
 }
@@ -43,7 +43,7 @@ struct Landing {
     removed: Vec<EntityId>,
     /// The entities despawned themselves.
     removed_roots: Vec<EntityId>,
-    /// Values given for a component the copy's root hasn't: the prefab's
+    /// Values given for a component the copy's root hasn't: the module's
     /// name and the component's, said once each.
     unfit: std::collections::BTreeSet<(String, String)>,
 }
@@ -51,11 +51,11 @@ struct Landing {
 impl Workbench {
     /// Lands what game code spawned and despawned since it was last
     /// landed (`Playing::pending`), in the order it was asked for: copies
-    /// of prefabs join the level at the end of its tree and the world
+    /// of modules join the level at the end of its tree and the world
     /// at once, despawned entities leave both, and the running game's
     /// components start and stop with them. Changes to the level that
     /// aren't undo steps (Stop puts the level back; decision 0035). A spawn
-    /// that can't be made (no prefab by that name, or one that can't be
+    /// that can't be made (no module by that name, or one that can't be
     /// copied) says why in the Console, once a play for each name, never
     /// once a frame (the review, BUG-51). The failures of starting the
     /// new components come back.
@@ -79,12 +79,12 @@ impl Workbench {
             removed_roots: Vec::new(),
             unfit: std::collections::BTreeSet::new(),
         };
-        // One expander for the tick: each prefab is expanded once, and
+        // One expander for the tick: each module is expanded once, and
         // its size known before a copy is made, so thousands of spawns of
         // one too big to fit cost nothing.
-        let prefabs = &self.open.prefabs;
-        let lookup = |a| prefabs.get(&a).cloned();
-        let mut expander = level::prefab::Expander::new(&lookup);
+        let modules = &self.open.modules;
+        let lookup = |a| modules.get(&a).cloned();
+        let mut expander = level::module::Expander::new(&lookup);
         for edit in edits {
             match edit {
                 GameEdit::Spawn(id, name, place, values) => {
@@ -94,7 +94,7 @@ impl Workbench {
                     }
                     let found = named
                         .entry(name.clone())
-                        .or_insert_with(|| self.prefab_named(&name))
+                        .or_insert_with(|| self.module_named(&name))
                         .clone();
                     land_spawn(
                         &mut landing,
@@ -218,17 +218,17 @@ impl Workbench {
     /// Values given to a spawned copy for a component its root hasn't,
     /// said once each time Play is pressed.
     fn tell_unfit(&mut self, unfit: std::collections::BTreeSet<(String, String)>) {
-        for (prefab, component) in unfit {
+        for (module, component) in unfit {
             let Some(playing) = &mut self.open.playing else {
                 break;
             };
-            let key = format!("{prefab} values for {component}");
+            let key = format!("{module} values for {component}");
             if playing.told_unmade.len() < 100 && playing.told_unmade.insert(key) {
                 self.log(
                     LogLevel::Warning,
                     format!(
-                        "Game code spawned \"{prefab}\" with values for a {component}, but the \
-                         prefab's root has no {component}, so they were left out."
+                        "Game code spawned \"{module}\" with values for a {component}, but the \
+                         module's root has no {component}, so they were left out."
                     ),
                 );
             }
@@ -243,68 +243,68 @@ impl Workbench {
             listed.map(|item| format!("\"{}\"", item.name))
         };
         let (asset, why) = match why {
-            Unmade::NoSuchPrefab => {
-                return "there's no prefab by that name in the project".into();
+            Unmade::NoSuchModule => {
+                return "there's no module by that name in the project".into();
             }
             Unmade::IdTaken => return "the entity it was to be is already in the level".into(),
             Unmade::Broken(asset, why) => (*asset, why),
         };
         match why {
-            PrefabError::Missing(id) => match named(*id) {
+            ModuleError::Missing(id) => match named(*id) {
                 Some(name) if *id == asset => format!("{name}'s file can't be read"),
                 Some(name) => format!("it places {name}, whose file can't be read"),
-                None => format!("it places a prefab ({id}) that isn't in the project"),
+                None => format!("it places a module ({id}) that isn't in the project"),
             },
-            PrefabError::NotAnPrefab(id) if *id == asset => {
-                "its file is a level, not a prefab".into()
+            ModuleError::NotAnModule(id) if *id == asset => {
+                "its file is a level, not a module".into()
             }
-            PrefabError::NotAnPrefab(id) => format!(
-                "it places {}, which is a level, not a prefab",
+            ModuleError::NotAnModule(id) => format!(
+                "it places {}, which is a level, not a module",
                 named(*id).unwrap_or_else(|| id.to_string())
             ),
-            PrefabError::Loop(chain) => {
+            ModuleError::Loop(chain) => {
                 let chain: Vec<String> = chain
                     .iter()
                     .map(|&id| named(id).unwrap_or_else(|| id.to_string()))
                     .collect();
                 format!(
-                    "its prefabs place each other in a loop ({})",
+                    "its modules place each other in a loop ({})",
                     chain.join(" → ")
                 )
             }
-            PrefabError::TooDeep => format!(
-                "its prefabs are placed more than {} deep, one inside another",
+            ModuleError::TooDeep => format!(
+                "its modules are placed more than {} deep, one inside another",
                 level::text::MAX_NESTING
             ),
-            PrefabError::TooBig => format!(
+            ModuleError::TooBig => format!(
                 "a copy would be more than {} entities",
                 crate::models::grouped(level::text::MAX_ENTITIES)
             ),
-            PrefabError::Clash(id) => {
+            ModuleError::Clash(id) => {
                 format!("two of its entities would share an ID ({id})")
             }
         }
     }
 
-    /// The prefab game code names `name`: by its file in the assets
-    /// (`ships/fighter.prefab.lst`), that without its ending, or just its
+    /// The module game code names `name`: by its file in the assets
+    /// (`ships/fighter.module.lst`), that without its ending, or just its
     /// name (`fighter`, when only one has it); its asset and name.
-    fn prefab_named(&self, name: &str) -> Option<(AssetId, String)> {
-        let prefabs = || {
+    fn module_named(&self, name: &str) -> Option<(AssetId, String)> {
+        let modules = || {
             self.open
                 .library
                 .iter()
-                .filter(|i| i.kind == crate::library::LibraryKind::Prefab)
+                .filter(|i| i.kind == crate::library::LibraryKind::Module)
                 .filter_map(|i| i.id.map(|id| (id, i)))
-                .filter(|(id, _)| self.open.prefabs.contains_key(id))
+                .filter(|(id, _)| self.open.modules.contains_key(id))
         };
         let wanted = name.trim_start_matches('/');
-        let by_path = prefabs().find(|(_, i)| {
+        let by_path = modules().find(|(_, i)| {
             i.path.eq_ignore_ascii_case(wanted)
                 || reflect::data_files::path_stem(&i.path).eq_ignore_ascii_case(wanted)
         });
         let found = by_path.or_else(|| {
-            let mut named = prefabs().filter(|(_, i)| i.name.eq_ignore_ascii_case(wanted));
+            let mut named = modules().filter(|(_, i)| i.name.eq_ignore_ascii_case(wanted));
             let first = named.next();
             first.filter(|_| named.next().is_none())
         });
@@ -312,21 +312,21 @@ impl Workbench {
     }
 }
 
-/// Makes one copy of the prefab game code named `name` (`found`: its
-/// asset and name, none when there's no such prefab) as entity `id`,
-/// standing at `place`, turned and sized as the prefab made it, after
+/// Makes one copy of the module game code named `name` (`found`: its
+/// asset and name, none when there's no such module) as entity `id`,
+/// standing at `place`, turned and sized as the module made it, after
 /// everything else: in the level, then the world. A copy that can't be
 /// made notes why; one that doesn't fit is refused.
 fn land_spawn(
     landing: &mut Landing,
-    expander: &mut level::prefab::Expander<'_>,
+    expander: &mut level::module::Expander<'_>,
     document: &mut Document,
     playing: Option<&mut Playing>,
     (id, name, place, values): (EntityId, String, glam::Vec3, script::SpawnValues),
     found: Option<(AssetId, String)>,
 ) {
     let Some((asset, shown)) = found else {
-        landing.unmade.entry(name).or_insert(Unmade::NoSuchPrefab);
+        landing.unmade.entry(name).or_insert(Unmade::NoSuchModule);
         return;
     };
     let size = match expander.size_of(asset) {
@@ -355,7 +355,7 @@ fn land_spawn(
         }
     };
     // The copy stands where it was spawned, turned and sized
-    // as the prefab made it, after everything else.
+    // as the module made it, after everything else.
     if let Some((_, root)) = entities.iter_mut().find(|(e, _)| *e == id) {
         let made = root.get::<level::builtin::Transform>().unwrap_or_default();
         root.set(&level::builtin::Transform {

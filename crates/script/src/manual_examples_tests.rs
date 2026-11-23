@@ -11,7 +11,7 @@
 //! the player.`, `-- ui/pauseMenu.lst`) is checked under that name, with
 //! the page's other named files beside it; any other is `main.lst`, or a
 //! screen in `ui/` when it is one. The project's names they use (an
-//! prefab, a sound, a clip, an animator, a tile map) come from the
+//! module, a sound, a clip, an animator, a tile map) come from the
 //! stand-in project below.
 
 use crate::animator_code::{AnimatorNames, ParamKind, animator_file};
@@ -88,7 +88,7 @@ fn fenced() -> Vec<Fenced> {
 
 /// The names a project holding the manual's examples would have.
 fn names() -> Names {
-    let mut names = Names::with_prefabs(&["ships/fighter", "ships/bolt", "drones/drone", "key"])
+    let mut names = Names::with_modules(&["ships/fighter", "ships/bolt", "drones/drone", "key"])
         .and_sounds(&[
             "sfx/footstep",
             "sfx/hoe",

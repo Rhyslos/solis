@@ -86,7 +86,7 @@ impl Workbench {
     /// known (the level opened before the code was checked: making the
     /// playground or the sample game) as the kinds the code says: an
     /// entity field is still text until then, and would read as nothing.
-    /// In the level (not an undo step) and the prefabs.
+    /// In the level (not an undo step) and the modules.
     fn fit_values_to_code(&mut self) {
         let registry = &self.open.document.registry;
         let fits = |data: &level::EntityData| -> Vec<(String, String, reflect::Value)> {
@@ -118,7 +118,7 @@ impl Workbench {
             }
         }
         let mut files = Vec::new();
-        for (asset, file) in &self.open.prefabs {
+        for (asset, file) in &self.open.modules {
             let changes: Vec<_> = file
                 .level
                 .iter()
@@ -132,7 +132,7 @@ impl Workbench {
             self.open.document.edit_by_game(edits);
         }
         for (asset, changes) in files {
-            if let Some(file) = self.open.prefabs.get_mut(&asset) {
+            if let Some(file) = self.open.modules.get_mut(&asset) {
                 let file = std::sync::Arc::make_mut(file);
                 for (id, (component, field, value)) in changes {
                     if let Some(c) = file
@@ -413,11 +413,11 @@ impl ViewCache {
 }
 
 /// Something game code asked to happen to the level: a copy of an
-/// prefab made (as this entity, of the prefab named so, here), or an
+/// module made (as this entity, of the module named so, here), or an
 /// entity taken out.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum GameEdit {
-    /// A copy of a prefab, its root's components given these values first.
+    /// A copy of a module, its root's components given these values first.
     Spawn(EntityId, String, glam::Vec3, script::SpawnValues),
     Despawn(EntityId),
 }
@@ -607,9 +607,9 @@ impl GameWorld for PlayWorld<'_> {
         let mut i = 0;
         while i < changes.len() {
             match changes[i] {
-                Change::Spawn(id, ref prefab, place, ref values) => {
+                Change::Spawn(id, ref module, place, ref values) => {
                     self.edits
-                        .push(GameEdit::Spawn(id, prefab.clone(), place, values.clone()));
+                        .push(GameEdit::Spawn(id, module.clone(), place, values.clone()));
                 }
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
                 Change::Seed(seed) => self.seed = Some(seed),

@@ -263,7 +263,7 @@ impl Component for Light {
             shadows: f.bool("shadows", d.shadows),
             only_at_night: f.bool("only_at_night", false),
         }
-        // Here a light's numbers come in (a level file, a prefab game
+        // Here a light's numbers come in (a level file, a module game
         // code spawns, a save, a change made while a game plays): put
         // right once, for everything that reads them. A cone below zero
         // used to crash the viewport.

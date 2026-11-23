@@ -176,7 +176,7 @@ impl<T> Versioned for Format<T> {
     }
 }
 
-/// The version in a header line `<kind> version N` (levels, prefabs,
+/// The version in a header line `<kind> version N` (levels, modules,
 /// sound events, the mixer), after any `--` comments and blank lines:
 /// for a format's `version_of`.
 pub fn header_version(text: &str, kinds: &[&str]) -> Option<u32> {

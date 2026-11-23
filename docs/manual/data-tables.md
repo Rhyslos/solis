@@ -29,7 +29,7 @@ Tables are **read-only while the game plays**: they're your game's constants, it
 | yes or no | a tick box: click it, or press `Enter` on it | `bool` |
 | choice | one of the column's own options, such as Common and Rare | a state of the table's own (`ItemRarity`) |
 | colour | a colour, typed as `#ff8800` | `colour` |
-| sound, clip, picture, prefab, screen, level, tag | one of the project's names, picked from a list as you type | that name (`Picture`, `Sound`…) |
+| sound, clip, picture, module, screen, level, tag | one of the project's names, picked from a list as you type | that name (`Picture`, `Sound`…) |
 
 - **Right-click a heading** to rename the column (its name is what game code reads, so `daysToGrow` rather than *days to grow*; the heading shows it as "Days to grow"), to type a choice's options (separated by commas; renaming one carries its cells with it), to mark a text column **Translated**, to change what it holds (cells whose text fits keep it), to move it left or right, or to delete it.
 - **Right-click a row** to add a row below, move it up or down, copy, clear, or delete it (or every row picked).

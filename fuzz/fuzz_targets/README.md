@@ -4,8 +4,8 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 
 | File | What it reads |
 | --- | --- |
-| `level_file.rs` | A level file: refused or read, its prefabs expanded, written and read back. |
-| `prefab_file.rs` | A prefab file (`.prefab.lst`, or an assembly's older `.solassembly`): refused or read, its copies expanded (it may place itself), and written and read back as the same prefab. |
+| `level_file.rs` | A level file: refused or read, its modules expanded, written and read back. |
+| `module_file.rs` | A module file (`.module.lst`, or an assembly's older `.solassembly`): refused or read, its copies expanded (it may place itself), and written and read back as the same module. |
 | `brush.rs` | A level file holding brushes: refused or read, each brush within the limits (points, faces, corners), written back to itself, and cut into the triangles it's drawn and made solid with. |
 | `aseprite.rs` | An Aseprite file (`.aseprite`): refused or read within the limits, every frame the canvas's size, tags within the frames, then packed into a sheet whose frames draw back the same. |
 | `atlas.rs` | An atlas file (`.atlas.lst`): refused or read, within the limits, each crop's name good and used once, and written back to itself. |

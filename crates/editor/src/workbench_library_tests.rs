@@ -504,7 +504,7 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
     use LibraryKind as K;
     for kind in [
         K::Model,
-        K::Prefab,
+        K::Module,
         K::Level,
         K::Texture,
         K::Code,
@@ -527,8 +527,8 @@ fn the_right_click_menu_offers_open_and_place_once_each() {
         let (open, place) = match kind {
             K::Model | K::SpriteSheet | K::TileMap => (0, 1),
             // Its menu's Open and Place, and Details' (the file is picked
-            // by the right-click, and Details shows a prefab's).
-            K::Prefab => (2, 2),
+            // by the right-click, and Details shows a module's).
+            K::Module => (2, 2),
             K::SpriteClips | K::Texture => (1, 1),
             K::Level
             | K::Code

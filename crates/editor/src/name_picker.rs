@@ -1,5 +1,5 @@
 //! A field holding one of the project's names (decision 0127): a sound,
-//! a sprite clip, a picture, a prefab, a screen, a level or a tag, as its
+//! a sprite clip, a picture, a module, a screen, a level or a tag, as its
 //! option's name (`Sfx.Alert`), so a renamed file follows. The kit's
 //! drop-down with the file's thumbnail or its kind's icon before the
 //! name; its list has a box to find a name, the project's folders as
@@ -32,7 +32,7 @@ fn kind_lead(kind: NameKind) -> Lead {
         NameKind::Sound => (Icon::SoundEvent, theme::kind::SOUND_EVENT),
         NameKind::Clip => (Icon::Clips, theme::kind::CLIPS),
         NameKind::Picture => (Icon::Picture, theme::kind::PICTURE),
-        NameKind::Prefab => (Icon::Prefab, theme::kind::PREFAB),
+        NameKind::Module => (Icon::Module, theme::kind::MODULE),
         NameKind::Screen => (Icon::Screen, theme::kind::CODE),
         NameKind::Level => (Icon::LevelFile, theme::kind::LEVEL),
         NameKind::Tag => (Icon::Key, theme::kind::OTHER),

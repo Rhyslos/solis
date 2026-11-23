@@ -20,7 +20,7 @@
 //!
 //! Each tag has a stable ID, which is what entities keep
 //! (`builtin::Tags`): renaming a tag changes only this file, and every
-//! level, prefab and save follows. Its name is what game code calls it,
+//! level, module and save follows. Its name is what game code calls it,
 //! `Tag.Enemy`, so it must be one Lust can name: [`TagList::problem`] says
 //! why one isn't, in plain words. A tag in the file that can't be used (no
 //! ID, a name Lust can't take, a second of one name) is left out with a

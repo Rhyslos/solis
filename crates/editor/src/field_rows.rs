@@ -15,7 +15,7 @@ use reflect::{ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
 use std::collections::BTreeMap;
 
 /// A row with an orange dot before its name when `changed` (a placed
-/// copy's own setting, differing from its prefab's, board 07), or an
+/// copy's own setting, differing from its module's, board 07), or an
 /// accent one when `moved` (its value isn't the standard one, decision
 /// 0085). Returns what `add` returned and the name's response (a drag on
 /// it changes a number).
@@ -108,12 +108,12 @@ fn scrubbed(name: &Response, field: &FieldInfo, value: &Value) -> Option<Value> 
     (&new != value).then_some(new)
 }
 
-/// What a row's marks say: whether it differs from its prefab, whether
+/// What a row's marks say: whether it differs from its module, whether
 /// it isn't its standard value, and its value from before Play if the
 /// user changed it since.
 #[derive(Clone, Copy)]
 struct Marks<'a> {
-    /// The prefab's value, when this copy's differs from it.
+    /// The module's value, when this copy's differs from it.
     changed: Option<&'a Value>,
     /// The standard value, when this one isn't it.
     moved: Option<&'a Value>,
@@ -132,9 +132,9 @@ struct After {
 
 /// Draws every field of `schema` with its value in `data`, and returns what
 /// the user did. Fields `data` doesn't have show their starting value. With
-/// `prefab` (the component as the entity's prefab has it), fields that
-/// differ have an orange dot, ↶ with the prefab's value faint after it
-/// (back to it), and ↑ (make this the prefab's, for every copy). `yours` are the fields
+/// `module` (the component as the entity's module has it), fields that
+/// differ have an orange dot, ↶ with the module's value faint after it
+/// (back to it), and ↑ (make this the module's, for every copy). `yours` are the fields
 /// the user changed while playing, with their values from before Play.
 /// `others` are the same component on the other selected entities: values
 /// that differ show as "—". `users` says how many entities use each file
@@ -143,7 +143,7 @@ pub(crate) fn fields(
     ui: &mut Ui,
     schema: &ComponentSchema,
     data: &ComponentData,
-    (prefab, yours): (Option<&ComponentData>, &BTreeMap<&str, Option<&Value>>),
+    (module, yours): (Option<&ComponentData>, &BTreeMap<&str, Option<&Value>>),
     others: &[&ComponentData],
     known: Known<'_>,
     (level, users): (&level::Level, &crate::document::AssetUsers),
@@ -166,14 +166,14 @@ pub(crate) fn fields(
         let value = data.get(&field.name).unwrap_or(&field.default);
         let standard = crate::standard::value(standard.as_ref(), field);
         let mixed = Mixed::of(field, value, others);
-        let prefab_value = prefab.map(|a| a.get(&field.name).unwrap_or(&field.default));
-        let changed = prefab_value.filter(|was| *was != value);
+        let module_value = module.map(|a| a.get(&field.name).unwrap_or(&field.default));
+        let changed = module_value.filter(|was| *was != value);
         let played = yours
             .get(field.name.as_str())
             .map(|was| was.unwrap_or(&field.default))
             .filter(|was| *was != value);
         // Not its standard value: a dot, and a way back (decision 0085).
-        // A prefab's copy shows how it differs from the prefab
+        // A module's copy shows how it differs from the module
         // instead, and a change while playing its value from before.
         let moved = changed.is_none() && !mixed.whole && moved_from_default(field, value, standard);
         let marks = Marks {
@@ -264,11 +264,11 @@ fn field_and_marks<R>(ui: &mut Ui, marks: Marks<'_>, draw: impl FnOnce(&mut Ui) 
     drawn.inner
 }
 
-/// The most characters of the prefab's value shown after ↶.
+/// The most characters of the module's value shown after ↶.
 const SHOWN_AFTER: usize = 6;
 
 /// The small buttons after a field: back to the value from before Play,
-/// back to the standard value, or a prefab copy's Revert and Apply.
+/// back to the standard value, or a module copy's Revert and Apply.
 fn after_field(ui: &mut Ui, field: &FieldInfo, marks: Marks<'_>) -> After {
     let small = |ui: &mut Ui, words: String, hover: &str, name: String| {
         let button = ui
@@ -308,7 +308,7 @@ fn after_field(ui: &mut Ui, field: &FieldInfo, marks: Marks<'_>) -> After {
         return after;
     }
     if let Some(was) = marks.changed {
-        // The prefab's value faint after ↶ where it's short (a number);
+        // The module's value faint after ↶ where it's short (a number);
         // a longer one (three numbers) is said on hover, so the row keeps
         // its room.
         let value = short(was);
@@ -321,14 +321,14 @@ fn after_field(ui: &mut Ui, field: &FieldInfo, marks: Marks<'_>) -> After {
             ui,
             words,
             &format!(
-                "Back to the prefab's value ({value}): this copy follows the prefab here again"
+                "Back to the module's value ({value}): this copy follows the module here again"
             ),
             format!("Revert {}", field.label),
         );
         after.apply = small(
             ui,
             "↑".into(),
-            "Make this the prefab's value, for every copy",
+            "Make this the module's value, for every copy",
             format!("Apply {}", field.label),
         );
     }

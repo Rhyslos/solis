@@ -26,9 +26,9 @@ pub const SETTLE: Duration = Duration::from_secs(2);
 pub enum AssetKind {
     /// A glTF model.
     Model,
-    /// A prefab (`.prefab.lst`; `.solassembly` while prefabs were called
+    /// A module (`.module.lst`; `.solassembly` while modules were called
     /// assemblies): entities to place many times.
-    Prefab,
+    Module,
     /// A sound file (WAV, Ogg Vorbis; decision 0056).
     Sound,
     /// A sound event (`.solsound`): takes and how to vary them.
@@ -52,13 +52,13 @@ pub enum AssetKind {
 /// `sound` crate checks the contents when it reads them.
 pub const SOUND_EXTENSIONS: [&str; 2] = ["wav", "ogg"];
 
-/// The end of a prefab's file name (decisions 0081 and 0118): the
+/// The end of a module's file name (decisions 0081 and 0118): the
 /// `level` crate reads and writes them.
-pub const PREFAB_ENDING: &str = ".prefab.lst";
+pub const MODULE_ENDING: &str = ".module.lst";
 
-/// The extension prefabs had while they were called assemblies: one that
+/// The extension modules had while they were called assemblies: one that
 /// couldn't be moved when its project opened is still read.
-pub const OLD_PREFAB_EXTENSION: &str = "solassembly";
+pub const OLD_MODULE_EXTENSION: &str = "solassembly";
 
 /// The extension of sound event files (the `sound` crate reads them).
 pub const SOUND_EVENT_EXTENSION: &str = "solsound";
@@ -85,7 +85,7 @@ fn data_kind(path: &Path) -> Option<AssetKind> {
     match reflect::data_files::kind_of(path)? {
         "tileset" => Some(AssetKind::Tileset),
         "tilemap" => Some(AssetKind::TileMap),
-        "prefab" => Some(AssetKind::Prefab),
+        "module" => Some(AssetKind::Module),
         _ => None,
     }
 }
@@ -103,8 +103,8 @@ impl AssetKind {
             return Some(kind);
         }
         let ext = path.extension()?.to_string_lossy().to_lowercase();
-        if ext == OLD_PREFAB_EXTENSION {
-            Some(Self::Prefab)
+        if ext == OLD_MODULE_EXTENSION {
+            Some(Self::Module)
         } else if SOUND_EXTENSIONS.contains(&ext.as_str()) {
             Some(Self::Sound)
         } else if ext == SOUND_EVENT_EXTENSION {
@@ -806,20 +806,20 @@ mod tests {
     }
 
     #[test]
-    fn prefabs_are_assets_too() {
-        let (project, assets, _folder) = project("db-prefabs");
-        std::fs::create_dir_all(assets.join("prefabs")).unwrap();
+    fn modules_are_assets_too() {
+        let (project, assets, _folder) = project("db-modules");
+        std::fs::create_dir_all(assets.join("modules")).unwrap();
         std::fs::write(
-            assets.join("prefabs/lamp post.solassembly"),
-            "prefab version 1 root 0000000000001;\nentity 0000000000001 { name = \"Post\"; }\n",
+            assets.join("modules/lamp post.solassembly"),
+            "module version 1 root 0000000000001;\nentity 0000000000001 { name = \"Post\"; }\n",
         )
         .unwrap();
         let (db, changes, _) = open(project);
         assert_eq!(changes.len(), 1);
         let id = db
-            .id_at(&assets.join("prefabs/lamp post.solassembly"))
+            .id_at(&assets.join("modules/lamp post.solassembly"))
             .unwrap();
-        assert_eq!(db.get(id).unwrap().kind, AssetKind::Prefab);
+        assert_eq!(db.get(id).unwrap().kind, AssetKind::Module);
         assert_eq!(db.get(id).unwrap().name(), "lamp post");
     }
 

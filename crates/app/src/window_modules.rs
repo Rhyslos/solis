@@ -1,10 +1,10 @@
-//! What the window does for prefabs (decision 0118, board 07): Make
-//! prefab…'s file and its Browse…, New prefab, a prefab's page opened and
-//! saved, and counting where a prefab is placed, on a worker.
+//! What the window does for modules (decision 0118, board 07): Make
+//! module…'s file and its Browse…, New module, a module's page opened and
+//! saved, and counting where a module is placed, on a worker.
 
 use super::{App, file_name};
 use crate::import::FolderFor;
-use editor::{LogLevel, MakePrefabPlan, Placed};
+use editor::{LogLevel, MakeModulePlan, Placed};
 use reflect::AssetId;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
@@ -19,10 +19,10 @@ pub(super) struct Counting {
 const MOST_READ: u64 = level::text::MAX_BYTES as u64;
 
 impl App {
-    /// Writes a new prefab from Make prefab…, then (if asked) swaps the
+    /// Writes a new module from Make module…, then (if asked) swaps the
     /// picked entities for a copy of it.
-    pub(super) fn make_prefab(&mut self, plan: MakePrefabPlan) {
-        let Some((path, id)) = self.write_new_prefab(&plan.folder, &plan.name, &plan.file) else {
+    pub(super) fn make_module(&mut self, plan: MakeModulePlan) {
+        let Some((path, id)) = self.write_new_module(&plan.folder, &plan.name, &plan.file) else {
             return;
         };
         if let Some(swap) = &plan.swap {
@@ -30,24 +30,24 @@ impl App {
         }
         self.workbench.log(
             LogLevel::Info,
-            format!("Made the prefab {}.", file_name(&path)),
+            format!("Made the module {}.", file_name(&path)),
         );
     }
 
-    /// Makes a new, empty prefab in `folder` (New prefab) and opens its
+    /// Makes a new, empty module in `folder` (New module) and opens its
     /// page.
-    pub(super) fn new_prefab(&mut self, folder: &Path) {
-        let file = level::prefab_file::empty("Prefab");
-        if let Some((_, id)) = self.write_new_prefab(folder, "Prefab", &file) {
-            self.workbench.open_prefab_page(id);
+    pub(super) fn new_module(&mut self, folder: &Path) {
+        let file = level::module_file::empty("Module");
+        if let Some((_, id)) = self.write_new_module(folder, "Module", &file) {
+            self.workbench.open_module_page(id);
         }
     }
 
-    /// Writes `file` as a new prefab named `name` in `folder` (inside the
+    /// Writes `file` as a new module named `name` in `folder` (inside the
     /// project), under a free name; makes it known to the editor and the
     /// Library (with a "New" badge). Its path and ID, or none (the Console
     /// says why).
-    fn write_new_prefab(
+    fn write_new_module(
         &mut self,
         folder: &Path,
         name: &str,
@@ -56,22 +56,22 @@ impl App {
         let Some(db) = self.projects.db() else {
             self.workbench.log(
                 LogLevel::Warning,
-                "Prefabs live in a project: make or open one first.",
+                "Modules live in a project: make or open one first.",
             );
             return None;
         };
         if !editor::plain_relative(&folder.to_string_lossy()) && !folder.as_os_str().is_empty() {
             self.workbench.log(
                 LogLevel::Warning,
-                "A prefab is saved in a folder of the project.",
+                "A module is saved in a folder of the project.",
             );
             return None;
         }
         let files = db.project().files();
         let target = files.join(folder);
-        let path = crate::prefab_files::free_path(&target, name);
+        let path = crate::module_files::free_path(&target, name);
         let registry = &self.workbench.document().registry;
-        let written = crate::prefab_files::text(file, registry)
+        let written = crate::module_files::text(file, registry)
             .and_then(|text| {
                 std::fs::create_dir_all(&target)
                     .and_then(|()| asset_db::write_atomically(&path, text.as_bytes()))
@@ -82,32 +82,32 @@ impl App {
             Ok(id) => id,
             Err(why) => {
                 self.workbench
-                    .log(LogLevel::Error, format!("Couldn't save the prefab: {why}."));
+                    .log(LogLevel::Error, format!("Couldn't save the module: {why}."));
                 return None;
             }
         };
         let (changes, notes) = self.projects.rescan();
         self.workbench
-            .set_prefab(id, std::sync::Arc::new(file.clone()));
+            .set_module(id, std::sync::Arc::new(file.clone()));
         self.follow_changes(changes, notes);
         self.refresh_library();
         if let Ok(inside) = path.strip_prefix(&files) {
             let inside = inside.to_string_lossy().replace('\\', "/");
-            self.workbench.prefab_made(&inside);
+            self.workbench.module_made(&inside);
         }
         Some((path, id))
     }
 
-    /// Browse… in Make prefab…: the folder window, starting in `start`
+    /// Browse… in Make module…: the folder window, starting in `start`
     /// (inside the project).
-    pub(super) fn choose_prefab_folder(&mut self, start: &str) {
+    pub(super) fn choose_module_folder(&mut self, start: &str) {
         let files = self.projects.db().map(|db| db.project().files());
         let start = files.map(|f| f.join(start));
-        self.importer.ask_folder(FolderFor::PrefabFolder(start));
+        self.importer.ask_folder(FolderFor::ModuleFolder(start));
     }
 
-    /// The folder chosen for Make prefab…: inside the project, or refused.
-    pub(super) fn prefab_folder_chosen(&mut self, folder: &Path) {
+    /// The folder chosen for Make module…: inside the project, or refused.
+    pub(super) fn module_folder_chosen(&mut self, folder: &Path) {
         let Some(files) = self.projects.db().map(|db| db.project().files()) else {
             return;
         };
@@ -115,37 +115,37 @@ impl App {
         match canonical(folder).strip_prefix(canonical(&files)) {
             Ok(inside) => {
                 let inside = inside.to_string_lossy().replace('\\', "/");
-                self.workbench.set_prefab_folder(&inside);
+                self.workbench.set_module_folder(&inside);
             }
             Err(_) => self.workbench.log(
                 LogLevel::Warning,
-                "A prefab is saved inside the project: choose one of its folders.",
+                "A module is saved inside the project: choose one of its folders.",
             ),
         }
     }
 
-    /// Reads prefab `id` and opens its page.
-    pub(super) fn open_prefab(&mut self, id: AssetId) {
-        match self.load_prefab(id, false) {
-            Ok(()) => self.workbench.open_prefab_page(id),
+    /// Reads module `id` and opens its page.
+    pub(super) fn open_module(&mut self, id: AssetId) {
+        match self.load_module(id, false) {
+            Ok(()) => self.workbench.open_module_page(id),
             Err(why) => self
                 .workbench
-                .log(LogLevel::Error, format!("Couldn't open the prefab: {why}.")),
+                .log(LogLevel::Error, format!("Couldn't open the module: {why}.")),
         }
     }
 
-    /// Saves a prefab's page: its file through the backups, then every
+    /// Saves a module's page: its file through the backups, then every
     /// copy in the open level follows it.
-    pub(super) fn save_prefab(&mut self, asset: AssetId, file: level::text::LevelFile) {
+    pub(super) fn save_module(&mut self, asset: AssetId, file: level::text::LevelFile) {
         let Some(on_disk) = self.projects.db().and_then(|db| db.file(asset)) else {
             self.workbench.log(
                 LogLevel::Error,
-                "Couldn't save the prefab: its file isn't in the project any more.",
+                "Couldn't save the module: its file isn't in the project any more.",
             );
             return;
         };
         let root = self.projects.root().map(Path::to_path_buf);
-        let saved = crate::prefab_files::save(
+        let saved = crate::module_files::save(
             root.as_deref(),
             &on_disk,
             &file,
@@ -158,7 +158,7 @@ impl App {
                     self.workbench.log(LogLevel::Info, note);
                 }
                 self.workbench
-                    .prefab_saved(asset, std::sync::Arc::new(file), on_disk);
+                    .module_saved(asset, std::sync::Arc::new(file), on_disk);
             }
             Err(why) => self.workbench.log(
                 LogLevel::Error,
@@ -167,7 +167,7 @@ impl App {
         }
     }
 
-    /// Counts the copies of prefab `id` in the project's levels, on a
+    /// Counts the copies of module `id` in the project's levels, on a
     /// worker: the answer comes back to [`Self::take_counts`].
     pub(super) fn count_placed(&mut self, id: AssetId) {
         let Some(db) = self.projects.db() else {
@@ -190,13 +190,13 @@ impl App {
                 let _ = sender.send((id, placed));
             });
         if spawned.is_ok() {
-            self.prefab_counts.answers = Some(receiver);
+            self.module_counts.answers = Some(receiver);
         }
     }
 
     /// Hands the editor the counts that came back.
     pub(super) fn take_counts(&mut self) {
-        let Some(answers) = &self.prefab_counts.answers else {
+        let Some(answers) = &self.module_counts.answers else {
             return;
         };
         while let Ok((id, placed)) = answers.try_recv() {
@@ -206,12 +206,12 @@ impl App {
 }
 
 /// How many copies of `id` each of `levels` (inside `files`) places: the
-/// blocks that say `prefab = "ID";` (or `assembly = "ID";`, as a level
-/// from before prefabs does).
+/// blocks that say `module = "ID";` (or `assembly = "ID";`, as a level
+/// from before modules does).
 pub(super) fn count_in(files: &Path, levels: &[PathBuf], id: AssetId) -> Placed {
     let wanted = [
-        format!("{} = \"{id}\";", level::text::PREFAB_WORD),
-        format!("{} = \"{id}\";", level::text::OLD_PREFAB_WORD),
+        format!("{} = \"{id}\";", level::text::MODULE_WORD),
+        format!("{} = \"{id}\";", level::text::OLD_MODULE_WORD),
     ];
     let mut placed = Placed::default();
     for level in levels {
@@ -235,5 +235,5 @@ pub(super) fn count_in(files: &Path, levels: &[PathBuf], id: AssetId) -> Placed 
 }
 
 #[cfg(test)]
-#[path = "window_prefabs_tests.rs"]
+#[path = "window_modules_tests.rs"]
 mod tests;

@@ -63,12 +63,15 @@ pub mod library;
 pub mod locale;
 mod look;
 mod made_from;
-pub mod make_prefab;
+pub mod make_module;
 mod map_tab;
 mod menu_items;
 mod mixer_console;
 pub mod mixer_view;
 pub mod models;
+pub mod module_details;
+mod module_marks;
+mod module_page;
 mod name_follow;
 mod name_picker;
 mod own_files;
@@ -80,9 +83,6 @@ pub mod play;
 pub mod play_changes;
 mod play_input;
 pub mod play_only;
-pub mod prefab_details;
-mod prefab_marks;
-mod prefab_page;
 pub mod problems;
 pub mod profiler;
 mod profiler_view;
@@ -172,13 +172,13 @@ pub use launcher::{FolderState, KnownProject, NewProjectPlan, ProjectKind, Start
 pub use level_view::{LevelView, ViewLight, ViewModel};
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
-pub use make_prefab::{MakePrefabPlan, SwapPlan};
+pub use make_module::{MakeModulePlan, SwapPlan};
 pub use mixer_view::MixerState;
 pub use models::{FileLight, FileLightKind, ModelInfo};
+pub use module_details::Placed;
 pub use own_files::OwnFile;
 pub use panel::Panel;
 pub use play::PlayState;
-pub use prefab_details::Placed;
 pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back, save_reads};
 pub use shell::{BottomTab, RibbonTab, ShellState};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
@@ -223,6 +223,10 @@ mod library_scale_tests;
 #[cfg(test)]
 mod library_screen_tests;
 #[cfg(test)]
+mod module_picture_tests;
+#[cfg(test)]
+mod module_scale_tests;
+#[cfg(test)]
 mod open_externally_tests;
 #[cfg(test)]
 mod picture_support;
@@ -230,10 +234,6 @@ mod picture_support;
 mod picture_tests;
 #[cfg(test)]
 mod placing_tests;
-#[cfg(test)]
-mod prefab_picture_tests;
-#[cfg(test)]
-mod prefab_scale_tests;
 #[cfg(test)]
 mod scale_levels_tests;
 #[cfg(test)]

@@ -867,7 +867,7 @@ mod tests {
         use level::builtin::{Camera, Transform};
         // Names stale from the project's files, as after one is deleted:
         // Nothing and Nope aren't there any more.
-        let names = script::project_names::Names::with_prefabs(&[])
+        let names = script::project_names::Names::with_modules(&[])
             .and_sounds(&["hum", "drone", "nothing"])
             .and_buses(&["Nope"]);
         let (mut files, _) = script::describe::descriptions_for("Test 1.0", "solis", &names);

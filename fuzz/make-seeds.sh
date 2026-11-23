@@ -19,7 +19,7 @@ done
     > "$seeds/game_code/turret-with-lua.lst"
 cp samples/turret/assets/turret.sollevel "$seeds/level_file/"
 cp tests/fixtures/area/v5/zones.sollevel "$seeds/level_file/"
-# Prefabs: the example of version 1, and an assembly's older file of
+# Modules: the example of version 1, and an assembly's older file of
 # each layout, so the move from the older layout is fuzzed too.
 mkdir -p "$seeds/table_file"
 cp tests/fixtures/table/v1/items.table.lst "$seeds/table_file/"
@@ -27,10 +27,10 @@ mkdir -p "$seeds/translation_file"
 cp crates/translations/tests/data/shop.ftl "$seeds/translation_file/"
 mkdir -p "$seeds/tags_file"
 cp tests/fixtures/tags/v1/tags.lst "$seeds/tags_file/"
-mkdir -p "$seeds/prefab_file"
-cp tests/fixtures/prefab/v1/crate.prefab.lst "$seeds/prefab_file/"
-cp tests/fixtures/area/v1/crate.solassembly "$seeds/prefab_file/v1.solassembly"
-cp tests/fixtures/area/v4/crate.solassembly "$seeds/prefab_file/v4.solassembly"
+mkdir -p "$seeds/module_file"
+cp tests/fixtures/module/v1/crate.module.lst "$seeds/module_file/"
+cp tests/fixtures/area/v1/crate.solassembly "$seeds/module_file/v1.solassembly"
+cp tests/fixtures/area/v4/crate.solassembly "$seeds/module_file/v4.solassembly"
 mkdir -p "$seeds/brush"
 cp tests/fixtures/area/v4/blockout.sollevel "$seeds/brush/"
 # Older versions of saves and input actions, so the upgraders are fuzzed.

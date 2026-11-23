@@ -234,18 +234,18 @@ fn a_click_on_a_zone_s_outline_picks_it_and_one_inside_does_not() {
 }
 
 #[test]
-fn a_zone_is_made_into_a_prefab_like_any_entity() {
+fn a_zone_is_made_into_a_module_like_any_entity() {
     use level::text::FileKind;
     let (mut w, id) = with_a_zone();
-    w.ask_make_prefab();
-    let mut form = w.open.make_prefab.clone().expect("the dialog is open");
+    w.ask_make_module();
+    let mut form = w.open.make_module.clone().expect("the dialog is open");
     form.name = "Spike pit".into();
-    let plan = w.make_prefab_plan(&form).unwrap();
-    assert_eq!(plan.file.kind, FileKind::Prefab { root: id });
+    let plan = w.make_module_plan(&form).unwrap();
+    assert_eq!(plan.file.kind, FileKind::Module { root: id });
     let kept = plan.file.level.get(id).unwrap();
     assert_eq!(kept.get::<TriggerZone>(), Some(TriggerZone::default()));
     let asset = reflect::AssetId::random();
-    w.set_prefab(asset, std::sync::Arc::new(plan.file.clone()));
+    w.set_module(asset, std::sync::Arc::new(plan.file.clone()));
     w.swap_for_copy(asset, plan.swap.as_ref().unwrap());
     let copy = w.open.document.level().get(id).unwrap();
     assert!(copy.origin.is_some(), "the zone is a linked copy now");

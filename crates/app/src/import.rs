@@ -46,8 +46,8 @@ pub enum FolderFor {
     /// The new place of the project the launcher knew in this folder
     /// (Locate…).
     LocateProject(PathBuf),
-    /// The folder Make prefab… saves in (Browse…), starting in this one.
-    PrefabFolder(Option<PathBuf>),
+    /// The folder Make module… saves in (Browse…), starting in this one.
+    ModuleFolder(Option<PathBuf>),
     /// A folder to look for projects in (Scan a folder…).
     ScanFolder,
     /// The folder Build > Export exports into.
@@ -104,10 +104,10 @@ impl Importer {
                 FolderFor::LocateProject(_) => "Where is the project's folder now?",
                 FolderFor::ScanFolder => "Choose a folder to look for projects in",
                 FolderFor::ExportFolder => "Choose a new or empty folder for the export",
-                FolderFor::PrefabFolder(_) => "Choose the project's folder to save the prefab in",
+                FolderFor::ModuleFolder(_) => "Choose the project's folder to save the module in",
             };
             let mut window = rfd::FileDialog::new().set_title(title);
-            if let FolderFor::PrefabFolder(Some(start)) = &asked {
+            if let FolderFor::ModuleFolder(Some(start)) = &asked {
                 window = window.set_directory(start);
             }
             let _ = sender.send(window.pick_folder());

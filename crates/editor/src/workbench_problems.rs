@@ -24,7 +24,7 @@ impl Workbench {
             return;
         }
         let known: HashSet<AssetId> = self.open.library.iter().filter_map(|i| i.id).collect();
-        let prefabs: HashSet<AssetId> = self.open.prefabs.keys().copied().collect();
+        let modules: HashSet<AssetId> = self.open.modules.keys().copied().collect();
         let tile_gaps = self.viewport.sheets.tile_gaps();
         let damaged_brushes: HashSet<reflect::EntityId> = self.open.brushes.damaged().collect();
         self.open.problems.refresh(
@@ -34,7 +34,7 @@ impl Workbench {
                 registry: &self.open.document.registry,
                 models: &self.open.models,
                 known: &known,
-                prefabs: &prefabs,
+                modules: &modules,
                 tile_gaps: &tile_gaps,
                 damaged_brushes: &damaged_brushes,
             },

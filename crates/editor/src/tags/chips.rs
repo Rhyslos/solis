@@ -2,9 +2,9 @@
 //! the row under an entity's name in Properties, and a trigger zone's
 //! Only tags. Each tag is a chip with an × that takes it off, then
 //! **+ Tag ▾**, a list of the project's tags to pick from with a box to
-//! search it, and **New tag…**, which makes one and gives it. A prefab's
-//! copy whose tags differ from its prefab's has the changed dot before
-//! the row's name, and ↶ after the chips puts the prefab's back (R5).
+//! search it, and **New tag…**, which makes one and gives it. A module's
+//! copy whose tags differ from its module's has the changed dot before
+//! the row's name, and ↶ after the chips puts the module's back (R5).
 
 use super::TagAsk;
 use crate::tokens::{self, size, text};
@@ -26,7 +26,7 @@ pub(crate) struct TagRow<'a> {
     pub(crate) tags: &'a TagList,
     /// The tags shown, in order: those every picked entity carries.
     pub(crate) shown: &'a [TagId],
-    /// A prefab's copy whose tags differ from its prefab's.
+    /// A module's copy whose tags differ from its module's.
     pub(crate) changed: bool,
 }
 
@@ -65,7 +65,7 @@ pub(crate) fn chips(ui: &mut Ui, row: &TagRow<'_>) -> Vec<TagAsk> {
                             .frame(false),
                         )
                         .on_hover_text(
-                            "Back to the prefab's tags: this copy follows the prefab here again",
+                            "Back to the module's tags: this copy follows the module here again",
                         )
                         .clicked()
                 {

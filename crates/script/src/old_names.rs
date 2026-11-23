@@ -4,7 +4,7 @@
 //! would only say the old name isn't there; this says what it is now,
 //! before Lust is asked. Words in comments are left alone.
 //!
-//! Only Lust names the project's states: Lua and Rust name a prefab by
+//! Only Lust names the project's states: Lua and Rust name a module by
 //! its path as text (`"Ships.Fighter"`, `"ships/fighter"`), which didn't
 //! change.
 
@@ -14,8 +14,8 @@ use crate::code::CodeProblem;
 /// it's written now.
 pub const RENAMED_STATES: &[(&str, &str, &str)] = &[(
     "Assembly",
-    "Prefab",
-    "World:spawn(Prefab.Ships.Fighter, place), with fetch \"solis/project\":Prefab;",
+    "Module",
+    "World:spawn(Module.Ships.Fighter, place), with fetch \"solis/project\":Module;",
 )];
 
 /// Each use of a renamed state's old name in the Lust `files`.
@@ -45,7 +45,7 @@ pub(crate) fn old_names(files: &[(String, String)]) -> Vec<CodeProblem> {
                         column: u32::try_from(code_part[..start].chars().count() + 1)
                             .unwrap_or(u32::MAX),
                         message: format!(
-                            "{old} is now {new} (assemblies are called prefabs): write {written}"
+                            "{old} is now {new} (assemblies are called modules): write {written}"
                         ),
                     });
                 }
@@ -72,11 +72,11 @@ mod tests {
         assert_eq!((found[0].line, found[0].column), (1, 23));
         assert_eq!((found[1].line, found[1].column), (3, 24));
         assert!(
-            found[0].message.starts_with("Assembly is now Prefab"),
+            found[0].message.starts_with("Assembly is now Module"),
             "{}",
             found[0]
         );
-        assert!(found[0].message.contains("Prefab.Ships.Fighter"));
+        assert!(found[0].message.contains("Module.Ships.Fighter"));
     }
 
     #[test]
@@ -97,7 +97,7 @@ mod tests {
         assert!(
             problems
                 .iter()
-                .any(|p| p.message.starts_with("Assembly is now Prefab")),
+                .any(|p| p.message.starts_with("Assembly is now Module")),
             "{problems:?}"
         );
     }

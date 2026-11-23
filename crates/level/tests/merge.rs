@@ -209,16 +209,16 @@ fn merge_files(
 }
 
 #[test]
-fn changes_to_two_copies_of_a_prefab_merge() {
+fn changes_to_two_copies_of_a_module_merge() {
     use level::Origin;
     use text::{LevelFile, Override};
-    let prefab: reflect::AssetId = "4WQ0B7M2KD9TS".parse().unwrap();
+    let module: reflect::AssetId = "4WQ0B7M2KD9TS".parse().unwrap();
     let lamp = id("0000000000002");
     let mut base = LevelFile::plain(Level::new());
     for root in ["1000000000001", "C000000000001"] {
         let mut placed = EntityData::new("Lamp post");
         placed.origin = Some(Origin {
-            prefab,
+            module,
             instance: id(root),
             path: Vec::new(),
         });

@@ -54,7 +54,7 @@ pub(crate) enum PropertyRequest {
         /// The component's name.
         component: String,
     },
-    /// Put a field back to its prefab's value.
+    /// Put a field back to its module's value.
     RevertField {
         /// The entity.
         entity: EntityId,
@@ -63,7 +63,7 @@ pub(crate) enum PropertyRequest {
         /// The field's name.
         field: String,
     },
-    /// Make a field's value the prefab's, for every copy.
+    /// Make a field's value the module's, for every copy.
     ApplyField {
         /// The entity.
         entity: EntityId,
@@ -72,10 +72,10 @@ pub(crate) enum PropertyRequest {
         /// The field's name.
         field: String,
     },
-    /// Turn a placed prefab into plain entities (Unlink).
+    /// Turn a placed module into plain entities (Unlink).
     Unpack(EntityId),
-    /// Open this prefab on its own page.
-    OpenPrefab(reflect::AssetId),
+    /// Open this module on its own page.
+    OpenModule(reflect::AssetId),
     /// Delete an entity and everything below it.
     Delete(EntityId),
     /// Move an entity to where the camera is looking.
@@ -171,15 +171,15 @@ pub(crate) enum PropertyRequest {
     },
 }
 
-/// What the selected entity's prefab says about it.
+/// What the selected entity's module says about it.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct PrefabPart {
-    /// The prefab.
+pub(crate) struct ModulePart {
+    /// The module.
     pub asset: reflect::AssetId,
-    /// The prefab's name.
+    /// The module's name.
     pub name: String,
-    /// The entity as the prefab has it, or `None` if its part is gone
-    /// from the prefab.
+    /// The entity as the module has it, or `None` if its part is gone
+    /// from the module.
     pub expected: Option<level::EntityData>,
     /// Whether it's the placed copy's root.
     pub root: bool,
@@ -204,8 +204,8 @@ pub(crate) struct Help<'a> {
     /// The project's tags (stage 1), for the chips under the name; none
     /// where tags aren't shown.
     pub tags: Option<&'a level::tags::TagList>,
-    /// Whether the entity shown is a prefab's copy whose tags differ from
-    /// its prefab's.
+    /// Whether the entity shown is a module's copy whose tags differ from
+    /// its module's.
     pub tags_changed: bool,
 }
 
@@ -251,13 +251,13 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
 }
 
 /// The Properties panel. `part` is set when the selected entity comes from
-/// a placed prefab; `copied` names the components whose values were
+/// a placed module; `copied` names the components whose values were
 /// copied (for Paste). With several entities selected, it shows the
 /// components they all have, and a change applies to all of them.
 pub(crate) fn properties(
     ui: &mut Ui,
     document: &Document,
-    part: Option<&PrefabPart>,
+    part: Option<&ModulePart>,
     (models, sheets, library): crate::inspector::Known<'_>,
     copied: &[String],
     playing: Option<WhilePlaying<'_>>,
@@ -324,7 +324,7 @@ pub(crate) fn properties(
                     }
                     if !many {
                         if let Some(part) = part {
-                            head::prefab_note(ui, id, part, &mut requests);
+                            head::module_note(ui, id, part, &mut requests);
                         }
                         if let Some(playing) = playing {
                             head::playing_note(ui, playing.yours.len());
@@ -429,7 +429,7 @@ struct Card<'a> {
     document: &'a Document,
     /// The selected entities; the first is the one Properties shows.
     selected: &'a [EntityId],
-    part: Option<&'a PrefabPart>,
+    part: Option<&'a ModulePart>,
     assets: crate::inspector::Known<'a>,
     copied: &'a [String],
     /// While playing (one entity): game code's values as they are now,
@@ -502,7 +502,7 @@ impl Card<'_> {
         {
             requests.push(PropertyRequest::OpenCode(file.clone()));
         }
-        let prefab = self
+        let module = self
             .part
             .filter(|_| !many)
             .and_then(|p| p.expected.as_ref())
@@ -568,7 +568,7 @@ impl Card<'_> {
                     ui,
                     schema,
                     data,
-                    (prefab, &yours),
+                    (module, &yours),
                     &others,
                     self.assets,
                     (level, &self.document.asset_users()),

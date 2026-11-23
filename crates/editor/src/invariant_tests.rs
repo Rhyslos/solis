@@ -31,7 +31,7 @@ use reflect::{ComponentData, EntityId, Value};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":[Prefab, Action];\nfetch \"solis/kit/character\":[CharacterController];\n\
+const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":[Module, Action];\nfetch \"solis/kit/character\":[CharacterController];\n\
     fetch \"solis/kit/cameras\":[ThirdPersonCamera];\n\
     \n\
     \n\
@@ -58,7 +58,7 @@ const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, 
     component Hive {\n\
         method update(float dt) {\n\
             is Input:pressed(Action.Interact)? then {\n\
-                entity made = World:spawn(Prefab.Drones.Drone, [World:randomRange(-3, 3), World:randomRange(2, 6), 1]);\n\
+                entity made = World:spawn(Module.Drones.Drone, [World:randomRange(-3, 3), World:randomRange(2, 6), 1]);\n\
             }\n\
         }\n\
     }\n\
@@ -104,7 +104,7 @@ fn program() -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&["drones/drone", "nowhere"])
+        &script::project_names::Names::with_modules(&["drones/drone", "nowhere"])
             .and_actions(&["LoadA", "LoadB", "SaveA", "SaveB"]),
     );
     files.push(("main.lst".into(), MAIN.to_string()));
@@ -166,17 +166,17 @@ fn level() -> Workbench {
         .insert("Drone".into(), ComponentData::default());
     drones.insert(id(1), drone);
     let asset = reflect::AssetId(reflect::Id::from_raw(901).unwrap());
-    w.set_prefab(
+    w.set_module(
         asset,
         Arc::new(level::text::LevelFile {
-            kind: level::text::FileKind::Prefab { root: id(1) },
+            kind: level::text::FileKind::Module { root: id(1) },
             level: drones,
             overrides: Default::default(),
         }),
     );
     w.set_library(vec![crate::library::LibraryItem {
         id: Some(asset),
-        kind: crate::library::LibraryKind::Prefab,
+        kind: crate::library::LibraryKind::Module,
         name: "drone".into(),
         path: "drones/drone.solasm".into(),
         thumbnail: None,

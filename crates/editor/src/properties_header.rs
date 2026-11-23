@@ -1,10 +1,10 @@
 //! Properties' header and what sits under it: the entity's icon, name
 //! and kind, **+ Component** and the entity's ⋯ menu (spec 199-201), the
-//! note about a prefab's copy, and the note while playing. Split from
+//! note about a module's copy, and the note while playing. Split from
 //! `properties.rs` so neither file is long (review finding DEBT-08).
 
 use crate::document::Document;
-use crate::properties::{PrefabPart, PropertyRequest};
+use crate::properties::{ModulePart, PropertyRequest};
 use crate::tokens::{self, size, text};
 use crate::widgets;
 use egui::{RichText, Ui};
@@ -357,14 +357,14 @@ fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -
     picked
 }
 
-/// Which prefab the entity comes from (board 07, panel 4): "Prefab:
+/// Which module the entity comes from (board 07, panel 4): "Module:
 /// Chicken" in a box at the top, with **Open** (its own page) and, on a
 /// copy's root, **Unlink** (plain entities again, as one undo step); or a
-/// warning when its part is gone from the prefab.
-pub(crate) fn prefab_note(
+/// warning when its part is gone from the module.
+pub(crate) fn module_note(
     ui: &mut Ui,
     id: EntityId,
-    part: &PrefabPart,
+    part: &ModulePart,
     requests: &mut Vec<PropertyRequest>,
 ) {
     if part.expected.is_none() && !part.root {
@@ -384,10 +384,10 @@ pub(crate) fn prefab_note(
         return;
     }
     let frame = egui::Frame::new()
-        .fill(crate::theme::kind::PREFAB.gamma_multiply(0.12))
+        .fill(crate::theme::kind::MODULE.gamma_multiply(0.12))
         .stroke(egui::Stroke::new(
             1.0,
-            crate::theme::kind::PREFAB.gamma_multiply(0.45),
+            crate::theme::kind::MODULE.gamma_multiply(0.45),
         ))
         .corner_radius(crate::tokens::size::radius::CONTROL)
         .inner_margin(egui::Margin::symmetric(8, 5));
@@ -405,9 +405,9 @@ pub(crate) fn prefab_note(
                 ui.painter(),
                 spot,
                 crate::icons::Icon::Link,
-                crate::theme::kind::PREFAB,
+                crate::theme::kind::MODULE,
             );
-            let lead = if part.root { "Prefab:" } else { "Part of" };
+            let lead = if part.root { "Module:" } else { "Part of" };
             ui.label(RichText::new(lead).color(tokens::text_body()));
             ui.label(
                 RichText::new(&part.name)
@@ -415,14 +415,14 @@ pub(crate) fn prefab_note(
                     .color(tokens::text_emphasis()),
             )
             .on_hover_text(
-                "White values come from the prefab. A dot marks one this copy changes; \u{21b6} \
+                "White values come from the module. A dot marks one this copy changes; \u{21b6} \
                      puts it back.",
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if part.root
                     && crate::widgets::button::link(ui, "Unlink")
                         .on_hover_text(
-                            "Makes this copy plain entities that no longer follow the prefab",
+                            "Makes this copy plain entities that no longer follow the module",
                         )
                         .clicked()
                 {
@@ -432,10 +432,10 @@ pub(crate) fn prefab_note(
                     ui.label(RichText::new("\u{b7}").color(tokens::text_meta()));
                 }
                 if crate::widgets::button::link(ui, "Open")
-                    .on_hover_text("Opens the prefab on its own page, to change every copy")
+                    .on_hover_text("Opens the module on its own page, to change every copy")
                     .clicked()
                 {
-                    requests.push(PropertyRequest::OpenPrefab(part.asset));
+                    requests.push(PropertyRequest::OpenModule(part.asset));
                 }
             });
         });

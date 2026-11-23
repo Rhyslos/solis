@@ -141,7 +141,7 @@ fn compile_with(main: &str, names: &[&str]) -> Result<Arc<Compiled>, Vec<crate::
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_prefabs(&[]).and_timers(names),
+        &crate::project_names::Names::with_modules(&[]).and_timers(names),
     );
     files.push(("main.lst".into(), main.to_string()));
     let code = Code {

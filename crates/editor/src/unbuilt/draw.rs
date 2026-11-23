@@ -399,7 +399,7 @@ pub fn menu_item(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> Response {
 }
 
 /// A row of a right-click menu that isn't built (the Library's New
-/// prefab and Paste, board 04): its icon fainter, its name with the mark,
+/// module and Paste, board 04): its icon fainter, its name with the mark,
 /// as tall as the menu's real rows.
 pub fn context_item(ui: &mut Ui, id: UnbuiltId, icon: Icon) -> Response {
     let part = begin(ui, id);

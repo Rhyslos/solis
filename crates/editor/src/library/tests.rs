@@ -45,7 +45,7 @@ fn the_browser_shows_a_folder_s_folders_then_its_files_or_every_match() {
     let items = LibraryFiles::from(vec![
         item("crate.glb", LibraryKind::Model),
         item("props/rock.glb", LibraryKind::Model),
-        item("props/rocket.solassembly", LibraryKind::Prefab),
+        item("props/rocket.solassembly", LibraryKind::Module),
         item("turret.lst", LibraryKind::Code),
         item("solis/project.lst", LibraryKind::Code),
     ]);
@@ -102,7 +102,7 @@ fn a_kind_s_menu_offers_open_or_place_or_both_each_once() {
         (K::Tileset, &[Open]),
         (K::TileMap, &[Place]),
         (K::Atlas, &[Open]),
-        (K::Prefab, &[Open, Place]),
+        (K::Module, &[Open, Place]),
         (K::Text, &[Open]),
         (K::Other, &[Open]),
     ] {

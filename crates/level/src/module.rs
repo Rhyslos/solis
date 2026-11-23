@@ -1,28 +1,28 @@
-//! Prefabs placed in levels ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
-//! a placed prefab is written as its root entity plus overrides, never a
+//! Modules placed in levels ([decision 0020](../../../docs/decisions/0020-scene-files-in-lust-style.md)):
+//! a placed module is written as its root entity plus overrides, never a
 //! copy, and expanded into ordinary entities while it's edited.
 //!
 //! Each entity inside a placed copy gets an ID worked out from the copy's
-//! root and the entity's ID inside the prefab ([`derive()`]), so the same
+//! root and the entity's ID inside the module ([`derive()`]), so the same
 //! file always expands to the same IDs: undo, selection and references to
-//! them keep working when the prefab changes, and overrides find their
+//! them keep working when the module changes, and overrides find their
 //! entity again.
 //!
 //! Expanding is also where parents that lead round in a loop are put
 //! right ([`Level::mend_loops`]): only then is every entity there, a
 //! parent may be a part of a copy, and a copy's changes can make a loop
-//! too. Each prefab's contents are mended as they're expanded, and the
+//! too. Each module's contents are mended as they're expanded, and the
 //! whole file at the end, so no level that comes out has one.
 //!
 //! A copy's part is where the copy puts it: one moved to another parent
-//! or out to the top level stays when the part the prefab has it under
+//! or out to the top level stays when the part the module has it under
 //! is removed from the copy, and goes when what it was moved under goes.
 //! Deleting a copy's root leaves a part moved out from under it as an
 //! ordinary entity ([`despawn`]).
 //!
 //! Expanding counts entities before making any (a copy's changes to parts
 //! too, since one whose part is gone becomes an entity), keeps to the same
-//! limit while it makes them, refuses prefabs that place each other in a
+//! limit while it makes them, refuses modules that place each other in a
 //! loop (naming the chain), and stops at [`MAX_NESTING`] levels, so no file
 //! can make the editor explode.
 
@@ -49,14 +49,14 @@ pub fn derive(instance: EntityId, path: &[EntityId]) -> EntityId {
     EntityId(reflect::Id::from_raw(id).unwrap_or(instance.0))
 }
 
-/// Why placed prefabs couldn't be expanded.
+/// Why placed modules couldn't be expanded.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PrefabError {
-    /// The prefab isn't in the project (or couldn't be read).
+pub enum ModuleError {
+    /// The module isn't in the project (or couldn't be read).
     Missing(AssetId),
-    /// The file is a level, not a prefab.
-    NotAnPrefab(AssetId),
-    /// Prefabs place each other in a loop: this chain.
+    /// The file is a level, not a module.
+    NotAnModule(AssetId),
+    /// Modules place each other in a loop: this chain.
     Loop(Vec<AssetId>),
     /// Placed inside each other more than [`MAX_NESTING`] deep.
     TooDeep,
@@ -66,44 +66,44 @@ pub enum PrefabError {
     Clash(EntityId),
 }
 
-impl fmt::Display for PrefabError {
+impl fmt::Display for ModuleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Missing(id) => write!(f, "the prefab {id} isn't in the project"),
-            Self::NotAnPrefab(id) => write!(f, "{id} is a level, not a prefab"),
+            Self::Missing(id) => write!(f, "the module {id} isn't in the project"),
+            Self::NotAnModule(id) => write!(f, "{id} is a level, not a module"),
             Self::Loop(chain) => {
                 let names: Vec<String> = chain.iter().map(ToString::to_string).collect();
                 write!(
                     f,
-                    "prefabs place each other in a loop: {}",
+                    "modules place each other in a loop: {}",
                     names.join(" → ")
                 )
             }
-            Self::TooDeep => write!(f, "prefabs are placed more than {MAX_NESTING} deep"),
+            Self::TooDeep => write!(f, "modules are placed more than {MAX_NESTING} deep"),
             Self::TooBig => write!(f, "it would make more than {MAX_ENTITIES} entities"),
             Self::Clash(id) => write!(f, "two entities would share the ID {id}"),
         }
     }
 }
 
-impl std::error::Error for PrefabError {}
+impl std::error::Error for ModuleError {}
 
-/// Finds prefab files by ID (the app reads them from the project).
+/// Finds module files by ID (the app reads them from the project).
 pub type Lookup<'a> = &'a dyn Fn(AssetId) -> Option<Arc<LevelFile>>;
 
-/// Expands and collapses placed prefabs, remembering each prefab's
+/// Expands and collapses placed modules, remembering each module's
 /// expanded contents while it lives.
 pub struct Expander<'a> {
     lookup: Lookup<'a>,
     expanded: HashMap<AssetId, (Arc<Level>, EntityId)>,
-    /// Each expanded prefab's parts in tree order, with the path to each:
+    /// Each expanded module's parts in tree order, with the path to each:
     /// the same for every copy, so worked out once, not once a copy.
     walks: HashMap<AssetId, Arc<Walk>>,
     sizes: HashMap<AssetId, usize>,
     /// The most entities one expansion may make ([`MAX_ENTITIES`]; less in
     /// tests).
     most_made: usize,
-    /// Entities held in `expanded`, all prefabs together, and the
+    /// Entities held in `expanded`, all modules together, and the
     /// most it may hold ([`MAX_HELD`]; less in tests).
     held: usize,
     most_held: usize,
@@ -112,18 +112,18 @@ pub struct Expander<'a> {
 }
 
 /// The most entities an [`Expander`] keeps expanded at once, every
-/// prefab together: each expansion is limited on its own, but prefabs
+/// module together: each expansion is limited on its own, but modules
 /// placed inside each other are each kept expanded, so a chain of small
 /// files could otherwise hold many times the limit.
 pub const MAX_HELD: usize = 2 * MAX_ENTITIES;
 
 impl fmt::Debug for Expander<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Expander({} prefabs)", self.expanded.len())
+        write!(f, "Expander({} modules)", self.expanded.len())
     }
 }
 
-/// An expanded prefab's parts in tree order, and the way to each from
+/// An expanded module's parts in tree order, and the way to each from
 /// its root.
 pub(crate) struct Walk {
     pub(crate) order: Vec<EntityId>,
@@ -141,7 +141,7 @@ impl Walk {
     }
 }
 
-/// The way to `id` inside an expanded prefab whose root is `root`.
+/// The way to `id` inside an expanded module whose root is `root`.
 fn path_in(level: &Level, root: EntityId, id: EntityId) -> Vec<EntityId> {
     if id == root {
         return Vec::new();
@@ -166,7 +166,7 @@ fn changes_of(
 }
 
 /// Whether `changes` to the part at `path` are kept as an entity of their
-/// own when that part is gone from the prefab: what [`Expander::count`]
+/// own when that part is gone from the module: what [`Expander::count`]
 /// counts and [`Expander::place_in`] makes, asked in one place so the two
 /// can't come apart.
 fn outlives_its_part(path: &[EntityId], changes: &Override) -> bool {
@@ -187,7 +187,7 @@ fn remap(value: &mut Value, map: &HashMap<EntityId, EntityId>) {
 }
 
 impl<'a> Expander<'a> {
-    /// An expander reading prefabs through `lookup`.
+    /// An expander reading modules through `lookup`.
     pub fn new(lookup: Lookup<'a>) -> Self {
         Self {
             lookup,
@@ -208,34 +208,34 @@ impl<'a> Expander<'a> {
         &self.mended
     }
 
-    /// How many entities a copy of prefab `id` is at most, counted
+    /// How many entities a copy of module `id` is at most, counted
     /// without making any (a copy can be refused for room before it's
     /// made).
-    pub fn size_of(&mut self, id: AssetId) -> Result<usize, PrefabError> {
+    pub fn size_of(&mut self, id: AssetId) -> Result<usize, ModuleError> {
         self.size(id, &mut Vec::new())
     }
 
-    /// The file of prefab `id`.
-    fn file(&self, id: AssetId) -> Result<(Arc<LevelFile>, EntityId), PrefabError> {
-        let file = (self.lookup)(id).ok_or(PrefabError::Missing(id))?;
+    /// The file of module `id`.
+    fn file(&self, id: AssetId) -> Result<(Arc<LevelFile>, EntityId), ModuleError> {
+        let file = (self.lookup)(id).ok_or(ModuleError::Missing(id))?;
         match file.kind {
-            FileKind::Prefab { root } => Ok((file, root)),
-            FileKind::Level => Err(PrefabError::NotAnPrefab(id)),
+            FileKind::Module { root } => Ok((file, root)),
+            FileKind::Level => Err(ModuleError::NotAnModule(id)),
         }
     }
 
-    /// How many entities prefab `id` expands to at most, counted without
+    /// How many entities module `id` expands to at most, counted without
     /// making any.
-    fn size(&mut self, id: AssetId, chain: &mut Vec<AssetId>) -> Result<usize, PrefabError> {
+    fn size(&mut self, id: AssetId, chain: &mut Vec<AssetId>) -> Result<usize, ModuleError> {
         if let Some(&n) = self.sizes.get(&id) {
             return Ok(n);
         }
         if chain.contains(&id) {
             chain.push(id);
-            return Err(PrefabError::Loop(chain.clone()));
+            return Err(ModuleError::Loop(chain.clone()));
         }
         if chain.len() >= MAX_NESTING {
-            return Err(PrefabError::TooDeep);
+            return Err(ModuleError::TooDeep);
         }
         let (file, _) = self.file(id)?;
         chain.push(id);
@@ -246,13 +246,13 @@ impl<'a> Expander<'a> {
     }
 
     /// How many entities `file` expands to at most: its own, each copy's
-    /// prefab, and each change a copy makes to a part without removing
-    /// it, because a change whose part is gone from the prefab becomes an
-    /// entity. Which parts are gone isn't known until the prefab is
+    /// module, and each change a copy makes to a part without removing
+    /// it, because a change whose part is gone from the module becomes an
+    /// entity. Which parts are gone isn't known until the module is
     /// expanded, so changes to parts still there are counted as well:
     /// counting high only refuses a little sooner, while counting low let
     /// a small file expand without limit.
-    fn count(&mut self, file: &LevelFile, chain: &mut Vec<AssetId>) -> Result<usize, PrefabError> {
+    fn count(&mut self, file: &LevelFile, chain: &mut Vec<AssetId>) -> Result<usize, ModuleError> {
         let mut total = 0usize;
         for (id, entity) in file.level.iter() {
             let n = match &entity.origin {
@@ -260,36 +260,36 @@ impl<'a> Expander<'a> {
                     let kept = changes_of(file, id)
                         .filter(|(path, changes)| outlives_its_part(path, changes))
                         .count();
-                    self.size(o.prefab, chain)?.saturating_add(kept)
+                    self.size(o.module, chain)?.saturating_add(kept)
                 }
                 _ => 1,
             };
-            total = total.checked_add(n).ok_or(PrefabError::TooBig)?;
+            total = total.checked_add(n).ok_or(ModuleError::TooBig)?;
             if total > self.most_made {
-                return Err(PrefabError::TooBig);
+                return Err(ModuleError::TooBig);
             }
         }
         Ok(total)
     }
 
-    /// Prefab `id`'s contents with its own placed prefabs expanded,
+    /// Module `id`'s contents with its own placed modules expanded,
     /// and its root.
-    pub fn prefab(&mut self, id: AssetId) -> Result<(Arc<Level>, EntityId), PrefabError> {
-        self.prefab_in(id, &mut Vec::new())
+    pub fn module(&mut self, id: AssetId) -> Result<(Arc<Level>, EntityId), ModuleError> {
+        self.module_in(id, &mut Vec::new())
     }
 
-    fn prefab_in(
+    fn module_in(
         &mut self,
         id: AssetId,
         chain: &mut Vec<AssetId>,
-    ) -> Result<(Arc<Level>, EntityId), PrefabError> {
+    ) -> Result<(Arc<Level>, EntityId), ModuleError> {
         if let Some(found) = self.expanded.get(&id) {
             return Ok(found.clone());
         }
         let size = self.size(id, &mut chain.clone())?;
         self.held = self.held.saturating_add(size);
         if self.held > self.most_held {
-            return Err(PrefabError::TooBig);
+            return Err(ModuleError::TooBig);
         }
         let (file, root) = self.file(id)?;
         chain.push(id);
@@ -302,10 +302,10 @@ impl<'a> Expander<'a> {
         Ok(found)
     }
 
-    /// Every placed prefab in `file` expanded into ordinary entities,
+    /// Every placed module in `file` expanded into ordinary entities,
     /// with its overrides, and with no loop of parents: any the file had
     /// is put right, and listed in [`Self::mended`].
-    pub fn expand(&mut self, file: &LevelFile) -> Result<Level, PrefabError> {
+    pub fn expand(&mut self, file: &LevelFile) -> Result<Level, ModuleError> {
         self.count(file, &mut Vec::new())?;
         let mut level = self.expand_in(file, &mut Vec::new())?;
         self.mended.extend(level.mend_loops());
@@ -316,7 +316,7 @@ impl<'a> Expander<'a> {
         &mut self,
         file: &LevelFile,
         chain: &mut Vec<AssetId>,
-    ) -> Result<Level, PrefabError> {
+    ) -> Result<Level, ModuleError> {
         let mut level = Level::new();
         for (id, entity) in file.level.iter() {
             let entities = match &entity.origin {
@@ -324,7 +324,7 @@ impl<'a> Expander<'a> {
                     let overrides: HashMap<Vec<EntityId>, Override> = changes_of(file, id)
                         .map(|(path, changes)| (path.clone(), changes.clone()))
                         .collect();
-                    self.place_in(o.prefab, id, entity, &overrides, chain)?
+                    self.place_in(o.module, id, entity, &overrides, chain)?
                 }
                 _ => vec![(
                     id,
@@ -339,32 +339,32 @@ impl<'a> Expander<'a> {
                 // is kept on what's really made as well, so that a count
                 // which is ever wrong can't let a file expand without end.
                 if level.len() >= self.most_made {
-                    return Err(PrefabError::TooBig);
+                    return Err(ModuleError::TooBig);
                 }
                 if level.insert(new, data).is_some() {
-                    return Err(PrefabError::Clash(new));
+                    return Err(ModuleError::Clash(new));
                 }
             }
         }
         Ok(level)
     }
 
-    /// The entities of a copy of `prefab` whose root is `root`: `placed`
+    /// The entities of a copy of `module` whose root is `root`: `placed`
     /// gives the root's name, parent and order; `overrides` this copy's
     /// changes, by path (kept even when their part is gone from the
-    /// prefab).
+    /// module).
     fn place_in(
         &mut self,
-        prefab: AssetId,
+        module: AssetId,
         root: EntityId,
         placed: &EntityData,
         overrides: &HashMap<Vec<EntityId>, Override>,
         chain: &mut Vec<AssetId>,
-    ) -> Result<Vec<(EntityId, EntityData)>, PrefabError> {
-        let (contents, inner_root) = self.prefab_in(prefab, chain)?;
+    ) -> Result<Vec<(EntityId, EntityData)>, ModuleError> {
+        let (contents, inner_root) = self.module_in(module, chain)?;
         let walk = self
             .walks
-            .entry(prefab)
+            .entry(module)
             .or_insert_with(|| Arc::new(Walk::of(&contents, inner_root)))
             .clone();
         let ids: HashMap<EntityId, EntityId> = walk
@@ -384,7 +384,7 @@ impl<'a> Expander<'a> {
             let changes = overrides.get(path);
             // A removed part takes everything still under it. A part this
             // copy moved (to another parent, or out to the top level) is
-            // where it was put, not where the prefab has it, so it
+            // where it was put, not where the module has it, so it
             // isn't taken along: it was once, and a part dragged out and
             // kept was gone when the level opened again (BUG-56).
             let moved = changes.is_some_and(|c| c.parent != ParentChange::Unchanged);
@@ -413,22 +413,22 @@ impl<'a> Expander<'a> {
                 apply(&mut data, changes);
             }
             data.origin = Some(Origin {
-                prefab,
+                module,
                 instance: root,
                 path: path.clone(),
             });
             out.push((ids[&id], data));
         }
-        // Overrides whose part is gone from the prefab are kept as
+        // Overrides whose part is gone from the module are kept as
         // entities of their own, so nothing is lost; the editor warns.
-        // The prefab's own parts fit the limit, being an expansion;
+        // The module's own parts fit the limit, being an expansion;
         // these are as many as the file says, so the limit is kept here.
         for (path, changes) in overrides {
             if found.contains(path.as_slice()) || !outlives_its_part(path, changes) {
                 continue;
             }
             if out.len() >= self.most_made {
-                return Err(PrefabError::TooBig);
+                return Err(ModuleError::TooBig);
             }
             let mut data = EntityData::new(changes.name.as_deref().unwrap_or("Missing part"));
             // With nothing said it hangs under the copy's root, so it's
@@ -443,7 +443,7 @@ impl<'a> Expander<'a> {
             }
             data.components.clone_from(&changes.components);
             data.origin = Some(Origin {
-                prefab,
+                module,
                 instance: root,
                 path: path.clone(),
             });
@@ -452,33 +452,33 @@ impl<'a> Expander<'a> {
         Ok(out)
     }
 
-    /// A new copy of `prefab` with its root at `root`, named, parented
+    /// A new copy of `module` with its root at `root`, named, parented
     /// and ordered as `placed` says, with no changes.
     pub fn place(
         &mut self,
-        prefab: AssetId,
+        module: AssetId,
         root: EntityId,
         placed: &EntityData,
-    ) -> Result<Vec<(EntityId, EntityData)>, PrefabError> {
-        self.size(prefab, &mut Vec::new())?;
-        self.place_in(prefab, root, placed, &HashMap::new(), &mut Vec::new())
+    ) -> Result<Vec<(EntityId, EntityData)>, ModuleError> {
+        self.size(module, &mut Vec::new())?;
+        self.place_in(module, root, placed, &HashMap::new(), &mut Vec::new())
     }
 
-    /// What the prefab says the entity at `origin` should be, before its
+    /// What the module says the entity at `origin` should be, before its
     /// copy's changes (for showing changes in bold, and reverting them).
-    /// `None` for a part that's gone from the prefab.
+    /// `None` for a part that's gone from the module.
     pub fn expected(&mut self, level: &Level, origin: &Origin) -> Option<EntityData> {
         let placed = level.get(origin.instance)?;
-        let copy = self.place(origin.prefab, origin.instance, placed).ok()?;
+        let copy = self.place(origin.module, origin.instance, placed).ok()?;
         copy.into_iter()
             .find(|(_, e)| e.origin.as_ref().is_some_and(|o| o.path == origin.path))
             .map(|(_, e)| e)
     }
 
-    /// `level` as a file: placed prefabs become their root plus what
-    /// differs from the prefab; entities that belong to no placed
-    /// prefab stay as they are.
-    pub fn collapse(&mut self, level: &Level, kind: FileKind) -> Result<LevelFile, PrefabError> {
+    /// `level` as a file: placed modules become their root plus what
+    /// differs from the module; entities that belong to no placed
+    /// module stay as they are.
+    pub fn collapse(&mut self, level: &Level, kind: FileKind) -> Result<LevelFile, ModuleError> {
         let mut file = LevelFile {
             kind,
             level: Level::new(),
@@ -499,7 +499,7 @@ impl<'a> Expander<'a> {
                     placed.order.clone_from(&entity.order);
                     placed.origin = Some(o.clone());
                     file.level.insert(id, placed);
-                    roots.push((id, o.prefab));
+                    roots.push((id, o.module));
                 }
                 Some(o) if is_root(o.instance) => {} // part of a placed copy
                 _ => {
@@ -523,9 +523,9 @@ impl<'a> Expander<'a> {
                 parts_of.entry(o.instance).or_default().push(id);
             }
         }
-        for (root, prefab) in roots {
+        for (root, module) in roots {
             let placed = file.level.get(root).cloned().unwrap_or_default();
-            let expected = self.place(prefab, root, &placed)?;
+            let expected = self.place(module, root, &placed)?;
             let mut known: HashSet<Vec<EntityId>> = HashSet::new();
             let present: HashSet<EntityId> = expected
                 .iter()
@@ -559,7 +559,7 @@ impl<'a> Expander<'a> {
                     file.overrides.insert((root, path), changes);
                 }
             }
-            // Parts whose place in the prefab is gone are written whole.
+            // Parts whose place in the module is gone are written whole.
             let parts = parts_of.get(&root).map_or(&[][..], Vec::as_slice);
             for entity in parts.iter().filter_map(|id| level.get(*id)) {
                 let Some(o) = &entity.origin else { continue };
@@ -583,7 +583,7 @@ impl<'a> Expander<'a> {
 }
 
 /// The edits that delete `roots` and everything under each (none under
-/// another). A part of a placed prefab that was moved out from under
+/// another). A part of a placed module that was moved out from under
 /// its copy isn't under the copy's root when that goes, so it stays; but
 /// it's part of nothing then, and a file has no way to say otherwise
 /// (it's written as the ordinary entity it has become). So each such
@@ -616,9 +616,9 @@ pub fn despawn(level: &Level, roots: &[EntityId]) -> Vec<Edit> {
     edits
 }
 
-/// Sets `component.field` of the entity at `path` inside prefab `file`
-/// (Apply to prefab): on the entity itself, or, for an entity inside an
-/// prefab placed in this one, as that copy's override.
+/// Sets `component.field` of the entity at `path` inside module `file`
+/// (Apply to module): on the entity itself, or, for an entity inside an
+/// module placed in this one, as that copy's override.
 pub fn set_in_file(
     file: &mut LevelFile,
     path: &[EntityId],
@@ -627,7 +627,7 @@ pub fn set_in_file(
     value: Value,
 ) -> bool {
     let target = match (file.kind, path) {
-        (FileKind::Prefab { root }, []) => vec![root],
+        (FileKind::Module { root }, []) => vec![root],
         (_, path) => path.to_vec(),
     };
     match target.as_slice() {
@@ -642,7 +642,7 @@ pub fn set_in_file(
                     .insert(field.to_string(), value);
                 true
             }
-            // The root of a copy placed in the prefab: its own override.
+            // The root of a copy placed in the module: its own override.
             Some(_) => {
                 set_override(file, *id, Vec::new(), component, field, value);
                 true
@@ -701,9 +701,9 @@ fn apply(data: &mut EntityData, changes: &Override) {
     }
 }
 
-/// What changed from `wanted` (the prefab's) to `actual` (the level's).
+/// What changed from `wanted` (the module's) to `actual` (the level's).
 /// The root's name, parent and order belong to the level, not the
-/// prefab, so they're never overrides.
+/// module, so they're never overrides.
 fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override {
     let mut changes = Override::default();
     if !root {
@@ -739,7 +739,7 @@ fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override 
 }
 
 #[cfg(test)]
-#[path = "prefab_moves_tests.rs"]
+#[path = "module_moves_tests.rs"]
 mod moves_tests;
 
 #[cfg(test)]
@@ -772,7 +772,7 @@ mod tests {
         lamp.parent = Some(id(1));
         level.insert(id(2), lamp);
         LevelFile {
-            kind: FileKind::Prefab { root: id(1) },
+            kind: FileKind::Module { root: id(1) },
             level,
             overrides: Default::default(),
         }
@@ -786,7 +786,7 @@ mod tests {
             let mut post = EntityData::new("Post");
             post.parent = Some(id(10));
             post.origin = Some(Origin {
-                prefab: asset(100),
+                module: asset(100),
                 instance: id(n),
                 path: Vec::new(),
             });
@@ -804,7 +804,7 @@ mod tests {
             },
         );
         LevelFile {
-            kind: FileKind::Prefab { root: id(10) },
+            kind: FileKind::Module { root: id(10) },
             level,
             overrides,
         }
@@ -821,7 +821,7 @@ mod tests {
         let mut level = Level::new();
         let mut placed = EntityData::new("Main street");
         placed.origin = Some(Origin {
-            prefab: asset(200),
+            module: asset(200),
             instance: root,
             path: Vec::new(),
         });
@@ -845,7 +845,7 @@ mod tests {
         let mut placed = EntityData::new("Post");
         placed.parent = Some(sign);
         placed.origin = Some(Origin {
-            prefab: asset(100),
+            module: asset(100),
             instance: post,
             path: Vec::new(),
         });
@@ -880,7 +880,7 @@ mod tests {
         for n in [40, 41] {
             let mut placed = EntityData::new("Post");
             placed.origin = Some(Origin {
-                prefab: asset(100),
+                module: asset(100),
                 instance: id(n),
                 path: Vec::new(),
             });
@@ -890,9 +890,9 @@ mod tests {
     }
 
     #[test]
-    fn copies_of_a_prefab_with_a_loop_inside_are_sound() {
-        // The prefab's own file has its lamp and a shade under each
-        // other. It's mended once, as the prefab is expanded, so every
+    fn copies_of_a_module_with_a_loop_inside_are_sound() {
+        // The module's own file has its lamp and a shade under each
+        // other. It's mended once, as the module is expanded, so every
         // copy is the same sound tree and saves with no changes.
         let mut looped = lamp_post();
         let mut shade = EntityData::new("Shade");
@@ -942,7 +942,7 @@ mod tests {
     #[test]
     fn a_part_moved_to_the_top_level_is_saved_there() {
         // The review of Phase 9, BUG-13: "no parent" was written the same
-        // as "the prefab's parent" (nothing), so a part dragged out of
+        // as "the module's parent" (nothing), so a part dragged out of
         // its copy came back under its old parent when the level was
         // opened again, with its place in the world taken as a place
         // under that parent: it had jumped.
@@ -974,7 +974,7 @@ mod tests {
         assert_eq!(opened.get(lamp).unwrap().parent, Some(id(60)));
         assert_eq!(opened.world_matrix(lamp), there);
         assert_eq!(opened, level);
-        // And back where the prefab has it: nothing is left to write.
+        // And back where the module has it: nothing is left to write.
         let home = Expander::new(&lib)
             .expected(&level, level.get(lamp).unwrap().origin.as_ref().unwrap())
             .unwrap();
@@ -988,8 +988,8 @@ mod tests {
     }
 
     #[test]
-    fn a_part_gone_from_its_prefab_stays_at_the_top_level_if_moved_there() {
-        // BUG-13 again: changes to a part the prefab no longer has are
+    fn a_part_gone_from_its_module_stays_at_the_top_level_if_moved_there() {
+        // BUG-13 again: changes to a part the module no longer has are
         // kept as an entity, under its copy until it's moved.
         let lib = library(vec![(asset(100), lamp_post())]);
         let mut file = town_of_posts();
@@ -1022,7 +1022,7 @@ mod tests {
     }
 
     #[test]
-    fn nested_prefabs_expand_with_overrides_innermost_first() {
+    fn nested_modules_expand_with_overrides_innermost_first() {
         let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
         let mut expander = Expander::new(&lib);
         let root = id(50);
@@ -1031,7 +1031,7 @@ mod tests {
         assert_eq!(level.len(), 5);
         let first_lamp = derive(root, &[id(11), id(2)]);
         let second_lamp = derive(root, &[id(12), id(2)]);
-        assert_eq!(strength(&level, first_lamp), 1000.0, "the prefab's value");
+        assert_eq!(strength(&level, first_lamp), 1000.0, "the module's value");
         assert_eq!(
             strength(&level, second_lamp),
             5000.0,
@@ -1090,7 +1090,7 @@ mod tests {
     }
 
     #[test]
-    fn overrides_survive_edits_to_the_prefab() {
+    fn overrides_survive_edits_to_the_module() {
         let root = id(50);
         let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
         let mut level = Expander::new(&lib).expand(&town(root)).unwrap();
@@ -1102,7 +1102,7 @@ mod tests {
         let file = Expander::new(&lib)
             .collapse(&level, FileKind::Level)
             .unwrap();
-        // The lamp post gets a new colour and a bench in the prefab.
+        // The lamp post gets a new colour and a bench in the module.
         let mut post = lamp_post();
         post.level.get_mut(id(2)).unwrap().set(&Light {
             color: [1.0, 0.5, 0.0],
@@ -1115,7 +1115,7 @@ mod tests {
         let level = Expander::new(&lib).expand(&file).unwrap();
         let light = level.get(lamp).unwrap().get::<Light>().unwrap();
         assert_eq!(light.strength, 42.0, "the copy's change stays");
-        assert_eq!(light.color, [1.0, 0.5, 0.0], "the prefab's change arrives");
+        assert_eq!(light.color, [1.0, 0.5, 0.0], "the module's change arrives");
         assert!(
             level.contains(derive(root, &[id(11), id(3)])),
             "and its new bench"
@@ -1123,7 +1123,7 @@ mod tests {
     }
 
     #[test]
-    fn a_change_to_a_part_gone_from_the_prefab_is_kept() {
+    fn a_change_to_a_part_gone_from_the_module_is_kept() {
         let root = id(50);
         let lib = library(vec![(asset(100), lamp_post())]);
         let mut file = town(root);
@@ -1133,7 +1133,7 @@ mod tests {
             .origin
             .as_mut()
             .unwrap()
-            .prefab = asset(100);
+            .module = asset(100);
         let mut light = reflect::ComponentData::default();
         light.fields.insert("strength".into(), Value::Float(9.0));
         file.overrides.insert(
@@ -1159,19 +1159,19 @@ mod tests {
 
     #[test]
     fn loops_depth_and_size_are_refused() {
-        // A prefab that places itself.
+        // A module that places itself.
         let mut selfish = lamp_post();
         let mut inner = EntityData::new("Me again");
         inner.parent = Some(id(1));
         inner.origin = Some(Origin {
-            prefab: asset(100),
+            module: asset(100),
             instance: id(5),
             path: Vec::new(),
         });
         selfish.level.insert(id(5), inner);
         let lib = library(vec![(asset(100), selfish)]);
-        let err = Expander::new(&lib).prefab(asset(100)).unwrap_err();
-        assert_eq!(err, PrefabError::Loop(vec![asset(100), asset(100)]));
+        let err = Expander::new(&lib).module(asset(100)).unwrap_err();
+        assert_eq!(err, ModuleError::Loop(vec![asset(100), asset(100)]));
         assert!(err.to_string().contains("loop"));
         // A chain deeper than allowed.
         let mut files = Vec::new();
@@ -1180,7 +1180,7 @@ mod tests {
             let mut next = EntityData::new("Deeper");
             next.parent = Some(id(1));
             next.origin = Some(Origin {
-                prefab: asset(300 + depth + 1),
+                module: asset(300 + depth + 1),
                 instance: id(5),
                 path: Vec::new(),
             });
@@ -1190,8 +1190,8 @@ mod tests {
         files.push((asset(300 + MAX_NESTING as u64 + 2), lamp_post()));
         let lib = library(files);
         assert_eq!(
-            Expander::new(&lib).prefab(asset(300)).unwrap_err(),
-            PrefabError::TooDeep
+            Expander::new(&lib).module(asset(300)).unwrap_err(),
+            ModuleError::TooDeep
         );
         // Ten copies of ten copies… of a post: counted, refused, never made.
         let mut files = vec![(asset(400), lamp_post())];
@@ -1202,7 +1202,7 @@ mod tests {
                 let mut copy = EntityData::new("Copy");
                 copy.parent = Some(id(1));
                 copy.origin = Some(Origin {
-                    prefab: asset(400 + depth),
+                    module: asset(400 + depth),
                     instance: id(100 + n),
                     path: Vec::new(),
                 });
@@ -1211,7 +1211,7 @@ mod tests {
             files.push((
                 asset(401 + depth),
                 LevelFile {
-                    kind: FileKind::Prefab { root: id(1) },
+                    kind: FileKind::Module { root: id(1) },
                     level,
                     overrides: Default::default(),
                 },
@@ -1219,17 +1219,17 @@ mod tests {
         }
         let lib = library(files);
         assert_eq!(
-            Expander::new(&lib).prefab(asset(408)).unwrap_err(),
-            PrefabError::TooBig
+            Expander::new(&lib).module(asset(408)).unwrap_err(),
+            ModuleError::TooBig
         );
         assert_eq!(
-            Expander::new(&lib).prefab(asset(999)).unwrap_err(),
-            PrefabError::Missing(asset(999))
+            Expander::new(&lib).module(asset(999)).unwrap_err(),
+            ModuleError::Missing(asset(999))
         );
     }
 
     #[test]
-    fn prefabs_inside_each_other_hold_at_most_their_share_expanded() {
+    fn modules_inside_each_other_hold_at_most_their_share_expanded() {
         // The third security audit: each level placed the next once, so
         // every level's expansion was the size of the whole crowd, each
         // kept: thirteen tiny files took over 5 GB.
@@ -1240,7 +1240,7 @@ mod tests {
             let mut copy = EntityData::new("Copy");
             copy.parent = Some(id(1));
             copy.origin = Some(Origin {
-                prefab: asset(500 + depth),
+                module: asset(500 + depth),
                 instance: id(100),
                 path: Vec::new(),
             });
@@ -1248,7 +1248,7 @@ mod tests {
             files.push((
                 asset(501 + depth),
                 LevelFile {
-                    kind: FileKind::Prefab { root: id(1) },
+                    kind: FileKind::Module { root: id(1) },
                     level,
                     overrides: Default::default(),
                 },
@@ -1260,16 +1260,16 @@ mod tests {
         let size = expander.size_of(asset(506)).unwrap();
         expander.most_held = size + 3;
         assert_eq!(
-            expander.prefab(asset(506)).unwrap_err(),
-            PrefabError::TooBig
+            expander.module(asset(506)).unwrap_err(),
+            ModuleError::TooBig
         );
         // With room for them all, it expands.
         let mut expander = Expander::new(&lib);
         expander.most_held = size * 7;
-        assert_eq!(expander.prefab(asset(506)).unwrap().0.len(), size);
+        assert_eq!(expander.module(asset(506)).unwrap().0.len(), size);
     }
 
-    /// A prefab holding one lamp post (`asset(100)`), with `gone`
+    /// A module holding one lamp post (`asset(100)`), with `gone`
     /// empty changes to parts the lamp post doesn't have.
     fn padded(gone: u64) -> LevelFile {
         let mut level = Level::new();
@@ -1277,13 +1277,13 @@ mod tests {
         let mut post = EntityData::new("Post");
         post.parent = Some(id(10));
         post.origin = Some(Origin {
-            prefab: asset(100),
+            module: asset(100),
             instance: id(11),
             path: Vec::new(),
         });
         level.insert(id(11), post);
         LevelFile {
-            kind: FileKind::Prefab { root: id(10) },
+            kind: FileKind::Module { root: id(10) },
             level,
             overrides: (0..gone)
                 .map(|n| ((id(11), vec![id(1000 + n)]), Override::default()))
@@ -1291,14 +1291,14 @@ mod tests {
         }
     }
 
-    /// A level of `copies` copies of the padded prefab (`asset(700)`),
+    /// A level of `copies` copies of the padded module (`asset(700)`),
     /// their roots numbered from 50.
     fn crowd(copies: u64) -> LevelFile {
         let mut level = Level::new();
         for n in 0..copies {
             let mut copy = EntityData::new("Copy");
             copy.origin = Some(Origin {
-                prefab: asset(700),
+                module: asset(700),
                 instance: id(50 + n),
                 path: Vec::new(),
             });
@@ -1308,9 +1308,9 @@ mod tests {
     }
 
     #[test]
-    fn changes_to_parts_gone_from_the_prefab_are_counted_before_expanding() {
+    fn changes_to_parts_gone_from_the_module_are_counted_before_expanding() {
         // Found in a full code review: a change to a part that's gone becomes
-        // an entity, but wasn't counted. A prefab of a few megabytes
+        // an entity, but wasn't counted. A module of a few megabytes
         // with 100,000 such changes counted as 3 entities, so a level
         // placing it 1,000 times passed the count and expanded to a
         // hundred million: the third security audit's bomb by another way.
@@ -1322,9 +1322,9 @@ mod tests {
         assert_eq!(expander.size_of(asset(700)).unwrap(), 100_003);
         assert_eq!(
             expander.expand(&crowd(1_000)).unwrap_err(),
-            PrefabError::TooBig
+            ModuleError::TooBig
         );
-        // Counted and refused: not one prefab was expanded to find out.
+        // Counted and refused: not one module was expanded to find out.
         assert!(expander.expanded.is_empty());
         assert_eq!(expander.held, 0);
     }
@@ -1359,7 +1359,7 @@ mod tests {
                 assert_eq!(
                     kept.origin,
                     Some(Origin {
-                        prefab: asset(700),
+                        module: asset(700),
                         instance: copy,
                         path,
                     })
@@ -1388,12 +1388,12 @@ mod tests {
         let lib = library(vec![(asset(100), lamp_post()), (asset(700), read)]);
         let mut expander = Expander::new(&lib);
         assert_eq!(expander.size_of(asset(700)).unwrap(), 7);
-        assert_eq!(expander.prefab(asset(700)).unwrap().0.len(), 7);
+        assert_eq!(expander.module(asset(700)).unwrap().0.len(), 7);
     }
 
     #[test]
     fn making_entities_stops_at_the_limit_even_if_the_count_is_wrong() {
-        // The padded prefab is 8 entities: its root, the post, its lamp
+        // The padded module is 8 entities: its root, the post, its lamp
         // and five kept parts. Its size is put in as 1, the kind of
         // mistake the count once made.
         let lib = library(vec![(asset(100), lamp_post()), (asset(700), padded(5))]);
@@ -1401,14 +1401,14 @@ mod tests {
             let mut expander = Expander::new(&lib);
             expander.most_made = limit;
             expander.sizes.insert(asset(700), 1);
-            expander.prefab(asset(700)).map(|(level, _)| level.len())
+            expander.module(asset(700)).map(|(level, _)| level.len())
         };
         assert_eq!(expand(8), Ok(8), "room for it all");
         // One short: stopped as the last entity goes into the level.
-        assert_eq!(expand(7), Err(PrefabError::TooBig));
+        assert_eq!(expand(7), Err(ModuleError::TooBig));
         // Too little for the post's copy alone: stopped while it's made.
-        assert_eq!(expand(5), Err(PrefabError::TooBig));
-        assert_eq!(expand(0), Err(PrefabError::TooBig));
+        assert_eq!(expand(5), Err(ModuleError::TooBig));
+        assert_eq!(expand(0), Err(ModuleError::TooBig));
     }
 
     #[test]
@@ -1427,9 +1427,9 @@ mod tests {
                 ..Override::default()
             }),
         };
-        // In the prefab, about its lamp post's lamp and two parts the
+        // In the module, about its lamp post's lamp and two parts the
         // post doesn't have; in the level, about the first copy's lamp, a
-        // part the prefab may have kept, and one nobody has: every mix.
+        // part the module may have kept, and one nobody has: every mix.
         let inner = [vec![id(2)], vec![id(98)], vec![id(99)]];
         let outer = [
             vec![id(11), id(2)],
@@ -1437,10 +1437,10 @@ mod tests {
             vec![id(11), id(77)],
         ];
         for mix in 0..4u32.pow(6) {
-            let mut prefab = padded(0);
+            let mut module = padded(0);
             for (n, path) in inner.iter().enumerate() {
                 if let Some(changes) = says(mix >> (2 * n)) {
-                    prefab.overrides.insert((id(11), path.clone()), changes);
+                    module.overrides.insert((id(11), path.clone()), changes);
                 }
             }
             let mut file = crowd(2);
@@ -1449,13 +1449,13 @@ mod tests {
                     file.overrides.insert((id(50), path.clone()), changes);
                 }
             }
-            let lib = library(vec![(asset(100), lamp_post()), (asset(700), prefab)]);
+            let lib = library(vec![(asset(100), lamp_post()), (asset(700), module)]);
             let mut expander = Expander::new(&lib);
             let counted = expander.count(&file, &mut Vec::new()).unwrap();
             let made = expander.expand(&file).unwrap().len();
             assert!(made <= counted, "mix {mix}: {made} made, {counted} counted");
             let size = expander.size_of(asset(700)).unwrap();
-            let held = expander.prefab(asset(700)).unwrap().0.len();
+            let held = expander.module(asset(700)).unwrap().0.len();
             assert!(held <= size, "mix {mix}: {held} held, {size} counted");
             // What the count lets through is never stopped part-way.
             let mut exact = Expander::new(&lib);
@@ -1466,7 +1466,7 @@ mod tests {
             tight.most_made = made - 1;
             assert_eq!(
                 tight.expand(&file).unwrap_err(),
-                PrefabError::TooBig,
+                ModuleError::TooBig,
                 "mix {mix}"
             );
         }
@@ -1475,7 +1475,7 @@ mod tests {
     #[test]
     fn a_copy_s_references_to_its_own_parts_point_at_the_copy_s_parts() {
         // The hardening milestone's mutation testing: emptying `remap`
-        // went unnoticed, so a placed turret would aim with the prefab's
+        // went unnoticed, so a placed turret would aim with the module's
         // own barrel (or none) instead of its copy's.
         let mut level = Level::new();
         let mut turret = EntityData::new("Turret").with(&Transform::default());
@@ -1497,7 +1497,7 @@ mod tests {
         let lib = library(vec![(
             asset(600),
             LevelFile {
-                kind: FileKind::Prefab { root: id(1) },
+                kind: FileKind::Module { root: id(1) },
                 level,
                 overrides: Default::default(),
             },
@@ -1531,14 +1531,14 @@ mod tests {
     }
 
     #[test]
-    fn expected_values_come_from_the_prefab() {
+    fn expected_values_come_from_the_module() {
         let root = id(50);
         let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
         let level = Expander::new(&lib).expand(&town(root)).unwrap();
         let lamp = derive(root, &[id(12), id(2)]);
         let origin = level.get(lamp).unwrap().origin.clone().unwrap();
         let wanted = Expander::new(&lib).expected(&level, &origin).unwrap();
-        // The street's own override is part of what the street prefab
+        // The street's own override is part of what the street module
         // says; only this copy's changes differ from it.
         assert_eq!(wanted.get::<Light>().unwrap().strength, 5000.0);
     }

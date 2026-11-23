@@ -308,7 +308,7 @@ fn read_class(path: &str, class: Table, names: &States) -> Result<LuaClass, Code
             return Err(mistake(format!(
                 "{name}'s field {field} is a {kind_name}, which isn't a kind a component can \
                  hold: bool, int, float, string, state, vec3, vec2, colour, rotation, entity, \
-                 or one of the project's names (Sound, Clip, Picture, Prefab, Screen, Level, Tag)"
+                 or one of the project's names (Sound, Clip, Picture, Module, Screen, Level, Tag)"
             )));
         };
         // A state lists its states (found by the hardening milestone's

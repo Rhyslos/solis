@@ -31,7 +31,7 @@ fn program(main: &str) -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_prefabs(&["drones/drone", "nowhere"])
+        &script::project_names::Names::with_modules(&["drones/drone", "nowhere"])
             .and_clips(&["walker/walk"], &["footstep"])
             .and_sounds(&["engine", "sfx/step"]),
     );

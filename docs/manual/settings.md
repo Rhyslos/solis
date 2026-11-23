@@ -72,7 +72,7 @@ A 2D game has no use for models or a perspective camera, and a 3D game none for 
 
 | Kind | Hides | Keeps |
 |---|---|---|
-| **2D** | The Shading tab; Home's Lighting group (Bake, Quality, Light map view); Create › Model and Shape, and Import model (lamps stay: a light shines on sprites too); the brush list (`B` paints tiles instead); the Perspective, Top, Front and Right views and the Look pill; the Model, Brush, Collider, Rigid body and Character body components; Preferences › Viewport's grid step, camera speed and looks. | Sprites, tile maps and their painter, the 2D view and its camera, lights and the Environment (lamps and day and night), zones, prefabs, animation, screens, sound, the Debug and Build tabs: everything shared. |
+| **2D** | The Shading tab; Home's Lighting group (Bake, Quality, Light map view); Create › Model and Shape, and Import model (lamps stay: a light shines on sprites too); the brush list (`B` paints tiles instead); the Perspective, Top, Front and Right views and the Look pill; the Model, Brush, Collider, Rigid body and Character body components; Preferences › Viewport's grid step, camera speed and looks. | Sprites, tile maps and their painter, the 2D view and its camera, lights and the Environment (lamps and day and night), zones, modules, animation, screens, sound, the Debug and Build tabs: everything shared. |
 | **3D** | Tile maps (Create › Tile map, New tile map, the Map tab and the painter); the 2D view; Pixel perfect and Snap to tiles; the Tile map, 2D collider and Parallax components; Preferences' **In the 2D view, moves land on**; Project settings › 2D. | Models, lights, shape brushes, the 3D views, and everything shared, sprites among them. |
 | **Both** | Nothing. | Everything, as before projects had a kind. |
 

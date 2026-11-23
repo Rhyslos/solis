@@ -199,7 +199,7 @@ impl Workbench {
                 self.open.place_targets.remove(&id);
                 actions.push(WorkbenchAction::PlaceAsset(id));
             }
-            LibraryRequest::Open(LibraryKind::Prefab, path) => {
+            LibraryRequest::Open(LibraryKind::Module, path) => {
                 let id = self
                     .open
                     .library
@@ -207,11 +207,11 @@ impl Workbench {
                     .find(|i| i.path == path)
                     .and_then(|i| i.id);
                 if let Some(id) = id {
-                    self.open_prefab_page(id);
+                    self.open_module_page(id);
                 }
             }
-            LibraryRequest::NewPrefab(folder) => {
-                actions.push(WorkbenchAction::NewPrefab(folder.into()));
+            LibraryRequest::NewModule(folder) => {
+                actions.push(WorkbenchAction::NewModule(folder.into()));
             }
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
             // The project's tags are edited on their own page.
@@ -406,7 +406,7 @@ impl Workbench {
                     && matches!(
                         i.kind,
                         LibraryKind::Sound
-                            | LibraryKind::Prefab
+                            | LibraryKind::Module
                             | LibraryKind::SoundEvent
                             | LibraryKind::SpriteSheet
                             | LibraryKind::Tileset
@@ -417,12 +417,12 @@ impl Workbench {
         {
             self.open.sound_shown = Some((path.clone(), self.open.document.selection.clone()));
             self.open.mixer.shown = None;
-            // Details counts where a prefab is placed, on a worker.
+            // Details counts where a module is placed, on a worker.
             if let Some(id) = self
                 .open
                 .library
                 .iter()
-                .find(|i| &i.path == path && i.kind == LibraryKind::Prefab)
+                .find(|i| &i.path == path && i.kind == LibraryKind::Module)
                 .and_then(|i| i.id)
             {
                 self.open.outbox.push(WorkbenchAction::CountPlaced(id));
@@ -693,7 +693,7 @@ impl Workbench {
         self.open.place_targets.remove(&asset);
     }
 
-    /// Where a model or prefab being placed goes: the point it was
+    /// Where a model or module being placed goes: the point it was
     /// dropped at (made relative to the entity it goes under) and that
     /// entity, or `None` to place it where the camera looks.
     pub(crate) fn take_place_target(&mut self, asset: AssetId) -> Option<(Vec3, Option<EntityId>)> {

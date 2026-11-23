@@ -12,10 +12,10 @@ fn yard() -> (Workbench, EntityId, EntityId, EntityId) {
     (w, post, lamp, fence)
 }
 
-/// What the app does with a plan: the prefab known, then the swap.
-fn made(w: &mut Workbench, plan: &MakePrefabPlan) -> AssetId {
+/// What the app does with a plan: the module known, then the swap.
+fn made(w: &mut Workbench, plan: &MakeModulePlan) -> AssetId {
     let id = AssetId::random();
-    w.set_prefab(id, std::sync::Arc::new(plan.file.clone()));
+    w.set_module(id, std::sync::Arc::new(plan.file.clone()));
     if let Some(swap) = &plan.swap {
         w.swap_for_copy(id, swap);
     }
@@ -23,16 +23,16 @@ fn made(w: &mut Workbench, plan: &MakePrefabPlan) -> AssetId {
 }
 
 #[test]
-fn one_picked_entity_becomes_a_prefab_and_a_linked_copy_in_one_undo_step() {
+fn one_picked_entity_becomes_a_module_and_a_linked_copy_in_one_undo_step() {
     let (mut w, post, lamp, _) = yard();
     w.select(post);
-    w.ask_make_prefab();
-    let mut form = w.open.make_prefab.clone().expect("the dialog is open");
+    w.ask_make_module();
+    let mut form = w.open.make_module.clone().expect("the dialog is open");
     assert_eq!(form.count, 2, "the post and its lamp");
     assert!(form.swap, "swapped for a copy, at first");
     form.name = "Lamp post".into();
-    let plan = w.make_prefab_plan(&form).unwrap();
-    assert_eq!(plan.file.kind, FileKind::Prefab { root: post });
+    let plan = w.make_module_plan(&form).unwrap();
+    assert_eq!(plan.file.kind, FileKind::Module { root: post });
     assert_eq!(plan.file.level.get(post).unwrap().name, "Lamp post");
     let steps = w.document().history().undo_len();
     let before = w.document().level().clone();
@@ -64,12 +64,12 @@ fn several_picked_entities_go_under_a_new_root_and_keep_their_places() {
     let at = |w: &Workbench, id| w.document().world_matrix(id).w_axis;
     let (post_at, fence_at) = (at(&w, post), at(&w, fence));
     w.open.document.selection.select_all([post, fence], post);
-    w.ask_make_prefab();
-    let mut form = w.open.make_prefab.clone().unwrap();
+    w.ask_make_module();
+    let mut form = w.open.make_module.clone().unwrap();
     assert_eq!(form.count, 3);
     form.name = "Yard".into();
-    let plan = w.make_prefab_plan(&form).unwrap();
-    let FileKind::Prefab { root } = plan.file.kind else {
+    let plan = w.make_module_plan(&form).unwrap();
+    let FileKind::Module { root } = plan.file.kind else {
         panic!("a level")
     };
     assert_eq!(plan.file.level.get(root).unwrap().name, "Yard");
@@ -94,11 +94,11 @@ fn several_picked_entities_go_under_a_new_root_and_keep_their_places() {
 fn without_the_swap_the_level_stays_as_it_was() {
     let (mut w, post, _, _) = yard();
     w.select(post);
-    w.ask_make_prefab();
-    let mut form = w.open.make_prefab.clone().unwrap();
+    w.ask_make_module();
+    let mut form = w.open.make_module.clone().unwrap();
     form.swap = false;
     let before = w.document().level().clone();
-    let plan = w.make_prefab_plan(&form).unwrap();
+    let plan = w.make_module_plan(&form).unwrap();
     assert!(plan.swap.is_none());
     made(&mut w, &plan);
     assert_eq!(*w.document().level(), before);
@@ -108,8 +108,8 @@ fn without_the_swap_the_level_stays_as_it_was() {
 fn nothing_picked_or_no_name_is_said_never_made() {
     let mut w = Workbench::new(info());
     w.open.document.selection.clear();
-    w.ask_make_prefab();
-    assert!(w.open.make_prefab.is_none());
+    w.ask_make_module();
+    assert!(w.open.make_module.is_none());
     assert!(
         w.log_lines()
             .last()
@@ -119,11 +119,11 @@ fn nothing_picked_or_no_name_is_said_never_made() {
     );
     let (mut w, post, _, _) = yard();
     w.select(post);
-    w.ask_make_prefab();
-    let mut form = w.open.make_prefab.clone().unwrap();
+    w.ask_make_module();
+    let mut form = w.open.make_module.clone().unwrap();
     form.name = "  ".into();
     assert!(
-        w.make_prefab_plan(&form)
+        w.make_module_plan(&form)
             .unwrap_err()
             .contains("needs a name")
     );
@@ -134,12 +134,12 @@ fn the_dialog_starts_in_the_library_s_folder_and_browse_changes_it() {
     let (mut w, post, _, _) = yard();
     w.open.library_state.folder = "farm/animals".into();
     w.select(post);
-    w.ask_make_prefab();
-    assert_eq!(w.open.make_prefab.as_ref().unwrap().folder, "farm/animals");
-    w.set_prefab_folder("/props/");
-    assert_eq!(w.open.make_prefab.as_ref().unwrap().folder, "props");
+    w.ask_make_module();
+    assert_eq!(w.open.make_module.as_ref().unwrap().folder, "farm/animals");
+    w.set_module_folder("/props/");
+    assert_eq!(w.open.make_module.as_ref().unwrap().folder, "props");
     let plan = w
-        .make_prefab_plan(w.open.make_prefab.as_ref().unwrap())
+        .make_module_plan(w.open.make_module.as_ref().unwrap())
         .unwrap();
     assert_eq!(plan.folder, std::path::PathBuf::from("props"));
     let _ = Light::point();

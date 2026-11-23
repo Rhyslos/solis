@@ -1,6 +1,6 @@
-//! Levels were called areas, and prefabs assemblies, until decision 0118.
+//! Levels were called areas, and modules assemblies, until decision 0118.
 //! What a user reads says "level" for the thing that's built, saved and
-//! played, and "prefab" for the thing made once and placed many times:
+//! played, and "module" for the thing made once and placed many times:
 //! every message, label and hint in the program's own code, the user
 //! manual (which is the guide, built) and the guide's picture captions.
 //! "Area" and "assembly" stay only where they mean something else (a
@@ -153,7 +153,7 @@ const ALLOWED_ASSEMBLY: &[(&str, &str, &str)] = &[
     (
         "older_files.rs",
         "~assemblies are called",
-        "the Console's note that a project's assemblies were renamed prefabs",
+        "the Console's note that a project's assemblies were renamed modules",
     ),
     (
         "older_files.rs",
@@ -162,7 +162,7 @@ const ALLOWED_ASSEMBLY: &[(&str, &str, &str)] = &[
     ),
     (
         "old_names.rs",
-        "assemblies are called prefabs",
+        "assemblies are called modules",
         "the mistake game code's old `Assembly` gets",
     ),
     (
@@ -171,28 +171,28 @@ const ALLOWED_ASSEMBLY: &[(&str, &str, &str)] = &[
         "game code's old name for the state, looked for to say the new one",
     ),
     (
-        "prefabs.md",
-        "prefab, copy, assembly](",
+        "modules.md",
+        "module, copy, assembly](",
         "the link to the concepts, which say what the old name was",
     ),
     (
         "concepts.md",
-        "~**assembly:** the old name for a prefab",
+        "~**assembly:** the old name for a module",
         "the pointer for anyone who knew the old name",
     ),
     (
         "backups-and-upgrades.md",
-        "~**assemblies renamed prefabs:**",
+        "~**assemblies renamed modules:**",
         "explains the rename a project from before it goes through",
     ),
     (
-        "prefabs.md",
-        "~**assemblies:** solis called prefabs",
-        "the same, on the prefabs' page",
+        "modules.md",
+        "~**assemblies:** solis called modules",
+        "the same, on the modules' page",
     ),
     (
         "game-code.md",
-        "~(assemblies are called prefabs",
+        "~(assemblies are called modules",
         "the row of calls that changed, for code written before",
     ),
     (
@@ -463,7 +463,7 @@ fn the_check_finds_what_it_looks_for() {
 }
 
 #[test]
-fn the_program_and_the_manual_say_prefab_for_what_was_an_assembly() {
+fn the_program_and_the_manual_say_module_for_what_was_an_assembly() {
     let mut said = Vec::new();
     for name in CRATES {
         for (path, text) in files_in(&top().join("crates").join(name).join("src"), "rs") {
@@ -488,7 +488,7 @@ fn the_program_and_the_manual_say_prefab_for_what_was_an_assembly() {
             said.extend(unexplained_word(&file, line, false, ASSEMBLY));
         }
     }
-    assert!(said.is_empty(), "say \"prefab\":\n{}", said.join("\n"));
+    assert!(said.is_empty(), "say \"module\":\n{}", said.join("\n"));
 }
 
 #[test]

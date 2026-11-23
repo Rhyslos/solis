@@ -25,9 +25,9 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 .map(drop)
                 .map_err(|e| e.to_string())
         }),
-        ("prefab", &level::prefab_file::FORMAT, |text| {
+        ("module", &level::module_file::FORMAT, |text| {
             let registry = level::builtin::registry().map_err(|e| e.to_string())?;
-            level::prefab_file::read(text, &registry)
+            level::module_file::read(text, &registry)
                 .map(drop)
                 .map_err(|e| e.to_string())
         }),
@@ -157,6 +157,15 @@ fn files_in(folder: &Path) -> Vec<PathBuf> {
     files
 }
 
+/// The folder a format's examples of a version are kept in: a format
+/// renamed keeps its older examples where they were (rule 23).
+fn folder_for(folder: &'static str, version: u32) -> &'static str {
+    match (folder, version) {
+        ("module", 1) => "prefab",
+        _ => folder,
+    }
+}
+
 #[test]
 fn every_version_of_every_format_opens() {
     let formats = every_format();
@@ -167,7 +176,9 @@ fn every_version_of_every_format_opens() {
     );
     for (folder, format, read) in formats {
         for version in 1..=format.current() {
-            let dir = fixtures().join(folder).join(format!("v{version}"));
+            let dir = fixtures()
+                .join(folder_for(folder, version))
+                .join(format!("v{version}"));
             let files = files_in(&dir);
             assert!(
                 !files.is_empty(),

@@ -144,8 +144,8 @@ pub mod kind {
 
     /// Models (the design's mesh).
     pub const MODEL: Color32 = tokens::KIND_MODEL;
-    /// Prefabs, and a placed copy of one (the design's prefab).
-    pub const PREFAB: Color32 = tokens::KIND_PREFAB;
+    /// Modules, and a placed copy of one (the design's module).
+    pub const MODULE: Color32 = tokens::KIND_MODULE;
     /// Level files: Solis's own green.
     pub const LEVEL: Color32 = Color32::from_rgb(0x58, 0xc2, 0x6a);
     /// Pictures, and a picture's crops (the design's texture).

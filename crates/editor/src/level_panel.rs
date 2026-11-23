@@ -42,7 +42,7 @@ pub(crate) struct LevelPanelState {
     effect_kept: Option<KeptEffect>,
     /// The marks on placed copies (a link, a dot), worked out by the
     /// workbench before the panel is drawn.
-    pub(crate) marks: std::sync::Arc<crate::prefab_marks::PrefabMarks>,
+    pub(crate) marks: std::sync::Arc<crate::module_marks::ModuleMarks>,
 }
 
 /// Every entity hidden and every entity locked, counting those under a
@@ -328,7 +328,7 @@ fn copy_marks(ui: &Ui, row: Rect, pointed: bool, t: Toggles) {
             spot(0.0).center(),
             egui::vec2(size::ROW_ICON, size::ROW_ICON),
         );
-        icons::icon(ui.painter(), square, Icon::Link, theme::kind::PREFAB);
+        icons::icon(ui.painter(), square, Icon::Link, theme::kind::MODULE);
         at = 1.0;
     }
     if changed {
@@ -430,9 +430,9 @@ pub(crate) fn looks(
     if entity.has("Environment") {
         return (Icon::LevelFile, theme::kind::ENVIRONMENT, "sky, fog".into());
     }
-    // The root of a placed prefab.
+    // The root of a placed module.
     if entity.origin.as_ref().is_some_and(|o| o.path.is_empty()) {
-        return (Icon::Prefab, theme::kind::PREFAB, String::new());
+        return (Icon::Module, theme::kind::MODULE, String::new());
     }
     (Icon::Empty, theme::kind::OTHER, String::new())
 }
@@ -465,7 +465,7 @@ pub(crate) enum LevelRequest {
     },
     /// Something picked from the panel's menus.
     Command(MenuCommand),
-    /// Place a model or prefab dragged from the Library under this
+    /// Place a model or module dragged from the Library under this
     /// entity.
     PlaceUnder {
         /// The asset.
@@ -698,7 +698,7 @@ fn row_menu(ui: &mut Ui) -> Option<MenuCommand> {
             ("Add spotlight", "", M::AddSpotlight),
             ("Add camera", "", M::AddCamera),
         ],
-        &[("Make prefab\u{2026}", "", M::MakePrefab)],
+        &[("Make module\u{2026}", "", M::MakeModule)],
         &[
             ("Select all", "Ctrl+A", M::SelectAll),
             ("Select nothing", "Esc", M::SelectNone),
@@ -1037,16 +1037,16 @@ mod tests {
     }
 
     #[test]
-    fn a_placed_prefab_s_root_is_coloured_as_a_prefab() {
+    fn a_placed_module_s_root_is_coloured_as_a_module() {
         let instance = EntityId::random();
         let mut root = EntityData::new("Fighter");
         root.origin = Some(Origin {
-            prefab: AssetId::random(),
+            module: AssetId::random(),
             instance,
             path: Vec::new(),
         });
-        assert_eq!(color_of(&root), theme::kind::PREFAB);
-        // A plain entity inside it is not the prefab itself.
+        assert_eq!(color_of(&root), theme::kind::MODULE);
+        // A plain entity inside it is not the module itself.
         let mut part = root.clone();
         part.origin.as_mut().unwrap().path = vec![EntityId::random()];
         assert_eq!(color_of(&part), theme::kind::OTHER);

@@ -85,7 +85,7 @@ pub enum Phase {
     ThreeD5,
     /// Shape brushes.
     Tools1a,
-    /// The editor rethink: prefabs (R5).
+    /// The editor rethink: modules (R5).
     Shared1f,
     /// No phase of the roadmap builds it yet.
     NotPlanned,

@@ -1,12 +1,12 @@
-//! A prefab's file: `chicken.prefab.lst`, a Lust data file
+//! A module's file: `chicken.module.lst`, a Lust data file
 //! ([decision 0081](../../../docs/decisions/0081-what-solis-makes-is-lust.md),
 //! [decision 0118](../../../docs/decisions/0118-the-editor-rethink.md)),
-//! version 1. Each entity of the prefab is a `Part`, and so is each change
+//! version 1. Each entity of the module is a `Part`, and so is each change
 //! a copy placed inside it makes to one of that copy's parts:
 //!
 //! ```text
-//! -- A prefab. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
-//! fetch "solis/data/prefab":[Part];
+//! -- A module. Written by Solis; safe to edit by hand: a part per entity, a line per setting.
+//! fetch "solis/data/module":[Part];
 //!
 //! lock int version = 1;
 //! lock string root = "0000000000001";
@@ -22,7 +22,7 @@
 //!         name = "Crate",
 //!         parent = "0000000000001",
 //!         order = "a1",
-//!         prefab = "1BWHNR3RV8PYY"
+//!         module = "1BWHNR3RV8PYY"
 //!     },
 //!     new Part { id = "0000000000003/0000000000002", removed = true },
 //! ];
@@ -34,11 +34,11 @@
 //! of any kind, and a Lust class's field has one, so the value is kept in
 //! the line's own words. A field left out says nothing: a change's
 //! `parent = ""` moves the part out to the top level, while no `parent`
-//! leaves it where its prefab has it ([`ParentChange`]).
+//! leaves it where its module has it ([`ParentChange`]).
 //!
 //! Reading turns the parts into the blocks a level's file has and reads
 //! those with [`crate::text::read_file`], so one set of checks makes the
-//! prefab from either layout. The older layout, an assembly's
+//! module from either layout. The older layout, an assembly's
 //! `.solassembly` file (`assembly version 4 root ID;`), is still read
 //! through the level format's own steps, until the app has moved it
 //! (`app::older_files`).
@@ -50,60 +50,71 @@ use reflect::{EntityId, Registry};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-/// The word before `.lst` in a prefab's file name.
-pub const KIND: &str = "prefab";
+/// The word before `.lst` in a module's file name.
+pub const KIND: &str = "module";
 
-/// The end of a prefab's file name.
-pub const ENDING: &str = ".prefab.lst";
+/// The end of a module's file name.
+pub const ENDING: &str = ".module.lst";
 
-/// The extension prefabs had while they were called assemblies, before
+/// The extension modules had while they were called assemblies, before
 /// version 1: such a file is still read, and moved when its project opens.
 pub const OLD_EXTENSION: &str = "solassembly";
 
 /// The version this build writes. Version 1 is the first in Lust; the
 /// older layout (an assembly's file) has its own versions, the level
 /// format's, and is read through those.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
-/// The most bytes a prefab file may have: a level's most.
+/// Where version 1's files fetched their classes from, before prefabs
+/// were called modules.
+const OLD_CLASSES_PATH: &str = "\"solis/data/prefab\"";
+
+/// The most bytes a module file may have: a level's most.
 pub const MAX_BYTES: usize = text::MAX_BYTES;
 
 /// A setting longer than this is broken over lines (after a comma) when
 /// it's read, so a brush's long lists stay within a level line's most.
 const LINE_BREAK_AFTER: usize = 4096;
 
-/// What a prefab file holds, in Lust: written into every project's
-/// `solis/data/prefab.lst`, and handed to Lust when a prefab is read.
-pub const CLASSES: &str = "-- What a prefab file holds (Solis writes this; prefabs fetch it).\n\
+/// What a module file holds, in Lust: written into every project's
+/// `solis/data/module.lst`, and handed to Lust when a module is read.
+pub const CLASSES: &str = "-- What a module file holds (Solis writes this; modules fetch it).\n\
 class Part {\n    has {\n        string id = \"\";\n        string name = \"\";\n        \
-string parent = \"\";\n        string order = \"\";\n        string prefab = \"\";\n        \
+string parent = \"\";\n        string order = \"\";\n        string module = \"\";\n        \
 bool removed = false;\n        string array remove = [];\n        string array settings = [];\n    \
 }\n}\n\npass Part;\nend\n";
 
-/// Prefabs' version and upgraders. Version 1 is the first; an older
+/// Modules' version and upgraders. Version 1 is the first; an older
 /// assembly's file isn't this format, and is read as the level format.
 pub static FORMAT: reflect::upgrade::Format<LevelFile> = reflect::upgrade::Format {
-    name: "prefab",
+    name: "module",
     current: VERSION,
     version_of: data::version_of,
-    steps: &[],
+    steps: &[prefabs_are_modules],
 };
 
-const COMMENT: &str =
-    "A prefab. Written by Solis; safe to edit by hand: a part per entity, a line per setting.";
+/// Version 1 to 2: prefabs are called modules (the project lead,
+/// 2026-11-23). A version 1 file's classes are fetched from where they
+/// were (`read` turns the path), so nothing is left to change.
+fn prefabs_are_modules(_: &mut LevelFile) -> Result<(), String> {
+    Ok(())
+}
 
-/// Whether `text` is a prefab's older layout (an assembly's file), which
-/// [`read`] still reads and the app moves to a `.prefab.lst`.
+const COMMENT: &str =
+    "A module. Written by Solis; safe to edit by hand: a part per entity, a line per setting.";
+
+/// Whether `text` is a module's older layout (an assembly's file), which
+/// [`read`] still reads and the app moves to a `.module.lst`.
 pub fn is_old_layout(text: &str) -> bool {
     !data::is_data(text)
 }
 
-/// `file` (a prefab's contents, as [`crate::prefab::Expander::collapse`]
-/// makes them) as a prefab file. Refuses a level, and contents that
+/// `file` (a module's contents, as [`crate::module::Expander::collapse`]
+/// makes them) as a module file. Refuses a level, and contents that
 /// would be too big to read back.
 pub fn write(file: &LevelFile, registry: &Registry) -> Result<String, ParseError> {
-    let FileKind::Prefab { root } = file.kind else {
-        return Err(whole("a level can't be written as a prefab"));
+    let FileKind::Module { root } = file.kind else {
+        return Err(whole("a level can't be written as a module"));
     };
     unseen_characters(file)?;
     let mut parts: Vec<(String, String)> = Vec::new();
@@ -115,7 +126,7 @@ pub fn write(file: &LevelFile, registry: &Registry) -> Result<String, ParseError
         fields.push(("order", data::text(&entity.order)));
         let settings = match &entity.origin {
             Some(origin) if origin.path.is_empty() => {
-                fields.push(("prefab", data::text(&origin.prefab.to_string())));
+                fields.push(("module", data::text(&origin.module.to_string())));
                 match file.overrides.get(&(id, Vec::new())) {
                     Some(changes) => {
                         push_remove(&mut fields, &changes.remove);
@@ -160,7 +171,7 @@ pub fn write(file: &LevelFile, registry: &Registry) -> Result<String, ParseError
 
 /// Refuses names, orders and components holding a character that can't
 /// be seen (a control character other than a line break or a tab): a
-/// data file can't keep one, so the prefab wouldn't read back as itself.
+/// data file can't keep one, so the module wouldn't read back as itself.
 fn unseen_characters(file: &LevelFile) -> Result<(), ParseError> {
     let unseen = |text: &str| {
         text.chars()
@@ -181,7 +192,7 @@ fn unseen_characters(file: &LevelFile) -> Result<(), ParseError> {
     });
     match entities.chain(changes).find(|t| unseen(t)) {
         Some(text) => Err(whole(format!(
-            "\"{}\" holds a character that can't be seen, which a prefab's file can't keep: \
+            "\"{}\" holds a character that can't be seen, which a module's file can't keep: \
              type it again without it",
             shown(&text.replace(|c: char| c.is_control(), "?"))
         ))),
@@ -238,24 +249,41 @@ fn part(id: &str, fields: Vec<(&str, String)>, settings: &[String]) -> String {
     out
 }
 
-/// Reads a prefab file: a `.prefab.lst`, or an assembly's older file.
+/// Reads a module file: a `.module.lst`, or an assembly's older file.
 /// Every mistake comes back with its line (a part's, the line its list
 /// starts on), never a crash; a newer version is refused.
 pub fn read(text: &str, registry: &Registry) -> Result<LevelFile, ParseError> {
     if is_old_layout(text) {
         let file = text::read_file(text, registry)?;
         return match file.kind {
-            FileKind::Prefab { .. } => Ok(file),
-            FileKind::Level => Err(whole("it's a level, not a prefab")),
+            FileKind::Module { .. } => Ok(file),
+            FileKind::Level => Err(whole("it's a level, not a module")),
         };
     }
     let version = data::version_of(text).unwrap_or(0);
     if version > VERSION {
         return Err(whole(format!(
-            "it was saved by a newer version (prefab {version}; this one reads up to \
+            "it was saved by a newer version (module {version}; this one reads up to \
              {VERSION}). Update to open it."
         )));
     }
+    // Version 1 was a prefab's file, fetching its classes as such
+    // (`solis/data/prefab`); version 2 is a module's (2026-11-23).
+    let renamed;
+    let text = if version < 2 {
+        renamed = text.replacen(
+            OLD_CLASSES_PATH,
+            &format!(
+                "\"{}/{}/{KIND}\"",
+                data::ENGINE_FOLDER,
+                data::CLASSES_FOLDER
+            ),
+            1,
+        );
+        renamed.as_str()
+    } else {
+        text
+    };
     let values = data::read(text, KIND, CLASSES, MAX_BYTES).map_err(from_data)?;
     let root = data::get(&values, "root").map_err(from_data)?;
     let root = root.as_text().unwrap_or_default();
@@ -272,11 +300,11 @@ pub fn read(text: &str, registry: &Registry) -> Result<LevelFile, ParseError> {
         .map_or(0, |v| v.line as usize);
     let parts = data::things(&values, "parts");
     if parts.len() > text::MAX_ENTITIES.saturating_mul(2) {
-        return Err(at(line, "it has more parts than a prefab may"));
+        return Err(at(line, "it has more parts than a module may"));
     }
     let mut blocks = format!(
         "{} version {} root {root};\n",
-        text::PREFAB_WORD,
+        text::MODULE_WORD,
         text::VERSION
     );
     let mut starts: Vec<(usize, String)> = Vec::with_capacity(parts.len());
@@ -318,7 +346,7 @@ fn block_of(thing: &data::Fixed) -> Result<String, String> {
     if let Some(name) = thing.field("name").and_then(data::Fixed::as_text) {
         let _ = writeln!(out, "    name = {};", text::quoted(name));
     }
-    for key in ["parent", "prefab"] {
+    for key in ["parent", "module"] {
         if let Some(value) = thing.field(key).and_then(data::Fixed::as_text) {
             let empty_is_top = key == "parent";
             if !(is_id(value, false) || empty_is_top && value.is_empty()) {
@@ -441,8 +469,8 @@ fn from_data(e: DataError) -> ParseError {
     }
 }
 
-/// An empty prefab: one entity, `name`, at the top, which is its root
-/// (New prefab in the Library).
+/// An empty module: one entity, `name`, at the top, which is its root
+/// (New module in the Library).
 pub fn empty(name: &str) -> LevelFile {
     let root = EntityId::random();
     let mut level = Level::new();
@@ -451,12 +479,12 @@ pub fn empty(name: &str) -> LevelFile {
         crate::document::EntityData::new(name).with(&crate::builtin::Transform::default()),
     );
     LevelFile {
-        kind: FileKind::Prefab { root },
+        kind: FileKind::Module { root },
         level,
         overrides: BTreeMap::new(),
     }
 }
 
 #[cfg(test)]
-#[path = "prefab_file_tests.rs"]
+#[path = "module_file_tests.rs"]
 mod tests;

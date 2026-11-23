@@ -6,12 +6,12 @@
 //!
 //! - **A click** selects what's under the mouse; with Ctrl it's added or
 //!   taken away. A click on nothing selects nothing (Ctrl: no change).
-//! - **Prefabs:** a click on a copy of a prefab selects the whole
+//! - **Modules:** a click on a copy of a module selects the whole
 //!   copy (its root). Once something in that copy is selected, a click
 //!   selects the entity itself, so a second click goes inside, as Unity
-//!   does with prefabs.
+//!   does with modules.
 //! - **A box** selects everything with a visible pixel inside it, each
-//!   copy of a prefab as a whole; with Ctrl it adds to the selection.
+//!   copy of a module as a whole; with Ctrl it adds to the selection.
 
 use crate::document::Selection;
 use level::Level;
@@ -29,7 +29,7 @@ pub enum PickMode {
     Add,
 }
 
-/// The root of the outermost prefab copy `id` belongs to, or `id`
+/// The root of the outermost module copy `id` belongs to, or `id`
 /// itself when it isn't part of one.
 fn copy_root(level: &Level, id: EntityId) -> EntityId {
     level
@@ -108,16 +108,16 @@ mod tests {
     use level::{EntityData, Origin};
     use reflect::AssetId;
 
-    /// A level with a loose crate and one copy of a prefab (a root
+    /// A level with a loose crate and one copy of a module (a root
     /// and a lamp inside it).
     fn level() -> (Level, EntityId, EntityId, EntityId) {
         let mut level = Level::new();
         let loose = level.spawn(EntityData::new("Crate"));
         let root = EntityId::random();
-        let prefab = AssetId::random();
+        let module = AssetId::random();
         let mut root_data = EntityData::new("Lamp post");
         root_data.origin = Some(Origin {
-            prefab,
+            module,
             instance: root,
             path: Vec::new(),
         });
@@ -125,7 +125,7 @@ mod tests {
         let mut lamp = EntityData::new("Lamp");
         lamp.parent = Some(root);
         lamp.origin = Some(Origin {
-            prefab,
+            module,
             instance: root,
             path: vec![EntityId::random()],
         });

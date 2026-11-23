@@ -30,9 +30,9 @@ pub(crate) enum FieldChange {
         /// entities selected, only that one changes on each.
         part: Option<(usize, f64)>,
     },
-    /// Put it back to its prefab's value.
+    /// Put it back to its module's value.
     Revert(String),
-    /// Made its value the prefab's, for every copy.
+    /// Made its value the module's, for every copy.
     Apply(String),
     /// Play the sound event at this path in the project, to hear it
     /// (a sound field's ▶, decision 0127). Changes nothing.

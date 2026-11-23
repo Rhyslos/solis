@@ -105,7 +105,7 @@ impl Workbench {
             return;
         }
         self.open.unanswered.sent(&path, file.clone());
-        // Nothing the level's problems or a prefab's part look at changed,
+        // Nothing the level's problems or a module's part look at changed,
         // so `sources` stays as it is.
         self.show_file(&path, file.clone());
         self.open.table_saves.0.push_back((path, file, text));

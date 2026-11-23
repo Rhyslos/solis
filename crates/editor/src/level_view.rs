@@ -664,7 +664,7 @@ mod tests {
 
     #[test]
     fn the_editor_and_the_game_light_the_level_with_the_same_sun() {
-        // Two suns (a duplicated one, or one from a prefab): both pick
+        // Two suns (a duplicated one, or one from a module): both pick
         // the first in tree order, whatever their IDs.
         let mut level = Level::new();
         let low = reflect::EntityId(reflect::Id::from_raw(1).unwrap());
@@ -780,7 +780,7 @@ mod tests {
     #[test]
     fn a_light_changed_to_a_bad_cone_while_playing_is_drawn_safely() {
         // The game's world takes a light's values as they change (edited
-        // in Properties while playing, a prefab spawned by game code).
+        // in Properties while playing, a module spawned by game code).
         let mut level = Level::new();
         let id = level.spawn(EntityData::new("Torch").with(&Light::spot()));
         let mut world = world::World::from_level(&level);

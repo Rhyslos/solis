@@ -79,7 +79,7 @@ fn every_engine_component_has_a_manual_page_that_exists() {
 fn a_new_level_s_sun_and_environment_show_nothing_changed() {
     // Shared 1f's loose ends: the playground's Sun showed a dot and ↺ on
     // Kind, Colour, Strength and Shadows (a lamp's values), and looked
-    // like a prefab's copy with changes of its own. A sun starts as a
+    // like a module's copy with changes of its own. A sun starts as a
     // sun, read back from its file as every sample's is.
     let registry = level::builtin::registry().unwrap();
     let text = level::text::write(&level::builtin::starter_level(), &registry, &|_| None);

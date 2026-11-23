@@ -9,7 +9,7 @@ use crate::level_panel::{LevelPanelState, LevelRequest, level_tree};
 use crate::library::{LibraryRequest, LibraryState, Place as LibraryPlace, ProjectInfo, library};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
-use crate::properties::{PrefabPart, PropertyRequest, properties};
+use crate::properties::{ModulePart, PropertyRequest, properties};
 use crate::theme::{self, Accent};
 use crate::viewport::{Viewport, ViewportRenderer};
 use egui::{Color32, Id, RichText, Ui};
@@ -45,11 +45,11 @@ pub(crate) struct PanelViewer<'a> {
     /// Set when the Game panel's picture was clicked.
     pub(crate) game_out: &'a mut crate::game_panel::GamePanelOut,
     pub(crate) document: &'a Document,
-    /// The prefab's page, while one is open: its name and the level's
-    /// (the document is the prefab's while its page is in front).
+    /// The module's page, while one is open: its name and the level's
+    /// (the document is the module's while its page is in front).
     pub(crate) page: Option<crate::panels::PageNames>,
-    /// Details' prefab, while one is picked in the Library.
-    pub(crate) prefab_details: Option<&'a crate::prefab_details::PrefabDetails>,
+    /// Details' module, while one is picked in the Library.
+    pub(crate) module_details: Option<&'a crate::module_details::ModuleDetails>,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     pub(crate) level_requests: &'a mut Vec<LevelRequest>,
     pub(crate) project: Option<&'a ProjectInfo>,
@@ -68,7 +68,7 @@ pub(crate) struct PanelViewer<'a> {
     /// The project's buses, and the bus Properties shows, if any.
     pub(crate) mixer: &'a crate::mixer_view::MixerState,
     pub(crate) mixer_requests: &'a mut Vec<crate::mixer_view::MixerRequest>,
-    pub(crate) part: Option<&'a PrefabPart>,
+    pub(crate) part: Option<&'a ModulePart>,
     /// While playing: the selected entity's game code values as they are
     /// now, by component, and what the user changed since Play.
     pub(crate) running: Option<crate::properties::WhilePlaying<'a>>,
@@ -169,8 +169,8 @@ pub(crate) struct FramesOut {
     pub(crate) screen_closed: bool,
     /// A click on the Profiler's frame-time graph picked this frame.
     pub(crate) frame_picked: Option<u64>,
-    /// The prefab's page was closed (its ×).
-    pub(crate) prefab_page_closed: bool,
+    /// The module's page was closed (its ×).
+    pub(crate) module_page_closed: bool,
     /// What the Table tab asked for.
     pub(crate) table: crate::table_view::TableOut,
     /// The Table tab was closed (its ×).
@@ -181,11 +181,11 @@ pub(crate) struct FramesOut {
     pub(crate) translations_closed: bool,
 }
 
-/// The names on the document tabs while a prefab's page is open.
+/// The names on the document tabs while a module's page is open.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PageNames {
-    /// The prefab's name.
-    pub(crate) prefab: String,
+    /// The module's name.
+    pub(crate) module: String,
     /// The level's name.
     pub(crate) level: String,
 }
@@ -198,7 +198,7 @@ impl PanelViewer<'_> {
         match (panel, &self.page) {
             (Panel::Viewport, Some(page)) => return page.level.clone(),
             (Panel::Viewport, None) => return self.document.name(),
-            (Panel::PrefabPage, Some(page)) => return page.prefab.clone(),
+            (Panel::ModulePage, Some(page)) => return page.module.clone(),
             _ => {}
         }
         // A LIBRARY TOOLS document, and a screen on the canvas, is called
@@ -256,7 +256,7 @@ impl PanelViewer<'_> {
             Panel::Tileset => self.tileset.is_some(),
             Panel::AtlasCrop => self.atlas.is_some(),
             Panel::Canvas | Panel::Elements | Panel::Pictures => self.screen.is_some(),
-            Panel::PrefabPage => self.page.is_some(),
+            Panel::ModulePage => self.page.is_some(),
             Panel::Table => self.table.is_some(),
             Panel::Translations => self.translations.is_some(),
             Panel::Viewport
@@ -296,7 +296,7 @@ impl PanelViewer<'_> {
             Panel::Canvas | Panel::Elements | Panel::Pictures => {
                 self.frames_out.screen_closed = true;
             }
-            Panel::PrefabPage => self.frames_out.prefab_page_closed = true,
+            Panel::ModulePage => self.frames_out.module_page_closed = true,
             Panel::Table => self.frames_out.table_closed = true,
             Panel::Translations => self.frames_out.translations_closed = true,
             // These have no × (`closes_a_file`): nothing closes them.
@@ -416,9 +416,9 @@ impl PanelViewer<'_> {
 
     /// Draws `panel`'s contents filling `ui`.
     pub(crate) fn draw_panel(&mut self, ui: &mut Ui, panel: Panel) {
-        // A prefab's page is the view, of the prefab: its keys and
+        // A module's page is the view, of the module: its keys and
         // everything that asks whether the view is shown are the view's.
-        let panel = if panel == Panel::PrefabPage {
+        let panel = if panel == Panel::ModulePage {
             Panel::Viewport
         } else {
             panel
@@ -498,13 +498,13 @@ impl PanelViewer<'_> {
                         });
                     return;
                 }
-                if let Some(details) = self.prefab_details {
+                if let Some(details) = self.module_details {
                     let mut library = Vec::new();
                     egui::ScrollArea::vertical()
-                        .id_salt("prefab details")
+                        .id_salt("module details")
                         .auto_shrink(false)
                         .show(ui, |ui| {
-                            crate::prefab_details::details(
+                            crate::module_details::details(
                                 ui,
                                 details,
                                 self.requests,
@@ -945,7 +945,7 @@ impl PanelViewer<'_> {
                 );
                 self.frames_out.translations.take(out);
             }
-            Panel::Viewport | Panel::PrefabPage => {}
+            Panel::Viewport | Panel::ModulePage => {}
         }
     }
 }

@@ -1,5 +1,5 @@
-//! A project from before prefabs (decision 0118) opened by this build:
-//! its assemblies become prefabs (`.prefab.lst`), the copies placed in
+//! A project from before modules (decision 0118) opened by this build:
+//! its assemblies become modules (`.module.lst`), the copies placed in
 //! its levels and the game code that spawns them find them by the same
 //! ID and name, the older files are kept, and nothing is lost.
 
@@ -28,19 +28,19 @@ fn with_id(assets: &Path, path: &str, text: &str, id: &str) -> reflect::AssetId 
     id
 }
 
-/// A level placing a copy of `prefab` (as a version 4 level wrote it).
-fn level_placing(prefab: reflect::AssetId, copy: &str) -> String {
+/// A level placing a copy of `module` (as a version 4 level wrote it).
+fn level_placing(module: reflect::AssetId, copy: &str) -> String {
     format!(
         "-- A level. Safe to edit by hand: one block per entity, one line per field.\n\
          level version 4;\n\n\
          entity {copy} {{\n    name = \"Copy\";\n    order = \"a0\";\n    \
-         assembly = \"{prefab}\";\n    Transform.position = [4.0, 0.0, 0.0];\n}}\n"
+         assembly = \"{module}\";\n    Transform.position = [4.0, 0.0, 0.0];\n}}\n"
     )
 }
 
 #[test]
-fn an_old_project_s_assemblies_become_prefabs_and_every_copy_and_spawn_finds_them() {
-    let root = reflect::test_support::TempFolder::new("prefabs-upgrade").unwrap();
+fn an_old_project_s_assemblies_become_modules_and_every_copy_and_spawn_finds_them() {
+    let root = reflect::test_support::TempFolder::new("modules-upgrade").unwrap();
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     let project_file = "name = \"Farm\"\nformat = 2\n";
@@ -77,9 +77,9 @@ fn an_old_project_s_assemblies_become_prefabs_and_every_copy_and_spawn_finds_the
         level_placing(crate_id, "0J4M7Q2X9T5B2"),
     )
     .unwrap();
-    let code = "fetch \"solis/world\":World;\nfetch \"solis/project\":Prefab;\n\n\
+    let code = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
                 component Coop {\n    method update(float dt) {\n        \
-                entity made = World:spawn(Prefab.Animals.Chicken, [0, 0, 0]);\n    }\n}\n\n\
+                entity made = World:spawn(Module.Animals.Chicken, [0, 0, 0]);\n    }\n}\n\n\
                 pass Coop;\nend\n";
     std::fs::write(assets.join("main.lst"), code).unwrap();
 
@@ -88,10 +88,10 @@ fn an_old_project_s_assemblies_become_prefabs_and_every_copy_and_spawn_finds_the
         .open(&root, false, assets::Limits::default())
         .unwrap();
 
-    // Each assembly is a prefab now, beside where it was, the same prefab
+    // Each assembly is a module now, beside where it was, the same module
     // by the same ID.
     let registry = level::builtin::registry().unwrap();
-    let read = |text: &str| level::prefab_file::read(text, &registry).unwrap();
+    let read = |text: &str| level::module_file::read(text, &registry).unwrap();
     for (name, old, id) in [
         ("props/crate", &crate_v2, crate_id),
         ("props/barrel", &crate_v4, barrel),
@@ -101,39 +101,39 @@ fn an_old_project_s_assemblies_become_prefabs_and_every_copy_and_spawn_finds_the
             !assets.join(format!("{name}.solassembly")).exists(),
             "{name}"
         );
-        let new_path = assets.join(format!("{name}.prefab.lst"));
+        let new_path = assets.join(format!("{name}.module.lst"));
         let new = std::fs::read_to_string(&new_path).unwrap();
         assert_eq!(read(&new), read(old), "{name}");
         assert_eq!(
-            (level::prefab_file::FORMAT.version_of)(&new),
-            Some(level::prefab_file::VERSION)
+            (level::module_file::FORMAT.version_of)(&new),
+            Some(level::module_file::VERSION)
         );
         let listing = projects.listing();
         assert!(
             listing.files.iter().any(|f| f.id == Some(id)
-                && f.kind == asset_db::FileKind::Prefab
+                && f.kind == asset_db::FileKind::Module
                 && f.path
-                    .ends_with(format!("{}.prefab.lst", name.rsplit('/').next().unwrap()))),
+                    .ends_with(format!("{}.module.lst", name.rsplit('/').next().unwrap()))),
             "{name}"
         );
     }
-    // The levels' copies name the same IDs, which are the prefabs'.
+    // The levels' copies name the same IDs, which are the modules'.
     for (level_name, wanted) in [("meadow", chicken), ("yard", crate_id)] {
         let text = std::fs::read_to_string(assets.join(format!("{level_name}.sollevel"))).unwrap();
         let file = level::text::read_file(&text, &registry).unwrap();
         let placed: Vec<_> = file
             .level
             .iter()
-            .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.prefab))
+            .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.module))
             .collect();
         assert_eq!(placed, [wanted], "{level_name}");
     }
-    // Game code names the chicken as before: Prefab.Animals.Chicken.
+    // Game code names the chicken as before: Module.Animals.Chicken.
     let notes = crate::game_code::GameCode::describe(&assets, "Test 1.0");
     assert!(notes.is_empty(), "{notes:?}");
     let names = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
     assert!(
-        names.contains("state Prefab = [Animals [Chicken], Props [Barrel, Crate]];"),
+        names.contains("state Module = [Animals [Chicken], Props [Barrel, Crate]];"),
         "{names}"
     );
     // The project file says format 3 now.
@@ -177,7 +177,7 @@ fn an_old_project_s_assemblies_become_prefabs_and_every_copy_and_spawn_finds_the
 
 #[test]
 fn an_assembly_that_can_t_move_stays_and_still_opens() {
-    let root = reflect::test_support::TempFolder::new("prefabs-stay").unwrap();
+    let root = reflect::test_support::TempFolder::new("modules-stay").unwrap();
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     std::fs::write(
@@ -195,25 +195,25 @@ fn an_assembly_that_can_t_move_stays_and_still_opens() {
         fixture("area/v4/crate.solassembly"),
     )
     .unwrap();
-    std::fs::write(assets.join("crate.prefab.lst"), "mine").unwrap();
+    std::fs::write(assets.join("crate.module.lst"), "mine").unwrap();
     let mut projects = Projects::default();
     let opened = projects
         .open(&root, false, assets::Limits::default())
         .unwrap();
     let said = opened.notes.join("\n");
-    assert_eq!(said.matches("wasn't renamed a prefab").count(), 2, "{said}");
+    assert_eq!(said.matches("wasn't renamed a module").count(), 2, "{said}");
     assert!(assets.join("broken.solassembly").exists());
     assert_eq!(
-        std::fs::read_to_string(assets.join("crate.prefab.lst")).unwrap(),
+        std::fs::read_to_string(assets.join("crate.module.lst")).unwrap(),
         "mine"
     );
-    // The one left is still a prefab in the Library, read as it is.
+    // The one left is still a module in the Library, read as it is.
     let listing = projects.listing();
     assert!(
         listing
             .files
             .iter()
-            .any(|f| f.kind == asset_db::FileKind::Prefab && f.path.ends_with("crate.solassembly"))
+            .any(|f| f.kind == asset_db::FileKind::Module && f.path.ends_with("crate.solassembly"))
     );
 }
 

@@ -23,7 +23,7 @@ const TIMERS: &[&str] = &[
 /// C keeps what it started; D has a state field but no state of its own;
 /// E changes its state back and forth within a tick.
 const GAME: &str = "fetch \"solis/world\":World;\n\
-    fetch \"solis/project\":[Timer, Sound, Prefab];\n\
+    fetch \"solis/project\":[Timer, Sound, Module];\n\
     fetch \"solis/timers\":TimerFinished;\n\n\
     state Mood = [Calm, Stunned, Combat [Melee, Ranged]];\n\
     event MoodChanged(Mood from, Mood to);\n\n\
@@ -43,7 +43,7 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
                     World:say(\"A glow done\");\n\
                 }\n\
                 playSound(Sound.Engine);\n\
-                entity drone = World:spawn(Prefab.Drone, position());\n\
+                entity drone = World:spawn(Module.Drone, position());\n\
             }\n\
             is ticks == 2? then {\n\
                 state = Mood.Calm;\n\
@@ -241,7 +241,7 @@ fn compile(main: &str) -> Result<Arc<Compiled>, Vec<crate::CodeProblem>> {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_prefabs(&["drone"])
+        &crate::project_names::Names::with_modules(&["drone"])
             .and_sounds(&["engine", "boom"])
             .and_timers(TIMERS),
     );

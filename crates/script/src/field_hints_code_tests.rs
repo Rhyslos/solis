@@ -6,9 +6,9 @@ use crate::project_names::Names;
 use reflect::{FieldKind, NameKind, Offer, Value};
 
 /// The game with these Lust (`main.lst`) and Lua files, and the engine's
-/// files for a project with a few sounds and prefabs.
+/// files for a project with a few sounds and modules.
 fn compiled(main: &str, lua: &[(&str, &str)]) -> crate::Compiled {
-    let names = Names::with_prefabs(&["coin", "ships/fighter"])
+    let names = Names::with_modules(&["coin", "ships/fighter"])
         .and_sounds(&["sfx/alert", "sfx/step"])
         .and_levels(&["town"]);
     let (mut files, _) = crate::describe::descriptions_for("Test 1.0", "solis", &names);
@@ -30,14 +30,14 @@ fn compiled(main: &str, lua: &[(&str, &str)]) -> crate::Compiled {
     }
 }
 
-const GUARD: &str = "fetch \"solis/project\":[Sound, Prefab, Level];\n\
+const GUARD: &str = "fetch \"solis/project\":[Sound, Module, Level];\n\
 \n\
 component Guard {\n\
     has {\n\
         float speed = 4.0; -- [range 0 10, step 0.5, unit \"m/s\", tip \"Walking speed\"]\n\
         float sightRange = 8.0; -- [unit \"m\", group \"Seeing\"]\n\
         Sound alertSound = Sound.Sfx.Alert;\n\
-        Prefab drops = Prefab.Coin; -- [tip \"Left behind\"]\n\
+        Module drops = Module.Coin; -- [tip \"Left behind\"]\n\
         Level home = Level.Town; -- [range 0 1]\n\
         string notes = \"\"; -- [multiline, hidden]\n\
     }\n\
@@ -61,7 +61,7 @@ fn lust_hints_and_pickers_reach_the_schema() {
     assert!(matches!(&alert.kind, FieldKind::Choice(o) if o.contains(&"Sfx.Alert".to_string())));
     assert_eq!(
         guard.field("drops").unwrap().hint.offers,
-        Offer::Names(NameKind::Prefab)
+        Offer::Names(NameKind::Module)
     );
     assert_eq!(
         guard.field("home").unwrap().hint.offers,

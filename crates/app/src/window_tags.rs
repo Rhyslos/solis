@@ -104,12 +104,12 @@ impl App {
             .filter(|f| f.kind == asset_db::FileKind::Level)
             .map(|f| f.path)
             .collect();
-        let prefabs = self.workbench.prefabs().clone();
+        let modules = self.workbench.modules().clone();
         let (sender, receiver) = channel();
         let spawned = std::thread::Builder::new()
             .name("count tags".into())
             .spawn(move || {
-                let _ = sender.send(count_in(&files, &levels, &prefabs));
+                let _ = sender.send(count_in(&files, &levels, &modules));
             });
         if spawned.is_ok() {
             self.tag_counts.answer = Some(receiver);
@@ -129,18 +129,18 @@ impl App {
 }
 
 /// How many entities of each of `levels` (inside `files`) carry each tag,
-/// each level read and its prefabs' copies made from `prefabs`, as the
+/// each level read and its modules' copies made from `modules`, as the
 /// editor opens it. A level that can't be read counts nothing.
 pub(super) fn count_in(
     files: &Path,
     levels: &[PathBuf],
-    prefabs: &BTreeMap<AssetId, Arc<level::text::LevelFile>>,
+    modules: &BTreeMap<AssetId, Arc<level::text::LevelFile>>,
 ) -> TagUse {
     let mut counted = TagUse::default();
     let Ok(registry) = level::builtin::registry() else {
         return counted;
     };
-    let lookup = |id: AssetId| prefabs.get(&id).cloned();
+    let lookup = |id: AssetId| modules.get(&id).cloned();
     for path in levels {
         let Ok(bytes) = asset_db::read_limited(&files.join(path), MOST_READ) else {
             continue;
@@ -149,7 +149,7 @@ pub(super) fn count_in(
         let Ok(file) = level::text::read_file(&text, &registry) else {
             continue;
         };
-        let Ok(level) = level::prefab::Expander::new(&lookup).expand(&file) else {
+        let Ok(level) = level::module::Expander::new(&lookup).expand(&file) else {
             continue;
         };
         let mut here: BTreeMap<reflect::TagId, usize> = BTreeMap::new();

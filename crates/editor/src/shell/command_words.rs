@@ -165,7 +165,7 @@ impl ShellCommand {
             C::BrushSplit => "Split",
             C::BrushDelete => "Delete the picked parts",
             C::NewTileMap => "New tile map",
-            C::MakePrefab => "Make prefab\u{2026}",
+            C::MakeModule => "Make module\u{2026}",
             C::Play => "Play",
             C::Pause => "Pause",
             C::Step => "Step one tick",
@@ -430,8 +430,8 @@ impl ShellCommand {
                 "Takes the picked points, edges or faces out and merges the faces around them, \
                  never leaving a hole"
             }
-            C::MakePrefab => {
-                "Saves the picked entities, and everything under them, as a prefab in the project, \
+            C::MakeModule => {
+                "Saves the picked entities, and everything under them, as a module in the project, \
                  and swaps them for a copy linked to it"
             }
             C::SnapToGrid => "Moves land on the grid. A click on its step chooses another",

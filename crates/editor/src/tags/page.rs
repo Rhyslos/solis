@@ -1,6 +1,6 @@
 //! Project settings › Tags (stage 1, tags; `docs/design/tags/01-project-settings-tags.png`):
 //! the project's tags, each with what uses it ("Used by 14 entities and 2
-//! prefabs") and a ⋯ menu; **+ New tag**, which starts a new row's name;
+//! modules") and a ⋯ menu; **+ New tag**, which starts a new row's name;
 //! a double-click on a name to rename it everywhere; and Delete, which
 //! asks first when anything uses the tag, saying what. A name is checked
 //! as it's typed, and a refused one says why. Beside them, a card saying
@@ -264,11 +264,11 @@ impl Workbench {
                 n => format!("{n} entities (in {levels})"),
             });
         }
-        if !used.prefabs.is_empty() {
-            let names = used.prefabs.join(", ");
-            what.push(match used.prefabs.len() {
-                1 => format!("the prefab {names}"),
-                n => format!("{n} prefabs ({names})"),
+        if !used.modules.is_empty() {
+            let names = used.modules.join(", ");
+            what.push(match used.modules.len() {
+                1 => format!("the module {names}"),
+                n => format!("{n} modules ({names})"),
             });
         }
         let words = format!(

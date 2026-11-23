@@ -10,11 +10,11 @@
 //! - **Levels** ([decision 0118](../../../docs/decisions/0118-the-editor-rethink.md)):
 //!   areas are called levels, so `farm.solarea` becomes `farm.sollevel`,
 //!   its header saying `level` (the layout is the same: format 4).
-//! - **Prefabs** (decision 0118): assemblies are called prefabs, so
-//!   `crate.solassembly` becomes the Lust data file `crate.prefab.lst`
-//!   (decision 0081). Levels name their copies' prefab by its ID, which
+//! - **Modules** (decision 0118): assemblies are called modules, so
+//!   `crate.solassembly` becomes the Lust data file `crate.module.lst`
+//!   (decision 0081). Levels name their copies' module by its ID, which
 //!   the sidecar keeps, and game code by its path without its ending
-//!   (`Prefab.Crate`), which doesn't change: nothing else needs moving.
+//!   (`Module.Crate`), which doesn't change: nothing else needs moving.
 //!
 //! A file that can't be moved (it doesn't read, or a file already has the
 //! new name) stays as it is, still read as before, and the Console says
@@ -39,8 +39,8 @@ enum Why {
     Lust,
     /// Areas are called levels (decision 0118).
     Levels,
-    /// Assemblies are called prefabs (decision 0118).
-    Prefabs,
+    /// Assemblies are called modules (decision 0118).
+    Modules,
 }
 
 impl Why {
@@ -61,10 +61,10 @@ impl Why {
                 if one { "" } else { "s" },
                 if one { "was" } else { "were" },
             ),
-            Self::Prefabs => format!(
+            Self::Modules => format!(
                 "{moved} assembl{} made by an older Solis {} renamed: assemblies are called \
-                 prefabs now, so an assembly's .solassembly file is a prefab's .prefab.lst file \
-                 (game code names it Prefab, where it said Assembly).",
+                 modules now, so an assembly's .solassembly file is a module's .module.lst file \
+                 (game code names it Module, where it said Assembly).",
                 if one { "y" } else { "ies" },
                 if one { "was" } else { "were" },
             ),
@@ -80,8 +80,8 @@ impl Why {
             Self::Levels => {
                 format!("{shown} wasn't renamed a level ({why}); it's read as an area for now.")
             }
-            Self::Prefabs => format!(
-                "{shown} wasn't renamed a prefab ({why}); it's read as an assembly for now."
+            Self::Modules => format!(
+                "{shown} wasn't renamed a module ({why}); it's read as an assembly for now."
             ),
         }
     }
@@ -116,10 +116,10 @@ const OLDER: &[Older] = &[
         why: Why::Levels,
     },
     Older {
-        extension: asset_db::OLD_PREFAB_EXTENSION,
-        ending: asset_db::PREFAB_ENDING,
-        convert: crate::prefab_files::from_old,
-        why: Why::Prefabs,
+        extension: asset_db::OLD_MODULE_EXTENSION,
+        ending: asset_db::MODULE_ENDING,
+        convert: crate::module_files::from_old,
+        why: Why::Modules,
     },
 ];
 
@@ -156,7 +156,7 @@ fn level_text(text: &str) -> Result<String, String> {
                 let end = if line.ends_with("\r\n") { "\r\n" } else { "\n" };
                 new.push_str(&format!("{HEADER_WORD} version {VERSION};{end}"));
             }
-            // A prefab, or nothing a level starts with.
+            // A module, or nothing a level starts with.
             _ => return Err("it isn't an area".into()),
         }
     }
@@ -377,7 +377,7 @@ mod tests {
         let new = assets.join("levels/blockout.sollevel");
         assert_eq!(
             std::fs::read_to_string(&new).unwrap(),
-            fixture("area/v5/blockout.sollevel")
+            fixture("area/v6/blockout.sollevel")
         );
         assert_eq!(
             std::fs::read_to_string(asset_db::sidecar::path_for(&new)).unwrap(),
@@ -391,7 +391,7 @@ mod tests {
             level::text::read_file(&old_turret, &registry).unwrap()
         );
         assert!(moved.starts_with("-- A level. Safe to edit by hand"));
-        assert_eq!(moved.lines().nth(1), Some("level version 5;"));
+        assert_eq!(moved.lines().nth(1), Some("level version 6;"));
         assert!(moved.contains("-- my own note"));
         assert_eq!(
             moved.lines().skip(2).collect::<Vec<_>>(),
@@ -454,7 +454,7 @@ mod tests {
 
     #[test]
     fn a_level_s_text_is_given_back_as_it_is() {
-        let level = fixture("area/v5/blockout.sollevel");
+        let level = fixture("area/v6/blockout.sollevel");
         assert_eq!(level_text(&level).unwrap(), level);
         // Damaged input in many ways is refused or moved, never a crash,
         // and what moves reads as the area did.

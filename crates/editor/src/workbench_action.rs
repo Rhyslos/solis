@@ -84,29 +84,29 @@ pub enum WorkbenchAction {
     SaveLevel,
     /// Ask where to save the level (Ctrl+Shift+S).
     SaveLevelAs,
-    /// Make a prefab (Make prefab…): write its file, then swap the picked
+    /// Make a module (Make module…): write its file, then swap the picked
     /// entities for a copy of it if asked
     /// ([`Workbench::swap_for_copy`](crate::Workbench::swap_for_copy)).
-    MakePrefab(crate::make_prefab::MakePrefabPlan),
-    /// Ask for the folder Make prefab… saves in (Browse…), starting in
+    MakeModule(crate::make_module::MakeModulePlan),
+    /// Ask for the folder Make module… saves in (Browse…), starting in
     /// this one (inside the project), and answer with
-    /// [`Workbench::set_prefab_folder`](crate::Workbench::set_prefab_folder).
-    ChoosePrefabFolder(String),
-    /// Make a new, empty prefab in this folder (inside the project), then
-    /// open its page ([`Workbench::open_prefab_page`](crate::Workbench::open_prefab_page)).
-    NewPrefab(std::path::PathBuf),
-    /// Read this prefab (and those it places) from the project, then open
+    /// [`Workbench::set_module_folder`](crate::Workbench::set_module_folder).
+    ChooseModuleFolder(String),
+    /// Make a new, empty module in this folder (inside the project), then
+    /// open its page ([`Workbench::open_module_page`](crate::Workbench::open_module_page)).
+    NewModule(std::path::PathBuf),
+    /// Read this module (and those it places) from the project, then open
     /// its page.
-    OpenPrefab(AssetId),
-    /// Save the prefab's page: this prefab's new contents, then hand them
-    /// back with [`Workbench::prefab_saved`](crate::Workbench::prefab_saved).
-    SavePrefab {
-        /// The prefab.
+    OpenModule(AssetId),
+    /// Save the module's page: this module's new contents, then hand them
+    /// back with [`Workbench::module_saved`](crate::Workbench::module_saved).
+    SaveModule {
+        /// The module.
         asset: AssetId,
         /// Its contents.
         file: level::text::LevelFile,
     },
-    /// Count the copies of this prefab in the project's levels, on a
+    /// Count the copies of this module in the project's levels, on a
     /// worker, and answer with
     /// [`Workbench::set_placed`](crate::Workbench::set_placed).
     CountPlaced(AssetId),
@@ -231,12 +231,12 @@ pub enum WorkbenchAction {
     /// Count where the project's saved levels use each tag, on a worker,
     /// and answer with [`Workbench::set_tag_use`](crate::Workbench::set_tag_use).
     CountTagUse,
-    /// Change one field of an entity inside a prefab's file (Apply to
-    /// prefab); the app saves it and hands it back with
-    /// [`Workbench::set_prefab`](crate::Workbench::set_prefab), which updates every copy.
-    ApplyToPrefab {
-        /// The prefab.
-        prefab: AssetId,
+    /// Change one field of an entity inside a module's file (Apply to
+    /// module); the app saves it and hands it back with
+    /// [`Workbench::set_module`](crate::Workbench::set_module), which updates every copy.
+    ApplyToModule {
+        /// The module.
+        module: AssetId,
         /// The entity inside it.
         path: Vec<EntityId>,
         /// The component's name.
