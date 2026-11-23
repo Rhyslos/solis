@@ -31,6 +31,11 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 A PNG or JPEG with every frame laid out on it, a *sprite sheet*, gets clips too. Right-click it in the Library and choose **Make clips…**: Solis makes `knight.clips.lst` beside `knight.png`, opens its tabs, and opens **Cut knight.png into cells** over them. That pop-up cuts the picture into [cells](concepts.md#cell), the pieces its clips show, numbered from 0 across and then down, as Aseprite numbers frames:
 - **Cell** is a cell's width (W) and height (H) in pixels; **Between** the gap between cells; **Edge** the margin round the picture. The cells and their numbers move over the picture as you type, and the count under it says how many there are ("45 cells: 9 across, 5 down").
 - **Find grid** looks for see-through gaps between the cells and round the edge, and fills in all three. With no gaps it guesses the cell size from where the art changes.
+- **Free crop**, the pop-up's other mode, is for a picture whose frames aren't on an even grid. The grid's cells show faintly, and you can:
+  - drag on the picture to draw a cell, which gets the next number after the grid's;
+  - click a cell to pick it, then drag it to move it, drag a corner to size it, or type its **X**, **Y**, **W** and **H**;
+  - press the arrow keys to move the picked cell a pixel at a time, for lining frames up exactly;
+  - press **Back to the grid's box** to forget a cell's own box: a grid cell goes back to the grid's, and an added one is gone.
 - The wheel zooms the picture and the middle mouse button moves it.
 - **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** in the Clip tab.
 
