@@ -263,7 +263,7 @@ end
 - **A rule** (for a `rules` terrain) is a `pattern` of rows around a cell and the `slot` it shows, tried in order: `?` anything, `=` the same terrain, `!` not the same, `_` nothing, or a terrain's code.
 
 ## Clips files
-A clips file is a `.clips.lst` file beside its picture or Aseprite file (`knight.clips.lst` beside `knight.png`): what a sprite can play ([Animating sprites](sprite-animation.md)). Its first look is the sheet it plays; an Aseprite file's frames are its cells (from 0), and its tags are clips already, so the file only adds to them (`tags`). Clips made in Solis are `clips`, each with a row of cells for each of its directions (`rows`).
+A clips file is a `.clips.lst` file beside its picture or Aseprite file (`knight.clips.lst` beside `knight.png`): what a sprite can play ([Animating sprites](sprite-animation.md)). Its first look is the sheet it plays; an Aseprite file's frames are its cells (from 0), and its tags are clips already, so the file only adds to them (`tags`). Clips made in Solis are `clips`, each with a row of cells for each of its directions (`rows`). A PNG or JPEG is cut into cells by the `sheet`'s grid: `cell` is a cell's size, `between` the gap between cells and `edge` the margin round the picture, and cells are numbered from 0, across and then down. Each of `cells` moves a grid cell to a box of its own (`box = [left, top, width, height]`), or adds one with a number past the grid's. Every cell stands on the same spot: its bottom middle is where the sprite is.
 
 ```text
 -- Clips of walker.aseprite. Written by Solis; safe to edit by hand.

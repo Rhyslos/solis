@@ -535,16 +535,24 @@ impl Workbench {
     /// (or whose sheet changed), and lets go of those whose file is gone.
     pub(crate) fn refresh_sheet_pictures(&mut self, ctx: &egui::Context) {
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
+        // A sheet's picture by its path; a clips file's picture cut into
+        // cells by the clips file's.
+        let shown = |path: &str| sheets.at(path).or_else(|| sheets.cut_sheet(path));
         self.open
             .sheet_pictures
-            .retain(|path, _| sheets.at(path).is_some());
+            .retain(|path, _| shown(path).is_some());
         self.open
             .sheet_pictures_from
-            .retain(|path, _| sheets.at(path).is_some());
-        for (path, state) in &sheets.by_path {
-            let crate::sprite_sheets::SheetState::Read(sheet) = state else {
-                continue;
-            };
+            .retain(|path, _| shown(path).is_some());
+        let read = sheets
+            .by_path
+            .iter()
+            .filter_map(|(path, state)| match state {
+                crate::sprite_sheets::SheetState::Read(sheet) => Some((path, sheet)),
+                _ => None,
+            });
+        let cut = (sheets.cut.iter()).filter_map(|(path, c)| Some((path, c.sheet.as_ref().ok()?)));
+        for (path, sheet) in read.chain(cut) {
             let made = self.open.sheet_pictures_from.get(path);
             if made.is_some_and(|from| from.is(sheet)) {
                 continue;

@@ -845,6 +845,19 @@ impl App {
         if changed {
             self.take_in_sprites(&read);
         }
+        // A sprite whose sheet is a clips file draws from the clips file's
+        // own sheet (its picture cut into cells, or its Aseprite file), cut
+        // by the editor, so again whenever an edit cut it again.
+        if let Some(gpu) = self.gpu.as_mut() {
+            let sheets = self.workbench.sprite_sheets();
+            for (id, path) in &sheets.paths {
+                if sheets.frames.contains_key(path)
+                    && let Some(sheet) = sheets.get(*id)
+                {
+                    gpu.keep_clips_sheet(*id, sheet);
+                }
+            }
+        }
         // The project's names are all read once its sheets are (Fixes 1,
         // B5): its code is checked now, never before, with them.
         if self.game_code.waits_for_names() && !self.sprites.waiting() {

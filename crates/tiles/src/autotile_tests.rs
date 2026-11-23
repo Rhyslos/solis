@@ -419,3 +419,55 @@ fn scale_check_autotiling_a_screen_of_chunks() {
     );
     assert!(ms <= TARGET_MS, "{ms:.2} ms");
 }
+
+/// A picture of `across` × `down` opaque cells of `cell`, `between` apart
+/// and `edge` from the side, see-through in between.
+fn gapped(cell: u32, between: u32, edge: u32, across: u32, down: u32) -> ([u32; 2], Vec<u8>) {
+    let side = |n: u32| 2 * edge + n * cell + (n - 1) * between;
+    let size = [side(across), side(down)];
+    let mut rgba = vec![0u8; (size[0] * size[1] * 4) as usize];
+    let inside = |p: u32| p >= edge && (p - edge) % (cell + between) < cell;
+    for y in 0..size[1] {
+        for x in 0..size[0] {
+            if inside(x) && inside(y) && x < size[0] - edge && y < size[1] - edge {
+                let i = ((y * size[0] + x) * 4) as usize;
+                rgba[i..i + 4].copy_from_slice(&[(x * 7) as u8, (y * 5) as u8, 90, 255]);
+            }
+        }
+    }
+    (size, rgba)
+}
+
+#[test]
+fn a_grid_with_see_through_gaps_is_found_with_them() {
+    let (size, rgba) = gapped(32, 2, 1, 9, 5);
+    assert_eq!(size, [306, 170]);
+    assert_eq!(
+        detect_grid(size, &rgba, [16, 16]),
+        [[32, 32], [2, 2], [1, 1]]
+    );
+    let (size, rgba) = gapped(16, 1, 0, 4, 2);
+    assert_eq!(
+        detect_grid(size, &rgba, [16, 16]),
+        [[16, 16], [1, 1], [0, 0]]
+    );
+}
+
+#[test]
+fn without_gaps_the_grid_is_the_tile_size_guessed() {
+    let (size, rgba) = gapped(32, 0, 0, 2, 1);
+    assert_eq!(
+        detect_grid(size, &rgba, [16, 16]),
+        [detect_tile(size, &rgba, [16, 16]), [0, 0], [0, 0]]
+    );
+    assert_eq!(
+        detect_grid([0, 0], &[], [16, 16]),
+        [[16, 16], [0, 0], [0, 0]]
+    );
+    let clear = vec![0u8; 64 * 64 * 4];
+    assert_eq!(
+        detect_grid([64, 64], &clear, [16, 16])[1],
+        [0, 0],
+        "nothing drawn: no gaps"
+    );
+}
