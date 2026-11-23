@@ -130,8 +130,8 @@ fn rows_a_clip_has_no_place_for_are_left_out_with_a_note() {
         // A west row on a mirrored clip, a diagonal on a four-way one, and
         // a row for no clip.
         .replace(
-            "lock Way array ways = [\n",
-            "lock Way array ways = [\n    new Way { clip = \"walk\", facing = Facing.West, cells = [1], times = [], events = [] },\n    new Way { clip = \"attack\", facing = Facing.NorthEast, cells = [1], times = [80], events = [\"\"] },\n    new Way { clip = \"jump\", facing = Facing.Any, cells = [1], times = [], events = [] },\n",
+            "lock ClipRow array rows = [\n",
+            "lock ClipRow array rows = [\n    new ClipRow { clip = \"walk\", facing = Facing.West, cells = [1], times = [], events = [] },\n    new ClipRow { clip = \"attack\", facing = Facing.NorthEast, cells = [1], times = [80], events = [\"\"] },\n    new ClipRow { clip = \"jump\", facing = Facing.Any, cells = [1], times = [], events = [] },\n",
         );
     let read = read(&text).unwrap();
     assert_eq!(read.file, knight(), "only the bad rows go");

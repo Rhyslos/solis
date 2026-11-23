@@ -6,23 +6,23 @@
 //!
 //! ```text
 //! -- Clips of knight.png. Written by Solis; safe to edit by hand.
-//! fetch "solis/data/clips":[Sheet, Cell, Look, Clip, Way, Tag, Facing, Playback];
+//! fetch "solis/data/clips":[Sheet, Cell, LookPicture, ClipSettings, ClipRow, TagChange, Facing, Playback];
 //!
 //! lock int version = 2;
 //! lock Sheet sheet = new Sheet { cell = [32, 32], between = [2, 2], edge = [1, 1], first = "walk" };
 //! lock Cell array cells = [
 //!     new Cell { number = 23, box = [136, 69, 32, 32] },
 //! ];
-//! lock Look array looks = [
-//!     new Look { name = "Normal", picture = "1BWHNR3RV8PYY" },
+//! lock LookPicture array looks = [
+//!     new LookPicture { name = "Normal", picture = "1BWHNR3RV8PYY" },
 //! ];
-//! lock Clip array clips = [
-//!     new Clip { name = "walk", speed = 1.0, playback = Playback.Forward, plays = 0, directions = 8, sameFrames = true, mirror = true, times = [120, 120], events = ["footstep", ""] },
+//! lock ClipSettings array clips = [
+//!     new ClipSettings { name = "walk", speed = 1.0, playback = Playback.Forward, plays = 0, directions = 8, sameFrames = true, mirror = true, times = [120, 120], events = ["footstep", ""] },
 //! ];
-//! lock Way array ways = [
-//!     new Way { clip = "walk", facing = Facing.South, cells = [3, 4], times = [], events = [] },
+//! lock ClipRow array rows = [
+//!     new ClipRow { clip = "walk", facing = Facing.South, cells = [3, 4], times = [], events = [] },
 //! ];
-//! lock Tag array tags = [];
+//! lock TagChange array tags = [];
 //! end
 //! ```
 //!
@@ -88,11 +88,11 @@ state Facing = [Any, North, NorthEast, East, SouthEast, South, SouthWest, West, 
 state Playback = [Forward, Reverse, PingPong, PingPongReverse];\n\n\
 class Sheet {\n    has {\n        int array cell = [];\n        int array between = [];\n        int array edge = [];\n        string first = \"\";\n    }\n}\n\n\
 class Cell {\n    has {\n        int number = 0;\n        int array box = [];\n    }\n}\n\n\
-class Look {\n    has {\n        string name = \"\";\n        string picture = \"\";\n    }\n}\n\n\
-class Clip {\n    has {\n        string name = \"\";\n        float speed = 1.0;\n        Playback playback = Playback.Forward;\n        int plays = 0;\n        int directions = 1;\n        bool sameFrames = true;\n        bool mirror = true;\n        int array times = [];\n        string array events = [];\n    }\n}\n\n\
-class Way {\n    has {\n        string clip = \"\";\n        Facing facing = Facing.Any;\n        int array cells = [];\n        int array times = [];\n        string array events = [];\n    }\n}\n\n\
-class Tag {\n    has {\n        string name = \"\";\n        float speed = 1.0;\n        int array frames = [];\n        string array events = [];\n    }\n}\n\n\
-pass Facing, Playback, Sheet, Cell, Look, Clip, Way, Tag;\nend\n";
+class LookPicture {\n    has {\n        string name = \"\";\n        string picture = \"\";\n    }\n}\n\n\
+class ClipSettings {\n    has {\n        string name = \"\";\n        float speed = 1.0;\n        Playback playback = Playback.Forward;\n        int plays = 0;\n        int directions = 1;\n        bool sameFrames = true;\n        bool mirror = true;\n        int array times = [];\n        string array events = [];\n    }\n}\n\n\
+class ClipRow {\n    has {\n        string clip = \"\";\n        Facing facing = Facing.Any;\n        int array cells = [];\n        int array times = [];\n        string array events = [];\n    }\n}\n\n\
+class TagChange {\n    has {\n        string name = \"\";\n        float speed = 1.0;\n        int array frames = [];\n        string array events = [];\n    }\n}\n\n\
+pass Facing, Playback, Sheet, Cell, LookPicture, ClipSettings, ClipRow, TagChange;\nend\n";
 
 /// Which way a clip's row faces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -314,7 +314,14 @@ pub fn write(file: &ClipsFile, picture: &str) -> String {
         &format!("Clips of {picture}. Written by Solis; safe to edit by hand."),
         KIND,
         &[
-            "Sheet", "Cell", "Look", "Clip", "Way", "Tag", "Facing", "Playback",
+            "Sheet",
+            "Cell",
+            "LookPicture",
+            "ClipSettings",
+            "ClipRow",
+            "TagChange",
+            "Facing",
+            "Playback",
         ],
         VERSION,
     );
@@ -349,7 +356,7 @@ pub fn write(file: &ClipsFile, picture: &str) -> String {
         .iter()
         .map(|l| {
             data::thing(
-                "Look",
+                "LookPicture",
                 &[
                     ("name", data::text(&l.name)),
                     ("picture", data::text(&l.picture.to_string())),
@@ -357,7 +364,7 @@ pub fn write(file: &ClipsFile, picture: &str) -> String {
             )
         })
         .collect();
-    data::list(&mut out, "Look", "looks", &looks);
+    data::list(&mut out, "LookPicture", "looks", &looks);
     let times = |t: &[Timing]| data::ints(t.iter().map(|t| i64::from(t.ms)));
     let events = |t: &[Timing]| data::texts(t.iter().map(|t| t.event.as_str()));
     let clips: Vec<String> = file
@@ -365,7 +372,7 @@ pub fn write(file: &ClipsFile, picture: &str) -> String {
         .iter()
         .map(|c| {
             data::thing(
-                "Clip",
+                "ClipSettings",
                 &[
                     ("name", data::text(&c.name)),
                     ("speed", data::single(c.speed)),
@@ -383,14 +390,14 @@ pub fn write(file: &ClipsFile, picture: &str) -> String {
             )
         })
         .collect();
-    data::list(&mut out, "Clip", "clips", &clips);
+    data::list(&mut out, "ClipSettings", "clips", &clips);
     let ways: Vec<String> = file
         .clips
         .iter()
         .flat_map(|c| {
             c.ways.iter().map(move |w| {
                 data::thing(
-                    "Way",
+                    "ClipRow",
                     &[
                         ("clip", data::text(&c.name)),
                         ("facing", format!("Facing.{}", w.facing.name())),
@@ -402,13 +409,13 @@ pub fn write(file: &ClipsFile, picture: &str) -> String {
             })
         })
         .collect();
-    data::list(&mut out, "Way", "ways", &ways);
+    data::list(&mut out, "ClipRow", "rows", &ways);
     let tags: Vec<String> = file
         .tags
         .iter()
         .map(|t| {
             data::thing(
-                "Tag",
+                "TagChange",
                 &[
                     ("name", data::text(&t.name)),
                     ("speed", data::single(t.speed)),
@@ -424,7 +431,7 @@ pub fn write(file: &ClipsFile, picture: &str) -> String {
             )
         })
         .collect();
-    data::list(&mut out, "Tag", "tags", &tags);
+    data::list(&mut out, "TagChange", "tags", &tags);
     out.push_str("end\n");
     out
 }
@@ -596,7 +603,7 @@ pub fn read(text: &str) -> Result<ReadClips, DataError> {
         });
     }
 
-    for way in data::things(&values, "ways") {
+    for way in data::things(&values, "rows") {
         let clip_name = data::field_text(way, "clip");
         let Some(clip) = file.clips.iter_mut().find(|c| c.name == clip_name) else {
             notes.push(format!(
