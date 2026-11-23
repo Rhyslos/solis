@@ -190,9 +190,9 @@ const SPAWNING: &str = "fetch \"solis/world\":World;\n\
         }\n\
         method update(float dt) {\n\
             is opened == false? then {\n\
-                PickupValues given = new PickupValues;\n\
-                given:item(Item.Red);\n\
-                given:count(2);\n\
+                PickupValues given = new PickupValues { item = Item.Red };\n\
+                World:say(\"unwritten \" + given.count.text());\n\
+                given.count = 2;\n\
                 entity key = World:spawnWith(Prefab.Key, [0, 0, 0], [given]);\n\
                 opened = true;\n\
             }\n\
@@ -235,7 +235,9 @@ fn a_spawn_carries_its_values_to_the_world() {
         game.sync_many(vec![(id(1), "Chest", &empty)], &mut world)
             .is_empty()
     );
-    run(&mut game, &mut world, 2);
+    let said = run(&mut game, &mut world, 2);
+    // A field not written yet reads as its starting value.
+    assert_eq!(said, ["1: unwritten 1"]);
     let spawns: Vec<&Change> = world
         .state_changes
         .iter()
@@ -272,7 +274,7 @@ fn a_component_started_with_the_values_sees_them_in_its_first_update() {
 
 #[test]
 fn values_for_a_field_of_the_wrong_kind_are_a_mistake_before_the_game_runs() {
-    let wrong = SPAWNING.replace("given:count(2);", "given:count(\"two\");");
+    let wrong = SPAWNING.replace("given.count = 2;", "given.count = \"two\";");
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",

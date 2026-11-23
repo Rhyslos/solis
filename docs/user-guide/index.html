@@ -4307,10 +4307,8 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-f">is</span> opened == <span class="tk-v">false</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-n">PickupValues</span> given = <span class="tk-k">new</span> <span class="tk-n">PickupValues</span><span class="tk-p">;</span>
-            given<span class="tk-p">:</span>item<span class="tk-p">(</span><span class="tk-o">Item</span><span class="tk-p">.</span><span class="tk-s">Red</span><span class="tk-p">);</span>
-            given<span class="tk-p">:</span>count<span class="tk-p">(</span><span class="tk-v">2</span><span class="tk-p">);</span>
-            <span class="tk-t">entity</span> key = <span class="tk-o">World</span><span class="tk-p">:</span>spawnWith<span class="tk-p">(</span><span class="tk-o">Prefab</span><span class="tk-p">.</span><span class="tk-s">Key</span><span class="tk-p">,</span> position<span class="tk-p">(), [</span>given<span class="tk-p">]);</span>
+            <span class="tk-n">PickupValues</span> red = <span class="tk-k">new</span> <span class="tk-n">PickupValues</span> <span class="tk-p">{</span> item = <span class="tk-o">Item</span><span class="tk-p">.</span><span class="tk-s">Red</span><span class="tk-p">,</span> count = <span class="tk-v">2</span> <span class="tk-p">};</span>
+            <span class="tk-t">entity</span> key = <span class="tk-o">World</span><span class="tk-p">:</span>spawnWith<span class="tk-p">(</span><span class="tk-o">Prefab</span><span class="tk-p">.</span><span class="tk-s">Key</span><span class="tk-p">,</span> position<span class="tk-p">(), [</span>red<span class="tk-p">]);</span>
             opened = <span class="tk-v">true</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -4319,8 +4317,8 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <span class="tk-k">pass</span> <span class="tk-n">Item</span><span class="tk-p">,</span> <span class="tk-n">Pickup</span><span class="tk-p">,</span> <span class="tk-n">Chest</span><span class="tk-p">;</span>
 <span class="tk-k">end</span></code></pre>
 <ul>
-<li><strong>A values object for each component:</strong> Solis makes one for each of your components, named after it with <code>Values</code> (<code>PickupValues</code>), with a method for each field. Fetch it from <code>solis/components</code>, make one with <code>new</code>, and call a method for each value you want to give. A value of the wrong kind is a mistake before the game runs.</li>
-<li><strong>Only what you give changes:</strong> fields you don't give keep the prefab's values. Give values for several components in one list: <code>[given, health]</code>.</li>
+<li><strong>A values object for each component:</strong> Solis makes one for each of your components, named after it with <code>Values</code> (<code>PickupValues</code>), with the same fields. Fetch it from <code>solis/components</code> and make one with <code>new</code>, writing the values you want to give in its braces, as for any class. A value of the wrong kind is a mistake before the game runs.</li>
+<li><strong>Only what you write changes:</strong> fields you don't write keep the prefab's values, and a field set after <code>new</code> (<code>red.count = 3;</code>) counts as written too. Give values for several components in one list: <code>[red, health]</code>.</li>
 <li><strong>The copy's root:</strong> the values go to the components on the prefab's root entity. If the root has no such component, the copy is still made, and the <a href="#console">Console</a> says once that the values were left out.</li>
 <li>Everything else is as <code>World:spawn</code>: the copy joins at the end of the tick, and its first <code>update</code> is next tick, already with its values.</li>
 </ul>

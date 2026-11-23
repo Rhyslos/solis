@@ -81,3 +81,10 @@ fn only_what_the_lust_reads_or_names_is_copied() {
     assert_eq!(kinds, ["Knight", "Quest"]);
     assert!(kinds_read(None, &[], &readable).is_empty());
 }
+
+#[test]
+fn solis_s_new_takes_as_many_lines_as_lust_s() {
+    // Lust finds a failing line by counting the chunk's lines.
+    assert_eq!(SOLIS_NEW.lines().count(), LUST_NEW.lines().count());
+    assert!(SOLIS_NEW.starts_with("function L.new(c, ...)\n"));
+}

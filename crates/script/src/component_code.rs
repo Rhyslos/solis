@@ -10,8 +10,9 @@
 //!   entity:knight() native;`, a copy of another entity's as the last
 //!   tick left it.
 //! - For each component, a class to give one spawned its first values
-//!   (`KnightValues`, like `SpawnValues`), a method per field, each a
-//!   native that notes the value (Fixes 2b, `crate::readings`).
+//!   (`KnightValues`, like `SpawnValues`), with the component's fields:
+//!   `new KnightValues { coins = 3 }` gives the fields written (Fixes 2b,
+//!   `crate::readings::values_new`).
 //!
 //! A field's type is fetched from where the component's own file gets it:
 //! a name the file fetches from the file it fetched it from, a name the
@@ -42,6 +43,35 @@ struct Field {
     kind: String,
     name: String,
     start: String,
+    /// The component's own starting value, when it's a plain value that
+    /// reads the same here (`3`, `true`, `"Ada"`, `Mood.Calm`, `[0, 1]`):
+    /// a values object's field not written reads as it.
+    own: Option<String>,
+}
+
+/// Whether `start`, written for a field of kind `kind`, is a plain value
+/// that means the same in another file: a number, a bool, text holding no
+/// value, an option of the field's state, or a list of numbers.
+fn plain(kind: &str, start: &str) -> bool {
+    let number = |t: &str| {
+        let t = t.trim().strip_prefix('-').unwrap_or(t.trim());
+        !t.is_empty() && t.chars().all(|c| c.is_ascii_digit() || c == '.')
+    };
+    match kind {
+        "int" | "float" => number(start),
+        "bool" => start == "true" || start == "false",
+        "string" => {
+            start.len() >= 2
+                && start.starts_with('"')
+                && start.ends_with('"')
+                && !start[1..start.len() - 1].contains(['"', '{', '\\'])
+        }
+        "vec3" | "vec2" | "rotation" => start
+            .strip_prefix('[')
+            .and_then(|s| s.strip_suffix(']'))
+            .is_some_and(|inside| inside.split(',').all(number)),
+        _ => option_of(kind, start),
+    }
 }
 
 /// What the game's code reads of other entities' components, for
@@ -235,6 +265,7 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             fields.push(Field {
                 kind: field.kind.to_string(),
                 name: field.name.to_string(),
+                own: plain(field.kind, field.start).then(|| field.start.to_string()),
                 start,
             });
         }
@@ -277,17 +308,23 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             names_made.insert(reading);
         }
         if free(&values) {
+            // Its fields are the component's: only those the game writes
+            // (`new PickupValues { item = Item.Red }`) are given
+            // (`crate::readings::values_new`).
             classes.push_str(&format!(
                 "-- First values for a {component} spawned with World:spawnWith, in place before \
-                 its first update.\nclass {values} like {VALUES_BASE} {{\n"
+                 its first update: only the fields written are given.\nclass {values} like \
+                 {VALUES_BASE} {{\n    has {{\n"
             ));
             for f in &fields {
                 classes.push_str(&format!(
-                    "    method {}({} value) native;\n",
-                    f.name, f.kind
+                    "        {} {} = {};\n",
+                    f.kind,
+                    f.name,
+                    f.own.as_deref().unwrap_or(&f.start)
                 ));
             }
-            classes.push_str("}\n\n");
+            classes.push_str("    }\n}\n\n");
             code.with_values
                 .push((component.to_string(), values.clone()));
             passed.push(values.clone());

@@ -461,7 +461,7 @@ pub const NATIVES: &[Native] = &[
         name: "spawnWith",
         owner: "World",
         lust: "method entity spawnWith(Prefab which, vec3 place, SpawnValues array values) native;",
-        about: "Makes a copy of a prefab as spawn does, its root's components given values before their first update: each a values object from solis/components (PickupValues given = new PickupValues; given:item(Item.KeyRed);), in a list ([given]).",
+        about: "Makes a copy of a prefab as spawn does, its root's components given values before their first update: each a values object from solis/components (new PickupValues { item = Item.KeyRed }: only the fields written are given), in a list.",
     },
     Native {
         file: "world",

@@ -34,6 +34,11 @@ fn each_component_gets_a_locked_reading_and_a_reader() {
         text.contains("method KnightReading entity:knight() native;"),
         "{text}"
     );
+    // The values class keeps the component's own plain starting values.
+    assert!(
+        text.contains("class KnightValues like SpawnValues {\n    has {\n        bool hasKey = false;\n        int coins = 3;"),
+        "{text}"
+    );
     assert!(
         text.ends_with("pass Component, SpawnValues, KnightReading, KnightValues;\nend\n"),
         "{text}"

@@ -500,7 +500,9 @@ fn compile_here(
             };
             match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &files)) {
                 Ok(Ok(chunk)) => {
-                    match crate::states::own_states(crate::exact_maths::exact_lust(chunk)) {
+                    match crate::states::own_states(crate::readings::values_new(
+                        crate::exact_maths::exact_lust(chunk),
+                    )) {
                         Ok(chunk) => lust = Some(crate::many_names::fit(chunk)),
                         Err(why) => problems.push(CodeProblem {
                             file: String::new(),
