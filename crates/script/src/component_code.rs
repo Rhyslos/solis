@@ -9,6 +9,9 @@
 //!   mistake before the game runs), and `method KnightReading
 //!   entity:knight() native;`, a copy of another entity's as the last
 //!   tick left it.
+//! - For each component, a class to give one spawned its first values
+//!   (`KnightValues`, like `SpawnValues`), a method per field, each a
+//!   native that notes the value (Fixes 2b, `crate::readings`).
 //!
 //! A field's type is fetched from where the component's own file gets it:
 //! a name the file fetches from the file it fetched it from, a name the
@@ -22,13 +25,17 @@ use std::collections::{BTreeMap, BTreeSet};
 /// The file's name inside the engine's folder: `solis/components.lst`.
 pub const FILE: &str = "components";
 
+/// The class every component's values class is like, in this file:
+/// `World:spawnWith` takes a list of them.
+pub const VALUES_BASE: &str = "SpawnValues";
+
 /// The state of the game's components.
 pub const STATE: &str = "Component";
 
 /// The most components, and fields of each, the file is written for.
 const MOST: usize = 4096;
 
-/// A field a component's reading holds: its Lust type, its name
+/// A field a component's reading and values hold: its Lust type, its name
 /// and the starting value the reading class gives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Field {
@@ -59,6 +66,8 @@ pub struct ComponentCode {
     /// Each component game code can read, with its reading method's name
     /// (`Knight`, `knight`).
     pub readable: Vec<(String, String)>,
+    /// Each component with a values class, and that class's name.
+    pub with_values: Vec<(String, String)>,
     /// What game code can't reach, in plain words.
     pub notes: Vec<String>,
 }
@@ -68,11 +77,20 @@ pub struct ComponentCode {
 /// components in it, so `solis/world.lst` always finds it.
 pub fn placeholder(made_by: &str) -> String {
     format!(
-        "-- Made by {made_by}: the game's components, for World:the and reading another\n\
-         -- entity's. It's written again each time the game's code is checked, so changes made\n\
-         -- here don't last.\n\n\
-         -- The game's components.\nstate {STATE} = [{}];\n\npass {STATE};\nend\n",
-        crate::project_names::NO_OPTION
+        "-- Made by {made_by}: the game's components, for World:the, reading another entity's\n\
+         -- and spawning with values. It's written again each time the game's code is checked,\n\
+         -- so changes made here don't last.\n\n\
+         -- The game's components.\nstate {STATE} = [{}];\n\n{}pass {STATE}, {VALUES_BASE};\nend\n",
+        crate::project_names::NO_OPTION,
+        values_base()
+    )
+}
+
+/// The class every values class is like.
+fn values_base() -> String {
+    format!(
+        "-- What every component's values class (KnightValues) is like: World:spawnWith takes \
+         a list of them.\nclass {VALUES_BASE} {{\n    has {{\n    }}\n}}\n\n"
     )
 }
 
@@ -162,12 +180,14 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
     let mut code = ComponentCode::default();
     // Each name fetched into the file, and the module it comes from.
     let mut fetched: BTreeMap<String, String> = BTreeMap::new();
-    let ours: BTreeSet<String> = [STATE.to_string()].into_iter().collect();
+    let ours: BTreeSet<String> = [STATE.to_string(), VALUES_BASE.to_string()]
+        .into_iter()
+        .collect();
     // The names each file must share that it keeps to itself, by file.
     let mut to_pass: BTreeMap<usize, BTreeSet<String>> = BTreeMap::new();
     let mut classes = String::new();
     let mut readers = String::new();
-    let mut passed: Vec<String> = vec![STATE.to_string()];
+    let mut passed: Vec<String> = vec![STATE.to_string(), VALUES_BASE.to_string()];
     let mut names_made: BTreeSet<String> = BTreeSet::new();
     for (&component, &at) in &components {
         let (path, text) = &files[at];
@@ -198,8 +218,8 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
                     || fetched.get(field.kind).is_some_and(|s| *s != source);
                 if clash || (from.is_none() && shared.end.is_none()) {
                     code.notes.push(format!(
-                        "{component}'s {} can't be read from other entities: another file has a \
-                         {} too. Give one of them another name.",
+                        "{component}'s {} can't be read from other entities or given to a spawned \
+                         one: another file has a {} too. Give one of them another name.",
                         field.name, field.kind
                     ));
                     continue;
@@ -219,6 +239,7 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             });
         }
         let reading = format!("{component}Reading");
+        let values = format!("{component}Values");
         let reader = crate::screens::reader_name(component);
         let free = |name: &str| !declared.contains(name) && !ours.contains(name);
         if !free(&reading) {
@@ -255,11 +276,32 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             passed.push(reading.clone());
             names_made.insert(reading);
         }
+        if free(&values) {
+            classes.push_str(&format!(
+                "-- First values for a {component} spawned with World:spawnWith, in place before \
+                 its first update.\nclass {values} like {VALUES_BASE} {{\n"
+            ));
+            for f in &fields {
+                classes.push_str(&format!(
+                    "    method {}({} value) native;\n",
+                    f.name, f.kind
+                ));
+            }
+            classes.push_str("}\n\n");
+            code.with_values
+                .push((component.to_string(), values.clone()));
+            passed.push(values.clone());
+            names_made.insert(values);
+        } else {
+            code.notes.push(format!(
+                "A spawned {component} can't be given values: the game has a {values} of its own."
+            ));
+        }
     }
     let mut text = String::from(
-        "-- Made from the game's components: what game code can read of another entity's. It's\n\
-         -- written again each time the game's code is checked, so changes made here don't\n\
-         -- last.\n\n",
+        "-- Made from the game's components: what game code can read of another entity's, and\n\
+         -- give one it spawns. It's written again each time the game's code is checked, so\n\
+         -- changes made here don't last.\n\n",
     );
     let mut by_module: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
     for (name, from) in &fetched {
@@ -280,6 +322,7 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             options.join(", ")
         }
     ));
+    text.push_str(&values_base());
     text.push_str(&classes);
     text.push_str(&readers);
     text.push_str(&format!("pass {};\nend\n", passed.join(", ")));

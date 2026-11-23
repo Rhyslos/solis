@@ -55,6 +55,18 @@ pub trait Host {
         let _ = (prefab, place);
         None
     }
+    /// [`Self::spawn`], its root's components given `values` before their
+    /// first update (Fixes 2b, `World:spawnWith`). A host that can't give
+    /// values spawns without them.
+    fn spawn_with(
+        &mut self,
+        prefab: &str,
+        place: Vec3,
+        values: crate::game::SpawnValues,
+    ) -> Option<EntityId> {
+        let _ = values;
+        self.spawn(prefab, place)
+    }
     /// Takes an entity (and everything under it) out of the game, at the
     /// end of the tick.
     fn despawn(&mut self, which: EntityId) {

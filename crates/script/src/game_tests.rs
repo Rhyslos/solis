@@ -492,7 +492,7 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
         "a spawn and a despawn per hive per tick"
     );
     match (&one[0], &one[1]) {
-        (Change::Spawn(made, file, place), Change::Despawn(gone)) => {
+        (Change::Spawn(made, file, place, _), Change::Despawn(gone)) => {
             assert_eq!(made, gone, "the entity spawn gave back");
             assert_eq!(file, "drone");
             assert_eq!(*place, Vec3::new(1.0, 2.0, 3.0));
@@ -502,7 +502,7 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
     let ids: std::collections::HashSet<_> = one
         .iter()
         .filter_map(|c| match c {
-            Change::Spawn(id, _, _) => Some(*id),
+            Change::Spawn(id, ..) => Some(*id),
             _ => None,
         })
         .collect();
@@ -591,7 +591,7 @@ fn spawns_in_different_rounds_of_events_make_different_entities() {
         .1
         .iter()
         .filter_map(|c| match c {
-            Change::Spawn(id, _, _) => Some(*id),
+            Change::Spawn(id, ..) => Some(*id),
             _ => None,
         })
         .collect();

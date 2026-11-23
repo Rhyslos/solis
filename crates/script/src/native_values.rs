@@ -160,6 +160,8 @@ fn values_of(lust: &str) -> impl Iterator<Item = (&str, &str)> {
     inside
         .split(',')
         .filter_map(|value| value.trim().rsplit_once(' '))
+        // A list's kind is its first word (`SpawnValues array`).
+        .map(|(kind, name)| (kind.split(' ').next().unwrap_or(kind), name))
 }
 
 #[cfg(test)]

@@ -35,7 +35,7 @@ fn each_component_gets_a_locked_reading_and_a_reader() {
         "{text}"
     );
     assert!(
-        text.ends_with("pass Component, KnightReading;\nend\n"),
+        text.ends_with("pass Component, SpawnValues, KnightReading, KnightValues;\nend\n"),
         "{text}"
     );
     assert_eq!(code.readable, [("Knight".into(), "knight".into())]);

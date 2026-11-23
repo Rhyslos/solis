@@ -214,6 +214,32 @@ fn lend_spawning<'s>(
             },
         )?,
     )?;
+    natives.raw_set(
+        "World_spawnWith",
+        native(
+            scope,
+            "World_spawnWith",
+            move |lua,
+                  (_world, prefab, place, values): (
+                LuaValue,
+                mlua::LuaString,
+                LuaValue,
+                LuaValue,
+            )| {
+                let values = crate::readings::given(lua, &values).map_err(|why| {
+                    mlua::Error::runtime(format!(
+                        "solis.World:spawnWith(which, place, values) couldn't give its values: \
+                         {why}"
+                    ))
+                })?;
+                let prefab = crate::project_names::path_of(&prefab.to_str()?);
+                Ok(prefab
+                    .zip(vec3_of(&place))
+                    .and_then(|(prefab, place)| h.borrow_mut().spawn_with(&prefab, place, values))
+                    .map(|id| id.to_string()))
+            },
+        )?,
+    )?;
     Ok(())
 }
 

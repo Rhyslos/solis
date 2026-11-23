@@ -17,6 +17,10 @@
 //!
 //! The same copy answers `World:the(Component.Quest)`: the one entity with
 //! that component.
+//!
+//! Spawning with values (Fixes 2b) is here too: each `KnightValues` method
+//! notes a field's value on the values object (`VALUES_KEY`), and
+//! `World:spawnWith` reads them back as `reflect` values (`given`).
 
 use crate::convert::{entity_of, from_lua, to_lua};
 use crate::lua_components::Field;
@@ -26,10 +30,21 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use std::sync::Arc;
 
-/// The components game code can read, by name: each one's
+/// Where a values object keeps what its methods were given: a table of
+/// field names and values.
+pub(crate) const VALUES_KEY: &str = "__given";
+
+/// Where a values object keeps which component its values are for.
+pub(crate) const VALUES_OF: &str = "__of";
+
+/// The components game code can read and spawn with, by name: each one's
 /// fields as game code's tables hold them (key, name, kind), in one order
 /// every core shares (they all run the same code).
 pub(crate) type Layouts = BTreeMap<String, Vec<Field>>;
+
+/// The layouts of a Luau's components, kept as its app data for
+/// `World:spawnWith`.
+pub(crate) struct Kept(pub(crate) Rc<Layouts>);
 
 /// One kind's copies: its fields' names, and each entity's values in that
 /// order (`None` where a value couldn't be read).
@@ -180,6 +195,9 @@ pub(crate) struct Lent {
     from: Option<Arc<Readings>>,
     /// The natives, by key.
     natives: Option<Table>,
+    /// The values objects' methods (`KnightValues_coins`), made once for
+    /// the layouts.
+    setters: Option<Table>,
 }
 
 impl Lent {
@@ -188,6 +206,7 @@ impl Lent {
         self.layouts = layouts;
         self.from = None;
         self.natives = None;
+        self.setters = None;
     }
 
     /// Puts the reading natives into `natives` for `readings` (none while
@@ -213,7 +232,19 @@ impl Lent {
             self.natives = Some(made);
             self.from = readings;
         }
-        if let Some(made) = &self.natives {
+        if self.setters.is_none() {
+            let made = lua.create_table()?;
+            for (kind, fields) in self.layouts.iter() {
+                for field in fields {
+                    made.raw_set(
+                        format!("{kind}Values_{}", field.name),
+                        setter(lua, kind, &field.name)?,
+                    )?;
+                }
+            }
+            self.setters = Some(made);
+        }
+        for made in [&self.natives, &self.setters].into_iter().flatten() {
             for pair in made.pairs::<LuaValue, LuaValue>() {
                 let (key, native) = pair?;
                 // The engine's own natives come first: a component named
@@ -273,6 +304,75 @@ fn reader_native(
         made.raw_set(key, &copy)?;
         Ok(LuaValue::Table(copy))
     })
+}
+
+/// `<Kind>Values_<field>`: notes the value on the values object.
+fn setter(lua: &Lua, kind: &str, field: &str) -> mlua::Result<Function> {
+    let kind = kind.to_string();
+    let field = field.to_string();
+    lua.create_function(move |lua, (this, value): (Table, LuaValue)| {
+        let given = match this.raw_get::<LuaValue>(VALUES_KEY)? {
+            LuaValue::Table(given) => given,
+            _ => {
+                let given = lua.create_table()?;
+                this.raw_set(VALUES_KEY, &given)?;
+                given
+            }
+        };
+        this.raw_set(VALUES_OF, kind.as_str())?;
+        given.raw_set(field.as_str(), value)?;
+        Ok(())
+    })
+}
+
+/// The most values objects one `World:spawnWith` reads.
+const MOST_GIVEN: usize = 256;
+
+/// The values `World:spawnWith` was given, a list of values objects, as
+/// `reflect` values by component. A component the game hasn't, or a
+/// value of the wrong kind, says why.
+pub(crate) fn given(lua: &Lua, values: &LuaValue) -> Result<crate::game::SpawnValues, String> {
+    let layouts = lua
+        .app_data_ref::<Kept>()
+        .map(|kept| Rc::clone(&kept.0))
+        .unwrap_or_default();
+    let LuaValue::Table(values) = values else {
+        return Ok(Vec::new());
+    };
+    let mut out: crate::game::SpawnValues = Vec::new();
+    for item in values.sequence_values::<LuaValue>().take(MOST_GIVEN) {
+        let Ok(LuaValue::Table(item)) = item else {
+            continue;
+        };
+        // A values object no method was called on gives nothing.
+        let (Ok(LuaValue::String(kind)), Ok(LuaValue::Table(fields))) = (
+            item.raw_get::<LuaValue>(VALUES_OF),
+            item.raw_get::<LuaValue>(VALUES_KEY),
+        ) else {
+            continue;
+        };
+        let kind = kind.to_str().map_err(|e| e.to_string())?.to_string();
+        let Some(layout) = layouts.get(&kind) else {
+            return Err(format!("the game has no component called {kind}"));
+        };
+        let mut data = ComponentData::default();
+        for pair in fields.pairs::<String, LuaValue>().take(layout.len()) {
+            let (name, value) = pair.map_err(|_| format!("{kind}'s values are named by text"))?;
+            let Some(field) = layout.iter().find(|f| f.name == name) else {
+                return Err(format!("{kind} has no field called {name}"));
+            };
+            let Some(value) = from_lua(&field.kind, &value) else {
+                return Err(format!("{kind}'s {name} can't hold that value"));
+            };
+            data.set(&name, value);
+        }
+        // The same component twice: the later values win.
+        match out.iter_mut().find(|(k, _)| *k == kind) {
+            Some((_, kept)) => kept.fields.extend(data.fields),
+            None => out.push((kind, data)),
+        }
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

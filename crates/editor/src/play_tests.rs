@@ -653,7 +653,7 @@ mod spawns_that_cannot_be_made {
     /// and the ones after it.
     fn spawn_every_frame(w: &mut Workbench, name: &str, first: u64) {
         for frame in 0..FRAMES {
-            let asked = GameEdit::Spawn(id(first + frame), name.into(), Vec3::ZERO);
+            let asked = GameEdit::Spawn(id(first + frame), name.into(), Vec3::ZERO, Vec::new());
             w.open.playing.as_mut().unwrap().pending.push(asked);
             w.run_game(1.0 / 60.0);
         }
@@ -808,7 +808,7 @@ mod spawns_that_cannot_be_made {
         let before = w.open.document.level().len();
         // The first is made; asking for the same entity again can't be.
         for _ in 0..FRAMES {
-            let asked = GameEdit::Spawn(id(5000), "squad".into(), Vec3::ZERO);
+            let asked = GameEdit::Spawn(id(5000), "squad".into(), Vec3::ZERO, Vec::new());
             w.open.playing.as_mut().unwrap().pending.push(asked);
             w.run_game(1.0 / 60.0);
         }
@@ -821,6 +821,45 @@ mod spawns_that_cannot_be_made {
         spawn_every_frame(&mut w, "squad", 6000);
         assert_eq!(w.open.document.level().len(), before + 1 + FRAMES as usize);
         assert_eq!(said_about(&w, "squad").len(), 1);
+    }
+
+    #[test]
+    fn a_copy_spawned_with_values_starts_with_them_and_values_it_can_t_take_are_said_once() {
+        let mut key = prefab(&[]);
+        let mut pickup = reflect::ComponentData::default();
+        pickup.set("item", reflect::Value::Text("Blue".into()));
+        pickup.set("count", reflect::Value::Int(1));
+        if let Some(root) = key.level.get_mut(id(1)) {
+            root.components.insert("Pickup".into(), pickup);
+        }
+        let mut w = playing(vec![(asset(10), "key", key)]);
+        let mut given = reflect::ComponentData::default();
+        given.set("item", reflect::Value::Text("Red".into()));
+        let mut other = reflect::ComponentData::default();
+        other.set("hp", reflect::Value::Int(3));
+        for frame in 0..FRAMES {
+            let values = vec![
+                ("Pickup".to_string(), given.clone()),
+                ("Health".to_string(), other.clone()),
+            ];
+            let asked = GameEdit::Spawn(id(7000 + frame), "key".into(), Vec3::ZERO, values);
+            w.open.playing.as_mut().unwrap().pending.push(asked);
+            w.run_game(1.0 / 60.0);
+        }
+        let made = w
+            .open
+            .document
+            .level()
+            .get(id(7000))
+            .expect("the copy is made");
+        let data = &made.components["Pickup"];
+        // The value given wins; the one not given stays the prefab's.
+        assert_eq!(data.get("item"), Some(&reflect::Value::Text("Red".into())));
+        assert_eq!(data.get("count"), Some(&reflect::Value::Int(1)));
+        assert!(!made.components.contains_key("Health"));
+        let said = said_about(&w, "key");
+        assert_eq!(said.len(), 1, "{said:?}");
+        assert!(said[0].contains("has no Health"), "{}", said[0]);
     }
 
     #[test]
@@ -838,7 +877,7 @@ mod spawns_that_cannot_be_made {
                 .enumerate()
             {
                 let entity = id(7000 + frame * 10 + n as u64);
-                pending.push(GameEdit::Spawn(entity, name.into(), Vec3::ZERO));
+                pending.push(GameEdit::Spawn(entity, name.into(), Vec3::ZERO, Vec::new()));
             }
             w.run_game(1.0 / 60.0);
         }

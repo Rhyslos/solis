@@ -43,6 +43,9 @@ struct Landing {
     removed: Vec<EntityId>,
     /// The entities despawned themselves.
     removed_roots: Vec<EntityId>,
+    /// Values given for a component the copy's root hasn't: the prefab's
+    /// name and the component's, said once each.
+    unfit: std::collections::BTreeSet<(String, String)>,
 }
 
 impl Workbench {
@@ -74,6 +77,7 @@ impl Workbench {
             added: Vec::new(),
             removed: Vec::new(),
             removed_roots: Vec::new(),
+            unfit: std::collections::BTreeSet::new(),
         };
         // One expander for the tick: each prefab is expanded once, and
         // its size known before a copy is made, so thousands of spawns of
@@ -83,7 +87,7 @@ impl Workbench {
         let mut expander = level::prefab::Expander::new(&lookup);
         for edit in edits {
             match edit {
-                GameEdit::Spawn(id, name, place) => {
+                GameEdit::Spawn(id, name, place, values) => {
                     if landing.spawned >= MAX_SPAWNS_PER_TICK || landing.room == 0 {
                         landing.refused += 1;
                         continue;
@@ -97,7 +101,7 @@ impl Workbench {
                         &mut expander,
                         &mut self.open.document,
                         self.open.playing.as_mut(),
-                        (id, name, place),
+                        (id, name, place, values),
                         found,
                     );
                 }
@@ -117,10 +121,12 @@ impl Workbench {
             added,
             removed,
             removed_roots,
+            unfit,
             ..
         } = landing;
         let failures = self.start_landed(time, seconds, added, &removed, &removed_roots);
         self.tell_unlanded(refused, unmade);
+        self.tell_unfit(unfit);
         failures
     }
 
@@ -204,6 +210,26 @@ impl Workbench {
                 self.log(
                     LogLevel::Warning,
                     format!("Game code spawned \"{name}\", but {why}, so nothing was made."),
+                );
+            }
+        }
+    }
+
+    /// Values given to a spawned copy for a component its root hasn't,
+    /// said once each time Play is pressed.
+    fn tell_unfit(&mut self, unfit: std::collections::BTreeSet<(String, String)>) {
+        for (prefab, component) in unfit {
+            let Some(playing) = &mut self.open.playing else {
+                break;
+            };
+            let key = format!("{prefab} values for {component}");
+            if playing.told_unmade.len() < 100 && playing.told_unmade.insert(key) {
+                self.log(
+                    LogLevel::Warning,
+                    format!(
+                        "Game code spawned \"{prefab}\" with values for a {component}, but the \
+                         prefab's root has no {component}, so they were left out."
+                    ),
                 );
             }
         }
@@ -296,7 +322,7 @@ fn land_spawn(
     expander: &mut level::prefab::Expander<'_>,
     document: &mut Document,
     playing: Option<&mut Playing>,
-    (id, name, place): (EntityId, String, glam::Vec3),
+    (id, name, place, values): (EntityId, String, glam::Vec3, script::SpawnValues),
     found: Option<(AssetId, String)>,
 ) {
     let Some((asset, shown)) = found else {
@@ -338,6 +364,15 @@ fn land_spawn(
         });
         root.parent = None;
         root.order = landing.next_order.clone();
+        // Its components start with the values game code gave (Fixes 2b).
+        for (component, given) in values {
+            match root.components.get_mut(&component) {
+                Some(data) => data.fields.extend(given.fields),
+                None => {
+                    landing.unfit.insert((name.clone(), component));
+                }
+            }
+        }
     }
     if entities.len() > landing.room {
         landing.refused += 1;

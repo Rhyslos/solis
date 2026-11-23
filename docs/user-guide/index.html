@@ -4284,6 +4284,46 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <li><strong>When a copy can't be made:</strong> <code>World:spawn</code> still gives back an entity, but nothing appears, and the <a href="#console">Console</a> says why in a warning: <em>Game code spawned &quot;squad&quot;, but it places a prefab (…) that isn't in the project, so nothing was made.</em> The reasons are those of <a href="#prefabs">prefabs</a> themselves: the prefab places another whose file is missing or can't be read, prefabs place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each prefab's reason is said once each time you press <strong>Play</strong>, however many times the code asks, so a spawn in <code>update</code> doesn't fill the Console. Fix the prefab and press Play again.</li>
 <li><code>despawn()</code> is how a component takes its own entity away, and <code>target:despawn()</code> takes another. It ends at the end of the tick.</li>
 </ul>
+<h4 id="game-code--spawning-with-values">Spawning with values<a class="anchor" href="#game-code--spawning-with-values" aria-label="Link to this section">#</a></h4>
+<p>A chest that drops a key wants the key to be <em>the red one</em>, from the moment it appears. <code>World:spawnWith</code> makes a copy and gives its components their first values, so its first <code>update</code> already sees them:</p>
+<pre data-lang="lust"><code><span class="tk-c">-- main.lst: a chest that drops the red key once.</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Prefab</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/components&quot;</span><span class="tk-p">:</span><span class="tk-n">PickupValues</span><span class="tk-p">;</span>
+
+<span class="tk-s">state Item</span> = <span class="tk-p">[</span>Blue<span class="tk-p">,</span> Red<span class="tk-p">];</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Pickup</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Item</span> item = <span class="tk-o">Item</span><span class="tk-p">.</span><span class="tk-s">Blue</span><span class="tk-p">;</span>
+        <span class="tk-t">int</span> count = <span class="tk-v">1</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Chest</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">bool</span> opened = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        <span class="tk-f">is</span> opened == <span class="tk-v">false</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            <span class="tk-n">PickupValues</span> given = <span class="tk-k">new</span> <span class="tk-n">PickupValues</span><span class="tk-p">;</span>
+            given<span class="tk-p">:</span>item<span class="tk-p">(</span><span class="tk-o">Item</span><span class="tk-p">.</span><span class="tk-s">Red</span><span class="tk-p">);</span>
+            given<span class="tk-p">:</span>count<span class="tk-p">(</span><span class="tk-v">2</span><span class="tk-p">);</span>
+            <span class="tk-t">entity</span> key = <span class="tk-o">World</span><span class="tk-p">:</span>spawnWith<span class="tk-p">(</span><span class="tk-o">Prefab</span><span class="tk-p">.</span><span class="tk-s">Key</span><span class="tk-p">,</span> position<span class="tk-p">(), [</span>given<span class="tk-p">]);</span>
+            opened = <span class="tk-v">true</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Item</span><span class="tk-p">,</span> <span class="tk-n">Pickup</span><span class="tk-p">,</span> <span class="tk-n">Chest</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
+<ul>
+<li><strong>A values object for each component:</strong> Solis makes one for each of your components, named after it with <code>Values</code> (<code>PickupValues</code>), with a method for each field. Fetch it from <code>solis/components</code>, make one with <code>new</code>, and call a method for each value you want to give. A value of the wrong kind is a mistake before the game runs.</li>
+<li><strong>Only what you give changes:</strong> fields you don't give keep the prefab's values. Give values for several components in one list: <code>[given, health]</code>.</li>
+<li><strong>The copy's root:</strong> the values go to the components on the prefab's root entity. If the root has no such component, the copy is still made, and the <a href="#console">Console</a> says once that the values were left out.</li>
+<li>Everything else is as <code>World:spawn</code>: the copy joins at the end of the tick, and its first <code>update</code> is next tick, already with its values.</li>
+</ul>
 </section>
 <section id="game-code--reading-other-entities">
 <h3>Reading other entities<a class="anchor" href="#game-code--reading-other-entities" aria-label="Link to this section">#</a></h3>
@@ -4638,6 +4678,7 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 <tr><td><code>solis/components</code></td><td><code>KnightReading entity:knight()</code>, one for each component</td><td>A copy of another entity's component as the tick started, read-only, or <code>nothing</code> (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)</code></td><td>Fires a projectile (see Projectiles, below).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>entity World:spawn(Prefab which, vec3 place)</code></td><td>Makes a copy of one of the project's prefabs at a place (see Making and removing entities, below).</td></tr>
+<tr><td><code>solis/world</code></td><td><code>entity World:spawnWith(Prefab which, vec3 place, SpawnValues array values)</code></td><td>Makes a copy as <code>spawn</code> does, its root's components given these values before their first update (<a href="#game-code--spawning-with-values">Spawning with values</a>).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:frameTime()</code></td><td>How long the last frame took, in seconds of real time (1/60 at 60 frames a second).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:random()</code></td><td>A random number from 0 up to 1 (see Random numbers, above).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:randomRange(float low, float high)</code></td><td>A random number from low up to high.</td></tr>

@@ -458,6 +458,13 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "spawnWith",
+        owner: "World",
+        lust: "method entity spawnWith(Prefab which, vec3 place, SpawnValues array values) native;",
+        about: "Makes a copy of a prefab as spawn does, its root's components given values before their first update: each a values object from solis/components (PickupValues given = new PickupValues; given:item(Item.KeyRed);), in a list ([given]).",
+    },
+    Native {
+        file: "world",
         name: "the",
         owner: "World",
         lust: "method entity the(Component which) native;",
@@ -1233,16 +1240,24 @@ fn descriptions_with(
                     wanted.join(", ")
                 ));
             }
-            // The game's components (Fixes 2), from the file the code's
-            // check writes.
-            let state = crate::component_code::STATE;
-            if mine
-                .iter()
-                .any(|n| n.lust.contains(&format!("({state} ")))
-            {
+            // The game's components and the values class (Fixes 2), from
+            // the file the code's check writes.
+            let wanted: Vec<&str> = [
+                crate::component_code::STATE,
+                crate::component_code::VALUES_BASE,
+            ]
+            .into_iter()
+            .filter(|name| {
+                mine.iter().any(|n| {
+                    n.lust.contains(&format!("({name} ")) || n.lust.contains(&format!(" {name} "))
+                })
+            })
+            .collect();
+            if !wanted.is_empty() {
                 text.push_str(&format!(
-                    "fetch \"{folder}/{}\":{state};\n\n",
-                    crate::component_code::FILE
+                    "fetch \"{folder}/{}\":[{}];\n\n",
+                    crate::component_code::FILE,
+                    wanted.join(", ")
                 ));
             }
             // Its classes first (what natives give back), then methods on

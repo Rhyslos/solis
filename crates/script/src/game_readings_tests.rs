@@ -164,3 +164,125 @@ fn the_wants_exactly_one() {
     let failed = format!("{:?}", ticked.failures);
     assert!(failed.contains("there are 2"), "{failed}");
 }
+
+/// A chest that spawns a key once, giving its Pickup the red key and how
+/// many, and a key whose first update says what it was given.
+const SPAWNING: &str = "fetch \"solis/world\":World;\n\
+    fetch \"solis/project\":Prefab;\n\
+    fetch \"solis/components\":PickupValues;\n\n\
+    state Item = [Blue, Red];\n\n\
+    component Pickup {\n\
+        has {\n\
+            Item item = Item.Blue;\n\
+            int count = 1;\n\
+            bool told = false;\n\
+        }\n\
+        method update(float dt) {\n\
+            is told == false? then {\n\
+                World:say(\"key \" + item.text() + \" \" + count.text());\n\
+                told = true;\n\
+            }\n\
+        }\n\
+    }\n\n\
+    component Chest {\n\
+        has {\n\
+            bool opened = false;\n\
+        }\n\
+        method update(float dt) {\n\
+            is opened == false? then {\n\
+                PickupValues given = new PickupValues;\n\
+                given:item(Item.Red);\n\
+                given:count(2);\n\
+                entity key = World:spawnWith(Prefab.Key, [0, 0, 0], [given]);\n\
+                opened = true;\n\
+            }\n\
+        }\n\
+    }\n\
+    end\n";
+
+fn compile_spawning() -> Arc<Compiled> {
+    let (mut files, _) = crate::describe::descriptions_for(
+        "Test 1.0",
+        "solis",
+        &crate::project_names::Names::with_prefabs(&["key"]),
+    );
+    files.push(("main.lst".into(), SPAWNING.to_string()));
+    let code = Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    crate::code::compile_within(&code, crate::luau::Limits::unhurried())
+        .unwrap_or_else(|p| panic!("{p:#?}"))
+        .map(Arc::new)
+        .expect("there's code")
+}
+
+#[test]
+fn a_spawn_carries_its_values_to_the_world() {
+    let mut world = TestWorld::with(&["A"]);
+    let mut game = unhurried(1);
+    let code = compile_spawning();
+    assert_eq!(
+        code.components.readable.len(),
+        2,
+        "{:?}",
+        code.components.notes
+    );
+    game.load(&code, &mut world).unwrap();
+    let empty = ComponentData::default();
+    assert!(
+        game.sync_many(vec![(id(1), "Chest", &empty)], &mut world)
+            .is_empty()
+    );
+    run(&mut game, &mut world, 2);
+    let spawns: Vec<&Change> = world
+        .state_changes
+        .iter()
+        .filter(|c| matches!(c, Change::Spawn(..)))
+        .collect();
+    assert_eq!(spawns.len(), 1, "{spawns:?}");
+    let Change::Spawn(_, prefab, _, values) = spawns[0] else {
+        unreachable!()
+    };
+    assert_eq!(prefab, "key");
+    let mut pickup = ComponentData::default();
+    pickup.set("item", reflect::Value::Text("Red".into()));
+    pickup.set("count", reflect::Value::Int(2));
+    assert_eq!(values, &vec![("Pickup".to_string(), pickup)]);
+}
+
+#[test]
+fn a_component_started_with_the_values_sees_them_in_its_first_update() {
+    // What the editor does with a landed spawn: the Pickup starts with
+    // the values in its data.
+    let mut world = TestWorld::with(&["A", "B"]);
+    let mut game = unhurried(1);
+    game.load(&compile_spawning(), &mut world).unwrap();
+    let mut given = ComponentData::default();
+    given.set("item", reflect::Value::Text("Red".into()));
+    given.set("count", reflect::Value::Int(2));
+    assert!(
+        game.sync_many(vec![(id(2), "Pickup", &given)], &mut world)
+            .is_empty()
+    );
+    let said = run(&mut game, &mut world, 1);
+    assert_eq!(said, ["1: key Red 2"]);
+}
+
+#[test]
+fn values_for_a_field_of_the_wrong_kind_are_a_mistake_before_the_game_runs() {
+    let wrong = SPAWNING.replace("given:count(2);", "given:count(\"two\");");
+    let (mut files, _) = crate::describe::descriptions_for(
+        "Test 1.0",
+        "solis",
+        &crate::project_names::Names::with_prefabs(&["key"]),
+    );
+    files.push(("main.lst".into(), wrong));
+    let code = Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    assert!(crate::code::compile_within(&code, crate::luau::Limits::unhurried()).is_err());
+}
