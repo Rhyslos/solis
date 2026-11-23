@@ -238,6 +238,10 @@ fn kind_rows(ui: &mut Ui, item: &LibraryItem, requests: &mut Vec<LibraryRequest>
         let crop = LibraryRequest::AtlasCrop(item.path.clone());
         ask(ui, (Icon::Crops, "Atlas Crop…"), crop, requests);
     }
+    if item.kind == LibraryKind::Texture {
+        let clips = LibraryRequest::MakeClipsFile(item.path.clone());
+        ask(ui, (Icon::Clips, "Make clips…"), clips, requests);
+    }
     let viewer = crate::kinds::tab(crate::shell::RibbonTab::Model);
     if item.kind == LibraryKind::Model && !unbuilt::hidden() && crate::kinds::shown(viewer) {
         let view = LibraryRequest::ViewModel(item.path.clone());

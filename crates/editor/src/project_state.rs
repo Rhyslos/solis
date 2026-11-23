@@ -61,6 +61,8 @@ pub(crate) struct ProjectState {
     pub(crate) module_page: Option<crate::module_page::ModulePage>,
     /// Make module…, while its dialog is open.
     pub(crate) make_module: Option<crate::make_module::MakeModuleForm>,
+    /// Cut picture…, while it's open (Fixes 3).
+    pub(crate) cut_picture: Option<crate::cut_picture::CutPicture>,
     /// How many copies of each module the project's levels place, and in
     /// how many levels, as the app last counted them (Details).
     pub(crate) placed: HashMap<AssetId, crate::module_details::Placed>,

@@ -47,6 +47,8 @@ pub struct FramesEditor {
     pub renaming: Option<(String, String)>,
     /// The Clips tab's search.
     pub search: String,
+    /// Cut picture… was pressed: the workbench opens the pop-up.
+    pub cut_asked: bool,
     history: FileHistory<ClipsFile>,
 }
 
@@ -80,6 +82,7 @@ impl FramesEditor {
             zoom: STANDARD_ZOOM,
             renaming: None,
             search: String::new(),
+            cut_asked: false,
             history: FileHistory::new(UNDO_LIMIT),
         }
     }

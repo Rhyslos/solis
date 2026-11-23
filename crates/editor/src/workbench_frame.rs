@@ -627,6 +627,7 @@ impl Workbench {
         }
         self.play_changes_window(ui);
         self.make_module_dialog(ui.ctx(), actions);
+        self.cut_picture_dialog(ui.ctx());
         self.module_page_question(ui.ctx());
         // What waited for Keep or Undo all (a quit, say) goes on now.
         actions.append(&mut self.open.outbox);

@@ -8,7 +8,7 @@
 use crate::atlas_editor::AtlasEditor;
 use crate::settled::settled_whole_drag;
 use crate::theme;
-use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2};
+use egui::{Color32, Pos2, Rect, RichText, Sense, Ui, Vec2};
 
 /// The picture as the tab draws it.
 #[derive(Clone, Copy)]
@@ -261,117 +261,49 @@ fn picture_canvas(
     accent: Color32,
     out: &mut AtlasOut,
 ) {
-    let rect = ui.max_rect();
-    let response = ui.allocate_rect(rect, Sense::click_and_drag());
-    let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 0.0, theme::backdrop::horizon());
-    // Wheel zooms about the pointer; middle-drag moves.
-    if response.hovered() {
-        let wheel = ui.input(|i| i.smooth_scroll_delta.y);
-        if wheel != 0.0 {
-            let before = editor.zoom;
-            editor.zoom = (editor.zoom * (1.0 + wheel * 0.002)).clamp(0.25, 64.0);
-            if let Some(at) = response.hover_pos() {
-                let from = at - rect.center() - editor.pan;
-                editor.pan -= from * (editor.zoom / before - 1.0);
-            }
-        }
-    }
-    if response.dragged_by(egui::PointerButton::Middle) {
-        editor.pan += response.drag_delta();
-    }
-    let size = Vec2::new(picture.size[0] as f32, picture.size[1] as f32) * editor.zoom;
-    let origin = rect.center() + editor.pan - size / 2.0;
-    let shown = Rect::from_min_size(origin, size);
-    let to_pixel = |p: Pos2| {
-        [
-            (p.x - origin.x) / editor.zoom,
-            (p.y - origin.y) / editor.zoom,
-        ]
-    };
-    let to_screen =
-        |x: f32, y: f32| Pos2::new(origin.x + x * editor.zoom, origin.y + y * editor.zoom);
-    painter.rect_filled(shown, 0.0, Color32::from_gray(60));
-    painter.image(
-        picture.texture.id(),
-        shown,
-        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-        Color32::WHITE,
+    use crate::widgets::picture_board::picture_board;
+    let board = picture_board(
+        ui,
+        &mut editor.zoom,
+        &mut editor.pan,
+        picture.texture,
+        picture.size,
     );
-    // The grid, while its cells are big enough to see.
-    let grid = editor.atlas.grid.map(|g| g.max(1) as f32);
-    if grid[0] * editor.zoom >= 6.0 && grid[1] * editor.zoom >= 6.0 {
-        let line = Stroke::new(1.0, Color32::from_white_alpha(28));
-        let mut x = grid[0];
-        while x < picture.size[0] as f32 {
-            painter.line_segment(
-                [to_screen(x, 0.0), to_screen(x, picture.size[1] as f32)],
-                line,
-            );
-            x += grid[0];
-        }
-        let mut y = grid[1];
-        while y < picture.size[1] as f32 {
-            painter.line_segment(
-                [to_screen(0.0, y), to_screen(picture.size[0] as f32, y)],
-                line,
-            );
-            y += grid[1];
-        }
-    }
-    // The crops, the picked one in the accent: only those in view.
-    let seen = painter.clip_rect();
+    board.lines(ui, editor.atlas.grid);
+    // The crops, the picked one in the accent.
     for (i, crop) in editor.atlas.crops.iter().enumerate() {
-        let [x, y, w, h] = crop.rect.map(|v| v as f32);
-        let r = Rect::from_min_max(to_screen(x, y), to_screen(x + w, y + h));
-        if !seen.intersects(r) {
-            continue;
-        }
         let picked = editor.picked == Some(i);
         let colour = if picked { accent } else { crate::tokens::CROP };
-        painter.rect_stroke(
-            r,
-            0.0,
-            Stroke::new(if picked { 2.0 } else { 1.0 }, colour),
-            egui::StrokeKind::Inside,
+        board.boxed(
+            ui,
+            crop.rect,
+            &crop.name,
+            colour,
+            if picked { 2.0 } else { 1.0 },
         );
-        if r.width() > 24.0 {
-            painter.text(
-                r.left_top() + Vec2::new(3.0, 2.0),
-                egui::Align2::LEFT_TOP,
-                &crop.name,
-                egui::FontId::proportional(11.0),
-                colour,
-            );
-        }
     }
+    let response = &board.response;
     // Drawing a box: from where the drag started to the pointer.
     if response.drag_started_by(egui::PointerButton::Primary)
         && let Some(at) = response.interact_pointer_pos()
     {
-        editor.drawing = Some(to_pixel(at));
+        editor.drawing = Some(board.to_pixel(at));
     }
     if let (Some(start), Some(now)) = (editor.drawing, response.interact_pointer_pos())
-        && let Some([x, y, w, h]) = editor.snapped(start, to_pixel(now), picture.size)
+        && let Some(rect) = editor.snapped(start, board.to_pixel(now), picture.size)
     {
-        let [x, y, w, h] = [x, y, w, h].map(|v| v as f32);
-        painter.rect_stroke(
-            Rect::from_min_max(to_screen(x, y), to_screen(x + w, y + h)),
-            0.0,
-            Stroke::new(2.0, accent),
-            egui::StrokeKind::Inside,
-        );
+        board.boxed(ui, rect, "", accent, 2.0);
     }
     if response.drag_stopped_by(egui::PointerButton::Primary) {
         if let (Some(start), Some(end)) = (editor.drawing.take(), response.interact_pointer_pos())
-            && let Some(rect) = editor.snapped(start, to_pixel(end), picture.size)
+            && let Some(rect) = editor.snapped(start, board.to_pixel(end), picture.size)
         {
             out.changed |= editor.add(rect);
         }
     } else if response.clicked()
         && let Some(at) = response.interact_pointer_pos()
     {
-        let crop = editor.crop_at(to_pixel(at));
+        let crop = editor.crop_at(board.to_pixel(at));
         editor.pick(crop);
     }
 }

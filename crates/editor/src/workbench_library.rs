@@ -281,6 +281,10 @@ impl Workbench {
             LibraryRequest::MakeClipsFile(path) => {
                 if let Some(id) = crate::frames_editor::id_of(&self.viewport.sheets, &path) {
                     self.make_clips_file(&path, id);
+                    // A picture is cut into cells first.
+                    if crate::sprite_sheets::is_plain_picture(&path) {
+                        self.open_cut_picture();
+                    }
                 }
             }
             LibraryRequest::NewCodeFile(folder) => {

@@ -82,6 +82,20 @@ pub fn dialog_with_note(
     note: &str,
     answers: &[Answer<'_>],
 ) -> Option<usize> {
+    dialog_sized(ctx, id, title, WIDTH, words, note, answers)
+}
+
+/// [`dialog_with_note`] `width` wide: a card that holds a picture to work
+/// on (Cut picture…).
+pub fn dialog_sized(
+    ctx: &egui::Context,
+    id: &str,
+    title: &str,
+    width: f32,
+    words: impl FnOnce(&mut Ui),
+    note: &str,
+    answers: &[Answer<'_>],
+) -> Option<usize> {
     let frame = Frame::new()
         .fill(tokens::panel())
         .stroke(Stroke::new(1.0, tokens::pill_border()))
@@ -91,7 +105,7 @@ pub fn dialog_with_note(
     egui::Modal::new(egui::Id::new(id))
         .frame(frame)
         .show(ctx, |ui| {
-            ui.set_width(WIDTH);
+            ui.set_width(width);
             ui.spacing_mut().item_spacing.y = size::CARD_INNER_GAP;
             ui.label(
                 RichText::new(title)

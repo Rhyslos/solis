@@ -24,6 +24,7 @@ mod commands;
 mod commands_many;
 pub mod console;
 mod console_commands;
+pub mod cut_picture;
 mod day_colours;
 #[cfg(test)]
 mod debug_screen_tests;

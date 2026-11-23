@@ -299,6 +299,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         module_part_kept,
         module_page,
         make_module,
+        cut_picture,
         placed,
         marks_kept,
         quit_asked,
@@ -330,6 +331,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert_eq!(unsaved_prompt, &None);
     assert!(pending_reload.is_none() && play_changes.is_none());
     assert!(moving.is_none() && copied.is_empty());
+    assert!(cut_picture.is_none(), "no Cut picture… open");
     same(level_panel, &fresh.level_panel, "the Level panel");
     assert_eq!(library_state, &fresh.library_state);
     assert!(sounds.is_empty() && sound_events.is_empty());

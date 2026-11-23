@@ -29,6 +29,8 @@ pub(crate) struct FramesUi<'a> {
     pub(crate) cue_sounds: &'a std::collections::HashMap<String, String>,
     /// What was put right reading the file, or doesn't fit its sheet.
     pub(crate) notes: Vec<String>,
+    /// Whether its picture is a plain one, cut into cells (Cut picture…).
+    pub(crate) cut: bool,
 }
 
 /// An event's mark.
@@ -106,6 +108,13 @@ pub(crate) fn clips_list(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
 pub(crate) fn clip_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let mut changed = false;
     ui.label(RichText::new(file_name(&f.editor.path)).color(theme::text_weak()));
+    if f.cut {
+        let cut = crate::widgets::button::Button::plain("Cut picture…")
+            .icon(crate::icons::Icon::Grid)
+            .show(ui)
+            .on_hover_text("How the picture is cut into the cells its clips show");
+        f.editor.cut_asked |= cut.clicked();
+    }
     let Some(sheet) = f.sheet else {
         changed |= choose_sheet(ui, f);
         return changed;

@@ -55,6 +55,7 @@ pub(crate) fn frames_ui<'a>(
         sheets,
         cue_sounds,
         notes,
+        cut: sheets.cut.contains_key(&editor.path),
         sheet,
         atlas,
         editor,
@@ -154,6 +155,58 @@ impl Workbench {
         self.open_frames(&path);
     }
 
+    /// Opens Cut picture… on the clips file open, if its picture is a
+    /// plain one (an Aseprite file's frames are its cells already).
+    pub(crate) fn open_cut_picture(&mut self) {
+        let Some(editor) = &self.open.frames_editor else {
+            return;
+        };
+        let sheets = &self.viewport.sheets;
+        let Some(picture) = editor.file.sheet().and_then(|id| sheets.paths.get(&id)) else {
+            return;
+        };
+        if crate::sprite_sheets::is_plain_picture(picture) {
+            self.open.cut_picture = Some(crate::cut_picture::CutPicture::new(
+                editor.path.clone(),
+                picture.clone(),
+                editor.file.grid,
+            ));
+        }
+    }
+
+    /// Shows Cut picture… while it's open: Use these cells keeps its grid
+    /// in the clips file, as one undo step, and saves it.
+    pub(crate) fn cut_picture_dialog(&mut self, ctx: &egui::Context) {
+        let Some(cut) = &mut self.open.cut_picture else {
+            return;
+        };
+        let sheets = &self.viewport.sheets;
+        let picture = sheets.at(&cut.picture).map(Arc::as_ref);
+        if picture.is_none() {
+            sheets.pictures_wanted.ask(&cut.picture);
+        }
+        let texture = self.open.sheet_pictures.get(&cut.picture);
+        let shown = texture.zip(picture);
+        let answer = crate::cut_picture::cut_dialog(ctx, cut, shown, self.accent.colors().fill);
+        if let Some(answer) = answer {
+            self.cut_picture_answered(answer);
+        }
+    }
+
+    /// Closes Cut picture…: Use these cells keeps its grid in the clips
+    /// file as one undo step, and saves it; Cancel changes nothing.
+    pub(crate) fn cut_picture_answered(&mut self, answer: crate::cut_picture::CutAnswer) {
+        let cut = self.open.cut_picture.take();
+        if answer == crate::cut_picture::CutAnswer::Use
+            && let Some(cut) = cut
+            && let Some(editor) = &mut self.open.frames_editor
+            && editor.path == cut.path
+            && editor.change(|f| f.grid = cut.grid)
+        {
+            self.save_frames();
+        }
+    }
+
     /// Closes the clips file open, and its tabs.
     pub(crate) fn close_frames(&mut self) {
         self.open.frames_editor = None;
@@ -183,6 +236,11 @@ impl Workbench {
     /// After the tabs are drawn: saves a change, and closes the file if a
     /// tab was closed.
     pub(crate) fn frames_tabs_done(&mut self, out: crate::panels::FramesOut) {
+        if let Some(editor) = &mut self.open.frames_editor
+            && std::mem::take(&mut editor.cut_asked)
+        {
+            self.open_cut_picture();
+        }
         if let Some(frame) = out.frame_picked {
             self.profiler.picked = Some(frame);
         }

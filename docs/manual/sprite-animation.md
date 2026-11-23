@@ -26,6 +26,16 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 7. **Change frames of your own clips:** click a frame to pick it (Ctrl+click or Shift+click for several), then set its **time**, drag it to a new place, or press **Delete** to take it out.
 8. **Close the file:** the **×** on either tab closes both.
 
+### A plain picture's clips
+
+A PNG or JPEG with every frame laid out on it, a *sprite sheet*, gets clips too. Right-click it in the Library and choose **Make clips…**: Solis makes `knight.clips.lst` beside `knight.png`, opens its tabs, and opens **Cut knight.png into cells** over them. That pop-up cuts the picture into [cells](concepts.md#cell), the pieces its clips show, numbered from 0 across and then down, as Aseprite numbers frames:
+- **Cell** is a cell's width (W) and height (H) in pixels; **Between** the gap between cells; **Edge** the margin round the picture. The cells and their numbers move over the picture as you type, and the count under it says how many there are ("45 cells: 9 across, 5 down").
+- **Find grid** looks for see-through gaps between the cells and round the edge, and fills in all three. With no gaps it guesses the cell size from where the art changes.
+- The wheel zooms the picture and the middle mouse button moves it.
+- **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** in the Clip tab.
+
+Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.
+
 Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over either tab undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
 ### In game code
