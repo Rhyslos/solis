@@ -1429,8 +1429,9 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 24);
+        assert_eq!(files.len(), 25);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
+        assert!(files.iter().any(|(p, _)| p == "solis/data/clips.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/module.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/table.lst"));
