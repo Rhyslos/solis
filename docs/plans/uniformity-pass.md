@@ -26,6 +26,19 @@ Three directions were settled before the audit, so new work follows them now:
 
 The audit applies them to every existing call and brings the cases that don't fit to the project lead.
 
+## Lessons from what developers complain about (2026-11-24)
+
+Research into recurring complaints about other engines (kept outside the repo, which never names them) gave lessons the audit checks Solis against:
+- **One way to do each thing.** Several systems for one job (two UI kits, two input systems) confuse people and break more. An old system is retired only once its replacement does everything it did.
+- **Names, not strings.** A name typed wrong must be a mistake on its line when the project loads, never a silent failure at play time.
+- **One place for one tool.** A tool's parts (painting, rules, collision for tilemaps) belong together, not spread over three panels.
+- **Errors for beginners.** Every mistake says what went wrong, where, and one fix, with a link to the manual page.
+- **Play feels instant.** Pressing Play on a small project stays under a second.
+- **The 2D basics complete.** Sprite sheets into named clips, tilemaps in one panel, and a pixel-perfect camera that doesn't jitter.
+- **Upgrades never break projects.** Every file has a version and an upgrade step, tested on examples of every older version (already the rule).
+- **Honest shipping.** The export screen shows the game's size and what fills it, and the "Can I make this?" page says which platforms work today.
+- **Trust.** Solis stays free, games owe nothing, and no account or online check is needed to open the editor or export.
+
 ## How it's done
 
 1. **An audit, written down first.** This plan gains two lists:
