@@ -22,6 +22,13 @@ The guidelines below give every engine function one predictable shape. A game wr
 
 Added 2026-11-23, after reading Lust's own rulebook ([LUST.md](https://github.com/Rhyslos/Lust/blob/main/LUST.md)), its notes for engines ([ENGINES.md](https://github.com/Rhyslos/Lust/blob/main/ENGINES.md)) and its ideas. The project lead isn't a programmer, so **whoever designs a call checks it against these, and against Lust's newest rulebook, rather than asking the project lead how code should look.** Questions about what a feature does still go to the project lead.
 
+**The project lead's rules, 2026-11-23 ([decision 0136](decisions/0136-engine-calls-make-or-set.md)); they win where a point below disagrees, and older calls are moved over in [the uniformity pass](plans/uniformity-pass.md):**
+
+- **Blocky and easy to read, with `:` and `.` kept rare.** What a thing holds is in its `has` block; `method` is the one word for what it does.
+- **Actions are made or set.** Making something in the world is `new`: `new Module.Fighter { position = gate };`, `new Sound.Horn {};`. Changing what something is, is `=`: `animation = Clip.KnightWalk;`, `facing = Facing.NorthEast;`, values the engine reads from the component's `has` block. A plain call stays only where neither fits, and each one is first tried as an event or a value the engine fills in.
+- **Names have one dot.** Kind, then one name: `Clip.KnightWalk`, `Module.Fighter`, `Text.ShopWelcome`, like Lust's own states. Folders join the name only where two would clash.
+- **Name it, then read it.** `Item sword = Item.IronSword;` then `sword.price`, never a chain.
+
 - **Read it out loud.** Lust reads like plain sentences: `is hp <= 0? then { … }`, `tween hp to 0 over 0.5;`, `send Hit(this, 6) to target;`. A call should too: `hero:knight().hasKey`, `World:the(Component.Quest)`. If it needs a comment to explain what it says, rename it.
 - **States are the big idea.** A fixed set of choices is a state, so that `check` covers it. `check` must handle every option, so a new option points at every line that needs it. Design calls to give and take states, so game code can write `check state { when Walking { … } }` and Lust finds what's missing. Folders are options inside options, and `==` includes them.
 - **Things end with their state.** In Lust, what's made during a state ends when the state does. Solis already follows this for timers, tweens and sounds (decision 0126). Anything new that game code starts and that keeps going (a clip, a sound, a wait) should end with the option it started in, unless kept.

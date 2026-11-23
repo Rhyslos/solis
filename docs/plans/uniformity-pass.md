@@ -17,6 +17,15 @@ Code should be **blocky and easy to read**:
 
 Lust itself was partly shaped by Claude, so the rule isn't always enforced there either. The aim is a middle ground that still works: Solis's calls as close to that blocky style as Lust allows, and where Lust can't reach, a note of what Lust would need, for its own rulebook.
 
+## Settled already (2026-11-23, decision 0136)
+
+Three directions were settled before the audit, so new work follows them now:
+- **actions are made or set**: `new Module.Fighter { position = gate };`, `animation = Clip.KnightWalk;`, with a plain call only where neither fits;
+- **names have one dot**: `Clip.KnightWalk`;
+- **a read is named first**: `Item sword = Item.IronSword;` then `sword.price`.
+
+The audit applies them to every existing call and brings the cases that don't fit to the project lead.
+
 ## How it's done
 
 1. **An audit, written down first.** This plan gains two lists:

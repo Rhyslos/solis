@@ -141,4 +141,5 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0133-fixes-from-making-orc-invasion.md` | The hurdles found by making Orc Invasion: four fix milestones before dialogue, and four requests for Lust | Accepted |
 | `0134-fixes-1-choices.md` | Fixes 1: many names as the program's globals, the smoke check, the level a project opens on, copies named after their root, Git LFS for big files only | Accepted |
 | `0135-the-scope-reset.md` | The scope reset: a small, simple engine judged by its games; Lust only for new game code; a light path; big-engine goals parked; dialogue kept | Accepted |
+| `0136-engine-calls-make-or-set.md` | Engine calls are made with `new` or set with `=`, the project's names have one dot (`Clip.KnightWalk`), and a read is named first (`Item sword = Item.IronSword;` then `sword.price`) |
 | `0089-atlas-crop-and-the-ui-editor.md` | Atlas Crop (pictures cut from sheets, `.atlas.lst`), the UI editor's approved layout, and screens' looks, pictures and text size | Accepted (renames 0083's Cut out pictures; builds on 0087 and 0088) |
