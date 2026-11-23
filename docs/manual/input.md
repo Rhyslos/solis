@@ -136,6 +136,21 @@ Input is read **once per [tick](concepts.md#game-code)**, so every component, on
 
 A replay that stops matching means the game came out differently from the same input: the level or code changed since recording, or something in the game isn't deterministic. That's how you find it the tick it starts.
 
+## Names of keys and buttons
+
+The binding window writes these for you when you press a key. You need them only to write `input.solinput` by hand or to call `Input:rebind`. Capitals matter: `Space`, not `space`.
+
+| Device | Names |
+|---|---|
+| Letters, digits and F keys | `A` to `Z`, `0` to `9`, `F1` to `F35` |
+| Other keys | `Up`, `Down`, `Left`, `Right`, `Space`, `Enter`, `Escape`, `Tab`, `Backspace`, `Insert`, `Delete`, `Home`, `End`, `PageUp`, `PageDown`, `Minus`, `Equals`, `Plus`, `Comma`, `Period`, `Slash`, `Backslash`, `Semicolon`, `Colon`, `Quote`, `Backtick`, `OpenBracket`, `CloseBracket`, `OpenCurlyBracket`, `CloseCurlyBracket`, `Pipe`, `Questionmark`, `Exclamationmark`, `IntlBackslash`, `Copy`, `Cut`, `Paste`, `BrowserBack`, `ShiftLeft`, `ShiftRight`, `ControlLeft`, `ControlRight`, `AltLeft`, `AltRight`, `SuperLeft`, `SuperRight` |
+| Modifier keys, held on their own | `Shift`, `Ctrl`, `Alt` |
+| A key with modifiers | the modifiers in the order Ctrl, Alt, Shift, joined with `+`, then the key: `Ctrl+S`, `Alt+Left`, `Ctrl+Alt+Shift+K` |
+| Mouse buttons | `Mouse Left`, `Mouse Right`, `Mouse Middle`, `Mouse Back`, `Mouse Forward` |
+| Mouse wheel and movement | `Mouse WheelUp`, `Mouse WheelDown` (a notch, as a button); `Mouse Wheel`, `Mouse Motion` (an axis's whole-axis input) |
+| Gamepad buttons (Xbox layout) | `Pad A`, `Pad B`, `Pad X`, `Pad Y`, `Pad LB`, `Pad RB`, `Pad LT`, `Pad RT`, `Pad Back`, `Pad Start`, `Pad LeftStick`, `Pad RightStick` (the sticks pressed in), `Pad Up`, `Pad Down`, `Pad Left`, `Pad Right` (the d-pad) |
+| Gamepad sticks | `Pad LeftStick`, `Pad RightStick`, as an axis's whole-axis input |
+
 ## Settings
 | Setting | What it does |
 |---|---|
