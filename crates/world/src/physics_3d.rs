@@ -63,6 +63,9 @@ impl World {
                 mass: c.mass,
             };
             self.physics.add_character(id, (position, rotation), spec);
+            if !self.is_solid(id) {
+                self.physics.set_solid(id, false);
+            }
             self.touched = true;
             return;
         }
@@ -115,6 +118,10 @@ impl World {
         let collider = collider.or(brush);
         self.physics
             .add(id, (position, rotation), scale, body, collider);
+        // Turned off by game code (Fixes 2c): the body still moves.
+        if !self.is_solid(id) {
+            self.physics.set_solid(id, false);
+        }
         self.touched = true;
     }
 

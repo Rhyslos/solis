@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Hiding entities and turning colliders off** (Fixes 2c; [the manual](docs/manual/game-code.md#hiding-entities-and-turning-colliders-off)): `setSolid(false)` takes an entity's collider out of the way (a fallen orc no longer blocks the key it dropped), and `setVisible(false)` hides it and everything under it. Both are kept in save games; saves are now version 14, and older ones load as before.
 - **Spawning with values** (Fixes 2b; [the manual](docs/manual/game-code.md#spawning-with-values)): `World:spawnWith(Prefab.Key, place, [given])` makes a copy whose components start with the values you give (`PickupValues given = new PickupValues; given:item(Item.Red);`), so a dropped key is the red one from its first update.
 - **The manual teaches new game-code calls in Lust alone** (the scope reset; [decision 0135](docs/decisions/0135-the-scope-reset.md)): an example may now be a single Lust block, shown in the guide without a language switch. Examples already in Lust, Rust and Lua keep their switch, and a Rust or Lua block on its own is still refused.
 - **Game code reads other entities' components** (Fixes 2a; [the manual](docs/manual/game-code.md#reading-other-entities)): `hero:knight()` gives a read-only copy of the hero's `Knight` as the tick started, so a gate can ask whether the knight carries its key. `World:the(Component.Quest)` finds the one entity with a `Quest` without a string name, and `other:exists()` says whether an entity is still in the game. The manual also lists everything in one tick, in order.
@@ -106,6 +107,8 @@ What changed in each version, for people using Solis. Newest first.
 - **The editor rethink is planned** ([plan](docs/plans/editor-rethink.md), [decision 0118](docs/decisions/0118-the-editor-rethink.md)): the project lead's review of the remade interface, answered and mocked up (`docs/design/ui-rethink/`): the launcher as its own window, new projects that make their folder and are 2D, 3D or both, Area renamed Level, prefabs, one frame on every tab, and one Library browser. It's built next, as six milestones, before the ground.
 
 ### Breaking
+
+- **Save games are version 14** (Fixes 2c): a save keeps what game code hid and the colliders it turned off. Older saves load as before, with nothing switched off; a Solis from before can't read a version 14 save. **What to do:** nothing; update every copy of Solis that loads the game's saves.
 
 - **Data tables are version 2** (stage 1, translations): a table, row or column renamed after its text is translated keeps the name its keys were made from (`key = "IronSword"`). Older tables open as before; a Solis from before can't read a table that keeps a key. **What to do:** nothing; update every copy of Solis that opens the project.
 

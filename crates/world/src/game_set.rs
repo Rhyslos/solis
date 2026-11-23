@@ -32,6 +32,10 @@
 //! last two are kept as long as the entity keeps the component they
 //! belong to.
 //!
+//! What game code switches off (`setVisible`, `setSolid`) isn't in the
+//! table: the world keeps it in lists of its own by entity ID
+//! (`crate::switches`), which an edit never touches.
+//!
 //! A new call of game code's that sets something on an entity gets a row
 //! here, and a [`Part`] if the level holds what it sets. The editor's
 //! `game_set_tests.rs` lists every call and plays each that sets

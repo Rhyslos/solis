@@ -40,6 +40,12 @@ pub enum Change {
     /// this entity, at this place, its root's components given these
     /// values before their first update (none for `spawn`).
     Spawn(EntityId, String, Vec3, SpawnValues),
+    /// `setSolid`: the entity's collider (2D or 3D) blocks and is hit
+    /// (true), or isn't there to anything (Fixes 2c).
+    Solid(EntityId, bool),
+    /// `setVisible`: the entity and everything under it are drawn (true),
+    /// or not (Fixes 2c).
+    Visible(EntityId, bool),
     /// `despawn`: take this entity (and those under it) out of the game.
     Despawn(EntityId),
     /// `setSeed`: start the game's randomness again from this seed.
@@ -517,6 +523,22 @@ impl Host for ViewHost {
             .changes
             .push((order, Change::Spawn(id, prefab.to_string(), place, values)));
         Some(id)
+    }
+
+    fn set_solid(&mut self, which: EntityId, solid: bool) {
+        if self.view.index.slots.contains_key(&which) && self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::Solid(which, solid)));
+        }
+    }
+
+    fn set_visible(&mut self, which: EntityId, visible: bool) {
+        if self.view.index.slots.contains_key(&which) && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Visible(which, visible)));
+        }
     }
 
     fn exists(&self, which: EntityId) -> bool {

@@ -290,20 +290,26 @@ impl LevelView {
         };
         // Models in jobs (decision 0031), kept in tree order. None of the
         // game's can be picked, so no numbers are handed out.
+        // What game code hid isn't drawn (Fixes 2c).
+        let shown = |id: &reflect::EntityId| world.is_shown(*id);
         let placed = world.placed_between::<Model>(t);
         let drawn: Vec<(ViewModel, usize)> = placed
             .par_iter()
+            .filter(|(id, _, _)| shown(id))
             .filter_map(|(_, model, global)| view_model(model, *global, models))
             .collect();
         view.triangles = drawn.iter().map(|(_, t)| t).sum();
         view.models = drawn.into_iter().map(|(m, _)| m).collect();
         for (id, light, global) in world.placed_between::<Light>(t) {
+            if !shown(&id) {
+                continue;
+            }
             view.add_light(id, &light, global);
         }
         view.sprites = world
             .placed_between::<Sprite>(t)
             .into_iter()
-            .filter(|(_, s, _)| s.sheet.is_some())
+            .filter(|(id, s, _)| s.sheet.is_some() && shown(id))
             .map(
                 |(entity, sprite, transform)| crate::sprite_sheets::LevelSprite {
                     entity,
@@ -317,6 +323,7 @@ impl LevelView {
         view.tile_maps = world
             .placed_between::<level::builtin::TileMap>(t)
             .into_iter()
+            .filter(|(id, _, _)| shown(id))
             .filter_map(|(entity, component, transform)| {
                 Some(LevelTileMap {
                     entity,
@@ -402,6 +409,9 @@ impl LevelView {
         t: f32,
     ) {
         for (id, _, transform) in world.placed_between::<level::builtin::Brush>(t) {
+            if !world.is_shown(id) {
+                continue;
+            }
             if let Some(model) = brushes.get(id) {
                 self.triangles += model.triangles;
                 self.brushes.push(crate::brushes::ViewBrush {
