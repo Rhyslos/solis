@@ -198,9 +198,9 @@ component Guard {
         float speed = 4.0; -- [range 0 10, step 0.5, unit "m/s", tip "Walking speed"]
 
         -- What it uses: picked from the project's own files.
-        Sound alertSound = Sound.Sfx.Footstep;
-        Picture portrait = Picture.Sprites.Tools;
-        Module drops = Module.Drones.Drone;
+        Sound alertSound = Sound.Footstep;
+        Picture portrait = Picture.Tools;
+        Module drops = Module.Drone;
 
         -- How it sees.
         float sightRange = 8.0; -- [range 0 20, unit "m", group "Seeing"]
@@ -236,7 +236,7 @@ pub fn guard_schema(sounds: Vec<String>) -> ComponentSchema {
         "alertSound",
         "Alert sound",
         FieldKind::Choice(sounds),
-        Value::Text("Sfx.Footstep".into()),
+        Value::Text("Footstep".into()),
     )
     .hint(Hint {
         offers: Offer::Names(NameKind::Sound),
@@ -255,9 +255,9 @@ pub fn guard_schema(sounds: Vec<String>) -> ComponentSchema {
 local Guard = component("Guard", {
     { "speed", "float", 4.0, nil, { range = { 0, 10 }, step = 0.5, unit = "m/s", tip = "Walking speed" } },
     -- A kind that's one of the project's names picks from them.
-    { "alertSound", "Sound", "Sfx.Footstep" },
-    { "portrait", "Picture", "Sprites.Tools" },
-    { "drops", "Module", "Drones.Drone" },
+    { "alertSound", "Sound", "Footstep" },
+    { "portrait", "Picture", "Tools" },
+    { "drops", "Module", "Drone" },
     { "sightRange", "float", 8.0, nil, { range = { 0, 20 }, unit = "m", group = "Seeing" } },
     { "says", "string", "Halt!", nil, { multiline = true } },
     { "seen", "int", 0, nil, { hidden = true } },
@@ -289,9 +289,9 @@ end
 
 **Mistakes in a hint** (a word Solis doesn't know, `range 10 0`, a range on a sound) are listed in Problems with their line, saying what to write. The rest of the code runs, and the field shows without that hint. Hints belong to the code, not the level: they're never saved in a level, and change as soon as you save new code.
 
-**The project's names.** A field whose kind is `Sound`, `Clip`, `Picture`, `Module`, `Screen`, `Level`, `Tag` or `Font` (from `solis/project.lst`) holds one of them, and Properties shows a list to pick from: a box to find one by typing, the project's folders as headings, each name with its file's picture or its kind's icon, and on a sound a **▶** to hear it, in the list and after the field. You can also **drag a file from the Library onto the field**: it lights up when the file is one it can hold, and letting go sets it, one undo step. The field keeps the name (`Sfx.Alert`), so **renaming or moving the file in the Library changes every field naming it** in the open level, as one undo step. In Lua, write the kind's name as the field's kind (`"Sound"`); in Rust, a `Choice` field with `Offer::Names(NameKind::Sound)`.
+**The project's names.** A field whose kind is `Sound`, `Clip`, `Picture`, `Module`, `Screen`, `Level`, `Tag` or `Font` (from `solis/project.lst`) holds one of them, and Properties shows a list to pick from: a box to find one by typing, the project's folders as headings, each name with its file's picture or its kind's icon, and on a sound a **▶** to hear it, in the list and after the field. You can also **drag a file from the Library onto the field**: it lights up when the file is one it can hold, and letting go sets it, one undo step. The field keeps the name (`Alert`), so **renaming or moving the file in the Library changes every field naming it** in the open level, as one undo step. In Lua, write the kind's name as the field's kind (`"Sound"`); in Rust, a `Choice` field with `Offer::Names(NameKind::Sound)`.
 
-**Pictures** are the project's PNG and JPEG files (`Picture.Portraits.GuardFace` for `portraits/guardFace.png`), with the parts cut out of each with [Atlas Crop](atlas-crop.md) inside it (`Picture.Sprites.Tools.Axe`). **Levels** are its `.sollevel` files (`Level.Forest.Cave`), and **fonts** its `.ttf` and `.otf` files (`Font.Fonts.Lora`; see [Text on screens](screen-text.md)).
+**Pictures** are the project's PNG and JPEG files (`Picture.GuardFace` for `portraits/guardFace.png`), and the parts cut out of each with [Atlas Crop](atlas-crop.md), named after their picture (`Picture.ToolsAxe` for the Axe cut from `sprites/tools.png`). **Levels** are its `.sollevel` files (`Level.Cave`), and **fonts** its `.ttf` and `.otf` files (`Font.Lora`; see [Text on screens](screen-text.md)).
 
 **Colours** show a swatch, which opens a colour picker, and the colour's hex after it (`#5AA0E0`).
 
@@ -544,7 +544,7 @@ component Hangar {
 
     method update(float dt) {
         is made < 10? then {
-            entity ship = World:spawn(Module.Ships.Fighter, [made * 5, 0, 10]);
+            entity ship = World:spawn(Module.Fighter, [made * 5, 0, 10]);
             made = made + 1;
         }
     }
@@ -583,14 +583,14 @@ local Hangar = component("Hangar", {
 
 function Hangar:update(dt)
     if self.made < 10 then
-        -- The module's name as text: Module.Ships.Fighter is "Ships.Fighter".
-        local ship = solis.World:spawn("Ships.Fighter", vec3(self.made * 5, 0, 10))
+        -- The module's name as text: Module.Fighter is "Fighter".
+        local ship = solis.World:spawn("Fighter", vec3(self.made * 5, 0, 10))
         self.made = self.made + 1
     end
 end
 ```
 
-- **Which module:** one of the project's, named from its file with folders as options inside options: `ships/fighter.module.lst` is `Module.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Module.None` is there when the project has none, and makes nothing.
+- **Which module:** one of the project's, named from its file: `ships/fighter.module.lst` is `Module.Fighter` (its first letter a capital). A name has one dot: only where two files in different folders share a name does the folder join the front (`Module.ShipsFighter` beside `Module.DronesFighter`). Solis writes the names into `solis/project.lst` whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Module.None` is there when the project has none, and makes nothing.
 - **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Level panel while playing, and are gone when you press **Stop**, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours ([Play mode](play-mode.md)), so a change you make to one of these copies goes with it.
 - At most 10,000 copies are made in one tick, and a level holds at most a million entities; past that, the Console says so and the rest aren't made.
@@ -965,7 +965,7 @@ end
 
 ## Sounds
 
-Game code plays [sound events](sound-events.md) by the project's names for them: Solis writes each event into `solis/project.lst` as `state Sound`, folders as options inside options, so `sfx/footstep.solsound` is `Sound.Sfx.Footstep`. A misspelt or deleted event is a mistake before the game runs. Fetch `Audio` from `solis/sound` and `Sound` from `solis/project`:
+Game code plays [sound events](sound-events.md) by the project's names for them: Solis writes each event into `solis/project.lst` as `state Sound`, named from the file, so `sfx/footstep.solsound` is `Sound.Footstep`. A misspelt or deleted event is a mistake before the game runs. Fetch `Audio` from `solis/sound` and `Sound` from `solis/project`:
 
 ```lust
 fetch "solis/sound":Audio;
@@ -979,7 +979,7 @@ component Walker {
     method update(float dt) {
         steps = steps + 1;
         is steps % 30 == 0? then {
-            Audio:playAt(Sound.Sfx.Footstep, position());
+            Audio:playAt(Sound.Footstep, position());
         }
     }
 }
@@ -1018,19 +1018,19 @@ local Walker = component("Walker", {
 function Walker:update(dt)
     self.steps = self.steps + 1
     if self.steps % 30 == 0 then
-        -- The sound event's name as text: Sound.Sfx.Footstep is "Sfx.Footstep".
-        solis.Audio:playAt("Sfx.Footstep", solis.entity.position(self.me))
+        -- The sound event's name as text: Sound.Footstep is "Footstep".
+        solis.Audio:playAt("Footstep", solis.entity.position(self.me))
     end
 end
 ```
 
-- `Audio:play(Sound.Music.Theme)` plays it the same everywhere: music, the interface.
-- `Audio:playAt(Sound.Sfx.Footstep, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
-- `playSound(Sound.Sfx.Engine)` plays it on the component's entity and follows it as it moves: an engine, a voice (`target:playSound(…)` on another). `stopSounds()` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use `setSoundPlaying` for that).
+- `Audio:play(Sound.Theme)` plays it the same everywhere: music, the interface.
+- `Audio:playAt(Sound.Footstep, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
+- `playSound(Sound.Engine)` plays it on the component's entity and follows it as it moves: an engine, a voice (`target:playSound(…)` on another). `stopSounds()` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use `setSoundPlaying` for that).
 - `setSoundPlaying(playing)` turns the entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off.
 - `Audio:setVolume(Bus.Music, volume)` sets a [bus](mixer.md) for the rest of the play (the buses are the Mixer's, as `state Bus` in `solis/project.lst`; the UI bus is `Bus.Ui`, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
-In Lua they're `solis.Audio:playAt("Sfx.Footstep", solis.entity.position(self.me))` and so on (the option's name as text; `"sfx/footstep"` works too). In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
+In Lua they're `solis.Audio:playAt("Footstep", solis.entity.position(self.me))` and so on (the option's name as text; `"sfx/footstep"` works too). In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
 
 **Sound never changes the game.** None of these gives anything back, so code can't ask "is it still playing?": a game plays exactly the same with sound on, off, or with no sound card, and a [recording](concepts.md#simulation) replays the same. Each play picks its take from the game's seed and the tick, so the same game even sounds the same each time. Like a move, a sound lands at the end of the tick.
 
@@ -1067,7 +1067,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `World:gameSpeed()` | How fast the game runs, as the tick started. |
 | `solis/screens` | `Screens:setTextSize(float size)`, `Screens:textSize()` | The player's text size on every screen, 0.5 to 3 (1 as designed), from the end of the tick ([Game screens](screens.md)). |
 | `solis/screens` | `Screens:setUiSize(float size)`, `Screens:uiSize()` | The player's UI size: every screen bigger or smaller, 0.5 to 2. |
-| `solis/world` | `string World:text(Text which)` | A line of the game's text in the player's language: `World:text(Text.Shop.Welcome)`; a line that takes values is a method of its group's object, `ShopText:welcome(name)`, from `solis/texts` ([Translations](translations.md)). In Lua `solis.World:text("Shop.Welcome")`; in Rust `text`. |
+| `solis/world` | `string World:text(Text which)` | A line of the game's text in the player's language: `World:text(Text.ShopWelcome)`; a line that takes values is a method of its group's object, `ShopText:welcome(name)`, from `solis/texts` ([Translations](translations.md)). In Lua `solis.World:text("Shop.Welcome")`; in Rust `text`. |
 | `solis/screens` | `Screens:setLanguage(Language which)`, `Screens:language()`, `Screens:languageName(Language which)` | The player's language, one of the project's (`Language.Nb`), and its own name for a menu (`Norsk`), from the end of the tick. |
 | `solis/screens` | `Screens:setSubtitles(bool on)`, `Screens:setCaptions(bool on)`, `Screens:setCaptionSize(float size)`, `Screens:setCaptionBackground(float strength)`, and each read the same way | The player's subtitles and captions: on or off, their size (0.5 to 2) and how dark their box is (0 to 1) ([Subtitles and captions](subtitles-and-captions.md)). |
 | `solis/window` | `Window:setFullscreen(bool on)`, `Window:fullscreen()` | Whether the game fills the screen (Alt+Enter switches it too). |
@@ -1077,14 +1077,14 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |
-| `solis/project` | `state Module` | The project's modules, folders as options inside options (`Module.Ships.Fighter`). |
+| `solis/project` | `state Module` | The project's modules, by their files' names (`Module.Fighter`). |
 | `solis/sound` | `Audio:play(Sound event)` | Plays a sound event the same everywhere (see Sounds, above). |
 | `solis/sound` | `Audio:playAt(Sound event, vec3 place)` | Plays a sound event at a place in the world. |
 | `solis/sound` | `Audio:setVolume(Bus bus, float volume)` | Sets a bus's volume for the rest of the play, 0 to 1. |
 | any entity | `playSound(Sound event)` | Plays a sound event on the entity, following it. |
 | any entity | `stopSounds()` | Stops the sounds on the entity, with a short fade. |
 | any entity | `setSoundPlaying(bool playing)` | Turns the entity's AudioSource on or off. |
-| `solis/project` | `state Sound`, `state Bus` | The project's sound events (`Sound.Sfx.Footstep`) and the Mixer's buses (`Bus.Music`). |
+| `solis/project` | `state Sound`, `state Bus` | The project's sound events (`Sound.Footstep`) and the Mixer's buses (`Bus.Music`). |
 | any entity | `animate(Clip clip)` | Plays a clip on the entity's Sprite; already playing or finished it, it carries on as it is ([Animating sprites](sprite-animation.md)). |
 | any entity | `animateFromStart(Clip clip)` | Plays a clip from its beginning, whatever it was doing. |
 | any entity | `stopAnimation()` | Stops the entity's Sprite where it is in its clip. |
@@ -1093,7 +1093,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `setSolid(bool solid)` | Turns the entity's collider off, or on again ([Hiding entities and turning colliders off](#hiding-entities-and-turning-colliders-off)). |
 | `solis/animation` | event `CueReached(Cue cue)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":CueReached;`). |
 | `solis/animation` | event `ClipFinished(Clip clip)` | Sent when a sprite's clip has played all its times. |
-| `solis/project` | `state Clip`, `state Cue` | The sprites' clips, under their sheets (`Clip.Sprites.Farmer.Walk`), and their frame events (`Cue.Footstep`). |
+| `solis/project` | `state Clip`, `state Cue` | The sprites' clips, their sheet's name and the clip's (`Clip.FarmerWalk`), and their frame events (`Cue.Footstep`). |
 | any entity | `showScreen(Screen which)` | Shows one of the game's screens on the entity, at the end of the tick ([Game screens](screens.md)). |
 | any entity | `hideScreen(Screen which)` | Hides it, if the entity shows it. |
 | any entity | `screenShown(Screen which)` | Whether the entity shows that screen, as the tick started. |
@@ -1140,17 +1140,17 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `rotationOf(e)`, `turnTo(e, r)`, `nameOf(e)`, `despawn(e)` | `e:rotation()`, `e:turnTo(r)`, `e:name()`, `e:despawn()` |
 | `turnTo(this, facingAlong(d))` | `face(d)` |
 | `say`, `time`, `frameTime`, `find`, `fire`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
-| `spawn("ships/fighter", p)` | `World:spawn(Module.Ships.Fighter, p)` |
-| `Assembly.Ships.Fighter`, `fetch "solis/project":Assembly;` (assemblies are called modules, [decision 0118](../decisions/0118-the-editor-rethink.md)) | `Module.Ships.Fighter`, `fetch "solis/project":Module;`. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change. |
+| `spawn("ships/fighter", p)` | `World:spawn(Module.Fighter, p)` |
+| `Assembly.Ships.Fighter`, `fetch "solis/project":Assembly;` (assemblies are called modules, [decision 0118](../decisions/0118-the-editor-rethink.md)) | `Module.Fighter`, `fetch "solis/project":Module;`. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change. |
 | `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
 | `held("Jump")`, `pressed`, `released`, `axis("Move")` | `Input:held(Action.Jump)` and so on, with `fetch "solis/input":Input;` and `fetch "solis/project":Action;` |
 | `bindingOf("Jump")`, `rebind("Jump", key)` | `Input:binding(Action.Jump)`, `Input:rebind(Action.Jump, key)` |
 | `push(e, f)`, `velocityOf(e)`, `setVelocity(e, v)` | `e:push(f)`, `e:velocity()`, `e:setVelocity(v)` |
 | `moveCharacter(e, w)`, `onGround(e)` | `e:walk(w)`, `e:grounded()` |
-| `playSound("sfx/x")`, `playSoundAt("sfx/x", p)` | `Audio:play(Sound.Sfx.X)`, `Audio:playAt(Sound.Sfx.X, p)` |
-| `playSoundOn("sfx/x", e)`, `stopSoundsOn(e)`, `setSoundPlaying(e, b)` | `e:playSound(Sound.Sfx.X)`, `e:stopSounds()`, `e:setSoundPlaying(b)` |
+| `playSound("sfx/x")`, `playSoundAt("sfx/x", p)` | `Audio:play(Sound.X)`, `Audio:playAt(Sound.X, p)` |
+| `playSoundOn("sfx/x", e)`, `stopSoundsOn(e)`, `setSoundPlaying(e, b)` | `e:playSound(Sound.X)`, `e:stopSounds()`, `e:setSoundPlaying(b)` |
 | `setBusVolume("Music", v)` | `Audio:setVolume(Bus.Music, v)` |
-| `playClip(e, "walk")`, `replayClip`, `stopClip(e)` | `e:animate(Clip.Sprites.Farmer.Walk)`, `e:animateFromStart(…)`, `e:stopAnimation()` |
+| `playClip(e, "walk")`, `replayClip`, `stopClip(e)` | `e:animate(Clip.FarmerWalk)`, `e:animateFromStart(…)`, `e:stopAnimation()` |
 | `on AnimationCue(string name)`, `on ClipFinished(string clip)` | `on CueReached(Cue cue)`, `on ClipFinished(Clip clip)` |
 | `castRay(…)`, `castRayHit(…)`, `castRayNormal(…)` | one call: `RayHit hit = Physics:castRay(…);` then `hit.distance`, `hit.entity`, `hit.normal` |
 | Lua `solis.positionOf(e)`, `solis.say(w)`, `solis.held("Jump")` | `solis.entity.position(e)`, `solis.World:say(w)`, `solis.Input:held("Jump")` |

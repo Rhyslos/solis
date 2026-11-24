@@ -223,7 +223,7 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "spawn",
-        lust: "World:spawn(Module.Ships.Fighter, place), with fetch \"solis/project\":Module;",
+        lust: "World:spawn(Module.Fighter, place), with fetch \"solis/project\":Module;",
         lua: "solis.World:spawn(\"Ships.Fighter\", place)",
     },
     Moved {
@@ -358,17 +358,17 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "playSound",
-        lust: "Audio:play(Sound.Sfx.Footstep) for sfx/footstep, with fetch \"solis/sound\":Audio; and fetch \"solis/project\":Sound;",
+        lust: "Audio:play(Sound.Footstep) for sfx/footstep, with fetch \"solis/sound\":Audio; and fetch \"solis/project\":Sound;",
         lua: "solis.Audio:play(\"Sfx.Footstep\")",
     },
     Moved {
         old: "playSoundAt",
-        lust: "Audio:playAt(Sound.Sfx.Footstep, place)",
+        lust: "Audio:playAt(Sound.Footstep, place)",
         lua: "solis.Audio:playAt(\"Sfx.Footstep\", place)",
     },
     Moved {
         old: "playSoundOn",
-        lust: "target:playSound(Sound.Sfx.Footstep) (inside a component, playSound(…) for its own entity)",
+        lust: "target:playSound(Sound.Footstep) (inside a component, playSound(…) for its own entity)",
         lua: "solis.entity.playSound(target, \"Sfx.Footstep\")",
     },
     Moved {
@@ -383,12 +383,12 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "playClip",
-        lust: "target:animate(Clip.Sprites.Farmer.Walk) (inside a component, animate(…) for its own entity)",
+        lust: "target:animate(Clip.FarmerWalk) (inside a component, animate(…) for its own entity)",
         lua: "solis.entity.animate(target, \"Sprites.Farmer.Walk\")",
     },
     Moved {
         old: "replayClip",
-        lust: "target:animateFromStart(Clip.Sprites.Farmer.Walk) (inside a component, animateFromStart(…))",
+        lust: "target:animateFromStart(Clip.FarmerWalk) (inside a component, animateFromStart(…))",
         lua: "solis.entity.animateFromStart(target, \"Sprites.Farmer.Walk\")",
     },
     Moved {
@@ -417,7 +417,7 @@ pub const NATIVES: &[Native] = &[
         name: "text",
         owner: "World",
         lust: "method string text(Text which) native;",
-        about: "A line of the game's text in the player's language (Project settings › Languages): World:text(Text.Shop.Welcome). A line not translated into it is in the main language. A line that takes values is a method of its group's object instead: ShopText:welcome(name), from solis/texts.",
+        about: "A line of the game's text in the player's language (Project settings › Languages): World:text(Text.ShopWelcome). A line not translated into it is in the main language. A line that takes values is a method of its group's object instead: ShopText:welcome(name), from solis/texts.",
     },
     Native {
         file: "world",
@@ -459,7 +459,7 @@ pub const NATIVES: &[Native] = &[
         name: "spawn",
         owner: "World",
         lust: "method entity spawn(Module which, vec3 place) native;",
-        about: "Makes a copy of a module (one of the project's, Module.Ships.Fighter for ships/fighter) at a place; its entity, which is in the game from the next tick, or nothing if it can't be made.",
+        about: "Makes a copy of a module (one of the project's, Module.Fighter for ships/fighter) at a place; its entity, which is in the game from the next tick, or nothing if it can't be made.",
     },
     Native {
         file: "world",
@@ -599,7 +599,7 @@ pub const NATIVES: &[Native] = &[
         name: "play",
         owner: "Audio",
         lust: "method play(Sound event) native;",
-        about: "Plays one of the project's sound events (Sound.Sfx.Footstep for sfx/footstep), the same everywhere: music, the interface. At the end of the tick, as a move lands. Nothing comes back, so sound can never change the game.",
+        about: "Plays one of the project's sound events (Sound.Footstep for sfx/footstep), the same everywhere: music, the interface. At the end of the tick, as a move lands. Nothing comes back, so sound can never change the game.",
     },
     Native {
         file: "sound",
@@ -641,7 +641,7 @@ pub const NATIVES: &[Native] = &[
         name: "animate",
         owner: "entity",
         lust: "method entity:animate(Clip clip) native;",
-        about: "Plays a clip on the entity's Sprite (Clip.Sprites.Farmer.Walk), at the end of the tick: already playing it (or finished it), it carries on as it is, so calling it every tick is safe; another clip starts from its beginning.",
+        about: "Plays a clip on the entity's Sprite (Clip.FarmerWalk), at the end of the tick: already playing it (or finished it), it carries on as it is, so calling it every tick is safe; another clip starts from its beginning.",
     },
     Native {
         file: "animation",

@@ -97,7 +97,7 @@ Each letter comes from the first font in the list that has it: here the English 
 
 > **Good to know:** a font with Chinese, Japanese or Korean letters is big (often 5 to 20 MB). Only the fonts a screen names are read, so list one only on the screens that need it. A font may be at most 32 MB, and screens can use at most 32 of a project's fonts.
 
-**In game code,** a field can hold one of the project's fonts, as it can a sound or a picture: its type is `Font`, and Properties offers a list of the project's fonts to pick from, which follows a font file you rename. The fonts are `Font.Fonts.Lora` for `fonts/Lora.ttf` (see [Game code](game-code.md)).
+**In game code,** a field can hold one of the project's fonts, as it can a sound or a picture: its type is `Font`, and Properties offers a list of the project's fonts to pick from, which follows a font file you rename. The fonts are `Font.Lora` for `fonts/Lora.ttf` (see [Game code](game-code.md)).
 
 ```lust
 -- sign.lst: a sign whose words and font are picked in Properties.

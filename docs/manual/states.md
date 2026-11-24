@@ -35,7 +35,7 @@ component Hero {
         state = Mood.Stunned;
         startTimer(Timer.Recover, 1.5);
         tween flash to 1 over 1.5;
-        playSound(Sound.Sfx.Dizzy);
+        playSound(Sound.Dizzy);
     }
 
     -- The stun is over: setting the state ends the rest.
@@ -130,7 +130,7 @@ end
 function Hero:on_Hit(damage)
     self.mood = "Stunned"
     solis.entity.startTimer(self.me, "Recover", 1.5)
-    solis.entity.playSound(self.me, "Sfx.Dizzy")
+    solis.entity.playSound(self.me, "Dizzy")
 end
 
 -- The stun is over.
@@ -176,7 +176,7 @@ component Fighter {
 
     method enterCombat() {
         state = Mood.Combat;
-        playSound(Sound.Music.Battle);
+        playSound(Sound.Battle);
     }
 
     method closeIn() {

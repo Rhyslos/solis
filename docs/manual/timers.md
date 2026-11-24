@@ -142,7 +142,7 @@ component Spawner {
 
     on TimerFinished(Timer which) {
         waves = waves + 1;
-        entity drone = World:spawn(Module.Drones.Drone, position() + [0, 0, 2]);
+        entity drone = World:spawn(Module.Drone, position() + [0, 0, 2]);
 
         -- Ten waves, then no more.
         is waves >= 10? then {
@@ -211,7 +211,7 @@ end
 function Spawner:on_TimerFinished(which)
     self.waves = self.waves + 1
     local place = solis.entity.position(self.me)
-    local drone = solis.World:spawn("Drones.Drone", place + vec3(0, 0, 2))
+    local drone = solis.World:spawn("Drone", place + vec3(0, 0, 2))
 
     -- Ten waves, then no more.
     if self.waves >= 10 then

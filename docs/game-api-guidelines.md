@@ -52,18 +52,15 @@ Added 2026-11-23, after reading Lust's own rulebook ([LUST.md](https://github.co
 
 ## The big idea: the project's names become states
 
-The editor already knows every name a game uses: its clips, input actions, sounds, cues, modules and buses. So the editor writes them into one Lust file as states. Folders become options inside options. Game code `fetch`es them like any other state.
+The editor already knows every name a game uses: its clips, input actions, sounds, cues, modules and buses. So the editor writes them into one Lust file as states, each name with one dot: the file's name (a clip's sheet and clip joined), with its folder only where two would clash (decision 0137). Game code `fetch`es them like any other state.
 
 ```
 -- solis/project.lst, written by the editor whenever the project changes. Never edited by hand.
-state Clip = [
-    Farmer [Idle, Walk, Run, Swing],
-    Cow [Idle, Eat]
-];
+state Clip = [CowEat, CowIdle, FarmerIdle, FarmerRun, FarmerSwing, FarmerWalk];
 state Cue = [Footstep, HoeHits, Moo];
 state Action = [Move, Jump, Use, Sprint, QuickSave, QuickLoad];
-state Sound = [Sfx [Footstep, Hoe], Music [Farm]];
-state Module = [Ships [Fighter, Freighter], Crops [Wheat]];
+state Sound = [Farm, Footstep, Hoe];
+state Module = [Fighter, Freighter, Wheat];
 state Bus = [Music, Effects, Voices];
 pass Clip, Cue, Action, Sound, Module, Bus;
 end
@@ -72,19 +69,19 @@ end
 ```
 fetch "solis/project":[Clip, Action];
 
-animate(Clip.Farmer.Walk);              -- a typo is a mistake before the game runs, with "did you mean"
+animate(Clip.FarmerWalk);               -- a typo is a mistake before the game runs, with "did you mean"
 is Input:pressed(Action.Use)? then { … }
 ```
 
 What this gives the game writer:
 
-- **Typos are caught.** `Clip.Farmer.Wlak` is a mistake before anything runs, not a silent nothing.
+- **Typos are caught.** `Clip.FarmerWlak` is a mistake before anything runs, not a silent nothing.
 - **Renames are safe.** Rename `walk` in the editor and Lust points at every line that still uses the old name.
-- **`check` covers everything.** `check clip { when Farmer.Swing { … } when Farmer { … } when Cow { … } }` must handle every clip. A new clip points at every check that needs it.
-- **Folders still mean something.** `is clip == Clip.Farmer?` is true for any farmer clip, because `==` includes the options inside.
+- **`check` covers everything.** `check clip { when FarmerSwing { … } when FarmerWalk { … } … }` must handle every clip. A new clip points at every check that needs it.
+- **Folders don't nest any more** ([decision 0137](decisions/0137-the-uniformity-pass.md)): every name has one dot, and a group of names (a sheet's clips) waits on Lust letting a state's options carry values.
 - **Nothing new to learn.** It's the same states the Lust manual already teaches.
 
-File names are camelCase and state options are PascalCase, so the editor turns `sfx/footstep.ogg` into `Sound.Sfx.Footstep`. Names that can't become an option (starting with a number, holding a dash) get a clear message in the editor when the file is added, not in game code.
+File names are camelCase and state options are PascalCase, so the editor turns `sfx/footstep.solsound` into `Sound.Footstep`. Names that can't become an option (starting with a number, holding a dash) get a clear message in the editor when the file is added, not in game code.
 
 ## The guidelines
 
@@ -111,7 +108,7 @@ Naming at a glance:
 | What | Shape | Example |
 | --- | --- | --- |
 | Engine object | PascalCase noun | `Input`, `Physics`, `Audio` |
-| Project names | PascalCase state, folders as options | `Clip.Farmer.Walk` |
+| Project names | PascalCase state, one dot (decision 0137) | `Clip.FarmerWalk` |
 | Read a value | noun method | `velocity()` |
 | Ask yes/no | adjective or verb that reads after `is` | `is grounded()?` |
 | Set a value | `set` + noun | `setVelocity(v)` |
