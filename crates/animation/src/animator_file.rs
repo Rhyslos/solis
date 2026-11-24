@@ -45,6 +45,9 @@
 //!   direction's name; triggers have none).
 //! - A **state** plays one `clip`, or with `by` (a direction parameter) a
 //!   clip per direction in `clips`: the nearest to the parameter plays.
+//!   With `faces_by` (a direction parameter), its one `clip` has
+//!   directions of its own (Fixes 3), and the sprite faces the way
+//!   nearest the parameter.
 //!   `speed` multiplies its clips' own; `speed_by` names a number
 //!   parameter that multiplies it too.
 //! - A **transition** goes `from` a state's ID (or `"any"`, from every
@@ -152,6 +155,22 @@ impl Facing {
         }
     }
 
+    /// The clips file's facing it is (`up` is `North`, `down-right`
+    /// `SouthEast`).
+    pub fn clips_facing(self) -> crate::clips_file::Facing {
+        use crate::clips_file::Facing as F;
+        match self {
+            Self::Up => F::North,
+            Self::UpRight => F::NorthEast,
+            Self::Right => F::East,
+            Self::DownRight => F::SouthEast,
+            Self::Down => F::South,
+            Self::DownLeft => F::SouthWest,
+            Self::Left => F::West,
+            Self::UpLeft => F::NorthWest,
+        }
+    }
+
     /// The direction a name names.
     pub fn of_word(word: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|f| f.word() == word.trim())
@@ -246,6 +265,15 @@ pub struct Parameter {
 pub enum Plays {
     /// One clip, by name ("" for none: the sprite is left as it is).
     Clip(String),
+    /// One clip with directions (Fixes 3), its sprite facing the way
+    /// nearest the direction parameter `by`: the clip's own rows do the
+    /// rest.
+    FacesBy {
+        /// The clip.
+        clip: String,
+        /// The direction parameter's name.
+        by: String,
+    },
     /// A clip per direction: the nearest to the direction parameter `by`
     /// plays.
     ByDirection {
@@ -636,7 +664,9 @@ fn read_state(
 ) -> Result<(), String> {
     note_unknown(
         fields,
-        &["name", "place", "clip", "by", "clips", "speed", "speed_by"],
+        &[
+            "name", "place", "clip", "by", "faces_by", "clips", "speed", "speed_by",
+        ],
         "state",
         notes,
     );
@@ -656,7 +686,13 @@ fn read_state(
         Some(v) => place_of(v).ok_or("its place should be two numbers")?,
     };
     let by = text_of(get(fields, "by"), "by")?;
-    let plays = if by.trim().is_empty() {
+    let faces_by = text_of(get(fields, "faces_by"), "faces_by")?;
+    let plays = if !faces_by.trim().is_empty() {
+        Plays::FacesBy {
+            clip: clean_name(&text_of(get(fields, "clip"), "clip")?),
+            by: parameter_name(&faces_by)?,
+        }
+    } else if by.trim().is_empty() {
         Plays::Clip(clean_name(&text_of(get(fields, "clip"), "clip")?))
     } else {
         let by = parameter_name(&by)?;
@@ -803,7 +839,7 @@ fn read_transition(
 /// it's kept (the editor shows it), and the running game passes over it.
 fn check_states_played(file: &mut AnimatorFile, notes: &mut Vec<String>) {
     for state in &file.states {
-        if let Plays::ByDirection { by, .. } = &state.plays
+        if let Plays::ByDirection { by, .. } | Plays::FacesBy { by, .. } = &state.plays
             && !matches!(
                 file.parameter(by).map(|p| p.kind),
                 Some(ParameterKind::Direction(_))
@@ -874,6 +910,10 @@ pub fn write(file: &AnimatorFile) -> String {
         ];
         match &s.plays {
             Plays::Clip(c) => f.push(("clip", Value::Text(c.clone()))),
+            Plays::FacesBy { clip, by } => {
+                f.push(("clip", Value::Text(clip.clone())));
+                f.push(("faces_by", Value::Text(by.clone())));
+            }
             Plays::ByDirection { by, clips } => {
                 f.push(("by", Value::Text(by.clone())));
                 f.push((

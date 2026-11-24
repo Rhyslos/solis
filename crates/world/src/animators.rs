@@ -171,6 +171,15 @@ impl World {
             let Some(sprite) = sprite else {
                 continue;
             };
+            // A state facing by a parameter turns the sprite; its clip's
+            // own rows do the rest (Fixes 3).
+            if let Some(facing) = machine.facing(&running.run) {
+                let name = facing.clips_facing().name();
+                if sprite.facing != name {
+                    sprite.facing = name.to_owned();
+                    any = true;
+                }
+            }
             let clip = machine.clip(&running.run, &sprite.clip);
             if !clip.is_empty() {
                 if changed {
@@ -238,6 +247,9 @@ impl World {
         running.run.state = to;
         animator.state = state.to_owned();
         if let Some(sprite) = sprite {
+            if let Some(facing) = running.of.facing(&running.run) {
+                facing.clips_facing().name().clone_into(&mut sprite.facing);
+            }
             let clip = running.of.clip(&running.run, &sprite.clip);
             if !clip.is_empty() {
                 sprite.clip = clip.to_owned();

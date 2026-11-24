@@ -217,3 +217,30 @@ fn the_same_settings_give_the_same_states() {
     };
     assert_eq!(go(), go());
 }
+
+#[test]
+fn a_state_facing_by_a_parameter_plays_one_clip_and_turns_the_sprite() {
+    let mut file = farmer();
+    let walk = file.states.iter_mut().find(|s| s.name == "Walk").unwrap();
+    walk.plays = Plays::FacesBy {
+        clip: "walk".into(),
+        by: "facing".into(),
+    };
+    let a = Animator::new(&file);
+    let mut run = a.start("Walk");
+    assert_eq!(a.clip(&run, ""), "walk");
+    assert_eq!(a.facing(&run), Some(Facing::Down), "facing starts down");
+    a.set(&mut run, "facing", ParamValue::Direction([1.0, 0.9]))
+        .unwrap();
+    assert_eq!(a.facing(&run), Some(Facing::UpRight));
+    assert_eq!(
+        Facing::UpRight.clips_facing(),
+        crate::clips_file::Facing::NorthEast
+    );
+    a.set(&mut run, "facing", ParamValue::Direction([-1.0, 0.1]))
+        .unwrap();
+    assert_eq!(a.facing(&run), Some(Facing::Left));
+    // A state that plays a clip by direction doesn't turn the sprite.
+    let a = Animator::new(&farmer());
+    assert_eq!(a.facing(&a.start("Walk")), None);
+}

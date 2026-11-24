@@ -83,6 +83,10 @@ fn state_line(state: &animation::State, clips: Option<&ClipSet>) -> (String, Opt
     let (first, chip) = match &state.plays {
         Plays::Clip(c) if c.is_empty() => ("no clip".to_owned(), None),
         Plays::Clip(c) => (c.clone(), None),
+        Plays::FacesBy { clip, by } if clip.is_empty() => {
+            ("no clip".to_owned(), Some(format!("faces by {by}")))
+        }
+        Plays::FacesBy { clip, by } => (clip.clone(), Some(format!("faces by {by}"))),
         Plays::ByDirection { clips: by, .. } => {
             let first = by
                 .iter()
@@ -97,7 +101,9 @@ fn state_line(state: &animation::State, clips: Option<&ClipSet>) -> (String, Opt
         }
     };
     let once = match &state.plays {
-        Plays::Clip(c) => clips.and_then(|s| s.get(c)).is_some_and(|c| c.repeats == 1),
+        Plays::Clip(c) | Plays::FacesBy { clip: c, .. } => {
+            clips.and_then(|s| s.get(c)).is_some_and(|c| c.repeats == 1)
+        }
         Plays::ByDirection { clips: by, .. } => by
             .first()
             .and_then(|(_, c)| clips.and_then(|s| s.get(c)))
@@ -640,21 +646,79 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
             }
         },
     );
-    let by_direction = matches!(state.plays, Plays::ByDirection { .. });
+    // 0 one clip, 1 one clip facing by a direction, 2 a clip per
+    // direction.
+    let plays = match state.plays {
+        Plays::Clip(_) => 0u8,
+        Plays::FacesBy { .. } => 1,
+        Plays::ByDirection { .. } => 2,
+    };
     crate::inspector::row(
         ui,
         "Plays",
-        "One clip, or a clip for each direction: the nearest to a direction parameter plays, keeping its place in the step when it turns.",
+        "One clip; one clip with directions of its own, facing by a direction parameter (Fixes 3); \
+         or a clip for each direction, the nearest to a direction parameter playing, keeping its \
+         place in the step when it turns.",
         |ui| {
-            let mut by = by_direction;
-            let choices = [(false, "one clip"), (true, "a clip by facing")];
+            let mut picked = plays;
+            let choices = [
+                (0, "one clip"),
+                (1, "one clip, faces by"),
+                (2, "a clip by facing"),
+            ];
             let width = ui.available_width();
-            if crate::widgets::field::dropdown(ui, "Plays", &mut by, &choices, width) {
-                changed |= editor.set_by_direction(state.id, by);
+            if crate::widgets::field::dropdown(ui, "Plays", &mut picked, &choices, width) {
+                // Through one clip, so each step is a move the editor
+                // already knows.
+                if plays == 2 {
+                    changed |= editor.set_by_direction(state.id, false);
+                } else if plays == 1 {
+                    changed |= editor.set_faces_by(state.id, false);
+                }
+                match picked {
+                    1 => changed |= editor.set_faces_by(state.id, true),
+                    2 => changed |= editor.set_by_direction(state.id, true),
+                    _ => {}
+                }
             }
         },
     );
     match &state.plays {
+        Plays::FacesBy { clip, by } => {
+            crate::inspector::row(
+                ui,
+                "Clip",
+                "The clip it plays, with directions of its own: the sprite faces the way \
+                 nearest the parameter, and the clip plays that row.",
+                |ui| {
+                    if let Some(new) = clip_choice(ui, "Clip", clip, clips.as_ref()) {
+                        changed |= editor.set_clip(state.id, &new);
+                    }
+                },
+            );
+            let directions: Vec<String> = (editor.file.parameters.iter())
+                .filter(|p| matches!(p.kind, ParameterKind::Direction(_)))
+                .map(|p| p.name.clone())
+                .collect();
+            crate::inspector::row(
+                ui,
+                "Faces by",
+                "The direction parameter the sprite faces.",
+                |ui| {
+                    let names: Vec<&str> = directions.iter().map(String::as_str).collect();
+                    let list = crate::widgets::field::List {
+                        shown: by,
+                        note: None,
+                        width: ui.available_width(),
+                    };
+                    if let Some(i) =
+                        crate::widgets::field::dropdown_of_names(ui, "Faces by", &names, list)
+                    {
+                        changed |= editor.set_direction_by(state.id, names[i]);
+                    }
+                },
+            );
+        }
         Plays::Clip(c) => {
             crate::inspector::row(
                 ui,

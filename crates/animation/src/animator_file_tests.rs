@@ -299,3 +299,17 @@ proptest! {
         prop_assert_eq!(&again.file, &first);
     }
 }
+
+#[test]
+fn a_state_facing_by_a_parameter_round_trips() {
+    let mut file = farmer();
+    file.states[1].plays = Plays::FacesBy {
+        clip: "walk".into(),
+        by: "facing".into(),
+    };
+    let text = write(&file);
+    assert!(text.contains("    faces_by = \"facing\";\n"), "{text}");
+    let read = read(&text).unwrap();
+    assert!(read.notes.is_empty(), "{:?}", read.notes);
+    assert_eq!(read.file, file);
+}

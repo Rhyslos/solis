@@ -418,3 +418,32 @@ fn scale_check_10000_animators() {
     println!("Scale check: 10,000 animators {ms:.3} ms a tick (target {TARGET_MS} ms) {verdict}");
     assert!(ms <= TARGET_MS, "animators take {ms:.3} ms a tick");
 }
+
+#[test]
+fn a_state_facing_by_a_parameter_turns_the_sprite() {
+    let mut f = farm(1);
+    let me = f.ids[0];
+    let mut file = farmer();
+    file.states[1].plays = Plays::FacesBy {
+        clip: "walk_down".into(),
+        by: "facing".into(),
+    };
+    let mut machines = Animators::new();
+    machines.insert(f.file, Arc::new(Machine::new(&file)));
+    f.world.set_animators(Arc::new(machines));
+    f.world
+        .set_animator_value(me, "moving", ParamValue::Switch(true))
+        .unwrap();
+    tick(&mut f.world);
+    let s = sprite(&f.world, me);
+    assert_eq!((s.clip.as_str(), s.facing.as_str()), ("walk_down", "South"));
+    f.world
+        .set_animator_value(me, "facing", ParamValue::Direction([-1.0, 1.0]))
+        .unwrap();
+    tick(&mut f.world);
+    assert_eq!(
+        sprite(&f.world, me).facing,
+        "NorthWest",
+        "the clip's own rows play it"
+    );
+}

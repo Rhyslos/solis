@@ -7528,21 +7528,37 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <section id="animators--how-to-use-it">
 <h3>How to use it<a class="anchor" href="#animators--how-to-use-it" aria-label="Link to this section">#</a></h3>
 <ol class="steps">
-<li><strong>Make one:</strong> in the Library, open the folder you want it in, then <strong>New › Animator</strong> (right-click in the Library, or <strong>+ New</strong>). Solis makes <code>animator.solanim</code> with one state, <em>Idle</em>, and opens it. (Rename the file in the Library, as any other.)</li>
-<li><strong>The animator</strong> opens on the <strong>Animate</strong> tab of the tab bar, as a document beside the viewport's (a × on its tab closes it), with its <strong>Preview</strong> as a group of its own on the right. What you pick in its graph shows in <strong>Properties</strong>, the right slot; its parameters are in the left slot, <strong>Parameters</strong>. While it is open, Animate's <a href="#concepts--the-window">ribbon</a> is the animator's: <strong>State</strong> (Add state, Start here, Delete) and <strong>Preview</strong> (Start again), then the design's cutscene controls as <a href="#unfinished-parts">unfinished parts</a>.</li>
-<li><strong>Choose its clips:</strong> click empty space in the graph. Properties shows the animator: pick <strong>Clips from</strong>, the sprite sheet (or clips file) whose clips its states play.</li>
-<li><strong>Add states:</strong> the ribbon's <strong>Add state</strong>, or right-click empty space › <strong>Add state</strong>. Click a state to change it in Properties:
+<li><p><strong>Make one:</strong> in the Library, open the folder you want it in, then <strong>New › Animator</strong> (right-click in the Library, or <strong>+ New</strong>). Solis makes <code>animator.solanim</code> with one state, <em>Idle</em>, and opens it. (Rename the file in the Library, as any other.)</p>
+</li>
+<li><p><strong>The animator</strong> opens on the <strong>Animate</strong> tab of the tab bar, as a document beside the viewport's (a × on its tab closes it), with its <strong>Preview</strong> as a group of its own on the right. What you pick in its graph shows in <strong>Properties</strong>, the right slot; its parameters are in the left slot, <strong>Parameters</strong>. While it is open, Animate's <a href="#concepts--the-window">ribbon</a> is the animator's: <strong>State</strong> (Add state, Start here, Delete) and <strong>Preview</strong> (Start again), then the design's cutscene controls as <a href="#unfinished-parts">unfinished parts</a>.</p>
+</li>
+<li><p><strong>Choose its clips:</strong> click empty space in the graph. Properties shows the animator: pick <strong>Clips from</strong>, the sprite sheet (or clips file) whose clips its states play.</p>
+</li>
+<li><p><strong>Add states:</strong> the ribbon's <strong>Add state</strong>, or right-click empty space › <strong>Add state</strong>. Click a state to change it in Properties:</p>
 <ul>
-<li><strong>Name</strong>: what it's called.</li>
-<li><strong>Plays</strong>: <em>one clip</em>, or <em>a clip by facing</em>. With a clip by facing, pick a clip for each direction (<strong>↑ up</strong>, <strong>→ right</strong>, <strong>↓ down</strong>, <strong>← left</strong>); <strong>+ Direction</strong> adds the next one, up to eight with the diagonals. Solis makes a direction parameter, <em>facing</em>, the first time.</li>
-<li><strong>Speed</strong>, and <strong>Speed by</strong>: a number parameter its speed is multiplied by, so a walk speeds up as the character does.</li>
-<li><strong>Start here</strong>: the state the animator starts in, marked <strong>Start ▶</strong> in the graph.</li>
+<li><p><strong>Name</strong>: what it's called.</p>
+</li>
+<li><p><strong>Plays</strong>: <em>one clip</em>, <em>one clip, faces by</em>, or <em>a clip by facing</em>.</p>
+<ul>
+<li><em>One clip, faces by</em> is for a clip with <a href="#sprite-animation--directions">directions</a> of its own: the state plays that one clip, and <strong>Faces by</strong> names the direction parameter the sprite faces. As the parameter turns, the sprite's <strong>Facing</strong> follows it to the nearest of the eight ways, and the clip plays that row, keeping its place in the step.</li>
+<li>With <em>a clip by facing</em>, pick a clip for each direction (<strong>↑ up</strong>, <strong>→ right</strong>, <strong>↓ down</strong>, <strong>← left</strong>); <strong>+ Direction</strong> adds the next one, up to eight with the diagonals. It's for clips that came without directions, such as an Aseprite file's tags walk_up and walk_down.</li>
+</ul>
+<p>Solis makes a direction parameter, <em>facing</em>, the first time either needs one.</p>
+</li>
+<li><p><strong>Speed</strong>, and <strong>Speed by</strong>: a number parameter its speed is multiplied by, so a walk speeds up as the character does.</p>
+</li>
+<li><p><strong>Start here</strong>: the state the animator starts in, marked <strong>Start ▶</strong> in the graph.</p>
+</li>
 </ul>
 </li>
-<li><strong>Add parameters:</strong> in the <strong>Parameters</strong> slot, the <strong>+</strong> beside <em>Parameters</em> adds a number, a switch, a trigger or a direction. Click a name to rename it; right-click it to <strong>Delete</strong> it, or <strong>Start at this value</strong>.</li>
-<li><strong>Join states:</strong> drag from the edge of one state to another, or right-click a state › <strong>Make transition</strong> and click the other. Click the arrow, then in Properties <strong>+ Condition</strong> and choose what must hold: a switch <strong>is on</strong> or <strong>is off</strong>, a trigger <strong>fired</strong>, a number <strong>&gt;</strong> or <strong>&lt;</strong> a value, or <strong>finished</strong> (the state's clip has played all its times). All of a transition's conditions must hold for it to be taken. An arrow from <strong>Any state</strong> can be taken from every state.</li>
-<li><strong>Try it:</strong> the preview always plays. Set the parameters on the Parameters tab (tick <em>moving</em>, turn the <em>facing</em> dial, press <strong>Fire</strong> for a trigger) and watch the state glow in the accent colour as it changes, the clip playing below.</li>
-<li><strong>Use it:</strong> select an entity with a Sprite, then in Properties <strong>+ Component › Animator</strong> and pick the file in <strong>Animator</strong>. Press <strong>Play</strong>: the animator chooses the Sprite's clip and speed every tick. Select the entity while it plays to see its state glow, and its parameters' values on the Parameters tab.</li>
+<li><p><strong>Add parameters:</strong> in the <strong>Parameters</strong> slot, the <strong>+</strong> beside <em>Parameters</em> adds a number, a switch, a trigger or a direction. Click a name to rename it; right-click it to <strong>Delete</strong> it, or <strong>Start at this value</strong>.</p>
+</li>
+<li><p><strong>Join states:</strong> drag from the edge of one state to another, or right-click a state › <strong>Make transition</strong> and click the other. Click the arrow, then in Properties <strong>+ Condition</strong> and choose what must hold: a switch <strong>is on</strong> or <strong>is off</strong>, a trigger <strong>fired</strong>, a number <strong>&gt;</strong> or <strong>&lt;</strong> a value, or <strong>finished</strong> (the state's clip has played all its times). All of a transition's conditions must hold for it to be taken. An arrow from <strong>Any state</strong> can be taken from every state.</p>
+</li>
+<li><p><strong>Try it:</strong> the preview always plays. Set the parameters on the Parameters tab (tick <em>moving</em>, turn the <em>facing</em> dial, press <strong>Fire</strong> for a trigger) and watch the state glow in the accent colour as it changes, the clip playing below.</p>
+</li>
+<li><p><strong>Use it:</strong> select an entity with a Sprite, then in Properties <strong>+ Component › Animator</strong> and pick the file in <strong>Animator</strong>. Press <strong>Play</strong>: the animator chooses the Sprite's clip and speed every tick. Select the entity while it plays to see its state glow, and its parameters' values on the Parameters tab.</p>
+</li>
 </ol>
 <p>Every change is saved at once and runs at once, in a game that's playing too. <strong>Ctrl + Z</strong> and <strong>Ctrl + Y</strong> over the tab undo and redo changes to the animator. If the file changes on disk (edited by hand, or by Git), the tab shows it as it is now, as a step <strong>Ctrl + Z</strong> undoes. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</p>
 <h4 id="animators--in-game-code">In game code<a class="anchor" href="#animators--in-game-code" aria-label="Link to this section">#</a></h4>

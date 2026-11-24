@@ -19,7 +19,11 @@ For one-off sprites (a door, a crop swaying) a plain clip on the Sprite is simpl
 3. **Choose its clips:** click empty space in the graph. Properties shows the animator: pick **Clips from**, the sprite sheet (or clips file) whose clips its states play.
 4. **Add states:** the ribbon's **Add state**, or right-click empty space › **Add state**. Click a state to change it in Properties:
    - **Name**: what it's called.
-   - **Plays**: *one clip*, or *a clip by facing*. With a clip by facing, pick a clip for each direction (**↑ up**, **→ right**, **↓ down**, **← left**); **+ Direction** adds the next one, up to eight with the diagonals. Solis makes a direction parameter, *facing*, the first time.
+   - **Plays**: *one clip*, *one clip, faces by*, or *a clip by facing*.
+     - *One clip, faces by* is for a clip with [directions](sprite-animation.md#directions) of its own: the state plays that one clip, and **Faces by** names the direction parameter the sprite faces. As the parameter turns, the sprite's **Facing** follows it to the nearest of the eight ways, and the clip plays that row, keeping its place in the step.
+     - With *a clip by facing*, pick a clip for each direction (**↑ up**, **→ right**, **↓ down**, **← left**); **+ Direction** adds the next one, up to eight with the diagonals. It's for clips that came without directions, such as an Aseprite file's tags walk_up and walk_down.
+
+     Solis makes a direction parameter, *facing*, the first time either needs one.
    - **Speed**, and **Speed by**: a number parameter its speed is multiplied by, so a walk speeds up as the character does.
    - **Start here**: the state the animator starts in, marked **Start ▶** in the graph.
 5. **Add parameters:** in the **Parameters** slot, the **+** beside *Parameters* adds a number, a switch, a trigger or a direction. Click a name to rename it; right-click it to **Delete** it, or **Start at this value**.
