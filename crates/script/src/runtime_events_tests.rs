@@ -61,6 +61,7 @@ fn loaded(main: &str) -> Runtime {
             texts_used: Vec::new(),
             names: Default::default(),
             screens: None,
+            engine_reads: Vec::new(),
         },
         Err(problems) => panic!("{}", problems[0]),
     };

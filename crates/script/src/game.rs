@@ -103,6 +103,12 @@ pub enum Change {
     PlayClip(EntityId, String, bool),
     /// `stopAnimation`: stop the entity's Sprite where it is.
     StopClip(EntityId),
+    /// A component's `Facing facing` changed: the entity's Sprite faces
+    /// this way (`NorthEast`; Fixes 3, decision 0136).
+    Facing(EntityId, String),
+    /// A component's `Look look` changed: the entity's Sprite wears this
+    /// look (`KnightMana`, as `solis/project.lst` names it).
+    Look(EntityId, String),
     /// `setFlip`: mirror the entity's Sprite across and down.
     Flip(EntityId, bool, bool),
     /// An animator's own file setting one of its parameters, by name.
@@ -1082,6 +1088,8 @@ enum Job {
     /// read this tick (Fixes 2).
     Copy(Arc<Vec<String>>),
     Round(Vec<(u32, Event)>, WorldView, u32),
+    /// The fields the engine reads that changed (decision 0136).
+    EngineReads,
     FinishTick,
     #[cfg(any(test, feature = "test-support"))]
     Limits(crate::luau::Limits),
@@ -1097,6 +1105,7 @@ enum Done {
     Len(usize),
     Checksum(u64),
     AllValues(Vec<(EntityId, String, ComponentData)>),
+    EngineReads(Vec<Change>),
     Phase(Result<Phase, String>, Kept),
     Finished(bool),
     ObjectValues(crate::ObjectValues),
@@ -1182,6 +1191,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             let phase = runtime.run_round(&events, &mut host);
             Done::Phase(phase, host.kept)
         }
+        Job::EngineReads => Done::EngineReads(runtime.engine_reads()),
         Job::FinishTick => Done::Finished(runtime.finish_tick()),
         #[cfg(any(test, feature = "test-support"))]
         Job::Limits(limits) => {
@@ -1871,6 +1881,25 @@ impl Game {
             engine,
             told,
         );
+        // The fields the engine reads (a sprite's facing and look), as
+        // the tick's code left them, landed in the entities' order so
+        // every core count gives the same.
+        let mut read: Vec<Change> = self
+            .all(|_| Job::EngineReads)
+            .into_iter()
+            .flat_map(|answer| match answer {
+                Some(Done::EngineReads(changes)) => changes,
+                _ => Vec::new(),
+            })
+            .collect();
+        if !read.is_empty() {
+            read.sort_by_key(|c| match c {
+                Change::Facing(e, _) => (Some(*e), 0),
+                Change::Look(e, _) => (Some(*e), 1),
+                _ => (None, 2),
+            });
+            world.borrow_mut().apply(&read);
+        }
         let over = self
             .all(|_| Job::FinishTick)
             .into_iter()
@@ -2113,3 +2142,7 @@ mod own_states_tests;
 #[cfg(test)]
 #[path = "game_readings_tests.rs"]
 mod readings_tests;
+
+#[cfg(test)]
+#[path = "game_engine_fields_tests.rs"]
+mod engine_fields_tests;

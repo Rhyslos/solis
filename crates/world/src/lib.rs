@@ -339,6 +339,13 @@ impl World {
             .collect()
     }
 
+    /// The name of the entity `id` (empty for none, or no such entity).
+    pub fn name_of(&self, id: EntityId) -> String {
+        (self.by_id.get(&id))
+            .and_then(|&e| self.ecs.get::<&Name>(e).ok().map(|n| n.0.clone()))
+            .unwrap_or_default()
+    }
+
     /// The first entity named `name`, in the level's tree order.
     pub fn find(&self, name: &str) -> Option<EntityId> {
         let &at = self.names.get(name)?;

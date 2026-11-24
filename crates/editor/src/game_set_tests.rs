@@ -187,6 +187,7 @@ const NOT_ON_AN_ENTITY: &[&str] = &[
     "entity_position",
     "entity_rotation",
     "facingAlong",
+    "nearestFacing",
     "entity_name",
     "entity_screenShown",
     // Shows a screen's text whole: the UI's, never the entity's state.
@@ -522,4 +523,155 @@ fn a_field_set_by_hand_wins_over_what_game_code_set_and_the_rest_stays() {
         w.run_game(0.0);
         assert_eq!(playing(&mut w), (true, true), "built again: {rebuild}");
     }
+}
+
+/// The knight's clips file, its orc's, and an animator whose one state
+/// faces by its `facing` parameter (Fixes 3).
+const KNIGHT: u64 = 11;
+const GUARD: u64 = 12;
+
+/// A game with a knight playing `sprites/knight.clips.lst` (looks Main
+/// and Mana) and a guard whose animator turns it, with an orc's clips
+/// file (looks Main and Red) in the project too.
+fn staged_with_looks() -> Workbench {
+    let (knight, orc, picture, faces) = (
+        AssetId::random(),
+        AssetId::random(),
+        AssetId::random(),
+        AssetId::random(),
+    );
+    let asset = |asset| Some(AssetRef { asset, part: None });
+    let mut w = Workbench::new(info());
+    unhurried(&mut w);
+    w.open.document = crate::document::Document::new(level::Level::new());
+    let sprite = |sheet| Sprite {
+        sheet: asset(sheet),
+        ..Sprite::default()
+    };
+    let knight_data = EntityData::new("Knight")
+        .with(&Transform::default())
+        .with(&sprite(knight));
+    let guard_data = EntityData::new("Guard")
+        .with(&Transform::default())
+        .with(&sprite(knight))
+        .with(&Animator {
+            animator: asset(faces),
+            ..Animator::default()
+        });
+    let spawn = |n: u64, data: EntityData| level::Edit::Spawn {
+        entities: vec![(id(n), data)],
+    };
+    w.open
+        .document
+        .edit(
+            "Add",
+            vec![spawn(KNIGHT, knight_data), spawn(GUARD, guard_data)],
+            None,
+            None,
+        )
+        .unwrap();
+    let file = |looks: &[&str]| {
+        let mut file = animation::clips_file::ClipsFile::for_sheet(picture);
+        file.looks = looks
+            .iter()
+            .map(|name| animation::clips_file::Look {
+                name: (*name).into(),
+                picture,
+            })
+            .collect();
+        crate::sprite_sheets::FramesState::Read(Arc::new(file), Vec::new())
+    };
+    let mut turner = animator();
+    turner.states[0].plays = Plays::FacesBy {
+        clip: String::new(),
+        by: "facing".into(),
+    };
+    let sheets = Arc::make_mut(&mut w.viewport.sheets);
+    for (asset, path, looks) in [
+        (knight, "sprites/knight.clips.lst", ["Main", "Mana"]),
+        (orc, "sprites/orc.clips.lst", ["Main", "Red"]),
+    ] {
+        sheets.frames.insert(path.into(), file(&looks));
+        sheets.paths.insert(asset, path.into());
+    }
+    sheets.animator_set = Arc::new(world::Animators::from([(
+        faces,
+        Arc::new(animation::Animator::new(&turner)),
+    )]));
+    w.play();
+    ticks(&mut w, 2);
+    w
+}
+
+/// What a change lands as, with what game code is told.
+fn ask_told(w: &mut Workbench, change: Change) -> Vec<String> {
+    let playing = w.open.playing.as_mut().unwrap();
+    let time = playing.world.clock().time;
+    let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+    let _ = host.view();
+    host.apply(&[change]);
+    std::mem::take(&mut host.said)
+}
+
+fn sprite_of(w: &mut Workbench, n: u64) -> (String, String) {
+    let sprite = Sprite::from_data(&w.values_now(id(n), Sprite::NAME).unwrap());
+    (sprite.facing, sprite.look)
+}
+
+#[test]
+fn a_component_s_facing_and_look_turn_and_dress_its_sprite() {
+    let mut w = staged_with_looks();
+    assert!(ask_told(&mut w, Change::Facing(id(KNIGHT), "NorthEast".into())).is_empty());
+    assert!(ask_told(&mut w, Change::Look(id(KNIGHT), "KnightMana".into())).is_empty());
+    assert_eq!(
+        sprite_of(&mut w, KNIGHT),
+        ("NorthEast".into(), "Mana".into())
+    );
+    // The main look is the Sprite's empty Look.
+    assert!(ask_told(&mut w, Change::Look(id(KNIGHT), "KnightMain".into())).is_empty());
+    assert_eq!(sprite_of(&mut w, KNIGHT).1, "");
+    // It lasts through an edit while playing.
+    assert!(ask_told(&mut w, Change::Look(id(KNIGHT), "KnightMana".into())).is_empty());
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: id(KNIGHT),
+            component: Transform::NAME.into(),
+            field: "position".into(),
+            value: Value::floats(&[1.0, 0.0, 0.0]),
+        },
+        1,
+    );
+    ticks(&mut w, 1);
+    assert_eq!(
+        sprite_of(&mut w, KNIGHT),
+        ("NorthEast".into(), "Mana".into())
+    );
+}
+
+#[test]
+fn a_look_from_another_file_is_told_once_with_the_looks_it_could_wear() {
+    let mut w = staged_with_looks();
+    let told = ask_told(&mut w, Change::Look(id(KNIGHT), "OrcRed".into()));
+    assert_eq!(
+        told,
+        [
+            "Knight's look was set to Look.OrcRed, which is a look of sprites/orc.clips.lst: its \
+          sprite can wear Look.KnightMain, Look.KnightMana."
+        ]
+    );
+    assert_eq!(sprite_of(&mut w, KNIGHT).1, "", "left as it was");
+    assert!(
+        ask_told(&mut w, Change::Look(id(KNIGHT), "Nothing".into())).is_empty(),
+        "said once a play"
+    );
+}
+
+#[test]
+fn a_facing_its_animator_turns_back_is_told_once() {
+    let mut w = staged_with_looks();
+    let told = ask_told(&mut w, Change::Facing(id(GUARD), "West".into()));
+    assert_eq!(told.len(), 1, "{told:?}");
+    assert!(told[0].starts_with("Guard's facing was set to Facing.West, but its animator"));
+    assert_eq!(sprite_of(&mut w, GUARD).0, "South", "the animator's");
+    assert!(ask_told(&mut w, Change::Facing(id(GUARD), "East".into())).is_empty());
 }

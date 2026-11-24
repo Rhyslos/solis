@@ -220,7 +220,9 @@ fn every_part_names_fields_its_component_has() {
     for part in Part::ALL {
         let (component, fields) = part.fields();
         let data = match part {
-            Part::Playback | Part::SpriteSpeed | Part::Flip => Sprite::default().to_data(),
+            Part::Playback | Part::SpriteSpeed | Part::Flip | Part::Facing | Part::Look => {
+                Sprite::default().to_data()
+            }
             Part::Sounding => AudioSource::default().to_data(),
             Part::AnimatorState | Part::AnimatorSpeed => Animator::default().to_data(),
             Part::Screen => Screen::default().to_data(),
@@ -233,4 +235,34 @@ fn every_part_names_fields_its_component_has() {
         }
     }
     assert_eq!(Part::of(Sprite::NAME, "tint"), None);
+}
+
+/// A sprite game code turned and dressed (Fixes 3, a component's `facing`
+/// and `look`) stays so through an edit of another component and a
+/// rebuild; an edit of the Sprite's own facing wins for the facing only.
+#[test]
+fn a_facing_and_a_look_set_by_game_code_outlive_edits() {
+    let (mut world, mut level, id) = sign();
+    world.set_facing(id, "NorthEast");
+    world.set_look(id, "Mana");
+    let shown = |world: &World| {
+        let sprite = world.get::<Sprite>(id).unwrap();
+        (sprite.facing, sprite.look)
+    };
+    let set = ("NorthEast".to_owned(), "Mana".to_owned());
+    assert_eq!(shown(&world), set);
+    edit::<Light>(&mut level, id, |light| light.strength += 1.0);
+    world.update(&level, [(id, false)]);
+    assert_eq!(shown(&world), set, "after an edit");
+    world.rebuild(&level);
+    assert_eq!(shown(&world), set, "after a rebuild");
+    edit::<Sprite>(&mut level, id, |sprite| {
+        "West".clone_into(&mut sprite.facing)
+    });
+    world.update(&level, [(id, false)]);
+    assert_eq!(shown(&world), ("West".to_owned(), "Mana".to_owned()));
+    // A word that isn't a facing changes nothing.
+    world.set_facing(id, "Upwards");
+    world.set_facing(id, "Any");
+    assert_eq!(shown(&world).0, "West");
 }

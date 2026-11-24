@@ -322,6 +322,15 @@ fn lend_clips<'s>(
         )?,
     )?;
     natives.raw_set(
+        "nearestFacing",
+        scope.create_function(|_, way: LuaValue| {
+            let way = crate::convert::vec2_of(&way).unwrap_or(glam::Vec2::ZERO);
+            Ok(animation::animator_file::Facing::nearest([way.x, way.y])
+                .clips_facing()
+                .name())
+        })?,
+    )?;
+    natives.raw_set(
         "entity_animateFromStart",
         native(
             scope,

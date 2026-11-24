@@ -106,9 +106,12 @@ fn names() -> Names {
                 "sprites/hero/idle",
                 "sprites/hero/run",
                 "door/open",
+                "sprites/knight/walk",
+                "sprites/knight/idle",
             ],
             &["footstep", "hoeHits"],
         )
+        .and_looks(&["KnightMain", "KnightMana"])
         .and_screens(&["PauseMenu", "Hud", "DroneHealth", "Where", "Hotbar", "Talk"])
         .and_actions(&["Interact", "Use", "QuickSave", "QuickLoad", "Pause", "Fire"]);
     names.pictures = vec![

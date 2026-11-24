@@ -100,6 +100,9 @@ pub struct Compiled {
     /// What its code reads of other entities' components (Fixes 2): the
     /// kinds copied each tick, and notes on those it can't.
     pub components: crate::component_code::Reach,
+    /// The Lust components holding fields the engine reads
+    /// ([`crate::engine_fields`]: `Facing facing`, `Look look`).
+    pub engine_reads: Vec<crate::engine_fields::Watched>,
 }
 
 /// The text keys `files` (the game's code) use, in small letters: those
@@ -556,6 +559,7 @@ fn compile_here(
         screens: None,
         state_events: std::collections::BTreeMap::new(),
         components: reach,
+        engine_reads: Vec::new(),
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.
@@ -574,6 +578,7 @@ fn compile_here(
         }
     };
     compiled.schemas = runtime.schemas();
+    compiled.engine_reads = crate::engine_fields::found(&code.files);
     // The kinds its code reads of other entities, copied each tick.
     compiled.components.reads = crate::readings::kinds_read(
         compiled.lust.as_ref().map(|chunk| chunk.code.as_str()),

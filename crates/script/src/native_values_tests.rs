@@ -43,6 +43,7 @@ fn lua_code(files: &[(&str, &str)]) -> Compiled {
         texts_used: Vec::new(),
         names: Default::default(),
         screens: None,
+        engine_reads: Vec::new(),
     }
 }
 

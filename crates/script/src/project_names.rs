@@ -72,6 +72,9 @@ pub struct Names {
     pub texts: Vec<String>,
     /// Its languages' options (`En`, `Nb`, `PtBr`), the main one first.
     pub languages: Vec<String>,
+    /// Its clips files' looks, as [`look_names`] names them
+    /// (`KnightMana`; Fixes 3).
+    pub looks: Vec<String>,
 }
 
 impl Names {
@@ -97,6 +100,7 @@ impl Names {
             fonts: Vec::new(),
             texts: Vec::new(),
             languages: vec!["En".to_owned()],
+            looks: Vec::new(),
         }
     }
 }
@@ -114,6 +118,13 @@ impl Names {
     #[must_use]
     pub fn and_sounds(mut self, sounds: &[&str]) -> Self {
         self.sounds.extend(sounds.iter().map(|a| (*a).to_string()));
+        self
+    }
+
+    /// These names with these looks (`KnightMana`).
+    #[must_use]
+    pub fn and_looks(mut self, looks: &[&str]) -> Self {
+        self.looks.extend(looks.iter().map(|a| (*a).to_string()));
         self
     }
 
@@ -210,6 +221,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let keys: Vec<String> = names.texts.iter().map(|k| k.replace('.', "/")).collect();
     let text_state = state_text("Text", &keys, "text key", &mut notes);
     let language = names_text("Language", &names.languages, "language", true, &mut notes);
+    let look = names_text("Look", &names.looks, "look", true, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -247,11 +259,66 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {text_state}\n\n\
          -- The project's languages (Project settings > Languages): Screens:setLanguage(Language.Nb).\n\
          {language}\n\n\
+         -- The clips files' looks, each its file's name and the look's: a component's\n\
+         -- Look look = Look.KnightMana; dresses its sprite.\n\
+         {look}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
     );
     (text, notes)
+}
+
+/// The clips files' looks as game code names them, one dot each
+/// ([decision 0136](../../../docs/decisions/0136-engine-calls-make-or-set.md)):
+/// the file's name and the look's, joined (`sprites/knight` and `Mana` is
+/// `KnightMana`). The folders join the front only where two files'
+/// names would clash (`HeroesKnightMana` beside `VillainsKnightMana`).
+/// `looks` is each look as its clips file's path without `.clips.lst`
+/// and the look's name; the answer is each one's name, in the same
+/// order, or none where it can't be one (a name Lust can't take, or two
+/// looks that would still be called the same).
+pub fn look_names(looks: &[(String, String)]) -> Vec<Option<String>> {
+    let joined = |parts: &[&str], look: &str| -> Option<String> {
+        let mut name = String::new();
+        for part in parts.iter().copied().chain(std::iter::once(look)) {
+            name.push_str(&option_name(part)?);
+        }
+        option_name(&name)
+    };
+    let short: Vec<Option<String>> = looks
+        .iter()
+        .map(|(path, look)| joined(&[path.rsplit('/').next().unwrap_or(path)], look))
+        .collect();
+    let clashes = |name: &str, path: &str, names: &[Option<String>]| {
+        names.iter().zip(looks).any(|(other, (other_path, _))| {
+            other_path != path
+                && other
+                    .as_deref()
+                    .is_some_and(|o| o.eq_ignore_ascii_case(name))
+        })
+    };
+    let long: Vec<Option<String>> = looks
+        .iter()
+        .zip(&short)
+        .map(|((path, look), name)| match name {
+            Some(name) if clashes(name, path, &short) => {
+                joined(&path.split('/').collect::<Vec<_>>(), look)
+            }
+            name => name.clone(),
+        })
+        .collect();
+    long.iter()
+        .enumerate()
+        .map(|(i, name)| {
+            let name = name.as_ref()?;
+            let twice = long
+                .iter()
+                .enumerate()
+                .any(|(j, o)| j != i && o.as_deref().is_some_and(|o| o.eq_ignore_ascii_case(name)));
+            (!twice).then(|| name.clone())
+        })
+        .collect()
 }
 
 /// One state's line: `state Module = [Crate, Ships [Fighter]];`.
@@ -560,7 +627,7 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Module, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font, Text, Language;\nend\n"
+            "pass Module, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font, Text, Language, Look;\nend\n"
         ));
         assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
@@ -653,6 +720,68 @@ mod tests {
     }
 
     #[test]
+    fn looks_are_named_by_their_file_and_their_own_name() {
+        let looks = |list: &[(&str, &str)]| {
+            look_names(
+                &list
+                    .iter()
+                    .map(|(p, l)| ((*p).to_string(), (*l).to_string()))
+                    .collect::<Vec<_>>(),
+            )
+        };
+        let names = |list: &[Option<String>]| -> Vec<String> {
+            list.iter().map(|n| n.clone().unwrap_or_default()).collect()
+        };
+        assert_eq!(
+            names(&looks(&[
+                ("sprites/knight", "Main"),
+                ("sprites/knight", "mana")
+            ])),
+            ["KnightMain", "KnightMana"]
+        );
+        // Two files of the same name keep their folders.
+        assert_eq!(
+            names(&looks(&[
+                ("heroes/knight", "Mana"),
+                ("villains/knight", "Mana"),
+                ("orc", "Red")
+            ])),
+            ["HeroesKnightMana", "VillainsKnightMana", "OrcRed"]
+        );
+        // A name Lust can't take, and two that would still be the same.
+        assert_eq!(looks(&[("knight", "big-ish")]), [None]);
+        assert_eq!(
+            looks(&[("knight", "Mana"), ("knight", "mana")]),
+            [None, None]
+        );
+        // Nothing to name is no crash.
+        assert!(looks(&[]).is_empty());
+        assert_eq!(looks(&[("", "")]), [None]);
+    }
+
+    #[test]
+    fn looks_are_a_state_game_code_checks() {
+        let names = Names::standard().and_looks(&["KnightMain", "KnightMana"]);
+        let (text, notes) = project_file("Test 1.0", &names);
+        assert!(
+            text.contains("state Look = [KnightMain, KnightMana];"),
+            "{text}"
+        );
+        assert!(notes.is_empty(), "{notes:?}");
+        let check = |main: &str| {
+            let files = vec![
+                ("solis/project.lst".to_string(), text.clone()),
+                ("main.lst".to_string(), main.to_string()),
+            ];
+            lust::check("main.lst", &files)
+        };
+        assert!(check("fetch \"solis/project\":Look;\nLook a = Look.KnightMana;\nend\n").is_ok());
+        assert!(check("fetch \"solis/project\":Look;\nLook a = Look.KnightMama;\nend\n").is_err());
+        let (text, _) = project_file("Test 1.0", &Names::standard());
+        assert!(text.contains("state Look = [None];"), "{text}");
+    }
+
+    #[test]
     fn cropped_pictures_are_options_under_their_pictures() {
         let mut names = Names::standard();
         names.pictures = vec![
@@ -688,7 +817,7 @@ mod tests {
             "{text}"
         );
         assert!(text.ends_with(
-            "pass Module, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font, Text, Language;\nend\n"
+            "pass Module, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag, Timer, Level, Font, Text, Language, Look;\nend\n"
         ));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));

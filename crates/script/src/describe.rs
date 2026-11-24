@@ -173,6 +173,11 @@ pub struct Moved {
 /// saying what it is).
 pub const ENGINE_CLASSES: &[(&str, &str, &str)] = &[
     (
+        "animation",
+        "state Facing = [North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest];",
+        "Which way a sprite faces, up the screen being North (Fixes 3). A component's Facing facing turns its sprite: facing = Facing.NorthEast; and a clip with directions plays the row nearest it.",
+    ),
+    (
         "physics",
         "class RayHit {\n    has {\n        bool found = false;\n        float distance = -1;\n        entity entity = nothing;\n        vec3 normal = [0, 0, 0];\n    }\n}",
         "What Physics:castRay found: whether it met a collider, how far along, whose, and which way its surface faces.",
@@ -665,6 +670,13 @@ pub const NATIVES: &[Native] = &[
         owner: "entity",
         lust: "method entity:setFlip(bool across, bool down) native;",
         about: "Mirrors the entity's Sprite at the end of the tick: across (facing the other way, left for right) and down (upside down). One clip then faces either way: setFlip(true, false) to face left.",
+    },
+    Native {
+        file: "animation",
+        name: "nearestFacing",
+        owner: "",
+        lust: "method Facing nearestFacing(vec2 way) native;",
+        about: "The one of the eight facings nearest a way on the screen (up is North): facing = nearestFacing(velocity); turns a walking sprite. No way at all (0, 0) is South, so set it only while moving.",
     },
     Native {
         file: "animation",
@@ -1280,8 +1292,8 @@ fn descriptions_with(
             let mut names: Vec<&str> = Vec::new();
             for (_, lust, about) in ENGINE_CLASSES.iter().filter(|(f, _, _)| *f == file) {
                 text.push_str(&format!("-- {about}\n{lust}\n\n"));
-                if let Some(name) = lust
-                    .strip_prefix("class ")
+                if let Some(name) = (lust.strip_prefix("class "))
+                    .or_else(|| lust.strip_prefix("state "))
                     .and_then(|l| l.split_whitespace().next())
                 {
                     names.push(name);
@@ -1385,7 +1397,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
     "Module", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture", "Tag", "Timer",
-    "Level", "Font", "Text", "Language",
+    "Level", "Font", "Text", "Language", "Look",
 ];
 
 /// What the first line of each file describing the engine says after who made it.

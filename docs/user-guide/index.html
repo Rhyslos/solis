@@ -7454,6 +7454,50 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <li><p>In Lua: <code>solis.entity.animate(e, &quot;Sprites.Farmer.Walk&quot;)</code>, <code>solis.entity.animateFromStart(e, …)</code>, <code>solis.entity.stopAnimation(e)</code> and <code>solis.entity.setFlip(e, true, false)</code>; a function called <code>on_CueReached(cue)</code> or <code>on_ClipFinished(clip)</code> reacts to the events, with the names as text. In Rust: <code>cx.host().play_clip(entity, &quot;walk&quot;, false)</code> (<code>true</code> to start it again), <code>stop_clip</code> and <code>set_flip(entity, true, false)</code>, and the events arrive in <code>handle</code> named <code>CueReached</code> and <code>ClipFinished</code>.</p>
 </li>
 </ul>
+<h5 id="sprite-animation--facing-and-looks">Facing and looks<a class="anchor" href="#sprite-animation--facing-and-looks" aria-label="Link to this section">#</a></h5>
+<p>Which way a sprite faces and which look it wears aren't calls: they're values the component holds, and Solis follows them. Give the component a field <code>Facing facing</code> or <code>Look look</code> in its <code>has</code> block, set it with <code>=</code>, and as each tick ends the entity's sprite turns or changes clothes to match. A field is the plain way to say what something <em>is</em>: the component reads its own facing back whenever it likes, it shows in Properties while the game runs, and saved games keep it with the component's other values.</p>
+<ul>
+<li><strong><code>Facing facing</code></strong> turns the sprite: <code>facing = Facing.NorthEast;</code>. <code>Facing</code> is in <code>solis/animation</code>, with the eight ways (<code>North</code>, <code>NorthEast</code>, <code>East</code>, <code>SouthEast</code>, <code>South</code>, <code>SouthWest</code>, <code>West</code>, <code>NorthWest</code>), up the screen being North. A clip with <a href="#sprite-animation--directions">directions</a> plays the row nearest it, keeping its place, so turning mid-walk doesn't restart the step. <code>nearestFacing(way)</code> gives the facing nearest a way on the screen, such as which way the player pushes.</li>
+<li><strong><code>Look look</code></strong> dresses the sprite in one of its clips file's <a href="#sprite-animation--looks">looks</a>: <code>look = Look.KnightMana;</code>. Each look is named by its clips file's name and its own, joined (<code>knight.clips.lst</code>'s Mana is <code>Look.KnightMana</code>; files of the same name in different folders add the folder in front, <code>Look.HeroesKnightMana</code>). Solis writes them into <code>solis/project.lst</code> with the clips, so a misspelt look is a mistake before the game runs.</li>
+</ul>
+<pre data-lang="lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/input&quot;</span><span class="tk-p">:</span><span class="tk-n">Input</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Action</span><span class="tk-p">,</span> <span class="tk-n">Clip</span><span class="tk-p">,</span> <span class="tk-n">Look</span><span class="tk-p">];</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/animation&quot;</span><span class="tk-p">:</span><span class="tk-n">Facing</span><span class="tk-p">;</span>
+<span class="tk-k">get</span> <span class="tk-v">&quot;solis/animation&quot;</span><span class="tk-p">:</span>nearestFacing<span class="tk-p">;</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Knight</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Facing</span> facing = <span class="tk-o">Facing</span><span class="tk-p">.</span><span class="tk-s">South</span><span class="tk-p">;</span>
+        <span class="tk-n">Look</span> look = <span class="tk-o">Look</span><span class="tk-p">.</span><span class="tk-s">KnightMain</span><span class="tk-p">;</span>
+        <span class="tk-t">bool</span> charged = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        <span class="tk-t">vec3</span> push = <span class="tk-o">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Move</span><span class="tk-p">);</span>
+        <span class="tk-f">is</span> push<span class="tk-p">:</span>length<span class="tk-p">()</span> &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            <span class="tk-c">-- Turn the way the player pushes: the walk plays that row.</span>
+            facing = nearestFacing<span class="tk-p">([</span>push<span class="tk-p">.</span>x<span class="tk-p">,</span> push<span class="tk-p">.</span>y<span class="tk-p">]);</span>
+            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Knight</span><span class="tk-p">.</span><span class="tk-s">Walk</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
+            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Knight</span><span class="tk-p">.</span><span class="tk-s">Idle</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
+        <span class="tk-c">-- Mana armour while charged.</span>
+        <span class="tk-f">is</span> charged<span class="tk-f">? then</span> <span class="tk-p">{</span>
+            look = <span class="tk-o">Look</span><span class="tk-p">.</span><span class="tk-s">KnightMana</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
+            look = <span class="tk-o">Look</span><span class="tk-p">.</span><span class="tk-s">KnightMain</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Knight</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
+<p>The component's field is the sprite's facing and look from the game's first tick: its starting value wins over the Sprite's own <strong>Facing</strong> and <strong>Look</strong> in Properties. Set it only while moving: <code>nearestFacing</code> of no way at all is South.</p>
+<p>Two mistakes are said in the Console, once a play for each entity, and change nothing:</p>
+<ul>
+<li><strong>A look from another clips file</strong>, <code>look = Look.OrcRed;</code> on the knight: the Console names the file the look belongs to and the looks this sprite can wear.</li>
+<li><strong>A facing on a sprite whose animator turns it</strong>: a state that <a href="#animators">faces by a parameter</a> sets the facing itself each tick, so set the animator's direction parameter instead.</li>
+</ul>
 <p>A clip's place is part of the game: the same inputs give the same frames every time, and a saved game comes back on the same frame.</p>
 </section>
 <section id="sprite-animation--settings">

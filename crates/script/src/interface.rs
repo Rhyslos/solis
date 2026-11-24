@@ -37,6 +37,10 @@ pub fn snapshot() -> String {
     for event in ENGINE_EVENTS {
         out.push_str(&format!("{}: {}\n", event.file, event.lust));
     }
+    out.push_str("\n## Fields the engine reads from a Lust component (set with =)\n\n");
+    for read in crate::engine_fields::Read::ALL {
+        out.push_str(&format!("{} {}\n", read.kind(), read.field()));
+    }
     out.push_str("\n## Lua (solis.<name>)\n\n");
     let mut lua = match lua_ways() {
         Ok(ways) => ways,
