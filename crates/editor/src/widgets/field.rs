@@ -248,6 +248,23 @@ pub fn number_field(
     })
 }
 
+/// Any number box in the field's look ([decision 0137](../../../../docs/decisions/0137-the-uniformity-pass.md)):
+/// `drag` (typed, or dragged left and right) in a field as wide as a
+/// slider's number.
+pub fn number(ui: &mut Ui, drag: egui::DragValue<'_>) -> Response {
+    number_in(ui, size::SLIDER_NUMBER_W, drag)
+}
+
+/// [`number`] `width` wide, for one that shows words ("over and over").
+pub fn number_in(ui: &mut Ui, width: f32, drag: egui::DragValue<'_>) -> Response {
+    framed(ui, width, None, |ui| ui.add(drag))
+}
+
+/// [`number`], greyed out and not changeable unless `enabled`.
+pub fn number_if(ui: &mut Ui, enabled: bool, drag: egui::DragValue<'_>) -> Response {
+    ui.add_enabled_ui(enabled, |ui| number(ui, drag)).inner
+}
+
 /// A field for a whole number, as [`number_field`] with no decimals
 /// shown: a size in pixels, a count.
 pub fn whole_number_field(ui: &mut Ui, name: &str, value: &mut f64, width: f32) -> Response {

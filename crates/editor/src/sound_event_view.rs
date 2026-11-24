@@ -131,14 +131,16 @@ fn editor(
         "How loud, in decibels: 0 is as recorded, -6 about half as loud. Each play is up to the \
          second number louder or quieter.",
         |ui| {
-            ui.add(
+            crate::widgets::field::number(
+                ui,
                 egui::DragValue::new(&mut event.volume_db)
                     .range(VOLUME_RANGE_DB.0..=VOLUME_RANGE_DB.1)
                     .speed(0.1)
                     .suffix(" dB"),
             );
             ui.label("±");
-            ui.add(
+            crate::widgets::field::number(
+                ui,
                 egui::DragValue::new(&mut event.volume_range_db)
                     .range(0.0..=MAX_VOLUME_VARIATION_DB)
                     .speed(0.1)
@@ -152,14 +154,16 @@ fn editor(
         "How high or low, in semitones: 12 is an octave up. Each play is up to the second number \
          higher or lower, so repeated sounds don't sound copied.",
         |ui| {
-            ui.add(
+            crate::widgets::field::number(
+                ui,
                 egui::DragValue::new(&mut event.pitch_st)
                     .range(PITCH_RANGE_ST.0..=PITCH_RANGE_ST.1)
                     .speed(0.05)
                     .suffix(" st"),
             );
             ui.label("±");
-            ui.add(
+            crate::widgets::field::number(
+                ui,
                 egui::DragValue::new(&mut event.pitch_range_st)
                     .range(0.0..=MAX_PITCH_VARIATION_ST)
                     .speed(0.05)
@@ -256,7 +260,8 @@ fn editor(
             "Full until",
             "Full volume up to this far from the listener, in metres.",
             |ui| {
-                ui.add(
+                crate::widgets::field::number(
+                    ui,
                     egui::DragValue::new(&mut event.near_m)
                         .range(0.0..=event.far_m)
                         .speed(0.1)
@@ -269,7 +274,8 @@ fn editor(
             "Silent past",
             "Not heard at all past this far from the listener, in metres.",
             |ui| {
-                ui.add(
+                crate::widgets::field::number(
+                    ui,
                     egui::DragValue::new(&mut event.far_m)
                         .range(event.near_m.max(0.01)..=MAX_DISTANCE_M)
                         .speed(0.5)
@@ -322,7 +328,10 @@ fn editor(
         "The most plays of this event heard at the same time; more are skipped. Keeps a burst \
          of gunfire from drowning everything out.",
         |ui| {
-            ui.add(egui::DragValue::new(&mut event.at_once).range(1..=MAX_AT_ONCE));
+            crate::widgets::field::number(
+                ui,
+                egui::DragValue::new(&mut event.at_once).range(1..=MAX_AT_ONCE),
+            );
             ui.label("of this event");
         },
     );

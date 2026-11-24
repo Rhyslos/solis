@@ -45,6 +45,9 @@ pub struct FramesEditor {
     pub zoom: f32,
     /// A clip's name being typed (renaming), with the clip's old name.
     pub renaming: Option<(String, String)>,
+    /// Whether the rename's box has been shown once (its name picked
+    /// out then, so typing replaces it).
+    pub rename_started: bool,
     /// The Clips tab's search.
     pub search: String,
     /// Cut picture… was pressed: the workbench opens the pop-up.
@@ -91,6 +94,7 @@ impl FramesEditor {
             time: 0.0,
             zoom: STANDARD_ZOOM,
             renaming: None,
+            rename_started: false,
             search: String::new(),
             cut_asked: false,
             facing: Facing::Any,

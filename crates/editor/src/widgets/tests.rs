@@ -428,3 +428,50 @@ fn a_field_is_found_by_its_name_and_takes_what_is_typed() {
     assert!(x.rect().right() < z.rect().left());
     assert_eq!(x.rect().center().y, z.rect().center().y);
 }
+
+/// A row's name renamed in place (decision 0137): picked out on its first
+/// frame so typing replaces it, then `Enter` keeps what's typed and `Esc`
+/// leaves the old name; the same part in the Level panel, the Library and
+/// the Clips list.
+#[test]
+fn a_row_renamed_in_place_keeps_on_enter_and_leaves_on_esc() {
+    use super::rows::{Renamed, rename_row};
+    let run = |key: Key| {
+        let mut harness = Harness::builder()
+            .with_size(vec2(300.0, 60.0))
+            .build_ui_state(
+                |ui, (typed, frames, answer): &mut (String, u32, Option<Renamed>)| {
+                    if !crate::test_support::fonts_ready(ui.ctx()) || answer.is_some() {
+                        return;
+                    }
+                    let first = *frames == 0;
+                    *frames += 1;
+                    let (_, said) = rename_row(
+                        ui,
+                        22.0,
+                        egui::Id::new("row"),
+                        typed,
+                        crate::tokens::text::row(),
+                        first,
+                    );
+                    if said != Renamed::Typing {
+                        *answer = Some(said);
+                    }
+                },
+                ("Knight".to_owned(), 0, None),
+            );
+        harness.run();
+        harness.get_by_label("New name").type_text("Orc");
+        harness.run();
+        harness.key_press(key);
+        harness.run();
+        let (typed, _, answer) = harness.state().clone();
+        (typed, answer)
+    };
+    assert_eq!(
+        run(Key::Enter),
+        ("Orc".to_owned(), Some(Renamed::Keep)),
+        "typing replaced the name"
+    );
+    assert_eq!(run(Key::Escape).1, Some(Renamed::Leave));
+}

@@ -9,7 +9,7 @@
 
 use super::{Files, LibraryRequest, LibraryState, join, last_part, parent_of};
 use crate::tokens::{self, size, text};
-use egui::{Rect, Ui, pos2, vec2};
+use egui::{Rect, Ui, pos2};
 
 /// The most characters a name has (`asset_db::MAX_NAME_CHARS`).
 const MAX_NAME_CHARS: usize = 100;
@@ -103,60 +103,21 @@ pub(crate) fn name_box(
     }
     state.rename_frame = frame;
     let id = egui::Id::new(("library rename", path));
-    let accent = crate::interface_look::accent_fill();
-    ui.painter().rect(
-        rect,
-        size::radius::SMALL,
-        tokens::field(),
-        egui::Stroke::new(size::LINE, accent),
-        egui::StrokeKind::Inside,
-    );
-    let mut inner = ui.new_child(
-        egui::UiBuilder::new()
-            .max_rect(rect.shrink2(vec2(size::ROW_GAP, 0.0)))
-            .layout(egui::Layout::left_to_right(egui::Align::Center)),
-    );
-    let mut output = egui::TextEdit::singleline(&mut typed)
-        .id(id)
-        .frame(egui::Frame::NONE)
-        .margin(egui::Margin::ZERO)
-        .font(text::tile_name())
-        .text_color(tokens::text_primary())
-        .desired_width(rect.width() - 2.0 * size::ROW_GAP)
-        .show(&mut inner);
-    output.response.widget_info(|| {
-        let mut info = egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "New name");
-        info.current_text_value = Some(typed.clone());
-        info
-    });
-    if !state.rename_focused {
-        // The name is picked out, so typing replaces it.
-        output.response.request_focus();
-        let all = egui::text::CCursorRange::two(
-            egui::text::CCursor::new(0),
-            egui::text::CCursor::new(typed.chars().count()),
-        );
-        output.state.cursor.set_char_range(Some(all));
-        output.state.store(ui.ctx(), id);
-        state.rename_focused = true;
-    }
+    let first = !state.rename_focused;
+    state.rename_focused = true;
+    let (_, answer) =
+        crate::widgets::rows::rename_in(ui, rect, id, &mut typed, text::tile_name(), first);
     let checked = rename_to(files, &renamed, &typed);
     if let Err(why) = &checked {
         why_not(ui, rect, why);
     }
-    let (enter, escape) = ui.input(|i| {
-        (
-            i.key_pressed(egui::Key::Enter),
-            i.key_pressed(egui::Key::Escape),
-        )
-    });
-    if escape {
-        state.renaming = None;
-    } else if enter || output.response.lost_focus() {
-        state.renaming = None;
-        finish(state, &renamed, &typed, checked, requests);
-    } else {
-        state.renaming = Some((renamed, typed));
+    match answer {
+        crate::widgets::rows::Renamed::Leave => state.renaming = None,
+        crate::widgets::rows::Renamed::Keep => {
+            state.renaming = None;
+            finish(state, &renamed, &typed, checked, requests);
+        }
+        crate::widgets::rows::Renamed::Typing => state.renaming = Some((renamed, typed)),
     }
     true
 }

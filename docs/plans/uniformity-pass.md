@@ -54,7 +54,7 @@ The project lead answered every question the same day: [decision 0137](../decisi
 ### The milestones
 
 Built in this order, one pull request each, the manual, the sample games and the interface file moved in the same pull request as what they show:
-- **U1 Buttons and fields:** the shared button (plain and filled), text box, number box (with a slider when a field has a range) and in-place rename; every panel moved onto them.
+- **U1 Buttons and fields** (built in two parts: U1a the buttons, U1b the fields and renaming): the shared button (plain and filled), text box, number box (with a slider when a field has a range) and in-place rename; every panel moved onto them.
 - **U2 Switches and pickers:** checkboxes and toggles by weight, the `toggle` and `checkbox` field hints; the name picker for longer lists (a Sprite's Look first); the facing pad in Properties and for an animator's direction parameter.
 - **U3 One picture board:** the Tileset's picture on the shared board.
 - **U4 One dot:** every kind of the project's names with one dot, folders only on a clash, groups as values; the manual and samples moved; `World:find` out of the manual.
@@ -62,6 +62,10 @@ Built in this order, one pull request each, the manual, the sample games and the
 - **U6 Making with `new`:** the classes Solis writes for modules, sounds, timers and shots, and `new` replacing the spawning, playing, firing and timer calls.
 
 Each is planned in detail when it starts, as the game stages are.
+
+*As built (U1a):* every hand-drawn button in a panel or pop-up is `widgets::button::plain`, `plain_if` (greyed out when it can't be used) or `primary`; the Frames tab's Play is `Button::light`. Left as they are: menu items, the frameless glyph buttons (a layer's ◉, a sound's ×, the Library tiles' +), which are icon buttons, and the tag chips. Panel tests that draw these load the editor's fonts first (`test_support::fonts_ready`).
+
+*As built (U1b):* every number box outside Properties goes through `widgets::field::number` (`number_in` for one that shows words, `number_if` greyed out), so all are drawn as Properties' are; the text boxes already shared the field's fill and corners through the theme. Renaming a row is `widgets::rows::rename_in` (`rename_row` across the room left), used by the Level panel, the Library and the Clips list. The Level panel's and the Library's F2 stay: the project lead asked for no new key, not fewer.
 
 ## The audit (2026-11-24)
 
