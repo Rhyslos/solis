@@ -528,6 +528,58 @@ impl Clip {
         self.set_frames_of(facing, &frames);
     }
 
+    /// Turns sharing one set of times and events in every direction on
+    /// or off. Off, each row gets its own copy of the shared ones; on,
+    /// the shared ones are those of the row it shows with no facing asked
+    /// for. Off and on again gives the clip back as it was.
+    pub fn set_same_frames(&mut self, same: bool) {
+        if same == self.same_frames {
+            return;
+        }
+        if same {
+            let shown = self.shown_facing();
+            self.timings = (self.ways.iter().find(|w| w.facing == shown))
+                .map(|w| w.timings.clone())
+                .unwrap_or_default();
+            for way in &mut self.ways {
+                way.timings.clear();
+            }
+        } else {
+            let shared = std::mem::take(&mut self.timings);
+            for way in &mut self.ways {
+                way.timings = shared.clone();
+            }
+        }
+        self.same_frames = same;
+    }
+
+    /// Turns drawing the west side as the east side flipped on or off.
+    /// Off, each west row starts as a copy of its east row's cells, to
+    /// draw over for a character that isn't the same both ways; on, the
+    /// west rows are dropped. Off and on again gives the clip back as it
+    /// was.
+    pub fn set_mirror(&mut self, mirror: bool) {
+        if mirror == self.mirror {
+            return;
+        }
+        self.mirror = mirror;
+        if mirror {
+            self.ways.retain(|w| !w.facing.is_west());
+            return;
+        }
+        for &facing in Facing::of_directions(self.directions) {
+            if !facing.is_west() || self.ways.iter().any(|w| w.facing == facing) {
+                continue;
+            }
+            let east = self
+                .ways
+                .iter()
+                .find(|w| w.facing == facing.mirrored())
+                .cloned();
+            self.ways.extend(east.map(|w| Way { facing, ..w }));
+        }
+    }
+
     /// Gives it one, four or eight directions. Rows it keeps stay as they
     /// are (from eight to four, the four straight ones); a new row starts
     /// as a copy of the row it showed with no facing asked for; with one,

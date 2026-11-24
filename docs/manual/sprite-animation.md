@@ -35,7 +35,13 @@ A character walking in a top-down game faces different ways, and each needs its 
 - on the **Cells** page, the clips file's page in the middle, click a cell, or Shift+click to reach a run of them (Ctrl+click adds one), then drag them onto a row: the row shows those cells, keeping the times its frames had;
 - with a frame picked, click a cell on the Cells page to show that cell in the frame instead.
 
-The Cells page's left side plays the chosen clip's picked row, and its right side shows every cell, numbered.
+The Cells page's left side plays the chosen clip's picked row, and its right side shows every cell, numbered. Under the preview, the **facing pad**'s arrows pick the direction it plays.
+
+A clip with directions has two more settings in the Clip slot:
+- **Same frames in every direction** (on at first): every direction shares one set of frame times and events, so a character turning mid-walk keeps its step and the footsteps land the same way. Off: each direction has its own times and events, starting as copies of the shared ones.
+- **Mirror the west side** (on at first): northwest, west and southwest are northeast, east and southeast flipped, so you draw five directions, not eight. Picking a west direction on the pad plays its east row flipped, and changes made there go to the east row. Off, for a character that isn't the same both ways (a sword in one hand): the west rows become rows of their own, starting as copies of the east cells, for you to swap in the frames you drew.
+
+Turning either setting off and back on gives the clip back as it was.
 
 Going from eight to four keeps the four straight rows. A new row starts as a copy of the first, so you only change what differs. A clip that mirrors its west side shows those rows faded, as the east rows they're flipped from (◈ NorthEast).
 

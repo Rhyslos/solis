@@ -682,3 +682,62 @@ fn a_run_of_cells_fills_a_row_and_a_clicked_cell_swaps_a_frame() {
     assert!(editor.undo());
     assert_eq!(row(editor, Facing::North)[1], (41, 120), "one step each");
 }
+
+#[test]
+fn the_two_settings_turn_off_and_on_and_the_mirrored_side_edits_its_east_row() {
+    use animation::clips_file::Facing;
+    let mut w = with_knight_open();
+    let cells_sheet = Arc::clone(
+        w.viewport
+            .sheets
+            .cut_sheet("knight.clips.lst")
+            .expect("cut"),
+    );
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    let walk = |e: &crate::frames_editor::FramesEditor| {
+        e.file
+            .clips
+            .iter()
+            .find(|c| c.name == "walk")
+            .unwrap()
+            .clone()
+    };
+    let before = walk(editor);
+    // The west side picked on the pad: its frames are East's, flipped.
+    editor.pick_row(Some(Facing::West));
+    assert_eq!(editor.row_facing(), Facing::East);
+    editor.pick(0, false, false);
+    assert!(editor.add_frames(&cells_sheet, &[44]));
+    assert_eq!(walk(editor).frames_of(Facing::East, |_| 1)[1].frame, 44);
+    assert!(editor.undo());
+    // Each setting off and on again: the clip as it was.
+    assert!(editor.set_mirror(false));
+    assert_eq!(walk(editor).ways.len(), 8, "the west side's own rows");
+    assert_eq!(editor.row_facing(), Facing::West, "West is its own row now");
+    assert!(editor.set_mirror(true));
+    assert!(editor.set_same_frames(false));
+    assert!(editor.set_same_frames(true));
+    assert_eq!(walk(editor), before);
+}
+
+#[test]
+fn the_clips_page_facing_west_with_its_settings() {
+    use crate::picture_support::{drawn, editor_window, matches_approved};
+    let mut w = with_knight_open();
+    w.open
+        .frames_editor
+        .as_mut()
+        .unwrap()
+        .pick_row(Some(animation::clips_file::Facing::West));
+    let Some(mut h) = editor_window(
+        w,
+        crate::interface_look::InterfaceLook::default(),
+        [1440.0, 900.0],
+    ) else {
+        return;
+    };
+    for _ in 0..4 {
+        h.run();
+    }
+    matches_approved("clips-settings", &drawn(&mut h));
+}

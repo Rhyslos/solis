@@ -17,6 +17,19 @@ pub(crate) fn draw_frame(
     atlas: &egui::TextureHandle,
     frame: usize,
 ) {
+    draw_frame_flipped(painter, rect, sheet, atlas, frame, false);
+}
+
+/// [`draw_frame`], mirrored left to right when `flip` is set (a mirrored
+/// clip's west side, Fixes 3).
+pub(crate) fn draw_frame_flipped(
+    painter: &egui::Painter,
+    rect: Rect,
+    sheet: &SpriteSheet,
+    atlas: &egui::TextureHandle,
+    frame: usize,
+    flip: bool,
+) {
     let Some(f) = sheet.frames.get(frame) else {
         return;
     };
@@ -43,10 +56,15 @@ pub(crate) fn draw_frame(
         canvas.min + egui::vec2(f.offset[0] as f32, f.offset[1] as f32) * scale,
         egui::vec2(w, h) * scale,
     );
-    let uv = Rect::from_min_max(
-        egui::pos2(ax / aw, ay / ah),
-        egui::pos2((ax + w) / aw, (ay + h) / ah),
-    );
+    let (mut u0, mut u1) = (ax / aw, (ax + w) / aw);
+    let picture = if flip {
+        std::mem::swap(&mut u0, &mut u1);
+        let left = canvas.min.x + canvas.max.x - picture.max.x;
+        Rect::from_min_size(egui::pos2(left, picture.min.y), picture.size())
+    } else {
+        picture
+    };
+    let uv = Rect::from_min_max(egui::pos2(u0, ay / ah), egui::pos2(u1, (ay + h) / ah));
     painter.image(atlas.id(), picture, uv, Color32::WHITE);
 }
 
