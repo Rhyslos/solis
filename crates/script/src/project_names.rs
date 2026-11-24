@@ -10,7 +10,7 @@
 //! only where two would clash. Its first letter is made a capital (Lust's
 //! options start with one). Under each state, Solis writes the file each
 //! name stands for, which it reads back ([`paths_in`]) so natives find the
-//! file from the name ([`path_for`]).
+//! file from the name (`path_for`).
 
 use std::collections::BTreeMap;
 
@@ -395,7 +395,7 @@ const PATH_MARK: &str = "-- @";
 pub type NamePaths = BTreeMap<String, String>;
 
 /// The options' files in `files` (the game's code): read from the lines
-/// [`flat_text`] writes in `solis/project.lst`; none if it has none.
+/// `flat_text` writes in `solis/project.lst`; none if it has none.
 pub fn paths_in(files: &[(String, String)]) -> NamePaths {
     let path = format!("{}/project.lst", level::lust_data::ENGINE_FOLDER);
     let Some((_, text)) = files.iter().find(|(p, _)| *p == path) else {
