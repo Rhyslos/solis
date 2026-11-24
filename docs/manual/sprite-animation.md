@@ -208,6 +208,7 @@ The Sprite component's clip settings:
 |---|---|
 | Sheet | An Aseprite file (its tags are its clips) or a clips file (`.clips.lst`). |
 | Clip | The clip it plays. Empty: the clips file's clip marked **Plays first**, or with none, the still **Frame**. |
+| Look | Which of its clips file's looks it shows: the main one (empty), or another picture cut the same way, such as the knight in mana armour. Every clip plays in it. A look's picture should be the main one's size, or its cells won't line up (the Clip slot says so). |
 | Facing | Which way it faces: North, NorthEast, East, SouthEast, South, SouthWest, West or NorthWest. A clip with directions plays the row nearest it: with four directions, a diagonal keeps showing north or south if that's what it showed, and otherwise turns east or west; a mirrored west side plays its east row flipped. Turning mid-clip keeps its place in the clip. |
 | Playing | Whether the clip moves on while the game runs. Game code's `animate` and `stopAnimation` turn it on and off. |
 | Speed | 1 as drawn, 2 twice as fast, 0 stopped. Multiplies the clip's own speed. |

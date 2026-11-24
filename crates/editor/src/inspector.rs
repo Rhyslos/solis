@@ -322,6 +322,23 @@ pub(crate) fn field_widget(
                 &sheets.screens,
             ));
         }
+        (FieldKind::Text, Offer::LooksOf(sheet_field)) => {
+            let looks = match data.get(sheet_field) {
+                Some(Value::Asset(Some(r))) => sheets.looks(r.asset),
+                _ => Vec::new(),
+            };
+            let names: Vec<&str> = looks.iter().skip(1).map(String::as_str).collect();
+            let main = looks
+                .first()
+                .map_or("Main".to_owned(), |m| format!("{m} (main)"));
+            return whole(text_picker(
+                ui,
+                (&field.label, value, mixed.whole),
+                (&main, names),
+                (looks.len() < 2).then_some("No other looks: add one on the clips file's page."),
+                Some("isn't one of its looks"),
+            ));
+        }
         (FieldKind::Text, Offer::ClipsOf(sheet_field)) => {
             let clips = match data.get(sheet_field) {
                 Some(Value::Asset(Some(r))) => sheets.clips(r.asset),

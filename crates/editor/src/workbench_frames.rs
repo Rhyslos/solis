@@ -41,6 +41,11 @@ pub(crate) fn frames_ui<'a>(
         _ => Vec::new(),
     };
     // What cutting its picture into cells left out, or why it couldn't.
+    for ((path, _), cut) in &sheets.cut_looks {
+        if *path == editor.path {
+            notes.extend(cut.notes.iter().map(|n| format!("A look: {n}.")));
+        }
+    }
     if let Some(cut) = sheets.cut.get(&editor.path) {
         notes.extend(
             cut.notes

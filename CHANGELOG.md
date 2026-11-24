@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Looks** (Fixes 3, F3.10, first part): a clips file can name other pictures, its **looks**, cut the same way (the knight in mana armour). A Sprite's **Look** picks one, and every clip plays in it, in the viewport and the game. A look's picture of another size than the main one's is noted. Adding and editing looks on the clips page comes next.
 - **Animators face by a parameter** (Fixes 3, F3.9): an animator's state can play *one clip, faces by* a direction parameter. The sprite's Facing follows the parameter to the nearest of eight ways, and a clip with directions plays that row. *A clip by facing* stays for clips without directions, and older animators read as before.
 - **Playing by facing** (Fixes 3, F3.8): a Sprite has a **Facing** (South at first), and a clip with directions plays the row nearest it, in the viewport and in the running game, a mirrored west side flipped. Its events and its end come from that row. A sprite whose Sheet is a clips file of one direction plays as before. Save games keep a sprite's facing with the rest of it.
 - **Same frames in every direction, Mirror the west side, and the facing pad** (Fixes 3, F3.7): a clip with directions can share one set of frame times and events in every direction or give each its own, and can draw its west side as the east side flipped or draw all eight. The Cells page's preview has a pad of arrows to play each direction, a mirrored one flipped; the Frames tab draws mirrored rows flipped too.

@@ -19,6 +19,9 @@ pub struct Sprite {
     /// The clip it plays, by name ("walk"); empty for the clips file's
     /// first clip, or, with none, the still [`Self::frame`].
     pub clip: String,
+    /// The look it shows, by name (`Mana`): its clips file's other
+    /// picture, cut the same way; empty for the main one (Fixes 3).
+    pub look: String,
     /// Which way it faces (`NorthEast`), one of [`Sprite::FACINGS`]: a
     /// clip with directions plays the row nearest it (Fixes 3).
     pub facing: String,
@@ -57,6 +60,7 @@ impl Default for Sprite {
         Self {
             sheet: None,
             clip: String::new(),
+            look: String::new(),
             facing: "South".into(),
             playing: true,
             speed: 1.0,
@@ -126,6 +130,15 @@ impl Component for Sprite {
                                with none, the still Frame."
                             .into(),
                         offers: Offer::ClipsOf("sheet"),
+                        ..Hint::default()
+                    },
+                ),
+                FieldInfo::new("look", "Look", FieldKind::Text, Value::Text(d.look.clone())).hint(
+                    Hint {
+                        help: "The look it shows: its clips file's other picture, cut the same \
+                               way, so every clip plays in it. Empty: the main look."
+                            .into(),
+                        offers: Offer::LooksOf("sheet"),
                         ..Hint::default()
                     },
                 ),
@@ -238,6 +251,7 @@ impl Component for Sprite {
         let mut data = ComponentData::default();
         data.set("sheet", Value::Asset(self.sheet));
         data.set("clip", Value::Text(self.clip.clone()));
+        data.set("look", Value::Text(self.look.clone()));
         data.set("facing", Value::Text(self.facing.clone()));
         data.set("playing", Value::Bool(self.playing));
         data.set("speed", Value::Float(f64::from(self.speed)));
@@ -279,6 +293,7 @@ impl Component for Sprite {
                 .chars()
                 .take(64)
                 .collect(),
+            look: (f.text("look").unwrap_or_default().trim().chars().take(64)).collect(),
             facing: (f.text("facing"))
                 .filter(|t| Self::FACINGS.contains(t))
                 .map_or(d.facing.clone(), str::to_owned),
