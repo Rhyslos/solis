@@ -95,6 +95,19 @@ pub fn picture_board(
     texture: &egui::TextureHandle,
     size: [u32; 2],
 ) -> Board {
+    let whole = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+    picture_board_in(ui, (zoom, pan), texture, size, whole)
+}
+
+/// [`picture_board`] for a picture that is only the part `uv` of its
+/// texture (the tileset's, made a whole number of tiles bigger).
+pub fn picture_board_in(
+    ui: &mut Ui,
+    (zoom, pan): (&mut f32, &mut Vec2),
+    texture: &egui::TextureHandle,
+    size: [u32; 2],
+    uv: Rect,
+) -> Board {
     let rect = ui.max_rect();
     let response = ui.allocate_rect(rect, Sense::click_and_drag());
     let painter = ui.painter_at(rect);
@@ -117,12 +130,7 @@ pub fn picture_board(
     let origin = rect.center() + *pan - shown_size / 2.0;
     let shown = Rect::from_min_size(origin, shown_size);
     painter.rect_filled(shown, 0.0, Color32::from_gray(60));
-    painter.image(
-        texture.id(),
-        shown,
-        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-        Color32::WHITE,
-    );
+    painter.image(texture.id(), shown, uv, Color32::WHITE);
     Board {
         response,
         origin,

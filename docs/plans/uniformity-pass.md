@@ -69,6 +69,8 @@ Each is planned in detail when it starts, as the game stages are.
 
 *As built (U2):* a `bool` in Properties is `widgets::checkbox`, or `widgets::toggle` when its hint says `toggle` (`Hint::toggle`; game code's `-- [toggle]`, `checkbox` the default made explicit); several entities that differ keep egui's dashed box, which the shared one hasn't. The facing pad is `widgets::facing_pad` (`pad_at` placed, `pad` as a field): the clips preview, a Sprite's Facing (`Offer::Facing`) and an animator's direction parameter in its preview, which was a dial. The name picker stays for the project's names; every other list longer than `HANDFUL` (six) opens with a box to find a choice in, Properties' plain choices included, which now use the shared dropdown. A look's picture in its list waits: a look list is rarely long.
 
+*As built (U3):* the Tileset's picture is `widgets::picture_board::picture_board_in` (a picture that is part of its texture; `picture_board` is the whole of one), with the tileset editor's `zoom` and a new `pan`; its grid is `Board::lines`, the picked tile `Board::boxed`, and a click or a drag finds the tile under the pointer with `Board::to_pixel`. The − and + under the steps went; the ribbon's Zoom list stays. Its tiles aren't numbered as cells are, since a tileset's slots, numbered for the chosen terrain, are what its tiles are known by.
+
 ## The audit (2026-11-24)
 
 Written while Fixes 3's last pull requests waited on their checks. Nothing here is decided: each group ends in the question it puts to the project lead, and the proposals come as questions, one at a time, with a before and after.

@@ -50,6 +50,8 @@ pub(crate) struct TilesetEditor {
     pub(crate) try_cells: Vec<bool>,
     /// How big the picture is drawn: screen pixels per pixel of it.
     pub(crate) zoom: f32,
+    /// How far the picture is moved from the middle (the middle button).
+    pub(crate) pan: egui::Vec2,
 }
 
 impl TilesetEditor {
@@ -93,6 +95,7 @@ impl TilesetEditor {
             rule: None,
             try_cells,
             zoom: 3.0,
+            pan: egui::Vec2::ZERO,
         }
     }
 
