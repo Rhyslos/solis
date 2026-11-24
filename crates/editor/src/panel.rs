@@ -83,6 +83,9 @@ pub enum Panel {
     /// Export for playtesting as a page: the Build tab's middle (round
     /// 3, `10-build-tab`). The workbench draws it where the shell puts it.
     Export,
+    /// A clips file's page (Fixes 3, the mock-up's frame (a)): the chosen
+    /// clip playing, and the picture's cells to put on its rows.
+    Cells,
     /// A module's own page (decision 0118, board 07): a tab beside the
     /// level's on Home, the view of the module built on its own, while
     /// one is open.
@@ -118,9 +121,10 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`].
-    pub const OPEN_WITH_A_FILE: [Self; 16] = [
+    pub const OPEN_WITH_A_FILE: [Self; 17] = [
         Self::Clips,
         Self::Frames,
+        Self::Cells,
         Self::Animator,
         Self::Map,
         Self::Tileset,
@@ -138,7 +142,7 @@ impl Panel {
     ];
 
     /// The tabs a clips file opens (and closes) together.
-    pub const FRAMES_TABS: [Self; 2] = [Self::Clips, Self::Frames];
+    pub const FRAMES_TABS: [Self; 3] = [Self::Clips, Self::Frames, Self::Cells];
 
     /// The tabs a screen opens (and closes) together, in the UI workspace.
     pub const SCREEN_TABS: [Self; 3] = [Self::Canvas, Self::Elements, Self::Pictures];
@@ -180,6 +184,7 @@ impl Panel {
             Self::Bus => "Bus",
             Self::SoundEvents => "Sound events",
             Self::Export => "Export for playtesting",
+            Self::Cells => "Cells",
             Self::ModulePage => "Module",
             Self::Table => "Table",
             Self::Translations => "Translations",
@@ -218,6 +223,7 @@ impl Panel {
             Self::Bus => Icon::Sliders,
             Self::SoundEvents => Icon::SoundEvent,
             Self::Export => Icon::Build,
+            Self::Cells => Icon::Grid,
             Self::ModulePage => Icon::Module,
             Self::Table => Icon::Table,
             Self::Translations => Icon::Text,

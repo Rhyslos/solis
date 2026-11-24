@@ -631,6 +631,7 @@ fn the_clips_page_with_eight_directions() {
     let editor = w.open.frames_editor.as_mut().unwrap();
     editor.pick_row(Some(animation::clips_file::Facing::NorthEast));
     editor.pick(1, false, false);
+    editor.cells_picked = vec![31];
     let Some(mut h) = editor_window(
         w,
         crate::interface_look::InterfaceLook::default(),
@@ -642,4 +643,42 @@ fn the_clips_page_with_eight_directions() {
         h.run();
     }
     matches_approved("clips-directions", &drawn(&mut h));
+}
+
+#[test]
+fn a_run_of_cells_fills_a_row_and_a_clicked_cell_swaps_a_frame() {
+    use animation::clips_file::Facing;
+    let mut w = with_knight_open();
+    let cells_sheet = Arc::clone(
+        w.viewport
+            .sheets
+            .cut_sheet("knight.clips.lst")
+            .expect("cut"),
+    );
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    let row = |e: &crate::frames_editor::FramesEditor, f: Facing| {
+        let walk = e.file.clips.iter().find(|c| c.name == "walk").unwrap();
+        walk.frames_of(f, |_| 1)
+            .iter()
+            .map(|fr| (fr.frame, fr.ms))
+            .collect::<Vec<_>>()
+    };
+    // Five cells onto North's four frames: a fifth column, its time the
+    // cell's own.
+    assert!(editor.fill_row(Facing::North, &[40, 41, 42, 43, 44], &cells_sheet));
+    assert_eq!(
+        row(editor, Facing::North),
+        [(40, 120), (41, 120), (42, 120), (43, 120), (44, 100)]
+    );
+    assert_eq!(editor.facing, Facing::North, "the row is picked");
+    assert!(
+        !editor.fill_row(Facing::North, &[99], &cells_sheet),
+        "no such cell"
+    );
+    // Pick a frame, click a cell: swapped, its time kept.
+    editor.pick(1, false, false);
+    assert!(editor.swap_cell(7));
+    assert_eq!(row(editor, Facing::North)[1], (7, 120));
+    assert!(editor.undo());
+    assert_eq!(row(editor, Facing::North)[1], (41, 120), "one step each");
 }

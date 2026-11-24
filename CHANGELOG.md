@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **The Cells page** (Fixes 3, F3.6): a clips file opens a page in the middle of the Animate tab, with the chosen clip's picked row playing and every cell of the picture, numbered, with **Cut picture…**. Drag a run of cells onto a direction's row to fill it, or pick a frame and click a cell to swap it in.
 - **Clips with directions** (Fixes 3, F3.6): a clip of your own can face **One**, **Four** or **Eight** ways, set in the Clip slot, which is now the Animate tab's right slot rather than a bottom tab. The Frames tab shows a row of frames for each direction (south first, round by east), and picking a frame picks its row, so times, events and added frames go to that direction. Going from eight to four keeps the four straight rows; new rows start as copies.
 - **Free crop** (Fixes 3, F3.5): Cut picture…'s second mode. Draw a cell on the picture, pick one to move or size it by its corners or its X, Y, W and H, nudge it a pixel with the arrow keys, or put it back with **Back to the grid's box**. Cells drawn by hand are kept in the clips file with the grid.
 - **Cut picture…** (Fixes 3, F3.4): **Make clips…** on a PNG or JPEG in the Library makes its clips file and opens a pop-up that cuts the picture into numbered cells by a grid (cell size, gap between, edge), with **Find grid** to guess it; **Use these cells** keeps it as one undo step. **Cut picture…** in the Clip tab opens it again. The atlas's picture and this pop-up now share one picture board.

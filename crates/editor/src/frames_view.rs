@@ -113,13 +113,6 @@ pub(crate) fn clips_list(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
 pub(crate) fn clip_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let mut changed = false;
     ui.label(RichText::new(file_name(&f.editor.path)).color(theme::text_weak()));
-    if f.cut {
-        let cut = crate::widgets::button::Button::plain("Cut picture…")
-            .icon(crate::icons::Icon::Grid)
-            .show(ui)
-            .on_hover_text("How the picture is cut into the cells its clips show");
-        f.editor.cut_asked |= cut.clicked();
-    }
     let Some(sheet) = f.sheet else {
         changed |= choose_sheet(ui, f);
         return changed;
@@ -407,15 +400,37 @@ pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>, keys: bool) -> bool 
         egui::ScrollArea::both()
             .id_salt("frames rows")
             .auto_shrink([false, true])
-            .show(ui, |ui| direction_rows(ui, f, sheet, own));
+            .show(ui, |ui| changed |= direction_rows(ui, f, sheet, own));
         return changed;
     }
-    egui::ScrollArea::horizontal()
+    let shown = egui::ScrollArea::horizontal()
         .id_salt("frames ruler")
         .auto_shrink([false, true])
         .show(ui, |ui| {
             changed |= ruler(ui, f, sheet, &clip);
         });
+    // A run of cells dropped on a clip of one direction fills it.
+    if own {
+        let target = ui.interact(
+            shown.inner_rect,
+            ui.id().with("ruler drop"),
+            egui::Sense::hover(),
+        );
+        if egui::DragAndDrop::has_payload_of_type::<CellsDrag>(ui.ctx())
+            && target.contains_pointer()
+        {
+            ui.painter().rect_stroke(
+                shown.inner_rect,
+                3.0,
+                egui::Stroke::new(2.0, theme::kind::SPRITE),
+                egui::StrokeKind::Inside,
+            );
+        }
+        if let Some(cells) = target.dnd_release_payload::<CellsDrag>() {
+            let facing = f.editor.facing;
+            changed |= f.editor.fill_row(facing, &cells.0, sheet);
+        }
+    }
     changed
 }
 /// A row's height in the Frames tab when a clip has directions.
@@ -455,7 +470,8 @@ fn row_clip(own: &OwnClip, facing: Facing, sheet: &SpriteSheet) -> animation::Cl
 /// A clip with directions: a row a facing, each frame a tile as wide as
 /// it lasts. A mirrored clip's west rows are its east rows, faded. Click
 /// a frame to pick it (and its row); click a row's name to pick the row.
-fn direction_rows(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, own: &OwnClip) {
+fn direction_rows(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, own: &OwnClip) -> bool {
+    let mut changed = false;
     let zoom = f.editor.zoom;
     let width_of = |ms: u32| (ms as f32 / 1000.0 * zoom).clamp(TILE_WIDTH.0, TILE_WIDTH.1);
     let ms_of = |cell: u32| sheet.frames.get(cell as usize).map_or(1, |f| f.duration_ms);
@@ -469,6 +485,27 @@ fn direction_rows(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, own: &
         );
         let painter = ui.painter_at(row);
         let picked_row = f.editor.facing == facing;
+        // A run of cells dropped on a row fills it.
+        if !flipped {
+            let target = ui.interact(
+                row,
+                ui.id().with(("row drop", facing.name())),
+                egui::Sense::hover(),
+            );
+            if egui::DragAndDrop::has_payload_of_type::<CellsDrag>(ui.ctx())
+                && target.contains_pointer()
+            {
+                painter.rect_stroke(
+                    row,
+                    3.0,
+                    egui::Stroke::new(2.0, theme::kind::SPRITE),
+                    egui::StrokeKind::Inside,
+                );
+            }
+            if let Some(cells) = target.dnd_release_payload::<CellsDrag>() {
+                changed |= f.editor.fill_row(facing, &cells.0, sheet);
+            }
+        }
         if picked_row {
             painter.rect_filled(row, 0.0, theme::field().gamma_multiply(0.5));
         }
@@ -574,10 +611,14 @@ fn direction_rows(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, own: &
     }
     ui.add_space(6.0);
     ui.label(
-        RichText::new("Pick a frame in a direction's row to set its time and event.")
-            .size(11.0)
-            .color(theme::text_weak()),
+        RichText::new(
+            "Drag cells onto a direction, or pick a frame and click a cell. A picked frame's \
+             time and event are above.",
+        )
+        .size(11.0)
+        .color(theme::text_weak()),
     );
+    changed
 }
 
 /// Plays or pauses (from the start again once a clip played a number of
@@ -1175,3 +1216,196 @@ fn x_of_ms(
 #[cfg(test)]
 #[path = "frames_view_tests.rs"]
 mod tests;
+
+/// A run of the Cells page's cells being dragged onto a row.
+#[derive(Debug, Clone)]
+struct CellsDrag(Vec<u32>);
+
+/// A cell's tile on the Cells page.
+const CELL_TILE: f32 = 44.0;
+/// The preview's width on the Cells page.
+const PREVIEW_W: f32 = 300.0;
+
+/// The Cells page (Fixes 3, the mock-up's frame (a)): the chosen clip's
+/// picked row playing at the left; at the right the sheet's cells, each
+/// numbered. Click cells to pick a run (Ctrl adds, Shift reaches) and
+/// drag it onto a row of the Frames tab; with a frame picked there, a
+/// click on a cell shows it in that frame instead. Returns whether the
+/// file changed.
+pub(crate) fn cells_page(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
+    let Some(sheet) = f.sheet.cloned() else {
+        crate::panels::empty_note(ui, "Reading the picture…");
+        return false;
+    };
+    let mut changed = false;
+    let full = ui.max_rect();
+    let preview = egui::Rect::from_min_size(full.min, egui::vec2(PREVIEW_W, full.height()));
+    let cells = egui::Rect::from_min_max(egui::pos2(preview.right(), full.top()), full.max);
+    let mut left = ui.new_child(egui::UiBuilder::new().max_rect(preview));
+    preview_part(&mut left, f, &sheet);
+    let mut right = ui.new_child(egui::UiBuilder::new().max_rect(cells.shrink(12.0)));
+    changed |= cells_part(&mut right, f, &sheet);
+    ui.advance_cursor_after_rect(full);
+    changed
+}
+
+/// The chosen clip's picked row, at the Frames tab's time.
+fn preview_part(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet) {
+    let area = ui.max_rect();
+    let painter = ui.painter_at(area);
+    painter.rect_filled(area, 0.0, theme::field().gamma_multiply(0.6));
+    let own = f.editor.file.clips.iter().find(|c| c.name == f.editor.clip);
+    let clip = match own {
+        Some(own) => Some(row_clip(own, f.editor.facing, sheet)),
+        None => f.editor.clips(sheet).get(&f.editor.clip).cloned(),
+    };
+    let Some(clip) = clip else {
+        return;
+    };
+    let facing = own.map_or(Facing::Any, |_| f.editor.facing);
+    let label = if facing == Facing::Any {
+        clip.name.clone()
+    } else {
+        format!("{} · {} {}", clip.name, arrow(facing), facing.name())
+    };
+    painter.text(
+        area.left_top() + egui::vec2(12.0, 12.0),
+        egui::Align2::LEFT_TOP,
+        label,
+        egui::FontId::proportional(12.0),
+        theme::text(),
+    );
+    let at = clip
+        .at(f.editor.time)
+        .map(|m| m.frame as usize)
+        .or(clip.frames.first().map(|fr| fr.frame as usize));
+    if let (Some(frame), Some(atlas)) = (at, f.atlas) {
+        let side = (area.width() - 48.0).min(area.height() - 80.0).max(16.0);
+        let shown = egui::Rect::from_center_size(
+            area.center() - egui::vec2(0.0, 10.0),
+            egui::vec2(side, side),
+        );
+        crate::sheet_view::draw_frame(&painter, shown, sheet, atlas, frame);
+    }
+}
+
+/// The sheet's cells, numbered, with the picture's name and count, and
+/// Cut picture… for a plain picture.
+fn cells_part(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet) -> bool {
+    let mut changed = false;
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("Cells").strong());
+        let picture = (f.editor.file.sheet())
+            .and_then(|id| f.sheets.paths.get(&id))
+            .map(|p| file_name(p).to_owned())
+            .unwrap_or_default();
+        ui.label(
+            RichText::new(format!("{picture} · {}", sheet.frames.len())).color(theme::text_weak()),
+        );
+        if f.cut {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let cut = crate::widgets::button::Button::plain("Cut picture…")
+                    .icon(crate::icons::Icon::Grid)
+                    .show(ui);
+                f.editor.cut_asked |= cut.clicked();
+            });
+        }
+    });
+    ui.add_space(8.0);
+    let own = f.editor.file.clips.iter().any(|c| c.name == f.editor.clip);
+    let swapping = own && !f.editor.selected.is_empty();
+    egui::ScrollArea::vertical()
+        .id_salt("cells")
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            let across = ((ui.available_width() + 4.0) / (CELL_TILE + 4.0))
+                .floor()
+                .max(1.0) as usize;
+            for row in (0..sheet.frames.len()).collect::<Vec<_>>().chunks(across) {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    for &n in row {
+                        changed |= cell_tile(ui, f, sheet, n as u32, swapping);
+                    }
+                });
+                ui.add_space(4.0);
+            }
+        });
+    changed
+}
+
+/// One cell's tile: picked by a click (or swapped into the picked frame),
+/// dragged onto a row with the run picked.
+fn cell_tile(
+    ui: &mut Ui,
+    f: &mut FramesUi<'_>,
+    sheet: &SpriteSheet,
+    n: u32,
+    swapping: bool,
+) -> bool {
+    let (rect, response) = ui.allocate_exact_size(
+        egui::vec2(CELL_TILE, CELL_TILE),
+        egui::Sense::click_and_drag(),
+    );
+    let painter = ui.painter_at(rect);
+    let picked = f.editor.cells_picked.contains(&n);
+    painter.rect_filled(rect, 3.0, theme::field());
+    if let Some(atlas) = f.atlas {
+        crate::sheet_view::draw_frame(&painter, rect.shrink(4.0), sheet, atlas, n as usize);
+    }
+    let stroke = if picked {
+        egui::Stroke::new(2.0, theme::kind::SPRITE)
+    } else {
+        egui::Stroke::new(1.0, theme::button_border())
+    };
+    painter.rect_stroke(rect, 3.0, stroke, egui::StrokeKind::Inside);
+    painter.text(
+        rect.left_top() + egui::vec2(3.0, 2.0),
+        egui::Align2::LEFT_TOP,
+        n.to_string(),
+        egui::FontId::proportional(9.5),
+        theme::text_weak(),
+    );
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(
+            egui::WidgetType::SelectableLabel,
+            true,
+            picked,
+            format!("Cell {n}"),
+        )
+    });
+    if response.drag_started() {
+        if !picked {
+            f.editor.cells_picked = vec![n];
+        }
+        egui::DragAndDrop::set_payload(ui.ctx(), CellsDrag(f.editor.cells_picked.clone()));
+    }
+    if !response.clicked() {
+        return false;
+    }
+    if swapping {
+        return f.editor.swap_cell(n);
+    }
+    let m = ui.input(|i| i.modifiers);
+    let cells = &mut f.editor.cells_picked;
+    if m.shift
+        && let Some(&from) = cells.last()
+    {
+        let run: Vec<u32> = if from <= n {
+            (from + 1..=n).collect()
+        } else {
+            (n..from).rev().collect()
+        };
+        cells.extend(run);
+    } else if m.command {
+        match cells.iter().position(|&c| c == n) {
+            Some(i) => {
+                cells.remove(i);
+            }
+            None => cells.push(n),
+        }
+    } else {
+        *cells = vec![n];
+    }
+    false
+}

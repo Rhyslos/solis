@@ -263,9 +263,13 @@ pub fn groups(tab: RibbonTab, open: OpenNow) -> Vec<Vec<Panel>> {
         // With neither a clips file nor an animator open, the Sequencer's
         // page stands in the middle (round 3).
         RibbonTab::Animate if open.animator => {
-            vec![vec![P::Viewport, P::Animator], vec![P::Preview]]
+            let mut first = vec![P::Viewport, P::Animator];
+            if open.clips {
+                first.push(P::Cells);
+            }
+            vec![first, vec![P::Preview]]
         }
-        RibbonTab::Animate if open.clips => vec![vec![P::Viewport]],
+        RibbonTab::Animate if open.clips => vec![vec![P::Cells, P::Viewport]],
         RibbonTab::Ui => vec![vec![P::Canvas]],
         RibbonTab::Audio => vec![vec![P::Mixer]],
         // The Profiler fills the middle (round 3); the Game beside it is

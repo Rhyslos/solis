@@ -51,6 +51,9 @@ pub struct FramesEditor {
     pub cut_asked: bool,
     /// The chosen clip's row the Frames tab picks frames in.
     pub facing: Facing,
+    /// The cells picked on the Cells page, in order: a run to drop on a
+    /// row.
+    pub cells_picked: Vec<u32>,
     history: FileHistory<ClipsFile>,
 }
 
@@ -86,6 +89,7 @@ impl FramesEditor {
             search: String::new(),
             cut_asked: false,
             facing: Facing::Any,
+            cells_picked: Vec::new(),
             history: FileHistory::new(UNDO_LIMIT),
         };
         editor.pick_row(None);
@@ -310,6 +314,69 @@ impl FramesEditor {
             self.pick_row(None);
         }
         changed
+    }
+
+    /// Fills the chosen clip's (made here) row for `facing` with the cells
+    /// `cells`, in order, and picks the row. A frame keeps the time and
+    /// event its place had; a new place takes the cell's time from
+    /// `sheet`.
+    pub fn fill_row(&mut self, facing: Facing, cells: &[u32], sheet: &SpriteSheet) -> bool {
+        let name = self.clip.clone();
+        let cells: Vec<u32> = (cells.iter().copied())
+            .filter(|&n| (n as usize) < sheet.frames.len())
+            .take(clips_file::MAX_FRAMES)
+            .collect();
+        if cells.is_empty() {
+            return false;
+        }
+        let changed = self.change(|f| {
+            if let Some(c) = f.clip_mut(&name) {
+                c.edit_frames_of(facing, |frames| {
+                    let before = std::mem::take(frames);
+                    *frames = (cells.iter().enumerate())
+                        .map(|(i, &cell)| match before.get(i) {
+                            Some(was) => ClipFrame {
+                                frame: cell,
+                                ..was.clone()
+                            },
+                            None => ClipFrame {
+                                frame: cell,
+                                ms: sheet.frames[cell as usize]
+                                    .duration_ms
+                                    .clamp(1, clips_file::MAX_MS),
+                                events: Vec::new(),
+                            },
+                        })
+                        .collect();
+                });
+            }
+        });
+        if changed {
+            self.pick_row(Some(facing));
+        }
+        changed
+    }
+
+    /// Shows `cell` in the picked frames of the chosen clip's (made here)
+    /// picked row, keeping their times and events.
+    pub fn swap_cell(&mut self, cell: u32) -> bool {
+        let name = self.clip.clone();
+        let facing = self.facing;
+        let picked = self.selected.clone();
+        if picked.is_empty() {
+            return false;
+        }
+        self.change(|f| {
+            if let Some(c) = f.clip_mut(&name) {
+                c.edit_frames_of(facing, |frames| {
+                    for &i in &picked {
+                        if let Some(frame) = frames.get_mut(i) {
+                            frame.frame = cell;
+                        }
+                    }
+                });
+            }
+        })
     }
 
     /// Picks the chosen clip's row for `facing` (its first, for none),
