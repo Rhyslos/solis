@@ -286,3 +286,24 @@ fn keeps_the_newest_two_hundred_undo_steps() {
     assert_eq!(steps, MAX_UNDO);
     assert_eq!(e.file.any_place, [50.0, 0.0], "the oldest steps went first");
 }
+
+#[test]
+fn facing_by_a_parameter_keeps_the_one_clip_and_makes_a_facing_parameter() {
+    let mut e = editor();
+    e.add_state([0.0, 0.0]);
+    let walk = e.file.states[0].id;
+    assert!(e.set_clip(walk, "walk"));
+    assert!(e.set_faces_by(walk, true));
+    assert_eq!(
+        e.file.states[0].plays,
+        Plays::FacesBy {
+            clip: "walk".into(),
+            by: "facing".into(),
+        }
+    );
+    assert!(e.file.parameter("facing").is_some(), "made");
+    assert!(e.set_clip(walk, "run"));
+    assert!(matches!(&e.file.states[0].plays, Plays::FacesBy { clip, .. } if clip == "run"));
+    assert!(e.set_faces_by(walk, false));
+    assert_eq!(e.file.states[0].plays, Plays::Clip("run".into()));
+}

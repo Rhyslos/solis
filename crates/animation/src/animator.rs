@@ -69,6 +69,10 @@ pub enum SetError {
 #[derive(Debug, Clone, PartialEq)]
 enum Played {
     Clip(String),
+    FacesBy {
+        clip: String,
+        param: Option<usize>,
+    },
     ByDirection {
         param: Option<usize>,
         clips: Vec<([f32; 2], String)>,
@@ -136,6 +140,11 @@ impl Animator {
                 name: s.name.clone(),
                 plays: match &s.plays {
                     Plays::Clip(c) => Played::Clip(c.clone()),
+                    Plays::FacesBy { clip, by } => Played::FacesBy {
+                        clip: clip.clone(),
+                        param: index(by)
+                            .filter(|&i| matches!(kind(i), ParameterKind::Direction(_))),
+                    },
                     Plays::ByDirection { by, clips } => Played::ByDirection {
                         param: index(by)
                             .filter(|&i| matches!(kind(i), ParameterKind::Direction(_))),
@@ -350,7 +359,7 @@ impl Animator {
             return "";
         };
         match &state.plays {
-            Played::Clip(c) => c,
+            Played::Clip(c) | Played::FacesBy { clip: c, .. } => c,
             Played::ByDirection { param, clips } => {
                 let facing = match param.and_then(|i| run.values.get(i)) {
                     Some(ParamValue::Direction(v)) => *v,
@@ -373,6 +382,30 @@ impl Animator {
                     .map_or(chosen, |(_, c)| c)
             }
         }
+    }
+
+    /// The way `run`'s state faces its sprite, when it faces by a
+    /// direction parameter: the one of the eight nearest the parameter
+    /// (the first of two as near). None when the state doesn't.
+    pub fn facing(&self, run: &Run) -> Option<Facing> {
+        let Played::FacesBy { param, .. } = &self.states.get(run.state)?.plays else {
+            return None;
+        };
+        let v = match param.and_then(|i| run.values.get(i)) {
+            Some(ParamValue::Direction(v)) => *v,
+            _ => Facing::Down.vector(),
+        };
+        let dot = |f: Facing| {
+            let [x, y] = f.vector();
+            x * v[0] + y * v[1]
+        };
+        Facing::ALL
+            .into_iter()
+            .fold(None::<(f32, Facing)>, |best, f| match best {
+                Some((b, _)) if dot(f) <= b + 1e-4 => best,
+                _ => Some((dot(f), f)),
+            })
+            .map(|(_, f)| f)
     }
 
     /// How fast `run`'s state plays its clips: its speed, times its speed

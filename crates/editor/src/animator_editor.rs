@@ -353,11 +353,58 @@ impl AnimatorEditor {
         })
     }
 
-    /// Sets the one clip a state plays.
+    /// Sets the one clip a state plays (still facing by its parameter, if
+    /// it does).
     pub(crate) fn set_clip(&mut self, id: Id, clip: &str) -> bool {
         let clip = animation::frames_file::clean_name(clip);
         self.with_state(id, |s, _| {
-            s.plays = Plays::Clip(clip);
+            s.plays = match &s.plays {
+                Plays::FacesBy { by, .. } => Plays::FacesBy {
+                    clip,
+                    by: by.clone(),
+                },
+                _ => Plays::Clip(clip),
+            };
+            true
+        })
+    }
+
+    /// Makes a state that plays one clip face its sprite by a direction
+    /// parameter (`faces`), or stop: the clip's own directions then do the
+    /// rest (Fixes 3). It faces by the first direction parameter, made if
+    /// there's none ("facing").
+    pub(crate) fn set_faces_by(&mut self, id: Id, faces: bool) -> bool {
+        self.change(|f| {
+            let first = (f.parameters.iter())
+                .find(|p| matches!(p.kind, ParameterKind::Direction(_)))
+                .map(|p| p.name.clone());
+            let by = match first {
+                Some(name) => name,
+                None if faces => {
+                    if f.parameters.len() >= MAX_PARAMETERS {
+                        return false;
+                    }
+                    let name = free_parameter_name(f, "facing");
+                    f.parameters.push(Parameter {
+                        id: Id::random(),
+                        name: name.clone(),
+                        kind: ParameterKind::Direction(Facing::Down),
+                    });
+                    name
+                }
+                None => String::new(),
+            };
+            let Some(s) = f.states.iter_mut().find(|s| s.id == id) else {
+                return false;
+            };
+            s.plays = match (&s.plays, faces) {
+                (Plays::Clip(c), true) => Plays::FacesBy {
+                    clip: c.clone(),
+                    by,
+                },
+                (Plays::FacesBy { clip, .. }, false) => Plays::Clip(clip.clone()),
+                _ => return false,
+            };
             true
         })
     }
@@ -419,7 +466,8 @@ impl AnimatorEditor {
     /// Sets which direction parameter picks a state's clip.
     pub(crate) fn set_direction_by(&mut self, id: Id, by: &str) -> bool {
         self.with_state(id, |s, params| {
-            let Plays::ByDirection { by: b, .. } = &mut s.plays else {
+            let (Plays::ByDirection { by: b, .. } | Plays::FacesBy { by: b, .. }) = &mut s.plays
+            else {
                 return false;
             };
             if !params
@@ -599,7 +647,7 @@ impl AnimatorEditor {
                 if s.speed_by == old {
                     s.speed_by.clone_from(&new);
                 }
-                if let Plays::ByDirection { by, .. } = &mut s.plays
+                if let Plays::ByDirection { by, .. } | Plays::FacesBy { by, .. } = &mut s.plays
                     && by == old
                 {
                     by.clone_from(&new);
