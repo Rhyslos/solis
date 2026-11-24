@@ -741,3 +741,81 @@ fn the_clips_page_facing_west_with_its_settings() {
     }
     matches_approved("clips-settings", &drawn(&mut h));
 }
+
+/// [`with_knight_open`] with `knight-mana.png`, the knight recoloured, in
+/// the project, and a look, Mana, on it, shown and picked.
+fn with_knight_and_mana() -> Workbench {
+    let mut w = with_knight_open();
+    let mana = AssetId::random();
+    let mut picture = crate::cut_picture::tests::knight_sheet();
+    for px in picture.atlas.chunks_exact_mut(4) {
+        px.swap(0, 2);
+    }
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.by_path.insert(
+        "knight-mana.png".into(),
+        SheetState::Read(Arc::new(picture)),
+    );
+    sheets.paths.insert(mana, "knight-mana.png".into());
+    w.set_sprite_sheets(sheets);
+    w.run_animate(crate::shell::ShellCommand::LookAdd);
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    assert!(editor.rename_look(1, "Mana"));
+    assert!(editor.set_look_picture(1, mana));
+    w.save_frames();
+    w.open.outbox.clear();
+    w
+}
+
+#[test]
+fn looks_are_added_renamed_made_main_and_removed() {
+    let mut w = with_knight_and_mana();
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    let names = |e: &crate::frames_editor::FramesEditor| {
+        e.file
+            .looks
+            .iter()
+            .map(|l| l.name.clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(names(editor), ["Main", "Mana"]);
+    assert_eq!(
+        (editor.look, editor.look_picked),
+        (1, Some(1)),
+        "shown and picked"
+    );
+    assert!(!editor.rename_look(1, "Main"), "taken");
+    assert!(!editor.rename_look(1, " "), "empty");
+    editor.time = 0.25;
+    w.run_animate(crate::shell::ShellCommand::LookShow(0));
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    assert_eq!(
+        (editor.look, editor.time),
+        (0, 0.25),
+        "switching look keeps the place"
+    );
+    assert!(editor.make_main(1));
+    assert_eq!(names(editor), ["Mana", "Main"]);
+    assert!(!editor.remove_look(0), "never the main one");
+    assert!(editor.remove_look(1));
+    assert_eq!(names(editor), ["Mana"]);
+    assert!(editor.undo() && editor.undo());
+    assert_eq!(names(editor), ["Main", "Mana"]);
+}
+
+#[test]
+fn the_clips_page_showing_another_look() {
+    use crate::picture_support::{drawn, editor_window, matches_approved};
+    let w = with_knight_and_mana();
+    let Some(mut h) = editor_window(
+        w,
+        crate::interface_look::InterfaceLook::default(),
+        [1440.0, 900.0],
+    ) else {
+        return;
+    };
+    for _ in 0..4 {
+        h.run();
+    }
+    matches_approved("clips-looks", &drawn(&mut h));
+}

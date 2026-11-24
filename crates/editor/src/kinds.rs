@@ -257,6 +257,8 @@ pub(crate) fn command(command: ShellCommand) -> PartKind {
         | C::ClipDelete
         | C::FramesTakeOut
         | C::ClipDirection(_)
+        | C::LookAdd
+        | C::LookShow(_)
         | C::StateAdd
         | C::StateStartHere
         | C::StateDelete

@@ -62,6 +62,15 @@ Every cell stands on the same spot, its bottom middle where the sprite is, so a 
 
 Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
+### Looks
+A character can wear other clothes, armour or colours without making its clips again. Draw the other picture the same size and laid out the same way, `knight-mana.png` beside `knight.png`, and add it as a **look** of the clips file: every clip then plays in it, from the same cells.
+
+- **+ Look** on the ribbon (or **+** beside **Looks** under the clips) adds a look; pick its picture in the **Look** settings on the right. A look's picture must be cut the same way as the main one, so a picture of another size is said under it ("306 × 170, as the main look" when it fits).
+- The **Look** switch on the ribbon, or a click in the **Looks** list, shows the clips in that look: the cells, the rows and the preview all draw its picture, and the place in the clip is kept, so you can check one frame in every look.
+- In the look's settings, **Name** renames it, **Make main** makes it the look sprites wear when their Look is empty, and **Remove look** takes it out. **← Back to the clip** goes back to the clip's settings.
+
+A sprite wears a look by its **Look** setting in Properties (see [Settings](#settings)).
+
 ### In game code
 Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.Sprites.Farmer.Walk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:
 
@@ -225,6 +234,15 @@ A clip's settings in the Clip slot:
 | Plays first | The clip a sprite plays when its Clip is empty. |
 | Directions | For a clip of your own: **One**, **Four** or **Eight**, the ways it faces. Each has a row of frames in the Frames tab. |
 
+A look's settings, also in the Clip slot when a look is picked:
+
+| Setting | What it does |
+|---|---|
+| Name | The look's name, as a Sprite's **Look** picks it. |
+| Picture | The picture it draws, cut as the main look's. Its size is checked against the main one's. |
+| Make main | Makes it the look a sprite wears when its Look is empty. |
+| Remove look | Takes it out of the clips file (never the main look); sprites wearing it go back to the main look. |
+
 ## Shortcuts
 | Action | Shortcut |
 |---|---|
@@ -237,6 +255,7 @@ A clip's settings in the Clip slot:
 | Undo or redo a change to the clips file | `Ctrl + Z`, `Ctrl + Y` over the clips |
 
 ## Tips and common problems
+- **Problem:** a look's frames are cut off or show the wrong part. **Why:** its picture isn't the main one's size or layout. **Fix:** draw it on a copy of the main picture, so the cells line up; the Look settings say when the sizes differ.
 - **Problem:** sprites don't move in the viewport. **Why:** the editor rests unless something changes. **Fix:** tick **Preview animation** in the viewport's **≡** menu, or press **Play**.
 - **Problem:** a tag's frames can't be moved, timed or taken out. **Why:** a tag's frames are Aseprite's, so saving there keeps both in step. **Fix:** change them in Aseprite, or **Copy** the clip (on the ribbon) to change the copy here.
 - **Problem:** an event doesn't play a sound. **Why:** no sound event has its name. **Fix:** name it after the sound event (`footstep` or `sfx/footstep`), or pick one from **◆ ▾**.

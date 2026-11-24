@@ -54,6 +54,11 @@ pub struct FramesEditor {
     /// The cells picked on the Cells page, in order: a run to drop on a
     /// row.
     pub cells_picked: Vec<u32>,
+    /// The look shown, by its place in the file's list (0 the main one).
+    pub look: usize,
+    /// The look picked in the Looks list, whose settings the Clip slot
+    /// shows instead of the clip's.
+    pub look_picked: Option<usize>,
     history: FileHistory<ClipsFile>,
 }
 
@@ -90,6 +95,8 @@ impl FramesEditor {
             cut_asked: false,
             facing: Facing::Any,
             cells_picked: Vec::new(),
+            look: 0,
+            look_picked: None,
             history: FileHistory::new(UNDO_LIMIT),
         };
         editor.pick_row(None);
@@ -405,6 +412,79 @@ impl FramesEditor {
                 c.set_mirror(mirror);
             }
         })
+    }
+
+    /// Adds a look on `picture` (to change in its settings), named
+    /// `Look 2` and on, shown and picked.
+    pub fn add_look(&mut self, picture: AssetId) -> bool {
+        if self.file.looks.len() >= clips_file::MAX_LOOKS {
+            return false;
+        }
+        let taken = |n: &str| self.file.looks.iter().any(|l| l.name == n);
+        let name = (2..)
+            .map(|n| format!("Look {n}"))
+            .find(|n| !taken(n))
+            .unwrap_or_default();
+        let added = self.change(|f| {
+            f.looks.push(clips_file::Look { name, picture });
+        });
+        if added {
+            self.look = self.file.looks.len() - 1;
+            self.look_picked = Some(self.look);
+        }
+        added
+    }
+
+    /// Renames look `i` to `name` (trimmed), if it's free and allowed.
+    pub fn rename_look(&mut self, i: usize, name: &str) -> bool {
+        let name = frames_file::clean_name(name);
+        if !clips_file::good_name(&name) || self.file.looks.iter().any(|l| l.name == name) {
+            return false;
+        }
+        self.change(|f| {
+            if let Some(look) = f.looks.get_mut(i) {
+                look.name = name;
+            }
+        })
+    }
+
+    /// Makes look `i` show `picture`.
+    pub fn set_look_picture(&mut self, i: usize, picture: AssetId) -> bool {
+        self.change(|f| {
+            if let Some(look) = f.looks.get_mut(i) {
+                look.picture = picture;
+            }
+        })
+    }
+
+    /// Makes look `i` the main one: the sheet its clips play, and the one
+    /// a sprite starts in.
+    pub fn make_main(&mut self, i: usize) -> bool {
+        let changed = self.change(|f| {
+            if i > 0 && i < f.looks.len() {
+                let look = f.looks.remove(i);
+                f.looks.insert(0, look);
+            }
+        });
+        if changed {
+            self.look = 0;
+            self.look_picked = Some(0);
+        }
+        changed
+    }
+
+    /// Takes look `i` away (never the main one).
+    pub fn remove_look(&mut self, i: usize) -> bool {
+        let changed = self.change(|f| {
+            if i > 0 && i < f.looks.len() {
+                f.looks.remove(i);
+            }
+        });
+        if changed {
+            self.look = 0;
+            self.look_picked = None;
+        }
+        changed
     }
 
     /// Picks the chosen clip's row for `facing` (its first, for none),

@@ -191,6 +191,12 @@ impl PartialEq for PicturesWanted {
     }
 }
 
+/// The name a clips file's look `i` (from 1) picture, cut, is kept under
+/// among the editor's pictures: the clips file's path and the look.
+pub fn look_key(path: &str, i: usize) -> String {
+    format!("{path}#look{i}")
+}
+
 /// The ID a clips file's look `i` (from 1) is drawn under: made from the
 /// clips file's, the same every time.
 pub fn look_id(clips: AssetId, i: usize) -> AssetId {
@@ -508,13 +514,17 @@ impl SpriteSheets {
     /// Aseprite file. None for the main look, or one not read yet (which
     /// is asked for).
     pub fn look_sheet(&self, clips: AssetId, look: &str) -> Option<(AssetId, &Arc<SpriteSheet>)> {
-        let path = self.paths.get(&clips)?;
+        let (i, sheet) = self.look_sheet_at(self.paths.get(&clips)?, look)?;
+        Some((look_id(clips, i), sheet))
+    }
+
+    /// [`Self::look_sheet`] by the clips file's path (one just made has no
+    /// ID yet), with the look's place in its list.
+    pub fn look_sheet_at(&self, path: &str, look: &str) -> Option<(usize, &Arc<SpriteSheet>)> {
         let FramesState::Read(file, _) = self.frames.get(path)? else {
             return None;
         };
-        let i = file
-            .looks
-            .iter()
+        let i = (file.looks.iter())
             .position(|l| l.name == look)
             .filter(|&i| i > 0)?;
         let picture = self.paths.get(&file.looks[i].picture)?;
@@ -524,17 +534,12 @@ impl SpriteSheets {
                     self.pictures_wanted.ask(picture);
                     return None;
                 }
-                Some(_) => self
-                    .cut_looks
-                    .get(&(path.clone(), i))?
-                    .sheet
-                    .as_ref()
-                    .ok()?,
+                Some(_) => (self.cut_looks.get(&(path.to_owned(), i))?.sheet.as_ref()).ok()?,
             }
         } else {
             self.at(picture)?
         };
-        Some((look_id(clips, i), sheet))
+        Some((i, sheet))
     }
 
     /// Lists every tile map file read by asset ID again (after one was
