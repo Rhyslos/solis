@@ -86,6 +86,83 @@ Every engine call in [the interface file](../game-code-interface.txt) (112 calls
 **7. Events**: `CueReached`, `ClipFinished`, `Entered`, `Exited`, `EnteredZone`, `LeftZone`, `TimerFinished`, `TypingFinished`. These already fit Lust (`on ClipFinished(Clip clip) { … }`); only the pairs `Entered`/`EnteredZone` and `Exited`/`LeftZone` read differently for the same thing seen from either side.
 - Question: `Entered` and `Left` on both sides, the zone's and the walker's?
 
+### The game code proposals, before and after
+
+The recommended shape for each group above, to show beside its question. Code after the arrow is what the proposal would make possible; where it needs something of Lust, that's said.
+
+**1. Making:** one `new` for what the world makes, through a class Solis writes for each module, sound and timer (works today; asking Lust to let a state option be made would remove the extra classes later).
+```text
+-- Before
+entity ship = World:spawnWith(Module.Ships.Fighter, gate, [new FighterValues { speed = 9 }]);
+Audio:playAt(Sound.Sfx.Horn, gate);
+startTimer(Timer.DoorOpens, 2.0);
+-- After
+entity ship = new Fighter { position = gate, speed = 9 };
+new Horn { at = gate };
+new DoorOpens { after = 2.0 };
+```
+
+**2. Setting:** a field in `has` that the engine reads, as `facing` and `look` are now (Fixes 3).
+```text
+-- Before
+animate(Clip.Sprites.Knight.Walk);
+setFlip(true, false);
+moveTo(place);
+showScreen(Screen.Hud);
+Screens:setTextSize(1.2);
+-- After
+animation = Clip.KnightWalk;
+flip = true;
+position = place;
+screen = Screen.Hud;
+Screens.textSize = 1.2;
+```
+
+**3. Reading:** the same fields read back; a question asked once into a name.
+```text
+-- Before
+is Items:row(Item.IronSword).price > coins? then { … }
+float hp = orc:health().hp;
+-- After
+Item sword = Item.IronSword;
+is sword.price > coins? then { … }
+Health theirs = orc;
+float hp = theirs.hp;
+```
+(`Health theirs = orc;` needs Lust to read a component off an entity by its kind; until then `orc:health()` stays, read once into a name.)
+
+**4. Neither:** an event where one fits, a call on its object where not.
+```text
+-- Before
+orc:despawn();
+Window:quit();
+-- After
+send Despawn() to orc;
+Window:quit();
+```
+
+**5. One dot:** the file's name and the part's, joined; folders only on a clash.
+```text
+-- Before
+animate(Clip.Sprites.Knight.Walk);
+is clip == Clip.Sprites.Knight? then { … }    -- any of the knight's clips
+-- After
+animation = Clip.KnightWalk;
+is clip.sheet == Sheet.Knight? then { … }    -- the group becomes a value of the clip
+```
+
+**6. Text names:** `World:find("Gate")` leaves the manual; a one-off entity is reached by `World:the(Component.Gate)` or a field set in Properties.
+
+**7. Events:** the zone and the walker hear the same two words.
+```text
+-- Before
+on Entered(entity who) { … }      -- the zone
+on EnteredZone(entity zone) { … } -- the one walking in
+-- After
+on Entered(entity who) { … }
+on Entered(entity zone) { … }    -- needs Lust to tell two events of one name apart by what they carry, or keep EnteredZone
+```
+
 ### The interface
 
 The shared parts are in `crates/editor/src/widgets/` (buttons, cards, checkboxes, chips, columns, dialogs, fields, keycaps, menus, pills, rows, segmented switches, sliders, sub-tabs, swatches, tiles, toggles, and Fixes 3's picture board). What's drawn beside them instead, found by searching the editor's code outside that folder:
