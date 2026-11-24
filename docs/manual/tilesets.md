@@ -63,7 +63,7 @@ In the tileset's tab (the Terrains slot, the Slot at the right and the ribbon):
 | Picture | The PNG, JPEG or Aseprite file the art comes from. |
 | Tile size | Each tile's width and height in pixels. Usually the project's tile size (2D settings). |
 | Kind | How the chosen terrain's tiles are chosen: plain, 16-tile, 47-tile, edges or rules. Changing it takes its tiles away (Ctrl + Z brings them back). |
-| Zoom | How big the picture is shown (the ribbon's list, or − and + under the steps). |
+| Zoom | How big the picture is shown: the ribbon's list, or the wheel over the picture. The middle button moves it, as on Atlas Crop's and Cut picture…'s pictures. |
 
 In Properties, for a tile in a slot:
 

@@ -133,8 +133,8 @@ const KEPT: [(&str, usize, &str); 10] = [
     ),
     (
         "tileset_view.rs",
-        5,
-        "over a tileset's picture: its grid, a missing tile's pink and red, pictograms",
+        4,
+        "over a tileset's picture: a missing tile's pink and red, pictograms (its grid is the picture board's)",
     ),
     (
         "viewport_tools.rs",

@@ -453,99 +453,80 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         });
         ui.add_space(6.0);
     }
-    ui.horizontal(|ui| {
-        if ui.small_button("−").on_hover_text("Smaller").clicked() {
-            t.editor.zoom = (t.editor.zoom - 1.0).max(1.0);
-        }
-        ui.label(
-            RichText::new(format!("{:.0}%", t.editor.zoom * 100.0))
-                .small()
-                .color(theme::text_weak()),
-        );
-        if ui.small_button("+").on_hover_text("Bigger").clicked() {
-            t.editor.zoom = (t.editor.zoom + 1.0).min(8.0);
-        }
-        ui.label(
-            RichText::new("Numbers mark the chosen terrain's slots.")
-                .small()
-                .color(theme::text_weak()),
-        );
-    });
+    ui.label(
+        RichText::new(
+            "The wheel zooms, the middle button moves it. Numbers mark the chosen terrain's slots.",
+        )
+        .small()
+        .color(theme::text_weak()),
+    );
     let set = &t.editor.file;
     let [cols, rows] = grid(set, p);
-    let z = t.editor.zoom;
-    let size = vec2(p.size[0] as f32 * z, p.size[1] as f32 * z);
-    let mut clicked_tile = None;
-    let mut dragged = None;
-    egui::ScrollArea::both()
-        .id_salt("picture scroll")
-        .max_height(ui.available_height() - 20.0)
-        .show(ui, |ui| {
-            let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
-            let uv = Rect::from_min_max(
-                pos2(0.0, 0.0),
-                pos2(
-                    p.size[0] as f32 / p.atlas[0].max(1) as f32,
-                    p.size[1] as f32 / p.atlas[1].max(1) as f32,
-                ),
+    let uv = Rect::from_min_max(
+        pos2(0.0, 0.0),
+        pos2(
+            p.size[0] as f32 / p.atlas[0].max(1) as f32,
+            p.size[1] as f32 / p.atlas[1].max(1) as f32,
+        ),
+    );
+    // The same board as Atlas Crop's and Cut picture…'s (decision 0137).
+    let room = egui::Rect::from_min_size(
+        ui.cursor().min,
+        vec2(
+            ui.available_width(),
+            (ui.available_height() - 20.0).max(60.0),
+        ),
+    );
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(room));
+    let board = crate::widgets::picture_board::picture_board_in(
+        &mut child,
+        (&mut t.editor.zoom, &mut t.editor.pan),
+        p.texture,
+        p.size,
+        uv,
+    );
+    ui.advance_cursor_after_rect(room);
+    board.lines(ui, set.tile);
+    if let Some(c) = &chosen {
+        let painter = ui.painter_at(board.response.rect);
+        for piece in set.pieces.iter().filter(|x| x.terrain == c.id) {
+            let at = board.to_screen(
+                (piece.at[0] * set.tile[0]) as f32,
+                (piece.at[1] * set.tile[1]) as f32,
+            ) + vec2(3.0, 2.0);
+            painter.text(
+                at,
+                egui::Align2::LEFT_TOP,
+                piece.slot.to_string(),
+                egui::FontId::proportional(10.0),
+                Color32::WHITE,
             );
-            ui.painter().rect_filled(rect, 0.0, crate::tokens::field());
-            ui.painter().image(p.texture.id(), rect, uv, Color32::WHITE);
-            let (tw, th) = (set.tile[0] as f32 * z, set.tile[1] as f32 * z);
-            let grid_line = Stroke::new(1.0, Color32::from_white_alpha(46));
-            for c in 0..=cols {
-                ui.painter()
-                    .vline(rect.min.x + c as f32 * tw, rect.y_range(), grid_line);
-            }
-            for r in 0..=rows {
-                ui.painter()
-                    .hline(rect.x_range(), rect.min.y + r as f32 * th, grid_line);
-            }
-            if let Some(c) = &chosen {
-                for piece in set.pieces.iter().filter(|x| x.terrain == c.id) {
-                    let at = rect.min
-                        + vec2(piece.at[0] as f32 * tw + 3.0, piece.at[1] as f32 * th + 2.0);
-                    ui.painter().text(
-                        at,
-                        egui::Align2::LEFT_TOP,
-                        piece.slot.to_string(),
-                        egui::FontId::proportional(10.0),
-                        Color32::WHITE,
-                    );
-                }
-            }
-            if let Some([x, y]) = t.editor.tile {
-                ui.painter().rect_stroke(
-                    Rect::from_min_size(
-                        rect.min + vec2(x as f32 * tw, y as f32 * th),
-                        vec2(tw, th),
-                    ),
-                    0.0,
-                    Stroke::new(2.0, t.accent),
-                    egui::StrokeKind::Inside,
-                );
-            }
-            let at_pointer = |pos: Pos2| -> Option<[u32; 2]> {
-                let local = pos - rect.min;
-                let (x, y) = ((local.x / tw).floor(), (local.y / th).floor());
-                (x >= 0.0 && y >= 0.0 && (x as u32) < cols && (y as u32) < rows)
-                    .then_some([x as u32, y as u32])
-            };
-            if response.clicked()
-                && let Some(pos) = response.interact_pointer_pos()
-            {
-                clicked_tile = at_pointer(pos);
-            }
-            if response.drag_started()
-                && let Some(pos) = response.interact_pointer_pos()
-                && let Some(at) = at_pointer(pos)
-            {
-                dragged = Some(at);
-            }
-            response.widget_info(|| {
-                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Tileset picture")
-            });
-        });
+        }
+    }
+    if let Some([x, y]) = t.editor.tile {
+        let [tw, th] = set.tile;
+        board.boxed(ui, [x * tw, y * th, tw, th], "", t.accent, 2.0);
+    }
+    let at_pointer = |pos: Pos2| -> Option<[u32; 2]> {
+        let [px, py] = board.to_pixel(pos);
+        let (x, y) = (
+            (px / set.tile[0].max(1) as f32).floor(),
+            (py / set.tile[1].max(1) as f32).floor(),
+        );
+        (x >= 0.0 && y >= 0.0 && (x as u32) < cols && (y as u32) < rows)
+            .then_some([x as u32, y as u32])
+    };
+    let response = &board.response;
+    let clicked_tile = response
+        .clicked()
+        .then(|| response.interact_pointer_pos().and_then(at_pointer))
+        .flatten();
+    let dragged = (response.drag_started_by(egui::PointerButton::Primary))
+        .then(|| response.interact_pointer_pos().and_then(at_pointer))
+        .flatten();
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Tileset picture")
+    });
     if let Some(at) = clicked_tile {
         t.editor.tile = Some(at);
     }
